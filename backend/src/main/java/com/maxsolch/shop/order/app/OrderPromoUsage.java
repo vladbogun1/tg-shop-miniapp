@@ -7,11 +7,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 /** Answers promo's question about orders: is a code text carried by any order. */
 @Component
-public class OrderPromoUsage implements PromoUsage {
+class OrderPromoUsage implements PromoUsage {
 
     private final OrderRepository orderRepository;
 
-    public OrderPromoUsage(OrderRepository orderRepository) {
+    OrderPromoUsage(OrderRepository orderRepository) {
         this.orderRepository = orderRepository;
     }
 

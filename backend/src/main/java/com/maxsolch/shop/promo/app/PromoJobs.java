@@ -6,11 +6,11 @@ import org.springframework.stereotype.Component;
 
 /** Background side of promo codes: tidies the table of customers' holds. */
 @Component
-public class PromoJobs {
+class PromoJobs {
 
     private final PromoService promos;
 
-    public PromoJobs(PromoService promos) {
+    PromoJobs(PromoService promos) {
         this.promos = promos;
     }
 
@@ -19,7 +19,7 @@ public class PromoJobs {
      */
     @SchedulerLock(name = "PromoService.sweepExpired", lockAtMostFor = "PT15M", lockAtLeastFor = "PT5S")
     @Scheduled(fixedDelayString = "${app.promo.reservation-sweep-ms:600000}", initialDelay = 60_000)
-    public void sweepExpired() {
+    void sweepExpired() {
         promos.sweepExpired();
     }
 }
