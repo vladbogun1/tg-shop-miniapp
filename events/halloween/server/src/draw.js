@@ -1,93 +1,65 @@
-// Participants and the stream draw.
+// Participants and the stream draws (two of them: pumpkins and purchases, see pools.js).
 //
-// Fairness: before the stream the list is frozen ("lock"): a random seed is generated and only
+// Fairness: before the stream each list is frozen ("lock"): a random seed is generated and only
 // sha256(seed + ":" + sha256(snapshot)) is shown on screen. Every round is then a pure function of
 // (seed, round, attempt, frozen list), so after the stream the seed and the list prove that nobody
 // picked the winners by hand.
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { db, tx } from "./db.js";
 import { config } from "./config.js";
-import { shopFacts, profiles } from "./shop.js";
+import { profiles } from "./shop.js";
+import { liveEntries } from "./pools.js";
 
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
 
-/** Live list: everyone who collected the goal or bought this week, minus staff and exclusions. */
-export async function liveEntries() {
-  const facts = await shopFacts();
-  const pumpkins = new Map();
-  for (const r of db
-    .prepare(
-      `SELECT tg_id, SUM(c) AS n FROM (
-         SELECT tg_id, COUNT(*) AS c FROM spawns WHERE collected_at IS NOT NULL GROUP BY tg_id
-         UNION ALL SELECT tg_id, SUM(bonus) FROM code_uses GROUP BY tg_id
-       ) GROUP BY tg_id`,
-    )
-    .all())
-    pumpkins.set(String(r.tg_id), Number(r.n));
-  const excluded = new Set([
-    ...config.excludeIds,
-    ...facts.staff,
-    ...db.prepare("SELECT tg_id FROM excluded").all().map((r) => String(r.tg_id)),
-  ]);
-  const ids = new Set([...pumpkins.keys(), ...facts.orders.keys()]);
-  const out = [];
-  for (const tgId of ids) {
-    if (excluded.has(tgId)) continue;
-    const p = pumpkins.get(tgId) || 0;
-    const o = facts.orders.get(tgId) || 0;
-    const tickets = (p >= config.goal ? 1 : 0) + o;
-    if (tickets > 0) out.push({ tgId, pumpkins: p, orders: o, tickets });
-  }
-  out.sort((a, b) => (BigInt(a.tgId) < BigInt(b.tgId) ? -1 : 1));
-  return out;
+export { liveEntries };
+
+export function getLock(pool) {
+  return db.prepare("SELECT * FROM lock WHERE pool = ?").get(pool) || null;
 }
 
-export function getLock() {
-  return db.prepare("SELECT * FROM lock WHERE id = 1").get() || null;
-}
-
-export async function lock(by) {
-  const existing = getLock();
+export async function lock(pool, by) {
+  const existing = getLock(pool);
   if (existing) return existing;
-  const entries = await liveEntries();
+  const entries = await liveEntries(pool);
   if (!entries.length) throw new Error("Немає учасників");
-  const snapshot = JSON.stringify(entries.map((e) => [e.tgId, e.tickets, e.pumpkins, e.orders]));
+  const snapshot = JSON.stringify(entries.map((e) => [e.tgId, e.tickets, e.pumpkins, e.orders, e.spendMinor]));
   const seed = randomBytes(32).toString("hex");
   const snapshotHash = sha256(snapshot);
   const commitment = sha256(`${seed}:${snapshotHash}`);
   db.prepare(
-    "INSERT INTO lock (id, seed, snapshot, snapshot_hash, commitment, locked_at, locked_by) VALUES (1, ?, ?, ?, ?, ?, ?)",
-  ).run(seed, snapshot, snapshotHash, commitment, Date.now(), by);
-  return getLock();
+    "INSERT INTO lock (pool, seed, snapshot, snapshot_hash, commitment, locked_at, locked_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  ).run(pool, seed, snapshot, snapshotHash, commitment, Date.now(), by);
+  return getLock(pool);
 }
 
 function frozenEntries(l) {
-  return JSON.parse(l.snapshot).map(([tgId, tickets, pumpkins, orders]) => ({ tgId, tickets, pumpkins, orders }));
+  return JSON.parse(l.snapshot).map(([tgId, tickets, pumpkins, orders, spendMinor = 0]) => ({ tgId, tickets, pumpkins, orders, spendMinor }));
 }
 
-function draws() {
-  return db.prepare("SELECT * FROM draws ORDER BY id").all();
+function draws(pool) {
+  return db.prepare("SELECT * FROM draws WHERE pool = ? ORDER BY id").all(pool);
 }
 
 /** Deterministic weighted pick: HMAC(seed, "round:attempt") as a number mod total tickets. */
-export function pick(seed, round, attempt, pool) {
-  const total = pool.reduce((s, e) => s + e.tickets, 0);
+export function pick(seed, round, attempt, entries) {
+  const total = entries.reduce((s, e) => s + e.tickets, 0);
   const h = createHmac("sha256", Buffer.from(seed, "hex")).update(`${round}:${attempt}`).digest("hex");
   let x = Number(BigInt("0x" + h) % BigInt(total));
-  for (const e of pool) {
+  for (const e of entries) {
     if ((x -= e.tickets) < 0) return { entry: e, total };
   }
-  return { entry: pool[pool.length - 1], total };
+  return { entry: entries[entries.length - 1], total };
 }
 
 /**
  * Next round, or (reroll) the last round again: its winner did not answer, is voided and stays
  * out of the pool, the round is drawn with the next attempt number.
  */
-export async function drawRound(by, reroll) {
-  const l = getLock() || (await lock(by));
+export async function drawRound(pool, by, reroll) {
+  const l = getLock(pool) || (await lock(pool, by));
   return tx(() => {
-    const all = draws();
+    const all = draws(pool);
     const valid = all.filter((d) => !d.voided);
     let round;
     if (reroll) {
@@ -97,15 +69,16 @@ export async function drawRound(by, reroll) {
       round = last.round;
     } else {
       round = valid.length + 1;
-      if (round > config.rounds) throw new Error("Усі раунди вже зіграні");
+      if (round > config.rounds[pool]) throw new Error("Усі раунди вже зіграні");
     }
     const attempt = all.filter((d) => d.round === round).length + 1;
-    const out = new Set(db.prepare("SELECT tg_id FROM draws").all().map((d) => d.tg_id)); // winners and voided
-    const pool = frozenEntries(l).filter((e) => !out.has(e.tgId));
-    if (!pool.length) throw new Error("Пул порожній");
-    const { entry, total } = pick(l.seed, round, attempt, pool);
-    db.prepare("INSERT INTO draws (round, attempt, tg_id, drawn_at, drawn_by) VALUES (?, ?, ?, ?, ?)").run(
-      round, attempt, entry.tgId, Date.now(), by,
+    // Winners and voided winners of this draw. Winning one draw does not keep you out of the other.
+    const out = new Set(all.map((d) => d.tg_id));
+    const left = frozenEntries(l).filter((e) => !out.has(e.tgId));
+    if (!left.length) throw new Error("Пул порожній");
+    const { entry, total } = pick(l.seed, round, attempt, left);
+    db.prepare("INSERT INTO draws (pool, round, attempt, tg_id, drawn_at, drawn_by) VALUES (?, ?, ?, ?, ?, ?)").run(
+      pool, round, attempt, entry.tgId, Date.now(), by,
     );
     return { round, attempt, winnerTgId: entry.tgId, totalTickets: total };
   });
@@ -132,17 +105,14 @@ export function maskHandle(u) {
 }
 
 /** Everything the draw screen needs, in the VISUAL-CONTRACT shape. */
-export async function screen() {
-  const l = getLock();
-  const entries = l ? frozenEntries(l) : await liveEntries();
-  const ds = draws();
+export async function screen(pool) {
+  const l = getLock(pool);
+  const entries = l ? frozenEntries(l) : await liveEntries(pool);
+  const ds = draws(pool);
   const out = new Set(ds.map((d) => d.tg_id));
   const prof = await profiles(entries.map((e) => e.tgId));
   const participants = entries.map((e) => {
     const p = prof.get(e.tgId);
-    const via = [];
-    if (e.pumpkins >= config.goal) via.push("pumpkins");
-    if (e.orders > 0) via.push("orders");
     return {
       id: publicId(e.tgId),
       name: displayName(p),
@@ -151,11 +121,13 @@ export async function screen() {
       tickets: e.tickets,
       pumpkins: e.pumpkins,
       orders: e.orders,
-      via,
+      via: [pool],
       won: out.has(e.tgId),
     };
   });
   return {
+    pool,
+    rounds: config.rounds[pool],
     locked: Boolean(l),
     seedHash: l?.commitment || "",
     participants,
@@ -164,8 +136,8 @@ export async function screen() {
 }
 
 /** For Maxim to contact the winners: full names, usernames, Telegram ids. Admin only. */
-export async function winnersFull() {
-  const ds = draws();
+export async function winnersFull(pool) {
+  const ds = draws(pool);
   const prof = await profiles([...new Set(ds.map((d) => d.tg_id))]);
   return ds.map((d) => {
     const p = prof.get(d.tg_id) || {};
@@ -182,8 +154,8 @@ export async function winnersFull() {
   });
 }
 
-export function proof() {
-  const l = getLock();
+export function proof(pool) {
+  const l = getLock(pool);
   if (!l) return null;
-  return { seed: l.seed, snapshotHash: l.snapshot_hash, commitment: l.commitment, snapshot: JSON.parse(l.snapshot), draws: draws() };
+  return { pool, seed: l.seed, snapshotHash: l.snapshot_hash, commitment: l.commitment, snapshot: JSON.parse(l.snapshot), draws: draws(pool) };
 }

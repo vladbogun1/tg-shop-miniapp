@@ -7,6 +7,12 @@ import { config } from "./config.js";
 mkdirSync(config.dataDir, { recursive: true });
 export const db = new DatabaseSync(join(config.dataDir, "halloween.sqlite"));
 
+// 29.10: one draw became two (pumpkins / purchases). Lists frozen and rounds drawn before that were
+// rehearsals of the old single draw (the event had not started), so they go rather than get a guessed pool.
+const cols = (t) => db.prepare(`SELECT name FROM pragma_table_info('${t}')`).all().map((r) => r.name);
+if (cols("lock").length && !cols("lock").includes("pool")) db.exec("DROP TABLE lock; DROP TABLE IF EXISTS draws;");
+if (cols("round_prizes").length && !cols("round_prizes").includes("pool")) db.exec("DROP TABLE round_prizes;");
+
 db.exec(`
 PRAGMA journal_mode = WAL;
 PRAGMA busy_timeout = 3000;
@@ -50,9 +56,9 @@ CREATE TABLE IF NOT EXISTS excluded (
   at    INTEGER NOT NULL
 );
 
--- The frozen list the draw runs on (see draw.js) and the commitment shown before the stream.
+-- The frozen list each draw runs on (see draw.js) and the commitment shown before the stream.
 CREATE TABLE IF NOT EXISTS lock (
-  id            INTEGER PRIMARY KEY CHECK (id = 1),
+  pool          TEXT PRIMARY KEY,
   seed          TEXT NOT NULL,
   snapshot      TEXT NOT NULL,
   snapshot_hash TEXT NOT NULL,
@@ -62,6 +68,7 @@ CREATE TABLE IF NOT EXISTS lock (
 );
 CREATE TABLE IF NOT EXISTS draws (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  pool       TEXT NOT NULL,
   round      INTEGER NOT NULL,
   attempt    INTEGER NOT NULL,
   tg_id      TEXT NOT NULL,

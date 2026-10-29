@@ -4,6 +4,7 @@ import { randomBytes, randomInt } from "node:crypto";
 import { db, tx } from "./db.js";
 import { config } from "./config.js";
 import { ordersOf } from "./shop.js";
+import { pumpkinWeight, orderTickets } from "./pools.js";
 
 export const PUMPKIN_KINDS = 4;
 
@@ -38,17 +39,25 @@ export function pumpkinsOf(tgId) {
   return Number(q.collectedTotal.get(tgId).n) + Number(q.bonus.get(tgId).n);
 }
 
+/**
+ * One person's standing in both draws: `full` = a whole set of pumpkins (the real chance, a partial
+ * set only gives a long shot); `spendMinor` / `orderTickets` = purchases in the window and their tickets.
+ */
 export async function progress(tgId) {
   const pumpkins = pumpkinsOf(tgId);
   const today = Number(q.collectedDay.get(tgId, kyivDay()).n);
-  const orders = await ordersOf(tgId);
-  const byPumpkins = pumpkins >= config.goal;
+  const o = await ordersOf(tgId);
+  const orderTix = orderTickets(o.spendMinor);
+  const pools = { pumpkins: pumpkinWeight(pumpkins) > 0, orders: orderTix > 0 };
   return {
     pumpkins,
     today,
-    orders,
-    tickets: (byPumpkins ? 1 : 0) + orders,
-    inDraw: byPumpkins || orders > 0,
+    full: pumpkins >= config.goal,
+    orders: o.n,
+    spendMinor: o.spendMinor,
+    orderTickets: orderTix,
+    pools,
+    inDraw: pools.pumpkins || pools.orders,
   };
 }
 
@@ -58,9 +67,11 @@ export function publicState() {
     startsAt: config.startsAt.toISOString(),
     endsAt: config.endsAt.toISOString(),
     streamAt: config.streamAt,
-    streamUrl: config.streamUrl,
+    streams: config.streams,
     goal: config.goal,
     dailyCap: config.dailyCap,
+    minSpendMinor: config.minSpendMinor,
+    maxOrderTickets: config.maxOrderTickets,
   };
 }
 

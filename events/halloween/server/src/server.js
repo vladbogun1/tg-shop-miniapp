@@ -14,6 +14,8 @@ import * as draw from "./draw.js";
 import * as rehearsal from "./test-draw.js";
 import * as prizes from "./prizes.js";
 import { db } from "./db.js";
+import { poolOf, liveEntries } from "./pools.js";
+import * as notify from "./notify.js";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
 const ROOT = resolve(here, "../..");
@@ -115,75 +117,76 @@ async function customerApi(req, res, path) {
   return send(res, 404, { error: "not found" });
 }
 
-async function adminApi(req, res, path) {
+async function adminApi(req, res, path, query) {
   const who = await admin(req);
   if (!who) return send(res, 401, { error: "admin only" });
   const b = req.method === "POST" ? await body(req) : {};
   try {
+    // Two separate draws; every draw-specific call names its pool (?pool=pumpkins|orders).
+    const pool = poolOf(query.get("pool"));
     // Rehearsal (?test=1 on the screen): random customers, nothing real is touched.
-    if (path === "test/participants" && req.method === "GET") return send(res, 200, await rehearsal.screen());
+    if (path === "test/participants" && req.method === "GET") return send(res, 200, await rehearsal.screen(pool));
     if (path === "test/reset" && req.method === "POST") {
-      await rehearsal.reset(b.count);
-      return send(res, 200, await rehearsal.screen());
+      await rehearsal.reset(pool, b.count);
+      return send(res, 200, await rehearsal.screen(pool));
     }
-    if (path === "test/lock" && req.method === "POST") return send(res, 200, { seedHash: (await rehearsal.lock()).commitment });
-    if ((path === "test/draw" || path === "test/reroll") && req.method === "POST") return send(res, 200, await rehearsal.drawRound(path === "test/reroll"));
-    if (path === "participants" && req.method === "GET") return send(res, 200, await draw.screen());
+    if (path === "test/lock" && req.method === "POST") return send(res, 200, { seedHash: (await rehearsal.lock(pool)).commitment });
+    if ((path === "test/draw" || path === "test/reroll") && req.method === "POST") return send(res, 200, await rehearsal.drawRound(pool, path === "test/reroll"));
+    if (path === "participants" && req.method === "GET") return send(res, 200, await draw.screen(pool));
     if (path === "lock" && req.method === "POST") {
-      const l = await draw.lock(who.tgId);
+      const l = await draw.lock(pool, who.tgId);
       return send(res, 200, { seedHash: l.commitment, lockedAt: l.locked_at });
     }
     if ((path === "draw" || path === "reroll") && req.method === "POST") {
-      const r = await draw.drawRound(who.tgId, path === "reroll");
+      const r = await draw.drawRound(pool, who.tgId, path === "reroll");
       return send(res, 200, { round: r.round, attempt: r.attempt, winner: draw.publicId(r.winnerTgId), totalTickets: r.totalTickets });
     }
     if (path === "winners" && req.method === "GET") {
       const sent = prizes.contacted();
-      return send(res, 200, (await draw.winnersFull()).map((w) => ({ ...w, contacted: sent.get(w.drawId) || null, prize: prizes.prizeFor(w.round) })));
+      return send(res, 200, (await draw.winnersFull(pool)).map((w) => ({ ...w, contacted: sent.get(w.drawId) || null, prize: prizes.prizeFor(pool, w.round) })));
     }
     // Prize packs and the round → pack choice (made before the stream, changeable any time).
-    if (path === "prizes" && req.method === "GET") return send(res, 200, prizes.state());
-    if (path === "prizes" && req.method === "POST") return send(res, 200, prizes.save(b));
-    if (path === "prizes/delete" && req.method === "POST") return send(res, 200, prizes.remove(b.id));
-    if (path === "prizes/assign" && req.method === "POST") return send(res, 200, prizes.assign(b.round, b.prizeId));
-    if (path === "prizes/template" && req.method === "POST") return send(res, 200, prizes.setTemplate(b.text));
+    if (path === "prizes" && req.method === "GET") return send(res, 200, prizes.state(pool));
+    if (path === "prizes" && req.method === "POST") return send(res, 200, prizes.save(pool, b));
+    if (path === "prizes/delete" && req.method === "POST") return send(res, 200, prizes.remove(pool, b.id));
+    if (path === "prizes/assign" && req.method === "POST") return send(res, 200, prizes.assign(pool, b.round, b.prizeId));
+    if (path === "prizes/template" && req.method === "POST") return send(res, 200, prizes.setTemplate(pool, b.text));
     // «Написати переможцю»: preview the filled template, then send it as a support chat message.
     // In a rehearsal the message goes to the admin pressing the button, never to the random customer.
     if ((path === "contact/preview" || path === "contact/send") && req.method === "POST") {
       const round = Number(b.round);
-      const w = b.test ? rehearsal.winnerOf(round) : (await draw.winnersFull()).find((x) => x.round === round && !x.voided);
+      const w = b.test ? rehearsal.winnerOf(pool, round) : (await draw.winnersFull(pool)).find((x) => x.round === round && !x.voided);
       if (!w) return send(res, 404, { error: "У цьому раунді ще немає переможця" });
-      const prize = prizes.prizeFor(round);
+      const prize = prizes.prizeFor(pool, round);
       if (path === "contact/preview") {
         const drawSent = w.drawId ? prizes.contacted().get(w.drawId) : null;
-        return send(res, 200, { round, to: { name: w.name, username: w.username }, prize, text: prizes.render(prizes.template(), { name: w.name, round, prize }), sent: drawSent || null, test: Boolean(b.test) });
+        return send(res, 200, { round, to: { name: w.name, username: w.username }, prize, text: prizes.render(prizes.template(), { name: w.name, round, prize, pool }), sent: drawSent || null, test: Boolean(b.test) });
       }
       const text = String(b.text || "").trim().slice(0, 3500);
       if (!text) return send(res, 400, { error: "Порожнє повідомлення" });
       const token = (req.headers.authorization || "").slice(7).trim();
       const r = b.test
-        ? await prizes.send({ token, by: who.tgId, tgId: who.tgId, drawId: null, round, text: `[ТЕСТ: справжньому переможцю це не пішло]\n\n${text}` })
-        : await prizes.send({ token, by: who.tgId, tgId: w.tgId, drawId: w.drawId, round, text });
+        ? await prizes.send({ token, by: who.tgId, tgId: who.tgId, drawId: null, pool, round, text: `[ТЕСТ: справжньому переможцю це не пішло]\n\n${text}` })
+        : await prizes.send({ token, by: who.tgId, tgId: w.tgId, drawId: w.drawId, pool, round, text });
       return send(res, 200, { ok: true, threadId: r.threadId, to: b.test ? "you" : "winner" });
     }
-    if (path === "proof" && req.method === "GET") return send(res, 200, draw.proof() || {});
+    if (path === "proof" && req.method === "GET") return send(res, 200, draw.proof(pool) || {});
     if (path === "stats" && req.method === "GET") {
-      const live = await draw.liveEntries();
+      const [pk, or] = await Promise.all([liveEntries("pumpkins"), liveEntries("orders")]);
       return send(res, 200, {
         ...game.stats(),
-        participants: live.length,
-        tickets: live.reduce((s, e) => s + e.tickets, 0),
-        byPumpkins: live.filter((e) => e.pumpkins >= config.goal).length,
-        byOrders: live.filter((e) => e.orders > 0).length,
+        pumpkins: { people: pk.length, full: pk.filter((e) => e.pumpkins >= config.goal).length, tickets: pk.reduce((s, e) => s + e.tickets, 0) },
+        orders: { people: or.length, tickets: or.reduce((s, e) => s + e.tickets, 0) },
+        notify: notify.stats(),
       });
     }
     if (path === "codes" && req.method === "GET") return send(res, 200, game.listCodes());
     if (path === "codes" && req.method === "POST") return send(res, 200, game.saveCode(b, who.tgId));
     if (path === "exclude" && req.method === "POST") {
-      const live = await draw.liveEntries();
+      const live = await liveEntries(pool);
       const hit = live.find((e) => draw.publicId(e.tgId) === b.id || e.tgId === String(b.tgId || ""));
       if (!hit) return send(res, 404, { error: "not found" });
-      if (draw.getLock()) return send(res, 409, { error: "Список уже зафіксовано" });
+      if (draw.getLock(pool)) return send(res, 409, { error: "Список уже зафіксовано" });
       db
         .prepare("INSERT OR REPLACE INTO excluded (tg_id, note, at) VALUES (?, ?, ?)")
         .run(hit.tgId, String(b.note || "").slice(0, 200), Date.now());
@@ -196,10 +199,10 @@ async function adminApi(req, res, path) {
 }
 
 const server = createServer(async (req, res) => {
-  const path = new URL(req.url, "http://x").pathname;
+  const url = new URL(req.url, "http://x"), path = url.pathname;
   try {
     if (path === "/hw/healthz") return send(res, 200, { ok: true, phase: game.phase() });
-    if (path.startsWith("/hw/api/admin/")) return await adminApi(req, res, path.slice("/hw/api/admin/".length));
+    if (path.startsWith("/hw/api/admin/")) return await adminApi(req, res, path.slice("/hw/api/admin/".length), url.searchParams);
     if (path.startsWith("/hw/api/")) return await customerApi(req, res, path.slice("/hw/api/".length));
     if (req.method !== "GET" && req.method !== "HEAD") return send(res, 405, { error: "method" });
     if (path === "/hw/draw") return send(res, 301, "", { Location: "/hw/draw/" });
@@ -215,3 +218,4 @@ const server = createServer(async (req, res) => {
 
 if (!config.jwtSecret && !config.devAuth) console.warn("[hw] JWT_SECRET is empty — nobody can sign in");
 server.listen(config.port, () => console.log(`[hw] listening on :${config.port}, phase=${game.phase()}`));
+notify.start();

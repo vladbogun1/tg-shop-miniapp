@@ -13,8 +13,10 @@ CREATE TABLE IF NOT EXISTS prizes (
   created_at INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS round_prizes (
-  round    INTEGER PRIMARY KEY,
-  prize_id INTEGER NOT NULL
+  pool     TEXT NOT NULL,
+  round    INTEGER NOT NULL,
+  prize_id INTEGER NOT NULL,
+  PRIMARY KEY (pool, round)
 );
 CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,
@@ -34,7 +36,7 @@ CREATE TABLE IF NOT EXISTS contacts (
 
 export const DEFAULT_TEMPLATE = `Привіт, {name}! 🎃
 
-Ти виграв у Хелловін-розіграші ChiSetup на стрімі (раунд {round}).
+Ти виграв у Хелловін-розіграші ChiSetup на стрімі ({draw}, раунд {round}).
 Твій приз: {prize}
 {items}
 
@@ -47,9 +49,9 @@ const q = {
   update: db.prepare("UPDATE prizes SET name = ?, items = ? WHERE id = ?"),
   remove: db.prepare("DELETE FROM prizes WHERE id = ?"),
   unassignPrize: db.prepare("DELETE FROM round_prizes WHERE prize_id = ?"),
-  rounds: db.prepare("SELECT round, prize_id FROM round_prizes"),
-  assign: db.prepare("INSERT OR REPLACE INTO round_prizes (round, prize_id) VALUES (?, ?)"),
-  unassign: db.prepare("DELETE FROM round_prizes WHERE round = ?"),
+  rounds: db.prepare("SELECT round, prize_id FROM round_prizes WHERE pool = ?"),
+  assign: db.prepare("INSERT OR REPLACE INTO round_prizes (pool, round, prize_id) VALUES (?, ?, ?)"),
+  unassign: db.prepare("DELETE FROM round_prizes WHERE pool = ? AND round = ?"),
   getSetting: db.prepare("SELECT value FROM settings WHERE key = ?"),
   setSetting: db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"),
   contactsFor: db.prepare("SELECT draw_id, thread_id, sent_at FROM contacts WHERE draw_id IS NOT NULL ORDER BY id"),
@@ -63,13 +65,17 @@ function cleanItems(items) {
   return list.map((s) => String(s).trim().slice(0, 200)).filter(Boolean).slice(0, 20);
 }
 
-export function state() {
+/** Draw names in the winner message and the support chat subject. */
+export const DRAW_NAMES = { pumpkins: "розіграш за гарбузи", orders: "розіграш за покупки" };
+
+/** Packs are shared; which pack each round plays for is per draw. */
+export function state(pool) {
   const rounds = {};
-  for (const r of q.rounds.all()) rounds[r.round] = r.prize_id;
-  return { prizes: q.list.all().map(row), rounds, template: template() };
+  for (const r of q.rounds.all(pool)) rounds[r.round] = r.prize_id;
+  return { pool, prizes: q.list.all().map(row), rounds, template: template() };
 }
 
-export function save(b) {
+export function save(pool, b) {
   const name = String(b.name || "").trim().slice(0, 120);
   if (!name) throw new Error("Назва призу порожня");
   const items = JSON.stringify(cleanItems(b.items));
@@ -77,47 +83,48 @@ export function save(b) {
     if (!q.one.get(Number(b.id))) throw new Error("Приз не знайдено");
     q.update.run(name, items, Number(b.id));
   } else q.insert.run(name, items, Date.now());
-  return state();
+  return state(pool);
 }
 
-export function remove(id) {
+export function remove(pool, id) {
   q.unassignPrize.run(Number(id));
   q.remove.run(Number(id));
-  return state();
+  return state(pool);
 }
 
-export function assign(round, prizeId) {
+export function assign(pool, round, prizeId) {
   const r = Number(round);
-  if (!(r >= 1 && r <= config.rounds)) throw new Error("Немає такого раунду");
+  if (!(r >= 1 && r <= config.rounds[pool])) throw new Error("Немає такого раунду");
   if (prizeId) {
     if (!q.one.get(Number(prizeId))) throw new Error("Приз не знайдено");
-    q.assign.run(r, Number(prizeId));
-  } else q.unassign.run(r);
-  return state();
+    q.assign.run(pool, r, Number(prizeId));
+  } else q.unassign.run(pool, r);
+  return state(pool);
 }
 
 export function template() {
   return q.getSetting.get("template")?.value || DEFAULT_TEMPLATE;
 }
 
-export function setTemplate(text) {
+export function setTemplate(pool, text) {
   const t = String(text || "").trim();
   if (t.length > 3000) throw new Error("Шаблон задовгий");
   q.setSetting.run("template", t || DEFAULT_TEMPLATE);
-  return state();
+  return state(pool);
 }
 
-export function prizeFor(round) {
-  const id = q.rounds.all().find((r) => r.round === Number(round))?.prize_id;
+export function prizeFor(pool, round) {
+  const id = q.rounds.all(pool).find((r) => r.round === Number(round))?.prize_id;
   const p = id ? row(q.one.get(id)) : null;
   return p ? { name: p.name, items: p.items } : null;
 }
 
-export function render(tpl, { name, round, prize }) {
+export function render(tpl, { name, round, prize, pool }) {
   const items = prize?.items?.length ? prize.items.map((s) => `• ${s}`).join("\n") : "";
   return tpl
     .replaceAll("{name}", name || "друже")
     .replaceAll("{round}", String(round))
+    .replaceAll("{draw}", DRAW_NAMES[pool] || "розіграш")
     .replaceAll("{prize}", prize?.name || "приз від ChiSetup")
     .replaceAll("{items}", items)
     .replace(/\n{3,}/g, "\n\n")
@@ -135,11 +142,11 @@ export function contacted() {
  * Opens a support chat with the customer and posts the text there, as the admin calling us (their
  * token goes on to the shop backend, which checks it and writes the admin's name on the message).
  */
-export async function send({ token, by, tgId, drawId, round, text }) {
+export async function send({ token, by, tgId, drawId, pool, round, text }) {
   const res = await fetch(`${config.backendUrl}/api/admin/support/threads`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ userId: Number(tgId), subject: `Хелловін: виграш у раунді ${round}`, text }),
+    body: JSON.stringify({ userId: Number(tgId), subject: `Хелловін: ${DRAW_NAMES[pool] || "розіграш"}, раунд ${round}`, text }),
     signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`Чат не відкрився: ${res.status} ${(await res.text()).slice(0, 200)}`);

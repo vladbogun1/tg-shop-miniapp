@@ -11,13 +11,15 @@ const pool = enabled
 let cache = { at: 0, data: null };
 
 /**
- * Orders that count: placed inside the window, not rejected, and either paid or accepted by the shop
- * (cash on delivery is accepted but paid only later). Each order = one ticket.
+ * Orders that count: placed inside the window, not rejected (a merged order is rejected too), and
+ * either paid or accepted by the shop (cash on delivery is accepted but paid only later). Money is
+ * what stays with the shop: total minus refunds and parcels nobody picked up.
  */
 async function fetchAll() {
   if (!pool) return { orders: new Map(), staff: new Set() };
   const [orders] = await pool.query(
-    `SELECT CAST(user_id AS CHAR) AS tg_id, COUNT(*) AS n
+    `SELECT CAST(user_id AS CHAR) AS tg_id, COUNT(*) AS n,
+            SUM(GREATEST(total_minor - refunded_minor - uncollected_minor, 0)) AS spend
        FROM orders
       WHERE user_id IS NOT NULL
         AND created_at >= ? AND created_at < ?
@@ -28,7 +30,7 @@ async function fetchAll() {
   );
   const [staff] = await pool.query(`SELECT CAST(telegram_user_id AS CHAR) AS tg_id FROM admin_users`);
   return {
-    orders: new Map(orders.map((r) => [String(r.tg_id), Number(r.n)])),
+    orders: new Map(orders.map((r) => [String(r.tg_id), { n: Number(r.n), spendMinor: Number(r.spend) }])),
     staff: new Set(staff.map((r) => String(r.tg_id))),
   };
 }
@@ -45,10 +47,12 @@ export async function shopFacts() {
   return cache.data;
 }
 
-/** Orders of one person this week (for their own progress panel). */
+const NO_ORDERS = { n: 0, spendMinor: 0 };
+
+/** Orders of one person inside the window (for their own progress panel). */
 export async function ordersOf(tgId) {
   const f = await shopFacts();
-  return f.orders.get(String(tgId)) || 0;
+  return f.orders.get(String(tgId)) || NO_ORDERS;
 }
 
 /** Names/handles/photos for a list of Telegram ids (only for the admin draw screen and export). */
@@ -58,7 +62,8 @@ export async function profiles(ids) {
   for (let i = 0; i < ids.length; i += 500) {
     const chunk = ids.slice(i, i + 500);
     const [rows] = await pool.query(
-      `SELECT CAST(telegram_user_id AS CHAR) AS tg_id, username, first_name, last_name, photo_url
+      `SELECT CAST(telegram_user_id AS CHAR) AS tg_id, username, first_name, last_name, photo_url,
+                COALESCE(NULLIF(locale, ''), language_code) AS lang
          FROM users WHERE telegram_user_id IN (?)`,
       [chunk],
     );
