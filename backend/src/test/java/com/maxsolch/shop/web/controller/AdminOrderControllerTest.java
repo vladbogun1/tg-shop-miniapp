@@ -13,7 +13,7 @@ import com.maxsolch.shop.service.AdminOrderStatusService;
 import com.maxsolch.shop.service.OrderAdjustmentService;
 import com.maxsolch.shop.service.OrderQueryService;
 import com.maxsolch.shop.service.OrderService;
-import com.maxsolch.shop.service.ReturnWizardService;
+import com.maxsolch.shop.returns.app.ReturnWizardService;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.web.dto.OrderAdjustmentDtos.ReturnWizardRequest;

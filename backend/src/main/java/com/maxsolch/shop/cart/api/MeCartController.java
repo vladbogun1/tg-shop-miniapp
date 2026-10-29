@@ -1,10 +1,10 @@
-package com.maxsolch.shop.web.controller;
+package com.maxsolch.shop.cart.api;
 
-import com.maxsolch.shop.service.CartService;
+import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.translation.ContentLocale;
 import com.maxsolch.shop.platform.web.SecurityUtil;
-import com.maxsolch.shop.web.dto.CartDtos.CartDto;
-import com.maxsolch.shop.web.dto.CartDtos.CartWriteRequest;
+import com.maxsolch.shop.cart.api.CartDtos.CartDto;
+import com.maxsolch.shop.cart.api.CartDtos.CartWriteRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;

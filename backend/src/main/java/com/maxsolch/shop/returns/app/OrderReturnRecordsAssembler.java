@@ -1,11 +1,13 @@
-package com.maxsolch.shop.service;
+package com.maxsolch.shop.returns.app;
 
+import com.maxsolch.shop.service.OrderAdjustmentService;
+import com.maxsolch.shop.service.OrderQueryService;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderItem;
-import com.maxsolch.shop.domain.OrderReturn;
-import com.maxsolch.shop.domain.OrderReturnLine;
-import com.maxsolch.shop.repository.OrderExchangeRepository;
+import com.maxsolch.shop.returns.domain.OrderReturn;
+import com.maxsolch.shop.returns.domain.OrderReturnLine;
+import com.maxsolch.shop.returns.infra.OrderExchangeRepository;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.web.dto.OrderDetailDto;
 
@@ -16,7 +18,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 /** Return / exchange records of an order for the admin drawer (moved out of {@link OrderQueryService} as is). */
-final class OrderReturnRecordsAssembler {
+public final class OrderReturnRecordsAssembler {
 
     private OrderReturnRecordsAssembler() {
     }
@@ -26,7 +28,7 @@ final class OrderReturnRecordsAssembler {
      *
      * @param thumbnails first photo per product id for the order's lines (asked only when there are records)
      */
-    static List<OrderDetailDto.ReturnRecordDto> assemble(Order o, OrderAdjustmentService adjustments,
+    public static List<OrderDetailDto.ReturnRecordDto> assemble(Order o, OrderAdjustmentService adjustments,
                                                          OrderExchangeRepository exchangeRepository,
                                                          OrderRepository orderRepository,
                                                          Function<List<OrderItem>, Map<String, String>> thumbnails) {

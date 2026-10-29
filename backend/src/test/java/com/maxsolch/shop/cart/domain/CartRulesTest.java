@@ -1,8 +1,8 @@
-package com.maxsolch.shop.service;
+package com.maxsolch.shop.cart.domain;
 
-import com.maxsolch.shop.service.CartRules.Line;
-import com.maxsolch.shop.service.CartRules.LineKey;
-import com.maxsolch.shop.web.dto.CartDtos.CartLineInput;
+import com.maxsolch.shop.cart.domain.CartRules.Line;
+import com.maxsolch.shop.cart.domain.CartRules.LineKey;
+import com.maxsolch.shop.cart.api.CartDtos.CartLineInput;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

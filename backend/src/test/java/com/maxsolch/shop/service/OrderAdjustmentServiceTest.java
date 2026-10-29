@@ -1,5 +1,6 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.domain.OrderMoney;
 
@@ -62,7 +63,7 @@ class OrderAdjustmentServiceTest {
     jakarta.persistence.EntityManager entityManager;
 
     @Mock
-    com.maxsolch.shop.repository.OrderExchangeRepository exchangeRepository;
+    com.maxsolch.shop.returns.infra.OrderExchangeRepository exchangeRepository;
 
     OrderAdjustmentService service;
     /** The money journal behind the service under test (a mock that records nothing unless a test verifies it). */
@@ -252,8 +253,8 @@ class OrderAdjustmentServiceTest {
         assertThat(other.getStock()).isEqualTo(2);                // reserved for the new parcel
         assertThat(r.auditDetails()).contains("Клава").contains("зачтено 100 ₴").contains("доплата 50 ₴");
 
-        ArgumentCaptor<com.maxsolch.shop.domain.OrderExchange> ex =
-                ArgumentCaptor.forClass(com.maxsolch.shop.domain.OrderExchange.class);
+        ArgumentCaptor<com.maxsolch.shop.returns.domain.OrderExchange> ex =
+                ArgumentCaptor.forClass(com.maxsolch.shop.returns.domain.OrderExchange.class);
         verify(exchangeRepository).save(ex.capture());
         assertThat(ex.getValue().getOrderId()).isEqualTo(o.getId());
         assertThat(ex.getValue().getNewOrderId()).isEqualTo(child.getId());
@@ -767,14 +768,14 @@ class OrderAdjustmentServiceTest {
     // ---------- cancelling a return (V70) ----------
 
     /** In-memory return records: ids assigned on save, lookups the service uses. */
-    private List<com.maxsolch.shop.domain.OrderReturnLine> wireReturnRecords(List<com.maxsolch.shop.domain.OrderReturn> recs) {
-        List<com.maxsolch.shop.domain.OrderReturnLine> lines = new ArrayList<>();
-        com.maxsolch.shop.repository.OrderReturnRepository recRepo =
-                org.mockito.Mockito.mock(com.maxsolch.shop.repository.OrderReturnRepository.class);
-        com.maxsolch.shop.repository.OrderReturnLineRepository lineRepo =
-                org.mockito.Mockito.mock(com.maxsolch.shop.repository.OrderReturnLineRepository.class);
+    private List<com.maxsolch.shop.returns.domain.OrderReturnLine> wireReturnRecords(List<com.maxsolch.shop.returns.domain.OrderReturn> recs) {
+        List<com.maxsolch.shop.returns.domain.OrderReturnLine> lines = new ArrayList<>();
+        com.maxsolch.shop.returns.infra.OrderReturnRepository recRepo =
+                org.mockito.Mockito.mock(com.maxsolch.shop.returns.infra.OrderReturnRepository.class);
+        com.maxsolch.shop.returns.infra.OrderReturnLineRepository lineRepo =
+                org.mockito.Mockito.mock(com.maxsolch.shop.returns.infra.OrderReturnLineRepository.class);
         lenient().when(recRepo.save(any())).thenAnswer(inv -> {
-            com.maxsolch.shop.domain.OrderReturn r = inv.getArgument(0);
+            com.maxsolch.shop.returns.domain.OrderReturn r = inv.getArgument(0);
             if (r.getId() == null) {
                 r.setId((long) recs.size() + 1);
                 recs.add(r);
@@ -783,7 +784,7 @@ class OrderAdjustmentServiceTest {
         });
         lenient().when(recRepo.findByOrderIdOrderByIdAsc(any())).thenAnswer(inv -> new ArrayList<>(recs));
         lenient().when(lineRepo.saveAll(any())).thenAnswer(inv -> {
-            Iterable<com.maxsolch.shop.domain.OrderReturnLine> it = inv.getArgument(0);
+            Iterable<com.maxsolch.shop.returns.domain.OrderReturnLine> it = inv.getArgument(0);
             it.forEach(l -> {
                 if (l.getId() == null) {
                     l.setId((long) lines.size() + 1);
@@ -812,7 +813,7 @@ class OrderAdjustmentServiceTest {
         OrderItem it = item(o, p, 1L, 2);
         when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
         MoneyLedger ledger = wireLedger();
-        List<com.maxsolch.shop.domain.OrderReturn> recs = new ArrayList<>();
+        List<com.maxsolch.shop.returns.domain.OrderReturn> recs = new ArrayList<>();
         wireReturnRecords(recs);
 
         service.registerReturnPlan(o.getId(), plan(
@@ -856,7 +857,7 @@ class OrderAdjustmentServiceTest {
         item(o, p, 1L, 1);
         when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
         wireLedger();
-        List<com.maxsolch.shop.domain.OrderReturn> recs = new ArrayList<>();
+        List<com.maxsolch.shop.returns.domain.OrderReturn> recs = new ArrayList<>();
         wireReturnRecords(recs);
         service.registerReturnPlan(o.getId(), plan(
                 List.of(new OrderAdjustmentService.WizardLine(1L, 1, OrderAdjustmentService.LineOutcome.RESTOCK)),
@@ -890,8 +891,8 @@ class OrderAdjustmentServiceTest {
         OrderItem it = item(o, p, 1L, 1);
         when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
         wireLedger();
-        List<com.maxsolch.shop.domain.OrderReturn> recs = new ArrayList<>();
-        List<com.maxsolch.shop.domain.OrderReturnLine> lines = wireReturnRecords(recs);
+        List<com.maxsolch.shop.returns.domain.OrderReturn> recs = new ArrayList<>();
+        List<com.maxsolch.shop.returns.domain.OrderReturnLine> lines = wireReturnRecords(recs);
         com.maxsolch.shop.repository.StockWriteoffRepository writeoffs =
                 org.mockito.Mockito.mock(com.maxsolch.shop.repository.StockWriteoffRepository.class);
         List<com.maxsolch.shop.domain.StockWriteoff> saved = new ArrayList<>();

@@ -1,5 +1,7 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.cart.app.CartService;
+import com.maxsolch.shop.cart.domain.CartRules;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.gift.CaseLowMargin;
 import com.maxsolch.shop.gift.GiftCaseTier;

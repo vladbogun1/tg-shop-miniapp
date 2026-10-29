@@ -1,6 +1,6 @@
-package com.maxsolch.shop.repository;
+package com.maxsolch.shop.returns.infra;
 
-import com.maxsolch.shop.domain.OrderExchange;
+import com.maxsolch.shop.returns.domain.OrderExchange;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

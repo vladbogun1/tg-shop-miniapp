@@ -1,4 +1,4 @@
-package com.maxsolch.shop.domain;
+package com.maxsolch.shop.cart.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

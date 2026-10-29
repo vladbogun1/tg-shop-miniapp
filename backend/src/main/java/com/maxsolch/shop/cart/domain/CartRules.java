@@ -1,7 +1,7 @@
-package com.maxsolch.shop.service;
+package com.maxsolch.shop.cart.domain;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.web.dto.CartDtos.CartLineInput;
+import com.maxsolch.shop.cart.api.CartDtos.CartLineInput;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

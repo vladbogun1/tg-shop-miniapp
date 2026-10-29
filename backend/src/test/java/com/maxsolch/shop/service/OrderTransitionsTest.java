@@ -1,5 +1,6 @@
 package com.maxsolch.shop.service;
 
+import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.domain.DeliveryMethod;
@@ -11,7 +12,7 @@ import com.maxsolch.shop.domain.PaymentOption;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.RejectReasonCode;
 import com.maxsolch.shop.gift.GiftService;
-import com.maxsolch.shop.repository.OrderExchangeRepository;
+import com.maxsolch.shop.returns.infra.OrderExchangeRepository;
 import com.maxsolch.shop.repository.OrderRepository;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;

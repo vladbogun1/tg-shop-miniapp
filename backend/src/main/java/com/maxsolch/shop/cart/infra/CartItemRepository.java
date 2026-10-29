@@ -1,6 +1,6 @@
-package com.maxsolch.shop.repository;
+package com.maxsolch.shop.cart.infra;
 
-import com.maxsolch.shop.domain.CartItem;
+import com.maxsolch.shop.cart.domain.CartItem;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
