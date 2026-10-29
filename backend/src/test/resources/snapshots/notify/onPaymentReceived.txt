@@ -1,0 +1,243 @@
+=== uk / part paid, COD left
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Оплачено онлайн по заказу #1a2b3c4d: 3 000 ₴
+  tgUserId=101
+  type=ADMIN_PAYMENT
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<💳 <b>Оплачено онлайн (monobank)</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+Поступило: <b>3 000 ₴</b> · наложка <b>7 500 ₴</b>
+<i>Проверьте наличие и подтвердите заказ. Если товара нет — верните деньги в карточке заказа.</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Оплату отримано Замовлення #1a2b3c4d Надійшло 3 000 ₴. Ми перевіримо наявність і підтвердимо замовлення.
+  tgUserId=101
+  type=PAYMENT_RECEIVED
+SendMessage chat=101 thread=null parse=HTML
+<<<✅ <b>Оплату отримано</b>
+Замовлення <b>#1a2b3c4d</b>
+Надійшло 3 000 ₴. Ми перевіримо наявність і підтвердимо замовлення.>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / paid in full
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Оплачено онлайн по заказу #1a2b3c4d: 10 500 ₴
+  tgUserId=101
+  type=ADMIN_PAYMENT
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<💳 <b>Оплачено онлайн (monobank)</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+Поступило: <b>10 500 ₴</b> · оплачен полностью
+<i>Проверьте наличие и подтвердите заказ. Если товара нет — верните деньги в карточке заказа.</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Оплату отримано Замовлення #1a2b3c4d Надійшло 10 500 ₴. Ми перевіримо наявність і підтвердимо замовлення.
+  tgUserId=101
+  type=PAYMENT_RECEIVED
+SendMessage chat=101 thread=null parse=HTML
+<<<✅ <b>Оплату отримано</b>
+Замовлення <b>#1a2b3c4d</b>
+Надійшло 10 500 ₴. Ми перевіримо наявність і підтвердимо замовлення.>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / part paid, COD left
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Оплачено онлайн по заказу #1a2b3c4d: 3 000 ₴
+  tgUserId=102
+  type=ADMIN_PAYMENT
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<💳 <b>Оплачено онлайн (monobank)</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+Поступило: <b>3 000 ₴</b> · наложка <b>7 500 ₴</b>
+<i>Проверьте наличие и подтвердите заказ. Если товара нет — верните деньги в карточке заказа.</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Оплата получена Заказ #1a2b3c4d Поступило 3 000 ₴. Мы проверим наличие и подтвердим заказ.
+  tgUserId=102
+  type=PAYMENT_RECEIVED
+SendMessage chat=102 thread=null parse=HTML
+<<<✅ <b>Оплата получена</b>
+Заказ <b>#1a2b3c4d</b>
+Поступило 3 000 ₴. Мы проверим наличие и подтвердим заказ.>>>
+markup: [{Открыть заказ webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / paid in full
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Оплачено онлайн по заказу #1a2b3c4d: 10 500 ₴
+  tgUserId=102
+  type=ADMIN_PAYMENT
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<💳 <b>Оплачено онлайн (monobank)</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+Поступило: <b>10 500 ₴</b> · оплачен полностью
+<i>Проверьте наличие и подтвердите заказ. Если товара нет — верните деньги в карточке заказа.</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Оплата получена Заказ #1a2b3c4d Поступило 10 500 ₴. Мы проверим наличие и подтвердим заказ.
+  tgUserId=102
+  type=PAYMENT_RECEIVED
+SendMessage chat=102 thread=null parse=HTML
+<<<✅ <b>Оплата получена</b>
+Заказ <b>#1a2b3c4d</b>
+Поступило 10 500 ₴. Мы проверим наличие и подтвердим заказ.>>>
+markup: [{Открыть заказ webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / part paid, COD left
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Оплачено онлайн по заказу #1a2b3c4d: 3 000 ₴
+  tgUserId=103
+  type=ADMIN_PAYMENT
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<💳 <b>Оплачено онлайн (monobank)</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+Поступило: <b>3 000 ₴</b> · наложка <b>7 500 ₴</b>
+<i>Проверьте наличие и подтвердите заказ. Если товара нет — верните деньги в карточке заказа.</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Payment received Order #1a2b3c4d 3 000 ₴ received. We will check availability and confirm the order.
+  tgUserId=103
+  type=PAYMENT_RECEIVED
+SendMessage chat=103 thread=null parse=HTML
+<<<✅ <b>Payment received</b>
+Order <b>#1a2b3c4d</b>
+3 000 ₴ received. We will check availability and confirm the order.>>>
+markup: [{Open order webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / paid in full
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Оплачено онлайн по заказу #1a2b3c4d: 10 500 ₴
+  tgUserId=103
+  type=ADMIN_PAYMENT
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<💳 <b>Оплачено онлайн (monobank)</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+Поступило: <b>10 500 ₴</b> · оплачен полностью
+<i>Проверьте наличие и подтвердите заказ. Если товара нет — верните деньги в карточке заказа.</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Payment received Order #1a2b3c4d 10 500 ₴ received. We will check availability and confirm the order.
+  tgUserId=103
+  type=PAYMENT_RECEIVED
+SendMessage chat=103 thread=null parse=HTML
+<<<✅ <b>Payment received</b>
+Order <b>#1a2b3c4d</b>
+10 500 ₴ received. We will check availability and confirm the order.>>>
+markup: [{Open order webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== no telegram → admins only
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Оплачено онлайн по заказу #1a2b3c4d: 3 000 ₴
+  type=ADMIN_PAYMENT
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<💳 <b>Оплачено онлайн (monobank)</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+Поступило: <b>3 000 ₴</b> · наложка <b>7 500 ₴</b>
+<i>Проверьте наличие и подтвердите заказ. Если товара нет — верните деньги в карточке заказа.</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat "0" → admins skipped, customer notified
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Оплата получена Заказ #1a2b3c4d Поступило 1 000 ₴. Мы проверим наличие и подтвердим заказ.
+  tgUserId=102
+  type=PAYMENT_RECEIVED
+SendMessage chat=102 thread=null parse=HTML
+<<<✅ <b>Оплата получена</b>
+Заказ <b>#1a2b3c4d</b>
+Поступило 1 000 ₴. Мы проверим наличие и подтвердим заказ.>>>
+markup: [{Открыть заказ webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat unset → admins skipped, customer notified
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Оплата получена Заказ #1a2b3c4d Поступило 1 000 ₴. Мы проверим наличие и подтвердим заказ.
+  tgUserId=102
+  type=PAYMENT_RECEIVED
+SendMessage chat=102 thread=null parse=HTML
+<<<✅ <b>Оплата получена</b>
+Заказ <b>#1a2b3c4d</b>
+Поступило 1 000 ₴. Мы проверим наличие и подтвердим заказ.>>>
+markup: [{Открыть заказ webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+

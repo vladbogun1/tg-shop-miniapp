@@ -1,0 +1,99 @@
+=== uk / approved
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Скасування погоджено Замовлення #1a2b3c4d скасовано. Гроші (5 000 ₴) повернуться на картку — зазвичай за кілька хвилин, інколи до кількох днів.
+  tgUserId=101
+  type=CANCEL_REQUEST_APPROVED
+SendMessage chat=101 thread=null parse=HTML
+<<<✅ <b>Скасування погоджено</b>
+Замовлення <b>#1a2b3c4d</b> скасовано. Гроші (5 000 ₴) повернуться на картку — зазвичай за кілька хвилин, інколи до кількох днів.>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / declined
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Скасування відхилено Замовлення #1a2b3c4d залишається в силі. Коментар магазину: Вже <відправлено>
+  tgUserId=101
+  type=CANCEL_REQUEST_DECLINED
+SendMessage chat=101 thread=null parse=HTML
+<<<❌ <b>Скасування відхилено</b>
+Замовлення <b>#1a2b3c4d</b> залишається в силі.
+Коментар магазину: Вже &lt;відправлено&gt;>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / approved
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Отмена одобрена Заказ #1a2b3c4d отменён. Деньги (5 000 ₴) вернутся на карту — обычно за несколько минут, иногда до нескольких дней.
+  tgUserId=102
+  type=CANCEL_REQUEST_APPROVED
+SendMessage chat=102 thread=null parse=HTML
+<<<✅ <b>Отмена одобрена</b>
+Заказ <b>#1a2b3c4d</b> отменён. Деньги (5 000 ₴) вернутся на карту — обычно за несколько минут, иногда до нескольких дней.>>>
+markup: [{Открыть заказ webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / declined
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Отмена отклонена Заказ #1a2b3c4d остаётся в силе. Комментарий магазина: Вже <відправлено>
+  tgUserId=102
+  type=CANCEL_REQUEST_DECLINED
+SendMessage chat=102 thread=null parse=HTML
+<<<❌ <b>Отмена отклонена</b>
+Заказ <b>#1a2b3c4d</b> остаётся в силе.
+Комментарий магазина: Вже &lt;відправлено&gt;>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / approved
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Cancellation approved Order #1a2b3c4d is cancelled. The money (5 000 ₴) will go back to your card — usually within minutes, sometimes up to a few days.
+  tgUserId=103
+  type=CANCEL_REQUEST_APPROVED
+SendMessage chat=103 thread=null parse=HTML
+<<<✅ <b>Cancellation approved</b>
+Order <b>#1a2b3c4d</b> is cancelled. The money (5 000 ₴) will go back to your card — usually within minutes, sometimes up to a few days.>>>
+markup: [{Open order webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / declined
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Cancellation declined Order #1a2b3c4d stays in force. Shop comment: Вже <відправлено>
+  tgUserId=103
+  type=CANCEL_REQUEST_DECLINED
+SendMessage chat=103 thread=null parse=HTML
+<<<❌ <b>Cancellation declined</b>
+Order <b>#1a2b3c4d</b> stays in force.
+Shop comment: Вже &lt;відправлено&gt;>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+

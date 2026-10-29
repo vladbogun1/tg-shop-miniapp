@@ -1,0 +1,570 @@
+=== admin chat null / onNewOrder
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat null / onStatusChanged
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat null / onCustomerChatMessage
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat null / onPaymentReceived
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat null / onCancelRequested
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat null / postDispatchCard
+result: false
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat null / syncDispatchCard
+result: false
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat null / removeDispatchCard(900)
+(nothing sent)
+
+=== admin chat '' / onNewOrder
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat '' / onStatusChanged
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat '' / onCustomerChatMessage
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat '' / onPaymentReceived
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat '' / onCancelRequested
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat '' / postDispatchCard
+result: false
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat '' / syncDispatchCard
+result: false
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat '' / removeDispatchCard(900)
+(nothing sent)
+
+=== admin chat '  ' / onNewOrder
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat '  ' / onStatusChanged
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat '  ' / onCustomerChatMessage
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat '  ' / onPaymentReceived
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat '  ' / onCancelRequested
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat '  ' / postDispatchCard
+result: false
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat '  ' / syncDispatchCard
+result: false
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== admin chat '  ' / removeDispatchCard(900)
+(nothing sent)
+
+=== admin chat '0' / onNewOrder
+Journal
+  chatId=0
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Карточка заказа #1a2b3c4d → тема «В работе»
+  type=ADMIN_ORDER_CARD
+SendMessage chat=0 thread=12 parse=HTML
+<<<✅ <b>Одобрен</b>
+<b>🧾 Заказ #1a2b3c4d</b>
+➖➖➖➖➖➖➖➖➖➖
+👤 Іван &lt;Петренко&gt; &amp; Co
+📞 +380501234567
+✈️ @ivan_test
+
+<b>🛒 Состав</b>
+• Lamzu Atlantis &lt;Mini&gt; <i>(Black)</i> × 2 — 9 180 ₴
+• Pulsar Fanatic × 1 — 1 520 ₴
+• Килимок <i>(XL)</i> × 1 — 0 ₴
+• Стікери × 3 — 0 ₴ 🎁 <i>из кейса (RARE)</i>
+• Кабель × 1 — 0 ₴ 🎁 <i>подарок за сумму</i>
+
+💰 <b>Итого: 10 500 ₴</b> <i>(скидка 200 ₴)</i>
+💳 Оплата при отриманні
+🚚 Новая Почта — Київ, Відділення №5 &lt;вул. Хрещатик&gt;
+📝 Передзвоніть &lt;до&gt; 18:00
+>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=0 thread=12 message=500 dispatch=null
+
+=== admin chat '0' / onStatusChanged
+DeleteMessage chat=0 message=500
+Journal
+  chatId=0
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Карточка заказа #1a2b3c4d → тема «В работе»
+  type=ADMIN_ORDER_CARD
+SendMessage chat=0 thread=12 parse=HTML
+<<<✅ <b>Одобрен</b>
+<b>🧾 Заказ #1a2b3c4d</b>
+➖➖➖➖➖➖➖➖➖➖
+👤 Іван &lt;Петренко&gt; &amp; Co
+📞 +380501234567
+✈️ @ivan_test
+
+<b>🛒 Состав</b>
+• Lamzu Atlantis &lt;Mini&gt; <i>(Black)</i> × 2 — 9 180 ₴
+• Pulsar Fanatic × 1 — 1 520 ₴
+• Килимок <i>(XL)</i> × 1 — 0 ₴
+• Стікери × 3 — 0 ₴ 🎁 <i>из кейса (RARE)</i>
+• Кабель × 1 — 0 ₴ 🎁 <i>подарок за сумму</i>
+
+💰 <b>Итого: 10 500 ₴</b> <i>(скидка 200 ₴)</i>
+💳 Оплата при отриманні
+🚚 Новая Почта — Київ, Відділення №5 &lt;вул. Хрещатик&gt;
+📝 Передзвоніть &lt;до&gt; 18:00
+>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=0 thread=12 message=501 dispatch=null
+
+=== admin chat '0' / onCustomerChatMessage
+Journal
+  chatId=0
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Сообщение покупателя в чате заказа #1a2b3c4d
+  type=ADMIN_CHAT_PING
+SendMessage chat=0 thread=16 parse=HTML
+<<<💬 <b>Новое сообщение от клиента</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+<blockquote>hi</blockquote>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=0 thread=12 message=501 dispatch=null
+
+=== admin chat '0' / onPaymentReceived
+(nothing sent)
+order: notifyChat=0 thread=12 message=501 dispatch=null
+
+=== admin chat '0' / onCancelRequested
+(nothing sent)
+order: notifyChat=0 thread=12 message=501 dispatch=null
+
+=== admin chat '0' / postDispatchCard
+result: true
+Journal
+  chatId=0
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Карточка «К отправке» #1a2b3c4d
+  type=ADMIN_DISPATCH_CARD
+SendMessage chat=0 thread=17 parse=HTML
+<<<📦 <b>К ОТПРАВКЕ</b> · #1a2b3c4d
+➖➖➖➖➖➖➖➖➖➖
+👤 Іван &lt;Петренко&gt; &amp; Co
+📞 +380501234567
+🚚 Новая Почта — Київ, Відділення №5 &lt;вул. Хрещатик&gt;
+
+<b>🛒 Отправить:</b>
+• Lamzu Atlantis &lt;Mini&gt; <i>(Black)</i> × 2
+• Pulsar Fanatic × 1
+• 🎁 Килимок <i>(XL)</i> × 1 <i>(подарок)</i>
+• Стікери × 3
+• Кабель × 1
+
+💰 Сумма заказа: <b>10 500 ₴</b>
+💳 Оплата при отриманні
+✅ Уже оплачено: 1 000 ₴
+
+🟡 <b>НАЛОЖКА (взять при выдаче): 9 500 ₴</b>
+<i>(сумма 10 500 − предоплата 1 000)</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=0 thread=12 message=501 dispatch=503
+
+=== admin chat '0' / syncDispatchCard
+result: false
+EditMessageText chat=0 message=503 parse=HTML
+<<<📦 <b>К ОТПРАВКЕ</b> · #1a2b3c4d
+➖➖➖➖➖➖➖➖➖➖
+👤 Іван &lt;Петренко&gt; &amp; Co
+📞 +380501234567
+🚚 Новая Почта — Київ, Відділення №5 &lt;вул. Хрещатик&gt;
+
+<b>🛒 Отправить:</b>
+• Lamzu Atlantis &lt;Mini&gt; <i>(Black)</i> × 2
+• Pulsar Fanatic × 1
+• 🎁 Килимок <i>(XL)</i> × 1 <i>(подарок)</i>
+• Стікери × 3
+• Кабель × 1
+
+💰 Сумма заказа: <b>10 500 ₴</b>
+💳 Оплата при отриманні
+✅ Уже оплачено: 1 000 ₴
+
+🟡 <b>НАЛОЖКА (взять при выдаче): 9 500 ₴</b>
+<i>(сумма 10 500 − предоплата 1 000)</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=0 thread=12 message=501 dispatch=503
+
+=== admin chat '0' / removeDispatchCard(900)
+DeleteMessage chat=0 message=900
+
+=== admin chat ' 0 ' / onNewOrder
+Journal
+  chatId=0
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Карточка заказа #1a2b3c4d → тема «В работе»
+  type=ADMIN_ORDER_CARD
+SendMessage chat= 0  thread=12 parse=HTML
+<<<✅ <b>Одобрен</b>
+<b>🧾 Заказ #1a2b3c4d</b>
+➖➖➖➖➖➖➖➖➖➖
+👤 Іван &lt;Петренко&gt; &amp; Co
+📞 +380501234567
+✈️ @ivan_test
+
+<b>🛒 Состав</b>
+• Lamzu Atlantis &lt;Mini&gt; <i>(Black)</i> × 2 — 9 180 ₴
+• Pulsar Fanatic × 1 — 1 520 ₴
+• Килимок <i>(XL)</i> × 1 — 0 ₴
+• Стікери × 3 — 0 ₴ 🎁 <i>из кейса (RARE)</i>
+• Кабель × 1 — 0 ₴ 🎁 <i>подарок за сумму</i>
+
+💰 <b>Итого: 10 500 ₴</b> <i>(скидка 200 ₴)</i>
+💳 Оплата при отриманні
+🚚 Новая Почта — Київ, Відділення №5 &lt;вул. Хрещатик&gt;
+📝 Передзвоніть &lt;до&gt; 18:00
+>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-42 thread=12 message=504 dispatch=null
+
+=== admin chat ' 0 ' / onStatusChanged
+DeleteMessage chat=-42 message=504
+Journal
+  chatId=0
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Карточка заказа #1a2b3c4d → тема «В работе»
+  type=ADMIN_ORDER_CARD
+SendMessage chat= 0  thread=12 parse=HTML
+<<<✅ <b>Одобрен</b>
+<b>🧾 Заказ #1a2b3c4d</b>
+➖➖➖➖➖➖➖➖➖➖
+👤 Іван &lt;Петренко&gt; &amp; Co
+📞 +380501234567
+✈️ @ivan_test
+
+<b>🛒 Состав</b>
+• Lamzu Atlantis &lt;Mini&gt; <i>(Black)</i> × 2 — 9 180 ₴
+• Pulsar Fanatic × 1 — 1 520 ₴
+• Килимок <i>(XL)</i> × 1 — 0 ₴
+• Стікери × 3 — 0 ₴ 🎁 <i>из кейса (RARE)</i>
+• Кабель × 1 — 0 ₴ 🎁 <i>подарок за сумму</i>
+
+💰 <b>Итого: 10 500 ₴</b> <i>(скидка 200 ₴)</i>
+💳 Оплата при отриманні
+🚚 Новая Почта — Київ, Відділення №5 &lt;вул. Хрещатик&gt;
+📝 Передзвоніть &lt;до&gt; 18:00
+>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-42 thread=12 message=505 dispatch=null
+
+=== admin chat ' 0 ' / onCustomerChatMessage
+Journal
+  chatId=0
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Сообщение покупателя в чате заказа #1a2b3c4d
+  type=ADMIN_CHAT_PING
+SendMessage chat= 0  thread=16 parse=HTML
+<<<💬 <b>Новое сообщение от клиента</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+<blockquote>hi</blockquote>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-42 thread=12 message=505 dispatch=null
+
+=== admin chat ' 0 ' / onPaymentReceived
+(nothing sent)
+order: notifyChat=-42 thread=12 message=505 dispatch=null
+
+=== admin chat ' 0 ' / onCancelRequested
+(nothing sent)
+order: notifyChat=-42 thread=12 message=505 dispatch=null
+
+=== admin chat ' 0 ' / postDispatchCard
+result: true
+Journal
+  chatId=0
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Карточка «К отправке» #1a2b3c4d
+  type=ADMIN_DISPATCH_CARD
+SendMessage chat= 0  thread=17 parse=HTML
+<<<📦 <b>К ОТПРАВКЕ</b> · #1a2b3c4d
+➖➖➖➖➖➖➖➖➖➖
+👤 Іван &lt;Петренко&gt; &amp; Co
+📞 +380501234567
+🚚 Новая Почта — Київ, Відділення №5 &lt;вул. Хрещатик&gt;
+
+<b>🛒 Отправить:</b>
+• Lamzu Atlantis &lt;Mini&gt; <i>(Black)</i> × 2
+• Pulsar Fanatic × 1
+• 🎁 Килимок <i>(XL)</i> × 1 <i>(подарок)</i>
+• Стікери × 3
+• Кабель × 1
+
+💰 Сумма заказа: <b>10 500 ₴</b>
+💳 Оплата при отриманні
+✅ Уже оплачено: 1 000 ₴
+
+🟡 <b>НАЛОЖКА (взять при выдаче): 9 500 ₴</b>
+<i>(сумма 10 500 − предоплата 1 000)</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-42 thread=12 message=505 dispatch=507
+
+=== admin chat ' 0 ' / syncDispatchCard
+result: false
+EditMessageText chat= 0  message=507 parse=HTML
+<<<📦 <b>К ОТПРАВКЕ</b> · #1a2b3c4d
+➖➖➖➖➖➖➖➖➖➖
+👤 Іван &lt;Петренко&gt; &amp; Co
+📞 +380501234567
+🚚 Новая Почта — Київ, Відділення №5 &lt;вул. Хрещатик&gt;
+
+<b>🛒 Отправить:</b>
+• Lamzu Atlantis &lt;Mini&gt; <i>(Black)</i> × 2
+• Pulsar Fanatic × 1
+• 🎁 Килимок <i>(XL)</i> × 1 <i>(подарок)</i>
+• Стікери × 3
+• Кабель × 1
+
+💰 Сумма заказа: <b>10 500 ₴</b>
+💳 Оплата при отриманні
+✅ Уже оплачено: 1 000 ₴
+
+🟡 <b>НАЛОЖКА (взять при выдаче): 9 500 ₴</b>
+<i>(сумма 10 500 − предоплата 1 000)</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-42 thread=12 message=505 dispatch=507
+
+=== admin chat ' 0 ' / removeDispatchCard(900)
+DeleteMessage chat= 0  message=900
+
+=== admin chat '@maxsolch_chat' / onNewOrder
+Journal
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Карточка заказа #1a2b3c4d → тема «В работе»
+  type=ADMIN_ORDER_CARD
+SendMessage chat=@maxsolch_chat thread=12 parse=HTML
+<<<✅ <b>Одобрен</b>
+<b>🧾 Заказ #1a2b3c4d</b>
+➖➖➖➖➖➖➖➖➖➖
+👤 Іван &lt;Петренко&gt; &amp; Co
+📞 +380501234567
+✈️ @ivan_test
+
+<b>🛒 Состав</b>
+• Lamzu Atlantis &lt;Mini&gt; <i>(Black)</i> × 2 — 9 180 ₴
+• Pulsar Fanatic × 1 — 1 520 ₴
+• Килимок <i>(XL)</i> × 1 — 0 ₴
+• Стікери × 3 — 0 ₴ 🎁 <i>из кейса (RARE)</i>
+• Кабель × 1 — 0 ₴ 🎁 <i>подарок за сумму</i>
+
+💰 <b>Итого: 10 500 ₴</b> <i>(скидка 200 ₴)</i>
+💳 Оплата при отриманні
+🚚 Новая Почта — Київ, Відділення №5 &lt;вул. Хрещатик&gt;
+📝 Передзвоніть &lt;до&gt; 18:00
+>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-42 thread=12 message=508 dispatch=null
+
+=== admin chat '@maxsolch_chat' / onStatusChanged
+DeleteMessage chat=-42 message=508
+Journal
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Карточка заказа #1a2b3c4d → тема «В работе»
+  type=ADMIN_ORDER_CARD
+SendMessage chat=@maxsolch_chat thread=12 parse=HTML
+<<<✅ <b>Одобрен</b>
+<b>🧾 Заказ #1a2b3c4d</b>
+➖➖➖➖➖➖➖➖➖➖
+👤 Іван &lt;Петренко&gt; &amp; Co
+📞 +380501234567
+✈️ @ivan_test
+
+<b>🛒 Состав</b>
+• Lamzu Atlantis &lt;Mini&gt; <i>(Black)</i> × 2 — 9 180 ₴
+• Pulsar Fanatic × 1 — 1 520 ₴
+• Килимок <i>(XL)</i> × 1 — 0 ₴
+• Стікери × 3 — 0 ₴ 🎁 <i>из кейса (RARE)</i>
+• Кабель × 1 — 0 ₴ 🎁 <i>подарок за сумму</i>
+
+💰 <b>Итого: 10 500 ₴</b> <i>(скидка 200 ₴)</i>
+💳 Оплата при отриманні
+🚚 Новая Почта — Київ, Відділення №5 &lt;вул. Хрещатик&gt;
+📝 Передзвоніть &lt;до&gt; 18:00
+>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-42 thread=12 message=509 dispatch=null
+
+=== admin chat '@maxsolch_chat' / onCustomerChatMessage
+Journal
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Сообщение покупателя в чате заказа #1a2b3c4d
+  type=ADMIN_CHAT_PING
+SendMessage chat=@maxsolch_chat thread=16 parse=HTML
+<<<💬 <b>Новое сообщение от клиента</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+<blockquote>hi</blockquote>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-42 thread=12 message=509 dispatch=null
+
+=== admin chat '@maxsolch_chat' / onPaymentReceived
+Journal
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Оплачено онлайн по заказу #1a2b3c4d: 1 000 ₴
+  type=ADMIN_PAYMENT
+SendMessage chat=@maxsolch_chat thread=16 parse=HTML
+<<<💳 <b>Оплачено онлайн (monobank)</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+Поступило: <b>1 000 ₴</b> · наложка <b>9 500 ₴</b>
+<i>Проверьте наличие и подтвердите заказ. Если товара нет — верните деньги в карточке заказа.</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-42 thread=12 message=509 dispatch=null
+
+=== admin chat '@maxsolch_chat' / onCancelRequested
+Journal
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Запрос отмены заказа #1a2b3c4d
+  type=ADMIN_CANCEL_REQUEST
+SendMessage chat=@maxsolch_chat thread=16 parse=HTML
+<<<🛑 <b>Запрос отмены</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+Оплачено: <b>1 000 ₴</b>
+<blockquote>r</blockquote>
+<i>Одобрите (отмена + возврат денег на карту) или отклоните в карточке заказа.</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-42 thread=12 message=509 dispatch=null
+
+=== admin chat '@maxsolch_chat' / postDispatchCard
+result: true
+Journal
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Карточка «К отправке» #1a2b3c4d
+  type=ADMIN_DISPATCH_CARD
+SendMessage chat=@maxsolch_chat thread=17 parse=HTML
+<<<📦 <b>К ОТПРАВКЕ</b> · #1a2b3c4d
+➖➖➖➖➖➖➖➖➖➖
+👤 Іван &lt;Петренко&gt; &amp; Co
+📞 +380501234567
+🚚 Новая Почта — Київ, Відділення №5 &lt;вул. Хрещатик&gt;
+
+<b>🛒 Отправить:</b>
+• Lamzu Atlantis &lt;Mini&gt; <i>(Black)</i> × 2
+• Pulsar Fanatic × 1
+• 🎁 Килимок <i>(XL)</i> × 1 <i>(подарок)</i>
+• Стікери × 3
+• Кабель × 1
+
+💰 Сумма заказа: <b>10 500 ₴</b>
+💳 Оплата при отриманні
+✅ Уже оплачено: 1 000 ₴
+
+🟡 <b>НАЛОЖКА (взять при выдаче): 9 500 ₴</b>
+<i>(сумма 10 500 − предоплата 1 000)</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-42 thread=12 message=509 dispatch=513
+
+=== admin chat '@maxsolch_chat' / syncDispatchCard
+result: false
+EditMessageText chat=@maxsolch_chat message=513 parse=HTML
+<<<📦 <b>К ОТПРАВКЕ</b> · #1a2b3c4d
+➖➖➖➖➖➖➖➖➖➖
+👤 Іван &lt;Петренко&gt; &amp; Co
+📞 +380501234567
+🚚 Новая Почта — Київ, Відділення №5 &lt;вул. Хрещатик&gt;
+
+<b>🛒 Отправить:</b>
+• Lamzu Atlantis &lt;Mini&gt; <i>(Black)</i> × 2
+• Pulsar Fanatic × 1
+• 🎁 Килимок <i>(XL)</i> × 1 <i>(подарок)</i>
+• Стікери × 3
+• Кабель × 1
+
+💰 Сумма заказа: <b>10 500 ₴</b>
+💳 Оплата при отриманні
+✅ Уже оплачено: 1 000 ₴
+
+🟡 <b>НАЛОЖКА (взять при выдаче): 9 500 ₴</b>
+<i>(сумма 10 500 − предоплата 1 000)</i>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=-42 thread=12 message=509 dispatch=513
+
+=== admin chat '@maxsolch_chat' / removeDispatchCard(900)
+DeleteMessage chat=@maxsolch_chat message=900
+

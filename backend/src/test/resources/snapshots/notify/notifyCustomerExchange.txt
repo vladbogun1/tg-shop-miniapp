@@ -1,0 +1,231 @@
+=== uk / nothing to pay
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔄 Обмін оформлено Замовлення #1a2b3c4d Натомість надішлемо: Lamzu <Atlantis> × 1 Доплата при отриманні: 10 500 ₴ Новий номер ТТН надішлемо, щойно відправимо посилку.
+  tgUserId=101
+  type=ORDER_EXCHANGE
+SendMessage chat=101 thread=null parse=HTML
+<<<🔄 <b>Обмін оформлено</b>
+Замовлення <b>#1a2b3c4d</b>
+Натомість надішлемо: <b>Lamzu &lt;Atlantis&gt; × 1</b>
+Доплата при отриманні: <b>10 500 ₴</b>
+Новий номер ТТН надішлемо, щойно відправимо посилку.>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / COD difference
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔄 Обмін оформлено Замовлення #1a2b3c4d Натомість надішлемо: Доплата при отриманні: 5 500 ₴ Новий номер ТТН надішлемо, щойно відправимо посилку.
+  tgUserId=101
+  type=ORDER_EXCHANGE
+SendMessage chat=101 thread=null parse=HTML
+<<<🔄 <b>Обмін оформлено</b>
+Замовлення <b>#1a2b3c4d</b>
+Натомість надішлемо: <b></b>
+Доплата при отриманні: <b>5 500 ₴</b>
+Новий номер ТТН надішлемо, щойно відправимо посилку.>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / replacement, pay online or COD
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔄 Обмін оформлено Замовлення #1a2b3c4d Обмін за замовленням #11111111 Натомість надішлемо: Pulsar × 1 Доплата 10 500 ₴ : оплатіть онлайн у замовленні (monobank) або при отриманні накладеним платежем — як зручніше. Новий номер ТТН надішлемо, щойно відправимо посилку.
+  tgUserId=101
+  type=ORDER_EXCHANGE
+SendMessage chat=101 thread=null parse=HTML
+<<<🔄 <b>Обмін оформлено</b>
+Замовлення <b>#1a2b3c4d</b>
+Обмін за замовленням <b>#11111111</b>
+Натомість надішлемо: <b>Pulsar × 1</b>
+Доплата <b>10 500 ₴</b>: оплатіть онлайн у замовленні (monobank) або при отриманні накладеним платежем — як зручніше.
+Новий номер ТТН надішлемо, щойно відправимо посилку.>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / replacement, fully paid
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔄 Обмін оформлено Замовлення #1a2b3c4d Обмін за замовленням #11111111 Натомість надішлемо: Pulsar × 1 Новий номер ТТН надішлемо, щойно відправимо посилку.
+  tgUserId=101
+  type=ORDER_EXCHANGE
+SendMessage chat=101 thread=null parse=HTML
+<<<🔄 <b>Обмін оформлено</b>
+Замовлення <b>#1a2b3c4d</b>
+Обмін за замовленням <b>#11111111</b>
+Натомість надішлемо: <b>Pulsar × 1</b>
+Новий номер ТТН надішлемо, щойно відправимо посилку.>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / nothing to pay
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔄 Обмен оформлен Заказ #1a2b3c4d Взамен отправим: Lamzu <Atlantis> × 1 Доплата при получении: 10 500 ₴ Новый номер ТТН пришлём, как только отправим посылку.
+  tgUserId=102
+  type=ORDER_EXCHANGE
+SendMessage chat=102 thread=null parse=HTML
+<<<🔄 <b>Обмен оформлен</b>
+Заказ <b>#1a2b3c4d</b>
+Взамен отправим: <b>Lamzu &lt;Atlantis&gt; × 1</b>
+Доплата при получении: <b>10 500 ₴</b>
+Новый номер ТТН пришлём, как только отправим посылку.>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / COD difference
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔄 Обмен оформлен Заказ #1a2b3c4d Взамен отправим: Доплата при получении: 5 500 ₴ Новый номер ТТН пришлём, как только отправим посылку.
+  tgUserId=102
+  type=ORDER_EXCHANGE
+SendMessage chat=102 thread=null parse=HTML
+<<<🔄 <b>Обмен оформлен</b>
+Заказ <b>#1a2b3c4d</b>
+Взамен отправим: <b></b>
+Доплата при получении: <b>5 500 ₴</b>
+Новый номер ТТН пришлём, как только отправим посылку.>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / replacement, pay online or COD
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔄 Обмен оформлен Заказ #1a2b3c4d Обмен по заказу #11111111 Взамен отправим: Pulsar × 1 Доплата 10 500 ₴ : оплатите онлайн в заказе (monobank) или при получении наложенным платежом — как удобнее. Новый номер ТТН пришлём, как только отправим посылку.
+  tgUserId=102
+  type=ORDER_EXCHANGE
+SendMessage chat=102 thread=null parse=HTML
+<<<🔄 <b>Обмен оформлен</b>
+Заказ <b>#1a2b3c4d</b>
+Обмен по заказу <b>#11111111</b>
+Взамен отправим: <b>Pulsar × 1</b>
+Доплата <b>10 500 ₴</b>: оплатите онлайн в заказе (monobank) или при получении наложенным платежом — как удобнее.
+Новый номер ТТН пришлём, как только отправим посылку.>>>
+markup: [{Открыть заказ webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / replacement, fully paid
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔄 Обмен оформлен Заказ #1a2b3c4d Обмен по заказу #11111111 Взамен отправим: Pulsar × 1 Новый номер ТТН пришлём, как только отправим посылку.
+  tgUserId=102
+  type=ORDER_EXCHANGE
+SendMessage chat=102 thread=null parse=HTML
+<<<🔄 <b>Обмен оформлен</b>
+Заказ <b>#1a2b3c4d</b>
+Обмен по заказу <b>#11111111</b>
+Взамен отправим: <b>Pulsar × 1</b>
+Новый номер ТТН пришлём, как только отправим посылку.>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / nothing to pay
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔄 Exchange arranged Order #1a2b3c4d We will send instead: Lamzu <Atlantis> × 1 Extra to pay on delivery: 10 500 ₴ We will send you the new tracking number as soon as the parcel ships.
+  tgUserId=103
+  type=ORDER_EXCHANGE
+SendMessage chat=103 thread=null parse=HTML
+<<<🔄 <b>Exchange arranged</b>
+Order <b>#1a2b3c4d</b>
+We will send instead: <b>Lamzu &lt;Atlantis&gt; × 1</b>
+Extra to pay on delivery: <b>10 500 ₴</b>
+We will send you the new tracking number as soon as the parcel ships.>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / COD difference
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔄 Exchange arranged Order #1a2b3c4d We will send instead: Extra to pay on delivery: 5 500 ₴ We will send you the new tracking number as soon as the parcel ships.
+  tgUserId=103
+  type=ORDER_EXCHANGE
+SendMessage chat=103 thread=null parse=HTML
+<<<🔄 <b>Exchange arranged</b>
+Order <b>#1a2b3c4d</b>
+We will send instead: <b></b>
+Extra to pay on delivery: <b>5 500 ₴</b>
+We will send you the new tracking number as soon as the parcel ships.>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / replacement, pay online or COD
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔄 Exchange arranged Order #1a2b3c4d Exchange for order #11111111 We will send instead: Pulsar × 1 Extra to pay 10 500 ₴ : pay online in the order (monobank) or cash on delivery — whichever suits you. We will send you the new tracking number as soon as the parcel ships.
+  tgUserId=103
+  type=ORDER_EXCHANGE
+SendMessage chat=103 thread=null parse=HTML
+<<<🔄 <b>Exchange arranged</b>
+Order <b>#1a2b3c4d</b>
+Exchange for order <b>#11111111</b>
+We will send instead: <b>Pulsar × 1</b>
+Extra to pay <b>10 500 ₴</b>: pay online in the order (monobank) or cash on delivery — whichever suits you.
+We will send you the new tracking number as soon as the parcel ships.>>>
+markup: [{Open order webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / replacement, fully paid
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔄 Exchange arranged Order #1a2b3c4d Exchange for order #11111111 We will send instead: Pulsar × 1 We will send you the new tracking number as soon as the parcel ships.
+  tgUserId=103
+  type=ORDER_EXCHANGE
+SendMessage chat=103 thread=null parse=HTML
+<<<🔄 <b>Exchange arranged</b>
+Order <b>#1a2b3c4d</b>
+Exchange for order <b>#11111111</b>
+We will send instead: <b>Pulsar × 1</b>
+We will send you the new tracking number as soon as the parcel ships.>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+

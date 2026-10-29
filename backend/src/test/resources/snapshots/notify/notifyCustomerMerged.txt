@@ -1,0 +1,204 @@
+=== uk / paid, difference left
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔗 Замовлення обʼєднано Замовлення #deadbeef додали до #1a2b3c4d — надішлемо все однією посилкою. Доплата 6 500 ₴ : оплатіть онлайн у замовленні (monobank) або при отриманні накладеним платежем — як зручніше.
+  tgUserId=101
+  type=ORDER_MERGE
+SendMessage chat=101 thread=null parse=HTML
+<<<🔗 <b>Замовлення обʼєднано</b>
+Замовлення <b>#deadbeef</b> додали до <b>#1a2b3c4d</b> — надішлемо все однією посилкою.
+Доплата <b>6 500 ₴</b>: оплатіть онлайн у замовленні (monobank) або при отриманні накладеним платежем — як зручніше.>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / prepayment still due
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔗 Замовлення обʼєднано Замовлення #deadbeef додали до #1a2b3c4d — надішлемо все однією посилкою. До оплати онлайн у замовленні: 2 000 ₴ .
+  tgUserId=101
+  type=ORDER_MERGE
+SendMessage chat=101 thread=null parse=HTML
+<<<🔗 <b>Замовлення обʼєднано</b>
+Замовлення <b>#deadbeef</b> додали до <b>#1a2b3c4d</b> — надішлемо все однією посилкою.
+До оплати онлайн у замовленні: <b>2 000 ₴</b>.>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / COD
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔗 Замовлення обʼєднано Замовлення #deadbeef додали до #1a2b3c4d — надішлемо все однією посилкою. До оплати онлайн у замовленні: 10 500 ₴ .
+  tgUserId=101
+  type=ORDER_MERGE
+SendMessage chat=101 thread=null parse=HTML
+<<<🔗 <b>Замовлення обʼєднано</b>
+Замовлення <b>#deadbeef</b> додали до <b>#1a2b3c4d</b> — надішлемо все однією посилкою.
+До оплати онлайн у замовленні: <b>10 500 ₴</b>.>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / fully paid
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔗 Замовлення обʼєднано Замовлення #deadbeef додали до #1a2b3c4d — надішлемо все однією посилкою. Усе оплачено — чекайте на ТТН.
+  tgUserId=101
+  type=ORDER_MERGE
+SendMessage chat=101 thread=null parse=HTML
+<<<🔗 <b>Замовлення обʼєднано</b>
+Замовлення <b>#deadbeef</b> додали до <b>#1a2b3c4d</b> — надішлемо все однією посилкою.
+Усе оплачено — чекайте на ТТН.>>>
+markup: [{Відкрити замовлення webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / paid, difference left
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔗 Заказы объединены Заказ #deadbeef добавили к #1a2b3c4d — отправим всё одной посылкой. Доплата 6 500 ₴ : оплатите онлайн в заказе (monobank) или при получении наложенным платежом — как удобнее.
+  tgUserId=102
+  type=ORDER_MERGE
+SendMessage chat=102 thread=null parse=HTML
+<<<🔗 <b>Заказы объединены</b>
+Заказ <b>#deadbeef</b> добавили к <b>#1a2b3c4d</b> — отправим всё одной посылкой.
+Доплата <b>6 500 ₴</b>: оплатите онлайн в заказе (monobank) или при получении наложенным платежом — как удобнее.>>>
+markup: [{Открыть заказ webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / prepayment still due
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔗 Заказы объединены Заказ #deadbeef добавили к #1a2b3c4d — отправим всё одной посылкой. К оплате онлайн в заказе: 2 000 ₴ .
+  tgUserId=102
+  type=ORDER_MERGE
+SendMessage chat=102 thread=null parse=HTML
+<<<🔗 <b>Заказы объединены</b>
+Заказ <b>#deadbeef</b> добавили к <b>#1a2b3c4d</b> — отправим всё одной посылкой.
+К оплате онлайн в заказе: <b>2 000 ₴</b>.>>>
+markup: [{Открыть заказ webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / COD
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔗 Заказы объединены Заказ #deadbeef добавили к #1a2b3c4d — отправим всё одной посылкой. К оплате онлайн в заказе: 10 500 ₴ .
+  tgUserId=102
+  type=ORDER_MERGE
+SendMessage chat=102 thread=null parse=HTML
+<<<🔗 <b>Заказы объединены</b>
+Заказ <b>#deadbeef</b> добавили к <b>#1a2b3c4d</b> — отправим всё одной посылкой.
+К оплате онлайн в заказе: <b>10 500 ₴</b>.>>>
+markup: [{Открыть заказ webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / fully paid
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔗 Заказы объединены Заказ #deadbeef добавили к #1a2b3c4d — отправим всё одной посылкой. Всё оплачено — ждите ТТН.
+  tgUserId=102
+  type=ORDER_MERGE
+SendMessage chat=102 thread=null parse=HTML
+<<<🔗 <b>Заказы объединены</b>
+Заказ <b>#deadbeef</b> добавили к <b>#1a2b3c4d</b> — отправим всё одной посылкой.
+Всё оплачено — ждите ТТН.>>>
+markup: [{Открыть заказ webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / paid, difference left
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔗 Orders merged Order #deadbeef was added to #1a2b3c4d — everything goes in one parcel. Extra to pay 6 500 ₴ : pay online in the order (monobank) or cash on delivery — whichever suits you.
+  tgUserId=103
+  type=ORDER_MERGE
+SendMessage chat=103 thread=null parse=HTML
+<<<🔗 <b>Orders merged</b>
+Order <b>#deadbeef</b> was added to <b>#1a2b3c4d</b> — everything goes in one parcel.
+Extra to pay <b>6 500 ₴</b>: pay online in the order (monobank) or cash on delivery — whichever suits you.>>>
+markup: [{Open order webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / prepayment still due
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔗 Orders merged Order #deadbeef was added to #1a2b3c4d — everything goes in one parcel. To pay online in the order: 2 000 ₴ .
+  tgUserId=103
+  type=ORDER_MERGE
+SendMessage chat=103 thread=null parse=HTML
+<<<🔗 <b>Orders merged</b>
+Order <b>#deadbeef</b> was added to <b>#1a2b3c4d</b> — everything goes in one parcel.
+To pay online in the order: <b>2 000 ₴</b>.>>>
+markup: [{Open order webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / COD
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔗 Orders merged Order #deadbeef was added to #1a2b3c4d — everything goes in one parcel. To pay online in the order: 10 500 ₴ .
+  tgUserId=103
+  type=ORDER_MERGE
+SendMessage chat=103 thread=null parse=HTML
+<<<🔗 <b>Orders merged</b>
+Order <b>#deadbeef</b> was added to <b>#1a2b3c4d</b> — everything goes in one parcel.
+To pay online in the order: <b>10 500 ₴</b>.>>>
+markup: [{Open order webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / fully paid
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🔗 Orders merged Order #deadbeef was added to #1a2b3c4d — everything goes in one parcel. Everything is paid — the tracking number will follow.
+  tgUserId=103
+  type=ORDER_MERGE
+SendMessage chat=103 thread=null parse=HTML
+<<<🔗 <b>Orders merged</b>
+Order <b>#deadbeef</b> was added to <b>#1a2b3c4d</b> — everything goes in one parcel.
+Everything is paid — the tracking number will follow.>>>
+markup: [{Open order webapp=https://app.example.test?startapp=view_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+

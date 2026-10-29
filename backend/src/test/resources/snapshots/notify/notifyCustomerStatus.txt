@@ -1,0 +1,683 @@
+=== uk / NEW
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🆕 Нове замовлення Замовлення #1a2b3c4d
+  tgUserId=101
+  type=ORDER_STATUS
+SendMessage chat=101 thread=null parse=HTML
+<<<🆕 <b>Нове замовлення</b>
+Замовлення <b>#1a2b3c4d</b>
+>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / APPROVED
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Підтверджено Замовлення #1a2b3c4d Ми підтвердили ваше замовлення і готуємо його до відправлення.
+  tgUserId=101
+  type=ORDER_STATUS
+SendMessage chat=101 thread=null parse=HTML
+<<<✅ <b>Підтверджено</b>
+Замовлення <b>#1a2b3c4d</b>
+Ми підтвердили ваше замовлення і готуємо його до відправлення.>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / SHIPPED
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 Відправлено Замовлення #1a2b3c4d Замовлення відправлено.
+  tgUserId=101
+  type=ORDER_STATUS
+SendMessage chat=101 thread=null parse=HTML
+<<<📦 <b>Відправлено</b>
+Замовлення <b>#1a2b3c4d</b>
+Замовлення відправлено.>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / DELIVERED
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎉 Доставлено Замовлення #1a2b3c4d Замовлення доставлено. Дякуємо за покупку! 🙌
+  tgUserId=101
+  type=ORDER_STATUS
+SendMessage chat=101 thread=null parse=HTML
+<<<🎉 <b>Доставлено</b>
+Замовлення <b>#1a2b3c4d</b>
+Замовлення доставлено. Дякуємо за покупку! 🙌>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / REJECTED
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Відхилено Замовлення #1a2b3c4d На жаль, замовлення відхилено.
+  tgUserId=101
+  type=ORDER_STATUS
+SendMessage chat=101 thread=null parse=HTML
+<<<❌ <b>Відхилено</b>
+Замовлення <b>#1a2b3c4d</b>
+На жаль, замовлення відхилено.>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / SHIPPED with tracking
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 Відправлено Замовлення #1a2b3c4d Замовлення відправлено. ТТН: 20450123456789
+  tgUserId=101
+  type=ORDER_STATUS
+SendMessage chat=101 thread=null parse=HTML
+<<<📦 <b>Відправлено</b>
+Замовлення <b>#1a2b3c4d</b>
+Замовлення відправлено. ТТН: <code>20450123456789</code>>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / REJECTED: Нет в наличии <срочно>
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Відхилено Замовлення #1a2b3c4d На жаль, замовлення відхилено. Причина: Нет в наличии <срочно>
+  tgUserId=101
+  type=ORDER_STATUS
+SendMessage chat=101 thread=null parse=HTML
+<<<❌ <b>Відхилено</b>
+Замовлення <b>#1a2b3c4d</b>
+На жаль, замовлення відхилено. Причина: Нет в наличии &lt;срочно&gt;>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / REJECTED: Отменён покупателем
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Відхилено Замовлення #1a2b3c4d На жаль, замовлення відхилено. Причина: Скасовано вами
+  tgUserId=101
+  type=ORDER_STATUS
+SendMessage chat=101 thread=null parse=HTML
+<<<❌ <b>Відхилено</b>
+Замовлення <b>#1a2b3c4d</b>
+На жаль, замовлення відхилено. Причина: Скасовано вами>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / REJECTED: Не оплачен в течение 24 ч
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Відхилено Замовлення #1a2b3c4d На жаль, замовлення відхилено. Причина: Замовлення не оплатили протягом 24 год, і його скасовано автоматично
+  tgUserId=101
+  type=ORDER_STATUS
+SendMessage chat=101 thread=null parse=HTML
+<<<❌ <b>Відхилено</b>
+Замовлення <b>#1a2b3c4d</b>
+На жаль, замовлення відхилено. Причина: Замовлення не оплатили протягом 24 год, і його скасовано автоматично>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / REJECTED: Объединён с заказом #1a2b3c4d
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Відхилено Замовлення #1a2b3c4d На жаль, замовлення відхилено. Причина: Обʼєднано із замовленням #1a2b3c4d
+  tgUserId=101
+  type=ORDER_STATUS
+SendMessage chat=101 thread=null parse=HTML
+<<<❌ <b>Відхилено</b>
+Замовлення <b>#1a2b3c4d</b>
+На жаль, замовлення відхилено. Причина: Обʼєднано із замовленням #1a2b3c4d>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / APPROVED with a sealed case, paid
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Підтверджено Замовлення #1a2b3c4d Ми підтвердили ваше замовлення і готуємо його до відправлення. Відкрийте його в замовленні в магазині — товар додамо до посилки безкоштовно, знижку дамо промокодом.
+  tgUserId=101
+  type=ORDER_STATUS
+SendMessage chat=101 thread=null parse=HTML
+<<<✅ <b>Підтверджено</b>
+Замовлення <b>#1a2b3c4d</b>
+Ми підтвердили ваше замовлення і готуємо його до відправлення.
+Відкрийте його в замовленні в магазині — товар додамо до посилки безкоштовно, знижку дамо промокодом.>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / NEW with a sealed case, unpaid
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🆕 Нове замовлення Замовлення #1a2b3c4d 🎁 До вашого замовлення — кейс із подарунком : відкриється після оплати, в замовленні в магазині.
+  tgUserId=101
+  type=ORDER_STATUS
+SendMessage chat=101 thread=null parse=HTML
+<<<🆕 <b>Нове замовлення</b>
+Замовлення <b>#1a2b3c4d</b>
+🎁 До вашого замовлення — <b>кейс із подарунком</b>: відкриється після оплати, в замовленні в магазині.>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / REJECTED with a sealed case (no case line)
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Відхилено Замовлення #1a2b3c4d На жаль, замовлення відхилено.
+  tgUserId=101
+  type=ORDER_STATUS
+SendMessage chat=101 thread=null parse=HTML
+<<<❌ <b>Відхилено</b>
+Замовлення <b>#1a2b3c4d</b>
+На жаль, замовлення відхилено.>>>
+markup: [{Відкрити листування webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / NEW
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🆕 Новый заказ Заказ #1a2b3c4d
+  tgUserId=102
+  type=ORDER_STATUS
+SendMessage chat=102 thread=null parse=HTML
+<<<🆕 <b>Новый заказ</b>
+Заказ <b>#1a2b3c4d</b>
+>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / APPROVED
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Одобрен Заказ #1a2b3c4d Мы подтвердили ваш заказ и готовим его к отправке.
+  tgUserId=102
+  type=ORDER_STATUS
+SendMessage chat=102 thread=null parse=HTML
+<<<✅ <b>Одобрен</b>
+Заказ <b>#1a2b3c4d</b>
+Мы подтвердили ваш заказ и готовим его к отправке.>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / SHIPPED
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 Выслан Заказ #1a2b3c4d Заказ отправлен.
+  tgUserId=102
+  type=ORDER_STATUS
+SendMessage chat=102 thread=null parse=HTML
+<<<📦 <b>Выслан</b>
+Заказ <b>#1a2b3c4d</b>
+Заказ отправлен.>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / DELIVERED
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎉 Доставлен Заказ #1a2b3c4d Заказ доставлен. Спасибо за покупку! 🙌
+  tgUserId=102
+  type=ORDER_STATUS
+SendMessage chat=102 thread=null parse=HTML
+<<<🎉 <b>Доставлен</b>
+Заказ <b>#1a2b3c4d</b>
+Заказ доставлен. Спасибо за покупку! 🙌>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / REJECTED
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Отклонён Заказ #1a2b3c4d К сожалению, заказ отклонён.
+  tgUserId=102
+  type=ORDER_STATUS
+SendMessage chat=102 thread=null parse=HTML
+<<<❌ <b>Отклонён</b>
+Заказ <b>#1a2b3c4d</b>
+К сожалению, заказ отклонён.>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / SHIPPED with tracking
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 Выслан Заказ #1a2b3c4d Заказ отправлен. ТТН: 20450123456789
+  tgUserId=102
+  type=ORDER_STATUS
+SendMessage chat=102 thread=null parse=HTML
+<<<📦 <b>Выслан</b>
+Заказ <b>#1a2b3c4d</b>
+Заказ отправлен. ТТН: <code>20450123456789</code>>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / REJECTED: Нет в наличии <срочно>
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Отклонён Заказ #1a2b3c4d К сожалению, заказ отклонён. Причина: Нет в наличии <срочно>
+  tgUserId=102
+  type=ORDER_STATUS
+SendMessage chat=102 thread=null parse=HTML
+<<<❌ <b>Отклонён</b>
+Заказ <b>#1a2b3c4d</b>
+К сожалению, заказ отклонён. Причина: Нет в наличии &lt;срочно&gt;>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / REJECTED: Отменён покупателем
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Отклонён Заказ #1a2b3c4d К сожалению, заказ отклонён. Причина: Отменён вами
+  tgUserId=102
+  type=ORDER_STATUS
+SendMessage chat=102 thread=null parse=HTML
+<<<❌ <b>Отклонён</b>
+Заказ <b>#1a2b3c4d</b>
+К сожалению, заказ отклонён. Причина: Отменён вами>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / REJECTED: Не оплачен в течение 24 ч
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Отклонён Заказ #1a2b3c4d К сожалению, заказ отклонён. Причина: Заказ не оплатили в течение 24 ч, и он отменён автоматически
+  tgUserId=102
+  type=ORDER_STATUS
+SendMessage chat=102 thread=null parse=HTML
+<<<❌ <b>Отклонён</b>
+Заказ <b>#1a2b3c4d</b>
+К сожалению, заказ отклонён. Причина: Заказ не оплатили в течение 24 ч, и он отменён автоматически>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / REJECTED: Объединён с заказом #1a2b3c4d
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Отклонён Заказ #1a2b3c4d К сожалению, заказ отклонён. Причина: Объединён с заказом #1a2b3c4d
+  tgUserId=102
+  type=ORDER_STATUS
+SendMessage chat=102 thread=null parse=HTML
+<<<❌ <b>Отклонён</b>
+Заказ <b>#1a2b3c4d</b>
+К сожалению, заказ отклонён. Причина: Объединён с заказом #1a2b3c4d>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / APPROVED with a sealed case, paid
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Одобрен Заказ #1a2b3c4d Мы подтвердили ваш заказ и готовим его к отправке. Откройте его в заказе в магазине — товар добавим в посылку бесплатно, скидку дадим промокодом.
+  tgUserId=102
+  type=ORDER_STATUS
+SendMessage chat=102 thread=null parse=HTML
+<<<✅ <b>Одобрен</b>
+Заказ <b>#1a2b3c4d</b>
+Мы подтвердили ваш заказ и готовим его к отправке.
+Откройте его в заказе в магазине — товар добавим в посылку бесплатно, скидку дадим промокодом.>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / NEW with a sealed case, unpaid
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🆕 Новый заказ Заказ #1a2b3c4d 🎁 К вашему заказу — кейс с подарком : откроется после оплаты, в заказе в магазине.
+  tgUserId=102
+  type=ORDER_STATUS
+SendMessage chat=102 thread=null parse=HTML
+<<<🆕 <b>Новый заказ</b>
+Заказ <b>#1a2b3c4d</b>
+🎁 К вашему заказу — <b>кейс с подарком</b>: откроется после оплаты, в заказе в магазине.>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / REJECTED with a sealed case (no case line)
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Отклонён Заказ #1a2b3c4d К сожалению, заказ отклонён.
+  tgUserId=102
+  type=ORDER_STATUS
+SendMessage chat=102 thread=null parse=HTML
+<<<❌ <b>Отклонён</b>
+Заказ <b>#1a2b3c4d</b>
+К сожалению, заказ отклонён.>>>
+markup: [{Открыть переписку webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / NEW
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🆕 New order Order #1a2b3c4d
+  tgUserId=103
+  type=ORDER_STATUS
+SendMessage chat=103 thread=null parse=HTML
+<<<🆕 <b>New order</b>
+Order <b>#1a2b3c4d</b>
+>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / APPROVED
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Confirmed Order #1a2b3c4d We have confirmed your order and are getting it ready to ship.
+  tgUserId=103
+  type=ORDER_STATUS
+SendMessage chat=103 thread=null parse=HTML
+<<<✅ <b>Confirmed</b>
+Order <b>#1a2b3c4d</b>
+We have confirmed your order and are getting it ready to ship.>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / SHIPPED
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 Shipped Order #1a2b3c4d Your order has been shipped.
+  tgUserId=103
+  type=ORDER_STATUS
+SendMessage chat=103 thread=null parse=HTML
+<<<📦 <b>Shipped</b>
+Order <b>#1a2b3c4d</b>
+Your order has been shipped.>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / DELIVERED
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎉 Delivered Order #1a2b3c4d Your order has been delivered. Thank you for your purchase! 🙌
+  tgUserId=103
+  type=ORDER_STATUS
+SendMessage chat=103 thread=null parse=HTML
+<<<🎉 <b>Delivered</b>
+Order <b>#1a2b3c4d</b>
+Your order has been delivered. Thank you for your purchase! 🙌>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / REJECTED
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Rejected Order #1a2b3c4d Unfortunately, your order was rejected.
+  tgUserId=103
+  type=ORDER_STATUS
+SendMessage chat=103 thread=null parse=HTML
+<<<❌ <b>Rejected</b>
+Order <b>#1a2b3c4d</b>
+Unfortunately, your order was rejected.>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / SHIPPED with tracking
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=📦 Shipped Order #1a2b3c4d Your order has been shipped. Tracking number: 20450123456789
+  tgUserId=103
+  type=ORDER_STATUS
+SendMessage chat=103 thread=null parse=HTML
+<<<📦 <b>Shipped</b>
+Order <b>#1a2b3c4d</b>
+Your order has been shipped. Tracking number: <code>20450123456789</code>>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / REJECTED: Нет в наличии <срочно>
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Rejected Order #1a2b3c4d Unfortunately, your order was rejected. Reason: Нет в наличии <срочно>
+  tgUserId=103
+  type=ORDER_STATUS
+SendMessage chat=103 thread=null parse=HTML
+<<<❌ <b>Rejected</b>
+Order <b>#1a2b3c4d</b>
+Unfortunately, your order was rejected. Reason: Нет в наличии &lt;срочно&gt;>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / REJECTED: Отменён покупателем
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Rejected Order #1a2b3c4d Unfortunately, your order was rejected. Reason: Cancelled by you
+  tgUserId=103
+  type=ORDER_STATUS
+SendMessage chat=103 thread=null parse=HTML
+<<<❌ <b>Rejected</b>
+Order <b>#1a2b3c4d</b>
+Unfortunately, your order was rejected. Reason: Cancelled by you>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / REJECTED: Не оплачен в течение 24 ч
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Rejected Order #1a2b3c4d Unfortunately, your order was rejected. Reason: The order was not paid within 24 h and was cancelled automatically
+  tgUserId=103
+  type=ORDER_STATUS
+SendMessage chat=103 thread=null parse=HTML
+<<<❌ <b>Rejected</b>
+Order <b>#1a2b3c4d</b>
+Unfortunately, your order was rejected. Reason: The order was not paid within 24 h and was cancelled automatically>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / REJECTED: Объединён с заказом #1a2b3c4d
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Rejected Order #1a2b3c4d Unfortunately, your order was rejected. Reason: Merged into order #1a2b3c4d
+  tgUserId=103
+  type=ORDER_STATUS
+SendMessage chat=103 thread=null parse=HTML
+<<<❌ <b>Rejected</b>
+Order <b>#1a2b3c4d</b>
+Unfortunately, your order was rejected. Reason: Merged into order #1a2b3c4d>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / APPROVED with a sealed case, paid
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=✅ Confirmed Order #1a2b3c4d We have confirmed your order and are getting it ready to ship. Open it in your order in the shop — a product goes into your parcel for free, a discount comes as a promo code.
+  tgUserId=103
+  type=ORDER_STATUS
+SendMessage chat=103 thread=null parse=HTML
+<<<✅ <b>Confirmed</b>
+Order <b>#1a2b3c4d</b>
+We have confirmed your order and are getting it ready to ship.
+Open it in your order in the shop — a product goes into your parcel for free, a discount comes as a promo code.>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / NEW with a sealed case, unpaid
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🆕 New order Order #1a2b3c4d 🎁 Your order comes with a gift case — it opens after payment, in your order in the shop.
+  tgUserId=103
+  type=ORDER_STATUS
+SendMessage chat=103 thread=null parse=HTML
+<<<🆕 <b>New order</b>
+Order <b>#1a2b3c4d</b>
+🎁 Your order comes with a <b>gift case</b> — it opens after payment, in your order in the shop.>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / REJECTED with a sealed case (no case line)
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=❌ Rejected Order #1a2b3c4d Unfortunately, your order was rejected.
+  tgUserId=103
+  type=ORDER_STATUS
+SendMessage chat=103 thread=null parse=HTML
+<<<❌ <b>Rejected</b>
+Order <b>#1a2b3c4d</b>
+Unfortunately, your order was rejected.>>>
+markup: [{Open chat webapp=https://app.example.test?startapp=order_1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== switch off in settings → journal only
+Journal
+  chatId=101
+  errorCode=NOTIFICATIONS_OFF
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=SKIPPED
+  source=BOT
+  summary=Статус APPROVED — уведомления покупателям выключены в настройках
+  tgUserId=101
+  type=ORDER_STATUS
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== switch off, no telegram → nothing
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+

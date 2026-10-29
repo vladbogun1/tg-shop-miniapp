@@ -1,0 +1,199 @@
+=== uk / percent
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Знижка з кейса! Замовлення #1a2b3c4d У вашому кейсі — знижка −10% . Ваш промокод: CASE-ABC123 Діє до 18.11.2026 включно, на одне замовлення. Додайте товари в кошик — код запропонуємо там як «Подарунок із кейса».
+  tgUserId=101
+  type=ORDER_CASE_PROMO
+SendMessage chat=101 thread=null parse=HTML
+<<<🎁 <b>Знижка з кейса!</b>
+Замовлення <b>#1a2b3c4d</b>
+У вашому кейсі — знижка <b>−10%</b>. Ваш промокод: <code>CASE-ABC123</code>
+Діє до 18.11.2026 включно, на одне замовлення.
+Додайте товари в кошик — код запропонуємо там як «Подарунок із кейса».>>>
+markup: [{🛍 До кошика webapp=https://app.example.test?startapp=cart}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / amount
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Знижка з кейса! Замовлення #1a2b3c4d У вашому кейсі — знижка −150 ₴ . Ваш промокод: CASE-XYZ<1> Діє до 18.11.2026 включно, на одне замовлення. Додайте товари в кошик — код запропонуємо там як «Подарунок із кейса».
+  tgUserId=101
+  type=ORDER_CASE_PROMO
+SendMessage chat=101 thread=null parse=HTML
+<<<🎁 <b>Знижка з кейса!</b>
+Замовлення <b>#1a2b3c4d</b>
+У вашому кейсі — знижка <b>−150 ₴</b>. Ваш промокод: <code>CASE-XYZ&lt;1&gt;</code>
+Діє до 18.11.2026 включно, на одне замовлення.
+Додайте товари в кошик — код запропонуємо там як «Подарунок із кейса».>>>
+markup: [{🛍 До кошика webapp=https://app.example.test?startapp=cart}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / no expiry
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Знижка з кейса! Замовлення #1a2b3c4d У вашому кейсі — знижка −5% . Ваш промокод: CASE-NOEXP Додайте товари в кошик — код запропонуємо там як «Подарунок із кейса».
+  tgUserId=101
+  type=ORDER_CASE_PROMO
+SendMessage chat=101 thread=null parse=HTML
+<<<🎁 <b>Знижка з кейса!</b>
+Замовлення <b>#1a2b3c4d</b>
+У вашому кейсі — знижка <b>−5%</b>. Ваш промокод: <code>CASE-NOEXP</code>
+Додайте товари в кошик — код запропонуємо там як «Подарунок із кейса».>>>
+markup: [{🛍 До кошика webapp=https://app.example.test?startapp=cart}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== uk / blank code → nothing
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / percent
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Скидка из кейса! Заказ #1a2b3c4d В вашем кейсе — скидка −10% . Ваш промокод: CASE-ABC123 Действует до 18.11.2026 включительно, на один заказ. Добавьте товары в корзину — код предложим там как «Подарок из кейса».
+  tgUserId=102
+  type=ORDER_CASE_PROMO
+SendMessage chat=102 thread=null parse=HTML
+<<<🎁 <b>Скидка из кейса!</b>
+Заказ <b>#1a2b3c4d</b>
+В вашем кейсе — скидка <b>−10%</b>. Ваш промокод: <code>CASE-ABC123</code>
+Действует до 18.11.2026 включительно, на один заказ.
+Добавьте товары в корзину — код предложим там как «Подарок из кейса».>>>
+markup: [{🛍 В корзину webapp=https://app.example.test?startapp=cart}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / amount
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Скидка из кейса! Заказ #1a2b3c4d В вашем кейсе — скидка −150 ₴ . Ваш промокод: CASE-XYZ<1> Действует до 18.11.2026 включительно, на один заказ. Добавьте товары в корзину — код предложим там как «Подарок из кейса».
+  tgUserId=102
+  type=ORDER_CASE_PROMO
+SendMessage chat=102 thread=null parse=HTML
+<<<🎁 <b>Скидка из кейса!</b>
+Заказ <b>#1a2b3c4d</b>
+В вашем кейсе — скидка <b>−150 ₴</b>. Ваш промокод: <code>CASE-XYZ&lt;1&gt;</code>
+Действует до 18.11.2026 включительно, на один заказ.
+Добавьте товары в корзину — код предложим там как «Подарок из кейса».>>>
+markup: [{🛍 В корзину webapp=https://app.example.test?startapp=cart}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / no expiry
+Journal
+  chatId=102
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Скидка из кейса! Заказ #1a2b3c4d В вашем кейсе — скидка −5% . Ваш промокод: CASE-NOEXP Добавьте товары в корзину — код предложим там как «Подарок из кейса».
+  tgUserId=102
+  type=ORDER_CASE_PROMO
+SendMessage chat=102 thread=null parse=HTML
+<<<🎁 <b>Скидка из кейса!</b>
+Заказ <b>#1a2b3c4d</b>
+В вашем кейсе — скидка <b>−5%</b>. Ваш промокод: <code>CASE-NOEXP</code>
+Добавьте товары в корзину — код предложим там как «Подарок из кейса».>>>
+markup: [{🛍 В корзину webapp=https://app.example.test?startapp=cart}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== ru / blank code → nothing
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / percent
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 A discount from your case! Order #1a2b3c4d Your case contains a −10% discount. Your promo code: CASE-ABC123 Valid until 18.11.2026 inclusive, for one order. Add items to your cart — we will offer the code there as «Case gift».
+  tgUserId=103
+  type=ORDER_CASE_PROMO
+SendMessage chat=103 thread=null parse=HTML
+<<<🎁 <b>A discount from your case!</b>
+Order <b>#1a2b3c4d</b>
+Your case contains a <b>−10%</b> discount. Your promo code: <code>CASE-ABC123</code>
+Valid until 18.11.2026 inclusive, for one order.
+Add items to your cart — we will offer the code there as «Case gift».>>>
+markup: [{🛍 To cart webapp=https://app.example.test?startapp=cart}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / amount
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 A discount from your case! Order #1a2b3c4d Your case contains a −150 ₴ discount. Your promo code: CASE-XYZ<1> Valid until 18.11.2026 inclusive, for one order. Add items to your cart — we will offer the code there as «Case gift».
+  tgUserId=103
+  type=ORDER_CASE_PROMO
+SendMessage chat=103 thread=null parse=HTML
+<<<🎁 <b>A discount from your case!</b>
+Order <b>#1a2b3c4d</b>
+Your case contains a <b>−150 ₴</b> discount. Your promo code: <code>CASE-XYZ&lt;1&gt;</code>
+Valid until 18.11.2026 inclusive, for one order.
+Add items to your cart — we will offer the code there as «Case gift».>>>
+markup: [{🛍 To cart webapp=https://app.example.test?startapp=cart}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / no expiry
+Journal
+  chatId=103
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 A discount from your case! Order #1a2b3c4d Your case contains a −5% discount. Your promo code: CASE-NOEXP Add items to your cart — we will offer the code there as «Case gift».
+  tgUserId=103
+  type=ORDER_CASE_PROMO
+SendMessage chat=103 thread=null parse=HTML
+<<<🎁 <b>A discount from your case!</b>
+Order <b>#1a2b3c4d</b>
+Your case contains a <b>−5%</b> discount. Your promo code: <code>CASE-NOEXP</code>
+Add items to your cart — we will offer the code there as «Case gift».>>>
+markup: [{🛍 To cart webapp=https://app.example.test?startapp=cart}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== en / blank code → nothing
+(nothing sent)
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== webapp url not https → no button
+Journal
+  chatId=101
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=CUSTOMER
+  result=OK
+  source=BOT
+  summary=🎁 Знижка з кейса! Замовлення #1a2b3c4d У вашому кейсі — знижка −10% . Ваш промокод: CASE-ABC123 Діє до 18.11.2026 включно, на одне замовлення. Додайте товари в кошик — код запропонуємо там як «Подарунок із кейса».
+  tgUserId=101
+  type=ORDER_CASE_PROMO
+SendMessage chat=101 thread=null parse=HTML
+<<<🎁 <b>Знижка з кейса!</b>
+Замовлення <b>#1a2b3c4d</b>
+У вашому кейсі — знижка <b>−10%</b>. Ваш промокод: <code>CASE-ABC123</code>
+Діє до 18.11.2026 включно, на одне замовлення.
+Додайте товари в кошик — код запропонуємо там як «Подарунок із кейса».>>>
+markup: none
+order: notifyChat=null thread=null message=null dispatch=null
+

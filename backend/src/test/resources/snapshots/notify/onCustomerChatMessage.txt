@@ -1,0 +1,85 @@
+=== with preview
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Сообщение покупателя в чате заказа #1a2b3c4d
+  tgUserId=101
+  type=ADMIN_CHAT_PING
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<💬 <b>Новое сообщение от клиента</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+<blockquote>Добрий день, коли &lt;відправка&gt;?</blockquote>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== long preview (trimmed to 200)
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Сообщение покупателя в чате заказа #1a2b3c4d
+  tgUserId=101
+  type=ADMIN_CHAT_PING
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<💬 <b>Новое сообщение от клиента</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+<blockquote>ыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыы…</blockquote>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== no preview
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Сообщение покупателя в чате заказа #1a2b3c4d
+  tgUserId=101
+  type=ADMIN_CHAT_PING
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<💬 <b>Новое сообщение от клиента</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== blank preview
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Сообщение покупателя в чате заказа #1a2b3c4d
+  tgUserId=101
+  type=ADMIN_CHAT_PING
+SendMessage chat=-1001234567890 thread=16 parse=HTML
+<<<💬 <b>Новое сообщение от клиента</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
+=== chat topic 0
+Journal
+  chatId=-1001234567890
+  orderId=1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9
+  recipient=ADMINS
+  result=OK
+  source=BOT
+  summary=Сообщение покупателя в чате заказа #1a2b3c4d
+  tgUserId=101
+  type=ADMIN_CHAT_PING
+SendMessage chat=-1001234567890 thread=null parse=HTML
+<<<💬 <b>Новое сообщение от клиента</b>
+Заказ <b>#1a2b3c4d</b> · Іван &lt;Петренко&gt; &amp; Co
+<blockquote>hi</blockquote>>>>
+markup: [{🔎 Открыть в админке url=https://admin.example.test/orders/1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9}]
+order: notifyChat=null thread=null message=null dispatch=null
+
