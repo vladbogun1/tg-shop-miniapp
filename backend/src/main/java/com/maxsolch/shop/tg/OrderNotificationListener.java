@@ -58,13 +58,7 @@ public class OrderNotificationListener {
         withOrder(event.orderId(), order -> {
             notificationService.onStatusChanged(order);
             notificationService.notifyCustomerStatus(order);
-            if (order.getStatus() == OrderStatus.APPROVED) {
-                // Newly approved orders belong in the seller's "К ОТПРАВКЕ" topic...
-                notificationService.syncDispatchCard(order);
-            } else {
-                // ...and leave it as soon as they ship / are delivered / are cancelled.
-                notificationService.removeDispatchCard(order);
-            }
+            reconcileDispatch(order);
         });
     }
 
@@ -75,11 +69,7 @@ public class OrderNotificationListener {
             // The channel card moves to the new status column; the seller's "К ОТПРАВКЕ" card
             // appears again only when the order goes straight to APPROVED.
             notificationService.onStatusChanged(order);
-            if (order.getStatus() == OrderStatus.APPROVED) {
-                notificationService.syncDispatchCard(order);
-            } else {
-                notificationService.removeDispatchCard(order);
-            }
+            reconcileDispatch(order);
             if (event.notifyCustomer()) {
                 notificationService.notifyCustomerExchange(order, event.givenSummary());
             }
@@ -198,7 +188,23 @@ public class OrderNotificationListener {
         }
     }
 
-    /** The seller's dispatch card only exists while the order is awaiting shipment. */
+    /**
+     * The order changed status: newly approved orders belong in the seller's "К ОТПРАВКЕ" topic,
+     * and leave it as soon as they ship / are delivered / are cancelled.
+     */
+    private void reconcileDispatch(Order order) {
+        if (order.getStatus() == OrderStatus.APPROVED) {
+            notificationService.syncDispatchCard(order);
+        } else {
+            notificationService.removeDispatchCard(order);
+        }
+    }
+
+    /**
+     * Refreshes an existing dispatch card after a change that is not a status change (payment, return,
+     * edit, merge target). Unlike {@link #reconcileDispatch} it never removes the card of a non-APPROVED
+     * order: the status change that took it out of APPROVED has already done that.
+     */
     private void refreshDispatch(Order order) {
         if (order.getStatus() == OrderStatus.APPROVED) {
             notificationService.syncDispatchCard(order);
