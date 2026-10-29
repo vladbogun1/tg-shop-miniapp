@@ -4,7 +4,7 @@ import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.order.infra.OrderRepository;
+import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.app.OrderLifecycle;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -34,7 +34,7 @@ public class PaymentJobs {
 
     private final OnlinePaymentService payments;
     private final PaymentInvoiceRepository invoices;
-    private final OrderRepository orders;
+    private final OrderLookup orders;
     private final OrderLifecycle lifecycle;
     private final AtomicBoolean running = new AtomicBoolean();
 
@@ -43,7 +43,7 @@ public class PaymentJobs {
     private final Clock clock;
 
     public PaymentJobs(OnlinePaymentService payments, PaymentInvoiceRepository invoices,
-                       OrderRepository orders, OrderLifecycle lifecycle, ActivityLog activity, Clock clock) {
+                       OrderLookup orders, OrderLifecycle lifecycle, ActivityLog activity, Clock clock) {
         this.payments = payments;
         this.invoices = invoices;
         this.orders = orders;
@@ -77,7 +77,7 @@ public class PaymentJobs {
     }
 
     private void cancelOverdue(Instant now) {
-        for (byte[] orderId : orders.findOverdueUnpaidIds(now)) {
+        for (byte[] orderId : orders.overdueUnpaidIds(now)) {
             String id = UuidUtil.toString(orderId);
             try {
                 // Last word from the bank first: a payment made a minute before the deadline wins.

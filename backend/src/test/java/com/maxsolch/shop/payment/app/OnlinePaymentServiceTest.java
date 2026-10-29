@@ -13,7 +13,7 @@ import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.order.infra.OrderRepository;
+import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,7 +47,7 @@ class OnlinePaymentServiceTest {
     @Mock
     PaymentInvoiceRepository invoices;
     @Mock
-    OrderRepository orders;
+    OrderLookup orders;
     @Mock
     Messages messages;
     @Mock
@@ -105,7 +105,7 @@ class OnlinePaymentServiceTest {
     }
 
     private void given(Order o, PaymentInvoice... existing) {
-        when(orders.findWithItemsById(o.getId())).thenReturn(Optional.of(o));
+        when(orders.findWithItems(o.getId())).thenReturn(Optional.of(o));
         lenient().when(invoices.findByOrderIdOrderByCreatedAtDesc(o.getId())).thenReturn(List.of(existing));
     }
 
@@ -312,6 +312,6 @@ class OnlinePaymentServiceTest {
         assertThatThrownBy(() -> service.start(UuidUtil.randomBytes(), OnlinePaymentService.ReturnTo.SITE, "uk"))
                 .isInstanceOf(DomainException.Conflict.class)
                 .satisfies(t -> assertThat(code(t)).isEqualTo("PAYMENT_UNAVAILABLE"));
-        verify(orders, never()).findWithItemsById(any());
+        verify(orders, never()).findWithItems(any());
     }
 }

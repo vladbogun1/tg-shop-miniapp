@@ -13,7 +13,7 @@ import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.order.infra.OrderRepository;
+import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.payment.domain.PaymentErrors;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
@@ -58,7 +58,7 @@ public class OnlinePaymentService {
 
     private final MonobankGateway mono;
     private final PaymentInvoiceRepository invoices;
-    private final OrderRepository orders;
+    private final OrderLookup orders;
     private final AppProperties props;
     private final Messages messages;
     private final TransactionTemplate tx;
@@ -72,7 +72,7 @@ public class OnlinePaymentService {
     /** One start per order at a time (double tap → one invoice). Single backend instance. */
     private final Map<String, Object> startLocks = new ConcurrentHashMap<>();
 
-    public OnlinePaymentService(MonobankGateway mono, PaymentInvoiceRepository invoices, OrderRepository orders,
+    public OnlinePaymentService(MonobankGateway mono, PaymentInvoiceRepository invoices, OrderLookup orders,
                                 AppProperties props, Messages messages,
                                 TransactionTemplate tx, PaymentStatusApplier applier,
                                 SettingsService settings, ActivityLog activity, Clock clock) {
@@ -142,7 +142,7 @@ public class OnlinePaymentService {
         String display = embedded ? "iframe" : "page";
         Instant now = clock.instant();
         String key = UuidUtil.toString(orderId);
-        Order order = orders.findWithItemsById(orderId)
+        Order order = orders.findWithItems(orderId)
                 .orElseThrow(() -> PaymentErrors.badRequest(messages.current("api.order.notFound")));
         if (order.getStatus() == OrderStatus.REJECTED
                 && "PAYMENT_TIMEOUT".equals(order.getRejectReasonCode())) {

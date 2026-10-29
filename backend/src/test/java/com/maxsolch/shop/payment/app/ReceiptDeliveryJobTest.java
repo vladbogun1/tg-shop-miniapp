@@ -9,11 +9,10 @@ import com.maxsolch.shop.payment.infra.ReceiptDeliveryStore;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.domain.User;
-import com.maxsolch.shop.order.infra.OrderRepository;
+import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.tg.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -48,7 +47,7 @@ class ReceiptDeliveryJobTest {
     @Mock
     PaymentInvoiceRepository invoices;
     @Mock
-    OrderRepository orders;
+    OrderLookup orders;
     @Mock
     UserRepository users;
     @Mock
@@ -56,7 +55,7 @@ class ReceiptDeliveryJobTest {
     @Mock
     ReceiptService receipts;
     @Mock
-    NotificationService notifications;
+    ReceiptNotifier notifications;
     @Mock
     SettingsService settings;
 
@@ -84,11 +83,11 @@ class ReceiptDeliveryJobTest {
         lenient().when(notifications.isBotEnabled()).thenReturn(true);
         lenient().when(settings.getBool(SettingsRegistry.PAYMENT_SEND_RECEIPTS_TO_TELEGRAM)).thenReturn(true);
         lenient().when(invoices.findReceiptCandidates(any())).thenReturn(List.of(inv));
-        lenient().when(orders.findById(order.getId())).thenReturn(Optional.of(order));
+        lenient().when(orders.find(order.getId())).thenReturn(Optional.of(order));
         lenient().when(users.findById(TG)).thenReturn(Optional.empty());
         lenient().when(store.handled(inv.getId())).thenReturn(Map.of());
         lenient().when(store.claim(anyString(), any(), any(), any(), any())).thenReturn(true);
-        lenient().when(notifications.sendReceipt(any(), any(), any(), any())).thenReturn(NotificationService.Delivery.SENT);
+        lenient().when(notifications.send(any(), any(), any(), any())).thenReturn(ReceiptNotifier.Delivery.SENT);
     }
 
     private static MonobankGateway.FiscalCheck check(String id, String type, String status) {
@@ -103,7 +102,7 @@ class ReceiptDeliveryJobTest {
         job.deliver(NOW);
 
         verify(store).claim(eq("c-sale"), eq(inv.getId()), eq(order.getId()), eq(ReceiptKind.FISCAL_SALE), eq(NOW));
-        verify(notifications).sendReceipt(eq(order), any(), eq(ReceiptKind.FISCAL_SALE),
+        verify(notifications).send(eq(order), any(), eq(ReceiptKind.FISCAL_SALE),
                 eq("https://cabinet.tax.gov.ua/cashregs/check"));
         verify(store).finish("c-sale", ReceiptDeliveryStore.SENT);
     }
@@ -118,7 +117,7 @@ class ReceiptDeliveryJobTest {
         job.deliver(NOW);
 
         verify(store, never()).claim(eq("c-sale"), any(), any(), any(), any());
-        verify(notifications, times(1)).sendReceipt(any(), any(), eq(ReceiptKind.FISCAL_RETURN), any());
+        verify(notifications, times(1)).send(any(), any(), eq(ReceiptKind.FISCAL_RETURN), any());
         verify(store).finish("c-ret", ReceiptDeliveryStore.SENT);
     }
 
@@ -129,7 +128,7 @@ class ReceiptDeliveryJobTest {
         job.deliver(NOW);
 
         verify(mono, never()).fiscalChecks(any());
-        verify(notifications, never()).sendReceipt(any(), any(), any(), any());
+        verify(notifications, never()).send(any(), any(), any(), any());
     }
 
     @Test
@@ -139,13 +138,13 @@ class ReceiptDeliveryJobTest {
 
         job.deliver(NOW);
 
-        verify(notifications, never()).sendReceipt(any(), any(), any(), any());
+        verify(notifications, never()).send(any(), any(), any(), any());
     }
 
     @Test
     void transientSendFailure_releasesClaim_forTheNextRun() {
         when(mono.fiscalChecks("inv-1")).thenReturn(List.of(check("c-sale", "sale", "done")));
-        when(notifications.sendReceipt(any(), any(), any(), any())).thenReturn(NotificationService.Delivery.FAILED);
+        when(notifications.send(any(), any(), any(), any())).thenReturn(ReceiptNotifier.Delivery.FAILED);
 
         job.deliver(NOW);
 
@@ -156,7 +155,7 @@ class ReceiptDeliveryJobTest {
     @Test
     void blockedBot_recordedAndUserMarked() {
         when(mono.fiscalChecks("inv-1")).thenReturn(List.of(check("c-sale", "sale", "done")));
-        when(notifications.sendReceipt(any(), any(), any(), any())).thenReturn(NotificationService.Delivery.BLOCKED);
+        when(notifications.send(any(), any(), any(), any())).thenReturn(ReceiptNotifier.Delivery.BLOCKED);
 
         job.deliver(NOW);
 
@@ -171,7 +170,7 @@ class ReceiptDeliveryJobTest {
 
         job.deliver(NOW);
 
-        verify(notifications, never()).sendReceipt(any(), any(), any(), any());
+        verify(notifications, never()).send(any(), any(), any(), any());
         verify(store, never()).claim(anyString(), any(), any(), any(), any());
     }
 
@@ -185,7 +184,7 @@ class ReceiptDeliveryJobTest {
 
         String key = "bank:" + UuidUtil.toString(inv.getId());
         verify(store).claim(eq(key), any(), any(), eq(ReceiptKind.BANK), eq(NOW));
-        verify(notifications).sendReceipt(eq(order), any(), eq(ReceiptKind.BANK), eq(null));
+        verify(notifications).send(eq(order), any(), eq(ReceiptKind.BANK), eq(null));
         verify(store).finish(key, ReceiptDeliveryStore.SENT);
     }
 
@@ -196,7 +195,7 @@ class ReceiptDeliveryJobTest {
         job.deliver(NOW);
 
         verify(mono, never()).bankReceipt(any());
-        verify(notifications, never()).sendReceipt(any(), any(), any(), any());
+        verify(notifications, never()).send(any(), any(), any(), any());
     }
 
     @Test
@@ -207,7 +206,7 @@ class ReceiptDeliveryJobTest {
         job.deliver(NOW);
 
         verify(mono, never()).bankReceipt(any());
-        verify(notifications, never()).sendReceipt(any(), any(), any(), any());
+        verify(notifications, never()).send(any(), any(), any(), any());
     }
 
     @Test
@@ -233,7 +232,7 @@ class ReceiptDeliveryJobTest {
         job.deliver(NOW);
 
         verify(mono, never()).fiscalChecks(any());
-        verify(notifications, never()).sendReceipt(any(), any(), any(), any());
+        verify(notifications, never()).send(any(), any(), any(), any());
     }
 
     @Test

@@ -10,11 +10,10 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.infra.OrderRepository;
+import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.tg.NotificationService;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -50,11 +49,11 @@ public class ReceiptDeliveryJob {
 
     private final MonobankGateway mono;
     private final PaymentInvoiceRepository invoices;
-    private final OrderRepository orders;
+    private final OrderLookup orders;
     private final UserRepository users;
     private final ReceiptDeliveryStore store;
     private final ReceiptService receipts;
-    private final NotificationService notifications;
+    private final ReceiptNotifier notifications;
     private final SettingsService settings;
     private final Clock clock;
     private final AtomicBoolean running = new AtomicBoolean();
@@ -66,9 +65,9 @@ public class ReceiptDeliveryJob {
      */
     private final Cache quiet;
 
-    public ReceiptDeliveryJob(MonobankGateway mono, PaymentInvoiceRepository invoices, OrderRepository orders,
+    public ReceiptDeliveryJob(MonobankGateway mono, PaymentInvoiceRepository invoices, OrderLookup orders,
                               UserRepository users, ReceiptDeliveryStore store, ReceiptService receipts,
-                              NotificationService notifications, SettingsService settings,
+                              ReceiptNotifier notifications, SettingsService settings,
                               CacheManager caches, Clock clock) {
         this.quiet = java.util.Objects.requireNonNull(caches.getCache(CacheConfig.RECEIPT_DELIVERY_QUIET));
         this.clock = clock;
@@ -116,7 +115,7 @@ public class ReceiptDeliveryJob {
         if (refunded != null && refunded == inv.getRefundedMinor()) {
             return;
         }
-        Order order = orders.findById(inv.getOrderId()).orElse(null);
+        Order order = orders.find(inv.getOrderId()).orElse(null);
         if (order == null || !reachable(order.getTgUserId())) {
             return;
         }
@@ -184,7 +183,7 @@ public class ReceiptDeliveryJob {
         if (!store.claim(checkId, inv.getId(), inv.getOrderId(), kind, now)) {
             return true;
         }
-        NotificationService.Delivery result = notifications.sendReceipt(order, pdf, kind, taxUrl);
+        ReceiptNotifier.Delivery result = notifications.send(order, pdf, kind, taxUrl);
         switch (result) {
             case SENT -> {
                 store.finish(checkId, ReceiptDeliveryStore.SENT);

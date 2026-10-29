@@ -6,6 +6,8 @@ import com.maxsolch.shop.order.infra.OrderRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -47,5 +49,17 @@ public class OrderLookup {
     /** Saves a changed order (inside the caller's transaction). */
     public Order save(Order order) {
         return orderRepository.save(order);
+    }
+
+    /** The order with its lines (online payment builds the basket outside a transaction), or empty. */
+    @Transactional(readOnly = true)
+    public Optional<Order> findWithItems(byte[] orderId) {
+        return orderRepository.findWithItemsById(orderId);
+    }
+
+    /** Ids of unpaid orders whose online payment deadline has passed (auto-cancel candidates). */
+    @Transactional(readOnly = true)
+    public List<byte[]> overdueUnpaidIds(Instant now) {
+        return orderRepository.findOverdueUnpaidIds(now);
     }
 }
