@@ -12,7 +12,7 @@ import com.maxsolch.shop.cart.infra.CartItemRepository;
 import com.maxsolch.shop.cart.infra.CartRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.translation.TranslationService;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.cart.api.CartDtos.CartDto;
 import com.maxsolch.shop.cart.api.CartDtos.CartLineDto;
 import com.maxsolch.shop.cart.api.CartDtos.CartLineInput;
@@ -200,7 +200,7 @@ class CartServiceTest {
         }
 
         assertThatThrownBy(() -> service.replace(USER, many, "ru"))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("api.cart.tooManyLines");
         verify(itemRepository, never()).save(any());
     }
@@ -214,7 +214,7 @@ class CartServiceTest {
         }
 
         assertThatThrownBy(() -> service.replace(USER, many, "ru"))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("api.cart.tooLarge");
     }
 

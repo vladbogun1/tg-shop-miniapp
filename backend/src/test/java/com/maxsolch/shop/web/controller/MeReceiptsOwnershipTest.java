@@ -8,8 +8,7 @@ import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.Role;
 import com.maxsolch.shop.order.app.CustomerOrders;
-import com.maxsolch.shop.platform.error.ForbiddenException;
-import com.maxsolch.shop.platform.error.NotFoundException;
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.web.dto.ReceiptDto;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -84,7 +83,7 @@ class MeReceiptsOwnershipTest {
         loginAs(200L);
 
         assertThatThrownBy(() -> controller.receipts(UuidUtil.toString(order.getId())))
-                .isInstanceOf(ForbiddenException.class);
+                .isInstanceOf(DomainException.Forbidden.class);
         verify(receipts, never()).forOrder(any());
     }
 
@@ -94,13 +93,13 @@ class MeReceiptsOwnershipTest {
         order.setUserId(null);
 
         assertThatThrownBy(() -> controller.receipts(UuidUtil.toString(order.getId())))
-                .isInstanceOf(ForbiddenException.class);
+                .isInstanceOf(DomainException.Forbidden.class);
     }
 
     @Test
     void garbageId_notFound() {
         loginAs(100L);
 
-        assertThatThrownBy(() -> controller.receipts("not-a-uuid")).isInstanceOf(NotFoundException.class);
+        assertThatThrownBy(() -> controller.receipts("not-a-uuid")).isInstanceOf(DomainException.NotFound.class);
     }
 }

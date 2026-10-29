@@ -7,7 +7,7 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.order.domain.OrderErrors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -74,7 +74,7 @@ public class CancelRequestService {
     public ApproveResult approve(byte[] orderId, String comment) {
         payments.refreshOrder(orderId);
         if (payments.hasPaymentInFlight(orderId)) {
-            throw new BadRequestException("банк ещё обрабатывает платёж по заказу — подождите минуту", PAYMENT_IN_PROGRESS);
+            throw OrderErrors.badRequest("банк ещё обрабатывает платёж по заказу — подождите минуту", PAYMENT_IN_PROGRESS);
         }
         Order order = cancelRequests.approveCancelRequest(orderId, comment);
         payments.closeOpenInvoices(orderId);
@@ -116,7 +116,7 @@ public class CancelRequestService {
         // The bank may be charging the card right now: let that settle first.
         payments.refreshOrder(orderId);
         if (payments.hasPaymentInFlight(orderId)) {
-            throw new BadRequestException(messages.current("api.payment.inProgress"), PAYMENT_IN_PROGRESS);
+            throw OrderErrors.badRequest(messages.current("api.payment.inProgress"), PAYMENT_IN_PROGRESS);
         }
     }
 }

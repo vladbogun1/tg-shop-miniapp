@@ -10,7 +10,7 @@ import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -153,16 +153,16 @@ class OrderMergeTest {
         Order b = order(OrderStatus.NEW, 2, item("B", 1_000, 1));
         b.setPhone("+380509999999");
         assertThatThrownBy(() -> service.merge(a.getId(), b.getId(), false, false, null, "admin"))
-                .isInstanceOf(BadRequestException.class).hasMessageContaining("одного покупателя");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("одного покупателя");
 
         Order shipped = order(OrderStatus.SHIPPED, 1, item("C", 1_000, 1));
         assertThatThrownBy(() -> service.merge(a.getId(), shipped.getId(), false, false, null, "admin"))
-                .isInstanceOf(BadRequestException.class).hasMessageContaining("до отправки");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("до отправки");
 
         Order sealed = order(OrderStatus.APPROVED, 1, item("D", 1_000, 1));
         sealed.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_SEALED);
         assertThatThrownBy(() -> service.merge(a.getId(), sealed.getId(), false, false, null, "admin"))
-                .isInstanceOf(BadRequestException.class).hasMessageContaining("кейс");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("кейс");
         // The other way round is fine: the case stays with the order that stays.
         assertThat(service.merge(sealed.getId(), a.getId(), false, false, null, "admin").target().getItems()).hasSize(2);
     }

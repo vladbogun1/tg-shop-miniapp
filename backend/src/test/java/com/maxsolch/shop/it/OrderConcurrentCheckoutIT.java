@@ -2,7 +2,7 @@ package com.maxsolch.shop.it;
 
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.order.app.Checkout;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -38,7 +38,7 @@ class OrderConcurrentCheckoutIT extends AbstractMysqlIT {
                 try {
                     orders.createOrder(checkout(tg, phone, p, 1));
                     return true;
-                } catch (BadRequestException outOfStock) {
+                } catch (DomainException.BadRequest outOfStock) {
                     return false;
                 }
             };

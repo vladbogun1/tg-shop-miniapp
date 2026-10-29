@@ -84,6 +84,11 @@ public abstract class DomainException extends RuntimeException {
             super(Kind.BAD_REQUEST, code, args);
         }
 
+        /** Ready text without a code: the body is just {message}, same as the old exceptions. */
+        public BadRequest(String message) {
+            this(message, (ErrorCode) null);
+        }
+
         public BadRequest(String message, ErrorCode code) {
             super(Kind.BAD_REQUEST, message, code);
         }
@@ -106,6 +111,11 @@ public abstract class DomainException extends RuntimeException {
             super(Kind.FORBIDDEN, code, args);
         }
 
+        /** Ready text without a code: the body is just {message}, same as the old exceptions. */
+        public Forbidden(String message) {
+            this(message, (ErrorCode) null);
+        }
+
         public Forbidden(String message, ErrorCode code) {
             super(Kind.FORBIDDEN, message, code);
         }
@@ -115,6 +125,11 @@ public abstract class DomainException extends RuntimeException {
     public static class NotFound extends DomainException {
         public NotFound(ErrorCode code, Object... args) {
             super(Kind.NOT_FOUND, code, args);
+        }
+
+        /** Ready text without a code: the body is just {message}, same as the old exceptions. */
+        public NotFound(String message) {
+            this(message, (ErrorCode) null);
         }
 
         public NotFound(String message, ErrorCode code) {

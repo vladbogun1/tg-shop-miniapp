@@ -4,8 +4,7 @@ import com.maxsolch.shop.order.infra.OrderGuardStore;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.TooManyRequestsException;
+import com.maxsolch.shop.order.domain.OrderErrors;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -83,7 +82,7 @@ public class OrderGuard {
         if (l.maxSelfCancelsPerDay() > 0) {
             List<Instant> cancels = store.selfCancelsSince(userId, dayAgo);
             if (cancels.size() >= l.maxSelfCancelsPerDay()) {
-                throw new TooManyRequestsException(
+                throw OrderErrors.tooManyRequests(
                         messages.current("api.antibot.cancelLimit", cancels.size()), CANCEL_LIMIT,
                         retryAfter(cancels, l.maxSelfCancelsPerDay(), now));
             }
@@ -91,7 +90,7 @@ public class OrderGuard {
         if (l.maxUnpaidOrders() > 0) {
             int unpaid = store.countUnpaid(userId);
             if (unpaid >= l.maxUnpaidOrders()) {
-                throw new BadRequestException(messages.current("api.antibot.tooManyUnpaid", unpaid), TOO_MANY_UNPAID);
+                throw OrderErrors.badRequest(messages.current("api.antibot.tooManyUnpaid", unpaid), TOO_MANY_UNPAID);
             }
         }
         boolean needHistory = l.orderCooldownSec() > 0 || l.maxOrdersPerDay() > 0;
@@ -101,12 +100,12 @@ public class OrderGuard {
                 Instant last = created.get(created.size() - 1);
                 long wait = Duration.between(now, last.plusSeconds(l.orderCooldownSec())).toSeconds();
                 if (wait > 0) {
-                    throw new TooManyRequestsException(messages.current("api.antibot.cooldown", wait),
+                    throw OrderErrors.tooManyRequests(messages.current("api.antibot.cooldown", wait),
                             ORDER_COOLDOWN, wait);
                 }
             }
             if (l.maxOrdersPerDay() > 0 && created.size() >= l.maxOrdersPerDay()) {
-                throw new TooManyRequestsException(
+                throw OrderErrors.tooManyRequests(
                         messages.current("api.antibot.dailyLimit", created.size()), ORDER_DAILY_LIMIT,
                         retryAfter(created, l.maxOrdersPerDay(), now));
             }
@@ -130,13 +129,13 @@ public class OrderGuard {
         if (l.maxQtyPerProduct() > 0) {
             for (Map.Entry<String, Integer> e : perLine.entrySet()) {
                 if (e.getValue() > l.maxQtyPerProduct()) {
-                    throw new BadRequestException(messages.current("api.antibot.qtyLimit", l.maxQtyPerProduct(),
+                    throw OrderErrors.badRequest(messages.current("api.antibot.qtyLimit", l.maxQtyPerProduct(),
                             store.productTitle(productOf.get(e.getKey()))), QTY_LIMIT);
                 }
             }
         }
         if (l.maxUnitsPerOrder() > 0 && units > l.maxUnitsPerOrder()) {
-            throw new BadRequestException(messages.current("api.antibot.unitsLimit", l.maxUnitsPerOrder()), QTY_LIMIT);
+            throw OrderErrors.badRequest(messages.current("api.antibot.unitsLimit", l.maxUnitsPerOrder()), QTY_LIMIT);
         }
     }
 

@@ -7,7 +7,7 @@ import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.domain.RejectReasonCode;
 import com.maxsolch.shop.payment.OnlinePaymentService;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.api.UpdateOrderStatusRequest;
 import org.springframework.stereotype.Service;
 
@@ -45,14 +45,14 @@ public class AdminOrderStatusService {
         boolean restock = req.restock() == null || req.restock();
         RejectReasonCode reasonCode = parseReasonCode(req.rejectReasonCode());
         if (target == OrderStatus.SHIPPED && (req.trackingNumber() == null || req.trackingNumber().isBlank())) {
-            throw new BadRequestException("укажите номер ТТН");
+            throw OrderErrors.badRequest("укажите номер ТТН");
         }
         if (target == OrderStatus.REJECTED && reasonCode == null
                 && (req.rejectReason() == null || req.rejectReason().isBlank())) {
-            throw new BadRequestException("укажите причину отклонения");
+            throw OrderErrors.badRequest("укажите причину отклонения");
         }
         if (reasonCode == RejectReasonCode.OTHER && (req.rejectReason() == null || req.rejectReason().isBlank())) {
-            throw new BadRequestException("для причины «Другое» напишите пояснение");
+            throw OrderErrors.badRequest("для причины «Другое» напишите пояснение");
         }
         Order before = queries.load(id);
         // Read before the change: shipping does not move the money, but the check belongs to the order as it was.
@@ -92,7 +92,7 @@ public class AdminOrderStatusService {
         try {
             return OrderStatus.valueOf(s.trim().toUpperCase());
         } catch (Exception e) {
-            throw new BadRequestException("неизвестный статус: " + s);
+            throw OrderErrors.badRequest("неизвестный статус: " + s);
         }
     }
 
@@ -100,7 +100,7 @@ public class AdminOrderStatusService {
         try {
             return RejectReasonCode.parseOrNull(s);
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("неизвестная причина отказа: " + s);
+            throw OrderErrors.badRequest("неизвестная причина отказа: " + s);
         }
     }
 }

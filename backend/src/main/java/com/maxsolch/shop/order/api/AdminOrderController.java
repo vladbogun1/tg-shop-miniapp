@@ -30,7 +30,7 @@ import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.app.OrderPayments;
 import com.maxsolch.shop.order.app.Checkout;
 import com.maxsolch.shop.order.domain.OrderWindow;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.platform.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.UploadResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -236,7 +236,7 @@ public class AdminOrderController {
         Order target = load(id);
         Order source = load(req.sourceId());
         if (payments.hasPaymentInFlight(target.getId()) || payments.hasPaymentInFlight(source.getId())) {
-            throw new BadRequestException("по одному из заказов банк ещё проводит оплату — подождите пару минут");
+            throw OrderErrors.badRequest("по одному из заказов банк ещё проводит оплату — подождите пару минут");
         }
         OrderMerge.Result r = merges.merge(target.getId(), source.getId(),
                 Boolean.TRUE.equals(req.useSourceDelivery()), req.notifyCustomer() == null || req.notifyCustomer(),

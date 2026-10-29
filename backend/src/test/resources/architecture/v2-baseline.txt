@@ -17,11 +17,8 @@ C1 promo 2
 C1 returns 2
 CA legacy 7
 CA order 1
-E1 cart 1
 E1 legacy 78
-E1 order 15
 E1 platform 6
-E1 promo 4
 H1 legacy 6
 J1 legacy 9
 J1 platform 2

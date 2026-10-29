@@ -20,8 +20,7 @@ import com.maxsolch.shop.order.app.OrderEditing;
 import com.maxsolch.shop.order.app.OrderLifecycle;
 import com.maxsolch.shop.order.app.OrderPayments;
 import com.maxsolch.shop.order.app.Checkout;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.NotFoundException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -123,35 +122,35 @@ class AdminOrderControllerTest {
     @Test
     void status_unknown_isBadRequest_beforeAnyLookup() {
         assertThatThrownBy(() -> controller().updateStatus(id, status(" bogus ", null, null, null, null, null, null)))
-                .isInstanceOf(BadRequestException.class).hasMessage("неизвестный статус:  bogus ");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessage("неизвестный статус:  bogus ");
         verifyNoInteractions(orders, checkout, lifecycle, audit, payments);
     }
 
     @Test
     void status_shippedWithoutTracking_isBadRequest() {
         assertThatThrownBy(() -> controller().updateStatus(id, status("SHIPPED", "  ", null, null, null, null, null)))
-                .isInstanceOf(BadRequestException.class).hasMessage("укажите номер ТТН");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessage("укажите номер ТТН");
         verifyNoInteractions(orders, checkout, lifecycle, audit);
     }
 
     @Test
     void status_rejectedWithoutReason_isBadRequest() {
         assertThatThrownBy(() -> controller().updateStatus(id, status("rejected", null, " ", null, null, null, null)))
-                .isInstanceOf(BadRequestException.class).hasMessage("укажите причину отклонения");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessage("укажите причину отклонения");
         verifyNoInteractions(orders, checkout, lifecycle, audit);
     }
 
     @Test
     void status_reasonOtherWithoutText_isBadRequest() {
         assertThatThrownBy(() -> controller().updateStatus(id, status("REJECTED", null, null, null, "OTHER", null, null)))
-                .isInstanceOf(BadRequestException.class).hasMessage("для причины «Другое» напишите пояснение");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessage("для причины «Другое» напишите пояснение");
         verifyNoInteractions(orders, checkout, lifecycle, audit);
     }
 
     @Test
     void status_unknownReasonCode_isBadRequest() {
         assertThatThrownBy(() -> controller().updateStatus(id, status("REJECTED", null, "x", null, "WAT", null, null)))
-                .isInstanceOf(BadRequestException.class).hasMessage("неизвестная причина отказа: WAT");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessage("неизвестная причина отказа: WAT");
         verifyNoInteractions(orders, checkout, lifecycle, audit);
     }
 
@@ -160,14 +159,14 @@ class AdminOrderControllerTest {
         when(orders.findById(any())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> controller().updateStatus(id, status("APPROVED", null, null, null, null, null, null)))
-                .isInstanceOf(NotFoundException.class).hasMessage("заказ не найден");
+                .isInstanceOf(DomainException.NotFound.class).hasMessage("заказ не найден");
         verifyNoInteractions(checkout, lifecycle, audit, payments);
     }
 
     @Test
     void status_garbageId_isNotFound() {
         assertThatThrownBy(() -> controller().updateStatus("nope", status("APPROVED", null, null, null, null, null, null)))
-                .isInstanceOf(NotFoundException.class).hasMessage("заказ не найден");
+                .isInstanceOf(DomainException.NotFound.class).hasMessage("заказ не найден");
     }
 
     @Test
@@ -281,10 +280,10 @@ class AdminOrderControllerTest {
     @Test
     void status_serviceFails_noAudit_noInvoiceClosing() {
         when(lifecycle.changeStatus(any(byte[].class), any(), any(), any(), any(), anyBoolean(), anyBoolean()))
-                .thenThrow(new BadRequestException("нельзя"));
+                .thenThrow(new DomainException.BadRequest("нельзя"));
 
         assertThatThrownBy(() -> controller().updateStatus(id, status("REJECTED", null, "x", null, null, null, null)))
-                .isInstanceOf(BadRequestException.class).hasMessage("нельзя");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessage("нельзя");
         verifyNoInteractions(audit, payments);
     }
 
@@ -381,7 +380,7 @@ class AdminOrderControllerTest {
     @Test
     void board_customRangeWithoutDates_isBadRequest() {
         assertThatThrownBy(() -> controller().board(null, "custom", null, null, null))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 
     // ------------------------------------------------------------------ list / by-user
@@ -422,7 +421,7 @@ class AdminOrderControllerTest {
     @Test
     void list_unknownStatus_isBadRequest() {
         assertThatThrownBy(() -> controller().list("lost", null, "month", null, null, 0, 20, "createdAt", "desc", false))
-                .isInstanceOf(BadRequestException.class).hasMessage("неизвестный статус: lost");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessage("неизвестный статус: lost");
         verifyNoInteractions(orders);
     }
 

@@ -7,7 +7,7 @@ import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.order.infra.OrderSearchTerm;
-import com.maxsolch.shop.platform.error.NotFoundException;
+import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.api.OrderBoardDto;
 import com.maxsolch.shop.order.api.OrderCardDto;
 import org.springframework.data.domain.PageRequest;
@@ -58,9 +58,9 @@ public class AdminOrderQueries {
         try {
             key = UuidUtil.toBytes(id);
         } catch (IllegalArgumentException e) {
-            throw new NotFoundException("заказ не найден");
+            throw OrderErrors.notFound("заказ не найден");
         }
-        return orderRepository.findById(key).orElseThrow(() -> new NotFoundException("заказ не найден"));
+        return orderRepository.findById(key).orElseThrow(() -> OrderErrors.notFound("заказ не найден"));
     }
 
     /**

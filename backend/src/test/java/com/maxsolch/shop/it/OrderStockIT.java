@@ -5,7 +5,7 @@ import com.maxsolch.shop.order.app.OrderLifecycle;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.order.app.Checkout;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -64,7 +64,7 @@ class OrderStockIT extends AbstractMysqlIT {
         Product p = product(10_000, 2);
 
         assertThatThrownBy(() -> orders.createOrder(checkout(7_003, "+380671110003", p, 3)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
 
         assertThat(stockOf(p)).isEqualTo(2);
         assertThat(lotQtyLeft(p)).containsExactly(2);

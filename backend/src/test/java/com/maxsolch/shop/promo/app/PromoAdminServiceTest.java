@@ -3,7 +3,7 @@ package com.maxsolch.shop.promo.app;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.promo.api.PromoCodeUpsertRequest;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -63,7 +63,7 @@ class PromoAdminServiceTest {
         when(repository.findByIdForUpdate(existing.getId())).thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> service.delete(id))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("можно только выключить")
                 .extracting("code").isEqualTo("PROMO_USED");
         verify(repository, never()).delete(any());
@@ -75,7 +75,7 @@ class PromoAdminServiceTest {
         when(repository.countOrdersWithCode("SALE")).thenReturn(1L);
 
         assertThatThrownBy(() -> service.delete(id))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .extracting("code").isEqualTo("PROMO_USED");
         verify(repository, never()).delete(any());
     }
@@ -94,7 +94,7 @@ class PromoAdminServiceTest {
         when(repository.findByIdForUpdate(existing.getId())).thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> service.update(id, req("SALE2", 10, 0, null)))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("переименовать нельзя");
     }
 
@@ -112,7 +112,7 @@ class PromoAdminServiceTest {
     @Test
     void zeroDiscount_isRejected() {
         assertThatThrownBy(() -> service.create(req("FREE", 0, 0, null)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test

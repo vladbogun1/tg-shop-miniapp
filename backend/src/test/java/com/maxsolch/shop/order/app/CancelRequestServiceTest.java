@@ -8,7 +8,7 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -100,7 +100,7 @@ class CancelRequestServiceTest {
     @Test
     void approve_reportsRefundFailures_andHandRecordedMoney() {
         when(invoices.findByOrderIdOrderByCreatedAtDesc(orderId)).thenReturn(List.of(paid("inv-1", 10_000, 0)));
-        doThrow(new BadRequestException("monobank отклонил возврат")).when(payments).refund(orderId, "inv-1", null);
+        doThrow(new DomainException.BadRequest("monobank отклонил возврат")).when(payments).refund(orderId, "inv-1", null);
         when(cancelRequests.approveCancelRequest(orderId, "ok")).thenReturn(rejected(30_000));
         when(orderQueries.get(orderId)).thenReturn(rejected(30_000));
 
@@ -116,8 +116,8 @@ class CancelRequestServiceTest {
     void approve_whileBankProcesses_isRefused_nothingChanges() {
         when(payments.hasPaymentInFlight(orderId)).thenReturn(true);
         assertThatThrownBy(() -> service.approve(orderId, null))
-                .isInstanceOf(BadRequestException.class)
-                .satisfies(e -> assertThat(((BadRequestException) e).getCode())
+                .isInstanceOf(DomainException.BadRequest.class)
+                .satisfies(e -> assertThat(((DomainException.BadRequest) e).getCode())
                         .isEqualTo(CancelRequestService.PAYMENT_IN_PROGRESS));
         verify(cancelRequests, never()).approveCancelRequest(any(), any());
         verify(payments, never()).refund(any(), any(), any());

@@ -4,7 +4,7 @@ import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.promo.infra.PromoReservationRepository;
 import com.maxsolch.shop.promo.app.PromoAdminService;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.promo.api.AdminPromoController;
 import com.maxsolch.shop.promo.api.PromoCodeDto;
 import org.junit.jupiter.api.Test;
@@ -56,7 +56,7 @@ class PromoOriginTest {
         assertThat(controller.list("ours")).extracting(PromoCodeDto::code).containsExactly("SUMMER");
         assertThat(controller.list("REVIEW")).extracting(PromoCodeDto::code).containsExactly("THANKS-AAA");
         assertThat(controller.list("personal")).extracting(PromoCodeDto::code).containsExactly("VIP-7");
-        assertThatThrownBy(() -> controller.list("nope")).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> controller.list("nope")).isInstanceOf(DomainException.BadRequest.class);
     }
 
     private static PromoCode code(String code, String source, Long owner) {

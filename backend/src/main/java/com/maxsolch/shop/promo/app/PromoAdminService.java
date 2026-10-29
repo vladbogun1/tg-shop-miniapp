@@ -3,8 +3,8 @@ package com.maxsolch.shop.promo.app;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.NotFoundException;
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.platform.error.ErrorCode;
 import com.maxsolch.shop.promo.api.PromoCodeUpsertRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +38,7 @@ public class PromoAdminService {
     public PromoCode create(PromoCodeUpsertRequest req) {
         String code = req.code().trim();
         if (promoCodeRepository.findByCode(code).isPresent()) {
-            throw new BadRequestException("такой промокод уже есть");
+            throw new DomainException.BadRequest("такой промокод уже есть");
         }
         PromoCode p = new PromoCode();
         p.setCode(code);
@@ -53,7 +53,7 @@ public class PromoAdminService {
     @Transactional
     public Updated update(String id, PromoCodeUpsertRequest req) {
         PromoCode p = promoCodeRepository.findByIdForUpdate(toBytes(id))
-                .orElseThrow(() -> new NotFoundException("промокод не найден"));
+                .orElseThrow(() -> new DomainException.NotFound("промокод не найден"));
         String previousCode = p.getCode();
         String code = req.code().trim();
         if (!code.equals(previousCode)) {
@@ -61,13 +61,13 @@ public class PromoAdminService {
             // looks the code up by that text. After a rename the old orders' uses could never be
             // given back — so a code that has been used keeps its name.
             if (p.getUsesCount() > 0 && !code.equalsIgnoreCase(previousCode)) {
-                throw new BadRequestException(
+                throw new DomainException.BadRequest(
                         "код уже применялся в заказах — переименовать нельзя, создайте новый");
             }
             promoCodeRepository.findByCode(code)
                     .filter(other -> !java.util.Arrays.equals(other.getId(), p.getId()))
                     .ifPresent(other -> {
-                        throw new BadRequestException("такой промокод уже есть");
+                        throw new DomainException.BadRequest("такой промокод уже есть");
                     });
             p.setCode(code);
         }
@@ -78,10 +78,10 @@ public class PromoAdminService {
     @Transactional
     public PromoCode delete(String id) {
         PromoCode p = promoCodeRepository.findByIdForUpdate(toBytes(id))
-                .orElseThrow(() -> new NotFoundException("промокод не найден"));
+                .orElseThrow(() -> new DomainException.NotFound("промокод не найден"));
         // A used code is history (orders keep it as text, reports and refunds look it up): only switch it off.
         if (p.getUsesCount() > 0 || promoCodeRepository.countOrdersWithCode(p.getCode()) > 0) {
-            throw new BadRequestException("Промокод уже использовали — его можно только выключить", PROMO_USED);
+            throw new DomainException.BadRequest("Промокод уже использовали — его можно только выключить", ErrorCode.of(PROMO_USED));
         }
         promoCodeRepository.delete(p);
         return p;
@@ -89,7 +89,7 @@ public class PromoAdminService {
 
     static void apply(PromoCode p, PromoCodeUpsertRequest req) {
         if (req.discountPercent() <= 0 && req.discountAmountMinor() <= 0) {
-            throw new BadRequestException("укажите процент или сумму скидки");
+            throw new DomainException.BadRequest("укажите процент или сумму скидки");
         }
         p.setDiscountPercent(req.discountPercent());
         p.setDiscountAmountMinor(req.discountAmountMinor());
@@ -106,7 +106,7 @@ public class PromoAdminService {
         try {
             return UuidUtil.toBytes(id);
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("неверный идентификатор");
+            throw new DomainException.BadRequest("неверный идентификатор");
         }
     }
 }

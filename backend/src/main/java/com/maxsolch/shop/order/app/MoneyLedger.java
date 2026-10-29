@@ -5,7 +5,7 @@ import com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement.Kind;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement.Source;
 import com.maxsolch.shop.order.infra.OrderMoneyMovementRepository;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.order.domain.OrderErrors;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -55,12 +55,12 @@ public class MoneyLedger {
     /** The channel named in a request; blank or unknown is a 400 naming the allowed values. */
     public static Channel parseChannel(String value) {
         if (value == null || value.isBlank()) {
-            throw new BadRequestException("укажите, как вернули деньги");
+            throw OrderErrors.badRequest("укажите, как вернули деньги");
         }
         try {
             return Channel.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("неизвестный способ: " + value);
+            throw OrderErrors.badRequest("неизвестный способ: " + value);
         }
     }
 

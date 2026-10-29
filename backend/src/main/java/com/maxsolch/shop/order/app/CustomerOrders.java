@@ -4,8 +4,7 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.platform.error.ForbiddenException;
-import com.maxsolch.shop.platform.error.NotFoundException;
+import com.maxsolch.shop.order.domain.OrderErrors;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -35,13 +34,13 @@ public class CustomerOrders {
         try {
             key = UuidUtil.toBytes(id);
         } catch (IllegalArgumentException e) {
-            throw new NotFoundException(messages.current("api.order.notFound"));
+            throw OrderErrors.notFound(messages.current("api.order.notFound"));
         }
         Order order = orderRepository.findById(key)
                 .filter(o -> o.getArchivedAt() == null)
-                .orElseThrow(() -> new NotFoundException(messages.current("api.order.notFound")));
+                .orElseThrow(() -> OrderErrors.notFound(messages.current("api.order.notFound")));
         if (order.getUserId() == null || order.getUserId() != userId) {
-            throw new ForbiddenException(messages.current("api.order.notYours"));
+            throw OrderErrors.forbidden(messages.current("api.order.notYours"));
         }
         return order;
     }

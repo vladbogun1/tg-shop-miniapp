@@ -10,8 +10,7 @@ import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.media.MediaSigner;
 import com.maxsolch.shop.order.infra.OrderMessageRepository;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.NotFoundException;
+import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.api.ConversationDto;
 import com.maxsolch.shop.order.api.MessageDto;
 import com.maxsolch.shop.order.api.SendMessageRequest;
@@ -210,7 +209,7 @@ public class MessageService {
         MessageType type = parseType(req.type());
         if ((req.text() == null || req.text().isBlank())
                 && (req.attachmentUrl() == null || req.attachmentUrl().isBlank())) {
-            throw new BadRequestException(messages.current("api.chat.needsContent"));
+            throw OrderErrors.badRequest(messages.current("api.chat.needsContent"));
         }
         OrderMessage m = new OrderMessage();
         m.setOrder(order);
@@ -237,13 +236,13 @@ public class MessageService {
         try {
             return MessageType.valueOf(type.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("unknown message type: " + type);
+            throw OrderErrors.badRequest("unknown message type: " + type);
         }
     }
 
     private Order order(byte[] orderId) {
         return orderRepository.findById(orderId)
-                .orElseThrow(() -> new NotFoundException(messages.current("api.order.notFound")));
+                .orElseThrow(() -> OrderErrors.notFound(messages.current("api.order.notFound")));
     }
 
     private MessageDto toDto(OrderMessage m) {

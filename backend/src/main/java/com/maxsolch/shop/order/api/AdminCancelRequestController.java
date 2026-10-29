@@ -9,7 +9,7 @@ import com.maxsolch.shop.order.app.CancelRequestService;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.order.app.OrderQueryService;
-import com.maxsolch.shop.platform.error.NotFoundException;
+import com.maxsolch.shop.order.domain.OrderErrors;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -84,8 +84,8 @@ public class AdminCancelRequestController {
         try {
             key = UuidUtil.toBytes(id);
         } catch (IllegalArgumentException e) {
-            throw new NotFoundException("заказ не найден");
+            throw OrderErrors.notFound("заказ не найден");
         }
-        return orderRepository.findById(key).orElseThrow(() -> new NotFoundException("заказ не найден"));
+        return orderRepository.findById(key).orElseThrow(() -> OrderErrors.notFound("заказ не найден"));
     }
 }

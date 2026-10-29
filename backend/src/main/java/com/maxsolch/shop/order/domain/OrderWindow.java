@@ -1,6 +1,5 @@
 package com.maxsolch.shop.order.domain;
 
-import com.maxsolch.shop.platform.error.BadRequestException;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -52,7 +51,7 @@ public record OrderWindow(Instant from, Instant to) {
             from = LocalDate.parse(fromDate);
             to = LocalDate.parse(toDate);
         } catch (DateTimeParseException | NullPointerException e) {
-            throw new BadRequestException("custom range needs from/to as yyyy-MM-dd");
+            throw OrderErrors.badRequest("custom range needs from/to as yyyy-MM-dd");
         }
         if (to.isBefore(from)) {
             LocalDate tmp = from;
@@ -60,7 +59,7 @@ public record OrderWindow(Instant from, Instant to) {
             to = tmp;
         }
         if (ChronoUnit.DAYS.between(from, to) + 1 > MAX_CUSTOM_DAYS) {
-            throw new BadRequestException("custom range is limited to " + MAX_CUSTOM_DAYS + " days");
+            throw OrderErrors.badRequest("custom range is limited to " + MAX_CUSTOM_DAYS + " days");
         }
         return new OrderWindow(start(from, zone), start(to.plusDays(1), zone));
     }

@@ -4,8 +4,7 @@ import com.maxsolch.shop.order.infra.OrderGuardStore;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.TooManyRequestsException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -90,15 +89,15 @@ class OrderGuardTest {
                 new CreateOrderCommand.Line("00000000-0000-0000-0000-000000000001", null, 3),
                 new CreateOrderCommand.Line("00000000-0000-0000-0000-000000000001", null, 3));
         assertThatThrownBy(() -> guard.check(USER, l))
-                .isInstanceOf(BadRequestException.class)
-                .satisfies(e -> assertThat(((BadRequestException) e).getCode()).isEqualTo(OrderGuard.QTY_LIMIT));
+                .isInstanceOf(DomainException.BadRequest.class)
+                .satisfies(e -> assertThat(((DomainException.BadRequest) e).getCode()).isEqualTo(OrderGuard.QTY_LIMIT));
         verify(store, never()).countUnpaid(anyLong());
     }
 
     @Test
     void unitsPerOrder() {
         assertThatThrownBy(() -> guard.check(USER, lines(5, 5, 5, 5, 1)))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessage("api.antibot.unitsLimit");
     }
 
@@ -106,17 +105,17 @@ class OrderGuardTest {
     void tooManyUnpaid() {
         when(store.countUnpaid(USER)).thenReturn(2);
         assertThatThrownBy(() -> guard.check(USER, lines(1)))
-                .isInstanceOf(BadRequestException.class)
-                .satisfies(e -> assertThat(((BadRequestException) e).getCode()).isEqualTo(OrderGuard.TOO_MANY_UNPAID));
+                .isInstanceOf(DomainException.BadRequest.class)
+                .satisfies(e -> assertThat(((DomainException.BadRequest) e).getCode()).isEqualTo(OrderGuard.TOO_MANY_UNPAID));
     }
 
     @Test
     void cooldown_tellsHowLongToWait() {
         when(store.createdSince(anyLong(), any())).thenReturn(List.of(NOW.minusSeconds(20)));
         assertThatThrownBy(() -> guard.check(USER, lines(1)))
-                .isInstanceOf(TooManyRequestsException.class)
+                .isInstanceOf(DomainException.TooManyRequests.class)
                 .satisfies(e -> {
-                    TooManyRequestsException t = (TooManyRequestsException) e;
+                    DomainException.TooManyRequests t = (DomainException.TooManyRequests) e;
                     assertThat(t.getCode()).isEqualTo(OrderGuard.ORDER_COOLDOWN);
                     assertThat(t.getRetryAfterSeconds()).isEqualTo(40);
                 });
@@ -128,9 +127,9 @@ class OrderGuardTest {
                 NOW.minus(Duration.ofHours(5)), NOW.minus(Duration.ofHours(3)), NOW.minus(Duration.ofHours(1)));
         when(store.createdSince(anyLong(), any())).thenReturn(five);
         assertThatThrownBy(() -> guard.check(USER, lines(1)))
-                .isInstanceOf(TooManyRequestsException.class)
+                .isInstanceOf(DomainException.TooManyRequests.class)
                 .satisfies(e -> {
-                    TooManyRequestsException t = (TooManyRequestsException) e;
+                    DomainException.TooManyRequests t = (DomainException.TooManyRequests) e;
                     assertThat(t.getCode()).isEqualTo(OrderGuard.ORDER_DAILY_LIMIT);
                     assertThat(t.getRetryAfterSeconds()).isEqualTo(Duration.ofHours(4).toSeconds());
                 });
@@ -141,9 +140,9 @@ class OrderGuardTest {
         when(store.selfCancelsSince(anyLong(), any())).thenReturn(List.of(
                 NOW.minus(Duration.ofHours(6)), NOW.minus(Duration.ofHours(2)), NOW.minus(Duration.ofHours(1))));
         assertThatThrownBy(() -> guard.check(USER, lines(1)))
-                .isInstanceOf(TooManyRequestsException.class)
+                .isInstanceOf(DomainException.TooManyRequests.class)
                 .satisfies(e -> {
-                    TooManyRequestsException t = (TooManyRequestsException) e;
+                    DomainException.TooManyRequests t = (DomainException.TooManyRequests) e;
                     assertThat(t.getCode()).isEqualTo(OrderGuard.CANCEL_LIMIT);
                     assertThat(t.getRetryAfterSeconds()).isEqualTo(Duration.ofHours(18).toSeconds());
                 });

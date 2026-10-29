@@ -14,7 +14,7 @@ public final class OrderErrors {
     }
 
     public static DomainException.BadRequest badRequest(String message) {
-        return new DomainException.BadRequest(message, (ErrorCode) null);
+        return new DomainException.BadRequest(message);
     }
 
     public static DomainException.BadRequest badRequest(String message, String code) {
@@ -22,6 +22,14 @@ public final class OrderErrors {
     }
 
     public static DomainException.NotFound notFound(String message) {
-        return new DomainException.NotFound(message, (ErrorCode) null);
+        return new DomainException.NotFound(message);
+    }
+
+    public static DomainException.Forbidden forbidden(String message) {
+        return new DomainException.Forbidden(message);
+    }
+
+    public static DomainException.TooManyRequests tooManyRequests(String message, String code, long retryAfterSeconds) {
+        return new DomainException.TooManyRequests(message, ErrorCode.of(code), retryAfterSeconds);
     }
 }

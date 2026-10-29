@@ -8,8 +8,7 @@ import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.promo.infra.PromoReservationRepository;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.promo.app.PromoAdminService;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.NotFoundException;
+import com.maxsolch.shop.platform.error.DomainException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -59,7 +58,7 @@ public class AdminPromoController {
         try {
             only = PromoOrigin.parse(origin);
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("origin: OURS, PERSONAL или REVIEW");
+            throw new DomainException.BadRequest("origin: OURS, PERSONAL или REVIEW");
         }
         Map<String, Long> reserved = new HashMap<>();
         for (Object[] r : reservationRepository.liveCounts(Instant.now())) {
@@ -129,9 +128,9 @@ public class AdminPromoController {
         try {
             key = UuidUtil.toBytes(id);
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("неверный идентификатор");
+            throw new DomainException.BadRequest("неверный идентификатор");
         }
-        return promoCodeRepository.findById(key).orElseThrow(() -> new NotFoundException("промокод не найден"));
+        return promoCodeRepository.findById(key).orElseThrow(() -> new DomainException.NotFound("промокод не найден"));
     }
 
     private PromoCodeDto toDto(PromoCode p) {

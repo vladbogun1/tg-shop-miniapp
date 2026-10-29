@@ -14,8 +14,7 @@ import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.domain.RejectReasonCode;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.NotFoundException;
+import com.maxsolch.shop.order.domain.OrderErrors;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,7 +62,7 @@ public class OrderMerge {
     @Transactional(readOnly = true)
     public List<Candidate> candidates(byte[] orderId) {
         Order order = orderRepository.findWithItemsById(orderId)
-                .orElseThrow(() -> new NotFoundException("order not found"));
+                .orElseThrow(() -> OrderErrors.notFound("order not found"));
         List<Order> open = new ArrayList<>();
         open.addAll(orderRepository.findWithItemsByStatus(OrderStatus.NEW));
         open.addAll(orderRepository.findWithItemsByStatus(OrderStatus.APPROVED));
@@ -96,11 +95,11 @@ public class OrderMerge {
     public Result merge(byte[] targetId, byte[] sourceId, boolean useSourceDelivery, boolean notifyCustomer,
                         String note, String adminName) {
         if (Arrays.equals(targetId, sourceId)) {
-            throw new BadRequestException("выберите другой заказ");
+            throw OrderErrors.badRequest("выберите другой заказ");
         }
         String cleanNote = note == null || note.isBlank() ? null : note.trim();
         if (cleanNote != null && cleanNote.length() > 500) {
-            throw new BadRequestException("комментарий длиннее 500 символов");
+            throw OrderErrors.badRequest("комментарий длиннее 500 символов");
         }
         // Rows are locked in id order, so two admins merging the same pair cannot deadlock.
         boolean targetFirst = Arrays.compareUnsigned(targetId, sourceId) < 0;
@@ -109,14 +108,14 @@ public class OrderMerge {
         Order target = targetFirst ? first : second;
         Order source = targetFirst ? second : first;
         if (!sameCustomer(target, source)) {
-            throw new BadRequestException("объединять можно только заказы одного покупателя");
+            throw OrderErrors.badRequest("объединять можно только заказы одного покупателя");
         }
         String blocked = blocker(target, true);
         if (blocked == null) {
             blocked = blocker(source, false);
         }
         if (blocked != null) {
-            throw new BadRequestException(blocked);
+            throw OrderErrors.badRequest(blocked);
         }
         String targetShort = shortId(target.getId());
         String sourceShort = shortId(source.getId());

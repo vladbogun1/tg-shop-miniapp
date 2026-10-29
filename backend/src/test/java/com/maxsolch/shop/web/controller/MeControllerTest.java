@@ -18,8 +18,7 @@ import com.maxsolch.shop.service.CustomerProfileService;
 import com.maxsolch.shop.order.app.MessageService;
 import com.maxsolch.shop.order.app.OrderQueryService;
 import com.maxsolch.shop.order.app.OrderLookup;
-import com.maxsolch.shop.platform.error.ForbiddenException;
-import com.maxsolch.shop.platform.error.NotFoundException;
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.web.dto.MeProfileDto;
 import com.maxsolch.shop.order.app.OrderDetailDto;
 import com.maxsolch.shop.order.api.OrderSummaryDto;
@@ -117,7 +116,7 @@ class MeControllerTest {
         order.setArchivedAt(Instant.now());
 
         assertThatThrownBy(() -> controller().markRead(id))
-                .isInstanceOf(NotFoundException.class).hasMessage("api.order.notFound");
+                .isInstanceOf(DomainException.NotFound.class).hasMessage("api.order.notFound");
         verifyNoInteractions(chat);
     }
 
@@ -126,13 +125,13 @@ class MeControllerTest {
         when(orders.findById(any())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> controller().markRead(id))
-                .isInstanceOf(NotFoundException.class).hasMessage("api.order.notFound");
+                .isInstanceOf(DomainException.NotFound.class).hasMessage("api.order.notFound");
     }
 
     @Test
     void ownedOrder_garbageId_isNotFound() {
         assertThatThrownBy(() -> controller().markRead("zzz"))
-                .isInstanceOf(NotFoundException.class).hasMessage("api.order.notFound");
+                .isInstanceOf(DomainException.NotFound.class).hasMessage("api.order.notFound");
         verifyNoInteractions(orders);
     }
 
@@ -141,7 +140,7 @@ class MeControllerTest {
         loginAs(5L);
 
         assertThatThrownBy(() -> controller().markRead(id))
-                .isInstanceOf(ForbiddenException.class).hasMessage("api.order.notYours");
+                .isInstanceOf(DomainException.Forbidden.class).hasMessage("api.order.notYours");
         verifyNoInteractions(chat);
     }
 
@@ -193,7 +192,7 @@ class MeControllerTest {
         loginAs(5L);
 
         assertThatThrownBy(() -> controller().refreshPayment(id, Locale.ENGLISH))
-                .isInstanceOf(ForbiddenException.class);
+                .isInstanceOf(DomainException.Forbidden.class);
         verify(payments, never()).refreshOrder(any());
     }
 

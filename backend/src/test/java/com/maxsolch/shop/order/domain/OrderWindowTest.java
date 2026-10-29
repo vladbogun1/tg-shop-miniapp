@@ -1,6 +1,6 @@
 package com.maxsolch.shop.order.domain;
 
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -58,6 +58,6 @@ class OrderWindowTest {
     @Test
     void custom_withoutDates_isRejected() {
         assertThatThrownBy(() -> OrderWindow.parse("custom", null, "2026-09-10", KYIV, now))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 }
