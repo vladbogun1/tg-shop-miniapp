@@ -8,6 +8,8 @@ import com.maxsolch.shop.domain.RejectReasonCode;
 import com.maxsolch.shop.domain.SenderType;
 import com.maxsolch.shop.payment.OnlinePaymentService;
 import com.maxsolch.shop.repository.OrderRepository;
+import com.maxsolch.shop.service.AdminOrderQueries;
+import com.maxsolch.shop.service.AdminOrderStatusService;
 import com.maxsolch.shop.service.OrderAdjustmentService;
 import com.maxsolch.shop.service.OrderQueryService;
 import com.maxsolch.shop.service.OrderService;
@@ -92,8 +94,10 @@ class AdminOrderControllerTest {
     }
 
     AdminOrderController controller() {
-        return new AdminOrderController(orders, orderService, queries, null, audit, null, null, adjustments,
-                payments);
+        AdminOrderQueries lookup = new AdminOrderQueries(orders, queries, null);
+        return new AdminOrderController(lookup,
+                new AdminOrderStatusService(lookup, orderService, payments, audit),
+                orderService, queries, null, audit, null, null, adjustments, payments);
     }
 
     private static UpdateOrderStatusRequest status(String s, String tracking, String reason, Boolean restock,

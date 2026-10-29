@@ -1,31 +1,24 @@
 package com.maxsolch.shop.web.controller;
 
-import com.maxsolch.shop.domain.OrderMoney;
-
-import com.maxsolch.shop.analytics.AnalyticsZone;
 import com.maxsolch.shop.common.MoneyFormat;
-import com.maxsolch.shop.config.AppProperties;
 import com.maxsolch.shop.audit.AdminAuditService;
 import com.maxsolch.shop.common.UuidUtil;
 import com.maxsolch.shop.domain.Order;
 import com.maxsolch.shop.domain.OrderStatus;
 import com.maxsolch.shop.payment.OnlinePaymentService;
-import com.maxsolch.shop.domain.RejectReasonCode;
 import com.maxsolch.shop.domain.SenderType;
 import com.maxsolch.shop.media.ImageStorageService;
 import com.maxsolch.shop.media.UploadValidator;
-import com.maxsolch.shop.repository.OrderRepository;
-import com.maxsolch.shop.repository.OrderSearchTerm;
 import com.maxsolch.shop.security.RequiredAdmin;
 import com.maxsolch.shop.security.RequiredSuperAdmin;
 import com.maxsolch.shop.service.MessageService;
+import com.maxsolch.shop.service.AdminOrderQueries;
+import com.maxsolch.shop.service.AdminOrderStatusService;
 import com.maxsolch.shop.service.OrderAdjustmentService;
 import com.maxsolch.shop.service.OrderMergeService;
 import com.maxsolch.shop.service.OrderQueryService;
 import com.maxsolch.shop.service.OrderService;
-import com.maxsolch.shop.service.OrderWindow;
 import com.maxsolch.shop.web.BadRequestException;
-import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.DispatchOrderDto;
 import com.maxsolch.shop.web.dto.MessageDto;
@@ -40,9 +33,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -55,9 +45,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -68,7 +55,8 @@ import java.util.Map;
 @SecurityRequirement(name = "bearer-jwt")
 public class AdminOrderController {
 
-    private final OrderRepository orderRepository;
+    private final AdminOrderQueries queries;
+    private final AdminOrderStatusService statusService;
     private final OrderService orderService;
     private final OrderQueryService orderQueryService;
     private final MessageService messageService;
@@ -88,19 +76,8 @@ public class AdminOrderController {
         this.merges = merges;
     }
 
-    /** The shop's timezone: calendar periods («Этот месяц», «Свой») are cut in it. */
-    private AppProperties props;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setProps(AppProperties props) {
-        this.props = props;
-    }
-
-    private OrderWindow window(String range, String from, String to) {
-        return OrderWindow.parse(range, from, to, AnalyticsZone.of(props), Instant.now());
-    }
-
-    public AdminOrderController(OrderRepository orderRepository,
+    public AdminOrderController(AdminOrderQueries queries,
+                                AdminOrderStatusService statusService,
                                 OrderService orderService,
                                 OrderQueryService orderQueryService,
                                 MessageService messageService,
@@ -109,7 +86,8 @@ public class AdminOrderController {
                                 UploadValidator uploadValidator,
                                 OrderAdjustmentService adjustments,
                                 OnlinePaymentService payments) {
-        this.orderRepository = orderRepository;
+        this.queries = queries;
+        this.statusService = statusService;
         this.orderService = orderService;
         this.orderQueryService = orderQueryService;
         this.messageService = messageService;
@@ -119,19 +97,6 @@ public class AdminOrderController {
         this.adjustments = adjustments;
         this.payments = payments;
     }
-
-    /** Board column key of the parcels on their way back (not an {@link OrderStatus}). */
-    static final String RETURNING_COLUMN = "RETURNING";
-
-    /** Per-status column cap on the board so we never load all 10k orders. */
-    private static final int BOARD_COLUMN_LIMIT = 300;
-
-    /** Whitelist of sortable list columns -> Order entity property names. */
-    private static final Map<String, String> SORTABLE = Map.of(
-            "createdAt", "createdAt",
-            "totalMinor", "totalMinor",
-            "customerName", "customerName",
-            "status", "status");
 
     @GetMapping("/unread-count")
     @Operation(summary = "Total unread customer messages across all orders (admin bell)")
@@ -154,79 +119,13 @@ public class AdminOrderController {
                                @RequestParam(required = false) String from,
                                @RequestParam(required = false) String to,
                                @RequestParam(required = false) Integer closedLimit) {
-        OrderWindow w = window(range, from, to);
-        OrderSearchTerm term = OrderSearchTerm.parse(q);
-        int closedCap = closedLimit == null
-                ? BOARD_COLUMN_LIMIT
-                : Math.min(Math.max(1, closedLimit), BOARD_COLUMN_LIMIT);
-
-        // Fetch every column first, then map them together: the unread and item counts come from
-        // two grouped queries for the whole board instead of two per card (5 columns x 300 cards
-        // used to mean ~3000 queries on every 10-second refresh).
-        // Active orders are never hidden by the period: a parcel stuck at Nova Poshta for five
-        // weeks used to drop off the board when "Месяц" was selected.
-        Map<String, List<Order>> byStatus = new LinkedHashMap<>();
-        List<Order> all = new ArrayList<>();
-        for (OrderStatus status : OrderStatus.values()) {
-            boolean closed = isClosed(status);
-            List<Order> orders = orderRepository.searchByStatus(status, term.like(), term.idLo(), term.idHi(),
-                    closed ? w.from() : null, closed ? w.to() : null, PageRequest.of(0, closed ? closedCap : BOARD_COLUMN_LIMIT));
-            byStatus.put(status.name(), orders);
-            all.addAll(orders);
-        }
-        // «Едет назад» is not a status: a refused parcel (REJECTED) or the returned part of a
-        // delivered order travelling back — a column of its own until «Посылка вернулась».
-        List<Order> returning = orderRepository.searchReturning(term.like(), term.idLo(), term.idHi(),
-                PageRequest.of(0, BOARD_COLUMN_LIMIT));
-        byStatus.put(RETURNING_COLUMN, returning);
-        List<Order> withReturning = new ArrayList<>(all);
-        withReturning.addAll(returning);
-        OrderQueryService.CardContext ctx =
-                orderQueryService.cardContext(withReturning, SenderType.CUSTOMER);
-
-        Map<String, List<OrderCardDto>> columns = new LinkedHashMap<>();
-        byStatus.forEach((status, orders) ->
-                columns.put(status, orders.stream().map(o -> orderQueryService.toCard(o, ctx)).toList()));
-
-        // True per-column totals and money sums in one grouped query per time window.
-        Map<String, Long> counts = new LinkedHashMap<>();
-        Map<String, Long> sums = new LinkedHashMap<>();
-        for (OrderStatus status : OrderStatus.values()) {
-            counts.put(status.name(), 0L);
-            sums.put(status.name(), 0L);
-        }
-        List<Object[]> allTime = orderRepository.statsByStatus(term.like(), term.idLo(), term.idHi(), null, null);
-        List<Object[]> ranged = w.unbounded() ? allTime
-                : orderRepository.statsByStatus(term.like(), term.idLo(), term.idHi(), w.from(), w.to());
-        putStats(allTime, false, counts, sums);
-        putStats(ranged, true, counts, sums);
-        counts.put(RETURNING_COLUMN, orderRepository.countReturning(term.like(), term.idLo(), term.idHi()));
-        return new OrderBoardDto(columns, counts, sums);
-    }
-
-    /** DELIVERED / REJECTED: the only columns the period and the short cap apply to. */
-    private static boolean isClosed(OrderStatus status) {
-        return status == OrderStatus.DELIVERED || status == OrderStatus.REJECTED;
-    }
-
-    private static void putStats(List<Object[]> rows, boolean closed,
-                                 Map<String, Long> counts, Map<String, Long> sums) {
-        for (Object[] row : rows) {
-            OrderStatus status = (OrderStatus) row[0];
-            if (isClosed(status) != closed) {
-                continue;
-            }
-            counts.put(status.name(), ((Number) row[1]).longValue());
-            sums.put(status.name(), row[2] == null ? 0L : ((Number) row[2]).longValue());
-        }
+        return queries.board(q, range, from, to, closedLimit);
     }
 
     @GetMapping("/by-user/{telegramUserId}")
     @Operation(summary = "All orders of a single user (newest first) — for the Users profile")
     public List<OrderCardDto> byUser(@PathVariable long telegramUserId) {
-        return orderQueryService.toCards(
-                orderRepository.findByTgUserIdOrderByCreatedAtDesc(telegramUserId),
-                SenderType.CUSTOMER);
+        return queries.byUser(telegramUserId);
     }
 
     @GetMapping
@@ -241,23 +140,7 @@ public class AdminOrderController {
                                    @RequestParam(defaultValue = "createdAt") String sortBy,
                                    @RequestParam(defaultValue = "desc") String sortDir,
                                    @RequestParam(defaultValue = "false") boolean archived) {
-        OrderStatus statusFilter = parseStatusOrNull(status);
-        OrderSearchTerm term = OrderSearchTerm.parse(q);
-        OrderWindow w = window(range, from, to);
-        Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), 200),
-                sortOf(sortBy, sortDir));
-        return orderQueryService.toCards(
-                orderRepository.search(statusFilter, archived, term.like(), term.idLo(), term.idHi(), w.from(), w.to(), pageable).getContent(),
-                SenderType.CUSTOMER);
-    }
-
-    /** Whitelisted sort, falling back to {@code createdAt desc} for unknown fields/directions. */
-    private static Sort sortOf(String sortBy, String sortDir) {
-        String property = SORTABLE.getOrDefault(sortBy, "createdAt");
-        Sort.Direction direction = "asc".equalsIgnoreCase(sortDir)
-                ? Sort.Direction.ASC
-                : Sort.Direction.DESC;
-        return Sort.by(direction, property);
+        return queries.list(parseStatusOrNull(status), q, range, from, to, page, size, sortBy, sortDir, archived);
     }
 
     @GetMapping("/dispatch")
@@ -284,50 +167,7 @@ public class AdminOrderController {
     @Operation(summary = "Change order status")
     public OrderDetailDto updateStatus(@PathVariable String id,
                                        @Valid @RequestBody UpdateOrderStatusRequest req) {
-        OrderStatus target = parseStatus(req.status());
-        boolean restock = req.restock() == null || req.restock();
-        RejectReasonCode reasonCode = parseReasonCode(req.rejectReasonCode());
-        if (target == OrderStatus.SHIPPED && (req.trackingNumber() == null || req.trackingNumber().isBlank())) {
-            throw new BadRequestException("укажите номер ТТН");
-        }
-        if (target == OrderStatus.REJECTED && reasonCode == null
-                && (req.rejectReason() == null || req.rejectReason().isBlank())) {
-            throw new BadRequestException("укажите причину отклонения");
-        }
-        if (reasonCode == RejectReasonCode.OTHER && (req.rejectReason() == null || req.rejectReason().isBlank())) {
-            throw new BadRequestException("для причины «Другое» напишите пояснение");
-        }
-        Order before = load(id);
-        // Read before the change: shipping does not move the money, but the check belongs to the order as it was.
-        boolean unpaidShip = target == OrderStatus.SHIPPED && OrderMoney.onlinePaymentMissing(before);
-        long missingMinor = unpaidShip ? OrderMoney.amountDueMinor(before) : 0;
-        boolean inTransit = target == OrderStatus.REJECTED && Boolean.TRUE.equals(req.returnInTransit());
-        Order updated = inTransit
-                ? orderService.reject(before.getId(), req.rejectReason(), reasonCode, restock, true)
-                : orderService.changeStatus(before.getId(), target,
-                        req.trackingNumber(), req.rejectReason(), reasonCode, restock, Boolean.TRUE.equals(req.shipUnpaid()));
-        if (target == OrderStatus.REJECTED) {
-            // An approved order stays payable past its deadline — close the open monobank pages, so
-            // nobody pays for an order we have just cancelled.
-            payments.closeOpenInvoices(updated.getId());
-        }
-        if (unpaidShip) {
-            // Shown in the order's «История»: who decided to send it without the money.
-            String who = audit.currentAdminName();
-            audit.record("ORDER_SHIP_UNPAID", "ORDER", id, "отправлен без онлайн-оплаты (не пришло "
-                    + MoneyFormat.uah(missingMinor) + ") по решению админа" + (who == null || who.isBlank() ? "" : " " + who));
-        }
-        audit.record("ORDER_STATUS", "ORDER", id,
-                "статус → " + target.name()
-                        + (req.trackingNumber() == null ? "" : ", ТТН " + req.trackingNumber())
-                        + (reasonCode == null ? "" : ", код причины " + reasonCode.name())
-                        + (req.rejectReason() == null || req.rejectReason().isBlank() ? "" : ", причина: " + req.rejectReason())
-                        + (target == OrderStatus.REJECTED
-                                ? (OrderService.RETURN_IN_TRANSIT.equals(updated.getReturnStatus())
-                                        ? ", посылка едет назад (сток — по приходу)"
-                                        : restock ? ", сток возвращён" : ", БЕЗ возврата стока")
-                                : ""));
-        return orderQueryService.toDetail(updated);
+        return orderQueryService.toDetail(statusService.change(id, req));
     }
 
     @PatchMapping("/{id}/tracking")
@@ -707,35 +547,13 @@ public class AdminOrderController {
     }
 
     private Order load(String id) {
-        byte[] key;
-        try {
-            key = UuidUtil.toBytes(id);
-        } catch (IllegalArgumentException e) {
-            throw new NotFoundException("заказ не найден");
-        }
-        return orderRepository.findById(key).orElseThrow(() -> new NotFoundException("заказ не найден"));
-    }
-
-    private OrderStatus parseStatus(String s) {
-        try {
-            return OrderStatus.valueOf(s.trim().toUpperCase());
-        } catch (Exception e) {
-            throw new BadRequestException("неизвестный статус: " + s);
-        }
-    }
-
-    private RejectReasonCode parseReasonCode(String s) {
-        try {
-            return RejectReasonCode.parseOrNull(s);
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException("неизвестная причина отказа: " + s);
-        }
+        return queries.load(id);
     }
 
     private OrderStatus parseStatusOrNull(String s) {
         if (s == null || s.isBlank()) {
             return null;
         }
-        return parseStatus(s);
+        return AdminOrderStatusService.parseStatus(s);
     }
 }
