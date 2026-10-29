@@ -7,7 +7,7 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { db, tx } from "./db.js";
 import { config } from "./config.js";
-import { profiles } from "./shop.js";
+import { freshFacts, profiles } from "./shop.js";
 import { liveEntries } from "./pools.js";
 
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
@@ -21,6 +21,12 @@ export function getLock(pool) {
 export async function lock(pool, by) {
   const existing = getLock(pool);
   if (existing) return existing;
+  // A lock is final: taken while pumpkins and orders still count, it would leave everyone after it out.
+  if (Date.now() < config.endsAt.getTime()) {
+    throw new Error(`Збір ще триває до ${config.endsAt.toISOString().slice(0, 16).replace("T", " ")} UTC — фіксувати список зарано`);
+  }
+  // Staff and orders must come from the shop database right now, not from an empty fallback after an error.
+  await freshFacts();
   const entries = await liveEntries(pool);
   if (!entries.length) throw new Error("Немає учасників");
   const snapshot = JSON.stringify(entries.map((e) => [e.tgId, e.tickets, e.pumpkins, e.orders, e.spendMinor]));
@@ -56,7 +62,7 @@ export function pick(seed, round, attempt, entries) {
  * Next round, or (reroll) the last round again: its winner did not answer, is voided and stays
  * out of the pool, the round is drawn with the next attempt number.
  */
-export async function drawRound(pool, by, reroll) {
+export async function drawRound(pool, by, reroll, expectRound) {
   const l = getLock(pool) || (await lock(pool, by));
   return tx(() => {
     const all = draws(pool);
@@ -70,6 +76,8 @@ export async function drawRound(pool, by, reroll) {
     } else {
       round = valid.length + 1;
       if (round > config.rounds[pool]) throw new Error("Усі раунди вже зіграні");
+      // Two clicks or two open screens must not burn two rounds.
+      if (expectRound && Number(expectRound) !== round) throw new Error(`Раунд ${expectRound} уже зіграно — онови сторінку`);
     }
     const attempt = all.filter((d) => d.round === round).length + 1;
     // Winners and voided winners of this draw. Winning one draw does not keep you out of the other.

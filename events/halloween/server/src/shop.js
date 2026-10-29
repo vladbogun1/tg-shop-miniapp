@@ -5,7 +5,7 @@ import { config } from "./config.js";
 
 const enabled = Boolean(config.mysql.user && config.mysql.database);
 const pool = enabled
-  ? mysql.createPool({ ...config.mysql, connectionLimit: 3, timezone: "Z", dateStrings: false, supportBigNumbers: true, bigNumberStrings: true })
+  ? mysql.createPool({ ...config.mysql, connectionLimit: 3, connectTimeout: 3000, timezone: "Z", dateStrings: false, supportBigNumbers: true, bigNumberStrings: true })
   : null;
 
 let cache = { at: 0, data: null };
@@ -42,8 +42,16 @@ export async function shopFacts() {
     cache = { at: Date.now(), data: await fetchAll() };
   } catch (e) {
     console.error("[shop] facts failed:", e.message);
-    if (!cache.data) cache = { at: Date.now(), data: { orders: new Map(), staff: new Set() } };
+    // Keep what we had, ask again in ~15 s instead of on every request.
+    cache = { at: Date.now() - 45_000, data: cache.data || { orders: new Map(), staff: new Set() } };
   }
+  return cache.data;
+}
+
+/** For the lock: straight from the database, an error is an error (no cached or empty fallback). */
+export async function freshFacts() {
+  if (!pool) throw new Error("Немає доступу до бази магазину (HW_DB_*)");
+  cache = { at: Date.now(), data: await fetchAll() };
   return cache.data;
 }
 

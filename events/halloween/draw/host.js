@@ -78,7 +78,7 @@ async function draw(reroll) {
     const { winner, totalTickets } = mockDraw(state.participants);
     return { winner, round: state.winners.length + 1, totalTickets };
   }
-  return api(P + (reroll ? "/reroll" : "/draw"), { method: "POST", body: "{}" });
+  return api(P + (reroll ? "/reroll" : "/draw"), { method: "POST", body: JSON.stringify(reroll ? {} : { round: nextRound() }) });
 }
 
 // ---------- ui ----------
@@ -452,7 +452,8 @@ async function downloadProof() {
   const data = await api("/proof");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-  a.download = "halloween-draw-proof.json";
+  // Holds raw Telegram ids of every participant: keep it, do not post it.
+  a.download = `halloween-proof-${POOL}-PRIVATE.json`;
   a.click();
 }
 
