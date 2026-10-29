@@ -2,7 +2,7 @@ package com.maxsolch.shop.gift;
 
 import com.maxsolch.shop.order.domain.PromoDiscount;
 import com.maxsolch.shop.promo.domain.PromoCode;
-import com.maxsolch.shop.order.app.OrderService;
+import com.maxsolch.shop.order.app.OrderPromos;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -125,9 +125,9 @@ class CaseLowMarginTest {
     @Test
     void casePromoIsRecognisedBySource() {
         PromoCode p = new PromoCode();
-        assertThat(OrderService.isCasePromo(p)).isFalse();
+        assertThat(OrderPromos.isCasePromo(p)).isFalse();
         p.setSource(GiftService.PROMO_SOURCE);
-        assertThat(OrderService.isCasePromo(p)).isTrue();
+        assertThat(OrderPromos.isCasePromo(p)).isTrue();
     }
 
     @Test

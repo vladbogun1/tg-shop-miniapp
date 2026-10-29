@@ -35,15 +35,20 @@ public final class OrderApp {
     private final OrderArchive archive;
     private final CancelRequests cancelRequests;
     private final OrderLifecycle lifecycle;
+    private final OrderEditing editing;
+    private final OrderPromos promos;
     private final OrderService service;
 
     private OrderApp(OrderOps ops, OrderPayments payments, OrderArchive archive, CancelRequests cancelRequests,
-                     OrderLifecycle lifecycle, OrderService service) {
+                     OrderLifecycle lifecycle, OrderEditing editing, OrderPromos promos,
+                     OrderService service) {
         this.ops = ops;
         this.payments = payments;
         this.archive = archive;
         this.cancelRequests = cancelRequests;
         this.lifecycle = lifecycle;
+        this.editing = editing;
+        this.promos = promos;
         this.service = service;
     }
 
@@ -83,9 +88,11 @@ public final class OrderApp {
         CancelRequests cancelRequests = new CancelRequests(ops, orders, stock, events, messages);
         OrderLifecycle lifecycle = new OrderLifecycle(ops, orders, stock, events, em, notifications,
                 new AppProperties());
-        OrderService service = new OrderService(orders, products, promos, options, events,
-                promoService, carts, messages, em, stock, ledger, payments, gift, registry, lowMargin);
-        return new OrderApp(ops, payments, archive, cancelRequests, lifecycle, service);
+        OrderPromos orderPromos = new OrderPromos(ops, promos, promoService, messages, lowMargin);
+        OrderEditing editing = new OrderEditing(ops, orders, products, stock, events, gift, orderPromos);
+        OrderService service = new OrderService(orders, products, options, events, orderPromos, carts, messages, em,
+                stock, ledger, payments, gift, registry);
+        return new OrderApp(ops, payments, archive, cancelRequests, lifecycle, editing, orderPromos, service);
     }
 
     public OrderService service() {
@@ -98,6 +105,14 @@ public final class OrderApp {
 
     public OrderArchive archive() {
         return archive;
+    }
+
+    public OrderEditing editing() {
+        return editing;
+    }
+
+    public OrderPromos promos() {
+        return promos;
     }
 
     public OrderLifecycle lifecycle() {

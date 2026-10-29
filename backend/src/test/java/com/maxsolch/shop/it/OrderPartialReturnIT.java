@@ -1,5 +1,7 @@
 package com.maxsolch.shop.it;
 
+import com.maxsolch.shop.order.app.OrderEditing;
+
 import com.maxsolch.shop.order.app.OrderLifecycle;
 
 import com.maxsolch.shop.order.app.OrderPayments;
@@ -29,6 +31,8 @@ class OrderPartialReturnIT extends AbstractMysqlIT {
     @Autowired
     OrderService orders;
     @Autowired
+    OrderEditing editing;
+    @Autowired
     OrderLifecycle lifecycle;
     @Autowired
     OrderPayments orderPayments;
@@ -40,7 +44,7 @@ class OrderPartialReturnIT extends AbstractMysqlIT {
     /** 3 × 3 333 with a 100 discount: 9 899 is not divisible by 3, the units cost 3 299 / 3 300 / 3 300. */
     private Order paidAndShipped(Product p, long tg, String phone, String ttn) {
         Order o = orders.createOrder(checkout(tg, phone, p, 3));
-        o = orders.applyDiscount(o.getId(), null, 100L, null, false, false);
+        o = editing.applyDiscount(o.getId(), null, 100L, null, false, false);
         orderPayments.markPaid(o.getId(), 9_899);
         lifecycle.approve(o.getId());
         return lifecycle.ship(o.getId(), ttn);

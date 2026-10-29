@@ -7,8 +7,6 @@ import com.maxsolch.shop.order.domain.RejectCause;
 import com.maxsolch.shop.service.OrderStock;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.cart.domain.CartRules;
-import com.maxsolch.shop.promo.app.PromoService;
-import com.maxsolch.shop.gift.CaseLowMargin;
 import com.maxsolch.shop.gift.GiftCaseTier;
 import com.maxsolch.shop.gift.GiftRegistryService;
 import com.maxsolch.shop.gift.GiftService;
@@ -34,7 +32,6 @@ import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.repository.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.NotFoundException;
 import jakarta.persistence.EntityManager;
@@ -65,19 +62,11 @@ import java.util.Optional;
 @Service
 public class OrderService {
 
-    /**
-     * Error code for "this promo code cannot be used". The cart validates codes before checkout, so
-     * reaching this means the last use was taken in the meantime — the app drops the code and lets
-     * the customer place the order at the price it then shows, instead of dead-ending them.
-     */
-    public static final String PROMO_REJECTED = "PROMO_REJECTED";
-
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
-    private final PromoCodeRepository promoCodeRepository;
     private final PaymentOptionRepository paymentOptionRepository;
     private final ApplicationEventPublisher events;
-    private final PromoService promoService;
+    private final OrderPromos promos;
     private final CartService cartService;
     private final Messages messages;
     private final EntityManager entityManager;
@@ -90,8 +79,6 @@ public class OrderService {
     private final GiftService giftService;
     /** Gifts already given to a person this month. */
     private final GiftRegistryService giftRegistry;
-    /** Low-margin products of the gift case. */
-    private final CaseLowMargin caseLowMargin;
 
     /** Hours a new order may stay unpaid online before it is rejected (app.payment.due-hours). */
     @org.springframework.beans.factory.annotation.Value("${app.payment.due-hours:24}")
@@ -106,10 +93,9 @@ public class OrderService {
 
     public OrderService(OrderRepository orderRepository,
                         ProductRepository productRepository,
-                        PromoCodeRepository promoCodeRepository,
                         PaymentOptionRepository paymentOptionRepository,
                         ApplicationEventPublisher events,
-                        PromoService promoService,
+                        OrderPromos promos,
                         CartService cartService,
                         Messages messages,
                         EntityManager entityManager,
@@ -117,14 +103,12 @@ public class OrderService {
                         MoneyLedger moneyLedger,
                         OrderPayments payments,
                         GiftService giftService,
-                        GiftRegistryService giftRegistry,
-                        CaseLowMargin caseLowMargin) {
+                        GiftRegistryService giftRegistry) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
-        this.promoCodeRepository = promoCodeRepository;
         this.paymentOptionRepository = paymentOptionRepository;
         this.events = events;
-        this.promoService = promoService;
+        this.promos = promos;
         this.cartService = cartService;
         this.messages = messages;
         this.entityManager = entityManager;
@@ -133,7 +117,6 @@ public class OrderService {
         this.payments = payments;
         this.giftService = giftService;
         this.giftRegistry = giftRegistry;
-        this.caseLowMargin = caseLowMargin;
     }
 
     /**
@@ -247,17 +230,14 @@ public class OrderService {
 
         // Promo: fixed amount takes priority over percent.
         long discount = 0;
-        PromoCode promo = resolvePromo(cmd.promoCode(), cmd.tgUserId(), true);
-        long lowMarginMinor = lowMarginMinor(order);
+        PromoCode promo = promos.resolve(cmd.promoCode(), cmd.tgUserId(), true);
+        long lowMarginMinor = promos.lowMarginMinor(order);
         if (promo != null) {
-            discount = PromoDiscount.discountFor(promo, subtotal, promoExcluded(promo, lowMarginMinor, subtotal));
+            discount = PromoDiscount.discountFor(promo, subtotal, promos.excluded(promo, lowMarginMinor, subtotal));
             order.setPromoCode(promo.getCode());
-            promo.setUsesCount(promo.getUsesCount() + 1);
-            promoCodeRepository.save(promo);
+            promos.countUse(promo);
             if (cmd.tgUserId() != null) {
-                // The use is counted on the code now; leaving the hold in place would block one
-                // more use for the rest of the half hour.
-                promoService.consume(promo.getId(), cmd.tgUserId());
+                promos.consumeHold(promo, cmd.tgUserId());
             }
         }
 
@@ -359,169 +339,6 @@ public class OrderService {
                 .orElseThrow(() -> new NotFoundException("order not found"));
         entityManager.refresh(order, LockModeType.PESSIMISTIC_WRITE);
         return order;
-    }
-
-    // ----- admin order editing: gifts & discounts -----
-
-    /** Admin adds a FREE gift product to an order: stock is decremented (unit is reserved),
-     *  the item is added at price 0 (so total/наложка don't change), gifts merge by product+variant. */
-    @Transactional
-    public Order addItem(byte[] orderId, String productId, String variantId, int qty,
-                         boolean gift, boolean notifyCustomer) {
-        Order order = lock(orderId);
-        order.requireEditable();
-        if (qty < 1) {
-            throw new BadRequestException("quantity must be >= 1");
-        }
-        // Locked: this path mutates stock too (an admin adding a gift reserves real units).
-        Product product = productRepository.findByIdForUpdate(toBytes(productId, "productId"))
-                .orElseThrow(() -> new BadRequestException("unknown product: " + productId));
-        if (product.isArchived()) {
-            throw new BadRequestException("product is archived: " + product.getTitle());
-        }
-        boolean hasVariants = product.getVariants() != null && !product.getVariants().isEmpty();
-        ProductVariant variant = null;
-        if (hasVariants) {
-            if (variantId == null || variantId.isBlank()) {
-                throw new BadRequestException("variant is required for product: " + product.getTitle());
-            }
-            variant = findVariant(product, variantId);
-            if (variant == null) {
-                throw new BadRequestException("variant does not belong to product: " + variantId);
-            }
-        }
-        byte[] vId = variant == null ? null : variant.getId();
-        OrderItem existing = order.getItems().stream()
-                .filter(i -> i.isGift() == gift)
-                .filter(i -> java.util.Arrays.equals(i.getProductId(), product.getId()))
-                .filter(i -> java.util.Arrays.equals(i.getVariantId(), vId))
-                .findFirst().orElse(null);
-        OrderItem item = existing != null ? existing : new OrderItem();
-        stock.reserve(product, variant, qty, item);
-        if (existing != null) {
-            existing.setQuantity(existing.getQuantity() + qty);
-        } else {
-            item.setOrder(order);
-            item.setProductId(product.getId());
-            item.setTitleSnapshot(product.getTitle());
-            item.setPriceMinorSnapshot(gift ? 0 : product.getPriceMinor());
-            item.setQuantity(qty);
-            item.setGift(gift);
-            item.setGiftValueMinor(gift ? product.getPriceMinor() : 0);
-            if (variant != null) {
-                item.setVariantId(variant.getId());
-                item.setVariantNameSnapshot(variant.getName());
-            }
-            order.getItems().add(item);
-        }
-        productRepository.save(product);
-        recomputeTotals(order);
-        Order saved = orderRepository.save(order);
-        events.publishEvent(new OrderEvents.Edited(
-                saved.getId(),
-                gift ? OrderEvents.EditKind.GIFT : OrderEvents.EditKind.COMPOSITION,
-                notifyCustomer,
-                product.getTitle(),
-                variant == null ? null : variant.getName(),
-                qty));
-        return saved;
-    }
-
-    /** Admin removes an order item (a gift or a line), restoring its stock and recomputing totals. */
-    @Transactional
-    public Order removeItem(byte[] orderId, long itemId) {
-        Order order = lock(orderId);
-        order.requireEditable();
-        OrderItem item = order.getItems().stream()
-                .filter(i -> i.getId() != null && i.getId() == itemId)
-                .findFirst()
-                .orElseThrow(() -> new NotFoundException("order item not found"));
-        stock.restoreLine(item);
-        order.getItems().remove(item);
-        if (item.isAutoGift() && item.getCaseRarity() != null) {
-            // The case prize is gone: no case left to open.
-            order.setGiftCaseStatus(null);
-            order.setGiftCaseOpenedAt(null);
-            if (order.getGiftDiscountMinor() <= 0) {
-                order.setGiftTier(null);
-            }
-            giftService.deleteOrderCase(order.getId());
-        }
-        recomputeTotals(order);
-        Order saved = orderRepository.save(order);
-        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
-        return saved;
-    }
-
-    /** Admin changes an item's quantity, reserving/releasing stock by the delta. */
-    @Transactional
-    public Order changeItemQuantity(byte[] orderId, long itemId, int newQty, boolean notifyCustomer) {
-        Order order = lock(orderId);
-        order.requireEditable();
-        if (newQty < 1) {
-            throw new BadRequestException("quantity must be >= 1 (use remove to delete)");
-        }
-        OrderItem item = order.getItems().stream()
-                .filter(i -> i.getId() != null && i.getId() == itemId)
-                .findFirst()
-                .orElseThrow(() -> new NotFoundException("order item not found"));
-        int delta = newQty - item.getQuantity();
-        if (delta != 0) {
-            stock.resizeLine(item, delta);
-        }
-        item.setQuantity(newQty);
-        recomputeTotals(order);
-        Order saved = orderRepository.save(order);
-        events.publishEvent(OrderEvents.Edited.of(
-                saved.getId(), OrderEvents.EditKind.COMPOSITION, notifyCustomer));
-        return saved;
-    }
-
-    /** Admin applies / updates / removes a discount: an existing promo code, or a manual amount/percent. */
-    @Transactional
-    public Order applyDiscount(byte[] orderId, String promoCode, Long amountMinor,
-                               Integer percent, boolean clear, boolean notifyCustomer) {
-        Order order = lock(orderId);
-        order.requireEditable();
-        long subtotal = order.getItems().stream()
-                .mapToLong(i -> i.getPriceMinorSnapshot() * (long) i.getQuantity()).sum();
-
-        // Release any previous REAL promo usage before re-applying.
-        releasePromoUsage(order.getPromoCode());
-
-        long discount = 0;
-        if (clear) {
-            order.setPromoCode(null);
-        } else if (promoCode != null && !promoCode.isBlank()) {
-            // An admin applying a code by hand is a deliberate decision, so customers' half-hour
-            // holds do not stand in their way — only the code's own usage limit does.
-            // The order's customer is passed for the owner check of personal codes (V44).
-            PromoCode p = resolvePromo(promoCode, order.getUserId(), false);
-            discount = PromoDiscount.discountFor(p, subtotal, promoExcluded(p, lowMarginMinor(order), subtotal));
-            p.setUsesCount(p.getUsesCount() + 1);
-            promoCodeRepository.save(p);
-            order.setPromoCode(p.getCode());
-        } else if (amountMinor != null && amountMinor > 0) {
-            discount = Math.min(amountMinor, subtotal);
-            order.setPromoCode("Ручная скидка");
-        } else if (percent != null && percent > 0) {
-            int pc = Math.min(percent, 100);
-            discount = subtotal * pc / 100;
-            order.setPromoCode("Ручная скидка " + pc + "%");
-        } else {
-            order.setPromoCode(null);
-        }
-
-        order.setSubtotalMinor(subtotal);
-        // The guaranteed discount of the gift case stays: the customer chose it instead of a case.
-        order.setDiscountMinor(Math.min(Math.max(0, discount) + Math.max(0, order.getGiftDiscountMinor()), subtotal));
-        order.setGiftDiscountMinor(Math.min(order.getGiftDiscountMinor(), order.getDiscountMinor()));
-        order.setTotalMinor(OrderMoney.totalMinor(subtotal, order.getDiscountMinor()));
-        order.settleIfFree(Instant.now());
-        Order saved = orderRepository.save(order);
-        events.publishEvent(OrderEvents.Edited.of(
-                saved.getId(), OrderEvents.EditKind.DISCOUNT, notifyCustomer));
-        return saved;
     }
 
     // ----- helpers -----
@@ -796,7 +613,7 @@ public class OrderService {
                 .filter(java.util.Objects::nonNull).toList())) {
             locked.put(id, productRepository.findByIdForUpdate(toBytes(id, "productId")));
         }
-        boolean lowMargin = hasLowMargin(order);
+        boolean lowMargin = promos.hasLowMargin(order);
         GiftService.CaseEntry prize = GiftService.draw(cfg.prizes(), giftableWithin(locked, giftLimitLeft(order)),
                         CASE_RANDOM, cfg.productPercent(lowMargin))
                 .orElseThrow(() -> new BadRequestException(
@@ -815,20 +632,6 @@ public class OrderService {
         events.publishEvent(new OrderEvents.Edited(saved.getId(), OrderEvents.EditKind.GIFT_CASE, notifyCustomer,
                 null, null, 1));
         return saved;
-    }
-
-    /** Decrement usesCount of a previously-applied REAL promo code (ignores manual-discount labels). */
-    private void releasePromoUsage(String code) {
-        if (code == null || code.isBlank()) {
-            return;
-        }
-        // Locked like the checkout's increment, or the two could overwrite each other's count.
-        promoCodeRepository.findByCodeForUpdate(code).ifPresent(p -> {
-            if (p.getUsesCount() > 0) {
-                p.setUsesCount(p.getUsesCount() - 1);
-                promoCodeRepository.save(p);
-            }
-        });
     }
 
     /** The common tail of every reject, under the order lock: status, reason, then {@link #afterTransition}. */
@@ -854,78 +657,6 @@ public class OrderService {
 
     private ProductVariant findVariant(Product product, String variantId) {
         return OrderStock.variantOf(product, toBytes(variantId, "variantId"));
-    }
-
-    /**
-     * Resolves an active promo code and takes a row lock on it, so the "usage limit reached" check
-     * and the {@code usesCount++} that follows in the caller are atomic with respect to other
-     * checkouts. Without the lock a code limited to one use could be redeemed by several
-     * simultaneous orders.
-     */
-    private PromoCode resolvePromo(String code, Long tgUserId, boolean respectHolds) {
-        if (code == null || code.isBlank()) {
-            return null;
-        }
-        Optional<PromoCode> opt = promoCodeRepository.findByCodeAndActiveTrueForUpdate(code.trim());
-        if (opt.isEmpty()) {
-            // Russian, and tagged: this text is shown to the customer, and the app clears the
-            // dead code from the cart instead of leaving them stuck on the last step.
-            throw new BadRequestException(messages.current("api.promo.rejected"), PROMO_REJECTED);
-        }
-        PromoCode promo = opt.get();
-        // Personal codes (review bonus, V44): only the owner, and only until they expire.
-        String personal = PromoService.personalRejection(promo, tgUserId, Instant.now());
-        if (personal != null) {
-            throw new BadRequestException(messages.current(personal), PROMO_REJECTED);
-        }
-        // Remaining uses minus other customers' live holds: a code someone reserved from their cart
-        // must not be taken by a checkout that merely submitted first.
-        long left = respectHolds
-                ? promoService.remainingUses(promo, tgUserId)
-                : (promo.getMaxUses() == null ? Long.MAX_VALUE : promo.getMaxUses() - promo.getUsesCount());
-        if (left <= 0) {
-            throw new BadRequestException(messages.current("api.promo.taken"), PROMO_REJECTED);
-        }
-        return promo;
-    }
-
-    /**
-     * What of the subtotal a code does not touch: the low-margin products («Упор на скидки») — no promo
-     * code applies to them, a case code or any other. A code on a cart of only such products is refused,
-     * so the use is not wasted.
-     */
-    private long promoExcluded(PromoCode promo, long lowMarginMinor, long subtotal) {
-        if (promo == null || lowMarginMinor <= 0) {
-            return 0;
-        }
-        if (subtotal - lowMarginMinor <= 0) {
-            throw new BadRequestException(messages.current("api.promo.caseExcluded"), PROMO_REJECTED);
-        }
-        return lowMarginMinor;
-    }
-
-    public static boolean isCasePromo(PromoCode promo) {
-        return promo != null && GiftService.PROMO_SOURCE.equals(promo.getSource());
-    }
-
-    /** Price × quantity of the order's own lines (not gifts) whose product is low-margin. */
-    private long lowMarginMinor(Order order) {
-        java.util.Set<String> ids = lowMarginIds();
-        return ids.isEmpty() ? 0 : order.getItems().stream()
-                .filter(i -> !i.isGift() && ids.contains(UuidUtil.toString(i.getProductId())))
-                .mapToLong(i -> i.getPriceMinorSnapshot() * (long) i.getQuantity())
-                .sum();
-    }
-
-    /** The order has a low-margin product of its own (not a gift): its case leans to discounts. */
-    private boolean hasLowMargin(Order order) {
-        java.util.Set<String> ids = lowMarginIds();
-        return !ids.isEmpty() && order.getItems().stream()
-                .anyMatch(i -> !i.isGift() && ids.contains(UuidUtil.toString(i.getProductId())));
-    }
-
-    private java.util.Set<String> lowMarginIds() {
-        return caseLowMargin.none() ? java.util.Set.of() : caseLowMargin.productIds();
     }
 
     private DeliveryMethod parseDelivery(String value) {

@@ -336,7 +336,7 @@ class OrderStockTest {
         Product p = product(5);
         Order o = order(OrderStatus.NEW);
 
-        Order saved = service.addItem(o.getId(), UuidUtil.toString(p.getId()), null, 2, true, false);
+        Order saved = app.editing().addItem(o.getId(), UuidUtil.toString(p.getId()), null, 2, true, false);
 
         assertThat(p.getStock()).isEqualTo(3);
         OrderItem it = saved.getItems().get(0);
@@ -353,7 +353,7 @@ class OrderStockTest {
         OrderItem it = line(o, p, null, 1, 1);
         it.setGift(true);
 
-        service.addItem(o.getId(), UuidUtil.toString(p.getId()), null, 2, true, false);
+        app.editing().addItem(o.getId(), UuidUtil.toString(p.getId()), null, 2, true, false);
 
         assertThat(o.getItems()).hasSize(1);
         assertThat(it.getQuantity()).isEqualTo(3);
@@ -365,7 +365,7 @@ class OrderStockTest {
     void addItem_moreThanInStock_refused() {
         Product p = product(1);
         Order o = order(OrderStatus.NEW);
-        assertThatThrownBy(() -> service.addItem(o.getId(), UuidUtil.toString(p.getId()), null, 2, false, false))
+        assertThatThrownBy(() -> app.editing().addItem(o.getId(), UuidUtil.toString(p.getId()), null, 2, false, false))
                 .isInstanceOf(BadRequestException.class);
         assertThat(p.getStock()).isEqualTo(1);
         assertThat(o.getItems()).isEmpty();
@@ -377,7 +377,7 @@ class OrderStockTest {
         Order o = order(OrderStatus.APPROVED);
         OrderItem it = line(o, p, null, 9, 2);
 
-        service.removeItem(o.getId(), 9);
+        app.editing().removeItem(o.getId(), 9);
 
         assertThat(p.getStock()).isEqualTo(3);
         assertThat(o.getItems()).isEmpty();
@@ -392,7 +392,7 @@ class OrderStockTest {
         Order o = order(OrderStatus.NEW);
         OrderItem it = line(o, p, m, 9, 2);
 
-        service.changeItemQuantity(o.getId(), 9, 5, false);
+        app.editing().changeItemQuantity(o.getId(), 9, 5, false);
 
         assertThat(m.getStock()).isEqualTo(2);
         assertThat(p.getStock()).isEqualTo(2);
@@ -407,7 +407,7 @@ class OrderStockTest {
         Order o = order(OrderStatus.NEW);
         OrderItem it = line(o, p, null, 9, 4);
 
-        service.changeItemQuantity(o.getId(), 9, 1, false);
+        app.editing().changeItemQuantity(o.getId(), 9, 1, false);
 
         assertThat(p.getStock()).isEqualTo(4);
         verify(lots).give(p.getId(), null, 3, it);
@@ -420,7 +420,7 @@ class OrderStockTest {
         Order o = order(OrderStatus.NEW);
         line(o, p, null, 9, 4);
 
-        service.changeItemQuantity(o.getId(), 9, 4, false);
+        app.editing().changeItemQuantity(o.getId(), 9, 4, false);
 
         verify(productRepository, never()).findByIdForUpdate(any());
         verifyNoInteractions(lots);
@@ -432,7 +432,7 @@ class OrderStockTest {
         Order o = order(OrderStatus.NEW);
         OrderItem it = line(o, p, null, 9, 2);
 
-        assertThatThrownBy(() -> service.changeItemQuantity(o.getId(), 9, 9, false))
+        assertThatThrownBy(() -> app.editing().changeItemQuantity(o.getId(), 9, 9, false))
                 .isInstanceOf(BadRequestException.class);
         assertThat(p.getStock()).isEqualTo(1);
         assertThat(it.getQuantity()).isEqualTo(2);
@@ -445,7 +445,7 @@ class OrderStockTest {
         line(o, p, null, 9, 2);
         when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.changeItemQuantity(o.getId(), 9, 3, false))
+        assertThatThrownBy(() -> app.editing().changeItemQuantity(o.getId(), 9, 3, false))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("product not found");
     }

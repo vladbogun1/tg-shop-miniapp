@@ -599,7 +599,7 @@ class OrderServiceTest {
                 .isInstanceOf(DomainException.BadRequest.class)
                 .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.type(DomainException.BadRequest.class))
                 .extracting(DomainException.BadRequest::getCode)
-                .isEqualTo(OrderService.PROMO_REJECTED);
+                .isEqualTo(OrderPromos.PROMO_REJECTED);
     }
 
     // ---------- status transitions ----------
@@ -1466,21 +1466,21 @@ class OrderServiceTest {
     void applyDiscount_manualAmountIsCappedAtTheSubtotal_percentIsCappedAtHundred() {
         Order o = orderWithOneLine(OrderStatus.NEW, 10_000, 2);
 
-        service.applyDiscount(o.getId(), null, 5_000L, null, false, false);
+        app.editing().applyDiscount(o.getId(), null, 5_000L, null, false, false);
         assertThat(o.getDiscountMinor()).isEqualTo(5_000);
         assertThat(o.getTotalMinor()).isEqualTo(15_000);
         assertThat(o.getPromoCode()).isEqualTo("Ручная скидка");
 
-        service.applyDiscount(o.getId(), null, 999_999L, null, false, false);
+        app.editing().applyDiscount(o.getId(), null, 999_999L, null, false, false);
         assertThat(o.getDiscountMinor()).isEqualTo(20_000);
         assertThat(o.getTotalMinor()).isZero();
         assertThat(o.isPaid()).as("a free order counts as paid at once").isTrue();
 
         Order p = orderWithOneLine(OrderStatus.NEW, 10_000, 2);
-        service.applyDiscount(p.getId(), null, null, 25, false, true);
+        app.editing().applyDiscount(p.getId(), null, null, 25, false, true);
         assertThat(p.getDiscountMinor()).isEqualTo(5_000);
         assertThat(p.getPromoCode()).isEqualTo("Ручная скидка 25%");
-        service.applyDiscount(p.getId(), null, null, 400, false, true);
+        app.editing().applyDiscount(p.getId(), null, null, 400, false, true);
         assertThat(p.getDiscountMinor()).isEqualTo(20_000);
         verify(events, org.mockito.Mockito.atLeastOnce()).publishEvent(any(OrderEvents.Edited.class));
     }
@@ -1496,7 +1496,7 @@ class OrderServiceTest {
         code.setUsesCount(3);
         when(promoCodeRepository.findByCodeForUpdate("SAVE10")).thenReturn(Optional.of(code));
 
-        service.applyDiscount(o.getId(), null, null, null, true, false);
+        app.editing().applyDiscount(o.getId(), null, null, null, true, false);
 
         assertThat(code.getUsesCount()).isEqualTo(2);
         assertThat(o.getPromoCode()).isNull();
@@ -1514,14 +1514,14 @@ class OrderServiceTest {
         code.setUsesCount(0);
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("TEN")).thenReturn(Optional.of(code));
 
-        service.applyDiscount(o.getId(), "TEN", null, null, false, false);
+        app.editing().applyDiscount(o.getId(), "TEN", null, null, false, false);
 
         assertThat(code.getUsesCount()).isEqualTo(1);
         assertThat(o.getDiscountMinor()).isEqualTo(1_000);
         assertThat(o.getPromoCode()).isEqualTo("TEN");
 
         Order shipped = orderWithOneLine(OrderStatus.SHIPPED, 10_000, 1);
-        assertThatThrownBy(() -> service.applyDiscount(shipped.getId(), null, 100L, null, false, false))
+        assertThatThrownBy(() -> app.editing().applyDiscount(shipped.getId(), null, 100L, null, false, false))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessage("заказ можно менять только в статусе «Новый» или «Одобрен»");
     }

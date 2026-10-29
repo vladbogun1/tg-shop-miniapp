@@ -20,6 +20,7 @@ import com.maxsolch.shop.order.app.OrderAdjustmentService;
 import com.maxsolch.shop.order.app.OrderMergeService;
 import com.maxsolch.shop.order.app.OrderQueryService;
 import com.maxsolch.shop.order.app.OrderArchive;
+import com.maxsolch.shop.order.app.OrderEditing;
 import com.maxsolch.shop.order.app.OrderLifecycle;
 import com.maxsolch.shop.order.app.OrderPayments;
 import com.maxsolch.shop.order.app.OrderService;
@@ -59,6 +60,7 @@ public class AdminOrderController {
     private final AdminOrderStatusService statusService;
     private final ReturnWizardService returnWizards;
     private final OrderService orderService;
+    private final OrderEditing editing;
     private final OrderLifecycle lifecycle;
     private final OrderPayments orderPayments;
     private final OrderArchive orderArchive;
@@ -94,6 +96,7 @@ public class AdminOrderController {
                                 AdminOrderStatusService statusService,
                                 ReturnWizardService returnWizards,
                                 OrderService orderService,
+                                OrderEditing editing,
                                 OrderLifecycle lifecycle,
                                 OrderPayments orderPayments,
                                 OrderArchive orderArchive,
@@ -108,6 +111,7 @@ public class AdminOrderController {
         this.statusService = statusService;
         this.returnWizards = returnWizards;
         this.orderService = orderService;
+        this.editing = editing;
         this.lifecycle = lifecycle;
         this.orderPayments = orderPayments;
         this.orderArchive = orderArchive;
@@ -336,7 +340,7 @@ public class AdminOrderController {
         int qty = req.quantity() == null ? 1 : req.quantity();
         boolean gift = Boolean.TRUE.equals(req.gift());
         boolean notify = req.notifyCustomer() == null || req.notifyCustomer();
-        Order updated = orderService.addItem(load(id).getId(), req.productId(), req.variantId(), qty, gift, notify);
+        Order updated = editing.addItem(load(id).getId(), req.productId(), req.variantId(), qty, gift, notify);
         audit.record("ORDER_ITEM_ADD", "ORDER", id,
                 (gift ? "подарок " : "позиция ") + req.productId() + " x" + qty);
         return orderQueryService.toDetail(updated);
@@ -366,7 +370,7 @@ public class AdminOrderController {
                                         @Valid @RequestBody com.maxsolch.shop.order.api.ChangeItemQtyRequest req) {
         int qty = req.quantity() == null ? 1 : req.quantity();
         boolean notify = req.notifyCustomer() == null || req.notifyCustomer();
-        Order updated = orderService.changeItemQuantity(load(id).getId(), itemId, qty, notify);
+        Order updated = editing.changeItemQuantity(load(id).getId(), itemId, qty, notify);
         audit.record("ORDER_ITEM_QTY", "ORDER", id, "позиция #" + itemId + " → x" + qty);
         return orderQueryService.toDetail(updated);
     }
@@ -374,7 +378,7 @@ public class AdminOrderController {
     @DeleteMapping("/{id}/items/{itemId}")
     @Operation(summary = "Remove an order item (gift/line) and restore its stock")
     public OrderDetailDto removeItem(@PathVariable String id, @PathVariable long itemId) {
-        Order updated = orderService.removeItem(load(id).getId(), itemId);
+        Order updated = editing.removeItem(load(id).getId(), itemId);
         audit.record("ORDER_ITEM_REMOVE", "ORDER", id, "удалена позиция #" + itemId);
         return orderQueryService.toDetail(updated);
     }
@@ -384,7 +388,7 @@ public class AdminOrderController {
     public OrderDetailDto discount(@PathVariable String id,
                                    @Valid @RequestBody com.maxsolch.shop.order.api.ApplyDiscountRequest req) {
         boolean notify = req.notifyCustomer() == null || req.notifyCustomer();
-        Order updated = orderService.applyDiscount(load(id).getId(), req.promoCode(), req.amountMinor(),
+        Order updated = editing.applyDiscount(load(id).getId(), req.promoCode(), req.amountMinor(),
                 req.percent(), Boolean.TRUE.equals(req.clear()), notify);
         audit.record("ORDER_DISCOUNT", "ORDER", id,
                 Boolean.TRUE.equals(req.clear()) ? "скидка снята"
