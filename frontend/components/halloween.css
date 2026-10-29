@@ -80,6 +80,11 @@ html[data-event="halloween"] .hud-frame::after { border-color: rgba(160, 110, 25
 .hw-banner-sub { font-size: 12.5px; line-height: 1.3; color: var(--muted); }
 .hw-banner-go { margin-top: 2px; font-size: 12.5px; font-weight: 700; color: var(--ink); }
 .hw-banner-art { position: absolute; right: -4px; bottom: -14px; height: 118px; width: auto; image-rendering: pixelated; pointer-events: none; }
+/* the hunt itself: the promo reel edge to edge, in its own proportions */
+.hw-banner-live { display: block; min-height: 0; aspect-ratio: 720 / 200; padding: 0; }
+.hw-banner-reel, .hw-banner-reel img, .hw-banner-reel video { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+.hw-banner-reel video { opacity: 0; transition: opacity .25s; }
+.hw-banner-reel video[data-on] { opacity: 1; }
 @media (max-width: 359px) {
   .hw-banner-text { max-width: calc(100% - 78px); padding-left: 12px; }
   .hw-banner-art { height: 100px; right: -8px; }

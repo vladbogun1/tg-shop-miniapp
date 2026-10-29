@@ -6,7 +6,7 @@
  * in-memory bearer token and Telegram haptics. Remove with the event: this file, its usages in the
  * layout and on the home screen, and halloween.css.
  */
-import { createElement, useEffect, useState } from "react";
+import { createElement, useEffect, useRef, useState } from "react";
 import { EVENT_ATTR, getActiveTag, isHalloween, isHuntOn } from "@shop/shared";
 import { useI18n } from "@/i18n/context";
 import { getAccessToken, onAccessToken } from "@/lib/api";
@@ -106,6 +106,32 @@ const BANNER = {
   },
 } as const;
 
+/**
+ * While the hunt runs the card is the promo reel (hunt → two super prizes → the stream), cut 720×200
+ * (media/2026-10-halloween-promo, out/banner). In public/, not under /hw/: the hw service has no Range
+ * requests, and iOS will not play a video without them. Reduced motion → its poster.
+ */
+function Reel({ lang }: { lang: string }) {
+  const v = useRef<HTMLVideoElement>(null);
+  const [still, setStill] = useState(true);
+  const [on, setOn] = useState(false);
+  useEffect(() => setStill(matchMedia("(prefers-reduced-motion: reduce)").matches), []);
+  useEffect(() => {
+    if (!v.current) return;
+    v.current.muted = true;
+    v.current.play().catch(() => undefined);
+  }, [still]);
+  const src = (ext: string) => `/event-hw/${lang}/hw-banner-app.${ext}`;
+  return (
+    <span aria-hidden className="hw-banner-reel">
+      <img src={src("webp")} alt="" width={720} height={200} decoding="async" />
+      {!still && (
+        <video ref={v} src={src("mp4")} data-on={on || undefined} muted loop autoPlay playsInline preload="auto" onPlaying={() => setOn(true)} />
+      )}
+    </span>
+  );
+}
+
 /** How long after the start of the stream the banner keeps saying «the draw is live». */
 const STREAM_HOURS = 3;
 
@@ -144,6 +170,20 @@ export function HalloweenBanner() {
   const state = onAir ? "stream" : s.phase === "over" ? "wait" : s.phase;
   const streamUrl = s.streams?.[0]?.url;
   const sub = { stream: x.streamSub, soon: x.soonSub(at), live: x.liveSub(at), wait: x.waitSub(at) }[state];
+  if (state === "live")
+    return (
+      <button
+        type="button"
+        className="hw-banner hw-banner-live nb-press"
+        aria-label={`${x.live}. ${sub}`}
+        onClick={() => {
+          haptic();
+          window.HW?.open();
+        }}
+      >
+        <Reel lang={locale in BANNER ? locale : "uk"} />
+      </button>
+    );
   return (
     <button
       type="button"

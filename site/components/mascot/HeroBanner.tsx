@@ -174,6 +174,7 @@ export function HeroBanner({ categories }: { categories: BannerCategory[] }) {
       aria-roledescription="carousel"
       aria-label={t("home.banner.label")}
       className="hb hud-frame"
+      data-hw={slides[0]?.hw || undefined}
       data-paused={paused || undefined}
       data-still={still || undefined}
       onPointerEnter={(e) => e.pointerType === "mouse" && setHover(true)}
