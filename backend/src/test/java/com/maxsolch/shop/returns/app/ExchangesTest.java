@@ -15,7 +15,7 @@ import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.returns.domain.LineOutcome;
 import com.maxsolch.shop.returns.domain.WizardLine;
-import com.maxsolch.shop.inventory.app.StockFixtures;
+import com.maxsolch.shop.order.app.StockFixtures;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;

@@ -43,7 +43,7 @@ class LotLedgerTest {
             }
             return l;
         });
-        ledger = new LotLedger(repo);
+        ledger = new LotLedger(repo, java.time.Clock.systemUTC());
     }
 
     private StockLot lot(int qty, String kind) {

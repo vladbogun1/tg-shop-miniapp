@@ -38,5 +38,5 @@ public class OrderItemLot {
     private int qty;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt = Instant.now();
+    private Instant createdAt;
 }

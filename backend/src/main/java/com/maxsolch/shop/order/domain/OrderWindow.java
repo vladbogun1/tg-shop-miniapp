@@ -1,6 +1,7 @@
 package com.maxsolch.shop.order.domain;
 
 
+import com.maxsolch.shop.platform.time.TimeRange;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;

@@ -9,7 +9,7 @@ import com.maxsolch.shop.returns.infra.OrderExchangeLineRepository;
 import com.maxsolch.shop.returns.infra.OrderExchangeRepository;
 import com.maxsolch.shop.returns.infra.OrderReturnLineRepository;
 import com.maxsolch.shop.returns.infra.OrderReturnRepository;
-import com.maxsolch.shop.inventory.app.OrderStock;
+import com.maxsolch.shop.order.app.OrderStock;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Clock;
@@ -35,23 +35,23 @@ public final class ReturnsApp {
     }
 
     /** With empty mocks for the write-off, return-record and exchange-line repositories. */
-    public static ReturnsApp create(OrderApp app, OrderRepository orders, OrderStock stock,
+    public static ReturnsApp create(OrderApp app, OrderRepository orders, OrderStock stock, com.maxsolch.shop.inventory.app.Stock shelf,
                                     ApplicationEventPublisher events, MoneyLedger ledger,
                                     OrderExchangeRepository exchangeRepository) {
-        return create(app, orders, stock, events, ledger, exchangeRepository, mock(StockWriteoffRepository.class),
+        return create(app, orders, stock, shelf, events, ledger, exchangeRepository, mock(StockWriteoffRepository.class),
                 mock(OrderReturnRepository.class), mock(OrderReturnLineRepository.class),
                 mock(OrderExchangeLineRepository.class));
     }
 
     @SuppressWarnings("checkstyle:ParameterNumber")
-    public static ReturnsApp create(OrderApp app, OrderRepository orders, OrderStock stock,
+    public static ReturnsApp create(OrderApp app, OrderRepository orders, OrderStock stock, com.maxsolch.shop.inventory.app.Stock shelf,
                                     ApplicationEventPublisher events, MoneyLedger ledger,
                                     OrderExchangeRepository exchangeRepository, StockWriteoffRepository writeoffs,
                                     OrderReturnRepository returnRecords, OrderReturnLineRepository returnLines,
                                     OrderExchangeLineRepository exchangeLines) {
         OrderLookup lookup = app.lookup(orders);
         Clock clock = Clock.systemUTC();
-        DefectWriteoffs defects = new DefectWriteoffs(writeoffs, returnLines, lookup, stock, clock);
+        DefectWriteoffs defects = new DefectWriteoffs(writeoffs, returnLines, lookup, shelf, clock);
         Returns returns = new Returns(lookup, stock, ledger, defects, returnRecords, returnLines, events, clock);
         ReturnReceiving receiving = new ReturnReceiving(lookup, stock, defects, returnRecords, returnLines, events,
                 clock);

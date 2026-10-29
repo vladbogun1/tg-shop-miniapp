@@ -1,7 +1,7 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.inventory.app.Stock;
 import com.maxsolch.shop.promo.domain.PromoDiscount;
-import com.maxsolch.shop.inventory.app.OrderStock;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.cart.domain.CartRules;
 import com.maxsolch.shop.gift.GiftService;
@@ -53,6 +53,7 @@ public class Checkout {
     private final CartService cartService;
     private final Messages messages;
     private final OrderStock stock;
+    private final Stock shelf;
     /** Money received on an order: a manual order may be created already paid. */
     private final OrderPayments payments;
     /** The gift for the order sum / the gift case. */
@@ -70,6 +71,7 @@ public class Checkout {
                         CartService cartService,
                         Messages messages,
                         OrderStock stock,
+                        Stock shelf,
                         OrderPayments payments,
                         GiftService giftService,
                         OrderOps ops,
@@ -83,6 +85,7 @@ public class Checkout {
         this.cartService = cartService;
         this.messages = messages;
         this.stock = stock;
+        this.shelf = shelf;
         this.payments = payments;
         this.giftService = giftService;
         this.ops = ops;
@@ -190,8 +193,8 @@ public class Checkout {
             } else if (hasVariants) {
                 throw OrderErrors.badRequest(messages.current("api.order.variantRequired", product.getTitle()));
             }
-            stock.requireAvailable(product, variant, line.quantity, cmd.userId());
-            stock.reserve(product, variant, line.quantity, item);
+            shelf.requireAvailable(product, variant, line.quantity, cmd.userId());
+            shelf.reserve(product, variant, line.quantity, item);
 
             subtotal += product.getPriceMinor() * (long) line.quantity;
             order.getItems().add(item);

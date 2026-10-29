@@ -2,14 +2,15 @@ package com.maxsolch.shop.inventory.app;
 
 import com.maxsolch.shop.inventory.domain.StockLot;
 import com.maxsolch.shop.inventory.infra.StockLotRepository;
-import com.maxsolch.shop.order.domain.OrderItem;
-import com.maxsolch.shop.order.domain.OrderItemLot;
+import com.maxsolch.shop.inventory.domain.LotAllocations;
+import com.maxsolch.shop.inventory.infra.StockLotRepository;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
+import java.time.Clock;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -24,16 +25,18 @@ import java.util.Set;
 public class LotLedger {
 
     private final StockLotRepository lots;
+    private final Clock clock;
 
-    public LotLedger(StockLotRepository lots) {
+    public LotLedger(StockLotRepository lots, Clock clock) {
         this.lots = lots;
+        this.clock = clock;
     }
 
     /**
      * {@code qty} units leave the shelf, oldest lot first. With an order line they are recorded on it
      * (cost of that sale); without one (stock lowered by hand) they are just gone.
      */
-    public void take(byte[] productId, byte[] variantId, int qty, OrderItem item) {
+    public void take(byte[] productId, byte[] variantId, int qty, LotAllocations sale) {
         int left = qty;
         for (StockLot lot : lots.findKey(productId, variantId)) {
             if (left <= 0) {
@@ -46,8 +49,8 @@ public class LotLedger {
             lot.setQtyLeft(lot.getQtyLeft() - n);
             lots.save(lot);
             left -= n;
-            if (item != null) {
-                allocate(item, lot.getId(), n);
+            if (sale != null) {
+                sale.add(lot.getId(), n, clock.instant());
             }
         }
     }
@@ -57,23 +60,20 @@ public class LotLedger {
      * newest allocation first (the units still sold keep the oldest cost); anything the line cannot account
      * for goes to the opening lot (cost unknown).
      */
-    public void give(byte[] productId, byte[] variantId, int qty, OrderItem item) {
+    public void give(byte[] productId, byte[] variantId, int qty, LotAllocations sale) {
         int left = qty;
-        if (item != null && item.getLots() != null) {
-            List<OrderItemLot> allocations = item.getLots();
-            for (int i = allocations.size() - 1; i >= 0 && left > 0; i--) {
-                OrderItemLot a = allocations.get(i);
-                StockLot lot = lots.findById(a.getLotId()).orElse(null);
+        if (sale != null) {
+            List<LotAllocations.Share> shares = sale.shares();
+            for (int i = shares.size() - 1; i >= 0 && left > 0; i--) {
+                LotAllocations.Share a = shares.get(i);
+                StockLot lot = lots.findById(a.lotId()).orElse(null);
                 if (lot == null) {
                     continue;
                 }
-                int n = Math.min(a.getQty(), left);
+                int n = Math.min(a.qty(), left);
                 lot.setQtyLeft(lot.getQtyLeft() + n);
                 lots.save(lot);
-                a.setQty(a.getQty() - n);
-                if (a.getQty() == 0) {
-                    allocations.remove(i);
-                }
+                sale.reduceAt(i, n);
                 left -= n;
             }
         }
@@ -134,21 +134,38 @@ public class LotLedger {
         }
     }
 
-    private static void allocate(OrderItem item, Long lotId, int n) {
-        if (item.getLots() == null) {
-            item.setLots(new ArrayList<>());
-        }
-        List<OrderItemLot> list = item.getLots();
-        OrderItemLot last = list.isEmpty() ? null : list.get(list.size() - 1);
-        if (last != null && last.getLotId().equals(lotId)) {
-            last.setQty(last.getQty() + n);
-            return;
-        }
-        OrderItemLot a = new OrderItemLot();
-        a.setItem(item);
-        a.setLotId(lotId);
-        a.setQty(n);
-        list.add(a);
+    // ------------------------------------------------------------------ reads for procurement and finance
+
+    /** Lots of one product (all variants), oldest first. */
+    public List<StockLot> lotsOfProduct(byte[] productId) {
+        return lots.findByProductIdOrderByIdAsc(productId);
+    }
+
+    /** Lots of one product (variant), oldest first; {@code variantId} null = a product without variants. */
+    public List<StockLot> lotsOfLine(byte[] productId, byte[] variantId) {
+        return lots.findKey(productId, variantId);
+    }
+
+    /** Lots with units still on the shelf. */
+    public List<StockLot> lotsOnShelf() {
+        return lots.findByQtyLeftGreaterThan(0);
+    }
+
+    public List<StockLot> allLots() {
+        return lots.findAll();
+    }
+
+    public List<StockLot> lotsByIds(Collection<Long> ids) {
+        return lots.findAllById(ids);
+    }
+
+    /** The lots that arrivals of these batch lines made. */
+    public List<StockLot> lotsOfBatchItems(Collection<Long> batchItemIds) {
+        return lots.findByBatchItemIdIn(batchItemIds);
+    }
+
+    public void saveLots(Collection<StockLot> changed) {
+        lots.saveAll(changed);
     }
 
     private static StockLot newLot(byte[] productId, byte[] variantId, StockLot.Kind kind, int qty) {

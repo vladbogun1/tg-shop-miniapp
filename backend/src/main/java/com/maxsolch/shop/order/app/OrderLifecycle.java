@@ -13,7 +13,6 @@ import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.platform.util.MoneyFormat;
-import com.maxsolch.shop.inventory.app.OrderStock;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.inventory.app.Stock;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.gift.GiftService;
@@ -11,7 +12,6 @@ import com.maxsolch.shop.promo.domain.PromoDiscount;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.repository.ProductRepository;
-import com.maxsolch.shop.inventory.app.OrderStock;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,16 +30,18 @@ public class OrderEditing {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final OrderStock stock;
+    private final Stock shelf;
     private final ApplicationEventPublisher events;
     private final GiftService giftService;
     private final OrderPromos promos;
 
-    OrderEditing(OrderOps ops, OrderRepository orderRepository, ProductRepository productRepository, OrderStock stock,
+    OrderEditing(OrderOps ops, OrderRepository orderRepository, ProductRepository productRepository, OrderStock stock, Stock shelf,
                  ApplicationEventPublisher events, GiftService giftService, OrderPromos promos) {
         this.ops = ops;
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.stock = stock;
+        this.shelf = shelf;
         this.events = events;
         this.giftService = giftService;
         this.promos = promos;
@@ -79,7 +81,7 @@ public class OrderEditing {
                 .filter(i -> Arrays.equals(i.getVariantId(), vId))
                 .findFirst().orElse(null);
         OrderItem item = existing != null ? existing : new OrderItem();
-        stock.reserve(product, variant, qty, item);
+        shelf.reserve(product, variant, qty, item);
         if (existing != null) {
             existing.setQuantity(existing.getQuantity() + qty);
         } else {

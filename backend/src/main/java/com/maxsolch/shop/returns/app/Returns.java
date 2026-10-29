@@ -23,7 +23,7 @@ import com.maxsolch.shop.returns.domain.ReturnPlanRules;
 import com.maxsolch.shop.returns.domain.WizardLine;
 import com.maxsolch.shop.returns.infra.OrderReturnLineRepository;
 import com.maxsolch.shop.returns.infra.OrderReturnRepository;
-import com.maxsolch.shop.inventory.app.OrderStock;
+import com.maxsolch.shop.order.app.OrderStock;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

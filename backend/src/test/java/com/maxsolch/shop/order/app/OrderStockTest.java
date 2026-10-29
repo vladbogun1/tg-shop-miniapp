@@ -1,15 +1,13 @@
-package com.maxsolch.shop.inventory.app;
+package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
-import com.maxsolch.shop.order.app.CreateOrderCommand;
-import com.maxsolch.shop.order.app.MoneyLedger;
-import com.maxsolch.shop.order.app.Checkout;
-import com.maxsolch.shop.order.app.OrderApp;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.inventory.app.LotLedger;
+import com.maxsolch.shop.inventory.app.Stock;
+import com.maxsolch.shop.inventory.domain.StockHolds;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderStatus;
@@ -23,7 +21,7 @@ import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.repository.ProductRepository;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.tg.NotificationService;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.DomainException;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,6 +67,7 @@ class OrderStockTest {
     @Mock EntityManager entityManager;
     @Mock LotLedger lots;
     @Mock PreorderQueueService queue;
+    @Mock StockHolds holds;
 
     OrderApp app;
     Checkout service;
@@ -96,9 +95,10 @@ class OrderStockTest {
     }
 
     private OrderApp newApp() {
+        Stock shelf = new Stock(productRepository, messages, lots, holds);
         return OrderApp.create(orderRepository, productRepository, promoCodeRepository,
                 paymentOptionRepository, notificationService, events, promoService, cartService, messages, entityManager,
-                new OrderStock(productRepository, messages, lots, queue), org.mockito.Mockito.mock(MoneyLedger.class));
+                new OrderStock(productRepository, shelf, queue), shelf, org.mockito.Mockito.mock(MoneyLedger.class));
     }
 
     private Product product(int stock) {
@@ -163,10 +163,10 @@ class OrderStockTest {
 
         assertThat(p.getStock()).isEqualTo(7);
         OrderItem item = o.getItems().get(0);
-        InOrder order = inOrder(queue, lots);
-        order.verify(queue).heldForOthers(p.getId(), null, 7L);
+        InOrder order = inOrder(holds, queue, lots);
+        order.verify(holds).heldForOthers(p.getId(), null, 7L);
         order.verify(lots).take(p.getId(), null, 3, item);
-        order.verify(queue).onStockTaken(p, null, 7);
+        order.verify(holds).onStockTaken(p, null, 7);
         order.verify(queue).onOrderPlaced(eq(7L), eq(o.getId()), any());
     }
 
@@ -181,24 +181,24 @@ class OrderStockTest {
         assertThat(m.getStock()).isEqualTo(1);
         assertThat(p.getStock()).isEqualTo(3);
         verify(lots).take(p.getId(), m.getId(), 3, o.getItems().get(0));
-        verify(queue).onStockTaken(p, m, 1);
+        verify(holds).onStockTaken(p, m, 1);
     }
 
     @Test
     void checkout_guestWithoutUserId_doesNotCloseQueuePlaces() {
         Product p = product(10);
         service.createOrder(checkout(p, null, 1, null));
-        verify(queue).heldForOthers(p.getId(), null, null);
+        verify(holds).heldForOthers(p.getId(), null, null);
         verify(queue, never()).onOrderPlaced(any(), any(), any());
     }
 
     @Test
     void checkout_unitsHeldForOthersAreNotForSale() {
         Product p = product(5);
-        when(queue.heldForOthers(p.getId(), null, 7L)).thenReturn(3);
+        when(holds.heldForOthers(p.getId(), null, 7L)).thenReturn(3);
 
         assertThatThrownBy(() -> service.createOrder(checkout(p, null, 3, 7L)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         verify(messages).current("api.order.outOfStock", "Мишка", 2);
         assertThat(p.getStock()).isEqualTo(5);
         verify(lots, never()).take(any(), any(), anyInt(), any());
@@ -207,7 +207,7 @@ class OrderStockTest {
     @Test
     void checkout_heldForOthersLeavesEnough_goesThrough() {
         Product p = product(5);
-        when(queue.heldForOthers(p.getId(), null, 7L)).thenReturn(3);
+        when(holds.heldForOthers(p.getId(), null, 7L)).thenReturn(3);
         service.createOrder(checkout(p, null, 2, 7L));
         assertThat(p.getStock()).isEqualTo(3);
     }
@@ -216,27 +216,27 @@ class OrderStockTest {
     void checkout_variantHeldForOthers_namesTheVariantAndClampsAtZero() {
         Product p = product(0);
         ProductVariant m = variant(p, "M", 2);
-        when(queue.heldForOthers(p.getId(), m.getId(), 7L)).thenReturn(5);
+        when(holds.heldForOthers(p.getId(), m.getId(), 7L)).thenReturn(5);
 
-        assertThatThrownBy(() -> service.createOrder(checkout(p, m, 1, 7L))).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> service.createOrder(checkout(p, m, 1, 7L))).isInstanceOf(DomainException.BadRequest.class);
         verify(messages).current("api.order.outOfStock", "Мишка (M)", 0);
     }
 
     @Test
     void checkout_oversell_refusedWithTheRealStock_nothingTouched() {
         Product p = product(2);
-        assertThatThrownBy(() -> service.createOrder(checkout(p, null, 3, 7L))).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> service.createOrder(checkout(p, null, 3, 7L))).isInstanceOf(DomainException.BadRequest.class);
         verify(messages).current("api.order.outOfStock", "Мишка", 2);
         assertThat(p.getStock()).isEqualTo(2);
         verify(lots, never()).take(any(), any(), anyInt(), any());
-        verify(queue, never()).onStockTaken(any(), any(), anyInt());
+        verify(holds, never()).onStockTaken(any(), any(), anyInt());
     }
 
     @Test
     void checkout_variantOversell_refusedNamingTheVariant() {
         Product p = product(0);
         ProductVariant m = variant(p, "M", 1);
-        assertThatThrownBy(() -> service.createOrder(checkout(p, m, 2, 7L))).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> service.createOrder(checkout(p, m, 2, 7L))).isInstanceOf(DomainException.BadRequest.class);
         verify(messages).current("api.order.outOfStock", "Мишка (M)", 1);
         assertThat(m.getStock()).isEqualTo(1);
     }
@@ -255,7 +255,7 @@ class OrderStockTest {
         assertThat(m.getStock()).isEqualTo(4);
         assertThat(p.getStock()).isEqualTo(4);
         verify(lots).give(p.getId(), m.getId(), 3, it);
-        verify(queue).onStockReturned(p, m);
+        verify(holds).onStockReturned(p, m);
         verify(productRepository).save(p);
         assertThat(it.getRestockedQty()).isEqualTo(3);
     }
@@ -270,7 +270,7 @@ class OrderStockTest {
 
         assertThat(p.getStock()).isEqualTo(1);
         verifyNoInteractions(lots);
-        verify(queue, never()).onStockReturned(any(), any());
+        verify(holds, never()).onStockReturned(any(), any());
     }
 
     @Test
@@ -284,7 +284,7 @@ class OrderStockTest {
 
         assertThat(p.getStock()).isEqualTo(5);
         verifyNoInteractions(lots);
-        verify(queue, never()).onStockReturned(any(), any());
+        verify(holds, never()).onStockReturned(any(), any());
         verify(productRepository).save(p);
     }
 
@@ -341,9 +341,9 @@ class OrderStockTest {
         assertThat(p.getStock()).isEqualTo(3);
         OrderItem it = saved.getItems().get(0);
         verify(lots).take(p.getId(), null, 2, it);
-        verify(queue).onStockTaken(p, null, 3);
+        verify(holds).onStockTaken(p, null, 3);
         // the admin path does not look at holds for others
-        verify(queue, never()).heldForOthers(any(), any(), any());
+        verify(holds, never()).heldForOthers(any(), any(), any());
     }
 
     @Test
@@ -366,7 +366,7 @@ class OrderStockTest {
         Product p = product(1);
         Order o = order(OrderStatus.NEW);
         assertThatThrownBy(() -> app.editing().addItem(o.getId(), UuidUtil.toString(p.getId()), null, 2, false, false))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThat(p.getStock()).isEqualTo(1);
         assertThat(o.getItems()).isEmpty();
     }
@@ -382,7 +382,7 @@ class OrderStockTest {
         assertThat(p.getStock()).isEqualTo(3);
         assertThat(o.getItems()).isEmpty();
         verify(lots).give(p.getId(), null, 2, it);
-        verify(queue).onStockReturned(p, null);
+        verify(holds).onStockReturned(p, null);
     }
 
     @Test
@@ -397,7 +397,7 @@ class OrderStockTest {
         assertThat(m.getStock()).isEqualTo(2);
         assertThat(p.getStock()).isEqualTo(2);
         verify(lots).take(p.getId(), m.getId(), 3, it);
-        verify(queue).onStockTaken(p, m, 2);
+        verify(holds).onStockTaken(p, m, 2);
         assertThat(it.getQuantity()).isEqualTo(5);
     }
 
@@ -411,7 +411,7 @@ class OrderStockTest {
 
         assertThat(p.getStock()).isEqualTo(4);
         verify(lots).give(p.getId(), null, 3, it);
-        verify(queue).onStockReturned(p, null);
+        verify(holds).onStockReturned(p, null);
     }
 
     @Test
@@ -433,7 +433,7 @@ class OrderStockTest {
         OrderItem it = line(o, p, null, 9, 2);
 
         assertThatThrownBy(() -> app.editing().changeItemQuantity(o.getId(), 9, 9, false))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThat(p.getStock()).isEqualTo(1);
         assertThat(it.getQuantity()).isEqualTo(2);
     }
@@ -446,7 +446,7 @@ class OrderStockTest {
         when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> app.editing().changeItemQuantity(o.getId(), 9, 3, false))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("product not found");
     }
 

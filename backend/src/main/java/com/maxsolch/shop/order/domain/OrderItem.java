@@ -1,6 +1,6 @@
 package com.maxsolch.shop.order.domain;
 
-import com.maxsolch.shop.order.domain.OrderItemLot;
+import com.maxsolch.shop.inventory.domain.LotAllocations;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -16,6 +16,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,7 +24,7 @@ import java.util.List;
 @Setter
 @Entity
 @Table(name = "order_items")
-public class OrderItem {
+public class OrderItem implements LotAllocations {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -100,4 +101,38 @@ public class OrderItem {
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @OrderBy("id ASC")
     private List<OrderItemLot> lots = new ArrayList<>();
+
+    // ---- LotAllocations: inventory records on the line which stock lots its units came from
+
+    @Override
+    public List<Share> shares() {
+        return lots == null ? List.of() : lots.stream().map(a -> new Share(a.getLotId(), a.getQty())).toList();
+    }
+
+    @Override
+    public void add(long lotId, int qty, Instant at) {
+        if (lots == null) {
+            lots = new ArrayList<>();
+        }
+        OrderItemLot last = lots.isEmpty() ? null : lots.get(lots.size() - 1);
+        if (last != null && last.getLotId() == lotId) {
+            last.setQty(last.getQty() + qty);
+            return;
+        }
+        OrderItemLot a = new OrderItemLot();
+        a.setItem(this);
+        a.setLotId(lotId);
+        a.setQty(qty);
+        a.setCreatedAt(at);
+        lots.add(a);
+    }
+
+    @Override
+    public void reduceAt(int index, int qty) {
+        OrderItemLot a = lots.get(index);
+        a.setQty(a.getQty() - qty);
+        if (a.getQty() == 0) {
+            lots.remove(index);
+        }
+    }
 }

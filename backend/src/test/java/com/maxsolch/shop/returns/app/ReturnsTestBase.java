@@ -23,8 +23,8 @@ import com.maxsolch.shop.returns.infra.OrderExchangeLineRepository;
 import com.maxsolch.shop.returns.infra.OrderExchangeRepository;
 import com.maxsolch.shop.returns.infra.OrderReturnLineRepository;
 import com.maxsolch.shop.returns.infra.OrderReturnRepository;
-import com.maxsolch.shop.inventory.app.OrderStock;
-import com.maxsolch.shop.inventory.app.StockFixtures;
+import com.maxsolch.shop.order.app.OrderStock;
+import com.maxsolch.shop.order.app.StockFixtures;
 import com.maxsolch.shop.tg.NotificationService;
 import java.util.ArrayList;
 import java.util.List;
@@ -101,7 +101,7 @@ abstract class ReturnsTestBase {
         OrderApp app = OrderApp.create(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, notificationService, events,
                 promoService, cartService, messages, entityManager, stock, Mockito.mock(MoneyLedger.class));
-        ReturnsApp returnsApp = ReturnsApp.create(app, orderRepository, stock, events, ledgerMock, exchangeRepository,
+        ReturnsApp returnsApp = ReturnsApp.create(app, orderRepository, stock, StockFixtures.shelf(productRepository, messages), events, ledgerMock, exchangeRepository,
                 writeoffs, recRepo, lineRepo, exchangeLineRepo);
         defects = returnsApp.defects;
         returns = returnsApp.returns;

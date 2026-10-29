@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.inventory.app.Stock;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.gift.GiftService;
@@ -12,7 +13,6 @@ import com.maxsolch.shop.order.domain.RejectCause;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.inventory.app.OrderStock;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import org.springframework.context.ApplicationEventPublisher;
@@ -121,6 +121,6 @@ class OrderOps {
     }
 
     ProductVariant findVariant(Product product, String variantId) {
-        return OrderStock.variantOf(product, toBytes(variantId, "variantId"));
+        return Stock.variantOf(product, toBytes(variantId, "variantId"));
     }
 }

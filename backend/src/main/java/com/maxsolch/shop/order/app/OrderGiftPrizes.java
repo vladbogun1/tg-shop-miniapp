@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.inventory.app.Stock;
 import com.maxsolch.shop.domain.Product;
 import com.maxsolch.shop.domain.ProductVariant;
 import com.maxsolch.shop.gift.GiftCaseTier;
@@ -10,7 +11,6 @@ import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderMoney;
-import com.maxsolch.shop.inventory.app.OrderStock;
 import org.springframework.stereotype.Component;
 
 import java.security.SecureRandom;
@@ -32,9 +32,9 @@ class OrderGiftPrizes {
 
     private final OrderOps ops;
     private final GiftRegistryService giftRegistry;
-    private final OrderStock stock;
+    private final Stock stock;
 
-    OrderGiftPrizes(OrderOps ops, GiftRegistryService giftRegistry, OrderStock stock) {
+    OrderGiftPrizes(OrderOps ops, GiftRegistryService giftRegistry, Stock stock) {
         this.ops = ops;
         this.giftRegistry = giftRegistry;
         this.stock = stock;

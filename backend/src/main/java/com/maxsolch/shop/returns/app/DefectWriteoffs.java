@@ -8,7 +8,7 @@ import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.inventory.infra.StockWriteoffRepository;
 import com.maxsolch.shop.returns.domain.OrderReturnLine;
 import com.maxsolch.shop.returns.infra.OrderReturnLineRepository;
-import com.maxsolch.shop.inventory.app.OrderStock;
+import com.maxsolch.shop.inventory.app.Stock;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,11 +24,11 @@ public class DefectWriteoffs {
     private final StockWriteoffRepository writeoffs;
     private final OrderReturnLineRepository returnLines;
     private final OrderLookup orders;
-    private final OrderStock stock;
+    private final Stock stock;
     private final Clock clock;
 
     public DefectWriteoffs(StockWriteoffRepository writeoffs, OrderReturnLineRepository returnLines,
-                           OrderLookup orders, OrderStock stock, Clock clock) {
+                           OrderLookup orders, Stock stock, Clock clock) {
         this.writeoffs = writeoffs;
         this.returnLines = returnLines;
         this.orders = orders;

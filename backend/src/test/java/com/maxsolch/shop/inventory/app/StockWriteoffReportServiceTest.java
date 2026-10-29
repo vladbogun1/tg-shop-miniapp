@@ -1,6 +1,6 @@
 package com.maxsolch.shop.inventory.app;
 
-import com.maxsolch.shop.order.domain.TimeRange;
+import com.maxsolch.shop.platform.time.TimeRange;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.inventory.domain.StockWriteoff;
 import org.junit.jupiter.api.Test;

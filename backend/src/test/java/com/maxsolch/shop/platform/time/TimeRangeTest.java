@@ -1,4 +1,4 @@
-package com.maxsolch.shop.order.domain;
+package com.maxsolch.shop.platform.time;
 
 import org.junit.jupiter.api.Test;
 

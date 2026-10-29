@@ -11,7 +11,7 @@ import com.maxsolch.shop.order.app.OrderMerge;
 import com.maxsolch.shop.order.app.Checkout;
 import com.maxsolch.shop.order.app.CancelRequests;
 import com.maxsolch.shop.order.app.OrderApp;
-import com.maxsolch.shop.inventory.app.StockFixtures;
+import com.maxsolch.shop.order.app.StockFixtures;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -549,7 +549,7 @@ class OrderTransitionsTest {
 
     @Test
     void exchange_newOrderStartedApproved_noStatusChangedAndNoRevoke() {
-        Exchanges adjust = ReturnsApp.create(app, orderRepository, StockFixtures.stock(productRepository, messages), events, ledger, exchangeRepository).exchanges;
+        Exchanges adjust = ReturnsApp.create(app, orderRepository, StockFixtures.stock(productRepository, messages), StockFixtures.shelf(productRepository, messages), events, ledger, exchangeRepository).exchanges;
         Order o = order(OrderStatus.DELIVERED);
         o.setCustomerName("Іван Петренко");
         o.setPhone("+380501112233");

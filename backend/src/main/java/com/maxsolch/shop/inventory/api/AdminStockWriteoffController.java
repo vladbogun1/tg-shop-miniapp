@@ -4,7 +4,7 @@ import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.returns.app.DefectWriteoffs;
 import com.maxsolch.shop.inventory.app.StockWriteoffReportService;
-import com.maxsolch.shop.order.domain.TimeRange;
+import com.maxsolch.shop.platform.time.TimeRange;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
