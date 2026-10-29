@@ -13,6 +13,7 @@ import com.maxsolch.shop.service.AdminOrderStatusService;
 import com.maxsolch.shop.service.OrderAdjustmentService;
 import com.maxsolch.shop.service.OrderQueryService;
 import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.service.ReturnWizardService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.NotFoundException;
 import com.maxsolch.shop.web.dto.OrderAdjustmentDtos.ReturnWizardRequest;
@@ -97,6 +98,7 @@ class AdminOrderControllerTest {
         AdminOrderQueries lookup = new AdminOrderQueries(orders, queries, null);
         return new AdminOrderController(lookup,
                 new AdminOrderStatusService(lookup, orderService, payments, audit),
+                new ReturnWizardService(lookup, orderService, adjustments, payments, audit),
                 orderService, queries, null, audit, null, null, adjustments, payments);
     }
 

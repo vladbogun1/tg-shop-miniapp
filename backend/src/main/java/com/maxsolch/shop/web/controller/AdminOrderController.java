@@ -18,6 +18,7 @@ import com.maxsolch.shop.service.OrderAdjustmentService;
 import com.maxsolch.shop.service.OrderMergeService;
 import com.maxsolch.shop.service.OrderQueryService;
 import com.maxsolch.shop.service.OrderService;
+import com.maxsolch.shop.service.ReturnWizardService;
 import com.maxsolch.shop.web.BadRequestException;
 import com.maxsolch.shop.web.SecurityUtil;
 import com.maxsolch.shop.web.dto.DispatchOrderDto;
@@ -57,6 +58,7 @@ public class AdminOrderController {
 
     private final AdminOrderQueries queries;
     private final AdminOrderStatusService statusService;
+    private final ReturnWizardService returnWizards;
     private final OrderService orderService;
     private final OrderQueryService orderQueryService;
     private final MessageService messageService;
@@ -65,8 +67,6 @@ public class AdminOrderController {
     private final UploadValidator uploadValidator;
     private final OrderAdjustmentService adjustments;
     private final OnlinePaymentService payments;
-    /** Orders whose return wizard is running right now (one backend instance): no double submit. */
-    private final java.util.Set<String> returnsInFlight = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     /** Merging orders (V71). */
     private OrderMergeService merges;
@@ -78,6 +78,7 @@ public class AdminOrderController {
 
     public AdminOrderController(AdminOrderQueries queries,
                                 AdminOrderStatusService statusService,
+                                ReturnWizardService returnWizards,
                                 OrderService orderService,
                                 OrderQueryService orderQueryService,
                                 MessageService messageService,
@@ -88,6 +89,7 @@ public class AdminOrderController {
                                 OnlinePaymentService payments) {
         this.queries = queries;
         this.statusService = statusService;
+        this.returnWizards = returnWizards;
         this.orderService = orderService;
         this.orderQueryService = orderQueryService;
         this.messageService = messageService;
@@ -214,7 +216,7 @@ public class AdminOrderController {
         List<OrderAdjustmentService.WizardLine> returned = req.returned() == null ? List.of()
                 : req.returned().stream()
                         .map(l -> new OrderAdjustmentService.WizardLine(l.itemId(), l.quantity(),
-                                l.outcome() == null || l.outcome().isBlank() ? null : parseOutcome(l.outcome())))
+                                l.outcome() == null || l.outcome().isBlank() ? null : ReturnWizardService.parseOutcome(l.outcome())))
                         .toList();
         List<OrderAdjustmentService.ExchangeNewLine> items = req.items() == null ? List.of()
                 : req.items().stream()
@@ -405,57 +407,13 @@ public class AdminOrderController {
         return archive(id, new OrderAdjustmentDtos.ArchiveRequest(reason));
     }
 
-    /**
-     * Return wizard (V68). The goods and the manual refunds are saved first; a refund through
-     * monobank is requested after that commit (it is an outside call) and booked when the bank
-     * confirms — so it is never counted twice.
-     */
+    /** Return wizard (V68): the whole flow, incl. the monobank refund and the one-at-a-time lock, is in {@link ReturnWizardService}. */
     @PostMapping("/{id}/returns")
     @Operation(summary = "Return wizard: lines (RESTOCK/DEFECT/KEPT), manual refunds by channel, "
             + "optional monobank refund, retained amount")
     public OrderDetailDto returnWizard(@PathVariable String id,
                                        @Valid @RequestBody OrderAdjustmentDtos.ReturnWizardRequest req) {
-        Order order = load(id);
-        List<OrderAdjustmentService.WizardLine> lines = req.lines() == null ? List.of()
-                : req.lines().stream()
-                        .map(l -> new OrderAdjustmentService.WizardLine(l.itemId(), l.quantity(), parseOutcome(l.outcome())))
-                        .toList();
-        List<OrderAdjustmentService.ManualRefund> refunds = req.refunds() == null ? List.of()
-                : req.refunds().stream()
-                        .filter(r -> r.amountMinor() != 0)
-                        .map(r -> new OrderAdjustmentService.ManualRefund(
-                                com.maxsolch.shop.service.MoneyLedger.parseChannel(r.channel()), r.amountMinor(), r.note()))
-                        .toList();
-        long mono = req.monoRefundMinor() == null ? 0 : req.monoRefundMinor();
-        OrderAdjustmentService.ReturnPlan plan = new OrderAdjustmentService.ReturnPlan(lines, refunds,
-                req.retainMinor() == null ? 0 : req.retainMinor(), mono, req.note(),
-                req.notifyCustomer() == null || req.notifyCustomer());
-        String key = UuidUtil.toString(order.getId());
-        if (!returnsInFlight.add(key)) {
-            throw new BadRequestException("возврат по этому заказу уже оформляется — дождитесь окончания");
-        }
-        try {
-            // Check first, then the bank, then the books: a refused plan sends no money, and a refund
-            // monobank refuses leaves nothing half-saved to be entered twice on a retry.
-            adjustments.checkReturnPlan(order.getId(), plan);
-            if (mono > 0) {
-                String monoInvoice = payments.refundableInvoice(order.getId(), mono);
-                try {
-                    payments.refund(order.getId(), monoInvoice, mono);
-                } catch (BadRequestException e) {
-                    throw new BadRequestException("monobank не принял возврат денег: " + e.getMessage()
-                            + ". Ничего не сохранено — исправьте и повторите.", "MONO_REFUND_FAILED");
-                }
-                audit.record("ORDER_REFUND_ONLINE", "ORDER", id,
-                        "возврат на карту через monobank " + MoneyFormat.uah(mono) + " (мастер возврата)");
-            }
-            OrderAdjustmentService.Result r = adjustments.registerReturnPlan(order.getId(), plan,
-                    audit.currentAdminName(), mono > 0);
-            audit.record("ORDER_RETURN", "ORDER", id, r.auditDetails());
-        } finally {
-            returnsInFlight.remove(key);
-        }
-        return orderQueryService.toDetail(orderService.get(order.getId()));
+        return orderQueryService.toDetail(returnWizards.register(id, req));
     }
 
     @PostMapping("/{id}/return-received")
@@ -464,7 +422,7 @@ public class AdminOrderController {
                                          @Valid @RequestBody OrderAdjustmentDtos.ReceiveReturnRequest req) {
         List<OrderAdjustmentService.ReceivedLine> lines = req.lines() == null ? List.of()
                 : req.lines().stream()
-                        .map(l -> new OrderAdjustmentService.ReceivedLine(l.itemId(), l.quantity(), parseOutcome(l.outcome())))
+                        .map(l -> new OrderAdjustmentService.ReceivedLine(l.itemId(), l.quantity(), ReturnWizardService.parseOutcome(l.outcome())))
                         .toList();
         OrderAdjustmentService.Result r = adjustments.receiveReturn(load(id).getId(), lines, req.note(),
                 audit.currentAdminName());
@@ -496,17 +454,6 @@ public class AdminOrderController {
         OrderAdjustmentService.Result r = adjustments.settleReturnDebt(load(id).getId(), returnId, audit.currentAdminName());
         audit.record("ORDER_RETURN_DEBT_PAID", "ORDER", id, r.auditDetails());
         return orderQueryService.toDetail(r.order());
-    }
-
-    private static OrderAdjustmentService.LineOutcome parseOutcome(String s) {
-        if (s == null || s.isBlank()) {
-            return OrderAdjustmentService.LineOutcome.RESTOCK;
-        }
-        try {
-            return OrderAdjustmentService.LineOutcome.valueOf(s.trim().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException("неизвестное состояние товара: " + s);
-        }
     }
 
     /**
