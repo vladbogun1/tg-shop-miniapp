@@ -1,0 +1,48 @@
+ActivityLog.onCommitted(EntryCommitted) phase=AFTER_COMMIT fallback=true
+AdminPushNotifier.onCancelRequested(CancelRequested) phase=AFTER_COMMIT fallback=true
+AdminPushNotifier.onChatMessage(ChatMessage) phase=AFTER_COMMIT fallback=true
+AdminPushNotifier.onCreated(Created) phase=AFTER_COMMIT fallback=true
+AdminPushNotifier.onPaymentReceived(PaymentReceived) phase=AFTER_COMMIT fallback=true
+AdminPushNotifier.onSiteFailed(Failed) immediately
+AnalyticsAggregationService.onStartup(ApplicationReadyEvent) immediately
+BotTexts.onTranslationsChanged(TranslationsChanged) phase=AFTER_COMMIT fallback=true
+BroadcastService.closeInterrupted(ApplicationReadyEvent) immediately tx=REQUIRED
+CatalogDirectory.onCatalogChanged(CatalogChanged) phase=AFTER_COMMIT fallback=true
+CatalogFileCleanup.onFilesDropped(CatalogFilesDropped) phase=AFTER_COMMIT fallback=true
+CatalogTranslationListener.onTranslationsChanged(TranslationsChanged) phase=AFTER_COMMIT fallback=true
+HoldsCacheFlush.on(HoldsChanged) phase=AFTER_COMMIT fallback=true
+ImageStorageService.ensureBucket(ApplicationReadyEvent) immediately
+NovaPoshtaSyncService.onStartup(ApplicationReadyEvent) immediately
+OrderChatBroadcaster.on(ChatPosted) phase=AFTER_COMMIT fallback=true
+OrderNotificationListener.onCancelRequestResolved(CancelRequestResolved) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
+OrderNotificationListener.onCancelRequested(CancelRequested) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
+OrderNotificationListener.onChatMessage(ChatMessage) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
+OrderNotificationListener.onCreated(Created) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
+OrderNotificationListener.onDeleted(Deleted) phase=AFTER_COMMIT fallback=false
+OrderNotificationListener.onEdited(Edited) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
+OrderNotificationListener.onExchanged(Exchanged) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
+OrderNotificationListener.onGiftCasePromo(GiftCasePromo) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
+OrderNotificationListener.onMerged(Merged) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
+OrderNotificationListener.onPaymentReceived(PaymentReceived) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
+OrderNotificationListener.onReturned(Returned) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
+OrderNotificationListener.onStatusChanged(StatusChanged) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
+PreorderNotifier.onArrived(ArrivedNotice) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+PreorderNotifier.onBatchCancelledKept(BatchCancelledKept) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+PreorderNotifier.onClosed(Closed) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+PreorderNotifier.onHoldEnding(HoldEnding) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+PreorderNotifier.onHoldExpired(HoldExpired) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+PreorderNotifier.onHoldGranted(HoldGranted) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+PreorderNotifier.onStillWaiting(StillWaiting) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+PreorderNotifier.onSubscribed(Subscribed) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+ReviewCacheReset.on(RatingChanged) phase=AFTER_COMMIT fallback=true
+ReviewNotifier.on(BonusIssued) phase=AFTER_COMMIT fallback=true
+ReviewNotifier.on(PendingForModeration) phase=AFTER_COMMIT fallback=true
+SettingsService.onTransactionCompleted(SettingsSaved) phase=AFTER_COMPLETION fallback=false
+SiteRevalidator.onRequested(SiteRevalidationRequested) phase=AFTER_COMMIT fallback=true
+SupportChatBroadcaster.on(ChatPosted) phase=AFTER_COMMIT fallback=true
+SupportNotifier.onMessage(MessagePosted) phase=AFTER_COMMIT fallback=true
+TelegramBotConfig.registerBot(ApplicationReadyEvent) immediately
+TranslationAdminService.backfillSourceTexts(ApplicationReadyEvent) immediately tx=REQUIRED
+TranslationService.onTranslationsChanged(TranslationsChanged) phase=AFTER_COMMIT fallback=true
+WebLoginNotifier.onLoginCompleted(WebLoginCompletedEvent) phase=AFTER_COMMIT fallback=true
+WebSocketConfig.onSessionDisconnect(SessionDisconnectEvent) immediately
