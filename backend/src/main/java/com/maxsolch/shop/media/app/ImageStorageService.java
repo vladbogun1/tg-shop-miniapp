@@ -1,16 +1,7 @@
 package com.maxsolch.shop.media.app;
 
 import com.maxsolch.shop.media.api.MediaController;
-import com.maxsolch.shop.platform.config.AppProperties;
-import io.minio.BucketExistsArgs;
-import io.minio.GetObjectArgs;
-import io.minio.MakeBucketArgs;
-import io.minio.MinioClient;
-import io.minio.PutObjectArgs;
-import io.minio.RemoveObjectArgs;
-import io.minio.StatObjectArgs;
-import io.minio.StatObjectResponse;
-import lombok.extern.slf4j.Slf4j;
+import com.maxsolch.shop.media.domain.ObjectStore;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -25,47 +16,26 @@ import java.util.UUID;
  * object key. The key (not a presigned URL) is persisted; the frontend builds a public URL
  * via imgproxy. Never exposes raw bytes.
  */
-@Slf4j
 @Service
 public class ImageStorageService {
 
-    private final MinioClient minioClient;
-    private final String bucket;
+    private final ObjectStore store;
 
-    public ImageStorageService(MinioClient minioClient, AppProperties props) {
-        this.minioClient = minioClient;
-        this.bucket = props.getS3().getBucket();
+    public ImageStorageService(ObjectStore store) {
+        this.store = store;
     }
 
     @EventListener(ApplicationReadyEvent.class)
     public void ensureBucket() {
-        try {
-            boolean exists = minioClient.bucketExists(
-                    BucketExistsArgs.builder().bucket(bucket).build());
-            if (!exists) {
-                minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
-                log.info("Created MinIO bucket '{}'", bucket);
-            }
-        } catch (Exception e) {
-            log.warn("Could not verify/create MinIO bucket '{}': {}", bucket, e.getMessage());
-        }
+        store.ensureBucket();
     }
 
     /**
      * Upload a stream under the given key. Returns the key.
      */
     public String putObject(InputStream stream, long size, String contentType, String key) {
-        try {
-            minioClient.putObject(PutObjectArgs.builder()
-                    .bucket(bucket)
-                    .object(key)
-                    .stream(stream, size, size < 0 ? 10L * 1024 * 1024 : -1)
-                    .contentType(contentType == null ? "application/octet-stream" : contentType)
-                    .build());
-            return key;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to upload object to storage: " + e.getMessage(), e);
-        }
+        store.put(key, stream, size, contentType);
+        return key;
     }
 
     /**
@@ -143,20 +113,8 @@ public class ImageStorageService {
         if (key == null || key.isBlank()) {
             return null;
         }
-        try {
-            StatObjectResponse stat = minioClient.statObject(StatObjectArgs.builder()
-                    .bucket(bucket)
-                    .object(key)
-                    .build());
-            InputStream stream = minioClient.getObject(GetObjectArgs.builder()
-                    .bucket(bucket)
-                    .object(key)
-                    .build());
-            return new StoredObject(stream, stat.contentType());
-        } catch (Exception e) {
-            log.warn("Could not read object '{}': {}", key, e.getMessage());
-            return null;
-        }
+        ObjectStore.Stored stored = store.get(key);
+        return stored == null ? null : new StoredObject(stored.stream(), stored.contentType());
     }
 
     /**
@@ -170,15 +128,7 @@ public class ImageStorageService {
         if (key == null || key.isBlank() || key.startsWith("http://") || key.startsWith("https://")) {
             return;
         }
-        try {
-            minioClient.removeObject(RemoveObjectArgs.builder()
-                    .bucket(bucket)
-                    .object(key.trim())
-                    .build());
-            log.info("Deleted orphaned object '{}'", key);
-        } catch (Exception e) {
-            log.warn("Could not delete object '{}': {}", key, e.getMessage());
-        }
+        store.removeQuietly(key.trim());
     }
 
     private String upload(UploadedFile file, String key) {

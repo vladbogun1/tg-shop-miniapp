@@ -1,17 +1,9 @@
 package com.maxsolch.shop.media.app;
 
-import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.platform.http.HttpClientSettings;
-import com.maxsolch.shop.platform.http.HttpClients;
-import com.maxsolch.shop.platform.http.ResilientHttp;
-import lombok.extern.slf4j.Slf4j;
+import com.maxsolch.shop.media.domain.Imgproxy;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
-import java.net.URI;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.Set;
 
 /**
@@ -24,10 +16,9 @@ import java.util.Set;
  *
  * <p>imgproxy itself must stay out of reach for this bucket prefix: chat attachments are private
  * and the public {@code /img/insecure/...} path has no authorisation. So the request is made from
- * inside the compose network, only after {@link MediaSigner} has accepted the signature, and the
- * bytes are streamed back through the API.
+ * inside the compose network (the {@link Imgproxy} adapter), only after {@link MediaSigner} has accepted the
+ * signature, and the bytes are streamed back through the API.
  */
-@Slf4j
 @Component
 public class MediaThumbnailer {
 
@@ -37,20 +28,10 @@ public class MediaThumbnailer {
      */
     private static final Set<Integer> ALLOWED_WIDTHS = Set.of(320, 480, 960, 1600);
 
-    /** 3 s to connect, 15 s for a render; GET, so a retry is allowed, but none is configured (the caller falls back). */
-    private static final HttpClientSettings HTTP = HttpClientSettings.defaults("imgproxy")
-            .withTimeouts(Duration.ofSeconds(3), Duration.ofSeconds(15));
+    private final Imgproxy imgproxy;
 
-    private final ResilientHttp http;
-
-    private final String imgproxyUrl;
-    private final String bucket;
-
-    public MediaThumbnailer(AppProperties props, HttpClients httpClients) {
-        this.http = httpClients.create(HTTP);
-        String imgproxyUrl = props.getMedia().getImgproxyUrl();
-        this.imgproxyUrl = imgproxyUrl == null ? "" : imgproxyUrl.replaceAll("/+$", "");
-        this.bucket = props.getS3().getBucket();
+    public MediaThumbnailer(Imgproxy imgproxy) {
+        this.imgproxy = imgproxy;
     }
 
     public static boolean isAllowedWidth(Integer width) {
@@ -59,32 +40,8 @@ public class MediaThumbnailer {
 
     /** A rendered variant, or null when imgproxy is unavailable and the caller should fall back. */
     public Variant render(String objectKey, int width) {
-        if (imgproxyUrl.isBlank()) {
-            return null;
-        }
-        // rs:fit keeps the whole picture readable; cropping it to a square could cut off exactly
-        // the part the shop needs to see.
-        String url = imgproxyUrl + "/insecure/rs:fit:" + width + ":" + width
-                + "/plain/s3://" + bucket + "/" + objectKey + "@webp";
-        try {
-            HttpResponse<InputStream> response = http.send(
-                    HttpRequest.newBuilder(URI.create(url))
-                            .timeout(Duration.ofSeconds(15))
-                            .GET()
-                            .build(),
-                    HttpResponse.BodyHandlers.ofInputStream());
-            if (response.statusCode() != 200) {
-                response.body().close();
-                log.debug("imgproxy returned {} for {}", response.statusCode(), objectKey);
-                return null;
-            }
-            String contentType = response.headers().firstValue("Content-Type").orElse("image/webp");
-            return new Variant(response.body(), contentType);
-        } catch (Exception e) {
-            // Falling back to the original is slow but correct; failing the request is neither.
-            log.debug("imgproxy unavailable for {}: {}", objectKey, e.toString());
-            return null;
-        }
+        Imgproxy.Rendered rendered = imgproxy.fit(objectKey, width);
+        return rendered == null ? null : new Variant(rendered.stream(), rendered.contentType());
     }
 
     public record Variant(InputStream stream, String contentType) {

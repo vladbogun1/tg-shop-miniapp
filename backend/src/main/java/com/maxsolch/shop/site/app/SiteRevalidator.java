@@ -2,28 +2,19 @@ package com.maxsolch.shop.site.app;
 
 import com.maxsolch.shop.site.domain.SiteRevalidationFailed;
 import com.maxsolch.shop.platform.jobs.Workers;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.platform.http.HttpClientSettings;
-import com.maxsolch.shop.platform.http.HttpClients;
-import com.maxsolch.shop.platform.http.ResilientHttp;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.platform.tx.OnCommitted;
+import com.maxsolch.shop.site.domain.SiteCache;
 import com.maxsolch.shop.site.domain.SiteRevalidationRequested;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.net.URI;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -52,16 +43,7 @@ public class SiteRevalidator {
     /** Lets cache evictions that run after the admin call (@CacheEvict on controllers) land first. */
     private static final long DELAY_MS = 1_000;
 
-    private final AppProperties props;
-    private final ObjectMapper objectMapper;
-    // HTTP/1.1 explicitly: the JDK client defaults to HTTP/2 and, over plain http://, sends an
-    // "Upgrade: h2c" request. The Next.js (Node) server has no upgrade handler for it and drops the
-    // socket, so every call failed with "HTTP/1.1 header parser received no bytes".
-    // The call is a POST: never repeated (maxRetries 0), the next admin edit sends a fresh one.
-    private static final HttpClientSettings HTTP = HttpClientSettings.defaults("site-revalidate")
-            .withTimeouts(Duration.ofSeconds(3), Duration.ofSeconds(10)).withHttp11();
-
-    private final ResilientHttp http;
+    private final SiteCache cache;
     private final ScheduledExecutorService executor;
 
     /** Outcome of the most recent call, for {@code GET /api/admin/site/revalidate/status}. */
@@ -75,19 +57,15 @@ public class SiteRevalidator {
     private final DomainEvents events;
     private final Clock clock;
 
-    public SiteRevalidator(AppProperties props, ObjectMapper objectMapper, DomainEvents events,
-                           HttpClients httpClients, Clock clock, Workers workers) {
+    public SiteRevalidator(SiteCache cache, DomainEvents events, Clock clock, Workers workers) {
         this.executor = workers.scheduled("site-revalidate");
-        this.props = props;
-        this.objectMapper = objectMapper;
+        this.cache = cache;
         this.events = events;
-        this.http = httpClients.create(HTTP);
         this.clock = clock;
     }
 
     public boolean enabled() {
-        String url = props.getSite().getRevalidateUrl();
-        return url != null && !url.isBlank();
+        return cache.enabled();
     }
 
     /** Pages affected by a product change (current and previous slug, its categories). */
@@ -147,7 +125,7 @@ public class SiteRevalidator {
         if (!enabled()) {
             return "ревалидация выключена (SITE_REVALIDATE_URL не задан)";
         }
-        return send(Map.of("all", true, "paths", List.of()), "all pages");
+        return send(true, List.of());
     }
 
     public Status status() {
@@ -176,43 +154,21 @@ public class SiteRevalidator {
     @OnCommitted
     void onRequested(SiteRevalidationRequested request) {
         if (request.all()) {
-            executor.schedule(() -> send(Map.of("all", true, "paths", List.of()), "all pages"),
-                    DELAY_MS, TimeUnit.MILLISECONDS);
+            executor.schedule(() -> send(true, List.of()), DELAY_MS, TimeUnit.MILLISECONDS);
         } else {
             List<String> list = request.paths();
-            executor.schedule(() -> send(Map.of("paths", list), list), DELAY_MS, TimeUnit.MILLISECONDS);
+            executor.schedule(() -> send(false, list), DELAY_MS, TimeUnit.MILLISECONDS);
         }
     }
 
     /** @return null on success, otherwise the failure (also remembered for {@link #status()}) */
-    private String send(Map<String, Object> payload, Object what) {
-        String url = props.getSite().getRevalidateUrl();
-        try {
-            String body = objectMapper.writeValueAsString(payload);
-            HttpRequest.Builder req = HttpRequest.newBuilder(URI.create(url.trim()))
-                    .timeout(Duration.ofSeconds(10))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(body));
-            String secret = props.getSite().getRevalidateSecret();
-            if (secret != null && !secret.isBlank()) {
-                req.header("x-revalidate-secret", secret);
-            }
-            HttpResponse<Void> res = http.send(req.build(), HttpResponse.BodyHandlers.discarding());
-            if (res.statusCode() >= 300) {
-                log.warn("Site revalidation answered {} for {}", res.statusCode(), what);
-                return failed("сайт ответил HTTP " + res.statusCode());
-            }
-            log.debug("Site revalidated: {}", what);
+    private String send(boolean all, List<String> paths) {
+        String error = cache.rebuild(all, paths);
+        if (error == null) {
             lastSuccessAt.set(clock.instant());
             return null;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return failed("прервано");
-        } catch (Exception e) {
-            log.warn("Site revalidation failed ({}): {}", url, e.toString());
-            return failed(e.getClass().getSimpleName()
-                    + (e.getMessage() == null ? "" : ": " + e.getMessage()));
         }
+        return failed(error);
     }
 
     private String failed(String error) {
