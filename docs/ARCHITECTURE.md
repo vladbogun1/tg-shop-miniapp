@@ -1,7 +1,7 @@
 # Целевая архитектура бэкенда tg-shop-v2
 
 **Статус бэкенда (30.10.2026): переезд завершён.** Все модули в `<модуль>.{api,app,domain,infra}` + `platform`, храповик ArchUnit v2 на нуле
-по всем правилам и модулям, старые пакеты и списки заморозки удалены, файл не длиннее 500 строк без исключений, `spring.jpa.open-in-view: false`.
+по всем правилам и модулям, старые пакеты и списки заморозки удалены, файл не длиннее 400 строк, метод не длиннее 80, без исключений, `spring.jpa.open-in-view: false`.
 Дальше — фронты (шаг 9). Что осознанно осталось в памяти процесса — в разделе 6.
 
 **Статус: утверждено 29.10.2026.** Версия 1. Основа — карта кода master `7c7cf46` (486 классов, ~56 тыс. строк) и книги-скиллы (Clean Architecture,
@@ -37,7 +37,7 @@ Ousterhout, Fowler, Feathers, Nygard). Правила проверяет ArchUni
 
 | Модуль | Что внутри (откуда переезжает) |
 |---|---|
-| `platform` | общая инфраструктура без бизнес-смысла: ошибки, время/пояс, события после коммита, HTTP-клиенты, задачи, конфиг, кэш, безопасность, i18n-сообщения, аудит, журнал «Бот и сайт», настройки из БД (`common`, `config`, `security`, `i18n`, `audit`, `journal`, `settings`, исключения из `web`) |
+| `platform` | общая инфраструктура без бизнес-смысла: ошибки, время/пояс, события после коммита, HTTP-клиенты, задачи, конфиг, кэш, безопасность, i18n-сообщения, только техника (`util`, `config`, `security`, `i18n`, `cache`, `jobs`, `http`, `tx`, `time`, `error`, `web`-помощники, `infra` — провайдер замков). Бизнес-части вынесены в модули: журнал «Бот и сайт» — `journal`, аудит админов — `audit`, настройки из БД — `settings` (реестр = по одному `*Settings` в каждом модуле), отзыв токенов админа — `staff`. В `platform` нет `@RestController` и `@Entity` (ArchUnit P2). Настройки `application.yml`: `AppProperties` держит только платформенное (пояс, ссылки, подпись токенов, вход Telegram, cookie, GeoIP); остальное — `<Модуль>Properties` в `<модуль>.infra`, они читают свои ветки того же дерева `app.*` (ключи и имена env не менялись), проверки старта модулей — через `platform.config.StartupCheck` |
 | `media` | файлы в MinIO, превью imgproxy, подписи ссылок |
 | `site` | сброс кэша сайта (revalidate) |
 | `translation` | переводы контента — **ничего не знает о товарах**: модули сами регистрируют свои переводимые поля (сейчас наоборот) |
@@ -117,7 +117,7 @@ Ousterhout, Fowler, Feathers, Nygard). Правила проверяет ArchUni
 | Зависимости бинов | только конструктор; `@Autowired(required=false)`, сеттеры, поля, `@Lazy` — нет | ArchUnit |
 | Ответы API | `app` возвращает доменные объекты/read-модели, DTO собирается в `api`. Если ответ 1:1 совпадает с read-моделью — отдельный DTO не заводим, `api` отдаёт read-модель из `app` (решено на шаге 1г, без классов-копий); команды-запросы сценариев тоже живут в `app` | ArchUnit: `app`/`domain` не импортируют `api` |
 | Доступ к данным | Spring Data по умолчанию; `JdbcTemplate`/native SQL — только в `infra/*Store`/`*Queries` | ArchUnit |
-| Размер | класс ≤ 500 строк, метод ≤ ~60; без исключений в конце | `ClassSizeTest` без списка |
+| Размер | файл ≤ 400 строк, метод ≤ 80; без исключений | `ClassSizeTest`, `MethodSizeTest` без списка |
 | Тесты | домен — быстрые юниты без Spring; сценарии — с фейками портов; транзакции/локи/события — IT на MySQL; DTO — golden; тексты — snapshot | CI |
 
 ## 4. Заказ — как будет выглядеть ядро
@@ -128,7 +128,7 @@ Ousterhout, Fowler, Feathers, Nygard). Правила проверяет ArchUni
   `absorbDiscountsOf`, `labelPromo`; кейс подарка: `sealGiftCase`, `openGiftCase`, `dropGiftCase`; деньги: `recordReceived`, `receiveOnline`,
   `absorbPaid`, `registerRefund`/`undoRefund`, `registerUncollected`/`restoreCollected` (не уходят в минус); статусы — `approve`, `ship`,
   `deliver`, `reject`, `markMerged`, `settleIfFree`. Колонки лежат в `OrderColumns`, бухгалтерия без денежных правил (возвратная цепочка,
-  запрос отмены, архив, карточки Telegram) — в `OrderHousekeeping`: так файл `Order` остаётся ≤ 500 строк. `OrderItem`/`OrderItemLot`
+  запрос отмены, архив, карточки Telegram) — в `OrderHousekeeping`: так файл `Order` остаётся ≤ 400 строк. `OrderItem`/`OrderItemLot`
   меняются своими методами (`changeQuantity`, `registerReturned`, `awaitReturn`…). `OrderMoney` — чистый расчёт, заказ не меняет.
   `PaymentInvoice`, `OrderReturn`, `OrderReturnLine` закрыты так же. Остальные сущности (справочники и настройки админки: `PromoCode`,
   кейсы подарков, поставки предзаказов и т.п.) оставлены анемичными: у них нет денежного автомата, сеттеры вызывает только их админский CRUD.
@@ -154,7 +154,7 @@ API (URL и JSON), схема БД и поведение не меняются; 
 | 5 | `gift`, `review`, `support`, `inbox` | средний |
 | 6 | `customer`, `staff`, `notification` (+ рассылки) | средний |
 | 7 | `analytics`, `finance` | небольшой (уже чистые) |
-| 8 | **готово:** старые пакеты и списки заморозки удалены, `open-in-view: false`, лимит 500 строк без исключений, замки в БД | проверка |
+| 8 | **готово:** старые пакеты и списки заморозки удалены, `open-in-view: false`, лимит 400 строк и 80 строк на метод без исключений, замки в БД | проверка |
 | 9 | фронты (сайт, Mini App, админка, shared) — отдельный документ целевой структуры по тому же принципу | отдельный этап |
 
 ## 6. Что остаётся в памяти (и что в БД)
@@ -201,8 +201,6 @@ API (URL и JSON), схема БД и поведение не меняются; 
 | M3 | `review.infra.ReviewStore` | сканы и лента отзывов с заказом, товаром и промокодом; разовые «захваты» `update ... where flag is null` (атомарно, пишут в чужие таблицы) |
 | M3 | `staff.infra.IncidentQueries` | отчёт инцидентов админов: журнал, заказы и движения денег одним чтением |
 | M3 | `staff.infra.AdminTeamQueries` | экран команды: сводка активности по каждому админу из аудита, чата, рассылок, меток и push, только чтение |
-| S1 | `platform.jobs.JobsConfig` | строит `JdbcLockProvider` ShedLock из `JdbcTemplate` рядом с `@EnableSchedulerLock` |
-| S1 | `platform.journal.ActivityLogStore`, `platform.security.AdminRevokedTokenStore` | у `platform` нет слоя infra: собственные таблицы `activity_log` и `admin_revoked_tokens` читает и пишет собственный store |
 | A3 | `catalog.app.AdminCatalog`, `translation.app.AdminTranslations` | `force=1` при удалении характеристики и пустой `entityId` при удалении языка — только главному админу; правило зависит от параметра, аннотация метода его не видит |
 
 Остаток, который не закрыт портом: записи в чужие таблицы остаются в `ReviewStore` (`claimBonus`, `claimReminder`, `recomputeRating`, `claimBonusExpiryReminder`) и `GiftReminderStore` (`claim`) — это атомарные однократные захваты.

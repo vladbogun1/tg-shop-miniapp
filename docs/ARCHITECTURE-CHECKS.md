@@ -19,7 +19,7 @@
   и показывает первые нарушения. Число уменьшилось — тест проходит и пишет подсказку «baseline можно понизить».
 - Правила (id в колонках сводки): L1 api не лезет в infra; L2 app/domain не знают api; L3 domain без web/Jdbc/HTTP/стереотипов Spring;
   L4 infra знает только domain; M1 чужой модуль — только через его app; M2 нет зависимостей против направления модулей (раздел 2.2);
-  P1 platform не знает бизнес-модулей; E1 ошибки — `DomainException` с `ErrorCode`; E2 причина ошибки — только константа enum (класс/лямбда, реализующие `ErrorCode`, вне `platform.error` запрещены; `ErrorCode.of("...")` удалён), текст — в бандлах, их полноту проверяет `ErrorCatalogTest`; T1 после коммита — только событие
+  P1 platform не знает бизнес-модулей; P2 в platform нет `@RestController` и `@Entity`; E1 ошибки — `DomainException` с `ErrorCode`; E2 причина ошибки — только константа enum (класс/лямбда, реализующие `ErrorCode`, вне `platform.error` запрещены; `ErrorCode.of("...")` удалён), текст — в бандлах, их полноту проверяет `ErrorCatalogTest`; T1 после коммита — только событие
   (`DomainEvents` + `@OnCommitted`); T2 `@Transactional` только на публичных методах app; A1 `CurrentActor` вместо `SecurityUtil`;
   A2 контроллеры не пишут ни аудит, ни журнал активности (это сценарий в app); A3 права аннотациями (`AdminAccess.require*` не вызывают ни api, ни app); N1 Telegram/push только из `notification` и `*Notifier`; K1 нет замков в памяти;
   C1 время через `Clock`/`ShopZone`; V1 нет `@Value`; V2 `@ConfigurationProperties` с `@Validated`; CA кэш только Spring Cache;
@@ -42,7 +42,7 @@
 - **Статус: бэкенд завершён (шаг 8).** Храповик стоит на нуле: `v2-baseline.txt` без записей, любое нарушение любого правила в любом модуле
   валит тест. Старые заморозки (`FreezingArchRule`, `archunit_store`, `large-classes.txt`) удалены, их правила покрыты v2
   (контроллеры не лезут в репозитории — L1/A1, циклы между модулями — M2, `setStatus` — O1). В классе **`legacy`** остался только `TgShopApplication` (точка входа в корневом пакете).
-- **Размер файла** — `architecture/ClassSizeTest`: ни один файл в `src/main/java` не длиннее 500 строк, без списка исключений.
+- **Размер файла** — `architecture/ClassSizeTest`: ни один файл в `src/main/java` не длиннее 400 строк, без списка исключений; `architecture/MethodSizeTest` — ни один метод не длиннее 80 строк.
   Растёт класс — выносить логику в отдельный по смыслу, а не поднимать лимит.
 - **Шаги 9а/9б: правила по сути, а не по имени.** W1 ловит и `@PersistenceContext`; K1 — замки и конкурентные коллекции (`Concurrent*`, `CopyOnWrite*`)
   по объявленному и по созданному типу; E1 — любой наследник `RuntimeException`, кроме `DomainException`, и `ResponseStatusException` в app/domain;
@@ -66,12 +66,12 @@
   cookie доверенного устройства и клиент запроса разбирает `staff.api`. Порты внешних систем: `media.domain.ObjectStore` (MinIO), `media.domain.Imgproxy`, `site.domain.SiteCache` (запрос к сайту) — адаптеры в `infra`.
   Права по `@RequiresFinance` (`platform.security.FinanceGuard`), а не ручными проверками; запись журнала покупателя — в сценариях app (`CustomerOrderActions`, `CustomerGiftCase`, `CartPromo`, ...).
   Проверено фикстурами (`shopfixture/review`, `customer`, `staff`; `V2RulesBoundariesTest`, `SqlOwnershipTest`) и IT на MySQL с «оракулом» (старый SQL внутри теста): `UserAdminIT`, `ActivityLogIT`, `TranslationOrphansIT`, `AdminAccessIT` (403/200 финансовых эндпоинтов).
-- **Точечные исключения** (имя класса в `V2Rules.ALLOWED`, причина рядом): S1 — `platform.jobs.JobsConfig`, `platform.journal.ActivityLogStore`, `platform.security.AdminRevokedTokenStore`; M3 — шесть классов отчётов и сканов (список и причины — ARCHITECTURE.md, раздел 6); A3 — `catalog.app.AdminCatalog`, `translation.app.AdminTranslations` (право зависит от параметра запроса); K1 — `payment.app.CustomerPaymentRefresh` и
+- **Точечные исключения** (имя класса в `V2Rules.ALLOWED`, причина рядом): S1 — нет исключений; M3 — шесть классов отчётов и сканов (список и причины — ARCHITECTURE.md, раздел 6); A3 — `catalog.app.AdminCatalog`, `translation.app.AdminTranslations` (право зависит от параметра запроса); K1 — `payment.app.CustomerPaymentRefresh` и
   `platform.config.WebSocketConfig` (ARCHITECTURE.md, раздел 6); E1 — `payment.domain.MonobankGateway` (`MonobankException` — сбой порта, всегда перехватывается
   в `payment.app` и превращается в `DomainException`); C1 — `platform.time.TimeConfig` (создаёт системный `Clock` и `ShopZone`), `platform.time.ShopZone`
   (единственное место разбора id пояса), `platform.jobs.DbLocks` (`System.nanoTime` — монотонный дедлайн ожидания замка БД, не дата).
   Остаток для 9г: `ErrorCode.of` и фабрики `*Errors` остаются как есть.
-- **Что исключено из правил осознанно.** S1: `platform.jobs.JobsConfig` (создаёт `JdbcLockProvider` ShedLock — он и есть слой хранения замков).
+- **Что исключено из правил осознанно.** S1 исключений не имеет: провайдер замков ShedLock строит `platform.infra.LockProviderConfig` (слой infra).
   T1: `@OnCompleted` (AFTER_COMPLETION, срабатывает и при откате) — единственный способ сбросить снимок настроек и после отката.
   Что остаётся в памяти и почему — [ARCHITECTURE.md](ARCHITECTURE.md), раздел 6 «Что остаётся в памяти».
 
