@@ -6,8 +6,8 @@ import com.maxsolch.shop.notification.domain.TelegramGateway;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.journal.ActivityLog;
-import com.maxsolch.shop.customer.app.WebAuthService.BotDecision;
-import com.maxsolch.shop.customer.app.WebAuthService.BotPrompt;
+import com.maxsolch.shop.customer.app.WebLoginBotFlow.BotDecision;
+import com.maxsolch.shop.customer.app.WebLoginBotFlow.BotPrompt;
 import com.maxsolch.shop.customer.app.WebAuthService.WebLoginCompletedEvent;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
@@ -53,7 +53,7 @@ public class WebLoginNotifier implements BotCallbackHandler, BotLoginStarter {
     static final String SESSION_PREFIX = "ws:";
 
     private final TelegramGateway bot;
-    private final WebAuthService webAuthService;
+    private final WebLoginBotFlow botFlow;
     private final Messages messages;
     private final AppProperties props;
     private final ActivityLog activity;
@@ -64,10 +64,10 @@ public class WebLoginNotifier implements BotCallbackHandler, BotLoginStarter {
         return t;
     });
 
-    public WebLoginNotifier(TelegramGateway bot, WebAuthService webAuthService, Messages messages,
+    public WebLoginNotifier(TelegramGateway bot, WebLoginBotFlow botFlow, Messages messages,
                               AppProperties props, ActivityLog activity) {
         this.bot = bot;
-        this.webAuthService = webAuthService;
+        this.botFlow = botFlow;
         this.messages = messages;
         this.props = props;
         this.activity = activity;
@@ -86,7 +86,7 @@ public class WebLoginNotifier implements BotCallbackHandler, BotLoginStarter {
     /** {@code /start login_<nonce>} in a private chat. */
     @Override
     public void onStartLogin(long chatId, String nonce, Locale locale) {
-        Optional<BotPrompt> prompt = webAuthService.openFromBot(nonce, chatId);
+        Optional<BotPrompt> prompt = botFlow.openFromBot(nonce, chatId);
         if (prompt.isEmpty()) {
             send("LOGIN_EXPIRED", chatId, SendMessage.builder()
                     .chatId(String.valueOf(chatId))
@@ -116,7 +116,7 @@ public class WebLoginNotifier implements BotCallbackHandler, BotLoginStarter {
                 .build();
         Message sent = send("LOGIN_PROMPT", chatId, msg);
         if (sent != null) {
-            webAuthService.attachBotMessage(p.loginId(), chatId, sent.getMessageId());
+            botFlow.attachBotMessage(p.loginId(), chatId, sent.getMessageId());
         }
     }
 
@@ -137,7 +137,7 @@ public class WebLoginNotifier implements BotCallbackHandler, BotLoginStarter {
                 }
             }
             BotDecision decision = parts.length == 2
-                    ? webAuthService.decideFromBot(parts[0], fromId, chosen)
+                    ? botFlow.decideFromBot(parts[0], fromId, chosen)
                     : BotDecision.INVALID;
             activity.record(ActivityLog.Entry.of(ActivityLog.SITE, switch (decision) {
                         case CONFIRMED -> "LOGIN_CONFIRMED";
@@ -160,7 +160,7 @@ public class WebLoginNotifier implements BotCallbackHandler, BotLoginStarter {
         } else {
             String[] parts = data.substring(SESSION_PREFIX.length()).split(":");
             Optional<String> ended = parts.length == 2 && "end".equals(parts[1])
-                    ? webAuthService.revokeFromBot(parts[0], fromId)
+                    ? botFlow.revokeFromBot(parts[0], fromId)
                     : Optional.empty();
             text = ended.map(device -> messages.get(locale, "bot.login.sessionEnded", escHtml(device)))
                     .orElse(null);

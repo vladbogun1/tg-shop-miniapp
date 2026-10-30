@@ -114,7 +114,7 @@ class AdminOrderControllerTest {
                 com.maxsolch.shop.platform.time.ShopZone.of(null));
         return new AdminOrderController(adminQueries,
                 new AdminOrderStatusService(adminQueries, lifecycle, payments, audit),
-                null, queries, null, null, null);
+                null, queries, null, null, null, null);
     }
 
     private static UpdateOrderStatusRequest status(String s, String tracking, String reason, Boolean restock,

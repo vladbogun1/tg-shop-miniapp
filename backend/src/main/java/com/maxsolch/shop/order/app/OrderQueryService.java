@@ -7,14 +7,12 @@ import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderPaymentState;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderStatus;
-import com.maxsolch.shop.catalog.domain.ProductImage;
 import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.order.infra.OrderItemRepository;
 import com.maxsolch.shop.order.infra.OrderMessageRepository;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.customer.app.Customers;
-import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.catalog.app.CatalogNames;
@@ -42,7 +40,7 @@ public class OrderQueryService {
     private final OrderMessageRepository messageRepository;
     private final OrderItemRepository orderItemRepository;
     private final OrderOnlinePayments onlinePayments;
-    private final Products productImages;
+    private final OrderThumbnails thumbnails;
     private final TranslationService translationService;
     private final CatalogNames catalogNames;
     private final Customers userRepository;
@@ -59,7 +57,7 @@ public class OrderQueryService {
                              OrderMessageRepository messageRepository,
                              OrderItemRepository orderItemRepository,
                              OrderOnlinePayments onlinePayments,
-                             Products productImages,
+                             OrderThumbnails thumbnails,
                              TranslationService translationService,
                              CatalogNames catalogNames,
                              Customers userRepository,
@@ -72,7 +70,7 @@ public class OrderQueryService {
         this.messageRepository = messageRepository;
         this.orderItemRepository = orderItemRepository;
         this.onlinePayments = onlinePayments;
-        this.productImages = productImages;
+        this.thumbnails = thumbnails;
         this.translationService = translationService;
         this.catalogNames = catalogNames;
         this.userRepository = userRepository;
@@ -164,7 +162,7 @@ public class OrderQueryService {
     /** The picture strip of the admin cards: every line with its first photo, two queries per page. */
     private Map<String, List<OrderCardDto.CardLine>> cardLines(List<byte[]> orderIds) {
         List<OrderItem> items = orderItemRepository.findByOrderIds(orderIds);
-        Map<String, String> thumbnails = thumbnailsFor(items);
+        Map<String, String> thumbnails = this.thumbnails.of(items);
         Map<String, List<OrderCardDto.CardLine>> out = new HashMap<>();
         for (OrderItem it : items) {
             String productId = it.getProductId() == null ? null : UuidUtil.toString(it.getProductId());
@@ -307,7 +305,7 @@ public class OrderQueryService {
      */
     private OrderDetailDto.OrderDetailDtoBuilder detailCore(Order o, String lang, Predicate<OrderItem> visible) {
         List<OrderItem> orderItems = o.getItems();
-        Map<String, String> thumbnails = thumbnailsFor(orderItems);
+        Map<String, String> thumbnails = this.thumbnails.of(orderItems);
         CatalogNames.ItemNames names = ContentLocale.isTranslated(lang)
                 ? catalogNames.orderItemNames(
                         orderItems.stream().map(OrderItem::getProductId).filter(java.util.Objects::nonNull).toList(),
@@ -442,90 +440,7 @@ public class OrderQueryService {
 
     /** The order's return records for the drawer, with what each did and whether it can be undone. */
     private List<OrderReturnsView.ReturnRecordDto> returnRecords(Order o) {
-        return returnsView.records(o, this::thumbnailsFor);
-    }
-
-    /** All APPROVED orders mapped to dispatch rows (newest first). */
-    @Transactional(readOnly = true)
-    public List<DispatchOrderDto> dispatchList() {
-        return dispatchList(false);
-    }
-
-    /**
-     * APPROVED orders, plus — when {@code includeNew} — the NEW ones after them: NEW → SHIPPED is a
-     * legal transition, and on a shipping day the seller often sends an order without approving it
-     * first. The client marks NEW rows that still wait for a prepayment.
-     */
-    @Transactional(readOnly = true)
-    public List<DispatchOrderDto> dispatchList(boolean includeNew) {
-        List<Order> orders = new ArrayList<>(orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.APPROVED));
-        if (includeNew) {
-            orders.addAll(orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.NEW));
-        }
-        // One query for the photos of every line on the page: packing goes by the picture, not the text.
-        Map<String, String> thumbnails = thumbnailsFor(orders.stream().flatMap(o -> o.getItems().stream()).toList());
-        return orders.stream().map(o -> toDispatch(o, thumbnails)).toList();
-    }
-
-    @Transactional(readOnly = true)
-    public DispatchOrderDto toDispatch(Order o) {
-        return toDispatch(o, thumbnailsFor(o.getItems()));
-    }
-
-    private DispatchOrderDto toDispatch(Order o, Map<String, String> thumbnails) {
-        OrderPaymentState pay = OrderPaymentState.of(o);
-        List<DispatchOrderDto.DispatchItem> items = o.getItems().stream()
-                .map(it -> new DispatchOrderDto.DispatchItem(
-                        it.getTitleSnapshot(), it.getVariantNameSnapshot(),
-                        it.getQuantity(), it.getPriceMinorSnapshot(),
-                        it.getProductId() == null ? null : thumbnails.get(UuidUtil.toString(it.getProductId()))))
-                .toList();
-        String shortId = UuidUtil.toString(o.getId());
-        if (shortId != null && shortId.length() >= 8) {
-            shortId = shortId.substring(0, 8);
-        }
-        return DispatchOrderDto.builder()
-                .id(UuidUtil.toString(o.getId()))
-                .shortId(shortId)
-                .customerName(o.getCustomerName())
-                .phone(o.getPhone())
-                .deliveryMethod(o.getDeliveryMethod() == null ? null : o.getDeliveryMethod().name())
-                .npCityName(o.getNpCityName())
-                .npWarehouseName(o.getNpWarehouseName())
-                .items(items)
-                .totalMinor(o.getTotalMinor())
-                .prepaymentMinor(o.getPrepaymentMinor())
-                .receivedMinor(pay.receivedMinor())
-                .codMinor(OrderMoney.codMinor(o))
-                .paid(pay.paid())
-                .currency(o.getCurrency())
-                .paymentOptionTitle(o.getPaymentOptionTitle())
-                .trackingNumber(o.getTrackingNumber())
-                .createdAt(o.getCreatedAt())
-                .approvedAt(o.getApprovedAt())
-                .status(o.getStatus().name())
-                .paymentDueAt(pay.paymentDueAt())
-                .amountDueMinor(pay.amountDueMinor())
-                .build();
-    }
-
-    /** One query for all the line thumbnails instead of one per line. */
-    private Map<String, String> thumbnailsFor(List<OrderItem> items) {
-        List<byte[]> productIds = new ArrayList<>();
-        for (OrderItem it : items) {
-            if (it.getProductId() != null) {
-                productIds.add(it.getProductId());
-            }
-        }
-        if (productIds.isEmpty()) {
-            return Map.of();
-        }
-        Map<String, String> first = new HashMap<>();
-        for (ProductImage image : productImages.findImagesForProducts(productIds)) {
-            // Results are ordered by sortOrder, so the first one seen per product wins.
-            first.putIfAbsent(UuidUtil.toString(image.getProduct().getId()), image.getUrl());
-        }
-        return first;
+        return returnsView.records(o, thumbnails::of);
     }
 
     private OrderItemDto toItemDto(Order o, OrderItem it, Map<String, String> thumbnails,

@@ -85,6 +85,8 @@ class OrderQueryServiceGoldenTest {
     private final Map<String, List<Object[]>> mergedChildren = new HashMap<>();
     private final Map<String, Order> ordersById = new HashMap<>();
     private final Map<String, String> thumbs = new HashMap<>();
+    private OrderThumbnails thumbnailsView;
+    private OrderDispatchView dispatchView;
 
     private OrderQueryService service;
     private ObjectMapper mapper;
@@ -179,11 +181,13 @@ class OrderQueryServiceGoldenTest {
                     customer ? null : Boolean.TRUE);
         });
 
+        thumbnailsView = new OrderThumbnails(new com.maxsolch.shop.catalog.app.Products(mock(com.maxsolch.shop.catalog.infra.ProductRepository.class), images));
+        dispatchView = new OrderDispatchView(orders, thumbnailsView);
         service = new OrderQueryService(orders, messages, items,
                 new com.maxsolch.shop.payment.app.OrderPaymentsAdapter(
                         mock(com.maxsolch.shop.payment.app.OnlinePaymentService.class), invoiceRepo, mono,
                         java.time.Clock.systemUTC()),
-                new com.maxsolch.shop.catalog.app.Products(mock(com.maxsolch.shop.catalog.infra.ProductRepository.class), images), translation, catalogNames, users,
+                thumbnailsView, translation, catalogNames, users,
                 rejectReason,
                 new ReturnRecords(returnRepo, returnLineRepo, exchangeRepo, lookup),
                 movementRepo, new com.maxsolch.shop.inventory.app.StockWriteoffs(writeoffRepo, java.time.Clock.systemUTC()), gifts);
@@ -391,7 +395,7 @@ class OrderQueryServiceGoldenTest {
                 Map.of(id, List.of(line)), Map.of(id, List.of("child-1", "child-2")));
         all.put("card", service.toCard(o, ctx));
         all.put("summary", service.toSummary(o, ctx));
-        all.put("dispatch", service.toDispatch(o));
+        all.put("dispatch", dispatchView.toDispatch(o));
         compareWithGolden(name, all);
     }
 

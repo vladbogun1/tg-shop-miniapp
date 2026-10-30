@@ -1,5 +1,0 @@
-#
-#Thu Oct 29 23:14:50 GET 2026
-no\ classes\ that\ not\ belong\ to\ any\ of\ [com.maxsolch.shop.order.domain.Order]\ should\ call\ method\ Order.setStatus(OrderStatus),\ because\ an\ order\ status\ transition\ must\ go\ through\ one\ method\ that\ checks\ it;\ every\ direct\ setStatus\ is\ a\ place\ that\ can\ skip\ those\ checks=3d004102-721c-4ea5-bc0e-e1c57ed1209d
-no\ classes\ that\ reside\ in\ a\ package\ '..web.controller..'\ or\ have\ simple\ name\ ending\ with\ 'Controller'\ should\ depend\ on\ classes\ that\ reside\ in\ a\ package\ '..repository..'\ or\ assignable\ to\ org.springframework.data.repository.Repository,\ because\ controllers\ parse\ the\ request\ and\ call\ a\ service;\ data\ access\ belongs\ to\ services=7e2f27e1-3173-4b0a-869c-a6cc61a6022a
-slices\ matching\ 'com.maxsolch.shop.(*)..'\ should\ not\ depend\ on\ a\ package\ that\ depends\ back\ on\ it,\ because\ a\ cycle\ between\ top-level\ packages\ means\ neither\ can\ change\ or\ be\ extracted\ alone=fc516c0c-83d0-4734-9e88-c1ca3b66b3d0

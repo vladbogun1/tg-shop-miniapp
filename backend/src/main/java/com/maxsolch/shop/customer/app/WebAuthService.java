@@ -124,12 +124,6 @@ public class WebAuthService {
     public record Tokens(AuthUserDto user, String accessJwt, String refreshToken, String sessionId) {
     }
 
-    /** What the bot shows after {@code /start login_<nonce>}. */
-    public record BotPrompt(String loginId, List<Integer> choices, String deviceLabel) {
-    }
-
-    public enum BotDecision { CONFIRMED, REJECTED, EXPIRED, INVALID }
-
     /** Published after a successful login so the bot can tell the user (and offer "end session"). */
     public record WebLoginCompletedEvent(String sessionId, long telegramUserId, String deviceLabel) {
     }
@@ -320,112 +314,6 @@ public class WebAuthService {
         sessionValidator.invalidateAll();
     }
 
-    // ================================================================== bot side
-
-    /**
-     * {@code /start login_<nonce>}: the prompt to show, or empty when the link is unknown,
-     * expired or already answered. Remembers which chat it was shown in — only that person may
-     * answer it.
-     */
-    @Transactional
-    public Optional<BotPrompt> openFromBot(String nonce, long chatId) {
-        if (nonce == null || nonce.isBlank() || nonce.length() > 128) {
-            return Optional.empty();
-        }
-        Optional<WebLoginToken> found = tokenRepository.findByNonceHash(sha256(nonce.trim()));
-        if (found.isEmpty()) {
-            return Optional.empty();
-        }
-        WebLoginToken t = found.get();
-        if (expireIfDue(t) != WebLoginStatus.PENDING) {
-            return Optional.empty();
-        }
-        if (t.getBotChatId() != null && t.getBotChatId() != chatId) {
-            // Someone else already opened this link: a forwarded link must not be answerable twice.
-            return Optional.empty();
-        }
-        t.setBotChatId(chatId);
-        tokenRepository.save(t);
-        return Optional.of(new BotPrompt(UuidUtil.toString(t.getId()), choices(t.getMatchCode()),
-                UserAgents.describe(t.getUserAgent())));
-    }
-
-    @Transactional
-    public void attachBotMessage(String loginId, long chatId, int messageId) {
-        tokenRepository.findById(idBytes(loginId)).ifPresent(t -> {
-            if (t.getBotChatId() != null && t.getBotChatId() == chatId) {
-                t.setBotMessageId(messageId);
-                tokenRepository.save(t);
-            }
-        });
-    }
-
-    /**
-     * A button press in the bot. {@code chosen == null} is "it's not me". The right number confirms,
-     * anything else rejects — one attempt, there is no retry.
-     */
-    @Transactional
-    public BotDecision decideFromBot(String loginId, long fromUserId, Integer chosen) {
-        byte[] id;
-        try {
-            id = UuidUtil.toBytes(loginId);
-        } catch (IllegalArgumentException e) {
-            return BotDecision.INVALID;
-        }
-        Optional<WebLoginToken> found = tokenRepository.findById(id);
-        if (found.isEmpty()) {
-            return BotDecision.INVALID;
-        }
-        WebLoginToken t = found.get();
-        // In a private chat the chat id IS the user id: only the person the prompt was sent to.
-        if (t.getBotChatId() == null || t.getBotChatId() != fromUserId) {
-            return BotDecision.INVALID;
-        }
-        WebLoginStatus status = expireIfDue(t);
-        if (status == WebLoginStatus.EXPIRED) {
-            return BotDecision.EXPIRED;
-        }
-        if (status != WebLoginStatus.PENDING) {
-            return BotDecision.INVALID;
-        }
-        Instant now = now();
-        if (chosen != null && chosen == t.getMatchCode()) {
-            t.setStatus(WebLoginStatus.CONFIRMED);
-            t.setTelegramUserId(fromUserId);
-            t.setConfirmedAt(now);
-            tokenRepository.save(t);
-            return BotDecision.CONFIRMED;
-        }
-        t.setStatus(WebLoginStatus.REJECTED);
-        tokenRepository.save(t);
-        return BotDecision.REJECTED;
-    }
-
-    /**
-     * "End this session" button under the login notification.
-     *
-     * @return the device label of the ended session, or empty if it is not this user's session
-     */
-    @Transactional
-    public Optional<String> revokeFromBot(String sessionId, long fromUserId) {
-        byte[] id;
-        try {
-            id = UuidUtil.toBytes(sessionId);
-        } catch (IllegalArgumentException e) {
-            return Optional.empty();
-        }
-        Optional<WebSession> s = sessionRepository.findById(id).filter(x -> x.getUserId() == fromUserId);
-        if (s.isEmpty()) {
-            return Optional.empty();
-        }
-        if (s.get().getRevokedAt() == null) {
-            s.get().setRevokedAt(now());
-            sessionRepository.save(s.get());
-        }
-        sessionValidator.invalidate(sessionId);
-        return Optional.of(UserAgents.describe(s.get().getUserAgent()));
-    }
-
     // ================================================================== housekeeping
 
     // ================================================================== internals
@@ -467,24 +355,7 @@ public class WebAuthService {
     }
 
     private WebLoginStatus expireIfDue(WebLoginToken t) {
-        if ((t.getStatus() == WebLoginStatus.PENDING || t.getStatus() == WebLoginStatus.CONFIRMED)
-                && t.isExpired(now())) {
-            t.setStatus(WebLoginStatus.EXPIRED);
-            tokenRepository.save(t);
-        }
-        return t.getStatus();
-    }
-
-    /** The right number and two distinct decoys from 10–99, shuffled. */
-    private List<Integer> choices(int matchCode) {
-        Set<Integer> set = new LinkedHashSet<>();
-        set.add(matchCode);
-        while (set.size() < 3) {
-            set.add(10 + random.nextInt(90));
-        }
-        List<Integer> list = new ArrayList<>(set);
-        Collections.shuffle(list, random);
-        return list;
+        return WebLoginBotFlow.expireIfDue(tokenRepository, t, now());
     }
 
     /** {@code <base64url(session id)>.<base64url(32 random bytes)>}. */

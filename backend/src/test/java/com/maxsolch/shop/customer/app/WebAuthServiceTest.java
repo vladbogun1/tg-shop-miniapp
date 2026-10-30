@@ -11,8 +11,8 @@ import com.maxsolch.shop.customer.infra.WebLoginTokenRepository;
 import com.maxsolch.shop.customer.infra.WebSessionRepository;
 import com.maxsolch.shop.platform.security.JwtService;
 import com.maxsolch.shop.platform.security.WebSessionValidator;
-import com.maxsolch.shop.customer.app.WebAuthService.BotDecision;
-import com.maxsolch.shop.customer.app.WebAuthService.BotPrompt;
+import com.maxsolch.shop.customer.app.WebLoginBotFlow.BotDecision;
+import com.maxsolch.shop.customer.app.WebLoginBotFlow.BotPrompt;
 import com.maxsolch.shop.customer.app.WebAuthService.StartResult;
 import com.maxsolch.shop.customer.app.WebAuthService.Tokens;
 import com.maxsolch.shop.customer.app.WebAuthService.WebLoginCompletedEvent;
@@ -72,6 +72,7 @@ class WebAuthServiceTest {
     final Map<String, WebSession> sessions = new HashMap<>();
     Instant now = Instant.parse("2026-10-03T12:00:00Z");
     WebAuthService service;
+    WebLoginBotFlow bot;
 
     @BeforeEach
     void setUp() {
@@ -84,6 +85,7 @@ class WebAuthServiceTest {
         service = new WebAuthService(tokenRepository, sessionRepository, userRepository, adminUserRepository,
                 jwtService, props, sessionValidator, events, clock, caches);
 
+        bot = new WebLoginBotFlow(tokenRepository, sessionRepository, sessionValidator, clock);
         lenient().when(tokenRepository.save(any())).thenAnswer(inv -> {
             WebLoginToken t = inv.getArgument(0);
             tokens.put(hex(t.getId()), t);
@@ -132,12 +134,12 @@ class WebAuthServiceTest {
     @Test
     void rightNumberConfirmsAndCompleteOpensASession() {
         StartResult r = service.start(UA, "1.2.3.4");
-        BotPrompt prompt = service.openFromBot(nonceOf(r), USER).orElseThrow();
+        BotPrompt prompt = bot.openFromBot(nonceOf(r), USER).orElseThrow();
 
         assertThat(prompt.choices()).hasSize(3).doesNotHaveDuplicates().contains(r.matchCode());
         assertThat(prompt.deviceLabel()).isEqualTo("Chrome, Windows");
 
-        assertThat(service.decideFromBot(r.loginId(), USER, r.matchCode())).isEqualTo(BotDecision.CONFIRMED);
+        assertThat(bot.decideFromBot(r.loginId(), USER, r.matchCode())).isEqualTo(BotDecision.CONFIRMED);
         assertThat(service.status(r.loginId())).isEqualTo(WebLoginStatus.CONFIRMED);
 
         Tokens t = service.complete(r.loginId(), r.bindSecret(), UA, "1.2.3.4");
@@ -157,13 +159,13 @@ class WebAuthServiceTest {
     @Test
     void expiredLoginCannotBeConfirmedOrCompleted() {
         StartResult r = service.start(UA, "1.2.3.4");
-        service.openFromBot(nonceOf(r), USER).orElseThrow();
+        bot.openFromBot(nonceOf(r), USER).orElseThrow();
 
         now = now.plus(Duration.ofMinutes(6));
 
-        assertThat(service.decideFromBot(r.loginId(), USER, r.matchCode())).isEqualTo(BotDecision.EXPIRED);
+        assertThat(bot.decideFromBot(r.loginId(), USER, r.matchCode())).isEqualTo(BotDecision.EXPIRED);
         assertThat(service.status(r.loginId())).isEqualTo(WebLoginStatus.EXPIRED);
-        assertThat(service.openFromBot(nonceOf(r), USER)).isEmpty();
+        assertThat(bot.openFromBot(nonceOf(r), USER)).isEmpty();
         assertThatThrownBy(() -> service.complete(r.loginId(), r.bindSecret(), UA, "ip"))
                 .isInstanceOf(DomainException.BadRequest.class);
     }
@@ -171,8 +173,8 @@ class WebAuthServiceTest {
     @Test
     void confirmedButExpiredBeforeCompleteIsRefused() {
         StartResult r = service.start(UA, "1.2.3.4");
-        service.openFromBot(nonceOf(r), USER).orElseThrow();
-        service.decideFromBot(r.loginId(), USER, r.matchCode());
+        bot.openFromBot(nonceOf(r), USER).orElseThrow();
+        bot.decideFromBot(r.loginId(), USER, r.matchCode());
 
         now = now.plus(Duration.ofMinutes(5));
 
@@ -184,8 +186,8 @@ class WebAuthServiceTest {
     @Test
     void wrongBindCookieIsUnauthorizedAndLeavesTheLoginUsable() {
         StartResult r = service.start(UA, "1.2.3.4");
-        service.openFromBot(nonceOf(r), USER).orElseThrow();
-        service.decideFromBot(r.loginId(), USER, r.matchCode());
+        bot.openFromBot(nonceOf(r), USER).orElseThrow();
+        bot.decideFromBot(r.loginId(), USER, r.matchCode());
 
         assertThatThrownBy(() -> service.complete(r.loginId(), "someone-elses-bind", UA, "ip"))
                 .isInstanceOf(DomainException.Unauthorized.class);
@@ -201,11 +203,11 @@ class WebAuthServiceTest {
     @Test
     void wrongNumberRejectsWithNoSecondAttempt() {
         StartResult r = service.start(UA, "1.2.3.4");
-        service.openFromBot(nonceOf(r), USER).orElseThrow();
+        bot.openFromBot(nonceOf(r), USER).orElseThrow();
         int wrong = r.matchCode() == 99 ? 10 : r.matchCode() + 1;
 
-        assertThat(service.decideFromBot(r.loginId(), USER, wrong)).isEqualTo(BotDecision.REJECTED);
-        assertThat(service.decideFromBot(r.loginId(), USER, r.matchCode())).isEqualTo(BotDecision.INVALID);
+        assertThat(bot.decideFromBot(r.loginId(), USER, wrong)).isEqualTo(BotDecision.REJECTED);
+        assertThat(bot.decideFromBot(r.loginId(), USER, r.matchCode())).isEqualTo(BotDecision.INVALID);
         assertThat(service.status(r.loginId())).isEqualTo(WebLoginStatus.REJECTED);
         assertThatThrownBy(() -> service.complete(r.loginId(), r.bindSecret(), UA, "ip"))
                 .isInstanceOf(DomainException.BadRequest.class);
@@ -214,43 +216,43 @@ class WebAuthServiceTest {
     @Test
     void notMeRejects() {
         StartResult r = service.start(UA, "1.2.3.4");
-        service.openFromBot(nonceOf(r), USER).orElseThrow();
+        bot.openFromBot(nonceOf(r), USER).orElseThrow();
 
-        assertThat(service.decideFromBot(r.loginId(), USER, null)).isEqualTo(BotDecision.REJECTED);
+        assertThat(bot.decideFromBot(r.loginId(), USER, null)).isEqualTo(BotDecision.REJECTED);
         assertThat(service.status(r.loginId())).isEqualTo(WebLoginStatus.REJECTED);
     }
 
     @Test
     void usedLoginCannotBeCompletedTwice() {
         StartResult r = service.start(UA, "1.2.3.4");
-        service.openFromBot(nonceOf(r), USER).orElseThrow();
-        service.decideFromBot(r.loginId(), USER, r.matchCode());
+        bot.openFromBot(nonceOf(r), USER).orElseThrow();
+        bot.decideFromBot(r.loginId(), USER, r.matchCode());
         service.complete(r.loginId(), r.bindSecret(), UA, "ip");
 
         assertThatThrownBy(() -> service.complete(r.loginId(), r.bindSecret(), UA, "ip"))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("used");
         assertThat(sessions).hasSize(1);
-        assertThat(service.decideFromBot(r.loginId(), USER, r.matchCode())).isEqualTo(BotDecision.INVALID);
+        assertThat(bot.decideFromBot(r.loginId(), USER, r.matchCode())).isEqualTo(BotDecision.INVALID);
     }
 
     @Test
     void onlyThePersonTheLinkWasOpenedByCanAnswer() {
         StartResult r = service.start(UA, "1.2.3.4");
-        service.openFromBot(nonceOf(r), USER).orElseThrow();
+        bot.openFromBot(nonceOf(r), USER).orElseThrow();
 
         // A forwarded link opened in a second chat gets nothing to press...
-        assertThat(service.openFromBot(nonceOf(r), STRANGER)).isEmpty();
+        assertThat(bot.openFromBot(nonceOf(r), STRANGER)).isEmpty();
         // ...and a forged callback from another account is ignored.
-        assertThat(service.decideFromBot(r.loginId(), STRANGER, r.matchCode())).isEqualTo(BotDecision.INVALID);
+        assertThat(bot.decideFromBot(r.loginId(), STRANGER, r.matchCode())).isEqualTo(BotDecision.INVALID);
         assertThat(service.status(r.loginId())).isEqualTo(WebLoginStatus.PENDING);
     }
 
     @Test
     void unknownNonceOrLoginIdIsHarmless() {
-        assertThat(service.openFromBot("not-a-real-nonce", USER)).isEmpty();
-        assertThat(service.decideFromBot("garbage", USER, 42)).isEqualTo(BotDecision.INVALID);
-        assertThat(service.decideFromBot(UuidUtil.toString(UuidUtil.randomBytes()), USER, 42))
+        assertThat(bot.openFromBot("not-a-real-nonce", USER)).isEmpty();
+        assertThat(bot.decideFromBot("garbage", USER, 42)).isEqualTo(BotDecision.INVALID);
+        assertThat(bot.decideFromBot(UuidUtil.toString(UuidUtil.randomBytes()), USER, 42))
                 .isEqualTo(BotDecision.INVALID);
     }
 
@@ -320,10 +322,10 @@ class WebAuthServiceTest {
     void botEndSessionOnlyForTheOwner() {
         Tokens t = service.devLogin(USER, UA, "ip");
 
-        assertThat(service.revokeFromBot(t.sessionId(), STRANGER)).isEmpty();
+        assertThat(bot.revokeFromBot(t.sessionId(), STRANGER)).isEmpty();
         assertThat(sessions.get(hex(UuidUtil.toBytes(t.sessionId()))).getRevokedAt()).isNull();
 
-        assertThat(service.revokeFromBot(t.sessionId(), USER)).contains("Chrome, Windows");
+        assertThat(bot.revokeFromBot(t.sessionId(), USER)).contains("Chrome, Windows");
         assertThat(sessions.get(hex(UuidUtil.toBytes(t.sessionId()))).getRevokedAt()).isNotNull();
         assertThatThrownBy(() -> service.refresh(t.refreshToken(), UA, "ip"))
                 .isInstanceOf(DomainException.Unauthorized.class);

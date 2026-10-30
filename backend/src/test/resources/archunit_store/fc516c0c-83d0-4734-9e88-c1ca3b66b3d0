@@ -1,2 +1,0 @@
-Package cycle: customer -> staff (and staff reaches customer back)
-Package cycle: staff -> customer (and customer reaches staff back)

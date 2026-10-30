@@ -20,6 +20,7 @@ import com.maxsolch.shop.order.app.OrderDeliveryEditing;
 import com.maxsolch.shop.order.app.AdminOrders;
 import com.maxsolch.shop.order.app.CreateOrderCommand;
 import com.maxsolch.shop.order.app.OrderDeliveryEditing;
+import com.maxsolch.shop.order.app.OrderDispatchView;
 import com.maxsolch.shop.order.app.OrderQueryService;
 import com.maxsolch.shop.order.domain.OrderSource;
 import com.maxsolch.shop.order.domain.OrderWindow;
@@ -54,6 +55,7 @@ public class AdminOrderController {
     private final AdminOrderStatusService statusService;
     private final AdminOrders orders;
     private final OrderQueryService orderQueryService;
+    private final OrderDispatchView dispatchView;
     private final MessageService messageService;
     private final ImageStorageService imageStorageService;
     private final UploadValidator uploadValidator;
@@ -62,6 +64,7 @@ public class AdminOrderController {
                                 AdminOrderStatusService statusService,
                                 AdminOrders orders,
                                 OrderQueryService orderQueryService,
+                                OrderDispatchView dispatchView,
                                 MessageService messageService,
                                 ImageStorageService imageStorageService,
                                 UploadValidator uploadValidator) {
@@ -69,6 +72,7 @@ public class AdminOrderController {
         this.statusService = statusService;
         this.orders = orders;
         this.orderQueryService = orderQueryService;
+        this.dispatchView = dispatchView;
         this.messageService = messageService;
         this.imageStorageService = imageStorageService;
         this.uploadValidator = uploadValidator;
@@ -126,7 +130,7 @@ public class AdminOrderController {
     @GetMapping("/dispatch")
     @Operation(summary = "Seller dispatch list — approved orders (+ NEW ones with includeNew=true) with COD amounts")
     public List<DispatchOrderDto> dispatch(@RequestParam(defaultValue = "false") boolean includeNew) {
-        return orderQueryService.dispatchList(includeNew);
+        return dispatchView.dispatchList(includeNew);
     }
 
     @PostMapping("/dispatch/broadcast")
