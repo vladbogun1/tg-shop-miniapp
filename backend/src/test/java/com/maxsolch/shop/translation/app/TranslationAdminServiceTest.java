@@ -99,7 +99,7 @@ class TranslationAdminServiceTest {
         report = new TranslationReport(store, botTexts);
         imports = new TranslationImport(repo, store, java.time.Clock.systemUTC());
         fixes = new TranslationSourceFix(repo, store, sources);
-        service = new TranslationAdminService(repo, store);
+        service = new TranslationAdminService(repo, store, sources);
     }
 
     private static ImportItem item(String field, String hash, String text) {

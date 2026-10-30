@@ -62,12 +62,17 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class TranslationAdminService {
 
+    private static final int ORPHAN_BATCH = 1000;
+
     private final ContentTranslationRepository repository;
     private final TranslationRows store;
+    private final List<TranslatableSource> sources;
 
-    TranslationAdminService(ContentTranslationRepository repository, TranslationRows store) {
+    TranslationAdminService(ContentTranslationRepository repository, TranslationRows store,
+                            List<TranslatableSource> sources) {
         this.repository = repository;
         this.store = store;
+        this.sources = sources;
     }
 
 
@@ -158,12 +163,19 @@ public class TranslationAdminService {
     /** Rows whose entity no longer exists (no FKs on the shared table); called daily by {@link TranslationJobs}. */
     @Transactional
     public int cleanupOrphans() {
-        int removed = repository.deleteOrphanProducts()
-                + repository.deleteOrphanVariants()
-                + repository.deleteOrphanTags()
-                + repository.deleteOrphanCategories()
-                + repository.deleteOrphanPaymentOptions()
-                + repository.deleteOrphanReplyTemplates();
+        int removed = 0;
+        for (TranslatableSource source : sources) {
+            for (TranslationEntityType type : source.orphanTypes()) {
+                List<byte[]> stored = repository.entityIds(type);
+                for (int from = 0; from < stored.size(); from += ORPHAN_BATCH) {
+                    List<byte[]> batch = stored.subList(from, Math.min(stored.size(), from + ORPHAN_BATCH));
+                    java.util.Collection<byte[]> gone = source.orphans(type, batch);
+                    if (!gone.isEmpty()) {
+                        removed += repository.deleteForEntities(type, gone);
+                    }
+                }
+            }
+        }
         if (removed > 0) {
             log.info("Removed {} orphaned content translation(s)", removed);
             store.invalidate();

@@ -27,7 +27,7 @@ import java.util.Optional;
 @Service
 public class CatalogService {
 
-    private static final String LANG_KEY = "T(com.maxsolch.shop.translation.domain.ContentLocale).normalize(#lang)";
+    private static final String LANG_KEY = CacheLang.KEY;
 
     private final ProductRepository productRepository;
     private final CatalogDirectory catalogDirectory;

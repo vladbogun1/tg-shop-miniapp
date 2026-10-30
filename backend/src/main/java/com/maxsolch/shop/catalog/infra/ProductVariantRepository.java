@@ -20,4 +20,8 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
      */
     @Query("select v.id, v.name, p.active, p.archived, p.id, p.title from ProductVariant v join v.product p")
     List<Object[]> translationSources();
+
+    /** Of these ids, the ones that still exist (the translation sweep asks which rows lost their entity). */
+    @org.springframework.data.jpa.repository.Query("select e.id from ProductVariant e where e.id in :ids")
+    java.util.List<byte[]> existingIds(@org.springframework.data.repository.query.Param("ids") java.util.Collection<byte[]> ids);
 }

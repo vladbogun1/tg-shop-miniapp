@@ -33,7 +33,7 @@ import java.util.Map;
 @Service
 public class CatalogSchemaService {
 
-    private static final String LANG_KEY = "T(com.maxsolch.shop.translation.domain.ContentLocale).normalize(#lang)";
+    private static final String LANG_KEY = CacheLang.KEY;
 
     private final CatalogDirectory directory;
     private final CatalogService catalogService;

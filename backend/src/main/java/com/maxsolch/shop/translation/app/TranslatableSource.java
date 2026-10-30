@@ -4,6 +4,8 @@ import com.maxsolch.shop.translation.app.TranslationService.Key;
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -17,6 +19,29 @@ public interface TranslatableSource {
 
     /** The types of {@code content_translations} this source owns. */
     Set<TranslationEntityType> types();
+
+    /**
+     * The types whose stored rows this source sweeps when the entity is gone (there are no foreign keys on
+     * {@code content_translations}); by default the types it owns. A source may add a legacy type it still knows.
+     */
+    default Set<TranslationEntityType> orphanTypes() {
+        return types();
+    }
+
+    /**
+     * Of these {@code entity_id}s of stored rows of {@code type}, the ones whose entity no longer exists; the translation
+     * module deletes their rows. Default: none (a type with nothing to sweep, like bot phrases).
+     */
+    default Collection<byte[]> orphans(TranslationEntityType type, Collection<byte[]> ids) {
+        return List.of();
+    }
+
+    /** The ids of {@code ids} that are not among {@code existing} (byte arrays compared by content). */
+    static List<byte[]> missing(Collection<byte[]> ids, Collection<byte[]> existing) {
+        Set<java.nio.ByteBuffer> alive = new java.util.HashSet<>();
+        existing.forEach(e -> alive.add(java.nio.ByteBuffer.wrap(e)));
+        return ids.stream().filter(id -> !alive.contains(java.nio.ByteBuffer.wrap(id))).toList();
+    }
 
     /** Every translatable field of every existing entity of {@link #types()} with its current Russian source. */
     Map<Key, Field> fields();

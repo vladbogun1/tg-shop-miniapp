@@ -107,4 +107,8 @@ public interface ProductRepository extends JpaRepository<Product, byte[]> {
     @Query("select p.id, p.title, p.description, p.seoTitle, p.seoDescription, p.active, p.archived, "
             + "p.conditionNote from Product p")
     List<Object[]> translationSources();
+
+    /** Of these ids, the ones that still exist (the translation sweep asks which rows lost their entity). */
+    @org.springframework.data.jpa.repository.Query("select e.id from Product e where e.id in :ids")
+    java.util.List<byte[]> existingIds(@org.springframework.data.repository.query.Param("ids") java.util.Collection<byte[]> ids);
 }

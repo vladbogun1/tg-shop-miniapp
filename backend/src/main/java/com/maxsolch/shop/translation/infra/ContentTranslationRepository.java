@@ -45,37 +45,9 @@ public interface ContentTranslationRepository extends JpaRepository<ContentTrans
     int deleteByLocaleAndEntityAndField(@Param("locale") String locale, @Param("type") TranslationEntityType type,
                                         @Param("entityId") byte[] entityId, @Param("field") String field);
 
-    // ---- orphans: rows whose entity no longer exists (there are no FKs, see V21) -----------------
-
-    @Modifying
-    @Query(nativeQuery = true, value = "DELETE FROM content_translations WHERE entity_type = 'PRODUCT' "
-            + "AND entity_id NOT IN (SELECT id FROM products)")
-    int deleteOrphanProducts();
-
-    @Modifying
-    @Query(nativeQuery = true, value = "DELETE FROM content_translations WHERE entity_type = 'VARIANT' "
-            + "AND entity_id NOT IN (SELECT id FROM product_variants)")
-    int deleteOrphanVariants();
-
-    @Modifying
-    @Query(nativeQuery = true, value = "DELETE FROM content_translations WHERE entity_type = 'TAG' "
-            + "AND entity_id NOT IN (SELECT id FROM tags)")
-    int deleteOrphanTags();
-
-    @Modifying
-    @Query(nativeQuery = true, value = "DELETE FROM content_translations WHERE entity_type = 'CATEGORY' "
-            + "AND entity_id NOT IN (SELECT id FROM categories)")
-    int deleteOrphanCategories();
-
-    @Modifying
-    @Query(nativeQuery = true, value = "DELETE FROM content_translations WHERE entity_type = 'PAYMENT_OPTION' "
-            + "AND entity_id NOT IN (SELECT id FROM payment_options)")
-    int deleteOrphanPaymentOptions();
-
-    @Modifying
-    @Query(nativeQuery = true, value = "DELETE FROM content_translations WHERE entity_type = 'REPLY_TEMPLATE' "
-            + "AND entity_id NOT IN (SELECT UNHEX(LPAD(HEX(id), 32, '0')) FROM reply_templates)")
-    int deleteOrphanReplyTemplates();
+    /** The distinct entity ids stored for a type (the orphan sweep asks the owner which of them are gone). */
+    @Query("select distinct t.id.entityId from ContentTranslation t where t.id.entityType = :type")
+    List<byte[]> entityIds(@Param("type") TranslationEntityType type);
 
     /** V56 backfill of the source snapshot; keeps {@code updated_at} as it was. */
     @Modifying

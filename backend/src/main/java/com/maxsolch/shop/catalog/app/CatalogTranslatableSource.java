@@ -15,6 +15,8 @@ import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -53,6 +55,23 @@ public class CatalogTranslatableSource implements TranslatableSource {
     @Override
     public Set<TranslationEntityType> types() {
         return Set.of(TranslationEntityType.PRODUCT, TranslationEntityType.VARIANT, TranslationEntityType.CATEGORY);
+    }
+
+    @Override
+    public Set<TranslationEntityType> orphanTypes() {
+        return Set.of(TranslationEntityType.PRODUCT, TranslationEntityType.VARIANT, TranslationEntityType.CATEGORY,
+                TranslationEntityType.TAG);
+    }
+
+    @Override
+    public Collection<byte[]> orphans(TranslationEntityType type, Collection<byte[]> ids) {
+        return switch (type) {
+            case PRODUCT -> TranslatableSource.missing(ids, productRepository.existingIds(ids));
+            case VARIANT -> TranslatableSource.missing(ids, variantRepository.existingIds(ids));
+            case CATEGORY -> TranslatableSource.missing(ids, categoryRepository.existingIds(ids));
+            case TAG -> TranslatableSource.missing(ids, categoryRepository.existingTagIds(ids));
+            default -> List.of();
+        };
     }
 
     @Override
