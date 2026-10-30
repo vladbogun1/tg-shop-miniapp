@@ -3,7 +3,7 @@ AdminPushNotifier.onCancelRequested(CancelRequested) phase=AFTER_COMMIT fallback
 AdminPushNotifier.onChatMessage(ChatMessage) phase=AFTER_COMMIT fallback=true
 AdminPushNotifier.onCreated(Created) phase=AFTER_COMMIT fallback=true
 AdminPushNotifier.onPaymentReceived(PaymentReceived) phase=AFTER_COMMIT fallback=true
-AdminPushNotifier.onSiteFailed(Failed) immediately
+AdminPushNotifier.onSiteFailed(Failed) phase=AFTER_COMMIT fallback=true
 AnalyticsAggregationService.onStartup(ApplicationReadyEvent) immediately
 BotTexts.onTranslationsChanged(TranslationsChanged) phase=AFTER_COMMIT fallback=true
 BroadcastService.closeInterrupted(ApplicationReadyEvent) immediately tx=REQUIRED
@@ -14,18 +14,17 @@ HoldsCacheFlush.on(HoldsChanged) phase=AFTER_COMMIT fallback=true
 ImageStorageService.ensureBucket(ApplicationReadyEvent) immediately
 NovaPoshtaSyncService.onStartup(ApplicationReadyEvent) immediately
 OrderChatBroadcaster.on(ChatPosted) phase=AFTER_COMMIT fallback=true
-OrderNotificationListener.onCancelRequestResolved(CancelRequestResolved) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
-OrderNotificationListener.onCancelRequested(CancelRequested) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
-OrderNotificationListener.onChatMessage(ChatMessage) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
-OrderNotificationListener.onCreated(Created) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
-OrderNotificationListener.onDeleted(Deleted) phase=AFTER_COMMIT fallback=false
-OrderNotificationListener.onEdited(Edited) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
-OrderNotificationListener.onExchanged(Exchanged) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
-OrderNotificationListener.onGiftCasePromo(GiftCasePromo) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
-OrderNotificationListener.onMerged(Merged) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
-OrderNotificationListener.onPaymentReceived(PaymentReceived) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
-OrderNotificationListener.onReturned(Returned) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
-OrderNotificationListener.onStatusChanged(StatusChanged) phase=AFTER_COMMIT fallback=false tx=REQUIRES_NEW
+OrderNotificationListener.onCancelRequestResolved(CancelRequestResolved) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+OrderNotificationListener.onCancelRequested(CancelRequested) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+OrderNotificationListener.onChatMessage(ChatMessage) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+OrderNotificationListener.onCreated(Created) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+OrderNotificationListener.onEdited(Edited) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+OrderNotificationListener.onExchanged(Exchanged) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+OrderNotificationListener.onGiftCasePromo(GiftCasePromo) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+OrderNotificationListener.onMerged(Merged) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+OrderNotificationListener.onPaymentReceived(PaymentReceived) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+OrderNotificationListener.onReturned(Returned) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+OrderNotificationListener.onStatusChanged(StatusChanged) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
 PreorderNotifier.onArrived(ArrivedNotice) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
 PreorderNotifier.onBatchCancelledKept(BatchCancelledKept) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
 PreorderNotifier.onClosed(Closed) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW

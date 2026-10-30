@@ -10,9 +10,8 @@ import com.maxsolch.shop.inbox.app.PushOrderQueries.OrderInfo;
 import com.maxsolch.shop.order.app.OrderEvents;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionalEventListener;
+import com.maxsolch.shop.platform.tx.OnCommitted;
 
 import java.util.List;
 import java.util.Locale;
@@ -45,7 +44,7 @@ public class AdminPushNotifier {
         this.media = media;
     }
 
-    @TransactionalEventListener(fallbackExecution = true)
+    @OnCommitted
     public void onCreated(OrderEvents.Created event) {
         byte[] id = event.orderId();
         push.runAsync(() -> queries.order(id).ifPresent(o -> push.notifyAdmins(new PushMessage(
@@ -54,7 +53,7 @@ public class AdminPushNotifier {
                 "/orders/" + o.id(), "order-" + o.id(), badge(), true))));
     }
 
-    @TransactionalEventListener(fallbackExecution = true)
+    @OnCommitted
     public void onPaymentReceived(OrderEvents.PaymentReceived event) {
         byte[] id = event.orderId();
         long amount = event.amountMinor();
@@ -64,7 +63,7 @@ public class AdminPushNotifier {
                 "/orders/" + o.id(), "paid-" + o.id(), badge(), true))));
     }
 
-    @TransactionalEventListener(fallbackExecution = true)
+    @OnCommitted
     public void onCancelRequested(OrderEvents.CancelRequested event) {
         byte[] id = event.orderId();
         push.runAsync(() -> queries.order(id).ifPresent(o -> push.notifyAdmins(new PushMessage(
@@ -73,7 +72,7 @@ public class AdminPushNotifier {
                 "/orders/" + o.id(), "cancel-" + o.id(), badge(), true))));
     }
 
-    @TransactionalEventListener(fallbackExecution = true)
+    @OnCommitted
     public void onChatMessage(OrderEvents.ChatMessage event) {
         if (event.fromAdmin()) {
             return;
@@ -118,7 +117,7 @@ public class AdminPushNotifier {
                 image, new AdminPushService.Group("💬 " + who, line));
     }
 
-    @EventListener
+    @OnCommitted
     public void onSiteFailed(SiteRevalidator.Failed event) {
         push.runAsync(() -> push.notifyAdmins(new PushMessage(
                 "Сайт не обновился",

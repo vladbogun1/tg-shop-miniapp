@@ -94,14 +94,6 @@ public final class OrderEvents {
         }
     }
 
-    /**
-     * An admin deleted the order for good. The row is gone, so everything the after-commit cleanup
-     * needs travels with the event: the seller's dispatch card to take down and the private chat
-     * attachments ({@code chat/...} object keys) to remove from storage.
-     */
-    public record Deleted(byte[] orderId, Integer dispatchMessageId, java.util.List<String> attachmentKeys) {
-    }
-
     /** The customer asked to cancel a paid order: Telegram topic + push to the admins. */
     public record CancelRequested(byte[] orderId) {
     }

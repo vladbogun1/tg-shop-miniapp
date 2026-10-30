@@ -13,7 +13,7 @@ import com.maxsolch.shop.notification.app.CustomerBot;
 import com.maxsolch.shop.notification.app.SellerChannel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionalEventListener;
+import com.maxsolch.shop.platform.tx.OnCommitted;
 
 
 import static com.maxsolch.shop.platform.util.Texts.ellipsize;
@@ -52,7 +52,7 @@ public class SupportNotifier {
         this.threads = threads;
     }
 
-    @TransactionalEventListener(fallbackExecution = true)
+    @OnCommitted
     public void onMessage(SupportEvents.MessagePosted event) {
         SupportThread t;
         try {

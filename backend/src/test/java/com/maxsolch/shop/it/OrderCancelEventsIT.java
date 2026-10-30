@@ -20,7 +20,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
- * Telegram is told only AFTER the commit ({@code @TransactionalEventListener}); a rolled-back cancellation
+ * Telegram is told only AFTER the commit ({@code @OnCommitted}); a rolled-back cancellation
  * sends nothing and changes nothing.
  */
 class OrderCancelEventsIT extends AbstractMysqlIT {

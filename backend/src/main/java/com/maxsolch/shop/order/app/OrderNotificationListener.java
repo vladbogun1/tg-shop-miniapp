@@ -2,13 +2,12 @@ package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
-import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.event.TransactionalEventListener;
+import com.maxsolch.shop.platform.tx.OnCommitted;
 
 import java.util.function.Consumer;
 
@@ -30,18 +29,15 @@ public class OrderNotificationListener {
     private final OrderRepository orderRepository;
     private final OrderSellerNotifier seller;
     private final OrderCustomerNotifier customer;
-    private final ImageStorageService imageStorageService;
 
     public OrderNotificationListener(OrderRepository orderRepository,
-                                     OrderSellerNotifier seller, OrderCustomerNotifier customer,
-                                     ImageStorageService imageStorageService) {
+                                     OrderSellerNotifier seller, OrderCustomerNotifier customer) {
         this.orderRepository = orderRepository;
         this.seller = seller;
         this.customer = customer;
-        this.imageStorageService = imageStorageService;
     }
 
-    @TransactionalEventListener
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onCreated(OrderEvents.Created event) {
         withOrder(event.orderId(), order -> {
@@ -53,7 +49,7 @@ public class OrderNotificationListener {
         });
     }
 
-    @TransactionalEventListener
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onStatusChanged(OrderEvents.StatusChanged event) {
         withOrder(event.orderId(), order -> {
@@ -63,7 +59,7 @@ public class OrderNotificationListener {
         });
     }
 
-    @TransactionalEventListener
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onExchanged(OrderEvents.Exchanged event) {
         withOrder(event.orderId(), order -> {
@@ -77,7 +73,7 @@ public class OrderNotificationListener {
         });
     }
 
-    @TransactionalEventListener
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onMerged(OrderEvents.Merged event) {
         withOrder(event.sourceId(), source -> {
@@ -94,7 +90,7 @@ public class OrderNotificationListener {
         });
     }
 
-    @TransactionalEventListener
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onReturned(OrderEvents.Returned event) {
         withOrder(event.orderId(), order -> {
@@ -105,14 +101,14 @@ public class OrderNotificationListener {
         });
     }
 
-    @TransactionalEventListener
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onGiftCasePromo(OrderEvents.GiftCasePromo event) {
         withOrder(event.orderId(), order -> customer.notifyCustomerCasePromo(
                 order, event.code(), event.percent(), event.amountMinor(), event.expiresAt()));
     }
 
-    @TransactionalEventListener
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onPaymentReceived(OrderEvents.PaymentReceived event) {
         withOrder(event.orderId(), order -> {
@@ -122,7 +118,7 @@ public class OrderNotificationListener {
         });
     }
 
-    @TransactionalEventListener
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onEdited(OrderEvents.Edited event) {
         withOrder(event.orderId(), order -> {
@@ -153,19 +149,19 @@ public class OrderNotificationListener {
         });
     }
 
-    @TransactionalEventListener
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onCancelRequested(OrderEvents.CancelRequested event) {
         withOrder(event.orderId(), seller::onCancelRequested);
     }
 
-    @TransactionalEventListener
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onCancelRequestResolved(OrderEvents.CancelRequestResolved event) {
         withOrder(event.orderId(), order -> customer.notifyCustomerCancelRequest(order, event.approved()));
     }
 
-    @TransactionalEventListener
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onChatMessage(OrderEvents.ChatMessage event) {
         withOrder(event.orderId(), order -> {
@@ -175,19 +171,6 @@ public class OrderNotificationListener {
                 seller.onCustomerChatMessage(order, event.preview());
             }
         });
-    }
-
-    /**
-     * An order was deleted: take its dispatch card out of the seller topic and delete the chat
-     * attachments from storage. After the commit only — a rolled-back delete must not have lost
-     * its files — and with no database work at all (the row is gone).
-     */
-    @TransactionalEventListener
-    public void onDeleted(OrderEvents.Deleted event) {
-        seller.removeDispatchCard(event.dispatchMessageId());
-        if (event.attachmentKeys() != null) {
-            event.attachmentKeys().forEach(imageStorageService::deleteQuietly);
-        }
     }
 
     /**

@@ -13,7 +13,7 @@ import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionalEventListener;
+import com.maxsolch.shop.platform.tx.OnCommitted;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
@@ -175,7 +175,7 @@ public class WebLoginNotifier implements BotCallbackHandler, BotLoginStarter {
     }
 
     /** After the browser finished the login (only once the session row is committed). */
-    @TransactionalEventListener(fallbackExecution = true)
+    @OnCommitted
     public void onLoginCompleted(WebLoginCompletedEvent e) {
         activity.record(ActivityLog.Entry.of(ActivityLog.SITE, "LOGIN").customer(e.telegramUserId())
                 .text("Вход на сайт через бота: " + e.deviceLabel()));

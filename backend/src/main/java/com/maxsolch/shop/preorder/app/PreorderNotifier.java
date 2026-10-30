@@ -12,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.event.TransactionalEventListener;
+import com.maxsolch.shop.platform.tx.OnCommitted;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 
 import java.time.Instant;
@@ -48,7 +48,7 @@ public class PreorderNotifier {
         this.zone = shopZone.zone();
     }
 
-    @TransactionalEventListener(fallbackExecution = true)
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onSubscribed(PreorderEvents.Subscribed e) {
         send("PREORDER_SUBSCRIBED", e.subscriptionId(), (d, l) -> {
@@ -61,7 +61,7 @@ public class PreorderNotifier {
         });
     }
 
-    @TransactionalEventListener(fallbackExecution = true)
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onHoldGranted(PreorderEvents.HoldGranted e) {
         send("PREORDER_HOLD", e.subscriptionId(), (d, l) -> {
@@ -75,14 +75,14 @@ public class PreorderNotifier {
         });
     }
 
-    @TransactionalEventListener(fallbackExecution = true)
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onArrived(PreorderEvents.ArrivedNotice e) {
         send("PREORDER_ARRIVED", e.subscriptionId(),
                 (d, l) -> new Msg(texts.get(l, "bot.preorder.arrived", title(d.place())), buyButton(d.place(), l)));
     }
 
-    @TransactionalEventListener(fallbackExecution = true)
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onHoldEnding(PreorderEvents.HoldEnding e) {
         send("PREORDER_HOLD_ENDING", e.subscriptionId(), (d, l) -> new Msg(
@@ -90,21 +90,21 @@ public class PreorderNotifier {
                 buyButton(d.place(), l)));
     }
 
-    @TransactionalEventListener(fallbackExecution = true)
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onHoldExpired(PreorderEvents.HoldExpired e) {
         send("PREORDER_HOLD_EXPIRED", e.subscriptionId(),
                 (d, l) -> new Msg(texts.get(l, "bot.preorder.expired", title(d.place())), mineButton(l)));
     }
 
-    @TransactionalEventListener(fallbackExecution = true)
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onStillWaiting(PreorderEvents.StillWaiting e) {
         send("PREORDER_STILL_WAITING", e.subscriptionId(), (d, l) -> new Msg(
                 texts.get(l, "bot.preorder.stillWaiting", title(d.place()), e.position()), mineButton(l)));
     }
 
-    @TransactionalEventListener(fallbackExecution = true)
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onClosed(PreorderEvents.Closed e) {
         String key = switch (e.reason() == null ? "" : e.reason()) {
@@ -116,7 +116,7 @@ public class PreorderNotifier {
                 (d, l) -> new Msg(texts.get(l, key, title(d.place())), mineButton(l)));
     }
 
-    @TransactionalEventListener(fallbackExecution = true)
+    @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onBatchCancelledKept(PreorderEvents.BatchCancelledKept e) {
         send("PREORDER_BATCH_CANCELLED", e.subscriptionId(), (d, l) -> new Msg(

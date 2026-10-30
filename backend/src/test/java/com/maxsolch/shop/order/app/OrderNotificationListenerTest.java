@@ -3,7 +3,6 @@ package com.maxsolch.shop.order.app;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
-import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +22,7 @@ class OrderNotificationListenerTest {
     private final OrderRepository orders = mock(OrderRepository.class);
     private final OrderSellerNotifier notifications = mock(OrderSellerNotifier.class);
     private final OrderNotificationListener listener =
-            new OrderNotificationListener(orders, notifications, mock(OrderCustomerNotifier.class), mock(ImageStorageService.class));
+            new OrderNotificationListener(orders, notifications, mock(OrderCustomerNotifier.class));
 
     private Order order(OrderStatus status) {
         Order o = new Order();
