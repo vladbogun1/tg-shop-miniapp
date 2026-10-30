@@ -3,7 +3,6 @@ package com.maxsolch.shop.order.app;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.util.MoneyFormat;

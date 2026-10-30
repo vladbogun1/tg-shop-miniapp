@@ -4,10 +4,8 @@ import com.maxsolch.shop.inventory.app.Stock;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.order.app.OrderGifts.Decision;
-import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
-import com.maxsolch.shop.order.domain.OrderMoney;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;

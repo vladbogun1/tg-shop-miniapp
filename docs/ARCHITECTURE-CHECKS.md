@@ -56,6 +56,9 @@
   CA усилено: Caffeine только в `platform.cache`. Новых точечных исключений нет. Проверено фикстурой `BadEvents`; порядок публикаций в транзакциях —
   `OrderEventsPublishedInTransactionTest`, набор слушателей (событие, фаза, fallback) — снимок `EventListenersSnapshotTest`
   (`-Dsnapshot.update=true` только осознанно).
+- **Шаг 9д: агрегаты без сеттеров.** O2 вызов `set*` у сущности из `V2Rules.GUARDED` (`Order`, `OrderItem`, `OrderItemLot`, `PaymentInvoice`,
+  `OrderReturn`, `OrderReturnLine`) из другого пакета запрещён; O3 у такой сущности нет public `set*` (и `@Setter`). Проверено фикстурой
+  (`shopfixture/order/domain/Order`, `BadPractices.overwriteTotal`). Тесты задают состояние через `OrderFixtures.set` (рефлексия), не сеттерами.
 - **Точечные исключения** (имя класса в `V2Rules.ALLOWED`, причина рядом): S1 — `platform.jobs.JobsConfig`; K1 — `payment.app.CustomerPaymentRefresh` и
   `platform.config.WebSocketConfig` (ARCHITECTURE.md, раздел 6); E1 — `payment.domain.MonobankGateway` (`MonobankException` — сбой порта, всегда перехватывается
   в `payment.app` и превращается в `DomainException`); C1 — `platform.time.TimeConfig` (создаёт системный `Clock` и `ShopZone`), `platform.time.ShopZone`

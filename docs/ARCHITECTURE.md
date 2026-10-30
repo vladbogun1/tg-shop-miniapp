@@ -122,9 +122,17 @@ Ousterhout, Fowler, Feathers, Nygard). Правила проверяет ArchUni
 
 ## 4. Заказ — как будет выглядеть ядро
 
-- `order/domain/Order` — агрегат: позиции меняются только через его методы (`addItem`, `changeQuantity`, `removeItem`,
-  `applyDiscount`), статус — через переходы с проверкой из таблицы переходов, деньги — `order.money()` (`OrderMoney`).
-  Каждый переход возвращает/регистрирует доменное событие.
+- `order/domain/Order` — агрегат (шаг 9д). Сеттеров нет: состав и деньги меняются только его методами, и после каждого вызова
+  верно «итог = сумма строк − скидки, не меньше нуля». Размещение: `placeBy`, `deliverTo`, `choosePayment`, `dropPrepayment`, `replaces`;
+  строки: `addLine`, `removeLine` (`getItems()` только для чтения); скидки: `reprice`, `priceWith`, `applyDiscount`, `grantGiftDiscount`,
+  `absorbDiscountsOf`, `labelPromo`; кейс подарка: `sealGiftCase`, `openGiftCase`, `dropGiftCase`; деньги: `recordReceived`, `receiveOnline`,
+  `absorbPaid`, `registerRefund`/`undoRefund`, `registerUncollected`/`restoreCollected` (не уходят в минус); статусы — `approve`, `ship`,
+  `deliver`, `reject`, `markMerged`, `settleIfFree`. Колонки лежат в `OrderColumns`, бухгалтерия без денежных правил (возвратная цепочка,
+  запрос отмены, архив, карточки Telegram) — в `OrderHousekeeping`: так файл `Order` остаётся ≤ 500 строк. `OrderItem`/`OrderItemLot`
+  меняются своими методами (`changeQuantity`, `registerReturned`, `awaitReturn`…). `OrderMoney` — чистый расчёт, заказ не меняет.
+  `PaymentInvoice`, `OrderReturn`, `OrderReturnLine` закрыты так же. Остальные сущности (справочники и настройки админки: `PromoCode`,
+  кейсы подарков, поставки предзаказов и т.п.) оставлены анемичными: у них нет денежного автомата, сеттеры вызывает только их админский CRUD.
+  Округление денег — `platform.util.Money`: процент от суммы покупателя усекается, себестоимость и курс — half-up.
 - `order/app`: `Checkout` (оформление), `OrderLifecycle` (одобрить/отправить/доставить/отклонить/истечение срока),
   `CancelRequests`, `OrderEditing`, `OrderPayments` (ручные оплаты), `OrderMerge`, `CustomerOrders` и `AdminOrderBoard` (чтение).
   Вместо `OrderService` (1629 строк) и `OrderAdjustmentService` (1222) — 8–10 классов по 150–350 строк.
