@@ -3,7 +3,9 @@ package com.maxsolch.shop.staff.app;
 import com.maxsolch.shop.staff.domain.StaffError;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.staff.domain.AdminIncident;
+import com.maxsolch.shop.staff.domain.IncidentFinding;
 import com.maxsolch.shop.staff.infra.AdminIncidentRepository;
+import com.maxsolch.shop.staff.infra.IncidentQueries;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,10 +29,6 @@ import java.util.stream.Collectors;
 @Service
 public class IncidentService {
 
-    static final String AUTO = "auto:";
-    /** A refused parcel that has been «on its way back» longer than this is worth a look. */
-    static final int RETURN_STUCK_DAYS = 21;
-
     private final AdminIncidentRepository repository;
     private final IncidentQueries queries;
     private final AdminAuditService audit;
@@ -42,11 +40,6 @@ public class IncidentService {
         this.queries = queries;
         this.audit = audit;
         this.clock = clock;
-    }
-
-    /** A case found in the data right now. */
-    record Found(String code, String title, String orderRef, String severity, String facts, String hypothesis,
-                 String suggestion) {
     }
 
     @Transactional
@@ -95,14 +88,14 @@ public class IncidentService {
     }
 
     /** New cases → OPEN rows; OPEN auto rows no longer found → RESOLVED by the system. */
-    void sync(List<Found> found) {
-        Map<String, Found> byCode = found.stream()
-                .collect(Collectors.toMap(Found::code, Function.identity(), (a, b) -> a, LinkedHashMap::new));
+    void sync(List<IncidentFinding> found) {
+        Map<String, IncidentFinding> byCode = found.stream()
+                .collect(Collectors.toMap(IncidentFinding::code, Function.identity(), (a, b) -> a, LinkedHashMap::new));
         Set<String> known = new HashSet<>();
         for (AdminIncident i : repository.findAll()) {
             known.add(i.getCode());
-            if (i.getCode().startsWith(AUTO) && AdminIncident.OPEN.equals(i.getStatus())) {
-                Found f = byCode.get(i.getCode());
+            if (i.getCode().startsWith(IncidentFinding.AUTO) && AdminIncident.OPEN.equals(i.getStatus())) {
+                IncidentFinding f = byCode.get(i.getCode());
                 if (f == null) {
                     i.setStatus(AdminIncident.RESOLVED);
                     i.setResolution("Закрыт автоматически: в данных этого больше нет");
@@ -117,7 +110,7 @@ public class IncidentService {
             }
         }
         List<AdminIncident> fresh = new ArrayList<>();
-        for (Found f : byCode.values()) {
+        for (IncidentFinding f : byCode.values()) {
             if (known.contains(f.code())) {
                 continue;
             }

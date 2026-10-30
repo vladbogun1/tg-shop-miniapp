@@ -3,6 +3,7 @@ package com.maxsolch.shop.staff.app;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.staff.domain.AdminIncident;
 import com.maxsolch.shop.staff.infra.AdminIncidentRepository;
+import com.maxsolch.shop.staff.infra.IncidentQueries;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -22,8 +23,8 @@ class IncidentServiceTest {
     private final AdminIncidentRepository repository = mock(AdminIncidentRepository.class);
     private final IncidentService service = new IncidentService(repository, mock(IncidentQueries.class), mock(com.maxsolch.shop.platform.audit.AdminAuditService.class), java.time.Clock.systemUTC());
 
-    private static IncidentService.Found found(String code) {
-        return new IncidentService.Found(code, "t", "ref", "HIGH", "facts", "hyp", "sug");
+    private static com.maxsolch.shop.staff.domain.IncidentFinding found(String code) {
+        return new com.maxsolch.shop.staff.domain.IncidentFinding(code, "t", "ref", "HIGH", "facts", "hyp", "sug");
     }
 
     private static AdminIncident row(String code, String status) {

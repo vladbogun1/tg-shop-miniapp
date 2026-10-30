@@ -1,6 +1,7 @@
 package com.maxsolch.shop.catalog.app;
 
 import com.maxsolch.shop.catalog.domain.ProductCondition;
+import com.maxsolch.shop.catalog.infra.MarkdownTagQueries;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.translation.app.TranslationService;

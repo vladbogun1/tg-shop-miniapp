@@ -1,4 +1,4 @@
-package com.maxsolch.shop.inbox.app;
+package com.maxsolch.shop.inbox.infra;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +23,7 @@ public class PushOrderQueries {
     public record OrderInfo(String id, String shortId, long totalMinor, String currency, String source) {
     }
 
-    Optional<OrderInfo> order(byte[] orderId) {
+    public Optional<OrderInfo> order(byte[] orderId) {
         List<OrderInfo> rows = jdbc.query(
                 "select total_minor, currency, source from orders where id = ?",
                 (rs, i) -> {
@@ -35,7 +35,7 @@ public class PushOrderQueries {
         return rows.stream().findFirst();
     }
 
-    String customerName(byte[] orderId) {
+    public String customerName(byte[] orderId) {
         try {
             List<String> names = jdbc.queryForList("select customer_name from orders where id = ?", String.class, (Object) orderId);
             return names.isEmpty() ? null : names.get(0);

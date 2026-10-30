@@ -1,5 +1,6 @@
 package com.maxsolch.shop.inbox.app;
 
+import com.maxsolch.shop.inbox.infra.PushOrderQueries;
 import com.maxsolch.shop.site.domain.SiteRevalidationFailed;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.inbox.app.InboxDtos.Inbox;

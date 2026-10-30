@@ -61,7 +61,7 @@ final class V2Rules {
         RULES.put("J1", "@Scheduled only in *Job/*Jobs and always with @SchedulerLock");
         RULES.put("H1", "external HTTP only through platform.http (no HttpClient.newBuilder, RestTemplate)");
         RULES.put("W1", "dependencies by constructor only (no field/setter @Autowired, @Inject, @Resource, @PersistenceContext, required=false, @Lazy)");
-        RULES.put("S1", "JdbcTemplate only in infra, *Store and *Queries");
+        RULES.put("S1", "JdbcTemplate and native EntityManager queries only in the infra layer (no exemption by class name)");
         RULES.put("O1", "order status changes only through Order methods (no setStatus from outside)");
         RULES.put("O2", "an entity with invariants (GUARDED) is changed only by its own methods: no set* call from outside its domain package");
         RULES.put("O3", "an entity with invariants (GUARDED) has no public set* method (no @Setter)");
@@ -84,7 +84,9 @@ final class V2Rules {
      */
     private static final java.util.Map<String, java.util.Map<String, String>> ALLOWED = java.util.Map.of(
             "S1", java.util.Map.of("platform.jobs.JobsConfig",
-                    "ShedLock's JDBC lock provider is built from a JdbcTemplate; it is wiring next to @EnableSchedulerLock"),
+                    "ShedLock's JDBC lock provider is built from a JdbcTemplate; it is wiring next to @EnableSchedulerLock",
+                    "platform.journal.ActivityLogStore", "platform has no infra layer: the journal's own table activity_log is read and written by its own store",
+                    "platform.security.AdminRevokedTokenStore", "platform has no infra layer: the revoked admin tokens table belongs to platform.security"),
             "K1", java.util.Map.of(
                     "payment.app.CustomerPaymentRefresh", "ARCHITECTURE.md section 6: 5-second poll throttle, a spare poll is harmless",
                     "platform.config.WebSocketConfig", "ARCHITECTURE.md section 6: a connection belongs to the process by nature"),
@@ -93,7 +95,7 @@ final class V2Rules {
                     java.util.Map.entry("gift.infra.GiftRegistryStore", "registry report: gift lines joined with their order and product price, read-only"),
                     java.util.Map.entry("gift.infra.GiftReminderStore", "scan of expiring gift-case promo codes joined with order and bot_blocked; claim is one atomic update of the code"),
                     java.util.Map.entry("review.infra.ReviewStore", "review scans and feed joined with order, product and promo rows, plus once-only claims written with 'update ... where flag is null' (atomic)"),
-                    java.util.Map.entry("staff.app.IncidentQueries", "the admin incident report: audit log, orders and money movements in one read"),
+                    java.util.Map.entry("staff.infra.IncidentQueries", "the admin incident report: audit log, orders and money movements in one read"),
                     java.util.Map.entry("staff.infra.AdminTeamQueries", "the admin team screen: one activity summary per admin over audit, chat, broadcasts, marks and push rows, read-only")),
             "E1", java.util.Map.of("payment.domain.MonobankGateway",
                     "MonobankException is a failure of the port, always caught in payment.app and turned into a DomainException; it never reaches HTTP"),
@@ -345,8 +347,7 @@ final class V2Rules {
             if (!pkg.equals(root + ".platform.cache") && tn.startsWith("com.github.benmanes.caffeine.")) {
                 out.add(new Violation("CA", from.module(), detail));
             }
-            if (JDBC.contains(tn) && from.layer() != Layer.INFRA && !c.getSimpleName().endsWith("Store")
-                    && !c.getSimpleName().endsWith("Queries")) {
+            if (JDBC.contains(tn) && from.layer() != Layer.INFRA) {
                 out.add(new Violation("S1", from.module(), detail));
             }
         }
@@ -354,6 +355,10 @@ final class V2Rules {
             String owner = call.getTargetOwner().getName();
             String name = call.getName();
             String detail = origin + " -> " + call.getTargetOwner().getSimpleName() + "." + name;
+            if (from.layer() != Layer.INFRA && owner.equals("jakarta.persistence.EntityManager")
+                    && (name.equals("createNativeQuery") || name.equals("createQuery") || name.equals("createNamedQuery"))) {
+                out.add(new Violation("S1", from.module(), detail));
+            }
             if (from.layer() == Layer.API && owner.equals(root + ".platform.security.AdminAccess") && name.startsWith("require")) {
                 out.add(new Violation("A3", from.module(), detail));
             }
