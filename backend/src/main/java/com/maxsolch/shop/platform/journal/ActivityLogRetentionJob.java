@@ -18,18 +18,18 @@ import java.time.Instant;
  */
 @Slf4j
 @Component
-public class ActivityLogRetention {
+public class ActivityLogRetentionJob {
 
     private final ActivityLogStore store;
     private final int retentionDays;
     private final int moneyRetentionDays;
 
     @Autowired
-    public ActivityLogRetention(ActivityLogStore store, AppProperties props) {
+    public ActivityLogRetentionJob(ActivityLogStore store, AppProperties props) {
         this(store, props.getJournal().getRetentionDays(), props.getJournal().getMoneyRetentionDays());
     }
 
-    public ActivityLogRetention(ActivityLogStore store, int retentionDays, int moneyRetentionDays) {
+    public ActivityLogRetentionJob(ActivityLogStore store, int retentionDays, int moneyRetentionDays) {
         this.store = store;
         this.retentionDays = Math.max(7, retentionDays);
         // never shorter than the general window, or money rows would go first
@@ -44,7 +44,7 @@ public class ActivityLogRetention {
         return retentionDays;
     }
 
-    @SchedulerLock(name = "ActivityLogRetention.purge", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
+    @SchedulerLock(name = "ActivityLogRetentionJob.purge", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @Scheduled(cron = "${app.journal.purge-cron:0 35 4 * * *}")
     public void purge() {
         try {

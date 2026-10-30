@@ -1,8 +1,8 @@
 package com.maxsolch.shop.platform.settings;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.settings.SettingsDtos.SettingItemDto;
-import com.maxsolch.shop.platform.error.BadRequestException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,7 +43,7 @@ class SettingsServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new SettingsService(repository, audit);
+        service = new SettingsService(repository, audit, new com.maxsolch.shop.platform.web.CurrentActor());
         lenient().when(audit.currentAdminName()).thenReturn("Max");
     }
 
@@ -170,7 +170,7 @@ class SettingsServiceTest {
         changes.put(SettingsRegistry.PROMO_HOLD_MINUTES, 100_000);
 
         assertThatThrownBy(() -> service.update(changes))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("Резерв промокода")
                 .hasMessageContaining("от 5 до 1440");
         verify(repository, never()).save(any());
@@ -180,7 +180,7 @@ class SettingsServiceTest {
     @Test
     void unknownKeyIsRejected() {
         assertThatThrownBy(() -> service.update(Map.of("security.jwtSecret", "x")))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("security.jwtSecret");
         verify(repository, never()).save(any());
     }
@@ -188,7 +188,7 @@ class SettingsServiceTest {
     @Test
     void systemKeysAreNotEditable() {
         assertThatThrownBy(() -> service.update(Map.of("system.np.lastSyncAt", "x")))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test
@@ -198,11 +198,11 @@ class SettingsServiceTest {
         assertThat(SettingsService.normalize(d, " 2.50 ")).isEqualTo("2.5");
         assertThat(SettingsService.normalize(d, "0")).isEqualTo("0");
         assertThat(SettingsService.normalize(d, "10")).isEqualTo("10");
-        assertThatThrownBy(() -> SettingsService.normalize(d, "10.1")).isInstanceOf(BadRequestException.class);
-        assertThatThrownBy(() -> SettingsService.normalize(d, "-0.5")).isInstanceOf(BadRequestException.class);
-        assertThatThrownBy(() -> SettingsService.normalize(d, "abc")).isInstanceOf(BadRequestException.class);
-        assertThatThrownBy(() -> SettingsService.normalize(d, "1.3%")).isInstanceOf(BadRequestException.class);
-        assertThatThrownBy(() -> SettingsService.normalize(d, 1.3)).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> SettingsService.normalize(d, "10.1")).isInstanceOf(DomainException.BadRequest.class);
+        assertThatThrownBy(() -> SettingsService.normalize(d, "-0.5")).isInstanceOf(DomainException.BadRequest.class);
+        assertThatThrownBy(() -> SettingsService.normalize(d, "abc")).isInstanceOf(DomainException.BadRequest.class);
+        assertThatThrownBy(() -> SettingsService.normalize(d, "1.3%")).isInstanceOf(DomainException.BadRequest.class);
+        assertThatThrownBy(() -> SettingsService.normalize(d, 1.3)).isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test
@@ -212,8 +212,8 @@ class SettingsServiceTest {
         assertThat(d.options()).extracting(SettingDefinition.Option::label)
                 .containsExactly("По стоимости", "По штукам", "По весу", "Вручную");
         assertThat(SettingsService.normalize(d, " by_qty ")).isEqualTo("BY_QTY");
-        assertThatThrownBy(() -> SettingsService.normalize(d, "По штукам")).isInstanceOf(BadRequestException.class);
-        assertThatThrownBy(() -> SettingsService.normalize(d, 5)).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> SettingsService.normalize(d, "По штукам")).isInstanceOf(DomainException.BadRequest.class);
+        assertThatThrownBy(() -> SettingsService.normalize(d, 5)).isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test
@@ -223,10 +223,10 @@ class SettingsServiceTest {
         assertThat(SettingsService.normalize(d, 21L)).isEqualTo("21");
         assertThat(SettingsService.normalize(d, 21.0)).isEqualTo("21");
         assertThat(SettingsService.normalize(d, " 21 ")).isEqualTo("21");
-        assertThatThrownBy(() -> SettingsService.normalize(d, 1.5)).isInstanceOf(BadRequestException.class);
-        assertThatThrownBy(() -> SettingsService.normalize(d, "abc")).isInstanceOf(BadRequestException.class);
-        assertThatThrownBy(() -> SettingsService.normalize(d, 0)).isInstanceOf(BadRequestException.class);
-        assertThatThrownBy(() -> SettingsService.normalize(d, true)).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> SettingsService.normalize(d, 1.5)).isInstanceOf(DomainException.BadRequest.class);
+        assertThatThrownBy(() -> SettingsService.normalize(d, "abc")).isInstanceOf(DomainException.BadRequest.class);
+        assertThatThrownBy(() -> SettingsService.normalize(d, 0)).isInstanceOf(DomainException.BadRequest.class);
+        assertThatThrownBy(() -> SettingsService.normalize(d, true)).isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test
@@ -235,7 +235,7 @@ class SettingsServiceTest {
         assertThat(SettingsService.normalize(d, " 1, 2 ")).isEqualTo("1, 2");
         assertThat(SettingsService.normalize(d, "")).isEqualTo("");
         assertThatThrownBy(() -> SettingsService.normalize(d, "Без ПДВ"))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("числовые коды");
     }
 
@@ -244,7 +244,7 @@ class SettingsServiceTest {
         SettingDefinition d = def(SettingsRegistry.NOTIFY_CUSTOMER_STATUS);
         assertThat(SettingsService.normalize(d, false)).isEqualTo("false");
         assertThat(SettingsService.normalize(d, "TRUE")).isEqualTo("true");
-        assertThatThrownBy(() -> SettingsService.normalize(d, 1)).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> SettingsService.normalize(d, 1)).isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test
@@ -253,8 +253,8 @@ class SettingsServiceTest {
         assertThat(SettingsService.normalize(d, "  Привіт!\r\nЛаскаво просимо  ")).isEqualTo("Привіт!\nЛаскаво просимо");
         assertThat(SettingsService.normalize(d, "")).isEmpty();
         assertThatThrownBy(() -> SettingsService.normalize(d, "x".repeat(2001)))
-                .isInstanceOf(BadRequestException.class);
-        assertThatThrownBy(() -> SettingsService.normalize(d, 5)).isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
+        assertThatThrownBy(() -> SettingsService.normalize(d, 5)).isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test

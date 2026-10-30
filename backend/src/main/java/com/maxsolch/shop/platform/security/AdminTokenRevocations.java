@@ -2,13 +2,9 @@ package com.maxsolch.shop.platform.security;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.jdbc.core.JdbcTemplate;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -18,7 +14,6 @@ import java.time.Instant;
  * looked up through a short cache so it costs at most one query per token per
  * {@value #CACHE_SECONDS}s. Revoking on this instance updates the cache at once.
  */
-@Slf4j
 @Component
 public class AdminTokenRevocations {
 
@@ -29,17 +24,19 @@ public class AdminTokenRevocations {
             .expireAfterWrite(Duration.ofSeconds(CACHE_SECONDS))
             .build();
 
-    private final JdbcTemplate jdbc;
+    private final AdminRevokedTokenStore store;
+    private final Clock clock;
 
-    public AdminTokenRevocations(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
+    public AdminTokenRevocations(AdminRevokedTokenStore store, Clock clock) {
+        this.store = store;
+        this.clock = clock;
     }
 
     public boolean isRevoked(String jti) {
         if (jti == null || jti.isBlank()) {
             return false;
         }
-        Boolean revoked = cache.get(jti, this::load);
+        Boolean revoked = cache.get(jti, store::exists);
         return Boolean.TRUE.equals(revoked);
     }
 
@@ -48,30 +45,8 @@ public class AdminTokenRevocations {
         if (jti == null || jti.isBlank()) {
             return;
         }
-        Instant until = expiresAt == null ? Instant.now().plus(Duration.ofDays(31)) : expiresAt;
-        jdbc.update("INSERT IGNORE INTO admin_revoked_tokens (jti, telegram_user_id, expires_at) VALUES (?, ?, ?)",
-                jti, telegramUserId, Timestamp.from(until));
+        Instant until = expiresAt == null ? clock.instant().plus(Duration.ofDays(31)) : expiresAt;
+        store.insertIgnore(jti, telegramUserId, until);
         cache.put(jti, Boolean.TRUE);
-    }
-
-    /** Rows outlive their token by nothing: once the token has expired it is refused anyway. */
-    @SchedulerLock(name = "AdminTokenRevocations.cleanup", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
-    @Scheduled(cron = "0 17 * * * *")
-    public void cleanup() {
-        try {
-            int removed = jdbc.update("DELETE FROM admin_revoked_tokens WHERE expires_at < ?",
-                    Timestamp.from(Instant.now()));
-            if (removed > 0) {
-                log.debug("Removed {} expired admin token revocations", removed);
-            }
-        } catch (Exception e) {
-            log.warn("Admin token revocation cleanup failed: {}", e.getMessage());
-        }
-    }
-
-    private Boolean load(String jti) {
-        Integer n = jdbc.queryForObject("SELECT COUNT(*) FROM admin_revoked_tokens WHERE jti = ?",
-                Integer.class, jti);
-        return n != null && n > 0;
     }
 }

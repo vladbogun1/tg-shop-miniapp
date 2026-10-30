@@ -1,9 +1,9 @@
 package com.maxsolch.shop.platform.journal;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.notification.domain.Broadcast;
 import com.maxsolch.shop.notification.infra.BroadcastRepository;
-import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.notification.app.BroadcastHistoryDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,7 +33,7 @@ class ActivityLogApiTest {
     @BeforeEach
     void setUp() {
         store = mock(ActivityLogStore.class);
-        controller = new ActivityLogController(store, new ActivityLogRetention(store, 90, 1095), com.maxsolch.shop.platform.time.ShopZone.of("Europe/Kyiv"));
+        controller = new ActivityLogController(store, new ActivityLogRetentionJob(store, 90, 1095), com.maxsolch.shop.platform.time.ShopZone.of("Europe/Kyiv"));
     }
 
     private static ActivityLogStore.Filter filter(String order, String q) {
@@ -115,7 +115,7 @@ class ActivityLogApiTest {
     @Test
     void badDateIsA400() {
         assertThatThrownBy(() -> controller.list(0, 50, null, null, null, null, null, null, null, null, null,
-                "07.10.2026", null)).isInstanceOf(BadRequestException.class);
+                "07.10.2026", null)).isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test
@@ -131,7 +131,7 @@ class ActivityLogApiTest {
 
     @Test
     void retentionNeverGoesBelowAWeek() {
-        ActivityLogRetention r = new ActivityLogRetention(store, 1, 1095);
+        ActivityLogRetentionJob r = new ActivityLogRetentionJob(store, 1, 1095);
         assertThat(r.retentionDays()).isEqualTo(7);
         r.purge();
         verify(store).purgeBefore(any());

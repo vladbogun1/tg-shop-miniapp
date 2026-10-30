@@ -1,7 +1,7 @@
 package com.maxsolch.shop.platform.audit;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
-import com.maxsolch.shop.platform.error.BadRequestException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -88,7 +88,7 @@ public class AdminAuditController {
             LocalDate d = LocalDate.parse(value.trim());
             return (endExclusive ? d.plusDays(1) : d).atStartOfDay(zone).toInstant();
         } catch (DateTimeParseException e) {
-            throw new BadRequestException("date must be yyyy-MM-dd");
+            throw new DomainException.BadRequest("date must be yyyy-MM-dd");
         }
     }
 

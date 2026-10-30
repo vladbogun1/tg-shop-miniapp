@@ -1,7 +1,7 @@
 package com.maxsolch.shop.platform.journal;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
-import com.maxsolch.shop.platform.error.BadRequestException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -44,11 +44,11 @@ import static com.maxsolch.shop.platform.util.Texts.trimToNull;
 public class ActivityLogController {
 
     private final ActivityLogStore store;
-    private final ActivityLogRetention retention;
+    private final ActivityLogRetentionJob retention;
     private final ZoneId zone;
 
     public ActivityLogController(ActivityLogStore store,
-                                 ActivityLogRetention retention,
+                                 ActivityLogRetentionJob retention,
                                  ShopZone shopZone) {
         this.store = store;
         this.retention = retention;
@@ -120,7 +120,7 @@ public class ActivityLogController {
             LocalDate d = LocalDate.parse(value.trim());
             return (endExclusive ? d.plusDays(1) : d).atStartOfDay(zone).toInstant();
         } catch (DateTimeParseException e) {
-            throw new BadRequestException("date must be yyyy-MM-dd");
+            throw new DomainException.BadRequest("date must be yyyy-MM-dd");
         }
     }
 

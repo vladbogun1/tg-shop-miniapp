@@ -3,7 +3,7 @@ package com.maxsolch.shop.platform.audit;
 import com.maxsolch.shop.platform.security.AdminDirectory;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.Role;
-import com.maxsolch.shop.platform.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -26,17 +26,19 @@ public class AdminAuditService {
 
     private final AdminAuditRepository repository;
     private final AdminDirectory admins;
+    private final CurrentActor actor;
 
     public AdminAuditService(AdminAuditRepository repository,
-                             AdminDirectory admins) {
+                             AdminDirectory admins, CurrentActor actor) {
         this.repository = repository;
         this.admins = admins;
+        this.actor = actor;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void record(String action, String entityType, String entityId, String details) {
         try {
-            AuthPrincipal principal = SecurityUtil.currentPrincipal();
+            AuthPrincipal principal = actor.principal();
             if (principal.role() != Role.ADMIN) {
                 return;
             }
@@ -103,7 +105,7 @@ public class AdminAuditService {
     @Transactional(readOnly = true)
     public String currentAdminName() {
         try {
-            return displayName(SecurityUtil.currentUserId());
+            return displayName(actor.userId());
         } catch (Exception e) {
             return DEFAULT_ADMIN_NAME;
         }

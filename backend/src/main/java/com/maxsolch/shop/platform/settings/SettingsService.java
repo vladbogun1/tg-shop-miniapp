@@ -1,11 +1,12 @@
 package com.maxsolch.shop.platform.settings;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.platform.error.ErrorCode;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.settings.SettingsDtos.SettingItemDto;
 import com.maxsolch.shop.platform.settings.SettingsDtos.SettingsGroupDto;
 import com.maxsolch.shop.platform.settings.SettingsDtos.SettingsResponse;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,9 +48,11 @@ public class SettingsService {
 
     private final ShopSettingRepository repository;
     private final AdminAuditService audit;
+    private final CurrentActor actor;
     private volatile Snapshot snapshot;
 
-    public SettingsService(ShopSettingRepository repository, AdminAuditService audit) {
+    public SettingsService(ShopSettingRepository repository, AdminAuditService audit, CurrentActor actor) {
+        this.actor = actor;
         this.repository = repository;
         this.audit = audit;
     }
@@ -164,8 +167,7 @@ public class SettingsService {
         Map<SettingDefinition, String> normalized = new LinkedHashMap<>();
         for (Map.Entry<String, Object> e : changes.entrySet()) {
             SettingDefinition def = SettingsRegistry.find(e.getKey())
-                    .orElseThrow(() -> new BadRequestException(
-                            "Неизвестная настройка: " + e.getKey(), "SETTING_UNKNOWN"));
+                    .orElseThrow(() -> new DomainException.BadRequest("Неизвестная настройка: " + e.getKey(), ErrorCode.of("SETTING_UNKNOWN")));
             normalized.put(def, e.getValue() == null ? null : normalize(def, e.getValue()));
         }
 
@@ -221,7 +223,7 @@ public class SettingsService {
     /**
      * Validates {@code raw} against the definition and returns its canonical text form.
      *
-     * @throws BadRequestException with a Russian message naming the setting
+     * @throws DomainException.BadRequest with a Russian message naming the setting
      */
     static String normalize(SettingDefinition def, Object raw) {
         String label = "«" + def.label() + "»";
@@ -318,8 +320,8 @@ public class SettingsService {
         }
     }
 
-    private static BadRequestException invalid(String message) {
-        return new BadRequestException(message, "SETTING_INVALID");
+    private static DomainException.BadRequest invalid(String message) {
+        return new DomainException.BadRequest(message, ErrorCode.of("SETTING_INVALID"));
     }
 
     // ------------------------------------------------------------------ internals
@@ -432,9 +434,9 @@ public class SettingsService {
         return value;
     }
 
-    private static Long currentAdminId() {
+    private Long currentAdminId() {
         try {
-            return SecurityUtil.currentUserId();
+            return actor.userId();
         } catch (Exception e) {
             return null;
         }
