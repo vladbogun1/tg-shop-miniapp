@@ -137,6 +137,10 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
 
     // ---- read side for the customer module (customer.app.OrderHistory) ----
 
+    /** The customer of an order (null: no such order or a guest one). */
+    @Query("select o.tgUserId from Order o where o.id = :id")
+    Long customerOf(@Param("id") byte[] id);
+
     /** [tgUserId, orders, spent] of these customers: spent counts every order but REJECTED. */
     @Query("select o.tgUserId, count(o), coalesce(sum(case when o.status <> com.maxsolch.shop.order.domain.OrderStatus.REJECTED "
             + "then o.totalMinor else 0 end), 0) from Order o where o.tgUserId in :ids group by o.tgUserId")

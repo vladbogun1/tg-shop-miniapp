@@ -35,7 +35,7 @@ class ActivityLogMoneyRetentionTest {
     void theShortPurgeSkipsMoneyRowsAndTheLongOneTakesEverything() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
         when(jdbc.update(anyString(), eq(Timestamp.from(Instant.EPOCH)))).thenReturn(0);
-        ActivityLogStore store = new ActivityLogStore(jdbc);
+        ActivityLogStore store = new ActivityLogStore(jdbc, mock(JournalOrders.class), mock(JournalPeople.class));
 
         store.purgeBefore(Instant.EPOCH);
         verify(jdbc).update(org.mockito.ArgumentMatchers.contains("AND NOT (source = 'PAYMENT'"),

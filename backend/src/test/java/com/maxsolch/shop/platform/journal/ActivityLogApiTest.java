@@ -44,7 +44,7 @@ class ActivityLogApiTest {
 
     @Test
     void noFilterMeansEverything() {
-        ActivityLogStore.Where w = ActivityLogStore.where(filter(null, null));
+        ActivityLogStore.Where w = ActivityLogStore.where(filter(null, null), null);
         assertThat(w.sql()).isEqualTo(" WHERE 1=1");
         assertThat(w.params()).isEmpty();
     }
@@ -53,7 +53,7 @@ class ActivityLogApiTest {
     void everyFilterIsAParameterNeverConcatenated() {
         ActivityLogStore.Where w = ActivityLogStore.where(new ActivityLogStore.Filter("BOT", "BROADCAST", "FAILED",
                 "CUSTOMER", 42L, null, "broadcast:3", "BOT_BLOCKED", null,
-                Instant.parse("2026-10-01T00:00:00Z"), Instant.parse("2026-10-02T00:00:00Z")));
+                Instant.parse("2026-10-01T00:00:00Z"), Instant.parse("2026-10-02T00:00:00Z")), null);
         assertThat(w.sql()).contains("a.source = ?", "a.type = ?", "a.result = ?", "a.recipient = ?",
                 "a.tg_user_id = ?", "a.group_id = ?", "a.error_code = ?", "a.created_at >= ?", "a.created_at < ?");
         assertThat(w.params()).hasSize(9).contains("BOT", "BROADCAST", "FAILED", 42L, "broadcast:3", "BOT_BLOCKED");
@@ -62,24 +62,24 @@ class ActivityLogApiTest {
     @Test
     void orderByFullUuidOrByTheShortId() {
         String id = "1a2b3c4d-0000-4000-8000-000000000001";
-        ActivityLogStore.Where full = ActivityLogStore.where(filter(id, null));
+        ActivityLogStore.Where full = ActivityLogStore.where(filter(id, null), null);
         assertThat(full.sql()).contains("a.order_id = ?");
         assertThat((byte[]) full.params().get(0)).isEqualTo(UuidUtil.toBytes(id));
 
-        ActivityLogStore.Where shortId = ActivityLogStore.where(filter("#1a2b3c4d", null));
+        ActivityLogStore.Where shortId = ActivityLogStore.where(filter("#1a2b3c4d", null), null);
         assertThat(shortId.sql()).contains("HEX(a.order_id) LIKE ?");
         assertThat(shortId.params()).containsExactly("1A2B3C4D%");
 
-        assertThat(ActivityLogStore.where(filter("not-an-id", null)).sql()).contains("1=0");
+        assertThat(ActivityLogStore.where(filter("not-an-id", null), null).sql()).contains("1=0");
     }
 
     @Test
     void searchMatchesTextNamesAndATelegramId() {
-        ActivityLogStore.Where w = ActivityLogStore.where(filter(null, "123456789"));
-        assertThat(w.sql()).contains("a.summary LIKE ?", "u.username LIKE ?", "OR a.tg_user_id = ?");
+        ActivityLogStore.Where w = ActivityLogStore.where(filter(null, "123456789"), List.of(7L, 8L));
+        assertThat(w.sql()).contains("a.summary LIKE ?", "OR a.tg_user_id IN (7,8)", "OR a.tg_user_id = ?");
         assertThat(w.params()).contains("%123456789%", 123456789L);
 
-        ActivityLogStore.Where like = ActivityLogStore.where(filter(null, "50%_off"));
+        ActivityLogStore.Where like = ActivityLogStore.where(filter(null, "50%_off"), List.of());
         assertThat(like.params().get(0)).isEqualTo("%50\\%\\_off%");
         assertThat(like.sql()).doesNotContain("a.tg_user_id = ?");
     }

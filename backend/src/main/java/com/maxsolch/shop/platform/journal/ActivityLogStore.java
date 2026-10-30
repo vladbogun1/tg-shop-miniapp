@@ -16,13 +16,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.maxsolch.shop.platform.util.Texts.ellipsize;
 
 /**
  * Reads of {@code activity_log} for the admin «Журнал → Бот и сайт» tab: the filtered feed, filter
  * values, the per-broadcast delivery breakdown and the 24 h counters; plus the retention purge.
- * Plain SQL — every filter is optional and the customer's name comes from {@code users}.
+ * Plain SQL over {@code activity_log} only — every filter is optional; the customer of an order and the names come
+ * from the owners of {@code orders} and {@code users} ({@link JournalOrders}, {@link JournalPeople}).
  */
 @Repository
 public class ActivityLogStore {
@@ -31,9 +33,13 @@ public class ActivityLogStore {
     private static final Pattern UUID_SHORT = Pattern.compile("#?[0-9a-fA-F]{8}");
 
     private final JdbcTemplate jdbc;
+    private final JournalOrders orders;
+    private final JournalPeople people;
 
-    public ActivityLogStore(JdbcTemplate jdbc) {
+    public ActivityLogStore(JdbcTemplate jdbc, JournalOrders orders, JournalPeople people) {
         this.jdbc = jdbc;
+        this.orders = orders;
+        this.people = people;
     }
 
     private static final String INSERT = "INSERT INTO activity_log "
@@ -66,8 +72,7 @@ public class ActivityLogStore {
 
     private Long orderCustomer(byte[] orderId) {
         try {
-            List<Long> ids = jdbc.queryForList("SELECT tg_user_id FROM orders WHERE id = ?", Long.class, orderId);
-            return ids.isEmpty() ? null : ids.get(0);
+            return orders.customerOf(orderId).orElse(null);
         } catch (Exception ex) {
             return null;
         }
@@ -100,7 +105,8 @@ public class ActivityLogStore {
     record Where(String sql, List<Object> params) {
     }
 
-    static Where where(Filter f) {
+    /** @param personIds users whose name matches {@code f.q()} (asked from {@link JournalPeople}); null when no search */
+    static Where where(Filter f, List<Long> personIds) {
         StringBuilder sql = new StringBuilder(" WHERE 1=1");
         List<Object> p = new ArrayList<>();
         if (f.source() != null) {
@@ -146,14 +152,15 @@ public class ActivityLogStore {
         }
         if (f.q() != null) {
             String q = f.q().trim();
-            String like = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-            sql.append(" AND (a.summary LIKE ? OR a.error LIKE ? OR u.username LIKE ? OR u.first_name LIKE ?"
-                    + " OR u.last_name LIKE ?");
+            String like = likeOf(q);
+            sql.append(" AND (a.summary LIKE ? OR a.error LIKE ?");
             p.add(like);
             p.add(like);
-            p.add(like);
-            p.add(like);
-            p.add(like);
+            if (personIds != null && !personIds.isEmpty()) {
+                // numbers only: safe to inline, and a name search can match thousands of people
+                sql.append(" OR a.tg_user_id IN (")
+                        .append(personIds.stream().map(String::valueOf).collect(Collectors.joining(","))).append(')');
+            }
             if (q.matches("\\d{3,19}")) {
                 sql.append(" OR a.tg_user_id = ?");
                 p.add(Long.parseLong(q));
@@ -171,24 +178,32 @@ public class ActivityLogStore {
         return new Where(sql.toString(), p);
     }
 
+    private Where where(Filter f) {
+        return where(f, f.q() == null ? null : people.matching(likeOf(f.q())));
+    }
+
+    static String likeOf(String q) {
+        return "%" + q.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+    }
+
     public List<Row> search(Filter f, int page, int size) {
         Where w = where(f);
         List<Object> params = new ArrayList<>(w.params());
         params.add(size);
         params.add((long) page * size);
-        return jdbc.query("SELECT a.id, a.created_at, a.source, a.type, a.result, a.recipient, a.tg_user_id, "
-                        + "a.chat_id, a.order_id, a.group_id, a.summary, a.error_code, a.error, a.details, "
-                        + "u.first_name, u.last_name, u.username "
-                        + "FROM activity_log a LEFT JOIN users u ON u.telegram_user_id = a.tg_user_id"
+        List<Row> rows = jdbc.query("SELECT a.id, a.created_at, a.source, a.type, a.result, a.recipient, a.tg_user_id, "
+                        + "a.chat_id, a.order_id, a.group_id, a.summary, a.error_code, a.error, a.details "
+                        + "FROM activity_log a"
                         + w.sql() + " ORDER BY a.created_at DESC, a.id DESC LIMIT ? OFFSET ?",
                 (rs, i) -> row(rs), params.toArray());
+        return named(rows);
     }
 
     /** Totals of the current filter by result: {OK: n, FAILED: n, SKIPPED: n}. */
     public Map<String, Long> countByResult(Filter f) {
         Where w = where(f);
         Map<String, Long> out = new LinkedHashMap<>();
-        jdbc.query("SELECT a.result, COUNT(*) FROM activity_log a LEFT JOIN users u ON u.telegram_user_id = a.tg_user_id"
+        jdbc.query("SELECT a.result, COUNT(*) FROM activity_log a"
                         + w.sql() + " GROUP BY a.result",
                 rs -> {
                     out.put(rs.getString(1), rs.getLong(2));
@@ -196,10 +211,28 @@ public class ActivityLogStore {
         return out;
     }
 
+    /** Puts the customer's name and username on the rows (asked from the owner of {@code users}, one call per page). */
+    private List<Row> named(List<Row> rows) {
+        List<Long> ids = rows.stream().map(Row::tgUserId).filter(java.util.Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return rows;
+        }
+        Map<Long, JournalPeople.Name> names = people.namesOf(ids);
+        return rows.stream().map(r -> {
+            JournalPeople.Name n = r.tgUserId() == null ? null : names.get(r.tgUserId());
+            if (n == null) {
+                return r;
+            }
+            String first = n.firstName();
+            String last = n.lastName();
+            String name = ((first == null ? "" : first) + " " + (last == null ? "" : last)).trim();
+            return new Row(r.id(), r.createdAt(), r.source(), r.type(), r.result(), r.recipient(), r.tgUserId(),
+                    name.isEmpty() ? null : name, n.username(), r.chatId(), r.orderId(), r.groupId(), r.summary(),
+                    r.errorCode(), r.error(), r.details());
+        }).toList();
+    }
+
     private static Row row(ResultSet rs) throws SQLException {
-        String first = rs.getString("first_name");
-        String last = rs.getString("last_name");
-        String name = ((first == null ? "" : first) + " " + (last == null ? "" : last)).trim();
         Timestamp at = rs.getTimestamp("created_at");
         return new Row(
                 rs.getLong("id"),
@@ -209,8 +242,8 @@ public class ActivityLogStore {
                 rs.getString("result"),
                 rs.getString("recipient"),
                 (Long) rs.getObject("tg_user_id", Long.class),
-                name.isEmpty() ? null : name,
-                rs.getString("username"),
+                null,
+                null,
                 (Long) rs.getObject("chat_id", Long.class),
                 UuidUtil.toString(rs.getBytes("order_id")),
                 rs.getString("group_id"),

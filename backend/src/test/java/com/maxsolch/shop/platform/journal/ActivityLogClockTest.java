@@ -26,7 +26,7 @@ class ActivityLogClockTest {
     @Test
     void rowIsTimestampedByTheClock() {
         JdbcTemplate jdbc = mock(JdbcTemplate.class);
-        ActivityLog log = new ActivityLog(new ActivityLogStore(jdbc), new TelegramFailures(),
+        ActivityLog log = new ActivityLog(new ActivityLogStore(jdbc, mock(JournalOrders.class), mock(JournalPeople.class)), new TelegramFailures(),
                 mock(DomainEvents.class), mock(CurrentActor.class), Clock.fixed(T0, ZoneOffset.UTC),
                 new SameThreadExecutor());
 

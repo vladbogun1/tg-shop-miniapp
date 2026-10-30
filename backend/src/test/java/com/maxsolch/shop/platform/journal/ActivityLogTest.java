@@ -36,16 +36,18 @@ class ActivityLogTest {
     private static final TelegramFailures CLASSIFIER = new TelegramFailures();
 
     private JdbcTemplate jdbc;
+    private JournalOrders orders;
     private ActivityLog log;
 
     @BeforeEach
     void setUp() {
         jdbc = mock(JdbcTemplate.class);
+        orders = mock(JournalOrders.class);
         log = newLog(new DirectExecutor());
     }
 
     private ActivityLog newLog(java.util.concurrent.ExecutorService executor) {
-        return new ActivityLog(new ActivityLogStore(jdbc), CLASSIFIER, mock(DomainEvents.class),
+        return new ActivityLog(new ActivityLogStore(jdbc, orders, mock(JournalPeople.class)), CLASSIFIER, mock(DomainEvents.class),
                 mock(CurrentActor.class), java.time.Clock.systemUTC(), executor);
     }
 
@@ -153,7 +155,7 @@ class ActivityLogTest {
     @Test
     void customerOfAnOrderIsLookedUpWhenNotGiven() {
         byte[] orderId = UuidUtil.randomBytes();
-        when(jdbc.queryForList(anyString(), eq(Long.class), any(Object[].class))).thenReturn(List.of(555L));
+        when(orders.customerOf(orderId)).thenReturn(java.util.Optional.of(555L));
 
         log.record(ActivityLog.Entry.of(ActivityLog.PAYMENT, "PAYMENT_SUCCESS").order(orderId));
 
@@ -168,7 +170,7 @@ class ActivityLogTest {
         assertThat(row[4]).isEqualTo("ADMINS");
         assertThat(row[5]).isNull();
         assertThat(row[6]).isEqualTo(-1001234567890L);
-        verify(jdbc, never()).queryForList(anyString(), eq(Long.class), any(Object[].class));
+        verify(orders, never()).customerOf(any());
     }
 
     @Test
