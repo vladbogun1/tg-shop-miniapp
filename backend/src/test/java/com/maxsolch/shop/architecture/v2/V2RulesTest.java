@@ -81,6 +81,20 @@ class V2RulesTest {
     }
 
     @Test
+    void eventsAreFoundWherePublishedListenedAndDeclared() {
+        assertThat(count("T3", "order")).isEqualTo(1);
+        assertThat(count("T4", "order")).isEqualTo(2);
+        assertThat(count("T5", "order")).isEqualTo(2);
+    }
+
+    @Test
+    void threadsVolatileDataAndCaffeineAreFound() {
+        assertThat(count("J2", "order")).isEqualTo(2);
+        assertThat(count("K2", "order")).isEqualTo(1);
+        assertThat(count("CA", "order")).isEqualTo(1);
+    }
+
+    @Test
     void cleanUseCaseHasNoViolations() {
         assertThat(VIOLATIONS).noneMatch(v -> v.key().contains("GoodUseCase"));
     }

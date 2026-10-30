@@ -246,7 +246,7 @@ class SupportServiceTest {
         SupportEvents.MessagePosted posted = (SupportEvents.MessagePosted) event.getAllValues().get(1);
         assertThat(posted.fromAdmin()).isFalse();
         assertThat(posted.newThread()).isTrue();
-        assertThat(((TopicMessagePosted) event.getAllValues().get(0)).payload()).isEqualTo(dto);
+        assertThat(((SupportDtos.MessageDto) ((TopicMessagePosted) event.getAllValues().get(0)).payload()).threadId()).isEqualTo(dto.id());
         assertThat(((TopicMessagePosted) event.getAllValues().get(0)).destination())
                 .isEqualTo("/topic/support/" + dto.id());
     }

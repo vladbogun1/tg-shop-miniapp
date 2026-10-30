@@ -45,11 +45,16 @@ final class V2Rules {
         RULES.put("A2", "controllers do not write the audit log");
         RULES.put("A3", "rights by annotations only (controllers do not call AdminAccess.require*)");
         RULES.put("N1", "Telegram and push only from notification and *Notifier");
+        RULES.put("T3", "events are published through platform.tx.DomainEvents only (no ApplicationEventPublisher)");
+        RULES.put("T4", "listeners are @OnCommitted/@OnCompleted (no @TransactionalEventListener; @EventListener only for Spring's own events)");
+        RULES.put("T5", "an event is a type of <module>.domain (or platform), never of app/api/infra");
         RULES.put("K1", "no in-memory locks or concurrent collections (synchronized, locks, Concurrent*/CopyOnWrite* by declared or created type): locks live in the database");
         RULES.put("C1", "time through Clock and ShopZone, everywhere (no Instant.now(), ZoneId.of, Clock.system*, System.currentTimeMillis/nanoTime, new Date(), static ShopZone.of/DEFAULT)");
         RULES.put("V1", "no @Value: settings through @ConfigurationProperties");
         RULES.put("V2", "@ConfigurationProperties classes are @Validated");
-        RULES.put("CA", "cache only through Spring Cache (no direct Caffeine outside platform)");
+        RULES.put("CA", "cache only through Spring Cache (no Caffeine outside platform.cache: sizes and lifetimes are CacheSpec beans)");
+        RULES.put("K2", "no volatile fields that hold data (a flag is fine; a memo is a Spring cache)");
+        RULES.put("J2", "threads and executors only from platform.jobs (no Executors.*, new Thread/ThreadPoolExecutor, CompletableFuture.*Async)");
         RULES.put("J1", "@Scheduled only in *Job/*Jobs and always with @SchedulerLock");
         RULES.put("H1", "external HTTP only through platform.http (no HttpClient.newBuilder, RestTemplate)");
         RULES.put("W1", "dependencies by constructor only (no field/setter @Autowired, @Inject, @Resource, @PersistenceContext, required=false, @Lazy)");
@@ -209,7 +214,10 @@ final class V2Rules {
             if (isTelegram(tn, c, from)) {
                 out.add(new Violation("N1", from.module(), detail));
             }
-            if (!inPlatform && tn.equals("com.github.benmanes.caffeine.cache.Caffeine")) {
+            if (tn.equals("org.springframework.context.ApplicationEventPublisher") && !pkg.equals(root + ".platform.tx")) {
+                out.add(new Violation("T3", from.module(), detail));
+            }
+            if (!pkg.equals(root + ".platform.cache") && tn.startsWith("com.github.benmanes.caffeine.")) {
                 out.add(new Violation("CA", from.module(), detail));
             }
             if (JDBC.contains(tn) && from.layer() != Layer.INFRA && !c.getSimpleName().endsWith("Store")
@@ -231,6 +239,9 @@ final class V2Rules {
                     || (owner.equals("java.util.concurrent.ConcurrentHashMap") && name.equals("newKeySet"))) {
                 out.add(new Violation("K1", from.module(), detail));
             }
+            if (!pkg.equals(root + ".platform.jobs") && isThreadStarter(owner, name)) {
+                out.add(new Violation("J2", from.module(), detail));
+            }
             if (!pkg.equals(root + ".platform.http") && owner.equals("java.net.http.HttpClient")
                     && (name.equals("newBuilder") || name.equals("newHttpClient"))) {
                 out.add(new Violation("H1", from.module(), detail));
@@ -248,6 +259,9 @@ final class V2Rules {
             }
             if (isConcurrentType(owner)) {
                 out.add(new Violation("K1", from.module(), detail));
+            }
+            if (!pkg.equals(root + ".platform.jobs") && isThreadType(owner)) {
+                out.add(new Violation("J2", from.module(), detail));
             }
             boolean dateNow = owner.getName().equals("java.util.Date") && call.getTarget().getRawParameterTypes().isEmpty();
             if (dateNow || owner.getName().equals(root + ".platform.time.ShopZone")) {
@@ -322,9 +336,13 @@ final class V2Rules {
                         + (notRequired ? " required=false" : " @Lazy")));
             }
         }
+        events(c, from, origin, out);
         // in-memory locks
         c.getMethods().stream().filter(m -> m.getModifiers().contains(JavaModifier.SYNCHRONIZED))
                 .forEach(m -> out.add(new Violation("K1", from.module(), origin + "." + m.getName() + " is synchronized")));
+        c.getFields().stream().filter(f -> f.getModifiers().contains(JavaModifier.VOLATILE)
+                        && !f.getRawType().getName().equals("boolean") && !f.getRawType().getName().equals("java.lang.Boolean"))
+                .forEach(f -> out.add(new Violation("K2", from.module(), origin + " field " + f.getName())));
         c.getFields().stream().filter(f -> isConcurrentType(f.getRawType()))
                 .forEach(f -> out.add(new Violation("K1", from.module(), origin + " field " + f.getName())));
         // E1: a business error is a DomainException, not another RuntimeException
@@ -352,6 +370,47 @@ final class V2Rules {
                         + (rightLayer ? "" : " outside app")));
             }
         }
+    }
+
+    /** Listeners and the place of the event types (T4, T5). */
+    private void events(JavaClass c, Place from, String origin, List<Violation> out) {
+        boolean inTx = c.getPackageName().equals(root + ".platform.tx");
+        String onCommitted = root + ".platform.tx.OnCommitted";
+        String onCompleted = root + ".platform.tx.OnCompleted";
+        for (JavaMethod m : c.getMethods()) {
+            if (!inTx && m.isAnnotatedWith("org.springframework.transaction.event.TransactionalEventListener")) {
+                out.add(new Violation("T4", from.module(), origin + "." + m.getName() + " is a raw @TransactionalEventListener"));
+            }
+            boolean springEvent = m.getRawParameterTypes().stream().noneMatch(placement::inProject);
+            if (m.isAnnotatedWith("org.springframework.context.event.EventListener") && !springEvent) {
+                out.add(new Violation("T4", from.module(), origin + "." + m.getName() + " is an @EventListener of a project event"));
+            }
+            if (m.isAnnotatedWith(onCommitted) || m.isAnnotatedWith(onCompleted)) {
+                for (JavaClass p : m.getRawParameterTypes()) {
+                    Place to = placement.place(p);
+                    if (placement.inProject(p) && to.layer() != Layer.DOMAIN && !to.module().equals(Placement.PLATFORM)) {
+                        out.add(new Violation("T5", from.module(), origin + "." + m.getName() + " listens to " + p.getSimpleName() + " of " + to.layer()));
+                    }
+                }
+            }
+        }
+        String simple = Placement.outermost(c).getSimpleName();
+        boolean named = simple.endsWith("Event") || simple.endsWith("Events");
+        if (named && from.layer() != Layer.DOMAIN && from.layer() != Layer.PLATFORM) {
+            out.add(new Violation("T5", from.module(), origin + " is named like an event but lies in " + from.layer()));
+        }
+    }
+
+    private static boolean isThreadStarter(String owner, String name) {
+        return owner.equals("java.util.concurrent.Executors")
+                || (owner.equals("java.util.concurrent.CompletableFuture") && name.endsWith("Async"))
+                || (owner.equals("java.lang.Thread") && (name.equals("startVirtualThread") || name.equals("ofVirtual") || name.equals("ofPlatform")));
+    }
+
+    private static boolean isThreadType(JavaClass t) {
+        return Set.of("java.lang.Thread", "java.util.concurrent.ThreadPoolExecutor",
+                "java.util.concurrent.ScheduledThreadPoolExecutor", "java.util.concurrent.ForkJoinPool", "java.util.Timer")
+                .contains(t.getName());
     }
 
     /** Locks and concurrent collections, whatever the field is declared as: by the type that is created or held. */
