@@ -253,8 +253,15 @@ class ClientEndpointsLazyLoadingIT {
         ((Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME)).addAppender(logs);
     }
 
+    static JdbcTemplate journalJdbc;
+
+    /** Аналитические POST пишут журнал событий и сдвигают «данные с» на сегодня, из-за чего воронка
+     *  в ReportsSqlIT теряет исторические заказы. Оставляем журнал как был. */
     @AfterAll
     static void report() {
+        if (journalJdbc != null) {
+            journalJdbc.update("DELETE FROM client_events");
+        }
         ((Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME)).detachAppender(logs);
         java.util.TreeSet<String> distinct = new java.util.TreeSet<>();
         for (String c : covered) {
@@ -268,6 +275,7 @@ class ClientEndpointsLazyLoadingIT {
 
     @BeforeEach
     void seed() {
+        journalJdbc = jdbc;
         synchronized (ClientEndpointsLazyLoadingIT.class) {
             if (seeded) {
                 return;
