@@ -1,7 +1,8 @@
 package com.maxsolch.shop.inventory.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.inventory.domain.InventoryError;
 import com.maxsolch.shop.catalog.app.ProductStock;
-import com.maxsolch.shop.catalog.domain.CatalogErrors;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.inventory.domain.StockWriteoff;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
@@ -16,7 +17,6 @@ import static com.maxsolch.shop.platform.util.Texts.trimToNull;
 @Component
 public class CatalogStock implements ProductStock {
 
-    public static final String STOCK_REASON_REQUIRED = "STOCK_REASON_REQUIRED";
 
     private final LotLedger ledger;
     private final StockWriteoffs writeoffs;
@@ -41,12 +41,10 @@ public class CatalogStock implements ProductStock {
         StockWriteoff.Reason reason = parseReason(rawReason);
         String note = trimToNull(rawNote);
         if (reason == null) {
-            throw CatalogErrors.badRequest("Остаток уменьшен — укажите причину: брак, инвентаризация, пересорт, "
-                    + "продано вне сайта или другое", STOCK_REASON_REQUIRED);
+            throw new DomainException.BadRequest(InventoryError.STOCK_REASON_REQUIRED);
         }
         if (reason == StockWriteoff.Reason.OTHER && note == null) {
-            throw CatalogErrors.badRequest("Причина «Другое» — напишите, что случилось (поле «Пояснение»)",
-                    STOCK_REASON_REQUIRED);
+            throw new DomainException.BadRequest(InventoryError.STOCK_REASON_REQUIRED_OTHER);
         }
         String admin = audit.currentAdminName();
         for (StockDrop d : drops) {

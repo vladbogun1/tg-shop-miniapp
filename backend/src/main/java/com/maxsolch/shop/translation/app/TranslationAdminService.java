@@ -1,5 +1,7 @@
 package com.maxsolch.shop.translation.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.translation.domain.TranslationError;
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.ContentTranslation;
@@ -27,7 +29,6 @@ import com.maxsolch.shop.translation.app.TranslatableSource.Field;
 import com.maxsolch.shop.translation.app.TranslatableSource.SourceChange;
 import com.maxsolch.shop.translation.app.TranslationService.Key;
 import com.maxsolch.shop.platform.tx.DomainEvents;
-import com.maxsolch.shop.translation.domain.TranslationErrors;
 import com.maxsolch.shop.translation.domain.TranslationsChanged;
 import java.time.Clock;
 import java.time.Instant;
@@ -121,23 +122,23 @@ public class TranslationAdminService {
         String l = TranslationRows.requireLocale(locale);
         boolean oneField = field != null && !field.isBlank();
         if (oneField && (entityId == null || entityId.isBlank())) {
-            throw TranslationErrors.badRequest("field requires entityType and entityId");
+            throw new DomainException.BadRequest(TranslationError.FIELD_NEEDS_ENTITY);
         }
         TranslationEntityType type = TranslationRows.parseTypeOrNull(entityType);
         int deleted;
         if (entityId != null && !entityId.isBlank()) {
             if (type == null) {
-                throw TranslationErrors.badRequest("entityId requires entityType");
+                throw new DomainException.BadRequest(TranslationError.ENTITY_ID_NEEDS_TYPE);
             }
             byte[] id;
             try {
                 id = UuidUtil.toBytes(entityId.trim());
             } catch (IllegalArgumentException e) {
-                throw TranslationErrors.badRequest("invalid entityId");
+                throw new DomainException.BadRequest(TranslationError.INVALID_ENTITY_ID);
             }
             if (oneField) {
                 if (!type.allows(field.trim())) {
-                    throw TranslationErrors.badRequest("field is not translatable for " + type.name());
+                    throw new DomainException.BadRequest(TranslationError.FIELD_NOT_TRANSLATABLE, type.name());
                 }
                 deleted = repository.deleteByLocaleAndEntityAndField(l, type, id, field.trim());
             } else {

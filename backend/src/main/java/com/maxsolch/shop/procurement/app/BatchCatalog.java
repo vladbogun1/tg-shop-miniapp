@@ -1,9 +1,10 @@
 package com.maxsolch.shop.procurement.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.procurement.domain.ProcurementError;
 import com.maxsolch.shop.procurement.app.BatchDtos.EtaDto;
 import com.maxsolch.shop.procurement.domain.PreorderBatch;
 import com.maxsolch.shop.procurement.domain.PreorderBatchItem;
-import com.maxsolch.shop.procurement.domain.ProcurementErrors;
 import com.maxsolch.shop.procurement.infra.PreorderBatchItemRepository;
 import com.maxsolch.shop.procurement.infra.PreorderBatchRepository;
 import org.springframework.stereotype.Service;
@@ -42,7 +43,7 @@ public class BatchCatalog {
     }
 
     public PreorderBatch require(long id) {
-        return batches.findById(id).orElseThrow(() -> ProcurementErrors.notFound("Поставка не найдена: " + id));
+        return batches.findById(id).orElseThrow(() -> new DomainException.NotFound(ProcurementError.BATCH_NOT_FOUND_BY_ID, String.valueOf(id)));
     }
 
     /** Batches still on the way (ordered, in transit, at customs), newest first. */

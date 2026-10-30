@@ -1,5 +1,6 @@
 package com.maxsolch.shop.customer.app;
 
+import com.maxsolch.shop.customer.domain.CustomerError;
 import com.maxsolch.shop.customer.domain.WebLoginCompleted;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.web.UserAgents;
@@ -69,9 +70,6 @@ import static com.maxsolch.shop.platform.util.Texts.cut;
 @Slf4j
 @Service
 public class WebAuthService {
-
-    /** Message of the 401 for a refresh that lost a race with a parallel one (cookies are kept). */
-    public static final String REFRESH_RACE = "refresh token already rotated";
 
     private static final int NONCE_BYTES = 32;
     private static final int SECRET_BYTES = 32;
@@ -153,7 +151,7 @@ public class WebAuthService {
     @Transactional
     public WebLoginStatus status(String loginId) {
         WebLoginToken t = tokenRepository.findById(idBytes(loginId))
-                .orElseThrow(() -> new DomainException.NotFound("login not found"));
+                .orElseThrow(() -> new DomainException.NotFound(CustomerError.LOGIN_NOT_FOUND));
         return expireIfDue(t);
     }
 
@@ -166,13 +164,13 @@ public class WebAuthService {
     @Transactional
     public Tokens complete(String loginId, String bindSecret, String userAgent, String ip) {
         WebLoginToken t = tokenRepository.findById(idBytes(loginId))
-                .orElseThrow(() -> new DomainException.BadRequest("login not found"));
+                .orElseThrow(() -> new DomainException.BadRequest(CustomerError.LOGIN_NOT_FOUND));
         if (bindSecret == null || bindSecret.isBlank() || !constantTimeEquals(sha256(bindSecret), t.getBindHash())) {
-            throw new DomainException.Unauthorized("login was started in another browser", null);
+            throw new DomainException.Unauthorized(CustomerError.LOGIN_OTHER_BROWSER);
         }
         WebLoginStatus status = expireIfDue(t);
         if (status != WebLoginStatus.CONFIRMED || t.getTelegramUserId() == null) {
-            throw new DomainException.BadRequest("login is " + status.name().toLowerCase());
+            throw new DomainException.BadRequest(CustomerError.LOGIN_BAD_STATE, status.name().toLowerCase());
         }
         t.setStatus(WebLoginStatus.USED);
         t.setUsedAt(now());
@@ -214,25 +212,25 @@ public class WebAuthService {
     public Tokens refresh(String refreshToken, String userAgent, String ip) {
         byte[] sid = sessionIdOf(refreshToken);
         if (sid == null) {
-            throw new DomainException.Unauthorized("no refresh token", null);
+            throw new DomainException.Unauthorized(CustomerError.NO_REFRESH_TOKEN);
         }
         Instant now = now();
         WebSession s = sessionRepository.findByIdForUpdate(sid)
-                .orElseThrow(() -> new DomainException.Unauthorized("session not found", null));
+                .orElseThrow(() -> new DomainException.Unauthorized(CustomerError.SESSION_NOT_FOUND));
         if (!s.isActive(now)) {
-            throw new DomainException.Unauthorized("session ended", null);
+            throw new DomainException.Unauthorized(CustomerError.SESSION_ENDED);
         }
         String presented = sha256(refreshToken);
         if (!constantTimeEquals(presented, s.getRefreshHash())) {
             if (recentlyRotated.get(presented) != null) {
-                throw new DomainException.Unauthorized(REFRESH_RACE, null);
+                throw new DomainException.Unauthorized(CustomerError.REFRESH_TOKEN_ROTATED);
             }
             log.warn("Refresh token reuse for web session {} (user {}) — revoking the session",
                     UuidUtil.toString(s.getId()), s.getUserId());
             s.setRevokedAt(now);
             sessionRepository.save(s);
             sessionValidator.invalidate(UuidUtil.toString(s.getId()));
-            throw new DomainException.Unauthorized("refresh token reused", null);
+            throw new DomainException.Unauthorized(CustomerError.REFRESH_TOKEN_REUSED);
         }
 
         String sessionId = UuidUtil.toString(s.getId());
@@ -297,7 +295,7 @@ public class WebAuthService {
     public void revokeSession(long userId, String sessionId) {
         WebSession s = sessionRepository.findById(idBytes(sessionId))
                 .filter(x -> x.getUserId() == userId)
-                .orElseThrow(() -> new DomainException.NotFound("session not found"));
+                .orElseThrow(() -> new DomainException.NotFound(CustomerError.SESSION_NOT_FOUND));
         if (s.getRevokedAt() == null) {
             s.setRevokedAt(now());
             sessionRepository.save(s);
@@ -395,7 +393,7 @@ public class WebAuthService {
         try {
             return UuidUtil.toBytes(id);
         } catch (IllegalArgumentException | NullPointerException e) {
-            throw new DomainException.BadRequest("invalid id");
+            throw new DomainException.BadRequest(CustomerError.INVALID_ID);
         }
     }
 

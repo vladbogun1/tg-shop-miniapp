@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment.app;
 
+import com.maxsolch.shop.payment.domain.PaymentError;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.payment.domain.MonobankGateway;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
@@ -75,7 +76,12 @@ class AdminPaymentsTest {
 
     @Test
     void aRefundThatTheBankRefusesIsNotAudited() {
-        org.mockito.Mockito.doThrow(new DomainException.BadRequest("monobank отклонил возврат"))
+        org.mockito.Mockito.doThrow(new DomainException.BadRequest(PaymentError.MONO_REFUND_REJECTED) {
+            @Override
+            public String getMessage() {
+                return "monobank отклонил возврат";
+            }
+        })
                 .when(payments).refund(org.mockito.ArgumentMatchers.any(), anyString(), org.mockito.ArgumentMatchers.any());
 
         assertThatThrownBy(() -> admin.refund(orderId, "inv-1", null)).isInstanceOf(DomainException.BadRequest.class);

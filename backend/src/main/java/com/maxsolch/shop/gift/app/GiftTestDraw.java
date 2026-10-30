@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.gift.domain.GiftError;
 import com.maxsolch.shop.catalog.app.ProductDto;
 import com.maxsolch.shop.gift.app.GiftDtos.CaseDraftItem;
 import com.maxsolch.shop.gift.app.GiftDtos.TestDrawDto;
@@ -73,16 +74,16 @@ public class GiftTestDraw {
     TestDrawDto testDraw(String tierCode, int count, List<CaseDraftItem> draft, boolean lowMargin,
                          RandomGenerator random) {
         GiftCaseTier.Tier tier = GiftService.parseTier(tierCode)
-                .orElseThrow(() -> new DomainException.BadRequest("Неизвестный кейс: " + tierCode));
+                .orElseThrow(() -> new DomainException.BadRequest(GiftError.UNKNOWN_CASE_NAMED, tierCode));
         if (count < 1 || count > TEST_MAX_COUNT) {
-            throw new DomainException.BadRequest("Число открытий — от 1 до " + TEST_MAX_COUNT);
+            throw new DomainException.BadRequest(GiftError.OPENINGS_OUT_OF_RANGE, String.valueOf(TEST_MAX_COUNT));
         }
         Map<String, ProductDto> byId = giftService.byId("ru");
         TierConfig cfg = draft == null ? giftService.tier(tier).orElse(null) : draftConfig(tier, draft);
         List<CaseEntry> pool = cfg == null ? List.of()
                 : cfg.prizes().stream().filter(c -> c.isDiscount() || GiftService.inStock(byId.get(c.productId()))).toList();
         if (pool.isEmpty()) {
-            throw new DomainException.BadRequest("Ни один приз этого кейса сейчас не может выпасть");
+            throw new DomainException.BadRequest(GiftError.NO_DROPPABLE_PRIZE);
         }
         int productPercent = cfg.productPercent(lowMargin);
         long[] weights = GiftService.skewedWeights(pool, productPercent);
@@ -108,7 +109,7 @@ public class GiftTestDraw {
     }
 
     private TierConfig draftConfig(GiftCaseTier.Tier tier, List<CaseDraftItem> draft) {
-        GiftCaseTier t = tierRepository.findById(tier).orElseThrow(() -> new DomainException.BadRequest("Неизвестный кейс"));
+        GiftCaseTier t = tierRepository.findById(tier).orElseThrow(() -> new DomainException.BadRequest(GiftError.UNKNOWN_CASE));
         List<CaseEntry> prizes = new ArrayList<>();
         for (int i = 0; i < draft.size(); i++) {
             CaseDraftItem d = draft.get(i);

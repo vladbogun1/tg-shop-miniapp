@@ -1,5 +1,7 @@
 package com.maxsolch.shop.procurement.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.procurement.domain.ProcurementError;
 import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.media.app.UploadValidator;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
@@ -16,7 +18,6 @@ import com.maxsolch.shop.procurement.app.CostingDtos.RateDto;
 import com.maxsolch.shop.procurement.app.CostingDtos.ReconcileDto;
 import com.maxsolch.shop.procurement.domain.BatchExpenseFile;
 import com.maxsolch.shop.procurement.domain.NbuRates;
-import com.maxsolch.shop.procurement.domain.ProcurementErrors;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -122,7 +123,7 @@ public class AdminCosting {
         BatchExpenseFile f = costing.expenseFile(fileId);
         ImageStorageService.StoredObject o = storage.get(f.getObjectKey());
         if (o == null) {
-            throw ProcurementErrors.notFound("Файл документа не найден в хранилище");
+            throw new DomainException.NotFound(ProcurementError.DOCUMENT_FILE_NOT_FOUND);
         }
         return new ExpenseDocument(f.getFileName(), o.contentType() != null ? o.contentType() : f.getContentType(),
                 o.stream());

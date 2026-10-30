@@ -1,12 +1,13 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.domain.RejectReasonCode;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import org.springframework.stereotype.Service;
 
 /**
@@ -43,14 +44,14 @@ public class AdminOrderStatusService {
         boolean restock = req.restock() == null || req.restock();
         RejectReasonCode reasonCode = parseReasonCode(req.rejectReasonCode());
         if (target == OrderStatus.SHIPPED && (req.trackingNumber() == null || req.trackingNumber().isBlank())) {
-            throw OrderErrors.badRequest("укажите номер ТТН");
+            throw new DomainException.BadRequest(OrderError.TTN_REQUIRED);
         }
         if (target == OrderStatus.REJECTED && reasonCode == null
                 && (req.rejectReason() == null || req.rejectReason().isBlank())) {
-            throw OrderErrors.badRequest("укажите причину отклонения");
+            throw new DomainException.BadRequest(OrderError.REJECT_REASON_REQUIRED);
         }
         if (reasonCode == RejectReasonCode.OTHER && (req.rejectReason() == null || req.rejectReason().isBlank())) {
-            throw OrderErrors.badRequest("для причины «Другое» напишите пояснение");
+            throw new DomainException.BadRequest(OrderError.REJECT_COMMENT_REQUIRED);
         }
         Order before = queries.load(id);
         // Read before the change: shipping does not move the money, but the check belongs to the order as it was.
@@ -90,7 +91,7 @@ public class AdminOrderStatusService {
         try {
             return OrderStatus.valueOf(s.trim().toUpperCase());
         } catch (Exception e) {
-            throw OrderErrors.badRequest("неизвестный статус: " + s);
+            throw new DomainException.BadRequest(OrderError.UNKNOWN_STATUS, s);
         }
     }
 
@@ -98,7 +99,7 @@ public class AdminOrderStatusService {
         try {
             return RejectReasonCode.parseOrNull(s);
         } catch (IllegalArgumentException e) {
-            throw OrderErrors.badRequest("неизвестная причина отказа: " + s);
+            throw new DomainException.BadRequest(OrderError.UNKNOWN_REJECT_REASON, s);
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.maxsolch.shop.catalog.app;
 
-import com.maxsolch.shop.catalog.domain.CatalogErrors;
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.catalog.domain.CatalogError;
 
 import com.maxsolch.shop.catalog.domain.Brand;
 import com.maxsolch.shop.catalog.domain.CardStatus;
@@ -41,9 +42,6 @@ import java.time.Clock;
 @Service
 public class AdminProductService {
 
-    public static final String CARD_NOT_READY = "CARD_NOT_READY";
-    public static final String NOT_PUBLISHABLE = "PRODUCT_NOT_PUBLISHABLE";
-    public static final String STOCK_REASON_REQUIRED = "STOCK_REASON_REQUIRED";
 
     private final ProductRepository productRepository;
     private final ProductStorefront storefront;
@@ -137,16 +135,16 @@ public class AdminProductService {
     @Transactional
     public AdminProductDto create(ProductUpsertRequest req) {
         if (req.title() != null && productRepository.existsByTitle(req.title().trim())) {
-            throw CatalogErrors.badRequest("product title already exists");
+            throw new DomainException.BadRequest(CatalogError.PRODUCT_TITLE_TAKEN);
         }
         if (req.priceMinor() <= 0) {
-            throw CatalogErrors.badRequest("priceMinor: укажите цену больше 0");
+            throw new DomainException.BadRequest(CatalogError.PRICE_REQUIRED);
         }
         if (req.stock() == null) {
-            throw CatalogErrors.badRequest("stock: укажите остаток (0 и больше)");
+            throw new DomainException.BadRequest(CatalogError.STOCK_REQUIRED);
         }
         if (trimToNull(req.categoryId()) == null) {
-            throw CatalogErrors.badRequest("categoryId: выберите категорию");
+            throw new DomainException.BadRequest(CatalogError.CATEGORY_REQUIRED);
         }
         Product p = new Product();
         applyScalars(p, req);
@@ -183,10 +181,10 @@ public class AdminProductService {
         // Row lock on the product: checkout reserves stock under the same lock, so the
         // expectedStock comparison below cannot race with an order being placed.
         Product p = productRepository.findByIdForUpdate(toBytes(id))
-                .orElseThrow(() -> CatalogErrors.notFound("product not found"));
+                .orElseThrow(() -> new DomainException.NotFound(CatalogError.PRODUCT_NOT_FOUND));
         if (req.title() != null && !req.title().trim().equalsIgnoreCase(p.getTitle())
                 && productRepository.existsByTitle(req.title().trim())) {
-            throw CatalogErrors.badRequest("product title already exists");
+            throw new DomainException.BadRequest(CatalogError.PRODUCT_TITLE_TAKEN);
         }
         boolean wasActive = p.isActive();
         int productDrop = applyScalars(p, req);
@@ -270,7 +268,7 @@ public class AdminProductService {
     public AdminProductDto setCardStatus(String id, String status, Long adminId) {
         CardStatus st = CardStatus.parse(status);
         if (st == null) {
-            throw CatalogErrors.badRequest("status: DRAFT | AI_FILLED | READY");
+            throw new DomainException.BadRequest(CatalogError.INVALID_CARD_STATUS);
         }
         Product p = load(id);
         setStatus(p, st, adminId, clock.instant());
@@ -295,13 +293,10 @@ public class AdminProductService {
     public static void checkPublishable(Product p, boolean force) {
         List<String> missing = missingForPublish(p);
         if (!missing.isEmpty()) {
-            throw CatalogErrors.conflict("Нельзя выложить: " + String.join(", ", missing.stream()
-                    .map(m -> "price".equals(m) ? "нет цены" : "нет категории").toList()), NOT_PUBLISHABLE,
-                    Map.of("missing", missing));
+            throw (missing.size() > 1 ? new DomainException.Conflict(CatalogError.NOT_PUBLISHABLE_NO_PRICE_NO_CATEGORY).withDetails(Map.of("missing", missing)) : missing.contains("price") ? new DomainException.Conflict(CatalogError.NOT_PUBLISHABLE_NO_PRICE).withDetails(Map.of("missing", missing)) : new DomainException.Conflict(CatalogError.NOT_PUBLISHABLE_NO_CATEGORY).withDetails(Map.of("missing", missing)));
         }
         if (!force && (p.getCardStatus() == null || p.getCardStatus() == CardStatus.DRAFT)) {
-            throw CatalogErrors.conflict("Карточка не оформлена (черновик) — оформите её или выложите без оформления",
-                    CARD_NOT_READY);
+            throw new DomainException.Conflict(CatalogError.CARD_NOT_READY);
         }
     }
 
@@ -369,11 +364,10 @@ public class AdminProductService {
             } else {
                 CatalogSnapshot.Cat c = catalog.category(normalizeId(cid));
                 if (c == null) {
-                    throw CatalogErrors.badRequest("categoryId: категория не найдена");
+                    throw new DomainException.BadRequest(CatalogError.CATEGORY_NOT_FOUND_FOR_PRODUCT);
                 }
                 if (!catalog.isLeaf(c.id())) {
-                    throw CatalogErrors.badRequest("categoryId: «" + c.name()
-                            + "» — раздел с подкатегориями, выберите подкатегорию");
+                    throw new DomainException.BadRequest(CatalogError.CATEGORY_HAS_SUBCATEGORIES, c.name());
                 }
                 byte[] next = UuidUtil.toBytes(c.id());
                 categoryChanged = !Arrays.equals(next, p.getCategoryId());
@@ -387,7 +381,7 @@ public class AdminProductService {
             } else {
                 CatalogSnapshot.BrandInfo b = catalog.brand(normalizeId(bid));
                 if (b == null) {
-                    throw CatalogErrors.badRequest("brandId: бренд не найден");
+                    throw new DomainException.BadRequest(CatalogError.BRAND_NOT_FOUND_FOR_PRODUCT);
                 }
                 p.setBrandId(UuidUtil.toBytes(b.id()));
             }
@@ -398,7 +392,7 @@ public class AdminProductService {
         if (req.condition() != null) {
             ProductCondition c = ProductCondition.parse(req.condition());
             if (c == null) {
-                throw CatalogErrors.badRequest("condition: NEW | MARKDOWN | USED");
+                throw new DomainException.BadRequest(CatalogError.INVALID_CONDITION);
             }
             p.setCondition(c);
         }
@@ -423,20 +417,20 @@ public class AdminProductService {
         try {
             return UuidUtil.toString(UuidUtil.toBytes(id));
         } catch (IllegalArgumentException e) {
-            throw CatalogErrors.badRequest("invalid id: " + id);
+            throw new DomainException.BadRequest(CatalogError.INVALID_ID, id);
         }
     }
 
     private Product load(String id) {
         return productRepository.findByIdWithDetails(toBytes(id))
-                .orElseThrow(() -> CatalogErrors.notFound("product not found"));
+                .orElseThrow(() -> new DomainException.NotFound(CatalogError.PRODUCT_NOT_FOUND));
     }
 
     private byte[] toBytes(String id) {
         try {
             return UuidUtil.toBytes(id);
         } catch (IllegalArgumentException e) {
-            throw CatalogErrors.badRequest("invalid id: " + id);
+            throw new DomainException.BadRequest(CatalogError.INVALID_ID, id);
         }
     }
 

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.gift.domain.GiftError;
 import static com.maxsolch.shop.gift.app.CaseAutofillPlan.*;
 import com.maxsolch.shop.gift.app.CaseAutofillPlan.Candidate;
 import com.maxsolch.shop.gift.app.CaseAutofillPlan.Input;
@@ -136,7 +137,7 @@ static final int TOTAL_WEIGHT = CaseAutofillPlan.TOTAL_WEIGHT;
         try {
             rarity = GiftCaseItem.Rarity.valueOf(rarityCode.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException | NullPointerException e) {
-            throw new DomainException.BadRequest("Неизвестная редкость: " + rarityCode);
+            throw new DomainException.BadRequest(GiftError.UNKNOWN_RARITY, rarityCode);
         }
         Set<String> skip = new HashSet<>();
         exclude.forEach(e -> skip.add(e.trim().toLowerCase(Locale.ROOT)));
@@ -189,8 +190,8 @@ static final int TOTAL_WEIGHT = CaseAutofillPlan.TOTAL_WEIGHT;
     }
 
     private GiftCaseTier tierOf(String code) {
-        GiftCaseTier.Tier tier = GiftService.parseTier(code).orElseThrow(() -> new DomainException.NotFound("уровень не найден"));
-        return tierRepository.findById(tier).orElseThrow(() -> new DomainException.NotFound("уровень не найден"));
+        GiftCaseTier.Tier tier = GiftService.parseTier(code).orElseThrow(() -> new DomainException.NotFound(GiftError.LEVEL_NOT_FOUND));
+        return tierRepository.findById(tier).orElseThrow(() -> new DomainException.NotFound(GiftError.LEVEL_NOT_FOUND));
     }
 
     private Set<String> slugs(List<String> given, String settingKey) {

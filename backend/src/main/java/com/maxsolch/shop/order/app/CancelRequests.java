@@ -1,10 +1,11 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.order.domain.CancelRequestStatus;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderTransitions;
 import com.maxsolch.shop.order.domain.RejectCause;
 import com.maxsolch.shop.order.domain.RejectReasonCode;
@@ -26,16 +27,6 @@ import java.time.Instant;
 @Service
 public class CancelRequests {
 
-    /** Error code: the order is paid, so the customer has to file a cancellation request. */
-    public static final String PAID_NEEDS_REQUEST = "PAID_NEEDS_REQUEST";
-    /** Error code: the order is past the point where the customer may cancel it (shipped, closed). */
-    public static final String CANNOT_CANCEL = "CANNOT_CANCEL";
-    /** Error code: a cancellation request already exists for this order (pending or resolved). */
-    public static final String CANCEL_REQUEST_EXISTS = "CANCEL_REQUEST_EXISTS";
-    /** Error code: the order is not paid, so cancel it directly instead of requesting. */
-    public static final String CANCEL_REQUEST_UNPAID = "CANCEL_REQUEST_UNPAID";
-    /** Error code: the admin action needs a PENDING request. */
-    public static final String NO_PENDING_REQUEST = "NO_PENDING_REQUEST";
 
     private final OrderOps ops;
     private final OrderRepository orderRepository;
@@ -61,10 +52,10 @@ public class CancelRequests {
         Order order = ops.lock(orderId);
         if (order.isPaid() || order.getReceivedMinor() > 0) {
             // Paid orders go through a cancellation request (requestCancel) instead.
-            throw OrderErrors.badRequest(messages.current("api.order.paidCannotCancel"), PAID_NEEDS_REQUEST);
+            throw new DomainException.BadRequest(OrderError.PAID_NEEDS_REQUEST);
         }
         if (!order.isOpen()) {
-            throw OrderErrors.badRequest(messages.current("api.order.cannotCancel"), CANNOT_CANCEL);
+            throw new DomainException.BadRequest(OrderError.CANNOT_CANCEL);
         }
         stock.restoreAll(order);
         String r = reason == null ? "" : reason.trim();
@@ -86,22 +77,19 @@ public class CancelRequests {
         Order order = ops.lock(orderId);
         String r = reason == null ? "" : reason.trim();
         if (r.isEmpty()) {
-            throw OrderErrors.badRequest(messages.current("api.cancelRequest.reasonRequired"));
+            throw new DomainException.BadRequest(OrderError.CANCEL_REASON_REQUIRED);
         }
         if (r.length() > 500) {
-            throw OrderErrors.badRequest(messages.current("api.cancelRequest.reasonTooLong", 500));
+            throw new DomainException.BadRequest(OrderError.CANCEL_REASON_TOO_LONG, 500);
         }
         if (order.getCancelRequestStatus() != null) {
-            throw OrderErrors.badRequest(messages.current(
-                    CancelRequestStatus.DECLINED.name().equals(order.getCancelRequestStatus())
-                            ? "api.cancelRequest.declinedBefore" : "api.cancelRequest.exists"),
-                    CANCEL_REQUEST_EXISTS);
+            throw (CancelRequestStatus.DECLINED.name().equals(order.getCancelRequestStatus()) ? new DomainException.BadRequest(OrderError.CANCEL_REQUEST_DECLINED_BEFORE) : new DomainException.BadRequest(OrderError.CANCEL_REQUEST_EXISTS));
         }
         if (!OrderTransitions.isOpen(order)) {
-            throw OrderErrors.badRequest(messages.current("api.order.cannotCancel"), CANNOT_CANCEL);
+            throw new DomainException.BadRequest(OrderError.CANNOT_CANCEL);
         }
         if (!order.isPaid() && order.getReceivedMinor() <= 0) {
-            throw OrderErrors.badRequest(messages.current("api.cancelRequest.unpaid"), CANCEL_REQUEST_UNPAID);
+            throw new DomainException.BadRequest(OrderError.CANCEL_REQUEST_UNPAID);
         }
         order.requestCancel(r, ops.now());
         Order saved = orderRepository.save(order);
@@ -119,8 +107,7 @@ public class CancelRequests {
         Order order = ops.lock(orderId);
         requirePendingRequest(order);
         if (!OrderTransitions.isOpen(order)) {
-            throw OrderErrors.badRequest("заказ уже " + order.getStatus() + " — отмена по запросу невозможна",
-                    CANNOT_CANCEL);
+            throw new DomainException.BadRequest(OrderError.CANNOT_CANCEL_BY_REQUEST, String.valueOf(order.getStatus()));
         }
         Instant now = ops.now();
         stock.restoreAll(order);
@@ -139,10 +126,10 @@ public class CancelRequests {
         requirePendingRequest(order);
         String c = comment == null ? "" : comment.trim();
         if (c.isEmpty()) {
-            throw OrderErrors.badRequest("напишите покупателю, почему отмена невозможна");
+            throw new DomainException.BadRequest(OrderError.DECLINE_REASON_REQUIRED);
         }
         if (c.length() > 1000) {
-            throw OrderErrors.badRequest("комментарий длиннее 1000 символов");
+            throw new DomainException.BadRequest(OrderError.COMMENT_TOO_LONG_1000);
         }
         order.declineCancelRequest(ops.now(), c);
         Order saved = orderRepository.save(order);
@@ -152,7 +139,7 @@ public class CancelRequests {
 
     private static void requirePendingRequest(Order order) {
         if (!order.isCancelRequestPending()) {
-            throw OrderErrors.badRequest("нет активного запроса отмены", NO_PENDING_REQUEST);
+            throw new DomainException.BadRequest(OrderError.NO_PENDING_REQUEST);
         }
     }
 

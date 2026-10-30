@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderWindow;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
@@ -7,7 +9,6 @@ import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.order.infra.OrderSearchTerm;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.platform.time.ShopZone;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -68,9 +69,9 @@ public class AdminOrderQueries {
         try {
             key = UuidUtil.toBytes(id);
         } catch (IllegalArgumentException e) {
-            throw OrderErrors.notFound("заказ не найден");
+            throw new DomainException.NotFound(OrderError.ORDER_NOT_FOUND_ADMIN);
         }
-        return orderRepository.findById(key).orElseThrow(() -> OrderErrors.notFound("заказ не найден"));
+        return orderRepository.findById(key).orElseThrow(() -> new DomainException.NotFound(OrderError.ORDER_NOT_FOUND_ADMIN));
     }
 
     /**

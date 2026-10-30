@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
@@ -509,8 +510,13 @@ class OrderQueryServiceGoldenTest {
         // The rule that decides the blocker has its own test (ReturnCancellationTest); the golden pins the mapping.
         OrderReturn r = new OrderReturn() {
             @Override
-            public String cancelBlocker(Order replacement) {
-                return getKind().equals("EXCHANGE") ? "Замена уже отправлена" : null;
+            public DomainException.BadRequest cancelBlocker(Order replacement) {
+                return getKind().equals("EXCHANGE") ? new DomainException.BadRequest(com.maxsolch.shop.returns.domain.ReturnsError.EXCHANGE_REPLACEMENT_SHIPPED, 0) {
+                    @Override
+                    public String getMessage() {
+                        return "Замена уже отправлена";
+                    }
+                } : null;
             }
         };
         OrderFixtures.set(r, "id", n);

@@ -1,10 +1,11 @@
 package com.maxsolch.shop.procurement.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.procurement.domain.ProcurementError;
 import com.maxsolch.shop.procurement.domain.Supplier;
 import com.maxsolch.shop.procurement.infra.SupplierRepository;
 import com.maxsolch.shop.procurement.app.BatchDtos.SupplierDto;
 import com.maxsolch.shop.procurement.app.BatchDtos.SupplierRequest;
-import com.maxsolch.shop.procurement.domain.ProcurementErrors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -29,7 +30,7 @@ public class SupplierService {
     public SupplierDto createSupplier(SupplierRequest req) {
         String name = req == null || req.name() == null ? "" : req.name().trim();
         if (name.isEmpty() || name.length() > 255) {
-            throw ProcurementErrors.badRequest("Название поставщика: от 1 до 255 символов", "BAD_NAME");
+            throw new DomainException.BadRequest(ProcurementError.BAD_NAME);
         }
         Supplier s = new Supplier();
         s.setName(name);

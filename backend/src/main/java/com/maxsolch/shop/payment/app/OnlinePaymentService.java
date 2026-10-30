@@ -1,5 +1,7 @@
 package com.maxsolch.shop.payment.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.payment.domain.PaymentError;
 import com.maxsolch.shop.payment.domain.MonobankInvoiceStatus;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.domain.MonobankGateway;
@@ -14,7 +16,6 @@ import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.app.OrderLookup;
-import com.maxsolch.shop.payment.domain.PaymentErrors;
 import com.maxsolch.shop.platform.jobs.DbLocks;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
@@ -127,13 +128,13 @@ public class OnlinePaymentService {
      */
     public StartedPayment start(byte[] orderId, ReturnTo returnTo, String locale, boolean embedded) {
         if (!mono.isEnabled()) {
-            throw PaymentErrors.conflict(messages.current("api.payment.unavailable"), "PAYMENT_UNAVAILABLE");
+            throw new DomainException.Conflict(PaymentError.PAYMENT_UNAVAILABLE);
         }
         String key = UuidUtil.toString(orderId);
         // One start per order at a time, across backend instances (double tap -> one invoice). The lock lives in the
         // database on its own, outside any transaction: the monobank call below must not run inside one.
         try (DbLocks.Held ignored = locks.lockWaiting(START_LOCK + key, START_LOCK_TTL, START_LOCK_WAIT)
-                .orElseThrow(() -> PaymentErrors.conflict(messages.current("api.payment.unavailable"), "PAYMENT_UNAVAILABLE"))) {
+                .orElseThrow(() -> new DomainException.Conflict(PaymentError.PAYMENT_UNAVAILABLE))) {
             return startLocked(orderId, returnTo, locale, embedded);
         }
     }
@@ -143,14 +144,14 @@ public class OnlinePaymentService {
         Instant now = clock.instant();
         String key = UuidUtil.toString(orderId);
         Order order = orders.findWithItems(orderId)
-                .orElseThrow(() -> PaymentErrors.badRequest(messages.current("api.order.notFound")));
+                .orElseThrow(() -> new DomainException.BadRequest(PaymentError.ORDER_NOT_FOUND_CUSTOMER));
         if (order.getStatus() == OrderStatus.REJECTED
                 && "PAYMENT_TIMEOUT".equals(order.getRejectReasonCode())) {
-            throw PaymentErrors.conflict(messages.current("api.payment.expired"), "PAYMENT_EXPIRED");
+            throw new DomainException.Conflict(PaymentError.PAYMENT_EXPIRED);
         }
         long amount = OrderMoney.amountDueMinor(order);
         if (order.getStatus() == OrderStatus.REJECTED || order.getStatus() == OrderStatus.DELIVERED || amount <= 0) {
-            throw PaymentErrors.conflict(messages.current("api.payment.notPayable"), "NOT_PAYABLE");
+            throw new DomainException.Conflict(PaymentError.NOT_PAYABLE);
         }
         // The deadline binds a NEW order only (it is auto-cancelled after it). Once an admin approved the
         // order, the customer may pay late (they may have agreed in the chat) until the admin rejects it.
@@ -158,13 +159,13 @@ public class OnlinePaymentService {
         boolean deadlineApplies = order.getStatus() == OrderStatus.NEW && order.getPaymentDueAt() != null
                 && !order.isPaid();
         if (deadlineApplies && !order.getPaymentDueAt().isAfter(now)) {
-            throw PaymentErrors.conflict(messages.current("api.payment.expired"), "PAYMENT_EXPIRED");
+            throw new DomainException.Conflict(PaymentError.PAYMENT_EXPIRED);
         }
 
         List<PaymentInvoice> existing = invoices.findByOrderIdOrderByCreatedAtDesc(orderId);
         for (PaymentInvoice inv : existing) {
             if (PaymentInvoice.PROCESSING.equals(inv.getStatus()) || PaymentInvoice.HOLD.equals(inv.getStatus())) {
-                throw PaymentErrors.conflict(messages.current("api.payment.inProgress"), "PAYMENT_IN_PROGRESS");
+                throw new DomainException.Conflict(PaymentError.PAYMENT_IN_PROGRESS);
             }
             if (inv.isPayable(now) && inv.getAmountMinor() == amount && display.equals(inv.getDisplayType())) {
                 return new StartedPayment(inv.getExternalId(), inv.getPageUrl(), inv.getAmountMinor(), inv.getExpiresAt());
@@ -203,10 +204,10 @@ public class OnlinePaymentService {
                     .text("monobank не создал счёт на " + MoneyFormat.amount(amount) + " грн")
                     .detail("amountMinor", amount).detail("returnTo", returnTo)
                     .failed("MONOBANK_ERROR", e.getMessage()));
-            throw PaymentErrors.conflict(messages.current("api.payment.failed"), "PAYMENT_FAILED");
+            throw new DomainException.Conflict(PaymentError.PAYMENT_FAILED);
         }
         if (created.invoiceId() == null || created.pageUrl() == null) {
-            throw PaymentErrors.conflict(messages.current("api.payment.failed"), "PAYMENT_FAILED");
+            throw new DomainException.Conflict(PaymentError.PAYMENT_FAILED);
         }
         PaymentInvoice inv = PaymentInvoice.open(orderId, created.invoiceId(), amount, created.pageUrl(), display,
                 toJson(basket), now.plusSeconds(validity));
@@ -351,16 +352,16 @@ public class OnlinePaymentService {
     public void refund(byte[] orderId, String invoiceId, Long amountMinor) {
         PaymentInvoice inv = invoices.findByProviderAndExternalId(PaymentInvoice.PROVIDER_MONOBANK, invoiceId)
                 .filter(i -> java.util.Arrays.equals(i.getOrderId(), orderId))
-                .orElseThrow(() -> PaymentErrors.badRequest("счёт не найден"));
+                .orElseThrow(() -> new DomainException.BadRequest(PaymentError.INVOICE_NOT_FOUND));
         if (inv.getAppliedAt() == null) {
-            throw PaymentErrors.badRequest("счёт не оплачен — возвращать нечего");
+            throw new DomainException.BadRequest(PaymentError.INVOICE_NOT_PAID);
         }
         long left = inv.getAmountMinor() - inv.getRefundedMinor();
         if (amountMinor != null && (amountMinor <= 0 || amountMinor > left)) {
-            throw PaymentErrors.badRequest("сумма возврата должна быть от 0,01 ₴ до " + MoneyFormat.uah(left));
+            throw new DomainException.BadRequest(PaymentError.REFUND_AMOUNT_OUT_OF_RANGE, MoneyFormat.uah(left));
         }
         if (left <= 0) {
-            throw PaymentErrors.badRequest("по этому счёту всё уже возвращено");
+            throw new DomainException.BadRequest(PaymentError.ALREADY_REFUNDED);
         }
         String extRef = "refund-" + UuidUtil.toString(UuidUtil.randomBytes()).substring(0, 13);
         try {
@@ -370,7 +371,7 @@ public class OnlinePaymentService {
             mono.cancel(inv.getExternalId(), extRef, full ? null : amountMinor,
                     refundItems(inv, full ? left : amountMinor, asSold));
         } catch (MonobankGateway.MonobankException e) {
-            throw PaymentErrors.badRequest("monobank отклонил возврат: " + e.getMessage());
+            throw new DomainException.BadRequest(PaymentError.MONO_REFUND_REJECTED, e.getMessage());
         }
         tx.executeWithoutResult(s -> invoices.findForUpdate(PaymentInvoice.PROVIDER_MONOBANK, invoiceId)
                 .ifPresent(i -> {
@@ -388,7 +389,7 @@ public class OnlinePaymentService {
         List<PaymentInvoice> all = invoices.findByOrderIdOrderByCreatedAtDesc(orderId);
         if (all.stream().anyMatch(i -> i.getRefundPendingUntil() != null && i.getRefundPendingUntil().isAfter(clock.instant()))) {
             // Not booked as refunded until the bank confirms: a second wizard now could return it twice.
-            throw PaymentErrors.badRequest("предыдущий возврат через monobank ещё обрабатывается банком — подождите подтверждения");
+            throw new DomainException.BadRequest(PaymentError.MONO_REFUND_PENDING);
         }
         List<PaymentInvoice> paid = all.stream()
                 .filter(i -> i.getAppliedAt() != null)
@@ -398,9 +399,7 @@ public class OnlinePaymentService {
                 .filter(i -> i.getAmountMinor() - i.getRefundedMinor() >= amountMinor)
                 .map(PaymentInvoice::getExternalId)
                 .findFirst()
-                .orElseThrow(() -> PaymentErrors.badRequest(most <= 0
-                        ? "через monobank по этому заказу вернуть нечего"
-                        : "через monobank можно вернуть не больше " + MoneyFormat.uah(most) + " одним возвратом"));
+                .orElseThrow(() -> (most <= 0 ? new DomainException.BadRequest(PaymentError.MONO_NOTHING_TO_REFUND) : new DomainException.BadRequest(PaymentError.MONO_REFUND_LIMIT, MoneyFormat.uah(most))));
     }
 
     /** Closes the payment pages of an order that will not be paid any more (cancelled). */

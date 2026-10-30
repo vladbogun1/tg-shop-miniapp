@@ -86,7 +86,7 @@ class OrderTest {
         OrderFixtures.set(o, "totalMinor", 10_000);
         OrderFixtures.set(o, "paymentDueAt", NOW);
         assertThatThrownBy(() -> o.ship("1", false, NOW)).isInstanceOfSatisfying(DomainException.class,
-                e -> assertThat(e.getCode()).isEqualTo(Order.SHIP_UNPAID_CODE));
+                e -> assertThat(e.getCode()).isEqualTo(OrderError.SHIP_PREPAYMENT_MISSING.code()));
         o.ship("1", true, NOW);
         assertThat(o.getStatus()).isEqualTo(OrderStatus.SHIPPED);
     }

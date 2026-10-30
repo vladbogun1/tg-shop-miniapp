@@ -1,6 +1,7 @@
 package com.maxsolch.shop.catalog.app;
 
-import com.maxsolch.shop.catalog.domain.CatalogErrors;
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
 import com.maxsolch.shop.catalog.domain.ProductCondition;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
@@ -85,7 +86,7 @@ public class PublicCatalogService {
         if (category != null && !markdownOnly) {
             CatalogSnapshot.Cat c = catalog.categoryBySlug(category);
             if (c == null) {
-                throw CatalogErrors.notFound("category not found");
+                throw new DomainException.NotFound(CatalogError.CATEGORY_NOT_FOUND);
             }
             scope = catalog.subtree(c.id());
         }

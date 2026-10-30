@@ -1,12 +1,13 @@
 package com.maxsolch.shop.returns.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.returns.domain.ReturnsError;
 import com.maxsolch.shop.order.app.MoneyLedger;
 import com.maxsolch.shop.order.app.OrderChange;
 import com.maxsolch.shop.order.domain.OrderEvents;
 import com.maxsolch.shop.order.app.OrderLifecycle;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
@@ -86,18 +87,18 @@ public class ReturnCancellation {
         Order order = orders.lockForUpdate(orderId);
         String cleanNote = note == null ? "" : note.trim();
         if (cleanNote.length() < 3) {
-            throw OrderErrors.badRequest("напишите, почему отменяете (хотя бы 3 символа)");
+            throw new DomainException.BadRequest(ReturnsError.CANCEL_REASON_REQUIRED);
         }
         cleanNote = ReturnText.cut(cleanNote, 500);
         List<OrderReturn> recs = returnRecords.findByOrderIdOrderByIdAsc(order.getId());
         OrderReturn rec = recs.stream().filter(x -> x.getId() != null && x.getId() == returnId).findFirst()
-                .orElseThrow(() -> OrderErrors.notFound("возврат не найден"));
+                .orElseThrow(() -> new DomainException.NotFound(ReturnsError.RETURN_NOT_FOUND));
         if (rec.getCancelledAt() != null) {
-            throw OrderErrors.badRequest("этот возврат уже отменён");
+            throw new DomainException.BadRequest(ReturnsError.RETURN_ALREADY_CANCELLED);
         }
         OrderReturn last = recs.stream().filter(x -> x.getCancelledAt() == null).reduce((a, b) -> b).orElse(null);
         if (last != rec) {
-            throw OrderErrors.badRequest("отменить можно только последний возврат по заказу — сначала отмените более поздний");
+            throw new DomainException.BadRequest(ReturnsError.CANCEL_ONLY_LAST_RETURN);
         }
         boolean exchange = OrderReturn.Kind.EXCHANGE.name().equals(rec.getKind());
         List<String> parts = new ArrayList<>();
@@ -105,7 +106,7 @@ public class ReturnCancellation {
         long given = exchange ? 0
                 : Math.min(rec.getRefundMinor() + rec.getMonoRefundMinor(), Math.max(0, order.getRefundedMinor()));
         if (given > 0 && money == null) {
-            throw OrderErrors.badRequest("скажите, что с деньгами: вернул покупатель, должен или оставляем ему");
+            throw new DomainException.BadRequest(ReturnsError.MONEY_DECISION_REQUIRED);
         }
 
         long creditBack = exchange ? cancelReplacement(order, rec, adminName, parts) : 0;
@@ -160,9 +161,9 @@ public class ReturnCancellation {
     private long cancelReplacement(Order order, OrderReturn rec, String adminName, List<String> parts) {
         OrderExchange ex = rec.getExchangeId() == null ? null : exchangeRepository.findById(rec.getExchangeId()).orElse(null);
         Order child = ex == null || ex.getNewOrderId() == null ? null : orders.lockForUpdate(ex.getNewOrderId());
-        String blocker = rec.cancelBlocker(child);
+        DomainException.BadRequest blocker = rec.cancelBlocker(child);
         if (blocker != null) {
-            throw OrderErrors.badRequest(blocker);
+            throw blocker;
         }
         long creditBack = 0;
         if (child != null) {
@@ -244,9 +245,9 @@ public class ReturnCancellation {
         Order order = orders.lockForUpdate(orderId);
         OrderReturn rec = returnRecords.findByOrderIdOrderByIdAsc(order.getId()).stream()
                 .filter(x -> x.getId() != null && x.getId() == returnId).findFirst()
-                .orElseThrow(() -> OrderErrors.notFound("возврат не найден"));
+                .orElseThrow(() -> new DomainException.NotFound(ReturnsError.RETURN_NOT_FOUND));
         if (rec.getDebtMinor() <= 0 || rec.getDebtPaidAt() != null) {
-            throw OrderErrors.badRequest("по этому возврату покупатель ничего не должен");
+            throw new DomainException.BadRequest(ReturnsError.NOTHING_OWED);
         }
         long amount = Math.min(rec.getDebtMinor(), Math.max(0, order.getRefundedMinor()));
         if (amount > 0) {

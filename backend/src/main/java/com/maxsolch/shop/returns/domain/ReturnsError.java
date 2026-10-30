@@ -1,0 +1,66 @@
+package com.maxsolch.shop.returns.domain;
+
+import com.maxsolch.shop.platform.error.ErrorCode;
+
+/** Reasons of the {@code returns} module's errors; the text of each is {@code error.returns.<NAME>} in the i18n bundles. */
+public enum ReturnsError implements ErrorCode {
+
+    UNKNOWN_STATUS,
+    UNKNOWN_MONEY_OPTION,
+    UNKNOWN_ITEM_CONDITION,
+    RETURN_IN_PROGRESS,
+    MONO_REFUND_FAILED("MONO_REFUND_FAILED"),
+    WRITE_OFF_ALREADY_RETURNED,
+    QTY_OUT_OF_RANGE,
+    EXCHANGE_NOT_DELIVERED,
+    EXCHANGE_NEEDS_DELIVERED,
+    EXCHANGE_NEW_ORDER_STATUS,
+    RETURNED_FLAG_REQUIRED,
+    REPLACEMENT_REQUIRED,
+    COMMENT_TOO_LONG,
+    EXCHANGE_DISPOSITION_REQUIRED,
+    EXCHANGE_QTY_EXCEEDED,
+    CANCEL_REASON_REQUIRED,
+    RETURN_NOT_FOUND,
+    RETURN_ALREADY_CANCELLED,
+    CANCEL_ONLY_LAST_RETURN,
+    MONEY_DECISION_REQUIRED,
+    NOTHING_OWED,
+    NOT_AWAITING_PARCEL,
+    RETURN_STATUS_NOT_ALLOWED,
+    REJECTED_MONEY_ONLY,
+    NOT_SHIPPED_OVERPAYMENT_ONLY,
+    PRE_SHIPMENT_OVERPAYMENT_LIMIT,
+    REFUND_NEGATIVE,
+    REFUND_EXCEEDS_RECEIVED,
+    ITEM_QTY_EXCEEDED,
+    RETURN_OR_AMOUNT_REQUIRED,
+    ORDER_ITEM_NOT_FOUND,
+    NOTHING_PICKED_UP,
+    REJECTED_MONEY_ONLY_PARCEL,
+    AMOUNT_NEGATIVE,
+    REFUND_RETAIN_EXCEEDS_NET,
+    REFUND_RETAIN_EXCEEDS,
+    PARCEL_AT_POST_NOTHING_TO_RETURN,
+    PARCEL_AT_POST_OVERPAYMENT_ONLY,
+    REFUND_METHOD_REQUIRED,
+    MONO_SEPARATE_LINE,
+    CANCEL_ALREADY_CANCELLED,
+    EXCHANGE_REPLACEMENT_SHIPPED,
+    EXCHANGE_REPLACEMENT_PAID;
+
+    private final String code;
+
+    ReturnsError() {
+        this(null);
+    }
+
+    ReturnsError(String code) {
+        this.code = code;
+    }
+
+    @Override
+    public String code() {
+        return code;
+    }
+}

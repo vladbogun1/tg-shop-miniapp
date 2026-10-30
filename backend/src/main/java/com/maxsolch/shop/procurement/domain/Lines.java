@@ -1,5 +1,6 @@
 package com.maxsolch.shop.procurement.domain;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductImage;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
@@ -22,12 +23,12 @@ public final class Lines {
     /** A UUID text from a request as bytes; a blank or malformed one is a 400. */
     public static byte[] bytes(String uuid) {
         if (uuid == null || uuid.isBlank()) {
-            throw ProcurementErrors.badRequest("productId обязателен");
+            throw new DomainException.BadRequest(ProcurementError.PRODUCT_ID_REQUIRED);
         }
         try {
             return UuidUtil.toBytes(uuid.trim());
         } catch (IllegalArgumentException e) {
-            throw ProcurementErrors.badRequest("Неверный id: " + uuid);
+            throw new DomainException.BadRequest(ProcurementError.INVALID_ID, uuid);
         }
     }
 

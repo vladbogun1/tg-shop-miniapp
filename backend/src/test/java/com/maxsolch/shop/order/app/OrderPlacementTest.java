@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.order.domain.Order;
@@ -86,7 +87,7 @@ class OrderPlacementTest {
 
     @Test
     void refusedByTheGuard_isJournaled_andRethrown() {
-        doThrow(new DomainException.BadRequest("слишком часто")).when(guard).check(any(Long.class), any());
+        doThrow(new DomainException.BadRequest(OrderError.ORDER_COOLDOWN)).when(guard).check(any(Long.class), any());
 
         assertThatThrownBy(() -> placement.place(7L, false, null, draft()))
                 .isInstanceOf(DomainException.BadRequest.class);

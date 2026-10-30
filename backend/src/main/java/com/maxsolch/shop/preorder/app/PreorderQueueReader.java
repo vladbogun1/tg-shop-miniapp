@@ -1,5 +1,7 @@
 package com.maxsolch.shop.preorder.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.preorder.domain.PreorderError;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import java.util.Locale;
 import java.util.Optional;
@@ -25,7 +27,6 @@ import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.platform.time.ShopZone;
-import com.maxsolch.shop.preorder.domain.PreorderErrors;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -95,7 +96,7 @@ public class PreorderQueueReader {
     public ProductPreorderDto forProduct(String productIdText, Long userId) {
         byte[] productId = PreorderQueueService.bytes(productIdText);
         Product product = products.findById(productId)
-                .orElseThrow(() -> PreorderErrors.notFound(messages.current("api.preorder.notFound")));
+                .orElseThrow(() -> new DomainException.NotFound(PreorderError.WAITING_NOT_FOUND));
         LocalDate today = shopZone.today(clock);
         // variant id (or "" for the product itself) → its soonest open batch
         Map<String, PreorderBatch> lines = new LinkedHashMap<>();

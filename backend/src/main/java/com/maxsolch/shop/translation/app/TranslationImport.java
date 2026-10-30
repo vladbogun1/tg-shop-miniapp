@@ -1,5 +1,7 @@
 package com.maxsolch.shop.translation.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.translation.domain.TranslationError;
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.ContentTranslation;
@@ -27,7 +29,6 @@ import com.maxsolch.shop.translation.app.TranslatableSource.Field;
 import com.maxsolch.shop.translation.app.TranslatableSource.SourceChange;
 import com.maxsolch.shop.translation.app.TranslationService.Key;
 import com.maxsolch.shop.platform.tx.DomainEvents;
-import com.maxsolch.shop.translation.domain.TranslationErrors;
 import com.maxsolch.shop.translation.domain.TranslationsChanged;
 import java.time.Clock;
 import java.time.Instant;
@@ -81,14 +82,14 @@ public class TranslationImport {
     @Transactional
     public ImportResult importTranslations(ImportRequest req, Long adminId) {
         if (req == null) {
-            throw TranslationErrors.badRequest("empty body");
+            throw new DomainException.BadRequest(TranslationError.EMPTY_BODY);
         }
         String locale = TranslationRows.requireLocale(req.locale());
         TranslationOrigin origin = parseOrigin(req.origin());
         boolean force = Boolean.TRUE.equals(req.force());
         List<ImportItem> items = req.items() == null ? List.of() : req.items();
         if (items.size() > TranslationLimits.MAX_ITEMS) {
-            throw TranslationErrors.badRequest("too many items (max " + TranslationLimits.MAX_ITEMS + ")");
+            throw new DomainException.BadRequest(TranslationError.TOO_MANY_ITEMS, String.valueOf(TranslationLimits.MAX_ITEMS));
         }
 
         Map<Key, Field> sources = store.sources();
@@ -216,7 +217,7 @@ public class TranslationImport {
     public AcceptResult accept(AcceptRequest req, Long adminId) {
         List<AcceptItem> items = req == null || req.items() == null ? List.of() : req.items();
         if (items.size() > TranslationLimits.MAX_ITEMS) {
-            throw TranslationErrors.badRequest("too many items (max " + TranslationLimits.MAX_ITEMS + ")");
+            throw new DomainException.BadRequest(TranslationError.TOO_MANY_ITEMS, String.valueOf(TranslationLimits.MAX_ITEMS));
         }
         Map<Key, Field> sources = store.sources();
         Map<String, Map<Key, ContentTranslation>> rowsByLocale = new HashMap<>();
@@ -275,7 +276,7 @@ public class TranslationImport {
         try {
             return TranslationOrigin.valueOf(origin.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw TranslationErrors.badRequest("origin must be AI or MANUAL");
+            throw new DomainException.BadRequest(TranslationError.INVALID_ORIGIN);
         }
     }
 

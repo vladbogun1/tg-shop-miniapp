@@ -1,5 +1,6 @@
 package com.maxsolch.shop.customer.api;
 
+import com.maxsolch.shop.customer.domain.CustomerError;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.web.ClientIp;
 import com.maxsolch.shop.platform.web.CurrentActor;
@@ -84,7 +85,7 @@ public class WebAuthController {
         requireTrustedOrigin(request);
         String refresh = WebCookies.read(request, WebCookies.REFRESH);
         if (refresh == null) {
-            throw new DomainException.Unauthorized("no refresh token", null);
+            throw new DomainException.Unauthorized(CustomerError.NO_REFRESH_TOKEN);
         }
         try {
             WebAuthService.Tokens t = webAuthService.refresh(refresh,
@@ -95,7 +96,7 @@ public class WebAuthController {
         } catch (DomainException.Unauthorized e) {
             // A rotated-away token from a parallel tab keeps its cookies (the winner already set
             // fresh ones); anything else means this browser is logged out.
-            if (!WebAuthService.REFRESH_RACE.equals(e.getMessage())) {
+            if (e.errorCode() != CustomerError.REFRESH_TOKEN_ROTATED) {
                 cookies.clearSession(response);
             }
             throw e;
@@ -114,7 +115,7 @@ public class WebAuthController {
 
     private void requireTrustedOrigin(HttpServletRequest request) {
         if (!originGuard.isTrustedOrigin(request)) {
-            throw new DomainException.Forbidden("origin not allowed");
+            throw new DomainException.Forbidden(CustomerError.ORIGIN_NOT_ALLOWED);
         }
     }
 

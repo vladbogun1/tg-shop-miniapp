@@ -1,5 +1,7 @@
 package com.maxsolch.shop.procurement.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.procurement.domain.ProcurementError;
 import com.maxsolch.shop.procurement.infra.SupplierRepository;
 import com.maxsolch.shop.procurement.domain.PreorderBatch;
 import com.maxsolch.shop.procurement.domain.PreorderBatchItem;
@@ -26,7 +28,6 @@ import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.procurement.domain.BatchQueue;
 import com.maxsolch.shop.procurement.domain.Lines;
-import com.maxsolch.shop.procurement.domain.ProcurementErrors;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
@@ -153,7 +154,7 @@ public class PreorderBatchService {
         b.setCreatedBy(adminName);
         apply(b, req, money);
         if (req.items() == null || req.items().isEmpty()) {
-            throw ProcurementErrors.badRequest("Добавьте хотя бы одну позицию", "NO_ITEMS");
+            throw new DomainException.BadRequest(ProcurementError.NO_ITEMS);
         }
         PreorderBatch saved = batches.save(b);
         saveItems(saved, req.items(), List.of(), money);
@@ -168,10 +169,10 @@ public class PreorderBatchService {
         apply(b, req, money);
         if (req.items() != null) {
             if (!b.statusEnum().open()) {
-                throw ProcurementErrors.badRequest("Позиции можно менять, пока поставка не приехала", "BATCH_CLOSED");
+                throw new DomainException.BadRequest(ProcurementError.BATCH_CLOSED_ITEMS);
             }
             if (req.items().isEmpty()) {
-                throw ProcurementErrors.badRequest("Добавьте хотя бы одну позицию", "NO_ITEMS");
+                throw new DomainException.BadRequest(ProcurementError.NO_ITEMS);
             }
             saveItems(b, req.items(), items.findByBatchIdOrderByIdAsc(id), money);
         }
@@ -184,11 +185,11 @@ public class PreorderBatchService {
     public BatchDto setStatus(long id, String status, boolean money) {
         PreorderBatch b = batches.findForUpdate(id).orElseThrow(() -> notFound(id));
         if (!b.statusEnum().open()) {
-            throw ProcurementErrors.badRequest("Поставка уже закрыта", "BATCH_CLOSED");
+            throw new DomainException.BadRequest(ProcurementError.BATCH_CLOSED);
         }
         PreorderBatch.Status to = parse(PreorderBatch.Status.class, status, null, "статус");
         if (!to.open()) {
-            throw ProcurementErrors.badRequest("Для «Приехала» и «Отменить» — свои кнопки", "BAD_STATUS");
+            throw new DomainException.BadRequest(ProcurementError.BAD_STATUS);
         }
         if (to != PreorderBatch.Status.ORDERED && b.getInTransitAt() == null) {
             b.setInTransitAt(clock.instant());
@@ -211,7 +212,7 @@ public class PreorderBatchService {
         boolean dry = req != null && Boolean.TRUE.equals(req.dryRun());
         PreorderBatch b = (dry ? batches.findById(id) : batches.findForUpdate(id)).orElseThrow(() -> notFound(id));
         if (!b.statusEnum().open()) {
-            throw ProcurementErrors.badRequest("Поставка уже закрыта", "BATCH_CLOSED");
+            throw new DomainException.BadRequest(ProcurementError.BATCH_CLOSED);
         }
         Distribution mode = parse(Distribution.class, req == null ? null : req.distribution(),
                 b.distributionEnum(), "режим раздачи");
@@ -229,18 +230,17 @@ public class PreorderBatchService {
             ArriveLine a = asked.get(i.getId());
             int arrived = a != null && a.qtyArrived() != null ? a.qtyArrived() : i.getQtyOrdered();
             if (arrived < 0) {
-                throw ProcurementErrors.badRequest("Пришло не может быть меньше нуля", "BAD_QTY");
+                throw new DomainException.BadRequest(ProcurementError.BAD_QTY);
             }
             Long price = a == null ? null : a.priceMinor();
             if (price != null && price <= 0) {
-                throw ProcurementErrors.badRequest("Цена должна быть больше нуля", "BAD_PRICE");
+                throw new DomainException.BadRequest(ProcurementError.BAD_PRICE_NOT_POSITIVE);
             }
             Product p = (dry ? products.findById(i.getProductId()) : products.findByIdForUpdate(i.getProductId()))
-                    .orElseThrow(() -> ProcurementErrors.badRequest("Товар из поставки удалён", "PRODUCT_GONE"));
+                    .orElseThrow(() -> new DomainException.BadRequest(ProcurementError.PRODUCT_GONE));
             ProductVariant v = Lines.variantById(p, i.getVariantId());
             if (i.getVariantId() != null && v == null) {
-                throw ProcurementErrors.badRequest("Вариант товара «" + p.getTitle() + "» удалён — уберите позицию",
-                        "VARIANT_GONE");
+                throw new DomainException.BadRequest(ProcurementError.VARIANT_GONE, p.getTitle());
             }
             int stockAfter = Lines.stockOf(p, v) + arrived;
             BatchQueue.HandOut h;
@@ -289,7 +289,7 @@ public class PreorderBatchService {
     public BatchDto cancel(long id, CancelRequest req, boolean money) {
         PreorderBatch b = batches.findForUpdate(id).orElseThrow(() -> notFound(id));
         if (!b.statusEnum().open()) {
-            throw ProcurementErrors.badRequest("Поставка уже закрыта", "BATCH_CLOSED");
+            throw new DomainException.BadRequest(ProcurementError.BATCH_CLOSED);
         }
         Instant now = clock.instant();
         b.setStatus(PreorderBatch.Status.CANCELLED.name());
@@ -310,7 +310,7 @@ public class PreorderBatchService {
 
     private void apply(PreorderBatch b, BatchRequest req, boolean money) {
         if (req == null) {
-            throw ProcurementErrors.badRequest("Пустой запрос");
+            throw new DomainException.BadRequest(ProcurementError.EMPTY_REQUEST);
         }
         String title = req.title() == null ? "" : req.title().trim();
         if (title.isEmpty()) {
@@ -319,7 +319,7 @@ public class PreorderBatchService {
         }
         b.setTitle(trimTo(title, 255));
         if (req.supplierId() != null && !suppliers.existsById(req.supplierId())) {
-            throw ProcurementErrors.badRequest("Поставщик не найден", "BAD_SUPPLIER");
+            throw new DomainException.BadRequest(ProcurementError.BAD_SUPPLIER);
         }
         b.setSupplierId(req.supplierId());
         b.setPrivateNote(req.privateNote() == null ? null : req.privateNote().trim());
@@ -331,13 +331,13 @@ public class PreorderBatchService {
         switch (mode) {
             case DATE -> {
                 if (from == null) {
-                    throw ProcurementErrors.badRequest("Укажите дату", "BAD_ETA");
+                    throw new DomainException.BadRequest(ProcurementError.BAD_ETA);
                 }
                 to = null;
             }
             case RANGE -> {
                 if (from == null || to == null || to.isBefore(from)) {
-                    throw ProcurementErrors.badRequest("Укажите диапазон дат: «с» не позже «по»", "BAD_ETA");
+                    throw new DomainException.BadRequest(ProcurementError.BAD_ETA_RANGE);
                 }
             }
             case APPROX -> {
@@ -345,7 +345,7 @@ public class PreorderBatchService {
                 to = to != null ? to : from;
                 from = null;
                 if (to == null) {
-                    throw ProcurementErrors.badRequest("Укажите, к какой дате примерно ждёте", "BAD_ETA");
+                    throw new DomainException.BadRequest(ProcurementError.BAD_ETA_APPROX);
                 }
             }
             case HIDDEN -> {
@@ -367,12 +367,12 @@ public class PreorderBatchService {
             if (req.currency() != null) {
                 String c = req.currency().trim().toUpperCase(Locale.ROOT);
                 if (!CURRENCIES.contains(c)) {
-                    throw ProcurementErrors.badRequest("Валюта: " + String.join(", ", CURRENCIES), "BAD_CURRENCY");
+                    throw new DomainException.BadRequest(ProcurementError.BAD_CURRENCY, String.join(", ", CURRENCIES));
                 }
                 b.setCurrency(c);
             }
             if (req.fxRate() != null && req.fxRate().signum() <= 0) {
-                throw ProcurementErrors.badRequest("Курс должен быть больше нуля", "BAD_RATE");
+                throw new DomainException.BadRequest(ProcurementError.BAD_RATE_NOT_POSITIVE);
             }
             b.setFxRate(req.fxRate());
         }
@@ -387,25 +387,24 @@ public class PreorderBatchService {
         for (ItemRequest r : wanted) {
             byte[] productId = Lines.bytes(r.productId());
             Product p = products.findById(productId)
-                    .orElseThrow(() -> ProcurementErrors.badRequest("Товар не найден: " + r.productId(), "BAD_PRODUCT"));
+                    .orElseThrow(() -> new DomainException.BadRequest(ProcurementError.BAD_PRODUCT, String.valueOf(r.productId())));
             boolean hasVariants = p.getVariants() != null && !p.getVariants().isEmpty();
             byte[] variantId = null;
             if (r.variantId() != null && !r.variantId().isBlank()) {
                 ProductVariant v = Lines.variantById(p, Lines.bytes(r.variantId()));
                 if (v == null) {
-                    throw ProcurementErrors.badRequest("Вариант не найден у «" + p.getTitle() + "»", "BAD_VARIANT");
+                    throw new DomainException.BadRequest(ProcurementError.BAD_VARIANT, p.getTitle());
                 }
                 variantId = v.getId();
             } else if (hasVariants) {
-                throw ProcurementErrors.badRequest("Выберите вариант для «" + p.getTitle() + "»", "VARIANT_REQUIRED");
+                throw new DomainException.BadRequest(ProcurementError.VARIANT_REQUIRED, p.getTitle());
             }
             if (!lines.add(Lines.key(productId, variantId))) {
-                throw ProcurementErrors.badRequest("«" + p.getTitle() + "» в поставке дважды — объедините строки",
-                        "DUPLICATE_LINE");
+                throw new DomainException.BadRequest(ProcurementError.DUPLICATE_LINE, p.getTitle());
             }
             int qty = r.qtyOrdered() == null ? 0 : r.qtyOrdered();
             if (qty < 1 || qty > 100_000) {
-                throw ProcurementErrors.badRequest("Сколько заказано у «" + p.getTitle() + "»: от 1", "BAD_QTY");
+                throw new DomainException.BadRequest(ProcurementError.BAD_QTY_ORDERED, p.getTitle());
             }
             PreorderBatchItem i = r.id() != null ? byId.remove(r.id()) : null;
             if (i == null) {
@@ -417,7 +416,7 @@ public class PreorderBatchService {
             i.setQtyOrdered(qty);
             if (money) {
                 if (r.unitPriceFx() != null && r.unitPriceFx() < 0) {
-                    throw ProcurementErrors.badRequest("Закупочная цена не может быть отрицательной", "BAD_PRICE");
+                    throw new DomainException.BadRequest(ProcurementError.BAD_PRICE);
                 }
                 i.setUnitPriceFx(r.unitPriceFx());
             }
@@ -461,12 +460,12 @@ public class PreorderBatchService {
     }
 
     private static RuntimeException notFound(long id) {
-        return ProcurementErrors.notFound("Поставка не найдена: " + id);
+        return new DomainException.NotFound(ProcurementError.BATCH_NOT_FOUND_BY_ID, String.valueOf(id));
     }
 
     private static int clampHold(int hours) {
         if (hours < 1 || hours > MAX_HOLD_HOURS) {
-            throw ProcurementErrors.badRequest("Бронь — от 1 до " + MAX_HOLD_HOURS + " часов", "BAD_HOLD");
+            throw new DomainException.BadRequest(ProcurementError.BAD_HOLD, String.valueOf(MAX_HOLD_HOURS));
         }
         return hours;
     }
@@ -474,14 +473,14 @@ public class PreorderBatchService {
     private static <E extends Enum<E>> E parse(Class<E> type, String value, E fallback, String what) {
         if (value == null || value.isBlank()) {
             if (fallback == null) {
-                throw ProcurementErrors.badRequest("Не указан " + what);
+                throw new DomainException.BadRequest(ProcurementError.FIELD_REQUIRED, what);
             }
             return fallback;
         }
         try {
             return Enum.valueOf(type, value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw ProcurementErrors.badRequest("Неизвестный " + what + ": " + value + " (" + Arrays.toString(type.getEnumConstants()) + ")");
+            throw new DomainException.BadRequest(ProcurementError.UNKNOWN_VALUE, what, value, Arrays.toString(type.getEnumConstants()));
         }
     }
 

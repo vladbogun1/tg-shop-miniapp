@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.api;
 
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.app.UpdateOrderStatusRequest;
 import com.maxsolch.shop.order.app.MessageDto;
@@ -286,7 +287,12 @@ class AdminOrderControllerTest {
     @Test
     void status_serviceFails_noAudit_noInvoiceClosing() {
         when(lifecycle.changeStatus(any(byte[].class), any(), any(), any(), any(), anyBoolean(), anyBoolean()))
-                .thenThrow(new DomainException.BadRequest("нельзя"));
+                .thenThrow(new DomainException.BadRequest(OrderError.CANNOT_CANCEL) {
+            @Override
+            public String getMessage() {
+                return "нельзя";
+            }
+        });
 
         assertThatThrownBy(() -> controller().updateStatus(id, status("REJECTED", null, "x", null, null, null, null)))
                 .isInstanceOf(DomainException.BadRequest.class).hasMessage("нельзя");

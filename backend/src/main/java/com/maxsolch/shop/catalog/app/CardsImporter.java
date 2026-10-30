@@ -1,10 +1,10 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.translation.app.StoredTranslations;
 import com.maxsolch.shop.translation.domain.TranslationsChanged;
 import java.time.Clock;
-import com.maxsolch.shop.catalog.domain.CatalogErrors;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.catalog.domain.Brand;
@@ -111,10 +111,10 @@ public class CardsImporter {
     @Transactional
     public CardsImportResult importCards(CardsImportRequest req, Long adminId) {
         if (req == null || req.items() == null) {
-            throw CatalogErrors.badRequest("items required");
+            throw new DomainException.BadRequest(CatalogError.ITEMS_REQUIRED);
         }
         if (req.items().size() > MAX_IMPORT_ITEMS) {
-            throw CatalogErrors.badRequest("too many items (max " + MAX_IMPORT_ITEMS + ")");
+            throw new DomainException.BadRequest(CatalogError.TOO_MANY_ITEMS, String.valueOf(MAX_IMPORT_ITEMS));
         }
         boolean replace = Boolean.TRUE.equals(req.replaceSpecs());
         Run run = new Run();
@@ -153,7 +153,7 @@ public class CardsImporter {
     public CardsImportResult accept(String productId, CardAcceptRequest req, Long adminId) {
         String pid = CardsService.normalizeId(productId == null ? "" : productId.trim());
         Product p = productRepository.findByIdForUpdate(UuidUtil.toBytes(pid))
-                .orElseThrow(() -> CatalogErrors.notFound("product not found"));
+                .orElseThrow(() -> new DomainException.NotFound(CatalogError.PRODUCT_NOT_FOUND));
         CardAcceptRequest r = req == null ? new CardAcceptRequest(null, null, null, null, true) : req;
         CardImportItem item = new CardImportItem(pid, null, null, r.specs(), null, null, r.description(), null, null,
                 null, !Boolean.FALSE.equals(r.ready()), null, null, r.title(), r.translations(), null, null);
@@ -327,7 +327,7 @@ public class CardsImporter {
             if (!missing.isEmpty()) {
                 reason = "NOT_PUBLISHABLE: " + String.join(",", missing);
             } else if (CardsService.status(p) == CardStatus.DRAFT) {
-                reason = AdminProductService.CARD_NOT_READY;
+                reason = CatalogError.CARD_NOT_READY.code();
             } else {
                 p.setActive(true);
                 AdminProductService.syncUnfinished(p);

@@ -1,6 +1,7 @@
 package com.maxsolch.shop.catalog.app;
 
-import com.maxsolch.shop.catalog.domain.CatalogErrors;
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
 import org.springframework.stereotype.Component;
@@ -29,10 +30,10 @@ class ProductStorefront {
             if (!explicit.isEmpty()) {
                 String normalised = SlugService.slugify(explicit);
                 if (normalised.isEmpty()) {
-                    throw CatalogErrors.badRequest("slug: допустимы латиница, цифры и дефис");
+                    throw new DomainException.BadRequest(CatalogError.SLUG_INVALID);
                 }
                 if (!normalised.equals(p.getSlug()) && slugService.productSlugTaken(normalised, p.getId())) {
-                    throw CatalogErrors.badRequest("slug «" + normalised + "» уже занят другим товаром");
+                    throw new DomainException.BadRequest(CatalogError.SLUG_TAKEN_BY_PRODUCT, normalised);
                 }
                 p.setSlug(normalised);
             } else {
@@ -51,7 +52,7 @@ class ProductStorefront {
         if (req.sku() != null) {
             String sku = trimToNull(req.sku());
             if (sku != null && !sku.equalsIgnoreCase(p.getSku()) && productRepository.skuTaken(sku, p.getId())) {
-                throw CatalogErrors.badRequest("артикул «" + sku + "» уже есть у другого товара");
+                throw new DomainException.BadRequest(CatalogError.SKU_TAKEN, sku);
             }
             p.setSku(sku);
         }

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.support.app;
 
+import com.maxsolch.shop.support.domain.SupportError;
 import com.maxsolch.shop.platform.web.TopicMessagePosted;
 import com.maxsolch.shop.support.domain.SupportEvents;
 
@@ -138,7 +139,7 @@ public class SupportService {
     @Transactional
     public ThreadDto create(long userId, String source, CreateThreadRequest req) {
         if (req == null) {
-            throw new DomainException.BadRequest(messages.current("api.chat.needsContent"));
+            throw new DomainException.BadRequest(SupportError.NEEDS_CONTENT);
         }
         SendMessageRequest first = new SendMessageRequest(req.text(), req.type(), req.attachmentUrl(),
                 req.fileName(), req.mimeType(), null);
@@ -256,7 +257,7 @@ public class SupportService {
         // Answering means the customer's messages have been read.
         messageRepository.markRead(id, SenderType.CUSTOMER, now);
         SupportThread t = threads.findForUpdate(id)
-                .orElseThrow(() -> new DomainException.NotFound(messages.current("api.support.notFound")));
+                .orElseThrow(() -> new DomainException.NotFound(SupportError.THREAD_NOT_FOUND));
         SupportMessage m = persist(t.getId(), SenderType.ADMIN, adminId, adminName, req, now);
         if (t.getStatus() == SupportStatus.CLOSED) {
             reopen(t);
@@ -429,27 +430,27 @@ public class SupportService {
 
     private SupportThread ownedForUpdate(long userId, String threadId) {
         SupportThread t = threads.findForUpdate(parseId(threadId))
-                .orElseThrow(() -> new DomainException.NotFound(messages.current("api.support.notFound")));
+                .orElseThrow(() -> new DomainException.NotFound(SupportError.THREAD_NOT_FOUND));
         requireOwner(t, userId);
         return t;
     }
 
     private void requireOwner(SupportThread t, long userId) {
         if (t.getUserId() == null || t.getUserId() != userId) {
-            throw new DomainException.Forbidden(messages.current("api.support.notYours"));
+            throw new DomainException.Forbidden(SupportError.NOT_YOUR_THREAD);
         }
     }
 
     private SupportThread load(String threadId) {
         return threads.findById(parseId(threadId))
-                .orElseThrow(() -> new DomainException.NotFound(messages.current("api.support.notFound")));
+                .orElseThrow(() -> new DomainException.NotFound(SupportError.THREAD_NOT_FOUND));
     }
 
     private byte[] parseId(String threadId) {
         try {
             return UuidUtil.toBytes(threadId);
         } catch (RuntimeException e) {
-            throw new DomainException.NotFound(messages.current("api.support.notFound"));
+            throw new DomainException.NotFound(SupportError.THREAD_NOT_FOUND);
         }
     }
 
@@ -458,11 +459,11 @@ public class SupportService {
         try {
             id = UuidUtil.toBytes(productId);
         } catch (RuntimeException e) {
-            throw new DomainException.NotFound(messages.current("api.support.productNotFound"));
+            throw new DomainException.NotFound(SupportError.PRODUCT_NOT_FOUND);
         }
         return productRepository.findById(id)
                 .filter(p -> !p.isArchived())
-                .orElseThrow(() -> new DomainException.NotFound(messages.current("api.support.productNotFound")));
+                .orElseThrow(() -> new DomainException.NotFound(SupportError.PRODUCT_NOT_FOUND));
     }
 
     private String customerName(long userId) {
@@ -489,7 +490,7 @@ public class SupportService {
             // SYSTEM cards are the server's own; nobody posts them through the API.
             return t == MessageType.SYSTEM ? MessageType.TEXT : t;
         } catch (IllegalArgumentException e) {
-            throw new DomainException.BadRequest(messages.current("api.chat.unknownType", type));
+            throw new DomainException.BadRequest(SupportError.UNKNOWN_MESSAGE_TYPE, type);
         }
     }
 }

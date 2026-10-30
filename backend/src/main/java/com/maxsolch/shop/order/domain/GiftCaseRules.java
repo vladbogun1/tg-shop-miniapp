@@ -7,11 +7,6 @@ public final class GiftCaseRules {
 
     public static final String GIFT_CASE_SEALED = "SEALED";
     public static final String GIFT_CASE_OPENED = "OPENED";
-    public static final String GIFT_CASE_NONE = "GIFT_CASE_NONE";
-    public static final String GIFT_CASE_UNPAID = "GIFT_CASE_UNPAID";
-    public static final String GIFT_CASE_ALREADY_OPENED = "GIFT_CASE_ALREADY_OPENED";
-    public static final String GIFT_CASE_SWAP_UNAVAILABLE = "GIFT_CASE_SWAP_UNAVAILABLE";
-    public static final String GIFT_CASE_SIZE_UNAVAILABLE = "GIFT_CASE_SIZE_UNAVAILABLE";
 
     private GiftCaseRules() {
     }

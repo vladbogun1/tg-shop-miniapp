@@ -1,9 +1,10 @@
 package com.maxsolch.shop.returns.api;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.returns.domain.ReturnsError;
 import com.maxsolch.shop.order.app.OrderDetailDto;
 import com.maxsolch.shop.order.app.MoneyLedger;
 import com.maxsolch.shop.order.app.OrderQueryService;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.returns.app.AdminReturns;
@@ -96,7 +97,7 @@ public class AdminReturnController {
             try {
                 target = OrderStatus.valueOf(req.targetStatus().trim().toUpperCase());
             } catch (IllegalArgumentException e) {
-                throw OrderErrors.badRequest("неизвестный статус: " + req.targetStatus());
+                throw new DomainException.BadRequest(ReturnsError.UNKNOWN_STATUS, String.valueOf(req.targetStatus()));
             }
         }
         return orderQueryService.toDetail(adminReturns.exchange(id, returned, items, target,
@@ -123,7 +124,7 @@ public class AdminReturnController {
             try {
                 money = ReturnCancellation.CancelMoney.valueOf(req.money().trim().toUpperCase());
             } catch (IllegalArgumentException e) {
-                throw OrderErrors.badRequest("неизвестный вариант денег: " + req.money());
+                throw new DomainException.BadRequest(ReturnsError.UNKNOWN_MONEY_OPTION, String.valueOf(req.money()));
             }
         }
         return orderQueryService.toDetail(adminReturns.cancel(id, returnId, money, req.note()));
@@ -143,7 +144,7 @@ public class AdminReturnController {
         try {
             return LineOutcome.valueOf(s.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw OrderErrors.badRequest("неизвестное состояние товара: " + s);
+            throw new DomainException.BadRequest(ReturnsError.UNKNOWN_ITEM_CONDITION, s);
         }
     }
 }

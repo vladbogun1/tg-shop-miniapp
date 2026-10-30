@@ -1,5 +1,6 @@
 package com.maxsolch.shop.support.app;
 
+import com.maxsolch.shop.support.domain.SupportError;
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.order.domain.OrderMoney;
 
@@ -97,7 +98,7 @@ public class ReplyTemplateService {
 
     @Transactional
     public TemplateDto update(long id, TemplateUpsertRequest req) {
-        ReplyTemplate t = repository.findById(id).orElseThrow(() -> new DomainException.NotFound("template not found"));
+        ReplyTemplate t = repository.findById(id).orElseThrow(() -> new DomainException.NotFound(SupportError.TEMPLATE_NOT_FOUND));
         apply(t, req);
         t = repository.save(t);
         writeTranslations(t, req);
@@ -106,7 +107,7 @@ public class ReplyTemplateService {
 
     @Transactional
     public String delete(long id) {
-        ReplyTemplate t = repository.findById(id).orElseThrow(() -> new DomainException.NotFound("template not found"));
+        ReplyTemplate t = repository.findById(id).orElseThrow(() -> new DomainException.NotFound(SupportError.TEMPLATE_NOT_FOUND));
         repository.delete(t);
         translationService.deleteForEntities(TranslationEntityType.REPLY_TEMPLATE,
                 List.of(ReplyTemplate.translationId(t.getId())));
@@ -197,7 +198,7 @@ public class ReplyTemplateService {
         try {
             key = UuidUtil.toBytes(orderId);
         } catch (IllegalArgumentException e) {
-            throw new DomainException.NotFound("заказ не найден");
+            throw new DomainException.NotFound(SupportError.ORDER_NOT_FOUND);
         }
         return renderForOrder(key);
     }
@@ -206,7 +207,7 @@ public class ReplyTemplateService {
     @Transactional(readOnly = true)
     public List<RenderedTemplateDto> renderForOrder(byte[] orderId) {
         Order order = orders.find(orderId)
-                .orElseThrow(() -> new DomainException.NotFound("order not found"));
+                .orElseThrow(() -> new DomainException.NotFound(SupportError.ORDER_NOT_FOUND_EN));
         Locale locale = messages.localeOf(order.getTgUserId());
         Map<String, String> vars = variables(order, locale);
         Map<String, ContentTranslation> rows = translations();

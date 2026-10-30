@@ -1,5 +1,6 @@
 package com.maxsolch.shop.review.app;
 
+import com.maxsolch.shop.review.domain.ReviewError;
 import com.maxsolch.shop.review.domain.ProductReview;
 import com.maxsolch.shop.review.domain.ReviewRules;
 import com.maxsolch.shop.review.infra.ReviewStore.ProductInfo;
@@ -138,7 +139,7 @@ public class ReviewService {
 
     private byte[] resolveProduct(String idOrSlug) {
         if (idOrSlug == null || idOrSlug.isBlank()) {
-            throw new DomainException.NotFound(messages.current("api.product.notFound"));
+            throw new DomainException.NotFound(ReviewError.PRODUCT_NOT_FOUND);
         }
         String key = idOrSlug.trim();
         if (key.length() == 36) {
@@ -148,7 +149,7 @@ public class ReviewService {
                 // a slug that happens to be 36 characters long
             }
         }
-        return store.productIdBySlug(key).orElseThrow(() -> new DomainException.NotFound(messages.current("api.product.notFound")));
+        return store.productIdBySlug(key).orElseThrow(() -> new DomainException.NotFound(ReviewError.PRODUCT_NOT_FOUND));
     }
 
     // ================================================================== customer
@@ -199,10 +200,10 @@ public class ReviewService {
     @Transactional
     public SubmitResult submit(long userId, SubmitRequest req) {
         if (!enabled()) {
-            throw new DomainException.BadRequest(messages.current("api.review.disabled"));
+            throw new DomainException.BadRequest(ReviewError.REVIEWS_DISABLED);
         }
         if (req == null || req.orderItemId() == null) {
-            throw new DomainException.BadRequest(messages.current("api.review.notReviewable"));
+            throw new DomainException.BadRequest(ReviewError.NOT_REVIEWABLE);
         }
         int rating = req.rating() == null ? 0 : req.rating();
         String text = req.text() == null ? "" : req.text().trim();
@@ -211,10 +212,10 @@ public class ReviewService {
         if (existing.isPresent()) {
             ProductReview own = existing.get();
             if (own.getUserId() == null || own.getUserId() != userId) {
-                throw new DomainException.BadRequest(messages.current("api.review.already"));
+                throw new DomainException.BadRequest(ReviewError.ALREADY_REVIEWED);
             }
             if (own.getStatus() != ReviewStatus.PENDING) {
-                throw new DomainException.BadRequest(messages.current("api.review.notEditable"));
+                throw new DomainException.BadRequest(ReviewError.NOT_EDITABLE);
             }
             validate(rating, text);
             own.setRating(rating);
@@ -225,17 +226,17 @@ public class ReviewService {
         }
 
         OrderItem item = orderLines.find(req.orderItemId())
-                .orElseThrow(() -> new DomainException.BadRequest(messages.current("api.review.notYours")));
+                .orElseThrow(() -> new DomainException.BadRequest(ReviewError.NOT_YOUR_PRODUCT));
         Order order = item.getOrder();
         ReviewRules.Eligibility eligibility = ReviewRules.eligibility(order, item, userId, false);
         if (eligibility != ReviewRules.Eligibility.OK) {
-            throw new DomainException.BadRequest(messages.current(eligibility.messageKey()));
+            throw new DomainException.BadRequest(eligibility.error());
         }
         validate(rating, text);
         int maxPerDay = settings.get(SettingsRegistry.REVIEWS_MAX_PER_DAY, 10);
         Instant now = clock.instant();
         if (maxPerDay > 0 && reviews.countByUserIdAndCreatedAtAfter(userId, now.minus(Duration.ofDays(1))) >= maxPerDay) {
-            throw new DomainException.BadRequest(messages.current("api.review.tooMany", maxPerDay));
+            throw new DomainException.BadRequest(ReviewError.TOO_MANY_PER_DAY, maxPerDay);
         }
 
         ProductReview review = new ProductReview();
@@ -259,7 +260,7 @@ public class ReviewService {
             saved = reviews.saveAndFlush(review);
         } catch (DataIntegrityViolationException e) {
             // Two taps at once: the unique order_item_id let only one through.
-            throw new DomainException.BadRequest(messages.current("api.review.already"));
+            throw new DomainException.BadRequest(ReviewError.ALREADY_REVIEWED);
         }
 
         Bonus issued = null;
@@ -275,14 +276,13 @@ public class ReviewService {
 
     private void validate(int rating, String text) {
         if (!ReviewRules.validRating(rating)) {
-            throw new DomainException.BadRequest(messages.current("api.review.rating"));
+            throw new DomainException.BadRequest(ReviewError.RATING_OUT_OF_RANGE);
         }
         int minLength = settings.get(SettingsRegistry.REVIEWS_MIN_LENGTH, 10);
-        String problem = ReviewRules.textProblem(text, minLength);
+        ReviewError problem = ReviewRules.textProblem(text, minLength);
         if (problem != null) {
-            throw new DomainException.BadRequest("api.review.tooShort".equals(problem)
-                    ? messages.current(problem, Math.max(1, minLength))
-                    : messages.current(problem, ReviewRules.MAX_TEXT));
+            throw new DomainException.BadRequest(problem,
+                    problem == ReviewError.TEXT_TOO_SHORT ? Math.max(1, minLength) : ReviewRules.MAX_TEXT);
         }
     }
 
@@ -300,7 +300,7 @@ public class ReviewService {
         try {
             return UuidUtil.toBytes(id.trim());
         } catch (IllegalArgumentException e) {
-            throw new DomainException.NotFound("отзыв не найден");
+            throw new DomainException.NotFound(ReviewError.REVIEW_NOT_FOUND);
         }
     }
 }

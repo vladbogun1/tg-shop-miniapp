@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import com.maxsolch.shop.staff.domain.StaffError;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.error.ErrorCode;
 import com.maxsolch.shop.staff.domain.LoginMethod;
@@ -146,14 +147,14 @@ public class AdminAuthService {
             if (admin == null) {
                 unknownLoginFailures.get(unknownKey, AtomicInteger::new).incrementAndGet();
                 loginLog.record(null, login, LoginMethod.PASSWORD, Result.UNKNOWN_LOGIN, null, client);
-                throw new DomainException.Unauthorized(BAD_CREDENTIALS, null);
+                throw new DomainException.Unauthorized(StaffError.BAD_CREDENTIALS);
             }
             loginLog.record(admin.getTelegramUserId(), login, LoginMethod.PASSWORD, Result.BAD_PASSWORD, null, client);
             lockout.registerFailure(admin.getTelegramUserId(), LoginMethod.PASSWORD, client)
                     .ifPresent(until -> {
                         throw lockout.lockedError(until);
                     });
-            throw new DomainException.Unauthorized(BAD_CREDENTIALS, null);
+            throw new DomainException.Unauthorized(StaffError.BAD_CREDENTIALS);
         }
         return afterFirstFactor(admin, LoginMethod.PASSWORD, deviceCookie, client);
     }
@@ -171,7 +172,7 @@ public class AdminAuthService {
         if (admin == null) {
             loginLog.record(null, "tg:" + tgUser.id(), LoginMethod.TELEGRAM, Result.NOT_ADMIN, null, client);
             audit.recordLogin(false, "telegram", null, "tg:" + tgUser.id(), client.ip());
-            throw new DomainException.Unauthorized("not an admin", null);
+            throw new DomainException.Unauthorized(StaffError.NOT_AN_ADMIN);
         }
         if (lockout.isLocked(admin)) {
             loginLog.record(admin.getTelegramUserId(), null, LoginMethod.TELEGRAM, Result.LOCKED, null, client);
@@ -206,7 +207,7 @@ public class AdminAuthService {
         AdminUser admin = activeAdmin(pre);
         lockout.ensureNotLocked(admin);
         if (!admin.isTotpEnabled()) {
-            throw new DomainException.Unauthorized(PREAUTH_EXPIRED, null);
+            throw new DomainException.Unauthorized(StaffError.CODE_STEP_EXPIRED);
         }
         if (!totp.verifyActive(admin, code)) {
             failCode(admin.getTelegramUserId(), pre.method(), client);
@@ -221,7 +222,7 @@ public class AdminAuthService {
         AdminUser admin = activeAdmin(pre);
         lockout.ensureNotLocked(admin);
         if (admin.isTotpEnabled()) {
-            throw new DomainException.Conflict("Двухфакторная защита уже настроена — войдите заново", ErrorCode.of("TOTP_ALREADY_SET"), java.util.Map.of());
+            throw new DomainException.Conflict(StaffError.TOTP_ALREADY_SET);
         }
         AdminTotp.NewSecret secret = totp.createPending(admin);
         adminUserRepository.save(admin);
@@ -233,10 +234,10 @@ public class AdminAuthService {
         AdminUser admin = activeAdmin(pre);
         lockout.ensureNotLocked(admin);
         if (admin.isTotpEnabled()) {
-            throw new DomainException.Conflict("Двухфакторная защита уже настроена — войдите заново", ErrorCode.of("TOTP_ALREADY_SET"), java.util.Map.of());
+            throw new DomainException.Conflict(StaffError.TOTP_ALREADY_SET);
         }
         if (!totp.hasFreshPending(admin)) {
-            throw new DomainException.Conflict("Настройка устарела — начните заново", ErrorCode.of("TOTP_SETUP_EXPIRED"), java.util.Map.of());
+            throw new DomainException.Conflict(StaffError.TOTP_SETUP_EXPIRED);
         }
         OptionalLong step = totp.verifyPending(admin, code);
         if (step.isEmpty()) {
@@ -266,7 +267,7 @@ public class AdminAuthService {
         lockout.reset(adminId);
         // Fresh read: earlier bulk updates (replay step, failure count) detached the old entity.
         AdminUser admin = adminUserRepository.findByTelegramUserIdAndActiveTrue(adminId)
-                .orElseThrow(() -> new DomainException.Unauthorized(PREAUTH_EXPIRED, null));
+                .orElseThrow(() -> new DomainException.Unauthorized(StaffError.CODE_STEP_EXPIRED));
         String accessToken = jwtService.issueToken(adminId, Role.ADMIN, admin.getTokenVersion());
         AdminLoginLogService.Recorded rec = loginLog.record(adminId, admin.getUsername(), method, Result.OK,
                 second, client);
@@ -299,20 +300,20 @@ public class AdminAuthService {
         lockout.registerFailure(adminId, method, client).ifPresent(until -> {
             throw lockout.lockedError(until);
         });
-        throw new DomainException.Unauthorized("Неверный код", null);
+        throw new DomainException.Unauthorized(StaffError.WRONG_CODE);
     }
 
     private PreAuth preAuth(String token, Stage expected) {
         return preAuthTokens.parse(token)
                 .filter(p -> p.stage() == expected)
-                .orElseThrow(() -> new DomainException.Unauthorized(PREAUTH_EXPIRED, null));
+                .orElseThrow(() -> new DomainException.Unauthorized(StaffError.CODE_STEP_EXPIRED));
     }
 
     /** The admin behind a pre-auth token, still active and with the same token version. */
     private AdminUser activeAdmin(PreAuth pre) {
         return adminUserRepository.findByTelegramUserIdAndActiveTrue(pre.adminId())
                 .filter(a -> a.getTokenVersion() == pre.tokenVersion())
-                .orElseThrow(() -> new DomainException.Unauthorized(PREAUTH_EXPIRED, null));
+                .orElseThrow(() -> new DomainException.Unauthorized(StaffError.CODE_STEP_EXPIRED));
     }
 
     static String displayName(AdminUser admin) {

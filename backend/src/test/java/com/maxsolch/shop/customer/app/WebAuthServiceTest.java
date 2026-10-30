@@ -299,7 +299,7 @@ class WebAuthServiceTest {
 
         assertThatThrownBy(() -> service.refresh(first.refreshToken(), UA, "ip"))
                 .isInstanceOf(DomainException.Unauthorized.class)
-                .hasMessage(WebAuthService.REFRESH_RACE);
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(com.maxsolch.shop.customer.domain.CustomerError.REFRESH_TOKEN_ROTATED));
 
         assertThat(sessions.get(hex(UuidUtil.toBytes(first.sessionId()))).getRevokedAt()).isNull();
         assertThat(service.refresh(second.refreshToken(), UA, "ip").refreshToken()).isNotBlank();

@@ -238,7 +238,7 @@ class OrderTransitionsTest {
         OrderFixtures.set(o, "paymentDueAt", Instant.now().plusSeconds(3600));
         assertThatThrownBy(() -> app.lifecycle().ship(o.getId(), null))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class,
-                        e -> assertThat(e.getCode()).isEqualTo(Order.SHIP_UNPAID_CODE));
+                        e -> assertThat(e.getCode()).isEqualTo(OrderError.SHIP_PREPAYMENT_MISSING.code()));
         assertThat(app.lifecycle().ship(o.getId(), null, true).getStatus()).isEqualTo(OrderStatus.SHIPPED);
     }
 
@@ -295,17 +295,17 @@ class OrderTransitionsTest {
         OrderFixtures.set(paid, "paid", true);
         assertThatThrownBy(() -> app.cancelRequests().cancelByCustomer(paid.getId(), "x"))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class,
-                        e -> assertThat(e.getCode()).isEqualTo(CancelRequests.PAID_NEEDS_REQUEST));
+                        e -> assertThat(e.getCode()).isEqualTo(OrderError.PAID_NEEDS_REQUEST.code()));
         Order received = order(OrderStatus.NEW);
         OrderFixtures.set(received, "receivedMinor", 1);
         assertThatThrownBy(() -> app.cancelRequests().cancelByCustomer(received.getId(), "x"))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class,
-                        e -> assertThat(e.getCode()).isEqualTo(CancelRequests.PAID_NEEDS_REQUEST));
+                        e -> assertThat(e.getCode()).isEqualTo(OrderError.PAID_NEEDS_REQUEST.code()));
         for (OrderStatus s : List.of(OrderStatus.SHIPPED, OrderStatus.DELIVERED, OrderStatus.REJECTED)) {
             Order o = order(s);
             assertThatThrownBy(() -> app.cancelRequests().cancelByCustomer(o.getId(), "x"))
                     .isInstanceOfSatisfying(DomainException.BadRequest.class,
-                            e -> assertThat(e.getCode()).isEqualTo(CancelRequests.CANNOT_CANCEL));
+                            e -> assertThat(e.getCode()).isEqualTo(OrderError.CANNOT_CANCEL.code()));
         }
         assertThat(product.getStock()).isEqualTo(3);
         verifyNoInteractions(giftService);
@@ -354,13 +354,13 @@ class OrderTransitionsTest {
         Order none = order(OrderStatus.NEW);
         assertThatThrownBy(() -> app.cancelRequests().approveCancelRequest(none.getId(), null))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class,
-                        e -> assertThat(e.getCode()).isEqualTo(CancelRequests.NO_PENDING_REQUEST));
+                        e -> assertThat(e.getCode()).isEqualTo(OrderError.NO_PENDING_REQUEST.code()));
 
         Order shipped = order(OrderStatus.SHIPPED);
         OrderFixtures.set(shipped, "cancelRequestStatus", "PENDING");
         assertThatThrownBy(() -> app.cancelRequests().approveCancelRequest(shipped.getId(), null))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class, e -> {
-                    assertThat(e.getCode()).isEqualTo(CancelRequests.CANNOT_CANCEL);
+                    assertThat(e.getCode()).isEqualTo(OrderError.CANNOT_CANCEL.code());
                     assertThat(e.getMessage()).isEqualTo("заказ уже SHIPPED — отмена по запросу невозможна");
                 });
     }

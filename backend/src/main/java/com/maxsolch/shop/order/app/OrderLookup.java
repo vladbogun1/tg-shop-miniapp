@@ -1,7 +1,8 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +30,7 @@ public class OrderLookup {
     @Transactional(readOnly = true)
     public Order get(byte[] orderId) {
         return orderRepository.findById(orderId)
-                .orElseThrow(() -> OrderErrors.notFound("order not found"));
+                .orElseThrow(() -> new DomainException.NotFound(OrderError.ORDER_NOT_FOUND_BY_ID));
     }
 
     /** The customer's orders, newest first (lines load lazily: read inside a transaction). */

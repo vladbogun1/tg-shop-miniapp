@@ -1,5 +1,7 @@
 package com.maxsolch.shop.preorder.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.preorder.domain.PreorderError;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.customer.domain.User;
@@ -11,7 +13,6 @@ import com.maxsolch.shop.preorder.app.PreorderDtos.DemandDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.ReleaseRequest;
 import com.maxsolch.shop.preorder.app.PreorderDtos.ReleaseResult;
 import com.maxsolch.shop.preorder.app.PreorderDtos.SubscriberDto;
-import com.maxsolch.shop.preorder.domain.PreorderErrors;
 import com.maxsolch.shop.preorder.domain.PreorderEvents;
 import com.maxsolch.shop.preorder.domain.PreorderSubscription;
 import com.maxsolch.shop.preorder.domain.PreorderSubscription.Status;
@@ -119,7 +120,7 @@ public class PreorderQueueAdmin {
     @Transactional(readOnly = true)
     public PreorderDtos.MetricsDto metrics(LocalDate from, LocalDate to) {
         if (from == null || to == null || to.isBefore(from) || from.plusDays(400).isBefore(to)) {
-            throw PreorderErrors.badRequest("Период: даты ГГГГ-ММ-ДД, «по» не раньше «с», не больше 400 дней", "BAD_PERIOD");
+            throw new DomainException.BadRequest(PreorderError.BAD_PERIOD_RANGE);
         }
         Instant start = from.atStartOfDay(shopZone.zone()).toInstant();
         Instant end = to.plusDays(1).atStartOfDay(shopZone.zone()).toInstant();
@@ -136,7 +137,7 @@ public class PreorderQueueAdmin {
     @Transactional
     public void removeSubscriber(long subscriptionId, String adminName) {
         PreorderSubscription s = subs.findById(subscriptionId)
-                .orElseThrow(() -> PreorderErrors.notFound("Запись очереди не найдена"));
+                .orElseThrow(() -> new DomainException.NotFound(PreorderError.QUEUE_ENTRY_NOT_FOUND));
         if (!s.statusEnum().live()) {
             return;
         }
@@ -155,12 +156,12 @@ public class PreorderQueueAdmin {
     @Transactional
     public ReleaseResult release(ReleaseRequest req) {
         byte[] productId = PreorderQueueService.bytes(req == null ? null : req.productId());
-        Product p = products.findByIdForUpdate(productId).orElseThrow(() -> PreorderErrors.notFound("Товар не найден"));
+        Product p = products.findByIdForUpdate(productId).orElseThrow(() -> new DomainException.NotFound(PreorderError.PRODUCT_NOT_FOUND));
         ProductVariant v = null;
         if (req.variantId() != null && !req.variantId().isBlank()) {
             v = Lines.variantById(p, PreorderQueueService.bytes(req.variantId()));
             if (v == null) {
-                throw PreorderErrors.badRequest("Вариант не найден", "VARIANT_GONE");
+                throw new DomainException.BadRequest(PreorderError.VARIANT_GONE);
             }
         }
         BatchQueue.HandOut h = queue.handOut(p, v, null, Distribution.QUEUE_HOLD,

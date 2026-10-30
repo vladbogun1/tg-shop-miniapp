@@ -1,5 +1,6 @@
 package com.maxsolch.shop.promo.app;
 
+import com.maxsolch.shop.promo.domain.PromoError;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
@@ -20,7 +21,6 @@ import java.util.List;
 @Service
 public class PromoAdminService {
 
-    public static final String PROMO_USED = "PROMO_USED";
 
     private final PromoCodeRepository promoCodeRepository;
     private final PromoUsage usage;
@@ -34,7 +34,7 @@ public class PromoAdminService {
     @Transactional(readOnly = true)
     public PromoCode get(String id) {
         return promoCodeRepository.findById(toBytes(id))
-                .orElseThrow(() -> new DomainException.NotFound("промокод не найден"));
+                .orElseThrow(() -> new DomainException.NotFound(PromoError.PROMO_NOT_FOUND));
     }
 
     @Transactional(readOnly = true)
@@ -46,7 +46,7 @@ public class PromoAdminService {
     public PromoCode create(PromoCodeUpsertRequest req) {
         String code = req.code().trim();
         if (promoCodeRepository.findByCode(code).isPresent()) {
-            throw new DomainException.BadRequest("такой промокод уже есть");
+            throw new DomainException.BadRequest(PromoError.CODE_TAKEN);
         }
         PromoCode p = new PromoCode();
         p.setCode(code);
@@ -61,7 +61,7 @@ public class PromoAdminService {
     @Transactional
     public Updated update(String id, PromoCodeUpsertRequest req) {
         PromoCode p = promoCodeRepository.findByIdForUpdate(toBytes(id))
-                .orElseThrow(() -> new DomainException.NotFound("промокод не найден"));
+                .orElseThrow(() -> new DomainException.NotFound(PromoError.PROMO_NOT_FOUND));
         String previousCode = p.getCode();
         String code = req.code().trim();
         if (!code.equals(previousCode)) {
@@ -69,13 +69,12 @@ public class PromoAdminService {
             // looks the code up by that text. After a rename the old orders' uses could never be
             // given back — so a code that has been used keeps its name.
             if (p.getUsesCount() > 0 && !code.equalsIgnoreCase(previousCode)) {
-                throw new DomainException.BadRequest(
-                        "код уже применялся в заказах — переименовать нельзя, создайте новый");
+                throw new DomainException.BadRequest(PromoError.CODE_ALREADY_USED_RENAME);
             }
             promoCodeRepository.findByCode(code)
                     .filter(other -> !java.util.Arrays.equals(other.getId(), p.getId()))
                     .ifPresent(other -> {
-                        throw new DomainException.BadRequest("такой промокод уже есть");
+                        throw new DomainException.BadRequest(PromoError.CODE_TAKEN);
                     });
             p.setCode(code);
         }
@@ -86,10 +85,10 @@ public class PromoAdminService {
     @Transactional
     public PromoCode delete(String id) {
         PromoCode p = promoCodeRepository.findByIdForUpdate(toBytes(id))
-                .orElseThrow(() -> new DomainException.NotFound("промокод не найден"));
+                .orElseThrow(() -> new DomainException.NotFound(PromoError.PROMO_NOT_FOUND));
         // A used code is history (orders keep it as text, reports and refunds look it up): only switch it off.
         if (p.getUsesCount() > 0 || usage.usedInOrders(p.getCode())) {
-            throw new DomainException.BadRequest("Промокод уже использовали — его можно только выключить", ErrorCode.of(PROMO_USED));
+            throw new DomainException.BadRequest(PromoError.PROMO_USED);
         }
         promoCodeRepository.delete(p);
         return p;
@@ -97,7 +96,7 @@ public class PromoAdminService {
 
     static void apply(PromoCode p, PromoCodeUpsertRequest req) {
         if (req.discountPercent() <= 0 && req.discountAmountMinor() <= 0) {
-            throw new DomainException.BadRequest("укажите процент или сумму скидки");
+            throw new DomainException.BadRequest(PromoError.DISCOUNT_REQUIRED);
         }
         p.setDiscountPercent(req.discountPercent());
         p.setDiscountAmountMinor(req.discountAmountMinor());
@@ -114,7 +113,7 @@ public class PromoAdminService {
         try {
             return UuidUtil.toBytes(id);
         } catch (IllegalArgumentException e) {
-            throw new DomainException.BadRequest("неверный идентификатор");
+            throw new DomainException.BadRequest(PromoError.INVALID_ID);
         }
     }
 }

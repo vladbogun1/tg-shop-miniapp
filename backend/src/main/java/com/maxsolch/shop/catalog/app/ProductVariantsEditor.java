@@ -1,6 +1,7 @@
 package com.maxsolch.shop.catalog.app;
 
-import com.maxsolch.shop.catalog.domain.CatalogErrors;
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -103,8 +104,7 @@ final class ProductVariantsEditor {
         if (expected == null || requested == current || expected == current) {
             return;
         }
-        throw CatalogErrors.conflict("Остаток «" + label + "» изменился (было " + expected
-                + ", стало " + current + ") — обновите", "STOCK_CONFLICT");
+        throw new DomainException.Conflict(CatalogError.STOCK_CONFLICT, label, String.valueOf(expected), String.valueOf(current));
     }
 
     private static String normalized(String name) {

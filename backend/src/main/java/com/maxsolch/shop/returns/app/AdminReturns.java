@@ -1,10 +1,10 @@
 package com.maxsolch.shop.returns.app;
 
+import com.maxsolch.shop.returns.domain.ReturnsError;
 import com.maxsolch.shop.order.app.AdminOrderQueries;
 import com.maxsolch.shop.order.app.OrderChange;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.app.OrderOnlinePayments;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
@@ -85,7 +85,7 @@ public class AdminReturns {
         long mono = plan.monoRefundMinor();
         String key = UuidUtil.toString(order.getId());
         DbLocks.Held held = locks.tryLock(LOCK + key, LOCK_TTL)
-                .orElseThrow(() -> OrderErrors.badRequest("возврат по этому заказу уже оформляется — дождитесь окончания"));
+                .orElseThrow(() -> new DomainException.BadRequest(ReturnsError.RETURN_IN_PROGRESS));
         try {
             // Check first, then the bank, then the books: a refused plan sends no money, and a refund
             // monobank refuses leaves nothing half-saved to be entered twice on a retry.
@@ -95,8 +95,7 @@ public class AdminReturns {
                 try {
                     payments.refund(order.getId(), monoInvoice, mono);
                 } catch (DomainException.BadRequest e) {
-                    throw OrderErrors.badRequest("monobank не принял возврат денег: " + e.getMessage()
-                            + ". Ничего не сохранено — исправьте и повторите.", "MONO_REFUND_FAILED");
+                    throw new DomainException.BadRequest(ReturnsError.MONO_REFUND_FAILED, e.getMessage());
                 }
                 audit.record("ORDER_REFUND_ONLINE", "ORDER", id,
                         "возврат на карту через monobank " + MoneyFormat.uah(mono) + " (мастер возврата)");

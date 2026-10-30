@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.platform.web.TopicMessagePosted;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
@@ -14,7 +16,6 @@ import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.media.app.MediaSigner;
 import com.maxsolch.shop.order.infra.OrderMessageRepository;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -198,7 +199,7 @@ public class MessageService {
         MessageType type = parseType(req.type());
         if ((req.text() == null || req.text().isBlank())
                 && (req.attachmentUrl() == null || req.attachmentUrl().isBlank())) {
-            throw OrderErrors.badRequest(messages.current("api.chat.needsContent"));
+            throw new DomainException.BadRequest(OrderError.MESSAGE_NEEDS_CONTENT);
         }
         OrderMessage m = new OrderMessage();
         // TIMESTAMP(0) column: whole seconds, so the value sent now equals the one read later.
@@ -223,13 +224,13 @@ public class MessageService {
         try {
             return MessageType.valueOf(type.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw OrderErrors.badRequest("unknown message type: " + type);
+            throw new DomainException.BadRequest(OrderError.UNKNOWN_MESSAGE_TYPE, type);
         }
     }
 
     private Order order(byte[] orderId) {
         return orderRepository.findById(orderId)
-                .orElseThrow(() -> OrderErrors.notFound(messages.current("api.order.notFound")));
+                .orElseThrow(() -> new DomainException.NotFound(OrderError.ORDER_NOT_FOUND));
     }
 
     private MessageDto toDto(OrderMessage m) {

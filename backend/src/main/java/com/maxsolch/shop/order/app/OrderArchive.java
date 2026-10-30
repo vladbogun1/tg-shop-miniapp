@@ -1,9 +1,10 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.tx.DomainEvents;
@@ -41,22 +42,21 @@ public class OrderArchive {
     public Order archive(byte[] orderId, String reason, String adminName) {
         Order order = ops.lock(orderId);
         if (order.getArchivedAt() != null) {
-            throw OrderErrors.badRequest("заказ уже в архиве");
+            throw new DomainException.BadRequest(OrderError.ALREADY_ARCHIVED);
         }
         if (Order.RETURN_IN_TRANSIT.equals(order.getReturnStatus())) {
-            throw OrderErrors.badRequest("посылка ещё едет назад — сначала отметьте «Посылка вернулась»");
+            throw new DomainException.BadRequest(OrderError.PARCEL_STILL_RETURNING);
         }
         OrderStatus status = order.getStatus();
         if (status != OrderStatus.DELIVERED && status != OrderStatus.REJECTED) {
-            throw OrderErrors.badRequest(
-                    "в архив можно убрать только доставленный или отклонённый заказ — сначала отклоните его");
+            throw new DomainException.BadRequest(OrderError.ARCHIVE_STATUS_NOT_ALLOWED);
         }
         String why = reason == null ? "" : reason.trim();
         if (why.length() < 3) {
-            throw OrderErrors.badRequest("напишите, почему заказ убирается в архив");
+            throw new DomainException.BadRequest(OrderError.ARCHIVE_REASON_REQUIRED);
         }
         if (why.length() > 500) {
-            throw OrderErrors.badRequest("причина длиннее 500 символов");
+            throw new DomainException.BadRequest(OrderError.ARCHIVE_REASON_TOO_LONG);
         }
         requireNoOnlineMoneyInFlight(orderId);
         order.archive(ops.now(), adminName, why);
@@ -70,7 +70,7 @@ public class OrderArchive {
     public Order unarchive(byte[] orderId) {
         Order order = ops.lock(orderId);
         if (order.getArchivedAt() == null) {
-            throw OrderErrors.badRequest("заказ не в архиве");
+            throw new DomainException.BadRequest(OrderError.NOT_ARCHIVED);
         }
         order.unarchive();
         Order saved = orderRepository.save(order);
@@ -84,7 +84,7 @@ public class OrderArchive {
      */
     private void requireNoOnlineMoneyInFlight(byte[] orderId) {
         if (payments.hasPaymentInFlight(orderId)) {
-            throw OrderErrors.badRequest(ARCHIVE_ONLINE_IN_FLIGHT, "ORDER_PAYMENT_IN_FLIGHT");
+            throw new DomainException.BadRequest(OrderError.ORDER_PAYMENT_IN_FLIGHT);
         }
     }
 }

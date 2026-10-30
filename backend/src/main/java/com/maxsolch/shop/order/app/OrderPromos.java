@@ -1,8 +1,10 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.promo.domain.PromoRejection;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.promo.app.CaseLowMargin;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.app.PromoService;
@@ -26,7 +28,6 @@ public class OrderPromos {
      * reaching this means the last use was taken in the meantime: the app drops the code and lets
      * the customer place the order at the price it then shows, instead of dead-ending them.
      */
-    public static final String PROMO_REJECTED = "PROMO_REJECTED";
 
     private final OrderOps ops;
     private final PromoUses promoUses;
@@ -57,13 +58,17 @@ public class OrderPromos {
         if (opt.isEmpty()) {
             // Russian, and tagged: this text is shown to the customer, and the app clears the
             // dead code from the cart instead of leaving them stuck on the last step.
-            throw OrderErrors.badRequest(messages.current("api.promo.rejected"), PROMO_REJECTED);
+            throw new DomainException.BadRequest(OrderError.PROMO_REJECTED);
         }
         PromoCode promo = opt.get();
         // Personal codes (review bonus, V44): only the owner, and only until they expire.
-        String personal = PromoService.personalRejection(promo, tgUserId, ops.now());
+        PromoRejection personal = PromoService.personalRejection(promo, tgUserId, ops.now());
         if (personal != null) {
-            throw OrderErrors.badRequest(messages.current(personal), PROMO_REJECTED);
+            throw new DomainException.BadRequest(switch (personal) {
+                case EXPIRED -> OrderError.PROMO_REJECTED_EXPIRED;
+                case SIGN_IN -> OrderError.PROMO_REJECTED_SIGN_IN;
+                case NOT_FOUND -> OrderError.PROMO_REJECTED_NOT_FOUND;
+            });
         }
         // Remaining uses minus other customers' live holds: a code someone reserved from their cart
         // must not be taken by a checkout that merely submitted first.
@@ -71,7 +76,7 @@ public class OrderPromos {
                 ? promoService.remainingUses(promo, tgUserId)
                 : (promo.getMaxUses() == null ? Long.MAX_VALUE : promo.getMaxUses() - promo.getUsesCount());
         if (left <= 0) {
-            throw OrderErrors.badRequest(messages.current("api.promo.taken"), PROMO_REJECTED);
+            throw new DomainException.BadRequest(OrderError.PROMO_REJECTED_TAKEN);
         }
         return promo;
     }
@@ -107,7 +112,7 @@ public class OrderPromos {
             return 0;
         }
         if (subtotal - lowMarginMinor <= 0) {
-            throw OrderErrors.badRequest(messages.current("api.promo.caseExcluded"), PROMO_REJECTED);
+            throw new DomainException.BadRequest(OrderError.PROMO_REJECTED_CASE_EXCLUDED);
         }
         return lowMarginMinor;
     }

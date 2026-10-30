@@ -37,22 +37,22 @@ public final class ReviewRules {
     private ReviewRules() {
     }
 
-    /** Why a line cannot be reviewed; {@link #OK} when it can. Each maps to an {@code api.review.*} key. */
+    /** Why a line cannot be reviewed; {@link #OK} when it can. Each one carries the error it is reported as. */
     public enum Eligibility {
         OK(null),
-        NOT_YOURS("api.review.notYours"),
-        NOT_DELIVERED("api.review.notDelivered"),
-        NOT_REVIEWABLE("api.review.notReviewable"),
-        ALREADY_REVIEWED("api.review.already");
+        NOT_YOURS(ReviewError.NOT_YOUR_PRODUCT),
+        NOT_DELIVERED(ReviewError.NOT_DELIVERED),
+        NOT_REVIEWABLE(ReviewError.NOT_REVIEWABLE),
+        ALREADY_REVIEWED(ReviewError.ALREADY_REVIEWED);
 
-        private final String messageKey;
+        private final ReviewError error;
 
-        Eligibility(String messageKey) {
-            this.messageKey = messageKey;
+        Eligibility(ReviewError error) {
+            this.error = error;
         }
 
-        public String messageKey() {
-            return messageKey;
+        public ReviewError error() {
+            return error;
         }
     }
 
@@ -97,13 +97,13 @@ public final class ReviewRules {
      *
      * @param text already trimmed
      */
-    public static String textProblem(String text, int minLength) {
+    public static ReviewError textProblem(String text, int minLength) {
         int len = text == null ? 0 : text.codePointCount(0, text.length());
         if (len < Math.max(1, minLength)) {
-            return "api.review.tooShort";
+            return ReviewError.TEXT_TOO_SHORT;
         }
         if (len > MAX_TEXT) {
-            return "api.review.tooLong";
+            return ReviewError.TEXT_TOO_LONG;
         }
         return null;
     }

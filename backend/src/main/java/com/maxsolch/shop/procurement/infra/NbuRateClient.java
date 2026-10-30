@@ -1,5 +1,7 @@
 package com.maxsolch.shop.procurement.infra;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.procurement.domain.ProcurementError;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.platform.cache.CacheConfig;
@@ -7,7 +9,6 @@ import com.maxsolch.shop.platform.http.HttpClientSettings;
 import com.maxsolch.shop.platform.http.HttpClients;
 import com.maxsolch.shop.platform.http.ResilientHttp;
 import com.maxsolch.shop.procurement.domain.NbuRates;
-import com.maxsolch.shop.procurement.domain.ProcurementErrors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
@@ -76,6 +77,6 @@ public class NbuRateClient implements NbuRates {
     }
 
     private static RuntimeException unavailable() {
-        return ProcurementErrors.badRequest("Курс НБУ сейчас не получить — введите вручную", "NBU_UNAVAILABLE");
+        return new DomainException.BadRequest(ProcurementError.NBU_UNAVAILABLE);
     }
 }

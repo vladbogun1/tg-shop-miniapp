@@ -1,5 +1,6 @@
 package com.maxsolch.shop.inbox.app;
 
+import com.maxsolch.shop.inbox.domain.InboxError;
 import com.maxsolch.shop.inbox.domain.InboxItemType;
 import com.maxsolch.shop.inbox.domain.InboxMark;
 import com.maxsolch.shop.inbox.infra.InboxStore;
@@ -117,7 +118,7 @@ public class InboxService {
     @Transactional
     public SnoozeResult snooze(SnoozeRequest req) {
         if (req == null) {
-            throw new DomainException.BadRequest("Пустой запрос");
+            throw new DomainException.BadRequest(InboxError.EMPTY_REQUEST);
         }
         InboxItemType type = type(req.type());
         String entityId = entityId(req.entityId());
@@ -126,7 +127,7 @@ public class InboxService {
         try {
             preset = SnoozePreset.valueOf(req.preset() == null ? "" : req.preset().trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new DomainException.BadRequest("Неизвестный срок: " + req.preset(), ErrorCode.of("INBOX_BAD_PRESET"));
+            throw new DomainException.BadRequest(InboxError.INBOX_BAD_PRESET, String.valueOf(req.preset()));
         }
         Instant now = clock.instant();
         Instant until = until(preset, now, zone);
@@ -140,12 +141,11 @@ public class InboxService {
     @Transactional
     public void dismiss(DismissRequest req) {
         if (req == null) {
-            throw new DomainException.BadRequest("Пустой запрос");
+            throw new DomainException.BadRequest(InboxError.EMPTY_REQUEST);
         }
         InboxItemType type = type(req.type());
         if (!type.dismissible()) {
-            throw new DomainException.BadRequest("Эту строку можно только отложить — она уйдёт сама, когда заказ обработают",
-                    ErrorCode.of("INBOX_NOT_DISMISSIBLE"));
+            throw new DomainException.BadRequest(InboxError.INBOX_NOT_DISMISSIBLE);
         }
         String entityId = entityId(req.entityId());
         String version = version(req.version());
@@ -161,7 +161,7 @@ public class InboxService {
     @Transactional
     public void restore(RestoreRequest req) {
         if (req == null) {
-            throw new DomainException.BadRequest("Пустой запрос");
+            throw new DomainException.BadRequest(InboxError.EMPTY_REQUEST);
         }
         InboxItemType type = type(req.type());
         String entityId = entityId(req.entityId());
@@ -200,21 +200,21 @@ public class InboxService {
     private static InboxItemType type(String raw) {
         InboxItemType type = InboxItemType.parse(raw);
         if (type == null) {
-            throw new DomainException.BadRequest("Неизвестный тип строки: " + raw, ErrorCode.of("INBOX_BAD_TYPE"));
+            throw new DomainException.BadRequest(InboxError.INBOX_BAD_TYPE, raw);
         }
         return type;
     }
 
     private static String entityId(String raw) {
         if (raw == null || raw.isBlank() || raw.length() > MAX_ID) {
-            throw new DomainException.BadRequest("Не указано, к чему относится строка", ErrorCode.of("INBOX_BAD_ENTITY"));
+            throw new DomainException.BadRequest(InboxError.INBOX_BAD_ENTITY);
         }
         return raw.trim();
     }
 
     private static String version(String raw) {
         if (raw == null || raw.isBlank() || raw.length() > MAX_VERSION) {
-            throw new DomainException.BadRequest("Не указана версия строки — обновите экран", ErrorCode.of("INBOX_BAD_VERSION"));
+            throw new DomainException.BadRequest(InboxError.INBOX_BAD_VERSION);
         }
         return raw.trim();
     }

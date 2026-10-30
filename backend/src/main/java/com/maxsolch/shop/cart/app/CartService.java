@@ -1,5 +1,6 @@
 package com.maxsolch.shop.cart.app;
 
+import com.maxsolch.shop.cart.domain.CartError;
 import com.maxsolch.shop.cart.domain.CartRules;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.cart.domain.Cart;
@@ -92,7 +93,7 @@ public class CartService {
         checkRequestSize(input);
         List<Line> wanted = CartRules.normalize(raw(input));
         if (wanted.size() > CartRules.MAX_LINES) {
-            throw new DomainException.BadRequest(messages.current("api.cart.tooManyLines", CartRules.MAX_LINES));
+            throw new DomainException.BadRequest(CartError.TOO_MANY_LINES, CartRules.MAX_LINES);
         }
         Written w = write(userId, current -> wanted, true);
         return toDto(w.cart(), w.items(), lang);
@@ -230,7 +231,7 @@ public class CartService {
 
     private void checkRequestSize(List<CartLineInput> input) {
         if (input != null && input.size() > CartRules.MAX_REQUEST_LINES) {
-            throw new DomainException.BadRequest(messages.current("api.cart.tooLarge"));
+            throw new DomainException.BadRequest(CartError.CART_TOO_LARGE);
         }
     }
 

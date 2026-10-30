@@ -167,7 +167,12 @@ class AdminReturnControllerTest {
     void wizard_bankRefuses_nothingSaved_codeKept_lockReleased() {
         var req = wizard(List.of(), List.of(), 2_500L, null);
         when(payments.refundableInvoice(any(byte[].class), anyLong())).thenReturn("inv-1");
-        org.mockito.Mockito.doThrow(new DomainException.BadRequest("нет денег")).when(payments)
+        org.mockito.Mockito.doThrow(new DomainException.BadRequest(com.maxsolch.shop.payment.domain.PaymentError.MONO_REFUND_REJECTED) {
+            @Override
+            public String getMessage() {
+                return "нет денег";
+            }
+        }).when(payments)
                 .refund(any(byte[].class), anyString(), anyLong());
 
         assertThatThrownBy(() -> controller().returnWizard(id, req))
@@ -184,7 +189,12 @@ class AdminReturnControllerTest {
     void wizard_refusedPlan_sendsNoMoney_andReleasesTheLock() {
         var req = wizard(List.of(), List.of(), 2_500L, null);
         AdminReturnController c = controller();
-        org.mockito.Mockito.doThrow(new DomainException.BadRequest("план плох")).doNothing()
+        org.mockito.Mockito.doThrow(new DomainException.BadRequest(com.maxsolch.shop.returns.domain.ReturnsError.CANCEL_ALREADY_CANCELLED) {
+            @Override
+            public String getMessage() {
+                return "план плох";
+            }
+        }).doNothing()
                 .when(returns).checkPlan(any(byte[].class), any());
 
         assertThatThrownBy(() -> c.returnWizard(id, req)).hasMessage("план плох");

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.finance.app;
 
+import com.maxsolch.shop.finance.domain.FinanceError;
 import com.maxsolch.shop.analytics.app.MetricsFactsLoader;
 import com.maxsolch.shop.analytics.domain.MetricsFacts;
 import com.maxsolch.shop.catalog.domain.Product;
@@ -64,7 +65,7 @@ public class BatchMarginService {
 
     @Transactional(readOnly = true)
     public BatchSalesDto batch(long batchId) {
-        PreorderBatch pb = batches.find(batchId).orElseThrow(() -> new DomainException.NotFound("Поставка не найдена"));
+        PreorderBatch pb = batches.find(batchId).orElseThrow(() -> new DomainException.NotFound(FinanceError.BATCH_NOT_FOUND));
         List<PreorderBatchItem> lines = batches.linesOf(batchId);
         List<StockLot> batchLots = ledger.lotsOfBatchItems(lines.stream().map(PreorderBatchItem::getId).toList());
         CostBook book = costing.book(batchLots);

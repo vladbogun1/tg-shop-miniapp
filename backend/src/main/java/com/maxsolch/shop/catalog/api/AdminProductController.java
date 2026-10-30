@@ -1,6 +1,7 @@
 package com.maxsolch.shop.catalog.api;
 
-import com.maxsolch.shop.catalog.domain.CatalogErrors;
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.media.app.UploadValidator;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
@@ -81,7 +82,7 @@ public class AdminProductController {
     public AdminProductDto active(@PathVariable String id, @RequestBody BooleanFlagRequest body,
                                   @RequestParam(required = false) String force) {
         if (body.active() == null) {
-            throw CatalogErrors.badRequest("active is required");
+            throw new DomainException.BadRequest(CatalogError.ACTIVE_REQUIRED);
         }
         return products.setActive(id, body.active(), flag(force));
     }
@@ -90,7 +91,7 @@ public class AdminProductController {
     @Operation(summary = "Toggle product archived")
     public AdminProductDto archive(@PathVariable String id, @RequestBody BooleanFlagRequest body) {
         if (body.archived() == null) {
-            throw CatalogErrors.badRequest("archived is required");
+            throw new DomainException.BadRequest(CatalogError.ARCHIVED_REQUIRED);
         }
         return products.setArchived(id, body.archived());
     }

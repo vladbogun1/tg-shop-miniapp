@@ -70,6 +70,11 @@ public class Messages {
         return get(LocaleContextHolder.getLocale(), key, args);
     }
 
+    /** The text of a business error in the language of the request: the bundle entry of its code with its arguments. */
+    public String text(com.maxsolch.shop.platform.error.DomainException e) {
+        return current(e.errorCode().messageKey(), e.args());
+    }
+
     /** Looks a phrase up; a missing key returns the key itself rather than blowing up a message. */
     public String get(Locale locale, String key, Object... args) {
         try {

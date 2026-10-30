@@ -1,12 +1,13 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.inventory.app.Stock;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.domain.RejectCause;
@@ -64,7 +65,7 @@ class OrderOps {
      */
     Order lock(byte[] orderId) {
         Order order = orderRepository.findByIdForUpdate(orderId)
-                .orElseThrow(() -> OrderErrors.notFound("order not found"));
+                .orElseThrow(() -> new DomainException.NotFound(OrderError.ORDER_NOT_FOUND_BY_ID));
         entityManager.refresh(order, LockModeType.PESSIMISTIC_WRITE);
         return order;
     }
@@ -108,7 +109,7 @@ class OrderOps {
         try {
             return UuidUtil.toBytes(uuid);
         } catch (IllegalArgumentException e) {
-            throw OrderErrors.badRequest(messages.current("api.order.fieldInvalid", fieldLabel(field)));
+            throw new DomainException.BadRequest(OrderError.FIELD_INVALID, fieldLabel(field));
         }
     }
 

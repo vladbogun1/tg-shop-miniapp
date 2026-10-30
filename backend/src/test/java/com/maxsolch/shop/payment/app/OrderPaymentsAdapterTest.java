@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment.app;
 
+import com.maxsolch.shop.payment.domain.PaymentError;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.app.OnlinePaymentDto;
 import com.maxsolch.shop.order.app.OrderOnlinePayments;
@@ -77,7 +78,12 @@ class OrderPaymentsAdapterTest {
     void refundAll_reportsARefusedRefundAndKeepsGoing() {
         when(invoices.findByOrderIdOrderByCreatedAtDesc(orderId))
                 .thenReturn(List.of(paid("inv-1", 10_000, 0), paid("inv-2", 20_000, 0)));
-        doThrow(new DomainException.BadRequest("monobank отклонил возврат")).when(payments).refund(orderId, "inv-1", null);
+        doThrow(new DomainException.BadRequest(PaymentError.MONO_REFUND_REJECTED) {
+            @Override
+            public String getMessage() {
+                return "monobank отклонил возврат";
+            }
+        }).when(payments).refund(orderId, "inv-1", null);
 
         OrderOnlinePayments.RefundAll r = adapter.refundAll(orderId);
 

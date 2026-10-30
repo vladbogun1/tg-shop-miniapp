@@ -1,5 +1,6 @@
 package com.maxsolch.shop.preorder.app;
 
+import com.maxsolch.shop.preorder.domain.PreorderError;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.preorder.app.PreorderDtos.DemandDto;
@@ -55,8 +56,7 @@ public class AdminPreorders {
         try {
             return admin.metrics(LocalDate.parse(from), LocalDate.parse(to));
         } catch (DateTimeParseException e) {
-            throw new DomainException.BadRequest("Дата — в формате ГГГГ-ММ-ДД",
-                    com.maxsolch.shop.platform.error.ErrorCode.of("BAD_PERIOD"));
+            throw new DomainException.BadRequest(PreorderError.BAD_PERIOD);
         }
     }
 

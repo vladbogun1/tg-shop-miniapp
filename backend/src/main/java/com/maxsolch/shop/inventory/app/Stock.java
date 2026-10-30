@@ -1,8 +1,9 @@
 package com.maxsolch.shop.inventory.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.inventory.domain.InventoryError;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
-import com.maxsolch.shop.inventory.domain.InventoryErrors;
 import com.maxsolch.shop.inventory.domain.LotAllocations;
 import com.maxsolch.shop.inventory.domain.StockHolds;
 import com.maxsolch.shop.platform.i18n.Messages;
@@ -63,7 +64,7 @@ public class Stock {
         int available = stock - held;
         if (available < qty) {
             String title = variant != null ? product.getTitle() + " (" + variant.getName() + ")" : product.getTitle();
-            throw InventoryErrors.badRequest(messages.current("api.order.outOfStock", title, Math.max(0, available)));
+            throw new DomainException.BadRequest(InventoryError.OUT_OF_STOCK, title, Math.max(0, available));
         }
     }
 
@@ -80,15 +81,13 @@ public class Stock {
     public void reserve(Product product, ProductVariant variant, int qty, LotAllocations sale) {
         if (variant != null) {
             if (variant.getStock() < qty) {
-                throw InventoryErrors.badRequest(messages.current("api.order.outOfStock",
-                        product.getTitle() + " (" + variant.getName() + ")", Math.max(0, variant.getStock())));
+                throw new DomainException.BadRequest(InventoryError.OUT_OF_STOCK, product.getTitle() + " (" + variant.getName() + ")", Math.max(0, variant.getStock()));
             }
             variant.setStock(variant.getStock() - qty);
             syncRollup(product);
         } else {
             if (product.getStock() < qty) {
-                throw InventoryErrors.badRequest(messages.current("api.order.outOfStock",
-                        product.getTitle(), Math.max(0, product.getStock())));
+                throw new DomainException.BadRequest(InventoryError.OUT_OF_STOCK, product.getTitle(), Math.max(0, product.getStock()));
             }
             product.setStock(product.getStock() - qty);
         }
@@ -142,7 +141,7 @@ public class Stock {
             return;
         }
         Product product = products.findByIdForUpdate(productId)
-                .orElseThrow(() -> InventoryErrors.badRequest("товар удалён из каталога — вернуть на склад некуда"));
+                .orElseThrow(() -> new DomainException.BadRequest(InventoryError.PRODUCT_DELETED));
         ProductVariant variant = variantId == null ? null : variantOf(product, variantId);
         if (variantId != null && variant == null) {
             product.setStock(product.getStock() + units);

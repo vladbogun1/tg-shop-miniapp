@@ -1,5 +1,6 @@
 package com.maxsolch.shop.cart.app;
 
+import com.maxsolch.shop.cart.domain.CartError;
 import com.maxsolch.shop.cart.domain.CartRules;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.cart.domain.Cart;
@@ -201,7 +202,7 @@ class CartServiceTest {
 
         assertThatThrownBy(() -> service.replace(USER, many, "ru"))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .hasMessageContaining("api.cart.tooManyLines");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(CartError.TOO_MANY_LINES));
         verify(itemRepository, never()).save(any());
     }
 
@@ -215,7 +216,7 @@ class CartServiceTest {
 
         assertThatThrownBy(() -> service.replace(USER, many, "ru"))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .hasMessageContaining("api.cart.tooLarge");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(CartError.CART_TOO_LARGE));
     }
 
     @Test

@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.inventory.app.Stock;
@@ -21,7 +23,6 @@ import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.catalog.app.Products;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
@@ -104,7 +105,7 @@ public class Checkout {
     @Transactional
     public Order createOrder(CreateOrderCommand cmd) {
         if (cmd.items() == null || cmd.items().isEmpty()) {
-            throw OrderErrors.badRequest(messages.current("api.order.noItems"));
+            throw new DomainException.BadRequest(OrderError.NO_ITEMS);
         }
 
         DeliveryMethod deliveryMethod = parseDelivery(cmd.deliveryMethod());
@@ -113,7 +114,7 @@ public class Checkout {
         Map<String, AccLine> acc = new LinkedHashMap<>();
         for (CreateOrderCommand.Line line : cmd.items()) {
             if (line.quantity() <= 0) {
-                throw OrderErrors.badRequest(messages.current("api.order.quantityPositive"));
+                throw new DomainException.BadRequest(OrderError.QUANTITY_NOT_POSITIVE);
             }
             String key = line.productId() + "::" + (line.variantId() == null ? "" : line.variantId());
             acc.computeIfAbsent(key, k -> new AccLine(line.productId(), line.variantId()))
@@ -133,10 +134,10 @@ public class Checkout {
         // Payment option snapshot. Every option is paid online now (in full, or a prepayment with
         // the rest cash on delivery), so one must be chosen; the clock to pay starts here.
         if (cmd.paymentOptionId() == null || cmd.paymentOptionId().isBlank()) {
-            throw OrderErrors.badRequest(messages.current("api.order.paymentRequired"));
+            throw new DomainException.BadRequest(OrderError.PAYMENT_METHOD_REQUIRED);
         }
         OrderPaymentOptions.Option po = paymentOptions.findActive(ops.toBytes(cmd.paymentOptionId(), "paymentOptionId"))
-                .orElseThrow(() -> OrderErrors.badRequest(messages.current("api.order.paymentUnknown")));
+                .orElseThrow(() -> new DomainException.BadRequest(OrderError.PAYMENT_METHOD_UNKNOWN));
         order.choosePayment(po.id(), po.title(), po.requiresPrepayment() ? po.prepaymentMinor() : 0,
                 ops.now().plus(Duration.ofHours(Math.max(1, props.getPayment().getDueHours()))));
 
@@ -161,9 +162,9 @@ public class Checkout {
         }
         for (AccLine line : lines) {
             Product product = locked.get(line.productId)
-                    .orElseThrow(() -> OrderErrors.badRequest(messages.current("api.order.productUnknown")));
+                    .orElseThrow(() -> new DomainException.BadRequest(OrderError.PRODUCT_UNKNOWN_IN_CART));
             if (!product.isActive() || product.isArchived()) {
-                throw OrderErrors.badRequest(messages.current("api.order.unavailable", product.getTitle()));
+                throw new DomainException.BadRequest(OrderError.PRODUCT_UNAVAILABLE, product.getTitle());
             }
 
             OrderItem item = OrderItem.sold(order, product.getId(), product.getTitle(), product.getPriceMinor(), line.quantity);
@@ -173,11 +174,11 @@ public class Checkout {
             if (line.variantId != null && !line.variantId.isBlank()) {
                 variant = ops.findVariant(product, line.variantId);
                 if (variant == null) {
-                    throw OrderErrors.badRequest(messages.current("api.order.variantMismatch", product.getTitle()));
+                    throw new DomainException.BadRequest(OrderError.VARIANT_MISMATCH, product.getTitle());
                 }
                 item.withVariant(variant.getId(), variant.getName());
             } else if (hasVariants) {
-                throw OrderErrors.badRequest(messages.current("api.order.variantRequired", product.getTitle()));
+                throw new DomainException.BadRequest(OrderError.VARIANT_REQUIRED, product.getTitle());
             }
             shelf.requireAvailable(product, variant, line.quantity, cmd.userId());
             shelf.reserve(product, variant, line.quantity, item);
@@ -280,23 +281,23 @@ public class Checkout {
         }
         return paymentOptions.firstActive()
                 .map(po -> UuidUtil.toString(po.id()))
-                .orElseThrow(() -> OrderErrors.badRequest("нет активного способа оплаты для нового заказа"));
+                .orElseThrow(() -> new DomainException.BadRequest(OrderError.NO_ACTIVE_PAYMENT_METHOD));
     }
 
     private DeliveryMethod parseDelivery(String value) {
         if (value == null || value.isBlank()) {
-            throw OrderErrors.badRequest(messages.current("api.order.deliveryRequired"));
+            throw new DomainException.BadRequest(OrderError.DELIVERY_REQUIRED);
         }
         try {
             return DeliveryMethod.valueOf(value.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw OrderErrors.badRequest(messages.current("api.order.deliveryUnknown", value));
+            throw new DomainException.BadRequest(OrderError.DELIVERY_UNKNOWN, value);
         }
     }
 
     private String required(String value, String field) {
         if (value == null || value.isBlank()) {
-            throw OrderErrors.badRequest(messages.current("api.order.fieldRequired", ops.fieldLabel(field)));
+            throw new DomainException.BadRequest(OrderError.FIELD_REQUIRED, ops.fieldLabel(field));
         }
         return value.trim();
     }

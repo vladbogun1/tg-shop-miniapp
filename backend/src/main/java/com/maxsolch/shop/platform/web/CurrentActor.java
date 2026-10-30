@@ -1,5 +1,6 @@
 package com.maxsolch.shop.platform.web;
 
+import com.maxsolch.shop.platform.error.PlatformError;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import org.springframework.security.core.Authentication;
@@ -45,6 +46,6 @@ public class CurrentActor {
         // No principal at all means "not authenticated" (401), not "authenticated but not allowed" (403):
         // the admin frontend distinguishes them when deciding to re-login. Plain text on purpose: this runs
         // outside a request-scoped bean and the apps only show it when a session died.
-        throw new DomainException.Unauthorized("not authenticated", null);
+        throw new DomainException.Unauthorized(PlatformError.NOT_AUTHENTICATED);
     }
 }

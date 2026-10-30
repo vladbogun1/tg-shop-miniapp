@@ -1,6 +1,7 @@
 package com.maxsolch.shop.catalog.app;
 
-import com.maxsolch.shop.catalog.domain.CatalogErrors;
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
 import com.maxsolch.shop.catalog.domain.CategoryRules;
 import com.maxsolch.shop.catalog.domain.SpecAttribute;
@@ -43,7 +44,6 @@ import static com.maxsolch.shop.platform.util.Texts.trimToNull;
 @Service
 public class SpecAttributeAdminService {
 
-    public static final String IN_USE = "ATTRIBUTE_IN_USE";
     /** The group the characteristic dialog falls back to («Основное»). */
     static final String DEFAULT_GROUP = "main";
 
@@ -78,7 +78,7 @@ public class SpecAttributeAdminService {
         List<SpecValues.SpecsRow> rows = values.specsRows();
         String cid = trimToNull(categoryId);
         if (cid != null && s.category(cid) == null) {
-            throw CatalogErrors.notFound("category not found");
+            throw new DomainException.NotFound(CatalogError.CATEGORY_NOT_FOUND);
         }
         List<CatalogSnapshot.Attr> attrs = cid == null
                 ? s.attributes().stream().filter(a -> a.categoryId() == null).toList()
@@ -102,20 +102,20 @@ public class SpecAttributeAdminService {
         String cid = trimToNull(req.categoryId());
         if (cid != null) {
             a.setCategoryId(categoryRepository.findById(bytes(cid, "category"))
-                    .orElseThrow(() -> CatalogErrors.notFound("category not found")).getId());
+                    .orElseThrow(() -> new DomainException.NotFound(CatalogError.CATEGORY_NOT_FOUND)).getId());
         }
         String key = trimToNull(req.key());
         if (key == null || !CatalogSchemaImporter.KEY.matcher(key).matches()) {
-            throw CatalogErrors.badRequest("key: snake_case латиницей (a-z, 0-9, _), до 48 символов");
+            throw new DomainException.BadRequest(CatalogError.ATTRIBUTE_KEY_INVALID);
         }
         a.setKey(key);
         SpecType type = SpecType.parse(req.type());
         if (type == null) {
-            throw CatalogErrors.badRequest("type: number | enum | multi | bool | text");
+            throw new DomainException.BadRequest(CatalogError.ATTRIBUTE_TYPE_INVALID);
         }
         a.setType(type);
         if (trimToNull(req.labelRu()) == null) {
-            throw CatalogErrors.badRequest("labelRu: укажите подпись");
+            throw new DomainException.BadRequest(CatalogError.LABEL_REQUIRED);
         }
         apply(a, req);
         if (a.getGroupKey() == null) {
@@ -139,22 +139,20 @@ public class SpecAttributeAdminService {
         String key = trimToNull(req.key());
         if (key != null && !key.equals(a.getKey())) {
             if (!CatalogSchemaImporter.KEY.matcher(key).matches()) {
-                throw CatalogErrors.badRequest("key: snake_case латиницей (a-z, 0-9, _), до 48 символов");
+                throw new DomainException.BadRequest(CatalogError.ATTRIBUTE_KEY_INVALID);
             }
             if (used > 0) {
-                throw CatalogErrors.conflict("ключ «" + a.getKey() + "» уже заполнен у " + used
-                        + " товаров — его нельзя переименовать", IN_USE, Map.of("count", used));
+                throw new DomainException.Conflict(CatalogError.ATTRIBUTE_IN_USE_RENAME, a.getKey(), String.valueOf(used)).withDetails(Map.of("count", used));
             }
             a.setKey(key);
         }
         SpecType type = req.type() == null ? null : SpecType.parse(req.type());
         if (req.type() != null && type == null) {
-            throw CatalogErrors.badRequest("type: number | enum | multi | bool | text");
+            throw new DomainException.BadRequest(CatalogError.ATTRIBUTE_TYPE_INVALID);
         }
         if (type != null && type != a.getType()) {
             if (used > 0 && !force) {
-                throw CatalogErrors.conflict("характеристика заполнена у " + used + " товаров — смена типа сотрёт "
-                        + "значения (force=1)", IN_USE, Map.of("count", used));
+                throw new DomainException.Conflict(CatalogError.ATTRIBUTE_IN_USE_TYPE_CHANGE, String.valueOf(used)).withDetails(Map.of("count", used));
             }
             if (used > 0) {
                 values.stripKey(rows, a.getKey());
@@ -164,11 +162,10 @@ public class SpecAttributeAdminService {
         if (req.categoryId() != null) {
             String cid = trimToNull(req.categoryId());
             byte[] newCat = cid == null ? null : categoryRepository.findById(bytes(cid, "category"))
-                    .orElseThrow(() -> CatalogErrors.notFound("category not found")).getId();
+                    .orElseThrow(() -> new DomainException.NotFound(CatalogError.CATEGORY_NOT_FOUND)).getId();
             if (!java.util.Arrays.equals(newCat, a.getCategoryId())) {
                 if (used > 0) {
-                    throw CatalogErrors.conflict("характеристика заполнена у " + used + " товаров — её нельзя "
-                            + "перенести в другую категорию", IN_USE, Map.of("count", used));
+                    throw new DomainException.Conflict(CatalogError.ATTRIBUTE_IN_USE_MOVE, String.valueOf(used)).withDetails(Map.of("count", used));
                 }
                 a.setCategoryId(newCat);
             }
@@ -204,8 +201,7 @@ public class SpecAttributeAdminService {
         List<SpecValues.SpecsRow> rows = values.scoped(a);
         long used = rows.stream().filter(r -> r.specs().containsKey(a.getKey())).count();
         if (used > 0 && !force) {
-            throw CatalogErrors.conflict("характеристика «" + a.getLabelRu() + "» заполнена у " + used + " товаров",
-                    IN_USE, Map.of("count", used));
+            throw new DomainException.Conflict(CatalogError.ATTRIBUTE_IN_USE, a.getLabelRu(), String.valueOf(used)).withDetails(Map.of("count", used));
         }
         values.stripKey(rows, a.getKey());
         for (SpecOption o : optionRepository.findByAttribute(a.getId())) {
@@ -258,7 +254,7 @@ public class SpecAttributeAdminService {
                 groupRepository.save(main);
             }
             if (g == null || groupRepository.findById(g).isEmpty()) {
-                throw CatalogErrors.badRequest("group «" + req.group() + "» не найдена");
+                throw new DomainException.BadRequest(CatalogError.GROUP_NOT_FOUND, String.valueOf(req.group()));
             }
             a.setGroupKey(g);
         }
@@ -297,11 +293,11 @@ public class SpecAttributeAdminService {
                 continue;
             }
             if (b.min() != null && b.max() != null && b.min() > b.max()) {
-                throw CatalogErrors.badRequest("бакет: «от» больше «до»");
+                throw new DomainException.BadRequest(CatalogError.BUCKET_RANGE_INVALID);
             }
             String id = CatalogSnapshot.bucketId(b.min(), b.max());
             if (!ids.add(id)) {
-                throw CatalogErrors.badRequest("бакет " + id + " повторяется");
+                throw new DomainException.BadRequest(CatalogError.BUCKET_DUPLICATE, id);
             }
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("min", b.min());
@@ -348,14 +344,14 @@ public class SpecAttributeAdminService {
 
     private SpecAttribute load(String id) {
         return attributeRepository.findById(bytes(id, "attribute"))
-                .orElseThrow(() -> CatalogErrors.notFound("attribute not found"));
+                .orElseThrow(() -> new DomainException.NotFound(CatalogError.ATTRIBUTE_NOT_FOUND));
     }
 
     static byte[] bytes(String id, String what) {
         try {
             return UuidUtil.toBytes(id.trim());
         } catch (IllegalArgumentException | NullPointerException e) {
-            throw CatalogErrors.badRequest("invalid " + what + " id: " + id);
+            throw new DomainException.BadRequest(CatalogError.INVALID_ENTITY_ID, what, id);
         }
     }
 }

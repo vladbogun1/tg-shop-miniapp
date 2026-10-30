@@ -1,10 +1,11 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -34,13 +35,13 @@ public class CustomerOrders {
         try {
             key = UuidUtil.toBytes(id);
         } catch (IllegalArgumentException e) {
-            throw OrderErrors.notFound(messages.current("api.order.notFound"));
+            throw new DomainException.NotFound(OrderError.ORDER_NOT_FOUND);
         }
         Order order = orderRepository.findById(key)
                 .filter(o -> o.getArchivedAt() == null)
-                .orElseThrow(() -> OrderErrors.notFound(messages.current("api.order.notFound")));
+                .orElseThrow(() -> new DomainException.NotFound(OrderError.ORDER_NOT_FOUND));
         if (order.getUserId() == null || order.getUserId() != userId) {
-            throw OrderErrors.forbidden(messages.current("api.order.notYours"));
+            throw new DomainException.Forbidden(OrderError.NOT_YOUR_ORDER);
         }
         return order;
     }

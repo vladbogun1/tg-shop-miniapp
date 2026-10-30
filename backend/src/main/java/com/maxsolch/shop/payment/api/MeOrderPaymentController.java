@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment.api;
 
+import com.maxsolch.shop.payment.domain.PaymentError;
 import com.maxsolch.shop.order.app.CustomerOrders;
 import com.maxsolch.shop.order.app.OrderDetailDto;
 import com.maxsolch.shop.order.app.OrderLookup;
@@ -79,7 +80,7 @@ public class MeOrderPaymentController {
             try {
                 returnTo = OnlinePaymentService.ReturnTo.valueOf(req.returnTo().trim().toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException e) {
-                throw new DomainException.BadRequest("returnTo must be SITE or MINIAPP");
+                throw new DomainException.BadRequest(PaymentError.RETURN_TO_INVALID);
             }
         } else {
             returnTo = actor.principal().isWeb()

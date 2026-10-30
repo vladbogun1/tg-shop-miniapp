@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.gift.domain.GiftError;
 import com.maxsolch.shop.order.app.OrderGiftDtos;
 import com.maxsolch.shop.gift.domain.GiftCaseItem;
 import com.maxsolch.shop.gift.domain.OrderGiftCase;
@@ -97,8 +98,7 @@ public class GiftCaseService implements OrderGiftView {
     }
 
     private static DomainException.BadRequest swapUnavailable() {
-        return new DomainException.BadRequest("Заменить приз уже нельзя",
-                ErrorCode.of(GiftCaseRules.GIFT_CASE_SWAP_UNAVAILABLE));
+        return new DomainException.BadRequest(GiftError.GIFT_CASE_SWAP_UNAVAILABLE);
     }
 
     /** The gift block of an order page; {@code customer}: the prize stays hidden until the case is opened. */
@@ -168,7 +168,7 @@ public class GiftCaseService implements OrderGiftView {
     /** An order sealed before the prize records existed: the prize line is all there is. */
     private CaseItemDto legacyWon(Order order, String lang) {
         var line = GiftCaseRules.casePrizeLine(order).orElseThrow(
-                () -> new DomainException.BadRequest("в заказе нет приза кейса", ErrorCode.of(GiftCaseRules.GIFT_CASE_NONE)));
+                () -> new DomainException.BadRequest(GiftError.GIFT_CASE_NONE));
         String pid = UuidUtil.toString(line.getProductId());
         ProductDto p = catalogService.getProduct(pid, lang).orElse(null);
         return new CaseItemDto("p" + pid, GiftCaseItem.Kind.PRODUCT.name(), pid,

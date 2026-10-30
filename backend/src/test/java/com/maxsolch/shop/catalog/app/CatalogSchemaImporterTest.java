@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
@@ -135,7 +136,7 @@ class CatalogSchemaImporterTest {
         String noMoves = SCHEMA.replace("\"product_moves\"", "\"ignored\"");
         assertThatThrownBy(() -> importer.importSchema(json(noMoves), 1L))
                 .isInstanceOf(DomainException.Conflict.class)
-                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CategoryRules.HAS_PRODUCTS));
+                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CatalogError.CATEGORY_HAS_PRODUCTS.code()));
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.platform.settings;
 
+import com.maxsolch.shop.platform.error.PlatformError;
 import java.time.Clock;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.error.ErrorCode;
@@ -176,7 +177,7 @@ public class SettingsService {
         Map<SettingDefinition, String> normalized = new LinkedHashMap<>();
         for (Map.Entry<String, Object> e : changes.entrySet()) {
             SettingDefinition def = SettingsRegistry.find(e.getKey())
-                    .orElseThrow(() -> new DomainException.BadRequest("Неизвестная настройка: " + e.getKey(), ErrorCode.of("SETTING_UNKNOWN")));
+                    .orElseThrow(() -> new DomainException.BadRequest(PlatformError.SETTING_UNKNOWN, e.getKey()));
             normalized.put(def, e.getValue() == null ? null : normalize(def, e.getValue()));
         }
 
@@ -242,20 +243,20 @@ public class SettingsService {
                 if (raw instanceof Number n) {
                     double d = n.doubleValue();
                     if (d != Math.rint(d) || Double.isInfinite(d)) {
-                        throw invalid(label + ": нужно целое число");
+                        throw invalid(PlatformError.SETTING_NOT_INTEGER, label);
                     }
                     v = n.longValue();
                 } else if (raw instanceof String s) {
                     try {
                         v = Long.parseLong(s.trim());
                     } catch (NumberFormatException e) {
-                        throw invalid(label + ": нужно целое число");
+                        throw invalid(PlatformError.SETTING_NOT_INTEGER, label);
                     }
                 } else {
-                    throw invalid(label + ": нужно целое число");
+                    throw invalid(PlatformError.SETTING_NOT_INTEGER, label);
                 }
                 if ((def.min() != null && v < def.min()) || (def.max() != null && v > def.max())) {
-                    throw invalid(label + ": допустимо от " + def.min() + " до " + def.max());
+                    throw invalid(PlatformError.SETTING_OUT_OF_RANGE, label, String.valueOf(def.min()), String.valueOf(def.max()));
                 }
                 return String.valueOf(v);
             }
@@ -266,24 +267,24 @@ public class SettingsService {
                 if (raw instanceof String s && ("true".equalsIgnoreCase(s.trim()) || "false".equalsIgnoreCase(s.trim()))) {
                     return s.trim().toLowerCase();
                 }
-                throw invalid(label + ": нужно «да» или «нет»");
+                throw invalid(PlatformError.SETTING_NOT_BOOLEAN, label);
             }
             case STRING, TEXT -> {
                 if (!(raw instanceof String s)) {
-                    throw invalid(label + ": нужен текст");
+                    throw invalid(PlatformError.SETTING_TEXT_REQUIRED, label);
                 }
                 String v = s.replace("\r\n", "\n").replace('\r', '\n').strip();
                 if (def.type() == SettingType.STRING && v.indexOf('\n') >= 0) {
-                    throw invalid(label + ": только одна строка");
+                    throw invalid(PlatformError.SETTING_SINGLE_LINE, label);
                 }
                 if (def.maxLength() != null && v.length() > def.maxLength()) {
-                    throw invalid(label + ": не длиннее " + def.maxLength() + " символов");
+                    throw invalid(PlatformError.SETTING_TOO_LONG, label, String.valueOf(def.maxLength()));
                 }
                 // Read as numbers by OnlinePaymentService.fiscalTaxCodes(): a word there was dropped
                 // silently, and Вчасно.Каса then refuses every invoice without a tax code.
                 if (SettingsRegistry.PAYMENT_FISCAL_TAX_CODES.equals(def.key())
                         && !v.isEmpty() && !v.matches("\\d+([,;\\s]+\\d+)*")) {
-                    throw invalid(label + ": только числовые коды через запятую, например «1» или «1, 2»");
+                    throw invalid(PlatformError.SETTING_BAD_CODE_LIST, label);
                 }
                 if (SettingsRegistry.COSTING_ACQUIRING_FEE_PERCENT.equals(def.key())) {
                     return normalizeFeePercent(label, v);
@@ -299,7 +300,7 @@ public class SettingsService {
                         }
                     }
                 }
-                throw invalid(label + ": выберите одно из значений списка");
+                throw invalid(PlatformError.SETTING_NOT_IN_LIST, label);
             }
             default -> throw new IllegalStateException("Unhandled type " + def.type());
         }
@@ -310,11 +311,11 @@ public class SettingsService {
         try {
             java.math.BigDecimal d = new java.math.BigDecimal(v.replace(',', '.'));
             if (d.signum() < 0 || d.compareTo(java.math.BigDecimal.TEN) > 0) {
-                throw invalid(label + ": допустимо от 0 до 10");
+                throw invalid(PlatformError.SETTING_ZERO_TO_TEN, label);
             }
             return d.stripTrailingZeros().toPlainString();
         } catch (NumberFormatException e) {
-            throw invalid(label + ": нужно число, например 1.3");
+            throw invalid(PlatformError.SETTING_NOT_DECIMAL, label);
         }
     }
 
@@ -329,8 +330,8 @@ public class SettingsService {
         }
     }
 
-    private static DomainException.BadRequest invalid(String message) {
-        return new DomainException.BadRequest(message, ErrorCode.of("SETTING_INVALID"));
+    private static DomainException.BadRequest invalid(PlatformError reason, Object... args) {
+        return new DomainException.BadRequest(reason, args);
     }
 
     // ------------------------------------------------------------------ internals

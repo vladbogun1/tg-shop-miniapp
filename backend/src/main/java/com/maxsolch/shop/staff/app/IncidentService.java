@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import com.maxsolch.shop.staff.domain.StaffError;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.staff.domain.AdminIncident;
 import com.maxsolch.shop.staff.infra.AdminIncidentRepository;
@@ -56,10 +57,10 @@ public class IncidentService {
 
     @Transactional
     public AdminIncident resolve(long id, String resolution, String adminName) {
-        AdminIncident i = repository.findById(id).orElseThrow(() -> new DomainException.NotFound("Инцидент не найден"));
+        AdminIncident i = repository.findById(id).orElseThrow(() -> new DomainException.NotFound(StaffError.INCIDENT_NOT_FOUND));
         String text = resolution == null ? "" : resolution.trim();
         if (text.length() < 3) {
-            throw new DomainException.BadRequest("Напишите, чем закончилось (хотя бы пару слов)");
+            throw new DomainException.BadRequest(StaffError.OUTCOME_REQUIRED);
         }
         i.setStatus(AdminIncident.RESOLVED);
         i.setResolution(text.length() > 1000 ? text.substring(0, 1000) : text);
@@ -86,7 +87,7 @@ public class IncidentService {
 
     @Transactional
     public AdminIncident reopen(long id) {
-        AdminIncident i = repository.findById(id).orElseThrow(() -> new DomainException.NotFound("Инцидент не найден"));
+        AdminIncident i = repository.findById(id).orElseThrow(() -> new DomainException.NotFound(StaffError.INCIDENT_NOT_FOUND));
         i.setStatus(AdminIncident.OPEN);
         i.setResolvedAt(null);
         i.setResolvedBy(null);

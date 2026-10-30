@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.gift.domain.GiftError;
 import com.maxsolch.shop.promo.app.CaseLowMargin;
 
 import com.maxsolch.shop.gift.domain.GiftCaseItem;
@@ -123,30 +124,29 @@ public class AdminGiftService {
 
     @Transactional
     public TierAdminDto updateTier(String code, TierRequest body) {
-        GiftCaseTier.Tier tier = GiftService.parseTier(code).orElseThrow(() -> new DomainException.NotFound("уровень не найден"));
-        GiftCaseTier t = tierRepository.findById(tier).orElseThrow(() -> new DomainException.NotFound("уровень не найден"));
+        GiftCaseTier.Tier tier = GiftService.parseTier(code).orElseThrow(() -> new DomainException.NotFound(GiftError.LEVEL_NOT_FOUND));
+        GiftCaseTier t = tierRepository.findById(tier).orElseThrow(() -> new DomainException.NotFound(GiftError.LEVEL_NOT_FOUND));
         if (body != null) {
             if (body.enabled() != null) {
                 t.setEnabled(body.enabled());
             }
             if (body.thresholdUah() != null) {
-                t.setThresholdUah(range(body.thresholdUah(), 1, 1_000_000, "Порог — от 1 до 1 000 000 ₴"));
+                t.setThresholdUah(range(body.thresholdUah(), 1, 1_000_000, GiftError.THRESHOLD_RANGE));
             }
             if (body.guaranteedPercent() != null) {
-                t.setGuaranteedPercent(range(body.guaranteedPercent(), 0, 50, "Гарантированная скидка — от 0 до 50 %"));
+                t.setGuaranteedPercent(range(body.guaranteedPercent(), 0, 50, GiftError.GUARANTEED_PERCENT_RANGE));
             }
             if (body.guaranteedMaxUah() != null) {
-                t.setGuaranteedMaxUah(range(body.guaranteedMaxUah(), 0, 100_000, "Потолок скидки — от 0 до 100 000 ₴"));
+                t.setGuaranteedMaxUah(range(body.guaranteedMaxUah(), 0, 100_000, GiftError.GUARANTEED_MAX_RANGE));
             }
             if (body.swapPercent() != null) {
-                t.setSwapPercent(range(body.swapPercent(), 0, 100, "Замена — от 0 до 100 %"));
+                t.setSwapPercent(range(body.swapPercent(), 0, 100, GiftError.SWAP_PERCENT_RANGE));
             }
             if (body.promoValidDays() != null) {
-                t.setPromoValidDays(range(body.promoValidDays(), 1, 365, "Срок промокода — от 1 до 365 дней"));
+                t.setPromoValidDays(range(body.promoValidDays(), 1, 365, GiftError.PROMO_DAYS_RANGE));
             }
             if (body.lowMarginProductPercent() != null) {
-                t.setLowMarginProductPercent(range(body.lowMarginProductPercent(), 0, 100,
-                        "Доля товарных призов — от 0 до 100 %"));
+                t.setLowMarginProductPercent(range(body.lowMarginProductPercent(), 0, 100, GiftError.LOW_MARGIN_PERCENT_RANGE));
             }
         }
         tierRepository.save(t);
@@ -193,7 +193,7 @@ public class AdminGiftService {
                 try {
                     UuidUtil.toBytes(id);
                 } catch (IllegalArgumentException e) {
-                    throw new DomainException.BadRequest("Неверный id товара: " + id);
+                    throw new DomainException.BadRequest(GiftError.INVALID_PRODUCT_ID, String.valueOf(id));
                 }
             });
             changes.put(SettingsRegistry.GIFT_LOW_MARGIN_PRODUCTS, String.join(",", ids));
@@ -234,10 +234,10 @@ public class AdminGiftService {
     @Transactional
     public CaseItemAdminDto addCaseItem(CaseItemRequest body) {
         if (body == null) {
-            throw new DomainException.BadRequest("Пустой запрос");
+            throw new DomainException.BadRequest(GiftError.EMPTY_REQUEST);
         }
         GiftCaseTier.Tier tier = GiftService.parseTier(body.tier())
-                .orElseThrow(() -> new DomainException.BadRequest("Выберите кейс: бронзовый, серебряный или золотой"));
+                .orElseThrow(() -> new DomainException.BadRequest(GiftError.CASE_TIER_REQUIRED));
         GiftCaseItem.Kind kind = kind(body.kind());
         GiftCaseItem item = new GiftCaseItem();
         item.setTier(tier);
@@ -245,18 +245,18 @@ public class AdminGiftService {
         String label;
         if (kind == GiftCaseItem.Kind.PRODUCT) {
             if (body.productId() == null || body.productId().isBlank()) {
-                throw new DomainException.BadRequest("Выберите товар-приз");
+                throw new DomainException.BadRequest(GiftError.PRIZE_PRODUCT_REQUIRED);
             }
             byte[] pid;
             try {
                 pid = UuidUtil.toBytes(body.productId().trim());
             } catch (IllegalArgumentException e) {
-                throw new DomainException.BadRequest("Неверный товар");
+                throw new DomainException.BadRequest(GiftError.INVALID_PRODUCT);
             }
             ProductDto p = catalogService.getProduct(body.productId().trim(), ADMIN_LANG)
-                    .orElseThrow(() -> new DomainException.BadRequest("Товар не найден или скрыт"));
+                    .orElseThrow(() -> new DomainException.BadRequest(GiftError.PRODUCT_NOT_FOUND_OR_HIDDEN));
             if (caseRepository.existsByTierAndProductId(tier, pid)) {
-                throw new DomainException.BadRequest("Этот товар уже есть в этом кейсе: " + p.title());
+                throw new DomainException.BadRequest(GiftError.PRODUCT_ALREADY_IN_CASE, p.title());
             }
             item.setProductId(pid);
             label = p.title();
@@ -277,7 +277,7 @@ public class AdminGiftService {
 
     @Transactional
     public CaseItemAdminDto updateCaseItem(long id, CaseItemRequest body) {
-        GiftCaseItem item = caseRepository.findById(id).orElseThrow(() -> new DomainException.NotFound("приз не найден"));
+        GiftCaseItem item = caseRepository.findById(id).orElseThrow(() -> new DomainException.NotFound(GiftError.PRIZE_NOT_FOUND));
         if (body != null) {
             if (body.rarity() != null) {
                 item.setRarity(rarity(body.rarity(), item.getRarity()));
@@ -312,10 +312,10 @@ public class AdminGiftService {
      */
     @Transactional
     public List<CaseItemAdminDto> replaceItems(String code, List<CaseDraftItem> draft) {
-        GiftCaseTier.Tier tier = GiftService.parseTier(code).orElseThrow(() -> new DomainException.NotFound("уровень не найден"));
+        GiftCaseTier.Tier tier = GiftService.parseTier(code).orElseThrow(() -> new DomainException.NotFound(GiftError.LEVEL_NOT_FOUND));
         List<CaseDraftItem> items = draft == null ? List.of() : draft;
         if (items.size() > 40) {
-            throw new DomainException.BadRequest("Слишком много призов: не больше 40 в кейсе");
+            throw new DomainException.BadRequest(GiftError.TOO_MANY_PRIZES);
         }
         Map<Long, GiftCaseItem> existing = new HashMap<>();
         caseRepository.findAllByOrderBySortOrderAscIdAsc().stream()
@@ -331,13 +331,13 @@ public class AdminGiftService {
                 try {
                     pid = UuidUtil.toBytes(id);
                 } catch (IllegalArgumentException e) {
-                    throw new DomainException.BadRequest("Неверный товар в призе №" + (k + 1));
+                    throw new DomainException.BadRequest(GiftError.INVALID_PRIZE_PRODUCT, String.valueOf((k + 1)));
                 }
                 if (!products.add(id)) {
-                    throw new DomainException.BadRequest("Товар повторяется в кейсе — оставьте его один раз");
+                    throw new DomainException.BadRequest(GiftError.DUPLICATE_PRIZE_PRODUCT);
                 }
                 if (catalogService.getProduct(id, ADMIN_LANG).isEmpty()) {
-                    throw new DomainException.BadRequest("Товар приза №" + (k + 1) + " не найден или скрыт");
+                    throw new DomainException.BadRequest(GiftError.PRIZE_PRODUCT_NOT_FOUND, String.valueOf((k + 1)));
                 }
             }
             GiftCaseItem row = d.id() == null ? null : existing.get(d.id());
@@ -375,7 +375,7 @@ public class AdminGiftService {
 
     @Transactional
     public void deleteCaseItem(long id) {
-        GiftCaseItem item = caseRepository.findById(id).orElseThrow(() -> new DomainException.NotFound("приз не найден"));
+        GiftCaseItem item = caseRepository.findById(id).orElseThrow(() -> new DomainException.NotFound(GiftError.PRIZE_NOT_FOUND));
         caseRepository.delete(item);
         audit.record("GIFT_CASE_ITEM_DELETE", "GIFT_CASE_ITEM", String.valueOf(id),
                 item.getTier() + " · " + (item.isDiscount() ? discountLabel(item) : UuidUtil.toString(item.getProductId())));
@@ -410,13 +410,13 @@ public class AdminGiftService {
         int pc = percent == null ? 0 : percent;
         int amount = uah == null ? 0 : uah;
         if (pc < 0 || pc > 50) {
-            throw new DomainException.BadRequest("Скидка — от 1 до 50 %");
+            throw new DomainException.BadRequest(GiftError.PERCENT_OUT_OF_RANGE);
         }
         if (amount < 0 || amount > 100_000) {
-            throw new DomainException.BadRequest("Скидка — от 1 до 100 000 ₴");
+            throw new DomainException.BadRequest(GiftError.AMOUNT_OUT_OF_RANGE);
         }
         if (pc == 0 && amount == 0) {
-            throw new DomainException.BadRequest("Укажите скидку: процент или сумму в ₴");
+            throw new DomainException.BadRequest(GiftError.DISCOUNT_REQUIRED);
         }
         item.setDiscountPercent(pc);
         item.setDiscountUah(pc > 0 ? 0 : amount);
@@ -429,7 +429,7 @@ public class AdminGiftService {
         try {
             return GiftCaseItem.Kind.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new DomainException.BadRequest("Неизвестный вид приза: " + value);
+            throw new DomainException.BadRequest(GiftError.UNKNOWN_PRIZE_KIND, value);
         }
     }
 
@@ -440,7 +440,7 @@ public class AdminGiftService {
         try {
             return GiftCaseItem.Rarity.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new DomainException.BadRequest("Неизвестная редкость: " + value);
+            throw new DomainException.BadRequest(GiftError.UNKNOWN_RARITY, value);
         }
     }
 
@@ -449,12 +449,12 @@ public class AdminGiftService {
             return def;
         }
         if (value < 0 || value > 100 * GiftService.CASE_WEIGHT_PER_PERCENT) {
-            throw new DomainException.BadRequest("Шанс — от 0 до 100 %");
+            throw new DomainException.BadRequest(GiftError.CHANCE_OUT_OF_RANGE);
         }
         return value;
     }
 
-    private static int range(int v, int min, int max, String error) {
+    private static int range(int v, int min, int max, GiftError error) {
         if (v < min || v > max) {
             throw new DomainException.BadRequest(error);
         }

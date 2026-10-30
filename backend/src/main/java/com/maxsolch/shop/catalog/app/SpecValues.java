@@ -1,7 +1,8 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.catalog.app.CatalogDtos.OptionInput;
-import com.maxsolch.shop.catalog.domain.CatalogErrors;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
 import com.maxsolch.shop.catalog.domain.SpecAttribute;
 import com.maxsolch.shop.catalog.domain.SpecOption;
@@ -28,7 +29,6 @@ import static com.maxsolch.shop.platform.util.Texts.trimToNull;
 @Component
 class SpecValues {
 
-    static final String OPTION_IN_USE = "OPTION_IN_USE";
 
     private final SpecOptionRepository optionRepository;
     private final ProductRepository productRepository;
@@ -58,10 +58,10 @@ class SpecValues {
             i++;
             String value = trimToNull(in.value());
             if (value == null || !CatalogSchemaImporter.VALUE.matcher(value).matches()) {
-                throw CatalogErrors.badRequest("значение опции «" + in.value() + "»: a-z, 0-9, _ . + -");
+                throw new DomainException.BadRequest(CatalogError.OPTION_VALUE_INVALID, String.valueOf(in.value()));
             }
             if (!keep.add(value)) {
-                throw CatalogErrors.badRequest("опция «" + value + "» повторяется");
+                throw new DomainException.BadRequest(CatalogError.OPTION_DUPLICATE, value);
             }
             SpecOption o = existing.get(value);
             if (o == null) {
@@ -86,8 +86,7 @@ class SpecValues {
             }
             long used = rows.stream().filter(r -> usesValue(r.specs().get(a.getKey()), o.getValue())).count();
             if (used > 0 && !force) {
-                throw CatalogErrors.conflict("вариант «" + o.getLabelRu() + "» выбран у " + used + " товаров",
-                        OPTION_IN_USE, Map.of("count", used, "value", o.getValue()));
+                throw new DomainException.Conflict(CatalogError.OPTION_IN_USE, o.getLabelRu(), String.valueOf(used)).withDetails(Map.of("count", used, "value", o.getValue()));
             }
             if (used > 0) {
                 rewriteValue(rows, a.getKey(), o.getValue(), null);
@@ -100,14 +99,14 @@ class SpecValues {
         String f = trimToNull(from);
         String t = trimToNull(to);
         if (f == null || t == null || !CatalogSchemaImporter.VALUE.matcher(t).matches()) {
-            throw CatalogErrors.badRequest("renameOption: from/to — значения опций (a-z, 0-9, _ . + -)");
+            throw new DomainException.BadRequest(CatalogError.RENAME_OPTION_INVALID);
         }
         if (f.equals(t)) {
             return;
         }
         List<SpecOption> options = optionRepository.findByAttribute(a.getId());
         SpecOption src = options.stream().filter(o -> o.getValue().equals(f)).findFirst()
-                .orElseThrow(() -> CatalogErrors.notFound("option «" + f + "» not found"));
+                .orElseThrow(() -> new DomainException.NotFound(CatalogError.OPTION_NOT_FOUND, f));
         SpecOption dst = options.stream().filter(o -> o.getValue().equals(t)).findFirst().orElse(null);
         if (dst == null) {
             src.setValue(t);

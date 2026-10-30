@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import com.maxsolch.shop.staff.domain.StaffError;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.staff.domain.LoginMethod;
@@ -99,8 +100,7 @@ public class AdminLockout {
     }
 
     public DomainException.TooManyRequests lockedError(Instant until) {
-        return new DomainException.TooManyRequests(
-                "Слишком много неверных попыток — вход заблокирован до " + time(until) + ". Попробуйте позже.", null, 0);
+        return new DomainException.TooManyRequests(StaffError.LOGIN_LOCKED, 0, time(until));
     }
 
     String time(Instant at) {

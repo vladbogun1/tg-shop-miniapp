@@ -1,6 +1,7 @@
 package com.maxsolch.shop.catalog.app;
 
-import com.maxsolch.shop.catalog.domain.CatalogErrors;
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
 import com.maxsolch.shop.catalog.domain.Category;
 import com.maxsolch.shop.catalog.domain.CategoryRules;
@@ -83,7 +84,7 @@ public class CategoryAdminService {
     public Saved create(CategoryUpsertRequest req) {
         String name = trimToNull(req.name());
         if (name == null) {
-            throw CatalogErrors.badRequest("name: укажите название категории");
+            throw new DomainException.BadRequest(CatalogError.CATEGORY_NAME_REQUIRED);
         }
         Category c = new Category();
         c.setName(name);
@@ -109,7 +110,7 @@ public class CategoryAdminService {
         if (req.name() != null) {
             String name = trimToNull(req.name());
             if (name == null) {
-                throw CatalogErrors.badRequest("name: укажите название категории");
+                throw new DomainException.BadRequest(CatalogError.CATEGORY_NAME_REQUIRED);
             }
             c.setName(name);
         }
@@ -145,15 +146,11 @@ public class CategoryAdminService {
     public Deleted delete(String id) {
         Category c = load(id);
         if (repository.findAll().stream().anyMatch(x -> Arrays.equals(x.getParentId(), c.getId()))) {
-            throw CatalogErrors.conflict("у категории «" + c.getName() + "» есть подкатегории — сначала удалите "
-                    + "или перенесите их", CategoryRules.HAS_CHILDREN);
+            throw new DomainException.Conflict(CatalogError.CATEGORY_HAS_CHILDREN, c.getName());
         }
         long products = productRepository.countByCategory(c.getId());
         if (products > 0) {
-            throw CatalogErrors.conflict("в категории «" + c.getName() + "» товаров: " + products
-                    // The screen counts active products only; archived ones block the delete too.
-                    + " (с учётом архивных — они в «Товары → Архив») — сначала перенесите их",
-                    CategoryRules.HAS_PRODUCTS, Map.of("count", products));
+            throw new DomainException.Conflict(CatalogError.CATEGORY_HAS_PRODUCTS, c.getName(), String.valueOf(products)).withDetails(Map.of("count", products));
         }
         Deleted deleted = new Deleted(c.getName(), c.getSlug());
         repository.delete(c);
@@ -167,7 +164,7 @@ public class CategoryAdminService {
     @Transactional
     public List<AdminCategoryDto> reorder(List<ReorderItem> items) {
         if (items == null || items.isEmpty()) {
-            throw CatalogErrors.badRequest("empty reorder");
+            throw new DomainException.BadRequest(CatalogError.EMPTY_REORDER);
         }
         for (ReorderItem it : items) {
             Category c = load(it.id());
@@ -204,7 +201,7 @@ public class CategoryAdminService {
         for (Category other : repository.findAll()) {
             if (!Arrays.equals(other.getId(), c.getId()) && Arrays.equals(other.getParentId(), c.getParentId())
                     && other.getName().equalsIgnoreCase(c.getName())) {
-                throw CatalogErrors.badRequest("категория «" + c.getName() + "» уже есть на этом уровне");
+                throw new DomainException.BadRequest(CatalogError.CATEGORY_NAME_TAKEN, c.getName());
             }
         }
     }
@@ -214,10 +211,10 @@ public class CategoryAdminService {
         if (!explicit.isEmpty()) {
             String normalised = SlugService.slugify(explicit);
             if (normalised.isEmpty()) {
-                throw CatalogErrors.badRequest("slug: допустимы латиница, цифры и дефис");
+                throw new DomainException.BadRequest(CatalogError.SLUG_INVALID);
             }
             if (!normalised.equals(c.getSlug()) && slugService.categorySlugTaken(normalised, c.getId())) {
-                throw CatalogErrors.badRequest("slug «" + normalised + "» уже занят");
+                throw new DomainException.BadRequest(CatalogError.SLUG_TAKEN, normalised);
             }
             c.setSlug(normalised);
         } else if (c.getSlug() == null || requested != null) {
@@ -257,9 +254,9 @@ public class CategoryAdminService {
         try {
             key = UuidUtil.toBytes(id);
         } catch (IllegalArgumentException | NullPointerException e) {
-            throw CatalogErrors.badRequest("invalid category id: " + id);
+            throw new DomainException.BadRequest(CatalogError.INVALID_CATEGORY_ID, id);
         }
-        return repository.findById(key).orElseThrow(() -> CatalogErrors.notFound("category not found"));
+        return repository.findById(key).orElseThrow(() -> new DomainException.NotFound(CatalogError.CATEGORY_NOT_FOUND));
     }
 
     static Map<String, Long> counts(List<Object[]> rows) {

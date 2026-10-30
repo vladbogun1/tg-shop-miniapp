@@ -1,5 +1,6 @@
 package com.maxsolch.shop.notification.app;
 
+import com.maxsolch.shop.notification.domain.NotificationError;
 import com.maxsolch.shop.platform.jobs.Workers;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.config.AppProperties;
@@ -171,13 +172,13 @@ public class BroadcastService {
     /** Start a broadcast (async). Throws 409 if one is already running. Returns the history id too. */
     public Started start(BroadcastRequest req, Long adminId, String adminName) {
         if (!enabled()) {
-            throw new DomainException.Unavailable("Бот не настроен");
+            throw new DomainException.Unavailable(NotificationError.BOT_NOT_CONFIGURED);
         }
         if (status.get().running()) {
-            throw new DomainException.Conflict("Рассылка уже идёт", null, null);
+            throw new DomainException.Conflict(NotificationError.BROADCAST_RUNNING);
         }
         DbLocks.Held lock = locks.tryLock(LOCK_NAME, LOCK_TTL)
-                .orElseThrow(() -> new DomainException.Conflict("Рассылка уже идёт", null, null));
+                .orElseThrow(() -> new DomainException.Conflict(NotificationError.BROADCAST_RUNNING));
         try {
             return begin(req, adminId, adminName, lock);
         } catch (RuntimeException e) {

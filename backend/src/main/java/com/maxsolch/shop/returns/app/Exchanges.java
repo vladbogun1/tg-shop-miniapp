@@ -1,5 +1,7 @@
 package com.maxsolch.shop.returns.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.returns.domain.ReturnsError;
 import com.maxsolch.shop.order.app.Checkout;
 import com.maxsolch.shop.order.app.CreateOrderCommand;
 import com.maxsolch.shop.order.app.MoneyLedger;
@@ -8,7 +10,6 @@ import com.maxsolch.shop.order.domain.OrderEvents;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.app.OrderPayments;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
@@ -95,13 +96,11 @@ public class Exchanges {
                                 boolean notifyCustomer, String note, String adminName) {
         Order order = orders.lockForUpdate(orderId);
         if (order.getStatus() != OrderStatus.DELIVERED) {
-            throw OrderErrors.badRequest(order.getStatus() == OrderStatus.SHIPPED
-                    ? "посылка ещё не у покупателя — обмен оформляется после доставки (не забрали — отклоните заказ с «Посылка едет назад»)"
-                    : "обмен оформляется для доставленного заказа");
+            throw (order.getStatus() == OrderStatus.SHIPPED ? new DomainException.BadRequest(ReturnsError.EXCHANGE_NOT_DELIVERED) : new DomainException.BadRequest(ReturnsError.EXCHANGE_NEEDS_DELIVERED));
         }
         OrderStatus to = target == null ? OrderStatus.NEW : target;
         if (!isTarget(to)) {
-            throw OrderErrors.badRequest("новый заказ обмена начинается с «Новый» или «Одобрен»");
+            throw new DomainException.BadRequest(ReturnsError.EXCHANGE_NEW_ORDER_STATUS);
         }
         // No outcome = the unit is sent back by post (the usual case for an exchange).
         List<WizardLine> back = returned == null ? List.of()
@@ -111,14 +110,14 @@ public class Exchanges {
         List<NewLine> out = given == null ? List.of()
                 : given.stream().filter(l -> l.quantity() > 0).toList();
         if (back.isEmpty()) {
-            throw OrderErrors.badRequest("отметьте, что покупатель вернул");
+            throw new DomainException.BadRequest(ReturnsError.RETURNED_FLAG_REQUIRED);
         }
         if (out.isEmpty()) {
-            throw OrderErrors.badRequest("выберите товар на замену");
+            throw new DomainException.BadRequest(ReturnsError.REPLACEMENT_REQUIRED);
         }
         String cleanNote = ReturnText.cleanNote(note);
         if (cleanNote != null && cleanNote.length() > 500) {
-            throw OrderErrors.badRequest("комментарий длиннее 500 символов");
+            throw new DomainException.BadRequest(ReturnsError.COMMENT_TOO_LONG);
         }
 
         // 1. What comes back and what it was paid for (checked again by the return below).
@@ -129,13 +128,12 @@ public class Exchanges {
         for (WizardLine line : back) {
             LineOutcome outcome = line.outcome();
             if (outcome == LineOutcome.KEPT) {
-                throw OrderErrors.badRequest("при обмене товар возвращается: едет назад, на склад или в брак");
+                throw new DomainException.BadRequest(ReturnsError.EXCHANGE_DISPOSITION_REQUIRED);
             }
             OrderItem item = ReturnText.item(order, line.itemId());
             int left = item.getQuantity() - item.getReturnedQty();
             if (line.quantity() > left) {
-                throw OrderErrors.badRequest("по позиции «" + item.getTitleSnapshot()
-                        + "» можно обменять не больше " + left + " шт.");
+                throw new DomainException.BadRequest(ReturnsError.EXCHANGE_QTY_EXCEEDED, item.getTitleSnapshot(), String.valueOf(left));
             }
             // units of the same item listed twice follow each other, so they don't share the same range
             int alreadyBack = item.getReturnedQty() + exchangeBackUnits.merge(item, 0, Integer::sum);

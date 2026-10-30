@@ -1,5 +1,6 @@
 package com.maxsolch.shop.returns.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.app.OrderReturnsView;
 import com.maxsolch.shop.order.domain.Order;
@@ -77,7 +78,8 @@ public class ReturnRecords implements OrderReturnsView {
                     .map(l -> line(l, items, images))
                     .toList();
             boolean isNewest = r == newest;
-            String blocker = isNewest ? r.cancelBlocker(replacement) : null;
+            DomainException.BadRequest problem = isNewest ? r.cancelBlocker(replacement) : null;
+            String blocker = problem == null ? null : problem.getMessage();
             out.add(new ReturnRecordDto(r.getId(), r.getKind(), r.getCreatedAt(), r.getAdminName(),
                     r.getNote(), lines, r.getRefundMinor(), r.getRefundChannel(), r.getMonoRefundMinor(), newOrderId,
                     r.getCancelledAt(), r.getCancelledBy(), r.getCancelNote(), r.getDebtMinor(), r.getDebtPaidAt(),

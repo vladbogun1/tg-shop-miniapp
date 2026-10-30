@@ -1,5 +1,6 @@
 package com.maxsolch.shop.platform.audit;
 
+import com.maxsolch.shop.platform.error.PlatformError;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import io.swagger.v3.oas.annotations.Operation;
@@ -88,7 +89,7 @@ public class AdminAuditController {
             LocalDate d = LocalDate.parse(value.trim());
             return (endExclusive ? d.plusDays(1) : d).atStartOfDay(zone).toInstant();
         } catch (DateTimeParseException e) {
-            throw new DomainException.BadRequest("date must be yyyy-MM-dd");
+            throw new DomainException.BadRequest(PlatformError.DATE_FORMAT_INVALID);
         }
     }
 

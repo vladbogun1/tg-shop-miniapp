@@ -1,9 +1,10 @@
 package com.maxsolch.shop.returns.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.returns.domain.ReturnsError;
 import com.maxsolch.shop.inventory.domain.StockWriteoff;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.inventory.app.StockWriteoffs;
 import com.maxsolch.shop.returns.domain.OrderReturnLine;
@@ -56,10 +57,10 @@ public class DefectWriteoffs {
         StockWriteoff w = writeoffs.require(writeoffId);
         int left = w.activeQty();
         if (left <= 0) {
-            throw OrderErrors.badRequest("по этому списанию всё уже вернули");
+            throw new DomainException.BadRequest(ReturnsError.WRITE_OFF_ALREADY_RETURNED);
         }
         if (quantity < 1 || quantity > left) {
-            throw OrderErrors.badRequest("вернуть можно от 1 до " + left + " шт.");
+            throw new DomainException.BadRequest(ReturnsError.QTY_OUT_OF_RANGE, String.valueOf(left));
         }
         String cleanNote = note == null || note.isBlank() ? null : ReturnText.cut(note.trim(), 500);
         int restored = 0; // units already put back through their order line

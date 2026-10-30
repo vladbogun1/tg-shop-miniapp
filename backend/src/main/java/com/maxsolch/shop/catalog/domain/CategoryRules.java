@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.domain;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.util.UuidUtil;
 
 import java.util.HashMap;
@@ -15,10 +16,6 @@ import java.util.function.ToLongFunction;
  */
 public final class CategoryRules {
 
-    public static final String HAS_PRODUCTS = "CATEGORY_HAS_PRODUCTS";
-    public static final String HAS_CHILDREN = "CATEGORY_HAS_CHILDREN";
-    public static final String TOO_DEEP = "CATEGORY_TOO_DEEP";
-    public static final String KEY_TAKEN = "ATTRIBUTE_KEY_TAKEN";
 
     private CategoryRules() {
     }
@@ -40,15 +37,13 @@ public final class CategoryRules {
             String pid = UuidUtil.toString(c.getParentId());
             Category parent = byId.get(pid);
             if (parent == null) {
-                throw CatalogErrors.badRequest("категория «" + c.getSlug() + "»: нет родителя " + pid);
+                throw new DomainException.BadRequest(CatalogError.IMPORT_NO_PARENT, c.getSlug(), pid);
             }
             if (pid.equals(UuidUtil.toString(c.getId()))) {
-                throw CatalogErrors.conflict("категория «" + c.getSlug() + "» не может быть родителем самой себе",
-                        TOO_DEEP);
+                throw new DomainException.Conflict(CatalogError.CATEGORY_TOO_DEEP_SELF_PARENT, c.getSlug());
             }
             if (parent.getParentId() != null) {
-                throw CatalogErrors.conflict("не больше двух уровней: «" + parent.getSlug()
-                        + "» уже подкатегория, в неё нельзя вложить «" + c.getSlug() + "»", TOO_DEEP);
+                throw new DomainException.Conflict(CatalogError.CATEGORY_TOO_DEEP, parent.getSlug(), c.getSlug());
             }
             parents.add(pid);
         }
@@ -56,9 +51,7 @@ public final class CategoryRules {
             Category parent = byId.get(pid);
             long count = directProducts.applyAsLong(parent.getId());
             if (count > 0) {
-                throw CatalogErrors.conflict("в категории «" + parent.getSlug() + "» лежат товары (" + count
-                        + ") — у категории с подкатегориями товаров быть не может; сначала перенесите их",
-                        HAS_PRODUCTS);
+                throw new DomainException.Conflict(CatalogError.CATEGORY_HAS_PRODUCTS_PARENT, parent.getSlug(), String.valueOf(count));
             }
         }
     }
@@ -68,15 +61,14 @@ public final class CategoryRules {
         Set<String> global = new HashSet<>();
         for (CatalogSnapshot.Attr a : s.attributes()) {
             if (a.categoryId() == null && !global.add(a.key())) {
-                throw CatalogErrors.conflict("ключ «" + a.key() + "» дважды среди глобальных характеристик", KEY_TAKEN);
+                throw new DomainException.Conflict(CatalogError.ATTRIBUTE_KEY_TAKEN_GLOBAL, a.key());
             }
         }
         for (CatalogSnapshot.Cat c : s.categories()) {
             Set<String> keys = new HashSet<>();
             for (CatalogSnapshot.Attr a : s.attributesFor(c.id())) {
                 if (!keys.add(a.key())) {
-                    throw CatalogErrors.conflict("ключ «" + a.key() + "» повторяется в пути категории «" + c.slug()
-                            + "» (у родителя или среди глобальных)", KEY_TAKEN);
+                    throw new DomainException.Conflict(CatalogError.ATTRIBUTE_KEY_TAKEN_IN_PATH, a.key(), c.slug());
                 }
             }
         }

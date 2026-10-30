@@ -1,5 +1,7 @@
 package com.maxsolch.shop.translation.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.translation.domain.TranslationError;
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.ContentTranslation;
@@ -27,7 +29,6 @@ import com.maxsolch.shop.translation.app.TranslatableSource.Field;
 import com.maxsolch.shop.translation.app.TranslatableSource.SourceChange;
 import com.maxsolch.shop.translation.app.TranslationService.Key;
 import com.maxsolch.shop.platform.tx.DomainEvents;
-import com.maxsolch.shop.translation.domain.TranslationErrors;
 import com.maxsolch.shop.translation.domain.TranslationsChanged;
 import java.time.Clock;
 import java.time.Instant;
@@ -198,7 +199,7 @@ public class TranslationReport {
         try {
             return Status.valueOf(status.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw TranslationErrors.badRequest("status must be missing|stale|translated|all");
+            throw new DomainException.BadRequest(TranslationError.INVALID_STATUS);
         }
     }
 

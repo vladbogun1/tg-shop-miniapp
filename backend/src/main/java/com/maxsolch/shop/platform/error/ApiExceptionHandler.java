@@ -47,11 +47,11 @@ public class ApiExceptionHandler {
         this.messages = messages;
     }
 
-    /** Every business "no": the HTTP status comes from the exception kind, the text from the message or the i18n catalog. */
+    /** Every business "no": the HTTP status comes from the exception kind, the text from the i18n bundle by the error code. */
     @ExceptionHandler(DomainException.class)
     public ResponseEntity<Map<String, Object>> handleDomain(DomainException ex) {
         HttpStatus status = HttpStatus.valueOf(ex.kind().httpStatus());
-        String text = ex.isFromCatalog() ? messages.current(ex.getMessage(), ex.args()) : ex.getMessage();
+        String text = messages.text(ex);
         ResponseEntity<Map<String, Object>> res = error(status, text, ex.getCode());
         Map<String, Object> body = res.getBody();
         if (ex instanceof DomainException.Conflict c && !c.getDetails().isEmpty()) {

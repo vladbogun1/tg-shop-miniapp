@@ -1,7 +1,7 @@
 package com.maxsolch.shop.returns.domain;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.OrderStatus;
@@ -26,34 +26,30 @@ public final class ReturnPlanRules {
         OrderStatus s = order.getStatus();
         boolean overpaidInWork = OrderTransitions.isOpen(s) && OrderMoney.overpaidMinor(order) > 0;
         if (s != OrderStatus.SHIPPED && s != OrderStatus.DELIVERED && s != OrderStatus.REJECTED && !overpaidInWork) {
-            throw OrderErrors.badRequest("возврат оформляется для отправленного, доставленного или отклонённого заказа");
+            throw new DomainException.BadRequest(ReturnsError.RETURN_STATUS_NOT_ALLOWED);
         }
         List<WizardLine> lines = plan.activeLines();
         if (s == OrderStatus.SHIPPED && !lines.isEmpty() && PartialPickup.nothingPickedUp(order, lines)) {
-            throw OrderErrors.badRequest("покупатель не забрал ничего — отклоните заказ с «Посылка едет назад»");
+            throw new DomainException.BadRequest(ReturnsError.NOTHING_PICKED_UP);
         }
         long pickupValue = s == OrderStatus.SHIPPED ? PartialPickup.refusedValueMinor(order, lines, false) : 0;
         if ((s == OrderStatus.REJECTED || overpaidInWork) && !lines.isEmpty()) {
-            throw OrderErrors.badRequest(s == OrderStatus.REJECTED
-                    ? "по отклонённому заказу товар принимается кнопкой «Посылка вернулась», здесь — только деньги"
-                    : "заказ ещё не отправлен — можно вернуть только переплату");
+            throw (s == OrderStatus.REJECTED ? new DomainException.BadRequest(ReturnsError.REJECTED_MONEY_ONLY_PARCEL) : new DomainException.BadRequest(ReturnsError.NOT_SHIPPED_OVERPAYMENT_ONLY));
         }
         long manual = manualTotal(plan.activeRefunds());
         if (plan.retainMinor() < 0 || plan.monoRefundMinor() < 0) {
-            throw OrderErrors.badRequest("сумма не может быть отрицательной");
+            throw new DomainException.BadRequest(ReturnsError.AMOUNT_NEGATIVE);
         }
         long retained = retainedBefore.getAsLong();
         long refundable = Math.max(0, OrderMoney.refundableMinor(order) - retained);
         long mono = monoSent ? 0 : plan.monoRefundMinor();
         if (manual + mono + plan.retainMinor() > refundable) {
-            throw OrderErrors.badRequest("вернуть и удержать вместе можно не больше, чем получено и ещё не возвращено"
-                    + (retained > 0 ? " (без уже удержанных " + MoneyFormat.uah(retained) + ")" : "")
-                    + ": " + MoneyFormat.uah(refundable));
+            throw (retained > 0 ? new DomainException.BadRequest(ReturnsError.REFUND_RETAIN_EXCEEDS_NET, MoneyFormat.uah(retained), MoneyFormat.uah(refundable)) : new DomainException.BadRequest(ReturnsError.REFUND_RETAIN_EXCEEDS, MoneyFormat.uah(refundable)));
         }
         if (overpaidInWork) {
             long over = OrderMoney.overpaidMinor(order);
             if (manual + mono > over) {
-                throw OrderErrors.badRequest("до отправки можно вернуть только переплату: " + MoneyFormat.uah(over));
+                throw new DomainException.BadRequest(ReturnsError.PRE_SHIPMENT_OVERPAYMENT_LIMIT, MoneyFormat.uah(over));
             }
         }
         if (s == OrderStatus.SHIPPED && manual + mono > 0) {
@@ -62,13 +58,11 @@ public final class ReturnPlanRules {
             long over = Math.max(0, OrderMoney.netReceivedMinor(order)
                     - (OrderMoney.collectableMinor(order) - pickupValue));
             if (manual + mono > over) {
-                throw OrderErrors.badRequest(over == 0
-                        ? "посылка ещё на почте — за невыкупленное покупатель просто не платит наложку, вернуть нечего"
-                        : "посылка ещё на почте — вернуть можно только переплату: " + MoneyFormat.uah(over));
+                throw (over == 0 ? new DomainException.BadRequest(ReturnsError.PARCEL_AT_POST_NOTHING_TO_RETURN) : new DomainException.BadRequest(ReturnsError.PARCEL_AT_POST_OVERPAYMENT_ONLY, MoneyFormat.uah(over)));
             }
         }
         if (lines.isEmpty() && manual == 0 && plan.monoRefundMinor() == 0 && plan.retainMinor() == 0) {
-            throw OrderErrors.badRequest("укажите, что вернули, или сумму возврата");
+            throw new DomainException.BadRequest(ReturnsError.RETURN_OR_AMOUNT_REQUIRED);
         }
     }
 
@@ -76,13 +70,13 @@ public final class ReturnPlanRules {
         long manual = 0;
         for (ManualRefund r : refunds) {
             if (r.amountMinor() < 0) {
-                throw OrderErrors.badRequest("сумма возврата не может быть отрицательной");
+                throw new DomainException.BadRequest(ReturnsError.REFUND_NEGATIVE);
             }
             if (r.channel() == null) {
-                throw OrderErrors.badRequest("укажите, как вернули деньги");
+                throw new DomainException.BadRequest(ReturnsError.REFUND_METHOD_REQUIRED);
             }
             if (r.channel() == OrderMoneyMovement.Channel.MONO) {
-                throw OrderErrors.badRequest("возврат на карту через monobank — отдельной строкой «через monobank»");
+                throw new DomainException.BadRequest(ReturnsError.MONO_SEPARATE_LINE);
             }
             manual += r.amountMinor();
         }

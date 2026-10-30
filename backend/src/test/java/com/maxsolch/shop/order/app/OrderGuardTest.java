@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.infra.OrderGuardStore;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
@@ -90,7 +91,7 @@ class OrderGuardTest {
                 new CreateOrderCommand.Line("00000000-0000-0000-0000-000000000001", null, 3));
         assertThatThrownBy(() -> guard.check(USER, l))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .satisfies(e -> assertThat(((DomainException.BadRequest) e).getCode()).isEqualTo(OrderGuard.QTY_LIMIT));
+                .satisfies(e -> assertThat(((DomainException.BadRequest) e).getCode()).isEqualTo(OrderError.QTY_LIMIT.code()));
         verify(store, never()).countUnpaid(anyLong());
     }
 
@@ -98,7 +99,7 @@ class OrderGuardTest {
     void unitsPerOrder() {
         assertThatThrownBy(() -> guard.check(USER, lines(5, 5, 5, 5, 1)))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .hasMessage("api.antibot.unitsLimit");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(OrderError.QTY_LIMIT_UNITS));
     }
 
     @Test
@@ -106,7 +107,7 @@ class OrderGuardTest {
         when(store.countUnpaid(USER)).thenReturn(2);
         assertThatThrownBy(() -> guard.check(USER, lines(1)))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .satisfies(e -> assertThat(((DomainException.BadRequest) e).getCode()).isEqualTo(OrderGuard.TOO_MANY_UNPAID));
+                .satisfies(e -> assertThat(((DomainException.BadRequest) e).getCode()).isEqualTo(OrderError.TOO_MANY_UNPAID.code()));
     }
 
     @Test
@@ -116,7 +117,7 @@ class OrderGuardTest {
                 .isInstanceOf(DomainException.TooManyRequests.class)
                 .satisfies(e -> {
                     DomainException.TooManyRequests t = (DomainException.TooManyRequests) e;
-                    assertThat(t.getCode()).isEqualTo(OrderGuard.ORDER_COOLDOWN);
+                    assertThat(t.getCode()).isEqualTo(OrderError.ORDER_COOLDOWN.code());
                     assertThat(t.getRetryAfterSeconds()).isEqualTo(40);
                 });
     }
@@ -130,7 +131,7 @@ class OrderGuardTest {
                 .isInstanceOf(DomainException.TooManyRequests.class)
                 .satisfies(e -> {
                     DomainException.TooManyRequests t = (DomainException.TooManyRequests) e;
-                    assertThat(t.getCode()).isEqualTo(OrderGuard.ORDER_DAILY_LIMIT);
+                    assertThat(t.getCode()).isEqualTo(OrderError.ORDER_DAILY_LIMIT.code());
                     assertThat(t.getRetryAfterSeconds()).isEqualTo(Duration.ofHours(4).toSeconds());
                 });
     }
@@ -143,7 +144,7 @@ class OrderGuardTest {
                 .isInstanceOf(DomainException.TooManyRequests.class)
                 .satisfies(e -> {
                     DomainException.TooManyRequests t = (DomainException.TooManyRequests) e;
-                    assertThat(t.getCode()).isEqualTo(OrderGuard.CANCEL_LIMIT);
+                    assertThat(t.getCode()).isEqualTo(OrderError.CANCEL_LIMIT.code());
                     assertThat(t.getRetryAfterSeconds()).isEqualTo(Duration.ofHours(18).toSeconds());
                 });
     }

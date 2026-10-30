@@ -1,5 +1,7 @@
 package com.maxsolch.shop.procurement.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.procurement.domain.ProcurementError;
 import com.maxsolch.shop.inventory.app.LotLedger;
 import com.maxsolch.shop.inventory.domain.StockLot;
 import com.maxsolch.shop.procurement.domain.BatchCost;
@@ -28,7 +30,6 @@ import com.maxsolch.shop.procurement.domain.PreorderBatchItem;
 import com.maxsolch.shop.procurement.infra.PreorderBatchItemRepository;
 import com.maxsolch.shop.procurement.infra.PreorderBatchRepository;
 import com.maxsolch.shop.procurement.domain.Lines;
-import com.maxsolch.shop.procurement.domain.ProcurementErrors;
 import com.maxsolch.shop.catalog.app.Products;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -175,13 +176,12 @@ public class CostingService {
     public BatchMoneyDto saveMoney(long batchId, MoneyRequest req) {
         PreorderBatch b = batch(batchId);
         if (req == null) {
-            throw ProcurementErrors.badRequest("Пустой запрос");
+            throw new DomainException.BadRequest(ProcurementError.EMPTY_REQUEST);
         }
         if (req.currency() != null) {
             String c = req.currency().trim().toUpperCase(Locale.ROOT);
             if (!PreorderBatchService.CURRENCIES.contains(c)) {
-                throw ProcurementErrors.badRequest("Валюта: " + String.join(", ", PreorderBatchService.CURRENCIES),
-                        "BAD_CURRENCY");
+                throw new DomainException.BadRequest(ProcurementError.BAD_CURRENCY, String.join(", ", PreorderBatchService.CURRENCIES));
             }
             b.setCurrency(c);
         }
@@ -201,13 +201,13 @@ public class CostingService {
             for (MoneyLineRequest l : req.lines()) {
                 PreorderBatchItem i = byId.get(l.itemId());
                 if (i == null) {
-                    throw ProcurementErrors.badRequest("Позиция " + l.itemId() + " не из этой поставки", "BAD_ITEM");
+                    throw new DomainException.BadRequest(ProcurementError.BAD_ITEM, String.valueOf(l.itemId()));
                 }
                 if (l.unitPriceFx() != null && l.unitPriceFx() < 0) {
-                    throw ProcurementErrors.badRequest("Закупочная цена не может быть отрицательной", "BAD_PRICE");
+                    throw new DomainException.BadRequest(ProcurementError.BAD_PRICE);
                 }
                 if (l.weightG() != null && l.weightG() < 0) {
-                    throw ProcurementErrors.badRequest("Вес не может быть отрицательным", "BAD_WEIGHT");
+                    throw new DomainException.BadRequest(ProcurementError.BAD_WEIGHT);
                 }
                 i.setUnitPriceFx(l.unitPriceFx());
                 i.setWeightG(l.weightG());
@@ -231,7 +231,7 @@ public class CostingService {
 
     @Transactional
     public BatchMoneyDto updateExpense(long expenseId, ExpenseRequest req) {
-        BatchExpense e = expenses.findById(expenseId).orElseThrow(() -> ProcurementErrors.notFound("Расход не найден"));
+        BatchExpense e = expenses.findById(expenseId).orElseThrow(() -> new DomainException.NotFound(ProcurementError.EXPENSE_NOT_FOUND));
         applyExpense(e, req);
         expenses.save(e);
         return money(e.getBatchId());
@@ -239,7 +239,7 @@ public class CostingService {
 
     @Transactional
     public BatchMoneyDto deleteExpense(long expenseId) {
-        BatchExpense e = expenses.findById(expenseId).orElseThrow(() -> ProcurementErrors.notFound("Расход не найден"));
+        BatchExpense e = expenses.findById(expenseId).orElseThrow(() -> new DomainException.NotFound(ProcurementError.EXPENSE_NOT_FOUND));
         List<String> keys = files.findByExpenseId(expenseId).stream().map(BatchExpenseFile::getObjectKey).toList();
         expenses.delete(e); // the rows of its documents go with it (ON DELETE CASCADE)
         keys.forEach(storage::deleteQuietly);
@@ -250,7 +250,7 @@ public class CostingService {
 
     @Transactional
     public BatchMoneyDto addExpenseFile(long expenseId, MultipartFile file, String adminName) {
-        BatchExpense e = expenses.findById(expenseId).orElseThrow(() -> ProcurementErrors.notFound("Расход не найден"));
+        BatchExpense e = expenses.findById(expenseId).orElseThrow(() -> new DomainException.NotFound(ProcurementError.EXPENSE_NOT_FOUND));
         BatchExpenseFile f = new BatchExpenseFile();
         f.setExpenseId(expenseId);
         f.setObjectKey(storage.uploadCostingDocument(file, e.getBatchId()));
@@ -266,14 +266,14 @@ public class CostingService {
 
     @Transactional(readOnly = true)
     public BatchExpenseFile expenseFile(long fileId) {
-        return files.findById(fileId).orElseThrow(() -> ProcurementErrors.notFound("Документ не найден"));
+        return files.findById(fileId).orElseThrow(() -> new DomainException.NotFound(ProcurementError.DOCUMENT_NOT_FOUND));
     }
 
     @Transactional
     public BatchMoneyDto deleteExpenseFile(long fileId) {
         BatchExpenseFile f = expenseFile(fileId);
         long batchId = expenses.findById(f.getExpenseId()).map(BatchExpense::getBatchId)
-                .orElseThrow(() -> ProcurementErrors.notFound("Расход не найден"));
+                .orElseThrow(() -> new DomainException.NotFound(ProcurementError.EXPENSE_NOT_FOUND));
         files.delete(f);
         storage.deleteQuietly(f.getObjectKey());
         return money(batchId);
@@ -281,22 +281,21 @@ public class CostingService {
 
     private void applyExpense(BatchExpense e, ExpenseRequest req) {
         if (req == null || req.amountMinor() == null || req.amountMinor() == 0) {
-            throw ProcurementErrors.badRequest("Укажите сумму расхода (компенсация — с минусом)", "BAD_AMOUNT");
+            throw new DomainException.BadRequest(ProcurementError.BAD_AMOUNT);
         }
         String kind = req.kind() == null ? "OTHER" : req.kind().trim().toUpperCase(Locale.ROOT);
         try {
             BatchExpense.Kind.valueOf(kind);
         } catch (IllegalArgumentException ex) {
-            throw ProcurementErrors.badRequest("Тип расхода: FREIGHT, CUSTOMS, BROKER, DOMESTIC, BANK, OTHER", "BAD_KIND");
+            throw new DomainException.BadRequest(ProcurementError.BAD_KIND);
         }
         String currency = req.currency() == null ? "UAH" : req.currency().trim().toUpperCase(Locale.ROOT);
         if (!PreorderBatchService.CURRENCIES.contains(currency)) {
-            throw ProcurementErrors.badRequest("Валюта: " + String.join(", ", PreorderBatchService.CURRENCIES),
-                    "BAD_CURRENCY");
+            throw new DomainException.BadRequest(ProcurementError.BAD_CURRENCY, String.join(", ", PreorderBatchService.CURRENCIES));
         }
         if (req.itemId() != null && items.findById(req.itemId())
                 .filter(i -> i.getBatchId().equals(e.getBatchId())).isEmpty()) {
-            throw ProcurementErrors.badRequest("Позиция не из этой поставки", "BAD_ITEM");
+            throw new DomainException.BadRequest(ProcurementError.BAD_ITEM_UNNAMED);
         }
         e.setBatchItemId(req.itemId());
         e.setKind(kind);
@@ -330,7 +329,7 @@ public class CostingService {
     @Transactional(readOnly = true)
     public ProductCostDto product(String productId) {
         Product p = products.findById(UuidUtil.toBytes(productId))
-                .orElseThrow(() -> ProcurementErrors.notFound("Товар не найден"));
+                .orElseThrow(() -> new DomainException.NotFound(ProcurementError.PRODUCT_NOT_FOUND));
         List<StockLot> all = ledger.lotsOfProduct(p.getId());
         CostBook book = book(all);
         List<LotDto> out = new ArrayList<>();
@@ -399,16 +398,16 @@ public class CostingService {
     @Transactional
     public void setOpening(OpeningRequest req) {
         if (req == null || req.productId() == null) {
-            throw ProcurementErrors.badRequest("Не указан товар");
+            throw new DomainException.BadRequest(ProcurementError.PRODUCT_REQUIRED);
         }
         if (req.unitCostMinor() != null && req.unitCostMinor() < 0) {
-            throw ProcurementErrors.badRequest("Себестоимость не может быть отрицательной", "BAD_COST");
+            throw new DomainException.BadRequest(ProcurementError.BAD_COST);
         }
         byte[] pid = UuidUtil.toBytes(req.productId());
         byte[] vid = req.variantId() == null || req.variantId().isBlank() ? null : UuidUtil.toBytes(req.variantId());
         List<StockLot> key = ledger.lotsOfLine(pid, vid).stream().filter(l -> !l.batch()).toList();
         if (key.isEmpty()) {
-            throw ProcurementErrors.notFound("У товара нет старого остатка");
+            throw new DomainException.NotFound(ProcurementError.NO_OLD_STOCK);
         }
         key.forEach(l -> l.setUnitCostMinor(req.unitCostMinor()));
         ledger.saveLots(key);
@@ -458,7 +457,7 @@ public class CostingService {
     // ---------------------------------------------------------------- helpers
 
     private PreorderBatch batch(long id) {
-        return batches.findById(id).orElseThrow(() -> ProcurementErrors.notFound("Поставка не найдена"));
+        return batches.findById(id).orElseThrow(() -> new DomainException.NotFound(ProcurementError.BATCH_NOT_FOUND));
     }
 
     static BatchCost.Allocation allocation(String s) {
@@ -466,13 +465,13 @@ public class CostingService {
             return s == null ? BatchCost.Allocation.BY_VALUE
                     : BatchCost.Allocation.valueOf(s.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw ProcurementErrors.badRequest("Распределение: BY_VALUE, BY_QTY, BY_WEIGHT, MANUAL", "BAD_ALLOCATION");
+            throw new DomainException.BadRequest(ProcurementError.BAD_ALLOCATION);
         }
     }
 
     private static BigDecimal rate(BigDecimal r) {
         if (r.signum() <= 0 || r.compareTo(BigDecimal.valueOf(100000)) > 0) {
-            throw ProcurementErrors.badRequest("Курс: больше нуля", "BAD_RATE");
+            throw new DomainException.BadRequest(ProcurementError.BAD_RATE);
         }
         return r;
     }

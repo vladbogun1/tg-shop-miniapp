@@ -197,8 +197,8 @@ class OrderStockTest {
         when(holds.heldForOthers(p.getId(), null, 7L)).thenReturn(3);
 
         assertThatThrownBy(() -> service.createOrder(checkout(p, null, 3, 7L)))
-                .isInstanceOf(DomainException.BadRequest.class);
-        verify(messages).current("api.order.outOfStock", "Мишка", 2);
+                .isInstanceOf(DomainException.BadRequest.class)
+                .satisfies(e -> assertThat(((DomainException) e).args()).containsExactly("Мишка", 2));
         assertThat(p.getStock()).isEqualTo(5);
         verify(lots, never()).take(any(), any(), anyInt(), any());
     }
@@ -217,15 +217,15 @@ class OrderStockTest {
         ProductVariant m = variant(p, "M", 2);
         when(holds.heldForOthers(p.getId(), m.getId(), 7L)).thenReturn(5);
 
-        assertThatThrownBy(() -> service.createOrder(checkout(p, m, 1, 7L))).isInstanceOf(DomainException.BadRequest.class);
-        verify(messages).current("api.order.outOfStock", "Мишка (M)", 0);
+        assertThatThrownBy(() -> service.createOrder(checkout(p, m, 1, 7L))).isInstanceOf(DomainException.BadRequest.class)
+                .satisfies(e -> assertThat(((DomainException) e).args()).containsExactly("Мишка (M)", 0));
     }
 
     @Test
     void checkout_oversell_refusedWithTheRealStock_nothingTouched() {
         Product p = product(2);
-        assertThatThrownBy(() -> service.createOrder(checkout(p, null, 3, 7L))).isInstanceOf(DomainException.BadRequest.class);
-        verify(messages).current("api.order.outOfStock", "Мишка", 2);
+        assertThatThrownBy(() -> service.createOrder(checkout(p, null, 3, 7L))).isInstanceOf(DomainException.BadRequest.class)
+                .satisfies(e -> assertThat(((DomainException) e).args()).containsExactly("Мишка", 2));
         assertThat(p.getStock()).isEqualTo(2);
         verify(lots, never()).take(any(), any(), anyInt(), any());
         verify(holds, never()).onStockTaken(any(), any(), anyInt());
@@ -235,8 +235,8 @@ class OrderStockTest {
     void checkout_variantOversell_refusedNamingTheVariant() {
         Product p = product(0);
         ProductVariant m = variant(p, "M", 1);
-        assertThatThrownBy(() -> service.createOrder(checkout(p, m, 2, 7L))).isInstanceOf(DomainException.BadRequest.class);
-        verify(messages).current("api.order.outOfStock", "Мишка (M)", 1);
+        assertThatThrownBy(() -> service.createOrder(checkout(p, m, 2, 7L))).isInstanceOf(DomainException.BadRequest.class)
+                .satisfies(e -> assertThat(((DomainException) e).args()).containsExactly("Мишка (M)", 1));
         assertThat(m.getStock()).isEqualTo(1);
     }
 

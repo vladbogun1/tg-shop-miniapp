@@ -1,5 +1,7 @@
 package com.maxsolch.shop.preorder.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.preorder.domain.PreorderError;
 import com.maxsolch.shop.preorder.domain.PreorderEvents;
 import com.maxsolch.shop.preorder.domain.PreorderRules;
 import com.maxsolch.shop.preorder.domain.PreorderSubscription;
@@ -23,7 +25,6 @@ import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.platform.time.ShopZone;
-import com.maxsolch.shop.preorder.domain.PreorderErrors;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.translation.app.TranslationService;
@@ -97,9 +98,9 @@ public class PreorderQueueService {
     public MyPreorderDto subscribe(long userId, String source, SubscribeRequest req) {
         byte[] productId = bytes(req == null ? null : req.productId());
         Product product = products.findByIdForUpdate(productId)
-                .orElseThrow(() -> PreorderErrors.notFound(messages.current("api.preorder.notFound")));
+                .orElseThrow(() -> new DomainException.NotFound(PreorderError.WAITING_NOT_FOUND));
         if (!product.isActive() || product.isArchived()) {
-            throw PreorderErrors.badRequest(messages.current("api.preorder.unavailable", product.getTitle()));
+            throw new DomainException.BadRequest(PreorderError.PRODUCT_UNAVAILABLE, product.getTitle());
         }
         ProductVariant variant = variantOf(product, req.variantId());
         byte[] variantId = variant == null ? null : variant.getId();
@@ -107,7 +108,7 @@ public class PreorderQueueService {
         int maxQty = maxQty();
         int qty = req.qty() == null ? 1 : req.qty();
         if (qty < 1 || qty > maxQty) {
-            throw PreorderErrors.badRequest(messages.current("api.preorder.qty", maxQty));
+            throw new DomainException.BadRequest(PreorderError.QUANTITY_OUT_OF_RANGE, maxQty);
         }
 
         Optional<PreorderSubscription> existing = subs.findLive(userId, productId, variantId).stream().findFirst();
@@ -122,15 +123,15 @@ public class PreorderQueueService {
 
         List<PreorderSubscription> queue = subs.queue(productId, variantId);
         if (PreorderRules.free(Lines.stockOf(product, variant), seats(queue)) > 0) {
-            throw PreorderErrors.badRequest(messages.current("api.preorder.inStock"), "IN_STOCK");
+            throw new DomainException.BadRequest(PreorderError.IN_STOCK);
         }
         EtaDto eta = openEta(productId, variantId);
         if (eta == null && !settings.getBool(SettingsRegistry.PREORDER_ANY_PRODUCT)) {
-            throw PreorderErrors.badRequest(messages.current("api.preorder.unavailable", product.getTitle()));
+            throw new DomainException.BadRequest(PreorderError.PRODUCT_UNAVAILABLE, product.getTitle());
         }
         int maxActive = settings.getInt(SettingsRegistry.PREORDER_MAX_ACTIVE);
         if (maxActive > 0 && subs.countByUserIdAndStatusIn(userId, LIVE) >= maxActive) {
-            throw PreorderErrors.badRequest(messages.current("api.preorder.tooMany", maxActive), "TOO_MANY");
+            throw new DomainException.BadRequest(PreorderError.TOO_MANY, maxActive);
         }
 
         PreorderSubscription s = new PreorderSubscription();
@@ -150,7 +151,7 @@ public class PreorderQueueService {
     public void unsubscribe(long userId, long id) {
         PreorderSubscription s = subs.findById(id)
                 .filter(x -> x.getUserId() == userId)
-                .orElseThrow(() -> PreorderErrors.notFound(messages.current("api.preorder.notFound")));
+                .orElseThrow(() -> new DomainException.NotFound(PreorderError.WAITING_NOT_FOUND));
         if (!s.statusEnum().live()) {
             return;
         }
@@ -459,25 +460,25 @@ public class PreorderQueueService {
         boolean hasVariants = p.getVariants() != null && !p.getVariants().isEmpty();
         if (variantIdText == null || variantIdText.isBlank()) {
             if (hasVariants) {
-                throw PreorderErrors.badRequest(messages.current("api.preorder.variantRequired", p.getTitle()));
+                throw new DomainException.BadRequest(PreorderError.VARIANT_REQUIRED, p.getTitle());
             }
             return null;
         }
         ProductVariant v = hasVariants ? Lines.variantById(p, bytes(variantIdText)) : null;
         if (v == null) {
-            throw PreorderErrors.badRequest(messages.current("api.preorder.variantRequired", p.getTitle()));
+            throw new DomainException.BadRequest(PreorderError.VARIANT_REQUIRED, p.getTitle());
         }
         return v;
     }
 
     public static byte[] bytes(String uuid) {
         if (uuid == null || uuid.isBlank()) {
-            throw PreorderErrors.badRequest("productId обязателен");
+            throw new DomainException.BadRequest(PreorderError.PRODUCT_ID_REQUIRED);
         }
         try {
             return UuidUtil.toBytes(uuid.trim());
         } catch (IllegalArgumentException e) {
-            throw PreorderErrors.badRequest("Неверный id: " + uuid);
+            throw new DomainException.BadRequest(PreorderError.INVALID_ID, uuid);
         }
     }
 }

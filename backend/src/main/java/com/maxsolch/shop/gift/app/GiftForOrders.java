@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.gift.domain.GiftError;
 import com.maxsolch.shop.gift.domain.GiftCaseTier;
 import com.maxsolch.shop.gift.domain.OrderGiftCase;
 import com.maxsolch.shop.order.app.OrderGifts;
@@ -75,8 +76,7 @@ public class GiftForOrders implements OrderGifts {
     @Override
     public CasePlan casePlan(String tierName) {
         GiftCaseTier.Tier tier = parse(tierName);
-        GiftService.TierConfig cfg = giftService.tier(tier).orElseThrow(() -> new DomainException.BadRequest(
-                "В этом кейсе нет призов — добавьте их в разделе «Кейс»"));
+        GiftService.TierConfig cfg = giftService.tier(tier).orElseThrow(() -> new DomainException.BadRequest(GiftError.CASE_HAS_NO_PRIZES));
         return new CasePlan() {
             @Override
             public String tier() {

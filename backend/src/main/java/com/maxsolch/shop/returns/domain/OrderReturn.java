@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.OrderStatus;
@@ -112,14 +113,14 @@ public class OrderReturn {
     }
 
     /**
-     * Why this record cannot be cancelled right now, or null. An exchange can only be undone while its
+     * Why this record cannot be cancelled right now, or null; the problem is returned, not thrown, because the screen shows its text too. An exchange can only be undone while its
      * replacement has not shipped and holds no money beyond the moved credit.
      *
      * @param replacement the replacement order of an exchange (null for a plain return)
      */
-    public String cancelBlocker(Order replacement) {
+    public DomainException.BadRequest cancelBlocker(Order replacement) {
         if (cancelledAt != null) {
-            return "уже отменён";
+            return new DomainException.BadRequest(ReturnsError.CANCEL_ALREADY_CANCELLED);
         }
         if (!Kind.EXCHANGE.name().equals(kind) || replacement == null) {
             return null;
@@ -127,12 +128,11 @@ public class OrderReturn {
         String no = UuidUtil.toString(replacement.getId()).substring(0, 8);
         OrderStatus st = replacement.getStatus();
         if (st == OrderStatus.SHIPPED || st == OrderStatus.DELIVERED) {
-            return "замену #" + no + " уже отправили — оформите «Возврат» в заказе #" + no;
+            return new DomainException.BadRequest(ReturnsError.EXCHANGE_REPLACEMENT_SHIPPED, no);
         }
         long kept = OrderMoney.keptMinor(replacement);
         if (kept > refundMinor) {
-            return "по замене #" + no + " уже доплатили " + MoneyFormat.uah(kept - refundMinor)
-                    + " — отклоните заказ #" + no + " и верните эти деньги «Возвратом», потом отмените обмен";
+            return new DomainException.BadRequest(ReturnsError.EXCHANGE_REPLACEMENT_PAID, no, MoneyFormat.uah(kept - refundMinor));
         }
         return null;
     }

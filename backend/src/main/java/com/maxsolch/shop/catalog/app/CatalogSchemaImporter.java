@@ -1,5 +1,7 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.translation.app.StoredTranslations;
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.catalog.domain.Brand;
@@ -25,7 +27,6 @@ import com.maxsolch.shop.translation.infra.ContentTranslationRepository;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.translation.domain.TranslationOrigin;
 import com.maxsolch.shop.translation.app.TranslationService;
-import com.maxsolch.shop.catalog.domain.CatalogErrors;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.translation.domain.TranslationsChanged;
 import org.springframework.stereotype.Service;
@@ -105,7 +106,7 @@ public class CatalogSchemaImporter {
     @Transactional
     public Result importSchema(JsonNode root, Long adminId) {
         if (root == null || !root.isObject()) {
-            throw CatalogErrors.badRequest("body must be a JSON object (schema-draft.json format)");
+            throw new DomainException.BadRequest(CatalogError.BODY_NOT_JSON_OBJECT);
         }
         Counters n = new Counters();
         importGroups(root.path("groups"), n);
@@ -122,10 +123,10 @@ public class CatalogSchemaImporter {
         for (JsonNode c : cats) {
             String slug = slug(text(c, "slug"));
             if (slug == null) {
-                throw CatalogErrors.badRequest("category without slug");
+                throw new DomainException.BadRequest(CatalogError.IMPORT_CATEGORY_NO_SLUG);
             }
             if (!importSlugs.add(slug)) {
-                throw CatalogErrors.badRequest("category slug «" + slug + "» twice in the import");
+                throw new DomainException.BadRequest(CatalogError.IMPORT_CATEGORY_SLUG_DUPLICATE, slug);
             }
         }
         Map<String, Category> imported = new LinkedHashMap<>();
@@ -151,7 +152,7 @@ public class CatalogSchemaImporter {
             boolean created = cat == null;
             if (created) {
                 if (nameRu == null) {
-                    throw CatalogErrors.badRequest("category «" + slug + "»: name_ru is required");
+                    throw new DomainException.BadRequest(CatalogError.IMPORT_CATEGORY_NAME_REQUIRED, slug);
                 }
                 cat = new Category();
                 n.catCreated++;
@@ -182,7 +183,7 @@ public class CatalogSchemaImporter {
             Category from = bySlug.get(slug(text(m, "from_category_slug")));
             Category to = bySlug.get(slug(text(m, "to_category_slug")));
             if (from == null || to == null) {
-                throw CatalogErrors.badRequest("product_moves: unknown category " + m);
+                throw new DomainException.BadRequest(CatalogError.IMPORT_MOVE_UNKNOWN_CATEGORY, String.valueOf(m));
             }
             int moved = productRepository.moveCategory(from.getId(), to.getId());
             n.moved += moved;
@@ -199,10 +200,10 @@ public class CatalogSchemaImporter {
             }
             Category parent = bySlug.get(parentSlug);
             if (parent == null) {
-                throw CatalogErrors.badRequest("category «" + cat.getSlug() + "»: unknown parent «" + parentSlug + "»");
+                throw new DomainException.BadRequest(CatalogError.IMPORT_UNKNOWN_PARENT, cat.getSlug(), parentSlug);
             }
             if (Arrays.equals(parent.getId(), cat.getId())) {
-                throw CatalogErrors.badRequest("category «" + cat.getSlug() + "» is its own parent");
+                throw new DomainException.BadRequest(CatalogError.IMPORT_OWN_PARENT, cat.getSlug());
             }
             cat.setParentId(parent.getId());
         }
@@ -234,7 +235,7 @@ public class CatalogSchemaImporter {
             i++;
             String key = text(g, "key");
             if (key == null || !KEY.matcher(key).matches() || key.length() > 32) {
-                throw CatalogErrors.badRequest("group key «" + key + "»: a-z, 0-9, _ (≤ 32)");
+                throw new DomainException.BadRequest(CatalogError.IMPORT_BAD_GROUP_KEY, key);
             }
             SpecGroup row = groupRepository.findById(key).orElseGet(SpecGroup::new);
             row.setKey(key);
@@ -306,11 +307,11 @@ public class CatalogSchemaImporter {
         for (JsonNode j : attrs) {
             String key = text(j, "key");
             if (key == null || !KEY.matcher(key).matches()) {
-                throw CatalogErrors.badRequest("attribute key «" + key + "»: snake_case a-z0-9_ (≤ 48)");
+                throw new DomainException.BadRequest(CatalogError.IMPORT_BAD_ATTRIBUTE_KEY, key);
             }
             SpecType type = SpecType.parse(text(j, "type"));
             if (type == null) {
-                throw CatalogErrors.badRequest("attribute «" + key + "»: unknown type " + text(j, "type"));
+                throw new DomainException.BadRequest(CatalogError.IMPORT_UNKNOWN_ATTRIBUTE_TYPE, key, String.valueOf(text(j, "type")));
             }
             SpecAttribute a = existing.get(key);
             if (a == null) {
@@ -401,7 +402,7 @@ public class CatalogSchemaImporter {
             i++;
             String value = text(j, "value");
             if (value == null || !VALUE.matcher(value).matches()) {
-                throw CatalogErrors.badRequest("attribute «" + a.getKey() + "»: bad option value «" + value + "»");
+                throw new DomainException.BadRequest(CatalogError.IMPORT_BAD_OPTION_VALUE, a.getKey(), value);
             }
             SpecOption o = existing.get(value);
             if (o == null) {

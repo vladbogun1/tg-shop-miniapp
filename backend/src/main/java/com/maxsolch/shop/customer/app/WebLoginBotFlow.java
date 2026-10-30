@@ -1,5 +1,6 @@
 package com.maxsolch.shop.customer.app;
 
+import com.maxsolch.shop.customer.domain.CustomerError;
 import com.maxsolch.shop.customer.domain.WebLoginStatus;
 import com.maxsolch.shop.customer.domain.WebLoginToken;
 import com.maxsolch.shop.customer.domain.WebSession;
@@ -174,7 +175,7 @@ public class WebLoginBotFlow {
         try {
             return UuidUtil.toBytes(id);
         } catch (IllegalArgumentException | NullPointerException e) {
-            throw new DomainException.BadRequest("invalid id");
+            throw new DomainException.BadRequest(CustomerError.INVALID_ID);
         }
     }
 

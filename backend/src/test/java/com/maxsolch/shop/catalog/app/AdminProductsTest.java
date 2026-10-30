@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.site.app.SiteRevalidator;
@@ -72,7 +73,7 @@ class AdminProductsTest {
 
     @Test
     void aFailedSaveLeavesNoJournalEntryAndNoRebuild() {
-        when(service.setActive("p1", true, false)).thenThrow(new DomainException.NotFound("нет", null));
+        when(service.setActive("p1", true, false)).thenThrow(new DomainException.NotFound(CatalogError.PRODUCT_NOT_FOUND));
 
         assertThatThrownBy(() -> admin.setActive("p1", true, false)).isInstanceOf(DomainException.NotFound.class);
 

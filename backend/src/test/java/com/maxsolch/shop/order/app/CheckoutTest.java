@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.inventory.domain.InventoryError;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
@@ -78,7 +80,7 @@ class CheckoutTest extends OrderScenarioTestBase {
 
         assertThatThrownBy(() -> service.createOrder(command))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .hasMessageContaining("api.order.paymentRequired");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(OrderError.PAYMENT_METHOD_REQUIRED));
         verify(orderRepository, never()).save(any());
     }
 
@@ -89,7 +91,7 @@ class CheckoutTest extends OrderScenarioTestBase {
 
         assertThatThrownBy(() -> service.createOrder(command))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .hasMessageContaining("api.order.paymentUnknown");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(OrderError.PAYMENT_METHOD_UNKNOWN));
     }
 
     @Test
@@ -163,7 +165,7 @@ class CheckoutTest extends OrderScenarioTestBase {
 
         assertThatThrownBy(() -> service.createOrder(command))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .hasMessageContaining("api.order.outOfStock");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(InventoryError.OUT_OF_STOCK));
         verify(orderRepository, never()).save(any());
     }
 
@@ -178,7 +180,7 @@ class CheckoutTest extends OrderScenarioTestBase {
 
         assertThatThrownBy(() -> service.createOrder(command))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .hasMessageContaining("api.order.variantRequired");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(OrderError.VARIANT_REQUIRED));
     }
 
     @Test
@@ -193,7 +195,7 @@ class CheckoutTest extends OrderScenarioTestBase {
 
         assertThatThrownBy(() -> service.createOrder(command))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .hasMessageContaining("api.order.variantMismatch");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(OrderError.VARIANT_MISMATCH));
     }
 
     @Test
@@ -208,7 +210,7 @@ class CheckoutTest extends OrderScenarioTestBase {
 
         assertThatThrownBy(() -> service.createOrder(command))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .hasMessageContaining("api.order.outOfStock");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(InventoryError.OUT_OF_STOCK));
     }
 
     @Test
@@ -217,7 +219,7 @@ class CheckoutTest extends OrderScenarioTestBase {
 
         assertThatThrownBy(() -> service.createOrder(command))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .hasMessageContaining("api.order.noItems");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(OrderError.NO_ITEMS));
     }
 
     @Test
@@ -231,7 +233,7 @@ class CheckoutTest extends OrderScenarioTestBase {
 
         assertThatThrownBy(() -> service.createOrder(command))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .hasMessageContaining("api.order.unavailable");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(OrderError.PRODUCT_UNAVAILABLE));
     }
 
     @Test
@@ -351,7 +353,7 @@ class CheckoutTest extends OrderScenarioTestBase {
 
         assertThatThrownBy(() -> service.createOrder(cmd(List.of(new CreateOrderCommand.Line(mouse, null, 1)), "SAVE10")))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .hasMessageContaining("api.promo.caseExcluded");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(OrderError.PROMO_REJECTED_CASE_EXCLUDED));
         assertThat(promo.getUsesCount()).isZero();
     }
 
@@ -362,7 +364,7 @@ class CheckoutTest extends OrderScenarioTestBase {
 
         assertThatThrownBy(() -> service.createOrder(cmd(List.of(new CreateOrderCommand.Line(mouse, null, 1)), "CASE10")))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .hasMessageContaining("api.promo.caseExcluded");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(OrderError.PROMO_REJECTED_CASE_EXCLUDED));
         assertThat(promo.getUsesCount()).isZero();
     }
 
@@ -423,7 +425,7 @@ class CheckoutTest extends OrderScenarioTestBase {
                 .isInstanceOf(DomainException.BadRequest.class)
                 .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.type(DomainException.BadRequest.class))
                 .extracting(DomainException.BadRequest::getCode)
-                .isEqualTo(OrderPromos.PROMO_REJECTED);
+                .isEqualTo(OrderError.PROMO_REJECTED.code());
     }
 
     @Test

@@ -101,9 +101,9 @@ public class ReviewRulesTest {
 
     @Test
     void textAndRatingChecks() {
-        assertThat(ReviewRules.textProblem("коротко", 10)).isEqualTo("api.review.tooShort");
+        assertThat(ReviewRules.textProblem("коротко", 10)).isEqualTo(com.maxsolch.shop.review.domain.ReviewError.TEXT_TOO_SHORT);
         assertThat(ReviewRules.textProblem("достаточно длинный отзыв", 10)).isNull();
-        assertThat(ReviewRules.textProblem("x".repeat(ReviewRules.MAX_TEXT + 1), 10)).isEqualTo("api.review.tooLong");
+        assertThat(ReviewRules.textProblem("x".repeat(ReviewRules.MAX_TEXT + 1), 10)).isEqualTo(com.maxsolch.shop.review.domain.ReviewError.TEXT_TOO_LONG);
         assertThat(ReviewRules.validRating(0)).isFalse();
         assertThat(ReviewRules.validRating(1)).isTrue();
         assertThat(ReviewRules.validRating(5)).isTrue();

@@ -112,18 +112,18 @@ class ReturnCancellationTest extends ReturnsTestBase {
         com.maxsolch.shop.returns.domain.OrderReturn done = new com.maxsolch.shop.returns.domain.OrderReturn();
         OrderFixtures.set(done, "cancelledAt", java.time.Instant.now());
 
-        assertThat(done.cancelBlocker(null)).isEqualTo("уже отменён");
+        assertThat(done.cancelBlocker(null).getMessage()).isEqualTo("уже отменён");
         assertThat(plain.cancelBlocker(order(OrderStatus.DELIVERED))).isNull();
         assertThat(exchange.cancelBlocker(null)).isNull();
 
         Order shipped = order(OrderStatus.SHIPPED);
-        assertThat(exchange.cancelBlocker(shipped)).contains("уже отправили");
+        assertThat(exchange.cancelBlocker(shipped).getMessage()).contains("уже отправили");
         Order delivered = order(OrderStatus.DELIVERED);
-        assertThat(exchange.cancelBlocker(delivered)).contains("уже отправили");
+        assertThat(exchange.cancelBlocker(delivered).getMessage()).contains("уже отправили");
 
         Order paidMore = order(OrderStatus.NEW);
         OrderFixtures.set(paidMore, "receivedMinor", 30_000);
-        assertThat(exchange.cancelBlocker(paidMore)).contains("уже доплатили 200 ₴");
+        assertThat(exchange.cancelBlocker(paidMore).getMessage()).contains("уже доплатили 200 ₴");
         Order onlyCredit = order(OrderStatus.NEW);
         OrderFixtures.set(onlyCredit, "receivedMinor", 10_000);
         assertThat(exchange.cancelBlocker(onlyCredit)).isNull();

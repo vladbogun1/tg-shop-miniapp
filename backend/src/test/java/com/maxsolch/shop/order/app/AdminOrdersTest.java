@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
@@ -120,7 +121,12 @@ class AdminOrdersTest {
 
     @Test
     void archive_failure_leavesNoAuditEntry() {
-        when(archive.archive(any(), any(), any())).thenThrow(new DomainException.BadRequest("нельзя"));
+        when(archive.archive(any(), any(), any())).thenThrow(new DomainException.BadRequest(OrderError.CANNOT_CANCEL) {
+            @Override
+            public String getMessage() {
+                return "нельзя";
+            }
+        });
 
         assertThatThrownBy(() -> orders.archive(id, "x")).isInstanceOf(DomainException.BadRequest.class);
 

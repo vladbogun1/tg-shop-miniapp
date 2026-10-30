@@ -104,10 +104,10 @@ class ActivityLogTest {
     @Test
     void refusedRequestsKeepTheApiCode() {
         ActivityLog.Entry e = ActivityLog.Entry.of(ActivityLog.SITE, "PAYMENT_START_FAILED")
-                .rejected(new DomainException.Conflict("Час на оплату минув", ErrorCode.of("PAYMENT_EXPIRED"), java.util.Map.of()));
+                .rejected(new DomainException.Conflict(com.maxsolch.shop.payment.domain.PaymentError.PAYMENT_EXPIRED));
         assertThat(e.resultCode()).isEqualTo(ActivityLog.FAILED);
         assertThat(e.errorCode()).isEqualTo("PAYMENT_EXPIRED");
-        assertThat(ActivityLog.Entry.of(ActivityLog.SITE, "X").rejected(new DomainException.BadRequest("нет")).errorCode())
+        assertThat(ActivityLog.Entry.of(ActivityLog.SITE, "X").rejected(new DomainException.BadRequest(com.maxsolch.shop.platform.error.PlatformError.DATE_FORMAT_INVALID)).errorCode())
                 .isEqualTo("BAD_REQUEST");
     }
 

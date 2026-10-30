@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.gift.domain.GiftError;
 import com.maxsolch.shop.gift.domain.GiftLine;
 import com.maxsolch.shop.gift.domain.GiftPerson;
 import com.maxsolch.shop.gift.infra.GiftRegistryStore;
@@ -65,10 +66,10 @@ public class GiftRegistryService {
         try {
             id = UuidUtil.toBytes(orderId.trim());
         } catch (IllegalArgumentException e) {
-            throw new DomainException.BadRequest("Неверный id заказа");
+            throw new DomainException.BadRequest(GiftError.INVALID_ORDER_ID);
         }
         return limitForOrder(id, clock.instant())
-                .orElseThrow(() -> new DomainException.NotFound("Заказ не найден"));
+                .orElseThrow(() -> new DomainException.NotFound(GiftError.ORDER_NOT_FOUND));
     }
 
     /** The registry for dates given as {@code YYYY-MM-DD} text. */
@@ -76,7 +77,7 @@ public class GiftRegistryService {
         try {
             return registry(LocalDate.parse(from), LocalDate.parse(to));
         } catch (DateTimeParseException e) {
-            throw new DomainException.BadRequest("Дата — в формате ГГГГ-ММ-ДД");
+            throw new DomainException.BadRequest(GiftError.BAD_DATE_FORMAT);
         }
     }
 
@@ -145,10 +146,10 @@ public class GiftRegistryService {
     @Transactional(readOnly = true)
     public GiftRegistryDto registry(LocalDate from, LocalDate to) {
         if (from == null || to == null || to.isBefore(from)) {
-            throw new DomainException.BadRequest("Неверный период");
+            throw new DomainException.BadRequest(GiftError.INVALID_PERIOD);
         }
         if (Duration.between(from.atStartOfDay(), to.atStartOfDay()).toDays() > 400) {
-            throw new DomainException.BadRequest("Период — не больше года");
+            throw new DomainException.BadRequest(GiftError.PERIOD_TOO_LONG);
         }
         Instant start = from.atStartOfDay(zone).toInstant();
         Instant end = to.plusDays(1).atStartOfDay(zone).toInstant();

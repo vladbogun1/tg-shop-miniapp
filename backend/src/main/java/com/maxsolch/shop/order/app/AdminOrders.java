@@ -1,7 +1,8 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
@@ -89,7 +90,7 @@ public class AdminOrders {
         Order target = queries.load(id);
         Order source = queries.load(sourceId);
         if (payments.hasPaymentInFlight(target.getId()) || payments.hasPaymentInFlight(source.getId())) {
-            throw OrderErrors.badRequest("по одному из заказов банк ещё проводит оплату — подождите пару минут");
+            throw new DomainException.BadRequest(OrderError.ONE_ORDER_PAYMENT_PENDING);
         }
         OrderMerge.Result r = merges.merge(target.getId(), source.getId(), useSourceDelivery, notifyCustomer,
                 note, audit.currentAdminName());

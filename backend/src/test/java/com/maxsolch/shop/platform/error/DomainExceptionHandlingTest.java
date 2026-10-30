@@ -1,75 +1,86 @@
 package com.maxsolch.shop.platform.error;
 
+import com.maxsolch.shop.order.domain.OrderError;
+import com.maxsolch.shop.platform.i18n.CustomerLanguages;
 import com.maxsolch.shop.platform.i18n.Messages;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.http.ResponseEntity;
 
+import java.util.Locale;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-/** The JSON error body must stay {timestamp,status,error,message,code?} whichever way the exception is built. */
+/** The JSON error body must stay {timestamp,status,error,message,code?}; the text comes from the real bundles. */
 class DomainExceptionHandlingTest {
 
-    private enum TestError implements ErrorCode {
-        SOME_REASON;
-
-        @Override
-        public String code() {
-            return name();
-        }
-    }
-
-    private final Messages messages = mock(Messages.class);
+    private final ResourceBundleMessageSource source = bundles();
+    private final Messages messages = new Messages(source, mock(CustomerLanguages.class));
     private final ApiExceptionHandler handler = new ApiExceptionHandler(messages, java.time.Clock.systemUTC());
 
-    @Test
-    void readyTextWithCodeKeepsLegacyShape() {
-        ResponseEntity<Map<String, Object>> res =
-                handler.handleDomain(new DomainException.BadRequest("готовий текст", TestError.SOME_REASON));
+    private static ResourceBundleMessageSource bundles() {
+        ResourceBundleMessageSource s = new ResourceBundleMessageSource();
+        s.setBasename("i18n/messages");
+        s.setDefaultEncoding("UTF-8");
+        s.setFallbackToSystemLocale(false);
+        return s;
+    }
 
-        assertThat(res.getStatusCode().value()).isEqualTo(400);
-        assertThat(res.getBody()).containsEntry("message", "готовий текст")
-                .containsEntry("code", "SOME_REASON").containsEntry("status", 400);
+    @AfterEach
+    void resetLocale() {
+        LocaleContextHolder.resetLocaleContext();
     }
 
     @Test
-    void textIsLookedUpByCodeWithArguments() {
-        when(messages.current(eq("error.SOME_REASON"), any(Object[].class))).thenReturn("Не знайдено 42");
-
+    void textAndCodeComeFromTheErrorCode() {
+        LocaleContextHolder.setLocale(Locale.forLanguageTag("ru"));
         ResponseEntity<Map<String, Object>> res =
-                handler.handleDomain(new DomainException.NotFound(TestError.SOME_REASON, 42));
+                handler.handleDomain(new DomainException.NotFound(OrderError.ORDER_NOT_FOUND));
 
         assertThat(res.getStatusCode().value()).isEqualTo(404);
-        assertThat(res.getBody()).containsEntry("message", "Не знайдено 42").containsEntry("code", "SOME_REASON");
+        assertThat(res.getBody()).containsEntry("message", "Заказ не найден").containsEntry("status", 404)
+                .doesNotContainKey("code");
     }
 
     @Test
-    void readyTextExceptionsMapToTheirStatus() {
-        assertThat(handler.handleDomain(new DomainException.NotFound("нема")).getBody())
-                .containsEntry("message", "нема").doesNotContainKey("code");
-        assertThat(handler.handleDomain(new DomainException.Forbidden("ні")).getStatusCode().value()).isEqualTo(403);
-        assertThat(handler.handleDomain(new DomainException.Unauthorized("хто", null)).getStatusCode().value()).isEqualTo(401);
-        assertThat(handler.handleDomain(new DomainException.BadRequest("x", ErrorCode.of("C"))).getBody()).containsEntry("code", "C");
+    void textIsInTheLanguageOfTheRequestAndTakesArguments() {
+        LocaleContextHolder.setLocale(Locale.forLanguageTag("ru"));
+        DomainException e = new DomainException.BadRequest(OrderError.TOO_MANY_UNPAID, 3);
+
+        String ru = (String) handler.handleDomain(e).getBody().get("message");
+        LocaleContextHolder.setLocale(Locale.forLanguageTag("en"));
+        String en = (String) handler.handleDomain(e).getBody().get("message");
+
+        assertThat(ru).startsWith("У вас уже 3 неоплаченных");
+        assertThat(en).isNotEqualTo(ru).contains("3");
+        assertThat(e.getMessage()).isEqualTo(ru);
+        assertThat(handler.handleDomain(e).getBody()).containsEntry("code", "TOO_MANY_UNPAID");
+    }
+
+    @Test
+    void kindFixesTheStatus() {
+        assertThat(handler.handleDomain(new DomainException.Forbidden(OrderError.ORDER_NOT_FOUND)).getStatusCode().value()).isEqualTo(403);
+        assertThat(handler.handleDomain(new DomainException.Unauthorized(OrderError.ORDER_NOT_FOUND)).getStatusCode().value()).isEqualTo(401);
+        assertThat(handler.handleDomain(new DomainException.Unavailable(OrderError.ORDER_NOT_FOUND)).getStatusCode().value()).isEqualTo(503);
     }
 
     @Test
     void conflictDetailsAreMergedIntoBody() {
-        ResponseEntity<Map<String, Object>> res =
-                handler.handleDomain(new DomainException.Conflict("зміни", ErrorCode.of("STOCK_CONFLICT"), Map.of("count", 3)));
+        ResponseEntity<Map<String, Object>> res = handler.handleDomain(
+                new DomainException.Conflict(OrderError.PAYMENT_IN_PROGRESS).withDetails(Map.of("count", 3)));
 
         assertThat(res.getStatusCode().value()).isEqualTo(409);
-        assertThat(res.getBody()).containsEntry("code", "STOCK_CONFLICT").containsEntry("count", 3);
+        assertThat(res.getBody()).containsEntry("code", "PAYMENT_IN_PROGRESS").containsEntry("count", 3);
     }
 
     @Test
     void tooManyRequestsSetsRetryAfterHeaderAndField() {
         ResponseEntity<Map<String, Object>> res =
-                handler.handleDomain(new DomainException.TooManyRequests("зачекайте", ErrorCode.of("ORDER_COOLDOWN"), 30));
+                handler.handleDomain(new DomainException.TooManyRequests(OrderError.ORDER_COOLDOWN, 30, 30));
 
         assertThat(res.getStatusCode().value()).isEqualTo(429);
         assertThat(res.getHeaders().getFirst("Retry-After")).isEqualTo("30");
@@ -79,7 +90,7 @@ class DomainExceptionHandlingTest {
     @Test
     void tooManyRequestsWithoutWaitHasNoHeader() {
         ResponseEntity<Map<String, Object>> res =
-                handler.handleDomain(new DomainException.TooManyRequests("зачекайте", ErrorCode.of("X"), 0));
+                handler.handleDomain(new DomainException.TooManyRequests(OrderError.ORDER_COOLDOWN, 0, 0));
 
         assertThat(res.getHeaders().containsKey("Retry-After")).isFalse();
         assertThat(res.getBody()).doesNotContainKey("retryAfterSec");

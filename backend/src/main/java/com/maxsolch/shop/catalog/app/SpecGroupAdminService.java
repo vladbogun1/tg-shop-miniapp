@@ -1,7 +1,8 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.catalog.app.CatalogDtos.AdminSpecGroupDto;
-import com.maxsolch.shop.catalog.domain.CatalogErrors;
 import com.maxsolch.shop.catalog.domain.SpecAttribute;
 import com.maxsolch.shop.catalog.domain.SpecGroup;
 import com.maxsolch.shop.catalog.infra.SpecAttributeRepository;
@@ -19,7 +20,6 @@ import static com.maxsolch.shop.platform.util.Texts.trimToNull;
 @Service
 public class SpecGroupAdminService {
 
-    public static final String GROUP_IN_USE = "GROUP_IN_USE";
 
     private final SpecAttributeRepository attributeRepository;
     private final SpecGroupRepository groupRepository;
@@ -44,7 +44,7 @@ public class SpecGroupAdminService {
     @Transactional
     public List<AdminSpecGroupDto> putGroups(List<AdminSpecGroupDto> groups) {
         if (groups == null) {
-            throw CatalogErrors.badRequest("groups required");
+            throw new DomainException.BadRequest(CatalogError.GROUPS_REQUIRED);
         }
         Set<String> keep = new HashSet<>();
         int i = 0;
@@ -52,10 +52,10 @@ public class SpecGroupAdminService {
             i++;
             String key = trimToNull(g.key());
             if (key == null || !CatalogSchemaImporter.KEY.matcher(key).matches() || key.length() > 32) {
-                throw CatalogErrors.badRequest("group key «" + g.key() + "»: a-z, 0-9, _");
+                throw new DomainException.BadRequest(CatalogError.GROUP_KEY_INVALID, g.key());
             }
             if (!keep.add(key)) {
-                throw CatalogErrors.badRequest("group «" + key + "» twice");
+                throw new DomainException.BadRequest(CatalogError.GROUP_DUPLICATE, key);
             }
             SpecGroup row = groupRepository.findById(key).orElseGet(SpecGroup::new);
             row.setKey(key);
@@ -73,8 +73,7 @@ public class SpecGroupAdminService {
         for (SpecGroup g : groupRepository.findAll()) {
             if (!keep.contains(g.getKey())) {
                 if (used.contains(g.getKey())) {
-                    throw CatalogErrors.conflict("группа «" + g.getLabelRu() + "» используется характеристиками",
-                            GROUP_IN_USE);
+                    throw new DomainException.Conflict(CatalogError.GROUP_IN_USE, g.getLabelRu());
                 }
                 groupRepository.delete(g);
             }

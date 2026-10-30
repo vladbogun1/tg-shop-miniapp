@@ -1,7 +1,8 @@
 package com.maxsolch.shop.payment.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.payment.domain.PaymentError;
 import com.maxsolch.shop.payment.domain.MonobankGateway;
-import com.maxsolch.shop.payment.domain.PaymentErrors;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
 import com.maxsolch.shop.payment.infra.WebhookLogStore;
@@ -100,7 +101,7 @@ public class AdminPayments {
         try {
             return UuidUtil.toBytes(id);
         } catch (IllegalArgumentException e) {
-            throw PaymentErrors.notFound("заказ не найден");
+            throw new DomainException.NotFound(PaymentError.ORDER_NOT_FOUND);
         }
     }
 }

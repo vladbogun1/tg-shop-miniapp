@@ -1,5 +1,6 @@
 package com.maxsolch.shop.review.app;
 
+import com.maxsolch.shop.review.domain.ReviewError;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.review.app.ReviewDtos.AdminPage;
@@ -97,7 +98,7 @@ public class ReviewModeration {
         ProductReview r = load(id);
         String t = text == null ? "" : text.trim();
         if (t.length() > ReviewRules.MAX_REPLY) {
-            throw new DomainException.BadRequest("Ответ длиннее " + ReviewRules.MAX_REPLY + " символов");
+            throw new DomainException.BadRequest(ReviewError.REPLY_TOO_LONG, String.valueOf(ReviewRules.MAX_REPLY));
         }
         r.setAdminReply(t.isEmpty() ? null : t);
         r.setAdminReplyAt(t.isEmpty() ? null : clock.instant());
@@ -122,7 +123,7 @@ public class ReviewModeration {
     }
 
     private ProductReview load(long id) {
-        return reviews.findById(id).orElseThrow(() -> new DomainException.NotFound("отзыв не найден"));
+        return reviews.findById(id).orElseThrow(() -> new DomainException.NotFound(ReviewError.REVIEW_NOT_FOUND));
     }
 
     private static ReviewStatus parseStatus(String raw) {
@@ -132,7 +133,7 @@ public class ReviewModeration {
         try {
             return ReviewStatus.valueOf(raw.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new DomainException.BadRequest("неизвестный статус: " + raw);
+            throw new DomainException.BadRequest(ReviewError.UNKNOWN_STATUS, raw);
         }
     }
 
@@ -140,7 +141,7 @@ public class ReviewModeration {
         try {
             return UuidUtil.toBytes(id.trim());
         } catch (IllegalArgumentException e) {
-            throw new DomainException.NotFound("отзыв не найден");
+            throw new DomainException.NotFound(ReviewError.REVIEW_NOT_FOUND);
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.order.domain.GiftCaseRules;
@@ -14,7 +15,7 @@ import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.order.domain.OrderErrors;
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,18 +62,19 @@ public class OrderMerge {
     @Transactional(readOnly = true)
     public List<Candidate> candidates(byte[] orderId) {
         Order order = orderRepository.findWithItemsById(orderId)
-                .orElseThrow(() -> OrderErrors.notFound("order not found"));
+                .orElseThrow(() -> new DomainException.NotFound(OrderError.ORDER_NOT_FOUND_BY_ID));
         List<Order> open = new ArrayList<>();
         open.addAll(orderRepository.findWithItemsByStatus(OrderStatus.NEW));
         open.addAll(orderRepository.findWithItemsByStatus(OrderStatus.APPROVED));
-        String own = blocker(order, true);
+        DomainException.BadRequest own = blocker(order, true);
         return open.stream()
                 .filter(o -> !Arrays.equals(o.getId(), order.getId()))
                 .filter(o -> o.getArchivedAt() == null && sameCustomer(order, o))
                 .sorted((a, b) -> b.getCreatedAt() == null || a.getCreatedAt() == null ? 0
                         : b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .map(o -> {
-                    String why = own != null ? own : blocker(o, false);
+                    DomainException.BadRequest problem = own != null ? own : blocker(o, false);
+                    String why = problem == null ? null : problem.getMessage();
                     // the target as it would be after the merge: numbers only, nothing saved
                     long total = order.getTotalMinor() + o.getTotalMinor();
                     long received = Math.max(0, order.getReceivedMinor()) + OrderMoney.refundableMinor(o);
@@ -97,11 +99,11 @@ public class OrderMerge {
     public Result merge(byte[] targetId, byte[] sourceId, boolean useSourceDelivery, boolean notifyCustomer,
                         String note, String adminName) {
         if (Arrays.equals(targetId, sourceId)) {
-            throw OrderErrors.badRequest("выберите другой заказ");
+            throw new DomainException.BadRequest(OrderError.CHOOSE_OTHER_ORDER);
         }
         String cleanNote = note == null || note.isBlank() ? null : note.trim();
         if (cleanNote != null && cleanNote.length() > 500) {
-            throw OrderErrors.badRequest("комментарий длиннее 500 символов");
+            throw new DomainException.BadRequest(OrderError.COMMENT_TOO_LONG_500);
         }
         // Rows are locked in id order, so two admins merging the same pair cannot deadlock.
         boolean targetFirst = Arrays.compareUnsigned(targetId, sourceId) < 0;
@@ -110,14 +112,14 @@ public class OrderMerge {
         Order target = targetFirst ? first : second;
         Order source = targetFirst ? second : first;
         if (!sameCustomer(target, source)) {
-            throw OrderErrors.badRequest("объединять можно только заказы одного покупателя");
+            throw new DomainException.BadRequest(OrderError.MERGE_DIFFERENT_CUSTOMERS);
         }
-        String blocked = blocker(target, true);
+        DomainException.BadRequest blocked = blocker(target, true);
         if (blocked == null) {
             blocked = blocker(source, false);
         }
         if (blocked != null) {
-            throw OrderErrors.badRequest(blocked);
+            throw blocked;
         }
         String targetShort = shortId(target.getId());
         String sourceShort = shortId(source.getId());
@@ -186,25 +188,25 @@ public class OrderMerge {
      *
      * @param staying the order that stays (a sealed gift case may stay with it, not move away)
      */
-    static String blocker(Order o, boolean staying) {
+    static DomainException.BadRequest blocker(Order o, boolean staying) {
         String id = "#" + shortId(o.getId());
         if (!OrderTransitions.isOpen(o)) {
-            return "заказ " + id + " уже не новый и не одобренный — объединять можно только до отправки";
+            return new DomainException.BadRequest(OrderError.MERGE_NOT_OPEN, id);
         }
         if (o.getArchivedAt() != null) {
-            return "заказ " + id + " в архиве";
+            return new DomainException.BadRequest(OrderError.MERGE_ARCHIVED, id);
         }
         if (CancelRequestStatus.PENDING.name().equals(o.getCancelRequestStatus())) {
-            return "покупатель просит отменить заказ " + id + " — сначала ответьте на запрос";
+            return new DomainException.BadRequest(OrderError.MERGE_CANCEL_REQUESTED, id);
         }
         if (o.getExchangeOfOrderId() != null) {
-            return "заказ " + id + " — замена по обмену, его не объединяют";
+            return new DomainException.BadRequest(OrderError.MERGE_EXCHANGE_ORDER, id);
         }
         if (!staying && o.getTrackingNumber() != null && !o.getTrackingNumber().isBlank()) {
-            return "у заказа " + id + " уже есть ТТН — оставьте основным его или удалите ТТН";
+            return new DomainException.BadRequest(OrderError.MERGE_HAS_TTN, id);
         }
         if (!staying && GiftCaseRules.GIFT_CASE_SEALED.equals(o.getGiftCaseStatus())) {
-            return "в заказе " + id + " не открыт кейс — оставьте основным его";
+            return new DomainException.BadRequest(OrderError.MERGE_CASE_SEALED, id);
         }
         return null;
     }

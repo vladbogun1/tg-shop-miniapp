@@ -1,5 +1,6 @@
 package com.maxsolch.shop.platform.security;
 
+import com.maxsolch.shop.platform.error.PlatformError;
 import com.maxsolch.shop.platform.error.DomainException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
@@ -33,7 +34,7 @@ public class AdminAccess {
      */
     public void requireSuperAdmin(Authentication authentication, String what) {
         if (!isSuperAdmin(authentication)) {
-            throw new DomainException.Forbidden(what + " — только главный админ");
+            throw new DomainException.Forbidden(PlatformError.SUPER_ADMIN_ONLY, what);
         }
     }
 
@@ -43,7 +44,7 @@ public class AdminAccess {
      */
     public void requireSuperAdmin(long adminId, String what) {
         if (!isSuperAdmin(adminId)) {
-            throw new DomainException.Forbidden(what + " — только главный админ");
+            throw new DomainException.Forbidden(PlatformError.SUPER_ADMIN_ONLY, what);
         }
     }
 
@@ -66,7 +67,7 @@ public class AdminAccess {
     }
 
     private static DomainException.Forbidden financeForbidden() {
-        return new DomainException.Forbidden("Закупка и маржа — только главному админу и тем, у кого есть «Финансы»");
+        return new DomainException.Forbidden(PlatformError.FINANCE_ACCESS_DENIED);
     }
 
     public boolean isSuperAdmin(long adminId) {

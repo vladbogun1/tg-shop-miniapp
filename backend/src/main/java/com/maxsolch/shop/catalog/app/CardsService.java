@@ -1,10 +1,10 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.translation.app.StoredTranslations;
 import com.maxsolch.shop.translation.domain.TranslationsChanged;
 import java.time.Clock;
-import com.maxsolch.shop.catalog.domain.CatalogErrors;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.catalog.domain.Brand;
@@ -139,7 +139,7 @@ public class CardsService {
         CatalogSnapshot s = directory.snapshot();
         String st = status == null || status.isBlank() ? "all" : status.trim().toLowerCase(Locale.ROOT);
         if (!Set.of("draft", "ai_filled", "ready", "incomplete", "unfinished", "all").contains(st)) {
-            throw CatalogErrors.badRequest("status: draft | ai_filled | ready | incomplete | unfinished | all");
+            throw new DomainException.BadRequest(CatalogError.INVALID_STATUS_FILTER);
         }
         Set<String> wanted = null;
         if (ids != null && !ids.isBlank()) {
@@ -193,7 +193,7 @@ public class CardsService {
         String pid = normalizeId(productId == null ? "" : productId.trim());
         Product p = productRepository.findByIdWithDetails(UuidUtil.toBytes(pid))
                 .filter(x -> !x.isArchived())
-                .orElseThrow(() -> CatalogErrors.notFound("product not found"));
+                .orElseThrow(() -> new DomainException.NotFound(CatalogError.PRODUCT_NOT_FOUND));
         CardExportItem item = exportItem(directory.snapshot(), p);
         Map<String, Object> meta = item.cardMeta() == null ? Map.of() : item.cardMeta();
         @SuppressWarnings("unchecked")
@@ -231,7 +231,7 @@ public class CardsService {
         try {
             return UuidUtil.toString(UuidUtil.toBytes(id));
         } catch (IllegalArgumentException e) {
-            throw CatalogErrors.badRequest("invalid id: " + id);
+            throw new DomainException.BadRequest(CatalogError.INVALID_ID, id);
         }
     }
 }

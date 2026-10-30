@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.api;
 
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.media.app.UploadResponse;
 import com.maxsolch.shop.media.app.UploadValidator;
@@ -178,7 +179,7 @@ public class MeOrdersController {
             return;
         }
         if (!ImageStorageService.isCustomerAttachmentKey(req.attachmentUrl(), actor.userId())) {
-            throw new DomainException.BadRequest(messages.current("api.chat.badAttachment"));
+            throw new DomainException.BadRequest(OrderError.BAD_ATTACHMENT);
         }
     }
 

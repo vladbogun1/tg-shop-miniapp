@@ -3,16 +3,16 @@ package com.maxsolch.shop.platform.error;
 import java.util.Map;
 
 /**
- * The one way a business rule says "no". The type fixes the HTTP meaning ({@link Kind}), the {@link ErrorCode}
- * the machine-readable reason, and {@link ApiExceptionHandler} turns it into {@code {message, code?}} in one place.
+ * The one way a business rule says "no". The type fixes the HTTP meaning ({@link Kind}), the {@link ErrorCode} the
+ * reason (machine-readable code and the key of the text), and {@link ApiExceptionHandler} turns it into
+ * {@code {message, code?}} in one place:
  *
- * <p>Two ways to give the text:
- * <ul>
- *   <li>{@code new DomainException.NotFound(OrderError.NOT_FOUND, id)} — the text is looked up in the i18n bundles
- *       under {@code error.<code>} with the arguments, in the language of the request (the target way);</li>
- *   <li>{@code new DomainException.BadRequest("готовый текст", OrderError.X)} — a ready text (admin-only messages,
- *       code that has not been moved to the bundles yet).</li>
- * </ul>
+ * <pre>{@code throw new DomainException.NotFound(OrderError.NOT_FOUND);
+ * throw new DomainException.BadRequest(ReturnError.ITEM_QTY_EXCEEDED, title, left);}</pre>
+ *
+ * <p>The text is never written in code: it is looked up in the i18n bundles under {@link ErrorCode#messageKey()} with
+ * the arguments, in the language of the request. Arguments reach the text through {@link java.text.MessageFormat}:
+ * a number is formatted for the reader's locale, so pass {@code String.valueOf(n)} when the digits must stay plain.
  */
 public abstract class DomainException extends RuntimeException {
 
@@ -34,24 +34,12 @@ public abstract class DomainException extends RuntimeException {
     private final Kind kind;
     private final ErrorCode errorCode;
     private final Object[] args;
-    private final boolean fromCatalog;
 
-    /** Text comes from the i18n bundles by code. */
     protected DomainException(Kind kind, ErrorCode errorCode, Object... args) {
-        super("error." + errorCode.code());
+        super(errorCode.messageKey());
         this.kind = kind;
         this.errorCode = errorCode;
-        this.args = args == null ? new Object[0] : args;
-        this.fromCatalog = true;
-    }
-
-    /** Text is given ready; the code may be absent. */
-    protected DomainException(Kind kind, String message, ErrorCode errorCode) {
-        super(message);
-        this.kind = kind;
-        this.errorCode = errorCode;
-        this.args = new Object[0];
-        this.fromCatalog = false;
+        this.args = args == null ? new Object[0] : args.clone();
     }
 
     public Kind kind() {
@@ -62,34 +50,26 @@ public abstract class DomainException extends RuntimeException {
         return errorCode;
     }
 
-    /** Stable identifier of the reason, or null when the message is the whole story. */
+    /** The value of the {@code code} field of the reply, or null when the reason has none. */
     public String getCode() {
-        return errorCode == null ? null : errorCode.code();
+        return errorCode.code();
     }
 
-    /** Arguments of the i18n message; empty for a ready text. */
+    /** Arguments of the text. */
     public Object[] args() {
         return args.clone();
     }
 
-    /** True when the text must be looked up by code; false when {@link #getMessage()} is already the text. */
-    public boolean isFromCatalog() {
-        return fromCatalog;
+    /** The Russian text, for logs and tests; a client gets the text in the language of its request. */
+    @Override
+    public String getMessage() {
+        return ErrorTexts.russian(errorCode, args);
     }
 
     /** 400. */
     public static class BadRequest extends DomainException {
         public BadRequest(ErrorCode code, Object... args) {
             super(Kind.BAD_REQUEST, code, args);
-        }
-
-        /** Ready text without a code: the body is just {message}, same as the old exceptions. */
-        public BadRequest(String message) {
-            this(message, (ErrorCode) null);
-        }
-
-        public BadRequest(String message, ErrorCode code) {
-            super(Kind.BAD_REQUEST, message, code);
         }
     }
 
@@ -98,25 +78,12 @@ public abstract class DomainException extends RuntimeException {
         public Unauthorized(ErrorCode code, Object... args) {
             super(Kind.UNAUTHORIZED, code, args);
         }
-
-        public Unauthorized(String message, ErrorCode code) {
-            super(Kind.UNAUTHORIZED, message, code);
-        }
     }
 
     /** 403: authenticated, but not allowed. */
     public static class Forbidden extends DomainException {
         public Forbidden(ErrorCode code, Object... args) {
             super(Kind.FORBIDDEN, code, args);
-        }
-
-        /** Ready text without a code: the body is just {message}, same as the old exceptions. */
-        public Forbidden(String message) {
-            this(message, (ErrorCode) null);
-        }
-
-        public Forbidden(String message, ErrorCode code) {
-            super(Kind.FORBIDDEN, message, code);
         }
     }
 
@@ -125,32 +92,23 @@ public abstract class DomainException extends RuntimeException {
         public NotFound(ErrorCode code, Object... args) {
             super(Kind.NOT_FOUND, code, args);
         }
-
-        /** Ready text without a code: the body is just {message}, same as the old exceptions. */
-        public NotFound(String message) {
-            this(message, (ErrorCode) null);
-        }
-
-        public NotFound(String message, ErrorCode code) {
-            super(Kind.NOT_FOUND, message, code);
-        }
     }
 
-    /** 409: valid request, but the data changed under it; {@code details} are merged into the response body. */
+    /** 409: valid request, but the data changed under it; {@link #withDetails} fields are merged into the response body. */
     public static class Conflict extends DomainException {
-        private final Map<String, Object> details;
+        private Map<String, Object> details = Map.of();
 
         public Conflict(ErrorCode code, Object... args) {
             super(Kind.CONFLICT, code, args);
-            this.details = Map.of();
         }
 
-        public Conflict(String message, ErrorCode code, Map<String, Object> details) {
-            super(Kind.CONFLICT, message, code);
-            this.details = details == null ? Map.of() : details;
+        /** Adds fields to the error body (e.g. {@code count}); returns this, so it can be thrown in place. */
+        public Conflict withDetails(Map<String, Object> extra) {
+            this.details = extra == null ? Map.of() : extra;
+            return this;
         }
 
-        /** Extra fields for the error body (e.g. {@code count}); never null. */
+        /** Extra fields for the error body; never null. */
         public Map<String, Object> getDetails() {
             return details;
         }
@@ -161,11 +119,6 @@ public abstract class DomainException extends RuntimeException {
         public Unavailable(ErrorCode code, Object... args) {
             super(Kind.UNAVAILABLE, code, args);
         }
-
-        /** Ready text without a code: the body is just {message}. */
-        public Unavailable(String message) {
-            super(Kind.UNAVAILABLE, message, null);
-        }
     }
 
     /** 429: a business limit; {@code Retry-After} and {@code retryAfterSec} are set when the wait is known. */
@@ -174,11 +127,6 @@ public abstract class DomainException extends RuntimeException {
 
         public TooManyRequests(ErrorCode code, long retryAfterSeconds, Object... args) {
             super(Kind.TOO_MANY_REQUESTS, code, args);
-            this.retryAfterSeconds = retryAfterSeconds;
-        }
-
-        public TooManyRequests(String message, ErrorCode code, long retryAfterSeconds) {
-            super(Kind.TOO_MANY_REQUESTS, message, code);
             this.retryAfterSeconds = retryAfterSeconds;
         }
 

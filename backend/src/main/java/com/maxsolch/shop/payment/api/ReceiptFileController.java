@@ -1,9 +1,10 @@
 package com.maxsolch.shop.payment.api;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.payment.domain.PaymentError;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.payment.app.ReceiptService;
 import com.maxsolch.shop.payment.app.ReceiptSigner;
-import com.maxsolch.shop.payment.domain.PaymentErrors;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.CacheControl;
@@ -45,10 +46,10 @@ public class ReceiptFileController {
                                        @RequestParam("exp") long exp,
                                        @RequestParam("sig") String sig) {
         if (!signer.isValid(inv, kind, check, exp, sig)) {
-            throw PaymentErrors.forbidden(messages.current("api.media.expired"));
+            throw new DomainException.Forbidden(PaymentError.LINK_EXPIRED);
         }
         ReceiptService.Pdf pdf = receipts.file(inv, kind, check)
-                .orElseThrow(() -> PaymentErrors.notFound(messages.current("api.media.notFound")));
+                .orElseThrow(() -> new DomainException.NotFound(PaymentError.FILE_NOT_FOUND));
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .cacheControl(CacheControl.noStore().cachePrivate())

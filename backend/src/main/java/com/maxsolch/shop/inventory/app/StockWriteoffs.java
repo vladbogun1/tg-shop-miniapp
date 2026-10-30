@@ -1,6 +1,7 @@
 package com.maxsolch.shop.inventory.app;
 
-import com.maxsolch.shop.inventory.domain.InventoryErrors;
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.inventory.domain.InventoryError;
 import com.maxsolch.shop.inventory.domain.StockWriteoff;
 import com.maxsolch.shop.inventory.infra.StockWriteoffRepository;
 import org.springframework.stereotype.Service;
@@ -41,7 +42,7 @@ public class StockWriteoffs {
     }
 
     public StockWriteoff require(long id) {
-        return writeoffs.findById(id).orElseThrow(() -> InventoryErrors.notFound("списание не найдено"));
+        return writeoffs.findById(id).orElseThrow(() -> new DomainException.NotFound(InventoryError.WRITE_OFF_NOT_FOUND));
     }
 
     public java.util.Optional<StockWriteoff> find(long id) {

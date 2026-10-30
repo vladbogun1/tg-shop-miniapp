@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
 import com.maxsolch.shop.catalog.domain.Category;
 import com.maxsolch.shop.catalog.domain.CategoryRules;
@@ -52,7 +53,7 @@ class CategoryTreeTest {
     void aThirdLevelIsRefused() {
         assertThatThrownBy(() -> service.update(id(mice), parent(id(magnetic))))
                 .isInstanceOf(DomainException.Conflict.class)
-                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CategoryRules.TOO_DEEP));
+                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CatalogError.CATEGORY_TOO_DEEP.code()));
     }
 
     @Test
@@ -60,7 +61,7 @@ class CategoryTreeTest {
         Category other = db.category("klv-mekhanicheskie", "Механические", null);
         assertThatThrownBy(() -> service.update(id(other), parent(id(mice))))
                 .isInstanceOf(DomainException.Conflict.class)
-                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CategoryRules.HAS_PRODUCTS));
+                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CatalogError.CATEGORY_HAS_PRODUCTS.code()));
     }
 
     @Test
@@ -78,9 +79,9 @@ class CategoryTreeTest {
     @Test
     void deleteIsRefusedForChildrenAndProducts() {
         assertThatThrownBy(() -> service.delete(id(keyboards)))
-                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CategoryRules.HAS_CHILDREN));
+                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CatalogError.CATEGORY_HAS_CHILDREN.code()));
         assertThatThrownBy(() -> service.delete(id(mice)))
-                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CategoryRules.HAS_PRODUCTS));
+                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CatalogError.CATEGORY_HAS_PRODUCTS.code()));
         Category empty = db.category("pusto", "Пусто", null);
         assertThat(service.delete(id(empty)).slug()).isEqualTo("pusto");
         assertThat(db.categories).doesNotContain(empty);
@@ -107,6 +108,6 @@ class CategoryTreeTest {
         attrs.add(CatalogFixtures.attr("hot_swap", CatalogFixtures.MAGNETIC, SpecType.BOOL, false, false, List.of()));
         CatalogSnapshot clash = new CatalogSnapshot(ok.categories(), ok.brands(), ok.groups(), attrs);
         assertThatThrownBy(() -> CategoryRules.checkKeys(clash))
-                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CategoryRules.KEY_TAKEN));
+                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CatalogError.ATTRIBUTE_KEY_TAKEN_GLOBAL.code()));
     }
 }

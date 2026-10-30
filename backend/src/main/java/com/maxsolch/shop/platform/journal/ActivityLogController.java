@@ -1,5 +1,6 @@
 package com.maxsolch.shop.platform.journal;
 
+import com.maxsolch.shop.platform.error.PlatformError;
 import java.time.Clock;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
@@ -124,7 +125,7 @@ public class ActivityLogController {
             LocalDate d = LocalDate.parse(value.trim());
             return (endExclusive ? d.plusDays(1) : d).atStartOfDay(zone).toInstant();
         } catch (DateTimeParseException e) {
-            throw new DomainException.BadRequest("date must be yyyy-MM-dd");
+            throw new DomainException.BadRequest(PlatformError.DATE_FORMAT_INVALID);
         }
     }
 

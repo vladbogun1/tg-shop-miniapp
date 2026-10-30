@@ -1,11 +1,12 @@
 package com.maxsolch.shop.returns.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.returns.domain.ReturnsError;
 import com.maxsolch.shop.inventory.domain.StockWriteoff;
 import com.maxsolch.shop.order.app.OrderChange;
 import com.maxsolch.shop.order.domain.OrderEvents;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderStatus;
@@ -61,7 +62,7 @@ public class ReturnReceiving {
     public OrderChange receive(byte[] orderId, List<ReceivedLine> lines, String note, String adminName) {
         Order order = orders.lockForUpdate(orderId);
         if (!Order.RETURN_IN_TRANSIT.equals(order.getReturnStatus())) {
-            throw OrderErrors.badRequest("заказ не ждёт возвращения посылки");
+            throw new DomainException.BadRequest(ReturnsError.NOT_AWAITING_PARCEL);
         }
         List<ReceivedLine> given = lines == null ? List.of() : lines;
         String cleanNote = ReturnText.cleanNote(note);

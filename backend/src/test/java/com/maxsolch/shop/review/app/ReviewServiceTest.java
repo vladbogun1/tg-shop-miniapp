@@ -1,5 +1,6 @@
 package com.maxsolch.shop.review.app;
 
+import com.maxsolch.shop.review.domain.ReviewError;
 import com.maxsolch.shop.review.domain.ProductReview;
 import com.maxsolch.shop.review.domain.ReviewRules;
 import com.maxsolch.shop.review.domain.ReviewRulesTest;
@@ -246,7 +247,7 @@ class ReviewServiceTest {
 
         assertThatThrownBy(() -> service.submit(USER, request()))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .hasMessage("api.review.notDelivered");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(ReviewError.NOT_DELIVERED));
         verify(reviews, never()).saveAndFlush(any());
     }
 
@@ -256,7 +257,7 @@ class ReviewServiceTest {
 
         assertThatThrownBy(() -> service.submit(USER, request()))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .hasMessage("api.review.notYours");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(ReviewError.NOT_YOUR_PRODUCT));
     }
 
     @Test
@@ -277,9 +278,9 @@ class ReviewServiceTest {
 
         // Published — no more edits; somebody else's — "already reviewed".
         existing.setStatus(ReviewStatus.PUBLISHED);
-        assertThatThrownBy(() -> service.submit(USER, request())).hasMessage("api.review.notEditable");
+        assertThatThrownBy(() -> service.submit(USER, request())).satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(ReviewError.NOT_EDITABLE));
         existing.setUserId(200L);
-        assertThatThrownBy(() -> service.submit(USER, request())).hasMessage("api.review.already");
+        assertThatThrownBy(() -> service.submit(USER, request())).satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(ReviewError.ALREADY_REVIEWED));
     }
 
     @Test
@@ -288,7 +289,7 @@ class ReviewServiceTest {
         assertThatThrownBy(() -> service.submit(USER, new SubmitRequest(11L, 5, "мало")))
                 .isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> service.submit(USER, new SubmitRequest(11L, 0, "Отличная мышь, рекомендую")))
-                .hasMessage("api.review.rating");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(ReviewError.RATING_OUT_OF_RANGE));
 
         when(reviews.countByUserIdAndCreatedAtAfter(eq(USER), any())).thenReturn(10L);
         assertThatThrownBy(() -> service.submit(USER, request())).isInstanceOf(DomainException.BadRequest.class);

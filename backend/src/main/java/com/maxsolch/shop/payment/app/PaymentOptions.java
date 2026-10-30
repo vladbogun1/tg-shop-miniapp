@@ -1,6 +1,7 @@
 package com.maxsolch.shop.payment.app;
 
-import com.maxsolch.shop.payment.domain.PaymentErrors;
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.payment.domain.PaymentError;
 import com.maxsolch.shop.payment.domain.PaymentOption;
 import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
@@ -100,20 +101,19 @@ public class PaymentOptions {
         List<AdminPaymentOptionDto> incoming = body == null ? List.of() : body;
         long activeCount = incoming.stream().filter(d -> d.active() == null || d.active()).count();
         if (activeCount == 0) {
-            throw PaymentErrors.badRequest(
-                    "Нельзя выключить все способы оплаты — покупатели не смогут оформить заказ");
+            throw new DomainException.BadRequest(PaymentError.ALL_METHODS_DISABLED);
         }
         for (AdminPaymentOptionDto dto : incoming) {
             // A JSON array body is not cascaded into by @Valid, so the elements are checked by hand:
             // an overlong title used to reach the database and come back as a vague "save failed".
             validator.validate(dto).stream().findFirst().ifPresent(v -> {
-                throw PaymentErrors.badRequest(v.getPropertyPath() + ": " + v.getMessage());
+                throw new DomainException.BadRequest(PaymentError.METHOD_FIELD_INVALID, String.valueOf(v.getPropertyPath()), v.getMessage());
             });
             if (dto.title() == null || dto.title().isBlank()) {
-                throw PaymentErrors.badRequest("У каждого способа оплаты должно быть название");
+                throw new DomainException.BadRequest(PaymentError.METHOD_TITLE_REQUIRED);
             }
             if (dto.prepaymentMinor() < 0) {
-                throw PaymentErrors.badRequest("Предоплата не может быть отрицательной");
+                throw new DomainException.BadRequest(PaymentError.PREPAYMENT_NEGATIVE);
             }
         }
 

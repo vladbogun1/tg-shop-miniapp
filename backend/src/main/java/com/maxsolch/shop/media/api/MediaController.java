@@ -1,6 +1,7 @@
 package com.maxsolch.shop.media.api;
 
-import com.maxsolch.shop.media.domain.MediaErrors;
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.media.domain.MediaError;
 import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.media.app.MediaSigner;
 import com.maxsolch.shop.media.app.MediaThumbnailer;
@@ -68,10 +69,10 @@ public class MediaController {
                                                    @RequestParam(value = "w", required = false) Integer w) {
         if (key == null || !key.startsWith(ALLOWED_PREFIX)) {
             // Never let a signed link be pointed at, say, a product image or another prefix.
-            throw MediaErrors.forbidden(messages.current("api.media.forbidden"));
+            throw new DomainException.Forbidden(MediaError.MEDIA_FORBIDDEN);
         }
         if (!signer.isValid(key, exp, sig)) {
-            throw MediaErrors.forbidden(messages.current("api.media.expired"));
+            throw new DomainException.Forbidden(MediaError.LINK_EXPIRED);
         }
 
         if (MediaThumbnailer.isAllowedWidth(w)) {
@@ -83,7 +84,7 @@ public class MediaController {
 
         ImageStorageService.StoredObject object = storage.get(key);
         if (object == null) {
-            throw MediaErrors.notFound(messages.current("api.media.notFound"));
+            throw new DomainException.NotFound(MediaError.FILE_NOT_FOUND);
         }
         return body(object.stream(), parseType(object.contentType()));
     }

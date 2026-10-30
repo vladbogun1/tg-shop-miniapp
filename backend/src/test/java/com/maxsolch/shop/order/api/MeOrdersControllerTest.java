@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.api;
 
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.app.CustomerOrders;
 import com.maxsolch.shop.order.app.MessageService;
@@ -88,7 +89,7 @@ class MeOrdersControllerTest {
         OrderFixtures.set(order, "archivedAt", Instant.now());
 
         assertThatThrownBy(() -> controller().markRead(id))
-                .isInstanceOf(DomainException.NotFound.class).hasMessage("api.order.notFound");
+                .isInstanceOf(DomainException.NotFound.class).satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(OrderError.ORDER_NOT_FOUND));
         verifyNoInteractions(chat);
     }
 
@@ -97,13 +98,13 @@ class MeOrdersControllerTest {
         when(orders.findById(any())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> controller().markRead(id))
-                .isInstanceOf(DomainException.NotFound.class).hasMessage("api.order.notFound");
+                .isInstanceOf(DomainException.NotFound.class).satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(OrderError.ORDER_NOT_FOUND));
     }
 
     @Test
     void ownedOrder_garbageId_isNotFound() {
         assertThatThrownBy(() -> controller().markRead("zzz"))
-                .isInstanceOf(DomainException.NotFound.class).hasMessage("api.order.notFound");
+                .isInstanceOf(DomainException.NotFound.class).satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(OrderError.ORDER_NOT_FOUND));
         verifyNoInteractions(orders);
     }
 
@@ -112,7 +113,7 @@ class MeOrdersControllerTest {
         loginAs(5L);
 
         assertThatThrownBy(() -> controller().markRead(id))
-                .isInstanceOf(DomainException.Forbidden.class).hasMessage("api.order.notYours");
+                .isInstanceOf(DomainException.Forbidden.class).satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(OrderError.NOT_YOUR_ORDER));
         verifyNoInteractions(chat);
     }
 

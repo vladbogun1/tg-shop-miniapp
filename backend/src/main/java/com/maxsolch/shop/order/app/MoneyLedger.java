@@ -1,11 +1,12 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement.Kind;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement.Source;
 import com.maxsolch.shop.order.infra.OrderMoneyMovementRepository;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -60,12 +61,12 @@ public class MoneyLedger {
     /** The channel named in a request; blank or unknown is a 400 naming the allowed values. */
     public static Channel parseChannel(String value) {
         if (value == null || value.isBlank()) {
-            throw OrderErrors.badRequest("укажите, как вернули деньги");
+            throw new DomainException.BadRequest(OrderError.REFUND_METHOD_REQUIRED);
         }
         try {
             return Channel.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw OrderErrors.badRequest("неизвестный способ: " + value);
+            throw new DomainException.BadRequest(OrderError.UNKNOWN_REFUND_METHOD, value);
         }
     }
 

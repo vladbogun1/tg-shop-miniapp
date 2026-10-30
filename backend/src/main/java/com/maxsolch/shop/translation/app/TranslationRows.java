@@ -1,5 +1,7 @@
 package com.maxsolch.shop.translation.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.translation.domain.TranslationError;
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.ContentTranslation;
@@ -27,7 +29,6 @@ import com.maxsolch.shop.translation.app.TranslatableSource.Field;
 import com.maxsolch.shop.translation.app.TranslatableSource.SourceChange;
 import com.maxsolch.shop.translation.app.TranslationService.Key;
 import com.maxsolch.shop.platform.tx.DomainEvents;
-import com.maxsolch.shop.translation.domain.TranslationErrors;
 import com.maxsolch.shop.translation.domain.TranslationsChanged;
 import java.time.Clock;
 import java.time.Instant;
@@ -98,7 +99,7 @@ class TranslationRows {
     static String requireLocale(String locale) {
         String l = locale == null ? "" : locale.trim().toLowerCase(Locale.ROOT);
         if (!ContentLocale.TRANSLATED.contains(l)) {
-            throw TranslationErrors.badRequest("locale must be one of " + ContentLocale.TRANSLATED);
+            throw new DomainException.BadRequest(TranslationError.INVALID_LOCALE, String.valueOf(ContentLocale.TRANSLATED));
         }
         return l;
     }
@@ -113,8 +114,7 @@ class TranslationRows {
         }
         TranslationEntityType type = TranslationEntityType.parse(entityType);
         if (type == null) {
-            throw TranslationErrors.badRequest(
-                    "entityType must be one of PRODUCT, VARIANT, CATEGORY, PAYMENT_OPTION, REPLY_TEMPLATE, BOT_TEXT");
+            throw new DomainException.BadRequest(TranslationError.INVALID_ENTITY_TYPE);
         }
         return type;
     }

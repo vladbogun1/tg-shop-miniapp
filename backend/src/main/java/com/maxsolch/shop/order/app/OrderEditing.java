@@ -1,12 +1,13 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.inventory.app.Stock;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.promo.domain.PromoDiscount;
@@ -57,23 +58,23 @@ public class OrderEditing {
         Order order = ops.lock(orderId);
         order.requireEditable();
         if (qty < 1) {
-            throw OrderErrors.badRequest("quantity must be >= 1");
+            throw new DomainException.BadRequest(OrderError.QUANTITY_TOO_LOW);
         }
         // Locked: this path mutates stock too (an admin adding a gift reserves real units).
         Product product = productRepository.findByIdForUpdate(ops.toBytes(productId, "productId"))
-                .orElseThrow(() -> OrderErrors.badRequest("unknown product: " + productId));
+                .orElseThrow(() -> new DomainException.BadRequest(OrderError.PRODUCT_UNKNOWN, productId));
         if (product.isArchived()) {
-            throw OrderErrors.badRequest("product is archived: " + product.getTitle());
+            throw new DomainException.BadRequest(OrderError.PRODUCT_ARCHIVED, product.getTitle());
         }
         boolean hasVariants = product.getVariants() != null && !product.getVariants().isEmpty();
         ProductVariant variant = null;
         if (hasVariants) {
             if (variantId == null || variantId.isBlank()) {
-                throw OrderErrors.badRequest("variant is required for product: " + product.getTitle());
+                throw new DomainException.BadRequest(OrderError.VARIANT_REQUIRED_FOR_PRODUCT, product.getTitle());
             }
             variant = ops.findVariant(product, variantId);
             if (variant == null) {
-                throw OrderErrors.badRequest("variant does not belong to product: " + variantId);
+                throw new DomainException.BadRequest(OrderError.VARIANT_MISMATCH_ITEM, String.valueOf(variantId));
             }
         }
         byte[] vId = variant == null ? null : variant.getId();
@@ -115,7 +116,7 @@ public class OrderEditing {
         OrderItem item = order.getItems().stream()
                 .filter(i -> i.getId() != null && i.getId() == itemId)
                 .findFirst()
-                .orElseThrow(() -> OrderErrors.notFound("order item not found"));
+                .orElseThrow(() -> new DomainException.NotFound(OrderError.ORDER_ITEM_NOT_FOUND));
         stock.restoreLine(item);
         order.removeLine(item);
         if (item.isAutoGift() && item.getCaseRarity() != null) {
@@ -135,12 +136,12 @@ public class OrderEditing {
         Order order = ops.lock(orderId);
         order.requireEditable();
         if (newQty < 1) {
-            throw OrderErrors.badRequest("quantity must be >= 1 (use remove to delete)");
+            throw new DomainException.BadRequest(OrderError.QUANTITY_TOO_LOW_USE_REMOVE);
         }
         OrderItem item = order.getItems().stream()
                 .filter(i -> i.getId() != null && i.getId() == itemId)
                 .findFirst()
-                .orElseThrow(() -> OrderErrors.notFound("order item not found"));
+                .orElseThrow(() -> new DomainException.NotFound(OrderError.ORDER_ITEM_NOT_FOUND));
         int delta = newQty - item.getQuantity();
         if (delta != 0) {
             stock.resizeLine(item, delta);

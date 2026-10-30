@@ -1,9 +1,10 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -22,8 +23,6 @@ import java.util.List;
 @Service
 public class CancelRequestService {
 
-    /** Error code: the bank is processing a payment of this order right now. */
-    public static final String PAYMENT_IN_PROGRESS = "PAYMENT_IN_PROGRESS";
 
     private final OrderLookup orderQueries;
     private final CancelRequests cancelRequests;
@@ -65,7 +64,7 @@ public class CancelRequestService {
     public ApproveResult approve(byte[] orderId, String comment) {
         payments.refresh(orderId);
         if (payments.hasPaymentInFlight(orderId)) {
-            throw OrderErrors.badRequest("банк ещё обрабатывает платёж по заказу — подождите минуту", PAYMENT_IN_PROGRESS);
+            throw new DomainException.BadRequest(OrderError.PAYMENT_IN_PROGRESS);
         }
         Order order = cancelRequests.approveCancelRequest(orderId, comment);
         payments.closeOpenInvoices(orderId);
@@ -85,7 +84,7 @@ public class CancelRequestService {
         // The bank may be charging the card right now: let that settle first.
         payments.refresh(orderId);
         if (payments.hasPaymentInFlight(orderId)) {
-            throw OrderErrors.badRequest(messages.current("api.payment.inProgress"), PAYMENT_IN_PROGRESS);
+            throw new DomainException.BadRequest(OrderError.PAYMENT_IN_PROGRESS_CUSTOMER);
         }
     }
 }

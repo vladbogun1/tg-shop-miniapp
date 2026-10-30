@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import com.maxsolch.shop.staff.domain.StaffError;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.error.ErrorCode;
 import com.maxsolch.shop.staff.domain.AdminInvite;
@@ -146,7 +147,7 @@ public class AdminTeamService {
     public AdminInviteService.Created invite(long callerId, Long telegramUserId, String name, String role, String code,
                                              ClientInfo client) {
         if (telegramUserId == null || telegramUserId <= 0) {
-            throw new DomainException.BadRequest("Укажите Telegram пользователя (числовой id)", ErrorCode.of("BAD_TELEGRAM_ID"));
+            throw new DomainException.BadRequest(StaffError.BAD_TELEGRAM_ID);
         }
         long tgId = telegramUserId;
         if (tgId == callerId) {
@@ -158,10 +159,10 @@ public class AdminTeamService {
         AdminRole inviteRole;
         if (existing != null) {
             if (!existing.isActive()) {
-                throw new DomainException.Conflict("Этот админ заблокирован — сначала разблокируйте его", ErrorCode.of("BLOCKED"), java.util.Map.of());
+                throw new DomainException.Conflict(StaffError.BLOCKED);
             }
             if (existing.getUsername() != null && existing.getPasswordHash() != null) {
-                throw new DomainException.Conflict("У этого админа уже есть логин и пароль. Если он их забыл — «Сбросить пароль»", ErrorCode.of("HAS_LOGIN"), java.util.Map.of());
+                throw new DomainException.Conflict(StaffError.HAS_LOGIN);
             }
             kind = AdminInvite.Kind.CREDENTIALS;
             inviteName = existing.getName();
@@ -183,13 +184,13 @@ public class AdminTeamService {
 
     /** A new link for an open (or expired) invite; the old link stops working. */
     public AdminInviteService.Created resendInvite(long callerId, long inviteId) {
-        AdminInvite inv = inviteStore.byId(inviteId).orElseThrow(() -> new DomainException.NotFound("Приглашение не найдено"));
+        AdminInvite inv = inviteStore.byId(inviteId).orElseThrow(() -> new DomainException.NotFound(StaffError.INVITE_NOT_FOUND));
         if (inv.usedAt() != null || inv.revokedAt() != null) {
-            throw new DomainException.Conflict("Приглашение уже принято или отозвано", ErrorCode.of("INVITE_CLOSED"), java.util.Map.of());
+            throw new DomainException.Conflict(StaffError.INVITE_CLOSED);
         }
         AdminUser existing = repo.findById(inv.telegramUserId()).orElse(null);
         if (inv.kind() == AdminInvite.Kind.NEW ? existing != null : existing == null || !existing.isActive()) {
-            throw new DomainException.Conflict("Приглашение больше не подходит к этой учётке — создайте новое", ErrorCode.of("INVITE_CLOSED"), java.util.Map.of());
+            throw new DomainException.Conflict(StaffError.INVITE_CLOSED_MISMATCH);
         }
         AdminInviteService.Created created = invites.create(inv.kind(), inv.telegramUserId(), inv.name(), inv.role(),
                 callerId);
@@ -200,9 +201,9 @@ public class AdminTeamService {
     }
 
     public void revokeInvite(long callerId, long inviteId) {
-        AdminInvite inv = inviteStore.byId(inviteId).orElseThrow(() -> new DomainException.NotFound("Приглашение не найдено"));
+        AdminInvite inv = inviteStore.byId(inviteId).orElseThrow(() -> new DomainException.NotFound(StaffError.INVITE_NOT_FOUND));
         if (!inviteStore.revoke(inviteId, clock.instant())) {
-            throw new DomainException.Conflict("Приглашение уже принято или отозвано", ErrorCode.of("INVITE_CLOSED"), java.util.Map.of());
+            throw new DomainException.Conflict(StaffError.INVITE_CLOSED);
         }
         audit.recordFor(callerId, "ADMIN_INVITE_REVOKED", "ADMIN", String.valueOf(inv.telegramUserId()),
                 "приглашение отозвано (tg " + inv.telegramUserId() + ", " + (inv.name() == null ? "без имени" : inv.name()) + ")");
@@ -290,7 +291,7 @@ public class AdminTeamService {
         AdminUser target = find(targetId);
         guard(callerId, target, false);
         if (!target.isActive()) {
-            throw new DomainException.Conflict("Админ заблокирован — сначала разблокируйте", ErrorCode.of("BLOCKED"), java.util.Map.of());
+            throw new DomainException.Conflict(StaffError.BLOCKED_ADMIN);
         }
         requireOwnCode(callerId, code, client, "сброс пароля админа");
         AdminUser fresh = find(targetId);
@@ -360,8 +361,7 @@ public class AdminTeamService {
         guard(callerId, target, true);
         List<String> history = facts.history(targetId);
         if (!history.isEmpty()) {
-            throw new DomainException.Conflict("Удалить нельзя: у админа есть история (" + String.join(", ", history)
-                    + "). Заблокируйте его — история сохранится.", ErrorCode.of("HAS_HISTORY"), java.util.Map.of());
+            throw new DomainException.Conflict(StaffError.HAS_HISTORY, String.join(", ", history));
         }
         requireOwnCode(callerId, code, client, "удаление админа");
         String label = who(target);
@@ -384,8 +384,7 @@ public class AdminTeamService {
     void guard(long callerId, AdminUser target, boolean touchesLastSuper) {
         if (touchesLastSuper && target.isActive() && target.isSuperAdmin() && target.isTotpEnabled()
                 && repo.countOtherActiveSupersWith2fa(target.getTelegramUserId()) == 0) {
-            throw new DomainException.Conflict("Это последний главный админ с 2FA — без него некому управлять админами. "
-                    + "Сначала назначьте главным другого админа.", ErrorCode.of("LAST_SUPER_ADMIN"), java.util.Map.of());
+            throw new DomainException.Conflict(StaffError.LAST_SUPER_ADMIN);
         }
         if (target.getTelegramUserId() == callerId) {
             throw self();
@@ -394,15 +393,15 @@ public class AdminTeamService {
 
     private void requireOwnCode(long callerId, String code, ClientInfo client, String what) {
         AdminUser caller = repo.findByTelegramUserIdAndActiveTrue(callerId)
-                .orElseThrow(() -> new DomainException.Unauthorized("not authenticated", null));
+                .orElseThrow(() -> new DomainException.Unauthorized(StaffError.NOT_AUTHENTICATED));
         if (code == null || code.isBlank()) {
-            throw new DomainException.BadRequest("Введите код из приложения-аутентификатора", ErrorCode.of("CODE_REQUIRED"));
+            throw new DomainException.BadRequest(StaffError.CODE_REQUIRED);
         }
         if (!totp.verifyActive(caller, code)) {
             audit.recordFor(callerId, "ADMIN_ACCOUNT_FAIL", "AUTH", String.valueOf(callerId),
                     "неверный код 2FA: " + what + ", IP " + client.ip());
             lockout.registerFailure(callerId, LoginMethod.PASSWORD, client);
-            throw new DomainException.BadRequest("Неверный код из приложения", ErrorCode.of("BAD_CODE"));
+            throw new DomainException.BadRequest(StaffError.BAD_CODE);
         }
     }
 
@@ -415,13 +414,13 @@ public class AdminTeamService {
     }
 
     private AdminUser find(long id) {
-        return repo.findById(id).orElseThrow(() -> new DomainException.NotFound("Админ не найден"));
+        return repo.findById(id).orElseThrow(() -> new DomainException.NotFound(StaffError.ADMIN_NOT_FOUND));
     }
 
     static String validName(String name) {
         String n = name == null ? "" : name.trim();
         if (n.isEmpty() || n.codePointCount(0, n.length()) > MAX_NAME) {
-            throw new DomainException.BadRequest("Имя: от 1 до " + MAX_NAME + " символов", ErrorCode.of("BAD_NAME"));
+            throw new DomainException.BadRequest(StaffError.BAD_NAME, String.valueOf(MAX_NAME));
         }
         return n;
     }
@@ -430,12 +429,12 @@ public class AdminTeamService {
         try {
             return AdminRole.valueOf(role == null ? "" : role.trim());
         } catch (IllegalArgumentException e) {
-            throw new DomainException.BadRequest("Роль: ADMIN или SUPER_ADMIN", ErrorCode.of("BAD_ROLE"));
+            throw new DomainException.BadRequest(StaffError.BAD_ROLE);
         }
     }
 
     private static DomainException.Conflict self() {
-        return new DomainException.Conflict("Свою учётку меняйте в «Мой аккаунт» — здесь только другие админы", ErrorCode.of("SELF"), java.util.Map.of());
+        return new DomainException.Conflict(StaffError.SELF);
     }
 
     private static String who(AdminUser a) {

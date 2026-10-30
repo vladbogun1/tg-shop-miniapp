@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.catalog.domain.CardStatus;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.catalog.domain.Product;
@@ -106,7 +107,7 @@ class AdminProductCatalogTest {
         product.setCategoryId(UuidUtil.toBytes(CatalogFixtures.MICE));
         assertThatThrownBy(() -> service.setActive(id, true, false))
                 .isInstanceOf(DomainException.Conflict.class)
-                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(AdminProductService.CARD_NOT_READY));
+                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CatalogError.CARD_NOT_READY.code()));
         product.setUnfinished(true);
         AdminProductDto published = service.setActive(id, true, true);
         assertThat(published.active()).isTrue();
@@ -123,7 +124,7 @@ class AdminProductCatalogTest {
                 .isInstanceOf(DomainException.Conflict.class)
                 .satisfies(e -> {
                     DomainException.Conflict c = (DomainException.Conflict) e;
-                    assertThat(c.getCode()).isEqualTo(AdminProductService.NOT_PUBLISHABLE);
+                    assertThat(c.getCode()).isEqualTo(CatalogError.NOT_PUBLISHABLE_NO_PRICE.code());
                     assertThat(c.getDetails()).containsEntry("missing", List.of("price", "category"));
                 });
     }

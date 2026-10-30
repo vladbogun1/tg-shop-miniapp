@@ -1,5 +1,7 @@
 package com.maxsolch.shop.media.app;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import com.maxsolch.shop.media.domain.MediaError;
 import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
@@ -42,7 +44,7 @@ class UploadValidatorTest {
         // Content type says image, extension says otherwise: this is the stored-XSS shape.
         assertThatThrownBy(() -> validator.validateImage(file("evil.html", "image/png", 128)))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .hasMessageContaining("api.upload.badExtension");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(MediaError.BAD_EXTENSION));
     }
 
     @Test
@@ -55,7 +57,7 @@ class UploadValidatorTest {
     void rejectsAnExecutableContentType() {
         assertThatThrownBy(() -> validator.validateImage(file("x.jpg", "application/x-msdownload", 128)))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .hasMessageContaining("api.upload.badType");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(MediaError.BAD_FILE_TYPE));
     }
 
     @Test
@@ -69,7 +71,7 @@ class UploadValidatorTest {
         assertThatThrownBy(() -> validator.validateImage(
                 file("huge.jpg", "image/jpeg", 16 * 1024 * 1024)))
                 .isInstanceOf(DomainException.BadRequest.class)
-                .hasMessageContaining("api.upload.tooBig");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(MediaError.FILE_TOO_BIG));
     }
 
     @Test

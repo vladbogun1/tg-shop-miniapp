@@ -1,5 +1,6 @@
 package com.maxsolch.shop.finance.app;
 
+import com.maxsolch.shop.finance.domain.FinanceError;
 import com.maxsolch.shop.analytics.app.MetricsFactsLoader;
 import com.maxsolch.shop.analytics.domain.MetricsFacts;
 import com.maxsolch.shop.analytics.domain.MetricsPeriod;
@@ -52,7 +53,7 @@ public class MarginService {
     public OrderProfitDto order(String orderId) {
         Bundle b = inputs.bundles(List.of(orderId)).get(orderId);
         if (b == null) {
-            throw new DomainException.NotFound("Заказ не найден");
+            throw new DomainException.NotFound(FinanceError.ORDER_NOT_FOUND);
         }
         CostBook book = inputs.bookFor(List.of(b), List.of());
         Map<Long, StockLot> byId = inputs.lotsById(List.of(b));

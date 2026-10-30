@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
@@ -198,7 +199,7 @@ class OrderLifecycleTest extends OrderScenarioTestBase {
                 .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("Предоплата по заказу #")
                 .hasMessageContaining("не пришла")
-                .satisfies(e -> assertThat(((DomainException) e).getCode()).isEqualTo(Order.SHIP_UNPAID_CODE));
+                .satisfies(e -> assertThat(((DomainException) e).getCode()).isEqualTo(OrderError.SHIP_PREPAYMENT_MISSING.code()));
         assertThat(o.getStatus()).isEqualTo(OrderStatus.APPROVED);
 
         Order shipped = app.lifecycle().changeStatus(o.getId(), OrderStatus.SHIPPED, "20450000000000", null, null, true, true);

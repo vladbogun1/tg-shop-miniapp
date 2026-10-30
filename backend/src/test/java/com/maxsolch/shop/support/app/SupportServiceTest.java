@@ -168,8 +168,10 @@ class SupportServiceTest {
         stubThread(t);
         when(messageRepository.lastSentAt(SenderType.CUSTOMER, USER)).thenReturn(NOW.minusSeconds(4));
         assertThatThrownBy(() -> service.sendAsCustomer(USER, UuidUtil.toString(t.getId()), text("ще")))
-                .satisfies(e -> assertThat(code(e)).isEqualTo("SUPPORT_COOLDOWN"));
-        verify(messages).current("api.support.cooldown", 6L);
+                .satisfies(e -> {
+                    assertThat(code(e)).isEqualTo("SUPPORT_COOLDOWN");
+                    assertThat(((DomainException) e).args()).containsExactly(6L);
+                });
 
         when(messageRepository.lastSentAt(SenderType.CUSTOMER, USER)).thenReturn(NOW.minusSeconds(10));
         service.sendAsCustomer(USER, UuidUtil.toString(t.getId()), text("ще"));

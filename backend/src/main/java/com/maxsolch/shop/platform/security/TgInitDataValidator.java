@@ -1,5 +1,6 @@
 package com.maxsolch.shop.platform.security;
 
+import com.maxsolch.shop.platform.error.PlatformError;
 import java.time.Clock;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.maxsolch.shop.platform.cache.CacheConfig;
@@ -80,7 +81,7 @@ public class TgInitDataValidator {
 
     private TelegramUser validate(String initData, long ttlSeconds, boolean singleUse) {
         if (!StringUtils.hasText(initData)) {
-            throw invalid("initData is empty");
+            throw invalid(PlatformError.INITDATA_EMPTY);
         }
 
         Map<String, String> params = parseQuery(initData);
@@ -90,16 +91,16 @@ public class TgInitDataValidator {
 
         if (!allowUnsigned) {
             if (!StringUtils.hasText(hash)) {
-                throw invalid("initData has no hash");
+                throw invalid(PlatformError.INITDATA_NO_HASH);
             }
             String botToken = props.getTelegram().getBotToken();
             if (!StringUtils.hasText(botToken)) {
-                throw invalid("bot token is not configured");
+                throw invalid(PlatformError.BOT_TOKEN_MISSING);
             }
             String dataCheckString = buildDataCheckString(params);
             byte[] computed = computeHash(dataCheckString, botToken);
             if (!MessageDigest.isEqual(computed, hexOrEmpty(hash))) {
-                throw invalid("initData hash mismatch");
+                throw invalid(PlatformError.INITDATA_HASH_MISMATCH);
             }
         }
 
@@ -110,13 +111,13 @@ public class TgInitDataValidator {
             // signature, so junk cannot fill the cache.
             String key = StringUtils.hasText(hash) ? hash.toLowerCase(java.util.Locale.ROOT) : initData;
             if (usedForAdmin.putIfAbsent(key, Boolean.TRUE) != null) {
-                throw invalid("initData was already used, reopen the panel from Telegram");
+                throw invalid(PlatformError.INITDATA_REUSED);
             }
         }
 
         String userJson = params.get("user");
         if (!StringUtils.hasText(userJson)) {
-            throw invalid("initData has no user");
+            throw invalid(PlatformError.INITDATA_NO_USER);
         }
         return parseUser(userJson);
     }
@@ -126,22 +127,22 @@ public class TgInitDataValidator {
             if (allowUnsigned) {
                 return;
             }
-            throw invalid("initData has no auth_date");
+            throw invalid(PlatformError.INITDATA_NO_AUTH_DATE);
         }
         long authDate;
         try {
             authDate = Long.parseLong(authDateRaw);
         } catch (NumberFormatException e) {
-            throw invalid("initData auth_date is not a number");
+            throw invalid(PlatformError.INITDATA_AUTH_DATE_NAN);
         }
         long now = clock.instant().getEpochSecond();
         if (now - authDate > ttl) {
-            throw invalid("initData is expired");
+            throw invalid(PlatformError.INITDATA_EXPIRED);
         }
         // Telegram stamps auth_date itself; one from the future (beyond clock skew) would stretch
         // the TTL past what we allow.
         if (authDate - now > MAX_CLOCK_SKEW_SECONDS) {
-            throw invalid("initData auth_date is in the future");
+            throw invalid(PlatformError.INITDATA_FROM_FUTURE);
         }
     }
 
@@ -150,7 +151,7 @@ public class TgInitDataValidator {
             JsonNode node = objectMapper.readTree(userJson);
             long id = node.path("id").asLong();
             if (id == 0) {
-                throw invalid("initData user has no id");
+                throw invalid(PlatformError.INITDATA_USER_NO_ID);
             }
             String username = textOrNull(node, "username");
             String firstName = textOrNull(node, "first_name");
@@ -162,7 +163,7 @@ public class TgInitDataValidator {
         } catch (DomainException.Unauthorized e) {
             throw e;
         } catch (Exception e) {
-            throw invalid("failed to parse initData user json", e);
+            throw invalid(PlatformError.INITDATA_USER_UNPARSABLE, e);
         }
     }
 
@@ -184,7 +185,7 @@ public class TgInitDataValidator {
             // A repeated key means the string was tampered with (Telegram never sends one): with
             // "last one wins" the checked data and the used data could differ.
             if (map.put(key, val) != null) {
-                throw invalid("initData has a repeated key: " + key);
+                throw invalid(PlatformError.INITDATA_REPEATED_KEY, key);
             }
         }
         return map;
@@ -223,16 +224,16 @@ public class TgInitDataValidator {
             mac.init(new SecretKeySpec(key, "HmacSHA256"));
             return mac.doFinal(message);
         } catch (Exception e) {
-            throw invalid("HMAC computation failed", e);
+            throw invalid(PlatformError.HMAC_FAILED, e);
         }
     }
 
-    /** 401 with the reason as text (no code), as before. */
-    private static DomainException.Unauthorized invalid(String reason) {
-        return new DomainException.Unauthorized(reason, null);
+    /** 401 with the reason as text (no code). */
+    private static DomainException.Unauthorized invalid(PlatformError reason, Object... args) {
+        return new DomainException.Unauthorized(reason, args);
     }
 
-    private static DomainException.Unauthorized invalid(String reason, Throwable cause) {
+    private static DomainException.Unauthorized invalid(PlatformError reason, Throwable cause) {
         DomainException.Unauthorized e = invalid(reason);
         e.initCause(cause);
         return e;

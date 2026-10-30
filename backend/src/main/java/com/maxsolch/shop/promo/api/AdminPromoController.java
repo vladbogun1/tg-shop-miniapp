@@ -1,5 +1,6 @@
 package com.maxsolch.shop.promo.api;
 
+import com.maxsolch.shop.promo.domain.PromoError;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -48,7 +49,7 @@ public class AdminPromoController {
         try {
             only = PromoOrigin.parse(origin);
         } catch (IllegalArgumentException e) {
-            throw new DomainException.BadRequest("origin: OURS, PERSONAL или REVIEW");
+            throw new DomainException.BadRequest(PromoError.INVALID_ORIGIN);
         }
         return promos.list(only).stream().map(l -> toDto(l.promo(), l.reserved())).toList();
     }

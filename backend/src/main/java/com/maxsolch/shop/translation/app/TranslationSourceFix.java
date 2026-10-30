@@ -1,5 +1,7 @@
 package com.maxsolch.shop.translation.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.translation.domain.TranslationError;
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.ContentTranslation;
@@ -27,7 +29,6 @@ import com.maxsolch.shop.translation.app.TranslatableSource.Field;
 import com.maxsolch.shop.translation.app.TranslatableSource.SourceChange;
 import com.maxsolch.shop.translation.app.TranslationService.Key;
 import com.maxsolch.shop.platform.tx.DomainEvents;
-import com.maxsolch.shop.translation.domain.TranslationErrors;
 import com.maxsolch.shop.translation.domain.TranslationsChanged;
 import java.time.Clock;
 import java.time.Instant;
@@ -86,14 +87,14 @@ public class TranslationSourceFix {
     @Transactional
     public SourceFixResult fixSource(SourceFixRequest req, Long adminId) {
         if (req == null || req.items() == null || req.items().isEmpty()) {
-            throw TranslationErrors.badRequest("items required");
+            throw new DomainException.BadRequest(TranslationError.ITEMS_REQUIRED);
         }
         if (req.items().size() > TranslationLimits.MAX_FIX_ITEMS) {
-            throw TranslationErrors.badRequest("too many items (max " + TranslationLimits.MAX_FIX_ITEMS + ")");
+            throw new DomainException.BadRequest(TranslationError.TOO_MANY_ITEMS, String.valueOf(TranslationLimits.MAX_FIX_ITEMS));
         }
         String newSource = req.source();
         if (TranslationRows.isBlank(newSource)) {
-            throw TranslationErrors.badRequest("source must not be blank");
+            throw new DomainException.BadRequest(TranslationError.SOURCE_BLANK);
         }
         Map<String, String> translations = new LinkedHashMap<>();
         if (req.translations() != null) {
@@ -105,7 +106,7 @@ public class TranslationSourceFix {
                 }
                 if (text.length() > TranslationLimits.MAX_TEXT_CHARS
                         || text.getBytes(StandardCharsets.UTF_8).length > TranslationLimits.MAX_TEXT_BYTES) {
-                    throw TranslationErrors.badRequest("translation " + l + " is too long");
+                    throw new DomainException.BadRequest(TranslationError.TRANSLATION_TOO_LONG, l);
                 }
                 translations.put(l, text);
             }

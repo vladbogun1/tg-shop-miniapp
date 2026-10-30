@@ -1,12 +1,13 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.i18n.Messages;
@@ -67,14 +68,13 @@ public class OrderGiftCases {
     public Order openGiftCase(byte[] orderId) {
         Order order = ops.lock(orderId);
         if (order.getGiftCaseStatus() == null) {
-            throw OrderErrors.badRequest(messages.current("api.giftCase.none"), GiftCaseRules.GIFT_CASE_NONE);
+            throw new DomainException.BadRequest(OrderError.GIFT_CASE_NONE);
         }
         if (GiftCaseRules.GIFT_CASE_OPENED.equals(order.getGiftCaseStatus())) {
-            throw OrderErrors.badRequest(messages.current("api.giftCase.alreadyOpened"),
-                    GiftCaseRules.GIFT_CASE_ALREADY_OPENED);
+            throw new DomainException.BadRequest(OrderError.GIFT_CASE_ALREADY_OPENED);
         }
         if (!GiftCaseRules.giftCaseOpenable(order)) {
-            throw OrderErrors.badRequest(messages.current("api.giftCase.unpaid"), GiftCaseRules.GIFT_CASE_UNPAID);
+            throw new DomainException.BadRequest(OrderError.GIFT_CASE_UNPAID);
         }
         order.openGiftCase(ops.now());
         return orderRepository.save(order);
@@ -88,8 +88,7 @@ public class OrderGiftCases {
     public Order removeCasePrizeForSwap(byte[] orderId) {
         Order order = ops.lock(orderId);
         if (!GiftCaseRules.giftCaseSwappable(order)) {
-            throw OrderErrors.badRequest(messages.current("api.giftCase.swapUnavailable"),
-                    GiftCaseRules.GIFT_CASE_SWAP_UNAVAILABLE);
+            throw new DomainException.BadRequest(OrderError.GIFT_CASE_SWAP_UNAVAILABLE);
         }
         OrderItem item = GiftCaseRules.casePrizeLine(order).orElseThrow();
         stock.restoreLine(item);
@@ -172,7 +171,7 @@ public class OrderGiftCases {
         Order order = ops.lock(orderId);
         order.requireEditable();
         if (order.getGiftCaseStatus() != null) {
-            throw OrderErrors.badRequest("У заказа уже есть кейс");
+            throw new DomainException.BadRequest(OrderError.GIFT_CASE_ALREADY_EXISTS);
         }
         OrderGifts.CasePlan plan = gifts.casePlan(tierName);
         // Prize rows locked in id order, like the checkout.
@@ -182,12 +181,11 @@ public class OrderGiftCases {
         }
         boolean lowMargin = promos.hasLowMargin(order);
         OrderGifts.Decision.Prize prize = plan.draw(prizes.gate(locked), gifts.limitLeft(order), lowMargin)
-                .orElseThrow(() -> OrderErrors.badRequest(
-                        "Ни одного приза этого кейса нет в наличии или в пределах месячного лимита подарков покупателя"));
+                .orElseThrow(() -> new DomainException.BadRequest(OrderError.NO_PRIZE_AVAILABLE));
         List<Product> toSave = new ArrayList<>();
         Consumer<byte[]> record = prizes.placeCasePrize(order, prize, locked, toSave);
         if (record == null) {
-            throw OrderErrors.badRequest("Приз закончился — попробуйте ещё раз");
+            throw new DomainException.BadRequest(OrderError.PRIZE_SOLD_OUT);
         }
         productRepository.saveAll(toSave);
         ops.recomputeTotals(order);
@@ -199,7 +197,6 @@ public class OrderGiftCases {
     }
 
     private RuntimeException sizeUnavailable() {
-        return OrderErrors.badRequest(messages.current("api.giftCase.sizeUnavailable"),
-                GiftCaseRules.GIFT_CASE_SIZE_UNAVAILABLE);
+        return new DomainException.BadRequest(OrderError.GIFT_CASE_SIZE_UNAVAILABLE);
     }
 }

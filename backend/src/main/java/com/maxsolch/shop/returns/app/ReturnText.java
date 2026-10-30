@@ -1,7 +1,8 @@
 package com.maxsolch.shop.returns.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.returns.domain.ReturnsError;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.platform.util.UuidUtil;
 
@@ -35,6 +36,6 @@ final class ReturnText {
         return order.getItems().stream()
                 .filter(i -> i.getId() != null && i.getId() == itemId)
                 .findFirst()
-                .orElseThrow(() -> OrderErrors.notFound("order item not found"));
+                .orElseThrow(() -> new DomainException.NotFound(ReturnsError.ORDER_ITEM_NOT_FOUND));
     }
 }

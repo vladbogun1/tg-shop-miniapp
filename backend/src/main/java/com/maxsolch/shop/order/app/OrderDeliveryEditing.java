@@ -1,10 +1,11 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.order.domain.DeliveryMethod;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.tx.DomainEvents;
@@ -42,14 +43,14 @@ public class OrderDeliveryEditing {
     public OrderChange updateTracking(byte[] orderId, String trackingNumber) {
         Order order = ops.lock(orderId);
         if (order.getStatus() != OrderStatus.SHIPPED && order.getStatus() != OrderStatus.DELIVERED) {
-            throw OrderErrors.badRequest("ТТН можно изменить только у отправленного или доставленного заказа");
+            throw new DomainException.BadRequest(OrderError.TTN_EDIT_STATUS_NOT_ALLOWED);
         }
         String ttn = trackingNumber == null ? "" : trackingNumber.replaceAll("\\s+", "");
         if (ttn.isEmpty()) {
-            throw OrderErrors.badRequest("укажите номер ТТН");
+            throw new DomainException.BadRequest(OrderError.TTN_REQUIRED);
         }
         if (ttn.length() > 128) {
-            throw OrderErrors.badRequest("номер ТТН слишком длинный");
+            throw new DomainException.BadRequest(OrderError.TTN_TOO_LONG);
         }
         String old = order.getTrackingNumber();
         if (ttn.equals(old)) {
@@ -79,7 +80,7 @@ public class OrderDeliveryEditing {
         Order order = ops.lock(orderId);
         OrderStatus s = order.getStatus();
         if (s != OrderStatus.NEW && s != OrderStatus.APPROVED && s != OrderStatus.SHIPPED) {
-            throw OrderErrors.badRequest("данные доставки можно менять, пока заказ не доставлен и не отклонён");
+            throw new DomainException.BadRequest(OrderError.DELIVERY_EDIT_NOT_ALLOWED);
         }
         List<String> changes = new ArrayList<>();
         changeName(order, patch, changes);
@@ -100,10 +101,10 @@ public class OrderDeliveryEditing {
         }
         String name = patch.customerName().trim();
         if (name.isEmpty()) {
-            throw OrderErrors.badRequest("ФИО не может быть пустым");
+            throw new DomainException.BadRequest(OrderError.FULL_NAME_REQUIRED);
         }
         if (name.length() > 255) {
-            throw OrderErrors.badRequest("ФИО слишком длинное");
+            throw new DomainException.BadRequest(OrderError.FULL_NAME_TOO_LONG);
         }
         if (!name.equals(order.getCustomerName())) {
             changes.add("ФИО: " + order.getCustomerName() + " → " + name);
@@ -117,7 +118,7 @@ public class OrderDeliveryEditing {
         }
         String phone = patch.phone().trim();
         if (phone.replaceAll("\\D", "").length() < 10 || phone.length() > 64) {
-            throw OrderErrors.badRequest("проверьте номер телефона");
+            throw new DomainException.BadRequest(OrderError.PHONE_INVALID);
         }
         if (!phone.equals(order.getPhone())) {
             changes.add("телефон: " + order.getPhone() + " → " + phone);
@@ -132,11 +133,11 @@ public class OrderDeliveryEditing {
             return;
         }
         if (order.getDeliveryMethod() != DeliveryMethod.NOVA_POSHTA) {
-            throw OrderErrors.badRequest("у заказа самовывоз — отделение не указывается");
+            throw new DomainException.BadRequest(OrderError.PICKUP_NO_BRANCH);
         }
         if (isBlank(patch.npCityRef()) || isBlank(patch.npCityName())
                 || isBlank(patch.npWarehouseRef()) || isBlank(patch.npWarehouseName())) {
-            throw OrderErrors.badRequest("выберите город и отделение Новой Почты");
+            throw new DomainException.BadRequest(OrderError.NP_BRANCH_REQUIRED);
         }
         if (!Objects.equals(patch.npWarehouseRef().trim(), order.getNpWarehouseRef())
                 || !Objects.equals(patch.npCityRef().trim(), order.getNpCityRef())) {

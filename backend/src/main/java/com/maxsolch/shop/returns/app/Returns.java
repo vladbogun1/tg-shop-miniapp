@@ -1,12 +1,13 @@
 package com.maxsolch.shop.returns.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.returns.domain.ReturnsError;
 import com.maxsolch.shop.inventory.domain.StockWriteoff;
 import com.maxsolch.shop.order.app.MoneyLedger;
 import com.maxsolch.shop.order.app.OrderChange;
 import com.maxsolch.shop.order.domain.OrderEvents;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
@@ -90,24 +91,21 @@ public class Returns {
         boolean overpaidInWork = OrderTransitions.isOpen(s)
                 && OrderMoney.overpaidMinor(order) > 0;
         if (s != OrderStatus.SHIPPED && s != OrderStatus.DELIVERED && s != OrderStatus.REJECTED && !overpaidInWork) {
-            throw OrderErrors.badRequest("возврат оформляется для отправленного, доставленного или отклонённого заказа");
+            throw new DomainException.BadRequest(ReturnsError.RETURN_STATUS_NOT_ALLOWED);
         }
         List<ReturnLine> safeLines = lines == null ? List.of() : lines;
         if ((s == OrderStatus.REJECTED || overpaidInWork) && safeLines.stream().anyMatch(l -> l.quantity() > 0)) {
-            throw OrderErrors.badRequest(s == OrderStatus.REJECTED
-                    ? "по отклонённому заказу можно оформить только возврат денег"
-                    : "заказ ещё не отправлен — можно вернуть только переплату");
+            throw (s == OrderStatus.REJECTED ? new DomainException.BadRequest(ReturnsError.REJECTED_MONEY_ONLY) : new DomainException.BadRequest(ReturnsError.NOT_SHIPPED_OVERPAYMENT_ONLY));
         }
         if (overpaidInWork && refundMinor > OrderMoney.overpaidMinor(order)) {
-            throw OrderErrors.badRequest("до отправки можно вернуть только переплату: " + MoneyFormat.uah(
-                    OrderMoney.overpaidMinor(order)));
+            throw new DomainException.BadRequest(ReturnsError.PRE_SHIPMENT_OVERPAYMENT_LIMIT, MoneyFormat.uah( OrderMoney.overpaidMinor(order)));
         }
         if (refundMinor < 0) {
-            throw OrderErrors.badRequest("сумма возврата не может быть отрицательной");
+            throw new DomainException.BadRequest(ReturnsError.REFUND_NEGATIVE);
         }
         long refundable = OrderMoney.refundableMinor(order);
         if (refundMinor > refundable) {
-            throw OrderErrors.badRequest("вернуть можно не больше, чем получено: " + MoneyFormat.uah(refundable));
+            throw new DomainException.BadRequest(ReturnsError.REFUND_EXCEEDS_RECEIVED, MoneyFormat.uah(refundable));
         }
 
         List<String> parts = new ArrayList<>();
@@ -119,8 +117,7 @@ public class Returns {
             OrderItem item = ReturnText.item(order, line.itemId());
             int left = item.getQuantity() - item.getReturnedQty();
             if (line.quantity() > left) {
-                throw OrderErrors.badRequest("по позиции «" + item.getTitleSnapshot()
-                        + "» можно вернуть не больше " + left + " шт.");
+                throw new DomainException.BadRequest(ReturnsError.ITEM_QTY_EXCEEDED, item.getTitleSnapshot(), String.valueOf(left));
             }
             item.registerReturned(line.quantity());
             if (line.restock()) {
@@ -132,7 +129,7 @@ public class Returns {
             parts.add(item.getTitleSnapshot() + " ×" + line.quantity() + (line.restock() ? " (на склад)" : " (не на склад)"));
         }
         if (units == 0 && refundMinor == 0) {
-            throw OrderErrors.badRequest("укажите, что вернули, или сумму возврата");
+            throw new DomainException.BadRequest(ReturnsError.RETURN_OR_AMOUNT_REQUIRED);
         }
         if (refundMinor > 0) {
             order.registerRefund(refundMinor);
@@ -227,7 +224,7 @@ public class Returns {
             units += line.quantity();
         }
         if (units == 0 && manual == 0 && plan.monoRefundMinor() == 0 && plan.retainMinor() == 0) {
-            throw OrderErrors.badRequest("укажите, что вернули, или сумму возврата");
+            throw new DomainException.BadRequest(ReturnsError.RETURN_OR_AMOUNT_REQUIRED);
         }
         if (s == OrderStatus.SHIPPED) {
             // Partial pickup: what the customer refused at the branch is never paid for.
@@ -279,8 +276,7 @@ public class Returns {
     private static void checkLeft(OrderItem item, WizardLine line) {
         int left = item.getQuantity() - item.getReturnedQty();
         if (line.outcome() != LineOutcome.KEPT && line.quantity() > left) {
-            throw OrderErrors.badRequest("по позиции «" + item.getTitleSnapshot()
-                    + "» можно вернуть не больше " + left + " шт.");
+            throw new DomainException.BadRequest(ReturnsError.ITEM_QTY_EXCEEDED, item.getTitleSnapshot(), String.valueOf(left));
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import com.maxsolch.shop.staff.domain.StaffError;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.error.ErrorCode;
 import com.maxsolch.shop.staff.domain.LoginMethod;
@@ -86,12 +87,12 @@ public class AdminAccountService {
                                  ClientInfo client) {
         AdminUser a = admin(adminId);
         if (a.getPasswordHash() == null || a.getUsername() == null) {
-            throw new DomainException.BadRequest("У этой учётки нет входа по паролю — только через Telegram", ErrorCode.of("NO_PASSWORD_LOGIN"));
+            throw new DomainException.BadRequest(StaffError.NO_PASSWORD_LOGIN);
         }
         validateNewPassword(newPassword, currentPassword);
         if (!passwordEncoder.matches(currentPassword == null ? "" : currentPassword, a.getPasswordHash())) {
             fail(adminId, client, "неверный текущий пароль при смене пароля");
-            throw new DomainException.BadRequest("Текущий пароль неверный", ErrorCode.of("BAD_PASSWORD"));
+            throw new DomainException.BadRequest(StaffError.BAD_PASSWORD);
         }
         requireCode(a, code, client, "смена пароля");
 
@@ -111,7 +112,7 @@ public class AdminAccountService {
     public AdminTotp.NewSecret startTotpReset(long adminId, String currentCode, ClientInfo client) {
         AdminUser a = admin(adminId);
         if (!a.isTotpEnabled()) {
-            throw new DomainException.BadRequest("Двухфакторная защита ещё не настроена", ErrorCode.of("TOTP_NOT_SET"));
+            throw new DomainException.BadRequest(StaffError.TOTP_NOT_SET);
         }
         requireCode(a, currentCode, client, "перенастройка 2FA");
         AdminUser fresh = admin(adminId);
@@ -124,12 +125,12 @@ public class AdminAccountService {
     public String confirmTotpReset(long adminId, String newCode, ClientInfo client) {
         AdminUser a = admin(adminId);
         if (!totp.hasFreshPending(a)) {
-            throw new DomainException.BadRequest("Перенастройка устарела — начните заново", ErrorCode.of("TOTP_SETUP_EXPIRED"));
+            throw new DomainException.BadRequest(StaffError.TOTP_SETUP_EXPIRED_RESET);
         }
         OptionalLong step = totp.verifyPending(a, newCode);
         if (step.isEmpty()) {
             fail(adminId, client, "неверный код при перенастройке 2FA");
-            throw new DomainException.BadRequest("Неверный код из приложения", ErrorCode.of("BAD_CODE"));
+            throw new DomainException.BadRequest(StaffError.BAD_CODE);
         }
         totp.activatePending(a, step.getAsLong());
         adminUserRepository.save(a);
@@ -157,23 +158,23 @@ public class AdminAccountService {
 
     static void validateNewPassword(String newPassword, String currentPassword) {
         if (newPassword == null || newPassword.codePointCount(0, newPassword.length()) < MIN_PASSWORD_LENGTH) {
-            throw new DomainException.BadRequest("Новый пароль — минимум " + MIN_PASSWORD_LENGTH + " символов", ErrorCode.of("PASSWORD_TOO_SHORT"));
+            throw new DomainException.BadRequest(StaffError.PASSWORD_TOO_SHORT, String.valueOf(MIN_PASSWORD_LENGTH));
         }
         if (newPassword.getBytes(StandardCharsets.UTF_8).length > MAX_PASSWORD_BYTES) {
-            throw new DomainException.BadRequest("Новый пароль слишком длинный (до 72 байт)", ErrorCode.of("PASSWORD_TOO_LONG"));
+            throw new DomainException.BadRequest(StaffError.PASSWORD_TOO_LONG);
         }
         if (newPassword.isBlank() || newPassword.strip().length() != newPassword.length()) {
-            throw new DomainException.BadRequest("Пароль не должен начинаться или заканчиваться пробелом", ErrorCode.of("PASSWORD_SPACES"));
+            throw new DomainException.BadRequest(StaffError.PASSWORD_SPACES);
         }
         if (newPassword.equals(currentPassword)) {
-            throw new DomainException.BadRequest("Новый пароль совпадает с текущим", ErrorCode.of("PASSWORD_SAME"));
+            throw new DomainException.BadRequest(StaffError.PASSWORD_SAME);
         }
     }
 
     private void requireCode(AdminUser a, String code, ClientInfo client, String what) {
         if (!totp.verifyActive(a, code)) {
             fail(a.getTelegramUserId(), client, "неверный код 2FA: " + what);
-            throw new DomainException.BadRequest("Неверный код из приложения", ErrorCode.of("BAD_CODE"));
+            throw new DomainException.BadRequest(StaffError.BAD_CODE);
         }
     }
 
@@ -190,6 +191,6 @@ public class AdminAccountService {
 
     private AdminUser admin(long adminId) {
         return adminUserRepository.findByTelegramUserIdAndActiveTrue(adminId)
-                .orElseThrow(() -> new DomainException.Unauthorized("not authenticated", null));
+                .orElseThrow(() -> new DomainException.Unauthorized(StaffError.NOT_AUTHENTICATED));
     }
 }

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.domain;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import jakarta.persistence.Entity;
@@ -21,8 +22,6 @@ import java.util.List;
 @Table(name = "orders")
 public class Order extends OrderHousekeeping {
 
-    /** Error code: shipping needs the online payment that has not arrived (the admin may confirm). */
-    public static final String SHIP_UNPAID_CODE = "ORDER_UNPAID_SHIP";
     /** Shown when someone tries to reject an order the customer already received. */
     public static final String REJECT_DELIVERED =
             "Доставленный заказ не отклоняют — оформите «Возврат»: деньги и товар запишутся как надо";
@@ -207,11 +206,11 @@ public class Order extends OrderHousekeeping {
     /** Throws when {@code amountMinor} cannot be the received sum: negative, or above the order total. */
     public void requireReceivable(long amountMinor) {
         if (amountMinor < 0) {
-            throw OrderErrors.badRequest("сумма не может быть отрицательной");
+            throw new DomainException.BadRequest(OrderError.AMOUNT_NEGATIVE);
         }
         if (amountMinor > totalMinor) {
             // Used to be clamped silently: a typo (an extra zero) recorded "paid in full" unnoticed.
-            throw OrderErrors.badRequest("получено больше суммы заказа (" + MoneyFormat.uah(totalMinor) + ")");
+            throw new DomainException.BadRequest(OrderError.RECEIVED_EXCEEDS_TOTAL, MoneyFormat.uah(totalMinor));
         }
     }
 
@@ -288,7 +287,7 @@ public class Order extends OrderHousekeeping {
     /** Order composition/discount may only be edited before dispatch. */
     public void requireEditable() {
         if (!isOpen()) {
-            throw OrderErrors.badRequest("заказ можно менять только в статусе «Новый» или «Одобрен»");
+            throw new DomainException.BadRequest(OrderError.EDIT_STATUS_NOT_ALLOWED);
         }
     }
 
@@ -299,7 +298,7 @@ public class Order extends OrderHousekeeping {
     /** NEW → APPROVED. The dispatch card ("К ОТПРАВКЕ") is posted by the status listener after commit. */
     public void approve(Instant now) {
         if (!OrderTransitions.allowed(status, OrderStatus.APPROVED)) {
-            throw OrderErrors.badRequest("одобрить можно только новый заказ");
+            throw new DomainException.BadRequest(OrderError.APPROVE_STATUS_NOT_ALLOWED);
         }
         requireNoPendingCancelRequest();
         status = OrderStatus.APPROVED;
@@ -314,14 +313,11 @@ public class Order extends OrderHousekeeping {
      */
     public void ship(String ttn, boolean allowUnpaid, Instant now) {
         if (!OrderTransitions.allowed(status, OrderStatus.SHIPPED)) {
-            throw OrderErrors.badRequest("отправить можно только новый или одобренный заказ");
+            throw new DomainException.BadRequest(OrderError.SHIP_STATUS_NOT_ALLOWED);
         }
         requireNoPendingCancelRequest();
         if (!allowUnpaid && OrderMoney.onlinePaymentMissing(this)) {
-            throw OrderErrors.badRequest((prepaymentMinor > 0 ? "Предоплата" : "Онлайн-оплата")
-                    + " по заказу #" + shortId() + " не пришла (не хватает "
-                    + MoneyFormat.uah(OrderMoney.amountDueMinor(this)) + "). Отправить без неё можно только с подтверждением админа.",
-                    SHIP_UNPAID_CODE);
+            throw (prepaymentMinor > 0 ? new DomainException.BadRequest(OrderError.SHIP_PREPAYMENT_MISSING, String.valueOf(shortId()), MoneyFormat.uah(OrderMoney.amountDueMinor(this))) : new DomainException.BadRequest(OrderError.SHIP_ONLINE_PAYMENT_MISSING, String.valueOf(shortId()), MoneyFormat.uah(OrderMoney.amountDueMinor(this))));
         }
         status = OrderStatus.SHIPPED;
         shippedAt = now;
@@ -339,7 +335,7 @@ public class Order extends OrderHousekeeping {
      */
     public void deliver(Instant now) {
         if (!OrderTransitions.allowed(status, OrderStatus.DELIVERED)) {
-            throw OrderErrors.badRequest("доставленным можно отметить только отправленный заказ");
+            throw new DomainException.BadRequest(OrderError.DELIVER_STATUS_NOT_ALLOWED);
         }
         status = OrderStatus.DELIVERED;
         deliveredAt = now;
@@ -354,11 +350,11 @@ public class Order extends OrderHousekeeping {
     public void requireRejectable() {
         if (!OrderTransitions.allowed(status, OrderStatus.REJECTED)) {
             if (status == OrderStatus.REJECTED) {
-                throw OrderErrors.badRequest("заказ уже отклонён");
+                throw new DomainException.BadRequest(OrderError.ALREADY_REJECTED);
             }
             // Rejecting a delivered order used to keep its «получено» (the automatic full amount
             // set on delivery) — metrics then showed money that never was. A return records it right.
-            throw OrderErrors.badRequest(REJECT_DELIVERED, "ORDER_DELIVERED_REJECT");
+            throw new DomainException.BadRequest(OrderError.ORDER_DELIVERED_REJECT);
         }
     }
 
@@ -408,8 +404,7 @@ public class Order extends OrderHousekeeping {
         if (isCancelRequestPending()) {
             // Approving or shipping would leave the customer's open request hanging (the inbox only
             // lists it for NEW/APPROVED) while the order card still offers «Одобрить и вернуть».
-            throw OrderErrors.badRequest(
-                    "покупатель просит отменить заказ — сначала примите или отклоните запрос отмены в карточке заказа");
+            throw new DomainException.BadRequest(OrderError.CANCEL_REQUEST_PENDING);
         }
     }
 

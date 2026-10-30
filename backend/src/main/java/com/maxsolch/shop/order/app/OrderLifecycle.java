@@ -1,10 +1,11 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.order.domain.DeliveryMethod;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.OrderStatus;
@@ -169,7 +170,7 @@ public class OrderLifecycle {
             case SHIPPED -> ship(orderId, trackingNumber, allowUnpaid);
             case DELIVERED -> deliver(orderId);
             case REJECTED -> reject(orderId, reason, reasonCode, restock, false);
-            case NEW -> throw OrderErrors.badRequest("вернуть заказ в «Новые» нельзя");
+            case NEW -> throw new DomainException.BadRequest(OrderError.CANNOT_RETURN_TO_NEW);
         };
     }
 

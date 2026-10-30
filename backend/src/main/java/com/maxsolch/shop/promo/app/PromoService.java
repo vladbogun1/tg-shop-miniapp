@@ -1,5 +1,6 @@
 package com.maxsolch.shop.promo.app;
 
+import com.maxsolch.shop.promo.domain.PromoRejection;
 import com.maxsolch.shop.promo.domain.PromoDiscount;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.platform.i18n.Messages;
@@ -94,9 +95,9 @@ public class PromoService {
             return invalid(subtotal, messages.current("api.promo.notFound"));
         }
         PromoCode promo = found.get();
-        String personal = personalRejection(promo, userId, clock.instant());
+        PromoRejection personal = personalRejection(promo, userId, clock.instant());
         if (personal != null) {
-            return invalid(subtotal, messages.current(personal));
+            return invalid(subtotal, messages.current(personal.messageKey()));
         }
         if (remainingUses(promo, userId) <= 0) {
             return invalid(subtotal, messages.current("api.promo.expired"));
@@ -128,9 +129,9 @@ public class PromoService {
             return invalid(subtotal, messages.current("api.promo.notFound"));
         }
         PromoCode promo = found.get();
-        String personal = personalRejection(promo, userId, clock.instant());
+        PromoRejection personal = personalRejection(promo, userId, clock.instant());
         if (personal != null) {
-            return invalid(subtotal, messages.current(personal));
+            return invalid(subtotal, messages.current(personal.messageKey()));
         }
         if (remainingUses(promo, userId) <= 0) {
             return invalid(subtotal, messages.current("api.promo.expired"));
@@ -204,19 +205,19 @@ public class PromoService {
      *
      * @param userId the customer (telegram user id) who wants to use the code; null = unknown (a
      *               guest's cart preview)
-     * @return the message key of the reason, or null when the code may be used
+     * @return the reason, or null when the code may be used
      */
-    public static String personalRejection(PromoCode promo, Long userId, Instant now) {
+    public static PromoRejection personalRejection(PromoCode promo, Long userId, Instant now) {
         if (promo.isExpiredAt(now)) {
-            return "api.promo.expired";
+            return PromoRejection.EXPIRED;
         }
         if (promo.getOwnerUserId() != null) {
             if (userId == null) {
-                return "api.promo.personalSignIn";
+                return PromoRejection.SIGN_IN;
             }
             if (!promo.usableBy(userId)) {
                 // Somebody else's personal code: the same answer as for a code that does not exist.
-                return "api.promo.notFound";
+                return PromoRejection.NOT_FOUND;
             }
         }
         return null;

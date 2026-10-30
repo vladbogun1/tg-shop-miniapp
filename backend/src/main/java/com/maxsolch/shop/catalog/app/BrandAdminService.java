@@ -1,6 +1,7 @@
 package com.maxsolch.shop.catalog.app;
 
-import com.maxsolch.shop.catalog.domain.CatalogErrors;
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.catalog.domain.Brand;
 import com.maxsolch.shop.catalog.infra.BrandRepository;
 import com.maxsolch.shop.catalog.app.CatalogDtos.AdminBrandDto;
@@ -57,10 +58,10 @@ public class BrandAdminService {
     public AdminBrandDto create(BrandUpsertRequest req) {
         String name = trimToNull(req.name());
         if (name == null) {
-            throw CatalogErrors.badRequest("name: укажите бренд");
+            throw new DomainException.BadRequest(CatalogError.BRAND_NAME_REQUIRED);
         }
         if (findByNameOrAlias(name).isPresent()) {
-            throw CatalogErrors.badRequest("бренд «" + name + "» уже есть (или это алиас другого бренда)");
+            throw new DomainException.BadRequest(CatalogError.BRAND_EXISTS_OR_ALIAS, name);
         }
         Brand b = new Brand();
         b.setName(name);
@@ -77,7 +78,7 @@ public class BrandAdminService {
         if (name != null && !name.equals(b.getName())) {
             Optional<Brand> clash = repository.findByName(name);
             if (clash.isPresent() && !Arrays.equals(clash.get().getId(), b.getId())) {
-                throw CatalogErrors.badRequest("бренд «" + name + "» уже есть");
+                throw new DomainException.BadRequest(CatalogError.BRAND_EXISTS, name);
             }
             b.setName(name);
         }
@@ -110,7 +111,7 @@ public class BrandAdminService {
         Brand source = load(id);
         Brand target = load(targetId);
         if (Arrays.equals(source.getId(), target.getId())) {
-            throw CatalogErrors.badRequest("нельзя объединить бренд с самим собой");
+            throw new DomainException.BadRequest(CatalogError.BRAND_MERGE_SELF);
         }
         productRepository.moveBrand(source.getId(), target.getId());
         List<String> aliases = new ArrayList<>(target.aliasList());
@@ -184,7 +185,7 @@ public class BrandAdminService {
                 boolean taken = b.getId() == null ? repository.existsBySlug(explicit)
                         : repository.existsBySlugAndIdNot(explicit, b.getId());
                 if (taken) {
-                    throw CatalogErrors.badRequest("slug «" + explicit + "» уже занят");
+                    throw new DomainException.BadRequest(CatalogError.SLUG_TAKEN, explicit);
                 }
                 b.setSlug(explicit);
             } else {
@@ -224,7 +225,7 @@ public class BrandAdminService {
         }
         String key = v.replaceFirst("^/+", "");
         if (!key.startsWith(ImageStorageService.BRAND_LOGO_PREFIX) || key.contains("..")) {
-            throw CatalogErrors.badRequest("logoUrl: загрузите логотип заново");
+            throw new DomainException.BadRequest(CatalogError.LOGO_REUPLOAD_REQUIRED);
         }
         return key;
     }
@@ -232,7 +233,7 @@ public class BrandAdminService {
     static String logoMode(String raw) {
         String v = raw.trim().toUpperCase(Locale.ROOT);
         if (!v.equals(Brand.LOGO_MONO) && !v.equals(Brand.LOGO_ORIGINAL)) {
-            throw CatalogErrors.badRequest("logoMode: MONO или ORIGINAL");
+            throw new DomainException.BadRequest(CatalogError.INVALID_LOGO_MODE);
         }
         return v;
     }
@@ -248,9 +249,9 @@ public class BrandAdminService {
         try {
             key = UuidUtil.toBytes(id);
         } catch (IllegalArgumentException | NullPointerException e) {
-            throw CatalogErrors.badRequest("invalid brand id: " + id);
+            throw new DomainException.BadRequest(CatalogError.INVALID_BRAND_ID, id);
         }
-        return repository.findById(key).orElseThrow(() -> CatalogErrors.notFound("brand not found"));
+        return repository.findById(key).orElseThrow(() -> new DomainException.NotFound(CatalogError.BRAND_NOT_FOUND));
     }
 
     static String norm(String s) {

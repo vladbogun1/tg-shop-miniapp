@@ -1,5 +1,6 @@
 package com.maxsolch.shop.support.app;
 
+import com.maxsolch.shop.support.domain.SupportError;
 import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.order.app.SendMessageRequest;
 import com.maxsolch.shop.order.domain.SenderType;
@@ -48,8 +49,7 @@ public class SupportLimits {
 
     void requireEnabled() {
         if (!settings.getBool(SettingsRegistry.SUPPORT_ENABLED)) {
-            throw new DomainException.BadRequest(messages.current("api.support.disabled"),
-                    ErrorCode.of("SUPPORT_DISABLED"));
+            throw new DomainException.BadRequest(SupportError.SUPPORT_DISABLED);
         }
     }
 
@@ -58,19 +58,18 @@ public class SupportLimits {
         requireContent(req);
         int max = settings.getInt(SettingsRegistry.SUPPORT_MAX_LENGTH);
         if (max > 0 && req.text() != null && req.text().strip().length() > max) {
-            throw new DomainException.BadRequest(messages.current("api.support.tooLong", max),
-                    ErrorCode.of("SUPPORT_TOO_LONG"));
+            throw new DomainException.BadRequest(SupportError.SUPPORT_TOO_LONG, max);
         }
         if (req.attachmentUrl() != null && !req.attachmentUrl().isBlank()
                 && !ImageStorageService.isCustomerAttachmentKey(req.attachmentUrl(), userId)) {
-            throw new DomainException.BadRequest(messages.current("api.chat.badAttachment"));
+            throw new DomainException.BadRequest(SupportError.BAD_ATTACHMENT);
         }
     }
 
     void requireContent(SendMessageRequest req) {
         if (req == null || ((req.text() == null || req.text().isBlank())
                 && (req.attachmentUrl() == null || req.attachmentUrl().isBlank()))) {
-            throw new DomainException.BadRequest(messages.current("api.chat.needsContent"));
+            throw new DomainException.BadRequest(SupportError.NEEDS_CONTENT);
         }
     }
 
@@ -82,8 +81,7 @@ public class SupportLimits {
             if (last != null) {
                 long wait = cooldown - Duration.between(last, now).getSeconds();
                 if (wait > 0) {
-                    throw new DomainException.BadRequest(messages.current("api.support.cooldown", wait),
-                            ErrorCode.of("SUPPORT_COOLDOWN"));
+                    throw new DomainException.BadRequest(SupportError.SUPPORT_COOLDOWN, wait);
                 }
             }
         }
@@ -91,8 +89,7 @@ public class SupportLimits {
         if (perHour > 0) {
             long sent = messageRepository.countSentSince(SenderType.CUSTOMER, userId, now.minus(Duration.ofHours(1)));
             if (sent >= perHour) {
-                throw new DomainException.BadRequest(messages.current("api.support.hourlyLimit", perHour),
-                        ErrorCode.of("SUPPORT_HOURLY_LIMIT"));
+                throw new DomainException.BadRequest(SupportError.SUPPORT_HOURLY_LIMIT, perHour);
             }
         }
     }
@@ -101,8 +98,7 @@ public class SupportLimits {
     void requireThreadSlot(long userId) {
         int max = settings.getInt(SettingsRegistry.SUPPORT_MAX_OPEN_THREADS);
         if (max > 0 && threads.countByUserIdAndStatus(userId, SupportStatus.OPEN) >= max) {
-            throw new DomainException.BadRequest(messages.current("api.support.tooManyThreads", max),
-                    ErrorCode.of("SUPPORT_TOO_MANY_THREADS"));
+            throw new DomainException.BadRequest(SupportError.SUPPORT_TOO_MANY_THREADS, max);
         }
     }
 }

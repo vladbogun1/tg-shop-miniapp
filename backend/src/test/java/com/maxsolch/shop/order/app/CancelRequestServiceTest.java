@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -96,7 +97,7 @@ class CancelRequestServiceTest {
         assertThatThrownBy(() -> service.approve(orderId, null))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .satisfies(e -> assertThat(((DomainException.BadRequest) e).getCode())
-                        .isEqualTo(CancelRequestService.PAYMENT_IN_PROGRESS));
+                        .isEqualTo(OrderError.PAYMENT_IN_PROGRESS.code()));
         verify(cancelRequests, never()).approveCancelRequest(any(), any());
         verify(payments, never()).refundAll(any());
     }
@@ -120,7 +121,7 @@ class CancelRequestServiceTest {
     void request_whileBankProcesses_isRefused() {
         when(payments.hasPaymentInFlight(orderId)).thenReturn(true);
         assertThatThrownBy(() -> service.request(orderId, "причина"))
-                .hasMessage("api.payment.inProgress");
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(OrderError.PAYMENT_IN_PROGRESS_CUSTOMER));
         verify(cancelRequests, never()).requestCancel(any(), any());
     }
 }

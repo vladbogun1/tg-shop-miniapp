@@ -1,10 +1,11 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.inventory.app.Stock;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.preorder.app.PreorderQueueService;
@@ -104,12 +105,11 @@ public class OrderStock {
             return;
         }
         Product product = productRepository.findByIdForUpdate(item.getProductId())
-                .orElseThrow(() -> OrderErrors.badRequest("товар «" + item.getTitleSnapshot() + "» удалён из каталога"));
+                .orElseThrow(() -> new DomainException.BadRequest(OrderError.PRODUCT_DELETED, item.getTitleSnapshot()));
         ProductVariant variant = item.getVariantId() == null ? null : Stock.variantOf(product, item.getVariantId());
         int onShelf = variant != null ? variant.getStock() : product.getStock();
         if (onShelf < units) {
-            throw OrderErrors.badRequest("«" + item.getTitleSnapshot() + "» уже продали: на складе " + Math.max(0, onShelf)
-                    + " шт., а вернуть в заказ нужно " + units + ". Верните товар на склад (или поправьте остаток) и повторите.");
+            throw new DomainException.BadRequest(OrderError.RESTOCK_SHORTAGE, item.getTitleSnapshot(), String.valueOf(Math.max(0, onShelf)), String.valueOf(units));
         }
         if (item.getVariantId() != null && variant == null) {
             product.setStock(product.getStock() - units);
@@ -126,7 +126,7 @@ public class OrderStock {
      */
     public void resizeLine(OrderItem item, int delta) {
         Product product = productRepository.findByIdForUpdate(item.getProductId())
-                .orElseThrow(() -> OrderErrors.badRequest("product not found"));
+                .orElseThrow(() -> new DomainException.BadRequest(OrderError.PRODUCT_NOT_FOUND));
         ProductVariant variant = item.getVariantId() == null ? null : Stock.variantOf(product, item.getVariantId());
         if (delta > 0) {
             stock.reserve(product, variant, delta, item);

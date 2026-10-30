@@ -1,5 +1,6 @@
 package com.maxsolch.shop.notification.app;
 
+import com.maxsolch.shop.notification.domain.NotificationError;
 import com.maxsolch.shop.platform.jobs.Workers;
 import com.maxsolch.shop.notification.infra.PushSubscriptionStore;
 import com.maxsolch.shop.notification.infra.PushTransport;
@@ -7,7 +8,6 @@ import com.maxsolch.shop.notification.infra.WebPushCrypto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.notification.infra.PushSubscriptionStore.Subscription;
-import com.maxsolch.shop.notification.domain.PushError;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import lombok.extern.slf4j.Slf4j;
@@ -176,11 +176,11 @@ public class AdminPushService {
         URI uri = validateEndpoint(endpoint);
         try {
             if (WebPushCrypto.b64url(p256dh).length != 65 || WebPushCrypto.b64url(auth).length != 16) {
-                throw new DomainException.BadRequest("Неверные ключи подписки", PushError.PUSH_BAD_KEYS);
+                throw new DomainException.BadRequest(NotificationError.PUSH_BAD_KEYS);
             }
             WebPushCrypto.publicKey(WebPushCrypto.b64url(p256dh));
         } catch (GeneralSecurityException | IllegalArgumentException | NullPointerException e) {
-            throw new DomainException.BadRequest("Неверные ключи подписки", PushError.PUSH_BAD_KEYS);
+            throw new DomainException.BadRequest(NotificationError.PUSH_BAD_KEYS);
         }
         String ua = userAgent == null ? null : (userAgent.length() > 255 ? userAgent.substring(0, 255) : userAgent);
         store.upsert(adminId, uri.toString(), p256dh.trim(), auth.trim(), ua);
@@ -199,7 +199,7 @@ public class AdminPushService {
                 ? store.byAdmin(adminId)
                 : store.byEndpoint(endpoint.trim());
         if (targets.isEmpty()) {
-            throw new DomainException.BadRequest("Это устройство не подписано на уведомления", PushError.PUSH_NOT_SUBSCRIBED);
+            throw new DomainException.BadRequest(NotificationError.PUSH_NOT_SUBSCRIBED);
         }
         return sendTo(targets, new PushMessage("Проверка уведомлений",
                 "Уведомления MAXSOLCH Admin работают на этом устройстве", "/settings", "test", null, false));
@@ -321,7 +321,7 @@ public class AdminPushService {
 
     private void requireEnabled() {
         if (!enabled()) {
-            throw new DomainException.Conflict("Push-уведомления выключены на сервере (не заданы VAPID-ключи)", PushError.PUSH_DISABLED, null);
+            throw new DomainException.Conflict(NotificationError.PUSH_DISABLED);
         }
     }
 
@@ -330,13 +330,13 @@ public class AdminPushService {
         try {
             uri = URI.create(endpoint == null ? "" : endpoint.trim());
         } catch (IllegalArgumentException e) {
-            throw new DomainException.BadRequest("Неверный адрес подписки", PushError.PUSH_BAD_ENDPOINT);
+            throw new DomainException.BadRequest(NotificationError.PUSH_BAD_ENDPOINT);
         }
         String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
         boolean allowed = ALLOWED_HOST_SUFFIXES.stream().anyMatch(h -> host.equals(h) || host.endsWith("." + h));
         if (!"https".equalsIgnoreCase(uri.getScheme()) || !allowed || uri.getUserInfo() != null
                 || uri.toString().length() > 2048) {
-            throw new DomainException.BadRequest("Неизвестный push-сервис", PushError.PUSH_BAD_ENDPOINT);
+            throw new DomainException.BadRequest(NotificationError.PUSH_BAD_ENDPOINT_UNKNOWN_SERVICE);
         }
         return uri;
     }
