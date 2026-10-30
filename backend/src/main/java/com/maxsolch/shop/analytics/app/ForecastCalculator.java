@@ -86,7 +86,27 @@ public final class ForecastCalculator {
         double next30 = ForecastModel.total(fit, today, ForecastModel.HORIZON);
         double[] band30 = ForecastModel.band(next30, btWeek, bt, ForecastModel.HORIZON);
 
-        // This month: actual so far + forecast for the rest.
+        MonthForecast month = month(d, today, fit, bt, btWeek);
+
+        // Weekly chart: actual weeks, then forecast weeks with the band (week = Monday..Sunday).
+        LocalDate thisWeek = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        List<ForecastPoint> history = historyWeeks(d, thisWeek);
+        List<ForecastPoint> forecast = forecastWeeks(d, today, thisWeek, fit, bt, btWeek);
+
+        List<Double> factors = new ArrayList<>();
+        for (double f : fit.weekday()) {
+            factors.add(Stats.round2(f));
+        }
+        return new Forecast("sold", month,
+                new RangeForecast(Math.round(next30), Math.round(band30[0]), Math.round(band30[1])),
+                history, forecast, accuracy(bt), factors, METHOD);
+    }
+
+    /** This month: actual so far + forecast for the rest. */
+    private static MonthForecast month(Daily d, LocalDate today, ForecastModel.Fit fit, ForecastModel.Backtest bt,
+                                       ForecastModel.Backtest btWeek) {
+        double[] all = d.values();
+        double actualToday = all[all.length - 1];
         YearMonth ym = YearMonth.from(today);
         LocalDate monthEnd = ym.atEndOfMonth();
         int daysAfterToday = (int) ChronoUnit.DAYS.between(today, monthEnd);
@@ -101,12 +121,14 @@ public final class ForecastCalculator {
         double remaining = ForecastModel.total(fit, today.plusDays(1), daysAfterToday)
                 + Math.max(0, fit.predict(today) - actualToday);
         double[] bandRest = ForecastModel.band(remaining, btWeek, bt, daysAfterToday + 1);
-        MonthForecast month = new MonthForecast(ym.toString(), Math.round(actualMonth), Math.round(remaining),
+        return new MonthForecast(ym.toString(), Math.round(actualMonth), Math.round(remaining),
                 Math.round(actualMonth + remaining), Math.round(actualMonth + bandRest[0]),
                 Math.round(actualMonth + bandRest[1]), daysAfterToday + 1);
+    }
 
-        // Weekly chart: actual weeks, then forecast weeks with the band (week = Monday..Sunday).
-        LocalDate thisWeek = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+    /** Actual sold of the {@link #HISTORY_WEEKS} weeks before this one, oldest first. */
+    private static List<ForecastPoint> historyWeeks(Daily d, LocalDate thisWeek) {
+        double[] all = d.values();
         List<ForecastPoint> history = new ArrayList<>();
         for (int w = HISTORY_WEEKS; w >= 1; w--) {
             LocalDate ws = thisWeek.minusWeeks(w);
@@ -119,6 +141,15 @@ public final class ForecastCalculator {
             }
             history.add(new ForecastPoint(ws.toString(), Math.round(sum), null, null));
         }
+        return history;
+    }
+
+    /** This week and the next ones: the days gone are facts, the rest is forecast with the band. */
+    private static List<ForecastPoint> forecastWeeks(Daily d, LocalDate today, LocalDate thisWeek,
+                                                     ForecastModel.Fit fit, ForecastModel.Backtest bt,
+                                                     ForecastModel.Backtest btWeek) {
+        double[] all = d.values();
+        double actualToday = all[all.length - 1];
         List<ForecastPoint> forecast = new ArrayList<>();
         for (int w = 0; w < FORECAST_WEEKS; w++) {
             LocalDate ws = thisWeek.plusWeeks(w);
@@ -144,14 +175,7 @@ public final class ForecastCalculator {
             forecast.add(new ForecastPoint(ws.toString(), Math.round(actualPart + futurePart),
                     Math.round(actualPart + b[0]), Math.round(actualPart + b[1])));
         }
-
-        List<Double> factors = new ArrayList<>();
-        for (double f : fit.weekday()) {
-            factors.add(Stats.round2(f));
-        }
-        return new Forecast("sold", month,
-                new RangeForecast(Math.round(next30), Math.round(band30[0]), Math.round(band30[1])),
-                history, forecast, accuracy(bt), factors, METHOD);
+        return forecast;
     }
 
     static Accuracy accuracy(ForecastModel.Backtest bt) {

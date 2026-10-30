@@ -62,6 +62,28 @@ public final class BatchCost {
         if (rate == null) {
             problems.add("нет курса " + currency);
         }
+        Purchases purchases = purchases(lines, rate, problems);
+        Expenses spent = expenses(lines, expenses, problems);
+        Shares shares = allocation == Allocation.MANUAL
+                ? manualShares(lines, spent.pool(), problems)
+                : weightedShares(allocation, lines, purchases.line(), spent.pool(), problems);
+
+        List<LineCost> out = new ArrayList<>();
+        for (Line l : lines) {
+            long extra = shares.share().getOrDefault(l.id(), 0L) + spent.direct().getOrDefault(l.id(), 0L);
+            long extraUnit = l.qty() > 0 ? Money.quotient(extra, l.qty()) : 0;
+            Long pu = purchases.unit().get(l.id());
+            out.add(new LineCost(l.id(), l.qty(), pu, purchases.line().get(l.id()), extra, extraUnit,
+                    pu == null ? null : pu + extraUnit));
+        }
+        return new Result(out, purchases.total(), spent.total(), shares.unassigned(), problems);
+    }
+
+    /** Purchase in UAH per unit and per line (only lines with a price, and only when the rate is known). */
+    private record Purchases(Map<Long, Long> unit, Map<Long, Long> line, long total) {
+    }
+
+    private static Purchases purchases(List<Line> lines, BigDecimal rate, List<String> problems) {
         Map<Long, Long> purchaseUnit = new HashMap<>();
         Map<Long, Long> purchaseLine = new HashMap<>();
         long purchaseTotal = 0;
@@ -78,8 +100,14 @@ public final class BatchCost {
             purchaseLine.put(l.id(), line);
             purchaseTotal += line;
         }
+        return new Purchases(purchaseUnit, purchaseLine, purchaseTotal);
+    }
 
-        // Expenses in UAH: per line, and the pool shared by the whole batch.
+    /** Expenses in UAH: per line, and the pool shared by the whole batch. */
+    private record Expenses(Map<Long, Long> direct, long pool, long total) {
+    }
+
+    private static Expenses expenses(List<Line> lines, List<Expense> expenses, List<String> problems) {
         Map<Long, Long> direct = new HashMap<>();
         long pool = 0;
         long expensesTotal = 0;
@@ -97,54 +125,55 @@ public final class BatchCost {
                 pool += uah;
             }
         }
+        return new Expenses(direct, pool, expensesTotal);
+    }
 
+    /** Each line's share of the pool, and what of the pool no line took. */
+    private record Shares(Map<Long, Long> share, long unassigned) {
+    }
+
+    private static Shares manualShares(List<Line> lines, long pool, List<String> problems) {
+        Map<Long, Long> share = new HashMap<>();
+        long typed = 0;
+        for (Line l : lines) {
+            long m = l.manualExtraMinor() == null ? 0 : l.manualExtraMinor();
+            share.put(l.id(), m);
+            typed += m;
+        }
+        long unassigned = pool - typed;
+        if (unassigned != 0) {
+            problems.add("вручную распределено не всё: разница " + unassigned / 100 + " ₴");
+        }
+        return new Shares(share, unassigned);
+    }
+
+    private static Shares weightedShares(Allocation allocation, List<Line> lines, Map<Long, Long> purchaseLine,
+                                         long pool, List<String> problems) {
         Map<Long, Long> share = new HashMap<>();
         long unassigned = 0;
-        if (allocation == Allocation.MANUAL) {
-            long typed = 0;
-            for (Line l : lines) {
-                long m = l.manualExtraMinor() == null ? 0 : l.manualExtraMinor();
-                share.put(l.id(), m);
-                typed += m;
-            }
-            unassigned = pool - typed;
-            if (unassigned != 0) {
-                problems.add("вручную распределено не всё: разница " + unassigned / 100 + " ₴");
-            }
-        } else {
-            Map<Long, Long> weights = new HashMap<>();
-            for (Line l : lines) {
-                long w = switch (allocation) {
-                    case BY_VALUE -> purchaseLine.getOrDefault(l.id(), 0L);
-                    case BY_QTY -> l.qty();
-                    case BY_WEIGHT -> l.weightG() == null ? 0 : (long) l.weightG() * l.qty();
-                    case MANUAL -> 0;
-                };
-                if (allocation == Allocation.BY_WEIGHT && l.weightG() == null && l.qty() > 0) {
-                    problems.add("нет веса у позиции " + l.id());
-                }
-                weights.put(l.id(), Math.max(0, w));
-            }
-            if (weights.values().stream().mapToLong(Long::longValue).sum() == 0) {
-                // nothing to weigh by (no prices yet, nothing arrived): fall back to units
-                lines.forEach(l -> weights.put(l.id(), (long) Math.max(0, l.qty())));
-            }
-            Map<Long, Long> split = split(pool, weights);
-            share.putAll(split);
-            if (split.isEmpty()) {
-                unassigned = pool;
-            }
-        }
-
-        List<LineCost> out = new ArrayList<>();
+        Map<Long, Long> weights = new HashMap<>();
         for (Line l : lines) {
-            long extra = share.getOrDefault(l.id(), 0L) + direct.getOrDefault(l.id(), 0L);
-            long extraUnit = l.qty() > 0 ? Money.quotient(extra, l.qty()) : 0;
-            Long pu = purchaseUnit.get(l.id());
-            out.add(new LineCost(l.id(), l.qty(), pu, purchaseLine.get(l.id()), extra, extraUnit,
-                    pu == null ? null : pu + extraUnit));
+            long w = switch (allocation) {
+                case BY_VALUE -> purchaseLine.getOrDefault(l.id(), 0L);
+                case BY_QTY -> l.qty();
+                case BY_WEIGHT -> l.weightG() == null ? 0 : (long) l.weightG() * l.qty();
+                case MANUAL -> 0;
+            };
+            if (allocation == Allocation.BY_WEIGHT && l.weightG() == null && l.qty() > 0) {
+                problems.add("нет веса у позиции " + l.id());
+            }
+            weights.put(l.id(), Math.max(0, w));
         }
-        return new Result(out, purchaseTotal, expensesTotal, unassigned, problems);
+        if (weights.values().stream().mapToLong(Long::longValue).sum() == 0) {
+            // nothing to weigh by (no prices yet, nothing arrived): fall back to units
+            lines.forEach(l -> weights.put(l.id(), (long) Math.max(0, l.qty())));
+        }
+        Map<Long, Long> split = split(pool, weights);
+        share.putAll(split);
+        if (split.isEmpty()) {
+            unassigned = pool;
+        }
+        return new Shares(share, unassigned);
     }
 
     /** UAH per unit of the currency; UAH itself is 1. */

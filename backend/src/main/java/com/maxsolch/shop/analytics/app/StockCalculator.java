@@ -46,79 +46,24 @@ public final class StockCalculator {
     public Stock compute(MetricsFacts facts, MetricsPeriod period, ChannelFilter channel, int deadDays,
                          int lowStockDays, Map<String, ReorderCalculator.Interest> interest30, Reorder reorder) {
         Instant now = facts.now();
-        Map<String, OrderFact> orders = facts.orderById();
-
-        // Last sale and 30-day sold value per product (all channels: stock is shared).
-        Map<String, Instant> lastSale = new HashMap<>();
-        Map<String, Long> sold30Value = new HashMap<>();
-        Instant cut30 = now.minus(Duration.ofDays(30));
-        Map<ItemFact, Long> lineValues = facts.soldValueByItem();
-        for (ItemFact it : facts.items()) {
-            OrderFact o = orders.get(it.orderId());
-            if (o == null || !o.sold() || it.gift() || o.createdAt() == null) {
-                continue;
-            }
-            lastSale.merge(it.productId(), o.createdAt(), (a, b) -> a.isAfter(b) ? a : b);
-            if (!o.createdAt().isBefore(cut30)) {
-                sold30Value.merge(it.productId(), lineValues.getOrDefault(it, 0L), Long::sum);
-            }
-        }
-
-        long stockValue = 0;
-        long stockUnits = 0;
-        long live = 0;
-        long forgottenValue = 0;
-        List<ForgottenRow> forgotten = new ArrayList<>();
-        Map<Integer, long[]> buckets = new LinkedHashMap<>();
-        DEAD_DAYS.forEach(d -> buckets.put(d, new long[3]));
-        List<DeadStockRow> dead = new ArrayList<>();
-        Map<String, long[]> catAcc = new HashMap<>(); // products, units, value, sold30
+        RecentSales sales = recentSales(facts, now);
         long totalSold30 = 0;
-        for (long v : sold30Value.values()) {
+        for (long v : sales.sold30Value().values()) {
             totalSold30 += v;
         }
 
+        Tally t = new Tally();
         for (ProductFact p : facts.products()) {
-            long value = (long) Math.max(0, p.stock()) * p.priceMinor();
-            if (!p.live()) {
-                if (p.stock() > 0) {
-                    forgotten.add(new ForgottenRow(p.id(), p.title(), p.stock(), value, p.archived()));
-                    forgottenValue += value;
-                }
-                continue;
-            }
-            live++;
-            stockValue += value;
-            stockUnits += Math.max(0, p.stock());
-            for (String tag : p.tags().isEmpty() ? List.of(OverviewCalculator.NO_CATEGORY) : p.tags()) {
-                long[] a = catAcc.computeIfAbsent(tag, k -> new long[4]);
-                a[0]++;
-                a[1] += Math.max(0, p.stock());
-                a[2] += value;
-                a[3] += sold30Value.getOrDefault(p.id(), 0L);
-            }
-            if (p.stock() <= 0) {
-                continue;
-            }
-            Instant last = lastSale.get(p.id());
-            Instant since = last != null ? last : p.createdAt();
-            int idle = since == null ? 9999 : (int) Duration.between(since, now).toDays();
-            for (int d : DEAD_DAYS) {
-                if (idle >= d) {
-                    long[] b = buckets.get(d);
-                    b[0]++;
-                    b[1] += p.stock();
-                    b[2] += value;
-                }
-            }
-            if (idle >= deadDays) {
-                ReorderCalculator.Interest in = interest30 == null ? null : interest30.get(p.id());
-                dead.add(new DeadStockRow(p.id(), p.title(), p.tags(), p.stock(), p.priceMinor(), value, idle,
-                        last == null,
-                        interest30 == null ? null : in == null ? 0L : in.views(),
-                        interest30 == null ? null : in == null ? 0L : in.cartAdds()));
-            }
+            t.add(p, sales, now, deadDays, interest30);
         }
+        long stockValue = t.stockValue;
+        long stockUnits = t.stockUnits;
+        long live = t.live;
+        long forgottenValue = t.forgottenValue;
+        List<ForgottenRow> forgotten = t.forgotten;
+        Map<Integer, long[]> buckets = t.buckets;
+        List<DeadStockRow> dead = t.dead;
+        Map<String, long[]> catAcc = t.catAcc;
         dead.sort(Comparator.comparingLong(DeadStockRow::valueMinor).reversed());
         forgotten.sort(Comparator.comparingLong(ForgottenRow::valueMinor).reversed());
 
@@ -144,6 +89,88 @@ public final class StockCalculator {
                 topProducts(facts, period, channel),
                 dead.size() > DEAD_LIMIT ? dead.subList(0, DEAD_LIMIT) : dead,
                 deadBuckets, forgotten, categories, reorder);
+    }
+
+    /** Last sale and 30-day sold value per product (all channels: stock is shared). */
+    private record RecentSales(Map<String, Instant> lastSale, Map<String, Long> sold30Value) {
+    }
+
+    private static RecentSales recentSales(MetricsFacts facts, Instant now) {
+        Map<String, OrderFact> orders = facts.orderById();
+        Map<String, Instant> lastSale = new HashMap<>();
+        Map<String, Long> sold30Value = new HashMap<>();
+        Instant cut30 = now.minus(Duration.ofDays(30));
+        Map<ItemFact, Long> lineValues = facts.soldValueByItem();
+        for (ItemFact it : facts.items()) {
+            OrderFact o = orders.get(it.orderId());
+            if (o == null || !o.sold() || it.gift() || o.createdAt() == null) {
+                continue;
+            }
+            lastSale.merge(it.productId(), o.createdAt(), (a, b) -> a.isAfter(b) ? a : b);
+            if (!o.createdAt().isBefore(cut30)) {
+                sold30Value.merge(it.productId(), lineValues.getOrDefault(it, 0L), Long::sum);
+            }
+        }
+        return new RecentSales(lastSale, sold30Value);
+    }
+
+    /** What the products add up to: live stock, forgotten stock, dead-stock buckets and rows, categories. */
+    private static final class Tally {
+        long stockValue;
+        long stockUnits;
+        long live;
+        long forgottenValue;
+        final List<ForgottenRow> forgotten = new ArrayList<>();
+        final Map<Integer, long[]> buckets = new LinkedHashMap<>();
+        final List<DeadStockRow> dead = new ArrayList<>();
+        final Map<String, long[]> catAcc = new HashMap<>(); // products, units, value, sold30
+
+        Tally() {
+            DEAD_DAYS.forEach(d -> buckets.put(d, new long[3]));
+        }
+
+        void add(ProductFact p, RecentSales sales, Instant now, int deadDays,
+                 Map<String, ReorderCalculator.Interest> interest30) {
+            long value = (long) Math.max(0, p.stock()) * p.priceMinor();
+            if (!p.live()) {
+                if (p.stock() > 0) {
+                    forgotten.add(new ForgottenRow(p.id(), p.title(), p.stock(), value, p.archived()));
+                    forgottenValue += value;
+                }
+                return;
+            }
+            live++;
+            stockValue += value;
+            stockUnits += Math.max(0, p.stock());
+            for (String tag : p.tags().isEmpty() ? List.of(OverviewCalculator.NO_CATEGORY) : p.tags()) {
+                long[] a = catAcc.computeIfAbsent(tag, k -> new long[4]);
+                a[0]++;
+                a[1] += Math.max(0, p.stock());
+                a[2] += value;
+                a[3] += sales.sold30Value().getOrDefault(p.id(), 0L);
+            }
+            if (p.stock() <= 0) {
+                return;
+            }
+            Instant last = sales.lastSale().get(p.id());
+            Instant since = last != null ? last : p.createdAt();
+            int idle = since == null ? 9999 : (int) Duration.between(since, now).toDays();
+            for (int d : DEAD_DAYS) {
+                if (idle >= d) {
+                    long[] b = buckets.get(d);
+                    b[0]++;
+                    b[1] += p.stock();
+                    b[2] += value;
+                }
+            }
+            if (idle >= deadDays) {
+                ReorderCalculator.Interest in = interest30 == null ? null : interest30.get(p.id());
+                dead.add(new DeadStockRow(p.id(), p.title(), p.tags(), p.stock(), p.priceMinor(), value, idle,
+                        last == null,
+                        interest30 == null ? null : in == null ? 0L : in.views(),
+                        interest30 == null ? null : in == null ? 0L : in.cartAdds()));
+            }
+        }
     }
 
     /** Days the stock lasts at the last 30 days' sales pace (both at retail); null when nothing sold. */

@@ -107,7 +107,7 @@ public class AdminProductService {
         List<AdminProductDto> out = new ArrayList<>(productRepository.findAllNotArchived().stream()
                 .map(p -> {
                     int[] w = waitingBy.get(UuidUtil.toString(p.getId()));
-                    AdminProductDto dto = toAdminDto(p, catalog);
+                    AdminProductDto dto = AdminProductDto.of(p, catalog);
                     return w == null ? dto : dto.withWaiting(w[0], w[1]);
                 }).toList());
         if (sort != null && "demand".equalsIgnoreCase(sort.trim())) {
@@ -119,12 +119,12 @@ public class AdminProductService {
     @Transactional(readOnly = true)
     public List<AdminProductDto> listArchived() {
         CatalogSnapshot catalog = catalogDirectory.snapshot();
-        return productRepository.findAllArchived().stream().map(p -> toAdminDto(p, catalog)).toList();
+        return productRepository.findAllArchived().stream().map(p -> AdminProductDto.of(p, catalog)).toList();
     }
 
     @Transactional(readOnly = true)
     public AdminProductDto get(String id) {
-        return toAdminDto(load(id), catalogDirectory.snapshot());
+        return AdminProductDto.of(load(id), catalogDirectory.snapshot());
     }
 
     @Caching(evict = {
@@ -158,7 +158,7 @@ public class AdminProductService {
         ProductVariantsEditor.apply(p, req, null);
         Product created = productRepository.save(p);
         syncLots(created);
-        return toAdminDto(created, catalogDirectory.load()).withSpecIssues(issues);
+        return AdminProductDto.of(created, catalogDirectory.load()).withSpecIssues(issues);
     }
 
     @Caching(evict = {
@@ -192,9 +192,9 @@ public class AdminProductService {
         CatalogSnapshot catalog = catalogDirectory.load();
         List<SpecsValidator.Issue> issues = applyCatalog(p, req, catalog);
         if (!wasActive && p.isActive()) {
-            checkPublishable(p, force);
+            ProductPublishing.checkPublishable(p, force);
         }
-        syncUnfinished(p);
+        ProductPublishing.syncUnfinished(p);
         List<ProductStock.StockDrop> drops = new ArrayList<>();
         List<byte[]> removedVariants = ProductVariantsEditor.apply(p, req, drops);
         // With variants the product stock is their rollup: only the variant drops count then.
@@ -207,7 +207,7 @@ public class AdminProductService {
         }
         Product stored = productRepository.save(p);
         syncLots(stored);
-        AdminProductDto saved = toAdminDto(stored, catalogDirectory.load()).withSpecIssues(issues);
+        AdminProductDto saved = AdminProductDto.of(stored, catalogDirectory.load()).withSpecIssues(issues);
         // Removed variants are hard-deleted (orphanRemoval); their translations have no FK.
         translationService.deleteForEntities(TranslationEntityType.VARIANT, removedVariants);
         return saved;
@@ -232,15 +232,15 @@ public class AdminProductService {
     public AdminProductDto setActive(String id, boolean active, boolean force) {
         Product p = load(id);
         if (active && !p.isActive()) {
-            checkPublishable(p, force);
+            ProductPublishing.checkPublishable(p, force);
         }
         boolean wasActive = p.isActive();
         p.setActive(active);
         if (wasActive && !active) {
             closeQueues(p);
         }
-        syncUnfinished(p);
-        return toAdminDto(productRepository.save(p), catalogDirectory.snapshot());
+        ProductPublishing.syncUnfinished(p);
+        return AdminProductDto.of(productRepository.save(p), catalogDirectory.snapshot());
     }
 
     @Caching(evict = {
@@ -255,8 +255,8 @@ public class AdminProductService {
         if (archived) {
             closeQueues(p);
         }
-        syncUnfinished(p);
-        return toAdminDto(productRepository.save(p), catalogDirectory.snapshot());
+        ProductPublishing.syncUnfinished(p);
+        return AdminProductDto.of(productRepository.save(p), catalogDirectory.snapshot());
     }
 
     /** «Проверено» / back to the queue — the work state of the card only. */
@@ -271,57 +271,8 @@ public class AdminProductService {
             throw new DomainException.BadRequest(CatalogError.INVALID_CARD_STATUS);
         }
         Product p = load(id);
-        setStatus(p, st, adminId, clock.instant());
-        return toAdminDto(productRepository.save(p), catalogDirectory.snapshot());
-    }
-
-    // ------------------------------------------------------------------ publishing gate
-
-    /** What is missing to publish: {@code price} (must be &gt; 0) and {@code category}. Empty = ok. */
-    public static List<String> missingForPublish(Product p) {
-        List<String> missing = new ArrayList<>();
-        if (p.getPriceMinor() <= 0) {
-            missing.add("price");
-        }
-        if (p.getCategoryId() == null) {
-            missing.add("category");
-        }
-        return missing;
-    }
-
-    /** Gate of the transition to active (see the class comment). */
-    public static void checkPublishable(Product p, boolean force) {
-        List<String> missing = missingForPublish(p);
-        if (!missing.isEmpty()) {
-            throw (missing.size() > 1
-                    ? new DomainException.Conflict(CatalogError.NOT_PUBLISHABLE_NO_PRICE_NO_CATEGORY).withDetails(Map.of("missing", missing))
-                    : missing.contains("price")
-                            ? new DomainException.Conflict(CatalogError.NOT_PUBLISHABLE_NO_PRICE).withDetails(Map.of("missing", missing))
-                            : new DomainException.Conflict(CatalogError.NOT_PUBLISHABLE_NO_CATEGORY).withDetails(Map.of("missing", missing)));
-        }
-        if (!force && (p.getCardStatus() == null || p.getCardStatus() == CardStatus.DRAFT)) {
-            throw new DomainException.Conflict(CatalogError.CARD_NOT_READY);
-        }
-    }
-
-    /** An unfinished product stops being one once it is published or archived (V53). */
-    public static void syncUnfinished(Product p) {
-        if (p.isActive() || p.isArchived()) {
-            p.setUnfinished(false);
-        }
-    }
-
-    /** Sets the card status; READY records who reviewed it and when (card_meta). */
-    public static void setStatus(Product p, CardStatus st, Long adminId, Instant now) {
-        p.setCardStatus(st);
-        if (st == CardStatus.READY) {
-            Map<String, Object> meta = SpecsJson.readMap(p.getCardMetaJson());
-            meta.put("reviewedAt", now.toString());
-            if (adminId != null) {
-                meta.put("reviewedBy", adminId);
-            }
-            p.setCardMetaJson(SpecsJson.write(meta));
-        }
+        ProductPublishing.setStatus(p, st, adminId, clock.instant());
+        return AdminProductDto.of(productRepository.save(p), catalogDirectory.snapshot());
     }
 
     // ----- internals -----
@@ -436,48 +387,5 @@ public class AdminProductService {
         } catch (IllegalArgumentException e) {
             throw new DomainException.BadRequest(CatalogError.INVALID_ID, id);
         }
-    }
-
-    public static AdminProductDto toAdminDto(Product p, CatalogSnapshot catalog) {
-        List<ProductImageDto> images = p.getImages().stream()
-                .map(i -> new ProductImageDto(i.getId(), i.getUrl(), i.getSortOrder()))
-                .toList();
-        List<ProductVariantDto> variants = p.getVariants().stream()
-                .map(v -> new ProductVariantDto(UuidUtil.toString(v.getId()), v.getName(), v.getStock(), v.getSortOrder()))
-                .toList();
-        String categoryId = ProductCatalogFields.categoryId(p);
-        BrandRefDto brandRef = ProductCatalogFields.brandRef(catalog, ProductCatalogFields.brandId(p));
-        Map<String, Object> specs = ProductCatalogFields.specs(p);
-        return new AdminProductDto(
-                UuidUtil.toString(p.getId()),
-                p.getTitle(),
-                p.getDescription(),
-                p.getPriceMinor(),
-                p.getCurrency(),
-                p.getStock(),
-                p.isActive(),
-                p.isArchived(),
-                images,
-                variants,
-                ProductCatalogFields.tags(catalog, categoryId),
-                p.getSlug(),
-                p.getCompareAtMinor(),
-                p.getSeoTitle(),
-                p.getSeoDescription(),
-                brandRef == null ? null : brandRef.name(),
-                p.getSku(),
-                categoryId,
-                brandRef,
-                ProductCatalogFields.condition(p),
-                p.getConditionNote(),
-                specs,
-                (p.getCardStatus() == null ? CardStatus.DRAFT : p.getCardStatus()).name(),
-                p.getCardConfidence(),
-                SpecsJson.readMap(p.getCardMetaJson()),
-                catalog.missingRequired(categoryId, specs),
-                null,
-                p.isUnfinished(),
-                0,
-                0);
     }
 }

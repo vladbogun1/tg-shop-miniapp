@@ -47,13 +47,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-
 /**
  * Writes translations into the stored rows: the import of a batch (a row is applied only when its source hash is
  * current, MANUAL rows are kept unless forced) and «Принять» of the review screen.
@@ -92,76 +85,99 @@ public class TranslationImport {
             throw new DomainException.BadRequest(TranslationError.TOO_MANY_ITEMS, String.valueOf(TranslationLimits.MAX_ITEMS));
         }
 
-        Map<Key, Field> sources = store.sources();
-        Map<Key, ContentTranslation> rows = store.existing(locale);
-        Map<String, String> hashCache = new HashMap<>();
-        Map<Key, ContentTranslation> toSave = new LinkedHashMap<>();
-        List<Rejected> rejected = new ArrayList<>();
-        int applied = 0;
-        int stale = 0;
-        int manual = 0;
-        int notFound = 0;
-        int invalid = 0;
-
+        ImportRun run = new ImportRun(locale, origin, force, adminId, store.sources(), store.existing(locale));
         for (ImportItem item : items) {
-            if (item == null) {
-                invalid++;
-                reject(rejected, null, "INVALID_ITEM");
-                continue;
-            }
-            String problem = validate(item);
-            if (problem != null) {
-                invalid++;
-                reject(rejected, item, problem);
-                continue;
-            }
-            TranslationEntityType type = TranslationEntityType.parse(item.entityType());
-            byte[] entityId = UuidUtil.toBytes(item.entityId().trim());
-            Key key = new Key(type, UuidUtil.toString(entityId), item.field());
-
-            Field src = sources.get(key);
-            if (src == null) {
-                notFound++;
-                reject(rejected, item, "NOT_FOUND");
-                continue;
-            }
-            if (TranslationRows.isBlank(src.text())) {
-                notFound++;
-                reject(rejected, item, "NO_SOURCE");
-                continue;
-            }
-            String currentHash = hashCache.computeIfAbsent(src.text(), SourceHash::sha256Hex);
-            if (!currentHash.equals(item.sourceHash().trim().toLowerCase(Locale.ROOT))) {
-                stale++;
-                reject(rejected, item, "STALE");
-                continue;
-            }
-            ContentTranslation row = rows.get(key);
-            if (row != null && row.getOrigin() == TranslationOrigin.MANUAL && !force) {
-                manual++;
-                reject(rejected, item, "MANUAL");
-                continue;
-            }
-            if (row == null) {
-                row = new ContentTranslation(new ContentTranslationId(type, entityId, key.field(), locale));
-                rows.put(key, row);
-            }
-            row.setText(item.text());
-            row.setSourceHash(currentHash);
-            row.setSourceText(src.text());
-            row.setOrigin(origin);
-            // The admin's own text is checked by definition; AI output waits in «Проверить ИИ».
-            row.setReviewedAt(origin == TranslationOrigin.MANUAL ? clock.instant() : null);
-            row.setUpdatedBy(adminId);
-            toSave.put(key, row);
-            applied++;
+            importOne(run, item);
         }
 
-        if (!toSave.isEmpty()) {
-            repository.saveAll(toSave.values());
+        if (!run.toSave.isEmpty()) {
+            repository.saveAll(run.toSave.values());
             store.invalidate();
         }
-        return new ImportResult(applied, stale, manual, notFound, invalid, rejected);
+        return new ImportResult(run.applied, run.stale, run.manual, run.notFound, run.invalid, run.rejected);
+    }
+
+    /** One import batch: its settings, the current sources and rows of the locale, and what it counted. */
+    private static final class ImportRun {
+        final String locale;
+        final TranslationOrigin origin;
+        final boolean force;
+        final Long adminId;
+        final Map<Key, Field> sources;
+        final Map<Key, ContentTranslation> rows;
+        final Map<String, String> hashCache = new HashMap<>();
+        final Map<Key, ContentTranslation> toSave = new LinkedHashMap<>();
+        final List<Rejected> rejected = new ArrayList<>();
+        int applied;
+        int stale;
+        int manual;
+        int notFound;
+        int invalid;
+
+        ImportRun(String locale, TranslationOrigin origin, boolean force, Long adminId, Map<Key, Field> sources,
+                  Map<Key, ContentTranslation> rows) {
+            this.locale = locale;
+            this.origin = origin;
+            this.force = force;
+            this.adminId = adminId;
+            this.sources = sources;
+            this.rows = rows;
+        }
+    }
+
+    /** Checks one item and, when it may be applied, writes it into its row (saved by the caller). */
+    private void importOne(ImportRun run, ImportItem item) {
+        if (item == null) {
+            run.invalid++;
+            reject(run.rejected, null, "INVALID_ITEM");
+            return;
+        }
+        String problem = validate(item);
+        if (problem != null) {
+            run.invalid++;
+            reject(run.rejected, item, problem);
+            return;
+        }
+        TranslationEntityType type = TranslationEntityType.parse(item.entityType());
+        byte[] entityId = UuidUtil.toBytes(item.entityId().trim());
+        Key key = new Key(type, UuidUtil.toString(entityId), item.field());
+
+        Field src = run.sources.get(key);
+        if (src == null) {
+            run.notFound++;
+            reject(run.rejected, item, "NOT_FOUND");
+            return;
+        }
+        if (TranslationRows.isBlank(src.text())) {
+            run.notFound++;
+            reject(run.rejected, item, "NO_SOURCE");
+            return;
+        }
+        String currentHash = run.hashCache.computeIfAbsent(src.text(), SourceHash::sha256Hex);
+        if (!currentHash.equals(item.sourceHash().trim().toLowerCase(Locale.ROOT))) {
+            run.stale++;
+            reject(run.rejected, item, "STALE");
+            return;
+        }
+        ContentTranslation row = run.rows.get(key);
+        if (row != null && row.getOrigin() == TranslationOrigin.MANUAL && !run.force) {
+            run.manual++;
+            reject(run.rejected, item, "MANUAL");
+            return;
+        }
+        if (row == null) {
+            row = new ContentTranslation(new ContentTranslationId(type, entityId, key.field(), run.locale));
+            run.rows.put(key, row);
+        }
+        row.setText(item.text());
+        row.setSourceHash(currentHash);
+        row.setSourceText(src.text());
+        row.setOrigin(run.origin);
+        // The admin's own text is checked by definition; AI output waits in «Проверить ИИ».
+        row.setReviewedAt(run.origin == TranslationOrigin.MANUAL ? clock.instant() : null);
+        row.setUpdatedBy(run.adminId);
+        run.toSave.put(key, row);
+        run.applied++;
     }
 
     /** null when the item is well-formed, else an INVALID_* reason. */

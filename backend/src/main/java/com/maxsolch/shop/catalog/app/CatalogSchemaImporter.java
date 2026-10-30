@@ -8,10 +8,7 @@ import com.maxsolch.shop.catalog.domain.Brand;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
 import com.maxsolch.shop.catalog.domain.Category;
 import com.maxsolch.shop.catalog.domain.CategoryRules;
-import com.maxsolch.shop.catalog.domain.SpecAttribute;
 import com.maxsolch.shop.catalog.domain.SpecGroup;
-import com.maxsolch.shop.catalog.domain.SpecOption;
-import com.maxsolch.shop.catalog.domain.SpecType;
 import com.maxsolch.shop.catalog.domain.SpecsJson;
 import com.maxsolch.shop.catalog.infra.BrandRepository;
 import com.maxsolch.shop.catalog.infra.CategoryRepository;
@@ -21,12 +18,8 @@ import com.maxsolch.shop.catalog.infra.SpecOptionRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.translation.domain.ContentLocale;
-import com.maxsolch.shop.translation.domain.ContentTranslation;
-import com.maxsolch.shop.translation.domain.ContentTranslationId;
-import com.maxsolch.shop.translation.infra.ContentTranslationRepository;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.translation.domain.TranslationOrigin;
-import com.maxsolch.shop.translation.app.TranslationService;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.translation.domain.TranslationsChanged;
 import org.springframework.stereotype.Service;
@@ -50,7 +43,8 @@ import java.util.regex.Pattern;
  * <p>Order inside the one transaction: groups → brands → categories (without parents; a new slug
  * may take over an existing category through {@code old_tag_slugs}) → {@code product_moves}
  * (an existing category with products is about to become a parent) → parents → tree checks →
- * attributes and options → key collision check. Any violation rolls the whole import back.
+ * attributes and options ({@link SchemaAttributesImport}) → key collision check. Any violation rolls the whole
+ * import back.
  */
 @Service
 public class CatalogSchemaImporter {
@@ -66,12 +60,11 @@ public class CatalogSchemaImporter {
     private final CategoryRepository categoryRepository;
     private final BrandRepository brandRepository;
     private final SpecGroupRepository groupRepository;
-    private final SpecAttributeRepository attributeRepository;
-    private final SpecOptionRepository optionRepository;
     private final ProductRepository productRepository;
     private final StoredTranslations translations;
     private final DomainEvents events;
     private final CatalogDirectory directory;
+    private final SchemaAttributesImport attributes;
 
     public CatalogSchemaImporter(CategoryRepository categoryRepository, BrandRepository brandRepository,
                                  SpecGroupRepository groupRepository, SpecAttributeRepository attributeRepository,
@@ -81,15 +74,14 @@ public class CatalogSchemaImporter {
         this.categoryRepository = categoryRepository;
         this.brandRepository = brandRepository;
         this.groupRepository = groupRepository;
-        this.attributeRepository = attributeRepository;
-        this.optionRepository = optionRepository;
         this.productRepository = productRepository;
         this.translations = translations;
         this.events = events;
         this.directory = directory;
+        this.attributes = new SchemaAttributesImport(attributeRepository, optionRepository);
     }
 
-    private static final class Counters {
+    static final class Counters {
         int groups;
         int catCreated;
         int catUpdated;
@@ -114,11 +106,41 @@ public class CatalogSchemaImporter {
 
         // ---- categories, pass 1: rows without parents
         JsonNode cats = root.path("categories");
-        List<Category> all = new ArrayList<>(categoryRepository.findAll());
         Map<String, Category> bySlug = new HashMap<>();
-        for (Category c : all) {
+        for (Category c : new ArrayList<>(categoryRepository.findAll())) {
             bySlug.put(c.getSlug(), c);
         }
+        Map<String, Category> imported = importCategories(cats, bySlug, n);
+        categoryRepository.flush();
+
+        // ---- product moves (before parents: a category with products may become a parent)
+        moveProducts(root.path("product_moves"), bySlug, n);
+
+        // ---- parents
+        setParents(cats, imported, bySlug);
+        List<Category> tree = categoryRepository.findAll();
+        CategoryRules.checkTree(tree, id -> productRepository.countByCategory(id));
+        categoryRepository.flush();
+
+        // ---- attributes
+        attributes.importAttributes(null, root.path("global_attributes"), n);
+        for (JsonNode c : cats) {
+            Category cat = imported.get(slug(text(c, "slug")));
+            attributes.importAttributes(cat.getId(), c.path("attributes"), n);
+        }
+        attributes.flush();
+        CategoryRules.checkKeys(directory.load());
+
+        events.publish(new TranslationsChanged());
+        directory.evictAll();
+        return new Result(n.groups, n.catCreated, n.catUpdated, n.attrCreated, n.attrUpdated, n.optCreated,
+                n.optUpdated, n.brandCreated, n.brandUpdated, n.moved, n.warnings);
+    }
+
+    // ------------------------------------------------------------------ parts
+
+    /** Categories without parents, in import order; {@code bySlug} is updated with every saved row. */
+    private Map<String, Category> importCategories(JsonNode cats, Map<String, Category> bySlug, Counters n) {
         Set<String> importSlugs = new HashSet<>();
         for (JsonNode c : cats) {
             String slug = slug(text(c, "slug"));
@@ -136,50 +158,60 @@ public class CatalogSchemaImporter {
             String slug = slug(text(c, "slug"));
             Category cat = bySlug.get(slug);
             if (cat == null) {
-                for (JsonNode old : c.path("old_tag_slugs")) {
-                    String o = slug(old.asText());
-                    Category candidate = o == null ? null : bySlug.get(o);
-                    // Take over an existing category, unless the import keeps that slug for itself.
-                    if (candidate != null && !importSlugs.contains(o)) {
-                        bySlug.remove(o);
-                        cat = candidate;
-                        n.warnings.add("категория «" + o + "» переименована в «" + slug + "»");
-                        break;
-                    }
-                }
+                cat = takeOver(c, slug, bySlug, importSlugs, n);
             }
-            String nameRu = text(c, "name_ru");
-            boolean created = cat == null;
-            if (created) {
-                if (nameRu == null) {
-                    throw new DomainException.BadRequest(CatalogError.IMPORT_CATEGORY_NAME_REQUIRED, slug);
-                }
-                cat = new Category();
-                n.catCreated++;
-            } else {
-                n.catUpdated++;
-            }
-            cat.setSlug(slug);
-            if (nameRu != null) {
-                cat.setName(cut(nameRu, 128));
-            }
-            Integer sort = intOrNull(c, "sort_order");
-            cat.setSortOrder(sort != null ? sort : index * 10);
-            if (c.has("show_in_menu") && !c.get("show_in_menu").isNull()) {
-                cat.setShowInMenu(c.get("show_in_menu").asBoolean(true));
-            }
-            if (c.has("art_kind")) {
-                cat.setArtKind(cut(text(c, "art_kind"), 32));
-            }
-            cat = categoryRepository.save(cat);
+            cat = saveCategory(c, cat, slug, index, n);
             bySlug.put(slug, cat);
             imported.put(slug, cat);
             writeName(cat, c, n);
         }
-        categoryRepository.flush();
+        return imported;
+    }
 
-        // ---- product moves (before parents: a category with products may become a parent)
-        for (JsonNode m : root.path("product_moves")) {
+    /** An existing category named in {@code old_tag_slugs}, unless the import keeps that slug for itself. */
+    private static Category takeOver(JsonNode c, String slug, Map<String, Category> bySlug, Set<String> importSlugs,
+                                     Counters n) {
+        for (JsonNode old : c.path("old_tag_slugs")) {
+            String o = slug(old.asText());
+            Category candidate = o == null ? null : bySlug.get(o);
+            if (candidate != null && !importSlugs.contains(o)) {
+                bySlug.remove(o);
+                n.warnings.add("категория «" + o + "» переименована в «" + slug + "»");
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private Category saveCategory(JsonNode c, Category existing, String slug, int index, Counters n) {
+        Category cat = existing;
+        String nameRu = text(c, "name_ru");
+        if (cat == null) {
+            if (nameRu == null) {
+                throw new DomainException.BadRequest(CatalogError.IMPORT_CATEGORY_NAME_REQUIRED, slug);
+            }
+            cat = new Category();
+            n.catCreated++;
+        } else {
+            n.catUpdated++;
+        }
+        cat.setSlug(slug);
+        if (nameRu != null) {
+            cat.setName(cut(nameRu, 128));
+        }
+        Integer sort = intOrNull(c, "sort_order");
+        cat.setSortOrder(sort != null ? sort : index * 10);
+        if (c.has("show_in_menu") && !c.get("show_in_menu").isNull()) {
+            cat.setShowInMenu(c.get("show_in_menu").asBoolean(true));
+        }
+        if (c.has("art_kind")) {
+            cat.setArtKind(cut(text(c, "art_kind"), 32));
+        }
+        return categoryRepository.save(cat);
+    }
+
+    private void moveProducts(JsonNode moves, Map<String, Category> bySlug, Counters n) {
+        for (JsonNode m : moves) {
             Category from = bySlug.get(slug(text(m, "from_category_slug")));
             Category to = bySlug.get(slug(text(m, "to_category_slug")));
             if (from == null || to == null) {
@@ -189,8 +221,9 @@ public class CatalogSchemaImporter {
             n.moved += moved;
             n.warnings.add("перенесено товаров " + from.getSlug() + " → " + to.getSlug() + ": " + moved);
         }
+    }
 
-        // ---- parents
+    private static void setParents(JsonNode cats, Map<String, Category> imported, Map<String, Category> bySlug) {
         for (JsonNode c : cats) {
             Category cat = imported.get(slug(text(c, "slug")));
             String parentSlug = slug(text(c, "parent"));
@@ -207,27 +240,7 @@ public class CatalogSchemaImporter {
             }
             cat.setParentId(parent.getId());
         }
-        List<Category> tree = categoryRepository.findAll();
-        CategoryRules.checkTree(tree, id -> productRepository.countByCategory(id));
-        categoryRepository.flush();
-
-        // ---- attributes
-        importAttributes(null, root.path("global_attributes"), n);
-        for (JsonNode c : cats) {
-            Category cat = imported.get(slug(text(c, "slug")));
-            importAttributes(cat.getId(), c.path("attributes"), n);
-        }
-        attributeRepository.flush();
-        optionRepository.flush();
-        CategoryRules.checkKeys(directory.load());
-
-        events.publish(new TranslationsChanged());
-        directory.evictAll();
-        return new Result(n.groups, n.catCreated, n.catUpdated, n.attrCreated, n.attrUpdated, n.optCreated,
-                n.optUpdated, n.brandCreated, n.brandUpdated, n.moved, n.warnings);
     }
-
-    // ------------------------------------------------------------------ parts
 
     private void importGroups(JsonNode groups, Counters n) {
         int i = 0;
@@ -294,74 +307,6 @@ public class CatalogSchemaImporter {
         }
     }
 
-    private void importAttributes(byte[] categoryId, JsonNode attrs, Counters n) {
-        if (!attrs.isArray()) {
-            return;
-        }
-        Map<String, SpecAttribute> existing = new HashMap<>();
-        for (SpecAttribute a : attributeRepository.findAll()) {
-            if (Arrays.equals(a.getCategoryId(), categoryId)) {
-                existing.put(a.getKey(), a);
-            }
-        }
-        for (JsonNode j : attrs) {
-            String key = text(j, "key");
-            if (key == null || !KEY.matcher(key).matches()) {
-                throw new DomainException.BadRequest(CatalogError.IMPORT_BAD_ATTRIBUTE_KEY, key);
-            }
-            SpecType type = SpecType.parse(text(j, "type"));
-            if (type == null) {
-                throw new DomainException.BadRequest(CatalogError.IMPORT_UNKNOWN_ATTRIBUTE_TYPE, key, String.valueOf(text(j, "type")));
-            }
-            SpecAttribute a = existing.get(key);
-            if (a == null) {
-                a = new SpecAttribute();
-                a.setCategoryId(categoryId);
-                a.setKey(key);
-                n.attrCreated++;
-            } else {
-                n.attrUpdated++;
-            }
-            String ru = firstNonNull(text(j, "label_ru"), a.getLabelRu(), key);
-            a.setLabelRu(cut(ru, 96));
-            a.setLabelUk(cut(firstNonNull(text(j, "label_uk"), a.getLabelUk(), ru), 96));
-            a.setLabelEn(cut(firstNonNull(text(j, "label_en"), a.getLabelEn(), ru), 96));
-            a.setType(type);
-            JsonNode unit = j.path("unit");
-            if (unit.isObject()) {
-                a.setUnitRu(cut(text(unit, "ru"), 24));
-                a.setUnitUk(cut(text(unit, "uk"), 24));
-                a.setUnitEn(cut(text(unit, "en"), 24));
-            } else if (unit.isTextual()) {
-                a.setUnitRu(cut(unit.asText(), 24));
-                a.setUnitUk(cut(unit.asText(), 24));
-                a.setUnitEn(cut(unit.asText(), 24));
-            } else {
-                a.setUnitRu(null);
-                a.setUnitUk(null);
-                a.setUnitEn(null);
-            }
-            a.setRange(type == SpecType.NUMBER && j.path("range").asBoolean(false));
-            String group = firstNonNull(text(j, "group"), a.getGroupKey(), "main");
-            a.setGroupKey(cut(group, 32));
-            a.setFilterable(j.path("filterable").asBoolean(false));
-            a.setComparable(j.path("comparable").asBoolean(false));
-            a.setRequired(j.has("required_for_ready") ? j.path("required_for_ready").asBoolean(false)
-                    : j.path("required").asBoolean(false));
-            a.setHighlight(j.path("highlight").asBoolean(false));
-            Integer sort = intOrNull(j, "sort");
-            a.setSortOrder(sort != null ? sort : a.getSortOrder());
-            a.setBucketsJson(type == SpecType.NUMBER ? bucketsJson(j.path("facet")) : null);
-            String hint = firstNonNull(text(j, "hint_ru"), text(j, "hint"), null);
-            a.setHint(hint);
-            a = attributeRepository.save(a);
-            existing.put(key, a);
-            if (type == SpecType.ENUM || type == SpecType.MULTI) {
-                importOptions(a, j.path("options"), n);
-            }
-        }
-    }
-
     /** facet.style "buckets" → stored buckets; "values" / "range_slider" / none → null. */
     static String bucketsJson(JsonNode facet) {
         if (!facet.isObject() || !"buckets".equals(facet.path("style").asText())) {
@@ -388,47 +333,6 @@ public class CatalogSchemaImporter {
             out.add(m);
         }
         return SpecsJson.write(out);
-    }
-
-    private void importOptions(SpecAttribute a, JsonNode options, Counters n) {
-        Map<String, SpecOption> existing = new HashMap<>();
-        int maxSort = 0;
-        for (SpecOption o : optionRepository.findByAttribute(a.getId())) {
-            existing.put(o.getValue(), o);
-            maxSort = Math.max(maxSort, o.getSortOrder());
-        }
-        int i = 0;
-        for (JsonNode j : options) {
-            i++;
-            String value = text(j, "value");
-            if (value == null || !VALUE.matcher(value).matches()) {
-                throw new DomainException.BadRequest(CatalogError.IMPORT_BAD_OPTION_VALUE, a.getKey(), value);
-            }
-            SpecOption o = existing.get(value);
-            if (o == null) {
-                o = new SpecOption();
-                o.setAttributeId(a.getId());
-                o.setValue(value);
-                n.optCreated++;
-            } else {
-                n.optUpdated++;
-            }
-            String ru = firstNonNull(text(j, "label_ru"), o.getLabelRu(), value);
-            o.setLabelRu(cut(ru, 96));
-            o.setLabelUk(cut(firstNonNull(text(j, "label_uk"), o.getLabelUk(), ru), 96));
-            o.setLabelEn(cut(firstNonNull(text(j, "label_en"), o.getLabelEn(), ru), 96));
-            List<String> aliases = new ArrayList<>();
-            for (JsonNode al : j.path("aliases")) {
-                aliases.add(al.asText(""));
-            }
-            if (j.has("aliases")) {
-                o.setAliasList(aliases);
-            }
-            Integer sort = intOrNull(j, "sort");
-            o.setSortOrder(sort != null ? sort : i * 10);
-            optionRepository.save(o);
-            existing.put(value, o);
-        }
     }
 
     /** name_uk / name_en → CATEGORY name translations of the current Russian name (origin AI). */

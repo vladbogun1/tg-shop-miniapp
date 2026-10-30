@@ -4,7 +4,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.lang.Nullable;
 
 import com.maxsolch.shop.catalog.app.CatalogDtos.BrandRefDto;
+import com.maxsolch.shop.catalog.domain.CardStatus;
+import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
+import com.maxsolch.shop.catalog.domain.Product;
+import com.maxsolch.shop.catalog.domain.SpecsJson;
 import com.maxsolch.shop.catalog.domain.SpecsValidator;
+import com.maxsolch.shop.platform.util.UuidUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -49,6 +54,50 @@ public record AdminProductDto(
         int waitingPeople,
         /** Units they wait for. */
         int waitingQty) {
+
+    /** The product as the admin sees it; {@code specIssues} and the waiting counts are filled by the caller. */
+    static AdminProductDto of(Product p, CatalogSnapshot catalog) {
+        List<ProductImageDto> images = p.getImages().stream()
+                .map(i -> new ProductImageDto(i.getId(), i.getUrl(), i.getSortOrder()))
+                .toList();
+        List<ProductVariantDto> variants = p.getVariants().stream()
+                .map(v -> new ProductVariantDto(UuidUtil.toString(v.getId()), v.getName(), v.getStock(), v.getSortOrder()))
+                .toList();
+        String categoryId = ProductCatalogFields.categoryId(p);
+        BrandRefDto brandRef = ProductCatalogFields.brandRef(catalog, ProductCatalogFields.brandId(p));
+        Map<String, Object> specs = ProductCatalogFields.specs(p);
+        return new AdminProductDto(
+                UuidUtil.toString(p.getId()),
+                p.getTitle(),
+                p.getDescription(),
+                p.getPriceMinor(),
+                p.getCurrency(),
+                p.getStock(),
+                p.isActive(),
+                p.isArchived(),
+                images,
+                variants,
+                ProductCatalogFields.tags(catalog, categoryId),
+                p.getSlug(),
+                p.getCompareAtMinor(),
+                p.getSeoTitle(),
+                p.getSeoDescription(),
+                brandRef == null ? null : brandRef.name(),
+                p.getSku(),
+                categoryId,
+                brandRef,
+                ProductCatalogFields.condition(p),
+                p.getConditionNote(),
+                specs,
+                (p.getCardStatus() == null ? CardStatus.DRAFT : p.getCardStatus()).name(),
+                p.getCardConfidence(),
+                SpecsJson.readMap(p.getCardMetaJson()),
+                catalog.missingRequired(categoryId, specs),
+                null,
+                p.isUnfinished(),
+                0,
+                0);
+    }
 
     public AdminProductDto withWaiting(int people, int qty) {
         return new AdminProductDto(id, title, description, priceMinor, currency, stock, active, archived, images,

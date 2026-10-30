@@ -92,26 +92,7 @@ public final class InboxRules {
         Map<String, InboxOrderRow> byId = new HashMap<>();
         for (InboxOrderRow o : facts.orders()) {
             byId.put(o.id(), o);
-            if (isCancelRequested(o)) {
-                // Takes the place of "paid — confirm": the customer no longer wants the order.
-                all.get(InboxItemType.PAYMENT).add(cancelRequest(o, now));
-            } else if (isPaidAwaitingConfirm(o)) {
-                all.get(InboxItemType.PAYMENT).add(paidConfirm(o, now));
-            } else if (isPaidCancelled(o)) {
-                all.get(InboxItemType.PAYMENT).add(paidRefund(o, now));
-            }
-            if (isNewStale(o, now, t.newStaleHours())) {
-                all.get(InboxItemType.NEW_STALE).add(newStale(o, now, t.newStaleHours()));
-            }
-            if (isApprovedUnpaid(o)) {
-                // More specific than «одобрен, не отправлен» — one row per order, not two.
-                all.get(InboxItemType.APPROVED_UNPAID).add(approvedUnpaid(o, now));
-            } else if (isApprovedStale(o, now, t.approvedStaleHours())) {
-                all.get(InboxItemType.APPROVED_STALE).add(approvedStale(o, now, t.approvedStaleHours()));
-            }
-            if (isReturnEvent(o, now)) {
-                all.get(InboxItemType.RETURN).add(returned(o, now));
-            }
+            addOrderRows(all, o, now, t);
         }
         for (InboxChatRow c : facts.chats()) {
             if (c.unread() <= 0) {
@@ -126,18 +107,7 @@ public final class InboxRules {
             all.get(InboxItemType.SITE_ERROR).add(siteError(facts.site(), now));
         }
 
-        // Most urgent first within a group: whoever waits longest; returns newest first; stock by days left.
-        Comparator<Item> oldestFirst = Comparator.comparing(Item::since,
-                Comparator.nullsLast(Comparator.naturalOrder()));
-        for (InboxItemType type : InboxItemType.values()) {
-            List<Item> items = all.get(type);
-            switch (type) {
-                case RETURN -> items.sort(oldestFirst.reversed());
-                case LOW_STOCK -> items.sort(Comparator.comparing(Item::daysToZero,
-                        Comparator.nullsLast(Comparator.naturalOrder())));
-                default -> items.sort(oldestFirst);
-            }
-        }
+        sortByUrgency(all);
 
         List<Group> groups = new ArrayList<>();
         int total = 0;
@@ -159,6 +129,45 @@ public final class InboxRules {
                     snoozed, visible));
         }
         return new Inbox(now, total, groups, t.newStaleHours(), t.approvedStaleHours(), RETURNS_DAYS);
+    }
+
+    /** The rows one order brings: payment, stale new / approved, unpaid approved, return. */
+    private static void addOrderRows(Map<InboxItemType, List<Item>> all, InboxOrderRow o, Instant now, Thresholds t) {
+        if (isCancelRequested(o)) {
+            // Takes the place of "paid — confirm": the customer no longer wants the order.
+            all.get(InboxItemType.PAYMENT).add(cancelRequest(o, now));
+        } else if (isPaidAwaitingConfirm(o)) {
+            all.get(InboxItemType.PAYMENT).add(paidConfirm(o, now));
+        } else if (isPaidCancelled(o)) {
+            all.get(InboxItemType.PAYMENT).add(paidRefund(o, now));
+        }
+        if (isNewStale(o, now, t.newStaleHours())) {
+            all.get(InboxItemType.NEW_STALE).add(newStale(o, now, t.newStaleHours()));
+        }
+        if (isApprovedUnpaid(o)) {
+            // More specific than «одобрен, не отправлен» — one row per order, not two.
+            all.get(InboxItemType.APPROVED_UNPAID).add(approvedUnpaid(o, now));
+        } else if (isApprovedStale(o, now, t.approvedStaleHours())) {
+            all.get(InboxItemType.APPROVED_STALE).add(approvedStale(o, now, t.approvedStaleHours()));
+        }
+        if (isReturnEvent(o, now)) {
+            all.get(InboxItemType.RETURN).add(returned(o, now));
+        }
+    }
+
+    /** Most urgent first within a group: whoever waits longest; returns newest first; stock by days left. */
+    private static void sortByUrgency(Map<InboxItemType, List<Item>> all) {
+        Comparator<Item> oldestFirst = Comparator.comparing(Item::since,
+                Comparator.nullsLast(Comparator.naturalOrder()));
+        for (InboxItemType type : InboxItemType.values()) {
+            List<Item> items = all.get(type);
+            switch (type) {
+                case RETURN -> items.sort(oldestFirst.reversed());
+                case LOW_STOCK -> items.sort(Comparator.comparing(Item::daysToZero,
+                        Comparator.nullsLast(Comparator.naturalOrder())));
+                default -> items.sort(oldestFirst);
+            }
+        }
     }
 
     // ------------------------------------------------------------------ selection

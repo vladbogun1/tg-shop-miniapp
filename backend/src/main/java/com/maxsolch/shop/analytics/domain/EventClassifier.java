@@ -127,69 +127,7 @@ public final class EventClassifier {
             boolean structured = session.stream().anyMatch(e -> isStructured(e.event()));
             String lastProduct = null;
             for (RawEvent e : session) {
-                LocalDate day = LocalDate.ofInstant(e.createdAt(), zone);
-                String key = visitorKey(e);
-                if (key == null) {
-                    continue;
-                }
-                VisitorAcc v = visitors.computeIfAbsent(day + "|" + e.channel() + "|" + key,
-                        k -> new VisitorAcc(day, e.channel(), key));
-                v.events++;
-                v.stages |= STAGE_VISIT;
-                if (v.telegramUserId == null && e.telegramUserId() != null) {
-                    v.telegramUserId = e.telegramUserId();
-                }
-
-                String event = e.event() == null ? "" : e.event();
-                String viewed = null;
-                String added = null;
-                boolean checkout = false;
-                boolean cartClick = false;
-
-                if (StructuredEvents.PRODUCT_VIEW.equals(event)) {
-                    viewed = e.productId();
-                    v.stages |= STAGE_PRODUCT;
-                } else if (StructuredEvents.ADD_TO_CART.equals(event)) {
-                    added = e.productId();
-                    cartClick = true;
-                } else if (StructuredEvents.CHECKOUT_START.equals(event)) {
-                    checkout = true;
-                } else if (!structured) {
-                    // Website clicks (journalled since 2026-10) postdate the structured events: only
-                    // the Mini App's old click texts are read as funnel steps.
-                    if ("click".equals(event) && e.target() != null && !"WEB".equals(e.channel())) {
-                        String target = e.target().toLowerCase(Locale.ROOT);
-                        LegacyCard card = legacyCard(target);
-                        if (card != null) {
-                            viewed = card.productId();
-                            v.stages |= STAGE_PRODUCT;
-                        } else if (LEGACY_ADD.contains(target)) {
-                            added = lastProduct;
-                            cartClick = true;
-                        }
-                    } else if ("view".equals(event) && isCheckoutPath(e.path(), e.target())) {
-                        checkout = true;
-                    }
-                }
-                if (cartClick) {
-                    v.stages |= STAGE_CART;
-                }
-                if (checkout) {
-                    v.stages |= STAGE_CHECKOUT;
-                }
-                if (viewed != null) {
-                    lastProduct = viewed;
-                    ProductAcc p = products.computeIfAbsent(day + "|" + e.channel() + "|" + viewed,
-                            k -> new ProductAcc(day, e.channel(), lastProductOf(k)));
-                    p.views++;
-                    p.viewers.add(key);
-                }
-                if (added != null) {
-                    String productKey = day + "|" + e.channel() + "|" + added;
-                    ProductAcc p = products.computeIfAbsent(productKey,
-                            k -> new ProductAcc(day, e.channel(), lastProductOf(k)));
-                    p.cartAdds++;
-                }
+                lastProduct = countEvent(e, structured, lastProduct, visitors, products);
             }
         }
 
@@ -200,6 +138,78 @@ public final class EventClassifier {
         products.values().forEach(p -> pOut.add(new ProductDay(p.day, p.channel, p.productId, p.views,
                 p.viewers.size(), p.cartAdds)));
         return new DayResult(vOut, pOut);
+    }
+
+    /**
+     * Counts one event of a session into its visitor-day and product-days. {@code lastProduct} is the product
+     * opened last in the session (a legacy add-to-cart click is credited to it); returns it updated.
+     */
+    private String countEvent(RawEvent e, boolean structured, String lastProduct, Map<String, VisitorAcc> visitors,
+                              Map<String, ProductAcc> products) {
+        LocalDate day = LocalDate.ofInstant(e.createdAt(), zone);
+        String key = visitorKey(e);
+        if (key == null) {
+            return lastProduct;
+        }
+        VisitorAcc v = visitors.computeIfAbsent(day + "|" + e.channel() + "|" + key,
+                k -> new VisitorAcc(day, e.channel(), key));
+        v.events++;
+        v.stages |= STAGE_VISIT;
+        if (v.telegramUserId == null && e.telegramUserId() != null) {
+            v.telegramUserId = e.telegramUserId();
+        }
+
+        String event = e.event() == null ? "" : e.event();
+        String viewed = null;
+        String added = null;
+        boolean checkout = false;
+        boolean cartClick = false;
+
+        if (StructuredEvents.PRODUCT_VIEW.equals(event)) {
+            viewed = e.productId();
+            v.stages |= STAGE_PRODUCT;
+        } else if (StructuredEvents.ADD_TO_CART.equals(event)) {
+            added = e.productId();
+            cartClick = true;
+        } else if (StructuredEvents.CHECKOUT_START.equals(event)) {
+            checkout = true;
+        } else if (!structured) {
+            // Website clicks (journalled since 2026-10) postdate the structured events: only
+            // the Mini App's old click texts are read as funnel steps.
+            if ("click".equals(event) && e.target() != null && !"WEB".equals(e.channel())) {
+                String target = e.target().toLowerCase(Locale.ROOT);
+                LegacyCard card = legacyCard(target);
+                if (card != null) {
+                    viewed = card.productId();
+                    v.stages |= STAGE_PRODUCT;
+                } else if (LEGACY_ADD.contains(target)) {
+                    added = lastProduct;
+                    cartClick = true;
+                }
+            } else if ("view".equals(event) && isCheckoutPath(e.path(), e.target())) {
+                checkout = true;
+            }
+        }
+        if (cartClick) {
+            v.stages |= STAGE_CART;
+        }
+        if (checkout) {
+            v.stages |= STAGE_CHECKOUT;
+        }
+        if (viewed != null) {
+            lastProduct = viewed;
+            ProductAcc p = products.computeIfAbsent(day + "|" + e.channel() + "|" + viewed,
+                    k -> new ProductAcc(day, e.channel(), lastProductOf(k)));
+            p.views++;
+            p.viewers.add(key);
+        }
+        if (added != null) {
+            String productKey = day + "|" + e.channel() + "|" + added;
+            ProductAcc p = products.computeIfAbsent(productKey,
+                    k -> new ProductAcc(day, e.channel(), lastProductOf(k)));
+            p.cartAdds++;
+        }
+        return lastProduct;
     }
 
     private static String lastProductOf(String key) {

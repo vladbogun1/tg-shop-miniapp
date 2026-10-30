@@ -70,7 +70,15 @@ public class BatchMarginService {
         List<StockLot> batchLots = ledger.lotsOfBatchItems(lines.stream().map(PreorderBatchItem::getId).toList());
         CostBook book = costing.book(batchLots);
         Map<Long, StockLot> lotById = batchLots.stream().collect(Collectors.toMap(StockLot::getId, Function.identity()));
+        Sales sales = salesByLine(batchLots, book, lotById);
+        return summary(batchId, pb, lines, batchLots, book, sales);
+    }
 
+    /** Per batch line {sold, revenue, cost, reserved}, and when the last of its units left. */
+    private record Sales(Map<Long, long[]> perLine, Instant last) {
+    }
+
+    private Sales salesByLine(List<StockLot> batchLots, CostBook book, Map<Long, StockLot> lotById) {
         Map<String, Bundle> bundles = Map.of();
         if (!lotById.isEmpty()) {
             List<String> orderIds = queries.orderIdsOfLots(lotById.keySet());
@@ -113,6 +121,13 @@ public class BatchMarginService {
                 }
             }
         }
+        return new Sales(perLine, last);
+    }
+
+    private BatchSalesDto summary(long batchId, PreorderBatch pb, List<PreorderBatchItem> lines,
+                                  List<StockLot> batchLots, CostBook book, Sales sales) {
+        Map<Long, long[]> perLine = sales.perLine();
+        Instant last = sales.last();
         Map<String, Product> products = queue.productsOf(lines.stream().map(PreorderBatchItem::getProductId).toList());
         List<BatchSalesLineDto> out = new ArrayList<>();
         long spent = 0;

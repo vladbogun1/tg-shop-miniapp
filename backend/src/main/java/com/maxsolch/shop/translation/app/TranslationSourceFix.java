@@ -47,13 +47,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-
 /** Proofreading: replaces the Russian source of fields and writes the uk/en translations of the new source with it. */
 @Service
 public class TranslationSourceFix {
@@ -96,21 +89,7 @@ public class TranslationSourceFix {
         if (TranslationRows.isBlank(newSource)) {
             throw new DomainException.BadRequest(TranslationError.SOURCE_BLANK);
         }
-        Map<String, String> translations = new LinkedHashMap<>();
-        if (req.translations() != null) {
-            for (Map.Entry<String, String> e : req.translations().entrySet()) {
-                String l = TranslationRows.requireLocale(e.getKey());
-                String text = e.getValue();
-                if (TranslationRows.isBlank(text)) {
-                    continue;
-                }
-                if (text.length() > TranslationLimits.MAX_TEXT_CHARS
-                        || text.getBytes(StandardCharsets.UTF_8).length > TranslationLimits.MAX_TEXT_BYTES) {
-                    throw new DomainException.BadRequest(TranslationError.TRANSLATION_TOO_LONG, l);
-                }
-                translations.put(l, text);
-            }
-        }
+        Map<String, String> translations = checkedTranslations(req.translations());
         String newHash = SourceHash.sha256Hex(newSource);
 
         List<Rejected> rejected = new ArrayList<>();
@@ -157,31 +136,58 @@ public class TranslationSourceFix {
 
         int written = 0;
         if (!updatedKeys.isEmpty() && !translations.isEmpty()) {
-            List<ContentTranslation> toSave = new ArrayList<>();
-            for (Map.Entry<String, String> e : translations.entrySet()) {
-                Map<Key, ContentTranslation> rows = store.existing(e.getKey());
-                for (Key key : updatedKeys) {
-                    ContentTranslation row = rows.get(key);
-                    if (row == null) {
-                        row = new ContentTranslation(new ContentTranslationId(key.type(),
-                                UuidUtil.toBytes(key.entityId()), key.field(), e.getKey()));
-                    }
-                    row.setText(e.getValue());
-                    row.setSourceHash(newHash);
-                    row.setSourceText(newSource);
-                    row.setOrigin(TranslationOrigin.AI);
-                    row.setReviewedAt(null);
-                    row.setUpdatedBy(adminId);
-                    toSave.add(row);
-                }
-            }
-            repository.saveAll(toSave);
-            written = toSave.size();
+            written = writeTranslations(updatedKeys, translations, newSource, newHash, adminId);
         }
         if (!updatedKeys.isEmpty()) {
             store.invalidate();
         }
         return new SourceFixResult(updatedKeys.size(), stale, notFound, invalid, written, newHash, rejected);
+    }
+
+    /** The non-blank translations of the request by locale; a bad locale or a too long text fails the request. */
+    private static Map<String, String> checkedTranslations(Map<String, String> requested) {
+        Map<String, String> translations = new LinkedHashMap<>();
+        if (requested == null) {
+            return translations;
+        }
+        for (Map.Entry<String, String> e : requested.entrySet()) {
+            String l = TranslationRows.requireLocale(e.getKey());
+            String text = e.getValue();
+            if (TranslationRows.isBlank(text)) {
+                continue;
+            }
+            if (text.length() > TranslationLimits.MAX_TEXT_CHARS
+                    || text.getBytes(StandardCharsets.UTF_8).length > TranslationLimits.MAX_TEXT_BYTES) {
+                throw new DomainException.BadRequest(TranslationError.TRANSLATION_TOO_LONG, l);
+            }
+            translations.put(l, text);
+        }
+        return translations;
+    }
+
+    /** Writes the translations of the new source for every updated field (origin AI, unreviewed); returns how many. */
+    private int writeTranslations(List<Key> updatedKeys, Map<String, String> translations, String newSource,
+                                  String newHash, Long adminId) {
+        List<ContentTranslation> toSave = new ArrayList<>();
+        for (Map.Entry<String, String> e : translations.entrySet()) {
+            Map<Key, ContentTranslation> rows = store.existing(e.getKey());
+            for (Key key : updatedKeys) {
+                ContentTranslation row = rows.get(key);
+                if (row == null) {
+                    row = new ContentTranslation(new ContentTranslationId(key.type(),
+                            UuidUtil.toBytes(key.entityId()), key.field(), e.getKey()));
+                }
+                row.setText(e.getValue());
+                row.setSourceHash(newHash);
+                row.setSourceText(newSource);
+                row.setOrigin(TranslationOrigin.AI);
+                row.setReviewedAt(null);
+                row.setUpdatedBy(adminId);
+                toSave.add(row);
+            }
+        }
+        repository.saveAll(toSave);
+        return toSave.size();
     }
 
     /** OK | STALE | NOT_FOUND | INVALID_* - sets one source field (the owner checks that its hash still matches). */
