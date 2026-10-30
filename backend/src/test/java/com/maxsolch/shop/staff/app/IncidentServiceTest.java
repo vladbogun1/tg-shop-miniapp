@@ -1,11 +1,10 @@
 package com.maxsolch.shop.staff.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.staff.domain.AdminIncident;
 import com.maxsolch.shop.staff.infra.AdminIncidentRepository;
-import com.maxsolch.shop.platform.error.BadRequestException;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,7 +20,7 @@ import static org.mockito.Mockito.when;
 class IncidentServiceTest {
 
     private final AdminIncidentRepository repository = mock(AdminIncidentRepository.class);
-    private final IncidentService service = new IncidentService(repository, mock(JdbcTemplate.class));
+    private final IncidentService service = new IncidentService(repository, mock(IncidentQueries.class), mock(com.maxsolch.shop.platform.audit.AdminAuditService.class), java.time.Clock.systemUTC());
 
     private static IncidentService.Found found(String code) {
         return new IncidentService.Found(code, "t", "ref", "HIGH", "facts", "hyp", "sug");
@@ -71,7 +70,7 @@ class IncidentServiceTest {
     @Test
     void resolve_needsAComment() {
         when(repository.findById(1L)).thenReturn(Optional.of(row("auto:a", AdminIncident.OPEN)));
-        assertThatThrownBy(() -> service.resolve(1L, " ", "owner")).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> service.resolve(1L, " ", "owner")).isInstanceOf(DomainException.BadRequest.class);
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         AdminIncident done = service.resolve(1L, "удержали за доставку", "owner");
         assertThat(done.getStatus()).isEqualTo(AdminIncident.RESOLVED);

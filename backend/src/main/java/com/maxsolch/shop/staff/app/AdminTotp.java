@@ -36,8 +36,8 @@ public class AdminTotp {
     private final Clock clock;
 
     @Autowired
-    public AdminTotp(AdminAuthKeys keys, AdminUserRepository adminUserRepository, AppProperties props) {
-        this(keys.cipher(), adminUserRepository, props.getSecurity().getAdmin2faIssuer(), Clock.systemUTC());
+    public AdminTotp(AdminAuthKeys keys, AdminUserRepository adminUserRepository, AppProperties props, Clock clock) {
+        this(keys.cipher(), adminUserRepository, props.getSecurity().getAdmin2faIssuer(), clock);
     }
 
     AdminTotp(SecretCipher cipher, AdminUserRepository adminUserRepository, String issuer, Clock clock) {

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.staff.domain.AdminInvite;
 import com.maxsolch.shop.staff.domain.Base32;
 import com.maxsolch.shop.staff.domain.SecretCipher;
@@ -9,8 +10,6 @@ import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import com.maxsolch.shop.platform.security.AdminTokenValidator;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.ConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -202,15 +201,15 @@ class AdminInviteServiceTest {
     void theCodeStepNeedsTheFirstStepAndTheLinkSurvivesAWrongCode() {
         String token = invite(AdminInvite.Kind.NEW, NEWBIE);
         assertThatThrownBy(() -> service.complete(token, "123456", false, CLIENT))
-                .isInstanceOf(BadRequestException.class)
-                .extracting(e -> ((BadRequestException) e).getCode()).isEqualTo("INVITE_STEP_EXPIRED");
+                .isInstanceOf(DomainException.BadRequest.class)
+                .extracting(e -> ((DomainException) e).getCode()).isEqualTo("INVITE_STEP_EXPIRED");
 
         AdminInviteService.AcceptResult step1 = service.accept(token, "new.admin", "long-enough-pass");
         byte[] secret = Base32.decode(step1.setup().secret());
         String wrong = Totp.codeAt(secret, Totp.stepAt(clock.instant().getEpochSecond()) + 5);
         assertThatThrownBy(() -> service.complete(token, wrong, false, CLIENT))
-                .isInstanceOf(BadRequestException.class)
-                .extracting(e -> ((BadRequestException) e).getCode()).isEqualTo("BAD_CODE");
+                .isInstanceOf(DomainException.BadRequest.class)
+                .extracting(e -> ((DomainException) e).getCode()).isEqualTo("BAD_CODE");
         assertThat(admins.rows).doesNotContainKey(NEWBIE);
         service.complete(token, codeFor(secret, clock.instant()), false, CLIENT);
         assertThat(admins.rows).containsKey(NEWBIE);
@@ -223,11 +222,11 @@ class AdminInviteServiceTest {
         byte[] secret = Base32.decode(step1.setup().secret());
         String wrong = Totp.codeAt(secret, Totp.stepAt(clock.instant().getEpochSecond()) + 7);
         for (int i = 1; i < AdminInviteService.MAX_CODE_FAILURES; i++) {
-            assertThatThrownBy(() -> service.complete(token, wrong, false, CLIENT)).isInstanceOf(BadRequestException.class);
+            assertThatThrownBy(() -> service.complete(token, wrong, false, CLIENT)).isInstanceOf(DomainException.BadRequest.class);
         }
         assertThatThrownBy(() -> service.complete(token, wrong, false, CLIENT))
-                .isInstanceOf(BadRequestException.class)
-                .extracting(e -> ((BadRequestException) e).getCode()).isEqualTo("INVITE_REVOKED");
+                .isInstanceOf(DomainException.BadRequest.class)
+                .extracting(e -> ((DomainException) e).getCode()).isEqualTo("INVITE_REVOKED");
         assertInvalid(() -> service.complete(token, codeFor(secret, clock.instant()), false, CLIENT));
         assertThat(admins.rows).doesNotContainKey(NEWBIE);
     }
@@ -239,8 +238,8 @@ class AdminInviteServiceTest {
         clock.advance(Duration.ofMinutes(31));
         byte[] secret = Base32.decode(step1.setup().secret());
         assertThatThrownBy(() -> service.complete(token, codeFor(secret, clock.instant()), false, CLIENT))
-                .isInstanceOf(BadRequestException.class)
-                .extracting(e -> ((BadRequestException) e).getCode()).isEqualTo("INVITE_STEP_EXPIRED");
+                .isInstanceOf(DomainException.BadRequest.class)
+                .extracting(e -> ((DomainException) e).getCode()).isEqualTo("INVITE_STEP_EXPIRED");
     }
 
     @Test
@@ -252,8 +251,8 @@ class AdminInviteServiceTest {
         assertCode(() -> service.accept(token, "has space", "long-enough-pass"), "BAD_USERNAME");
         assertCode(() -> service.accept(token, "new.admin", "short"), "PASSWORD_TOO_SHORT");
         assertThatThrownBy(() -> service.accept(token, "BOSS", "long-enough-pass"))
-                .isInstanceOf(ConflictException.class)
-                .extracting(e -> ((ConflictException) e).getCode()).isEqualTo("USERNAME_TAKEN");
+                .isInstanceOf(DomainException.Conflict.class)
+                .extracting(e -> ((DomainException) e).getCode()).isEqualTo("USERNAME_TAKEN");
         assertThat(service.accept(token, "Ok_name-1.x", "long-enough-pass").next()).isEqualTo("SETUP");
     }
 
@@ -308,7 +307,7 @@ class AdminInviteServiceTest {
     }
 
     private static void assertCode(org.assertj.core.api.ThrowableAssert.ThrowingCallable call, String code) {
-        assertThatThrownBy(call).isInstanceOf(BadRequestException.class)
-                .extracting(e -> ((BadRequestException) e).getCode()).isEqualTo(code);
+        assertThatThrownBy(call).isInstanceOf(DomainException.BadRequest.class)
+                .extracting(e -> ((DomainException) e).getCode()).isEqualTo(code);
     }
 }

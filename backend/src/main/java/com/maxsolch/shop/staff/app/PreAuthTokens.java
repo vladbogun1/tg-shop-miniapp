@@ -49,8 +49,8 @@ public class PreAuthTokens {
             .build();
 
     @org.springframework.beans.factory.annotation.Autowired
-    public PreAuthTokens(AdminAuthKeys keys) {
-        this(keys.preAuthKey(), Clock.systemUTC());
+    public PreAuthTokens(AdminAuthKeys keys, Clock clock) {
+        this(keys.preAuthKey(), clock);
     }
 
     PreAuthTokens(byte[] key, Clock clock) {

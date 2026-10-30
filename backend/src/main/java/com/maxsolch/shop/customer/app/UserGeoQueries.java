@@ -1,6 +1,6 @@
 package com.maxsolch.shop.customer.app;
 
-import com.maxsolch.shop.customer.infra.GeoIpLookup;
+import com.maxsolch.shop.platform.web.GeoIpLookup;
 import com.maxsolch.shop.customer.domain.UserCardDto;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;

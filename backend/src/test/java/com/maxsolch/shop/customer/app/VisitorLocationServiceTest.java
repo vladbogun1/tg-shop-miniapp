@@ -1,6 +1,6 @@
 package com.maxsolch.shop.customer.app;
 
-import com.maxsolch.shop.customer.infra.GeoIpLookup;
+import com.maxsolch.shop.platform.web.GeoIpLookup;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

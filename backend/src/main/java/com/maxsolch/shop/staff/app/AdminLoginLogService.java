@@ -2,16 +2,12 @@ package com.maxsolch.shop.staff.app;
 
 import com.maxsolch.shop.staff.domain.LoginMethod;
 import com.maxsolch.shop.platform.web.UserAgents;
-import com.maxsolch.shop.customer.infra.GeoIpLookup;
+import com.maxsolch.shop.platform.web.GeoIpLookup;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.jdbc.core.JdbcTemplate;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.scheduling.annotation.Scheduled;
+import com.maxsolch.shop.staff.domain.LoginLogEntry;
+import com.maxsolch.shop.staff.infra.AdminLoginLogStore;
 import org.springframework.stereotype.Service;
 
-import java.sql.Timestamp;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 
 import static com.maxsolch.shop.platform.util.Texts.cut;
@@ -46,15 +42,11 @@ public class AdminLoginLogService {
     public record Recorded(String place, String device, boolean newDevice, boolean newCity) {
     }
 
-    public record Entry(long id, Instant at, String method, String result, String secondFactor, String ip,
-                        String country, String city, String device, boolean newDevice, boolean newCity) {
-    }
-
-    private final JdbcTemplate jdbc;
+    private final AdminLoginLogStore store;
     private final GeoIpLookup geoIp;
 
-    public AdminLoginLogService(JdbcTemplate jdbc, GeoIpLookup geoIp) {
-        this.jdbc = jdbc;
+    public AdminLoginLogService(AdminLoginLogStore store, GeoIpLookup geoIp) {
+        this.store = store;
         this.geoIp = geoIp;
     }
 
@@ -71,9 +63,7 @@ public class AdminLoginLogService {
                 newDevice = !seen(adminId, "device_label", device);
                 newCity = city != null && !seen(adminId, "city", city);
             }
-            jdbc.update("INSERT INTO admin_login_log (admin_id, login, method, result, second_factor, ip, country, "
-                            + "city, user_agent, device_label, new_device, new_city) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                    adminId, cut(login, 128), method.name(), result.name(),
+            store.insert(adminId, cut(login, 128), method.name(), result.name(),
                     secondFactor == null ? null : secondFactor.name(), cut(client.ip(), 45), cut(country, 100),
                     cut(city, 120), cut(client.userAgent(), 255), cut(device, 120), newDevice, newCity);
         } catch (Exception e) {
@@ -84,33 +74,11 @@ public class AdminLoginLogService {
 
     /** Was this value seen in an earlier successful sign-in of the admin? */
     private boolean seen(long adminId, String column, String value) {
-        Integer n = jdbc.queryForObject("SELECT COUNT(*) FROM admin_login_log WHERE admin_id = ? AND result = 'OK' AND "
-                + column + " = ?", Integer.class, adminId, value);
-        return n != null && n > 0;
+        return store.seen(adminId, column, value);
     }
 
-    public List<Entry> recent(long adminId, int limit) {
-        return jdbc.query("SELECT id, created_at, method, result, second_factor, ip, country, city, device_label, "
-                        + "new_device, new_city FROM admin_login_log WHERE admin_id = ? ORDER BY created_at DESC, id DESC LIMIT ?",
-                (rs, i) -> new Entry(rs.getLong("id"), rs.getTimestamp("created_at").toInstant(),
-                        rs.getString("method"), rs.getString("result"), rs.getString("second_factor"),
-                        rs.getString("ip"), rs.getString("country"), rs.getString("city"),
-                        rs.getString("device_label"), rs.getBoolean("new_device"), rs.getBoolean("new_city")),
-                adminId, limit);
-    }
-
-    @SchedulerLock(name = "AdminLoginLogService.purge", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
-    @Scheduled(cron = "${app.security.admin-login-log-purge-cron:0 40 4 * * *}")
-    public void purge() {
-        try {
-            int removed = jdbc.update("DELETE FROM admin_login_log WHERE created_at < ?",
-                    Timestamp.from(Instant.now().minus(Duration.ofDays(RETENTION_DAYS))));
-            if (removed > 0) {
-                log.info("Admin login log: removed {} entries older than {} days", removed, RETENTION_DAYS);
-            }
-        } catch (Exception e) {
-            log.warn("Admin login log purge failed: {}", e.getMessage());
-        }
+    public List<LoginLogEntry> recent(long adminId, int limit) {
+        return store.recent(adminId, limit);
     }
 
     static String placeLabel(String city, String country) {

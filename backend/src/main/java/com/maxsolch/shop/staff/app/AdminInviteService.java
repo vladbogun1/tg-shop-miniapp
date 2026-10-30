@@ -1,5 +1,7 @@
 package com.maxsolch.shop.staff.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.platform.error.ErrorCode;
 import com.maxsolch.shop.staff.domain.AdminInvite;
 import com.maxsolch.shop.staff.domain.AdminInviteStore;
 import com.maxsolch.shop.staff.domain.Totp;
@@ -9,8 +11,6 @@ import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import com.maxsolch.shop.platform.security.AdminTokenValidator;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.ConflictException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -101,9 +101,9 @@ public class AdminInviteService {
                               PasswordEncoder passwordEncoder, AdminTotp totp, AdminSessions sessions,
                               AdminTokenValidator adminTokenValidator, AdminAuthService authService,
                               AdminAuditService audit, @Lazy AdminTeamMessenger messenger,
-                              PlatformTransactionManager txManager, AppProperties props) {
+                              PlatformTransactionManager txManager, AppProperties props, Clock clock) {
         this(store, adminUserRepository, passwordEncoder, totp, sessions, adminTokenValidator, authService, audit,
-                messenger, new TransactionTemplate(txManager), props.getAdminBaseUrl(), Clock.systemUTC());
+                messenger, new TransactionTemplate(txManager), props.getAdminBaseUrl(), clock);
     }
 
     AdminInviteService(AdminInviteStore store, AdminUserRepository adminUserRepository,
@@ -193,7 +193,7 @@ public class AdminInviteService {
         Instant now = clock.instant();
         if (inv.pendingPasswordHash() == null || inv.pendingUsername() == null || inv.pendingAt() == null
                 || inv.pendingAt().plus(PENDING_TTL).isBefore(now)) {
-            throw new BadRequestException("Шаг с логином и паролем устарел — начните заново", "INVITE_STEP_EXPIRED");
+            throw new DomainException.BadRequest("Шаг с логином и паролем устарел — начните заново", ErrorCode.of("INVITE_STEP_EXPIRED"));
         }
         AdminUser target = targetOf(inv);
         boolean setup = needsSetup(target);
@@ -229,18 +229,17 @@ public class AdminInviteService {
         // Fresh checks inside the transaction: somebody may have taken the login / made the account.
         AdminUser target = adminUserRepository.findById(id).orElse(null);
         if (inv.kind() == AdminInvite.Kind.NEW ? target != null : target == null || !target.isActive()) {
-            throw new BadRequestException(INVALID, "INVITE_INVALID");
+            throw new DomainException.BadRequest(INVALID, ErrorCode.of("INVITE_INVALID"));
         }
         boolean keepsLogin = target != null && target.getUsername() != null
                 && target.getUsername().equalsIgnoreCase(inv.pendingUsername());
         if (!keepsLogin) {
             adminUserRepository.findByUsername(inv.pendingUsername()).ifPresent(other -> {
-                throw new ConflictException("Логин «" + inv.pendingUsername() + "» уже занят — выберите другой",
-                        "USERNAME_TAKEN");
+                throw new DomainException.Conflict("Логин «" + inv.pendingUsername() + "» уже занят — выберите другой", ErrorCode.of("USERNAME_TAKEN"), java.util.Map.of());
             });
         }
         if (!store.claim(inv.id(), now)) {
-            throw new BadRequestException(INVALID, "INVITE_INVALID");
+            throw new DomainException.BadRequest(INVALID, ErrorCode.of("INVITE_INVALID"));
         }
         AdminUser admin = target;
         if (admin == null) {
@@ -265,8 +264,7 @@ public class AdminInviteService {
         try {
             adminUserRepository.saveAndFlush(admin);
         } catch (DataIntegrityViolationException e) {
-            throw new ConflictException("Логин «" + inv.pendingUsername() + "» уже занят — выберите другой",
-                    "USERNAME_TAKEN");
+            throw new DomainException.Conflict("Логин «" + inv.pendingUsername() + "» уже занят — выберите другой", ErrorCode.of("USERNAME_TAKEN"), java.util.Map.of());
         }
     }
 
@@ -277,10 +275,10 @@ public class AdminInviteService {
                         + client.ip());
         if (failures >= MAX_CODE_FAILURES) {
             store.revoke(inv.id(), clock.instant());
-            throw new BadRequestException("Слишком много неверных кодов — ссылка больше не действует. "
-                    + "Попросите главного админа прислать новую.", "INVITE_REVOKED");
+            throw new DomainException.BadRequest("Слишком много неверных кодов — ссылка больше не действует. "
+                    + "Попросите главного админа прислать новую.", ErrorCode.of("INVITE_REVOKED"));
         }
-        throw new BadRequestException("Неверный код из приложения", "BAD_CODE");
+        throw new DomainException.BadRequest("Неверный код из приложения", ErrorCode.of("BAD_CODE"));
     }
 
     // ================================================================== helpers
@@ -314,8 +312,7 @@ public class AdminInviteService {
     static String validUsername(String username) {
         String u = username == null ? "" : username.trim();
         if (!USERNAME.matcher(u).matches()) {
-            throw new BadRequestException("Логин: 3–32 символа, латиница, цифры, точка, дефис или подчёркивание",
-                    "BAD_USERNAME");
+            throw new DomainException.BadRequest("Логин: 3–32 символа, латиница, цифры, точка, дефис или подчёркивание", ErrorCode.of("BAD_USERNAME"));
         }
         return u;
     }
@@ -325,7 +322,7 @@ public class AdminInviteService {
                 .filter(a -> a.getTelegramUserId() != inv.telegramUserId())
                 .isPresent();
         if (takenByOther || store.usernamePending(login, inv.id(), clock.instant())) {
-            throw new ConflictException("Логин «" + login + "» уже занят — выберите другой", "USERNAME_TAKEN");
+            throw new DomainException.Conflict("Логин «" + login + "» уже занят — выберите другой", ErrorCode.of("USERNAME_TAKEN"), java.util.Map.of());
         }
     }
 
@@ -337,8 +334,8 @@ public class AdminInviteService {
         return role == AdminRole.SUPER_ADMIN ? "главный админ" : "админ";
     }
 
-    private static BadRequestException invalid() {
-        return new BadRequestException(INVALID, "INVITE_INVALID");
+    private static DomainException.BadRequest invalid() {
+        return new DomainException.BadRequest(INVALID, ErrorCode.of("INVITE_INVALID"));
     }
 
     static String newToken() {

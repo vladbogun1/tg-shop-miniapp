@@ -1,4 +1,4 @@
-package com.maxsolch.shop.customer.infra;
+package com.maxsolch.shop.platform.web;
 
 import org.junit.jupiter.api.Test;
 

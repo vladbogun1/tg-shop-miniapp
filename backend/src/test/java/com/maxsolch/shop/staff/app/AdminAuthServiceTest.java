@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.staff.domain.Base32;
 import com.maxsolch.shop.staff.domain.LoginMethod;
 import com.maxsolch.shop.staff.domain.SecretCipher;
@@ -16,7 +17,6 @@ import com.maxsolch.shop.platform.security.JwtService;
 import com.maxsolch.shop.platform.security.Role;
 import com.maxsolch.shop.platform.security.TgInitDataValidator;
 import com.maxsolch.shop.customer.app.AuthService;
-import com.maxsolch.shop.platform.error.UnauthorizedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -120,7 +120,7 @@ class AdminAuthServiceTest {
         AdminTotp totp = new AdminTotp(cipher, repo, "ChiSetup Admin", clock);
         AdminLockout lockout = new AdminLockout(repo, audit, loginLog, alerts, ZoneId.of("Europe/Kyiv"), clock);
         service = new AdminAuthService(repo, encoder, mock(TgInitDataValidator.class), mock(AuthService.class),
-                jwtService, preAuth, totp, lockout, trustedDevices, loginLog, audit, alerts);
+                jwtService, preAuth, totp, lockout, trustedDevices, loginLog, audit, alerts, java.time.Clock.systemUTC());
     }
 
     private void enable2fa() {
@@ -146,7 +146,7 @@ class AdminAuthServiceTest {
         assertThat(o.preAuthToken()).isNotBlank();
         // A SETUP pre-auth token cannot be used to verify.
         assertThatThrownBy(() -> service.verify(o.preAuthToken(), "123456", false, CLIENT))
-                .isInstanceOf(UnauthorizedException.class);
+                .isInstanceOf(DomainException.Unauthorized.class);
     }
 
     @Test
@@ -170,7 +170,7 @@ class AdminAuthServiceTest {
         verify(audit).recordFor(eq(ID), eq("ADMIN_2FA_SETUP"), any(), any(), any());
         // The pre-auth token is spent.
         assertThatThrownBy(() -> service.confirmSetup(first.preAuthToken(), code, false, CLIENT))
-                .isInstanceOf(UnauthorizedException.class);
+                .isInstanceOf(DomainException.Unauthorized.class);
     }
 
     @Test
@@ -197,7 +197,7 @@ class AdminAuthServiceTest {
 
         Outcome b = service.passwordLogin("boss", "right-password", null, CLIENT);
         assertThatThrownBy(() -> service.verify(b.preAuthToken(), code, false, CLIENT))
-                .isInstanceOf(UnauthorizedException.class).hasMessageContaining("Неверный код");
+                .isInstanceOf(DomainException.Unauthorized.class).hasMessageContaining("Неверный код");
         // Next 30-second step: a fresh code works.
         clock.advance(Duration.ofSeconds(30));
         assertThat(service.verify(b.preAuthToken(), code(), false, CLIENT).status()).isEqualTo(Status.OK);
@@ -225,7 +225,7 @@ class AdminAuthServiceTest {
         enable2fa();
         for (int i = 0; i < AdminLockout.MAX_FAILURES - 1; i++) {
             assertThatThrownBy(() -> service.passwordLogin("boss", "wrong", null, CLIENT))
-                    .isInstanceOf(UnauthorizedException.class);
+                    .isInstanceOf(DomainException.Unauthorized.class);
         }
         assertThatThrownBy(() -> service.passwordLogin("boss", "wrong", null, CLIENT))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("заблокирован до 12:27");
@@ -245,7 +245,7 @@ class AdminAuthServiceTest {
         for (int i = 0; i < AdminLockout.MAX_FAILURES - 1; i++) {
             Outcome o = service.passwordLogin("boss", "right-password", null, CLIENT);
             assertThatThrownBy(() -> service.verify(o.preAuthToken(), wrongCode(), false, CLIENT))
-                    .isInstanceOf(UnauthorizedException.class);
+                    .isInstanceOf(DomainException.Unauthorized.class);
         }
         Outcome o = service.passwordLogin("boss", "right-password", null, CLIENT);
         assertThatThrownBy(() -> service.verify(o.preAuthToken(), wrongCode(), false, CLIENT))
@@ -261,7 +261,7 @@ class AdminAuthServiceTest {
         enable2fa();
         for (int i = 0; i < AdminLockout.MAX_FAILURES - 1; i++) {
             assertThatThrownBy(() -> service.passwordLogin("boss", "wrong", null, CLIENT))
-                    .isInstanceOf(UnauthorizedException.class);
+                    .isInstanceOf(DomainException.Unauthorized.class);
         }
         Outcome o = service.passwordLogin("boss", "right-password", null, CLIENT);
         service.verify(o.preAuthToken(), code(), false, CLIENT);
@@ -272,7 +272,7 @@ class AdminAuthServiceTest {
     void unknownLogin_runsBcrypt_andLocksLikeARealOne() {
         for (int i = 0; i < AdminLockout.MAX_FAILURES; i++) {
             assertThatThrownBy(() -> service.passwordLogin("ghost", "x", null, CLIENT))
-                    .isInstanceOf(UnauthorizedException.class).hasMessage("Неверный логин или пароль");
+                    .isInstanceOf(DomainException.Unauthorized.class).hasMessage("Неверный логин или пароль");
         }
         assertThatThrownBy(() -> service.passwordLogin("ghost", "x", null, CLIENT))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("заблокирован");
@@ -285,7 +285,7 @@ class AdminAuthServiceTest {
         Outcome o = service.passwordLogin("boss", "right-password", null, CLIENT);
         admin.setTokenVersion(5); // «Выйти на всех устройствах» / «Заблокировать» in Telegram
         assertThatThrownBy(() -> service.verify(o.preAuthToken(), code(), false, CLIENT))
-                .isInstanceOf(UnauthorizedException.class).hasMessageContaining("войдите заново");
+                .isInstanceOf(DomainException.Unauthorized.class).hasMessageContaining("войдите заново");
     }
 
     @Test
@@ -294,7 +294,7 @@ class AdminAuthServiceTest {
         Outcome o = service.passwordLogin("boss", "right-password", null, CLIENT);
         clock.advance(Duration.ofMinutes(5).plusSeconds(1));
         assertThatThrownBy(() -> service.verify(o.preAuthToken(), code(), false, CLIENT))
-                .isInstanceOf(UnauthorizedException.class);
+                .isInstanceOf(DomainException.Unauthorized.class);
         verify(trustedDevices, never()).issue(anyLong(), anyInt(), any(), isNull());
     }
 }

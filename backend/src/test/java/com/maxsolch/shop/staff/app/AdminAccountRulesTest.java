@@ -1,12 +1,12 @@
 package com.maxsolch.shop.staff.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import com.maxsolch.shop.platform.security.AdminAccess;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.Role;
-import com.maxsolch.shop.platform.error.BadRequestException;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
@@ -25,13 +25,13 @@ class AdminAccountRulesTest {
     @Test
     void newPasswordRules() {
         assertThatThrownBy(() -> AdminAccountService.validateNewPassword("short-9ch", "old"))
-                .isInstanceOf(BadRequestException.class).hasMessageContaining("минимум 10");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("минимум 10");
         assertThatThrownBy(() -> AdminAccountService.validateNewPassword("x".repeat(73), "old"))
-                .isInstanceOf(BadRequestException.class).hasMessageContaining("длинный");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("длинный");
         assertThatThrownBy(() -> AdminAccountService.validateNewPassword(" leading-space", "old"))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> AdminAccountService.validateNewPassword("same-as-before", "same-as-before"))
-                .isInstanceOf(BadRequestException.class).hasMessageContaining("совпадает");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("совпадает");
         assertThatCode(() -> AdminAccountService.validateNewPassword("ровно10симв", "old")).doesNotThrowAnyException();
     }
 

@@ -1,6 +1,6 @@
 package com.maxsolch.shop.customer.app;
 
-import com.maxsolch.shop.customer.infra.GeoIpLookup;
+import com.maxsolch.shop.platform.web.GeoIpLookup;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.annotation.PreDestroy;

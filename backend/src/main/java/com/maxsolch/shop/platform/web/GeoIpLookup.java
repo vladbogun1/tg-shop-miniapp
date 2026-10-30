@@ -1,4 +1,4 @@
-package com.maxsolch.shop.customer.infra;
+package com.maxsolch.shop.platform.web;
 
 import com.maxmind.db.CHMCache;
 import com.maxmind.geoip2.DatabaseReader;

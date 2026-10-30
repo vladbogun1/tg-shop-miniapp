@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.notification.app.SellerChannel;
 import com.maxsolch.shop.notification.domain.BotCallbackHandler;
 import com.maxsolch.shop.notification.domain.TelegramGateway;
@@ -75,7 +76,7 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
         this.sessions = sessions;
         this.adminUserRepository = adminUserRepository;
         this.audit = audit;
-        this.zone = ZoneId.of(props.getTimezone());
+        this.zone = ShopZone.of(props.getTimezone()).zone();
     }
 
     /** First line of an alert, for the journal (the rest carries IPs and places). */

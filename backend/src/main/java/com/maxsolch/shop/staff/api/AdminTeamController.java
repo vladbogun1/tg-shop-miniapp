@@ -4,7 +4,7 @@ import com.maxsolch.shop.staff.app.AdminInviteService;
 import com.maxsolch.shop.staff.app.AdminTeamService;
 import com.maxsolch.shop.staff.app.ClientInfo;
 import com.maxsolch.shop.platform.security.RequiredSuperAdmin;
-import com.maxsolch.shop.platform.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.staff.api.AdminTeamDtos.CodeRequest;
 import com.maxsolch.shop.staff.api.AdminTeamDtos.FinanceRequest;
 import com.maxsolch.shop.staff.api.AdminTeamDtos.InviteCreated;
@@ -40,34 +40,36 @@ import java.util.Map;
 public class AdminTeamController {
 
     private final AdminTeamService team;
+    private final CurrentActor actor;
 
-    public AdminTeamController(AdminTeamService team) {
+    public AdminTeamController(AdminTeamService team, CurrentActor actor) {
+        this.actor = actor;
         this.team = team;
     }
 
     @GetMapping
     @Operation(summary = "Admins (role, 2FA, last sign-in, devices) and open invites of new admins")
     public AdminTeamService.Team list() {
-        return team.team(SecurityUtil.currentUserId());
+        return team.team(actor.userId());
     }
 
     @PostMapping("/invites")
     @Operation(summary = "Invite a new admin / give an existing admin a login (bot sends the link)")
     public InviteCreated invite(@Valid @RequestBody InviteRequest r, HttpServletRequest http) {
-        return dto(team.invite(SecurityUtil.currentUserId(), r.telegramUserId(), r.name(), r.role(), r.code(),
+        return dto(team.invite(actor.userId(), r.telegramUserId(), r.name(), r.role(), r.code(),
                 ClientInfo.of(http)));
     }
 
     @PostMapping("/invites/{id}/resend")
     @Operation(summary = "New link for an invite (the old one stops working)")
     public InviteCreated resend(@PathVariable long id) {
-        return dto(team.resendInvite(SecurityUtil.currentUserId(), id));
+        return dto(team.resendInvite(actor.userId(), id));
     }
 
     @DeleteMapping("/invites/{id}")
     @Operation(summary = "Revoke an invite")
     public ResponseEntity<Void> revoke(@PathVariable long id) {
-        team.revokeInvite(SecurityUtil.currentUserId(), id);
+        team.revokeInvite(actor.userId(), id);
         return ResponseEntity.noContent().build();
     }
 
@@ -75,7 +77,7 @@ public class AdminTeamController {
     @Operation(summary = "Change name / role (role change needs the caller's code)")
     public ResponseEntity<Void> update(@PathVariable long id, @Valid @RequestBody UpdateRequest r,
                                        HttpServletRequest http) {
-        team.update(SecurityUtil.currentUserId(), id, r.name(), r.role(), r.code(), ClientInfo.of(http));
+        team.update(actor.userId(), id, r.name(), r.role(), r.code(), ClientInfo.of(http));
         return ResponseEntity.noContent().build();
     }
 
@@ -83,7 +85,7 @@ public class AdminTeamController {
     @Operation(summary = "«Финансы» on / off: purchase prices, expenses and margin (needs the caller's code)")
     public ResponseEntity<Void> finance(@PathVariable long id, @Valid @RequestBody FinanceRequest r,
                                         HttpServletRequest http) {
-        team.setFinance(SecurityUtil.currentUserId(), id, r.finance(), r.code(), ClientInfo.of(http));
+        team.setFinance(actor.userId(), id, r.finance(), r.code(), ClientInfo.of(http));
         return ResponseEntity.noContent().build();
     }
 
@@ -91,7 +93,7 @@ public class AdminTeamController {
     @Operation(summary = "Reset the admin's 2FA (set up again at next sign-in); ends their sessions")
     public ResponseEntity<Void> resetTwoFactor(@PathVariable long id, @Valid @RequestBody CodeRequest r,
                                                HttpServletRequest http) {
-        team.resetTwoFactor(SecurityUtil.currentUserId(), id, r.code(), ClientInfo.of(http));
+        team.resetTwoFactor(actor.userId(), id, r.code(), ClientInfo.of(http));
         return ResponseEntity.noContent().build();
     }
 
@@ -99,19 +101,19 @@ public class AdminTeamController {
     @Operation(summary = "Reset the password: old one dies now, a link to set a new one is sent")
     public InviteCreated resetPassword(@PathVariable long id, @Valid @RequestBody CodeRequest r,
                                        HttpServletRequest http) {
-        return dto(team.resetPassword(SecurityUtil.currentUserId(), id, r.code(), ClientInfo.of(http)));
+        return dto(team.resetPassword(actor.userId(), id, r.code(), ClientInfo.of(http)));
     }
 
     @PostMapping("/{id}/forget-devices")
     @Operation(summary = "Forget the admin's trusted devices")
     public Map<String, Integer> forgetDevices(@PathVariable long id) {
-        return Map.of("forgotten", team.forgetDevices(SecurityUtil.currentUserId(), id));
+        return Map.of("forgotten", team.forgetDevices(actor.userId(), id));
     }
 
     @PostMapping("/{id}/block")
     @Operation(summary = "Block: active=false, every session ends, no sign-in at all")
     public ResponseEntity<Void> block(@PathVariable long id, @Valid @RequestBody CodeRequest r, HttpServletRequest http) {
-        team.block(SecurityUtil.currentUserId(), id, r.code(), ClientInfo.of(http));
+        team.block(actor.userId(), id, r.code(), ClientInfo.of(http));
         return ResponseEntity.noContent().build();
     }
 
@@ -119,7 +121,7 @@ public class AdminTeamController {
     @Operation(summary = "Unblock")
     public ResponseEntity<Void> unblock(@PathVariable long id, @Valid @RequestBody CodeRequest r,
                                         HttpServletRequest http) {
-        team.unblock(SecurityUtil.currentUserId(), id, r.code(), ClientInfo.of(http));
+        team.unblock(actor.userId(), id, r.code(), ClientInfo.of(http));
         return ResponseEntity.noContent().build();
     }
 
@@ -127,7 +129,7 @@ public class AdminTeamController {
     @Operation(summary = "Delete an admin without history (otherwise 409 HAS_HISTORY — block instead)")
     public ResponseEntity<Void> delete(@PathVariable long id, @Valid @RequestBody CodeRequest r,
                                        HttpServletRequest http) {
-        team.delete(SecurityUtil.currentUserId(), id, r.code(), ClientInfo.of(http));
+        team.delete(actor.userId(), id, r.code(), ClientInfo.of(http));
         return ResponseEntity.noContent().build();
     }
 

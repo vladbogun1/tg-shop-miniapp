@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.staff.domain.LoginMethod;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.config.AppProperties;
@@ -42,8 +43,9 @@ public class AdminLockout {
 
     @Autowired
     public AdminLockout(AdminUserRepository adminUserRepository, AdminAuditService audit,
-                        AdminLoginLogService loginLog, AdminSecurityAlerts alerts, AppProperties props) {
-        this(adminUserRepository, audit, loginLog, alerts, ZoneId.of(props.getTimezone()), Clock.systemUTC());
+                        AdminLoginLogService loginLog, AdminSecurityAlerts alerts, AppProperties props,
+                        Clock clock) {
+        this(adminUserRepository, audit, loginLog, alerts, ShopZone.of(props.getTimezone()).zone(), clock);
     }
 
     AdminLockout(AdminUserRepository adminUserRepository, AdminAuditService audit, AdminLoginLogService loginLog,

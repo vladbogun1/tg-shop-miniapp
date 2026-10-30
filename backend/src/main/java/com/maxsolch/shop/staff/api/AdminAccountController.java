@@ -6,7 +6,7 @@ import com.maxsolch.shop.staff.app.AdminTotp;
 import com.maxsolch.shop.staff.app.ClientInfo;
 import com.maxsolch.shop.staff.app.TrustedDeviceService;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
-import com.maxsolch.shop.platform.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,9 +36,11 @@ public class AdminAccountController {
     private final AdminAccountService accountService;
     private final AdminTotp totp;
     private final TrustedDeviceService trustedDevices;
+    private final CurrentActor actor;
 
     public AdminAccountController(AdminAccountService accountService, AdminTotp totp,
-                                  TrustedDeviceService trustedDevices) {
+                                  TrustedDeviceService trustedDevices, CurrentActor actor) {
+        this.actor = actor;
         this.accountService = accountService;
         this.totp = totp;
         this.trustedDevices = trustedDevices;
@@ -47,20 +49,20 @@ public class AdminAccountController {
     @GetMapping
     @Operation(summary = "Own profile: name, login, role, 2FA status, trusted devices")
     public AdminAccountService.Profile profile() {
-        return accountService.profile(SecurityUtil.currentUserId());
+        return accountService.profile(actor.userId());
     }
 
     @GetMapping("/logins")
     @Operation(summary = "Last 20 sign-in attempts of this admin")
-    public List<AdminLoginLogService.Entry> logins() {
-        return accountService.history(SecurityUtil.currentUserId());
+    public List<com.maxsolch.shop.staff.domain.LoginLogEntry> logins() {
+        return accountService.history(actor.userId());
     }
 
     @PostMapping("/password")
     @Operation(summary = "Change password (current password + code); ends all other sessions")
     public AccessTokenResponse changePassword(@Valid @RequestBody AdminPasswordChangeRequest request,
                                               HttpServletRequest http, HttpServletResponse response) {
-        String token = accountService.changePassword(SecurityUtil.currentUserId(), request.currentPassword(),
+        String token = accountService.changePassword(actor.userId(), request.currentPassword(),
                 request.newPassword(), request.code(), ClientInfo.of(http));
         trustedDevices.clearCookie(response);
         return new AccessTokenResponse(token);
@@ -69,9 +71,9 @@ public class AdminAccountController {
     @PostMapping("/2fa/reset")
     @Operation(summary = "2FA re-setup, step 1: current code → new secret")
     public TwoFactorSetupResponse startTotpReset(@Valid @RequestBody TotpCodeRequest request, HttpServletRequest http) {
-        AdminTotp.NewSecret s = accountService.startTotpReset(SecurityUtil.currentUserId(), request.code(),
+        AdminTotp.NewSecret s = accountService.startTotpReset(actor.userId(), request.code(),
                 ClientInfo.of(http));
-        String account = accountService.profile(SecurityUtil.currentUserId()).username();
+        String account = accountService.profile(actor.userId()).username();
         return new TwoFactorSetupResponse(s.secret(), s.otpauthUri(), account, totp.issuer());
     }
 
@@ -79,7 +81,7 @@ public class AdminAccountController {
     @Operation(summary = "2FA re-setup, step 2: code from the new secret; ends all other sessions")
     public AccessTokenResponse confirmTotpReset(@Valid @RequestBody TotpCodeRequest request,
                                                 HttpServletRequest http, HttpServletResponse response) {
-        String token = accountService.confirmTotpReset(SecurityUtil.currentUserId(), request.code(),
+        String token = accountService.confirmTotpReset(actor.userId(), request.code(),
                 ClientInfo.of(http));
         trustedDevices.clearCookie(response);
         return new AccessTokenResponse(token);
@@ -88,7 +90,7 @@ public class AdminAccountController {
     @PostMapping("/devices/forget")
     @Operation(summary = "«Забыть все устройства»: every trusted device asks for the code again")
     public Map<String, Integer> forgetDevices(HttpServletResponse response) {
-        int n = accountService.forgetDevices(SecurityUtil.currentUserId());
+        int n = accountService.forgetDevices(actor.userId());
         trustedDevices.clearCookie(response);
         return Map.of("forgotten", n);
     }

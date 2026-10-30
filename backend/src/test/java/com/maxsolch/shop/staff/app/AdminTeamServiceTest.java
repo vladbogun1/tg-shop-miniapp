@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.staff.domain.AdminInvite;
 import com.maxsolch.shop.staff.domain.SecretCipher;
 import com.maxsolch.shop.staff.domain.Totp;
@@ -11,8 +12,6 @@ import com.maxsolch.shop.platform.security.AdminAccess;
 import com.maxsolch.shop.platform.security.AdminTokenValidator;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.Role;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.ConflictException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -100,8 +99,8 @@ class AdminTeamServiceTest {
     }
 
     private static void assertConflict(org.assertj.core.api.ThrowableAssert.ThrowingCallable call, String code) {
-        assertThatThrownBy(call).isInstanceOf(ConflictException.class)
-                .extracting(e -> ((ConflictException) e).getCode()).isEqualTo(code);
+        assertThatThrownBy(call).isInstanceOf(DomainException.Conflict.class)
+                .extracting(e -> ((DomainException) e).getCode()).isEqualTo(code);
     }
 
     // ------------------------------------------------------------------ never yourself
@@ -160,12 +159,12 @@ class AdminTeamServiceTest {
 
     @Test
     void dangerousActionsNeedTheCallersCode() {
-        assertThatThrownBy(() -> team.block(BOSS, HELPER, null, CLIENT)).isInstanceOf(BadRequestException.class)
-                .extracting(e -> ((BadRequestException) e).getCode()).isEqualTo("CODE_REQUIRED");
-        assertThatThrownBy(() -> team.block(BOSS, HELPER, "000000", CLIENT)).isInstanceOf(BadRequestException.class)
-                .extracting(e -> ((BadRequestException) e).getCode()).isEqualTo("BAD_CODE");
+        assertThatThrownBy(() -> team.block(BOSS, HELPER, null, CLIENT)).isInstanceOf(DomainException.BadRequest.class)
+                .extracting(e -> ((DomainException) e).getCode()).isEqualTo("CODE_REQUIRED");
+        assertThatThrownBy(() -> team.block(BOSS, HELPER, "000000", CLIENT)).isInstanceOf(DomainException.BadRequest.class)
+                .extracting(e -> ((DomainException) e).getCode()).isEqualTo("BAD_CODE");
         assertThatThrownBy(() -> team.update(BOSS, HELPER, null, "SUPER_ADMIN", null, CLIENT))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThat(admins.rows.get(HELPER).isActive()).isTrue();
         assertThat(admins.rows.get(HELPER).getRole()).isEqualTo(AdminRole.ADMIN);
         // A wrong code counts towards the caller's lock, like everywhere else.
@@ -180,7 +179,7 @@ class AdminTeamServiceTest {
         String c = code();
         team.forgetDevices(BOSS, HELPER);
         team.resetTwoFactor(BOSS, HELPER, c, CLIENT);
-        assertThatThrownBy(() -> team.block(BOSS, HELPER, c, CLIENT)).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> team.block(BOSS, HELPER, c, CLIENT)).isInstanceOf(DomainException.BadRequest.class);
     }
 
     // ------------------------------------------------------------------ actions
@@ -251,9 +250,9 @@ class AdminTeamServiceTest {
         assertThat(team.invite(BOSS, 977L, null, null, code(), CLIENT).kind()).isEqualTo(AdminInvite.Kind.CREDENTIALS);
         assertThat(admins.rows).hasSize(3);
         // A NEW invite needs a name and a valid role.
-        assertThatThrownBy(() -> team.invite(BOSS, 600L, " ", "ADMIN", code(), CLIENT)).isInstanceOf(BadRequestException.class);
-        assertThatThrownBy(() -> team.invite(BOSS, 600L, "Имя", "ROOT", code(), CLIENT)).isInstanceOf(BadRequestException.class);
-        assertThatThrownBy(() -> team.invite(BOSS, -5L, "Имя", "ADMIN", code(), CLIENT)).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> team.invite(BOSS, 600L, " ", "ADMIN", code(), CLIENT)).isInstanceOf(DomainException.BadRequest.class);
+        assertThatThrownBy(() -> team.invite(BOSS, 600L, "Имя", "ROOT", code(), CLIENT)).isInstanceOf(DomainException.BadRequest.class);
+        assertThatThrownBy(() -> team.invite(BOSS, -5L, "Имя", "ADMIN", code(), CLIENT)).isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test

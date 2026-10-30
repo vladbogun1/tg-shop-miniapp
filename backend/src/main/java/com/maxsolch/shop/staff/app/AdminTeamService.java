@@ -1,5 +1,7 @@
 package com.maxsolch.shop.staff.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.platform.error.ErrorCode;
 import com.maxsolch.shop.staff.domain.AdminInvite;
 import com.maxsolch.shop.staff.domain.AdminInviteStore;
 import com.maxsolch.shop.staff.domain.LoginMethod;
@@ -9,9 +11,6 @@ import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import com.maxsolch.shop.platform.security.AdminTokenValidator;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.ConflictException;
-import com.maxsolch.shop.platform.error.NotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -82,17 +81,9 @@ public class AdminTeamService {
 
     @Autowired
     public AdminTeamService(AdminUserRepository repo, AdminInviteService invites, AdminInviteStore inviteStore,
-                            AdminTotp totp, AdminLockout lockout, AdminSessions sessions,
-                            TrustedDeviceService trustedDevices, AdminTokenValidator tokenValidator,
-                            AdminTeamFacts facts, AdminAuditService audit, @Lazy AdminTeamMessenger messenger) {
-        this(repo, invites, inviteStore, totp, lockout, sessions, trustedDevices, tokenValidator, facts, audit,
-                messenger, Clock.systemUTC());
-    }
-
-    AdminTeamService(AdminUserRepository repo, AdminInviteService invites, AdminInviteStore inviteStore,
                      AdminTotp totp, AdminLockout lockout, AdminSessions sessions,
                      TrustedDeviceService trustedDevices, AdminTokenValidator tokenValidator,
-                     AdminTeamFacts facts, AdminAuditService audit, AdminTeamMessenger messenger, Clock clock) {
+                     AdminTeamFacts facts, AdminAuditService audit, @Lazy AdminTeamMessenger messenger, Clock clock) {
         this.repo = repo;
         this.invites = invites;
         this.inviteStore = inviteStore;
@@ -155,7 +146,7 @@ public class AdminTeamService {
     public AdminInviteService.Created invite(long callerId, Long telegramUserId, String name, String role, String code,
                                              ClientInfo client) {
         if (telegramUserId == null || telegramUserId <= 0) {
-            throw new BadRequestException("Укажите Telegram пользователя (числовой id)", "BAD_TELEGRAM_ID");
+            throw new DomainException.BadRequest("Укажите Telegram пользователя (числовой id)", ErrorCode.of("BAD_TELEGRAM_ID"));
         }
         long tgId = telegramUserId;
         if (tgId == callerId) {
@@ -167,11 +158,10 @@ public class AdminTeamService {
         AdminRole inviteRole;
         if (existing != null) {
             if (!existing.isActive()) {
-                throw new ConflictException("Этот админ заблокирован — сначала разблокируйте его", "BLOCKED");
+                throw new DomainException.Conflict("Этот админ заблокирован — сначала разблокируйте его", ErrorCode.of("BLOCKED"), java.util.Map.of());
             }
             if (existing.getUsername() != null && existing.getPasswordHash() != null) {
-                throw new ConflictException("У этого админа уже есть логин и пароль. Если он их забыл — «Сбросить пароль»",
-                        "HAS_LOGIN");
+                throw new DomainException.Conflict("У этого админа уже есть логин и пароль. Если он их забыл — «Сбросить пароль»", ErrorCode.of("HAS_LOGIN"), java.util.Map.of());
             }
             kind = AdminInvite.Kind.CREDENTIALS;
             inviteName = existing.getName();
@@ -193,13 +183,13 @@ public class AdminTeamService {
 
     /** A new link for an open (or expired) invite; the old link stops working. */
     public AdminInviteService.Created resendInvite(long callerId, long inviteId) {
-        AdminInvite inv = inviteStore.byId(inviteId).orElseThrow(() -> new NotFoundException("Приглашение не найдено"));
+        AdminInvite inv = inviteStore.byId(inviteId).orElseThrow(() -> new DomainException.NotFound("Приглашение не найдено"));
         if (inv.usedAt() != null || inv.revokedAt() != null) {
-            throw new ConflictException("Приглашение уже принято или отозвано", "INVITE_CLOSED");
+            throw new DomainException.Conflict("Приглашение уже принято или отозвано", ErrorCode.of("INVITE_CLOSED"), java.util.Map.of());
         }
         AdminUser existing = repo.findById(inv.telegramUserId()).orElse(null);
         if (inv.kind() == AdminInvite.Kind.NEW ? existing != null : existing == null || !existing.isActive()) {
-            throw new ConflictException("Приглашение больше не подходит к этой учётке — создайте новое", "INVITE_CLOSED");
+            throw new DomainException.Conflict("Приглашение больше не подходит к этой учётке — создайте новое", ErrorCode.of("INVITE_CLOSED"), java.util.Map.of());
         }
         AdminInviteService.Created created = invites.create(inv.kind(), inv.telegramUserId(), inv.name(), inv.role(),
                 callerId);
@@ -210,9 +200,9 @@ public class AdminTeamService {
     }
 
     public void revokeInvite(long callerId, long inviteId) {
-        AdminInvite inv = inviteStore.byId(inviteId).orElseThrow(() -> new NotFoundException("Приглашение не найдено"));
+        AdminInvite inv = inviteStore.byId(inviteId).orElseThrow(() -> new DomainException.NotFound("Приглашение не найдено"));
         if (!inviteStore.revoke(inviteId, clock.instant())) {
-            throw new ConflictException("Приглашение уже принято или отозвано", "INVITE_CLOSED");
+            throw new DomainException.Conflict("Приглашение уже принято или отозвано", ErrorCode.of("INVITE_CLOSED"), java.util.Map.of());
         }
         audit.recordFor(callerId, "ADMIN_INVITE_REVOKED", "ADMIN", String.valueOf(inv.telegramUserId()),
                 "приглашение отозвано (tg " + inv.telegramUserId() + ", " + (inv.name() == null ? "без имени" : inv.name()) + ")");
@@ -300,7 +290,7 @@ public class AdminTeamService {
         AdminUser target = find(targetId);
         guard(callerId, target, false);
         if (!target.isActive()) {
-            throw new ConflictException("Админ заблокирован — сначала разблокируйте", "BLOCKED");
+            throw new DomainException.Conflict("Админ заблокирован — сначала разблокируйте", ErrorCode.of("BLOCKED"), java.util.Map.of());
         }
         requireOwnCode(callerId, code, client, "сброс пароля админа");
         AdminUser fresh = find(targetId);
@@ -370,8 +360,8 @@ public class AdminTeamService {
         guard(callerId, target, true);
         List<String> history = facts.history(targetId);
         if (!history.isEmpty()) {
-            throw new ConflictException("Удалить нельзя: у админа есть история (" + String.join(", ", history)
-                    + "). Заблокируйте его — история сохранится.", "HAS_HISTORY");
+            throw new DomainException.Conflict("Удалить нельзя: у админа есть история (" + String.join(", ", history)
+                    + "). Заблокируйте его — история сохранится.", ErrorCode.of("HAS_HISTORY"), java.util.Map.of());
         }
         requireOwnCode(callerId, code, client, "удаление админа");
         String label = who(target);
@@ -394,8 +384,8 @@ public class AdminTeamService {
     void guard(long callerId, AdminUser target, boolean touchesLastSuper) {
         if (touchesLastSuper && target.isActive() && target.isSuperAdmin() && target.isTotpEnabled()
                 && repo.countOtherActiveSupersWith2fa(target.getTelegramUserId()) == 0) {
-            throw new ConflictException("Это последний главный админ с 2FA — без него некому управлять админами. "
-                    + "Сначала назначьте главным другого админа.", "LAST_SUPER_ADMIN");
+            throw new DomainException.Conflict("Это последний главный админ с 2FA — без него некому управлять админами. "
+                    + "Сначала назначьте главным другого админа.", ErrorCode.of("LAST_SUPER_ADMIN"), java.util.Map.of());
         }
         if (target.getTelegramUserId() == callerId) {
             throw self();
@@ -404,15 +394,15 @@ public class AdminTeamService {
 
     private void requireOwnCode(long callerId, String code, ClientInfo client, String what) {
         AdminUser caller = repo.findByTelegramUserIdAndActiveTrue(callerId)
-                .orElseThrow(() -> new com.maxsolch.shop.platform.error.UnauthorizedException("not authenticated"));
+                .orElseThrow(() -> new DomainException.Unauthorized("not authenticated", null));
         if (code == null || code.isBlank()) {
-            throw new BadRequestException("Введите код из приложения-аутентификатора", "CODE_REQUIRED");
+            throw new DomainException.BadRequest("Введите код из приложения-аутентификатора", ErrorCode.of("CODE_REQUIRED"));
         }
         if (!totp.verifyActive(caller, code)) {
             audit.recordFor(callerId, "ADMIN_ACCOUNT_FAIL", "AUTH", String.valueOf(callerId),
                     "неверный код 2FA: " + what + ", IP " + client.ip());
             lockout.registerFailure(callerId, LoginMethod.PASSWORD, client);
-            throw new BadRequestException("Неверный код из приложения", "BAD_CODE");
+            throw new DomainException.BadRequest("Неверный код из приложения", ErrorCode.of("BAD_CODE"));
         }
     }
 
@@ -425,13 +415,13 @@ public class AdminTeamService {
     }
 
     private AdminUser find(long id) {
-        return repo.findById(id).orElseThrow(() -> new NotFoundException("Админ не найден"));
+        return repo.findById(id).orElseThrow(() -> new DomainException.NotFound("Админ не найден"));
     }
 
     static String validName(String name) {
         String n = name == null ? "" : name.trim();
         if (n.isEmpty() || n.codePointCount(0, n.length()) > MAX_NAME) {
-            throw new BadRequestException("Имя: от 1 до " + MAX_NAME + " символов", "BAD_NAME");
+            throw new DomainException.BadRequest("Имя: от 1 до " + MAX_NAME + " символов", ErrorCode.of("BAD_NAME"));
         }
         return n;
     }
@@ -440,12 +430,12 @@ public class AdminTeamService {
         try {
             return AdminRole.valueOf(role == null ? "" : role.trim());
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Роль: ADMIN или SUPER_ADMIN", "BAD_ROLE");
+            throw new DomainException.BadRequest("Роль: ADMIN или SUPER_ADMIN", ErrorCode.of("BAD_ROLE"));
         }
     }
 
-    private static ConflictException self() {
-        return new ConflictException("Свою учётку меняйте в «Мой аккаунт» — здесь только другие админы", "SELF");
+    private static DomainException.Conflict self() {
+        return new DomainException.Conflict("Свою учётку меняйте в «Мой аккаунт» — здесь только другие админы", ErrorCode.of("SELF"), java.util.Map.of());
     }
 
     private static String who(AdminUser a) {

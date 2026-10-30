@@ -6,7 +6,7 @@ import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.JwtService;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.platform.security.Role;
-import com.maxsolch.shop.platform.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.customer.app.AuthResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -34,10 +34,12 @@ public class AdminSessionController {
     private final JwtService jwtService;
     private final AdminTokenRevocations revocations;
     private final AdminAccountService accountService;
+    private final CurrentActor actor;
 
     public AdminSessionController(JwtService jwtService,
                                   AdminTokenRevocations revocations,
-                                  AdminAccountService accountService) {
+                                  AdminAccountService accountService, CurrentActor actor) {
+        this.actor = actor;
         this.jwtService = jwtService;
         this.revocations = revocations;
         this.accountService = accountService;
@@ -51,7 +53,7 @@ public class AdminSessionController {
     @PostMapping("/token/refresh")
     @Operation(summary = "Re-issue the admin token (same admin, same token version, new expiry)")
     public AuthResponse refresh() {
-        AuthPrincipal p = SecurityUtil.currentPrincipal();
+        AuthPrincipal p = actor.principal();
         return AuthResponse.tokenOnly(jwtService.issueToken(p.telegramUserId(), Role.ADMIN, p.tokenVersion()));
     }
 
@@ -59,7 +61,7 @@ public class AdminSessionController {
     @PostMapping("/logout")
     @Operation(summary = "Revoke the current admin token")
     public ResponseEntity<Void> logout() {
-        AuthPrincipal p = SecurityUtil.currentPrincipal();
+        AuthPrincipal p = actor.principal();
         revocations.revoke(p.tokenId(), p.telegramUserId(), p.expiresAt());
         return ResponseEntity.noContent().build();
     }
@@ -72,7 +74,7 @@ public class AdminSessionController {
     @PostMapping("/logout-all")
     @Operation(summary = "Revoke every token of the current admin (token_version + 1)")
     public ResponseEntity<Void> logoutAll() {
-        accountService.logoutEverywhere(SecurityUtil.currentUserId());
+        accountService.logoutEverywhere(actor.userId());
         return ResponseEntity.noContent().build();
     }
 }
