@@ -228,6 +228,78 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
+  # Customer e2e (docs/ARCHITECTURE-FRONT.md, step 5.0): characterization smokes of the Mini App and the website
+  # on the same isolated stack as the admin e2e (+ a fake monobank, nothing is paid): WebKit iPhone + desktop
+  # Chromium. Production builds of copies of frontend/ and site/ are made by e2e/scripts/run.mjs --suite=customer.
+  e2e-customer:
+    name: Customer e2e (Playwright)
+    runs-on: ubuntu-latest
+    needs: backend
+    timeout-minutes: 40
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: e2e-root-pass
+          MYSQL_DATABASE: tgshop_e2e
+          MYSQL_USER: e2e
+          MYSQL_PASSWORD: e2e-db-pass
+        ports:
+          - 33307:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -pe2e-root-pass"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      E2E_EXTERNAL_DB: "1"
+      E2E_BACKEND_JAR: ${{ github.workspace }}/backend/target/app.jar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Download backend jar
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/target
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(node -p "require('./node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-customer-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - name: Install Chromium and WebKit
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium webkit
+      - name: Install system deps (browsers from cache)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        working-directory: e2e
+        run: npx playwright install-deps chromium webkit
+      - name: Run customer e2e
+        run: npm run e2e -- --suite=customer
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-customer-report
+          path: |
+            e2e/playwright-report-customer
+            e2e/test-results-customer
+            e2e/logs
+          retention-days: 14
+          if-no-files-found: ignore
+
   # Mini App, admin, website and the packages/* are one npm workspace, so a single install covers
   # all of them and every root script (lint / typecheck / test / arch:front / build) runs ALL workspaces
   # (docs/ARCHITECTURE-FRONT.md, 2.7.6). The build needs no backend (ISR on demand).

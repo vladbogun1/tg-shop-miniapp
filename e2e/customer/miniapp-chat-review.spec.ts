@@ -2,7 +2,7 @@
  * Mini App: the order chat and a review of a delivered order (docs/ARCHITECTURE-FRONT.md step 5.0).
  * The orders are written into the database (lib/customer.ts): a delivered one needs a courier.
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.js";
 import { MINIAPP_URL } from "../env.js";
 import { adminSays, insertOrder, newBuyerId } from "../lib/customer.js";
 import { query } from "../lib/db.js";

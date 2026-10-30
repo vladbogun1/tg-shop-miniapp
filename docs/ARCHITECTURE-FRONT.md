@@ -312,6 +312,7 @@ Next 15 + React 19 + Tailwind 4 + framer-motion + react-query + zustand; `output
 
 **Шаг 5. `@shop/customer`** (в каждой ветке: код фичи переезжает в пакет, **оба** приложения переключаются на него, дубликат в `frontend/` и `site/` удаляется; перед и после — смоук 5.0 и `shop-ui-qa`):
 - **5.0 Страховка (до переноса):** смоук-спеки Playwright в `e2e/` для покупателя (WebKit, профиль iPhone + десктоп): каталог → товар → корзина (промокод) → оформление до старта оплаты (тестовый режим monobank/заглушка) → страница заказа → чат → отзыв → сравнение → подарок/кейс. Это характеризующие тесты в смысле Feathers: **фиксируют текущее поведение**, не желаемое. Бегут в CI на изолированном стеке, как e2e админки.
+  *Сделано:* `e2e/customer/` (запуск: `npm run e2e -- --suite=customer`, CI-джоба `e2e-customer`). Стенд — тот же, что у админки, плюс сборки-копии `frontend/` и `site/`, шлюз сайта (`e2e/lib/gateway.mjs`) и fake monobank (`e2e/lib/fake-mono.mjs`); Telegram в Mini App подменяет `e2e/lib/tg-stub.ts`; каждому тесту — свой IP (`customer/fixtures.ts`), потому что лимиты бэкенда по IP нельзя поднять.
 - 5a: `Platform` + `cart` (`cart.ts`, `cart-sync.ts` — разошлись 226/265) + `catalog` (фильтры, карточка, `catalog.ts` 103/204).
 - 5b: `checkout` + `payment` + `delivery` (НП: `NpCombobox`, `NpWarehouseMap` 432/326; `PromoField`; `order-limits`).
 - 5c: `order` (страница заказа, `StatusTimeline`, доплата, чек) + `chat` + `support`.

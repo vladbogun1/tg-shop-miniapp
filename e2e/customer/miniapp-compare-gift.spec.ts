@@ -2,7 +2,7 @@
  * Mini App: comparison, and the gift for the order sum (the gift case) — docs/ARCHITECTURE-FRONT.md step 5.0.
  * Gift settings and the bronze prizes come from fixtures/customer-seed.sql + global-setup.customer.ts.
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.js";
 import { MINIAPP_URL } from "../env.js";
 import { insertOrder, newBuyerId } from "../lib/customer.js";
 import { query } from "../lib/db.js";

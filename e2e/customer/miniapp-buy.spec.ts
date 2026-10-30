@@ -2,7 +2,7 @@
  * Mini App, the purchase (docs/ARCHITECTURE-FRONT.md step 5.0): catalog → product → cart with a promo
  * code → checkout (4 steps) → the order page → «Оплатити» opens the payment page. Pins today's behaviour.
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.js";
 import { MINIAPP_URL } from "../env.js";
 import { newBuyerId } from "../lib/customer.js";
 import { installTelegramStub } from "../lib/tg-stub.js";
