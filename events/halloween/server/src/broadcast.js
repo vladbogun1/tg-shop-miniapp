@@ -3,6 +3,7 @@
 //   rest — everyone else with a Telegram id: the purchase draw + «В магазин», then the pumpkin hunt.
 // Each person is tried once per campaign (the sends table), so a restart continues where it stopped.
 // Telegram refusing the first message (blocked / never started the bot) = "blocked", the second is skipped.
+// Every result also goes to the shop's users.bot_blocked (bot-status.js).
 import { readFile, stat } from "node:fs/promises";
 import { join, extname } from "node:path";
 import { db } from "./db.js";
@@ -11,6 +12,7 @@ import { shopFacts, profiles, allCustomerIds } from "./shop.js";
 import { excludedIds } from "./pools.js";
 import { joinLink, sendsOf } from "./invites.js";
 import { TEXTS, BUTTONS } from "./broadcast-texts.js";
+import * as botStatus from "./bot-status.js";
 
 db.exec(`CREATE TABLE IF NOT EXISTS media_ids (path TEXT PRIMARY KEY, stamp TEXT NOT NULL, file_id TEXT NOT NULL)`);
 
@@ -174,7 +176,9 @@ async function run(campaign, ids, j) {
     const prof = await profiles(chunk);
     for (const id of chunk) {
       const r = await deliver(campaign, id, langOf(prof.get(id)));
-      record.run(campaign, id, r, Date.now());
+      const at = Date.now();
+      record.run(campaign, id, r, at);
+      await botStatus.copy(campaign, id, r, at);
       j[r] += 1;
       j.done += 1;
       await sleep(PAUSE_MS);

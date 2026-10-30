@@ -1,5 +1,6 @@
-// Read-only look into the shop database: who bought this week, names for the stream, who is staff.
-// The MySQL user has SELECT on orders/users/admin_users only — nothing here can change the shop.
+// A look into the shop database: who bought this week, names for the stream, who is staff.
+// The MySQL user has SELECT on orders/users/admin_users and one write: UPDATE(bot_blocked, bot_blocked_at)
+// on users (markBot below), so «заблокував бота» from the broadcast reaches the shop's own user list.
 import mysql from "mysql2/promise";
 import { config } from "./config.js";
 
@@ -82,7 +83,7 @@ export async function profiles(ids) {
   for (let i = 0; i < ids.length; i += 500) {
     const chunk = ids.slice(i, i + 500);
     const [rows] = await pool.query(
-      `SELECT CAST(telegram_user_id AS CHAR) AS tg_id, username, first_name, last_name, photo_url,
+      `SELECT CAST(telegram_user_id AS CHAR) AS tg_id, username, first_name, last_name, photo_url, bot_blocked,
                 COALESCE(NULLIF(locale, ''), language_code) AS lang
          FROM users WHERE telegram_user_id IN (?)`,
       [chunk],
@@ -90,6 +91,46 @@ export async function profiles(ids) {
     for (const r of rows) out.set(String(r.tg_id), r);
   }
   return out;
+}
+
+/** All-time orders and money per person (the same "counts" rule as the draw), for the admin participants page. */
+export async function spendAll(ids) {
+  const out = new Map();
+  if (!pool || !ids.length) return out;
+  for (let i = 0; i < ids.length; i += 500) {
+    const [rows] = await pool.query(
+      `SELECT CAST(user_id AS CHAR) AS tg_id, COUNT(*) AS n, SUM(GREATEST(total_minor - refunded_minor - uncollected_minor, 0)) AS spend
+         FROM orders
+        WHERE user_id IN (?) AND status <> 'REJECTED'
+          AND (paid = 1 OR status IN ('APPROVED','SHIPPED','DELIVERED'))
+        GROUP BY user_id`,
+      [ids.slice(i, i + 500)],
+    );
+    for (const r of rows) out.set(String(r.tg_id), { n: Number(r.n), spendMinor: Number(r.spend) });
+  }
+  return out;
+}
+
+/**
+ * What a bot message told us about a person, written to the shop's users table (the shop's own
+ * broadcasts skip blocked people, its user list shows them). blocked=false only clears a mark made
+ * before `at`: a later block (from the shop itself) wins. The shop clears the mark on the next sign-in.
+ */
+export async function markBot(tgId, blocked, at) {
+  if (!pool) return 0;
+  const when = new Date(at);
+  const [r] = blocked
+    ? await pool.query(
+        `UPDATE users SET bot_blocked = 1, bot_blocked_at = ?
+          WHERE telegram_user_id = ? AND (bot_blocked = 0 OR bot_blocked_at IS NULL OR bot_blocked_at < ?)`,
+        [when, tgId, when],
+      )
+    : await pool.query(
+        `UPDATE users SET bot_blocked = 0
+          WHERE telegram_user_id = ? AND bot_blocked = 1 AND (bot_blocked_at IS NULL OR bot_blocked_at < ?)`,
+        [tgId, when],
+      );
+  return r.affectedRows;
 }
 
 /** Everyone the bot may write to (has a Telegram id): the "everyone else" broadcast. */

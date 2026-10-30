@@ -20,6 +20,8 @@ import { poolOf, liveEntries } from "./pools.js";
 import * as notify from "./notify.js";
 import * as invites from "./invites.js";
 import * as broadcast from "./broadcast.js";
+import * as botStatus from "./bot-status.js";
+import * as members from "./members.js";
 import { shopFacts } from "./shop.js";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
@@ -204,6 +206,12 @@ async function adminApi(req, res, path, query) {
       console.log(`[hw] broadcast ${b.campaign} started by ${who.tgId} for ${left}`);
       return send(res, 200, await broadcast.start(String(b.campaign)));
     }
+    // The participants page of the shop admin (frontend-admin /halloween): everyone, both draws, with stats.
+    if (path === "members" && req.method === "GET") return send(res, 200, await members.list());
+    if (path === "bot-sync" && req.method === "POST") {
+      await botStatus.syncAll();
+      return send(res, 200, { left: botStatus.unsynced() });
+    }
     if (path === "people" && req.method === "GET") return send(res, 200, await adminPeople.people(pool));
     if (path === "include" && req.method === "POST") {
       adminPeople.include(pool, b.tgId);
@@ -246,3 +254,4 @@ const server = createServer(async (req, res) => {
 if (!config.jwtSecret && !config.devAuth) console.warn("[hw] JWT_SECRET is empty — nobody can sign in");
 server.listen(config.port, () => console.log(`[hw] listening on :${config.port}, phase=${game.phase()}`));
 notify.start();
+botStatus.syncAll().catch((e) => console.error("[hw] bot status sync:", e.message));

@@ -70,7 +70,12 @@ CREATE USER 'hw_ro'@'%' IDENTIFIED BY '<пароль>';
 GRANT SELECT ON <DB_NAME>.orders TO 'hw_ro'@'%';
 GRANT SELECT ON <DB_NAME>.users TO 'hw_ro'@'%';
 GRANT SELECT ON <DB_NAME>.admin_users TO 'hw_ro'@'%';
+-- с 31.10: итог рассылки («заблокував бота») пишется в users.bot_blocked — только эти два столбца
+GRANT UPDATE (bot_blocked, bot_blocked_at) ON <DB_NAME>.users TO 'hw_ro'@'%';
 ```
+
+Без этого права розыгрыш и рассылка работают, только блокировки не попадают в основную базу (одна строка
+в логе `bot status → shop failed`). Право выдали позже — при старте сервиса всё, что ещё не перенесено, переносится.
 
 ## Запуск
 
