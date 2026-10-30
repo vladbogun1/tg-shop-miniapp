@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.lang.Nullable;
 
 import java.time.Instant;
@@ -11,11 +12,11 @@ public record OrderCardDto(
         long totalMinor,
         String currency,
         int itemsCount,
-        @Nullable String deliveryMethod,
+        @Schema(implementation = com.maxsolch.shop.order.domain.DeliveryMethod.class) @Nullable String deliveryMethod,
         String paymentOptionTitle,
         long unreadCount,
         Instant createdAt,
-        String status,
+        @Schema(implementation = com.maxsolch.shop.order.domain.OrderStatus.class) String status,
         boolean paid,
         /** Amount received (online payments + admin-recorded), so the card can tell a partial payment from a full one. */
         long receivedMinor,
@@ -24,9 +25,9 @@ public record OrderCardDto(
         /** Still to pay online right now (0 once the online part — whole order or prepayment — is covered). */
         long amountDueMinor,
         /** MINIAPP | WEB | ADMIN — where the order was placed. */
-        String source,
+        @Schema(implementation = com.maxsolch.shop.order.domain.OrderSource.class) String source,
         /** PENDING | APPROVED | DECLINED — customer's cancellation request; null = none. */
-        @Nullable String cancelRequestStatus,
+        @Schema(implementation = com.maxsolch.shop.order.domain.CancelRequestStatus.class) @Nullable String cancelRequestStatus,
         /** In the archive (V68): shown only with the «Архив» filter / in a customer's profile. */
         boolean archived,
         /** IN_TRANSIT | RECEIVED | null — refused parcel on its way back (V68). */

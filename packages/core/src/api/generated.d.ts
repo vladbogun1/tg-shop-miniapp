@@ -5741,7 +5741,8 @@ export interface components {
             lastSenderType: string | null;
             orderId: string;
             shortId: string;
-            status: string;
+            /** @enum {string} */
+            status: "NEW" | "APPROVED" | "SHIPPED" | "DELIVERED" | "REJECTED";
             /** Format: int64 */
             unreadCount: number;
         };
@@ -5920,7 +5921,8 @@ export interface components {
             createdAt: string;
             currency: string;
             customerName: string;
-            deliveryMethod: string;
+            /** @enum {string|null} */
+            deliveryMethod: "NOVA_POSHTA" | "PICKUP" | null;
             id: string;
             items: components["schemas"]["DispatchItem"][];
             npCityName: string | null;
@@ -5935,7 +5937,8 @@ export interface components {
             /** Format: int64 */
             receivedMinor: number;
             shortId: string;
-            status: string;
+            /** @enum {string} */
+            status: "NEW" | "APPROVED" | "SHIPPED" | "DELIVERED" | "REJECTED";
             /** Format: int64 */
             totalMinor: number;
             trackingNumber: string | null;
@@ -6826,7 +6829,8 @@ export interface components {
             maskedPan: string | null;
             pageUrl: string | null;
             paymentMethod: string | null;
-            status: string;
+            /** @enum {string} */
+            status: "none" | "created" | "processing" | "hold" | "success" | "failure" | "reversed" | "expired";
         };
         OpeningRequest: {
             productId?: string;
@@ -6885,12 +6889,14 @@ export interface components {
             /** Format: int64 */
             amountDueMinor: number;
             archived: boolean;
-            cancelRequestStatus: string | null;
+            /** @enum {string|null} */
+            cancelRequestStatus: "PENDING" | "APPROVED" | "DECLINED" | null;
             /** Format: date-time */
             createdAt: string;
             currency: string;
             customerName: string;
-            deliveryMethod: string;
+            /** @enum {string|null} */
+            deliveryMethod: "NOVA_POSHTA" | "PICKUP" | null;
             exchangeOfId: string | null;
             exchangeOrderIds: string[];
             id: string;
@@ -6908,8 +6914,10 @@ export interface components {
             returnedUnits: number;
             /** Format: int32 */
             returningUnits: number;
-            source: string;
-            status: string;
+            /** @enum {string} */
+            source: "MINIAPP" | "WEB" | "ADMIN";
+            /** @enum {string} */
+            status: "NEW" | "APPROVED" | "SHIPPED" | "DELIVERED" | "REJECTED";
             /** Format: int64 */
             totalMinor: number;
             /** Format: int64 */
@@ -6927,7 +6935,8 @@ export interface components {
             cancelRequestReason: string | null;
             /** Format: date-time */
             cancelRequestResolvedAt: string | null;
-            cancelRequestStatus: string | null;
+            /** @enum {string|null} */
+            cancelRequestStatus: "PENDING" | "APPROVED" | "DECLINED" | null;
             /** Format: date-time */
             cancelRequestedAt: string | null;
             comment: string | null;
@@ -6938,7 +6947,8 @@ export interface components {
             customerName: string;
             /** Format: date-time */
             deliveredAt: string | null;
-            deliveryMethod: string | null;
+            /** @enum {string|null} */
+            deliveryMethod: "NOVA_POSHTA" | "PICKUP" | null;
             /** Format: int64 */
             discountMinor: number;
             exchangeOfId: string | null;
@@ -6953,9 +6963,9 @@ export interface components {
             id: string;
             items: components["schemas"]["OrderItemDto"][];
             npCityName: string | null;
-            npCityRef: string;
+            npCityRef: string | null;
             npWarehouseName: string | null;
-            npWarehouseRef: string;
+            npWarehouseRef: string | null;
             paid: boolean;
             /** Format: date-time */
             paidAt: string | null;
@@ -6976,11 +6986,13 @@ export interface components {
             /** Format: date-time */
             rejectedAt: string | null;
             /** Format: date-time */
-            returnedAt: string;
+            returnedAt: string | null;
             /** Format: date-time */
             shippedAt: string | null;
-            source: string;
-            status: string;
+            /** @enum {string} */
+            source: "MINIAPP" | "WEB" | "ADMIN";
+            /** @enum {string} */
+            status: "NEW" | "APPROVED" | "SHIPPED" | "DELIVERED" | "REJECTED";
             /** Format: int64 */
             subtotalMinor: number;
             /** Format: int64 */
@@ -7006,7 +7018,8 @@ export interface components {
         };
         OrderItemDto: {
             autoGift: boolean;
-            caseRarity: string | null;
+            /** @enum {string|null} */
+            caseRarity: "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD" | null;
             gift: boolean;
             /** Format: int64 */
             id: number | null;
@@ -7063,7 +7076,8 @@ export interface components {
         OrderSummaryDto: {
             /** Format: int64 */
             amountDueMinor: number;
-            cancelRequestStatus: string | null;
+            /** @enum {string|null} */
+            cancelRequestStatus: "PENDING" | "APPROVED" | "DECLINED" | null;
             /** Format: date-time */
             createdAt: string;
             currency: string;
@@ -7077,7 +7091,8 @@ export interface components {
             paymentDueAt: string | null;
             /** Format: int64 */
             receivedMinor: number;
-            status: string;
+            /** @enum {string} */
+            status: "NEW" | "APPROVED" | "SHIPPED" | "DELIVERED" | "REJECTED";
             /** Format: int64 */
             totalMinor: number;
             /** Format: int64 */

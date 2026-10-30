@@ -248,8 +248,14 @@ jobs:
       # Architecture ratchet (docs/ARCHITECTURE-FRONT.md 2.7): invariants, dependency-cruiser, ESLint rule counts.
       # Each prints an "app x rule" summary; growth against known-violations.json / frontend-baseline.txt fails.
       - run: npm run arch:front
-      # Java DTO заказа (golden-JSON бэкенда) <-> TS-типы packages/core/frontend-admin/e2e: docs/ARCHITECTURE-CHECKS.md
-      - run: npm run check:dto-drift
+      # Типы API генерируются из backend/src/test/resources/openapi/openapi.json (снимок /v3/api-docs, его охраняет
+      # OpenApiSnapshotTest): сгенерированное обязано совпадать с закоммиченным (docs/ARCHITECTURE-FRONT.md 2.6).
+      - name: Generated API types are up to date
+        run: |
+          npm run gen:api
+          git diff --exit-code -- packages/core/src/api
+      # Настоящий JSON заказа (golden бэкенда) сходится со схемами OpenAPI (замена check-dto-drift).
+      - run: npm run check:golden-schema
       - run: npm run build
       # Both customer apps (Mini App + website): iOS 15.4+ / Chrome 92+. The admin runs on the owner's desktop browser.
       - name: Browser compatibility (iOS 15.4+ / Chrome 92+)

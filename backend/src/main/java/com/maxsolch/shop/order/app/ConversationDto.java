@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.lang.Nullable;
 
 import java.time.Instant;
@@ -9,7 +10,7 @@ public record ConversationDto(
         String orderId,
         String shortId,
         @Nullable String customerName,
-        String status,
+        @Schema(implementation = com.maxsolch.shop.order.domain.OrderStatus.class) String status,
         @Nullable String lastPreview,
         @Nullable String lastSenderType,
         @Nullable Instant lastAt,

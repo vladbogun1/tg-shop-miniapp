@@ -3905,6 +3905,13 @@
             "type" : "string"
           },
           "status" : {
+            "enum" : [
+              "NEW",
+              "APPROVED",
+              "SHIPPED",
+              "DELIVERED",
+              "REJECTED"
+            ],
             "type" : "string"
           },
           "unreadCount" : {
@@ -4474,6 +4481,10 @@
             "type" : "string"
           },
           "deliveryMethod" : {
+            "enum" : [
+              "NOVA_POSHTA",
+              "PICKUP"
+            ],
             "nullable" : true,
             "type" : "string"
           },
@@ -4521,6 +4532,13 @@
             "type" : "string"
           },
           "status" : {
+            "enum" : [
+              "NEW",
+              "APPROVED",
+              "SHIPPED",
+              "DELIVERED",
+              "REJECTED"
+            ],
             "type" : "string"
           },
           "totalMinor" : {
@@ -7394,6 +7412,16 @@
             "type" : "string"
           },
           "status" : {
+            "enum" : [
+              "none",
+              "created",
+              "processing",
+              "hold",
+              "success",
+              "failure",
+              "reversed",
+              "expired"
+            ],
             "type" : "string"
           }
         },
@@ -7618,6 +7646,11 @@
             "type" : "boolean"
           },
           "cancelRequestStatus" : {
+            "enum" : [
+              "PENDING",
+              "APPROVED",
+              "DECLINED"
+            ],
             "nullable" : true,
             "type" : "string"
           },
@@ -7632,6 +7665,10 @@
             "type" : "string"
           },
           "deliveryMethod" : {
+            "enum" : [
+              "NOVA_POSHTA",
+              "PICKUP"
+            ],
             "nullable" : true,
             "type" : "string"
           },
@@ -7686,9 +7723,21 @@
             "type" : "integer"
           },
           "source" : {
+            "enum" : [
+              "MINIAPP",
+              "WEB",
+              "ADMIN"
+            ],
             "type" : "string"
           },
           "status" : {
+            "enum" : [
+              "NEW",
+              "APPROVED",
+              "SHIPPED",
+              "DELIVERED",
+              "REJECTED"
+            ],
             "type" : "string"
           },
           "totalMinor" : {
@@ -7765,6 +7814,11 @@
             "type" : "string"
           },
           "cancelRequestStatus" : {
+            "enum" : [
+              "PENDING",
+              "APPROVED",
+              "DECLINED"
+            ],
             "nullable" : true,
             "type" : "string"
           },
@@ -7797,6 +7851,10 @@
             "type" : "string"
           },
           "deliveryMethod" : {
+            "enum" : [
+              "NOVA_POSHTA",
+              "PICKUP"
+            ],
             "nullable" : true,
             "type" : "string"
           },
@@ -7931,9 +7989,21 @@
             "type" : "string"
           },
           "source" : {
+            "enum" : [
+              "MINIAPP",
+              "WEB",
+              "ADMIN"
+            ],
             "type" : "string"
           },
           "status" : {
+            "enum" : [
+              "NEW",
+              "APPROVED",
+              "SHIPPED",
+              "DELIVERED",
+              "REJECTED"
+            ],
             "type" : "string"
           },
           "subtotalMinor" : {
@@ -8091,6 +8161,13 @@
             "type" : "boolean"
           },
           "caseRarity" : {
+            "enum" : [
+              "COMMON",
+              "RARE",
+              "EPIC",
+              "LEGENDARY",
+              "GOLD"
+            ],
             "nullable" : true,
             "type" : "string"
           },
@@ -8274,6 +8351,11 @@
             "type" : "integer"
           },
           "cancelRequestStatus" : {
+            "enum" : [
+              "PENDING",
+              "APPROVED",
+              "DECLINED"
+            ],
             "nullable" : true,
             "type" : "string"
           },
@@ -8311,6 +8393,13 @@
             "type" : "integer"
           },
           "status" : {
+            "enum" : [
+              "NEW",
+              "APPROVED",
+              "SHIPPED",
+              "DELIVERED",
+              "REJECTED"
+            ],
             "type" : "string"
           },
           "totalMinor" : {

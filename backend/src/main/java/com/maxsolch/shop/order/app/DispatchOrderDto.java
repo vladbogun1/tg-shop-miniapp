@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.lang.Nullable;
 
 import java.time.Instant;
@@ -17,7 +18,7 @@ public record DispatchOrderDto(
         String shortId,
         String customerName,
         String phone,
-        @Nullable String deliveryMethod,
+        @Schema(implementation = com.maxsolch.shop.order.domain.DeliveryMethod.class) @Nullable String deliveryMethod,
         @Nullable String npCityName,
         @Nullable String npWarehouseName,
         List<DispatchItem> items,
@@ -32,7 +33,7 @@ public record DispatchOrderDto(
         Instant createdAt,
         @Nullable Instant approvedAt,
         /** APPROVED, or NEW when the list includes not-yet-approved orders (NEW → SHIPPED is allowed). */
-        String status,
+        @Schema(implementation = com.maxsolch.shop.order.domain.OrderStatus.class) String status,
         /** Pay online by then or the order is cancelled; null = placed before online payment. */
         @Nullable Instant paymentDueAt,
         /** Still to pay online now; 0 = nothing to pay. */

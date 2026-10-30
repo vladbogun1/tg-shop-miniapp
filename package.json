@@ -17,7 +17,7 @@
     "arch:front": "node scripts/arch-front.mjs",
     "check:bundle": "node scripts/check-bundle.mjs",
     "gen:api": "openapi-typescript backend/src/test/resources/openapi/openapi.json -o packages/core/src/api/generated.d.ts && node scripts/gen-error-codes.mjs",
-    "check:dto-drift": "node scripts/check-dto-drift.mjs",
+    "check:golden-schema": "node scripts/check-golden-schema.mjs",
     "e2e": "npm run e2e -w e2e --"
   },
   "devDependencies": {

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.lang.Nullable;
 
 import java.time.Instant;
@@ -18,7 +19,7 @@ import java.time.Instant;
  */
 public record OnlinePaymentDto(
         boolean enabled,
-        String status,
+        @Schema(allowableValues = {"none", "created", "processing", "hold", "success", "failure", "reversed", "expired"}) String status,
         @Nullable String pageUrl,
         @Nullable Instant expiresAt,
         long amountMinor,

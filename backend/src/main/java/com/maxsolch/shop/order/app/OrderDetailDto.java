@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.lang.Nullable;
 
 import com.maxsolch.shop.order.app.OrderReturnsView.ExchangeDto;
@@ -10,7 +11,7 @@ import java.util.List;
 @lombok.Builder
 public record OrderDetailDto(
         String id,
-        String status,
+        @Schema(implementation = com.maxsolch.shop.order.domain.OrderStatus.class) String status,
         long subtotalMinor,
         long discountMinor,
         long totalMinor,
@@ -19,7 +20,7 @@ public record OrderDetailDto(
         String phone,
         @Nullable String comment,
         @Nullable String promoCode,
-        @Nullable String deliveryMethod,
+        @Schema(implementation = com.maxsolch.shop.order.domain.DeliveryMethod.class) @Nullable String deliveryMethod,
         @Nullable String npCityName,
         @Nullable String npWarehouseName,
         @Nullable String paymentOptionTitle,
@@ -44,7 +45,7 @@ public record OrderDetailDto(
         /** Still to pay online now (prepayment or total minus what arrived); 0 = nothing to pay. */
         long amountDueMinor,
         /** MINIAPP | WEB | ADMIN — where the order was placed. */
-        String source,
+        @Schema(implementation = com.maxsolch.shop.order.domain.OrderSource.class) String source,
         /** uk | ru | en chosen by the customer in the shop (users.locale); null = never chose. */
         @Nullable String customerLocale,
         /** RejectReasonCode name, null = not specified. */
@@ -56,7 +57,7 @@ public record OrderDetailDto(
         @Nullable String npCityRef,
         @Nullable String npWarehouseRef,
         /** Customer's cancellation request of a paid order: PENDING | APPROVED | DECLINED, null = none. */
-        @Nullable String cancelRequestStatus,
+        @Schema(implementation = com.maxsolch.shop.order.domain.CancelRequestStatus.class) @Nullable String cancelRequestStatus,
         @Nullable String cancelRequestReason,
         @Nullable Instant cancelRequestedAt,
         @Nullable Instant cancelRequestResolvedAt,

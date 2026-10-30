@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.lang.Nullable;
 
 public record OrderItemDto(
@@ -17,7 +18,7 @@ public record OrderItemDto(
         /** Gift the shop added for the order sum (V57). */
         boolean autoGift,
         /** Rarity of the gift-case prize (V57); null = not from a case. */
-        @Nullable String caseRarity,
+        @Schema(implementation = com.maxsolch.shop.gift.domain.GiftCaseItem.Rarity.class) @Nullable String caseRarity,
         /** A case prize whose size the customer has not chosen yet (V59). */
         boolean variantPending,
         /** What one unit actually cost: price with the order discount spread in proportion (V68). */

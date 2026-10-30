@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.lang.Nullable;
 
 import java.time.Instant;
@@ -7,7 +8,7 @@ import java.time.Instant;
 @lombok.Builder
 public record OrderSummaryDto(
         String id,
-        String status,
+        @Schema(implementation = com.maxsolch.shop.order.domain.OrderStatus.class) String status,
         long totalMinor,
         String currency,
         Instant createdAt,
@@ -21,7 +22,7 @@ public record OrderSummaryDto(
         /** Still to pay online right now (0 once the online part — whole order or prepayment — is covered). */
         long amountDueMinor,
         /** PENDING | APPROVED | DECLINED — my cancellation request; null = none. */
-        @Nullable String cancelRequestStatus,
+        @Schema(implementation = com.maxsolch.shop.order.domain.CancelRequestStatus.class) @Nullable String cancelRequestStatus,
         /** Gift case (V57): null | SEALED (waits to be opened) | OPENED. */
         @Nullable String giftCaseStatus,
         boolean giftCaseOpenable,
