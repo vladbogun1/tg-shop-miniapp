@@ -3,19 +3,32 @@
   "version": "1.0.0",
   "private": true,
   "sideEffects": false,
-  "description": "React primitives on CSS tokens shared by the Mini App and the website: cn, tap, motion presets, brand logo, gift case UI. Knows nothing about the backend beyond @shop/core types",
+  "description": "React-примитивы на CSS-токенах для Mini App, сайта и админки: toast, оверлеи (Modal/Drawer/Sheet), useConfirm, useApiMutation, useForm, Button/Input/QtyStepper/RadioCard/StatusChip, cn, tap, motion, логотип, UI кейса. Про бэкенд знает только типы @shop/core",
   "exports": {
     "./gift-case": "./src/gift-case/index.ts",
     "./brand/*": "./src/brand/*.ts",
+    "./toast": "./src/toast/index.ts",
+    "./overlay": "./src/overlay/index.ts",
+    "./confirm": "./src/confirm/index.ts",
+    "./confirm/admin": "./src/confirm/admin.ts",
+    "./confirm/customer": "./src/confirm/customer.ts",
+    "./mutation": "./src/mutation/index.ts",
+    "./form": "./src/form/index.ts",
+    "./primitives": "./src/primitives/index.ts",
+    "./admin-button": "./src/primitives/AdminButton.tsx",
+    "./look": "./src/look.tsx",
     "./*": "./src/*.ts"
   },
   "peerDependencies": {
+    "@tanstack/react-query": ">=5",
     "framer-motion": ">=11",
+    "lucide-react": "*",
     "react": ">=19",
     "react-dom": ">=19"
   },
   "dependencies": {
-    "@shop/core": "*"
+    "@shop/core": "*",
+    "react-hook-form": "^7.91.0"
   },
   "scripts": {
     "lint": "eslint . --quiet",

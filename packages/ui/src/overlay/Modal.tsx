@@ -1,0 +1,264 @@
+"use client";
+
+import { AnimatePresence, motion, useIsPresent } from "framer-motion";
+import { X } from "lucide-react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { cn } from "../cn";
+import { backdropVariants, modalVariants, sheetVariants } from "./variants";
+import { useOverlayLayer } from "./overlay-stack";
+import { useBackToClose } from "./use-back-close";
+import { useMediaQuery } from "../use-media";
+import { Button } from "../primitives/AdminButton";
+
+/**
+ * Close request of the nearest Modal — goes through the `dirty` guard. Footer buttons get it via
+ * {@link useModalClose} / {@link ModalCancel}, so "Отмена" asks the same question as Esc and ×.
+ */
+const ModalCloseContext = createContext<(() => void) | null>(null);
+
+/** The guarded close of the enclosing Modal (falls back to a no-op outside one). */
+export function useModalClose(): () => void {
+  return useContext(ModalCloseContext) ?? (() => {});
+}
+
+/** "Отмена" for a modal footer: closes through the dirty guard. */
+export function ModalCancel({ children = "Отмена", disabled }: { children?: ReactNode; disabled?: boolean }) {
+  const close = useModalClose();
+  return (
+    <Button variant="ghost" onClick={close} disabled={disabled}>
+      {children}
+    </Button>
+  );
+}
+
+/**
+ * The positioning layer of an open modal. While the modal is leaving it stops taking clicks at once and
+ * is hidden for good shortly after: with framer-motion 11.18 the exit of an AnimatePresence child
+ * sometimes never completes (layout animations of children unmounted earlier, e.g. on a tab switch),
+ * and the invisible dialog then sat on top of the page swallowing every click.
+ */
+function ModalLayer({ children }: { children: ReactNode }) {
+  const present = useIsPresent();
+  const [gone, setGone] = useState(false);
+  useEffect(() => {
+    if (present) return;
+    const t = setTimeout(() => setGone(true), 400);
+    return () => clearTimeout(t);
+  }, [present]);
+  return (
+    <div
+      inert={!present || undefined}
+      aria-hidden={!present || undefined}
+      className={cn("fixed inset-0 z-[150] flex items-end justify-center sm:items-center sm:p-4", !present && "pointer-events-none", gone && "invisible")}
+    >
+      {children}
+    </div>
+  );
+}
+
+function UnsavedCloseModal({
+  show,
+  open,
+  message,
+  onStay,
+  onLeave,
+}: {
+  show: boolean;
+  open: boolean;
+  message: string;
+  onStay: () => void;
+  onLeave: () => void;
+}) {
+  if (!show) return null;
+  return (
+    <Modal
+      open={open}
+      onClose={onStay}
+      title="Закрыть без сохранения?"
+      size="sm"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onStay}>
+            Вернуться
+          </Button>
+          <Button variant="danger" onClick={onLeave}>
+            Закрыть
+          </Button>
+        </>
+      }
+    >
+      <p className="text-[14px] text-[var(--text-muted)]">{message}</p>
+    </Modal>
+  );
+}
+
+function ModalHeader({ title, onClose }: { title: ReactNode; onClose: () => void }) {
+  if (!title) return null;
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-5 py-3.5">
+      <div className="min-w-0 font-display text-[16px] font-bold uppercase tracking-[0.04em] text-[var(--ink)]">{title}</div>
+      <button
+        onClick={onClose}
+        aria-label="Закрыть"
+        className="nb-press grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text)] pointer-coarse:h-11 pointer-coarse:w-11"
+      >
+        <X className="h-5 w-5" />
+      </button>
+    </div>
+  );
+}
+
+function ModalFooter({ footer }: { footer: ReactNode }) {
+  if (!footer) return null;
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--line)] bg-[var(--bg-2)] px-4 pb-[calc(12px+var(--safe-bottom))] pt-3 sm:px-5 sm:py-4">
+      {footer}
+    </div>
+  );
+}
+
+function useOpenSession(open: boolean): number {
+  const sessionRef = useRef(0);
+  const wasOpen = useRef(false);
+  if (open && !wasOpen.current) sessionRef.current += 1;
+  wasOpen.current = open;
+  return sessionRef.current;
+}
+
+const MODAL_WIDTH = { sm: "sm:max-w-md", md: "sm:max-w-xl", lg: "sm:max-w-3xl" } as const;
+
+/**
+ * Centered dialog.
+ *
+ * Forms pass `closeOnBackdrop={false}` (a stray click outside must not throw away what was typed)
+ * and `dirty` (Esc / × / backdrop / {@link ModalCancel} then ask "Закрыть без сохранения?").
+ * Esc closes only the topmost overlay (see lib/overlay-stack).
+ */
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+  size = "md",
+  closeOnBackdrop = true,
+  fixedHeight = false,
+  dirty = false,
+  dirtyMessage = "Введённые данные пропадут.",
+  backClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title?: ReactNode;
+  children: ReactNode;
+  footer?: ReactNode;
+  size?: "sm" | "md" | "lg";
+  /** false for forms: a stray click outside must not throw away what was typed. */
+  closeOnBackdrop?: boolean;
+  /** Same height on every step of a wizard, so the footer buttons don't jump under the cursor. */
+  fixedHeight?: boolean;
+  /** Unsaved input: closing asks for confirmation first. */
+  dirty?: boolean;
+  /** Body of the "Закрыть без сохранения?" question. */
+  dirtyMessage?: string;
+  /**
+   * Marker of the history entry: while open, «Назад» closes the modal instead of leaving the page.
+   * Ignored for `dirty` modals (their close must ask first).
+   */
+  backClose?: string;
+}) {
+  // Close only when the press also STARTED on the backdrop — a text selection dragged out of an
+  // input and released over the backdrop is not a click outside.
+  const pressedOnBackdrop = useRef(false);
+  const [askClose, setAskClose] = useState(false);
+
+  const closeViaHistory = useBackToClose(open && !!backClose && !dirty, onClose, { marker: backClose });
+  const requestClose = useCallback(() => {
+    if (dirty) setAskClose(true);
+    else closeViaHistory();
+  }, [dirty, closeViaHistory]);
+
+  useOverlayLayer(open, requestClose);
+  // A fresh key per opening (computed during render, so the dialog never remounts while open): if a
+  // previous exit got stuck (see ModalLayer), the new dialog still enters.
+  const session = useOpenSession(open);
+  // A pending "close without saving?" must not reappear on the next open.
+  useEffect(() => {
+    if (!open) setAskClose(false);
+  }, [open]);
+
+  const onBackdropClick = () => {
+    if (closeOnBackdrop && pressedOnBackdrop.current) requestClose();
+    pressedOnBackdrop.current = false;
+  };
+  const width = MODAL_WIDTH[size];
+  const dialog = useMediaQuery("(min-width: 640px)", true);
+
+  if (typeof document === "undefined") return null;
+
+  return (
+    <>
+      {createPortal(
+        <AnimatePresence>
+          {open && (
+            // Phone: a full-width bottom sheet (footer under the thumb, room for the keyboard);
+            // from sm up: the centred dialog.
+            <ModalLayer key={session}>
+              <motion.div
+                variants={backdropVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                onMouseDown={(e) => (pressedOnBackdrop.current = e.target === e.currentTarget)}
+                onClick={onBackdropClick}
+                className="absolute inset-0 bg-black/60 backdrop-blur-[6px]"
+              />
+              <motion.div
+                role="dialog"
+                aria-modal="true"
+                variants={dialog ? modalVariants : sheetVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className={cn(
+                  "card-sheen relative z-10 flex w-full flex-col overflow-hidden rounded-[var(--r-xl)] border border-[var(--line-strong)] bg-[var(--surface)] shadow-[var(--shadow-3)]",
+                  "max-h-[calc(100dvh-var(--safe-top)-12px)] sm:max-h-[90dvh]",
+                  "max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:shadow-[0_-12px_40px_-12px_rgba(0,0,0,.7)]",
+                  fixedHeight && "h-[min(calc(100dvh-var(--safe-top)-12px),680px)] sm:h-[min(90dvh,680px)]",
+                  width
+                )}
+              >
+                <ModalCloseContext.Provider value={requestClose}>
+                  <ModalHeader title={title} onClose={requestClose} />
+                  <div
+                    className={cn(
+                      "thin-scroll min-h-0 flex-1 overflow-auto overscroll-contain px-4 py-4 sm:px-5",
+                      !footer && "max-sm:pb-[calc(16px+var(--safe-bottom))]"
+                    )}
+                  >
+                    {children}
+                  </div>
+                  <ModalFooter footer={footer} />
+                </ModalCloseContext.Provider>
+              </motion.div>
+            </ModalLayer>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+      {/* Rendered after the dialog, so its portal sits on top of it. Only for dirty-guarded
+          modals — the confirm itself is never dirty, which is what ends the recursion. */}
+      <UnsavedCloseModal
+        show={dirty || askClose}
+        open={open && askClose}
+        message={dirtyMessage}
+        onStay={() => setAskClose(false)}
+        onLeave={() => {
+          setAskClose(false);
+          onClose();
+        }}
+      />
+    </>
+  );
+}
