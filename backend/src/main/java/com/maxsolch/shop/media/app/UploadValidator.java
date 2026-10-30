@@ -4,7 +4,7 @@ import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.media.domain.MediaError;
 import com.maxsolch.shop.platform.i18n.Messages;
 import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
+import com.maxsolch.shop.platform.web.UploadedFile;
 
 import java.util.Locale;
 import java.util.Set;
@@ -54,19 +54,19 @@ public class UploadValidator {
     }
 
     /** Product images: pictures only. */
-    public void validateImage(MultipartFile file) {
+    public void validateImage(UploadedFile file) {
         validate(file, IMAGE_TYPES, IMAGE_EXTENSIONS, messages.current("api.upload.kind.image"));
     }
 
     /** Chat attachments: pictures plus PDF receipts. */
-    public void validateAttachment(MultipartFile file) {
+    public void validateAttachment(UploadedFile file) {
         Set<String> types = union(IMAGE_TYPES, DOCUMENT_TYPES);
         Set<String> extensions = union(IMAGE_EXTENSIONS, DOCUMENT_EXTENSIONS);
         validate(file, types, extensions, messages.current("api.upload.kind.imageOrPdf"));
     }
 
     /** Brand logo: PNG, WebP or a passive SVG, at most 2 MB. */
-    public void validateBrandLogo(MultipartFile file) {
+    public void validateBrandLogo(UploadedFile file) {
         String kind = messages.current("api.upload.kind.logo");
         validate(file, LOGO_TYPES, LOGO_EXTENSIONS, kind);
         if (file.getSize() > LOGO_MAX_BYTES) {
@@ -85,7 +85,7 @@ public class UploadValidator {
         }
     }
 
-    private void validate(MultipartFile file, Set<String> allowedTypes,
+    private void validate(UploadedFile file, Set<String> allowedTypes,
                           Set<String> allowedExtensions, String humanList) {
         if (file == null || file.isEmpty()) {
             throw new DomainException.BadRequest(MediaError.NO_FILE);

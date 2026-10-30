@@ -45,6 +45,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.maxsolch.shop.platform.web.UploadedFile;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -139,8 +140,8 @@ public class AdminCatalogController {
     @PostMapping("/brands/uploads")
     @Operation(summary = "Upload a brand logo: SVG/PNG/WebP (returns S3 key for logoUrl)")
     public UploadResponse uploadBrandLogo(@RequestParam("file") MultipartFile file) {
-        uploadValidator.validateBrandLogo(file);
-        return UploadResponse.ofKey(imageStorageService.uploadBrandLogo(file));
+        uploadValidator.validateBrandLogo(UploadedFile.of(file));
+        return UploadResponse.ofKey(imageStorageService.uploadBrandLogo(UploadedFile.of(file)));
     }
 
     @PatchMapping("/brands/{id}")

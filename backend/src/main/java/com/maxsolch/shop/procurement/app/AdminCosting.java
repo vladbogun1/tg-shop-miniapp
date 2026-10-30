@@ -19,7 +19,7 @@ import com.maxsolch.shop.procurement.app.CostingDtos.ReconcileDto;
 import com.maxsolch.shop.procurement.domain.BatchExpenseFile;
 import com.maxsolch.shop.procurement.domain.NbuRates;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
+import com.maxsolch.shop.platform.web.UploadedFile;
 
 import java.io.InputStream;
 import java.time.Clock;
@@ -99,7 +99,7 @@ public class AdminCosting {
         return dto;
     }
 
-    public BatchMoneyDto addExpenseFile(long expenseId, MultipartFile file) {
+    public BatchMoneyDto addExpenseFile(long expenseId, UploadedFile file) {
         uploads.validateAttachment(file);
         BatchMoneyDto dto = costing.addExpenseFile(expenseId, file, audit.currentAdminName());
         audit.record("COSTING_EXPENSE_FILE_ADD", "BATCH_EXPENSE", String.valueOf(expenseId),

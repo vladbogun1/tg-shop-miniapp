@@ -2,7 +2,6 @@ package com.maxsolch.shop.staff.api;
 
 import com.maxsolch.shop.staff.app.AdminAuthService;
 import com.maxsolch.shop.staff.app.ClientInfo;
-import com.maxsolch.shop.staff.app.TrustedDeviceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,9 +22,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminAuthController {
 
     private final AdminAuthService adminAuth;
-    private final TrustedDeviceService trustedDevices;
+    private final TrustedDeviceCookie trustedDevices;
 
-    public AdminAuthController(AdminAuthService adminAuth, TrustedDeviceService trustedDevices) {
+    public AdminAuthController(AdminAuthService adminAuth, TrustedDeviceCookie trustedDevices) {
         this.adminAuth = adminAuth;
         this.trustedDevices = trustedDevices;
     }
@@ -34,8 +33,8 @@ public class AdminAuthController {
     @Operation(summary = "Admin sign-in, first factor: Telegram initData (single use, short TTL)")
     public AdminLoginResponse adminTelegram(@Valid @RequestBody AdminTelegramAuthRequest request,
                                             HttpServletRequest http, HttpServletResponse response) {
-        return respond(adminAuth.telegramLogin(request.initData(), TrustedDeviceService.readCookie(http),
-                ClientInfo.of(http)), response);
+        return respond(adminAuth.telegramLogin(request.initData(), TrustedDeviceCookie.read(http),
+                RequestClient.of(http)), response);
     }
 
     @PostMapping("/login")
@@ -43,7 +42,7 @@ public class AdminAuthController {
     public AdminLoginResponse adminLogin(@Valid @RequestBody AdminLoginRequest request,
                                          HttpServletRequest http, HttpServletResponse response) {
         return respond(adminAuth.passwordLogin(request.username(), request.password(),
-                TrustedDeviceService.readCookie(http), ClientInfo.of(http)), response);
+                TrustedDeviceCookie.read(http), RequestClient.of(http)), response);
     }
 
     @PostMapping("/2fa/verify")
@@ -51,7 +50,7 @@ public class AdminAuthController {
     public AdminLoginResponse verify(@Valid @RequestBody TwoFactorRequest request,
                                      HttpServletRequest http, HttpServletResponse response) {
         return respond(adminAuth.verify(request.preAuthToken(), request.code(), request.trustDevice(),
-                ClientInfo.of(http)), response);
+                RequestClient.of(http)), response);
     }
 
     @PostMapping("/2fa/setup")
@@ -66,12 +65,12 @@ public class AdminAuthController {
     public AdminLoginResponse confirm(@Valid @RequestBody TwoFactorRequest request,
                                       HttpServletRequest http, HttpServletResponse response) {
         return respond(adminAuth.confirmSetup(request.preAuthToken(), request.code(), request.trustDevice(),
-                ClientInfo.of(http)), response);
+                RequestClient.of(http)), response);
     }
 
     private AdminLoginResponse respond(AdminAuthService.Outcome o, HttpServletResponse response) {
         if (o.trustedDeviceToken() != null) {
-            trustedDevices.setCookie(response, o.trustedDeviceToken());
+            trustedDevices.set(response, o.trustedDeviceToken());
         }
         return new AdminLoginResponse(o.status().name(), o.accessToken(), o.preAuthToken(), o.adminName());
     }

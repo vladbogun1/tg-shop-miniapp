@@ -14,7 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
+import com.maxsolch.shop.platform.web.UploadedFile;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -71,7 +71,7 @@ public class ImageStorageService {
     /**
      * Upload an admin product image. Key layout: products/{uuid}/{filename}.
      */
-    public String uploadProductImage(MultipartFile file) {
+    public String uploadProductImage(UploadedFile file) {
         String filename = sanitize(file.getOriginalFilename());
         String key = "products/" + UUID.randomUUID() + "/" + filename;
         return upload(file, key);
@@ -84,7 +84,7 @@ public class ImageStorageService {
     public static final String BRAND_LOGO_PREFIX = "products/brands/";
 
     /** Upload a brand logo (PNG/WebP/SVG, checked by {@link UploadValidator#validateBrandLogo}). */
-    public String uploadBrandLogo(MultipartFile file) {
+    public String uploadBrandLogo(UploadedFile file) {
         String filename = sanitize(file.getOriginalFilename());
         String key = BRAND_LOGO_PREFIX + UUID.randomUUID() + "/" + filename;
         return upload(file, key);
@@ -93,7 +93,7 @@ public class ImageStorageService {
     /**
      * Upload a chat attachment. Key layout: chat/{uuid}/{filename}.
      */
-    public String uploadChatAttachment(MultipartFile file) {
+    public String uploadChatAttachment(UploadedFile file) {
         String filename = sanitize(file.getOriginalFilename());
         String key = "chat/" + UUID.randomUUID() + "/" + filename;
         return upload(file, key);
@@ -105,7 +105,7 @@ public class ImageStorageService {
      * (see {@link #isCustomerAttachmentKey}) — otherwise any known key, e.g. someone else's photo or
      * document, could be attached to one's own order and fetched back through a signed URL.
      */
-    public String uploadCustomerChatAttachment(MultipartFile file, long userId) {
+    public String uploadCustomerChatAttachment(UploadedFile file, long userId) {
         String filename = sanitize(file.getOriginalFilename());
         String key = customerChatPrefix(userId) + UUID.randomUUID() + "/" + filename;
         return upload(file, key);
@@ -115,7 +115,7 @@ public class ImageStorageService {
      * A document of a batch expense (invoice, customs declaration): costing/b{batchId}/{uuid}/{filename}. Private —
      * imgproxy reads only products/, the admin API hands it out to «Финансы».
      */
-    public String uploadCostingDocument(MultipartFile file, long batchId) {
+    public String uploadCostingDocument(UploadedFile file, long batchId) {
         String key = "costing/b" + batchId + "/" + UUID.randomUUID() + "/" + sanitize(file.getOriginalFilename());
         return upload(file, key);
     }
@@ -181,7 +181,7 @@ public class ImageStorageService {
         }
     }
 
-    private String upload(MultipartFile file, String key) {
+    private String upload(UploadedFile file, String key) {
         try (InputStream in = file.getInputStream()) {
             return putObject(in, file.getSize(), file.getContentType(), key);
         } catch (IOException e) {

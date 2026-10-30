@@ -29,8 +29,8 @@ class UploadValidatorTest {
         return messages;
     }
 
-    private MockMultipartFile file(String name, String contentType, int bytes) {
-        return new MockMultipartFile("file", name, contentType, new byte[bytes]);
+    private com.maxsolch.shop.platform.web.UploadedFile file(String name, String contentType, int bytes) {
+        return com.maxsolch.shop.platform.web.UploadedFile.of(new MockMultipartFile("file", name, contentType, new byte[bytes]));
     }
 
     @Test
@@ -89,9 +89,9 @@ class UploadValidatorTest {
                 .isInstanceOf(DomainException.BadRequest.class);
     }
 
-    private MockMultipartFile svg(String body) {
-        return new MockMultipartFile("file", "logo.svg", "image/svg+xml",
-                body.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    private com.maxsolch.shop.platform.web.UploadedFile svg(String body) {
+        return com.maxsolch.shop.platform.web.UploadedFile.of(new MockMultipartFile("file", "logo.svg", "image/svg+xml",
+                body.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
     }
 
     @Test

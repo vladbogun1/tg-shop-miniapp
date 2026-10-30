@@ -4,7 +4,6 @@ import com.maxsolch.shop.staff.app.AdminAccountService;
 import com.maxsolch.shop.staff.app.AdminLoginLogService;
 import com.maxsolch.shop.staff.app.AdminTotp;
 import com.maxsolch.shop.staff.app.ClientInfo;
-import com.maxsolch.shop.staff.app.TrustedDeviceService;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,11 +34,11 @@ public class AdminAccountController {
 
     private final AdminAccountService accountService;
     private final AdminTotp totp;
-    private final TrustedDeviceService trustedDevices;
+    private final TrustedDeviceCookie trustedDevices;
     private final CurrentActor actor;
 
     public AdminAccountController(AdminAccountService accountService, AdminTotp totp,
-                                  TrustedDeviceService trustedDevices, CurrentActor actor) {
+                                  TrustedDeviceCookie trustedDevices, CurrentActor actor) {
         this.actor = actor;
         this.accountService = accountService;
         this.totp = totp;
@@ -63,8 +62,8 @@ public class AdminAccountController {
     public AccessTokenResponse changePassword(@Valid @RequestBody AdminPasswordChangeRequest request,
                                               HttpServletRequest http, HttpServletResponse response) {
         String token = accountService.changePassword(actor.userId(), request.currentPassword(),
-                request.newPassword(), request.code(), ClientInfo.of(http));
-        trustedDevices.clearCookie(response);
+                request.newPassword(), request.code(), RequestClient.of(http));
+        trustedDevices.clear(response);
         return new AccessTokenResponse(token);
     }
 
@@ -72,7 +71,7 @@ public class AdminAccountController {
     @Operation(summary = "2FA re-setup, step 1: current code → new secret")
     public TwoFactorSetupResponse startTotpReset(@Valid @RequestBody TotpCodeRequest request, HttpServletRequest http) {
         AdminTotp.NewSecret s = accountService.startTotpReset(actor.userId(), request.code(),
-                ClientInfo.of(http));
+                RequestClient.of(http));
         String account = accountService.profile(actor.userId()).username();
         return new TwoFactorSetupResponse(s.secret(), s.otpauthUri(), account, totp.issuer());
     }
@@ -82,8 +81,8 @@ public class AdminAccountController {
     public AccessTokenResponse confirmTotpReset(@Valid @RequestBody TotpCodeRequest request,
                                                 HttpServletRequest http, HttpServletResponse response) {
         String token = accountService.confirmTotpReset(actor.userId(), request.code(),
-                ClientInfo.of(http));
-        trustedDevices.clearCookie(response);
+                RequestClient.of(http));
+        trustedDevices.clear(response);
         return new AccessTokenResponse(token);
     }
 
@@ -91,7 +90,7 @@ public class AdminAccountController {
     @Operation(summary = "«Забыть все устройства»: every trusted device asks for the code again")
     public Map<String, Integer> forgetDevices(HttpServletResponse response) {
         int n = accountService.forgetDevices(actor.userId());
-        trustedDevices.clearCookie(response);
+        trustedDevices.clear(response);
         return Map.of("forgotten", n);
     }
 }

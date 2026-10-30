@@ -2,12 +2,7 @@ package com.maxsolch.shop.staff.app;
 
 import com.maxsolch.shop.platform.web.UserAgents;
 import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.platform.security.WebCookies;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import com.maxsolch.shop.staff.infra.TrustedDeviceStore;
 import org.springframework.stereotype.Service;
 
@@ -15,8 +10,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.time.Duration;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.HexFormat;
 
@@ -24,7 +19,7 @@ import java.util.HexFormat;
  * «Доверять этому устройству 30 дней».
  *
  * <p>The browser keeps a random 256-bit token in an {@code HttpOnly; SameSite=Strict} cookie scoped
- * to {@value #COOKIE_PATH} — page JavaScript (and so an XSS) can neither read it nor send it
+ * to the admin auth path — page JavaScript (and so an XSS) can neither read it nor send it
  * anywhere else, which is why it is a cookie and not localStorage like the access token. The
  * server stores only its SHA-256 plus what the device looked like (for the account screen) and the
  * admin's {@code token_version} at the time: the token skips the code only for that admin, until it
@@ -35,20 +30,15 @@ import java.util.HexFormat;
 @Service
 public class TrustedDeviceService {
 
-    public static final String COOKIE = "admin_device";
-    public static final String COOKIE_PATH = "/api/auth/admin";
-
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final TrustedDeviceStore store;
     private final Clock clock;
-    private final WebCookies webCookies;
     private final int days;
 
-    public TrustedDeviceService(TrustedDeviceStore store, WebCookies webCookies, AppProperties props, Clock clock) {
+    public TrustedDeviceService(TrustedDeviceStore store, AppProperties props, Clock clock) {
         this.store = store;
         this.clock = clock;
-        this.webCookies = webCookies;
         this.days = Math.max(1, props.getSecurity().getAdminTrustedDeviceDays());
     }
 
@@ -88,28 +78,6 @@ public class TrustedDeviceService {
     /** «Забыть все устройства»; returns how many were still active. */
     public int revokeAll(long adminId) {
         return store.revokeAll(adminId, clock.instant());
-    }
-
-    public static String readCookie(HttpServletRequest request) {
-        return WebCookies.read(request, COOKIE);
-    }
-
-    public void setCookie(HttpServletResponse response, String token) {
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie(token, Duration.ofDays(days)).toString());
-    }
-
-    public void clearCookie(HttpServletResponse response) {
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie("", Duration.ZERO).toString());
-    }
-
-    private ResponseCookie cookie(String value, Duration maxAge) {
-        return ResponseCookie.from(COOKIE, value)
-                .httpOnly(true)
-                .secure(webCookies.secure())
-                .sameSite("Strict")
-                .path(COOKIE_PATH)
-                .maxAge(maxAge)
-                .build();
     }
 
     static String hash(String token) {

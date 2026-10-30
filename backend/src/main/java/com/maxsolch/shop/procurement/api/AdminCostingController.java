@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.maxsolch.shop.platform.web.UploadedFile;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
@@ -102,7 +103,7 @@ public class AdminCostingController {
     @PostMapping(value = "/expenses/{expenseId}/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Attach a document to an expense: a photo or a PDF (invoice, declaration, statement)")
     public BatchMoneyDto addExpenseFile(@PathVariable long expenseId, @RequestParam("file") MultipartFile file) {
-        return costing.addExpenseFile(expenseId, file);
+        return costing.addExpenseFile(expenseId, UploadedFile.of(file));
     }
 
     @RequiresFinance

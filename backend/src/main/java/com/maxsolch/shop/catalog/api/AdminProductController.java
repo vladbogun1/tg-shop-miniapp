@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.maxsolch.shop.platform.web.UploadedFile;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -99,7 +100,7 @@ public class AdminProductController {
     @PostMapping("/uploads")
     @Operation(summary = "Upload a product image (returns S3 key)")
     public UploadResponse upload(@RequestParam("file") MultipartFile file) {
-        uploadValidator.validateImage(file);
-        return UploadResponse.ofKey(imageStorageService.uploadProductImage(file));
+        uploadValidator.validateImage(UploadedFile.of(file));
+        return UploadResponse.ofKey(imageStorageService.uploadProductImage(UploadedFile.of(file)));
     }
 }

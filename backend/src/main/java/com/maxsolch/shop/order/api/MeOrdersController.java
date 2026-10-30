@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.maxsolch.shop.platform.web.UploadedFile;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -169,8 +170,8 @@ public class MeOrdersController {
     @PostMapping("/uploads")
     @Operation(summary = "Upload a chat attachment")
     public UploadResponse upload(@RequestParam("file") MultipartFile file) {
-        uploadValidator.validateAttachment(file);
-        return UploadResponse.ofKey(imageStorageService.uploadCustomerChatAttachment(file, actor.userId()));
+        uploadValidator.validateAttachment(UploadedFile.of(file));
+        return UploadResponse.ofKey(imageStorageService.uploadCustomerChatAttachment(UploadedFile.of(file), actor.userId()));
     }
 
     /** A customer may attach only a file they uploaded themselves (their chat/u{id}/ prefix). */

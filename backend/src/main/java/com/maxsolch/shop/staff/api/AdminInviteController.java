@@ -3,7 +3,6 @@ package com.maxsolch.shop.staff.api;
 import com.maxsolch.shop.staff.app.AdminAuthService;
 import com.maxsolch.shop.staff.app.AdminInviteService;
 import com.maxsolch.shop.staff.app.ClientInfo;
-import com.maxsolch.shop.staff.app.TrustedDeviceService;
 import com.maxsolch.shop.staff.api.AdminTeamDtos.InviteAcceptRequest;
 import com.maxsolch.shop.staff.api.AdminTeamDtos.InviteAcceptResponse;
 import com.maxsolch.shop.staff.api.AdminTeamDtos.InviteCompleteRequest;
@@ -29,9 +28,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminInviteController {
 
     private final AdminInviteService invites;
-    private final TrustedDeviceService trustedDevices;
+    private final TrustedDeviceCookie trustedDevices;
 
-    public AdminInviteController(AdminInviteService invites, TrustedDeviceService trustedDevices) {
+    public AdminInviteController(AdminInviteService invites, TrustedDeviceCookie trustedDevices) {
         this.invites = invites;
         this.trustedDevices = trustedDevices;
     }
@@ -55,9 +54,9 @@ public class AdminInviteController {
     @Operation(summary = "Step 2: the code — burns the link, activates the account, signs in")
     public AdminLoginResponse complete(@Valid @RequestBody InviteCompleteRequest r, HttpServletRequest http,
                                        HttpServletResponse response) {
-        AdminAuthService.Outcome o = invites.complete(r.token(), r.code(), r.trustDevice(), ClientInfo.of(http));
+        AdminAuthService.Outcome o = invites.complete(r.token(), r.code(), r.trustDevice(), RequestClient.of(http));
         if (o.trustedDeviceToken() != null) {
-            trustedDevices.setCookie(response, o.trustedDeviceToken());
+            trustedDevices.set(response, o.trustedDeviceToken());
         }
         return new AdminLoginResponse(o.status().name(), o.accessToken(), null, o.adminName());
     }

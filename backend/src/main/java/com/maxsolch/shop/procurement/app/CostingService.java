@@ -33,7 +33,7 @@ import com.maxsolch.shop.procurement.domain.Lines;
 import com.maxsolch.shop.catalog.app.Products;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
+import com.maxsolch.shop.platform.web.UploadedFile;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -249,7 +249,7 @@ public class CostingService {
     // ---------------------------------------------------------------- expense documents
 
     @Transactional
-    public BatchMoneyDto addExpenseFile(long expenseId, MultipartFile file, String adminName) {
+    public BatchMoneyDto addExpenseFile(long expenseId, UploadedFile file, String adminName) {
         BatchExpense e = expenses.findById(expenseId).orElseThrow(() -> new DomainException.NotFound(ProcurementError.EXPENSE_NOT_FOUND));
         BatchExpenseFile f = new BatchExpenseFile();
         f.setExpenseId(expenseId);

@@ -57,7 +57,7 @@ public class AdminTeamController {
     @Operation(summary = "Invite a new admin / give an existing admin a login (bot sends the link)")
     public InviteCreated invite(@Valid @RequestBody InviteRequest r, HttpServletRequest http) {
         return dto(team.invite(actor.userId(), r.telegramUserId(), r.name(), r.role(), r.code(),
-                ClientInfo.of(http)));
+                RequestClient.of(http)));
     }
 
     @PostMapping("/invites/{id}/resend")
@@ -77,7 +77,7 @@ public class AdminTeamController {
     @Operation(summary = "Change name / role (role change needs the caller's code)")
     public ResponseEntity<Void> update(@PathVariable long id, @Valid @RequestBody UpdateRequest r,
                                        HttpServletRequest http) {
-        team.update(actor.userId(), id, r.name(), r.role(), r.code(), ClientInfo.of(http));
+        team.update(actor.userId(), id, r.name(), r.role(), r.code(), RequestClient.of(http));
         return ResponseEntity.noContent().build();
     }
 
@@ -85,7 +85,7 @@ public class AdminTeamController {
     @Operation(summary = "«Финансы» on / off: purchase prices, expenses and margin (needs the caller's code)")
     public ResponseEntity<Void> finance(@PathVariable long id, @Valid @RequestBody FinanceRequest r,
                                         HttpServletRequest http) {
-        team.setFinance(actor.userId(), id, r.finance(), r.code(), ClientInfo.of(http));
+        team.setFinance(actor.userId(), id, r.finance(), r.code(), RequestClient.of(http));
         return ResponseEntity.noContent().build();
     }
 
@@ -93,7 +93,7 @@ public class AdminTeamController {
     @Operation(summary = "Reset the admin's 2FA (set up again at next sign-in); ends their sessions")
     public ResponseEntity<Void> resetTwoFactor(@PathVariable long id, @Valid @RequestBody CodeRequest r,
                                                HttpServletRequest http) {
-        team.resetTwoFactor(actor.userId(), id, r.code(), ClientInfo.of(http));
+        team.resetTwoFactor(actor.userId(), id, r.code(), RequestClient.of(http));
         return ResponseEntity.noContent().build();
     }
 
@@ -101,7 +101,7 @@ public class AdminTeamController {
     @Operation(summary = "Reset the password: old one dies now, a link to set a new one is sent")
     public InviteCreated resetPassword(@PathVariable long id, @Valid @RequestBody CodeRequest r,
                                        HttpServletRequest http) {
-        return dto(team.resetPassword(actor.userId(), id, r.code(), ClientInfo.of(http)));
+        return dto(team.resetPassword(actor.userId(), id, r.code(), RequestClient.of(http)));
     }
 
     @PostMapping("/{id}/forget-devices")
@@ -113,7 +113,7 @@ public class AdminTeamController {
     @PostMapping("/{id}/block")
     @Operation(summary = "Block: active=false, every session ends, no sign-in at all")
     public ResponseEntity<Void> block(@PathVariable long id, @Valid @RequestBody CodeRequest r, HttpServletRequest http) {
-        team.block(actor.userId(), id, r.code(), ClientInfo.of(http));
+        team.block(actor.userId(), id, r.code(), RequestClient.of(http));
         return ResponseEntity.noContent().build();
     }
 
@@ -121,7 +121,7 @@ public class AdminTeamController {
     @Operation(summary = "Unblock")
     public ResponseEntity<Void> unblock(@PathVariable long id, @Valid @RequestBody CodeRequest r,
                                         HttpServletRequest http) {
-        team.unblock(actor.userId(), id, r.code(), ClientInfo.of(http));
+        team.unblock(actor.userId(), id, r.code(), RequestClient.of(http));
         return ResponseEntity.noContent().build();
     }
 
@@ -129,7 +129,7 @@ public class AdminTeamController {
     @Operation(summary = "Delete an admin without history (otherwise 409 HAS_HISTORY — block instead)")
     public ResponseEntity<Void> delete(@PathVariable long id, @Valid @RequestBody CodeRequest r,
                                        HttpServletRequest http) {
-        team.delete(actor.userId(), id, r.code(), ClientInfo.of(http));
+        team.delete(actor.userId(), id, r.code(), RequestClient.of(http));
         return ResponseEntity.noContent().build();
     }
 

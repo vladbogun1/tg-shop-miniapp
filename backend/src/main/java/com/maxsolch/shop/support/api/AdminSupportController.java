@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.maxsolch.shop.platform.web.UploadedFile;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -86,8 +87,8 @@ public class AdminSupportController {
     @Operation(summary = "Upload an attachment for this thread; returns the object key")
     public UploadResponse upload(@PathVariable String id, @RequestParam("file") MultipartFile file) {
         support.adminGet(id);
-        uploadValidator.validateAttachment(file);
-        return UploadResponse.ofKey(imageStorageService.uploadChatAttachment(file));
+        uploadValidator.validateAttachment(UploadedFile.of(file));
+        return UploadResponse.ofKey(imageStorageService.uploadChatAttachment(UploadedFile.of(file)));
     }
 
     @PostMapping("/threads/{id}/read")
