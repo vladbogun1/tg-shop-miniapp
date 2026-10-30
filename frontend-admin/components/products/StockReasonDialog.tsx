@@ -9,8 +9,8 @@
  *   body = { ...body, stockReason: r.reason, stockNote: r.note };
  */
 import { useCallback, useRef, useState, type ReactNode } from "react";
-import { Modal } from "@/components/ui/Modal";
-import { Button } from "@/components/ui/Button";
+import { Modal } from "@shop/ui/overlay";
+import { Button } from "@shop/ui/admin-button";
 import { Textarea } from "@/components/ui/Textarea";
 import { cn } from "@/lib/cn";
 import { WRITEOFF_REASONS, type WriteoffReason } from "@/lib/writeoffs";

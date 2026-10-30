@@ -33,11 +33,11 @@ import {
   type Vitrine,
 } from "@/lib/cards-view";
 import { cn } from "@/lib/cn";
-import { useToast } from "@/lib/toast";
-import { useMediaQuery } from "@/lib/use-media";
+import { toast } from "@shop/ui/toast";
+import { useMediaQuery } from "@shop/ui/use-media";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Button } from "@/components/ui/Button";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { Button } from "@shop/ui/admin-button";
+import { useConfirm } from "@shop/ui/confirm";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Select } from "@/components/ui/Select";
@@ -58,8 +58,7 @@ const EMPTY: Record<CardTab, { title: string; description: string }> = {
 
 export default function CardsPage() {
   const qc = useQueryClient();
-  const { push } = useToast();
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
   const itemsQ = useCardItems();
   const schemaQ = useCatalogSchema();
   const items = useMemo(() => itemsQ.data ?? [], [itemsQ.data]);
@@ -174,9 +173,9 @@ export default function CardsPage() {
         await cardsApi.accept(it.id, { ready: true });
         done++;
       }
-      push(`Принято ${done} ${cardsWord(done)} — они в «Готово»`, "ok");
+      toast.success(`Принято ${done} ${cardsWord(done)} — они в «Готово»`);
     } catch {
-      push(`Принято ${done} из ${bulkOk.length}, дальше ошибка — попробуйте ещё раз`, "error");
+      toast.error(`Принято ${done} из ${bulkOk.length}, дальше ошибка — попробуйте ещё раз`);
     } finally {
       setBulkBusy(false);
       setSelected(new Set());
@@ -419,7 +418,7 @@ export default function CardsPage() {
           preselectLabel={wizard.label}
         />
       )}
-      {confirmUi}
+      
     </div>
   );
 }

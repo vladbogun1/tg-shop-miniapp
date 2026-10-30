@@ -23,7 +23,7 @@ import { stockOf, useCart } from "@/lib/cart";
 import { Image } from "@/lib/image";
 import { discountPercent } from "@/lib/format";
 import { useFmt } from "@/lib/use-fmt";
-import { toast } from "@/components/ui/Toast";
+import { toast } from "@shop/ui/toast";
 
 const LABEL_W = 200;
 const PHONE_MAX = 640;
@@ -238,7 +238,7 @@ function ProductHead({
             onClick={() => {
               add(p, null, 1);
               trackAddToCart(p.id, null, 1);
-              toast(t("product.added"));
+              toast.success(t("product.added"));
             }}
             className="nb-press tap flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[rgba(255,102,0,.55)] bg-[var(--accent-soft)] px-2 text-[12px] font-bold text-[var(--accent-hi)] hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)]"
           >

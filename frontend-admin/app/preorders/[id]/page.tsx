@@ -26,11 +26,11 @@ import {
   preordersApi,
   type Batch,
 } from "@/lib/preorders";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
+import { Button } from "@shop/ui/admin-button";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { QueryState } from "@/components/ui/QueryState";
 import { Tabs } from "@/components/ui/Tabs";
 import { Toggle } from "@/components/ui/Toggle";
@@ -61,7 +61,6 @@ export default function BatchPage() {
 
 function BatchView({ batch }: { batch: Batch }) {
   const qc = useQueryClient();
-  const { push } = useToast();
   const [editing, setEditing] = useState(false);
   const [arriving, setArriving] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -79,9 +78,9 @@ function BatchView({ batch }: { batch: Batch }) {
     mutationFn: (s: "IN_TRANSIT" | "CUSTOMS") => preordersApi.setStatus(batch.id, s),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: PREORDERS_KEY });
-      push("Статус обновлён", "ok");
+      toast.success("Статус обновлён");
     },
-    onError: (e) => push(e instanceof ApiError ? e.message : "Не удалось", "error"),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : "Не удалось"),
   });
 
   const distLabel = DISTRIBUTIONS.find((d) => d.value === batch.distribution)?.label ?? batch.distribution;
@@ -256,16 +255,15 @@ function Cell({ label, value, sub, accent, warn }: { label: string; value: strin
 
 function CancelModal({ open, onClose, batch, waiting }: { open: boolean; onClose: () => void; batch: Batch; waiting: number }) {
   const qc = useQueryClient();
-  const { push } = useToast();
   const [closeQueue, setCloseQueue] = useState(false);
   const cancel = useMutation({
     mutationFn: () => preordersApi.cancel(batch.id, closeQueue),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: PREORDERS_KEY });
-      push("Поставка отменена", "ok");
+      toast.success("Поставка отменена");
       onClose();
     },
-    onError: (e) => push(e instanceof ApiError ? e.message : "Не удалось отменить", "error"),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : "Не удалось отменить"),
   });
   return (
     <Modal

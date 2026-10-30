@@ -33,7 +33,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { codMinor, needsTopUp, paymentState } from "@shop/core/orders";
 import { shortOrderId } from "@shop/core/format";
 import { type OnlinePaymentStatus } from "@shop/core/types";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import { ApiError, customerApi, type OrderDetail } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";

@@ -3,7 +3,7 @@
 import { AlertTriangle, Lock, RotateCw } from "lucide-react";
 import type { ReactNode } from "react";
 import { ApiError, isForbidden } from "@/lib/api";
-import { Button } from "./Button";
+import { Button } from "@shop/ui/admin-button";
 import { EmptyState } from "./EmptyState";
 import { CenterSpinner } from "./Spinner";
 

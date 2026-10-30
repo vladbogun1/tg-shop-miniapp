@@ -14,8 +14,8 @@ import { ImagePlus, Trash2, UploadCloud } from "lucide-react";
 import { brandLogoSrc } from "@shop/core/image";
 import { adminApi, ApiError, type BrandLogoMode } from "@/lib/api";
 import { cn } from "@/lib/cn";
-import { useToast } from "@/lib/toast";
-import { Button } from "@/components/ui/Button";
+import { toast } from "@shop/ui/toast";
+import { Button } from "@shop/ui/admin-button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Spinner } from "@/components/ui/Spinner";
 
@@ -88,7 +88,6 @@ export function BrandLogoField({
   /** Injectable for the dev sandbox. */
   upload?: (file: File) => Promise<{ key: string }>;
 }) {
-  const { push } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -108,11 +107,11 @@ export function BrandLogoField({
     if (!file) return;
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
     if (!TYPES.includes(file.type) && !["svg", "png", "webp"].includes(ext)) {
-      push("Нужен SVG, PNG или WebP", "error");
+      toast.error("Нужен SVG, PNG или WebP");
       return;
     }
     if (file.size > MAX_BYTES) {
-      push("Логотип больше 2 МБ — сожмите или возьмите SVG", "error");
+      toast.error("Логотип больше 2 МБ — сожмите или возьмите SVG");
       return;
     }
     setUploading(true);
@@ -121,7 +120,7 @@ export function BrandLogoField({
       setLocal({ key, url: URL.createObjectURL(file) });
       onChange(key);
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось загрузить логотип", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось загрузить логотип");
     } finally {
       setUploading(false);
     }

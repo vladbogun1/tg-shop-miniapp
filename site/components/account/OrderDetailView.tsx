@@ -18,9 +18,8 @@ import { type OrderDetail } from "@shop/core/types";
 import { OrderChat } from "@/components/chat/OrderChat";
 import { isPaymentTimeout, OrderPayment } from "@/components/order/Payment";
 import { OrderReceipts } from "@/components/order/Receipts";
-import { Button } from "@/components/ui/Button";
+import { Button, StatusChip } from "@shop/ui/primitives";
 import { CopyButton } from "@/components/ui/CopyButton";
-import { StatusChip } from "@/components/ui/StatusChip";
 import type { MessageKey } from "@/i18n";
 import { useI18n } from "@/i18n/context";
 import { api, ApiError } from "@/lib/api";
@@ -112,7 +111,7 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
         <h2 className="font-display text-[24px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)] sm:text-[28px]">
           {t("order.title", { id: shortOrderId(order.id) })}
         </h2>
-        <StatusChip status={order.status} />
+        <StatusChip status={order.status} label={t(`status.${order.status}`)} />
         <PaymentBadge state={paymentState(order)} />
       </div>
       <p className="-mt-3 text-[13px] font-semibold text-[var(--muted)]">

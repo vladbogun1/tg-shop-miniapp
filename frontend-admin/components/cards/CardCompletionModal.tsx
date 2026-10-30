@@ -20,10 +20,10 @@ import { assignCardIds, buildCardPrompt } from "@/lib/card-prompt";
 import { cardsApi, type CardImportItemResult } from "@/lib/cards-api";
 import { CARDS_EXPORT_KEY, invalidateCards, useCatalogSchema } from "@/lib/cards";
 import { cn } from "@/lib/cn";
-import { useToast } from "@/lib/toast";
-import { Button } from "@/components/ui/Button";
+import { toast } from "@shop/ui/toast";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { CenterSpinner } from "@/components/ui/Spinner";
 import { Toggle } from "@/components/ui/Toggle";
 import { CopyButton } from "@/components/translations/shared";
@@ -77,7 +77,6 @@ export function CardCompletionModal({
   reason?: "created" | "manual";
 }) {
   const qc = useQueryClient();
-  const { push } = useToast();
   const schemaQ = useCatalogSchema();
   const itemQ = useQuery({
     queryKey: [...CARDS_EXPORT_KEY, "one", productId],
@@ -168,7 +167,7 @@ export function CardCompletionModal({
 
   function close() {
     if (!saved || !published) {
-      if (reason === "created" || item?.unfinished === true) push(HIDDEN_TOAST, "info");
+      if (reason === "created" || item?.unfinished === true) toast.info(HIDDEN_TOAST);
     }
     onClose({ saved, published });
   }
@@ -203,10 +202,10 @@ export function CardCompletionModal({
       setPublished(isPublished);
       invalidateCards(qc);
       if (isPublished) {
-        push(`Карточка сохранена, товар на витрине${translatedNote(one)}`, "ok");
+        toast.success(`Карточка сохранена, товар на витрине${translatedNote(one)}`);
         onClose({ saved: true, published: true });
       } else if (!publish) {
-        push(item?.unfinished === true ? HIDDEN_TOAST : "Карточка сохранена", item?.unfinished === true ? "info" : "ok");
+        (item?.unfinished === true ? toast.info : toast.success)(item?.unfinished === true ? HIDDEN_TOAST : "Карточка сохранена");
         onClose({ saved: true, published: false });
       }
     } catch (e) {
@@ -227,7 +226,7 @@ export function CardCompletionModal({
       await cardsApi.setActive(productId, true);
       setPublished(true);
       invalidateCards(qc);
-      push("Цена сохранена, товар на витрине", "ok");
+      toast.success("Цена сохранена, товар на витрине");
       onClose({ saved: true, published: true });
     } catch (e) {
       setProblem({ text: `Не выложено: ${e instanceof ApiError ? e.message : "ошибка сети"}`, needPrice: true });
@@ -353,7 +352,7 @@ export function CardCompletionModal({
                         setAnswer(t);
                         check(t);
                       } catch {
-                        push("Браузер не дал прочитать буфер — вставьте Ctrl+V", "info");
+                        toast.info("Браузер не дал прочитать буфер — вставьте Ctrl+V");
                       }
                     }}
                   >

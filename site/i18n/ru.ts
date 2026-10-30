@@ -16,6 +16,7 @@ export const ru = {
   "common.back": "Назад",
   "common.close": "Закрыть",
   "common.cancel": "Отмена",
+  "common.confirm": "Подтвердить",
   "common.retry": "Повторить",
   "common.loading": "Загрузка…",
   "common.toCatalog": "В каталог",

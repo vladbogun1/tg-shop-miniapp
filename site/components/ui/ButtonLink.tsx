@@ -1,6 +1,6 @@
 import Link, { type LinkProps } from "next/link";
 import type { ReactNode } from "react";
-import { buttonClass } from "./button-styles";
+import { buttonClass } from "@shop/ui/button-styles";
 
 /** A link that looks like a button (server-component friendly). */
 export function ButtonLink({
@@ -23,7 +23,7 @@ export function ButtonLink({
   rel?: string;
 }) {
   return (
-    <Link href={href} className={`${buttonClass(variant, size, fullWidth)} ${className ?? ""}`} {...rest}>
+    <Link href={href} className={`${buttonClass("site", variant, size, fullWidth)} ${className ?? ""}`} {...rest}>
       {icon}
       <span className="truncate">{children}</span>
     </Link>

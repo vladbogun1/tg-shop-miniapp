@@ -25,8 +25,8 @@ import { PanelHeader } from "@/app/settings/PanelHeader";
 import { CodeInput } from "@/components/auth/CodeInput";
 import { TwoFactorSecret } from "@/components/auth/TwoFactorSecret";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { Button } from "@shop/ui/admin-button";
+import { useConfirm } from "@shop/ui/confirm";
 import { Input } from "@/components/ui/Input";
 import { QueryState } from "@/components/ui/QueryState";
 import {
@@ -39,7 +39,7 @@ import {
 } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/orders";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 
 const ACCOUNT_KEY = ["admin", "account"] as const;
 const LOGINS_KEY = ["admin", "account", "logins"] as const;
@@ -98,7 +98,6 @@ function ProfilePanel({ account }: { account: AdminAccount }) {
 }
 
 function PasswordPanel({ account }: { account: AdminAccount }) {
-  const { push } = useToast();
   const qc = useQueryClient();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
@@ -120,20 +119,20 @@ function PasswordPanel({ account }: { account: AdminAccount }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!current || [...next].length < 10 || next !== repeat || code.length !== 6) {
-      push("Заполните все поля: новый пароль от 10 символов, повтор и код из приложения", "error");
+      toast.error("Заполните все поля: новый пароль от 10 символов, повтор и код из приложения");
       return;
     }
     setBusy(true);
     try {
       await accountApi.changePassword(current, next, code);
-      push("Пароль изменён. Остальные сессии и доверенные устройства завершены", "ok");
+      toast.success("Пароль изменён. Остальные сессии и доверенные устройства завершены");
       setCurrent("");
       setNext("");
       setRepeat("");
       setCode("");
       void qc.invalidateQueries({ queryKey: ACCOUNT_KEY });
     } catch (err) {
-      push(err instanceof ApiError ? err.message : "Не удалось сменить пароль", "error");
+      toast.error(err instanceof ApiError ? err.message : "Не удалось сменить пароль");
       setCode("");
     } finally {
       setBusy(false);
@@ -182,7 +181,6 @@ function PasswordPanel({ account }: { account: AdminAccount }) {
 }
 
 function TwoFactorPanel({ account }: { account: AdminAccount }) {
-  const { push } = useToast();
   const qc = useQueryClient();
   const [stage, setStage] = useState<"idle" | "current" | "new">("idle");
   const [code, setCode] = useState("");
@@ -203,7 +201,7 @@ function TwoFactorPanel({ account }: { account: AdminAccount }) {
       setStage("new");
       setCode("");
     } catch (err) {
-      push(err instanceof ApiError ? err.message : "Не удалось начать перенастройку", "error");
+      toast.error(err instanceof ApiError ? err.message : "Не удалось начать перенастройку");
       setCode("");
     } finally {
       setBusy(false);
@@ -215,11 +213,11 @@ function TwoFactorPanel({ account }: { account: AdminAccount }) {
     setBusy(true);
     try {
       await accountApi.confirmTotpReset(value);
-      push("Двухфакторная защита перенастроена. Старое приложение больше не подходит", "ok");
+      toast.success("Двухфакторная защита перенастроена. Старое приложение больше не подходит");
       cancel();
       void qc.invalidateQueries({ queryKey: ACCOUNT_KEY });
     } catch (err) {
-      push(err instanceof ApiError ? err.message : "Не удалось перенастроить", "error");
+      toast.error(err instanceof ApiError ? err.message : "Не удалось перенастроить");
       setCode("");
     } finally {
       setBusy(false);
@@ -306,9 +304,8 @@ function TwoFactorPanel({ account }: { account: AdminAccount }) {
 }
 
 function DevicesPanel({ account }: { account: AdminAccount }) {
-  const { push } = useToast();
   const qc = useQueryClient();
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
   const [busy, setBusy] = useState<"forget" | "logout" | null>(null);
 
   async function forget() {
@@ -322,10 +319,10 @@ function DevicesPanel({ account }: { account: AdminAccount }) {
     setBusy("forget");
     try {
       const r = await accountApi.forgetDevices();
-      push(r.forgotten > 0 ? `Забыто устройств: ${r.forgotten}` : "Доверенных устройств не было", "ok");
+      toast.success(r.forgotten > 0 ? `Забыто устройств: ${r.forgotten}` : "Доверенных устройств не было");
       void qc.invalidateQueries({ queryKey: ACCOUNT_KEY });
     } catch (err) {
-      push(err instanceof ApiError ? err.message : "Не удалось забыть устройства", "error");
+      toast.error(err instanceof ApiError ? err.message : "Не удалось забыть устройства");
     } finally {
       setBusy(null);
     }
@@ -343,7 +340,7 @@ function DevicesPanel({ account }: { account: AdminAccount }) {
     try {
       await logoutEverywhere();
     } catch (err) {
-      push(err instanceof ApiError ? err.message : "Не удалось выйти на всех устройствах", "error");
+      toast.error(err instanceof ApiError ? err.message : "Не удалось выйти на всех устройствах");
       setBusy(null);
     }
   }
@@ -362,7 +359,7 @@ function DevicesPanel({ account }: { account: AdminAccount }) {
           Выйти на всех устройствах
         </Button>
       </div>
-      {confirmUi}
+      
     </section>
   );
 }

@@ -13,7 +13,7 @@ import { cn } from "@/lib/cn";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 import { Input } from "@/components/ui/Input";
-import { Modal } from "@/components/ui/Modal";
+import { Modal } from "@shop/ui/overlay";
 
 export function ProductPickModal({
   open,

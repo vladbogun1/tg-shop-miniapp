@@ -10,7 +10,7 @@ import { CASE_TIER_METAL } from "@shop/core/giftcase";
 import { CASE_TIER_LABEL, type GiftTierAdmin, type GiftTierPatch } from "@/lib/gift";
 import { cn } from "@/lib/cn";
 import { money } from "@/lib/money";
-import { Modal } from "@/components/ui/Modal";
+import { Modal } from "@shop/ui/overlay";
 
 /** Quick choices of the promo validity, days. */
 const PROMO_DAYS = [7, 14, 30, 60, 90] as const;

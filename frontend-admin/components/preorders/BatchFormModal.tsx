@@ -26,13 +26,13 @@ import {
   type EtaMode,
 } from "@/lib/preorders";
 import { useShopSetting } from "@/lib/settings";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { Image } from "@/lib/image";
 import { useIsSuperAdmin } from "@/components/layout/Shell";
 import { ProductPickModal } from "@/components/ProductPickModal";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
@@ -79,7 +79,6 @@ export function BatchFormModal({
   onSaved?: (b: Batch) => void;
 }) {
   const qc = useQueryClient();
-  const { push } = useToast();
   const isSuper = useIsSuperAdmin();
   const defHold = useShopSetting("preorder.holdHours", 24);
   const money = batch ? batch.moneyVisible : !!isSuper;
@@ -245,7 +244,7 @@ export function BatchFormModal({
     },
     onSuccess: (b) => {
       qc.invalidateQueries({ queryKey: PREORDERS_KEY });
-      push(batch ? "Поставка сохранена" : "Поставка создана", "ok");
+      toast.success(batch ? "Поставка сохранена" : "Поставка создана");
       setDirty(false);
       onSaved?.(b);
       onClose();

@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { dayKey } from "@shop/core/time";
 import { type Message, type SendMessageRequest } from "@shop/core/types";
 import { noFadeFlash } from "@shop/ui/motion";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/primitives";
 import { useT } from "@/i18n/context";
 import { api, refreshSession } from "@/lib/api";
 import { useEscape } from "@/lib/hooks";

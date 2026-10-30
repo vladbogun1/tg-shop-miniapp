@@ -39,7 +39,7 @@ import {
   STATUS_VAR,
 } from "@/lib/orders";
 import { Image } from "@/lib/image";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { cn } from "@/lib/cn";
 import { CopyButton } from "./CopyButton";
 import { CancelRequestBlock } from "./CancelRequestBlock";

@@ -10,7 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import "@/components/metrics/metrics.css";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import type { PeriodParams, PeriodToken } from "@/components/metrics/api";
 import { CHANNEL_OPTIONS, PERIOD_OPTIONS, todayIso, useMetricsPeriod } from "@/components/metrics/period";

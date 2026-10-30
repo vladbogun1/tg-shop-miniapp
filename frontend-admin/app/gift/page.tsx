@@ -21,11 +21,11 @@ import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 import { productStock } from "@/lib/stock";
 import { SETTINGS_QUERY_KEY, settingsApi, type SettingItem, type SettingValue } from "@/lib/settings";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { useUnsavedGuard } from "@/lib/use-unsaved-guard";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
 import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -47,7 +47,6 @@ const K = {
 } as const;
 
 export default function GiftPage() {
-  const { push } = useToast();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: SETTINGS_QUERY_KEY, queryFn: settingsApi.list });
   const items = useMemo(() => (q.data?.items ?? []).filter((it) => it.group === GIFT_GROUP), [q.data]);
@@ -76,9 +75,9 @@ export default function GiftPage() {
       const fresh = await settingsApi.save(values);
       qc.setQueryData(SETTINGS_QUERY_KEY, fresh);
       qc.invalidateQueries({ queryKey: ["gift"] });
-      push(dirtyItems.length === 1 ? "Настройка сохранена" : `Сохранено настроек: ${dirtyItems.length}`, "ok");
+      toast.success(dirtyItems.length === 1 ? "Настройка сохранена" : `Сохранено настроек: ${dirtyItems.length}`);
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
     } finally {
       setSaving(false);
     }

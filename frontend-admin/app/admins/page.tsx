@@ -44,11 +44,11 @@ import { ActionSheet, type SheetAction } from "@/components/orders/ActionSheet";
 import { copyText } from "@/components/orders/CopyButton";
 import { Autocomplete } from "@/components/ui/Autocomplete";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { Button } from "@shop/ui/admin-button";
+import { useConfirm } from "@shop/ui/confirm";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
-import { Modal } from "@/components/ui/Modal";
+import { Modal } from "@shop/ui/overlay";
 import { QueryState } from "@/components/ui/QueryState";
 import { Select } from "@/components/ui/Select";
 import { Toggle } from "@/components/ui/Toggle";
@@ -66,7 +66,7 @@ import {
 } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/orders";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { useIsDesktop } from "@/lib/use-media";
 
 const TEAM_KEY = ["admin", "team"] as const;
@@ -491,19 +491,18 @@ function useAdminActions(
   showLink: (created: InviteCreated, who: string) => void,
   inviteExisting: (telegramUserId: number) => void
 ): AdminActions {
-  const { push } = useToast();
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
   const [ask, setAsk] = useState<CodeAsk | null>(null);
   const [editing, setEditing] = useState<TeamAdmin | null>(null);
 
-  const fail = useCallback((e: unknown, fallback: string) => push(e instanceof ApiError ? e.message : fallback, "error"), [push]);
+  const fail = useCallback((e: unknown, fallback: string) => toast.error(e instanceof ApiError ? e.message : fallback), []);
 
   const linkResult = useCallback(
     (created: InviteCreated, who: string, sentMsg: string) => {
-      if (created.delivered) push(sentMsg, "ok");
+      if (created.delivered) toast.success(sentMsg);
       else showLink(created, who);
     },
-    [push, showLink]
+    [showLink]
   );
 
   const itemsFor = useCallback(
@@ -535,7 +534,7 @@ function useAdminActions(
               if (!(await confirm({ title: "Отозвать приглашение?", message: `Ссылка для «${who}» перестанет работать.`, confirmLabel: "Отозвать", danger: true }))) return;
               try {
                 await teamApi.revokeInvite(inv.id);
-                push("Приглашение отозвано", "ok");
+                toast.success("Приглашение отозвано");
                 refresh();
               } catch (e) {
                 fail(e, "Не удалось отозвать");
@@ -586,7 +585,7 @@ function useAdminActions(
               if (!(await confirm({ title: "Отозвать ссылку?", message: `Ссылка для «${who}» перестанет работать.`, confirmLabel: "Отозвать" }))) return;
               try {
                 await teamApi.revokeInvite(inv.id);
-                push("Ссылка отозвана", "ok");
+                toast.success("Ссылка отозвана");
                 refresh();
               } catch (e) {
                 fail(e, "Не удалось отозвать");
@@ -607,7 +606,7 @@ function useAdminActions(
               confirmLabel: "Разблокировать",
               run: async (code) => {
                 await teamApi.unblock(a.telegramUserId, code);
-                push(`«${who}» разблокирован`, "ok");
+                toast.success(`«${who}» разблокирован`);
               },
             }),
         });
@@ -640,7 +639,7 @@ function useAdminActions(
               danger: true,
               run: async (code) => {
                 await teamApi.resetTwoFactor(a.telegramUserId, code);
-                push("2FA сброшена, сессии завершены", "ok");
+                toast.success("2FA сброшена, сессии завершены");
               },
             }),
         });
@@ -652,7 +651,7 @@ function useAdminActions(
             if (!(await confirm({ title: `Забыть устройства «${who}»?`, message: "На всех доверенных устройствах админа снова будет спрашиваться код.", confirmLabel: "Забыть" }))) return;
             try {
               const r = await teamApi.forgetDevices(a.telegramUserId);
-              push(`Забыто устройств: ${r.forgotten}`, "ok");
+              toast.success(`Забыто устройств: ${r.forgotten}`);
               refresh();
             } catch (e) {
               fail(e, "Не удалось");
@@ -672,7 +671,7 @@ function useAdminActions(
               danger: true,
               run: async (code) => {
                 await teamApi.block(a.telegramUserId, code);
-                push(`«${who}» заблокирован`, "ok");
+                toast.success(`«${who}» заблокирован`);
               },
             }),
         });
@@ -690,18 +689,18 @@ function useAdminActions(
             danger: true,
             run: async (code) => {
               await teamApi.remove(a.telegramUserId, code);
-              push(`«${who}» удалён`, "ok");
+              toast.success(`«${who}» удалён`);
             },
           }),
       });
       return items;
     },
-    [confirm, fail, inviteExisting, linkResult, push, refresh]
+    [confirm, fail, inviteExisting, linkResult, refresh]
   );
 
   const ui = (
     <>
-      {confirmUi}
+      
       {ask && (
         <CodeConfirmModal
           ask={ask}
@@ -734,17 +733,16 @@ function useAdminActions(
         confirmLabel: on ? "Включить" : "Выключить",
         run: async (code) => {
           await teamApi.setFinance(a.telegramUserId, on, code);
-          push(on ? "«Финансы» включены" : "«Финансы» выключены", "ok");
+          toast.success(on ? "«Финансы» включены" : "«Финансы» выключены");
         },
       }),
-    [push]
+    []
   );
   return { itemsFor, askFinance, ui };
 }
 
 /** A dangerous action: what happens + the main admin's own code from the authenticator app. */
 function CodeConfirmModal({ ask, onClose, onDone }: { ask: CodeAsk; onClose: () => void; onDone: () => void }) {
-  const { push } = useToast();
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -761,7 +759,7 @@ function CodeConfirmModal({ ask, onClose, onDone }: { ask: CodeAsk; onClose: () 
         setError(e.message);
         setCode("");
       } else {
-        push(e instanceof ApiError ? e.message : "Не удалось выполнить", "error");
+        toast.error(e instanceof ApiError ? e.message : "Не удалось выполнить");
         onClose();
       }
     } finally {
@@ -801,7 +799,6 @@ function CodeConfirmModal({ ask, onClose, onDone }: { ask: CodeAsk; onClose: () 
 }
 
 function EditModal({ admin, onClose, onSaved }: { admin: TeamAdmin; onClose: () => void; onSaved: () => void }) {
-  const { push } = useToast();
   const [name, setName] = useState(admin.name ?? "");
   const [role, setRole] = useState<AdminRoleCode>(admin.role);
   const [code, setCode] = useState("");
@@ -811,11 +808,11 @@ function EditModal({ admin, onClose, onSaved }: { admin: TeamAdmin; onClose: () 
 
   async function save() {
     if (!name.trim()) {
-      push("Введите имя", "error");
+      toast.error("Введите имя");
       return;
     }
     if (roleChanged && code.length !== 6) {
-      push("Для смены роли нужен ваш код из приложения", "error");
+      toast.error("Для смены роли нужен ваш код из приложения");
       return;
     }
     setBusy(true);
@@ -825,10 +822,10 @@ function EditModal({ admin, onClose, onSaved }: { admin: TeamAdmin; onClose: () 
         role: roleChanged ? role : undefined,
         code: roleChanged ? code : undefined,
       });
-      push("Сохранено", "ok");
+      toast.success("Сохранено");
       onSaved();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
       setCode("");
       setBusy(false);
     }
@@ -889,7 +886,6 @@ function InviteModal({
   onClose: () => void;
   onCreated: (created: InviteCreated, who: string) => void;
 }) {
-  const { push } = useToast();
   const [manual, setManual] = useState(!!initialTelegramId);
   const [picked, setPicked] = useState<UserCardDto | null>(null);
   const [manualId, setManualId] = useState(initialTelegramId ? String(initialTelegramId) : "");
@@ -912,10 +908,10 @@ function InviteModal({
         ...(existing ? {} : { name: name.trim(), role }),
         code,
       });
-      if (created.delivered) push("Приглашение отправлено в Telegram", "ok");
+      if (created.delivered) toast.success("Приглашение отправлено в Telegram");
       onCreated(created, existing ? adminName(existing) : name.trim());
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось пригласить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось пригласить");
       setCode("");
       setBusy(false);
     }
@@ -1014,17 +1010,16 @@ function InviteModal({
 
 /** The bot could not deliver: the link to hand over personally. */
 function LinkModal({ created, who, onClose }: { created: InviteCreated; who: string; onClose: () => void }) {
-  const { push } = useToast();
   const url = inviteUrl(created) ?? "";
   const [copied, setCopied] = useState(false);
 
   async function copy() {
     if (await copyText(url)) {
       setCopied(true);
-      push("Ссылка скопирована", "ok");
+      toast.success("Ссылка скопирована");
       setTimeout(() => setCopied(false), 1500);
     } else {
-      push("Не удалось скопировать — выделите ссылку вручную", "error");
+      toast.error("Не удалось скопировать — выделите ссылку вручную");
     }
   }
 

@@ -19,7 +19,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { Toggle } from "@/components/ui/Toggle";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -34,7 +34,7 @@ import {
   pushSupported,
   type PushPermission,
 } from "@/lib/push";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { PanelHeader } from "./PanelHeader";
 
 const PERMISSION_LABEL: Record<PushPermission, string> = {
@@ -79,7 +79,6 @@ function Note({ icon, children, warn }: { icon: ReactNode; children: ReactNode; 
 }
 
 export function DevicePanel() {
-  const { push } = useToast();
   const qc = useQueryClient();
   const pwa = usePwa();
   const [mounted, setMounted] = useState(false);
@@ -120,13 +119,13 @@ export function DevicePanel() {
     try {
       if (on) {
         await enablePush(config.publicKey);
-        push("Уведомления включены на этом устройстве", "ok");
+        toast.success("Уведомления включены на этом устройстве");
       } else {
         await disablePush();
-        push("Уведомления на этом устройстве выключены", "ok");
+        toast.success("Уведомления на этом устройстве выключены");
       }
     } catch (e) {
-      push(e instanceof ApiError || e instanceof Error ? e.message : "Не удалось изменить уведомления", "error");
+      toast.error(e instanceof ApiError || e instanceof Error ? e.message : "Не удалось изменить уведомления");
     } finally {
       await refreshLocal();
       void qc.invalidateQueries({ queryKey: ["admin", "push-config"] });
@@ -138,13 +137,13 @@ export function DevicePanel() {
     setBusy("test");
     try {
       const r = await pushApi.test(endpoint);
-      if (r.sent > 0) push("Тест отправлен — уведомление придёт через пару секунд", "ok");
+      if (r.sent > 0) toast.success("Тест отправлен — уведомление придёт через пару секунд");
       else if (r.removed > 0) {
-        push("Подписка устарела — включите уведомления заново", "error");
+        toast.error("Подписка устарела — включите уведомления заново");
         await refreshLocal();
-      } else push("Push-сервис не принял уведомление — попробуйте позже", "error");
+      } else toast.error("Push-сервис не принял уведомление — попробуйте позже");
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось отправить тест", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось отправить тест");
     } finally {
       setBusy(null);
     }

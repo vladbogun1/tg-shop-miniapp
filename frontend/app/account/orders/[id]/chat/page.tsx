@@ -20,7 +20,7 @@ import { ArrowLeft, ImagePlus, MessageCircle, Send, WifiOff, X } from "lucide-re
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MessageBubble } from "@/components/chat/MessageBubble";
-import { StatusChip } from "@/components/ui/StatusChip";
+import { StatusChip } from "@shop/ui/primitives";
 import {
   customerApi,
   getAccessToken,
@@ -222,7 +222,7 @@ export default function OrderChatPage() {
           </p>
         </div>
 
-        {order && <StatusChip status={order.status} />}
+        {order && <StatusChip status={order.status} label={t(`status.${order.status}`)} />}
       </header>
 
       {/* messages */}

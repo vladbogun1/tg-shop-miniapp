@@ -29,13 +29,13 @@ import { CURRENCIES, fxToInput, inputToFx, lineTitle } from "@/lib/preorders";
 import { money } from "@/lib/money";
 import { Image } from "@/lib/image";
 import { cn } from "@/lib/cn";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { pct } from "@/components/metrics/format";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { Button } from "@shop/ui/admin-button";
+import { useConfirm } from "@shop/ui/confirm";
 import { Input } from "@/components/ui/Input";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Select } from "@/components/ui/Select";
@@ -69,7 +69,6 @@ export function BatchMoneyTab({ batchId }: { batchId: number }) {
 
 function MoneyBody({ data, updatedAt }: { data: BatchMoney; updatedAt: number }) {
   const qc = useQueryClient();
-  const { push } = useToast();
   const [currency, setCurrency] = useState(data.currency);
   const [fx, setFx] = useState("");
   const [allocation, setAllocation] = useState<Allocation>(data.allocation);
@@ -126,9 +125,9 @@ function MoneyBody({ data, updatedAt }: { data: BatchMoney; updatedAt: number })
     },
     onSuccess: (r) => {
       apply(r);
-      push("Деньги поставки сохранены", "ok");
+      toast.success("Деньги поставки сохранены");
     },
-    onError: (e) => push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error"),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить"),
   });
 
   async function fetchRate() {
@@ -137,12 +136,12 @@ function MoneyBody({ data, updatedAt }: { data: BatchMoney; updatedAt: number })
       const r = await costingApi.nbuRate(currency);
       if (r.rate != null) {
         touch(setFx)(String(r.rate));
-        push(`Курс НБУ на ${r.date}: ${r.rate}`, "ok");
+        toast.success(`Курс НБУ на ${r.date}: ${r.rate}`);
       } else {
-        push("НБУ не отдал курс — введите вручную", "error");
+        toast.error("НБУ не отдал курс — введите вручную");
       }
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось получить курс", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось получить курс");
     } finally {
       setRateBusy(false);
     }
@@ -151,7 +150,7 @@ function MoneyBody({ data, updatedAt }: { data: BatchMoney; updatedAt: number })
   const alloc = ALLOCATIONS.find((a) => a.value === allocation);
   const needsRate = currency !== "UAH";
   const incomplete = data.lines.some((l) => !lines[l.itemId]?.price.trim());
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
 
   async function remove(e: Expense) {
     const ok = await confirm({
@@ -163,9 +162,9 @@ function MoneyBody({ data, updatedAt }: { data: BatchMoney; updatedAt: number })
     if (!ok) return;
     try {
       apply(await costingApi.deleteExpense(e.id));
-      push("Расход удалён", "ok");
+      toast.success("Расход удалён");
     } catch (err) {
-      push(err instanceof ApiError ? err.message : "Не удалось удалить", "error");
+      toast.error(err instanceof ApiError ? err.message : "Не удалось удалить");
     }
   }
 
@@ -178,9 +177,9 @@ function MoneyBody({ data, updatedAt }: { data: BatchMoney; updatedAt: number })
       let last: BatchMoney | null = null;
       for (const f of Array.from(files)) last = await costingApi.addExpenseFile(e.id, f);
       if (last) apply(last);
-      push(files.length > 1 ? `Документов прикреплено: ${files.length}` : "Документ прикреплён", "ok");
+      toast.success(files.length > 1 ? `Документов прикреплено: ${files.length}` : "Документ прикреплён");
     } catch (err) {
-      push(err instanceof ApiError ? err.message : "Не удалось загрузить документ", "error");
+      toast.error(err instanceof ApiError ? err.message : "Не удалось загрузить документ");
     } finally {
       setUploading(null);
     }
@@ -197,7 +196,7 @@ function MoneyBody({ data, updatedAt }: { data: BatchMoney; updatedAt: number })
     try {
       apply(await costingApi.deleteExpenseFile(f.id));
     } catch (err) {
-      push(err instanceof ApiError ? err.message : "Не удалось удалить документ", "error");
+      toast.error(err instanceof ApiError ? err.message : "Не удалось удалить документ");
     }
   }
 
@@ -205,7 +204,7 @@ function MoneyBody({ data, updatedAt }: { data: BatchMoney; updatedAt: number })
     try {
       await openExpenseFile(f);
     } catch (err) {
-      push(err instanceof Error ? err.message : "Документ не открылся", "error");
+      toast.error(err instanceof Error ? err.message : "Документ не открылся");
     }
   }
 
@@ -213,7 +212,7 @@ function MoneyBody({ data, updatedAt }: { data: BatchMoney; updatedAt: number })
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
-      {confirmUi}
+      
       <div className="flex flex-wrap items-center gap-2">
         {costsFinal && !dirty ? <Badge tone="ok" dot>себестоимость окончательная</Badge> : <Badge tone="warn" dot>себестоимость предварительная</Badge>}
         {data.preliminary && !data.costsFinal && <span className="text-[12.5px] text-[var(--text-muted)]">пока не отмечено «Все расходы внесены»</span>}
@@ -474,7 +473,6 @@ function ExpenseModal({
   onClose: () => void;
   onSaved: (r: BatchMoney) => void;
 }) {
-  const { push } = useToast();
   const [kind, setKind] = useState<ExpenseKind>(edit?.kind ?? "FREIGHT");
   const [amount, setAmount] = useState(edit ? minorToInput(edit.amountMinor) : "");
   const [currency, setCurrency] = useState(edit?.currency ?? defaultCurrency);
@@ -492,9 +490,9 @@ function ExpenseModal({
     try {
       const r = await costingApi.nbuRate(currency, spentOn || undefined);
       if (r.rate != null) setRate(String(r.rate));
-      else push("НБУ не отдал курс — введите вручную", "error");
+      else toast.error("НБУ не отдал курс — введите вручную");
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось получить курс", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось получить курс");
     } finally {
       setRateBusy(false);
     }
@@ -518,7 +516,7 @@ function ExpenseModal({
     };
     try {
       onSaved(edit ? await costingApi.updateExpense(edit.id, body) : await costingApi.addExpense(batchId, body));
-      push(edit ? "Расход изменён" : "Расход добавлен", "ok");
+      toast.success(edit ? "Расход изменён" : "Расход добавлен");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Не удалось сохранить");
     } finally {

@@ -20,8 +20,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CartGiftProgress } from "@/components/case/CartGiftProgress";
 import { PromoField, usePromoPreview } from "@/components/cart/PromoField";
-import { Button } from "@/components/ui/Button";
-import { QtyStepper } from "@/components/ui/QtyStepper";
+import { Button, QtyStepper } from "@shop/ui/primitives";
 import { useT } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { useCart, useCartCount, useCartSubtotal } from "@/lib/cart";
@@ -148,7 +147,7 @@ export default function CartPage() {
                 </div>
 
                 <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                  <QtyStepper
+                  <QtyStepper decreaseLabel={t("qty.decrease")} increaseLabel={t("qty.increase")}
                     size="sm"
                     value={l.quantity}
                     min={1}

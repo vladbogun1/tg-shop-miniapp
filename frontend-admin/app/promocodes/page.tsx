@@ -29,8 +29,8 @@ import {
 import { money, toMajor, toMinor } from "@/lib/money";
 import { formatDateTime, shortId } from "@/lib/orders";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Modal } from "@/components/ui/Modal";
-import { Button } from "@/components/ui/Button";
+import { Modal } from "@shop/ui/overlay";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
 import { Toggle } from "@/components/ui/Toggle";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
@@ -39,7 +39,7 @@ import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { OrderDrawer } from "@/components/orders/OrderDrawer";
 import { staggerContainer, riseItem } from "@/lib/motion";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import type { OrderStatus } from "@/lib/api";
 import { nowMs } from "@shop/core/time";
 
@@ -70,7 +70,6 @@ function isLive(p: PromoCodeFull, now: number) {
 
 export default function PromocodesPage() {
   const qc = useQueryClient();
-  const { push } = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PromoCodeFull | null>(null);
   const [confirming, setConfirming] = useState<PromoCodeFull | null>(null);
@@ -193,9 +192,9 @@ export default function PromocodesPage() {
   const renamed = !!editing && code.trim().toUpperCase() !== editing.code;
 
   async function save() {
-    if (!code.trim()) return push("Укажите код", "error");
+    if (!code.trim()) return toast.error("Укажите код");
     const err = percentErr ?? amountErr ?? capErr ?? maxUsesErr;
-    if (err) return push(err, "error");
+    if (err) return toast.error(err);
     const body: Partial<PromoCode> = {
       code: code.trim().toUpperCase(),
       discountPercent: mode === "percent" ? percentNum : null,
@@ -208,13 +207,13 @@ export default function PromocodesPage() {
     try {
       if (editing) await adminApi.updatePromo(editing.id, body);
       else await adminApi.createPromo(body);
-      push("Сохранено", "ok");
+      toast.success("Сохранено");
       // A code made here is always «Наши» — show it where it landed.
       if (!editing) setTab("OURS");
       refresh();
       setOpen(false);
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Ошибка", "error");
+      toast.error(e instanceof ApiError ? e.message : "Ошибка");
     } finally {
       setSaving(false);
     }
@@ -224,11 +223,11 @@ export default function PromocodesPage() {
     setDeleting(true);
     try {
       await adminApi.deletePromo(p.id);
-      push("Промокод удалён", "ok");
+      toast.success("Промокод удалён");
       refresh();
       setConfirming(null);
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Ошибка", "error");
+      toast.error(e instanceof ApiError ? e.message : "Ошибка");
     } finally {
       setDeleting(false);
     }

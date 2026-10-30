@@ -13,10 +13,10 @@ import { Percent, Tag, X } from "lucide-react";
 import { adminApi, ApiError, type OrderDetailDto } from "@/lib/api";
 import { extApi, promoOrigin } from "@/lib/api-extra";
 import { money } from "@/lib/money";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { cn } from "@/lib/cn";
-import { Modal } from "@/components/ui/Modal";
-import { Button } from "@/components/ui/Button";
+import { Modal } from "@shop/ui/overlay";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
 import { Toggle } from "@/components/ui/Toggle";
 import { nowMs } from "@shop/core/time";
@@ -35,7 +35,6 @@ export function DiscountModal({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const { push } = useToast();
   const [mode, setMode] = useState<Mode>("promo");
   const [promoCode, setPromoCode] = useState<string>("");
   const [kind, setKind] = useState<Kind>("amount");
@@ -102,11 +101,11 @@ export function DiscountModal({
             ? { amountMinor: Math.round(num * 100), notifyCustomer: notify }
             : { percent: pct, notifyCustomer: notify };
       await adminApi.applyOrderDiscount(order.id, body);
-      push(clear ? "Скидка снята" : "Скидка применена", "ok");
+      toast.success(clear ? "Скидка снята" : "Скидка применена");
       onDone();
       onClose();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось применить скидку", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось применить скидку");
     } finally {
       setSaving(false);
     }

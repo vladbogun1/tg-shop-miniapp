@@ -10,7 +10,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
-import { Toast } from "@/components/ui/Toast";
+import { toast } from "@shop/ui/toast";
 import { AskAboutProduct } from "@/components/catalog/AskAboutProduct";
 import { ProductGiftBanner } from "@/components/case/ProductGiftBanner";
 import { CompareViewButton } from "@/components/compare/CompareBits";
@@ -105,11 +105,7 @@ function ViewBody({
   const buyProduct = hold && !hasVariants ? { ...product, stock: buyable } : product;
   const buyVariant = hold && variant ? { ...variant, stock: buyable } : variant;
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [preToast, setPreToast] = useState<string | null>(null);
-  const fireToast = (m: string) => {
-    setPreToast(m);
-    window.setTimeout(() => setPreToast(null), 1800);
-  };
+  const fireToast = (m: string) => toast.success(m, { duration: 1800 });
 
   // One product_view per opening of the sheet (ViewBody is keyed by product id).
   useEffect(() => {
@@ -335,7 +331,6 @@ function ViewBody({
         onClose={() => setSheetOpen(false)}
         onDone={fireToast}
       />
-      <Toast message={preToast} />
     </div>
   );
 }

@@ -5,6 +5,7 @@ export const en: RuDictionary = {
   "common.back": "Back",
   "common.close": "Close",
   "common.cancel": "Cancel",
+  "common.confirm": "Confirm",
   "common.retry": "Try again",
   "common.loading": "Loading…",
   "common.toCatalog": "Browse catalogue",

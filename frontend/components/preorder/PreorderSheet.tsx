@@ -7,18 +7,15 @@
  * POST /api/me/preorders again = change of quantity; 400 + code IN_STOCK means it is on sale after all.
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
-import { Bell, X } from "lucide-react";
+import { Bell } from "lucide-react";
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
-import { Button } from "@/components/ui/Button";
-import { QtyStepper } from "@/components/ui/QtyStepper";
+import { Button, QtyStepper } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import { ApiError, type Product, type ProductVariant } from "@/lib/api";
 import { useOrderLimits } from "@/lib/order-limits";
 import { DEFAULT_HOLD_HOURS, preorderApi, preorderKeys, QUEUE_MAX_QTY, type MyPreorder } from "@/lib/preorders";
-import { backdrop, sheetVariants } from "@/lib/motion";
-import { haptic } from "@/lib/telegram";
+import { Sheet } from "@shop/ui/overlay";
+import { haptic, useBackButton } from "@/lib/telegram";
 
 export function PreorderSheet({
   product,
@@ -43,15 +40,29 @@ export function PreorderSheet({
   /** Called with the toast text after a change went through. */
   onDone?: (message: string) => void;
 }) {
-  // In a portal: opened from the product view (its own z-70 layer) the sheet must still cover the tab bar.
-  if (typeof document === "undefined") return null;
-  return createPortal(
-    <AnimatePresence>
-      {open && product && (
+  const { t } = useI18n();
+  const shown = open && !!product;
+  // Telegram's own «Назад» goes through history, so it lands in the sheet's «Назад закрывает» entry.
+  useBackButton(shown, () => window.history.back());
+  return (
+    <Sheet
+      open={shown}
+      backClose="preorderSheet"
+      onClose={onClose}
+      title={
+        <>
+          <Bell className="h-[18px] w-[18px] shrink-0 text-[var(--accent)]" strokeWidth={2.5} />
+          <span>{t("preorder.sheet.title")}</span>
+        </>
+      }
+      closeLabel={t("common.close")}
+      ariaLabel={t("preorder.sheet.title")}
+      onCloseClick={haptic}
+    >
+      {product && (
         <Body key={`${product.id}:${variant?.id ?? ""}`} product={product} variant={variant} mine={mine} coming={coming} holdHours={holdHours} onClose={onClose} onDone={onDone} />
       )}
-    </AnimatePresence>,
-    document.body,
+    </Sheet>
   );
 }
 
@@ -123,52 +134,12 @@ function Body({
   const busy = join.isPending || leave.isPending;
 
   return (
-    <motion.div
-      variants={backdrop}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      onClick={onClose}
-      className="fixed inset-0 z-[130] flex items-end justify-center bg-black/65"
-    >
-      <motion.div
-        role="dialog"
-        aria-modal="true"
-        aria-label={t("preorder.sheet.title")}
-        variants={sheetVariants}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[88dvh] w-full max-w-[520px] flex-col overflow-hidden rounded-t-[16px] border border-b-0 border-[var(--line-strong)] bg-[var(--surface)]"
-      >
-        <div className="flex justify-center pt-2">
-          <span className="h-1 w-10 rounded-full bg-[var(--line-strong)]" />
-        </div>
-        <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 pb-3 pt-1.5">
-          <h2 className="font-display flex min-w-0 items-center gap-2 text-[15px] font-extrabold uppercase leading-tight tracking-[0.04em] text-[var(--ink)]">
-            <Bell className="h-[18px] w-[18px] shrink-0 text-[var(--accent)]" strokeWidth={2.5} />
-            <span>{t("preorder.sheet.title")}</span>
-          </h2>
-          <button
-            type="button"
-            onClick={() => {
-              haptic();
-              onClose();
-            }}
-            aria-label={t("common.close")}
-            className="tap -mr-1.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--surface-3)] text-[var(--muted)] active:scale-95"
-          >
-            <X className="h-5 w-5" strokeWidth={2.25} />
-          </button>
-        </div>
-
         <div className="px-4 pb-4 pt-4" style={{ paddingBottom: "calc(16px + var(--safe-bottom))" }}>
           <p className="line-clamp-2 text-[14px] font-semibold leading-snug text-[var(--ink)]">{title}</p>
 
           <p className="eyebrow mb-2 mt-4 !tracking-[0.2em]">{t("preorder.sheet.qty")}</p>
           <div className="flex flex-wrap items-center gap-3">
-            <QtyStepper value={qty} onChange={setQty} min={1} max={cap} />
+            <QtyStepper decreaseLabel={t("qty.decrease")} increaseLabel={t("qty.increase")} value={qty} onChange={setQty} min={1} max={cap} />
             <span className="text-[12px] text-[var(--faint)]">{t("preorder.sheet.max", { n: cap })}</span>
           </div>
 
@@ -211,7 +182,5 @@ function Body({
             </button>
           )}
         </div>
-      </motion.div>
-    </motion.div>
   );
 }

@@ -66,9 +66,9 @@ import { invalidateCards } from "@/lib/cards";
 import { money, toMajor, toMinor } from "@/lib/money";
 import { Image } from "@/lib/image";
 import { cn } from "@/lib/cn";
-import { useToast } from "@/lib/toast";
-import { Modal } from "@/components/ui/Modal";
-import { Button } from "@/components/ui/Button";
+import { toast } from "@shop/ui/toast";
+import { Modal } from "@shop/ui/overlay";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Toggle } from "@/components/ui/Toggle";
@@ -152,7 +152,6 @@ const STEP_ANIM = {
 };
 
 export function ProductModal({ open, product, onClose, onSaved, onCreated, onCompleteWithAi, initialStep }: Props) {
-  const { push } = useToast();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const creating = !product;
@@ -301,7 +300,7 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
         setF((p) => ({ ...p, imageKeys: [...p.imageKeys, key] }));
       }
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Ошибка загрузки", "error");
+      toast.error(e instanceof ApiError ? e.message : "Ошибка загрузки");
     } finally {
       setUploading(false);
     }
@@ -323,10 +322,10 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
 
   function next() {
     if (!stepValid(step)) {
-      if (step === S.basics) push("Укажите название", "error");
+      if (step === S.basics) toast.error("Укажите название");
       else if (step === S.pricing)
-        push(compareAtInvalid ? "Старая цена должна быть больше текущей" : "Товару на витрине нужна цена больше 0", "error");
-      else if (step === S.category) push("Выберите категорию без подкатегорий", "error");
+        toast.error(compareAtInvalid ? "Старая цена должна быть больше текущей" : "Товару на витрине нужна цена больше 0");
+      else if (step === S.category) toast.error("Выберите категорию без подкатегорий");
       return;
     }
     go(step + 1);
@@ -409,35 +408,28 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
     const rows = demand.filter((d) => d.productId === productId && raised.includes(d.variantId ?? null));
     const people = peopleOfRows(rows);
     if (people === 0) return;
-    push(
-      `${people} ${plural(people, "человек ждёт", "человека ждут", "человек ждут")} этот товар. Раздать брони?`,
-      "info",
-      {
+    toast.info(`${people} ${plural(people, "человек ждёт", "человека ждут", "человек ждут")} этот товар. Раздать брони?`, { action: {
         label: "Раздать брони",
         onClick: () => {
           releaseDemand(rows)
             .then((res) => {
-              push(releaseSummary(res), res.heldPeople > 0 ? "ok" : "info");
+              (res.heldPeople > 0 ? toast.success : toast.info)(releaseSummary(res));
               qc.invalidateQueries({ queryKey: PREORDERS_KEY });
               qc.invalidateQueries({ queryKey: ["products"] });
             })
-            .catch((e) => push(e instanceof ApiError ? e.message : "Не удалось раздать брони", "error"));
+            .catch((e) => toast.error(e instanceof ApiError ? e.message : "Не удалось раздать брони"));
         },
-      }
-    );
+      } })
   }
 
   function reportIssues(saved: AdminProductSaved) {
     const issues = saved.specIssues ?? [];
     if (!issues.length) return;
     const label = (k: string) => attrs.find((a) => a.key === k)?.labelRu ?? k;
-    push(
-      `Сохранено, но отброшено ${issues.length} ${plural(issues.length, "значение", "значения", "значений")}: ${issues
+    toast.error(`Сохранено, но отброшено ${issues.length} ${plural(issues.length, "значение", "значения", "значений")}: ${issues
         .slice(0, 3)
         .map((i) => `${label(i.key)} — ${i.reason}`)
-        .join("; ")}${issues.length > 3 ? "…" : ""}`,
-      "error"
-    );
+        .join("; ")}${issues.length > 3 ? "…" : ""}`);
   }
 
   const [guard, gateUi] = usePublishGate(async (id) => {
@@ -449,7 +441,7 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
       onClose();
       onCompleteWithAi?.(id);
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
     }
   });
 
@@ -465,7 +457,7 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
   async function saveCreate() {
     if (createInvalid) {
       setShowMissing(true);
-      push(createInvalid, "error");
+      toast.error(createInvalid);
       return;
     }
     setSaving(true);
@@ -481,12 +473,12 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
         categoryId: f.categoryId,
         ...(f.brand.id ? { brandId: f.brand.id } : f.brand.name.trim() ? { brandName: f.brand.name.trim() } : {}),
       });
-      push("Товар создан — скрыт до оформления", "ok");
+      toast.success("Товар создан — скрыт до оформления");
       onSaved();
       onClose();
       onCreated?.(saved);
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось создать", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось создать");
     } finally {
       setSaving(false);
     }
@@ -495,17 +487,17 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
   async function save() {
     if (!product) return saveCreate();
     if (!f.title.trim()) {
-      push("Укажите название", "error");
+      toast.error("Укажите название");
       go(S.basics);
       return;
     }
     if (compareAtInvalid) {
-      push("Старая цена должна быть больше текущей", "error");
+      toast.error("Старая цена должна быть больше текущей");
       go(S.pricing);
       return;
     }
     if (!categoryIsLeaf) {
-      push("Товар кладётся в категорию без подкатегорий", "error");
+      toast.error("Товар кладётся в категорию без подкатегорий");
       go(S.category);
       return;
     }
@@ -529,7 +521,7 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
         : ((saved = await adminApi.updateProduct(product.id, editBody())), true);
       if (!ok || !saved) return;
       reportIssues(saved);
-      push("Сохранено", "ok");
+      toast.success("Сохранено");
       void offerRelease(product.id, raised);
       onSaved();
       onClose();
@@ -537,7 +529,7 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
       if (e instanceof ApiError && e.code === "STOCK_CONFLICT") {
         await refreshStock(product.id, e.message);
       } else {
-        push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
+        toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
       }
     } finally {
       setSaving(false);
@@ -562,9 +554,9 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
       }));
       baseStockRef.current = { stock: fresh.stock ?? 0, variants: freshVariants };
       go(S.pricing);
-      push(`${message}. В форме теперь актуальный остаток — проверьте и сохраните ещё раз.`, "error");
+      toast.error(`${message}. В форме теперь актуальный остаток — проверьте и сохраните ещё раз.`);
     } catch {
-      push(message, "error");
+      toast.error(message);
     }
   }
 
@@ -576,9 +568,9 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
       setCardStatus(status);
       // Products list + «Карточки» tabs and menu badge (there is no ["cards"] query).
       invalidateCards(qc);
-      push(status === "READY" ? "Карточка отмечена проверенной" : "Карточка возвращена в черновик", "ok");
+      toast.success(status === "READY" ? "Карточка отмечена проверенной" : "Карточка возвращена в черновик");
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось изменить статус", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось изменить статус");
     } finally {
       setStatusBusy(false);
     }

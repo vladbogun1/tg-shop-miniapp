@@ -15,7 +15,7 @@ import { Download, ExternalLink, ReceiptText } from "lucide-react";
 import { useRef } from "react";
 import { hasOnlinePayment, receiptsPollMs, type Receipt, type ReceiptStatus } from "@shop/core/receipts";
 import { type OrderDetail } from "@shop/core/types";
-import { buttonClass } from "@/components/ui/button-styles";
+import { buttonClass } from "@shop/ui/button-styles";
 import { useI18n } from "@/i18n/context";
 import { api } from "@/lib/api";
 import { useFmt } from "@/lib/use-fmt";
@@ -72,13 +72,13 @@ function ReceiptList({ list, currency }: { list: Receipt[]; currency: string }) 
             {(r.downloadUrl || r.taxUrl) && (
               <div className="flex shrink-0 flex-wrap gap-2">
                 {r.downloadUrl && (
-                  <a href={r.downloadUrl} download className={buttonClass("surface", "sm")}>
+                  <a href={r.downloadUrl} download className={buttonClass("site", "surface", "sm")}>
                     <Download className="h-4 w-4" strokeWidth={2.25} />
                     <span className="truncate">{t("receipts.download")}</span>
                   </a>
                 )}
                 {r.taxUrl && (
-                  <a href={r.taxUrl} target="_blank" rel="noopener noreferrer" className={buttonClass("ghost", "sm")}>
+                  <a href={r.taxUrl} target="_blank" rel="noopener noreferrer" className={buttonClass("site", "ghost", "sm")}>
                     <ExternalLink className="h-4 w-4" strokeWidth={2.25} />
                     <span className="truncate">{t("receipts.tax")}</span>
                   </a>

@@ -38,7 +38,7 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { OrderDrawer } from "@/components/orders/OrderDrawer";
 import { InboxRow } from "@/components/inbox/InboxRow";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { QueryState } from "@/components/ui/QueryState";
 import { adminApi, ApiError } from "@/lib/api";
@@ -56,7 +56,7 @@ import {
   type KnownInboxType,
   type SnoozePreset,
 } from "@/lib/inbox";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { useIsDesktop } from "@/lib/use-media";
 import { formatDayMonth, formatTime, now } from "@shop/core/time";
 
@@ -138,7 +138,6 @@ export default function InboxPage() {
   const q = useInbox();
   const qc = useQueryClient();
   const router = useRouter();
-  const { push } = useToast();
   const isDesktop = useIsDesktop();
   const [order, setOrder] = useState<OpenOrder | null>(null);
   const [siteBusy, setSiteBusy] = useState(false);
@@ -154,7 +153,7 @@ export default function InboxPage() {
     try {
       await inboxApi.restore(item);
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось вернуть", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось вернуть");
     }
     refetch();
   }
@@ -166,10 +165,10 @@ export default function InboxPage() {
     try {
       const res = await inboxApi.snooze(item, preset);
       const label = res?.until ? untilLabel(res.until) : SNOOZE_OPTIONS.find((o) => o.value === preset)?.label;
-      push(`Отложено ${label ?? ""}`.trim(), "ok", { label: "Отменить", onClick: () => void restore(item) });
+      toast.success(`Отложено ${label ?? ""}`.trim(), { action: { label: "Отменить", onClick: () => void restore(item) } });
     } catch (e) {
       if (before) qc.setQueryData(INBOX_QUERY_KEY, before);
-      push(e instanceof ApiError ? e.message : "Не удалось отложить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось отложить");
     }
     refetch();
   }
@@ -180,10 +179,10 @@ export default function InboxPage() {
     if (before) qc.setQueryData(INBOX_QUERY_KEY, withoutItem(before, item, false));
     try {
       await inboxApi.dismiss(item);
-      push("Разобрано", "ok", { label: "Отменить", onClick: () => void restore(item) });
+      toast.success("Разобрано", { action: { label: "Отменить", onClick: () => void restore(item) } });
     } catch (e) {
       if (before) qc.setQueryData(INBOX_QUERY_KEY, before);
-      push(e instanceof ApiError ? e.message : "Не удалось отметить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось отметить");
     }
     refetch();
   }
@@ -192,10 +191,10 @@ export default function InboxPage() {
     setSiteBusy(true);
     try {
       const res = await adminApi.siteRevalidate();
-      if (res.ok) push("Сайт обновлён", "ok");
-      else push(`Сайт снова не обновился: ${res.error ?? "ошибка"}`, "error");
+      if (res.ok) toast.success("Сайт обновлён");
+      else toast.error(`Сайт снова не обновился: ${res.error ?? "ошибка"}`);
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось обновить сайт", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось обновить сайт");
     } finally {
       setSiteBusy(false);
       refetch();
@@ -207,10 +206,10 @@ export default function InboxPage() {
     setReadAllBusy(true);
     try {
       const res = await adminApi.markAllRead();
-      push(`Отмечено прочитанными: ${res?.marked ?? 0}`, "ok");
+      toast.success(`Отмечено прочитанными: ${res?.marked ?? 0}`);
       qc.invalidateQueries({ queryKey: ["board"] });
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось отметить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось отметить");
     } finally {
       setReadAllBusy(false);
       refetch();

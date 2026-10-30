@@ -13,8 +13,8 @@ import { adminApi, ApiError } from "@/lib/api";
 import { giftApi, type LowMargin } from "@/lib/gift";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
-import { useToast } from "@/lib/toast";
-import { Button } from "@/components/ui/Button";
+import { toast } from "@shop/ui/toast";
+import { Button } from "@shop/ui/admin-button";
 import { Select } from "@/components/ui/Select";
 import { ProductPickModal } from "@/components/ProductPickModal";
 import { PanelHeader } from "../settings/PanelHeader";
@@ -23,7 +23,6 @@ const KEY = ["gift", "low-margin"] as const;
 
 export function LowMarginPanel() {
   const qc = useQueryClient();
-  const { push } = useToast();
   const q = useQuery({ queryKey: KEY, queryFn: giftApi.lowMargin });
   const brandsQ = useQuery({ queryKey: ["brands"], queryFn: () => adminApi.brands(), staleTime: 60_000 });
   const [picking, setPicking] = useState(false);
@@ -35,9 +34,9 @@ export function LowMarginPanel() {
     try {
       const fresh = await giftApi.setLowMargin(body);
       qc.setQueryData<LowMargin>(KEY, fresh);
-      push(ok, "ok");
+      toast.success(ok);
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
     } finally {
       setBusy(false);
     }

@@ -5,8 +5,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Bell, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { Button } from "@/components/ui/Button";
-import { toast } from "@/components/ui/Toast";
+import { Button } from "@shop/ui/primitives";
+import { toast } from "@shop/ui/toast";
 import { useI18n } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import {
@@ -88,9 +88,9 @@ function Row({ m }: { m: MyPreorder }) {
     try {
       await preorderApi.leave(m.id);
       await qc.invalidateQueries({ queryKey: MY_PREORDERS_KEY });
-      toast(t("preorder.queue.left"));
+      toast.success(t("preorder.queue.left"));
     } catch (e) {
-      toast(e instanceof Error ? e.message : t("preorder.error.generic"), "error");
+      toast.error(e instanceof Error ? e.message : t("preorder.error.generic"));
     } finally {
       setLeaving(false);
     }

@@ -29,9 +29,7 @@ import { isOrderLimitCode, type OrderLimitCode, visiblePaymentOptions } from "@s
 import { npCityBounds, npLatLng, resolveNpWarehouse } from "@shop/core/np-geo";
 import { CheckoutGiftLine } from "@/components/case/CheckoutGiftLine";
 import { orderCreatedHref, PaymentTrust, usePageRestore } from "@/components/order/Payment";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { RadioCard } from "@/components/ui/RadioCard";
+import { Button, Input, RadioCard } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import type { MessageKey } from "@/i18n";
 import { trackCheckoutStart, trackOrderCreated } from "@/lib/analytics";

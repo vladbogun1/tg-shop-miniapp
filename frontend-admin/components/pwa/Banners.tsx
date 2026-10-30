@@ -12,7 +12,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { BellRing, Download, RefreshCw, Share, SquarePlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import {
   applyUpdate,
   dismissInstallHint,
@@ -34,7 +34,7 @@ import {
   snoozePushOffer,
   syncPush,
 } from "@/lib/push";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 
 export function UpdateBanner() {
   const { updateReady } = usePwa();
@@ -148,7 +148,6 @@ export function InstallBanner() {
  * denied, push not configured on the server.
  */
 export function PushOfferBanner() {
-  const { push } = useToast();
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -178,10 +177,10 @@ export function PushOfferBanner() {
     setBusy(true);
     try {
       await enablePush(publicKey);
-      push("Уведомления включены на этом устройстве", "ok");
+      toast.success("Уведомления включены на этом устройстве");
       setPublicKey(null);
     } catch (e) {
-      push(e instanceof Error ? e.message : "Не удалось включить уведомления", "error");
+      toast.error(e instanceof Error ? e.message : "Не удалось включить уведомления");
       // Refused in the browser's own dialog: asking again here is pointless.
       if (pushPermission() === "denied") later();
     } finally {

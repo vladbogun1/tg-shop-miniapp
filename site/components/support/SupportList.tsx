@@ -5,8 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, LifeBuoy, MessageCircle, Plus } from "lucide-react";
 import Link from "next/link";
 import type { SupportThread } from "@shop/core/support";
-import { Button } from "@/components/ui/Button";
-import { buttonClass } from "@/components/ui/button-styles";
+import { Button } from "@shop/ui/primitives";
+import { buttonClass } from "@shop/ui/button-styles";
 import { useI18n } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { SUPPORT_KEYS, supportApi, useSupportConfig } from "@/lib/support";
@@ -30,7 +30,7 @@ export function SupportList() {
           <p className="mt-1 max-w-xl text-[14px] text-[var(--muted)]">{t("support.lead")}</p>
         </div>
         {enabled && (
-          <Link href={href("/account/support/new")} className={buttonClass("accent", "sm")}>
+          <Link href={href("/account/support/new")} className={buttonClass("site", "accent", "sm")}>
             <Plus className="h-4 w-4" strokeWidth={2.5} />
             {t("support.new")}
           </Link>

@@ -6,8 +6,8 @@
  * City and branch are picked from the Nova Poshta directory, so the refs stay valid.
  */
 import { useCallback, useEffect, useState } from "react";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
-import { Button } from "@/components/ui/Button";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
 import { Autocomplete } from "@/components/ui/Autocomplete";
 import { ordersApi, type AdminOrderDetail, type DeliveryPatch, type NpCity, type NpWarehouse } from "@/lib/orders-api";

@@ -4,9 +4,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { backdropVariants } from "@/lib/motion";
-import { useOverlayLayer } from "@/lib/overlay-stack";
-import { Button } from "@/components/ui/Button";
+import { backdropVariants } from "@shop/ui/overlay";
+import { useOverlayLayer } from "@shop/ui/overlay";
+import { Button } from "@shop/ui/admin-button";
 
 export interface SheetAction {
   key: string;

@@ -9,7 +9,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useLayoutEffect, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { useOverlayLayer } from "@/lib/overlay-stack";
+import { useOverlayLayer } from "@shop/ui/overlay";
 import { cn } from "@/lib/cn";
 
 export function Popover({

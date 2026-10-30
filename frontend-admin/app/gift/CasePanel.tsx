@@ -32,10 +32,10 @@ import { cn } from "@/lib/cn";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 import { productStock } from "@/lib/stock";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { useUnsavedGuard } from "@/lib/use-unsaved-guard";
-import { Button } from "@/components/ui/Button";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { Button } from "@shop/ui/admin-button";
+import { useConfirm } from "@shop/ui/confirm";
 import { QueryState } from "@/components/ui/QueryState";
 import { Toggle } from "@/components/ui/Toggle";
 import { ProductPickModal } from "@/components/ProductPickModal";
@@ -74,8 +74,7 @@ const byOrder = (a: CaseItemAdmin, b: CaseItemAdmin) => a.sortOrder - b.sortOrde
 
 export function CasePanel({ reminderDays }: { reminderDays: number | null }) {
   const qc = useQueryClient();
-  const { push } = useToast();
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
   const tiersQ = useQuery({ queryKey: CASE_TIERS_KEY, queryFn: giftApi.tiers });
   const itemsQ = useQuery({ queryKey: CASE_ITEMS_KEY, queryFn: giftApi.caseItems });
   const [tier, setTier] = useState<CaseTier>("BRONZE");
@@ -103,7 +102,7 @@ export function CasePanel({ reminderDays }: { reminderDays: number | null }) {
   const [filling, setFilling] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const fail = (e: unknown, fallback: string) => push(e instanceof ApiError ? e.message : fallback, "error");
+  const fail = (e: unknown, fallback: string) => toast.error(e instanceof ApiError ? e.message : fallback);
   const edit = (fn: (rows: Row[]) => Row[]) => setDrafts((d) => ({ ...d, [tier]: fn(d[tier] ?? published.map(fromServer)) }));
   const discard = () => {
     setDrafts((d) => ({ ...d, [tier]: undefined }));
@@ -115,7 +114,7 @@ export function CasePanel({ reminderDays }: { reminderDays: number | null }) {
     try {
       const fresh = await giftApi.patchTier(tier, body);
       qc.setQueryData<GiftTierAdmin[]>(CASE_TIERS_KEY, (old) => (old ?? []).map((t) => (t.tier === fresh.tier ? fresh : t)));
-      push(okText, "ok");
+      toast.success(okText);
     } catch (e) {
       fail(e, "Не удалось сохранить кейс");
       qc.invalidateQueries({ queryKey: CASE_TIERS_KEY });
@@ -128,7 +127,7 @@ export function CasePanel({ reminderDays }: { reminderDays: number | null }) {
     const draft = drafts[tier];
     if (!draft) return;
     if (draft.length > 0 && sum.live === 0) {
-      push("Ни один приз черновика не может выпасть — проверьте наличие и шансы", "error");
+      toast.error("Ни один приз черновика не может выпасть — проверьте наличие и шансы");
       return;
     }
     const ok = await confirm({
@@ -147,7 +146,7 @@ export function CasePanel({ reminderDays }: { reminderDays: number | null }) {
       const fresh = await giftApi.replaceItems(tier, toDraft(draft));
       qc.setQueryData<CaseItemAdmin[]>(CASE_ITEMS_KEY, fresh);
       setDrafts((d) => ({ ...d, [tier]: undefined }));
-      push(`${CASE_TIER_LABEL[tier]} кейс опубликован`, "ok");
+      toast.success(`${CASE_TIER_LABEL[tier]} кейс опубликован`);
       qc.invalidateQueries({ queryKey: CASE_TIERS_KEY });
       qc.invalidateQueries({ queryKey: ["gift", "stats"] });
     } catch (e) {
@@ -159,7 +158,7 @@ export function CasePanel({ reminderDays }: { reminderDays: number | null }) {
 
   function addProduct(rarity: CaseRarity, p: AdminProduct) {
     if (rows.some((r) => r.productId === p.id)) {
-      push("Этот товар уже есть в этом кейсе", "error");
+      toast.error("Этот товар уже есть в этом кейсе");
       return;
     }
     edit((rs) =>
@@ -220,7 +219,7 @@ export function CasePanel({ reminderDays }: { reminderDays: number | null }) {
     });
     setDrafts((d) => ({ ...d, [tier]: next }));
     setWarnings((w) => ({ ...w, [tier]: res.warnings }));
-    push(`Собрано: ${res.items.length} призов — проверьте и опубликуйте`, "ok");
+    toast.success(`Собрано: ${res.items.length} призов — проверьте и опубликуйте`);
   }
 
   const editingRow = rows.find((r) => r.key === editing) ?? null;
@@ -409,7 +408,7 @@ export function CasePanel({ reminderDays }: { reminderDays: number | null }) {
           reminderDays={reminderDays}
         />
       )}
-      {confirmUi}
+      
     </div>
   );
 }

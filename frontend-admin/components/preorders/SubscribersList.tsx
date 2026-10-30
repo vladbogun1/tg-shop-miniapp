@@ -6,22 +6,21 @@ import { BellOff, X } from "lucide-react";
 import { ApiError } from "@/lib/api";
 import { formatDateTime } from "@/lib/orders";
 import { PREORDERS_KEY, SUB_STATUS_LABEL, SUB_STATUS_TONE, isLiveSub, lineTitle, preordersApi, sourceLabel, type Subscriber } from "@/lib/preorders";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { Badge } from "@/components/ui/Badge";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { useConfirm } from "@shop/ui/confirm";
 
 export function SubscribersList({ subs, showLine }: { subs: Subscriber[]; /** Показывать товар в строке (список по товару/поставке). */ showLine?: boolean }) {
   const qc = useQueryClient();
-  const { push } = useToast();
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
 
   const remove = useMutation({
     mutationFn: (id: number) => preordersApi.removeSubscriber(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: PREORDERS_KEY });
-      push("Убран из очереди", "ok");
+      toast.success("Убран из очереди");
     },
-    onError: (e) => push(e instanceof ApiError ? e.message : "Не удалось убрать", "error"),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : "Не удалось убрать"),
   });
 
   async function ask(s: Subscriber) {
@@ -79,7 +78,7 @@ export function SubscribersList({ subs, showLine }: { subs: Subscriber[]; /** П
           </div>
         ))}
       </div>
-      {confirmUi}
+      
     </>
   );
 }

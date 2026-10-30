@@ -12,11 +12,10 @@ import { maxQty } from "@shop/core/orders";
 import { type ProductVariant } from "@shop/core/types";
 import { type StorefrontProduct } from "@shop/core/site";
 import { ProductGiftBanner } from "@/components/case/ProductGiftBanner";
-import { Button } from "@/components/ui/Button";
+import { Button, QtyStepper } from "@shop/ui/primitives";
 import { RatingLink } from "@/components/reviews/RatingLink";
 import { CompareToggle } from "@/components/compare/CompareToggle";
-import { QtyStepper } from "@/components/ui/QtyStepper";
-import { toast } from "@/components/ui/Toast";
+import { toast } from "@shop/ui/toast";
 import { PreorderPanel } from "@/components/preorder/PreorderPanel";
 import { useI18n } from "@/i18n/context";
 import { trackAddToCart } from "@/lib/analytics";
@@ -226,7 +225,7 @@ export function BuyBox({
       <div className={`mt-6 flex flex-wrap items-center gap-3 ${showPanel ? "hidden" : ""}`}>
         <div className="flex items-center gap-3">
           <span className="eyebrow text-[11px]">{t("qty.label")}</span>
-          <QtyStepper value={qty} onChange={setQty} min={1} max={maxQty(stock, limits)} />
+          <QtyStepper decreaseLabel={t("qty.decrease")} increaseLabel={t("qty.increase")} value={qty} onChange={setQty} min={1} max={maxQty(stock, limits)} />
         </div>
         {inCart > 0 && (
           <span className="text-[13px] font-medium text-[var(--muted)]">{t("product.inCart", { n: inCart })}</span>
@@ -241,7 +240,7 @@ export function BuyBox({
           icon={<ShoppingBag className="h-5 w-5" strokeWidth={2.25} />}
           onClick={() => {
             if (addToCart()) {
-              toast(t("product.added"));
+              toast.success(t("product.added"));
               openDrawer();
             }
           }}

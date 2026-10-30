@@ -11,9 +11,9 @@ import { useEffect, useMemo, useState } from "react";
 import { adminApi, ApiError, type AdminSpecGroup } from "@/lib/api";
 import { isValidKey, keyFromLabel } from "@/lib/catalog-admin";
 import { cn } from "@/lib/cn";
-import { useToast } from "@/lib/toast";
-import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { toast } from "@shop/ui/toast";
+import { Button } from "@shop/ui/admin-button";
+import { Modal } from "@shop/ui/overlay";
 
 const CELL =
   "h-9 w-full min-w-0 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-2.5 text-[13px] text-[var(--text)] outline-none transition-[border-color,box-shadow] placeholder:text-[var(--text-faint)] hover:border-[var(--border-2)] focus:border-[var(--accent)] focus:shadow-[var(--ring-accent)] disabled:opacity-60";
@@ -40,7 +40,6 @@ export function GroupsDialog({
   onClose: () => void;
   onSaved: (g: AdminSpecGroup[]) => void;
 }) {
-  const { push } = useToast();
   const [rows, setRows] = useState<Row[]>([]);
   const [initial, setInitial] = useState("");
   const [saving, setSaving] = useState(false);
@@ -88,11 +87,11 @@ export function GroupsDialog({
           sortOrder: (i + 1) * 10,
         }))
       );
-      push("Группы сохранены", "ok");
+      toast.success("Группы сохранены");
       onSaved(saved);
       onClose();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
     } finally {
       setSaving(false);
     }

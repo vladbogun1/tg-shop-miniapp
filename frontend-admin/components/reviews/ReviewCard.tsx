@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, MessageSquareReply, Package, Star, Trash2, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useState, type CSSProperties } from "react";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { Textarea } from "@/components/ui/Textarea";
 import { cn } from "@/lib/cn";
 import { riseItem } from "@/lib/motion";

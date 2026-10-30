@@ -11,8 +11,8 @@ import { useQuery } from "@tanstack/react-query";
 import { CASE_TIER_METAL, CASE_TIER_ORDER, type CaseTier } from "@shop/core/giftcase";
 import { CASE_TIER_LABEL, giftApi } from "@/lib/gift";
 import { cn } from "@/lib/cn";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
-import { Button } from "@/components/ui/Button";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
+import { Button } from "@shop/ui/admin-button";
 
 export function GiftCaseModal({
   open,

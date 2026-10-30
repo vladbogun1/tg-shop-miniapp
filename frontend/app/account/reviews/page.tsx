@@ -17,7 +17,7 @@ import { BonusCodeCard, ReviewForm } from "@/components/reviews/ReviewForm";
 import { PendingReviewList } from "@/components/reviews/PendingReviewList";
 import { ShopReply } from "@/components/reviews/ProductReviews";
 import { Stars } from "@/components/reviews/Stars";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/primitives";
 import { useT } from "@/i18n/context";
 import { useAccessToken } from "@/lib/auth";
 import { formatDate } from "@/lib/format";

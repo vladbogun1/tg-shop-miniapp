@@ -15,14 +15,14 @@ import { ArrowLeft, Check, ChevronLeft, ChevronRight, PartyPopper, SkipForward, 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, type TrLocale } from "@/lib/api";
 import { cn } from "@/lib/cn";
-import { isTopLayer, useOverlayLayer } from "@/lib/overlay-stack";
+import { isTopLayer, useOverlayLayer } from "@shop/ui/overlay";
 import { checkTranslation, wordDiff, type UniqueString, type WorkSet } from "@/lib/translation-check";
 import { currentText, langState, placeOf, prevSourceOf, type Bucket } from "@/lib/translation-queue";
 import { invalidateTranslations, patchTranslations } from "@/lib/translations";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { Button } from "@shop/ui/admin-button";
+import { useConfirm } from "@shop/ui/confirm";
 import { acceptText, resetText } from "@/components/translations/actions";
 import { Diff, IssueList, Kbd, KindBadge, ProductLink, SourceText, StateChip } from "@/components/translations/shared";
 
@@ -58,8 +58,7 @@ export function TranslationReview({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
-  const { push } = useToast();
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
   const byHash = useMemo(() => new Map(ws.strings.map((s) => [s.sourceHash, s])), [ws]);
   const [index, setIndex] = useState(Math.min(start, queue.length - 1));
   const [finished, setFinished] = useState(false);
@@ -116,7 +115,7 @@ export function TranslationReview({
     for (const l of langs) {
       const v = value(l);
       if (!v.trim()) {
-        push(`Впишите перевод ${l.toUpperCase()} — пустой сохранить нельзя`, "error");
+        toast.error(`Впишите перевод ${l.toUpperCase()} — пустой сохранить нельзя`);
         fieldRefs.current[l]?.focus();
         return;
       }
@@ -156,12 +155,9 @@ export function TranslationReview({
       const r = await acceptText(s, texts, own);
       if (r.outdated || r.failed) {
         invalidateTranslations(qc);
-        push(
-          r.outdated
+        toast.error(r.outdated
             ? "Оригинал изменили, пока вы смотрели. Список обновлён — проверьте текст ещё раз."
-            : `Не сохранено мест: ${r.failed}. Обновите страницу.`,
-          "error"
-        );
+            : `Не сохранено мест: ${r.failed}. Обновите страницу.`);
         return;
       }
       patchTranslations(
@@ -177,10 +173,10 @@ export function TranslationReview({
           }))
         )
       );
-      push(langs.some((l) => own[l]) ? "Перевод сохранён" : "Принято", "ok");
+      toast.success(langs.some((l) => own[l]) ? "Перевод сохранён" : "Принято");
       advance();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
     } finally {
       setBusy(false);
     }
@@ -203,9 +199,9 @@ export function TranslationReview({
       await resetText(s, l);
       setDraft({ hash, text: { ...draft.text, [l]: "" } });
       invalidateTranslations(qc);
-      push("Перевод удалён", "ok");
+      toast.success("Перевод удалён");
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось удалить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось удалить");
     } finally {
       setBusy(false);
     }
@@ -431,7 +427,7 @@ export function TranslationReview({
           </div>
         </div>
       )}
-      {confirmUi}
+      
     </div>
   );
 }

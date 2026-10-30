@@ -14,10 +14,10 @@ import { COSTING_KEY, costingApi, inputToMinor, minorToInput, type OpeningRow, t
 import { lineTitle } from "@/lib/preorders";
 import { money } from "@/lib/money";
 import { Image } from "@/lib/image";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
 import { QueryState } from "@/components/ui/QueryState";
@@ -27,7 +27,6 @@ const rowKey = (r: Pick<OpeningRow, "productId" | "variantId">) => `${r.productI
 
 export default function OpeningCostPage() {
   const qc = useQueryClient();
-  const { push } = useToast();
   const q = useQuery({ queryKey: [...COSTING_KEY, "opening"], queryFn: costingApi.opening, retry: false });
   const [onlyMissing, setOnlyMissing] = useState(true);
   const [result, setResult] = useState<Reconcile | null>(null);
@@ -37,9 +36,9 @@ export default function OpeningCostPage() {
     onSuccess: (r) => {
       setResult(r);
       qc.invalidateQueries({ queryKey: COSTING_KEY });
-      push(r.fixed > 0 ? `Выровнено: ${r.fixed} из ${r.keys}` : "Партии уже совпадают со складом", "ok");
+      toast.success(r.fixed > 0 ? `Выровнено: ${r.fixed} из ${r.keys}` : "Партии уже совпадают со складом");
     },
-    onError: (e) => push(e instanceof ApiError ? e.message : "Не удалось выровнять", "error"),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : "Не удалось выровнять"),
   });
 
   const all = q.data ?? [];
@@ -98,7 +97,6 @@ export default function OpeningCostPage() {
 
 function OpeningLine({ row }: { row: OpeningRow }) {
   const qc = useQueryClient();
-  const { push } = useToast();
   const saved = minorToInput(row.unitCostMinor);
   const [value, setValue] = useState(saved);
   const changed = value.trim() !== saved;
@@ -112,9 +110,9 @@ function OpeningLine({ row }: { row: OpeningRow }) {
       setValue(value.trim() ? minorToInput(minor) : "");
       qc.invalidateQueries({ queryKey: [...COSTING_KEY, "product", row.productId] });
       qc.invalidateQueries({ queryKey: [...COSTING_KEY, "report"] });
-      push("Сохранено", "ok");
+      toast.success("Сохранено");
     },
-    onError: (e) => push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error"),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить"),
   });
 
   const margin = minor != null && minor > 0 && row.priceMinor > 0 ? ((row.priceMinor - minor) / row.priceMinor) * 100 : null;

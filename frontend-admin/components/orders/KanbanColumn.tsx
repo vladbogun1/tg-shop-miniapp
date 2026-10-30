@@ -18,7 +18,7 @@ import type { AdminOrderCard } from "@/lib/orders-api";
 import { money } from "@/lib/money";
 import { BOARD_LABEL, BOARD_VAR, RETURNING, returningMinor, type BoardKey } from "@/lib/orders";
 import { cn } from "@/lib/cn";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { DraggableOrderCard } from "./DraggableOrderCard";
 import { OrderCard } from "./OrderCard";
 

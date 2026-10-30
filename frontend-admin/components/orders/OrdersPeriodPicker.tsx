@@ -7,7 +7,7 @@
  */
 import { useState, type ReactNode } from "react";
 import { todayIso } from "@/components/metrics/period";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { ORDERS_PERIOD_OPTIONS, type OrdersPeriod, type OrdersRange } from "@/lib/orders-period";
 

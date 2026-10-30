@@ -22,7 +22,7 @@ import { CASE_TIER_ORDER, caseRulesUrl, type CaseRarity, type CaseTier, type Gif
 import { paymentState } from "@shop/core/orders";
 import { type OrderDetail } from "@shop/core/types";
 import { GiftCaseOpening, GiftCaseOrderPanel, hasGiftCaseOrderPanel, GiftCaseRarityChip, GiftCaseSealedCard, takeGiftCaseAutoOpen, unlockCaseAudio, type GiftCaseHaptics, type CasePromoTexts, type CaseRulesLinkProps, type CaseSizeTexts, type GiftCaseTexts, type GiftOrderPanelTexts } from "@shop/ui/gift-case";
-import { Toast } from "@/components/ui/Toast";
+import { toast } from "@shop/ui/toast";
 import { useI18n, useT } from "@/i18n/context";
 import { trackGiftCaseOpen } from "@/lib/analytics";
 import { customerApi } from "@/lib/api";
@@ -131,14 +131,7 @@ export function useOrderGiftCase(order: OrderDetail, created: boolean) {
   const sealed = order.giftCaseStatus === "SEALED" && order.status !== "REJECTED";
   const openable = sealed && order.giftCaseOpenable === true;
   const [open, setOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   const prizes = useCasePrizes(tier);
-
-  useEffect(() => {
-    if (!toast) return;
-    const id = window.setTimeout(() => setToast(null), 3200);
-    return () => window.clearTimeout(id);
-  }, [toast]);
 
   // Straight from the checkout: show the case screen once by itself — but only when it can be
   // opened. An unpaid order keeps the wish until it gets paid on this page.
@@ -245,7 +238,7 @@ export function useOrderGiftCase(order: OrderDetail, created: boolean) {
   const onOpenRefused = useCallback(
     (code: "GIFT_CASE_UNPAID" | "GIFT_CASE_ALREADY_OPENED") => {
       setOpen(false);
-      setToast(t(code === "GIFT_CASE_UNPAID" ? "case.lockedText" : "case.alreadyOpened"));
+      toast.success(t(code === "GIFT_CASE_UNPAID" ? "case.lockedText" : "case.alreadyOpened"), { duration: 3200 });
       void qc.invalidateQueries({ queryKey: ["me", "orders"] });
     },
     [qc, t]
@@ -306,7 +299,6 @@ export function useOrderGiftCase(order: OrderDetail, created: boolean) {
         onClosableChange={onClosableChange}
         rules={rules}
       />
-      <Toast message={toast} />
     </>
   );
 

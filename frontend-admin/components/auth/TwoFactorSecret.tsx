@@ -10,23 +10,22 @@ import { useState } from "react";
 import { copyText } from "@/components/orders/CopyButton";
 import { QrCode } from "@/components/auth/QrCode";
 import type { TwoFactorSetup } from "@/lib/api";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 
 export function groupSecret(secret: string): string {
   return secret.replace(/(.{4})/g, "$1 ").trim();
 }
 
 export function TwoFactorSecret({ setup }: { setup: TwoFactorSetup }) {
-  const { push } = useToast();
   const [copied, setCopied] = useState(false);
 
   async function copy() {
     if (await copyText(setup.secret)) {
       setCopied(true);
-      push("Ключ скопирован", "ok");
+      toast.success("Ключ скопирован");
       setTimeout(() => setCopied(false), 1500);
     } else {
-      push("Не удалось скопировать — выделите ключ вручную", "error");
+      toast.error("Не удалось скопировать — выделите ключ вручную");
     }
   }
 

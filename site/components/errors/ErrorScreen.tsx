@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { buttonClass } from "@/components/ui/button-styles";
+import { buttonClass } from "@shop/ui/button-styles";
 import { useI18n } from "@/i18n/context";
 import { Lost404 } from "@/components/mascot/Lost404";
 
@@ -24,14 +24,14 @@ export function ErrorScreen({ code, onRetry }: { code: 404 | 500; onRetry?: () =
         <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-[var(--muted)]">{text}</p>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
           {onRetry && (
-            <button type="button" onClick={onRetry} className={buttonClass("accent")}>
+            <button type="button" onClick={onRetry} className={buttonClass("site", "accent")}>
               {t("common.retry")}
             </button>
           )}
-          <Link href={href("/")} className={buttonClass("surface")}>
+          <Link href={href("/")} className={buttonClass("site", "surface")}>
             {t("common.toHome")}
           </Link>
-          <Link href={href("/catalog")} className={buttonClass(onRetry ? "surface" : "accent")}>
+          <Link href={href("/catalog")} className={buttonClass("site", onRetry ? "surface" : "accent")}>
             {t("common.toCatalog")}
           </Link>
         </div>

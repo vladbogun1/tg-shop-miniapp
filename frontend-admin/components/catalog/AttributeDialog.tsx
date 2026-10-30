@@ -20,14 +20,14 @@ import {
 } from "@/lib/api";
 import { isValidKey, keyFromLabel, optionValueFrom, plural, productsWord, SPEC_TYPE_LABEL } from "@/lib/catalog-admin";
 import { cn } from "@/lib/cn";
-import { useToast } from "@/lib/toast";
-import { Button } from "@/components/ui/Button";
+import { toast } from "@shop/ui/toast";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
-import { Modal } from "@/components/ui/Modal";
+import { Modal } from "@shop/ui/overlay";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { Toggle } from "@/components/ui/Toggle";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { useConfirm } from "@shop/ui/confirm";
 import { TagInput } from "./TagInput";
 
 const CELL =
@@ -167,8 +167,7 @@ export function AttributeDialog({
   onClose: () => void;
   onSaved: (a: AdminSpecAttribute) => void;
 }) {
-  const { push } = useToast();
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
   const sortedGroups = useMemo(() => [...groups].sort((a, b) => a.sortOrder - b.sortOrder), [groups]);
   const defaultGroup = sortedGroups.find((g) => g.key === "main")?.key ?? sortedGroups[0]?.key ?? "main";
   const [d, setD] = useState<Draft>(() => toDraft(attribute, defaultGroup));
@@ -295,7 +294,7 @@ export function AttributeDialog({
       const saved = attribute
         ? await adminApi.updateSpecAttribute(attribute.id, body(), force)
         : await adminApi.createSpecAttribute(body());
-      push(attribute ? "Характеристика сохранена" : "Характеристика добавлена", "ok");
+      toast.success(attribute ? "Характеристика сохранена" : "Характеристика добавлена");
       onSaved(saved);
       onClose();
     } catch (e) {
@@ -312,7 +311,7 @@ export function AttributeDialog({
           return;
         }
       } else {
-        push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
+        toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
       }
     } finally {
       setSaving(false);
@@ -360,9 +359,9 @@ export function AttributeDialog({
           ),
       }));
       setMergeFor(null);
-      push(`«${o.labelRu}» объединена с «${target?.labelRu ?? mergeTarget}» — сохраните характеристику`, "ok");
+      toast.success(`«${o.labelRu}» объединена с «${target?.labelRu ?? mergeTarget}» — сохраните характеристику`);
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось объединить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось объединить");
     } finally {
       setMerging(false);
     }
@@ -751,7 +750,7 @@ export function AttributeDialog({
           )}
         </div>
       </Modal>
-      {confirmUi}
+      
     </>
   );
 }

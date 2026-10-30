@@ -5,6 +5,7 @@ export const uk: RuDictionary = {
   "common.back": "Назад",
   "common.close": "Закрити",
   "common.cancel": "Скасувати",
+  "common.confirm": "Підтвердити",
   "common.retry": "Повторити",
   "common.loading": "Завантаження…",
   "common.toCatalog": "До каталогу",

@@ -7,8 +7,7 @@ import Link from "next/link";
 import { payableMinor, paymentState } from "@shop/core/orders";
 import { shortOrderId } from "@shop/core/format";
 import { type OrderSummary } from "@shop/core/types";
-import { Button } from "@/components/ui/Button";
-import { StatusChip } from "@/components/ui/StatusChip";
+import { Button, StatusChip } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import { api } from "@/lib/api";
 import { useFmt } from "@/lib/use-fmt";
@@ -76,7 +75,7 @@ function OrderRow({ order }: { order: OrderSummary }) {
             <span className="font-display text-[16px] font-bold tracking-[.02em] text-[var(--ink)]">
               {t("account.orders.number", { id: shortOrderId(order.id) })}
             </span>
-            <StatusChip status={order.status} />
+            <StatusChip status={order.status} label={t(`status.${order.status}`)} />
             <PaymentBadge state={paymentState(order)} />
             {order.giftCaseStatus === "SEALED" && order.status !== "REJECTED" &&
               (order.giftCaseOpenable ? (

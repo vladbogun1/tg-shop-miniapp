@@ -18,7 +18,7 @@ import { Suspense, useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { customerOf, ProductThumb, ThreadSourceBadge, ThreadStatusBadges, threadTopic } from "@/components/support/parts";
 import { SupportThreadDrawer } from "@/components/support/SupportThreadDrawer";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
 import { QueryState } from "@/components/ui/QueryState";

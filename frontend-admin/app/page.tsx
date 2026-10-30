@@ -30,7 +30,7 @@ import { Search, RefreshCw, X, Plus } from "lucide-react";
 import { payableMinor } from "@shop/core/orders";
 import { ApiError, type OrderCardDto, type OrderStatus } from "@/lib/api";
 import { changeStatusConfirmingUnpaid, ordersApi, type AdminBoard } from "@/lib/orders-api";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { useConfirm } from "@shop/ui/confirm";
 import {
   BOARD_ORDER,
   CLOSED_STATUSES,
@@ -47,11 +47,11 @@ import { OrdersPeriodPicker } from "@/components/orders/OrdersPeriodPicker";
 import { useDebounced } from "@/lib/use-debounced";
 import { useIsDesktop } from "@/lib/use-media";
 import { useFillHeight } from "@/lib/use-fill-height";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { refreshInbox } from "@/lib/inbox";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { QueryState } from "@/components/ui/QueryState";
 import { TodayStrip } from "@/components/metrics/TodayStrip";
@@ -80,8 +80,7 @@ const NEEDS_MODAL: OrderStatus[] = ["SHIPPED", "REJECTED", "DELIVERED"];
 
 export default function BoardPage() {
   const qc = useQueryClient();
-  const { push } = useToast();
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
   const isDesktop = useIsDesktop();
   const [view, setView] = useState<View>("board");
   const [search, setSearch] = useState("");
@@ -199,7 +198,7 @@ export default function BoardPage() {
         if (prev) qc.setQueryData(boardKey, prev); // declined — put the card back
         return false;
       }
-      push(`Статус: ${STATUS_LABEL[payload.status]}`, "ok");
+      toast.success(`Статус: ${STATUS_LABEL[payload.status]}`);
       setPending(null);
       setPendingInTransit(false);
       refresh();
@@ -208,7 +207,7 @@ export default function BoardPage() {
       return true;
     } catch (e) {
       if (prev) qc.setQueryData(boardKey, prev); // rollback
-      push(e instanceof ApiError ? e.message : "Ошибка смены статуса", "error");
+      toast.error(e instanceof ApiError ? e.message : "Ошибка смены статуса");
       return false;
     } finally {
       setChanging(false);
@@ -217,13 +216,13 @@ export default function BoardPage() {
 
   function requestMove(id: string, from: OrderStatus, to: OrderStatus) {
     if (!canTransition(from, to)) {
-      push(from === "DELIVERED" && to === "REJECTED" ? DELIVERED_REJECT_HINT : "Недопустимый переход статуса", "error");
+      toast.error(from === "DELIVERED" && to === "REJECTED" ? DELIVERED_REJECT_HINT : "Недопустимый переход статуса");
       return;
     }
     const card = findCard(id);
     if (NEEDS_MODAL.includes(to)) {
       if (card) setPending({ order: card, to });
-      else push("Заказ не найден на доске — обновите", "error");
+      else toast.error("Заказ не найден на доске — обновите");
     } else {
       void commitStatus({ status: to }, id);
     }
@@ -255,7 +254,7 @@ export default function BoardPage() {
     } else if (from === "DELIVERED") {
       openOrder(id, "return");
     } else {
-      push("Назад едет только отправленный или доставленный заказ", "error");
+      toast.error("Назад едет только отправленный или доставленный заказ");
     }
   }
 
@@ -457,7 +456,7 @@ export default function BoardPage() {
         onConfirm={(payload) => (pending ? commitStatus(payload, pending.order.id) : false)}
       />
       {/* After the status modal so «Отправить без предоплаты?» stacks above it. */}
-      {confirmUi}
+      
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { getTelegramInitData } from "@/lib/telegram";
 import { Login } from "@/components/auth/Login";
 import { Shell } from "@/components/layout/Shell";
 import { CenterSpinner } from "@/components/ui/Spinner";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 
 /**
  * Signed in → the app. Otherwise the sign-in: inside Telegram the first factor is tried with the
@@ -25,7 +25,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 function SignedIn({ children }: { children: React.ReactNode }) {
-  const { push } = useToast();
   const qc = useQueryClient();
   const [authed, setAuthed] = useState(false);
   const [booting, setBooting] = useState(true);
@@ -49,7 +48,7 @@ function SignedIn({ children }: { children: React.ReactNode }) {
           }
         } catch (e) {
           // Not an admin, expired/used initData, locked — the password form stays available.
-          if (!cancelled && e instanceof ApiError && e.status === 429) push(e.message, "error");
+          if (!cancelled && e instanceof ApiError && e.status === 429) toast.error(e.message);
         }
       }
       if (!cancelled) setBooting(false);
@@ -65,7 +64,7 @@ function SignedIn({ children }: { children: React.ReactNode }) {
       cancelled = true;
       off();
     };
-  }, [push, qc]);
+  }, [qc]);
 
   if (booting) return <CenterSpinner label="Загрузка…" />;
   if (!authed)

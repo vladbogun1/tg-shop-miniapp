@@ -11,7 +11,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { isCaseBonus, reviewBonusText } from "@shop/core/bonuses";
 import { type BonusCode, type MyReview, type PendingReviewLine, type ReviewStatus, type SubmitReviewResult } from "@shop/core/types";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/primitives";
 import { CopyButton } from "@/components/ui/CopyButton";
 import type { MessageKey } from "@/i18n";
 import { useI18n } from "@/i18n/context";

@@ -25,11 +25,11 @@ import {
   type SupportMessage,
 } from "@/lib/support-api";
 import { useCoarsePointer } from "@/lib/use-media";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { Bubble } from "@/components/orders/OrderChat";
 import { ChatDaySection, useChatDays } from "@/components/orders/ChatDays";
-import { Button } from "@/components/ui/Button";
-import { Lightbox } from "@/components/ui/Lightbox";
+import { Button } from "@shop/ui/admin-button";
+import { Lightbox } from "@shop/ui/overlay";
 import { sessionStore } from "@shop/core/storage";
 
 const messageTime = (m: SupportMessage) => m.createdAt;
@@ -77,7 +77,6 @@ const ACCEPT = "image/*,application/pdf";
 
 export function SupportChat({ threadId, closed }: { threadId: string; closed?: boolean }) {
   const qc = useQueryClient();
-  const { push } = useToast();
   const coarse = useCoarsePointer();
   const [text, setTextState] = useState(() => loadDraft(threadId));
   const [sending, setSending] = useState(false);
@@ -154,7 +153,7 @@ export function SupportChat({ threadId, closed }: { threadId: string; closed?: b
         if (box) box.scrollTop = box.scrollHeight - prevHeight + prevTop;
       });
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось загрузить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось загрузить");
     } finally {
       setLoadingOlder(false);
     }
@@ -174,7 +173,7 @@ export function SupportChat({ threadId, closed }: { threadId: string; closed?: b
       afterSend(await supportApi.send(threadId, { type: "TEXT", text: t }));
       setText("");
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось отправить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось отправить");
     } finally {
       setSending(false);
     }
@@ -183,7 +182,7 @@ export function SupportChat({ threadId, closed }: { threadId: string; closed?: b
   async function uploadFile(file: File) {
     const isImage = file.type.startsWith("image/");
     if (!isImage && file.type !== "application/pdf") {
-      push("Можно отправить изображение или PDF", "error");
+      toast.error("Можно отправить изображение или PDF");
       return;
     }
     setUploading(true);
@@ -198,7 +197,7 @@ export function SupportChat({ threadId, closed }: { threadId: string; closed?: b
         })
       );
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось загрузить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось загрузить");
     } finally {
       setUploading(false);
     }

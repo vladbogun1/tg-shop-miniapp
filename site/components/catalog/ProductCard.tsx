@@ -7,7 +7,7 @@
  */
 import { Bell, Check, ShoppingBag, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
-import { toast } from "@/components/ui/Toast";
+import { toast } from "@shop/ui/toast";
 import { useI18n } from "@/i18n/context";
 import { trackAddToCart } from "@/lib/analytics";
 import type { CardProduct } from "@/lib/card";
@@ -148,7 +148,7 @@ export function ProductCard({ product, priority = false }: { product: CardProduc
             onClick={() => {
               add(product, null, 1);
               trackAddToCart(product.id, null, 1);
-              toast(t("product.added"));
+              toast.success(t("product.added"));
             }}
             className="nb-press tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[rgba(255,102,0,.55)] bg-[var(--accent-soft)] px-3 text-[12px] font-bold text-[var(--accent-hi)] hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)] sm:text-[13px]"
           >

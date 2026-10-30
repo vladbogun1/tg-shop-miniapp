@@ -3,7 +3,7 @@
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 
 /** Copies text to the clipboard; works in the Telegram WebView too (textarea fallback). */
 export async function copyText(text: string): Promise<boolean> {
@@ -42,7 +42,6 @@ export function CopyButton({
   label?: string;
   className?: string;
 }) {
-  const { push } = useToast();
   const [done, setDone] = useState(false);
   if (!value) return null;
   return (
@@ -56,7 +55,7 @@ export function CopyButton({
           setDone(true);
           setTimeout(() => setDone(false), 1200);
         } else {
-          push("Не удалось скопировать", "error");
+          toast.error("Не удалось скопировать");
         }
       }}
       className={cn(

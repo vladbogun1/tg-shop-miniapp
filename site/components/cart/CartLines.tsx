@@ -3,7 +3,7 @@
 /** Cart line list + totals, shared by the drawer and the /cart page. */
 import { AlertTriangle, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { QtyStepper } from "@/components/ui/QtyStepper";
+import { QtyStepper } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import { CartSweeper } from "@/components/mascot/scenes";
 import { useCart, type CartLine } from "@/lib/cart";
@@ -75,7 +75,7 @@ function CartRow({ line, onNavigate, compact }: { line: CartLine; onNavigate?: (
         )}
         <div className="mt-auto flex flex-wrap items-center justify-between gap-2">
           {!unavailable ? (
-            <QtyStepper
+            <QtyStepper decreaseLabel={t("qty.decrease")} increaseLabel={t("qty.increase")}
               size="sm"
               value={line.quantity}
               min={1}

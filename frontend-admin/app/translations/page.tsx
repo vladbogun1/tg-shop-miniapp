@@ -28,11 +28,11 @@ import {
   type TypeFilter,
 } from "@/lib/translation-queue";
 import { invalidateTranslations, useTranslationExport, useTranslationStats } from "@/lib/translations";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { useDebounced } from "@/lib/use-debounced";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Button } from "@/components/ui/Button";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { Button } from "@shop/ui/admin-button";
+import { useConfirm } from "@shop/ui/confirm";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -60,8 +60,7 @@ const EMPTY: Record<Bucket, { title: string; text: string }> = {
 
 export default function TranslationsPage() {
   const qc = useQueryClient();
-  const { push } = useToast();
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
   const exportQ = useTranslationExport();
   const { refetch: refetchStats } = useTranslationStats();
   const ws = useMemo(() => (exportQ.data ? buildWorkSet(exportQ.data.uk, exportQ.data.en) : null), [exportQ.data]);
@@ -124,7 +123,7 @@ export default function TranslationsPage() {
     setBulkBusy(true);
     try {
       const r = await acceptAll(list, langs);
-      push(
+      (r.outdated || r.failed ? toast.info : toast.success)(
         r.outdated || r.failed
           ? `Принято ${r.done}; ${[
               r.outdated ? `оригинал изменился у ${r.outdated}` : "",
@@ -133,11 +132,10 @@ export default function TranslationsPage() {
             ]
               .filter(Boolean)
               .join(", ")} — они остались в списке`
-          : `Принято: ${r.done}`,
-        r.outdated || r.failed ? "info" : "ok"
+          : `Принято: ${r.done}`
       );
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось принять", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось принять");
     } finally {
       setBulkBusy(false);
       invalidateTranslations(qc);
@@ -304,7 +302,7 @@ export default function TranslationsPage() {
           <TranslationQueue key={`${active}|${scope}|${type}|${dq}`} strings={list} langs={langs} onOpen={openReview} />
         )}
       </div>
-      {confirmUi}
+      
     </div>
   );
 }

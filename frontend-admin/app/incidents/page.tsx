@@ -14,13 +14,13 @@ import { useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useIsSuperAdmin } from "@/components/layout/Shell";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Textarea } from "@/components/ui/Textarea";
 import { apiGet, apiPost, ApiError } from "@/lib/api";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { formatDateTime } from "@shop/core/time";
 
 interface Incident {
@@ -108,7 +108,6 @@ export default function IncidentsPage() {
 
 function IncidentCard({ i }: { i: Incident }) {
   const qc = useQueryClient();
-  const toast = useToast();
   const [closing, setClosing] = useState(false);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -122,7 +121,7 @@ function IncidentCard({ i }: { i: Incident }) {
       setClosing(false);
       setText("");
     } catch (e) {
-      toast.push(e instanceof ApiError ? e.message : "Не получилось", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не получилось");
     } finally {
       setBusy(false);
     }

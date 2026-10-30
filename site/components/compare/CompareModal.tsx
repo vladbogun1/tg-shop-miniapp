@@ -23,7 +23,7 @@ import { useCompare } from "@/lib/compare";
 import { copyText, useEscape, useScrollLock } from "@/lib/hooks";
 import { useFmt } from "@/lib/use-fmt";
 import { stockOf } from "@/lib/stock";
-import { toast } from "@/components/ui/Toast";
+import { toast } from "@shop/ui/toast";
 import { CompareTable } from "./CompareTable";
 import { localStore } from "@shop/core/storage";
 
@@ -155,7 +155,7 @@ function Body({ onClose }: { onClose: () => void }) {
     url.search = "";
     url.hash = "";
     url.searchParams.set("compare", group.items.map((p) => p.slug).join(","));
-    if (await copyText(url.toString())) toast(t("compare.linkCopied"));
+    if (await copyText(url.toString())) toast.success(t("compare.linkCopied"));
   };
 
   return (

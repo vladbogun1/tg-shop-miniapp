@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { WebLoginStart, WebLoginStatus } from "@shop/core/site";
 import { LogoFull } from "@/components/layout/Logo";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/primitives";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { useI18n } from "@/i18n/context";
 import { api, ApiError } from "@/lib/api";

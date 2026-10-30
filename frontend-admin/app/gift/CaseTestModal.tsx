@@ -23,10 +23,10 @@ import { CASE_RARITY_LABEL, CASE_TIER_LABEL, giftApi, type CaseDraftItem, type C
 import { cn } from "@/lib/cn";
 import { resolveImageSrc } from "@/lib/image";
 import { money } from "@/lib/money";
-import { useOverlayLayer } from "@/lib/overlay-stack";
-import { useToast } from "@/lib/toast";
-import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { useOverlayLayer } from "@shop/ui/overlay";
+import { toast } from "@shop/ui/toast";
+import { Button } from "@shop/ui/admin-button";
+import { Modal } from "@shop/ui/overlay";
 import { Toggle } from "@/components/ui/Toggle";
 import { formatNumber } from "@shop/core/money";
 
@@ -133,7 +133,6 @@ export function CaseTestModal({
   /** The case builder's unpublished draft: tested instead of the saved prizes. */
   draft?: CaseDraftItem[] | null;
 }) {
-  const { push } = useToast();
   const [fast, setFast] = useState(false);
   const [busy, setBusy] = useState<number | null>(null);
   // As for an order with a low-margin product: product prizes get the tier's share, discounts the rest.
@@ -162,12 +161,12 @@ export function CaseTestModal({
       const r = addRun(byTierRef.current[key] ?? EMPTY, res);
       byTierRef.current = { ...byTierRef.current, [key]: r.next };
       setByTier(byTierRef.current);
-      if (r.restarted) push("Шансы изменились — статистика теста начата заново", "ok");
+      if (r.restarted) toast.success("Шансы изменились — статистика теста начата заново");
     },
-    [push]
+    []
   );
 
-  const fail = useCallback((e: unknown) => push(e instanceof ApiError ? e.message : "Не удалось открыть кейс", "error"), [push]);
+  const fail = useCallback((e: unknown) => toast.error(e instanceof ApiError ? e.message : "Не удалось открыть кейс"), []);
 
   async function run(count: number) {
     setBusy(count);

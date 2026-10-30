@@ -10,8 +10,8 @@ import { ExternalLink, Lock, PencilLine, RotateCcw, UserRound } from "lucide-rea
 import Link from "next/link";
 import { useState } from "react";
 import { UserProfileDrawer } from "@/components/users/UserProfileDrawer";
-import { Button } from "@/components/ui/Button";
-import { Drawer } from "@/components/ui/Drawer";
+import { Button } from "@shop/ui/admin-button";
+import { Drawer } from "@shop/ui/overlay";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ApiError, type UserCardDto } from "@/lib/api";
 import { formatDateTime } from "@/lib/orders";
@@ -23,8 +23,8 @@ import {
   supportApi,
   type SupportThread,
 } from "@/lib/support-api";
-import { useToast } from "@/lib/toast";
-import { useBackToClose } from "@/lib/use-back-close";
+import { toast } from "@shop/ui/toast";
+import { useBackToClose } from "@shop/ui/overlay";
 import { SupportChat } from "./SupportChat";
 import { customerOf, ProductThumb, ThreadSourceBadge, ThreadStatusBadges, threadTopic } from "./parts";
 
@@ -39,7 +39,6 @@ export function SupportThreadDrawer({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
-  const { push } = useToast();
   const [busy, setBusy] = useState(false);
   const [profile, setProfile] = useState<UserCardDto | null>(null);
   const close = useBackToClose(!!threadId, onClose, { marker: "supportDrawer" });
@@ -58,10 +57,10 @@ export function SupportThreadDrawer({
     try {
       const next = thread.status === "OPEN" ? await supportApi.close(thread.id) : await supportApi.reopen(thread.id);
       qc.setQueryData([...SUPPORT_KEY, "thread", thread.id], next);
-      push(next.status === "CLOSED" ? "Вопрос закрыт" : "Вопрос открыт снова", "ok");
+      toast.success(next.status === "CLOSED" ? "Вопрос закрыт" : "Вопрос открыт снова");
       refreshSupport(qc);
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось изменить статус", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось изменить статус");
     } finally {
       setBusy(false);
     }
@@ -84,7 +83,7 @@ export function SupportThreadDrawer({
         }
       );
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось открыть профиль", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось открыть профиль");
     }
   }
 

@@ -24,9 +24,9 @@ import {
 import { cardsApi, type CardImportItem, type CardImportResult } from "@/lib/cards-api";
 import { invalidateCards } from "@/lib/cards";
 import { cn } from "@/lib/cn";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Toggle } from "@/components/ui/Toggle";
@@ -73,7 +73,6 @@ export function AiCards({
   preselectLabel?: string;
 }) {
   const qc = useQueryClient();
-  const { push } = useToast();
 
   // ---- 1. selection + prompt ------------------------------------------------
   const [manual, setManual] = useState<Set<string>>(() => new Set(preselect));
@@ -247,10 +246,10 @@ export function AiCards({
       const rejected = new Set(result.rejected.map((x) => x.productId));
       const sent = new Set(payload.map((p) => p.productId).filter((id) => !rejected.has(id)));
       setReviews((prev) => (prev ?? []).filter((r) => !sent.has(r.item.id)));
-      push(`Сохранено карточек: ${result.applied}${result.rejected.length ? `, отклонено: ${result.rejected.length}` : ""}`, result.rejected.length ? "error" : "ok");
+      (result.rejected.length ? toast.error : toast.success)(`Сохранено карточек: ${result.applied}${result.rejected.length ? `, отклонено: ${result.rejected.length}` : ""}`);
     } catch (e) {
       setSummary({ error: e instanceof ApiError ? e.message : "ошибка сети", titles });
-      push("Не удалось сохранить — см. итог", "error");
+      toast.error("Не удалось сохранить — см. итог");
     } finally {
       setSending(false);
       invalidateCards(qc);
@@ -449,7 +448,7 @@ export function AiCards({
                 setAnswer(t);
                 check(t);
               } catch {
-                push("Браузер не дал прочитать буфер — вставьте Ctrl+V", "info");
+                toast.info("Браузер не дал прочитать буфер — вставьте Ctrl+V");
               }
             }}
           >

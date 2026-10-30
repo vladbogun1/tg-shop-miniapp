@@ -21,7 +21,7 @@ import { paymentState } from "@shop/core/orders";
 import { shortOrderId } from "@shop/core/format";
 import { type OrderDetail } from "@shop/core/types";
 import { GiftCaseOpening, GiftCaseOrderPanel, hasGiftCaseOrderPanel, GiftCaseRarityChip, GiftCaseSealedCard, takeGiftCaseAutoOpen, unlockCaseAudio, type CasePromoTexts, type CaseRulesLinkProps, type CaseSizeTexts, type GiftCaseTexts, type GiftOrderPanelTexts } from "@shop/ui/gift-case";
-import { toast } from "@/components/ui/Toast";
+import { toast } from "@shop/ui/toast";
 import type { MessageKey } from "@/i18n";
 import { useI18n } from "@/i18n/context";
 import { trackGiftCaseOpen } from "@/lib/analytics";
@@ -231,7 +231,7 @@ export function useOrderGiftCase(order: OrderDetail) {
   const onOpenRefused = useCallback(
     (code: "GIFT_CASE_UNPAID" | "GIFT_CASE_ALREADY_OPENED") => {
       setOpen(false);
-      toast(t(code === "GIFT_CASE_UNPAID" ? "case.lockedText" : "case.alreadyOpened"), code === "GIFT_CASE_UNPAID" ? "error" : "ok");
+      (code === "GIFT_CASE_UNPAID" ? toast.error : toast.success)(t(code === "GIFT_CASE_UNPAID" ? "case.lockedText" : "case.alreadyOpened"));
       void qc.invalidateQueries({ queryKey: ["me", "orders"] });
     },
     [qc, t]

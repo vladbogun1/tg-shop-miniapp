@@ -32,7 +32,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, ImagePlus, Star, UploadCloud, X } from "lucide-react";
 import { Image } from "@/lib/image";
 import { cn } from "@/lib/cn";
-import { useOverlayLayer } from "@/lib/overlay-stack";
+import { useOverlayLayer } from "@shop/ui/overlay";
 import { Spinner } from "@/components/ui/Spinner";
 
 /** Stable ids even if the same key appears twice: «key#occurrence». */

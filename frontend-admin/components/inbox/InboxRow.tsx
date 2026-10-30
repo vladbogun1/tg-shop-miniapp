@@ -23,7 +23,7 @@ import {
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ActionSheet, type SheetAction } from "@/components/orders/ActionSheet";
 import { StatusBadge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import type { OrderStatus } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import {

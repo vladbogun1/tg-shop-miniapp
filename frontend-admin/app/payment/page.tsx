@@ -41,15 +41,15 @@ import { useUnsavedGuard } from "@/lib/use-unsaved-guard";
 import { cn } from "@/lib/cn";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
-import { Modal } from "@/components/ui/Modal";
+import { Modal } from "@shop/ui/overlay";
 import { QueryState } from "@/components/ui/QueryState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Toggle } from "@/components/ui/Toggle";
 import { ease } from "@/lib/motion";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 
 interface OptionRow {
   /** Stable key for React while rows move (id is absent on new rows). */
@@ -91,7 +91,6 @@ function prepayMinor(o: OptionRow): number {
 }
 
 export default function PaymentPage() {
-  const { push } = useToast();
 
   const optionsQ = useQuery({
     queryKey: ["payment-options", "all"],
@@ -167,7 +166,7 @@ export default function PaymentPage() {
 
   async function save() {
     if (blocker) {
-      push(blocker, "error");
+      toast.error(blocker);
       return;
     }
     setSaving(true);
@@ -184,9 +183,9 @@ export default function PaymentPage() {
       const rows = toRows(saved);
       setOptions(rows);
       setBaseOptions(optionsSnapshot(rows));
-      push("Способы оплаты сохранены", "ok");
+      toast.success("Способы оплаты сохранены");
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
     } finally {
       setSaving(false);
     }

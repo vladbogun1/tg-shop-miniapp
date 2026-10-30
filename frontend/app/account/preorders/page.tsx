@@ -10,7 +10,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Truck, WifiOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PRE_COLOR } from "@/components/preorder/PreorderBlock";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { spring } from "@/lib/motion";

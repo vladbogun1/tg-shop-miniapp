@@ -38,7 +38,7 @@ import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { PaymentBadge } from "@/components/orders/PaymentBadge";
 import { SourceBadge } from "@/components/orders/SourceBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { QueryState } from "@/components/ui/QueryState";

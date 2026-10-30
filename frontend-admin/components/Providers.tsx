@@ -2,7 +2,9 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
-import { ToastProvider } from "@/lib/toast";
+import { AdminConfirmHost } from "@shop/ui/confirm/admin";
+import { UiLookProvider } from "@shop/ui/look";
+import { Toaster } from "@shop/ui/toast";
 import { AuthGate } from "@/components/auth/AuthGate";
 import { PwaBoot } from "@/components/pwa/AppRuntime";
 
@@ -23,9 +25,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       <PwaBoot />
-      <ToastProvider>
+      <UiLookProvider look="admin">
         <AuthGate>{children}</AuthGate>
-      </ToastProvider>
+        <Toaster />
+        <AdminConfirmHost />
+      </UiLookProvider>
     </QueryClientProvider>
   );
 }

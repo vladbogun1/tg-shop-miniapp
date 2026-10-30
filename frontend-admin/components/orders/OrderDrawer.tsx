@@ -39,18 +39,18 @@ import {
 } from "@/lib/orders-api";
 import type { MovementChannel } from "@/lib/orders";
 import { allowedTargets, shortId, STATUS_ACTION_LABEL, STATUS_LABEL } from "@/lib/orders";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { cn } from "@/lib/cn";
 import { useIsDesktop } from "@/lib/use-media";
-import { useBackToClose } from "@/lib/use-back-close";
+import { useBackToClose } from "@shop/ui/overlay";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { PaymentBadge } from "@/components/orders/PaymentBadge";
 import { SourceBadge } from "@/components/orders/SourceBadge";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Drawer } from "@/components/ui/Drawer";
+import { Drawer } from "@shop/ui/overlay";
 import { QueryState } from "@/components/ui/QueryState";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { useConfirm } from "@shop/ui/confirm";
 import { UserProfileDrawer } from "@/components/users/UserProfileDrawer";
 import { useIsSuperAdmin } from "@/components/layout/Shell";
 import { useBatchProductTools } from "@/components/preorders/BatchItemProduct";
@@ -114,9 +114,8 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
   useEffect(() => setJumped(null), [propId]);
   const orderId = propId ? jumped ?? propId : null;
   const qc = useQueryClient();
-  const { push } = useToast();
   const isDesktop = useIsDesktop();
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
   const [tab, setTab] = useState<Tab>(initialTab);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [pendingTarget, setPendingTarget] = useState<OrderStatus | null>(null);
@@ -141,9 +140,9 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
       const all = await qc.fetchQuery({ queryKey: ["products", false], queryFn: () => adminApi.products(), staleTime: 60_000 });
       const p = all.find((x) => x.id === productId);
       if (p) productTools.openPreview(p);
-      else push("Товар в архиве — его карточки больше нет", "error");
+      else toast.error("Товар в архиве — его карточки больше нет");
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось открыть товар", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось открыть товар");
     }
   }
   const [profile, setProfile] = useState<UserCardDto | null>(null);
@@ -223,7 +222,7 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
   /** Runs one action with its own spinner; returns true on success. */
   async function run(key: string, fn: () => Promise<unknown>, okText?: string, errText = "Ошибка"): Promise<boolean> {
     if (!orderId) {
-      push("Заказ не выбран — откройте его заново", "error");
+      toast.error("Заказ не выбран — откройте его заново");
       return false;
     }
     setBusyKey(key);
@@ -233,11 +232,11 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
       if (updated && typeof updated === "object" && "id" in updated && updated.id === orderId) {
         qc.setQueryData(["order", orderId], updated);
       }
-      if (okText) push(okText, "ok");
+      if (okText) toast.success(okText);
       refreshLists();
       return true;
     } catch (e) {
-      push(e instanceof ApiError ? e.message : errText, "error");
+      toast.error(e instanceof ApiError ? e.message : errText);
       return false;
     } finally {
       setBusyKey(null);
@@ -247,7 +246,7 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
   async function applyStatus(payload: StatusChangePayload): Promise<boolean> {
     const id = orderId;
     if (!id) {
-      push("Заказ не выбран — откройте его заново", "error");
+      toast.error("Заказ не выбран — откройте его заново");
       return false;
     }
     // SHIPPED without the online payment asks the admin first (server code ORDER_UNPAID_SHIP).
@@ -263,7 +262,7 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
       "Ошибка смены статуса"
     );
     if (ok && !declined) {
-      push(`Статус: ${STATUS_LABEL[payload.status]}`, "ok");
+      toast.success(`Статус: ${STATUS_LABEL[payload.status]}`);
       setPendingTarget(null);
       qc.invalidateQueries({ queryKey: ["products"] });
     }
@@ -332,11 +331,11 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
     try {
       const updated = await ordersApi.registerReturn(id, body);
       qc.setQueryData(["order", id], updated);
-      push("Возврат оформлен", "ok");
+      toast.success("Возврат оформлен");
       setReturnOpen(false);
     } catch (e) {
       // Also MONO_REFUND_FAILED: the bank refused before anything was saved — the wizard stays open.
-      push(e instanceof ApiError ? e.message : "Не удалось оформить возврат", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось оформить возврат");
       return;
     } finally {
       setBusyKey(null);
@@ -392,10 +391,7 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
       qc.invalidateQueries({ queryKey: ["products"] });
       qc.invalidateQueries({ queryKey: ["order", id] });
       qc.setQueryData(["order", c.id], c);
-      push(
-        `Обмен оформлен — создан заказ #${c.id.slice(0, 8)}${body.targetStatus === "APPROVED" ? ", ждёт отправки" : " в «Новых»"}`,
-        "ok"
-      );
+      toast.success(`Обмен оформлен — создан заказ #${c.id.slice(0, 8)}${body.targetStatus === "APPROVED" ? ", ждёт отправки" : " в «Новых»"}`);
       setJumped(c.id);
     }
   }
@@ -417,7 +413,7 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
       qc.invalidateQueries({ queryKey: ["merge-candidates"] });
       qc.setQueryData(["order", t.id], t);
       refreshLists();
-      push(`Заказы объединены в ${shortId(t.id)}`, "ok");
+      toast.success(`Заказы объединены в ${shortId(t.id)}`);
       if (t.id !== id) setJumped(t.id);
     }
   }
@@ -441,7 +437,7 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
       "Не удалось выдать кейс"
     );
     if (ok) {
-      push(prize ? `Выпало: ${prize}` : "Кейс выдан", "ok");
+      toast.success(prize ? `Выпало: ${prize}` : "Кейс выдан");
       setCaseOpen(false);
       qc.invalidateQueries({ queryKey: ["products"] });
     }
@@ -469,7 +465,7 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
         }
       );
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось открыть профиль", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось открыть профиль");
     }
   }
 
@@ -864,7 +860,7 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
       {/* The customer's profile opens OVER the order (rendered later → on top), Esc/× return here. */}
       <UserProfileDrawer user={profile} onClose={() => setProfile(null)} />
 
-      {confirmUi}
+      
       {productTools.ui}
     </>
   );

@@ -42,11 +42,11 @@ import { Select } from "@/components/ui/Select";
 import { Toggle } from "@/components/ui/Toggle";
 import { Autocomplete } from "@/components/ui/Autocomplete";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { Button } from "@shop/ui/admin-button";
+import { Modal } from "@shop/ui/overlay";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { staggerContainer, riseItem, spring } from "@/lib/motion";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { localStore } from "@shop/core/storage";
 
 /** Telegram refuses longer messages (the backend checks the same). */
@@ -113,7 +113,6 @@ function userLabel(u: UserCardDto): string {
 }
 
 export default function BroadcastsPage() {
-  const { push } = useToast();
   const qc = useQueryClient();
 
   const [texts, setTexts] = useState<Texts>(EMPTY_TEXTS);
@@ -220,14 +219,14 @@ export default function BroadcastsPage() {
   const versions = (["uk", "ru", "en"] as ShopLang[]).filter((l) => texts[l].trim());
 
   async function sendTest(toMe: boolean) {
-    if (!text.trim()) return push("Сначала напишите текст", "error");
-    if (currentProblems.length) return push(currentProblems[0].message, "error");
+    if (!text.trim()) return toast.error("Сначала напишите текст");
+    if (currentProblems.length) return toast.error(currentProblems[0].message);
     let id: number | undefined;
     if (!toMe) {
       const raw = manualId.trim() || (selectedUser ? String(selectedUser.telegramUserId) : "");
       id = Number(raw);
       if (!raw || !id || Number.isNaN(id)) {
-        return push("Выберите получателя в списке или введите его Telegram ID", "error");
+        return toast.error("Выберите получателя в списке или введите его Telegram ID");
       }
     }
     setTesting(toMe ? "me" : "user");
@@ -238,17 +237,17 @@ export default function BroadcastsPage() {
         withButton,
         buttonText: buttonText.trim() || undefined,
       });
-      push(r.detail, r.ok ? "ok" : "error");
+      (r.ok ? toast.success : toast.error)(r.detail);
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Ошибка отправки", "error");
+      toast.error(e instanceof ApiError ? e.message : "Ошибка отправки");
     } finally {
       setTesting(null);
     }
   }
 
   function requestBroadcast() {
-    if (!texts.main.trim()) return push("Основной текст обязателен — он уходит тем, для кого нет версии", "error");
-    if (problems.length) return push(problems[0], "error");
+    if (!texts.main.trim()) return toast.error("Основной текст обязателен — он уходит тем, для кого нет версии");
+    if (problems.length) return toast.error(problems[0]);
     setConfirmOpen(true);
   }
 
@@ -266,13 +265,13 @@ export default function BroadcastsPage() {
         withButton,
         buttonText: buttonText.trim() || undefined,
       });
-      push("Рассылка запущена", "ok");
+      toast.success("Рассылка запущена");
       setTexts(EMPTY_TEXTS);
       setEditing("main");
       qc.invalidateQueries({ queryKey: ["broadcast-status"] });
       qc.invalidateQueries({ queryKey: ["broadcast-history"] });
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось запустить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось запустить");
     } finally {
       setStarting(false);
     }
@@ -285,7 +284,7 @@ export default function BroadcastsPage() {
     setWithButton(h.withButton);
     setEditing("main");
     window.scrollTo({ top: 0, behavior: "smooth" });
-    push("Текст рассылки загружен в черновик", "info");
+    toast.info("Текст рассылки загружен в черновик");
   }
 
   function clearDraft() {

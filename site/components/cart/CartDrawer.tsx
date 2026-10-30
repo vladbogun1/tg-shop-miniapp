@@ -10,7 +10,7 @@ import { Loader2, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { buttonClass } from "@/components/ui/button-styles";
+import { buttonClass } from "@shop/ui/button-styles";
 import { useI18n } from "@/i18n/context";
 import { CartGiftProgress } from "@/components/case/CartGiftProgress";
 import { useCart, useCartCount, useCartSubtotal } from "@/lib/cart";
@@ -109,7 +109,7 @@ export function CartDrawer() {
                   <p className="mt-2 text-[12px] font-semibold text-[var(--danger)]">{t("cart.hasProblems")}</p>
                 )}
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                  <button type="button" onClick={close} className={`${buttonClass("surface", "md", true)} !px-3 !text-[13px] !tracking-[.03em]`}>
+                  <button type="button" onClick={close} className={`${buttonClass("site", "surface", "md", true)} !px-3 !text-[13px] !tracking-[.03em]`}>
                     <span className="truncate">{t("cart.continue")}</span>
                   </button>
                   <Link
@@ -119,7 +119,7 @@ export function CartDrawer() {
                       if (hasProblems || subtotal === 0) e.preventDefault();
                       else close();
                     }}
-                    className={`${buttonClass("accent", "md", true)} !px-3 !text-[13px] !tracking-[.03em] ${hasProblems ? "pointer-events-none opacity-50" : ""}`}
+                    className={`${buttonClass("site", "accent", "md", true)} !px-3 !text-[13px] !tracking-[.03em] ${hasProblems ? "pointer-events-none opacity-50" : ""}`}
                   >
                     <span className="truncate">{t("cart.checkout")}</span>
                   </Link>

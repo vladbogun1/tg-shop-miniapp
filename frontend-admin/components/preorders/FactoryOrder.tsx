@@ -9,9 +9,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Factory } from "lucide-react";
 import { ApiError, type AdminProduct } from "@/lib/api";
 import { PREORDERS_KEY, demandRowsOfProduct, etaText, preordersApi, useDemand, type Batch, type BatchSummary } from "@/lib/preorders";
-import { useToast } from "@/lib/toast";
-import { Button } from "@/components/ui/Button";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
+import { toast } from "@shop/ui/toast";
+import { Button } from "@shop/ui/admin-button";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { Select } from "@/components/ui/Select";
 import { BatchFormModal, type SeedLine } from "./BatchFormModal";
 
@@ -19,7 +19,6 @@ const NEW = "new";
 
 export function FactoryOrderLine({ product }: { product: AdminProduct }) {
   const qc = useQueryClient();
-  const { push } = useToast();
   const demandQ = useDemand();
   const [busy, setBusy] = useState(false);
   const [choice, setChoice] = useState<BatchSummary[] | null>(null);
@@ -43,7 +42,7 @@ export function FactoryOrderLine({ product }: { product: AdminProduct }) {
         setChoice(open);
       }
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось открыть поставки", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось открыть поставки");
     } finally {
       setBusy(false);
     }
@@ -61,7 +60,7 @@ export function FactoryOrderLine({ product }: { product: AdminProduct }) {
       setChoice(null);
       setForm({ batch: b });
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось открыть поставку", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось открыть поставку");
     } finally {
       setBusy(false);
     }

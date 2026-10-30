@@ -23,8 +23,8 @@ import {
 import type { StatusChangeBody } from "@/lib/orders-api";
 import { money } from "@/lib/money";
 import { cn } from "@/lib/cn";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
-import { Button } from "@/components/ui/Button";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Toggle } from "@/components/ui/Toggle";

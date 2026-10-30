@@ -4,10 +4,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { Globe, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { ApiError } from "@/lib/api";
 import { settingsApi, type RevalidateStatus } from "@/lib/settings";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { formatDateTime } from "./draft";
 import { PanelHeader } from "./PanelHeader";
 
@@ -21,7 +21,6 @@ function isMissing(e: unknown): boolean {
  * expire — after editing things that do not trigger a revalidation themselves.
  */
 export function SitePanel() {
-  const { push } = useToast();
   const qc = useQueryClient();
   const rootRef = useRef<HTMLElement>(null);
 
@@ -41,25 +40,22 @@ export function SitePanel() {
     onSuccess: (res) => {
       if (res && res.ok === false) {
         // The backend answers 200 with ok:false (not configured, site down) — not a success.
-        push(`Сайт не обновился: ${res.error ?? "неизвестная ошибка"}`, "error");
+        toast.error(`Сайт не обновился: ${res.error ?? "неизвестная ошибка"}`);
         statusQ.refetch();
         return;
       }
-      push("Сайт обновляется — страницы пересоберутся в течение минуты", "ok");
+      toast.success("Сайт обновляется — страницы пересоберутся в течение минуты");
       setTimeout(() => {
         statusQ.refetch();
         qc.invalidateQueries({ queryKey: ["admin", "inbox"] });
       }, 3_000);
     },
     onError: (e) =>
-      push(
-        isMissing(e)
+      toast.error(isMissing(e)
           ? "Обновление сайта ещё не подключено на сервере"
           : e instanceof ApiError
             ? e.message
-            : "Не удалось обновить сайт",
-        "error"
-      ),
+            : "Не удалось обновить сайт"),
   });
 
   return (

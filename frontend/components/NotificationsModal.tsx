@@ -17,7 +17,7 @@ import { useT } from "@/i18n/context";
 import { customerApi, type Conversation } from "@/lib/api";
 import { useAccessToken } from "@/lib/auth";
 import { formatDate, formatTime, shortOrderId } from "@/lib/format";
-import { StatusChip } from "@/components/ui/StatusChip";
+import { StatusChip } from "@shop/ui/primitives";
 import { backdrop, sheetVariants, spring } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
 import { now } from "@shop/core/time";
@@ -161,7 +161,7 @@ export function NotificationsModal({ open, onClose }: { open: boolean; onClose: 
                           )}
                         </div>
                         <div className="mt-1.5">
-                          <StatusChip status={c.status} />
+                          <StatusChip status={c.status} label={t(`status.${c.status}`)} />
                         </div>
                       </div>
                     </motion.button>

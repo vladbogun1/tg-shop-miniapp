@@ -57,14 +57,15 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { useOverlayLayer } from "@/lib/overlay-stack";
+import { useOverlayLayer } from "@shop/ui/overlay";
+import { useConfirm } from "@shop/ui/confirm";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { LogoMark, Wordmark } from "@/components/brand/Logo";
 import { accountApi, ApiError, logout, logoutEverywhere } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { useInbox } from "@/lib/inbox";
 import { useSupportUnread } from "@/lib/support-api";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { pendingCount, useTranslationStats } from "@/lib/translations";
 import { pendingCards, useCardStats } from "@/lib/cards";
 import { useReviewsPending } from "@/lib/reviews";
@@ -714,27 +715,24 @@ function AccountLink({
 /** Revokes every token of this admin — for a lost phone or a session left open somewhere. */
 function LogoutEverywhereButton() {
   const collapsed = false;
-  const { push } = useToast();
+  const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
 
   async function run() {
-    if (
-      !window.confirm(
-        "Выйти на всех устройствах? Админку придётся открыть заново везде, включая это устройство.",
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Выйти на всех устройствах?",
+      message: "Админку придётся открыть заново везде, включая это устройство.",
+      confirmLabel: "Выйти",
+      danger: true,
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await logoutEverywhere();
     } catch (e) {
-      push(
-        e instanceof ApiError
+      toast.error(e instanceof ApiError
           ? e.message
-          : "Не удалось выйти на всех устройствах",
-        "error",
-      );
+          : "Не удалось выйти на всех устройствах");
       setBusy(false);
     }
   }

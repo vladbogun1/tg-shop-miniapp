@@ -49,10 +49,10 @@ import { ApiError, type UserCardDto } from "@/lib/api";
 import { ordersApi } from "@/lib/orders-api";
 import { formatDateTime } from "@/lib/orders";
 import { cn } from "@/lib/cn";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { useDebounced } from "@/lib/use-debounced";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
 import { QueryState } from "@/components/ui/QueryState";
@@ -98,7 +98,6 @@ export function ActivityTab() {
   // Lifted here: a source picked on a stats card must drop an event of another source, else the
   // filter is source=SITE&type=<bot event> — always empty.
   const [type, setType] = useState("");
-  const { push } = useToast();
 
   async function openCustomer(r: ActivityRow) {
     if (!r.tgUserId) return;
@@ -117,7 +116,7 @@ export function ActivityTab() {
         }
       );
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось открыть профиль", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось открыть профиль");
     }
   }
 

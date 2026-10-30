@@ -39,13 +39,13 @@ import { cardsApi, type CardAcceptBody, type CardChange, type CardReviewData, ty
 import { invalidateCards } from "@/lib/cards";
 import { fieldsWord, metaOf, missingLabels, tabOf } from "@/lib/cards-view";
 import { cn } from "@/lib/cn";
-import { backdropVariants, drawerVariants, sheetVariants } from "@/lib/motion";
-import { isTopLayer, useOverlayLayer } from "@/lib/overlay-stack";
-import { useToast } from "@/lib/toast";
-import { useMediaQuery } from "@/lib/use-media";
+import { backdropVariants, drawerVariants, sheetVariants } from "@shop/ui/overlay";
+import { isTopLayer, useOverlayLayer } from "@shop/ui/overlay";
+import { toast } from "@shop/ui/toast";
+import { useMediaQuery } from "@shop/ui/use-media";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { Button } from "@shop/ui/admin-button";
+import { useConfirm } from "@shop/ui/confirm";
 
 import { Skeleton } from "@/components/ui/Skeleton";
 import { SpecsForm } from "@/components/catalog/SpecsForm";
@@ -92,7 +92,7 @@ export function ReviewPanel({
 }) {
   const open = !!item;
   const phone = useMediaQuery("(max-width: 639px)", false);
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
   const [dirty, setDirty] = useState(false);
 
   // Leaving with unsaved edits asks first (Esc, ×, backdrop, J/K, the arrows).
@@ -155,7 +155,7 @@ export function ReviewPanel({
           </PanelLayer>
         )}
       </AnimatePresence>
-      {confirmUi}
+      
     </>,
     document.body
   );
@@ -210,7 +210,6 @@ function PanelBody({
   onDirty: (d: boolean) => void;
 }) {
   const qc = useQueryClient();
-  const { push } = useToast();
   const reviewQ = useQuery({
     queryKey: ["admin", "cards", "review", item.id],
     queryFn: () => cardsApi.review(item.id),
@@ -265,15 +264,14 @@ function PanelBody({
       const b = body();
       const res = await cardsApi.accept(cur.id, { ...b, ready: true });
       const dropped = res.issues.length;
-      push(
-        `«${cur.title}» — в «Готово»${dirty ? " с правками" : ""}${dropped ? ` · сервер отбросил ${dropped} ${fieldsWord(dropped)}` : ""}`,
-        dropped ? "info" : "ok"
+      (dropped ? toast.info : toast.success)(
+        `«${cur.title}» — в «Готово»${dirty ? " с правками" : ""}${dropped ? ` · сервер отбросил ${dropped} ${fieldsWord(dropped)}` : ""}`
       );
       invalidateCards(qc);
       qc.invalidateQueries({ queryKey: ["admin", "cards", "review", cur.id] });
       onDone();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
     } finally {
       setBusy(null);
     }
@@ -284,13 +282,13 @@ function PanelBody({
     setBusy("accept");
     try {
       await cardsApi.accept(cur.id, { ...body(), ready: true });
-      push("Правки сохранены", "ok");
+      toast.success("Правки сохранены");
       setSpecsDraft(null);
       setTexts({});
       invalidateCards(qc);
       await reviewQ.refetch();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
     } finally {
       setBusy(null);
     }
@@ -301,11 +299,11 @@ function PanelBody({
     setBusy("back");
     try {
       await cardsApi.setCardStatus(cur.id, "AI_FILLED");
-      push(`«${cur.title}» — снова в «Проверить»`, "ok");
+      toast.success(`«${cur.title}» — снова в «Проверить»`);
       invalidateCards(qc);
       onDone();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
     } finally {
       setBusy(null);
     }

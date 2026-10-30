@@ -11,7 +11,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, ChevronRight, LifeBuoy, MessageCircle, Plus, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/primitives";
 import { useT } from "@/i18n/context";
 import { useAccessToken } from "@/lib/auth";
 import { timeAgo } from "@/lib/format";

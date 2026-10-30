@@ -21,10 +21,10 @@ import {
   type Batch,
   type Distribution,
 } from "@/lib/preorders";
-import { useToast } from "@/lib/toast";
-import { Button } from "@/components/ui/Button";
+import { toast } from "@shop/ui/toast";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { Select } from "@/components/ui/Select";
 
 interface Row {
@@ -34,7 +34,6 @@ interface Row {
 
 export function ArriveModal({ open, onClose, batch }: { open: boolean; onClose: () => void; batch: Batch }) {
   const qc = useQueryClient();
-  const { push } = useToast();
   const [rows, setRows] = useState<Record<number, Row>>({});
   const [distribution, setDistribution] = useState<Distribution>("QUEUE_HOLD");
   const [holdHours, setHoldHours] = useState("24");
@@ -87,7 +86,7 @@ export function ArriveModal({ open, onClose, batch }: { open: boolean; onClose: 
       qc.invalidateQueries({ queryKey: PREORDERS_KEY });
       qc.invalidateQueries({ queryKey: ["products"] });
       const held = res.lines.reduce((n, l) => n + l.heldPeople, 0);
-      push(`Приход проведён. Бронь получили ${held} чел.`, "ok");
+      toast.success(`Приход проведён. Бронь получили ${held} чел.`);
       onClose();
     },
     onError: (e) => setError(e instanceof ApiError ? e.message : "Не получилось"),

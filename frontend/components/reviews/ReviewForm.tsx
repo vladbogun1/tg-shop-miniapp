@@ -12,7 +12,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, Copy, Gift, PartyPopper } from "lucide-react";
 import { useState } from "react";
 import { reviewBonusText } from "@shop/core/bonuses";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/primitives";
 import { useT } from "@/i18n/context";
 import { ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/format";

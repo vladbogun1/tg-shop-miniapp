@@ -12,8 +12,8 @@
 import { AlertTriangle, Rocket, Wand2 } from "lucide-react";
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { ApiError } from "@/lib/api";
-import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { Button } from "@shop/ui/admin-button";
+import { Modal } from "@shop/ui/overlay";
 
 interface Gate {
   kind: "card" | "missing";

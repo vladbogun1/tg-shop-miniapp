@@ -8,8 +8,8 @@
  */
 import { useEffect, useState } from "react";
 import type { AdminOrderDetail, ReturnReceivedBody } from "@/lib/orders-api";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
-import { Button } from "@/components/ui/Button";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
 import { Toggle } from "@/components/ui/Toggle";
 import { Image } from "@/lib/image";

@@ -17,10 +17,10 @@
 import { useEffect, useState } from "react";
 import { money } from "@/lib/money";
 import { cn } from "@/lib/cn";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
-import { Button } from "@/components/ui/Button";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { useConfirm } from "@shop/ui/confirm";
 import type { OrderDetailDto } from "@/lib/api";
 import { PAID_CHANNELS, type MovementChannel } from "@/lib/orders";
 
@@ -45,7 +45,7 @@ export function PaymentModal({
   const [confirmFull, setConfirmFull] = useState(false);
   const [channel, setChannel] = useState<MovementChannel>("NP_COD");
   const [note, setNote] = useState("");
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
 
   const orderId = order?.id ?? null;
   const hasPrepay = !!order && order.prepaymentMinor > 0;
@@ -233,7 +233,7 @@ export function PaymentModal({
           )}
         </div>
       </Modal>
-      {confirmUi}
+      
     </>
   );
 }

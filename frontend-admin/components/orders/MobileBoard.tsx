@@ -13,7 +13,7 @@ import type { AdminBoard } from "@/lib/orders-api";
 import { money } from "@/lib/money";
 import { BOARD_LABEL, BOARD_ORDER, RETURNING, STATUS_VAR, STATUS_ACTION_LABEL, allowedTargets, returningMinor, type BoardKey } from "@/lib/orders";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { OrderCard } from "./OrderCard";
 import { ActionSheet } from "./ActionSheet";
 

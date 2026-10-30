@@ -41,9 +41,9 @@ import { money } from "@/lib/money";
 import { Image } from "@/lib/image";
 import { cn } from "@/lib/cn";
 import { staggerContainer, riseItem } from "@/lib/motion";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Toggle } from "@/components/ui/Toggle";
@@ -109,7 +109,6 @@ function smartGroup(p: Product): number {
 
 export default function ProductsPage() {
   const qc = useQueryClient();
-  const { push } = useToast();
   const [archivedView, setArchivedView] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -198,27 +197,19 @@ export default function ProductsPage() {
       if (!ok) return;
       refresh();
       if (undo) {
-        push(
-          active ? `«${p.title}» снова на витрине` : `«${p.title}» скрыт с витрины`,
-          "ok",
-          { label: "Отменить", onClick: () => setActive(p, !active, false) }
-        );
+        toast.success(active ? `«${p.title}» снова на витрине` : `«${p.title}» скрыт с витрины`, { action: { label: "Отменить", onClick: () => setActive(p, !active, false) } });
       }
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Ошибка", "error");
+      toast.error(e instanceof ApiError ? e.message : "Ошибка");
     }
   }
   async function setArchived(p: Product, archived: boolean, undo = true) {
     try {
       await adminApi.setProductArchived(p.id, archived);
-      push(
-        archived ? `«${p.title}» в архиве` : `«${p.title}» восстановлен`,
-        "ok",
-        undo ? { label: "Отменить", onClick: () => setArchived(p, !archived, false) } : undefined
-      );
+      toast.success(archived ? `«${p.title}» в архиве` : `«${p.title}» восстановлен`, { action: undo ? { label: "Отменить", onClick: () => setArchived(p, !archived, false) } : undefined });
       refresh();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Ошибка", "error");
+      toast.error(e instanceof ApiError ? e.message : "Ошибка");
     }
   }
 

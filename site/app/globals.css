@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../../packages/ui/src";
 
 :root {
   /* Bundled variable fonts (see the app layout): the family names @fontsource-variable declares. */

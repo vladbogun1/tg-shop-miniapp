@@ -4,15 +4,14 @@ import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api";
 import { PREORDERS_KEY, preordersApi, type Supplier } from "@/lib/preorders";
-import { useToast } from "@/lib/toast";
-import { Button } from "@/components/ui/Button";
+import { toast } from "@shop/ui/toast";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
 
 /** Новый поставщик (завод): название + заметка (контакты, мессенджер). */
 export function SupplierModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated?: (s: Supplier) => void }) {
   const qc = useQueryClient();
-  const { push } = useToast();
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +28,7 @@ export function SupplierModal({ open, onClose, onCreated }: { open: boolean; onC
     mutationFn: () => preordersApi.createSupplier({ name: name.trim(), note: note.trim() || null }),
     onSuccess: (s) => {
       qc.invalidateQueries({ queryKey: [...PREORDERS_KEY, "suppliers"] });
-      push("Поставщик добавлен", "ok");
+      toast.success("Поставщик добавлен");
       onCreated?.(s);
       onClose();
     },

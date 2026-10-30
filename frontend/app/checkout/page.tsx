@@ -68,9 +68,7 @@ const NpWarehouseMap = dynamic(() => import("@/components/checkout/NpWarehouseMa
   ssr: false,
   loading: MapLoading,
 });
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { RadioCard } from "@/components/ui/RadioCard";
+import { Button, Input, RadioCard } from "@shop/ui/primitives";
 import {
   ApiError,
   customerApi,

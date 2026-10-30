@@ -32,7 +32,7 @@ import { ProductView } from "@/components/catalog/ProductView";
 import { FilterSheet, activeFilterChips } from "@/components/catalog/FilterSheet";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { LanguageToggle } from "@/components/LanguageToggle";
-import { Toast } from "@/components/ui/Toast";
+import { toast } from "@shop/ui/toast";
 import { PreorderSheet } from "@/components/preorder/PreorderSheet";
 import { PreorderRibbon } from "@/components/preorder/PreorderRibbon";
 import { useAccessToken } from "@/lib/auth";
@@ -70,7 +70,6 @@ function lowerFirst(s: string): string {
 export default function CatalogPage() {
   const { t, locale, tag: localeTag } = useI18n();
   const [selected, setSelected] = useState<Product | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useStoredFilter();
   const [sort, setSort] = useState<SortKey>("popular");
@@ -208,10 +207,7 @@ export default function CatalogPage() {
     ribbonProducts.length > 0 && !onlyPre && !search.trim() && filterCount === 0 && category === null && !isLoading && !isError;
 
   const showControls = !isLoading && !isError && products.length > 0;
-  const fireToast = (msg: string) => {
-    setToast(msg);
-    window.setTimeout(() => setToast(null), 1800);
-  };
+  const fireToast = (msg: string) => toast.success(msg, { duration: 1800 });
 
   return (
     <div className="min-h-full" style={{ marginTop: "calc(-1 * max(16px, var(--safe-top)))" }}>
@@ -557,7 +553,6 @@ export default function CatalogPage() {
         onDone={fireToast}
       />
       <CompareToastHost />
-      <Toast message={toast} />
     </div>
   );
 }

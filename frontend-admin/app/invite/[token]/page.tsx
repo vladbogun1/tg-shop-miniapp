@@ -18,12 +18,12 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { CodeInput } from "@/components/auth/CodeInput";
 import { StepHeader, StepLabel, TrustToggle } from "@/components/auth/Login";
 import { TwoFactorSecret } from "@/components/auth/TwoFactorSecret";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
 import { CenterSpinner } from "@/components/ui/Spinner";
 import { ApiError, inviteApi, type InviteInfo, type TwoFactorSetup } from "@/lib/api";
 import { formatDateTime } from "@/lib/orders";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 
 type Step =
   | { kind: "loading" }
@@ -135,7 +135,6 @@ function CredentialsForm({
   onNext: (s: Step) => void;
   onFail: (e: unknown, info: InviteInfo) => string | null;
 }) {
-  const { push } = useToast();
   const reset = info.kind === "PASSWORD_RESET" && !info.loginEditable;
   const [username, setUsername] = useState(info.username ?? "");
   const [password, setPassword] = useState("");
@@ -150,7 +149,7 @@ function CredentialsForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if ((!reset && !LOGIN_RE.test(username.trim())) || [...password].length < 10 || password !== repeat) {
-      push("Проверьте поля: логин, пароль от 10 символов и его повтор", "error");
+      toast.error("Проверьте поля: логин, пароль от 10 символов и его повтор");
       return;
     }
     setBusy(true);
@@ -162,7 +161,7 @@ function CredentialsForm({
       const msg = onFail(err, info);
       if (msg) {
         if (err instanceof ApiError && (err.code === "USERNAME_TAKEN" || err.code === "BAD_USERNAME")) setUsernameError(msg);
-        else push(msg, "error");
+        else toast.error(msg);
       }
       setBusy(false);
     }

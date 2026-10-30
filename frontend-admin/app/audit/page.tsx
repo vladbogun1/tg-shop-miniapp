@@ -32,7 +32,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { ActivityTab } from "@/components/journal/ActivityTab";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
 import { QueryState } from "@/components/ui/QueryState";

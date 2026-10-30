@@ -10,17 +10,16 @@ import { ApiError } from "@/lib/api";
 import type { Proposal } from "@/lib/card-check";
 import { cardsApi } from "@/lib/cards-api";
 import { slugify } from "@/lib/slug";
-import { useToast } from "@/lib/toast";
-import { Button } from "@/components/ui/Button";
+import { toast } from "@shop/ui/toast";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
 
 function optionSlug(label: string): string {
   return slugify(label).replace(/-+/g, "_").replace(/^_+|_+$/g, "").slice(0, 64);
 }
 
 export function AddOptionModal({ proposal, onClose, onAdded }: { proposal: Proposal; onClose: () => void; onAdded: () => void }) {
-  const { push } = useToast();
   const attr = proposal.attr!;
   const [labelRu, setLabelRu] = useState(proposal.value);
   const [labelUk, setLabelUk] = useState(proposal.value);
@@ -58,10 +57,10 @@ export function AddOptionModal({ proposal, onClose, onAdded }: { proposal: Propo
             .join("\n"),
         },
       ]);
-      push(`Опция «${labelRu.trim()}» добавлена в «${attr.labelRu}» — ответ проверен заново`, "ok");
+      toast.success(`Опция «${labelRu.trim()}» добавлена в «${attr.labelRu}» — ответ проверен заново`);
       onAdded();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось сохранить опцию", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить опцию");
     } finally {
       setSaving(false);
     }

@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
 import type { DiffPart, Issue } from "@/lib/translation-check";
 import { STATE_LABEL, type Bucket } from "@/lib/translation-queue";
 import { KIND_SHORT } from "@/lib/translation-prompt";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 
 export async function copyText(text: string): Promise<boolean> {
   try {

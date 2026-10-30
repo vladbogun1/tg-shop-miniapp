@@ -4,20 +4,19 @@
  * «Раздать брони»: ручная раздача после пополнения остатка не через поставку.
  * Всегда с подтверждением (сколько на складе и сколько человек ждёт) — автоматически не срабатывает.
  */
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Gift } from "lucide-react";
 import { ApiError } from "@/lib/api";
 import { PREORDERS_KEY, peopleOfRows, releaseDemand, releaseSummary, type Demand } from "@/lib/preorders";
-import { useToast } from "@/lib/toast";
-import { Button } from "@/components/ui/Button";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { toast } from "@shop/ui/toast";
+import { Button } from "@shop/ui/admin-button";
+import { useConfirm } from "@shop/ui/confirm";
 
-/** Подтвердить и раздать брони по строкам «Чего ждут». Возвращает функцию-запуск и элемент для рендера. */
-export function useReleaseAction(): [(rows: Demand[], label?: string) => Promise<void>, ReactNode, boolean] {
+/** Подтвердить и раздать брони по строкам «Чего ждут». Возвращает функцию-запуск и признак «идёт». */
+export function useReleaseAction(): [(rows: Demand[], label?: string) => Promise<void>, boolean] {
   const qc = useQueryClient();
-  const { push } = useToast();
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
 
   async function run(rows: Demand[], label?: string) {
@@ -42,17 +41,17 @@ export function useReleaseAction(): [(rows: Demand[], label?: string) => Promise
     setBusy(true);
     try {
       const res = await releaseDemand(rows);
-      push(releaseSummary(res), res.heldPeople > 0 ? "ok" : "info");
+      (res.heldPeople > 0 ? toast.success : toast.info)(releaseSummary(res));
       qc.invalidateQueries({ queryKey: PREORDERS_KEY });
       qc.invalidateQueries({ queryKey: ["products"] });
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось раздать брони", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось раздать брони");
     } finally {
       setBusy(false);
     }
   }
 
-  return [run, confirmUi, busy];
+  return [run, busy];
 }
 
 export function ReleaseButton({
@@ -66,11 +65,10 @@ export function ReleaseButton({
   size?: "sm" | "md";
   variant?: "outline" | "accent";
 }) {
-  const [run, ui, busy] = useReleaseAction();
+  const [run, busy] = useReleaseAction();
   const disabled = rows.every((d) => d.stock <= 0);
   return (
-    <>
-      <Button
+    <Button
         size={size}
         variant={variant}
         icon={<Gift className="h-4 w-4" />}
@@ -81,7 +79,5 @@ export function ReleaseButton({
       >
         Раздать брони
       </Button>
-      {ui}
-    </>
   );
 }

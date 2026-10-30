@@ -6,7 +6,7 @@ import { formatValue, type FieldReview, type Proposal, type ProductReview, type 
 import { categoryPathName, type CardSchema } from "@/lib/card-prompt";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { ProductLink } from "@/components/translations/shared";
 import { TextsBlock } from "@/components/cards/TextsBlock";
 import type { ProductSel } from "@/components/cards/selection";

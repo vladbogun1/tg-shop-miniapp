@@ -11,10 +11,10 @@ import { Gift, Plus, Search, TriangleAlert } from "lucide-react";
 import { adminApi, ApiError, type Product, type ProductVariant } from "@/lib/api";
 import { giftApi, type GiftLimit } from "@/lib/gift";
 import { money } from "@/lib/money";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { cn } from "@/lib/cn";
-import { Modal } from "@/components/ui/Modal";
-import { Button } from "@/components/ui/Button";
+import { Modal } from "@shop/ui/overlay";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
 import { Toggle } from "@/components/ui/Toggle";
 import { Image } from "@/lib/image";
@@ -32,7 +32,6 @@ export function ItemPicker({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const { push } = useToast();
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
   const [variant, setVariant] = useState<ProductVariant | null>(null);
@@ -89,12 +88,12 @@ export function ItemPicker({
         gift,
         notifyCustomer: notify,
       });
-      push(gift ? "Подарок добавлен 🎁" : "Товар добавлен в заказ", "ok");
+      toast.success(gift ? "Подарок добавлен 🎁" : "Товар добавлен в заказ");
       reset();
       onDone();
       onClose();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось добавить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось добавить");
     } finally {
       setSaving(false);
     }

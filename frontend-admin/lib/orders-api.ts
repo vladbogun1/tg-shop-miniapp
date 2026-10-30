@@ -4,7 +4,7 @@
  */
 import type { CaseTier } from "@shop/core/giftcase";
 import type { NpCity, NpWarehouse } from "@shop/core/types";
-import type { ConfirmOptions } from "@/components/ui/ConfirmModal";
+import type { ConfirmOptions } from "@shop/ui/confirm";
 import {
   adminApi,
   ApiError,

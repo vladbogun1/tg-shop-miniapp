@@ -10,8 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ImagePlus, Send, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import type { CreateSupportThreadRequest, SupportThread } from "@shop/core/support";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Button, Input } from "@shop/ui/primitives";
 import { useT } from "@/i18n/context";
 import { SUPPORT_DEFAULTS, SUPPORT_KEYS, supportApi, supportErrorText, useSupportConfig } from "@/lib/support";
 

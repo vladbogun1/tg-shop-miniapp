@@ -25,10 +25,10 @@ import {
 import { buildPrompt, KIND_LABEL, splitIntoParts, type PromptString } from "@/lib/translation-prompt";
 import { langState, staleManual } from "@/lib/translation-queue";
 import { invalidateTranslations } from "@/lib/translations";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { Button } from "@shop/ui/admin-button";
+import { useConfirm } from "@shop/ui/confirm";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import {
   CopyButton,
@@ -75,8 +75,7 @@ function Step({ n, title, children, aside }: { n: number; title: string; childre
 
 export function AiTranslate({ ws, scope, onClose }: { ws: WorkSet; scope: string[]; onClose: () => void }) {
   const qc = useQueryClient();
-  const { push } = useToast();
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
 
   // ---- 1. prompt (frozen at opening) --------------------------------------
   const [copied, setCopied] = useState<Set<number>>(new Set());
@@ -271,11 +270,10 @@ export function AiTranslate({ ws, scope, onClose }: { ws: WorkSet; scope: string
       setSelected(new Set());
       setApplyFix(new Set());
     }
-    push(
+    (result.importErrors.length ? toast.error : toast.success)(
       result.importErrors.length
         ? "Часть данных не отправлена — см. итог"
-        : `Сохранено переводов: ${applied}${fixed ? `, исправлено оригиналов: ${fixed}` : ""}. Они ждут проверки во вкладке «Проверить ИИ».`,
-      result.importErrors.length ? "error" : "ok"
+        : `Сохранено переводов: ${applied}${fixed ? `, исправлено оригиналов: ${fixed}` : ""}. Они ждут проверки во вкладке «Проверить ИИ».`
     );
   }
 
@@ -397,7 +395,7 @@ export function AiTranslate({ ws, scope, onClose }: { ws: WorkSet; scope: string
                 setAnswer(t);
                 check(t);
               } catch {
-                push("Браузер не дал прочитать буфер — вставьте Ctrl+V", "info");
+                toast.info("Браузер не дал прочитать буфер — вставьте Ctrl+V");
               }
             }}
           >
@@ -524,7 +522,7 @@ export function AiTranslate({ ws, scope, onClose }: { ws: WorkSet; scope: string
           {summary && <SummaryView summary={summary} />}
         </Step>
       )}
-      {confirmUi}
+      
     </div>
   );
 }

@@ -13,12 +13,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ImagePlus, Lock, Send, WifiOff, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useConfirm } from "@shop/ui/confirm";
 import { dayKey } from "@shop/core/time";
 import { type Message, type SendMessageRequest } from "@shop/core/types";
 import { noFadeFlash } from "@shop/ui/motion";
 import { type SupportThread } from "@shop/core/support";
 import { MessageBubble } from "@/components/chat/MessageBubble";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import { ApiError, refreshSession } from "@/lib/api";
 import { useEscape } from "@/lib/hooks";
@@ -39,6 +40,7 @@ import { SupportStatusChip, SupportTopicCard, threadTitle } from "./parts";
 export function SupportThreadView({ id }: { id: string }) {
   const { t, href } = useI18n();
   const qc = useQueryClient();
+  const confirm = useConfirm();
   const thread = useQuery({
     queryKey: SUPPORT_KEYS.thread(id),
     queryFn: () => supportApi.thread(id),
@@ -56,7 +58,9 @@ export function SupportThreadView({ id }: { id: string }) {
   );
 
   async function onClose() {
-    if (closing || !window.confirm(t("support.closeConfirm"))) return;
+    if (closing) return;
+    const ok = await confirm({ title: t("support.close"), message: t("support.closeConfirm"), confirmLabel: t("support.close"), cancelLabel: t("common.cancel") });
+    if (!ok) return;
     setClosing(true);
     setCloseError(null);
     try {

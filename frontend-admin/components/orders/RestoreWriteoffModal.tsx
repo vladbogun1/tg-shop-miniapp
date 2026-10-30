@@ -8,9 +8,9 @@
 import { useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { restoreWriteoff } from "@/lib/writeoffs";
-import { useToast } from "@/lib/toast";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
-import { Button } from "@/components/ui/Button";
+import { toast } from "@shop/ui/toast";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
+import { Button } from "@shop/ui/admin-button";
 import { Textarea } from "@/components/ui/Textarea";
 import { Counter } from "./ReturnModal";
 
@@ -24,7 +24,6 @@ export function RestoreWriteoffModal({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const { push } = useToast();
   const [qty, setQty] = useState(1);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -40,11 +39,11 @@ export function RestoreWriteoffModal({
     setBusy(true);
     try {
       await restoreWriteoff(writeoff.id, qty, note.trim());
-      push(`${writeoff.title} ×${qty} — снова на складе`, "ok");
+      toast.success(`${writeoff.title} ×${qty} — снова на складе`);
       onDone();
       onClose();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось вернуть на склад", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось вернуть на склад");
     } finally {
       setBusy(false);
     }

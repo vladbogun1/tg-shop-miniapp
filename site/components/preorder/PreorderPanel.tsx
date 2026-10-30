@@ -16,9 +16,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import { noFadeFlash } from "@shop/ui/motion";
-import { Button } from "@/components/ui/Button";
-import { QtyStepper } from "@/components/ui/QtyStepper";
-import { toast } from "@/components/ui/Toast";
+import { Button, QtyStepper } from "@shop/ui/primitives";
+import { toast } from "@shop/ui/toast";
 import { useI18n } from "@/i18n/context";
 import { BOT_URL } from "@/lib/config";
 import { useEscape, useHydrated, useScrollLock } from "@/lib/hooks";
@@ -131,9 +130,9 @@ export function PreorderPanel({
     try {
       await preorderApi.leave(mine.id);
       await refresh();
-      toast(t("preorder.queue.left"));
+      toast.success(t("preorder.queue.left"));
     } catch (e) {
-      toast(e instanceof Error ? e.message : t("preorder.error.generic"), "error");
+      toast.error(e instanceof Error ? e.message : t("preorder.error.generic"));
     } finally {
       setLeaving(false);
     }
@@ -214,7 +213,7 @@ export function PreorderPanel({
         onSubmit={async (qty) => {
           await preorderApi.subscribe(productId, variantId, qty);
           await refresh();
-          toast(t("preorder.queue.joined"));
+          toast.success(t("preorder.queue.joined"));
         }}
       />
     </>
@@ -332,7 +331,7 @@ function SheetBody({
 
           <div className="mt-5 flex items-center gap-3">
             <span className="eyebrow text-[11px]">{t("preorder.sheet.qty")}</span>
-            <QtyStepper value={qty} onChange={setQty} min={1} max={cap} />
+            <QtyStepper decreaseLabel={t("qty.decrease")} increaseLabel={t("qty.increase")} value={qty} onChange={setQty} min={1} max={cap} />
           </div>
 
           <p className="mt-4 flex items-start gap-2 text-[13px] font-medium leading-snug text-[var(--muted)]">

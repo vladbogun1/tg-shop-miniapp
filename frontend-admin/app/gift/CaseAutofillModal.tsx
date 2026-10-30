@@ -18,9 +18,9 @@ import { AUTOFILL_COST_SHARE, CASE_TIER_LABEL, giftApi, type AutofillResult, typ
 import { settingsApi } from "@/lib/settings";
 import { cn } from "@/lib/cn";
 import { money } from "@/lib/money";
-import { useToast } from "@/lib/toast";
-import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { toast } from "@shop/ui/toast";
+import { Button } from "@shop/ui/admin-button";
+import { Modal } from "@shop/ui/overlay";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Toggle } from "@/components/ui/Toggle";
 import { toDraft, type Row } from "./case-draft";
@@ -51,7 +51,6 @@ export function CaseAutofillModal({
   rows: Row[];
   onResult: (res: AutofillResult) => void;
 }) {
-  const { push } = useToast();
   const cats = useQuery({ queryKey: ["categories"], queryFn: adminApi.categories, enabled: open, staleTime: 5 * 60_000 });
   // Its own key: the page's settings query backs a form whose draft must not reset when these change.
   const settings = useQuery({ queryKey: ["gift", "autofill-settings"], queryFn: settingsApi.list, enabled: open, staleTime: 60_000 });
@@ -90,7 +89,7 @@ export function CaseAutofillModal({
 
   async function build() {
     if (cat.length === 0) {
-      push("Выберите хотя бы одну категорию призов", "error");
+      toast.error("Выберите хотя бы одну категорию призов");
       return;
     }
     setBusy(true);
@@ -115,7 +114,7 @@ export function CaseAutofillModal({
       if (sup.join(",") !== v.get(SUPER_KEY)) values[SUPER_KEY] = sup.join(",");
       if (Object.keys(values).length) void settingsApi.save(values).then(() => settings.refetch(), () => undefined);
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось собрать кейс", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось собрать кейс");
     } finally {
       setBusy(false);
     }

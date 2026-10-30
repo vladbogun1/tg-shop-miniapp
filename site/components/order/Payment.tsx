@@ -19,11 +19,11 @@ import { useEffect, useRef, useState } from "react";
 import { codMinor, needsTopUp, paymentState } from "@shop/core/orders";
 import { shortOrderId } from "@shop/core/format";
 import { type OnlinePayment, type OrderDetail } from "@shop/core/types";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/primitives";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import type { TFunction } from "@/i18n";
 import { useI18n } from "@/i18n/context";
-import { toast } from "@/components/ui/Toast";
+import { toast } from "@shop/ui/toast";
 import { api, ApiError } from "@/lib/api";
 import { ORDER_PAY_ANCHOR } from "@/components/case/OrderGiftCase";
 import { useFmt } from "@/lib/use-fmt";
@@ -247,7 +247,7 @@ export function OrderPayment({
   function onModalClose(why: PaymentModalClose) {
     setPayUrl(null);
     if (why === "paid") {
-      toast(t("pay.received"));
+      toast.success(t("pay.received"));
       return;
     }
     if (why === "check") {

@@ -9,14 +9,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Settings2, Trash2, Zap } from "lucide-react";
 import { ApiError } from "@/lib/api";
 import { ordersApi, type ReplyTemplate, type ReplyTemplateWrite } from "@/lib/orders-api";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { cn } from "@/lib/cn";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
-import { Button } from "@/components/ui/Button";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { QueryState } from "@/components/ui/QueryState";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { useConfirm } from "@shop/ui/confirm";
 
 const LOCALE_LABEL = { ru: "рус", uk: "укр", en: "eng" } as const;
 
@@ -103,8 +103,7 @@ export function TemplatePicker({
 /** CRUD over all templates. */
 export function TemplatesManager({ open, onClose }: { open: boolean; onClose: () => void }) {
   const qc = useQueryClient();
-  const { push } = useToast();
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
   const [editing, setEditing] = useState<ReplyTemplate | "new" | null>(null);
   const [saving, setSaving] = useState(false);
   const q = useQuery({ queryKey: ["reply-templates"], queryFn: ordersApi.replyTemplates, enabled: open });
@@ -118,11 +117,11 @@ export function TemplatesManager({ open, onClose }: { open: boolean; onClose: ()
     try {
       if (editing === "new") await ordersApi.createReplyTemplate(body);
       else if (editing) await ordersApi.updateReplyTemplate(editing.id, body);
-      push("Шаблон сохранён", "ok");
+      toast.success("Шаблон сохранён");
       setEditing(null);
       invalidate();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
     } finally {
       setSaving(false);
     }
@@ -138,10 +137,10 @@ export function TemplatesManager({ open, onClose }: { open: boolean; onClose: ()
     if (!ok) return;
     try {
       await ordersApi.deleteReplyTemplate(t.id);
-      push("Шаблон удалён", "ok");
+      toast.success("Шаблон удалён");
       invalidate();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось удалить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось удалить");
     }
   }
 
@@ -212,7 +211,7 @@ export function TemplatesManager({ open, onClose }: { open: boolean; onClose: ()
         onClose={() => setEditing(null)}
         onSave={save}
       />
-      {confirmUi}
+      
     </>
   );
 }

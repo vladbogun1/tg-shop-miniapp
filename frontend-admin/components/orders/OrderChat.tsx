@@ -23,9 +23,9 @@ import { closeChatNotifications } from "@/lib/push";
 import { useCoarsePointer } from "@/lib/use-media";
 import { subscribeOrderChat } from "@/lib/ws";
 import { resolveImageSrc, resolveImageFull } from "@/lib/image";
-import { useToast } from "@/lib/toast";
-import { Button } from "@/components/ui/Button";
-import { Lightbox } from "@/components/ui/Lightbox";
+import { toast } from "@shop/ui/toast";
+import { Button } from "@shop/ui/admin-button";
+import { Lightbox } from "@shop/ui/overlay";
 import { cn } from "@/lib/cn";
 import { TemplatePicker } from "./ReplyTemplates";
 import { ChatDaySection, useChatDays } from "./ChatDays";
@@ -156,7 +156,6 @@ function markCustomerRead(prev: MessageDto[] = []): MessageDto[] {
 
 export function OrderChat({ orderId }: { orderId: string }) {
   const qc = useQueryClient();
-  const { push } = useToast();
   const coarse = useCoarsePointer();
   const [text, setTextState] = useState(() => loadDraft(orderId));
   const [sending, setSending] = useState(false);
@@ -242,7 +241,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
         if (box) box.scrollTop = box.scrollHeight - prevHeight + prevTop;
       });
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось загрузить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось загрузить");
     } finally {
       setLoadingOlder(false);
     }
@@ -259,7 +258,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
       );
       setText("");
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось отправить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось отправить");
     } finally {
       setSending(false);
     }
@@ -268,7 +267,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
   /** Upload + send a single image (only images are allowed in chat). */
   async function uploadImage(file: File) {
     if (!file.type.startsWith("image/")) {
-      push("Можно отправлять только изображения", "error");
+      toast.error("Можно отправлять только изображения");
       return;
     }
     setUploading(true);
@@ -284,7 +283,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
         prev.some((p) => p.id === msg.id) ? prev : [...prev, msg]
       );
     } catch (err) {
-      push(err instanceof ApiError ? err.message : "Не удалось загрузить", "error");
+      toast.error(err instanceof ApiError ? err.message : "Не удалось загрузить");
     } finally {
       setUploading(false);
     }

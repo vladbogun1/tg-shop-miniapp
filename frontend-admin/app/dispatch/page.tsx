@@ -15,13 +15,13 @@ import { MapPin, Package, Phone, Send, Truck, Hash, RefreshCw, AlertTriangle, Us
 import { adminApi, ApiError } from "@/lib/api";
 import { changeStatusConfirmingUnpaid, ordersApi, type AdminDispatchOrder } from "@/lib/orders-api";
 import { formatDateTime, isNovaPoshtaTtn } from "@/lib/orders";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { useConfirm } from "@shop/ui/confirm";
 import { refreshInbox } from "@/lib/inbox";
 import { money } from "@/lib/money";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { cn } from "@/lib/cn";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { PaymentBadge } from "@/components/orders/PaymentBadge";
@@ -29,12 +29,11 @@ import { QueryState } from "@/components/ui/QueryState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CopyButton } from "@/components/orders/CopyButton";
 import { OrderDrawer } from "@/components/orders/OrderDrawer";
-import { Lightbox } from "@/components/ui/Lightbox";
+import { Lightbox } from "@shop/ui/overlay";
 import { Image, resolveImageFull } from "@/lib/image";
 import { nowMs } from "@shop/core/time";
 
 export default function DispatchPage() {
-  const { push } = useToast();
   const qc = useQueryClient();
   const [broadcasting, setBroadcasting] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -54,9 +53,9 @@ export default function DispatchPage() {
     setBroadcasting(true);
     try {
       const { posted } = await adminApi.dispatchBroadcast();
-      push(posted > 0 ? `Добавлено в Telegram: ${posted}` : "Все карточки уже в Telegram", "ok");
+      toast.success(posted > 0 ? `Добавлено в Telegram: ${posted}` : "Все карточки уже в Telegram");
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Ошибка отправки", "error");
+      toast.error(e instanceof ApiError ? e.message : "Ошибка отправки");
     } finally {
       setBroadcasting(false);
     }
@@ -333,13 +332,12 @@ function MoneyRow({ label, value, tone }: { label: string; value: string; tone?:
 /** ТТН + "Отправлено" right on the card (NEW/APPROVED → SHIPPED). */
 function ShipForm({ o }: { o: AdminDispatchOrder }) {
   const qc = useQueryClient();
-  const { push } = useToast();
   const [ttn, setTtn] = useState("");
   const [saving, setSaving] = useState(false);
   const clean = ttn.replace(/\s+/g, "");
   const wrong = clean.length > 0 && !isNovaPoshtaTtn(clean);
   const waitPay = awaitingPrepayment(o);
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
 
   async function ship() {
     if (!clean) return;
@@ -348,7 +346,7 @@ function ShipForm({ o }: { o: AdminDispatchOrder }) {
       // An approved order without its online payment asks «Отправить всё равно?» (server: ORDER_UNPAID_SHIP).
       const updated = await changeStatusConfirmingUnpaid(o.id, { status: "SHIPPED", trackingNumber: clean }, confirm);
       if (updated === null) return; // declined: the typed ТТН stays
-      push(`#${o.shortId} отправлен, ТТН ушла клиенту`, "ok");
+      toast.success(`#${o.shortId} отправлен, ТТН ушла клиенту`);
       setTtn("");
       qc.invalidateQueries({ queryKey: ["dispatch"] });
       qc.invalidateQueries({ queryKey: ["board"] });
@@ -358,7 +356,7 @@ function ShipForm({ o }: { o: AdminDispatchOrder }) {
       refreshInbox(qc);
     } catch (e) {
       // The typed number stays in the field.
-      push(e instanceof ApiError ? e.message : "Не удалось отметить отправку", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось отметить отправку");
     } finally {
       setSaving(false);
     }
@@ -389,7 +387,7 @@ function ShipForm({ o }: { o: AdminDispatchOrder }) {
       >
         Отправлено
       </Button>
-      {confirmUi}
+      
     </div>
   );
 }

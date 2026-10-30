@@ -16,6 +16,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Toaster } from "@shop/ui/toast";
+import { UiLookProvider } from "@shop/ui/look";
 import { I18nProvider } from "@/i18n/context";
 import { startAnalytics, track } from "@/lib/analytics";
 import { authWithTelegram } from "@/lib/api";
@@ -130,7 +132,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={client}>
-      <I18nProvider>{children}</I18nProvider>
+      <UiLookProvider look="miniapp">
+        <I18nProvider>{children}</I18nProvider>
+        <Toaster />
+      </UiLookProvider>
     </QueryClientProvider>
   );
 }

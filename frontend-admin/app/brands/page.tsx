@@ -18,15 +18,15 @@ import { productsWord } from "@/lib/catalog-admin";
 import { slugify } from "@/lib/slug";
 import { cn } from "@/lib/cn";
 import { staggerContainer, riseItem } from "@/lib/motion";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
-import { Modal } from "@/components/ui/Modal";
+import { Modal } from "@shop/ui/overlay";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { QueryState } from "@/components/ui/QueryState";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { useConfirm } from "@shop/ui/confirm";
 import { TagInput } from "@/components/catalog/TagInput";
 import { BrandCombobox, type BrandValue } from "@/components/catalog/BrandCombobox";
 import { BrandLogoField, BrandLogoThumb } from "@/components/catalog/BrandLogoField";
@@ -57,8 +57,7 @@ function hostOf(url: string): string {
 
 export default function BrandsPage() {
   const qc = useQueryClient();
-  const { push } = useToast();
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
   const q = useQuery({ queryKey: ["brands"], queryFn: adminApi.brands });
   const brands = useMemo(() => q.data ?? [], [q.data]);
 
@@ -123,11 +122,11 @@ export default function BrandsPage() {
       };
       if (editing) await adminApi.updateBrand(editing.id, body);
       else await adminApi.createBrand(body);
-      push(editing ? "Бренд сохранён" : "Бренд создан", "ok");
+      toast.success(editing ? "Бренд сохранён" : "Бренд создан");
       setFormOpen(false);
       refresh();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
     } finally {
       setSaving(false);
     }
@@ -146,10 +145,10 @@ export default function BrandsPage() {
     if (!ok) return;
     try {
       await adminApi.deleteBrand(b.id);
-      push("Бренд удалён", "ok");
+      toast.success("Бренд удалён");
       refresh();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось удалить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось удалить");
     }
   }
 
@@ -158,11 +157,11 @@ export default function BrandsPage() {
     setBusy(true);
     try {
       await adminApi.mergeBrand(merging.id, mergeTarget.id);
-      push(`«${merging.name}» объединён с «${mergeTarget.name}»`, "ok");
+      toast.success(`«${merging.name}» объединён с «${mergeTarget.name}»`);
       setMerging(null);
       refresh();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось объединить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось объединить");
     } finally {
       setBusy(false);
     }
@@ -426,7 +425,7 @@ export default function BrandsPage() {
           </p>
         </div>
       </Modal>
-      {confirmUi}
+      
     </div>
   );
 }

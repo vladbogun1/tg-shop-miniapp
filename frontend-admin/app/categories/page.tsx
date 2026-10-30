@@ -35,16 +35,16 @@ import { invalidateCards } from "@/lib/cards";
 import { buildTree, byOrder, childrenOf, plural, productsWord } from "@/lib/catalog-admin";
 import { cn } from "@/lib/cn";
 import { staggerContainer, riseItem } from "@/lib/motion";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
-import { Modal } from "@/components/ui/Modal";
+import { Modal } from "@shop/ui/overlay";
 import { Select } from "@/components/ui/Select";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { QueryState } from "@/components/ui/QueryState";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { useConfirm } from "@shop/ui/confirm";
 import { CategoryDialog } from "@/components/catalog/CategoryDialog";
 import { GroupsDialog } from "@/components/catalog/GroupsDialog";
 
@@ -52,8 +52,7 @@ const norm = (s: string) => s.toLocaleLowerCase("ru").replace(/ё/g, "е").trim(
 
 export default function CategoriesPage() {
   const qc = useQueryClient();
-  const { push } = useToast();
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
 
   const q = useQuery({ queryKey: ["categories"], queryFn: adminApi.categories });
   const categories = useMemo(() => q.data ?? [], [q.data]);
@@ -117,11 +116,11 @@ export default function CategoriesPage() {
     qc.setQueryData(["categories"], optimistic);
     try {
       await adminApi.reorderCategories(rows);
-      if (msg) push(msg, "ok");
+      if (msg) toast.success(msg);
       refresh();
     } catch (e) {
       qc.setQueryData(["categories"], prev);
-      push(e instanceof ApiError ? e.message : "Не удалось сохранить порядок", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить порядок");
     }
   }
 
@@ -182,7 +181,7 @@ export default function CategoriesPage() {
     setBusy(c.id);
     try {
       await adminApi.deleteCategory(c.id);
-      push("Категория удалена", "ok");
+      toast.success("Категория удалена");
       refresh();
     } catch (e) {
       const msg =
@@ -193,7 +192,7 @@ export default function CategoriesPage() {
             : e instanceof ApiError
               ? e.message
               : "Не удалось удалить";
-      push(msg, "error");
+      toast.error(msg);
     } finally {
       setBusy(null);
     }
@@ -423,7 +422,7 @@ export default function CategoriesPage() {
           qc.invalidateQueries({ queryKey: ["catalog-schema"] });
         }}
       />
-      {confirmUi}
+      
     </div>
   );
 }

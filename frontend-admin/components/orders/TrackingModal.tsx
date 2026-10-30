@@ -3,8 +3,8 @@
 /** Fix the ТТН of an order that is already shipped (PATCH /orders/{id}/tracking). */
 import { useEffect, useState } from "react";
 import { isNovaPoshtaTtn } from "@/lib/orders";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
-import { Button } from "@/components/ui/Button";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
 
 export function TrackingModal({

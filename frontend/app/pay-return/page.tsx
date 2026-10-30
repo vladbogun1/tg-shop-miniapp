@@ -24,7 +24,7 @@ import { Suspense, useEffect, useState } from "react";
 import { type Dictionary, FALLBACK_LOCALE, type Locale, LOCALE_TAG, normalizeLocale, type Params, translate } from "@shop/core/i18n";
 import { shortOrderId } from "@shop/core/format";
 import { Logo } from "@/components/Logo";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/primitives";
 import { en } from "@/i18n/en";
 import { ru } from "@/i18n/ru";
 import { uk } from "@/i18n/uk";

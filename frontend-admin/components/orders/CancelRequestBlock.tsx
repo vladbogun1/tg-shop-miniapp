@@ -16,16 +16,15 @@ import { ordersApi, type AdminOrderDetail } from "@/lib/orders-api";
 import { money } from "@/lib/money";
 import { formatDateTime } from "@/lib/orders";
 import { refundableMinor } from "@/lib/online-payment";
-import { useToast } from "@/lib/toast";
-import { Button } from "@/components/ui/Button";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
+import { toast } from "@shop/ui/toast";
+import { Button } from "@shop/ui/admin-button";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { Textarea } from "@/components/ui/Textarea";
 import { orderPaymentsKey } from "./OnlinePaymentBlock";
 
 export function CancelRequestBlock({ order, onChanged }: { order: AdminOrderDetail; onChanged?: () => void }) {
   const status = order.cancelRequestStatus;
   const qc = useQueryClient();
-  const { push } = useToast();
   const [approveOpen, setApproveOpen] = useState(false);
   const [declineOpen, setDeclineOpen] = useState(false);
   const [comment, setComment] = useState("");
@@ -59,20 +58,17 @@ export function CancelRequestBlock({ order, onChanged }: { order: AdminOrderDeta
       const r = await ordersApi.approveCancelRequest(order.id);
       setApproveOpen(false);
       if (r.refundErrors.length > 0) {
-        push(`Заказ отменён, но monobank отклонил возврат: ${r.refundErrors.join("; ")}. Верните вручную.`, "error");
+        toast.error(`Заказ отменён, но monobank отклонил возврат: ${r.refundErrors.join("; ")}. Верните вручную.`);
       } else if (r.manualRefundMinor > 0) {
-        push(`Заказ отменён. Онлайн-возврат отправлен; ${money(r.manualRefundMinor, cur)} верните вручную.`, "info");
+        toast.info(`Заказ отменён. Онлайн-возврат отправлен; ${money(r.manualRefundMinor, cur)} верните вручную.`);
       } else {
-        push(
-          r.refundRequestedMinor > 0
+        toast.success(r.refundRequestedMinor > 0
             ? `Заказ отменён, ${money(r.refundRequestedMinor, cur)} отправлено на возврат`
-            : "Заказ отменён",
-          "ok"
-        );
+            : "Заказ отменён");
       }
       done();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось одобрить запрос", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось одобрить запрос");
       if (e instanceof ApiError && e.code) done();
     } finally {
       setBusy(false);
@@ -86,10 +82,10 @@ export function CancelRequestBlock({ order, onChanged }: { order: AdminOrderDeta
       await ordersApi.declineCancelRequest(order.id, comment.trim());
       setDeclineOpen(false);
       setComment("");
-      push("Запрос отклонён, покупатель получил ваш комментарий", "ok");
+      toast.success("Запрос отклонён, покупатель получил ваш комментарий");
       done();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось отклонить запрос", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось отклонить запрос");
     } finally {
       setBusy(false);
     }

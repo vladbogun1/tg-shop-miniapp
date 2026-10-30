@@ -28,7 +28,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { ApiError } from "@/lib/api";
@@ -39,7 +39,7 @@ import {
   type SettingItem,
   type SettingValue,
 } from "@/lib/settings";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { useIsDesktop } from "@/lib/use-media";
 import { useUnsavedGuard } from "@/lib/use-unsaved-guard";
 import { initialDraft, isDirty, parse, toRaw, validate, type Draft } from "./draft";
@@ -69,7 +69,6 @@ const BOT_LANGS: { value: BotLang; label: string }[] = [
 ];
 
 export default function SettingsPage() {
-  const { push } = useToast();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: SETTINGS_QUERY_KEY, queryFn: settingsApi.list });
   // «Приложение и уведомления»: first thing on a phone, top of the side column on a computer.
@@ -117,9 +116,9 @@ export default function SettingsPage() {
       // Thresholds of «Внимание» may have changed.
       qc.invalidateQueries({ queryKey: ["admin", "inbox"] });
       qc.invalidateQueries({ queryKey: ["settings-system"] });
-      push(dirtyItems.length === 1 ? "Настройка сохранена" : `Сохранено настроек: ${dirtyItems.length}`, "ok");
+      toast.success(dirtyItems.length === 1 ? "Настройка сохранена" : `Сохранено настроек: ${dirtyItems.length}`);
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
     } finally {
       setSaving(false);
     }

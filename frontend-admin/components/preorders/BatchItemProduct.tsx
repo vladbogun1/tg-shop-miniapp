@@ -14,15 +14,15 @@ import { money } from "@/lib/money";
 import { Image, resolveImageSrc } from "@/lib/image";
 import { PREORDERS_KEY } from "@/lib/preorders";
 import { siteProductUrl } from "@/lib/support-api";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { CardStatusBadge } from "@/components/catalog/CardBits";
 import { usePublishGate } from "@/components/catalog/PublishGate";
 import { CardCompletionModal } from "@/components/cards/CardCompletionModal";
 import { ProductModal } from "@/components/products/ProductModal";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { Drawer } from "@/components/ui/Drawer";
-import { Lightbox } from "@/components/ui/Lightbox";
+import { Button } from "@shop/ui/admin-button";
+import { Drawer } from "@shop/ui/overlay";
+import { Lightbox } from "@shop/ui/overlay";
 
 /** Товары поставки по id — из того же списка, что и экран «Товары» (кэш общий). */
 export function useBatchProducts(ids: string[]): { byId: Map<string, AdminProduct>; loading: boolean } {
@@ -67,7 +67,6 @@ export function ProductStateChips({ p, loading }: { p: AdminProduct | undefined;
  */
 export function useBatchProductTools({ zClass }: { zClass?: string } = {}) {
   const qc = useQueryClient();
-  const { push } = useToast();
   const [preview, setPreview] = useState<AdminProduct | null>(null);
   const [editing, setEditing] = useState<AdminProduct | null>(null);
   const [completion, setCompletion] = useState<string | null>(null);
@@ -89,9 +88,9 @@ export function useBatchProductTools({ zClass }: { zClass?: string } = {}) {
       if (!ok) return;
       refresh();
       setPreview((cur) => (cur && cur.id === p.id ? { ...cur, active } : cur));
-      push(active ? `«${p.title}» теперь на сайте` : `«${p.title}» скрыт`, "ok");
+      toast.success(active ? `«${p.title}» теперь на сайте` : `«${p.title}» скрыт`);
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось");
     } finally {
       setBusy(null);
     }

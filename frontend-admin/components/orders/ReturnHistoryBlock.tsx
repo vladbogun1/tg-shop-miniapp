@@ -15,10 +15,10 @@ import { ordersApi, type AdminOrderDetail, type CancelMoney, type ReturnRecord, 
 import { money } from "@/lib/money";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/orders";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { Image } from "@/lib/image";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
-import { Button } from "@/components/ui/Button";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
+import { Button } from "@shop/ui/admin-button";
 import { Textarea } from "@/components/ui/Textarea";
 import { ChoiceCard } from "./ReturnModal";
 
@@ -51,7 +51,6 @@ function givenBack(rec: ReturnRecord, order: AdminOrderDetail): number {
 
 export function ReturnHistoryBlock({ order, onChanged }: { order: AdminOrderDetail; onChanged?: () => void }) {
   const records = order.admin?.returns ?? [];
-  const { push } = useToast();
   const [cancelling, setCancelling] = useState<ReturnRecord | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
   if (records.length === 0) return null;
@@ -61,10 +60,10 @@ export function ReturnHistoryBlock({ order, onChanged }: { order: AdminOrderDeta
     setBusy(rec.id);
     try {
       await ordersApi.returnDebtPaid(order.id, rec.id);
-      push(`${money(rec.debtMinor, cur)} записали как полученные`, "ok");
+      toast.success(`${money(rec.debtMinor, cur)} записали как полученные`);
       onChanged?.();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось записать деньги", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось записать деньги");
     } finally {
       setBusy(null);
     }
@@ -204,7 +203,6 @@ function CancelReturnModal({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const { push } = useToast();
   const [moneyChoice, setMoneyChoice] = useState<CancelMoney | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -228,11 +226,11 @@ function CancelReturnModal({
     setBusy(true);
     try {
       await ordersApi.cancelReturn(order.id, record.id, { money: needMoney ? moneyChoice! : undefined, note: clean });
-      push(exchange ? "Обмен отменён, товар снова в заказе" : "Возврат отменён, товар снова в заказе", "ok");
+      toast.success(exchange ? "Обмен отменён, товар снова в заказе" : "Возврат отменён, товар снова в заказе");
       onDone();
       onClose();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось отменить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось отменить");
     } finally {
       setBusy(false);
     }

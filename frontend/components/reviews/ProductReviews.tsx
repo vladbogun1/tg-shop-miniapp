@@ -7,7 +7,7 @@
  */
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { MessageSquareText, Store } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/primitives";
 import { useT } from "@/i18n/context";
 import { formatDate } from "@/lib/format";
 import { reviewKeys, reviewsApi, type PublicReview, type ReviewSummary } from "@/lib/reviews";

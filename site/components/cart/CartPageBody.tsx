@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { buttonClass } from "@/components/ui/button-styles";
+import { buttonClass } from "@shop/ui/button-styles";
 import { useI18n } from "@/i18n/context";
 import { CartGiftProgress } from "@/components/case/CartGiftProgress";
 import { useCart, useCartCount, useCartSubtotal } from "@/lib/cart";
@@ -51,11 +51,11 @@ export function CartPageBody() {
             <Link
               href={href("/checkout")}
               aria-disabled={hasProblems}
-              className={`mt-4 ${buttonClass("accent", "lg", true)} ${hasProblems ? "pointer-events-none opacity-50" : ""}`}
+              className={`mt-4 ${buttonClass("site", "accent", "lg", true)} ${hasProblems ? "pointer-events-none opacity-50" : ""}`}
             >
               <span className="truncate">{t("cart.checkout")}</span>
             </Link>
-            <Link href={href("/catalog")} className={`mt-3 ${buttonClass("surface", "md", true)}`}>
+            <Link href={href("/catalog")} className={`mt-3 ${buttonClass("site", "surface", "md", true)}`}>
               <span className="truncate">{t("cart.continue")}</span>
             </Link>
           </aside>

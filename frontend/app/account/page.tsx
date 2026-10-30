@@ -20,8 +20,7 @@ import {
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { NotificationsBell } from "@/components/NotificationsBell";
-import { Button } from "@/components/ui/Button";
-import { StatusChip } from "@/components/ui/StatusChip";
+import { Button, StatusChip } from "@shop/ui/primitives";
 import { PaymentBadge } from "@/components/account/PaymentBadge";
 import { payableMinor, paymentState } from "@shop/core/orders";
 import { customerApi, type OrderSummary } from "@/lib/api";
@@ -199,7 +198,7 @@ function OrderCard({ order, index }: { order: OrderSummary; index: number }) {
             <span className="font-display text-[15px] font-bold text-[var(--ink)]">
               {shortOrderId(order.id)}
             </span>
-            <StatusChip status={order.status} />
+            <StatusChip status={order.status} label={t(`status.${order.status}`)} />
             <PaymentBadge state={paymentState(order)} size="sm" />
             {order.giftCaseStatus === "SEALED" && order.status !== "REJECTED" &&
               (order.giftCaseOpenable ? (

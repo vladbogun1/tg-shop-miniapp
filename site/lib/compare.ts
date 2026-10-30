@@ -13,7 +13,7 @@ import { useEffect } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { COMPARE_MAX_PER_GROUP, COMPARE_MAX_TOTAL, COMPARE_STORAGE_KEY, compareAdd, parseCompareEntries, type CompareAddResult, type CompareEntry } from "@shop/core/compare";
-import { toast } from "@/components/ui/Toast";
+import { toast } from "@shop/ui/toast";
 import type { TFunction } from "@/i18n";
 import { trackCompare } from "./analytics";
 
@@ -88,7 +88,7 @@ export function toggleCompare(id: string, group: string, t: TFunction): boolean 
   const s = useCompare.getState();
   if (s.entries.some((e) => e.id === id)) {
     s.remove(id);
-    toast(t("compare.removed"));
+    toast.success(t("compare.removed"));
     return false;
   }
   const result = s.add(id, group);
@@ -96,10 +96,10 @@ export function toggleCompare(id: string, group: string, t: TFunction): boolean 
     trackCompare("compare_add", id);
     const n = useCompare.getState().entries.filter((e) => e.group === group).length;
     // always with the button: a toast that grew a button on the second add changed size and jumped
-    toast(t("compare.added", { n }), "ok", { label: t("compare.open"), onClick: () => useCompare.getState().openModal(group) });
+    toast.success(t("compare.added", { n }), { action: { label: t("compare.open"), onClick: () => useCompare.getState().openModal(group) } });
     return true;
   }
-  if (result === "group-full") toast(t("compare.groupFull", { n: COMPARE_MAX_PER_GROUP }), "error");
-  if (result === "total-full") toast(t("compare.totalFull", { n: COMPARE_MAX_TOTAL }), "error");
+  if (result === "group-full") toast.error(t("compare.groupFull", { n: COMPARE_MAX_PER_GROUP }));
+  if (result === "total-full") toast.error(t("compare.totalFull", { n: COMPARE_MAX_TOTAL }));
   return false;
 }

@@ -28,17 +28,17 @@ import {
 import { slugify } from "@/lib/slug";
 import { invalidateCards } from "@/lib/cards";
 import { cn } from "@/lib/cn";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
-import { Modal } from "@/components/ui/Modal";
+import { Modal } from "@shop/ui/overlay";
 import { Select } from "@/components/ui/Select";
 import { Tabs } from "@/components/ui/Tabs";
 import { Textarea } from "@/components/ui/Textarea";
 import { Toggle } from "@/components/ui/Toggle";
 import { Spinner } from "@/components/ui/Spinner";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { useConfirm } from "@shop/ui/confirm";
 import { useIsSuperAdmin } from "@/components/layout/Shell";
 import { AttributeDialog } from "./AttributeDialog";
 import { GroupsDialog } from "./GroupsDialog";
@@ -101,9 +101,8 @@ export function CategoryDialog({
   onClose: () => void;
   onSaved: (c: AdminCategory) => void;
 }) {
-  const { push } = useToast();
   const qc = useQueryClient();
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
   const superAdmin = useIsSuperAdmin();
   const [tab, setTab] = useState<Tab>("main");
   const [f, setF] = useState<Form>(() => toForm(category, presetParentId));
@@ -183,7 +182,7 @@ export function CategoryDialog({
       ]);
       refreshAttrs();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось переставить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось переставить");
     } finally {
       setBusyAttr(null);
     }
@@ -193,7 +192,7 @@ export function CategoryDialog({
     const used = a.usedCount ?? 0;
     // Removing a filled characteristic wipes its values from products (force=1): the main admin only.
     if (used > 0 && superAdmin !== true) {
-      push(`Характеристика заполнена в ${productsWord(used)} — удалить её с очисткой значений может только главный админ`, "error");
+      toast.error(`Характеристика заполнена в ${productsWord(used)} — удалить её с очисткой значений может только главный админ`);
       return;
     }
     const ok = await confirm({
@@ -209,11 +208,11 @@ export function CategoryDialog({
     setBusyAttr(a.id);
     try {
       await adminApi.deleteSpecAttribute(a.id, used > 0);
-      push("Характеристика удалена", "ok");
+      toast.success("Характеристика удалена");
       refreshAttrs();
     } catch (e) {
       if (e instanceof ApiError && e.status === 409 && superAdmin !== true) {
-        push(`${e.message}. Удалить с очисткой значений может только главный админ`, "error");
+        toast.error(`${e.message}. Удалить с очисткой значений может только главный админ`);
       } else if (e instanceof ApiError && e.status === 409) {
         const force = await confirm({
           title: "Характеристика используется",
@@ -224,14 +223,14 @@ export function CategoryDialog({
         if (force) {
           try {
             await adminApi.deleteSpecAttribute(a.id, true);
-            push("Характеристика удалена", "ok");
+            toast.success("Характеристика удалена");
             refreshAttrs();
           } catch (e2) {
-            push(e2 instanceof ApiError ? e2.message : "Не удалось удалить", "error");
+            toast.error(e2 instanceof ApiError ? e2.message : "Не удалось удалить");
           }
         }
       } else {
-        push(e instanceof ApiError ? e.message : "Не удалось удалить", "error");
+        toast.error(e instanceof ApiError ? e.message : "Не удалось удалить");
       }
     } finally {
       setBusyAttr(null);
@@ -267,12 +266,12 @@ export function CategoryDialog({
           sortOrder: siblings.reduce((m, c) => Math.max(m, c.sortOrder), 0) + 10,
         });
       }
-      push(category ? "Категория сохранена" : "Категория создана", "ok");
+      toast.success(category ? "Категория сохранена" : "Категория создана");
       setInitial(JSON.stringify(f));
       onSaved(saved);
       if (!category) onClose();
     } catch (e) {
-      push(e instanceof ApiError ? e.message : "Не удалось сохранить", "error");
+      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
     } finally {
       setSaving(false);
     }
@@ -643,7 +642,7 @@ export function CategoryDialog({
           qc.invalidateQueries({ queryKey: ["catalog-schema"] });
         }}
       />
-      {confirmUi}
+      
     </>
   );
 }

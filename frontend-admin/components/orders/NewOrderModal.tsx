@@ -13,10 +13,10 @@ import { ordersApi } from "@/lib/orders-api";
 import type { MovementChannel } from "@/lib/orders";
 import { money, toMinor } from "@/lib/money";
 import { refreshInbox } from "@/lib/inbox";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { cn } from "@/lib/cn";
-import { Modal, ModalCancel } from "@/components/ui/Modal";
-import { Button } from "@/components/ui/Button";
+import { Modal, ModalCancel } from "@shop/ui/overlay";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
@@ -58,7 +58,6 @@ export function NewOrderModal({
   /** The created order's id — the page opens it. */
   onCreated: (orderId: string) => void;
 }) {
-  const { push } = useToast();
   const qc = useQueryClient();
 
   const [lines, setLines] = useState<Line[]>([]);
@@ -174,7 +173,7 @@ export function NewOrderModal({
         paidChannel: channel,
         note: note.trim() || undefined,
       });
-      push("Заказ создан", "ok");
+      toast.success("Заказ создан");
       qc.invalidateQueries({ queryKey: ["board"] });
       qc.invalidateQueries({ queryKey: ["orders-table"] });
       refreshInbox(qc);
@@ -184,7 +183,7 @@ export function NewOrderModal({
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : "Не удалось создать заказ";
       setError(msg);
-      push(msg, "error");
+      toast.error(msg);
     } finally {
       setSaving(false);
     }

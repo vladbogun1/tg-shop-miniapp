@@ -20,8 +20,8 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { useIsSuperAdmin } from "@/components/layout/Shell";
 import { OrderDrawer } from "@/components/orders/OrderDrawer";
 import { ReviewCard, type ReviewAction } from "@/components/reviews/ReviewCard";
-import { Button } from "@/components/ui/Button";
-import { useConfirm } from "@/components/ui/ConfirmModal";
+import { Button } from "@shop/ui/admin-button";
+import { useConfirm } from "@shop/ui/confirm";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -36,7 +36,7 @@ import {
   type AdminReview,
   type ReviewFilter,
 } from "@/lib/reviews";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 
 const FILTER_LABEL: Record<ReviewFilter, string> = {
   PENDING: "На модерации",
@@ -58,8 +58,7 @@ function errText(e: unknown): string {
 
 export default function ReviewsPage() {
   const qc = useQueryClient();
-  const { push } = useToast();
-  const [confirm, confirmUi] = useConfirm();
+  const confirm = useConfirm();
   const superAdmin = useIsSuperAdmin();
 
   const [ready, setReady] = useState(false);
@@ -134,11 +133,11 @@ export default function ReviewsPage() {
     setBusy({ id: r.id, action });
     try {
       await call();
-      push(ok, "ok");
+      toast.success(ok);
       refresh();
       return true;
     } catch (e) {
-      push(errText(e), "error");
+      toast.error(errText(e));
       return false;
     } finally {
       setBusy(null);
@@ -269,7 +268,7 @@ export default function ReviewsPage() {
         )}
       </QueryState>
 
-      {confirmUi}
+      
       <OrderDrawer orderId={openOrderId} onClose={() => setOpenOrderId(null)} />
     </div>
   );

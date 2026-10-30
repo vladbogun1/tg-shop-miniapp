@@ -6,7 +6,7 @@
  */
 import { useId, useState } from "react";
 import type { SubmitReviewResult } from "@shop/core/types";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import { api, ApiError } from "@/lib/api";
 import { StarInput } from "./StarInput";

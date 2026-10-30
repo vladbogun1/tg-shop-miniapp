@@ -10,8 +10,10 @@ import { useEffect, useState } from "react";
 import { Analytics } from "@/components/Analytics";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { CompareModal } from "@/components/compare/CompareModal";
-import { ToastHost } from "@/components/ui/Toast";
-import { I18nProvider } from "@/i18n/context";
+import { CustomerConfirmHost } from "@shop/ui/confirm/customer";
+import { UiLookProvider } from "@shop/ui/look";
+import { Toaster } from "@shop/ui/toast";
+import { I18nProvider, useT } from "@/i18n/context";
 import type { Locale } from "@shop/core/i18n";
 import { api } from "@/lib/api";
 import { CartSync } from "@/lib/cart-sync";
@@ -61,10 +63,16 @@ function InputModality() {
   return null;
 }
 
+function SiteConfirmHost() {
+  const t = useT();
+  return <CustomerConfirmHost labels={{ confirm: t("common.confirm"), cancel: t("common.cancel") }} />;
+}
+
 export function Providers({ locale, children }: { locale: Locale; children: React.ReactNode }) {
   const [client] = useState(makeClient);
   return (
     <QueryClientProvider client={client}>
+      <UiLookProvider look="site">
       <I18nProvider locale={locale}>
         <InputModality />
         <LocaleSync locale={locale} />
@@ -75,8 +83,10 @@ export function Providers({ locale, children }: { locale: Locale; children: Reac
         <CartDrawer />
         <CompareTabSync />
         <CompareModal />
-        <ToastHost />
+        <Toaster />
+        <SiteConfirmHost />
       </I18nProvider>
+      </UiLookProvider>
     </QueryClientProvider>
   );
 }

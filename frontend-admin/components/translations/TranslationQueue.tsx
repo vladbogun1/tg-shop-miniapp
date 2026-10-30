@@ -9,7 +9,7 @@ import { useState } from "react";
 import type { TrLocale } from "@/lib/api";
 import type { UniqueString } from "@/lib/translation-check";
 import { currentText, langState, placeOf } from "@/lib/translation-queue";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { KindBadge, StateChip } from "@/components/translations/shared";
 
 const PAGE = 50;

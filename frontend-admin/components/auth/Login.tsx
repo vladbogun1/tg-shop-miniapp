@@ -22,11 +22,11 @@ import {
   type AdminLoginResult,
   type TwoFactorSetup,
 } from "@/lib/api";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
 import { Spinner } from "@/components/ui/Spinner";
 import { Toggle } from "@/components/ui/Toggle";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 
 type Step =
   | { kind: "credentials" }
@@ -45,21 +45,20 @@ export function stepAfter(res: AdminLoginResult): Step | null {
 const TRUST_LABEL = "Доверять этому устройству 30 дней";
 
 export function Login({ onSuccess, initial }: { onSuccess: () => void; initial?: AdminLoginResult | null }) {
-  const { push } = useToast();
   const [step, setStep] = useState<Step>(() => (initial ? stepAfter(initial) ?? { kind: "credentials" } : { kind: "credentials" }));
 
   const restart = useCallback(
     (message?: string) => {
-      if (message) push(message, "error");
+      if (message) toast.error(message);
       setStep({ kind: "credentials" });
     },
-    [push]
+    []
   );
 
   const done = useCallback(() => {
-    push("Вход выполнен", "ok");
+    toast.success("Вход выполнен");
     onSuccess();
-  }, [onSuccess, push]);
+  }, [onSuccess]);
 
   return (
     <div className="relative grid min-h-dvh place-items-center px-4 py-8 sm:py-10">
@@ -117,7 +116,6 @@ export function StepHeader({ icon, title, subtitle }: { icon: ReactNode; title: 
 }
 
 function CredentialsStep({ onResult }: { onResult: (res: AdminLoginResult) => void }) {
-  const { push } = useToast();
   const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -125,14 +123,14 @@ function CredentialsStep({ onResult }: { onResult: (res: AdminLoginResult) => vo
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!username.trim() || !password) {
-      push("Введите логин и пароль", "error");
+      toast.error("Введите логин и пароль");
       return;
     }
     setLoading(true);
     try {
       onResult(await authAdminLogin(username.trim(), password));
     } catch (err) {
-      push(err instanceof ApiError ? err.message : "Не удалось войти", "error");
+      toast.error(err instanceof ApiError ? err.message : "Не удалось войти");
       setLoading(false);
     }
   }

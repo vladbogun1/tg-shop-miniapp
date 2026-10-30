@@ -23,7 +23,7 @@ import type { AdminOrderDetail } from "@/lib/orders-api";
 import { money } from "@/lib/money";
 import { formatDateTime } from "@/lib/orders";
 import { cn } from "@/lib/cn";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import {
   invoiceStatusLabel,
   invoiceStatusTone,
@@ -34,7 +34,7 @@ import {
   timeLeft,
 } from "@/lib/online-payment";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@shop/ui/admin-button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { CopyButton } from "./CopyButton";
 import { RefundModal } from "./RefundModal";
@@ -56,7 +56,6 @@ function useNow(intervalMs = 60_000): number {
 export const OnlinePaymentBlock = forwardRef<HTMLElement, { order: AdminOrderDetail; onChanged?: () => void }>(
   function OnlinePaymentBlock({ order, onChanged }, ref) {
     const qc = useQueryClient();
-    const { push } = useToast();
     const now = useNow();
     const [refreshing, setRefreshing] = useState(false);
     const [refundFor, setRefundFor] = useState<AdminInvoice | null>(null);
@@ -85,10 +84,10 @@ export const OnlinePaymentBlock = forwardRef<HTMLElement, { order: AdminOrderDet
       try {
         const fresh = await adminApi.refreshOrderPayments(order.id);
         qc.setQueryData(key, fresh);
-        push("Статус оплаты обновлён", "ok");
+        toast.success("Статус оплаты обновлён");
         onChanged?.();
       } catch (e) {
-        push(e instanceof ApiError ? e.message : "Не удалось обновить статус", "error");
+        toast.error(e instanceof ApiError ? e.message : "Не удалось обновить статус");
       } finally {
         setRefreshing(false);
       }
@@ -100,12 +99,12 @@ export const OnlinePaymentBlock = forwardRef<HTMLElement, { order: AdminOrderDet
       try {
         const fresh = await adminApi.refundOrderPayment(order.id, refundFor.invoiceId, amountMinor);
         qc.setQueryData(key, fresh);
-        push("Возврат отправлен в monobank — деньги придут на карту покупателя", "ok");
+        toast.success("Возврат отправлен в monobank — деньги придут на карту покупателя");
         setRefundFor(null);
         onChanged?.();
         return true;
       } catch (e) {
-        push(e instanceof ApiError ? e.message : "Не удалось оформить возврат", "error");
+        toast.error(e instanceof ApiError ? e.message : "Не удалось оформить возврат");
         return false;
       } finally {
         setRefunding(false);

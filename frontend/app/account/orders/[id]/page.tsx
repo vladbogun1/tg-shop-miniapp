@@ -42,8 +42,7 @@ import { PaymentBadge } from "@/components/account/PaymentBadge";
 import { StatusTimeline } from "@/components/account/StatusTimeline";
 import { OrderReviewsCard } from "@/components/reviews/OrderReviewsCard";
 import { CasePrizeNote, ORDER_PAY_ANCHOR, useOrderGiftCase } from "@/components/case/OrderGiftCase";
-import { Button } from "@/components/ui/Button";
-import { StatusChip } from "@/components/ui/StatusChip";
+import { Button, StatusChip } from "@shop/ui/primitives";
 import { ApiError, customerApi, type OrderDetail } from "@/lib/api";
 import { CANCEL_REASON_MAX, customerCancelMode, paymentFirst, paymentState, payableMinor } from "@shop/core/orders";
 import { hasOnlinePayment } from "@shop/core/receipts";
@@ -92,7 +91,7 @@ export default function OrderDetailPage() {
         <h1 className="nb-up flex-1 truncate text-[18px] font-extrabold text-[var(--ink)]">
           {t("inbox.orderNumber", { id: shortOrderId(id) })}
         </h1>
-        {data && <StatusChip status={data.status} />}
+        {data && <StatusChip status={data.status} label={t(`status.${data.status}`)} />}
       </header>
 
       {(isLoading || !token) && (

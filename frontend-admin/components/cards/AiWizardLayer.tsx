@@ -11,7 +11,7 @@ import type { CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import type { CardItem, CardSchema } from "@/lib/card-prompt";
 import { cn } from "@/lib/cn";
-import { useOverlayLayer } from "@/lib/overlay-stack";
+import { useOverlayLayer } from "@shop/ui/overlay";
 import { AiCards } from "@/components/cards/AiCards";
 
 export function AiWizardLayer({

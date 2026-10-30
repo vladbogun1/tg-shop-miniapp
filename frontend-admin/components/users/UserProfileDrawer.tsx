@@ -29,7 +29,7 @@ import {
   shortId,
   DELIVERY_LABEL,
 } from "@/lib/orders";
-import { Drawer } from "@/components/ui/Drawer";
+import { Drawer } from "@shop/ui/overlay";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";

@@ -10,7 +10,7 @@ import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { ApiError } from "@/lib/api";
 import { staggerContainer } from "@/lib/motion";
-import { useToast } from "@/lib/toast";
+import { toast } from "@shop/ui/toast";
 import { metricsApi, type PeriodParams, type ReorderRow, type Stock } from "../api";
 import { num, uah, uahShort } from "../format";
 import { Empty, InlineBar, KpiTile, Note, Panel, StatusChip, TableWrap, useLimited } from "../ui";
@@ -340,17 +340,16 @@ function StockBody({
 
 function DeadStockPanel({ s, deadDays, setDeadDays }: { s: Stock; deadDays: number; setDeadDays: (n: number) => void }) {
   const qc = useQueryClient();
-  const toast = useToast();
   const [confirm, setConfirm] = useState<string | null>(null);
   const deadRows = useLimited(s.deadStock, 12);
   const hide = useMutation({
     mutationFn: (id: string) => metricsApi.hideProduct(id),
     onSuccess: () => {
-      toast.push("Товар скрыт с витрины", "ok");
+      toast.success("Товар скрыт с витрины");
       setConfirm(null);
       void qc.invalidateQueries({ queryKey: ["metrics2", "stock"] });
     },
-    onError: (e) => toast.push(e instanceof ApiError ? e.message : "Не удалось скрыть товар", "error"),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : "Не удалось скрыть товар"),
   });
 
   return (
