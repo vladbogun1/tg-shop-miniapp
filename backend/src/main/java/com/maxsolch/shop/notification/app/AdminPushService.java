@@ -6,8 +6,9 @@ import com.maxsolch.shop.notification.infra.WebPushCrypto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.notification.infra.PushSubscriptionStore.Subscription;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.ConflictException;
+import com.maxsolch.shop.notification.domain.PushError;
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.platform.journal.ActivityLog;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -86,6 +87,8 @@ public class AdminPushService {
     private final ObjectMapper objectMapper;
     private final ExecutorService executor;
     private final Clock clock;
+    /** «Журнал → Бот и сайт». */
+    private final ActivityLog activity;
 
     private final ECPrivateKey privateKey;
     private final byte[] publicKey;
@@ -94,16 +97,17 @@ public class AdminPushService {
 
     @Autowired
     public AdminPushService(AppProperties props, PushSubscriptionStore store, PushTransport transport,
-                            ObjectMapper objectMapper) {
+                            ObjectMapper objectMapper, ActivityLog activity, Clock clock) {
         this(props, store, transport, objectMapper, Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "admin-push");
             t.setDaemon(true);
             return t;
-        }), Clock.systemUTC());
+        }), clock, activity);
     }
 
     AdminPushService(AppProperties props, PushSubscriptionStore store, PushTransport transport,
-                     ObjectMapper objectMapper, ExecutorService executor, Clock clock) {
+                     ObjectMapper objectMapper, ExecutorService executor, Clock clock, ActivityLog activity) {
+        this.activity = activity;
         this.store = store;
         this.transport = transport;
         this.objectMapper = objectMapper;
@@ -148,21 +152,13 @@ public class AdminPushService {
         return privateKey != null;
     }
 
-    /** «Журнал → Бот и сайт» (optional: tests build the service without it). */
-    private com.maxsolch.shop.platform.journal.ActivityLog activity;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setActivity(com.maxsolch.shop.platform.journal.ActivityLog activity) {
-        this.activity = activity;
-    }
-
     /** One row per push: the title only (the body may quote a customer's message) and how it went. */
     private void journal(PushMessage message, SendResult r) {
-        if (activity == null || r == null) {
+        if (r == null) {
             return;
         }
-        com.maxsolch.shop.platform.journal.ActivityLog.Entry e = com.maxsolch.shop.platform.journal.ActivityLog.Entry
-                .of(com.maxsolch.shop.platform.journal.ActivityLog.SYSTEM, "ADMIN_PUSH")
+        ActivityLog.Entry e = ActivityLog.Entry
+                .of(ActivityLog.SYSTEM, "ADMIN_PUSH")
                 .text("Push админам: " + message.title())
                 .detail("tag", message.tag())
                 .detail("sent", r.sent()).detail("failed", r.failed()).detail("removed", r.removed());
@@ -185,11 +181,11 @@ public class AdminPushService {
         URI uri = validateEndpoint(endpoint);
         try {
             if (WebPushCrypto.b64url(p256dh).length != 65 || WebPushCrypto.b64url(auth).length != 16) {
-                throw new BadRequestException("Неверные ключи подписки", "PUSH_BAD_KEYS");
+                throw new DomainException.BadRequest("Неверные ключи подписки", PushError.PUSH_BAD_KEYS);
             }
             WebPushCrypto.publicKey(WebPushCrypto.b64url(p256dh));
         } catch (GeneralSecurityException | IllegalArgumentException | NullPointerException e) {
-            throw new BadRequestException("Неверные ключи подписки", "PUSH_BAD_KEYS");
+            throw new DomainException.BadRequest("Неверные ключи подписки", PushError.PUSH_BAD_KEYS);
         }
         String ua = userAgent == null ? null : (userAgent.length() > 255 ? userAgent.substring(0, 255) : userAgent);
         store.upsert(adminId, uri.toString(), p256dh.trim(), auth.trim(), ua);
@@ -208,7 +204,7 @@ public class AdminPushService {
                 ? store.byAdmin(adminId)
                 : store.byEndpoint(endpoint.trim());
         if (targets.isEmpty()) {
-            throw new BadRequestException("Это устройство не подписано на уведомления", "PUSH_NOT_SUBSCRIBED");
+            throw new DomainException.BadRequest("Это устройство не подписано на уведомления", PushError.PUSH_NOT_SUBSCRIBED);
         }
         return sendTo(targets, new PushMessage("Проверка уведомлений",
                 "Уведомления MAXSOLCH Admin работают на этом устройстве", "/settings", "test", null, false));
@@ -325,7 +321,7 @@ public class AdminPushService {
 
     private void requireEnabled() {
         if (!enabled()) {
-            throw new ConflictException("Push-уведомления выключены на сервере (не заданы VAPID-ключи)", "PUSH_DISABLED");
+            throw new DomainException.Conflict("Push-уведомления выключены на сервере (не заданы VAPID-ключи)", PushError.PUSH_DISABLED, null);
         }
     }
 
@@ -334,13 +330,13 @@ public class AdminPushService {
         try {
             uri = URI.create(endpoint == null ? "" : endpoint.trim());
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Неверный адрес подписки", "PUSH_BAD_ENDPOINT");
+            throw new DomainException.BadRequest("Неверный адрес подписки", PushError.PUSH_BAD_ENDPOINT);
         }
         String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
         boolean allowed = ALLOWED_HOST_SUFFIXES.stream().anyMatch(h -> host.equals(h) || host.endsWith("." + h));
         if (!"https".equalsIgnoreCase(uri.getScheme()) || !allowed || uri.getUserInfo() != null
                 || uri.toString().length() > 2048) {
-            throw new BadRequestException("Неизвестный push-сервис", "PUSH_BAD_ENDPOINT");
+            throw new DomainException.BadRequest("Неизвестный push-сервис", PushError.PUSH_BAD_ENDPOINT);
         }
         return uri;
     }

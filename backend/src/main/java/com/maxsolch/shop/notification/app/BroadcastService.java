@@ -5,21 +5,24 @@ import com.maxsolch.shop.notification.domain.Broadcast;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.notification.infra.BroadcastRepository;
-import com.maxsolch.shop.customer.infra.UserRepository;
+import com.maxsolch.shop.notification.domain.BroadcastAudiences;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.notification.domain.TelegramGateway;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -59,9 +62,12 @@ public class BroadcastService {
 
     private final TelegramGateway bot;
     private final AppProperties props;
-    private final UserRepository userRepository;
+    private final BroadcastAudiences audiences;
     private final BroadcastRepository broadcastRepository;
     private final ActivityLog activity;
+    private final Clock clock;
+    private final AdminAuditService audit;
+    private final CurrentActor actor;
 
     private final ExecutorService exec = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "broadcast");
@@ -70,17 +76,22 @@ public class BroadcastService {
     });
     private final AtomicReference<BroadcastStatus> status = new AtomicReference<>(BroadcastStatus.idle());
 
-    public BroadcastService(TelegramGateway bot, AppProperties props, UserRepository userRepository,
-                            BroadcastRepository broadcastRepository, ActivityLog activity) {
+    public BroadcastService(TelegramGateway bot, AppProperties props, BroadcastAudiences audiences,
+                            BroadcastRepository broadcastRepository, ActivityLog activity, Clock clock,
+                            AdminAuditService audit, CurrentActor actor) {
         this.bot = bot;
         this.props = props;
-        this.userRepository = userRepository;
+        this.audiences = audiences;
         this.broadcastRepository = broadcastRepository;
         this.activity = activity;
+        this.clock = clock;
+        this.audit = audit;
+        this.actor = actor;
     }
 
     /** A RUNNING history row after a restart was cut off mid-send — say so instead of "running". */
     @EventListener(ApplicationReadyEvent.class)
+    @Transactional
     public void closeInterrupted() {
         try {
             int n = broadcastRepository.markInterrupted();
@@ -115,10 +126,10 @@ public class BroadcastService {
         String l = normLang(lang);
         if (l == null) {
             return Map.of(
-                    "all", userRepository.audienceAllCount(),
-                    "active", userRepository.audienceActiveCount(),
-                    "inactive", userRepository.audienceInactiveCount(),
-                    "premium", userRepository.audiencePremiumCount());
+                    "all", audiences.count("all"),
+                    "active", audiences.count("active"),
+                    "inactive", audiences.count("inactive"),
+                    "premium", audiences.count("premium"));
         }
         Map<Long, String> langs = languages();
         Map<String, Long> out = new LinkedHashMap<>();
@@ -126,6 +137,31 @@ public class BroadcastService {
             out.put(a, resolveAudience(a).stream().filter(id -> l.equals(langs.get(id))).count());
         }
         return out;
+    }
+
+    /** The test message of the admin screen (to the given customer, else to the admin themselves), written to the audit. */
+    public BroadcastResult sendTest(BroadcastTestRequest req) {
+        long to = req.telegramUserId() != null ? req.telegramUserId() : actor.userId();
+        BroadcastResult result = test(req.text(), to, req.withButton(), req.buttonText());
+        audit.record("BROADCAST_TEST", "BROADCAST", null,
+                "тест → " + (req.telegramUserId() == null ? "себе" : String.valueOf(to))
+                        + (result.ok() ? "" : " (" + result.detail() + ")"));
+        return result;
+    }
+
+    /** The admin screen starts a broadcast as the current admin; a started one is written to the audit. */
+    public BroadcastStatus startAsAdmin(BroadcastRequest req) {
+        Started started = start(req, actor.userId(), audit.currentAdminName());
+        // Written after the start succeeded: a refused start ("уже идёт") is not an action.
+        String langs = (req.textUk() != null && !req.textUk().isBlank() ? " uk" : "")
+                + (req.textRu() != null && !req.textRu().isBlank() ? " ru" : "")
+                + (req.textEn() != null && !req.textEn().isBlank() ? " en" : "");
+        audit.record("BROADCAST_START", "BROADCAST", String.valueOf(started.historyId()),
+                "аудитория " + (req.audience() == null ? "all" : req.audience())
+                        + (req.lang() == null || req.lang().isBlank() ? "" : ", язык " + req.lang())
+                        + ", получателей " + started.recipients()
+                        + (langs.isEmpty() ? "" : ", версии:" + langs));
+        return started.status();
     }
 
     /** Start a broadcast (async). Throws 409 if one is already running. Returns the history id too. */
@@ -153,7 +189,7 @@ public class BroadcastService {
         row.setWithButton(req.withButton());
         row.setStatus(Broadcast.RUNNING);
         row.setTotal(recipients.size());
-        row.setStartedAt(Instant.now());
+        row.setStartedAt(clock.instant());
         Broadcast saved = broadcastRepository.save(row);
 
         BroadcastStatus start = new BroadcastStatus(true, recipients.size(), 0, 0, 0, saved.getStartedAt(), null);
@@ -210,7 +246,7 @@ public class BroadcastService {
                 sleep(45); // ~22 msg/s — well under Telegram's bulk limit
             }
         } finally {
-            Instant end = Instant.now();
+            Instant end = clock.instant();
             status.set(new BroadcastStatus(false, recipients.size(), sent, failed, blocked,
                     status.get().startedAt(), end));
             persist(row, sent, failed, blocked, Broadcast.DONE, end);
@@ -275,7 +311,7 @@ public class BroadcastService {
             if (m.contains("blocked") || m.contains("deactivated") || m.contains("chat not found")
                     || m.contains("user is deactivated") || m.contains("bot can't initiate")) {
                 try {
-                    userRepository.markBotBlocked(id, Instant.now());
+                    audiences.markBotBlocked(id, clock.instant());
                 } catch (Exception ignore) {
                     // best-effort
                 }
@@ -287,20 +323,14 @@ public class BroadcastService {
     }
 
     private List<Long> resolveAudience(String audience) {
-        String a = audience == null ? "all" : audience.trim().toLowerCase();
-        return switch (a) {
-            case "active" -> userRepository.audienceActive();
-            case "inactive" -> userRepository.audienceInactive();
-            case "premium" -> userRepository.audiencePremium();
-            default -> userRepository.audienceAll();
-        };
+        return audiences.ids(audience);
     }
 
     /** telegram id → uk/ru/en the customer reads (same rule as {@link Messages#localeOf}). */
     private Map<Long, String> languages() {
         Map<Long, String> out = new HashMap<>();
-        for (Object[] r : userRepository.reachableLanguages()) {
-            out.put(((Number) r[0]).longValue(), langOf((String) r[1], (String) r[2]));
+        for (BroadcastAudiences.Reachable r : audiences.reachable()) {
+            out.put(r.telegramUserId(), langOf(r.locale(), r.languageCode()));
         }
         return out;
     }

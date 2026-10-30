@@ -4,7 +4,7 @@ import com.maxsolch.shop.notification.app.AdminPushService;
 import com.maxsolch.shop.notification.app.AdminPushService.PushConfig;
 import com.maxsolch.shop.notification.app.AdminPushService.SendResult;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
-import com.maxsolch.shop.platform.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -42,21 +42,24 @@ public class AdminPushController {
 
     private final AdminPushService push;
 
-    public AdminPushController(AdminPushService push) {
+    private final CurrentActor actor;
+
+    public AdminPushController(AdminPushService push, CurrentActor actor) {
         this.push = push;
+        this.actor = actor;
     }
 
     @GetMapping("/config")
     @Operation(summary = "Is push configured on the server, the VAPID public key, subscribed devices of this admin")
     public PushConfig config() {
-        return push.config(SecurityUtil.currentUserId());
+        return push.config(actor.userId());
     }
 
     @PostMapping("/subscribe")
     @Operation(summary = "Register this device (PushSubscription.toJSON()); idempotent")
     public ResponseEntity<Void> subscribe(@Valid @RequestBody SubscribeRequest body,
                                           @RequestHeader(value = "User-Agent", required = false) String userAgent) {
-        push.subscribe(SecurityUtil.currentUserId(), body.endpoint(), body.keys().p256dh(), body.keys().auth(), userAgent);
+        push.subscribe(actor.userId(), body.endpoint(), body.keys().p256dh(), body.keys().auth(), userAgent);
         return ResponseEntity.noContent().build();
     }
 
@@ -70,6 +73,6 @@ public class AdminPushController {
     @PostMapping("/test")
     @Operation(summary = "Send a test notification to this device (or all devices of this admin)")
     public SendResult test(@RequestBody(required = false) EndpointRequest body) {
-        return push.sendTest(SecurityUtil.currentUserId(), body == null ? null : body.endpoint());
+        return push.sendTest(actor.userId(), body == null ? null : body.endpoint());
     }
 }

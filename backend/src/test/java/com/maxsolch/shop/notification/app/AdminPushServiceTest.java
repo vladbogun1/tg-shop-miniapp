@@ -8,8 +8,9 @@ import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.notification.app.AdminPushService.PushMessage;
 import com.maxsolch.shop.notification.app.AdminPushService.SendResult;
 import com.maxsolch.shop.notification.infra.PushSubscriptionStore.Subscription;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.ConflictException;
+import com.maxsolch.shop.platform.error.DomainException.BadRequest;
+import com.maxsolch.shop.platform.error.DomainException.Conflict;
+import com.maxsolch.shop.platform.journal.ActivityLog;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -59,7 +60,7 @@ class AdminPushServiceTest {
                         WebPushCrypto.b64url(WebPushCrypto.encode((ECPrivateKey) vapid.getPrivate())),
                         "mailto:owner@example.com"),
                 store, transport, new ObjectMapper(), new DirectExecutor(),
-                Clock.fixed(Instant.parse("2026-10-04T10:00:00Z"), ZoneOffset.UTC));
+                Clock.fixed(Instant.parse("2026-10-04T10:00:00Z"), ZoneOffset.UTC), mock(ActivityLog.class));
         KeyPair ua = WebPushCrypto.generateKeyPair();
         uaP256dh = WebPushCrypto.b64url(WebPushCrypto.encode((ECPublicKey) ua.getPublic()));
         uaAuth = WebPushCrypto.b64url(new byte[16]);
@@ -68,13 +69,13 @@ class AdminPushServiceTest {
     @Test
     void offWithoutKeysAndNeverSends() {
         AdminPushService off = new AdminPushService(props("", "", ""), store, transport, new ObjectMapper(),
-                new DirectExecutor(), Clock.systemUTC());
+                new DirectExecutor(), Clock.systemUTC(), mock(ActivityLog.class));
         assertThat(off.enabled()).isFalse();
         assertThat(off.config(1).publicKey()).isNull();
         off.notifyAdmins(new PushMessage("t", "b", "/", null, null, false));
         verifyNoInteractions(store, transport);
         assertThatThrownBy(() -> off.subscribe(1, FCM, uaP256dh, uaAuth, null))
-                .isInstanceOf(ConflictException.class);
+                .isInstanceOf(Conflict.class);
     }
 
     @Test
@@ -84,10 +85,10 @@ class AdminPushServiceTest {
         AdminPushService mismatched = new AdminPushService(props(
                 WebPushCrypto.b64url(WebPushCrypto.encode((ECPublicKey) a.getPublic())),
                 WebPushCrypto.b64url(WebPushCrypto.encode((ECPrivateKey) b.getPrivate())),
-                "mailto:x@y.z"), store, transport, new ObjectMapper(), new DirectExecutor(), Clock.systemUTC());
+                "mailto:x@y.z"), store, transport, new ObjectMapper(), new DirectExecutor(), Clock.systemUTC(), mock(ActivityLog.class));
         assertThat(mismatched.enabled()).isFalse();
         AdminPushService garbage = new AdminPushService(props("not-a-key", "%%%", "mailto:x@y.z"),
-                store, transport, new ObjectMapper(), new DirectExecutor(), Clock.systemUTC());
+                store, transport, new ObjectMapper(), new DirectExecutor(), Clock.systemUTC(), mock(ActivityLog.class));
         assertThat(garbage.enabled()).isFalse();
     }
 
@@ -157,17 +158,17 @@ class AdminPushServiceTest {
         for (String bad : List.of("http://fcm.googleapis.com/x", "https://evil.example.com/x",
                 "https://fcm.googleapis.com.evil.com/x", "https://localhost:8080/x", "not a url")) {
             assertThatThrownBy(() -> service.subscribe(1, bad, uaP256dh, uaAuth, null))
-                    .as(bad).isInstanceOf(BadRequestException.class);
+                    .as(bad).isInstanceOf(BadRequest.class);
         }
         assertThatThrownBy(() -> service.subscribe(1, FCM, "AAAA", uaAuth, null))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(BadRequest.class);
         verify(store, never()).upsert(anyLong(), eq("https://evil.example.com/x"), any(), any(), any());
     }
 
     @Test
     void testPushNeedsASubscribedDevice() {
         when(store.byEndpoint(FCM)).thenReturn(List.of());
-        assertThatThrownBy(() -> service.sendTest(1, FCM)).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> service.sendTest(1, FCM)).isInstanceOf(BadRequest.class);
     }
 
     @Test

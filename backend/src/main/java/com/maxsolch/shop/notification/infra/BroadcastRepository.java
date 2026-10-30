@@ -5,7 +5,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -16,7 +15,6 @@ public interface BroadcastRepository extends JpaRepository<Broadcast, Long> {
 
     /** On startup: a RUNNING row can only be left over from a restart mid-send. */
     @Modifying
-    @Transactional
     @Query("UPDATE Broadcast b SET b.status = 'INTERRUPTED' WHERE b.status = 'RUNNING'")
     int markInterrupted();
 }

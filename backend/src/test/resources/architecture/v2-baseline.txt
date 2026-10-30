@@ -3,24 +3,21 @@
 #   mvn -B -ntp test -Dtest=ArchitectureV2Test -Darchitecture.v2.update=true
 # after fixing violations; a raised number means the code got worse and the change must be redone.
 A1 customer 2
-A1 notification 2
+A1 notification 1
 A1 platform 3
 A1 staff 3
 A2 notification 1
 A2 staff 1
 C1 customer 4
 C1 legacy 5
-C1 notification 2
 C1 staff 15
 CA customer 2
 CA staff 2
 E1 customer 6
 E1 finance 1
 E1 legacy 1
-E1 notification 2
 E1 platform 7
 E1 staff 12
-H1 notification 1
 J1 customer 2
 J1 legacy 2
 J1 platform 2
@@ -29,7 +26,6 @@ K1 notification 1
 L3 legacy 1
 M1 catalog 1
 M1 customer 9
-M1 notification 1
 M1 order 2
 M1 payment 1
 M1 platform 9
@@ -38,7 +34,7 @@ M1 review 2
 M1 staff 2
 M1 support 1
 M2 customer 25
-M2 notification 4
+M2 notification 3
 N1 platform 3
 P1 platform 23
 S1 customer 2
@@ -49,10 +45,8 @@ S1 platform 4
 S1 staff 5
 T1 platform 4
 T2 customer 1
-T2 notification 1
 T2 staff 1
 W1 customer 4
 W1 legacy 2
-W1 notification 2
 W1 platform 1
 W1 staff 4

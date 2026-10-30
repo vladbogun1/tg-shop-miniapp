@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.notification.infra.BroadcastRepository;
-import com.maxsolch.shop.customer.infra.UserRepository;
+import com.maxsolch.shop.notification.domain.BroadcastAudiences;
+import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.notification.domain.TelegramGateway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,19 +27,20 @@ import static org.mockito.Mockito.when;
 class BroadcastJournalTest {
 
     private TelegramGateway bot;
-    private UserRepository users;
+    private BroadcastAudiences users;
     private ActivityLog activity;
     private BroadcastService service;
 
     @BeforeEach
     void setUp() throws Exception {
         bot = mock(TelegramGateway.class);
-        users = mock(UserRepository.class);
+        users = mock(BroadcastAudiences.class);
         activity = mock(ActivityLog.class);
         when(activity.bot(any(), any())).thenCallRealMethod();
         AppProperties props = new AppProperties();
         props.getTelegram().setBotToken("123:test");
-        service = new BroadcastService(bot, props, users, mock(BroadcastRepository.class), activity);
+        service = new BroadcastService(bot, props, users, mock(BroadcastRepository.class), activity,
+                java.time.Clock.systemUTC(), mock(AdminAuditService.class), mock(CurrentActor.class));
     }
 
     @Test
