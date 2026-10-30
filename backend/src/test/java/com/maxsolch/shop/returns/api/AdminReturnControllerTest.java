@@ -9,7 +9,6 @@ import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.order.app.OrderOnlinePayments;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
-import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.returns.app.AdminReturns;
@@ -167,7 +166,7 @@ class AdminReturnControllerTest {
     void wizard_bankRefuses_nothingSaved_codeKept_lockReleased() {
         var req = wizard(List.of(), List.of(), 2_500L, null);
         when(payments.refundableInvoice(any(byte[].class), anyLong())).thenReturn("inv-1");
-        org.mockito.Mockito.doThrow(new BadRequestException("нет денег")).when(payments)
+        org.mockito.Mockito.doThrow(new DomainException.BadRequest("нет денег")).when(payments)
                 .refund(any(byte[].class), anyString(), anyLong());
 
         assertThatThrownBy(() -> controller().returnWizard(id, req))
@@ -184,7 +183,7 @@ class AdminReturnControllerTest {
     void wizard_refusedPlan_sendsNoMoney_andReleasesTheLock() {
         var req = wizard(List.of(), List.of(), 2_500L, null);
         AdminReturnController c = controller();
-        org.mockito.Mockito.doThrow(new BadRequestException("план плох")).doNothing()
+        org.mockito.Mockito.doThrow(new DomainException.BadRequest("план плох")).doNothing()
                 .when(returns).checkPlan(any(byte[].class), any());
 
         assertThatThrownBy(() -> c.returnWizard(id, req)).hasMessage("план плох");

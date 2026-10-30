@@ -36,6 +36,9 @@ import java.util.UUID;
 @RestControllerAdvice(basePackages = "com.maxsolch.shop")
 public class ApiExceptionHandler {
 
+    /** Generic "data changed under you" code (lock timeouts, optimistic-lock failures). */
+    private static final String CONFLICT_CODE = "CONFLICT";
+
     private final com.maxsolch.shop.platform.i18n.Messages messages;
 
     public ApiExceptionHandler(com.maxsolch.shop.platform.i18n.Messages messages) {
@@ -81,7 +84,7 @@ public class ApiExceptionHandler {
             jakarta.persistence.LockTimeoutException.class})
     public ResponseEntity<Map<String, Object>> handleLockFailure(Exception ex) {
         log.info("Lock conflict: {}", ex.getMessage());
-        return error(HttpStatus.CONFLICT, messages.current("api.error.conflict"), ConflictException.CONFLICT);
+        return error(HttpStatus.CONFLICT, messages.current("api.error.conflict"), CONFLICT_CODE);
     }
 
     /** Thrown by @PreAuthorize / @RequiredAdmin when the role does not match. */

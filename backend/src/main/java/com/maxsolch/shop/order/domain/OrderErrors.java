@@ -5,8 +5,7 @@ import com.maxsolch.shop.platform.error.ErrorCode;
 
 /**
  * Errors of the order module with a ready text (admin-facing Russian, or a customer text already taken from
- * {@code Messages}) and an optional stable code the apps branch on. One place instead of the deprecated
- * {@code BadRequestException}; the text moves to the i18n bundles code by code later.
+ * {@code Messages}) and an optional stable code the apps branch on. One place for the factories.
  */
 public final class OrderErrors {
 

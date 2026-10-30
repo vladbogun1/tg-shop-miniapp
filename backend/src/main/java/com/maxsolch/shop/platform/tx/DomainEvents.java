@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
  * runs after the commit; on rollback it never runs; with no transaction at all it runs immediately.
  * A listener that fails does not undo the commit, so it must be safe to lose or retry (log it, do not rethrow).
  *
- * <p>Do not use {@link AfterCommit} or {@code TransactionSynchronizationManager} in new code.
+ * <p>Do not use {@code TransactionSynchronizationManager} outside this package.
  */
 @Component
 public class DomainEvents {

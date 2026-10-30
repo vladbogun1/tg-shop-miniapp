@@ -5,8 +5,8 @@ import com.maxsolch.shop.notification.app.TelegramFailures;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.web.CurrentActor;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.ConflictException;
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.platform.error.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -104,10 +104,10 @@ class ActivityLogTest {
     @Test
     void refusedRequestsKeepTheApiCode() {
         ActivityLog.Entry e = ActivityLog.Entry.of(ActivityLog.SITE, "PAYMENT_START_FAILED")
-                .rejected(new ConflictException("Час на оплату минув", "PAYMENT_EXPIRED"));
+                .rejected(new DomainException.Conflict("Час на оплату минув", ErrorCode.of("PAYMENT_EXPIRED"), java.util.Map.of()));
         assertThat(e.resultCode()).isEqualTo(ActivityLog.FAILED);
         assertThat(e.errorCode()).isEqualTo("PAYMENT_EXPIRED");
-        assertThat(ActivityLog.Entry.of(ActivityLog.SITE, "X").rejected(new BadRequestException("нет")).errorCode())
+        assertThat(ActivityLog.Entry.of(ActivityLog.SITE, "X").rejected(new DomainException.BadRequest("нет")).errorCode())
                 .isEqualTo("BAD_REQUEST");
     }
 

@@ -49,18 +49,18 @@ class DomainExceptionHandlingTest {
     }
 
     @Test
-    void legacyExceptionsMapExactlyAsBefore() {
-        assertThat(handler.handleDomain(new NotFoundException("нема")).getBody())
+    void readyTextExceptionsMapToTheirStatus() {
+        assertThat(handler.handleDomain(new DomainException.NotFound("нема")).getBody())
                 .containsEntry("message", "нема").doesNotContainKey("code");
-        assertThat(handler.handleDomain(new ForbiddenException("ні")).getStatusCode().value()).isEqualTo(403);
-        assertThat(handler.handleDomain(new UnauthorizedException("хто")).getStatusCode().value()).isEqualTo(401);
-        assertThat(handler.handleDomain(new BadRequestException("x", "C")).getBody()).containsEntry("code", "C");
+        assertThat(handler.handleDomain(new DomainException.Forbidden("ні")).getStatusCode().value()).isEqualTo(403);
+        assertThat(handler.handleDomain(new DomainException.Unauthorized("хто", null)).getStatusCode().value()).isEqualTo(401);
+        assertThat(handler.handleDomain(new DomainException.BadRequest("x", ErrorCode.of("C"))).getBody()).containsEntry("code", "C");
     }
 
     @Test
     void conflictDetailsAreMergedIntoBody() {
         ResponseEntity<Map<String, Object>> res =
-                handler.handleDomain(new ConflictException("зміни", "STOCK_CONFLICT", Map.of("count", 3)));
+                handler.handleDomain(new DomainException.Conflict("зміни", ErrorCode.of("STOCK_CONFLICT"), Map.of("count", 3)));
 
         assertThat(res.getStatusCode().value()).isEqualTo(409);
         assertThat(res.getBody()).containsEntry("code", "STOCK_CONFLICT").containsEntry("count", 3);
@@ -69,7 +69,7 @@ class DomainExceptionHandlingTest {
     @Test
     void tooManyRequestsSetsRetryAfterHeaderAndField() {
         ResponseEntity<Map<String, Object>> res =
-                handler.handleDomain(new TooManyRequestsException("зачекайте", "ORDER_COOLDOWN", 30));
+                handler.handleDomain(new DomainException.TooManyRequests("зачекайте", ErrorCode.of("ORDER_COOLDOWN"), 30));
 
         assertThat(res.getStatusCode().value()).isEqualTo(429);
         assertThat(res.getHeaders().getFirst("Retry-After")).isEqualTo("30");
@@ -79,7 +79,7 @@ class DomainExceptionHandlingTest {
     @Test
     void tooManyRequestsWithoutWaitHasNoHeader() {
         ResponseEntity<Map<String, Object>> res =
-                handler.handleDomain(new TooManyRequestsException("зачекайте", "X", 0));
+                handler.handleDomain(new DomainException.TooManyRequests("зачекайте", ErrorCode.of("X"), 0));
 
         assertThat(res.getHeaders().containsKey("Retry-After")).isFalse();
         assertThat(res.getBody()).doesNotContainKey("retryAfterSec");

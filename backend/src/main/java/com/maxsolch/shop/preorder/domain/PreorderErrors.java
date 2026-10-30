@@ -5,8 +5,7 @@ import com.maxsolch.shop.platform.error.ErrorCode;
 
 /**
  * Errors of the pre-order module: a ready text (admin-facing Russian, or a customer text already taken from
- * {@code Messages}) with an optional stable code. One place instead of the deprecated
- * {@code BadRequestException}/{@code NotFoundException}; statuses and bodies are the same.
+ * {@code Messages}) with an optional stable code. One place for the factories.
  */
 public final class PreorderErrors {
 

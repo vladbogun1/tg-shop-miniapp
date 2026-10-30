@@ -29,7 +29,7 @@ public class CurrentActor {
         return auth != null && auth.getPrincipal() instanceof AuthPrincipal;
     }
 
-    /** The lookup itself, shared with the deprecated static {@link SecurityUtil}. */
+    /** The lookup itself. */
     static AuthPrincipal read() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof AuthPrincipal p) {

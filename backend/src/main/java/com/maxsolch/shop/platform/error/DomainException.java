@@ -13,7 +13,6 @@ import java.util.Map;
  *   <li>{@code new DomainException.BadRequest("готовый текст", OrderError.X)} — a ready text (admin-only messages,
  *       code that has not been moved to the bundles yet).</li>
  * </ul>
- * The old {@code BadRequestException} and friends are now subtypes of these and are deprecated.
  */
 public abstract class DomainException extends RuntimeException {
 

@@ -163,8 +163,8 @@ public class WebAuthService {
     /**
      * Finishes a CONFIRMED login in the browser that started it: creates the session.
      *
-     * @throws UnauthorizedException the {@code login_bind} cookie is missing or belongs to another login
-     * @throws BadRequestException   unknown, not (yet) confirmed, rejected, expired or already used
+     * @throws DomainException.Unauthorized the {@code login_bind} cookie is missing or belongs to another login
+     * @throws DomainException.BadRequest   unknown, not (yet) confirmed, rejected, expired or already used
      */
     @Transactional
     public Tokens complete(String loginId, String bindSecret, String userAgent, String ip) {
@@ -295,7 +295,7 @@ public class WebAuthService {
                 .toList();
     }
 
-    /** @throws NotFoundException not one of this user's sessions */
+    /** @throws DomainException.NotFound not one of this user's sessions */
     @Transactional
     public void revokeSession(long userId, String sessionId) {
         WebSession s = sessionRepository.findById(idBytes(sessionId))

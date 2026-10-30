@@ -6,8 +6,7 @@ import com.maxsolch.shop.platform.error.ErrorCode;
 import java.util.Map;
 
 /**
- * Errors of the catalog module with a ready (admin-facing) text. One place instead of the deprecated
- * {@code BadRequestException}/{@code NotFoundException}/{@code ConflictException}; same HTTP status and body as before.
+ * Errors of the catalog module with a ready (admin-facing) text. One place for the factories.
  */
 public final class CatalogErrors {
 

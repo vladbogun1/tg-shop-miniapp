@@ -12,7 +12,7 @@ import java.lang.annotation.Target;
 /**
  * Marks a listener of a domain event published through {@link DomainEvents}: it runs after the publishing
  * transaction committed, never on rollback, and immediately when the event was published outside a transaction
- * (the same contract as the old {@link AfterCommit#run}).
+ * (deleting a file or calling an external service only once the data is safe).
  */
 @Target({ElementType.METHOD, ElementType.ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)

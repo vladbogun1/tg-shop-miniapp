@@ -7,8 +7,7 @@ import java.util.Map;
 
 /**
  * Errors of the payment module with a ready text (admin-facing Russian, or a customer text already taken from
- * {@code Messages}) and a stable code the apps branch on. One place instead of the deprecated
- * {@code BadRequestException}/{@code ConflictException}; same HTTP statuses, codes and bodies as before.
+ * {@code Messages}) and a stable code the apps branch on. One place for the factories.
  */
 public final class PaymentErrors {
 
@@ -27,7 +26,7 @@ public final class PaymentErrors {
         return new DomainException.Forbidden(message);
     }
 
-    /** 409 with the generic code {@code CONFLICT} (what {@code new ConflictException(msg)} gave). */
+    /** 409 with the generic code {@code CONFLICT}. */
     public static DomainException.Conflict conflict(String message) {
         return conflict(message, "CONFLICT");
     }

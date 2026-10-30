@@ -13,7 +13,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SuppressWarnings("deprecation")
 class CurrentActorTest {
 
     private final CurrentActor actor = new CurrentActor();
@@ -31,13 +30,12 @@ class CurrentActorTest {
     }
 
     @Test
-    void returnsPrincipalAndStaticUtilDelegates() {
+    void returnsPrincipalAndUserId() {
         AuthPrincipal p = new AuthPrincipal(42L, Role.ADMIN);
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(p, null, List.of()));
 
         assertThat(actor.isPresent()).isTrue();
         assertThat(actor.userId()).isEqualTo(42L);
-        assertThat(SecurityUtil.currentPrincipal()).isSameAs(p);
-        assertThat(SecurityUtil.currentUserId()).isEqualTo(42L);
+        assertThat(actor.principal()).isSameAs(p);
     }
 }

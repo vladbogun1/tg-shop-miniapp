@@ -4,8 +4,7 @@ import com.maxsolch.shop.platform.error.DomainException;
 
 /**
  * Errors of the inventory module with a ready text (a customer text already taken from {@code Messages}, or an
- * admin-facing Russian one). One place instead of the deprecated {@code BadRequestException}; same HTTP status
- * and body as before.
+ * admin-facing Russian one). One place for the factories.
  */
 public final class InventoryErrors {
 
