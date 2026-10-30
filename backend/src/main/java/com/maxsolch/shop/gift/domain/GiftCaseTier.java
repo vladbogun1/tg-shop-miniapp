@@ -1,6 +1,5 @@
 package com.maxsolch.shop.gift.domain;
 
-import com.maxsolch.shop.gift.app.CaseLowMargin;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -55,7 +54,7 @@ public class GiftCaseTier {
     private int promoValidDays = 30;
 
     /**
-     * An order with a low-margin product ({@link CaseLowMargin}): all product prizes together get this %
+     * An order with a low-margin product ({@code CaseLowMargin}): all product prizes together get this %
      * of the chance, discount prizes share the rest (V60). 100 = the usual odds.
      */
     @Column(name = "low_margin_product_percent", nullable = false)

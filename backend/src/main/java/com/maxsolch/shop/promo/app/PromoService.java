@@ -2,7 +2,6 @@ package com.maxsolch.shop.promo.app;
 
 import com.maxsolch.shop.promo.domain.PromoDiscount;
 import com.maxsolch.shop.promo.domain.PromoCode;
-import com.maxsolch.shop.gift.app.CaseLowMargin;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.promo.domain.PromoReservation;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;

@@ -1,5 +1,7 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.promo.app.CaseLowMargin;
+
 import com.maxsolch.shop.gift.domain.GiftCaseItem;
 import com.maxsolch.shop.gift.domain.GiftCaseTier;
 import com.maxsolch.shop.gift.domain.OrderGiftCase;
@@ -57,7 +59,6 @@ public class GiftService {
     public static final String CHOICE_NONE = "NONE";
 
     /** Promo codes issued by the case (a discount prize, a swap): «Персональные» in the admin. */
-    public static final String PROMO_SOURCE = "GIFT_CASE";
 
     /**
      * Weight of a prize = its chance in millionths of the tier (1 = 0.0001 %, 1 000 000 = 100 %).
@@ -445,7 +446,7 @@ public class GiftService {
         promo.setOwnerUserId(ownerUserId);
         int days = Math.max(1, tierSettings(tier).map(GiftCaseTier::getPromoValidDays).orElse(30));
         promo.setExpiresAt(Instant.now().plus(Duration.ofDays(days)));
-        promo.setSource(PROMO_SOURCE);
+        promo.setSource(PromoCode.SOURCE_GIFT_CASE);
         promo.setSourceOrderId(orderId);
         return promoCodes.save(promo);
     }

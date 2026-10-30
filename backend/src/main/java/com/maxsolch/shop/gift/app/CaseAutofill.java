@@ -1,5 +1,7 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.promo.app.CaseLowMargin;
+
 import com.maxsolch.shop.gift.domain.GiftCaseItem;
 import com.maxsolch.shop.gift.domain.GiftCaseTier;
 import com.maxsolch.shop.gift.infra.GiftCaseTierRepository;

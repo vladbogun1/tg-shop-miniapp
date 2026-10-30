@@ -79,7 +79,7 @@ abstract class OrderScenarioTestBase {
     com.maxsolch.shop.gift.app.GiftRegistryService giftRegistry;
 
     @Mock
-    com.maxsolch.shop.gift.app.CaseLowMargin caseLowMargin;
+    com.maxsolch.shop.promo.app.CaseLowMargin caseLowMargin;
 
     @Mock
     com.maxsolch.shop.payment.infra.PaymentInvoiceRepository paymentInvoices;
@@ -195,7 +195,7 @@ abstract class OrderScenarioTestBase {
         promo.setCode(code);
         promo.setDiscountPercent(percent);
         promo.setActive(true);
-        promo.setSource(com.maxsolch.shop.gift.app.GiftService.PROMO_SOURCE);
+        promo.setSource(com.maxsolch.shop.promo.domain.PromoCode.SOURCE_GIFT_CASE);
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate(code)).thenReturn(Optional.of(promo));
         return promo;
     }

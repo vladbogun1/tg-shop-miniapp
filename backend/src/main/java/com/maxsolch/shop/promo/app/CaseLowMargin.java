@@ -1,4 +1,4 @@
-package com.maxsolch.shop.gift.app;
+package com.maxsolch.shop.promo.app;
 
 import com.maxsolch.shop.catalog.domain.Brand;
 import com.maxsolch.shop.catalog.app.Taxonomy;

@@ -23,8 +23,7 @@ L4 legacy 3
 M1 gift 2
 M1 legacy 2
 M1 platform 1
-M2 order 16
-M2 promo 1
+M2 order 15
 N1 gift 1
 N1 legacy 45
 N1 platform 7

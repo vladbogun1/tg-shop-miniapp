@@ -63,6 +63,8 @@ public class PromoCode {
     private byte[] sourceOrderId;
 
     public static final String SOURCE_REVIEW_BONUS = "REVIEW_BONUS";
+    /** A code the gift case gave (a discount prize or the swap of a product prize). */
+    public static final String SOURCE_GIFT_CASE = "GIFT_CASE";
 
     /** Expired at {@code now}: {@code expires_at} reached. */
     public boolean isExpiredAt(Instant now) {

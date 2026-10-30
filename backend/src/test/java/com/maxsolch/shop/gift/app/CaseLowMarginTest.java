@@ -1,5 +1,8 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.promo.app.CaseLowMargin;
+import com.maxsolch.shop.gift.app.GiftService;
+
 import com.maxsolch.shop.gift.domain.GiftCaseItem;
 import com.maxsolch.shop.gift.domain.GiftCaseTier;
 
@@ -129,7 +132,7 @@ class CaseLowMarginTest {
     void casePromoIsRecognisedBySource() {
         PromoCode p = new PromoCode();
         assertThat(OrderPromos.isCasePromo(p)).isFalse();
-        p.setSource(GiftService.PROMO_SOURCE);
+        p.setSource(PromoCode.SOURCE_GIFT_CASE);
         assertThat(OrderPromos.isCasePromo(p)).isTrue();
     }
 

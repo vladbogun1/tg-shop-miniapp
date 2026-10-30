@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
@@ -101,7 +102,7 @@ public class GiftCasePromoReminderJob {
                         + "p.expires_at from promo_codes p "
                         + "join orders o on o.id = p.source_order_id "
                         + "left join users u on u.telegram_user_id = o.tg_user_id "
-                        + "where p.source = '" + GiftService.PROMO_SOURCE + "' and p.active = true "
+                        + "where p.source = '" + PromoCode.SOURCE_GIFT_CASE + "' and p.active = true "
                         + "and p.expiry_reminded_at is null "
                         + "and o.tg_user_id is not null and o.tg_user_id > 0 "
                         + "and p.expires_at > ? and p.expires_at <= ? and p.created_at <= ? "
