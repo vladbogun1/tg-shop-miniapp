@@ -1,12 +1,14 @@
 package com.maxsolch.shop.media.app;
 
 import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.platform.http.HttpClientSettings;
+import com.maxsolch.shop.platform.http.HttpClients;
+import com.maxsolch.shop.platform.http.ResilientHttp;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
 import java.net.URI;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
@@ -35,15 +37,17 @@ public class MediaThumbnailer {
      */
     private static final Set<Integer> ALLOWED_WIDTHS = Set.of(320, 480, 960, 1600);
 
-    private final HttpClient http = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(3))
-            .followRedirects(HttpClient.Redirect.NEVER)
-            .build();
+    /** 3 s to connect, 15 s for a render; GET, so a retry is allowed, but none is configured (the caller falls back). */
+    private static final HttpClientSettings HTTP = HttpClientSettings.defaults("imgproxy")
+            .withTimeouts(Duration.ofSeconds(3), Duration.ofSeconds(15));
+
+    private final ResilientHttp http;
 
     private final String imgproxyUrl;
     private final String bucket;
 
-    public MediaThumbnailer(AppProperties props) {
+    public MediaThumbnailer(AppProperties props, HttpClients httpClients) {
+        this.http = httpClients.create(HTTP);
         String imgproxyUrl = props.getMedia().getImgproxyUrl();
         this.imgproxyUrl = imgproxyUrl == null ? "" : imgproxyUrl.replaceAll("/+$", "");
         this.bucket = props.getS3().getBucket();

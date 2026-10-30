@@ -327,7 +327,7 @@ class PreorderQueueServiceTest {
                 seat(3, 13, Status.HELD, 1, 1, 40),
                 seat(4, 14, Status.WAITING, 1, 0, 30)));
 
-        assertThat(service.heldForOthers(product.getId(), null, USER)).isEqualTo(3);
+        assertThat(new QueueStockHolds(service, subs).heldForOthers(product.getId(), null, USER)).isEqualTo(3);
 
     }
 

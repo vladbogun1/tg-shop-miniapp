@@ -22,7 +22,7 @@ class MediaSignerTest {
     void setUp() {
         AppProperties props = new AppProperties();
         props.getSecurity().setJwtSecret("c29tZS1yZWFsbHktbG9uZy1zZWNyZXQtdmFsdWUtaGVyZQ==");
-        signer = new MediaSigner(props);
+        signer = new MediaSigner(props, java.time.Clock.systemUTC());
     }
 
     private static String param(String url, String name) {
@@ -88,7 +88,7 @@ class MediaSignerTest {
 
         AppProperties rotated = new AppProperties();
         rotated.getSecurity().setJwtSecret("YS1jb21wbGV0ZWx5LWRpZmZlcmVudC1zZWNyZXQtdmFsdWU=");
-        MediaSigner other = new MediaSigner(rotated);
+        MediaSigner other = new MediaSigner(rotated, java.time.Clock.systemUTC());
 
         assertThat(other.isValid("chat/abc/receipt.jpg", exp, sig)).isFalse();
     }

@@ -16,7 +16,7 @@ import com.maxsolch.shop.translation.app.TranslationDtos.SourceFixRequest;
 import com.maxsolch.shop.translation.app.TranslationDtos.SourceFixResult;
 import com.maxsolch.shop.translation.app.TranslationDtos.SourceRef;
 import com.maxsolch.shop.translation.app.TranslationDtos.Stats;
-import com.maxsolch.shop.platform.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -45,9 +45,12 @@ public class AdminTranslationController {
     private final AdminAuditService audit;
     private final SiteRevalidator siteRevalidator;
     private final AdminAccess adminAccess;
+    private final CurrentActor actor;
 
     public AdminTranslationController(TranslationAdminService service, AdminAuditService audit,
-                                      SiteRevalidator siteRevalidator, AdminAccess adminAccess) {
+                                      SiteRevalidator siteRevalidator, AdminAccess adminAccess,
+                                      CurrentActor actor) {
+        this.actor = actor;
         this.service = service;
         this.audit = audit;
         this.siteRevalidator = siteRevalidator;
@@ -66,7 +69,7 @@ public class AdminTranslationController {
     @Operation(summary = "Import translations; applied only when sourceHash matches the current source, "
             + "MANUAL rows kept unless force")
     public ImportResult importTranslations(@RequestBody ImportRequest body) {
-        ImportResult r = service.importTranslations(body, SecurityUtil.currentUserId());
+        ImportResult r = service.importTranslations(body, actor.userId());
         audit.record("TRANSLATIONS_IMPORT", "TRANSLATION", body.locale(),
                 "origin " + (body.origin() == null ? "AI" : body.origin())
                         + (Boolean.TRUE.equals(body.force()) ? ", force" : "")
@@ -85,7 +88,7 @@ public class AdminTranslationController {
     @Operation(summary = "Proofreading: replace the Russian source of fields (optimistic by sourceHash) and "
             + "write uk/en translations of the new source in one transaction")
     public SourceFixResult fixSource(@RequestBody SourceFixRequest body) {
-        SourceFixResult r = service.fixSource(body, SecurityUtil.currentUserId());
+        SourceFixResult r = service.fixSource(body, actor.userId());
         SourceRef first = body.items().get(0);
         audit.record("TRANSLATIONS_SOURCE_FIX", first.entityType(), first.entityId(),
                 "fields " + body.items().size() + " (" + first.field() + "): updated " + r.updated()
@@ -100,7 +103,7 @@ public class AdminTranslationController {
     @Operation(summary = "Mark translations as checked by a person; a stale one is re-bound to the current source "
             + "(the admin confirmed it still fits)")
     public AcceptResult accept(@RequestBody AcceptRequest body) {
-        AcceptResult r = service.accept(body, SecurityUtil.currentUserId());
+        AcceptResult r = service.accept(body, actor.userId());
         audit.record("TRANSLATIONS_ACCEPT", "TRANSLATION", "review",
                 "accepted " + r.accepted() + ", rebased " + r.rebased() + ", stale " + r.skippedStale()
                         + ", notFound " + r.notFound() + ", invalid " + r.invalid());

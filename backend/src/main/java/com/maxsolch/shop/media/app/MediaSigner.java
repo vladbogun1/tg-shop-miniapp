@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
+import java.time.Clock;
 import java.util.Base64;
 
 /**
@@ -42,8 +42,10 @@ public class MediaSigner {
     private static final String ALGORITHM = "HmacSHA256";
 
     private final byte[] key;
+    private final Clock clock;
 
-    public MediaSigner(AppProperties props) {
+    public MediaSigner(AppProperties props, Clock clock) {
+        this.clock = clock;
         // Derived from the JWT secret: one secret to configure, and rotating it invalidates
         // outstanding media links too, which is the behaviour you want.
         String secret = props.getSecurity().getJwtSecret();
@@ -55,7 +57,7 @@ public class MediaSigner {
         if (objectKey == null || objectKey.isBlank()) {
             return null;
         }
-        long now = Instant.now().getEpochSecond();
+        long now = clock.instant().getEpochSecond();
         long expiresAt = (now / WINDOW_SECONDS + 2) * WINDOW_SECONDS;
         String signature = sign(objectKey, expiresAt);
         return "/api/media?key=" + urlEncode(objectKey)
@@ -67,7 +69,7 @@ public class MediaSigner {
         if (objectKey == null || signature == null) {
             return false;
         }
-        if (Instant.now().getEpochSecond() > expiresAt) {
+        if (clock.instant().getEpochSecond() > expiresAt) {
             return false;
         }
         return constantTimeEquals(sign(objectKey, expiresAt), signature);

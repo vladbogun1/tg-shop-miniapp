@@ -1,6 +1,6 @@
 package com.maxsolch.shop.preorder.api;
 
-import com.maxsolch.shop.preorder.app.PreorderQueueService;
+import com.maxsolch.shop.preorder.app.PreorderQueueReader;
 import com.maxsolch.shop.preorder.app.PreorderDtos.ComingDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.ProductPreorderDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,21 +16,21 @@ import java.util.List;
 @Tag(name = "Public Preorders", description = "Goods on their way, no login")
 public class PublicPreorderController {
 
-    private final PreorderQueueService queue;
+    private final PreorderQueueReader reader;
 
-    public PublicPreorderController(PreorderQueueService queue) {
-        this.queue = queue;
+    public PublicPreorderController(PreorderQueueReader reader) {
+        this.reader = reader;
     }
 
     @GetMapping("/api/public/preorders")
     @Operation(summary = "«Скоро в наявності»: open batches, soonest first")
     public List<ComingDto> coming() {
-        return queue.coming();
+        return reader.coming();
     }
 
     @GetMapping("/api/public/products/{productId}/preorder")
     @Operation(summary = "Pre-order block of a product page for a guest")
     public ProductPreorderDto forProduct(@PathVariable String productId) {
-        return queue.forProduct(productId, null);
+        return reader.forProduct(productId, null);
     }
 }

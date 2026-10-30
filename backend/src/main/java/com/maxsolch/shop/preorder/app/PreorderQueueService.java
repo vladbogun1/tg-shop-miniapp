@@ -16,11 +16,7 @@ import com.maxsolch.shop.procurement.domain.Lines;
 import com.maxsolch.shop.procurement.domain.PreorderBatch.Distribution;
 import com.maxsolch.shop.procurement.app.BatchCatalog;
 import com.maxsolch.shop.procurement.app.BatchDtos.EtaDto;
-import com.maxsolch.shop.preorder.app.PreorderDtos.ComingDto;
-import com.maxsolch.shop.preorder.app.PreorderDtos.ComingLineDto;
-import com.maxsolch.shop.preorder.app.PreorderDtos.LineDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.MyPreorderDto;
-import com.maxsolch.shop.preorder.app.PreorderDtos.ProductPreorderDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.SubscribeRequest;
 import com.maxsolch.shop.preorder.domain.PreorderSubscription.Status;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
@@ -41,14 +37,10 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -188,122 +180,7 @@ public class PreorderQueueService {
         return n;
     }
 
-    /** My queues, live first, then the latest history («Мої очікування»). */
-    @Transactional(readOnly = true)
-    public List<MyPreorderDto> listMine(long userId) {
-        List<PreorderSubscription> rows = subs.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, 50));
-        Map<String, Product> byId = productsOf(rows.stream().map(PreorderSubscription::getProductId).toList());
-        Map<String, EtaDto> etas = openEtas();
-        List<MyPreorderDto> out = new ArrayList<>();
-        for (PreorderSubscription s : rows) {
-            Product p = byId.get(UuidUtil.toString(s.getProductId()));
-            if (p != null) {
-                out.add(toMine(s, p, etas.get(Lines.key(s.getProductId(), s.getVariantId()))));
-            }
-        }
-        // A hold (act now) first, then the queues, then history; newest first inside each.
-        out.sort(Comparator.comparingInt((MyPreorderDto d) -> switch (Status.valueOf(d.status())) {
-            case HELD, NOTIFIED -> 0;
-            case WAITING -> 1;
-            default -> 2;
-        }));
-        return out;
-    }
-
-    /** Whose place this is (the bot needs their language before it describes the place). */
-    @Transactional(readOnly = true)
-    public Long ownerOf(long subscriptionId) {
-        return subs.findById(subscriptionId).map(PreorderSubscription::getUserId).orElse(null);
-    }
-
-    /** One place as its owner sees it, with the product (for the bot messages); empty if either is gone. */
-    @Transactional(readOnly = true)
-    public Optional<Described> describe(long subscriptionId, Locale locale) {
-        return subs.findById(subscriptionId).flatMap(s -> products.findById(s.getProductId()).map(p ->
-                new Described(s.getUserId(), toMine(s, p, openEtas().get(Lines.key(s.getProductId(), s.getVariantId())),
-                        ContentLocale.normalize(locale)), p.getPriceMinor())));
-    }
-
-    public record Described(Long userId, MyPreorderDto place, long priceMinor) {
-    }
-
-    /** The pre-order block of a product page; {@code userId} null for a guest. */
-    @Transactional(readOnly = true)
-    public ProductPreorderDto forProduct(String productIdText, Long userId) {
-        byte[] productId = bytes(productIdText);
-        Product product = products.findById(productId)
-                .orElseThrow(() -> PreorderErrors.notFound(messages.current("api.preorder.notFound")));
-        LocalDate today = SHOP_ZONE.today(clock);
-        // variant id (or "" for the product itself) → its soonest open batch
-        Map<String, PreorderBatch> lines = new LinkedHashMap<>();
-        for (BatchCatalog.PublicLine row : batches.publicLines(productId)) {
-            PreorderBatchItem i = row.item();
-            lines.merge(i.getVariantId() == null ? "" : UuidUtil.toString(i.getVariantId()),
-                    row.batch(), BatchEta::sooner);
-        }
-        List<LineDto> lineDtos = new ArrayList<>();
-        lines.forEach((variant, b) -> lineDtos.add(new LineDto(variant.isEmpty() ? null : variant, BatchCatalog.eta(b, today))));
-        int showFrom = settings.getInt(SettingsRegistry.PREORDER_SHOW_WAITING_FROM);
-        long people = subs.countPeople(productId);
-        Integer waiting = showFrom > 0 && people >= showFrom ? (int) people : null;
-        List<MyPreorderDto> mine = new ArrayList<>();
-        if (userId != null) {
-            Map<String, EtaDto> etas = openEtas();
-            for (PreorderSubscription s : subs.findByUserIdAndStatusIn(userId, LIVE)) {
-                if (Arrays.equals(s.getProductId(), productId)) {
-                    mine.add(toMine(s, product, etas.get(Lines.key(s.getProductId(), s.getVariantId()))));
-                }
-            }
-        }
-        PreorderBatch soonest = lines.values().stream().reduce(BatchEta::sooner).orElse(null);
-        int hold = soonest != null ? soonest.getHoldHours() : settings.getInt(SettingsRegistry.PREORDER_HOLD_HOURS);
-        return new ProductPreorderDto(UuidUtil.toString(productId), lineDtos, waiting,
-                settings.getBool(SettingsRegistry.PREORDER_ANY_PRODUCT), mine, hold);
-    }
-
-    /** «Скоро в наявності»: open public batches, soonest first, with their lines. */
-    @Transactional(readOnly = true)
-    public List<ComingDto> coming() {
-        LocalDate today = SHOP_ZONE.today(clock);
-        Map<Long, PreorderBatch> byBatch = new LinkedHashMap<>();
-        Map<Long, List<ComingLineDto>> linesOf = new HashMap<>();
-        for (BatchCatalog.PublicLine row : batches.publicLines()) {
-            PreorderBatchItem i = row.item();
-            PreorderBatch b = row.batch();
-            byBatch.putIfAbsent(b.getId(), b);
-            linesOf.computeIfAbsent(b.getId(), k -> new ArrayList<>()).add(new ComingLineDto(
-                    UuidUtil.toString(i.getProductId()),
-                    i.getVariantId() == null ? null : UuidUtil.toString(i.getVariantId())));
-        }
-        return byBatch.values().stream()
-                .sorted(BatchEta::bySoonest)
-                .map(b -> new ComingDto(BatchCatalog.eta(b, today), linesOf.get(b.getId()), b.getHoldHours()))
-                .toList();
-    }
-
     // ---------------------------------------------------------------- checkout
-
-    /**
-     * Units of a line held for people other than {@code userId} (null = a guest / the admin): checkout
-     * must leave them on the shelf. Read inside the order transaction after the product row is locked.
-     */
-    public int heldForOthers(byte[] productId, byte[] variantId, Long userId) {
-        // A locking read, not the aggregate: under REPEATABLE READ a plain SELECT shows the snapshot of the
-        // order's first read, which may predate a hold that the expiry job released while we waited for the
-        // product lock. FOR UPDATE reads the latest committed rows.
-        return subs.lockQueue(productId, variantId).stream()
-                .filter(s -> s.statusEnum() == Status.HELD && (userId == null || !userId.equals(s.getUserId())))
-                .mapToInt(PreorderSubscription::getHeldQty).sum();
-    }
-
-    /** Units on hold per line ({@link #lineKey}) — the catalog subtracts them from the stock it shows. */
-    public Map<String, Integer> heldByLine() {
-        Map<String, Integer> out = new HashMap<>();
-        for (Object[] row : subs.heldByLine()) {
-            out.put(Lines.key((byte[]) row[0], (byte[]) row[1]), ((Number) row[2]).intValue());
-        }
-        return out;
-    }
 
     /**
      * An order was placed: the buyer's places in these lines are done. A hold bigger than what was bought
@@ -513,7 +390,7 @@ public class PreorderQueueService {
     }
 
     /** ETA of the soonest open public batch per line. */
-    private Map<String, EtaDto> openEtas() {
+    Map<String, EtaDto> openEtas() {
         Map<String, PreorderBatch> best = new HashMap<>();
         for (BatchCatalog.PublicLine row : batches.publicLines()) {
             PreorderBatchItem i = row.item();

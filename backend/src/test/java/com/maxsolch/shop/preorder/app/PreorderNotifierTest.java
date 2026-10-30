@@ -43,7 +43,7 @@ class PreorderNotifierTest {
     @Mock ShopBot bot;
     @Mock UserRepository users;
     @Mock ActivityLog activity;
-    @Mock PreorderQueueService queue;
+    @Mock PreorderQueueReader queue;
 
     AppProperties props = new AppProperties();
     PreorderNotifier notifier;
@@ -75,7 +75,7 @@ class PreorderNotifierTest {
         MyPreorderDto p = new MyPreorderDto(7, PRODUCT, null, "MCHOSE Ace 68", "mchose-ace-68", null, null, qty,
                 status, position, heldQty, holdUntil, Instant.parse("2026-10-27T10:00:00Z"), eta);
         when(queue.ownerOf(7L)).thenReturn(USER);
-        when(queue.describe(eq(7L), any())).thenReturn(Optional.of(new PreorderQueueService.Described(USER, p, 719900)));
+        when(queue.describe(eq(7L), any())).thenReturn(Optional.of(new PreorderQueueReader.Described(USER, p, 719900)));
     }
 
     private SendMessage sent() throws Exception {

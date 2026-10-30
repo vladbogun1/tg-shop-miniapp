@@ -30,7 +30,7 @@ class AdminBatchesTest {
 
     @BeforeEach
     void setUp() {
-        admin = new AdminBatches(batches, audit, revalidator);
+        admin = new AdminBatches(batches, mock(SupplierService.class), audit, revalidator);
     }
 
     private static ArriveResult arrived(boolean dryRun) {

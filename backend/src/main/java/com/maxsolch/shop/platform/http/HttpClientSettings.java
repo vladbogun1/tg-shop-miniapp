@@ -11,11 +11,17 @@ import java.time.Duration;
  * @param requestTimeout time to the full response; applied to every request that does not set its own timeout
  * @param maxRetries     extra attempts after the first for idempotent requests (0..{@value #MAX_RETRIES_LIMIT})
  * @param retryBackoff   pause before retry n is {@code retryBackoff * n}
+ * @param http11         force HTTP/1.1 (the JDK default tries h2c upgrade over plain http, which some servers drop)
  */
 public record HttpClientSettings(String name, Duration connectTimeout, Duration requestTimeout,
-                                 int maxRetries, Duration retryBackoff) {
+                                 int maxRetries, Duration retryBackoff, boolean http11) {
 
     public static final int MAX_RETRIES_LIMIT = 3;
+
+    public HttpClientSettings(String name, Duration connectTimeout, Duration requestTimeout,
+                              int maxRetries, Duration retryBackoff) {
+        this(name, connectTimeout, requestTimeout, maxRetries, retryBackoff, false);
+    }
 
     public HttpClientSettings {
         if (name == null || name.isBlank()) {
@@ -37,11 +43,15 @@ public record HttpClientSettings(String name, Duration connectTimeout, Duration 
     }
 
     public HttpClientSettings withTimeouts(Duration connect, Duration request) {
-        return new HttpClientSettings(name, connect, request, maxRetries, retryBackoff);
+        return new HttpClientSettings(name, connect, request, maxRetries, retryBackoff, http11);
     }
 
     public HttpClientSettings withRetries(int retries, Duration backoff) {
-        return new HttpClientSettings(name, connectTimeout, requestTimeout, retries, backoff);
+        return new HttpClientSettings(name, connectTimeout, requestTimeout, retries, backoff, http11);
+    }
+
+    public HttpClientSettings withHttp11() {
+        return new HttpClientSettings(name, connectTimeout, requestTimeout, maxRetries, retryBackoff, true);
     }
 
     private static void requirePositive(Duration d, String field) {

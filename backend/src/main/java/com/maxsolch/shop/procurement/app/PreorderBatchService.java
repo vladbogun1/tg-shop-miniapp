@@ -1,11 +1,10 @@
 package com.maxsolch.shop.procurement.app;
 
+import com.maxsolch.shop.procurement.infra.SupplierRepository;
 import com.maxsolch.shop.procurement.domain.PreorderBatch;
 import com.maxsolch.shop.procurement.domain.PreorderBatchItem;
-import com.maxsolch.shop.procurement.domain.Supplier;
 import com.maxsolch.shop.procurement.infra.PreorderBatchItemRepository;
 import com.maxsolch.shop.procurement.infra.PreorderBatchRepository;
-import com.maxsolch.shop.procurement.infra.SupplierRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
@@ -21,8 +20,6 @@ import com.maxsolch.shop.procurement.app.BatchDtos.BatchSummaryDto;
 import com.maxsolch.shop.procurement.app.BatchDtos.CancelRequest;
 import com.maxsolch.shop.procurement.app.BatchDtos.ItemDto;
 import com.maxsolch.shop.procurement.app.BatchDtos.ItemRequest;
-import com.maxsolch.shop.procurement.app.BatchDtos.SupplierDto;
-import com.maxsolch.shop.procurement.app.BatchDtos.SupplierRequest;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.time.ShopZone;
@@ -306,27 +303,6 @@ public class PreorderBatchService {
         return toDto(batches.save(b), money);
     }
 
-    // ---------------------------------------------------------------- suppliers
-
-    @Transactional(readOnly = true)
-    public List<SupplierDto> suppliers() {
-        return suppliers.findAllByOrderByNameAsc().stream()
-                .map(s -> new SupplierDto(s.getId(), s.getName(), s.getNote())).toList();
-    }
-
-    @Transactional
-    public SupplierDto createSupplier(SupplierRequest req) {
-        String name = req == null || req.name() == null ? "" : req.name().trim();
-        if (name.isEmpty() || name.length() > 255) {
-            throw ProcurementErrors.badRequest("Название поставщика: от 1 до 255 символов", "BAD_NAME");
-        }
-        Supplier s = new Supplier();
-        s.setName(name);
-        s.setNote(trimTo(req.note(), 1000));
-        Supplier saved = suppliers.save(s);
-        return new SupplierDto(saved.getId(), saved.getName(), saved.getNote());
-    }
-
     // ---------------------------------------------------------------- internals
 
     private void apply(PreorderBatch b, BatchRequest req, boolean money) {
@@ -506,7 +482,7 @@ public class PreorderBatchService {
         }
     }
 
-    private static String trimTo(String s, int max) {
+    static String trimTo(String s, int max) {
         if (s == null) {
             return null;
         }

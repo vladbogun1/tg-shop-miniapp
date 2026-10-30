@@ -19,21 +19,23 @@ import java.util.List;
 public class MyPreorders {
 
     private final PreorderQueueService queue;
+    private final PreorderQueueReader reader;
     private final CurrentActor actor;
     private final ActivityLog activity;
 
-    public MyPreorders(PreorderQueueService queue, CurrentActor actor, ActivityLog activity) {
+    public MyPreorders(PreorderQueueService queue, PreorderQueueReader reader, CurrentActor actor, ActivityLog activity) {
+        this.reader = reader;
         this.queue = queue;
         this.actor = actor;
         this.activity = activity;
     }
 
     public List<MyPreorderDto> list() {
-        return queue.listMine(actor.userId());
+        return reader.listMine(actor.userId());
     }
 
     public ProductPreorderDto forProduct(String productId) {
-        return queue.forProduct(productId, actor.userId());
+        return reader.forProduct(productId, actor.userId());
     }
 
     /** Join the queue (again = change the quantity); the journal gets a line, and a journal failure is ignored. */

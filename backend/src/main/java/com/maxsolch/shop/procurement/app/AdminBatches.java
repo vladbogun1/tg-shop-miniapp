@@ -24,11 +24,13 @@ import java.util.List;
 public class AdminBatches {
 
     private final PreorderBatchService batches;
+    private final SupplierService supplierService;
     private final AdminAuditService audit;
     private final SiteRevalidator siteRevalidator;
 
-    public AdminBatches(PreorderBatchService batches, AdminAuditService audit, SiteRevalidator siteRevalidator) {
+    public AdminBatches(PreorderBatchService batches, SupplierService supplierService, AdminAuditService audit, SiteRevalidator siteRevalidator) {
         this.batches = batches;
+        this.supplierService = supplierService;
         this.audit = audit;
         this.siteRevalidator = siteRevalidator;
     }
@@ -81,11 +83,11 @@ public class AdminBatches {
     }
 
     public List<SupplierDto> suppliers() {
-        return batches.suppliers();
+        return supplierService.suppliers();
     }
 
     public SupplierDto createSupplier(SupplierRequest req) {
-        SupplierDto dto = batches.createSupplier(req);
+        SupplierDto dto = supplierService.createSupplier(req);
         audit.record("PREORDER_SUPPLIER_CREATE", "SUPPLIER", String.valueOf(dto.id()), dto.name());
         return dto;
     }

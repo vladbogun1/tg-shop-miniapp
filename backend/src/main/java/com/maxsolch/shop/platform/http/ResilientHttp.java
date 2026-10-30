@@ -43,10 +43,13 @@ public final class ResilientHttp {
     }
 
     static ResilientHttp create(HttpClientSettings settings) {
-        HttpClient client = HttpClient.newBuilder()
+        HttpClient.Builder builder = HttpClient.newBuilder()
                 .connectTimeout(settings.connectTimeout())
-                .followRedirects(HttpClient.Redirect.NEVER)
-                .build();
+                .followRedirects(HttpClient.Redirect.NEVER);
+        if (settings.http11()) {
+            builder.version(HttpClient.Version.HTTP_1_1);
+        }
+        HttpClient client = builder.build();
         return new ResilientHttp(client, settings, Thread::sleep);
     }
 

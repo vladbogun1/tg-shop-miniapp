@@ -11,7 +11,7 @@ import com.maxsolch.shop.preorder.domain.PreorderEvents;
 import com.maxsolch.shop.procurement.app.BatchDtos.EtaDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.MyPreorderDto;
 import com.maxsolch.shop.preorder.app.PreorderNotifier;
-import com.maxsolch.shop.preorder.app.PreorderQueueService;
+import com.maxsolch.shop.preorder.app.PreorderQueueReader;
 import com.maxsolch.shop.push.AdminPushService;
 import com.maxsolch.shop.repository.AdminUserRepository;
 import com.maxsolch.shop.review.ReviewNotifier;
@@ -60,7 +60,7 @@ class NotifiersSnapshotTest {
     private final AdminPushService push = Mockito.mock(AdminPushService.class);
     private final InboxService inbox = Mockito.mock(InboxService.class);
     private final SupportThreadRepository threads = Mockito.mock(SupportThreadRepository.class);
-    private final PreorderQueueService queue = Mockito.mock(PreorderQueueService.class);
+    private final PreorderQueueReader queue = Mockito.mock(PreorderQueueReader.class);
     private final AdminSessions sessions = Mockito.mock(AdminSessions.class);
     private final AdminUserRepository adminUsers = Mockito.mock(AdminUserRepository.class);
     private final AdminAuditService audit = Mockito.mock(AdminAuditService.class);
@@ -259,7 +259,7 @@ class NotifiersSnapshotTest {
         MyPreorderDto p = new MyPreorderDto(7, PRODUCT, null, title, "mchose-ace-68", null, variant, qty,
                 status, position, heldQty, holdUntil, Instant.parse("2026-10-27T10:00:00Z"), eta);
         doReturn(userId).when(queue).ownerOf(7L);
-        doReturn(Optional.of(new PreorderQueueService.Described(userId, p, 719900))).when(queue).describe(eq(7L), any());
+        doReturn(Optional.of(new PreorderQueueReader.Described(userId, p, 719900))).when(queue).describe(eq(7L), any());
     }
 
     private void place(long userId, String status, int qty, Integer position, int heldQty, Instant holdUntil, EtaDto eta) {

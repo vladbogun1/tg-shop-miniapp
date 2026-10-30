@@ -1,15 +1,10 @@
 package com.maxsolch.shop.catalog.app;
 
 import com.maxsolch.shop.catalog.domain.ProductCondition;
-import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.translation.app.TranslationService;
-import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
 
 /**
  * The virtual «Уценка» collection ({@code /catalog/utsenka}): all products with condition ≠ NEW.
@@ -28,14 +23,11 @@ public class MarkdownCollection {
     public record Info(String name, String seoTitle, String seoDescription, String h1, String introText) {
     }
 
-    private record Row(String id, String name, String seoTitle, String seoDescription, String h1, String introText) {
-    }
-
-    private final JdbcTemplate jdbc;
+    private final MarkdownTagQueries tags;
     private final TranslationService translationService;
 
-    public MarkdownCollection(JdbcTemplate jdbc, TranslationService translationService) {
-        this.jdbc = jdbc;
+    public MarkdownCollection(MarkdownTagQueries tags, TranslationService translationService) {
+        this.tags = tags;
         this.translationService = translationService;
     }
 
@@ -46,7 +38,7 @@ public class MarkdownCollection {
     /** Name + SEO in a content language; SEO fields null = the site's template. */
     public Info info(String lang) {
         String l = ContentLocale.normalize(lang);
-        Row row = legacyTag();
+        MarkdownTagQueries.Row row = tags.bySlug(SLUG);
         String fallback = ProductCondition.MARKDOWN.label(l);
         if (row == null) {
             return new Info(fallback, null, null, null, null);
@@ -64,19 +56,5 @@ public class MarkdownCollection {
                 o.translationOrNull(TranslationEntityType.TAG, row.id(), TranslationEntityType.H1, row.h1()),
                 o.translationOrNull(TranslationEntityType.TAG, row.id(), TranslationEntityType.INTRO_TEXT,
                         row.introText()));
-    }
-
-    private Row legacyTag() {
-        try {
-            List<Row> rows = jdbc.query("SELECT id, name, seo_title, seo_description, h1, intro_text FROM tags "
-                            + "WHERE slug = ? LIMIT 1",
-                    (rs, i) -> new Row(UuidUtil.toString(rs.getBytes(1)), rs.getString(2), rs.getString(3),
-                            rs.getString(4), rs.getString(5), rs.getString(6)),
-                    SLUG);
-            return rows.isEmpty() ? null : rows.get(0);
-        } catch (DataAccessException e) {
-            // The legacy table is dropped by a later migration: the fixed labels are enough.
-            return null;
-        }
     }
 }

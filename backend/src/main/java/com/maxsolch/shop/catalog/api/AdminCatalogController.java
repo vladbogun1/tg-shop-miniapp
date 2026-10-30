@@ -30,7 +30,7 @@ import com.maxsolch.shop.platform.security.AdminAccess;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.catalog.app.AdminProductService;
 import com.maxsolch.shop.site.app.SiteRevalidator;
-import com.maxsolch.shop.platform.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.catalog.app.AdminProductDto;
 import com.maxsolch.shop.media.app.UploadResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -77,13 +77,15 @@ public class AdminCatalogController {
     private final UploadValidator uploadValidator;
     private final ImageStorageService imageStorageService;
     private final AdminAccess adminAccess;
+    private final CurrentActor actor;
 
     public AdminCatalogController(CategoryAdminService categories, BrandAdminService brands,
                                   SpecAttributeAdminService attributes, CatalogSchemaService schema,
                                   CatalogSchemaImporter importer, CardsService cards, AdminProductService products,
                                   AdminAuditService audit, SiteRevalidator siteRevalidator,
                                   UploadValidator uploadValidator, ImageStorageService imageStorageService,
-                                  AdminAccess adminAccess) {
+                                  AdminAccess adminAccess, CurrentActor actor) {
+        this.actor = actor;
         this.categories = categories;
         this.brands = brands;
         this.attributes = attributes;
@@ -98,12 +100,8 @@ public class AdminCatalogController {
         this.adminAccess = adminAccess;
     }
 
-    private static Long adminId() {
-        try {
-            return SecurityUtil.currentUserId();
-        } catch (RuntimeException e) {
-            return null;
-        }
+    private Long adminId() {
+        return actor.isPresent() ? actor.userId() : null;
     }
 
     // ------------------------------------------------------------------ categories

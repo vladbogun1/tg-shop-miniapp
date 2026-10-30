@@ -2,18 +2,21 @@ package com.maxsolch.shop.site.app;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.platform.http.HttpClientSettings;
+import com.maxsolch.shop.platform.http.HttpClients;
+import com.maxsolch.shop.platform.http.ResilientHttp;
+import com.maxsolch.shop.platform.tx.DomainEvents;
+import com.maxsolch.shop.platform.tx.OnCommitted;
+import com.maxsolch.shop.site.domain.SiteRevalidationRequested;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.net.URI;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -56,10 +59,11 @@ public class SiteRevalidator {
     // HTTP/1.1 explicitly: the JDK client defaults to HTTP/2 and, over plain http://, sends an
     // "Upgrade: h2c" request. The Next.js (Node) server has no upgrade handler for it and drops the
     // socket, so every call failed with "HTTP/1.1 header parser received no bytes".
-    private final HttpClient http = HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_1_1)
-            .connectTimeout(Duration.ofSeconds(3))
-            .build();
+    // The call is a POST: never repeated (maxRetries 0), the next admin edit sends a fresh one.
+    private static final HttpClientSettings HTTP = HttpClientSettings.defaults("site-revalidate")
+            .withTimeouts(Duration.ofSeconds(3), Duration.ofSeconds(10)).withHttp11();
+
+    private final ResilientHttp http;
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "site-revalidate");
         t.setDaemon(true);
@@ -81,12 +85,16 @@ public class SiteRevalidator {
     private final AtomicReference<Instant> lastErrorAt = new AtomicReference<>();
     private final AtomicReference<String> lastError = new AtomicReference<>();
 
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
+    private final Clock clock;
 
-    public SiteRevalidator(AppProperties props, ObjectMapper objectMapper, ApplicationEventPublisher events) {
+    public SiteRevalidator(AppProperties props, ObjectMapper objectMapper, DomainEvents events,
+                           HttpClients httpClients, Clock clock) {
         this.props = props;
         this.objectMapper = objectMapper;
         this.events = events;
+        this.http = httpClients.create(HTTP);
+        this.clock = clock;
     }
 
     public boolean enabled() {
@@ -130,7 +138,7 @@ public class SiteRevalidator {
         if (!enabled()) {
             return;
         }
-        schedule(() -> send(Map.of("all", true, "paths", List.of()), "all pages"));
+        events.publish(new SiteRevalidationRequested(true, List.of()));
     }
 
     /**
@@ -173,19 +181,18 @@ public class SiteRevalidator {
             }
         }
         List<String> list = List.copyOf(paths);
-        schedule(() -> send(Map.of("paths", list), list));
+        events.publish(new SiteRevalidationRequested(false, list));
     }
 
-    private void schedule(Runnable task) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    executor.schedule(task, DELAY_MS, TimeUnit.MILLISECONDS);
-                }
-            });
+    /** After the commit (at once outside a transaction): the call goes out on the own thread, a second later. */
+    @OnCommitted
+    void onRequested(SiteRevalidationRequested request) {
+        if (request.all()) {
+            executor.schedule(() -> send(Map.of("all", true, "paths", List.of()), "all pages"),
+                    DELAY_MS, TimeUnit.MILLISECONDS);
         } else {
-            executor.schedule(task, DELAY_MS, TimeUnit.MILLISECONDS);
+            List<String> list = request.paths();
+            executor.schedule(() -> send(Map.of("paths", list), list), DELAY_MS, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -208,7 +215,7 @@ public class SiteRevalidator {
                 return failed("сайт ответил HTTP " + res.statusCode());
             }
             log.debug("Site revalidated: {}", what);
-            lastSuccessAt.set(Instant.now());
+            lastSuccessAt.set(clock.instant());
             return null;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -224,11 +231,11 @@ public class SiteRevalidator {
         Instant prevError = lastErrorAt.get();
         Instant prevSuccess = lastSuccessAt.get();
         boolean newOutage = prevError == null || (prevSuccess != null && prevSuccess.isAfter(prevError));
-        lastErrorAt.set(Instant.now());
+        lastErrorAt.set(clock.instant());
         lastError.set(error);
         if (newOutage && events != null) {
             try {
-                events.publishEvent(new Failed(error));
+                events.publish(new Failed(error));
             } catch (RuntimeException e) {
                 log.debug("Site failure event not delivered: {}", e.toString());
             }

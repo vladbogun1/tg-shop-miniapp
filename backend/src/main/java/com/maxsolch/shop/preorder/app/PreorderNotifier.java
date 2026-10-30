@@ -35,11 +35,11 @@ public class PreorderNotifier {
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd.MM");
 
-    private final PreorderQueueService queue;
+    private final PreorderQueueReader queue;
     private final CustomerBot customer;
     private final BotTexts texts;
 
-    public PreorderNotifier(PreorderQueueService queue, CustomerBot customer, BotTexts texts) {
+    public PreorderNotifier(PreorderQueueReader queue, CustomerBot customer, BotTexts texts) {
         this.queue = queue;
         this.customer = customer;
         this.texts = texts;
@@ -126,7 +126,7 @@ public class PreorderNotifier {
     }
 
     private interface Builder {
-        Msg build(PreorderQueueService.Described d, Locale locale);
+        Msg build(PreorderQueueReader.Described d, Locale locale);
     }
 
     private void send(String type, long subscriptionId, Builder builder) {

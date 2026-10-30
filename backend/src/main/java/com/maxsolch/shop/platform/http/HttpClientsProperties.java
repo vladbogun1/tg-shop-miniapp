@@ -40,6 +40,7 @@ public class HttpClientsProperties {
                 o.connectTimeout != null ? o.connectTimeout : base.connectTimeout(),
                 o.requestTimeout != null ? o.requestTimeout : base.requestTimeout(),
                 o.maxRetries != null ? o.maxRetries : base.maxRetries(),
-                o.retryBackoff != null ? o.retryBackoff : base.retryBackoff());
+                o.retryBackoff != null ? o.retryBackoff : base.retryBackoff(),
+                base.http11());
     }
 }
