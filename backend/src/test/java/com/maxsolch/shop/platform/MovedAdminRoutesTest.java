@@ -2,9 +2,9 @@ package com.maxsolch.shop.platform;
 
 import com.maxsolch.shop.delivery.api.AdminSystemController;
 import com.maxsolch.shop.notification.api.BroadcastDeliveryController;
-import com.maxsolch.shop.platform.journal.ActivityLogController;
+import com.maxsolch.shop.journal.api.ActivityLogController;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
-import com.maxsolch.shop.platform.settings.AdminSettingsController;
+import com.maxsolch.shop.settings.api.AdminSettingsController;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.web.bind.annotation.RequestMapping;

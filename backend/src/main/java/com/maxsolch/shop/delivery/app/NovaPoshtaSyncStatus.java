@@ -1,8 +1,7 @@
 package com.maxsolch.shop.delivery.app;
 
 import com.maxsolch.shop.delivery.infra.NovaPoshtaWarehouseRepository;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -47,7 +46,7 @@ public class NovaPoshtaSyncStatus {
                 instant(settings.system(LAST_ERROR_AT).orElse(null)),
                 settings.system(LAST_ERROR).orElse(null),
                 count,
-                settings.getBool(SettingsRegistry.NOVAPOSHTA_AUTO_SYNC));
+                settings.getBool(DeliverySettings.NOVAPOSHTA_AUTO_SYNC));
     }
 
     private static Instant instant(String raw) {

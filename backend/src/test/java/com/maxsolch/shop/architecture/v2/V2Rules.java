@@ -83,10 +83,6 @@ final class V2Rules {
      * Nothing else is exempt; the same list is described in docs/ARCHITECTURE-CHECKS.md.
      */
     private static final java.util.Map<String, java.util.Map<String, String>> ALLOWED = java.util.Map.of(
-            "S1", java.util.Map.of("platform.jobs.JobsConfig",
-                    "ShedLock's JDBC lock provider is built from a JdbcTemplate; it is wiring next to @EnableSchedulerLock",
-                    "platform.journal.ActivityLogStore", "platform has no infra layer: the journal's own table activity_log is read and written by its own store",
-                    "platform.security.AdminRevokedTokenStore", "platform has no infra layer: the revoked admin tokens table belongs to platform.security"),
             "K1", java.util.Map.of(
                     "payment.app.CustomerPaymentRefresh", "ARCHITECTURE.md section 6: 5-second poll throttle, a spare poll is harmless",
                     "platform.config.WebSocketConfig", "ARCHITECTURE.md section 6: a connection belongs to the process by nature"),

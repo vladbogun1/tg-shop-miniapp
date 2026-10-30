@@ -4,8 +4,7 @@ import com.maxsolch.shop.analytics.domain.MetricsFacts;
 import com.maxsolch.shop.analytics.domain.MetricsPeriod;
 import com.maxsolch.shop.analytics.domain.ChannelFilter;
 
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.analytics.app.AnalyticsReader;
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.analytics.domain.EventClassifier;
@@ -71,10 +70,10 @@ public class AdminMetricsService {
     public MetricsDtos.Stock stock(MetricsPeriod period, ChannelFilter channel, int deadDays, int coverDays) {
         MetricsFacts facts = loader.load();
         Map<String, ReorderCalculator.Interest> interest = interest30(facts.now());
-        int lowStockDays = settings.getInt(SettingsRegistry.METRICS_LOW_STOCK_DAYS);
+        int lowStockDays = settings.getInt(StockSettings.METRICS_LOW_STOCK_DAYS);
         Reorder reorder = new ReorderCalculator(lowStockDays).compute(facts, interest, normaliseCover(coverDays));
         int dead = StockCalculator.DEAD_DAYS.contains(deadDays) ? deadDays
-                : settings.getInt(SettingsRegistry.METRICS_DEAD_STOCK_DAYS);
+                : settings.getInt(StockSettings.METRICS_DEAD_STOCK_DAYS);
         return new StockCalculator().compute(facts, period, channel, dead, lowStockDays, interest, reorder);
     }
 
@@ -158,7 +157,7 @@ public class AdminMetricsService {
     }
 
     private List<ReorderRow> runningOut(MetricsFacts facts, Map<String, ReorderCalculator.Interest> interest) {
-        int lowStockDays = settings.getInt(SettingsRegistry.METRICS_LOW_STOCK_DAYS);
+        int lowStockDays = settings.getInt(StockSettings.METRICS_LOW_STOCK_DAYS);
         Reorder reorder = new ReorderCalculator(lowStockDays).compute(facts, interest, 30);
         return reorder.rows().stream()
                 .filter(r -> r.daysToZero() != null && r.daysToZero() <= lowStockDays)

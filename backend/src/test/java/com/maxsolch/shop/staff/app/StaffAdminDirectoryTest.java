@@ -15,7 +15,7 @@ import static org.mockito.Mockito.when;
 class StaffAdminDirectoryTest {
 
     private final AdminUserRepository repo = mock(AdminUserRepository.class);
-    private final StaffAdminDirectory directory = new StaffAdminDirectory(repo);
+    private final StaffAdminDirectory directory = new StaffAdminDirectory(repo, org.mockito.Mockito.mock(com.maxsolch.shop.staff.app.AdminTokenRevocations.class));
 
     private static AdminUser admin(AdminRole role, String name, String username, int version) {
         AdminUser a = new AdminUser();

@@ -23,8 +23,7 @@ import com.maxsolch.shop.review.app.ReviewDtos.ReviewPage;
 import com.maxsolch.shop.review.app.ReviewDtos.SubmitRequest;
 import com.maxsolch.shop.review.app.ReviewDtos.SubmitResult;
 import com.maxsolch.shop.review.app.ReviewDtos.Summary;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.order.app.OrderLines;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.platform.error.DomainException;
@@ -96,7 +95,7 @@ public class ReviewService {
     }
 
     public boolean enabled() {
-        return settings.get(SettingsRegistry.REVIEWS_ENABLED, true);
+        return settings.get(ReviewSettings.REVIEWS_ENABLED, true);
     }
 
     // ================================================================== public
@@ -233,7 +232,7 @@ public class ReviewService {
             throw new DomainException.BadRequest(eligibility.error());
         }
         validate(rating, text);
-        int maxPerDay = settings.get(SettingsRegistry.REVIEWS_MAX_PER_DAY, 10);
+        int maxPerDay = settings.get(ReviewSettings.REVIEWS_MAX_PER_DAY, 10);
         Instant now = clock.instant();
         if (maxPerDay > 0 && reviews.countByUserIdAndCreatedAtAfter(userId, now.minus(Duration.ofDays(1))) >= maxPerDay) {
             throw new DomainException.BadRequest(ReviewError.TOO_MANY_PER_DAY, maxPerDay);
@@ -250,7 +249,7 @@ public class ReviewService {
         review.setRating(rating);
         review.setText(text);
         review.setCreatedAt(now);
-        ReviewStatus status = ReviewRules.initialStatus(settings.get(SettingsRegistry.REVIEWS_PREMODERATION, true));
+        ReviewStatus status = ReviewRules.initialStatus(settings.get(ReviewSettings.REVIEWS_PREMODERATION, true));
         review.setStatus(status);
         if (status == ReviewStatus.PUBLISHED) {
             review.setPublishedAt(now);
@@ -278,7 +277,7 @@ public class ReviewService {
         if (!ReviewRules.validRating(rating)) {
             throw new DomainException.BadRequest(ReviewError.RATING_OUT_OF_RANGE);
         }
-        int minLength = settings.get(SettingsRegistry.REVIEWS_MIN_LENGTH, 10);
+        int minLength = settings.get(ReviewSettings.REVIEWS_MIN_LENGTH, 10);
         ReviewError problem = ReviewRules.textProblem(text, minLength);
         if (problem != null) {
             throw new DomainException.BadRequest(problem,

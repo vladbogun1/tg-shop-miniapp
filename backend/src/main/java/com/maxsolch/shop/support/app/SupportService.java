@@ -14,8 +14,7 @@ import com.maxsolch.shop.catalog.domain.ProductImage;
 import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.catalog.app.Products;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.support.app.SupportDtos.ConfigDto;
 import com.maxsolch.shop.support.app.SupportDtos.CreateThreadRequest;
 import com.maxsolch.shop.support.app.SupportDtos.ThreadDto;
@@ -317,7 +316,7 @@ public class SupportService {
      */
     @Transactional
     public int autoClose() {
-        int days = settings.getInt(SettingsRegistry.SUPPORT_AUTO_CLOSE_DAYS);
+        int days = settings.getInt(SupportSettings.SUPPORT_AUTO_CLOSE_DAYS);
         if (days <= 0) {
             return 0;
         }

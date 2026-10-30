@@ -1,8 +1,8 @@
 package com.maxsolch.shop.notification.app;
 
 import com.maxsolch.shop.notification.infra.BroadcastRepository;
-import com.maxsolch.shop.platform.journal.ActivityLog;
-import com.maxsolch.shop.platform.journal.ActivityLogStore;
+import com.maxsolch.shop.journal.app.ActivityLog;
+import com.maxsolch.shop.journal.app.JournalFeed;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,9 +22,9 @@ public class BroadcastDeliveryReport {
     }
 
     private final BroadcastRepository broadcasts;
-    private final ActivityLogStore journal;
+    private final JournalFeed journal;
 
-    public BroadcastDeliveryReport(BroadcastRepository broadcasts, ActivityLogStore journal) {
+    public BroadcastDeliveryReport(BroadcastRepository broadcasts, JournalFeed journal) {
         this.broadcasts = broadcasts;
         this.journal = journal;
     }

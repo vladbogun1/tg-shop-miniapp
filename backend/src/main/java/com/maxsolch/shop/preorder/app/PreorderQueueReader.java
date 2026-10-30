@@ -1,5 +1,6 @@
 package com.maxsolch.shop.preorder.app;
 
+import com.maxsolch.shop.procurement.app.ProcurementSettings;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.preorder.domain.PreorderError;
 import com.maxsolch.shop.translation.domain.ContentLocale;
@@ -24,8 +25,7 @@ import com.maxsolch.shop.preorder.app.PreorderDtos.MyPreorderDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.ProductPreorderDto;
 import com.maxsolch.shop.preorder.domain.PreorderSubscription.Status;
 import com.maxsolch.shop.catalog.app.Products;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.platform.time.ShopZone;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -107,7 +107,7 @@ public class PreorderQueueReader {
         }
         List<LineDto> lineDtos = new ArrayList<>();
         lines.forEach((variant, b) -> lineDtos.add(new LineDto(variant.isEmpty() ? null : variant, BatchCatalog.eta(b, today))));
-        int showFrom = settings.getInt(SettingsRegistry.PREORDER_SHOW_WAITING_FROM);
+        int showFrom = settings.getInt(PreorderSettings.PREORDER_SHOW_WAITING_FROM);
         long people = subs.countPeople(productId);
         Integer waiting = showFrom > 0 && people >= showFrom ? (int) people : null;
         List<MyPreorderDto> mine = new ArrayList<>();
@@ -120,9 +120,9 @@ public class PreorderQueueReader {
             }
         }
         PreorderBatch soonest = lines.values().stream().reduce(BatchEta::sooner).orElse(null);
-        int hold = soonest != null ? soonest.getHoldHours() : settings.getInt(SettingsRegistry.PREORDER_HOLD_HOURS);
+        int hold = soonest != null ? soonest.getHoldHours() : settings.getInt(ProcurementSettings.PREORDER_HOLD_HOURS);
         return new ProductPreorderDto(UuidUtil.toString(productId), lineDtos, waiting,
-                settings.getBool(SettingsRegistry.PREORDER_ANY_PRODUCT), mine, hold);
+                settings.getBool(ProcurementSettings.PREORDER_ANY_PRODUCT), mine, hold);
     }
 
     /** «Скоро в наявності»: open public batches, soonest first, with their lines. */

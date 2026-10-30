@@ -16,9 +16,8 @@ import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.platform.jobs.DbLocks;
-import com.maxsolch.shop.platform.journal.ActivityLog;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.journal.app.ActivityLog;
+import com.maxsolch.shop.settings.app.SettingsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -99,7 +98,7 @@ public class OnlinePaymentService {
 
     /** Tax rate codes for every receipt line (setting payment.fiscalTaxCodes, e.g. "1" or "1,2"). */
     List<Integer> taxCodes() {
-        String raw = settings.getString(SettingsRegistry.PAYMENT_FISCAL_TAX_CODES);
+        String raw = settings.getString(PaymentSettings.PAYMENT_FISCAL_TAX_CODES);
         List<Integer> out = new ArrayList<>();
         if (raw != null) {
             for (String part : raw.split("[,;\\s]+")) {

@@ -5,8 +5,7 @@ import com.maxsolch.shop.catalog.app.Taxonomy;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.app.Products;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,12 +41,12 @@ public class CaseLowMargin {
 
     /** Brand slugs from the setting, lower case, in order. */
     public List<String> brandSlugs() {
-        return csv(SettingsRegistry.GIFT_LOW_MARGIN_BRANDS);
+        return csv(PromoSettings.GIFT_LOW_MARGIN_BRANDS);
     }
 
     /** Product ids marked one by one, lower case, in order. */
     public List<String> productIdsMarked() {
-        return csv(SettingsRegistry.GIFT_LOW_MARGIN_PRODUCTS);
+        return csv(PromoSettings.GIFT_LOW_MARGIN_PRODUCTS);
     }
 
     /** The marked brands that exist. */

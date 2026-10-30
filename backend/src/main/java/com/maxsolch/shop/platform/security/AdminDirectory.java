@@ -15,6 +15,9 @@ public interface AdminDirectory {
     /** Read from the database on every call: a demotion or a block takes effect on the next request. */
     Optional<ActiveAdmin> findActive(long telegramUserId);
 
+    /** True when the token with this {@code jti} was revoked by «Выйти» (the revocations live in {@code staff}). */
+    boolean isTokenRevoked(String tokenId);
+
     /** The admin's name for the journal and chat: name, else username; empty when there is no such admin. */
     Optional<String> displayName(long telegramUserId);
 }

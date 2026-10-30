@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.promo.app.PromoSettings;
 import static com.maxsolch.shop.gift.app.CasePrizeRules.caseDto;
 import static com.maxsolch.shop.gift.app.CasePrizeRules.discountLabel;
 import static com.maxsolch.shop.gift.app.CasePrizeRules.kind;
@@ -16,7 +17,7 @@ import com.maxsolch.shop.gift.domain.GiftCaseTier;
 import com.maxsolch.shop.gift.infra.GiftCaseItemRepository;
 import com.maxsolch.shop.gift.infra.GiftCaseTierRepository;
 
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.gift.app.GiftDtos.CaseDraftItem;
 import com.maxsolch.shop.gift.app.GiftDtos.CaseItemAdminDto;
@@ -26,8 +27,7 @@ import com.maxsolch.shop.gift.app.GiftDtos.TierAdminDto;
 import com.maxsolch.shop.gift.app.GiftDtos.TierRequest;
 import com.maxsolch.shop.gift.app.GiftDtos.TierStatsDto;
 import com.maxsolch.shop.catalog.app.CatalogService;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.gift.domain.GiftTally;
 import com.maxsolch.shop.gift.infra.GiftQueries;
 import com.maxsolch.shop.platform.error.DomainException;
@@ -94,7 +94,7 @@ public class AdminGiftService {
     @Transactional(readOnly = true)
     public List<TierAdminDto> tiers() {
         List<CaseItemAdminDto> items = caseItems();
-        int margin = settings.getInt(SettingsRegistry.GIFT_MARGIN_PERCENT);
+        int margin = settings.getInt(GiftSettings.GIFT_MARGIN_PERCENT);
         Map<GiftCaseTier.Tier, Double> monthly = monthlyOrders();
         return tierRepository.findAll().stream()
                 .sorted(Comparator.comparing(GiftCaseTier::getTier))
@@ -193,7 +193,7 @@ public class AdminGiftService {
     public GiftDtos.LowMarginDto updateLowMargin(GiftDtos.LowMarginRequest body) {
         Map<String, Object> changes = new HashMap<>();
         if (body != null && body.brands() != null) {
-            changes.put(SettingsRegistry.GIFT_LOW_MARGIN_BRANDS, String.join(",", clean(body.brands())));
+            changes.put(PromoSettings.GIFT_LOW_MARGIN_BRANDS, String.join(",", clean(body.brands())));
         }
         if (body != null && body.products() != null) {
             List<String> ids = clean(body.products());
@@ -204,7 +204,7 @@ public class AdminGiftService {
                     throw new DomainException.BadRequest(GiftError.INVALID_PRODUCT_ID, String.valueOf(id));
                 }
             });
-            changes.put(SettingsRegistry.GIFT_LOW_MARGIN_PRODUCTS, String.join(",", ids));
+            changes.put(PromoSettings.GIFT_LOW_MARGIN_PRODUCTS, String.join(",", ids));
         }
         if (!changes.isEmpty()) {
             settings.update(changes);

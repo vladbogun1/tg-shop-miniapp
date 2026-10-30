@@ -3,7 +3,7 @@ package com.maxsolch.shop.payment.app;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.payment.domain.MonobankInvoiceStatus;
 import com.maxsolch.shop.payment.infra.WebhookLogStore;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 

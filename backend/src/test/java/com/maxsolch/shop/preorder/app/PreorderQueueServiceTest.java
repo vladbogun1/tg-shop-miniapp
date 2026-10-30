@@ -1,5 +1,6 @@
 package com.maxsolch.shop.preorder.app;
 
+import com.maxsolch.shop.procurement.app.ProcurementSettings;
 import com.maxsolch.shop.preorder.domain.PreorderEvents;
 import com.maxsolch.shop.preorder.domain.PreorderSubscription;
 import com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository;
@@ -11,8 +12,7 @@ import com.maxsolch.shop.procurement.domain.PreorderBatch.Distribution;
 import com.maxsolch.shop.preorder.app.PreorderDtos.SubscribeRequest;
 import com.maxsolch.shop.preorder.domain.PreorderSubscription.Status;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -84,10 +84,10 @@ class PreorderQueueServiceTest {
         product.setStock(0);
         when(products.findByIdForUpdate(any())).thenReturn(Optional.of(product));
         when(products.findById(any())).thenReturn(Optional.of(product));
-        when(settings.getBool(SettingsRegistry.PREORDER_ANY_PRODUCT)).thenReturn(true);
-        when(settings.getInt(SettingsRegistry.PREORDER_MAX_ACTIVE)).thenReturn(20);
-        when(settings.getInt(SettingsRegistry.PREORDER_HOLD_HOURS)).thenReturn(24);
-        when(settings.getInt(SettingsRegistry.ANTIBOT_MAX_QTY_PER_PRODUCT)).thenReturn(0);
+        when(settings.getBool(ProcurementSettings.PREORDER_ANY_PRODUCT)).thenReturn(true);
+        when(settings.getInt(PreorderSettings.PREORDER_MAX_ACTIVE)).thenReturn(20);
+        when(settings.getInt(ProcurementSettings.PREORDER_HOLD_HOURS)).thenReturn(24);
+        when(settings.getInt(PreorderSettings.ANTIBOT_MAX_QTY_PER_PRODUCT)).thenReturn(0);
         when(subs.save(any())).thenAnswer(inv -> {
             PreorderSubscription s = inv.getArgument(0);
             if (s.getId() == null) {
@@ -153,7 +153,7 @@ class PreorderQueueServiceTest {
 
     @Test
     void subscribeWithoutABatchNeedsTheAnyProductSetting() {
-        when(settings.getBool(SettingsRegistry.PREORDER_ANY_PRODUCT)).thenReturn(false);
+        when(settings.getBool(ProcurementSettings.PREORDER_ANY_PRODUCT)).thenReturn(false);
 
         assertThatThrownBy(() -> service.subscribe(USER, "MINIAPP", req(1)))
                 .isInstanceOf(DomainException.BadRequest.class);

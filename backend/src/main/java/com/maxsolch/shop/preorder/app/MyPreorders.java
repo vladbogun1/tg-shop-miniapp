@@ -1,6 +1,6 @@
 package com.maxsolch.shop.preorder.app;
 
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.preorder.app.PreorderDtos.MyPreorderDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.ProductPreorderDto;

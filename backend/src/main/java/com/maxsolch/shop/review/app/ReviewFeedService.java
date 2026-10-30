@@ -6,8 +6,7 @@ import com.maxsolch.shop.review.infra.ReviewStore;
 import com.maxsolch.shop.review.app.ReviewDtos.FeedReview;
 import com.maxsolch.shop.review.app.ReviewDtos.ReviewFeed;
 import com.maxsolch.shop.review.infra.ReviewStore.FeedRow;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.translation.app.TranslationService;
 import org.springframework.stereotype.Service;
@@ -36,7 +35,7 @@ public class ReviewFeedService {
 
     @Transactional(readOnly = true)
     public ReviewFeed latest(int size, String lang) {
-        if (!settings.get(SettingsRegistry.REVIEWS_ENABLED, true)) {
+        if (!settings.get(ReviewSettings.REVIEWS_ENABLED, true)) {
             return new ReviewFeed(new ReviewDtos.Summary(null, 0, List.of(0L, 0L, 0L, 0L, 0L)), List.of());
         }
         int limit = Math.max(1, Math.min(MAX_SIZE, size <= 0 ? 24 : size));

@@ -1,7 +1,7 @@
 package com.maxsolch.shop.payment.app;
 
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import org.springframework.stereotype.Service;
 
 /** The customer opens the payment page of their order; a failure to open it is noted in the journal. */

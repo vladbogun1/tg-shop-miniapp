@@ -3,7 +3,7 @@ package com.maxsolch.shop.catalog.app;
 import com.maxsolch.shop.catalog.app.CatalogDtos.CardAcceptRequest;
 import com.maxsolch.shop.catalog.app.CatalogDtos.CardsImportRequest;
 import com.maxsolch.shop.catalog.app.CatalogDtos.CardsImportResult;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 import org.springframework.stereotype.Service;

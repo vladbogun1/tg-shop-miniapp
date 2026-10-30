@@ -1,7 +1,7 @@
 package com.maxsolch.shop.customer.app;
 
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import org.springframework.stereotype.Service;
 
 import java.util.Locale;

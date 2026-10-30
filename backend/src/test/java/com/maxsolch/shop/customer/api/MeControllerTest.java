@@ -5,7 +5,7 @@ import com.maxsolch.shop.customer.app.CustomerProfileService;
 import com.maxsolch.shop.customer.app.MeProfileDto;
 import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.customer.infra.UserRepository;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.Role;
 import com.maxsolch.shop.platform.web.CurrentActor;

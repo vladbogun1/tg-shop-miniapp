@@ -1,6 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 import org.springframework.stereotype.Service;
 

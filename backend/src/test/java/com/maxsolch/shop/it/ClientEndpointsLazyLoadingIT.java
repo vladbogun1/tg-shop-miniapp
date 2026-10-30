@@ -1,5 +1,10 @@
 package com.maxsolch.shop.it;
 
+import com.maxsolch.shop.review.app.ReviewSettings;
+import com.maxsolch.shop.support.app.SupportSettings;
+import com.maxsolch.shop.order.app.AntibotSettings;
+import com.maxsolch.shop.gift.app.GiftSettings;
+import com.maxsolch.shop.procurement.app.ProcurementSettings;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.IThrowableProxy;
@@ -39,8 +44,7 @@ import com.maxsolch.shop.payment.domain.PaymentOption;
 import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.platform.security.JwtService;
 import com.maxsolch.shop.platform.security.Role;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.preorder.domain.PreorderEvents;
 import com.maxsolch.shop.promo.domain.PromoCode;
@@ -560,8 +564,8 @@ class ClientEndpointsLazyLoadingIT {
 
     private void doSeed() {
         TransactionTemplate tx = new TransactionTemplate(txManager);
-        settings.update(Map.of(SettingsRegistry.REVIEWS_PREMODERATION, false, SettingsRegistry.PREORDER_ANY_PRODUCT, true,
-                SettingsRegistry.ANTIBOT_ORDER_COOLDOWN_SEC, 0, SettingsRegistry.SUPPORT_COOLDOWN_SEC, 0));
+        settings.update(Map.of(ReviewSettings.REVIEWS_PREMODERATION, false, ProcurementSettings.PREORDER_ANY_PRODUCT, true,
+                AntibotSettings.ANTIBOT_ORDER_COOLDOWN_SEC, 0, SupportSettings.SUPPORT_COOLDOWN_SEC, 0));
 
         User u = new User();
         u.setTelegramUserId(TG);
@@ -717,7 +721,7 @@ class ClientEndpointsLazyLoadingIT {
 
         // gift cases: the BRONZE tier of the migration starts at 1 500 UAH; prizes = a plain product, a product with
         // sizes and a discount
-        settings.update(Map.of(SettingsRegistry.GIFT_ENABLED, true, SettingsRegistry.GIFT_CASE_ENABLED, true));
+        settings.update(Map.of(GiftSettings.GIFT_ENABLED, true, GiftSettings.GIFT_CASE_ENABLED, true));
         jdbc.update("DELETE FROM gift_case_items WHERE tier = 'BRONZE'");
         jdbc.update("INSERT INTO gift_case_items (tier, kind, product_id, rarity, weight, sort_order) VALUES ('BRONZE','PRODUCT',?,'COMMON',50,1)",
                 UuidUtil.toBytes(giftProduct));

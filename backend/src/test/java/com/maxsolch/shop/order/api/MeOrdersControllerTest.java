@@ -11,7 +11,7 @@ import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.Role;
 import com.maxsolch.shop.platform.util.UuidUtil;

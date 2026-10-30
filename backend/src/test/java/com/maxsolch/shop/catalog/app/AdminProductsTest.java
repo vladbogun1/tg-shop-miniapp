@@ -1,7 +1,7 @@
 package com.maxsolch.shop.catalog.app;
 
 import com.maxsolch.shop.catalog.domain.CatalogError;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 import org.junit.jupiter.api.BeforeEach;

@@ -23,14 +23,14 @@ public class AuthService implements BotUsers {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final AdminCheck adminCheck;
-    private final com.maxsolch.shop.platform.journal.ActivityLog activity;
+    private final com.maxsolch.shop.journal.app.ActivityLog activity;
     private final java.time.Clock clock;
 
     public AuthService(TgInitDataValidator initDataValidator,
                        JwtService jwtService,
                        UserRepository userRepository,
                        AdminCheck adminCheck,
-                       com.maxsolch.shop.platform.journal.ActivityLog activity,
+                       com.maxsolch.shop.journal.app.ActivityLog activity,
                        java.time.Clock clock) {
         this.initDataValidator = initDataValidator;
         this.jwtService = jwtService;
@@ -47,7 +47,7 @@ public class AuthService implements BotUsers {
     @Transactional
     public AuthResponse authenticateCustomer(String initData) {
         TelegramUser tgUser = initDataValidator.validate(initData);
-        User user = upsertUser(tgUser, com.maxsolch.shop.platform.journal.ActivityLog.MINIAPP);
+        User user = upsertUser(tgUser, com.maxsolch.shop.journal.app.ActivityLog.MINIAPP);
         boolean admin = adminCheck.isActive(tgUser.id());
 
         String token = jwtService.issueToken(tgUser.id(), Role.CUSTOMER);
@@ -70,7 +70,7 @@ public class AuthService implements BotUsers {
         if (tgUser == null || tgUser.id() <= 0) {
             return;
         }
-        upsertUser(tgUser, com.maxsolch.shop.platform.journal.ActivityLog.BOT);
+        upsertUser(tgUser, com.maxsolch.shop.journal.app.ActivityLog.BOT);
     }
 
     /** @param source where a first-time customer showed up (journaled as REGISTERED) */
@@ -83,9 +83,9 @@ public class AuthService implements BotUsers {
             return u;
         });
         if (fresh[0] && activity != null) {
-            activity.recordAfterCommit(com.maxsolch.shop.platform.journal.ActivityLog.Entry.of(source, "REGISTERED")
+            activity.recordAfterCommit(com.maxsolch.shop.journal.app.ActivityLog.Entry.of(source, "REGISTERED")
                     .customer(tgUser.id())
-                    .text(com.maxsolch.shop.platform.journal.ActivityLog.BOT.equals(source)
+                    .text(com.maxsolch.shop.journal.app.ActivityLog.BOT.equals(source)
                             ? "Новый пользователь: впервые написал боту"
                             : "Новый пользователь: впервые открыл Mini App")
                     .detail("language", tgUser.languageCode())

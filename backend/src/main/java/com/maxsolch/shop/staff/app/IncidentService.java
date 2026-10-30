@@ -6,7 +6,7 @@ import com.maxsolch.shop.staff.domain.AdminIncident;
 import com.maxsolch.shop.staff.domain.IncidentFinding;
 import com.maxsolch.shop.staff.infra.AdminIncidentRepository;
 import com.maxsolch.shop.staff.infra.IncidentQueries;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

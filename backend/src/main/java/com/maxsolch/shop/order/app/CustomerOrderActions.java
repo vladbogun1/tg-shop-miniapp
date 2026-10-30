@@ -1,7 +1,7 @@
 package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import org.springframework.stereotype.Service;
 
 /** What the customer does with their own order (write in the chat, cancel, ask to cancel); the journal notes it. */

@@ -44,9 +44,12 @@ final class SqlOwnership {
 
     private static Map<String, String> tables() {
         Map<String, String> m = new HashMap<>();
-        own(m, "platform", "activity_log", "admin_audit_log", "settings", "shop_settings", "shedlock", "admin_revoked_tokens");
+        own(m, "platform", "shedlock");
+        own(m, "journal", "activity_log");
+        own(m, "audit", "admin_audit_log");
+        own(m, "settings", "settings", "shop_settings");
         own(m, "staff", "admin_emergency_resets", "admin_incidents", "admin_invites", "admin_login_log",
-                "admin_trusted_devices", "admin_users");
+                "admin_trusted_devices", "admin_users", "admin_revoked_tokens");
         own(m, "notification", "admin_push_subscriptions", "broadcasts");
         own(m, "analytics", "analytics_daily", "analytics_daily_runs", "analytics_daily_visitors", "client_events");
         own(m, "procurement", "batch_expense_files", "batch_expenses", "preorder_batch_items", "preorder_batches", "suppliers");

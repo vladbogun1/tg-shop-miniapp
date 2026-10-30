@@ -1,7 +1,6 @@
 package com.maxsolch.shop.review.app;
 
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.app.PromoCodes;
@@ -46,7 +45,7 @@ public class ReviewBonus {
      * @return the bonus issued now, or null
      */
     public Bonus issueIfFirst(ProductReview review) {
-        int percent = settings.get(SettingsRegistry.REVIEWS_BONUS_PERCENT, 5);
+        int percent = settings.get(ReviewSettings.REVIEWS_BONUS_PERCENT, 5);
         if (!ReviewRules.bonusEnabled(percent) || review.getOrderId() == null) {
             return null;
         }
@@ -58,12 +57,12 @@ public class ReviewBonus {
         promo.setCode(uniqueCode());
         promo.setDiscountPercent(Math.min(100, percent));
         promo.setDiscountAmountMinor(0);
-        promo.setMaxDiscountMinor(ReviewRules.bonusMaxMinor(settings.get(SettingsRegistry.REVIEWS_BONUS_MAX_UAH, 100)));
+        promo.setMaxDiscountMinor(ReviewRules.bonusMaxMinor(settings.get(ReviewSettings.REVIEWS_BONUS_MAX_UAH, 100)));
         promo.setMaxUses(1);
         promo.setUsesCount(0);
         promo.setActive(true);
         promo.setOwnerUserId(review.getUserId());
-        promo.setExpiresAt(ReviewRules.bonusExpiry(now, settings.get(SettingsRegistry.REVIEWS_BONUS_VALID_DAYS, 60)));
+        promo.setExpiresAt(ReviewRules.bonusExpiry(now, settings.get(ReviewSettings.REVIEWS_BONUS_VALID_DAYS, 60)));
         promo.setSource(PromoCode.SOURCE_REVIEW_BONUS);
         promo.setSourceOrderId(review.getOrderId());
         PromoCode saved = promoCodes.save(promo);

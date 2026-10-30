@@ -33,9 +33,6 @@ class SecurityCaches {
     static final CacheSpec RATE_SUPPORT_POSTS = new CacheSpec("rateLimitSupportPosts", 50_000, MINUTE);
     static final CacheSpec RATE_ANALYTICS = new CacheSpec("rateLimitAnalytics", 50_000, MINUTE);
 
-    /** Revoked admin token ids (jti): the source of truth is the database, the answer is remembered briefly. */
-    static final CacheSpec ADMIN_TOKEN_REVOKED = new CacheSpec("adminTokenRevoked", 10_000,
-            Duration.ofSeconds(AdminTokenRevocations.CACHE_SECONDS));
     /** Admin telegram id to the current token version (or none when the admin is gone). */
     static final CacheSpec ADMIN_TOKEN_VERSIONS = new CacheSpec("adminTokenVersions", 256,
             Duration.ofSeconds(AdminTokenValidator.CACHE_SECONDS));
@@ -97,11 +94,6 @@ class SecurityCaches {
     @Bean
     CacheSpec rateLimitAnalyticsCache() {
         return RATE_ANALYTICS;
-    }
-
-    @Bean
-    CacheSpec adminTokenRevokedCache() {
-        return ADMIN_TOKEN_REVOKED;
     }
 
     @Bean

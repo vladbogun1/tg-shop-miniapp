@@ -7,7 +7,7 @@ import com.maxsolch.shop.delivery.infra.NovaPoshtaWarehouseRepository;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.http.HttpClients;
 import com.maxsolch.shop.platform.http.HttpClientsProperties;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 
 import java.time.Clock;
 

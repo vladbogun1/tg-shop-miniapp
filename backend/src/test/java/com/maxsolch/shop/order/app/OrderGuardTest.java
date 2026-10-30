@@ -3,8 +3,8 @@ package com.maxsolch.shop.order.app;
 import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.infra.OrderGuardStore;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.AllSettings;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,7 +51,7 @@ class OrderGuardTest {
     @BeforeEach
     void setUp() {
         // Registry defaults: 2 unpaid, 60 s, 5/day, 5 per product, 20 units, 3 self-cancels.
-        for (var d : SettingsRegistry.all()) {
+        for (var d : AllSettings.catalog().all()) {
             if (d.key().startsWith("antibot.")) {
                 values.put(d.key(), Integer.parseInt(d.defaultValue()));
             }

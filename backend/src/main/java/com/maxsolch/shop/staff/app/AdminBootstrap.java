@@ -1,6 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;

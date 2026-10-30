@@ -1,7 +1,7 @@
 package com.maxsolch.shop.customer.app;
 
 import com.maxsolch.shop.customer.infra.UserLookupQueries;
-import com.maxsolch.shop.platform.journal.JournalPeople;
+import com.maxsolch.shop.journal.domain.JournalPeople;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;

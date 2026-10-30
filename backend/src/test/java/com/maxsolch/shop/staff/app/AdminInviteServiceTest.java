@@ -5,7 +5,7 @@ import com.maxsolch.shop.staff.domain.AdminInvite;
 import com.maxsolch.shop.staff.domain.Base32;
 import com.maxsolch.shop.staff.domain.SecretCipher;
 import com.maxsolch.shop.staff.domain.Totp;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;

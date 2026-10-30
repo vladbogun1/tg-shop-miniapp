@@ -8,7 +8,7 @@ import com.maxsolch.shop.support.infra.SupportThreadRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.i18n.ChatPreview;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.notification.app.AdminPushService;
 import com.maxsolch.shop.notification.app.AdminPushService.PushMessage;
 import com.maxsolch.shop.notification.app.CustomerBot;

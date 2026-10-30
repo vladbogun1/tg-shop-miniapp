@@ -1,6 +1,6 @@
 package com.maxsolch.shop.procurement.app;
 
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.procurement.app.BatchDtos.ArriveLineResult;
 import com.maxsolch.shop.procurement.app.BatchDtos.ArriveRequest;
 import com.maxsolch.shop.procurement.app.BatchDtos.ArriveResult;

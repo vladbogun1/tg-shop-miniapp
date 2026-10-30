@@ -10,7 +10,7 @@ import com.maxsolch.shop.catalog.app.CatalogDtos.CategoryUpsertRequest;
 import com.maxsolch.shop.catalog.app.CatalogDtos.RenameOption;
 import com.maxsolch.shop.catalog.app.CatalogDtos.ReorderItem;
 import com.maxsolch.shop.catalog.app.CatalogDtos.SpecAttributeUpsertRequest;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.security.AdminAccess;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.site.app.SiteRevalidator;

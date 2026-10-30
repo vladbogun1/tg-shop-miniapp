@@ -9,8 +9,7 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.gift.app.GiftDtos.GiftRegistryDto;
 import com.maxsolch.shop.gift.app.GiftDtos.GiftRegistryRowDto;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.platform.error.DomainException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -88,7 +87,7 @@ public class GiftRegistryService {
 
     /** The monthly limit per person, kopecks; 0 = no limit. */
     public long limitMinor() {
-        return Math.max(0, settings.getInt(SettingsRegistry.GIFT_MONTHLY_LIMIT_UAH)) * 100L;
+        return Math.max(0, settings.getInt(GiftSettings.GIFT_MONTHLY_LIMIT_UAH)) * 100L;
     }
 
     /**

@@ -7,7 +7,7 @@ import com.maxsolch.shop.staff.domain.SecretCipher;
 import com.maxsolch.shop.staff.domain.Totp;
 import com.maxsolch.shop.staff.app.AdminAuthService.Outcome;
 import com.maxsolch.shop.staff.app.AdminAuthService.Status;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;

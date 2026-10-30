@@ -1,7 +1,7 @@
 package com.maxsolch.shop.payment.app;
 
 import com.maxsolch.shop.order.domain.OrderFixtures;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.domain.MonobankGateway;
 import com.fasterxml.jackson.databind.ObjectMapper;

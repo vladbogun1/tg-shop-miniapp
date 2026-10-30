@@ -1,7 +1,7 @@
 package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import org.springframework.stereotype.Service;
 

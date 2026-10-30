@@ -2,7 +2,7 @@ package com.maxsolch.shop.payment.app;
 
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.app.OrderLifecycle;

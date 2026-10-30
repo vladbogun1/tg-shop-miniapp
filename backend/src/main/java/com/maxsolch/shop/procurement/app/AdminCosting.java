@@ -4,7 +4,7 @@ import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.procurement.domain.ProcurementError;
 import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.media.app.UploadValidator;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.security.AdminAccess;
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.platform.web.CurrentActor;

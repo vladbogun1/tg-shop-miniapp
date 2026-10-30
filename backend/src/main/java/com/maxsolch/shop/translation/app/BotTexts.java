@@ -6,7 +6,7 @@ import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.translation.domain.TranslationsChanged;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;

@@ -4,7 +4,7 @@ import com.maxsolch.shop.staff.domain.StaffError;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.staff.domain.LoginMethod;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;

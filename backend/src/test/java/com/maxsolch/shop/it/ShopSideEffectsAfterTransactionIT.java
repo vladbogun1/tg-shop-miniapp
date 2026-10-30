@@ -1,8 +1,8 @@
 package com.maxsolch.shop.it;
 
-import com.maxsolch.shop.platform.journal.ActivityLog;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.promo.app.PromoSettings;
+import com.maxsolch.shop.journal.app.ActivityLog;
+import com.maxsolch.shop.settings.app.SettingsService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -69,7 +69,7 @@ class ShopSideEffectsAfterTransactionIT extends AbstractMysqlIT {
 
     @Test
     void settingsSnapshotIsDroppedAfterARollbackToo() {
-        String key = SettingsRegistry.PROMO_HOLD_MINUTES;
+        String key = PromoSettings.PROMO_HOLD_MINUTES;
         int before = settings.get(key, 30);
         int changed = before == 77 ? 78 : 77;
 

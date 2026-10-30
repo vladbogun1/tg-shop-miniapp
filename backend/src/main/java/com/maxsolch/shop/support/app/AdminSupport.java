@@ -1,7 +1,7 @@
 package com.maxsolch.shop.support.app;
 
 import com.maxsolch.shop.order.app.SendMessageRequest;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.support.app.SupportDtos.MessageDto;
 import org.springframework.stereotype.Service;

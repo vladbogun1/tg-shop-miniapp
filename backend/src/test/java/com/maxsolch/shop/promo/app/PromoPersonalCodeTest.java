@@ -38,7 +38,7 @@ class PromoPersonalCodeTest {
     @Mock
     com.maxsolch.shop.platform.i18n.Messages messages;
     @Mock
-    com.maxsolch.shop.platform.settings.SettingsService settings;
+    com.maxsolch.shop.settings.app.SettingsService settings;
 
     PromoService service;
 

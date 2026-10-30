@@ -19,6 +19,9 @@ class StaffCaches {
     /** {@code jti} of pre-auth tokens already spent on a second step: a token works once. */
     static final String ADMIN_PREAUTH_USED = "adminPreAuthUsed";
 
+    /** Revoked admin token ids (jti): the source of truth is the database, the answer is remembered briefly. */
+    static final CacheSpec ADMIN_TOKEN_REVOKED = new CacheSpec("adminTokenRevoked", 10_000,
+            Duration.ofSeconds(AdminTokenRevocations.CACHE_SECONDS));
     static final CacheSpec UNKNOWN_LOGINS = new CacheSpec(ADMIN_UNKNOWN_LOGINS, 10_000, AdminLockout.LOCK_DURATION);
     static final CacheSpec PREAUTH_USED = new CacheSpec(ADMIN_PREAUTH_USED, 10_000,
             Duration.ofMinutes(PreAuthTokens.TTL_MINUTES + 1));
@@ -26,6 +29,11 @@ class StaffCaches {
     @Bean
     CacheSpec adminUnknownLoginsCache() {
         return UNKNOWN_LOGINS;
+    }
+
+    @Bean
+    CacheSpec adminTokenRevokedCache() {
+        return ADMIN_TOKEN_REVOKED;
     }
 
     @Bean

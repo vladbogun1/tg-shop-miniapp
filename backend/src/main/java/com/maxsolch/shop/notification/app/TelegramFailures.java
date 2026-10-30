@@ -1,8 +1,9 @@
 package com.maxsolch.shop.notification.app;
 
-import com.maxsolch.shop.platform.journal.ActivityLog;
-import com.maxsolch.shop.platform.journal.ActivityLog.Failure;
-import com.maxsolch.shop.platform.journal.BotFailureClassifier;
+import com.maxsolch.shop.journal.app.ActivityLog;
+import com.maxsolch.shop.journal.domain.BotFailure;
+import com.maxsolch.shop.journal.domain.JournalText;
+import com.maxsolch.shop.journal.domain.BotFailureClassifier;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 
@@ -17,9 +18,9 @@ import java.util.Locale;
 public class TelegramFailures implements BotFailureClassifier {
 
     @Override
-    public Failure classify(Throwable t) {
+    public BotFailure classify(Throwable t) {
         if (t == null) {
-            return new Failure("ERROR", null);
+            return new BotFailure("ERROR", null);
         }
         Integer status = null;
         String api = null;
@@ -41,7 +42,7 @@ public class TelegramFailures implements BotFailureClassifier {
         if (retryAfter != null) {
             msg.append(" (retry after ").append(retryAfter).append(" s)");
         }
-        return new Failure(code(t, status, full), ActivityLog.sanitize(msg.toString()));
+        return new BotFailure(code(t, status, full), JournalText.sanitize(msg.toString()));
     }
 
     private static String code(Throwable t, Integer status, String full) {

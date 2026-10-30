@@ -1,9 +1,9 @@
 package com.maxsolch.shop.review.app;
 
+import com.maxsolch.shop.order.app.OrderSettings;
 import com.maxsolch.shop.review.infra.ReviewStore;
 
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -52,12 +52,12 @@ public class BonusExpiryReminderJob {
 
     /** @return how many reminders went out */
     int sendDue() {
-        if (!settings.get(SettingsRegistry.REVIEWS_ENABLED, true)
-                || !settings.get(SettingsRegistry.NOTIFY_CUSTOMER_STATUS, true)
+        if (!settings.get(ReviewSettings.REVIEWS_ENABLED, true)
+                || !settings.get(OrderSettings.NOTIFY_CUSTOMER_STATUS, true)
                 || !notifier.enabled()) {
             return 0;
         }
-        int days = settings.get(SettingsRegistry.REVIEWS_BONUS_EXPIRY_REMINDER_DAYS, 3);
+        int days = settings.get(ReviewSettings.REVIEWS_BONUS_EXPIRY_REMINDER_DAYS, 3);
         if (days <= 0) {
             return 0;
         }

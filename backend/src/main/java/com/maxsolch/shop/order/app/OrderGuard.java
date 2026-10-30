@@ -1,12 +1,12 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.preorder.app.PreorderSettings;
 import com.maxsolch.shop.catalog.app.CatalogNames;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.infra.OrderGuardStore;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -57,12 +57,12 @@ public class OrderGuard {
 
     public Limits limits() {
         return new Limits(
-                settings.getInt(SettingsRegistry.ANTIBOT_MAX_QTY_PER_PRODUCT),
-                settings.getInt(SettingsRegistry.ANTIBOT_MAX_UNITS_PER_ORDER),
-                settings.getInt(SettingsRegistry.ANTIBOT_MAX_UNPAID_ORDERS),
-                settings.getInt(SettingsRegistry.ANTIBOT_ORDER_COOLDOWN_SEC),
-                settings.getInt(SettingsRegistry.ANTIBOT_MAX_ORDERS_PER_DAY),
-                settings.getInt(SettingsRegistry.ANTIBOT_MAX_SELF_CANCELS_PER_DAY));
+                settings.getInt(PreorderSettings.ANTIBOT_MAX_QTY_PER_PRODUCT),
+                settings.getInt(AntibotSettings.ANTIBOT_MAX_UNITS_PER_ORDER),
+                settings.getInt(AntibotSettings.ANTIBOT_MAX_UNPAID_ORDERS),
+                settings.getInt(AntibotSettings.ANTIBOT_ORDER_COOLDOWN_SEC),
+                settings.getInt(AntibotSettings.ANTIBOT_MAX_ORDERS_PER_DAY),
+                settings.getInt(AntibotSettings.ANTIBOT_MAX_SELF_CANCELS_PER_DAY));
     }
 
     /** Throws when this customer may not place this order now. */

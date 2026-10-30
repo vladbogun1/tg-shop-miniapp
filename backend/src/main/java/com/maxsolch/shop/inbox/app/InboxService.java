@@ -8,14 +8,13 @@ import com.maxsolch.shop.inbox.infra.InboxStore;
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.analytics.app.AdminMetricsService;
 import com.maxsolch.shop.analytics.app.MetricsDtos.ReorderRow;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.inbox.app.InboxDtos.DismissRequest;
 import com.maxsolch.shop.inbox.app.InboxDtos.Inbox;
 import com.maxsolch.shop.inbox.app.InboxDtos.RestoreRequest;
 import com.maxsolch.shop.inbox.app.InboxDtos.SnoozeRequest;
 import com.maxsolch.shop.inbox.app.InboxDtos.SnoozeResult;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.error.ErrorCode;
@@ -89,8 +88,8 @@ public class InboxService {
     public Inbox inbox() {
         Instant now = clock.instant();
         InboxRules.Thresholds t = new InboxRules.Thresholds(
-                settings.getInt(SettingsRegistry.INBOX_NEW_STALE_HOURS),
-                settings.getInt(SettingsRegistry.INBOX_APPROVED_STALE_HOURS));
+                settings.getInt(InboxSettings.INBOX_NEW_STALE_HOURS),
+                settings.getInt(InboxSettings.INBOX_APPROVED_STALE_HOURS));
         InboxFacts facts = new InboxFacts(now,
                 store.candidateOrders(
                         now.minus(Duration.ofHours(t.newStaleHours())),

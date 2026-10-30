@@ -7,8 +7,7 @@ import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.error.ErrorCode;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.support.app.SupportDtos.ConfigDto;
 import com.maxsolch.shop.support.domain.SupportStatus;
 import com.maxsolch.shop.support.infra.SupportMessageRepository;
@@ -40,15 +39,15 @@ public class SupportLimits {
 
     public ConfigDto config() {
         return new ConfigDto(
-                settings.getBool(SettingsRegistry.SUPPORT_ENABLED),
-                settings.getInt(SettingsRegistry.SUPPORT_MAX_LENGTH),
-                settings.getInt(SettingsRegistry.SUPPORT_COOLDOWN_SEC),
-                settings.getInt(SettingsRegistry.SUPPORT_MAX_OPEN_THREADS),
-                settings.getInt(SettingsRegistry.SUPPORT_MAX_MESSAGES_PER_HOUR));
+                settings.getBool(SupportSettings.SUPPORT_ENABLED),
+                settings.getInt(SupportSettings.SUPPORT_MAX_LENGTH),
+                settings.getInt(SupportSettings.SUPPORT_COOLDOWN_SEC),
+                settings.getInt(SupportSettings.SUPPORT_MAX_OPEN_THREADS),
+                settings.getInt(SupportSettings.SUPPORT_MAX_MESSAGES_PER_HOUR));
     }
 
     void requireEnabled() {
-        if (!settings.getBool(SettingsRegistry.SUPPORT_ENABLED)) {
+        if (!settings.getBool(SupportSettings.SUPPORT_ENABLED)) {
             throw new DomainException.BadRequest(SupportError.SUPPORT_DISABLED);
         }
     }
@@ -56,7 +55,7 @@ public class SupportLimits {
     /** Text or attachment present, text within {@code support.maxLength}, attachment is the customer's own. */
     void validateContent(long userId, SendMessageRequest req) {
         requireContent(req);
-        int max = settings.getInt(SettingsRegistry.SUPPORT_MAX_LENGTH);
+        int max = settings.getInt(SupportSettings.SUPPORT_MAX_LENGTH);
         if (max > 0 && req.text() != null && req.text().strip().length() > max) {
             throw new DomainException.BadRequest(SupportError.SUPPORT_TOO_LONG, max);
         }
@@ -75,7 +74,7 @@ public class SupportLimits {
 
     /** {@code support.cooldownSec} between messages and {@code support.maxMessagesPerHour}. */
     void checkRate(long userId, Instant now) {
-        int cooldown = settings.getInt(SettingsRegistry.SUPPORT_COOLDOWN_SEC);
+        int cooldown = settings.getInt(SupportSettings.SUPPORT_COOLDOWN_SEC);
         if (cooldown > 0) {
             Instant last = messageRepository.lastSentAt(SenderType.CUSTOMER, userId);
             if (last != null) {
@@ -85,7 +84,7 @@ public class SupportLimits {
                 }
             }
         }
-        int perHour = settings.getInt(SettingsRegistry.SUPPORT_MAX_MESSAGES_PER_HOUR);
+        int perHour = settings.getInt(SupportSettings.SUPPORT_MAX_MESSAGES_PER_HOUR);
         if (perHour > 0) {
             long sent = messageRepository.countSentSince(SenderType.CUSTOMER, userId, now.minus(Duration.ofHours(1)));
             if (sent >= perHour) {
@@ -96,7 +95,7 @@ public class SupportLimits {
 
     /** {@code support.maxOpenThreads}: room for one more open thread. */
     void requireThreadSlot(long userId) {
-        int max = settings.getInt(SettingsRegistry.SUPPORT_MAX_OPEN_THREADS);
+        int max = settings.getInt(SupportSettings.SUPPORT_MAX_OPEN_THREADS);
         if (max > 0 && threads.countByUserIdAndStatus(userId, SupportStatus.OPEN) >= max) {
             throw new DomainException.BadRequest(SupportError.SUPPORT_TOO_MANY_THREADS, max);
         }

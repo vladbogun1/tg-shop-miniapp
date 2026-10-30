@@ -3,7 +3,7 @@ package com.maxsolch.shop.gift.app;
 import com.maxsolch.shop.order.app.CustomerOrders;
 import com.maxsolch.shop.order.app.OrderGiftDtos;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import org.springframework.stereotype.Service;
 
 /** What the customer does with the gift case of their own order; each step is noted in the journal. */

@@ -6,8 +6,7 @@ import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.review.app.ReviewDtos.ReviewFeed;
 import com.maxsolch.shop.review.app.ReviewDtos.Summary;
 import com.maxsolch.shop.review.infra.ReviewStore.FeedRow;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.translation.domain.TranslationOrigin;
 import com.maxsolch.shop.translation.app.TranslationService;
@@ -53,7 +52,7 @@ class ReviewFeedServiceTest {
 
     @Test
     void reviewOfAHiddenProductStaysButIsNotLinked() {
-        when(settings.get(SettingsRegistry.REVIEWS_ENABLED, true)).thenReturn(true);
+        when(settings.get(ReviewSettings.REVIEWS_ENABLED, true)).thenReturn(true);
         when(translations.overlay("ru")).thenReturn(new TranslationService.Overlay(Map.of()));
         when(store.latestFeed(24)).thenReturn(List.of(row("Мышка", false)));
         when(store.shopSummary()).thenReturn(new com.maxsolch.shop.review.domain.RatingSummary(5.0, 1, List.of(0L, 0L, 0L, 0L, 1L)));
@@ -68,7 +67,7 @@ class ReviewFeedServiceTest {
 
     @Test
     void disabledReviewsGiveAnEmptyRibbon() {
-        when(settings.get(SettingsRegistry.REVIEWS_ENABLED, true)).thenReturn(false);
+        when(settings.get(ReviewSettings.REVIEWS_ENABLED, true)).thenReturn(false);
         ReviewFeed feed = service().latest(24, "uk");
         assertThat(feed.items()).isEmpty();
         assertThat(feed.summary().count()).isZero();
@@ -77,7 +76,7 @@ class ReviewFeedServiceTest {
 
     @Test
     void sizeIsClampedAndTitlesAreTranslatedWhenCurrent() {
-        when(settings.get(SettingsRegistry.REVIEWS_ENABLED, true)).thenReturn(true);
+        when(settings.get(ReviewSettings.REVIEWS_ENABLED, true)).thenReturn(true);
         String source = "Мышка";
         when(translations.overlay("uk")).thenReturn(new TranslationService.Overlay(Map.of(
                 new TranslationService.Key(TranslationEntityType.PRODUCT, PID, TranslationEntityType.TITLE),

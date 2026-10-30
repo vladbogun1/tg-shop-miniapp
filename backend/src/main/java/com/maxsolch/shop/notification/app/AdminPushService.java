@@ -9,7 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.notification.infra.PushSubscriptionStore.Subscription;
 import com.maxsolch.shop.platform.error.DomainException;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

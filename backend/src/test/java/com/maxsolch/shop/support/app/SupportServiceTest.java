@@ -19,8 +19,7 @@ import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.media.app.MediaSigner;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.customer.app.Customers;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.support.app.SupportDtos.CreateThreadRequest;
 import com.maxsolch.shop.support.app.SupportDtos.ThreadDto;
 import com.maxsolch.shop.order.app.SendMessageRequest;
@@ -86,12 +85,12 @@ class SupportServiceTest {
                 new SupportLimits(settings, threads, messageRepository, messages), mapper,
                 messages, Clock.fixed(NOW, ZoneOffset.UTC),
                 new SupportPosts(threads, messageRepository, userRepository, mapper, events), new SupportThreadLookup(threads));
-        when(settings.getBool(SettingsRegistry.SUPPORT_ENABLED)).thenReturn(true);
-        when(settings.getInt(SettingsRegistry.SUPPORT_COOLDOWN_SEC)).thenReturn(10);
-        when(settings.getInt(SettingsRegistry.SUPPORT_MAX_MESSAGES_PER_HOUR)).thenReturn(30);
-        when(settings.getInt(SettingsRegistry.SUPPORT_MAX_OPEN_THREADS)).thenReturn(3);
-        when(settings.getInt(SettingsRegistry.SUPPORT_MAX_LENGTH)).thenReturn(2000);
-        when(settings.getInt(SettingsRegistry.SUPPORT_AUTO_CLOSE_DAYS)).thenReturn(7);
+        when(settings.getBool(SupportSettings.SUPPORT_ENABLED)).thenReturn(true);
+        when(settings.getInt(SupportSettings.SUPPORT_COOLDOWN_SEC)).thenReturn(10);
+        when(settings.getInt(SupportSettings.SUPPORT_MAX_MESSAGES_PER_HOUR)).thenReturn(30);
+        when(settings.getInt(SupportSettings.SUPPORT_MAX_OPEN_THREADS)).thenReturn(3);
+        when(settings.getInt(SupportSettings.SUPPORT_MAX_LENGTH)).thenReturn(2000);
+        when(settings.getInt(SupportSettings.SUPPORT_AUTO_CLOSE_DAYS)).thenReturn(7);
         when(userRepository.findById(anyLong())).thenReturn(Optional.empty());
         when(threads.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
         when(threads.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -134,7 +133,7 @@ class SupportServiceTest {
 
     @Test
     void disabled_rejectsNewQuestionsAndMessages_butAdminCanStillAnswer() {
-        when(settings.getBool(SettingsRegistry.SUPPORT_ENABLED)).thenReturn(false);
+        when(settings.getBool(SupportSettings.SUPPORT_ENABLED)).thenReturn(false);
         SupportThread t = thread(USER, SupportStatus.OPEN);
         stubThread(t);
 
@@ -150,7 +149,7 @@ class SupportServiceTest {
 
     @Test
     void tooLong_isRejected() {
-        when(settings.getInt(SettingsRegistry.SUPPORT_MAX_LENGTH)).thenReturn(100);
+        when(settings.getInt(SupportSettings.SUPPORT_MAX_LENGTH)).thenReturn(100);
         assertThatThrownBy(() -> service.create(USER, "WEB", ask(null, "x".repeat(101))))
                 .satisfies(e -> assertThat(code(e)).isEqualTo("SUPPORT_TOO_LONG"));
         // Exactly the limit is fine.
@@ -182,7 +181,7 @@ class SupportServiceTest {
 
     @Test
     void cooldownZero_meansNoPause() {
-        when(settings.getInt(SettingsRegistry.SUPPORT_COOLDOWN_SEC)).thenReturn(0);
+        when(settings.getInt(SupportSettings.SUPPORT_COOLDOWN_SEC)).thenReturn(0);
         SupportThread t = thread(USER, SupportStatus.OPEN);
         stubThread(t);
         when(messageRepository.lastSentAt(SenderType.CUSTOMER, USER)).thenReturn(NOW);
@@ -370,7 +369,7 @@ class SupportServiceTest {
 
     @Test
     void autoClose_zeroDaysMeansNever() {
-        when(settings.getInt(SettingsRegistry.SUPPORT_AUTO_CLOSE_DAYS)).thenReturn(0);
+        when(settings.getInt(SupportSettings.SUPPORT_AUTO_CLOSE_DAYS)).thenReturn(0);
         assertThat(service.autoClose()).isZero();
         verify(threads, never()).findInactive(any(), any());
     }

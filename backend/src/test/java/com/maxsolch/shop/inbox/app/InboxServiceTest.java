@@ -5,14 +5,13 @@ import com.maxsolch.shop.inbox.domain.InboxMark;
 import com.maxsolch.shop.inbox.infra.InboxStore;
 
 import com.maxsolch.shop.analytics.app.AdminMetricsService;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.inbox.app.InboxDtos.DismissRequest;
 import com.maxsolch.shop.inbox.app.InboxDtos.Inbox;
 import com.maxsolch.shop.inbox.app.InboxDtos.RestoreRequest;
 import com.maxsolch.shop.inbox.app.InboxDtos.SnoozeRequest;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
@@ -172,8 +171,8 @@ class InboxServiceTest {
 
     @Test
     void inbox_usesThresholdsFromSettings_andSurvivesAStockFailure() {
-        when(settings.getInt(SettingsRegistry.INBOX_NEW_STALE_HOURS)).thenReturn(5);
-        when(settings.getInt(SettingsRegistry.INBOX_APPROVED_STALE_HOURS)).thenReturn(48);
+        when(settings.getInt(InboxSettings.INBOX_NEW_STALE_HOURS)).thenReturn(5);
+        when(settings.getInt(InboxSettings.INBOX_APPROVED_STALE_HOURS)).thenReturn(48);
         when(store.candidateOrders(any(), any(), any())).thenReturn(List.of());
         when(store.unreadChats()).thenReturn(List.of());
         when(store.marks()).thenReturn(Map.of());

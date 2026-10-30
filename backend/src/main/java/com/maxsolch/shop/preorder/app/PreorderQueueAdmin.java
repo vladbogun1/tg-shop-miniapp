@@ -1,12 +1,12 @@
 package com.maxsolch.shop.preorder.app;
 
+import com.maxsolch.shop.procurement.app.ProcurementSettings;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.preorder.domain.PreorderError;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.customer.domain.User;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.preorder.app.PreorderDtos.DemandDto;
@@ -165,7 +165,7 @@ public class PreorderQueueAdmin {
             }
         }
         BatchQueue.HandOut h = queue.handOut(p, v, null, Distribution.QUEUE_HOLD,
-                settings.getInt(SettingsRegistry.PREORDER_HOLD_HOURS), true);
+                settings.getInt(ProcurementSettings.PREORDER_HOLD_HOURS), true);
         return new ReleaseResult(h.heldPeople(), h.heldQty(), h.shortPeople(), h.freeAfter());
     }
 

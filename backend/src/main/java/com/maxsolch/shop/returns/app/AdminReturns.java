@@ -7,7 +7,7 @@ import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.app.OrderOnlinePayments;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.jobs.DbLocks;
 import com.maxsolch.shop.platform.util.MoneyFormat;

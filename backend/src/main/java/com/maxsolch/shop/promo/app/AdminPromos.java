@@ -1,6 +1,6 @@
 package com.maxsolch.shop.promo.app;
 
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.promo.domain.PromoOrigin;

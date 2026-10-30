@@ -8,9 +8,8 @@ import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.i18n.ChatPreview;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.platform.journal.ActivityLog;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.journal.app.ActivityLog;
+import com.maxsolch.shop.settings.app.SettingsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
@@ -59,7 +58,7 @@ public class OrderCustomerNotifier {
         if (!canReach(order)) {
             return;
         }
-        if (!settings.getBool(SettingsRegistry.NOTIFY_CUSTOMER_STATUS)) {
+        if (!settings.getBool(OrderSettings.NOTIFY_CUSTOMER_STATUS)) {
             skipped(order, "ORDER_STATUS",
                     "Статус " + order.getStatus() + " — уведомления покупателям выключены в настройках",
                     "NOTIFICATIONS_OFF");

@@ -44,7 +44,7 @@ class PromoServiceTest {
     @Mock
     com.maxsolch.shop.platform.i18n.Messages messages;
     @Mock
-    com.maxsolch.shop.platform.settings.SettingsService settings;
+    com.maxsolch.shop.settings.app.SettingsService settings;
 
     PromoService service;
 
@@ -118,7 +118,7 @@ class PromoServiceTest {
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("LIMITED")).thenReturn(Optional.of(promo));
         when(reservationRepository.countOthers(eq(promo.getId()), eq(USER), any())).thenReturn(0L);
         when(reservationRepository.find(promo.getId(), USER)).thenReturn(Optional.empty());
-        when(settings.get(eq(com.maxsolch.shop.platform.settings.SettingsRegistry.PROMO_HOLD_MINUTES), anyInt()))
+        when(settings.get(eq(com.maxsolch.shop.promo.app.PromoSettings.PROMO_HOLD_MINUTES), anyInt()))
                 .thenReturn(120);
 
         Instant before = Instant.now();

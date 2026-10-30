@@ -13,9 +13,16 @@ import java.util.Optional;
 public class StaffAdminDirectory implements AdminDirectory {
 
     private final AdminUserRepository repository;
+    private final AdminTokenRevocations revocations;
 
-    public StaffAdminDirectory(AdminUserRepository repository) {
+    public StaffAdminDirectory(AdminUserRepository repository, AdminTokenRevocations revocations) {
         this.repository = repository;
+        this.revocations = revocations;
+    }
+
+    @Override
+    public boolean isTokenRevoked(String tokenId) {
+        return revocations.isRevoked(tokenId);
     }
 
     @Override

@@ -21,14 +21,12 @@ class AdminTokenValidatorTest {
     @Mock
     AdminDirectory admins;
 
-    @Mock
-    AdminTokenRevocations revocations;
 
     AdminTokenValidator validator;
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
-        validator = new AdminTokenValidator(admins, revocations, new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
+        validator = new AdminTokenValidator(admins, new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
     }
 
     private AdminDirectory.ActiveAdmin admin(int tokenVersion) {
@@ -70,7 +68,7 @@ class AdminTokenValidatorTest {
     void tokenRevokedByLogoutIsRejected_otherTokensOfTheSameAdminAreNot() {
         when(admins.findActive(anyLong()))
                 .thenReturn(Optional.of(admin(3)));
-        when(revocations.isRevoked("jti-logged-out")).thenReturn(true);
+        when(admins.isTokenRevoked("jti-logged-out")).thenReturn(true);
 
         assertThat(validator.isValid(new AuthPrincipal(42L, Role.ADMIN, 3, null, null, "jti-logged-out", null)))
                 .isFalse();

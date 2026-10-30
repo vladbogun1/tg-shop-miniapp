@@ -12,8 +12,7 @@ import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.customer.app.Customers;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -82,7 +81,7 @@ class ReceiptDeliveryJobTest {
 
         lenient().when(mono.isEnabled()).thenReturn(true);
         lenient().when(notifications.isBotEnabled()).thenReturn(true);
-        lenient().when(settings.getBool(SettingsRegistry.PAYMENT_SEND_RECEIPTS_TO_TELEGRAM)).thenReturn(true);
+        lenient().when(settings.getBool(PaymentSettings.PAYMENT_SEND_RECEIPTS_TO_TELEGRAM)).thenReturn(true);
         lenient().when(invoices.findReceiptCandidates(any())).thenReturn(List.of(inv));
         lenient().when(orders.find(order.getId())).thenReturn(Optional.of(order));
         lenient().when(users.findById(TG)).thenReturn(Optional.empty());
@@ -238,7 +237,7 @@ class ReceiptDeliveryJobTest {
 
     @Test
     void settingOff_nothingHappens() {
-        when(settings.getBool(SettingsRegistry.PAYMENT_SEND_RECEIPTS_TO_TELEGRAM)).thenReturn(false);
+        when(settings.getBool(PaymentSettings.PAYMENT_SEND_RECEIPTS_TO_TELEGRAM)).thenReturn(false);
 
         job.deliver(NOW);
 

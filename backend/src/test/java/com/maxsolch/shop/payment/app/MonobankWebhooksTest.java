@@ -3,7 +3,7 @@ package com.maxsolch.shop.payment.app;
 import com.maxsolch.shop.payment.domain.MonobankInvoiceStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.payment.infra.WebhookLogStore;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

@@ -3,7 +3,7 @@ package com.maxsolch.shop.delivery.api;
 import com.maxsolch.shop.delivery.app.NovaPoshtaSyncStatus;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
-import com.maxsolch.shop.platform.settings.SettingsDtos.SystemInfoDto;
+import com.maxsolch.shop.settings.app.SettingsDtos.SystemInfoDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;

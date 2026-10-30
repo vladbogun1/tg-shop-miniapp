@@ -1,60 +1,25 @@
 package com.maxsolch.shop.notification.infra;
 
-import com.maxsolch.shop.notification.domain.BotCallbackHandler;
-import com.maxsolch.shop.notification.domain.BotLoginStarter;
-import com.maxsolch.shop.notification.domain.BotUsers;
-import com.maxsolch.shop.notification.domain.TelegramGateway;
+import com.maxsolch.shop.notification.domain.BotUpdateHandler;
 import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.platform.journal.ActivityLog;
-import com.maxsolch.shop.platform.security.TelegramUser;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
-import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-
-import java.util.List;
-import java.util.Locale;
 
 /**
- * Thin long-polling bot: it only RECEIVES. Handles /start and /help, plus the website login: {@code /start
- * login_<nonce>} ({@link BotLoginStarter}) and the inline-button callbacks ({@link BotCallbackHandler}s: the sign-in
- * confirmation, [Заблокировать] under admin alerts). Everything it says goes out through {@link TelegramGateway};
- * rich notifications are sent by the modules' notifiers. Registration happens in TelegramBotConfig, only when a
- * token is configured.
+ * Thin long-polling bot: it only RECEIVES and hands every update to {@link BotUpdateHandler}. Everything it says goes
+ * out through the {@code TelegramGateway}. Registration happens in TelegramBotConfig, only when a token is configured.
  */
-@Slf4j
 @Component
 public class ShopBot extends TelegramLongPollingBot {
 
     private final AppProperties props;
-    private final BotUsers users;
-    private final Messages messages;
-    private final BotLoginStarter loginStarter;
-    private final List<BotCallbackHandler> callbackHandlers;
-    private final TelegramGateway gateway;
-    private final SettingsService settings;
-    private final ActivityLog activity;
+    private final BotUpdateHandler handler;
 
-    public ShopBot(AppProperties props, BotUsers users, Messages messages, BotLoginStarter loginStarter,
-                   List<BotCallbackHandler> callbackHandlers, SettingsService settings, ActivityLog activity,
-                   TelegramGateway gateway) {
+    public ShopBot(AppProperties props, BotUpdateHandler handler) {
         super(props.getTelegram().getBotToken() == null ? "" : props.getTelegram().getBotToken());
         this.props = props;
-        this.users = users;
-        this.messages = messages;
-        this.loginStarter = loginStarter;
-        this.callbackHandlers = callbackHandlers;
-        this.settings = settings;
-        this.activity = activity;
-        this.gateway = gateway;
+        this.handler = handler;
     }
 
     @Override
@@ -68,144 +33,6 @@ public class ShopBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
-        try {
-            if (update != null && update.hasCallbackQuery()) {
-                onCallback(update.getCallbackQuery());
-                return;
-            }
-            if (update == null || !update.hasMessage() || !update.getMessage().hasText()) {
-                return;
-            }
-            long chatId = update.getMessage().getChatId();
-            String text = update.getMessage().getText().trim();
-            recordUser(update.getMessage().getFrom());
-            String languageCode = update.getMessage().getFrom() == null
-                    ? null : update.getMessage().getFrom().getLanguageCode();
-            String loginNonce = loginNonce(text);
-            if (loginNonce != null) {
-                // Only in a private chat: the chat id is then the person confirming the login.
-                if (update.getMessage().getChat() != null && update.getMessage().getChat().isUserChat()) {
-                    loginStarter.onStartLogin(chatId, loginNonce, localeFor(chatId, languageCode));
-                }
-            } else if (text.startsWith("/start")) {
-                sendStart(chatId, languageCode);
-            } else if (text.startsWith("/help")) {
-                sendHelp(chatId, languageCode);
-            }
-        } catch (Exception e) {
-            log.warn("Bot update handling failed: {}", e.getMessage());
-        }
-    }
-
-    /** {@code /start login_<nonce>} (also {@code /start@bot login_...}) → the nonce, else null. */
-    static String loginNonce(String text) {
-        if (text == null || !text.startsWith("/start")) {
-            return null;
-        }
-        int space = text.indexOf(' ');
-        if (space < 0) {
-            return null;
-        }
-        String payload = text.substring(space + 1).trim();
-        if (!payload.startsWith("login_") || payload.length() <= "login_".length()) {
-            return null;
-        }
-        return payload.substring("login_".length());
-    }
-
-    private void onCallback(org.telegram.telegrambots.meta.api.objects.CallbackQuery cq) {
-        if (cq.getFrom() == null) {
-            return;
-        }
-        for (BotCallbackHandler handler : callbackHandlers) {
-            if (handler.handles(cq.getData())) {
-                if (handler.recordsUser()) {
-                    recordUser(cq.getFrom());
-                }
-                handler.onCallback(cq, localeFor(cq.getFrom().getId(), cq.getFrom().getLanguageCode()));
-                return;
-            }
-        }
-    }
-
-    private void sendStart(long chatId, String languageCode) {
-        Locale locale = localeFor(chatId, languageCode);
-        String webapp = props.getWebappBaseUrl();
-        SendMessage msg = SendMessage.builder()
-                .chatId(String.valueOf(chatId))
-                .text(startText(locale))
-                .build();
-        if (webapp != null && !webapp.isBlank()) {
-            InlineKeyboardButton btn = InlineKeyboardButton.builder()
-                    .text(messages.get(locale, "bot.start.button"))
-                    .webApp(WebAppInfo.builder().url(webapp).build())
-                    .build();
-            msg.setReplyMarkup(InlineKeyboardMarkup.builder()
-                    .keyboard(List.of(List.of(btn)))
-                    .build());
-        }
-        executeSafe("START", chatId, msg);
-    }
-
-    /** The admin's greeting for this language (Настройки → Бот), else the bundled one. */
-    private String startText(Locale locale) {
-        String custom = settings.get(SettingsRegistry.BOT_START_TEXT_PREFIX + locale.getLanguage(), "");
-        return custom == null || custom.isBlank() ? messages.get(locale, "bot.start.text") : custom;
-    }
-
-    private void sendHelp(long chatId, String languageCode) {
-        SendMessage msg = SendMessage.builder()
-                .chatId(String.valueOf(chatId))
-                .text(messages.get(localeFor(chatId, languageCode), "bot.help.text"))
-                .build();
-        executeSafe("HELP", chatId, msg);
-    }
-
-    /**
-     * The language to greet this person in.
-     *
-     * <p>On `/start` the `users` row may not exist yet, so what Telegram reports about them is all
-     * there is; once they have used the app, the language they PICKED there wins. Both cases are
-     * handled by trying the stored preference first and falling back to the reported code.
-     */
-    private Locale localeFor(long chatId, String languageCode) {
-        Locale stored = messages.localeOf(chatId);
-        if (stored != null && !stored.equals(Messages.FALLBACK)) {
-            return stored;
-        }
-        Locale reported = Messages.normalize(languageCode);
-        return reported != null ? reported : Messages.FALLBACK;
-    }
-
-    /** Capture/refresh the user behind a bot message (only private 1:1 chats = real users). */
-    private void recordUser(org.telegram.telegrambots.meta.api.objects.User from) {
-        if (from == null || Boolean.TRUE.equals(from.getIsBot()) || from.getId() == null) {
-            return;
-        }
-        try {
-            users.recordBotUser(new TelegramUser(
-                    from.getId(),
-                    from.getUserName(),
-                    from.getFirstName(),
-                    from.getLastName(),
-                    from.getLanguageCode(),
-                    Boolean.TRUE.equals(from.getIsPremium()),
-                    null));
-        } catch (Exception e) {
-            log.debug("recordUser failed: {}", e.getMessage());
-        }
-    }
-
-    private void executeSafe(String type, long chatId, SendMessage msg) {
-        try {
-            // Only private chats are journaled: /start in a group is not a customer.
-            if (chatId > 0) {
-                activity.bot(ActivityLog.Entry.bot(type).toCustomer(chatId).text(msg.getText()), () -> gateway.execute(msg));
-            } else {
-                gateway.execute(msg);
-            }
-        } catch (TelegramApiException e) {
-            log.warn("Failed to send message: {}", e.getMessage());
-        }
+        handler.onUpdate(update);
     }
 }

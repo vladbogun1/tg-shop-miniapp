@@ -1,9 +1,9 @@
 package com.maxsolch.shop.review.app;
 
+import com.maxsolch.shop.order.app.OrderSettings;
 import com.maxsolch.shop.review.infra.ReviewStore;
 
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,10 +49,10 @@ class BonusExpiryReminderJobTest {
     @BeforeEach
     void setUp() {
         job = new BonusExpiryReminderJob(store, settings, notifier, Clock.fixed(NOW, ZoneOffset.UTC));
-        lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_ENABLED), any(Boolean.class))).thenAnswer(i -> enabled);
-        lenient().when(settings.get(eq(SettingsRegistry.NOTIFY_CUSTOMER_STATUS), any(Boolean.class)))
+        lenient().when(settings.get(eq(ReviewSettings.REVIEWS_ENABLED), any(Boolean.class))).thenAnswer(i -> enabled);
+        lenient().when(settings.get(eq(OrderSettings.NOTIFY_CUSTOMER_STATUS), any(Boolean.class)))
                 .thenAnswer(i -> notify);
-        lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_BONUS_EXPIRY_REMINDER_DAYS), any(Integer.class)))
+        lenient().when(settings.get(eq(ReviewSettings.REVIEWS_BONUS_EXPIRY_REMINDER_DAYS), any(Integer.class)))
                 .thenAnswer(i -> days);
         lenient().when(notifier.enabled()).thenReturn(true);
     }

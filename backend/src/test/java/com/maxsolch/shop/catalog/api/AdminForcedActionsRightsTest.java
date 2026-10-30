@@ -48,7 +48,7 @@ class AdminForcedActionsRightsTest {
         AdminUser u = new AdminUser();
         u.setRole(role);
         org.mockito.Mockito.when(repo.findByTelegramUserIdAndActiveTrue(ADMIN_ID)).thenReturn(Optional.of(u));
-        return new AdminAccess(new com.maxsolch.shop.staff.app.StaffAdminDirectory(repo));
+        return new AdminAccess(new com.maxsolch.shop.staff.app.StaffAdminDirectory(repo, org.mockito.Mockito.mock(com.maxsolch.shop.staff.app.AdminTokenRevocations.class)));
     }
 
 
@@ -56,7 +56,7 @@ class AdminForcedActionsRightsTest {
         var attributes = mock(com.maxsolch.shop.catalog.app.SpecAttributeAdminService.class);
         when(attributes.delete("id", true)).thenReturn("key");
         var scenario = new com.maxsolch.shop.catalog.app.AdminCatalog(null, null, attributes, null, null,
-                mock(com.maxsolch.shop.platform.audit.AdminAuditService.class),
+                mock(com.maxsolch.shop.audit.app.AdminAuditService.class),
                 mock(com.maxsolch.shop.site.app.SiteRevalidator.class), access,
                 new com.maxsolch.shop.platform.web.CurrentActor());
         scenario.deleteAttribute("id", true);
@@ -66,7 +66,7 @@ class AdminForcedActionsRightsTest {
     static boolean blankEntityDelete(AdminAccess access) {
         var upkeep = mock(com.maxsolch.shop.translation.app.TranslationAdminService.class);
         var scenario = new com.maxsolch.shop.translation.app.AdminTranslations(null, null, upkeep,
-                mock(com.maxsolch.shop.platform.audit.AdminAuditService.class),
+                mock(com.maxsolch.shop.audit.app.AdminAuditService.class),
                 mock(com.maxsolch.shop.site.app.SiteRevalidator.class), access,
                 new com.maxsolch.shop.platform.web.CurrentActor());
         scenario.delete("uk", null, " ", null);

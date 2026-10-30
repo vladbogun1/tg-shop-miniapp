@@ -5,7 +5,7 @@ import com.maxsolch.shop.staff.infra.AdminTeamQueries;
 import com.maxsolch.shop.staff.domain.AdminInvite;
 import com.maxsolch.shop.staff.domain.SecretCipher;
 import com.maxsolch.shop.staff.domain.Totp;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;
@@ -277,7 +277,7 @@ class AdminTeamServiceTest {
     @Test
     void demotionTakesEffectOnTheNextRequest() {
         admins.add(3L, "second-boss", AdminRole.SUPER_ADMIN, cipher.encrypt(Totp.newSecret(), 3L));
-        AdminAccess access = new AdminAccess(new StaffAdminDirectory(admins.repo));
+        AdminAccess access = new AdminAccess(new StaffAdminDirectory(admins.repo, org.mockito.Mockito.mock(com.maxsolch.shop.staff.app.AdminTokenRevocations.class)));
         var auth = new UsernamePasswordAuthenticationToken(new AuthPrincipal(3L, Role.ADMIN, 0), null, List.of());
         assertThat(access.isSuperAdmin(auth)).isTrue();
         team.update(BOSS, 3L, null, "ADMIN", code(), CLIENT);

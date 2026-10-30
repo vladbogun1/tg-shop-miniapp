@@ -36,6 +36,8 @@ final class Placement {
             List.of("catalog"),
             List.of("customer", "staff"),
             List.of("translation", "media", "site", "notification"),
+            List.of("settings"),
+            List.of("audit", "journal"),
             List.of(PLATFORM));
 
     private static final Set<String> LAYERS = Set.of("api", "app", "domain", "infra");
@@ -84,7 +86,8 @@ final class Placement {
         }
         String[] seg = rel.isEmpty() ? new String[0] : rel.split("\\.");
         if (seg.length > 0 && seg[0].equals(PLATFORM)) {
-            return new Place(PLATFORM, Layer.PLATFORM, true);
+            // platform.infra is the platform's own storage (the shedlock table): the one infra layer of the platform
+            return new Place(PLATFORM, seg.length > 1 && seg[1].equals("infra") ? Layer.INFRA : Layer.PLATFORM, true);
         }
         if (seg.length > 1 && TIER_OF.containsKey(seg[0]) && LAYERS.contains(seg[1])) {
             return new Place(seg[0], Layer.valueOf(seg[1].toUpperCase()), true);

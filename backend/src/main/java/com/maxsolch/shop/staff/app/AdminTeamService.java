@@ -7,7 +7,7 @@ import com.maxsolch.shop.staff.domain.AdminInvite;
 import com.maxsolch.shop.staff.domain.AdminInviteStore;
 import com.maxsolch.shop.staff.domain.LoginMethod;
 import com.maxsolch.shop.staff.domain.Totp;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import com.maxsolch.shop.staff.infra.AdminTeamQueries;

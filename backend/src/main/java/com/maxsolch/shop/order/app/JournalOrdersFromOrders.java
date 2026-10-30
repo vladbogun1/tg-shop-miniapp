@@ -1,7 +1,7 @@
 package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.platform.journal.JournalOrders;
+import com.maxsolch.shop.journal.domain.JournalOrders;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;

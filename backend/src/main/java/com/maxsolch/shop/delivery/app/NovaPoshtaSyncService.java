@@ -5,8 +5,7 @@ import com.maxsolch.shop.delivery.domain.NovaPoshtaApi;
 import com.maxsolch.shop.delivery.domain.NovaPoshtaApi.ApiWarehouse;
 import com.maxsolch.shop.delivery.domain.NovaPoshtaCity;
 import com.maxsolch.shop.delivery.infra.NovaPoshtaWarehouseRepository;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -95,7 +94,7 @@ public class NovaPoshtaSyncService {
      * sync of an empty table still runs, without it checkout has no warehouses.
      */
     void syncIfEnabled() {
-        if (!settings.getBool(SettingsRegistry.NOVAPOSHTA_AUTO_SYNC)) {
+        if (!settings.getBool(DeliverySettings.NOVAPOSHTA_AUTO_SYNC)) {
             log.info("Nova Poshta nightly sync disabled in settings - skipping.");
             return;
         }

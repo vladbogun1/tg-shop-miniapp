@@ -4,7 +4,7 @@ import com.maxsolch.shop.notification.app.CustomerBot;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.payment.domain.ReceiptKind;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

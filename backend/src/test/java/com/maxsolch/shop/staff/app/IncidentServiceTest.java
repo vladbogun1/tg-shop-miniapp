@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 class IncidentServiceTest {
 
     private final AdminIncidentRepository repository = mock(AdminIncidentRepository.class);
-    private final IncidentService service = new IncidentService(repository, mock(IncidentQueries.class), mock(com.maxsolch.shop.platform.audit.AdminAuditService.class), java.time.Clock.systemUTC());
+    private final IncidentService service = new IncidentService(repository, mock(IncidentQueries.class), mock(com.maxsolch.shop.audit.app.AdminAuditService.class), java.time.Clock.systemUTC());
 
     private static com.maxsolch.shop.staff.domain.IncidentFinding found(String code) {
         return new com.maxsolch.shop.staff.domain.IncidentFinding(code, "t", "ref", "HIGH", "facts", "hyp", "sug");

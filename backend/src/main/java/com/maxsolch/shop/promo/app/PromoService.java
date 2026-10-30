@@ -7,8 +7,7 @@ import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.promo.domain.PromoReservation;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.promo.infra.PromoReservationRepository;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,7 +65,7 @@ public class PromoService {
 
     /** Current hold length: the admin setting, or {@link #HOLD} when it is not set. */
     Duration hold() {
-        return Duration.ofMinutes(settings.get(SettingsRegistry.PROMO_HOLD_MINUTES, (int) HOLD.toMinutes()));
+        return Duration.ofMinutes(settings.get(PromoSettings.PROMO_HOLD_MINUTES, (int) HOLD.toMinutes()));
     }
 
     /**

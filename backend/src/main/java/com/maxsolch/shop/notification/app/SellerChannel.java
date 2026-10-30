@@ -3,7 +3,7 @@ package com.maxsolch.shop.notification.app;
 import com.maxsolch.shop.notification.domain.SellerTopic;
 import com.maxsolch.shop.notification.domain.TelegramGateway;
 import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;

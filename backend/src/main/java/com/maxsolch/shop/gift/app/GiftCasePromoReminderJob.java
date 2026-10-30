@@ -1,10 +1,10 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.order.app.OrderSettings;
 import com.maxsolch.shop.gift.domain.PromoReminder;
 import com.maxsolch.shop.gift.infra.GiftReminderStore;
 import com.maxsolch.shop.order.app.OrderLookup;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -57,10 +57,10 @@ public class GiftCasePromoReminderJob {
 
     /** @return how many reminders went out */
     int sendDue() {
-        if (!settings.get(SettingsRegistry.NOTIFY_CUSTOMER_STATUS, true)) {
+        if (!settings.get(OrderSettings.NOTIFY_CUSTOMER_STATUS, true)) {
             return 0;
         }
-        int days = settings.get(SettingsRegistry.GIFT_PROMO_REMINDER_DAYS, 3);
+        int days = settings.get(GiftSettings.GIFT_PROMO_REMINDER_DAYS, 3);
         if (days <= 0) {
             return 0;
         }

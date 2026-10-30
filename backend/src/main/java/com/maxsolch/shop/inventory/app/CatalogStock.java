@@ -5,7 +5,7 @@ import com.maxsolch.shop.inventory.domain.InventoryError;
 import com.maxsolch.shop.catalog.app.ProductStock;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.inventory.domain.StockWriteoff;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

@@ -1,0 +1,14 @@
+package com.maxsolch.shop.settings.domain;
+
+/**
+ * Value type of a setting. Values are stored as text: INT as a decimal integer, BOOL as
+ * {@code true}/{@code false}, STRING/TEXT verbatim (STRING is one line, TEXT may span lines).
+ */
+public enum SettingType {
+    INT,
+    BOOL,
+    STRING,
+    TEXT,
+    /** One value out of a fixed list ({@link SettingDefinition#options()}), stored as the option value. */
+    SELECT
+}

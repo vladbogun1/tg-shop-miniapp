@@ -11,7 +11,7 @@ import com.maxsolch.shop.notification.app.AdminPushService.SendResult;
 import com.maxsolch.shop.notification.infra.PushSubscriptionStore.Subscription;
 import com.maxsolch.shop.platform.error.DomainException.BadRequest;
 import com.maxsolch.shop.platform.error.DomainException.Conflict;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

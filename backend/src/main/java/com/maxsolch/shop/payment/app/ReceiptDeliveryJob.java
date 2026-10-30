@@ -12,8 +12,7 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.customer.app.Customers;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -98,7 +97,7 @@ public class ReceiptDeliveryJob {
 
     void deliver(Instant now) {
         if (!mono.isEnabled() || !notifications.isBotEnabled()
-                || !settings.getBool(SettingsRegistry.PAYMENT_SEND_RECEIPTS_TO_TELEGRAM)) {
+                || !settings.getBool(PaymentSettings.PAYMENT_SEND_RECEIPTS_TO_TELEGRAM)) {
             return;
         }
         for (PaymentInvoice inv : invoices.findReceiptCandidates(now.minus(WINDOW))) {

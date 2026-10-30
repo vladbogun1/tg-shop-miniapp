@@ -4,7 +4,7 @@ import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.preorder.domain.PreorderEvents;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.translation.app.BotTexts;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.procurement.app.BatchDtos.EtaDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.MyPreorderDto;
 import com.maxsolch.shop.notification.app.CustomerBot;

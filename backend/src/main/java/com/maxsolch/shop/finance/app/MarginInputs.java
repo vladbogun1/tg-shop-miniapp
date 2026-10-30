@@ -1,11 +1,11 @@
 package com.maxsolch.shop.finance.app;
 
+import com.maxsolch.shop.procurement.app.ProcurementSettings;
 import com.maxsolch.shop.finance.domain.MarginRows.Bundle;
 import com.maxsolch.shop.finance.infra.MarginQueries;
 import com.maxsolch.shop.inventory.app.LotLedger;
 import com.maxsolch.shop.inventory.domain.StockLot;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.procurement.app.CostingService;
 import com.maxsolch.shop.procurement.app.CostingService.CostBook;
 import org.springframework.stereotype.Component;
@@ -52,7 +52,7 @@ class MarginInputs {
     }
 
     BigDecimal feePercent() {
-        return settings.getDecimal(SettingsRegistry.COSTING_ACQUIRING_FEE_PERCENT);
+        return settings.getDecimal(ProcurementSettings.COSTING_ACQUIRING_FEE_PERCENT);
     }
 
     private static Set<Long> lotIds(Collection<Bundle> bundles) {

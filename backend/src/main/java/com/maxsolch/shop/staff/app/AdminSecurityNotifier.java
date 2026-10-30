@@ -5,11 +5,11 @@ import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.notification.app.SellerChannel;
 import com.maxsolch.shop.notification.domain.BotCallbackHandler;
 import com.maxsolch.shop.notification.domain.TelegramGateway;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 
 import com.maxsolch.shop.staff.domain.AdminInvite;
 import com.maxsolch.shop.staff.domain.LoginMethod;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

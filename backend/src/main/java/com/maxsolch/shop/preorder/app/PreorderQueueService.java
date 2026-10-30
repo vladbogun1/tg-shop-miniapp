@@ -1,5 +1,6 @@
 package com.maxsolch.shop.preorder.app;
 
+import com.maxsolch.shop.procurement.app.ProcurementSettings;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.preorder.domain.PreorderError;
 import com.maxsolch.shop.preorder.domain.PreorderEvents;
@@ -20,8 +21,7 @@ import com.maxsolch.shop.preorder.app.PreorderDtos.MyPreorderDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.SubscribeRequest;
 import com.maxsolch.shop.preorder.domain.PreorderSubscription.Status;
 import com.maxsolch.shop.catalog.app.Products;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -114,10 +114,10 @@ public class PreorderQueueService {
             throw new DomainException.BadRequest(PreorderError.IN_STOCK);
         }
         EtaDto eta = cards.openEta(productId, variantId);
-        if (eta == null && !settings.getBool(SettingsRegistry.PREORDER_ANY_PRODUCT)) {
+        if (eta == null && !settings.getBool(ProcurementSettings.PREORDER_ANY_PRODUCT)) {
             throw new DomainException.BadRequest(PreorderError.PRODUCT_UNAVAILABLE, product.getTitle());
         }
-        int maxActive = settings.getInt(SettingsRegistry.PREORDER_MAX_ACTIVE);
+        int maxActive = settings.getInt(PreorderSettings.PREORDER_MAX_ACTIVE);
         if (maxActive > 0 && subs.countByUserIdAndStatusIn(userId, LIVE) >= maxActive) {
             throw new DomainException.BadRequest(PreorderError.TOO_MANY, maxActive);
         }
@@ -328,11 +328,11 @@ public class PreorderQueueService {
                 return b.get().getHoldHours();
             }
         }
-        return settings.getInt(SettingsRegistry.PREORDER_HOLD_HOURS);
+        return settings.getInt(ProcurementSettings.PREORDER_HOLD_HOURS);
     }
 
     int maxQty() {
-        int antibot = settings.getInt(SettingsRegistry.ANTIBOT_MAX_QTY_PER_PRODUCT);
+        int antibot = settings.getInt(PreorderSettings.ANTIBOT_MAX_QTY_PER_PRODUCT);
         return antibot > 0 ? antibot : DEFAULT_MAX_QTY;
     }
 

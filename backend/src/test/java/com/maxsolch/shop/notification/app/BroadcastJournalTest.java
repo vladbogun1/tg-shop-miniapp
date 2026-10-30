@@ -2,10 +2,10 @@ package com.maxsolch.shop.notification.app;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.notification.infra.BroadcastRepository;
 import com.maxsolch.shop.notification.domain.BroadcastAudiences;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.notification.domain.TelegramGateway;
 import org.junit.jupiter.api.BeforeEach;

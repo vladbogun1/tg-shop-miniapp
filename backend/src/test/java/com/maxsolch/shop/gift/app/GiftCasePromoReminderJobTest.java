@@ -1,11 +1,11 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.order.app.OrderSettings;
 import com.maxsolch.shop.gift.domain.PromoReminder;
 import com.maxsolch.shop.gift.infra.GiftReminderStore;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -47,8 +47,8 @@ class GiftCasePromoReminderJobTest {
 
     @Test
     void sendsOnlyTheCodesItClaimedAndCountsTheDelivered() {
-        when(settings.get(SettingsRegistry.NOTIFY_CUSTOMER_STATUS, true)).thenReturn(true);
-        when(settings.get(SettingsRegistry.GIFT_PROMO_REMINDER_DAYS, 3)).thenReturn(3);
+        when(settings.get(OrderSettings.NOTIFY_CUSTOMER_STATUS, true)).thenReturn(true);
+        when(settings.get(GiftSettings.GIFT_PROMO_REMINDER_DAYS, 3)).thenReturn(3);
         PromoReminder mine = reminder((byte) 1);
         PromoReminder taken = reminder((byte) 2);
         when(store.candidates(NOW, NOW.plus(Duration.ofDays(3)), NOW.minus(Duration.ofDays(3)), 50))
@@ -65,8 +65,8 @@ class GiftCasePromoReminderJobTest {
 
     @Test
     void switchedOffByTheDaysSettingOrTheCustomerDmSwitch() {
-        when(settings.get(SettingsRegistry.NOTIFY_CUSTOMER_STATUS, true)).thenReturn(true);
-        when(settings.get(SettingsRegistry.GIFT_PROMO_REMINDER_DAYS, 3)).thenReturn(0);
+        when(settings.get(OrderSettings.NOTIFY_CUSTOMER_STATUS, true)).thenReturn(true);
+        when(settings.get(GiftSettings.GIFT_PROMO_REMINDER_DAYS, 3)).thenReturn(0);
 
         assertThat(job().sendDue()).isZero();
         verify(store, never()).candidates(any(), any(), any(), anyInt());

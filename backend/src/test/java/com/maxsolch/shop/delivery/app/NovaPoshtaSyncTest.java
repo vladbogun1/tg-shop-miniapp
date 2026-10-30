@@ -6,7 +6,7 @@ import com.maxsolch.shop.delivery.domain.NovaPoshtaApi;
 import com.maxsolch.shop.delivery.domain.NovaPoshtaCity;
 import com.maxsolch.shop.delivery.domain.NovaPoshtaWarehouse;
 import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.delivery.infra.NovaPoshtaCityRepository;
 import com.maxsolch.shop.delivery.infra.NovaPoshtaWarehouseRepository;
 import com.sun.net.httpserver.HttpServer;
@@ -180,7 +180,7 @@ class NovaPoshtaSyncTest {
 
     @Test
     void theNightlyTriggerHonoursTheSwitchInSettings() throws Exception {
-        when(settings.getBool(com.maxsolch.shop.platform.settings.SettingsRegistry.NOVAPOSHTA_AUTO_SYNC)).thenReturn(false);
+        when(settings.getBool(com.maxsolch.shop.delivery.app.DeliverySettings.NOVAPOSHTA_AUTO_SYNC)).thenReturn(false);
 
         new NovaPoshtaJobs(sync).nightlySync();
         Thread.sleep(300);
@@ -190,7 +190,7 @@ class NovaPoshtaSyncTest {
 
     @Test
     void theNightlyTriggerSyncsWhenSwitchedOn() throws Exception {
-        when(settings.getBool(com.maxsolch.shop.platform.settings.SettingsRegistry.NOVAPOSHTA_AUTO_SYNC)).thenReturn(true);
+        when(settings.getBool(com.maxsolch.shop.delivery.app.DeliverySettings.NOVAPOSHTA_AUTO_SYNC)).thenReturn(true);
 
         new NovaPoshtaJobs(sync).nightlySync();
         long until = System.currentTimeMillis() + 5_000;

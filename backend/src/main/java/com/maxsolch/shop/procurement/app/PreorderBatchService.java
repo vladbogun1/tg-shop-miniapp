@@ -21,9 +21,8 @@ import com.maxsolch.shop.procurement.app.BatchDtos.BatchSummaryDto;
 import com.maxsolch.shop.procurement.app.BatchDtos.CancelRequest;
 import com.maxsolch.shop.procurement.app.BatchDtos.ItemDto;
 import com.maxsolch.shop.catalog.app.Products;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.time.ShopZone;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.procurement.domain.BatchQueue;
 import com.maxsolch.shop.procurement.domain.Lines;
 import org.springframework.cache.annotation.CacheEvict;
@@ -142,8 +141,8 @@ public class PreorderBatchService {
     @Transactional
     public BatchDto create(BatchRequest req, String adminName, boolean money) {
         PreorderBatch b = new PreorderBatch();
-        b.setHoldHours(settings.getInt(SettingsRegistry.PREORDER_HOLD_HOURS));
-        b.setCostAllocation(settings.getString(SettingsRegistry.COSTING_DEFAULT_DISTRIBUTION));
+        b.setHoldHours(settings.getInt(ProcurementSettings.PREORDER_HOLD_HOURS));
+        b.setCostAllocation(settings.getString(ProcurementSettings.COSTING_DEFAULT_DISTRIBUTION));
         b.setCreatedBy(adminName);
         editor.apply(b, req, money);
         if (req.items() == null || req.items().isEmpty()) {
@@ -292,7 +291,7 @@ public class PreorderBatchService {
             b.setPrivateNote(old + "Отменена: " + req.note().trim());
         }
         boolean close = (req != null && Boolean.TRUE.equals(req.closeQueue()))
-                || !settings.getBool(SettingsRegistry.PREORDER_ANY_PRODUCT);
+                || !settings.getBool(ProcurementSettings.PREORDER_ANY_PRODUCT);
         queue.onBatchCancelled(items.findByBatchIdOrderByIdAsc(id).stream()
                 .map(i -> new byte[][]{i.getProductId(), i.getVariantId()}).toList(), close, now);
         publicChanged();

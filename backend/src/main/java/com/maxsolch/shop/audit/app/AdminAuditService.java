@@ -1,0 +1,126 @@
+package com.maxsolch.shop.audit.app;
+
+import com.maxsolch.shop.audit.domain.AdminAuditEntry;
+import com.maxsolch.shop.audit.infra.AdminAuditRepository;
+import com.maxsolch.shop.platform.security.AdminDirectory;
+import com.maxsolch.shop.platform.security.AuthPrincipal;
+import com.maxsolch.shop.platform.security.Role;
+import com.maxsolch.shop.platform.web.CurrentActor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Records who did what in the admin panel.
+ *
+ * <p>Nothing used to be written down: an order could be deleted, a payment un-marked or a discount
+ * handed out with no trace of which admin did it. Every entry is written in its own transaction so
+ * a failed business operation still leaves the attempt visible, and a failure to audit never fails
+ * the operation itself.
+ */
+@Slf4j
+@Service
+public class AdminAuditService {
+
+    /** Fallback display name for the order chat when the admin row has none. */
+    public static final String DEFAULT_ADMIN_NAME = "Менеджер";
+
+    private final AdminAuditRepository repository;
+    private final AdminDirectory admins;
+    private final CurrentActor actor;
+
+    public AdminAuditService(AdminAuditRepository repository,
+                             AdminDirectory admins, CurrentActor actor) {
+        this.repository = repository;
+        this.admins = admins;
+        this.actor = actor;
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void record(String action, String entityType, String entityId, String details) {
+        try {
+            AuthPrincipal principal = actor.principal();
+            if (principal.role() != Role.ADMIN) {
+                return;
+            }
+            AdminAuditEntry entry = new AdminAuditEntry();
+            entry.setAdminId(principal.telegramUserId());
+            entry.setAdminName(displayName(principal.telegramUserId()));
+            entry.setAction(action);
+            entry.setEntityType(entityType);
+            entry.setEntityId(entityId);
+            entry.setDetails(trim(details));
+            repository.save(entry);
+        } catch (Exception e) {
+            // Auditing is observability, not business logic — never break the action over it.
+            log.warn("Failed to write audit entry {}/{}: {}", action, entityId, e.getMessage());
+        }
+    }
+
+    /**
+     * An admin sign-in attempt (A11 / В-3 г): {@code ADMIN_LOGIN_OK} / {@code ADMIN_LOGIN_FAIL} with
+     * the method (password / telegram) and client IP. There is no admin principal yet at that point,
+     * so the admin is passed explicitly; an unknown login is stored with admin id 0.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordLogin(boolean ok, String method, Long adminId, String login, String ip) {
+        try {
+            AdminAuditEntry entry = new AdminAuditEntry();
+            long id = adminId == null ? 0L : adminId;
+            entry.setAdminId(id);
+            entry.setAdminName(id == 0L ? null : displayName(id));
+            entry.setAction(ok ? "ADMIN_LOGIN_OK" : "ADMIN_LOGIN_FAIL");
+            entry.setEntityType("AUTH");
+            entry.setEntityId(login == null ? null : login.length() <= 64 ? login : login.substring(0, 64));
+            entry.setDetails(trim("способ: " + method + ", IP " + (ip == null ? "?" : ip)));
+            repository.save(entry);
+        } catch (Exception e) {
+            log.warn("Failed to write login audit entry: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * An entry on behalf of an admin who is not the request's principal (sign-in steps, lockouts,
+     * «Заблокировать» pressed in Telegram, the startup emergency reset).
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordFor(long adminId, String action, String entityType, String entityId, String details) {
+        try {
+            AdminAuditEntry entry = new AdminAuditEntry();
+            entry.setAdminId(adminId);
+            entry.setAdminName(adminId == 0L ? null : displayName(adminId));
+            entry.setAction(action);
+            entry.setEntityType(entityType);
+            entry.setEntityId(entityId == null ? null : entityId.length() <= 64 ? entityId : entityId.substring(0, 64));
+            entry.setDetails(trim(details));
+            repository.save(entry);
+        } catch (Exception e) {
+            log.warn("Failed to write audit entry {} for admin {}: {}", action, adminId, e.getMessage());
+        }
+    }
+
+    /**
+     * Human-readable name of the current admin, for the audit log and as the author of chat
+     * messages (which used to be signed with a hardcoded "Менеджер" no matter who wrote them).
+     */
+    @Transactional(readOnly = true)
+    public String currentAdminName() {
+        try {
+            return displayName(actor.userId());
+        } catch (Exception e) {
+            return DEFAULT_ADMIN_NAME;
+        }
+    }
+
+    private String displayName(long adminId) {
+        return admins.displayName(adminId).orElse(DEFAULT_ADMIN_NAME);
+    }
+
+    private static String trim(String s) {
+        if (s == null) {
+            return null;
+        }
+        return s.length() <= 1024 ? s : s.substring(0, 1021) + "...";
+    }
+}

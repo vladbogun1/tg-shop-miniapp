@@ -10,7 +10,7 @@ import com.maxsolch.shop.gift.infra.OrderGiftCaseRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.catalog.app.CatalogService;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.catalog.app.ProductDto;
 import org.junit.jupiter.api.BeforeEach;

@@ -1,6 +1,7 @@
 package com.maxsolch.shop.it;
 
-import com.maxsolch.shop.platform.journal.ActivityLogStore;
+import com.maxsolch.shop.journal.domain.ActivityFeed;
+import com.maxsolch.shop.journal.infra.ActivityLogStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,17 +53,17 @@ class ActivityLogIT extends AbstractMysqlIT {
     void searchByNameMatchesTheOldJoin() {
         for (String q : new String[]{"vas", "Ivan", "sidor", "100%", "100", "_", "under_", "under", "row", "nobody", "PETRO"}) {
             List<Long> got = store.search(filter(q), 0, 100).stream()
-                    .filter(r -> GROUP.equals(r.groupId())).map(ActivityLogStore.Row::id).toList();
+                    .filter(r -> GROUP.equals(r.groupId())).map(ActivityFeed.Row::id).toList();
             assertThat(got).as("q=" + q).isEqualTo(oracle(q));
         }
     }
 
     @Test
     void rowsCarryTheCustomerName() {
-        List<ActivityLogStore.Row> rows = store.search(new ActivityLogStore.Filter(null, null, null, null, null, null,
+        List<ActivityFeed.Row> rows = store.search(new ActivityFeed.Filter(null, null, null, null, null, null,
                 GROUP, null, null, null, null), 0, 100);
         assertThat(rows).hasSize(8);
-        ActivityLogStore.Row first = rows.stream().filter(r -> r.tgUserId() != null && r.tgUserId() == BASE + 1).findFirst()
+        ActivityFeed.Row first = rows.stream().filter(r -> r.tgUserId() != null && r.tgUserId() == BASE + 1).findFirst()
                 .orElseThrow();
         assertThat(first.customerName()).isEqualTo("Vasiliy Ivanov");
         assertThat(first.customerUsername()).isEqualTo("vasya_100%");
@@ -72,7 +73,7 @@ class ActivityLogIT extends AbstractMysqlIT {
         assertThat(store.countByResult(filter("vas"))).isNotEmpty();
     }
 
-    private static ActivityLogStore.Filter filter(String q) {
-        return new ActivityLogStore.Filter(null, null, null, null, null, null, GROUP, null, q, null, null);
+    private static ActivityFeed.Filter filter(String q) {
+        return new ActivityFeed.Filter(null, null, null, null, null, null, GROUP, null, q, null, null);
     }
 }

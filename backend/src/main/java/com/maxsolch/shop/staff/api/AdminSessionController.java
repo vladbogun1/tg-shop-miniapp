@@ -1,7 +1,7 @@
 package com.maxsolch.shop.staff.api;
 
 import com.maxsolch.shop.staff.app.AdminAccountService;
-import com.maxsolch.shop.platform.security.AdminTokenRevocations;
+import com.maxsolch.shop.staff.app.AdminTokenRevocations;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.JwtService;
 import com.maxsolch.shop.platform.security.RequiredAdmin;

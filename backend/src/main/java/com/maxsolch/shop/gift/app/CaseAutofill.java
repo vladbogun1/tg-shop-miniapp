@@ -18,8 +18,7 @@ import com.maxsolch.shop.gift.app.GiftDtos.AutofillRequest;
 import com.maxsolch.shop.gift.app.GiftDtos.CaseDraftItem;
 import com.maxsolch.shop.gift.app.GiftDtos.DraftItemDto;
 import com.maxsolch.shop.catalog.app.CatalogService;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.catalog.app.ProductDto;
 import org.springframework.stereotype.Service;
@@ -82,15 +81,15 @@ static final int TOTAL_WEIGHT = CaseAutofillPlan.TOTAL_WEIGHT;
                 : new AutofillRequest(null, null, null, null, null, null, null, null, null, null, null);
         GiftCaseTier t = tierOf(code);
         int margin = clamp(req.marginPercent() != null ? req.marginPercent()
-                : settings.getInt(SettingsRegistry.GIFT_MARGIN_PERCENT), 1, 90);
+                : settings.getInt(GiftSettings.GIFT_MARGIN_PERCENT), 1, 90);
         int costShare = clamp(req.costShare() != null ? req.costShare() : defaultCostShare(t.getTier()), 5, 150);
         int prizes = clamp(req.prizes() != null ? req.prizes() : 8, 3, 20);
         int discounts = clamp(req.discounts() != null ? req.discounts() : 2, 0, prizes / 2);
         boolean jackpot = t.getTier() == GiftCaseTier.Tier.GOLD && (req.jackpot() == null || req.jackpot());
         boolean newOnly = req.newOnly() == null || req.newOnly();
         int minStock = clamp(req.minStock() != null ? req.minStock() : 2, 1, 1000);
-        Set<String> cats = slugs(req.categories(), SettingsRegistry.GIFT_CASE_CATEGORIES);
-        Set<String> superCats = slugs(req.superCategories(), SettingsRegistry.GIFT_CASE_SUPER_CATEGORIES);
+        Set<String> cats = slugs(req.categories(), GiftSettings.GIFT_CASE_CATEGORIES);
+        Set<String> superCats = slugs(req.superCategories(), GiftSettings.GIFT_CASE_SUPER_CATEGORIES);
 
         Map<String, ProductDto> byId = new HashMap<>();
         List<ProductDto> products = catalogService.listActiveProducts(ADMIN_LANG);
@@ -141,9 +140,9 @@ static final int TOTAL_WEIGHT = CaseAutofillPlan.TOTAL_WEIGHT;
         }
         Set<String> skip = new HashSet<>();
         exclude.forEach(e -> skip.add(e.trim().toLowerCase(Locale.ROOT)));
-        Set<String> cats = new HashSet<>(slugs(null, SettingsRegistry.GIFT_CASE_CATEGORIES));
+        Set<String> cats = new HashSet<>(slugs(null, GiftSettings.GIFT_CASE_CATEGORIES));
         if (rarity == GiftCaseItem.Rarity.GOLD || rarity == GiftCaseItem.Rarity.LEGENDARY) {
-            cats.addAll(slugs(null, SettingsRegistry.GIFT_CASE_SUPER_CATEGORIES));
+            cats.addAll(slugs(null, GiftSettings.GIFT_CASE_SUPER_CATEGORIES));
         }
         Map<String, Category> categories = categories();
         double[] band = BANDS.get(rarity);

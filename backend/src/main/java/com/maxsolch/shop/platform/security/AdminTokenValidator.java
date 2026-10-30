@@ -15,7 +15,7 @@ import java.util.Optional;
  * left every previously issued token fully valid until expiry. On each ADMIN request we compare the
  * token's {@code tv} claim with the row's current {@code token_version} (bumped by «Выйти на всех
  * устройствах»), require the account to still be active, and refuse a token whose {@code jti} was
- * revoked by «Выйти» ({@link AdminTokenRevocations}).
+ * revoked by «Выйти».
  *
  * <p>The lookup is cached for a short window so this costs at most one query per admin per
  * {@value #CACHE_SECONDS}s rather than one per request. The window is the worst-case delay
@@ -30,12 +30,10 @@ public class AdminTokenValidator {
     private final Cache cache;
 
     private final AdminDirectory admins;
-    private final AdminTokenRevocations revocations;
 
-    public AdminTokenValidator(AdminDirectory admins, AdminTokenRevocations revocations, CacheManager caches) {
+    public AdminTokenValidator(AdminDirectory admins, CacheManager caches) {
         this.cache = CacheConfig.require(caches, SecurityCaches.ADMIN_TOKEN_VERSIONS.name());
         this.admins = admins;
-        this.revocations = revocations;
     }
 
     /**
@@ -50,7 +48,7 @@ public class AdminTokenValidator {
         return current != null
                 && current.isPresent()
                 && current.get() == principal.tokenVersion()
-                && !revocations.isRevoked(principal.tokenId());
+                && !admins.isTokenRevoked(principal.tokenId());
     }
 
     /** Drops the cached version so a revocation takes effect immediately for this instance. */

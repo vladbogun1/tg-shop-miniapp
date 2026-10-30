@@ -1,6 +1,6 @@
 package com.maxsolch.shop.review.app;
 
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.review.app.ReviewDtos.AdminPage;
 import com.maxsolch.shop.review.app.ReviewDtos.AdminReview;
 import org.springframework.stereotype.Service;

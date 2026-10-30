@@ -4,7 +4,7 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.inventory.domain.StockWriteoff;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.inventory.infra.StockWriteoffRepository;
 import org.mockito.ArgumentCaptor;
 import com.maxsolch.shop.media.app.ImageStorageService;

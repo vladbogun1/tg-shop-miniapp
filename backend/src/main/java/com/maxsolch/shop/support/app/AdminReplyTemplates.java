@@ -1,6 +1,6 @@
 package com.maxsolch.shop.support.app;
 
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.support.app.ReplyTemplateDtos.TemplateDto;
 import com.maxsolch.shop.support.app.ReplyTemplateDtos.TemplateUpsertRequest;
 import org.springframework.stereotype.Service;

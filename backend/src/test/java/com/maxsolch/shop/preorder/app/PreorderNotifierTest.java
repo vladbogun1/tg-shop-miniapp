@@ -4,7 +4,7 @@ import com.maxsolch.shop.preorder.domain.PreorderEvents;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.procurement.app.BatchDtos.EtaDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.MyPreorderDto;
 import com.maxsolch.shop.customer.infra.UserRepository;
@@ -59,7 +59,7 @@ class PreorderNotifierTest {
         Messages msgs = new Messages((MessageSource) source, new com.maxsolch.shop.customer.app.UserLanguages(users));
         notifier = new PreorderNotifier(queue,
                 new com.maxsolch.shop.notification.app.CustomerBot(bot, props, msgs, activity),
-                new com.maxsolch.shop.translation.app.BotTexts(msgs, mock(com.maxsolch.shop.platform.settings.SettingsService.class),
+                new com.maxsolch.shop.translation.app.BotTexts(msgs, mock(com.maxsolch.shop.settings.app.SettingsService.class),
                         mock(com.maxsolch.shop.translation.app.TranslationService.class), new org.springframework.cache.concurrent.ConcurrentMapCacheManager()),
                 new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"));
         lenient().when(activity.bot(any(), any())).thenAnswer(inv -> ((ActivityLog.BotCall<?, ?>) inv.getArgument(1)).call());

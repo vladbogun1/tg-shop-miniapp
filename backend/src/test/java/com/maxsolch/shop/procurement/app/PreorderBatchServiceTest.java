@@ -15,8 +15,7 @@ import com.maxsolch.shop.procurement.app.BatchDtos.ArriveLine;
 import com.maxsolch.shop.procurement.app.BatchDtos.ArriveRequest;
 import com.maxsolch.shop.procurement.app.BatchDtos.CancelRequest;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
@@ -81,7 +80,7 @@ class PreorderBatchServiceTest {
         when(batches.findForUpdate(5L)).thenReturn(Optional.of(batch));
         when(batches.findById(5L)).thenReturn(Optional.of(batch));
         when(batches.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(settings.getBool(SettingsRegistry.PREORDER_ANY_PRODUCT)).thenReturn(true);
+        when(settings.getBool(ProcurementSettings.PREORDER_ANY_PRODUCT)).thenReturn(true);
         when(queue.handOut(any(), any(), anyLong(), any(), anyInt()))
                 .thenReturn(new BatchQueue.HandOut(0, 0, 0, 0, 0));
         product = new Product();
@@ -205,7 +204,7 @@ class PreorderBatchServiceTest {
 
     @Test
     void withoutTheAnyProductSettingACancelledBatchClosesTheQueueAnyway() {
-        when(settings.getBool(SettingsRegistry.PREORDER_ANY_PRODUCT)).thenReturn(false);
+        when(settings.getBool(ProcurementSettings.PREORDER_ANY_PRODUCT)).thenReturn(false);
         lineWithQueue();
 
         service.cancel(5L, null, false);

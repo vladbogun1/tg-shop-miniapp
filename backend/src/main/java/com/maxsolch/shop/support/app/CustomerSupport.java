@@ -1,7 +1,7 @@
 package com.maxsolch.shop.support.app;
 
 import com.maxsolch.shop.order.app.SendMessageRequest;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.support.app.SupportDtos.CreateThreadRequest;
 import com.maxsolch.shop.support.app.SupportDtos.MessageDto;

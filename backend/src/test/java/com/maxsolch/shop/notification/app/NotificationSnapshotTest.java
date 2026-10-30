@@ -1,11 +1,11 @@
 package com.maxsolch.shop.notification.app;
 
+import com.maxsolch.shop.order.app.OrderSettings;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.payment.domain.ReceiptKind;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -173,7 +173,7 @@ class NotificationSnapshotTest {
             OrderFixtures.set(rejCase, "giftCaseStatus", "SEALED");
             h.scene(l + " / REJECTED with a sealed case (no case line)", rejCase, () -> h.customer.notifyCustomerStatus(rejCase));
         });
-        Mockito.when(h.settings.getBool(SettingsRegistry.NOTIFY_CUSTOMER_STATUS)).thenReturn(false);
+        Mockito.when(h.settings.getBool(OrderSettings.NOTIFY_CUSTOMER_STATUS)).thenReturn(false);
         Order off = order(NotifyHarness.TG_UK, OrderStatus.APPROVED);
         h.scene("switch off in settings → journal only", off, () -> h.customer.notifyCustomerStatus(off));
         Order offNoTg = order(null, OrderStatus.APPROVED);

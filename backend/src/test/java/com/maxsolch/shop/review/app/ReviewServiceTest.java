@@ -23,8 +23,7 @@ import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.customer.app.Customers;
 import com.maxsolch.shop.review.app.ReviewDtos.SubmitRequest;
 import com.maxsolch.shop.review.app.ReviewDtos.SubmitResult;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
@@ -107,15 +106,15 @@ class ReviewServiceTest {
         service = new ReviewService(reviews, orders, orderLines, users, store, settings, messages, mapper, publishing,
                 bonus, events, clock);
         moderation = new ReviewModeration(reviews, mapper, publishing, clock);
-        lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_ENABLED), any(Boolean.class))).thenReturn(true);
-        lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_PREMODERATION), any(Boolean.class)))
+        lenient().when(settings.get(eq(ReviewSettings.REVIEWS_ENABLED), any(Boolean.class))).thenReturn(true);
+        lenient().when(settings.get(eq(ReviewSettings.REVIEWS_PREMODERATION), any(Boolean.class)))
                 .thenAnswer(inv -> premoderation);
-        lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_BONUS_PERCENT), any(Integer.class)))
+        lenient().when(settings.get(eq(ReviewSettings.REVIEWS_BONUS_PERCENT), any(Integer.class)))
                 .thenAnswer(inv -> bonusPercent);
-        lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_BONUS_VALID_DAYS), any(Integer.class))).thenReturn(60);
-        lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_BONUS_MAX_UAH), any(Integer.class))).thenReturn(100);
-        lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_MIN_LENGTH), any(Integer.class))).thenReturn(10);
-        lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_MAX_PER_DAY), any(Integer.class))).thenReturn(10);
+        lenient().when(settings.get(eq(ReviewSettings.REVIEWS_BONUS_VALID_DAYS), any(Integer.class))).thenReturn(60);
+        lenient().when(settings.get(eq(ReviewSettings.REVIEWS_BONUS_MAX_UAH), any(Integer.class))).thenReturn(100);
+        lenient().when(settings.get(eq(ReviewSettings.REVIEWS_MIN_LENGTH), any(Integer.class))).thenReturn(10);
+        lenient().when(settings.get(eq(ReviewSettings.REVIEWS_MAX_PER_DAY), any(Integer.class))).thenReturn(10);
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(reviews.saveAndFlush(any(ProductReview.class))).thenAnswer(inv -> {
             ProductReview r = inv.getArgument(0);

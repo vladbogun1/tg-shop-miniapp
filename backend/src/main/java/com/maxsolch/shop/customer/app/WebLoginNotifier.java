@@ -6,7 +6,7 @@ import com.maxsolch.shop.notification.domain.BotLoginStarter;
 import com.maxsolch.shop.notification.domain.TelegramGateway;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.customer.app.WebLoginBotFlow.BotDecision;
 import com.maxsolch.shop.customer.app.WebLoginBotFlow.BotPrompt;
 import com.maxsolch.shop.customer.domain.WebLoginCompleted;

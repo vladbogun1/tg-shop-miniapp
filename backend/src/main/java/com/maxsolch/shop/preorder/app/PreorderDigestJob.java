@@ -4,7 +4,7 @@ import com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.catalog.domain.Product;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.procurement.app.LineProducts;
 import org.slf4j.Logger;

@@ -2,7 +2,7 @@ package com.maxsolch.shop.notification.app;
 
 import com.maxsolch.shop.notification.domain.Broadcast;
 import com.maxsolch.shop.notification.infra.BroadcastRepository;
-import com.maxsolch.shop.platform.journal.ActivityLogStore;
+import com.maxsolch.shop.journal.app.JournalFeed;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 
 class BroadcastDeliveryReportTest {
 
-    private final ActivityLogStore store = mock(ActivityLogStore.class);
+    private final JournalFeed store = mock(JournalFeed.class);
     private final BroadcastRepository broadcasts = mock(BroadcastRepository.class);
     private final BroadcastDeliveryReport report = new BroadcastDeliveryReport(broadcasts, store);
 

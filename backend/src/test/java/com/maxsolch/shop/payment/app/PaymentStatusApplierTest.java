@@ -1,7 +1,7 @@
 package com.maxsolch.shop.payment.app;
 
 import com.maxsolch.shop.order.domain.OrderFixtures;
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.payment.domain.MonobankInvoiceStatus;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;

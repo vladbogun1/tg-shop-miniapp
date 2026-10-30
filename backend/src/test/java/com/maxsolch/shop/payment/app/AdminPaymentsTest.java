@@ -6,7 +6,7 @@ import com.maxsolch.shop.payment.domain.MonobankGateway;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
 import com.maxsolch.shop.payment.infra.WebhookLogStore;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import org.junit.jupiter.api.BeforeEach;

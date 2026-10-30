@@ -1,10 +1,10 @@
 package com.maxsolch.shop.review.app;
 
+import com.maxsolch.shop.order.app.OrderSettings;
 import com.maxsolch.shop.review.domain.ReviewRules;
 import com.maxsolch.shop.review.infra.ReviewStore;
 
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -53,20 +53,20 @@ public class ReviewReminderJob {
 
     /** @return how many reminders went out */
     int sendDue() {
-        if (!settings.get(SettingsRegistry.REVIEWS_ENABLED, true)
-                || !settings.get(SettingsRegistry.NOTIFY_CUSTOMER_STATUS, true)
+        if (!settings.get(ReviewSettings.REVIEWS_ENABLED, true)
+                || !settings.get(OrderSettings.NOTIFY_CUSTOMER_STATUS, true)
                 || !notifier.enabled()) {
             return 0;
         }
-        int days = settings.get(SettingsRegistry.REVIEWS_REMINDER_DAYS, 2);
+        int days = settings.get(ReviewSettings.REVIEWS_REMINDER_DAYS, 2);
         if (days <= 0) {
             return 0;
         }
         Instant now = clock.instant();
         Instant deliveredTo = now.minus(Duration.ofDays(days));
         Instant deliveredFrom = deliveredTo.minus(Duration.ofDays(ReviewRules.REMINDER_WINDOW_DAYS));
-        int bonusPercent = settings.get(SettingsRegistry.REVIEWS_BONUS_PERCENT, 5);
-        long bonusMax = ReviewRules.bonusMaxMinor(settings.get(SettingsRegistry.REVIEWS_BONUS_MAX_UAH, 100));
+        int bonusPercent = settings.get(ReviewSettings.REVIEWS_BONUS_PERCENT, 5);
+        long bonusMax = ReviewRules.bonusMaxMinor(settings.get(ReviewSettings.REVIEWS_BONUS_MAX_UAH, 100));
         List<ReviewStore.ReminderCandidate> candidates = store.reminderCandidates(deliveredFrom, deliveredTo, BATCH);
         int sent = 0;
         for (ReviewStore.ReminderCandidate c : candidates) {

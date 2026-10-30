@@ -1,6 +1,6 @@
 package com.maxsolch.shop.promo.app;
 
-import com.maxsolch.shop.platform.journal.ActivityLog;
+import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import org.springframework.stereotype.Service;
 

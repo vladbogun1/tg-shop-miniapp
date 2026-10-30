@@ -18,8 +18,7 @@ import com.maxsolch.shop.gift.app.GiftDtos.TestHitDto;
 import com.maxsolch.shop.gift.app.GiftDtos.TierInfoDto;
 import com.maxsolch.shop.promo.app.PromoCodes;
 import com.maxsolch.shop.catalog.app.CatalogService;
-import com.maxsolch.shop.platform.settings.SettingsRegistry;
-import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.catalog.app.ProductDto;
 import org.springframework.stereotype.Service;
@@ -95,10 +94,10 @@ public class GiftService {
      */
     @Transactional(readOnly = true)
     public Optional<GiftConfig> giftConfig() {
-        if (!settings.getBool(SettingsRegistry.GIFT_ENABLED)) {
+        if (!settings.getBool(GiftSettings.GIFT_ENABLED)) {
             return Optional.empty();
         }
-        String id = settings.getString(SettingsRegistry.GIFT_PRODUCT_ID);
+        String id = settings.getString(GiftSettings.GIFT_PRODUCT_ID);
         String productId = null;
         if (id != null && !id.isBlank()) {
             try {
@@ -108,11 +107,11 @@ public class GiftService {
                 productId = null;
             }
         }
-        List<TierConfig> tiers = settings.getBool(SettingsRegistry.GIFT_CASE_ENABLED) ? tiers(false) : List.of();
+        List<TierConfig> tiers = settings.getBool(GiftSettings.GIFT_CASE_ENABLED) ? tiers(false) : List.of();
         if (productId == null && tiers.isEmpty()) {
             return Optional.empty();
         }
-        return Optional.of(new GiftConfig(productId, settings.getInt(SettingsRegistry.GIFT_THRESHOLD_UAH) * 100L,
+        return Optional.of(new GiftConfig(productId, settings.getInt(GiftSettings.GIFT_THRESHOLD_UAH) * 100L,
                 tiers));
     }
 
