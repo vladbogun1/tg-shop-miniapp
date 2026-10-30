@@ -6,6 +6,7 @@ import { config } from "./config.js";
 import { liveEntries } from "./pools.js";
 import { getLock, publicId } from "./draw.js";
 import { ordersOf, profiles } from "./shop.js";
+import { overview } from "./invites.js";
 
 const fullName = (p) => [p?.first_name, p?.last_name].filter(Boolean).join(" ") || null;
 
@@ -21,7 +22,7 @@ export async function people(pool) {
     locked: Boolean(getLock(pool)),
     people: entries
       .sort((a, b) => b.tickets - a.tickets)
-      .map((e) => ({ ...who(e.tgId), tickets: e.tickets, pumpkins: e.pumpkins, spendMinor: e.spendMinor || 0 })),
+      .map((e) => ({ ...who(e.tgId), tickets: e.tickets, pumpkins: e.pumpkins, spendMinor: e.spendMinor || 0, old: Boolean(e.old) })),
     excluded: excluded.map((x) => ({ ...who(String(x.tg_id)), note: x.note || "" })),
   };
 }
@@ -43,4 +44,18 @@ export async function withSpend(pool, winners) {
       return { ...w, lockedSpendMinor: atLock.get(w.tgId) ?? null, nowSpendMinor: now, belowMin: now < config.minSpendMinor };
     }),
   );
+}
+
+/** «Розсилка»: earlier customers with names, their state (joined / grey / blocked / not sent) and the numbers. */
+export async function invites() {
+  const o = await overview();
+  const prof = await profiles(o.rows.map((r) => r.tgId));
+  const order = { joined: 0, grey: 1, "not-sent": 2, error: 3, blocked: 4 };
+  const rows = o.rows
+    .map((r) => {
+      const p = prof.get(r.tgId);
+      return { ...r, name: fullName(p), username: p?.username || null };
+    })
+    .sort((a, b) => order[a.state] - order[b.state] || b.oldSpendMinor - a.oldSpendMinor);
+  return { ...o, rows, oldMinSpendMinor: config.oldMinSpendMinor, oldTickets: config.oldTickets };
 }

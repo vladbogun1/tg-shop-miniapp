@@ -39,6 +39,7 @@
       inDraw: "Ти в розіграші!", tickets: (n) => `${n} ${plural(n, "квиток", "квитки", "квитків")}`,
       pFull: "Розіграш за гарбузи: максимальний шанс", pPart: (n) => `Розіграш за гарбузи: ти береш участь. Знайди ще ${n}, і шанс стане набагато більшим`,
       oIn: (n) => `Розіграш за покупки: ${n} ${plural(n, "квиток", "квитки", "квитків")}`, oLeft: (u) => `Ще ${u} ₴ у замовленнях, і ти в розіграші за покупки`, oNone: (u) => `Замовлення від ${u} ₴ дає участь в окремому розіграші`,
+      oOld: "Ти наш постійний покупець, тому можеш узяти участь у розіграші за покупки без нового замовлення", oJoin: "✅ Беру участь",
       howTitle: "Два розіграші", how1: (g) => `🎃 За гарбузи. Бере участь кожен, хто знайшов хоч один, але в тих, хто зібрав ${g}, шанс набагато вищий`,
       how2: (u, m, e) => `🛍 За покупки. Квиток за кожні ${u} ₴ в оплачених замовленнях до ${e}, максимум ${m}`,
       how3: "Розіграші окремі, виграти можна в обох", how4: (c) => `За день можна знайти до ${c} гарбузів`,
@@ -64,6 +65,7 @@
       inDraw: "Ты в розыгрыше!", tickets: (n) => `${n} ${plural(n, "билет", "билета", "билетов")}`,
       pFull: "Розыгрыш за тыквы: максимальный шанс", pPart: (n) => `Розыгрыш за тыквы: ты участвуешь. Найди ещё ${n}, и шанс станет намного больше`,
       oIn: (n) => `Розыгрыш за покупки: ${n} ${plural(n, "билет", "билета", "билетов")}`, oLeft: (u) => `Ещё ${u} ₴ в заказах, и ты в розыгрыше за покупки`, oNone: (u) => `Заказ от ${u} ₴ даёт участие в отдельном розыгрыше`,
+      oOld: "Ты наш постоянный покупатель, поэтому можешь участвовать в розыгрыше за покупки без нового заказа", oJoin: "✅ Участвовать",
       howTitle: "Два розыгрыша", how1: (g) => `🎃 За тыквы. Участвует каждый, кто нашёл хотя бы одну, но у собравших ${g} шанс намного выше`,
       how2: (u, m, e) => `🛍 За покупки. Билет за каждые ${u} ₴ в оплаченных заказах до ${e}, максимум ${m}`,
       how3: "Розыгрыши отдельные, выиграть можно в обоих", how4: (c) => `В день можно найти до ${c} тыкв`,
@@ -89,6 +91,7 @@
       inDraw: "You're in the draw!", tickets: (n) => `${n} ${n === 1 ? "ticket" : "tickets"}`,
       pFull: "Pumpkin draw: best chance", pPart: (n) => `Pumpkin draw: you're in. Find ${n} more for a much bigger chance`,
       oIn: (n) => `Purchase draw: ${n} ${n === 1 ? "ticket" : "tickets"}`, oLeft: (u) => `${u} UAH more in orders and you're in the purchase draw`, oNone: (u) => `Orders from ${u} UAH enter a separate draw`,
+      oOld: "You are a returning customer, so you can join the purchase draw without a new order", oJoin: "✅ Join",
       howTitle: "Two draws", how1: (g) => `🎃 Pumpkins. Anyone with at least one is in, but people with all ${g} have a much bigger chance`,
       how2: (u, m, e) => `🛍 Purchases. One ticket per ${u} UAH in paid orders until ${e}, up to ${m}`,
       how3: "The draws are separate, you can win both", how4: (c) => `Up to ${c} pumpkins a day`,
@@ -600,6 +603,7 @@
       : open ? `<p>${tx.goal(st.goal)}</p>` : "";
     const o = me.orderTickets > 0 ? `<div class="ok">✓ ${tx.oIn(me.orderTickets)}</div>`
       : !open ? ""
+      : me.old && !me.oldJoined ? `<p>🛍 ${tx.oOld}</p><button class="btn wide" type="button" data-join>${tx.oJoin}</button>`
       : me.spendMinor > 0 ? `<p>🛍 ${tx.oLeft(uah(st.minSpendMinor - me.spendMinor))}</p>`
       : `<p>🛍 ${tx.oNone(uah(st.minSpendMinor))}</p>`;
     return p + o;
@@ -629,6 +633,15 @@
       <p><a href="${cfg.rulesUrl || "/halloween-rules"}" target="_blank" rel="noopener">${tx.rules}</a></p>`);
     s.querySelector(".big").append(pumpkinArt(me && me.full ? 4 : 1));
     s.querySelector("[data-login]")?.addEventListener("click", () => { closeModal(); cfg.login && cfg.login(); });
+    s.querySelector("[data-join]")?.addEventListener("click", async (e) => {
+      e.currentTarget.disabled = true;
+      try {
+        const r = await call("/join", {});
+        if (r.me) st.me = r.me;
+      } catch { /* the panel shows the old state */ }
+      closeModal();
+      openPanel();
+    });
   }
 
   // ---------------- start ----------------

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>ChiSetup · Halloween</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px;
+      background: radial-gradient(circle at 50% 20%, #3a1d08 0%, #120c08 55%, #0b0907 100%); color: #f4ede4;
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; box-sizing: border-box; }
+    .card { max-width: 420px; width: 100%; text-align: center; padding: 28px 22px; border-radius: 20px;
+      background: rgba(20, 14, 10, 0.85); border: 1px solid rgba(255, 122, 26, 0.35); box-shadow: 0 0 60px rgba(255, 122, 26, 0.18); }
+    .pumpkin { font-size: 64px; line-height: 1; animation: glow 2.4s ease-in-out infinite; }
+    @keyframes glow { 0%, 100% { filter: drop-shadow(0 0 6px #ff7a1a); } 50% { filter: drop-shadow(0 0 22px #ffb15c); } }
+    h1 { font-size: 22px; margin: 14px 0 8px; }
+    p { margin: 8px 0; color: #d9cfc4; }
+    .btn { display: block; margin: 18px auto 0; padding: 13px 18px; border-radius: 12px; background: #ff7a1a; color: #1a0f05;
+      font-weight: 700; text-decoration: none; }
+    .btn.ghost { background: transparent; color: #ffb15c; border: 1px solid rgba(255, 177, 92, 0.5); margin-top: 10px; }
+    .muted { font-size: 14px; color: #a39686; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="pumpkin" aria-hidden="true">🎃</div>
+    <h1 id="title">…</h1>
+    <p id="text"></p>
+    <a id="hunt" class="btn" href="/"></a>
+    <a id="rules" class="btn ghost" href="/halloween-rules"></a>
+    <p id="note" class="muted"></p>
+  </main>
+  <script>
+    (function () {
+      var T = {
+        uk: { wait: "Секунду…", okT: "Ти в розіграші!", ok: "Ти береш участь у розіграші за покупки. Кожне нове замовлення від 500 ₴ до 1 листопада 18:00 додає ще квиток.",
+          hunt: "🎃 Шукати гарбузи", rules: "Правила", note: "Розігруємо 1 листопада о 19:00 наживо на TikTok і Kick. А за гарбузи є окремий розіграш зі своїми призами. Будь на стрімі: якщо виграєш, відгукнись протягом 2 хвилин, інакше приз розіграємо заново.",
+          closedT: "Запис закрито", closed: "Списки вже зафіксовані перед стрімом.", badT: "Посилання не підходить", bad: "Відкрий кнопку з повідомлення бота ще раз.",
+          notOldT: "Тут тільки для постійних покупців", notOld: "Але можна взяти участь інакше: замовлення від 500 ₴ або полювання на гарбузи.", errT: "Не вийшло", err: "Спробуй ще раз за хвилину." },
+        ru: { wait: "Секунду…", okT: "Ты в розыгрыше!", ok: "Ты участвуешь в розыгрыше за покупки. Каждый новый заказ от 500 ₴ до 1 ноября 18:00 добавляет ещё билет.",
+          hunt: "🎃 Ловить тыквы", rules: "Правила", note: "Разыгрываем 1 ноября в 19:00 вживую на TikTok и Kick. А за тыквы есть отдельный розыгрыш со своими призами. Будь на стриме: если выиграешь, отзовись в течение 2 минут, иначе приз разыграем заново.",
+          closedT: "Запись закрыта", closed: "Списки уже зафиксированы перед стримом.", badT: "Ссылка не подходит", bad: "Открой кнопку из сообщения бота ещё раз.",
+          notOldT: "Это только для постоянных покупателей", notOld: "Но участвовать можно иначе: заказ от 500 ₴ или охота на тыквы.", errT: "Не получилось", err: "Попробуй ещё раз через минуту." },
+        en: { wait: "One sec…", okT: "You're in!", ok: "You're in the purchase draw. Every new order from 500 UAH until November 1, 18:00 Kyiv adds another ticket.",
+          hunt: "🎃 Hunt pumpkins", rules: "Rules", note: "Live draw on November 1 at 19:00 Kyiv on TikTok and Kick. The pumpkin hunt is a separate draw with their own prizes. Be on the stream: if you win, respond within 2 minutes or the prize is drawn again.",
+          closedT: "Entry is closed", closed: "The lists are already fixed before the stream.", badT: "This link doesn't work", bad: "Open the button from the bot's message again.",
+          notOldT: "This is for returning customers", notOld: "You can still take part: an order from 500 UAH or the pumpkin hunt.", errT: "Something went wrong", err: "Try again in a minute." }
+      };
+      var qs = new URLSearchParams(location.search);
+      var lang = T[qs.get("l")] ? qs.get("l") : "uk";
+      var t = T[lang];
+      var prefix = lang === "uk" ? "" : "/" + lang;
+      document.documentElement.lang = lang;
+      var $ = function (id) { return document.getElementById(id); };
+      $("title").textContent = t.wait;
+      $("hunt").textContent = t.hunt;
+      $("hunt").href = prefix + "/";
+      $("rules").textContent = t.rules;
+      $("rules").href = prefix + "/halloween-rules";
+      function show(title, text) { $("title").textContent = title; $("text").textContent = text; $("note").textContent = t.note; }
+      fetch("/hw/api/join", { method: "POST", headers: { "content-type": "application/json" }, credentials: "omit",
+        body: JSON.stringify({ u: qs.get("u") || "", s: qs.get("s") || "" }) })
+        .then(function (r) { return r.json(); })
+        .then(function (r) {
+          if (r.ok) return show(t.okT, t.ok);
+          if (r.reason === "closed") return show(t.closedT, t.closed);
+          if (r.reason === "bad-link") return show(t.badT, t.bad);
+          if (r.reason === "not-old") return show(t.notOldT, t.notOld);
+          show(t.errT, t.err);
+        })
+        .catch(function () { show(t.errT, t.err); });
+    })();
+  </script>
+</body>
+</html>

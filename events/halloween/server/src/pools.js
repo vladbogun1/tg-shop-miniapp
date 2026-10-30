@@ -5,10 +5,12 @@
 //              set (config.goal) weighs config.fullWeight or more: partial sets together never get
 //              more than config.partialShare of the chance, however many of them there are.
 //   orders   — orders inside the window that add up to config.minSpendMinor: one ticket per
-//              minSpend, at most config.maxOrderTickets.
+//              minSpend, at most config.maxOrderTickets; plus earlier customers who pressed
+//              «Участвовать» (invites.js), config.oldTickets each, new orders on top, same cap.
 import { db } from "./db.js";
 import { config } from "./config.js";
 import { shopFacts } from "./shop.js";
+import { joinedOld } from "./invites.js";
 
 export const POOLS = ["pumpkins", "orders"];
 
@@ -27,6 +29,12 @@ export function pumpkinWeight(n) {
 export function orderTickets(spendMinor) {
   if (!(config.minSpendMinor > 0)) return 0;
   return Math.min(config.maxOrderTickets, Math.floor(spendMinor / config.minSpendMinor));
+}
+
+/** Purchase draw: an earlier customer who joined starts with oldTickets; new orders add, same cap. */
+export function purchaseTickets(spendMinor, joinedOld) {
+  const base = joinedOld ? config.oldTickets : 0;
+  return Math.min(config.maxOrderTickets, base + orderTickets(spendMinor));
 }
 
 /** Pumpkins collected per person. */
@@ -78,9 +86,12 @@ export async function liveEntries(pool) {
     }
     capPartialShare(out);
   } else {
-    for (const [tgId, o] of facts.orders) {
-      const tickets = orderTickets(o.spendMinor);
-      if (tickets > 0 && !excluded.has(tgId)) out.push({ tgId, tickets, pumpkins: 0, orders: o.n, spendMinor: o.spendMinor });
+    const joined = await joinedOld();
+    for (const tgId of new Set([...facts.orders.keys(), ...joined.keys()])) {
+      const o = facts.orders.get(tgId) || { n: 0, spendMinor: 0 };
+      const tickets = purchaseTickets(o.spendMinor, joined.has(tgId));
+      if (tickets > 0 && !excluded.has(tgId))
+        out.push({ tgId, tickets, pumpkins: 0, orders: o.n, spendMinor: o.spendMinor, old: joined.has(tgId), oldSpendMinor: facts.old.get(tgId) || 0 });
     }
   }
   out.sort((a, b) => (BigInt(a.tgId) < BigInt(b.tgId) ? -1 : 1));

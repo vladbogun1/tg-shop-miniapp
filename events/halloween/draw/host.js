@@ -3,6 +3,7 @@
 import { VISUALS } from "./visuals/registry.js";
 import { mockParticipants, mockDraw } from "./mock.js";
 import { showPeople, spendCell } from "./admin-tools.js";
+import { showInvites } from "./invites-tool.js";
 
 const qs = new URLSearchParams(location.search);
 const MOCK = qs.has("mock") ? Number(qs.get("mock")) || 120 : 0;
@@ -247,6 +248,8 @@ function setupControls() {
   $("contacts").onclick = () => showContacts().catch(fail);
   $("people").onclick = () =>
     (MOCK || TEST ? Promise.reject(new Error("У тестовому режимі учасники несправжні")) : showPeople({ api, dialog, fail, esc, pool: POOL, onChange: refreshList })).catch(fail);
+  $("invites").onclick = () =>
+    (MOCK || TEST ? Promise.reject(new Error("У тестовому режимі розсилка вимкнена")) : showInvites({ api, dialog, fail, esc })).catch(fail);
   $("proof").onclick = () => downloadProof().catch(fail);
   $("avatars").onchange = (e) => { prefs.avatars = e.target.checked; mountVisual(sel.value); };
   $("sound").onchange = (e) => { prefs.sound = e.target.checked; };

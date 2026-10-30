@@ -18,6 +18,9 @@ import * as prizes from "./prizes.js";
 import { db } from "./db.js";
 import { poolOf, liveEntries } from "./pools.js";
 import * as notify from "./notify.js";
+import * as invites from "./invites.js";
+import * as broadcast from "./broadcast.js";
+import { shopFacts } from "./shop.js";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
 const ROOT = resolve(here, "../..");
@@ -97,8 +100,17 @@ async function customerApi(req, res, path) {
   if (path === "state" && req.method === "GET") {
     return send(res, 200, { ...game.publicState(), me: me ? await game.progress(me.tgId) : null });
   }
-  if (!me) return send(res, 401, { error: "sign in" });
   const b = req.method === "POST" ? await body(req) : {};
+  // «Участвовать» of an earlier customer: the personal link from the bot (u + s) or the signed-in panel.
+  if (path === "join" && req.method === "POST") {
+    const byLink = b.u !== undefined;
+    if (byLink && !invites.checkSig(b.u, b.s)) return send(res, 403, { ok: false, reason: "bad-link" });
+    const tgId = byLink ? String(b.u) : me?.tgId;
+    if (!tgId) return send(res, 401, { error: "sign in" });
+    const r = await invites.join(tgId, byLink ? "link" : "panel", { locked: Boolean(draw.getLock("orders")) });
+    return send(res, 200, { ...r, me: me ? await game.progress(me.tgId) : null });
+  }
+  if (!me) return send(res, 401, { error: "sign in" });
 
   if (path === "spawn" && req.method === "POST") {
     return send(res, 200, game.spawn(me.tgId, ip, String(b.app || "").slice(0, 16)));
@@ -173,6 +185,24 @@ async function adminApi(req, res, path, query) {
         orders: { people: or.length, tickets: or.reduce((s, e) => s + e.tickets, 0) },
         notify: notify.stats(),
       });
+    }
+    // Earlier customers and the 30.10 broadcast («Розсилка» dialog).
+    if (path === "invites" && req.method === "GET") return send(res, 200, await adminPeople.invites());
+    if (path === "broadcast/status" && req.method === "GET") {
+      const [old, rest] = await Promise.all([broadcast.audience("old"), broadcast.audience("rest")]);
+      return send(res, 200, { job: broadcast.status(), left: { old: old.length, rest: rest.length }, botToken: Boolean(config.botToken), only: config.notifyOnly.length });
+    }
+    if (path === "broadcast/test" && req.method === "POST") {
+      // Only to staff: a test never reaches a customer.
+      const to = String(b.tgId || who.tgId);
+      if (to !== who.tgId && !(await shopFacts()).staff.has(to)) return send(res, 403, { error: "Тест можна надіслати тільки адміну" });
+      return send(res, 200, await broadcast.test(to, Array.isArray(b.campaigns) ? b.campaigns : undefined));
+    }
+    if (path === "broadcast/start" && req.method === "POST") {
+      const left = (await broadcast.audience(String(b.campaign))).length;
+      if (Number(b.confirm) !== left) return send(res, 409, { error: `Підтвердіть кількість: ${left}`, left });
+      console.log(`[hw] broadcast ${b.campaign} started by ${who.tgId} for ${left}`);
+      return send(res, 200, await broadcast.start(String(b.campaign)));
     }
     if (path === "people" && req.method === "GET") return send(res, 200, await adminPeople.people(pool));
     if (path === "include" && req.method === "POST") {

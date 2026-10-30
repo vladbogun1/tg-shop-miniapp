@@ -16,9 +16,9 @@ const TITLE: Record<Locale, string> = {
 };
 
 const DESC: Record<Locale, string> = {
-  uk: "Збирай гарбузи на сайті й у Mini App ChiSetup з 26 до 30 жовтня: 50 гарбузів або замовлення — квиток у розіграш 5 призів на стрімі.",
-  ru: "Собирай тыквы на сайте и в Mini App ChiSetup с 26 по 30 октября: 50 тыкв или заказ — билет в розыгрыш 5 призов на стриме.",
-  en: "Collect pumpkins on the ChiSetup website and Mini App from 26 to 30 October: 50 pumpkins or an order is a ticket to the stream draw of 5 prizes.",
+  uk: "Два розіграші ChiSetup на Хеллоуїн 30.10–01.11.2026: за гарбузи на сайті й у Mini App і за покупки. Розігруємо наживо 1 листопада о 19:00.",
+  ru: "Два розыгрыша ChiSetup на Хэллоуин 30.10–01.11.2026: за тыквы на сайте и в Mini App и за покупки. Разыгрываем вживую 1 ноября в 19:00.",
+  en: "Two ChiSetup Halloween draws, 30.10–01.11.2026: pumpkins on the site and in the Mini App, and purchases. Live draw on November 1 at 19:00 Kyiv.",
 };
 
 export async function generateMetadata({ params }: { params: LocaleParams }): Promise<Metadata> {

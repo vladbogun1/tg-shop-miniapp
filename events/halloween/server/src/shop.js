@@ -16,7 +16,7 @@ let cache = { at: 0, data: null };
  * what stays with the shop: total minus refunds and parcels nobody picked up.
  */
 async function fetchAll() {
-  if (!pool) return { orders: new Map(), staff: new Set() };
+  if (!pool) return { orders: new Map(), staff: new Set(), old: new Map() };
   const [orders] = await pool.query(
     `SELECT CAST(user_id AS CHAR) AS tg_id, COUNT(*) AS n,
             SUM(GREATEST(total_minor - refunded_minor - uncollected_minor, 0)) AS spend
@@ -29,7 +29,19 @@ async function fetchAll() {
     [config.ordersFrom, config.ordersTo],
   );
   const [staff] = await pool.query(`SELECT CAST(telegram_user_id AS CHAR) AS tg_id FROM admin_users`);
+  // Earlier customers: the same "counts" rule, everything before the event.
+  const [old] = await pool.query(
+    `SELECT CAST(user_id AS CHAR) AS tg_id, SUM(GREATEST(total_minor - refunded_minor - uncollected_minor, 0)) AS spend
+       FROM orders
+      WHERE user_id IS NOT NULL AND created_at < ?
+        AND status <> 'REJECTED'
+        AND (paid = 1 OR status IN ('APPROVED','SHIPPED','DELIVERED'))
+      GROUP BY user_id
+     HAVING spend >= ?`,
+    [config.oldBefore, config.oldMinSpendMinor],
+  );
   return {
+    old: new Map(old.map((r) => [String(r.tg_id), Number(r.spend)])),
     orders: new Map(orders.map((r) => [String(r.tg_id), { n: Number(r.n), spendMinor: Number(r.spend) }])),
     staff: new Set(staff.map((r) => String(r.tg_id))),
   };
@@ -43,7 +55,7 @@ export async function shopFacts() {
   } catch (e) {
     console.error("[shop] facts failed:", e.message);
     // Keep what we had, ask again in ~15 s instead of on every request.
-    cache = { at: Date.now() - 45_000, data: cache.data || { orders: new Map(), staff: new Set() } };
+    cache = { at: Date.now() - 45_000, data: cache.data || { orders: new Map(), staff: new Set(), old: new Map() } };
   }
   return cache.data;
 }
@@ -78,6 +90,13 @@ export async function profiles(ids) {
     for (const r of rows) out.set(String(r.tg_id), r);
   }
   return out;
+}
+
+/** Everyone the bot may write to (has a Telegram id): the "everyone else" broadcast. */
+export async function allCustomerIds() {
+  if (!pool) return [];
+  const [rows] = await pool.query(`SELECT CAST(telegram_user_id AS CHAR) AS tg_id FROM users WHERE telegram_user_id IS NOT NULL`);
+  return rows.map((r) => String(r.tg_id));
 }
 
 /** Rehearsal draw only (test-draw.js): random customers, preferring those with a Telegram photo. */

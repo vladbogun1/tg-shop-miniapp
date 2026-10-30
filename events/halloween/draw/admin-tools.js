@@ -22,7 +22,7 @@ function summary(st, pool, people) {
 
 function rowHtml(x, pool, locked, esc) {
   const tg = x.username ? `<a href="https://t.me/${esc(x.username)}" target="_blank" rel="noopener">@${esc(x.username)}</a>` : esc(x.tgId);
-  const score = pool === "pumpkins" ? `${x.pumpkins} 🎃` : uah(x.spendMinor);
+  const score = pool === "pumpkins" ? `${x.pumpkins} 🎃` : `${uah(x.spendMinor)}${x.old ? " · старий покупець" : ""}`;
   return `<tr data-q="${esc(`${x.name || ""} ${x.username || ""} ${x.tgId}`.toLowerCase())}"><td>${esc(x.name || "—")}</td><td>${tg}</td><td>${score}</td><td>${x.tickets}</td><td>${
     locked ? "" : `<button data-ex="${esc(x.tgId)}">Виключити</button>`
   }</td></tr>`;

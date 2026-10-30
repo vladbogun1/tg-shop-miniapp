@@ -4,7 +4,8 @@ import { randomBytes, randomInt } from "node:crypto";
 import { db, tx } from "./db.js";
 import { config } from "./config.js";
 import { ordersOf } from "./shop.js";
-import { pumpkinWeight, orderTickets } from "./pools.js";
+import { pumpkinWeight, purchaseTickets } from "./pools.js";
+import { isOld, isJoined } from "./invites.js";
 
 export const PUMPKIN_KINDS = 4;
 
@@ -42,7 +43,10 @@ export async function progress(tgId) {
   const pumpkins = pumpkinsOf(tgId);
   const today = Number(q.collectedDay.get(tgId, kyivDay()).n);
   const o = await ordersOf(tgId);
-  const orderTix = orderTickets(o.spendMinor);
+  // Earlier customer: invited (can press «Участвовать» in the panel too) or already in.
+  const old = await isOld(tgId);
+  const oldJoined = old && isJoined(tgId);
+  const orderTix = purchaseTickets(o.spendMinor, oldJoined);
   const pools = { pumpkins: pumpkinWeight(pumpkins) > 0, orders: orderTix > 0 };
   return {
     pumpkins,
@@ -51,6 +55,8 @@ export async function progress(tgId) {
     orders: o.n,
     spendMinor: o.spendMinor,
     orderTickets: orderTix,
+    old,
+    oldJoined,
     pools,
     inDraw: pools.pumpkins || pools.orders,
   };

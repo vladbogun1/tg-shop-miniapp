@@ -40,6 +40,18 @@ export const config = {
   // Purchase draw: orders inside the window adding up to minSpend; one ticket per minSpend, capped.
   minSpendMinor: Math.round(num("HW_MIN_SPEND_UAH", 500) * 100),
   maxOrderTickets: num("HW_MAX_ORDER_TICKETS", 5),
+  /**
+   * Earlier customers (added 30.10): who bought for oldMinSpend before oldBefore gets an invite and, after
+   * pressing «Участвовать», is in the purchase draw with oldTickets (new orders add to it, same cap).
+   */
+  oldMinSpendMinor: Math.round(num("HW_OLD_MIN_SPEND_UAH", 1000) * 100),
+  oldBefore: new Date(env.HW_OLD_BEFORE || env.HW_STARTS_AT || "2026-10-29T22:00:00Z"),
+  oldTickets: num("HW_OLD_TICKETS", 1),
+  /** Public addresses for the broadcast buttons and the join link. */
+  siteUrl: (env.HW_SITE_URL || "https://chisetup.com.ua").replace(/\/$/, ""),
+  appUrl: (env.HW_APP_URL || "https://app.chisetup.com.ua").replace(/\/$/, ""),
+  /** Broadcast pictures: <dir>/<lang>/{orders,pumpkins}.{mp4,gif,jpg,png}. */
+  mediaDir: env.HW_MEDIA_DIR || "",
   /** Rounds of each draw (= prizes). */
   rounds: { pumpkins: num("HW_ROUNDS_PUMPKINS", 10), orders: num("HW_ROUNDS_ORDERS", 10) },
   /** Minimal pause between two pumpkins for one person (server side; the client waits longer). */

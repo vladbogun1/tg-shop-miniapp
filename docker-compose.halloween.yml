@@ -39,6 +39,11 @@ services:
       HW_NOTIFY: ${HW_NOTIFY:-0}
       HW_NOTIFY_ONLY: ${HW_NOTIFY_ONLY:-}
       HW_EXCLUDE_IDS: ${HW_EXCLUDE_IDS:-9000000000000001}
+      # 30.10: earlier customers + the broadcast from the admin «Розсилка» dialog
+      HW_OLD_MIN_SPEND_UAH: ${HW_OLD_MIN_SPEND_UAH:-}
+      HW_OLD_TICKETS: ${HW_OLD_TICKETS:-}
+      HW_SITE_URL: ${HW_SITE_URL:-}
+      HW_APP_URL: ${HW_APP_URL:-}
     volumes:
       - halloween_data:/data
     networks:

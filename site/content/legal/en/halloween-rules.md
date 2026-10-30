@@ -1,6 +1,6 @@
 ---
 title: Halloween Hunt giveaway rules
-updated: 2026-10-29
+updated: 2026-10-30
 status: draft
 ---
 
@@ -33,6 +33,8 @@ There are **two separate draws**:
 - 1 ticket per full 500 UAH, up to 5 tickets.
 - Orders placed during the event and paid or accepted by the shop count; cancelled, rejected and refunded amounts do not.
 
+**Returning customers.** Anyone who bought from ChiSetup for **1000 UAH or more** in total before the event (before 30.10.2026 00:00) gets an invitation to the purchase draw from the bot. After tapping «Join» in the bot message or in the 🎃 panel, they are in the draw with **1 ticket**. New orders during the event add tickets under the same rules, up to 5 in total. Joining is open until **01.11.2026 18:00**.
+
 The pumpkin draw is free, no purchase needed. Whether you are in is shown in the 🎃 panel on the site and in the Mini App.
 
 ## 4. The draw
@@ -44,8 +46,8 @@ The pumpkin draw is free, no purchase needed. Whether you are in is shown in the
 
 ## 5. Claiming a prize
 
-- The organiser messages the winner on Telegram (through the shop's bot) within a day after the stream.
-- If a winner does not answer within **48 hours** or declines the prize, the round is drawn again among the remaining participants.
+- The winner has to be watching the stream. After the announcement they have **2 minutes** to respond: write in the stream chat or reply to the bot message in Telegram. Otherwise the round is drawn again among the remaining participants.
+- The organizer confirms delivery details in Telegram (through the shop bot) after the stream.
 - The prize is shipped with Nova Poshta at the organiser's expense. No cash equivalent.
 
 ## 6. Not eligible
