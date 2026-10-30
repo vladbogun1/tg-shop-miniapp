@@ -60,6 +60,8 @@ final class V2Rules {
         RULES.put("W1", "dependencies by constructor only (no field/setter @Autowired, @Inject, @Resource, @PersistenceContext, required=false, @Lazy)");
         RULES.put("S1", "JdbcTemplate only in infra, *Store and *Queries");
         RULES.put("O1", "order status changes only through Order methods (no setStatus from outside)");
+        RULES.put("O2", "an entity with invariants (GUARDED) is changed only by its own methods: no set* call from outside its domain package");
+        RULES.put("O3", "an entity with invariants (GUARDED) has no public set* method (no @Setter)");
     }
 
     private static final String SPRING_VALUE = "org.springframework.beans.factory.annotation.Value";
@@ -90,6 +92,15 @@ final class V2Rules {
                     "platform.time.ShopZone", "the one place that parses a zone id",
                     "platform.jobs.DbLocks", "System.nanoTime is a monotonic deadline for waiting on a DB lock, not a date"));
 
+    /**
+     * Entities that carry an invariant (money, status, counters that must stay consistent): they have no public
+     * setters, every change is a method of the entity. Relative to the root. The other entities are plain
+     * records of reference data and settings (see ARCHITECTURE.md, section 3, «Сущности»).
+     */
+    static final Set<String> GUARDED = Set.of(
+            "order.domain.Order", "order.domain.OrderItem", "order.domain.OrderItemLot",
+            "payment.domain.PaymentInvoice", "returns.domain.OrderReturn", "returns.domain.OrderReturnLine");
+
     private final Placement placement;
     private final String root;
 
@@ -111,9 +122,34 @@ final class V2Rules {
             layering(c, from, origin, own);
             practices(c, from, origin, own);
             members(c, from, origin, own);
+            guardedEntity(c, from, origin, own);
             own.stream().filter(v -> !isAllowed(v.rule(), origin)).forEach(out::add);
         }
         return out.stream().distinct().toList();
+    }
+
+    private boolean isGuarded(String className) {
+        return className.startsWith(root + ".") && GUARDED.contains(className.substring(root.length() + 1));
+    }
+
+    private static boolean isSetter(String name) {
+        return name.length() > 3 && name.startsWith("set") && Character.isUpperCase(name.charAt(3));
+    }
+
+    private static boolean samePackage(String a, String b) {
+        return a.equals(b);
+    }
+
+    /** O3: an entity with invariants exposes no public setter (what Lombok's @Setter would generate). */
+    private void guardedEntity(JavaClass c, Place from, String origin, List<Violation> out) {
+        if (!isGuarded(c.getName())) {
+            return;
+        }
+        for (JavaMethod m : c.getMethods()) {
+            if (m.getModifiers().contains(JavaModifier.PUBLIC) && isSetter(m.getName())) {
+                out.add(new Violation("O3", from.module(), origin + "." + m.getName()));
+            }
+        }
     }
 
     private boolean isAllowed(String rule, String origin) {
@@ -245,6 +281,9 @@ final class V2Rules {
             if (!pkg.equals(root + ".platform.http") && owner.equals("java.net.http.HttpClient")
                     && (name.equals("newBuilder") || name.equals("newHttpClient"))) {
                 out.add(new Violation("H1", from.module(), detail));
+            }
+            if (isGuarded(owner) && isSetter(name) && !samePackage(c.getPackageName(), call.getTargetOwner().getPackageName())) {
+                out.add(new Violation("O2", from.module(), detail));
             }
             if ((owner.equals(root + ".domain.Order") || owner.equals(root + ".order.domain.Order")) && name.equals("setStatus")
                     && !Placement.outermost(c).getName().equals(owner)) {

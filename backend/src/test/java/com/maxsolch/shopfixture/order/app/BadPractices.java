@@ -22,6 +22,11 @@ public class BadPractices {
     public static class MyFailure extends RuntimeException {
     }
 
+    /** A setter of a guarded entity called from app: O2. */
+    public void overwriteTotal(com.maxsolch.shopfixture.order.domain.Order order) {
+        order.setTotalMinor(1);
+    }
+
     public Object tick() {
         Object who = SecurityContextHolder.getContext();
         if (memo.isEmpty()) {

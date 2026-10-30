@@ -97,12 +97,12 @@ class OnlinePaymentServiceTest {
 
     private PaymentInvoice invoice(Order o, String status, long amount, Instant expiresAt) {
         PaymentInvoice inv = new PaymentInvoice();
-        inv.setOrderId(o.getId());
-        inv.setExternalId("inv-" + status);
-        inv.setAmountMinor(amount);
-        inv.setStatus(status);
-        inv.setPageUrl("https://pay.mbnk.biz/inv-" + status);
-        inv.setExpiresAt(expiresAt);
+        OrderFixtures.set(inv, "orderId", o.getId());
+        OrderFixtures.set(inv, "externalId", "inv-" + status);
+        OrderFixtures.set(inv, "amountMinor", amount);
+        OrderFixtures.set(inv, "status", status);
+        OrderFixtures.set(inv, "pageUrl", "https://pay.mbnk.biz/inv-" + status);
+        OrderFixtures.set(inv, "expiresAt", expiresAt);
         return inv;
     }
 

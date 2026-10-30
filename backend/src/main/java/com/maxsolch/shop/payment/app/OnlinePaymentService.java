@@ -208,15 +208,8 @@ public class OnlinePaymentService {
         if (created.invoiceId() == null || created.pageUrl() == null) {
             throw PaymentErrors.conflict(messages.current("api.payment.failed"), "PAYMENT_FAILED");
         }
-        PaymentInvoice inv = new PaymentInvoice();
-        inv.setOrderId(orderId);
-        inv.setExternalId(created.invoiceId());
-        inv.setAmountMinor(amount);
-        inv.setPageUrl(created.pageUrl());
-        inv.setDisplayType(display);
-        inv.setBasketJson(toJson(basket));
-        inv.setExpiresAt(now.plusSeconds(validity));
-        inv.setStatus(PaymentInvoice.CREATED);
+        PaymentInvoice inv = PaymentInvoice.open(orderId, created.invoiceId(), amount, created.pageUrl(), display,
+                toJson(basket), now.plusSeconds(validity));
         invoices.save(inv);
         log.info("monobank invoice {} for order {}: {} kop", created.invoiceId(), key, amount);
         journal(ActivityLog.Entry.of(ActivityLog.PAYMENT,
@@ -381,7 +374,7 @@ public class OnlinePaymentService {
         }
         tx.executeWithoutResult(s -> invoices.findForUpdate(PaymentInvoice.PROVIDER_MONOBANK, invoiceId)
                 .ifPresent(i -> {
-                    i.setRefundPendingUntil(clock.instant().plus(Duration.ofDays(2)));
+                    i.awaitRefundUntil(clock.instant().plus(Duration.ofDays(2)));
                     invoices.save(i);
                 }));
         refresh(inv);

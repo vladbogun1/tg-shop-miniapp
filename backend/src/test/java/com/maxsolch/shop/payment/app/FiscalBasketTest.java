@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.domain.MonobankGateway;
@@ -22,9 +23,9 @@ class FiscalBasketTest {
         String stored = json.writeValueAsString(sold);
 
         PaymentInvoice inv = new PaymentInvoice();
-        inv.setOrderId(new byte[16]);
-        inv.setExternalId("inv-1");
-        inv.setBasketJson(stored);
+        OrderFixtures.set(inv, "orderId", new byte[16]);
+        OrderFixtures.set(inv, "externalId", "inv-1");
+        OrderFixtures.set(inv, "basketJson", stored);
 
         OnlinePaymentService svc = new OnlinePaymentService(null, null, null, null, null, null, null,
                 org.mockito.Mockito.mock(SettingsService.class), null, java.time.Clock.systemUTC(),

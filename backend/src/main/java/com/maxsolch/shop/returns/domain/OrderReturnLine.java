@@ -7,14 +7,12 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Getter;
-import lombok.Setter;
 
 /**
  * One order line of a return record (V70). Units sent back by post (IN_TRANSIT) get their shelf /
  * write-off split when the parcel is received.
  */
 @Getter
-@Setter
 @Entity
 @Table(name = "order_return_lines")
 public class OrderReturnLine {
@@ -46,6 +44,45 @@ public class OrderReturnLine {
     private Long writeoffId;
 
     /** Units still on their way back (sent by post, not received yet). */
+    public static OrderReturnLine of(long itemId, int quantity, String outcome) {
+        OrderReturnLine l = new OrderReturnLine();
+        l.itemId = itemId;
+        l.quantity = quantity;
+        l.outcome = outcome;
+        return l;
+    }
+
+    /** The record is saved: its lines point at it. */
+    public void attachTo(Long record) {
+        returnId = record;
+    }
+
+    public void recordRestocked(int units) {
+        restockedQty = units;
+    }
+
+    public void recordDefect(int units, Long writeoff) {
+        defectQty = units;
+        writeoffId = writeoff;
+    }
+
+    /** More units of a parcel that came back went to the shelf. */
+    public void addRestocked(int units) {
+        restockedQty += units;
+    }
+
+    /** More units of a parcel that came back were broken; the write-off covers them. */
+    public void addDefect(int units, Long writeoff) {
+        defectQty += units;
+        writeoffId = writeoff;
+    }
+
+    /** Defective units were re-checked and are fine: they move from the write-off to the shelf. */
+    public void defectToShelf(int units) {
+        defectQty -= units;
+        restockedQty += units;
+    }
+
     public int pendingQty() {
         return "IN_TRANSIT".equals(outcome) ? Math.max(0, quantity - restockedQty - defectQty) : 0;
     }

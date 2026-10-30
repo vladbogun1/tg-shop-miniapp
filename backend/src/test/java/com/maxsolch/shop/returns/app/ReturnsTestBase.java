@@ -186,7 +186,7 @@ abstract class ReturnsTestBase {
         lenient().when(recRepo.save(any())).thenAnswer(inv -> {
             com.maxsolch.shop.returns.domain.OrderReturn r = inv.getArgument(0);
             if (r.getId() == null) {
-                r.setId((long) recs.size() + 1);
+                OrderFixtures.set(r, "id", (long) recs.size() + 1);
                 recs.add(r);
             }
             return r;
@@ -196,7 +196,7 @@ abstract class ReturnsTestBase {
             Iterable<com.maxsolch.shop.returns.domain.OrderReturnLine> it = inv.getArgument(0);
             it.forEach(l -> {
                 if (l.getId() == null) {
-                    l.setId((long) lines.size() + 1);
+                    OrderFixtures.set(l, "id", (long) lines.size() + 1);
                     lines.add(l);
                 }
             });

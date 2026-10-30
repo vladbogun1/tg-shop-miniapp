@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.payment.domain.MonobankInvoiceStatus;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
@@ -47,12 +48,12 @@ class PaymentStatusApplierTest {
     void setUp() {
         applier = new PaymentStatusApplier(invoices, orderPayments, mock(ActivityLog.class), java.time.Clock.systemUTC());
         inv = new PaymentInvoice();
-        inv.setId(UuidUtil.randomBytes());
-        inv.setOrderId(UuidUtil.randomBytes());
-        inv.setExternalId(INVOICE);
-        inv.setAmountMinor(4200);
-        inv.setPageUrl("https://pay.monobank.ua/" + INVOICE);
-        inv.setExpiresAt(Instant.parse(T1).plusSeconds(3600));
+        OrderFixtures.set(inv, "id", UuidUtil.randomBytes());
+        OrderFixtures.set(inv, "orderId", UuidUtil.randomBytes());
+        OrderFixtures.set(inv, "externalId", INVOICE);
+        OrderFixtures.set(inv, "amountMinor", 4200);
+        OrderFixtures.set(inv, "pageUrl", "https://pay.monobank.ua/" + INVOICE);
+        OrderFixtures.set(inv, "expiresAt", Instant.parse(T1).plusSeconds(3600));
         lenient().when(invoices.findForUpdate(PaymentInvoice.PROVIDER_MONOBANK, INVOICE)).thenReturn(Optional.of(inv));
     }
 

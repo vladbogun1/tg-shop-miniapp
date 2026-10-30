@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.app.OnlinePaymentDto;
 import com.maxsolch.shop.order.app.OrderOnlinePayments;
 import com.maxsolch.shop.payment.domain.MonobankGateway;
@@ -47,19 +48,19 @@ class OrderPaymentsAdapterTest {
 
     private static PaymentInvoice paid(String id, long amount, long refunded) {
         PaymentInvoice i = new PaymentInvoice();
-        i.setExternalId(id);
-        i.setAmountMinor(amount);
-        i.setRefundedMinor(refunded);
-        i.setStatus(PaymentInvoice.SUCCESS);
-        i.setAppliedAt(NOW);
+        OrderFixtures.set(i, "externalId", id);
+        OrderFixtures.set(i, "amountMinor", amount);
+        OrderFixtures.set(i, "refundedMinor", refunded);
+        OrderFixtures.set(i, "status", PaymentInvoice.SUCCESS);
+        OrderFixtures.set(i, "appliedAt", NOW);
         return i;
     }
 
     @Test
     void refundAll_refundsEveryPaidInvoiceInFull_andSkipsTheUnpaidOne() {
         PaymentInvoice failed = new PaymentInvoice();
-        failed.setExternalId("inv-failed");
-        failed.setStatus(PaymentInvoice.FAILURE);
+        OrderFixtures.set(failed, "externalId", "inv-failed");
+        OrderFixtures.set(failed, "status", PaymentInvoice.FAILURE);
         when(invoices.findByOrderIdOrderByCreatedAtDesc(orderId))
                 .thenReturn(List.of(paid("inv-1", 10_000, 0), failed, paid("inv-2", 90_000, 0)));
 
@@ -90,7 +91,7 @@ class OrderPaymentsAdapterTest {
     @Test
     void refundAll_skipsWhatIsFullyReturnedOrAlreadyBeingReturned() {
         PaymentInvoice pending = paid("inv-pending", 5_000, 0);
-        pending.setRefundPendingUntil(NOW.plusSeconds(60));
+        OrderFixtures.set(pending, "refundPendingUntil", NOW.plusSeconds(60));
         when(invoices.findByOrderIdOrderByCreatedAtDesc(orderId))
                 .thenReturn(List.of(paid("inv-done", 5_000, 5_000), pending));
 
@@ -123,7 +124,7 @@ class OrderPaymentsAdapterTest {
     @Test
     void summary_paidInvoiceWinsOverNewerAbandonedOne_unlessMoneyIsStillDue() {
         PaymentInvoice abandoned = new PaymentInvoice();
-        abandoned.setStatus(PaymentInvoice.EXPIRED);
+        OrderFixtures.set(abandoned, "status", PaymentInvoice.EXPIRED);
         PaymentInvoice paid = paid("p", 10_000, 0);
         when(invoices.findByOrderIdOrderByCreatedAtDesc(orderId)).thenReturn(List.of(abandoned, paid));
 

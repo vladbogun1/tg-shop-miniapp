@@ -1,5 +1,6 @@
 package com.maxsolch.shop.it;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.order.app.Checkout;
 import com.maxsolch.shop.order.domain.Order;
@@ -33,12 +34,12 @@ class PaymentInvoiceTimestampsIT extends AbstractMysqlIT {
         Product p = product(5_000, 3);
         Order o = checkout.createOrder(checkout(9_101, "+380673330101", p, 1));
         PaymentInvoice inv = new PaymentInvoice();
-        inv.setId(UuidUtil.randomBytes());
-        inv.setOrderId(o.getId());
-        inv.setExternalId("it-" + UuidUtil.toString(inv.getId()).substring(0, 8));
-        inv.setAmountMinor(5_000);
-        inv.setPageUrl("https://example.invalid/pay");
-        inv.setExpiresAt(Instant.now().plus(1, ChronoUnit.HOURS));
+        OrderFixtures.set(inv, "id", UuidUtil.randomBytes());
+        OrderFixtures.set(inv, "orderId", o.getId());
+        OrderFixtures.set(inv, "externalId", "it-" + UuidUtil.toString(inv.getId()).substring(0, 8));
+        OrderFixtures.set(inv, "amountMinor", 5_000);
+        OrderFixtures.set(inv, "pageUrl", "https://example.invalid/pay");
+        OrderFixtures.set(inv, "expiresAt", Instant.now().plus(1, ChronoUnit.HOURS));
 
         Instant before = Instant.now().minusSeconds(1);
         tx.executeWithoutResult(s -> invoices.save(inv));
@@ -52,7 +53,7 @@ class PaymentInvoiceTimestampsIT extends AbstractMysqlIT {
         Thread.sleep(1_200);
         tx.executeWithoutResult(s -> {
             PaymentInvoice again = invoices.findById(inv.getId()).orElseThrow();
-            again.setStatus(PaymentInvoice.SUCCESS);
+            OrderFixtures.set(again, "status", PaymentInvoice.SUCCESS);
         });
 
         assertThat(column("created_at", inv.getId())).isEqualTo(created);

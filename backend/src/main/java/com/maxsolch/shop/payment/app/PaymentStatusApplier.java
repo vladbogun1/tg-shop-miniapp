@@ -92,31 +92,24 @@ public class PaymentStatusApplier {
             return true;
         }
         if (modified != null) {
-            inv.setProviderModifiedAt(modified);
+            inv.noteProviderModified(modified);
         }
         String before = inv.getStatus();
         // A later "created/processing" must never overwrite a final state of the same timestamp.
-        if (!(inv.getAppliedAt() != null && PaymentInvoice.OPEN.contains(st.status()))) {
-            inv.setStatus(st.status());
-        }
-        inv.setFailureReason(cut(st.failureReason(), 512));
-        inv.setErrCode(cut(st.errCode(), 16));
+        inv.moveTo(st.status());
+        inv.noteFailure(cut(st.failureReason(), 512), cut(st.errCode(), 16));
         if (st.finalAmount() != null) {
-            inv.setFinalAmountMinor(st.finalAmount());
+            inv.noteFinalAmount(st.finalAmount());
         }
         if (st.paymentInfo() != null) {
             MonobankInvoiceStatus.PaymentInfo pi = st.paymentInfo();
-            inv.setMaskedPan(cut(pi.maskedPan(), 32));
-            inv.setPaymentMethod(cut(pi.paymentMethod(), 16));
-            inv.setPaymentSystem(cut(pi.paymentSystem(), 16));
-            inv.setRrn(cut(pi.rrn(), 64));
-            inv.setApprovalCode(cut(pi.approvalCode(), 32));
-            inv.setFeeMinor(pi.fee());
+            inv.noteCard(cut(pi.maskedPan(), 32), cut(pi.paymentMethod(), 16), cut(pi.paymentSystem(), 16),
+                    cut(pi.rrn(), 64), cut(pi.approvalCode(), 32), pi.fee());
         }
 
         boolean paidState = PaymentInvoice.SUCCESS.equals(st.status()) || PaymentInvoice.REVERSED.equals(st.status());
         if (paidState && inv.getAppliedAt() == null) {
-            inv.setAppliedAt(clock.instant());
+            inv.markApplied(clock.instant());
             orderPayments.recordOnlinePayment(inv.getOrderId(), inv.getAmountMinor(), inv.getExternalId());
             log.info("monobank: invoice {} paid, {} kop credited to order {}", inv.getExternalId(),
                     inv.getAmountMinor(), UuidUtil.toString(inv.getOrderId()));
@@ -140,7 +133,7 @@ public class PaymentStatusApplier {
             long refundedNow = refundedFrom(st, inv);
             long delta = refundedNow - inv.getRefundedMinor();
             if (delta > 0) {
-                inv.setRefundedMinor(refundedNow);
+                inv.raiseRefunded(refundedNow);
                 orderPayments.recordOnlineRefund(inv.getOrderId(), delta, inv.getExternalId());
                 log.info("monobank: invoice {} refund {} kop booked", inv.getExternalId(), delta);
                 journal(payment("REFUND", inv)
@@ -149,7 +142,7 @@ public class PaymentStatusApplier {
             }
         }
         if (inv.getRefundPendingUntil() != null && !hasPendingCancel(st)) {
-            inv.setRefundPendingUntil(null);
+            inv.clearRefundPending();
         }
         invoices.save(inv);
         return true;

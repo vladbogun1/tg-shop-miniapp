@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.payment.domain.MonobankGateway;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
@@ -85,11 +86,11 @@ class AdminPaymentsTest {
     @Test
     void refundPendingIsJudgedByTheClock() {
         PaymentInvoice pending = new PaymentInvoice();
-        pending.setExternalId("a");
-        pending.setRefundPendingUntil(NOW.plusSeconds(60));
+        OrderFixtures.set(pending, "externalId", "a");
+        OrderFixtures.set(pending, "refundPendingUntil", NOW.plusSeconds(60));
         PaymentInvoice done = new PaymentInvoice();
-        done.setExternalId("b");
-        done.setRefundPendingUntil(NOW.minusSeconds(60));
+        OrderFixtures.set(done, "externalId", "b");
+        OrderFixtures.set(done, "refundPendingUntil", NOW.minusSeconds(60));
         when(invoices.findByOrderIdOrderByCreatedAtDesc(UuidUtil.toBytes(orderId))).thenReturn(List.of(pending, done));
 
         assertThat(admin.invoices(orderId)).extracting(AdminInvoiceDto::refundPending).containsExactly(true, false);

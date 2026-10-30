@@ -137,16 +137,14 @@ public class ReturnCancellation {
                     parts.add("деньги " + MoneyFormat.uah(given) + " вернулись");
                 }
                 case DEBT -> {
-                    rec.setDebtMinor(given);
+                    rec.owe(given);
                     parts.add("покупатель должен вернуть " + MoneyFormat.uah(given));
                 }
                 case KEEP -> parts.add("деньги " + MoneyFormat.uah(given) + " оставили покупателю");
             }
         }
 
-        rec.setCancelledAt(clock.instant());
-        rec.setCancelledBy(adminName);
-        rec.setCancelNote(cleanNote);
+        rec.cancel(clock.instant(), adminName, cleanNote);
         returnRecords.save(rec);
         Order saved = orders.save(order);
         events.publish(OrderEvents.Edited.silent(saved.getId()));
@@ -254,7 +252,7 @@ public class ReturnCancellation {
         if (amount > 0) {
             bookMoneyBack(order, amount, rec.backChannel(), adminName, "долг по отменённому возврату вернули");
         }
-        rec.setDebtPaidAt(clock.instant());
+        rec.markDebtPaid(clock.instant());
         returnRecords.save(rec);
         Order saved = orders.save(order);
         events.publish(OrderEvents.Edited.silent(saved.getId()));

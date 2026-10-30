@@ -126,12 +126,11 @@ public class ReturnReceiving {
                 continue;
             }
             int take = Math.min(restocked, l.pendingQty());
-            l.setRestockedQty(l.getRestockedQty() + take);
+            l.addRestocked(take);
             restocked -= take;
             int broken = Math.min(defect, l.pendingQty());
             if (broken > 0) {
-                l.setDefectQty(l.getDefectQty() + broken);
-                l.setWriteoffId(w == null ? null : w.getId());
+                l.addDefect(broken, w == null ? null : w.getId());
                 defect -= broken;
             }
             returnLines.save(l);

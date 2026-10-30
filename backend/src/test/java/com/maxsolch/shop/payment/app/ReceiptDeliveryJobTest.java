@@ -73,12 +73,12 @@ class ReceiptDeliveryJobTest {
         OrderFixtures.set(order, "id", UuidUtil.randomBytes());
         OrderFixtures.set(order, "tgUserId", TG);
         inv = new PaymentInvoice();
-        inv.setId(UuidUtil.randomBytes());
-        inv.setOrderId(order.getId());
-        inv.setExternalId("inv-1");
-        inv.setAmountMinor(100_000);
-        inv.setStatus(PaymentInvoice.SUCCESS);
-        inv.setAppliedAt(NOW.minus(Duration.ofMinutes(5)));
+        OrderFixtures.set(inv, "id", UuidUtil.randomBytes());
+        OrderFixtures.set(inv, "orderId", order.getId());
+        OrderFixtures.set(inv, "externalId", "inv-1");
+        OrderFixtures.set(inv, "amountMinor", 100_000);
+        OrderFixtures.set(inv, "status", PaymentInvoice.SUCCESS);
+        OrderFixtures.set(inv, "appliedAt", NOW.minus(Duration.ofMinutes(5)));
 
         lenient().when(mono.isEnabled()).thenReturn(true);
         lenient().when(notifications.isBotEnabled()).thenReturn(true);
@@ -110,7 +110,7 @@ class ReceiptDeliveryJobTest {
 
     @Test
     void alreadyHandledCheck_isNotSentAgain() {
-        inv.setRefundedMinor(50_000); // a refund is pending, so the invoice is still looked at
+        OrderFixtures.set(inv, "refundedMinor", 50_000); // a refund is pending, so the invoice is still looked at
         when(store.handled(inv.getId())).thenReturn(Map.of("c-sale", ReceiptKind.FISCAL_SALE));
         when(mono.fiscalChecks("inv-1")).thenReturn(List.of(
                 check("c-sale", "sale", "done"), check("c-ret", "return", "done")));
@@ -177,7 +177,7 @@ class ReceiptDeliveryJobTest {
 
     @Test
     void noFiscalChecks_after30Minutes_bankReceiptFallback() {
-        inv.setAppliedAt(NOW.minus(Duration.ofMinutes(31)));
+        OrderFixtures.set(inv, "appliedAt", NOW.minus(Duration.ofMinutes(31)));
         when(mono.fiscalChecks("inv-1")).thenReturn(List.of());
         when(mono.bankReceipt("inv-1")).thenReturn("%PDF-1.4".getBytes());
 
@@ -201,7 +201,7 @@ class ReceiptDeliveryJobTest {
 
     @Test
     void monobankError_isNotTreatedAsNoChecks() {
-        inv.setAppliedAt(NOW.minus(Duration.ofHours(2)));
+        OrderFixtures.set(inv, "appliedAt", NOW.minus(Duration.ofHours(2)));
         when(mono.fiscalChecks("inv-1")).thenThrow(new MonobankGateway.MonobankException(500, "X", "boom"));
 
         job.deliver(NOW);
@@ -212,7 +212,7 @@ class ReceiptDeliveryJobTest {
 
     @Test
     void bankFallbackAlreadySent_notRepeated() {
-        inv.setAppliedAt(NOW.minus(Duration.ofHours(2)));
+        OrderFixtures.set(inv, "appliedAt", NOW.minus(Duration.ofHours(2)));
         when(store.handled(inv.getId())).thenReturn(Map.of("bank:x", ReceiptKind.BANK));
 
         job.deliver(NOW);

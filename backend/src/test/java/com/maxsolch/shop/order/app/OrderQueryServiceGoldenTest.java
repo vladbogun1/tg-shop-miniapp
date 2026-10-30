@@ -476,17 +476,17 @@ class OrderQueryServiceGoldenTest {
 
     private static PaymentInvoice invoice(Order o, String status, long amount, Instant expiresAt) {
         PaymentInvoice i = new PaymentInvoice();
-        i.setId(id(800));
-        i.setOrderId(o.getId());
-        i.setStatus(status);
-        i.setAmountMinor(amount);
-        i.setPageUrl("https://pay.example/invoice/abc");
-        i.setExpiresAt(expiresAt);
-        i.setMaskedPan("444403******1902");
-        i.setPaymentMethod("pan");
-        i.setFailureReason("success".equals(status) ? null : "Недостаточно средств");
-        i.setAppliedAt("success".equals(status) ? Instant.parse("2026-10-02T10:05:00Z") : null);
-        i.setRefundedMinor(0);
+        OrderFixtures.set(i, "id", id(800));
+        OrderFixtures.set(i, "orderId", o.getId());
+        OrderFixtures.set(i, "status", status);
+        OrderFixtures.set(i, "amountMinor", amount);
+        OrderFixtures.set(i, "pageUrl", "https://pay.example/invoice/abc");
+        OrderFixtures.set(i, "expiresAt", expiresAt);
+        OrderFixtures.set(i, "maskedPan", "444403******1902");
+        OrderFixtures.set(i, "paymentMethod", "pan");
+        OrderFixtures.set(i, "failureReason", "success".equals(status) ? null : "Недостаточно средств");
+        OrderFixtures.set(i, "appliedAt", "success".equals(status) ? Instant.parse("2026-10-02T10:05:00Z") : null);
+        OrderFixtures.set(i, "refundedMinor", 0);
         return i;
     }
 
@@ -513,30 +513,30 @@ class OrderQueryServiceGoldenTest {
                 return getKind().equals("EXCHANGE") ? "Замена уже отправлена" : null;
             }
         };
-        r.setId(n);
-        r.setOrderId(o.getId());
-        r.setKind(kind);
-        r.setExchangeId(exchangeId);
-        r.setRefundMinor(refund);
-        r.setRefundChannel(refund > 0 ? "MONOBANK" : null);
-        r.setMonoRefundMinor(refund);
-        r.setNote("Возврат " + n);
-        r.setAdminName("Админ");
-        r.setCreatedAt(Instant.parse("2026-10-08T12:00:00Z").plusSeconds(n));
-        r.setDebtMinor(1000);
-        r.setDebtPaidAt(Instant.parse("2026-10-09T12:00:00Z"));
+        OrderFixtures.set(r, "id", n);
+        OrderFixtures.set(r, "orderId", o.getId());
+        OrderFixtures.set(r, "kind", kind);
+        OrderFixtures.set(r, "exchangeId", exchangeId);
+        OrderFixtures.set(r, "refundMinor", refund);
+        OrderFixtures.set(r, "refundChannel", refund > 0 ? "MONOBANK" : null);
+        OrderFixtures.set(r, "monoRefundMinor", refund);
+        OrderFixtures.set(r, "note", "Возврат " + n);
+        OrderFixtures.set(r, "adminName", "Админ");
+        OrderFixtures.set(r, "createdAt", Instant.parse("2026-10-08T12:00:00Z").plusSeconds(n));
+        OrderFixtures.set(r, "debtMinor", 1000);
+        OrderFixtures.set(r, "debtPaidAt", Instant.parse("2026-10-09T12:00:00Z"));
         return r;
     }
 
     private static OrderReturnLine line(long n, long returnId, long itemId, int qty, String outcome, int restocked, int defect) {
         OrderReturnLine l = new OrderReturnLine();
-        l.setId(n);
-        l.setReturnId(returnId);
-        l.setItemId(itemId);
-        l.setQuantity(qty);
-        l.setOutcome(outcome);
-        l.setRestockedQty(restocked);
-        l.setDefectQty(defect);
+        OrderFixtures.set(l, "id", n);
+        OrderFixtures.set(l, "returnId", returnId);
+        OrderFixtures.set(l, "itemId", itemId);
+        OrderFixtures.set(l, "quantity", qty);
+        OrderFixtures.set(l, "outcome", outcome);
+        OrderFixtures.set(l, "restockedQty", restocked);
+        OrderFixtures.set(l, "defectQty", defect);
         return l;
     }
 }

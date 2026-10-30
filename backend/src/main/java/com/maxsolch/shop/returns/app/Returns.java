@@ -196,10 +196,7 @@ public class Returns {
                 checkLeft(item, line);
             }
             String title = ReturnText.title(item);
-            OrderReturnLine rl = new OrderReturnLine();
-            rl.setItemId(item.getId());
-            rl.setQuantity(line.quantity());
-            rl.setOutcome(outcome.name());
+            OrderReturnLine rl = OrderReturnLine.of(item.getId(), line.quantity(), outcome.name());
             recordLines.add(rl);
             switch (outcome) {
                 case RESTOCK -> {
@@ -207,7 +204,7 @@ public class Returns {
                     int canRestock = item.getQuantity() - item.getRestockedQty();
                     int restocked = Math.min(line.quantity(), canRestock);
                     stock.restockUnits(item, restocked);
-                    rl.setRestockedQty(restocked);
+                    rl.recordRestocked(restocked);
                     parts.add(title + " ×" + line.quantity() + " (на склад)");
                     customerParts.add(title + " ×" + line.quantity());
                 }
@@ -215,8 +212,7 @@ public class Returns {
                     item.registerReturned(line.quantity());
                     StockWriteoff w = defects.writeOff(item, line.quantity(), OrderMoney.unitPaidMinor(order, item),
                             order.getId(), cleanNote, adminName);
-                    rl.setDefectQty(line.quantity());
-                    rl.setWriteoffId(w == null ? null : w.getId());
+                    rl.recordDefect(line.quantity(), w == null ? null : w.getId());
                     parts.add(title + " ×" + line.quantity() + " (брак, списан)");
                     customerParts.add(title + " ×" + line.quantity());
                 }
@@ -270,17 +266,12 @@ public class Returns {
     /** The wizard run as a record, so it can be cancelled later (V70). */
     private void saveRecord(Order order, ReturnPlan plan, List<ManualRefund> refunds, long manual, String cleanNote,
                             String adminName, List<OrderReturnLine> recordLines) {
-        OrderReturn rec = new OrderReturn();
-        rec.setCreatedAt(clock.instant());
-        rec.setOrderId(order.getId());
-        rec.setRefundMinor(manual);
-        rec.setRefundChannel(refunds.isEmpty() ? null : refunds.get(0).channel().name());
-        rec.setMonoRefundMinor(plan.monoRefundMinor());
-        rec.setNote(cleanNote == null ? null : ReturnText.cut(cleanNote, 500));
-        rec.setAdminName(adminName);
+        OrderReturn rec = OrderReturn.registered(clock.instant(), order.getId(), manual,
+                refunds.isEmpty() ? null : refunds.get(0).channel().name(), plan.monoRefundMinor(),
+                cleanNote == null ? null : ReturnText.cut(cleanNote, 500), adminName);
         OrderReturn savedRec = returnRecords.save(rec);
         if (savedRec != null && savedRec.getId() != null && !recordLines.isEmpty()) {
-            recordLines.forEach(l -> l.setReturnId(savedRec.getId()));
+            recordLines.forEach(l -> l.attachTo(savedRec.getId()));
             returnLines.saveAll(recordLines);
         }
     }

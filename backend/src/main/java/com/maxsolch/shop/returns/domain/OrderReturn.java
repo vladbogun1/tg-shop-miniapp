@@ -13,7 +13,6 @@ import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.time.Instant;
 
@@ -22,7 +21,6 @@ import java.time.Instant;
  * cancelled when the customer changes their mind. Never deleted — a cancellation is stamped on it.
  */
 @Getter
-@Setter
 @Entity
 @Table(name = "order_returns")
 public class OrderReturn {
@@ -77,6 +75,41 @@ public class OrderReturn {
 
     @Column(name = "debt_paid_at")
     private Instant debtPaidAt;
+
+    /** The wizard run as a record, so it can be cancelled later (V70). */
+    public static OrderReturn registered(Instant at, byte[] orderId, long refundMinor, String refundChannel,
+                                         long monoRefundMinor, String note, String adminName) {
+        OrderReturn r = new OrderReturn();
+        r.createdAt = at;
+        r.orderId = orderId;
+        r.refundMinor = refundMinor;
+        r.refundChannel = refundChannel;
+        r.monoRefundMinor = monoRefundMinor;
+        r.note = note;
+        r.adminName = adminName;
+        return r;
+    }
+
+    /** The return registered above belongs to an exchange: cancelling it cancels the exchange. */
+    public void belongsToExchange(long exchange) {
+        kind = Kind.EXCHANGE.name();
+        exchangeId = exchange;
+    }
+
+    /** Cancelled while the customer holds the refund: they owe it back. */
+    public void owe(long debt) {
+        debtMinor = debt;
+    }
+
+    public void cancel(Instant at, String by, String why) {
+        cancelledAt = at;
+        cancelledBy = by;
+        cancelNote = why;
+    }
+
+    public void markDebtPaid(Instant at) {
+        debtPaidAt = at;
+    }
 
     /**
      * Why this record cannot be cancelled right now, or null. An exchange can only be undone while its

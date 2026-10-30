@@ -7,7 +7,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
-import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -19,7 +18,6 @@ import java.util.Set;
  * invoice is replaced by a new one when the customer presses "pay" again.
  */
 @Getter
-@Setter
 @Entity
 @Table(name = "payment_invoices")
 public class PaymentInvoice {
@@ -131,6 +129,70 @@ public class PaymentInvoice {
         if (id == null) {
             id = UuidUtil.randomBytes();
         }
+    }
+
+    /** A new invoice created at the provider: waiting for the payment until {@code expires}. */
+    public static PaymentInvoice open(byte[] orderId, String externalId, long amountMinor, String pageUrl,
+                                      String displayType, String basketJson, Instant expires) {
+        PaymentInvoice i = new PaymentInvoice();
+        i.orderId = orderId;
+        i.externalId = externalId;
+        i.amountMinor = amountMinor;
+        i.pageUrl = pageUrl;
+        i.displayType = displayType;
+        i.basketJson = basketJson;
+        i.expiresAt = expires;
+        i.status = CREATED;
+        return i;
+    }
+
+    public void noteProviderModified(Instant modified) {
+        providerModifiedAt = modified;
+    }
+
+    /** A later "created/processing" never overwrites a final state of an invoice that was already applied. */
+    public void moveTo(String newStatus) {
+        if (!(appliedAt != null && OPEN.contains(newStatus))) {
+            status = newStatus;
+        }
+    }
+
+    public void noteFailure(String reason, String code) {
+        failureReason = reason;
+        errCode = code;
+    }
+
+    public void noteFinalAmount(long finalAmount) {
+        finalAmountMinor = finalAmount;
+    }
+
+    /** What the bank reports about the card payment (already cut to the column widths). */
+    public void noteCard(String pan, String method, String system, String reference, String approval, Long fee) {
+        maskedPan = pan;
+        paymentMethod = method;
+        paymentSystem = system;
+        rrn = reference;
+        approvalCode = approval;
+        feeMinor = fee;
+    }
+
+    /** The money was booked to the order: happens once. */
+    public void markApplied(Instant now) {
+        appliedAt = now;
+    }
+
+    /** The bank reports more refunded than we booked: the total only grows. */
+    public void raiseRefunded(long refundedNow) {
+        refundedMinor = Math.max(refundedMinor, refundedNow);
+    }
+
+    /** A refund was requested at the bank and is not confirmed yet. */
+    public void awaitRefundUntil(Instant until) {
+        refundPendingUntil = until;
+    }
+
+    public void clearRefundPending() {
+        refundPendingUntil = null;
     }
 
     public boolean isOpen() {

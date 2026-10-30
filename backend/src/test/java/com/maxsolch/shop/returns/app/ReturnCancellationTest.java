@@ -107,10 +107,10 @@ class ReturnCancellationTest extends ReturnsTestBase {
     void cancelBlocker_saysWhyTheNewestRecordCannotBeUndone() {
         com.maxsolch.shop.returns.domain.OrderReturn plain = new com.maxsolch.shop.returns.domain.OrderReturn();
         com.maxsolch.shop.returns.domain.OrderReturn exchange = new com.maxsolch.shop.returns.domain.OrderReturn();
-        exchange.setKind(com.maxsolch.shop.returns.domain.OrderReturn.Kind.EXCHANGE.name());
-        exchange.setRefundMinor(10_000);
+        OrderFixtures.set(exchange, "kind", com.maxsolch.shop.returns.domain.OrderReturn.Kind.EXCHANGE.name());
+        OrderFixtures.set(exchange, "refundMinor", 10_000);
         com.maxsolch.shop.returns.domain.OrderReturn done = new com.maxsolch.shop.returns.domain.OrderReturn();
-        done.setCancelledAt(java.time.Instant.now());
+        OrderFixtures.set(done, "cancelledAt", java.time.Instant.now());
 
         assertThat(done.cancelBlocker(null)).isEqualTo("уже отменён");
         assertThat(plain.cancelBlocker(order(OrderStatus.DELIVERED))).isNull();

@@ -20,6 +20,12 @@ class V2RulesTest {
     }
 
     @Test
+    void guardedEntitiesHaveNoSettersAndAreNotSetFromOutside() {
+        assertThat(count("O2", "order")).isEqualTo(1);
+        assertThat(count("O3", "order")).isEqualTo(1);
+    }
+
+    @Test
     void apiMayNotUseInfra() {
         assertThat(count("L1", "order")).isEqualTo(1);
     }

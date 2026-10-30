@@ -71,8 +71,7 @@ public class DefectWriteoffs {
                 if (take <= 0) {
                     continue;
                 }
-                l.setDefectQty(l.getDefectQty() - take);
-                l.setRestockedQty(l.getRestockedQty() + take);
+                l.defectToShelf(take);
                 returnLines.save(l);
                 OrderItem line = order.getItems().stream()
                         .filter(i -> i.getId() != null && i.getId() == l.getItemId()).findFirst().orElse(null);

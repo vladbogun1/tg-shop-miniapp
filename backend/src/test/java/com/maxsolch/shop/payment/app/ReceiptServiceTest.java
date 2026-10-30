@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.platform.cache.CacheConfig;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.domain.MonobankGateway;
@@ -48,13 +49,13 @@ class ReceiptServiceTest {
 
     private PaymentInvoice invoice(String ext, boolean paid) {
         PaymentInvoice i = new PaymentInvoice();
-        i.setId(UuidUtil.randomBytes());
-        i.setOrderId(orderId);
-        i.setExternalId(ext);
-        i.setAmountMinor(150_000);
-        i.setStatus(paid ? PaymentInvoice.SUCCESS : PaymentInvoice.FAILURE);
-        i.setAppliedAt(paid ? Instant.parse("2026-10-07T10:00:00Z") : null);
-        i.setCreatedAt(Instant.parse("2026-10-07T09:59:00Z"));
+        OrderFixtures.set(i, "id", UuidUtil.randomBytes());
+        OrderFixtures.set(i, "orderId", orderId);
+        OrderFixtures.set(i, "externalId", ext);
+        OrderFixtures.set(i, "amountMinor", 150_000);
+        OrderFixtures.set(i, "status", paid ? PaymentInvoice.SUCCESS : PaymentInvoice.FAILURE);
+        OrderFixtures.set(i, "appliedAt", paid ? Instant.parse("2026-10-07T10:00:00Z") : null);
+        OrderFixtures.set(i, "createdAt", Instant.parse("2026-10-07T09:59:00Z"));
         return i;
     }
 

@@ -212,8 +212,7 @@ public class Exchanges {
             List<OrderReturn> recs = returnRecords.findByOrderIdOrderByIdAsc(order.getId());
             if (!recs.isEmpty()) {
                 OrderReturn rec = recs.get(recs.size() - 1);
-                rec.setKind(OrderReturn.Kind.EXCHANGE.name());
-                rec.setExchangeId(savedEx.getId());
+                rec.belongsToExchange(savedEx.getId());
                 returnRecords.save(rec);
             }
         }
