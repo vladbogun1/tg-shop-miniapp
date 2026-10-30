@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { shortOrderId } from "@shop/shared";
+import { shortOrderId } from "@shop/core/format";
 import { OrderDetailView } from "@/components/account/OrderDetailView";
 import { makeT } from "@/i18n";
 import { localeOf } from "@/lib/route";

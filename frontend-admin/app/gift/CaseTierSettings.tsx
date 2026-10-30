@@ -6,7 +6,7 @@
  * (PATCH /api/admin/gift/tiers/{tier}) — they are not part of the prizes' draft.
  */
 import { useEffect, useState } from "react";
-import { CASE_TIER_METAL } from "@shop/shared";
+import { CASE_TIER_METAL } from "@shop/core/giftcase";
 import { CASE_TIER_LABEL, type GiftTierAdmin, type GiftTierPatch } from "@/lib/gift";
 import { cn } from "@/lib/cn";
 import { money } from "@/lib/money";

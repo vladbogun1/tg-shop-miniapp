@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { BRAND_ORANGE_STOPS, BRAND_WHITE_STOPS, LOGO_GEOMETRY as G, MARK_GEOMETRY as M } from "@shop/shared";
+import { BRAND_ORANGE_STOPS, BRAND_WHITE_STOPS, LOGO_GEOMETRY as G, MARK_GEOMETRY as M } from "@shop/ui/brand/logo";
 
 /**
  * ChiSetup logo for the admin (DESIGN-V3 §6, §8) — the same vector geometry as the Mini App and the

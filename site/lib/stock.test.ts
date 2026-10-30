@@ -1,4 +1,4 @@
-import type { Product, ProductVariant } from "@shop/shared";
+import type { Product, ProductVariant } from "@shop/core/types";
 import { describe, expect, it } from "vitest";
 import { stockOf } from "./stock";
 

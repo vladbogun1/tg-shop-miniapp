@@ -18,7 +18,7 @@ import {
   type GiftChoice,
   type GiftTierInfo,
   type OrderGift,
-} from "../giftcase";
+} from "@shop/core/giftcase";
 import { CaseStyles } from "./GiftCaseOpening";
 import { CaseSizePicker, type CaseSizeTexts } from "./case-size";
 import { CaseDiscountTile, CasePromoBox, CaseRulesLink, caseTierAsset, caseTierVars, rarityVars, type CasePromoTexts, type CaseRulesLinkProps } from "./case-tier";

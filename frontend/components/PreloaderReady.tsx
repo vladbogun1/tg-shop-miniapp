@@ -1,7 +1,7 @@
 "use client";
 
 import { useLayoutEffect } from "react";
-import { settlePreloader } from "@shop/shared";
+import { settlePreloader } from "@shop/ui/brand/preloader";
 
 /**
  * Pairs with components/Preloader.tsx. Runs on every mount of the root layout, before paint: reports

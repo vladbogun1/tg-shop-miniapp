@@ -4,7 +4,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, MessageCircle, PackageOpen } from "lucide-react";
 import Link from "next/link";
-import { payableMinor, paymentState, shortOrderId, type OrderSummary } from "@shop/shared";
+import { payableMinor, paymentState } from "@shop/core/orders";
+import { shortOrderId } from "@shop/core/format";
+import { type OrderSummary } from "@shop/core/types";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useI18n } from "@/i18n/context";

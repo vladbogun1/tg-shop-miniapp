@@ -10,7 +10,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Gift } from "lucide-react";
-import { BONUS_EXPIRING_DAYS, caseDiscountText, isCaseBonus, pickBonusOffer, reviewBonusText, type BonusCode } from "@shop/shared";
+import { BONUS_EXPIRING_DAYS, isCaseBonus, pickBonusOffer, reviewBonusText } from "@shop/core/bonuses";
+import { caseDiscountText } from "@shop/core/giftcase";
+import { type BonusCode } from "@shop/core/types";
 import { useT } from "@/i18n/context";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";

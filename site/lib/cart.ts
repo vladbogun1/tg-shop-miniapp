@@ -16,7 +16,8 @@
  */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Product, ProductVariant, StorefrontProduct } from "@shop/shared";
+import type { Product, ProductVariant } from "@shop/core/types";
+import type { StorefrontProduct } from "@shop/core/site";
 import { stockOf } from "./stock";
 
 export { stockOf };

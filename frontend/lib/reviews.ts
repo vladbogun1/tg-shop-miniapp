@@ -4,26 +4,10 @@
  * Kept out of `lib/api.ts` on purpose: it only needs the shared HTTP client (`apiGet`/`apiPost`),
  * and a separate module keeps the review screens self-contained.
  */
-import type {
-  BonusCode,
-  MyReview,
-  PendingReviewLine,
-  ReviewPage,
-  SubmitReviewRequest,
-  SubmitReviewResult,
-} from "@shop/shared";
+import type { BonusCode, MyReview, PendingReviewLine, ReviewPage, SubmitReviewRequest, SubmitReviewResult } from "@shop/core/types";
 import { apiGet, apiPost } from "@/lib/api";
 
-export type {
-  BonusCode,
-  MyReview,
-  PendingReviewLine,
-  PublicReview,
-  ReviewPage,
-  ReviewStatus,
-  ReviewSummary,
-  SubmitReviewResult,
-} from "@shop/shared";
+export type { BonusCode, MyReview, PendingReviewLine, PublicReview, ReviewPage, ReviewStatus, ReviewSummary, SubmitReviewResult } from "@shop/core/types";
 
 /** Mirrors the server default `reviews.minLength`; the server is the authority, this is a hint. */
 export const REVIEW_MIN_LENGTH = 10;

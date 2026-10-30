@@ -12,7 +12,7 @@ import { CartDrawer } from "@/components/cart/CartDrawer";
 import { CompareModal } from "@/components/compare/CompareModal";
 import { ToastHost } from "@/components/ui/Toast";
 import { I18nProvider } from "@/i18n/context";
-import type { Locale } from "@shop/shared";
+import type { Locale } from "@shop/core/i18n";
 import { api } from "@/lib/api";
 import { CartSync } from "@/lib/cart-sync";
 import { CompareTabSync } from "@/lib/compare";

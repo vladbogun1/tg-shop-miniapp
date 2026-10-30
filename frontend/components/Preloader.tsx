@@ -1,4 +1,4 @@
-import { PRELOADER_CSS, PRELOADER_HTML, PRELOADER_NOSCRIPT_CSS, PRELOADER_SCRIPT } from "@shop/shared";
+import { PRELOADER_CSS, PRELOADER_HTML, PRELOADER_NOSCRIPT_CSS, PRELOADER_SCRIPT } from "@shop/ui/brand/preloader";
 
 /**
  * First-load preloader (logo + loading bar), server-rendered at the very top of <body> so it is

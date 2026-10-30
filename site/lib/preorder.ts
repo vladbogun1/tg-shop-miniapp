@@ -11,7 +11,8 @@
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { createHttpClient, getActiveLocale, getActiveTag } from "@shop/shared";
+import { createHttpClient } from "@shop/core/http";
+import { getActiveLocale, getActiveTag } from "@shop/core/i18n";
 import { makeT } from "@/i18n";
 import { ApiError, isAuthFailure, refreshSession } from "./api";
 import { type CartLine, lineKey, useCart } from "./cart";

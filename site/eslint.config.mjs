@@ -1,8 +1,8 @@
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FlatCompat } from "@eslint/eslintrc";
-import { architectureLimits } from "../shared/eslint/architecture-limits.mjs";
-import { frontRules } from "../shared/eslint/front-rules.mjs";
+import { architectureLimits } from "../packages/core/eslint/architecture-limits.mjs";
+import { frontRules } from "../packages/core/eslint/front-rules.mjs";
 import legacyLimits from "./eslint.legacy-limits.mjs";
 
 const compat = new FlatCompat({ baseDirectory: dirname(fileURLToPath(import.meta.url)) });

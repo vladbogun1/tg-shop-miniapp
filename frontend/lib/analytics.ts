@@ -16,7 +16,8 @@
  *
  * It records what was tapped and where, never what was typed: field values never enter the buffer.
  */
-import { describeError, describeTap, reportable } from "@shop/shared";
+import { describeError, reportable } from "@shop/core/client-error";
+import { describeTap } from "@shop/ui/tap";
 import { getAccessToken, getApiBase } from "@/lib/api";
 
 const BUFFER_KEY = "analytics-buffer";

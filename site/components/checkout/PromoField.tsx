@@ -21,7 +21,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Check, Loader2, Ticket, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { bonusKind } from "@shop/shared";
+import { bonusKind } from "@shop/core/bonuses";
 import { useT } from "@/i18n/context";
 import { BonusOffer, useMyBonuses } from "./BonusOffer";
 import { api, isAuthFailure, type PromoPreview } from "@/lib/api";

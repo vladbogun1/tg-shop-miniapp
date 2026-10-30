@@ -2,7 +2,7 @@
  * Framer Motion presets for the customer Mini App. Springy, quick, tasteful.
  */
 import type { Variants } from "framer-motion";
-import { spring } from "@shop/shared";
+import { spring } from "@shop/ui/motion";
 
 export { spring };
 

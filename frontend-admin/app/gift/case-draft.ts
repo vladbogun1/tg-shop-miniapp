@@ -6,7 +6,7 @@
  * Money of the summary: no cost price in the shop, so a product prize costs price × (1 − margin) and a
  * discount prize its full amount (a percent one — that percent of the threshold).
  */
-import { CASE_RARITY_ORDER, type CaseRarity, type CaseTier } from "@shop/shared";
+import { CASE_RARITY_ORDER, type CaseRarity, type CaseTier } from "@shop/core/giftcase";
 import type { CaseDraftItem, CaseItemAdmin, DraftItem, GiftTierAdmin } from "@/lib/gift";
 
 /** Sum of the weights = 100 % (weight units per 1 % — the server's GiftService.CASE_WEIGHT_PER_PERCENT). */

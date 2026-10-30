@@ -11,7 +11,7 @@ import path from "node:path";
 import { marked } from "marked";
 import type { Metadata } from "next";
 import { alternates, localePath } from "@/i18n";
-import { FALLBACK_LOCALE, LOCALES, type Locale } from "@shop/shared";
+import { FALLBACK_LOCALE, LOCALES, type Locale } from "@shop/core/i18n";
 import { pageMeta } from "./seo";
 
 export const LEGAL_FILES = {

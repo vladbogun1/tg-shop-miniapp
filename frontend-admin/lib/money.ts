@@ -1,1 +1,1 @@
-export { money, toMajor, toMinor } from "@shop/shared";
+export { money, toMajor, toMinor } from "@shop/core/money";

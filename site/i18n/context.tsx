@@ -6,7 +6,7 @@
  * switch in the header simply navigates to the same page under another prefix.
  */
 import { createContext, useContext, useMemo } from "react";
-import { type Locale, LOCALE_TAG, setActiveLocale } from "@shop/shared";
+import { type Locale, LOCALE_TAG, setActiveLocale } from "@shop/core/i18n";
 import { localePath, makeT, type TFunction } from "./index";
 
 export interface I18n {

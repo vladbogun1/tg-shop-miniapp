@@ -70,7 +70,7 @@ export function shortId(id: string): string {
   return "#" + id.replace(/-/g, "").slice(0, 8);
 }
 
-/** Same formatting as @shop/shared money(): "1 299 ₴" (ru-RU grouping, rounded to whole hryvnias). */
+/** Same formatting as @shop/core/money money(): "1 299 ₴" (ru-RU grouping, rounded to whole hryvnias). */
 export function money(minor: number): string {
   return `${Math.round(minor / 100).toLocaleString("ru-RU")} ₴`;
 }

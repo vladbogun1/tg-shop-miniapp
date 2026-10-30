@@ -25,7 +25,7 @@ import { QtyStepper } from "@/components/ui/QtyStepper";
 import { useT } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { useCart, useCartCount, useCartSubtotal } from "@/lib/cart";
-import { maxQty } from "@shop/shared";
+import { maxQty } from "@shop/core/orders";
 import { useOrderLimits } from "@/lib/order-limits";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";

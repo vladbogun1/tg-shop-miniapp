@@ -7,7 +7,8 @@ import { PreloaderReady } from "@/components/PreloaderReady";
 import { Providers } from "@/components/Providers";
 import { SceneFx } from "@/components/scene/SceneFx";
 import { makeT } from "@/i18n";
-import { CHUNK_RECOVERY_SCRIPT, isLocale, LOCALE_TAG, type Locale } from "@shop/shared";
+import { CHUNK_RECOVERY_SCRIPT } from "@shop/core/chunk-recovery";
+import { isLocale, LOCALE_TAG, type Locale } from "@shop/core/i18n";
 import { SITE_URL } from "@/lib/config";
 import { pageMeta } from "@/lib/seo";
 import { getCategories, getPreorderIndex, safe } from "@/lib/server-api";
@@ -77,7 +78,7 @@ export default async function LocaleLayout({
   return (
     <html lang={LOCALE_TAG[locale]} suppressHydrationWarning>
       <head>
-        {/* First thing on the page: reload once if a chunk of another build breaks it (@shop/shared chunk-recovery). */}
+        {/* First thing on the page: reload once if a chunk of another build breaks it (@shop/core/chunk-recovery). */}
         <script dangerouslySetInnerHTML={{ __html: CHUNK_RECOVERY_SCRIPT }} />
       </head>
       <body className="flex min-h-dvh flex-col">

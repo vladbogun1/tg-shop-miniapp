@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { BRAND_ORANGE_STOPS, BRAND_WHITE_STOPS, LOGO_GEOMETRY as G } from "@shop/shared";
+import { BRAND_ORANGE_STOPS, BRAND_WHITE_STOPS, LOGO_GEOMETRY as G } from "@shop/ui/brand/logo";
 
 /**
  * ChiSetup logo (DESIGN-V3 §6) — the same vector geometry as the website

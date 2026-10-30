@@ -15,7 +15,7 @@ import { Bell, Check, Loader2, Send, Truck, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { createPortal } from "react-dom";
-import { noFadeFlash } from "@shop/shared";
+import { noFadeFlash } from "@shop/ui/motion";
 import { Button } from "@/components/ui/Button";
 import { QtyStepper } from "@/components/ui/QtyStepper";
 import { toast } from "@/components/ui/Toast";

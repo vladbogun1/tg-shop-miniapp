@@ -8,7 +8,9 @@
 import { Check, ShoppingBag, Truck, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { maxQty, type ProductVariant, type StorefrontProduct } from "@shop/shared";
+import { maxQty } from "@shop/core/orders";
+import { type ProductVariant } from "@shop/core/types";
+import { type StorefrontProduct } from "@shop/core/site";
 import { ProductGiftBanner } from "@/components/case/ProductGiftBanner";
 import { Button } from "@/components/ui/Button";
 import { RatingLink } from "@/components/reviews/RatingLink";

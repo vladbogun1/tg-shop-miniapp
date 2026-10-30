@@ -10,8 +10,8 @@ const nextConfig: NextConfig = {
   // so next/image remote patterns are not strictly required for the skeleton.
   // Telegram Mini Apps are served inside a webview; keep output standalone for Docker.
   output: "standalone",
-  // @shop/shared is consumed as TypeScript source from the workspace, so Next must compile it.
-  transpilePackages: ["@shop/shared"],
+  // @shop/* packages are consumed as TypeScript source from the workspace, so Next must compile it.
+  transpilePackages: ["@shop/core", "@shop/ui", "@shop/customer"],
   // Next only traces files under the app directory by default; the monorepo root is where
   // node_modules and the shared package actually live.
   outputFileTracingRoot: path.join(__dirname, ".."),

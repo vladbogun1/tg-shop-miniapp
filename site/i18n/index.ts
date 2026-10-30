@@ -4,7 +4,7 @@
  * Server components call `makeT(locale)` with the locale from the route; client components use
  * `useT()` from `./context`, which is the same function bound by the provider.
  */
-import { FALLBACK_LOCALE, translate, type Dictionary, type Locale, type Params } from "@shop/shared";
+import { FALLBACK_LOCALE, translate, type Dictionary, type Locale, type Params } from "@shop/core/i18n";
 import { en } from "./en";
 import { ru, type MessageKey } from "./ru";
 import { uk } from "./uk";

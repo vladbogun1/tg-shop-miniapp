@@ -14,7 +14,7 @@ import { Ban, Truck, Store, MessageCircle, Package2, Undo2, Repeat } from "lucid
 import type { AdminOrderCard, CardLine } from "@/lib/orders-api";
 import { Image } from "@/lib/image";
 import { ReturnBadge } from "@/components/orders/ReturnBadge";
-import { payableMinor } from "@shop/shared";
+import { payableMinor } from "@shop/core/orders";
 import { money } from "@/lib/money";
 import { returningMinor } from "@/lib/orders";
 import { shortId, timeAgo, DELIVERY_LABEL } from "@/lib/orders";

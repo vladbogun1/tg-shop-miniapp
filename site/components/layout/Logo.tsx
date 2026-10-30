@@ -2,7 +2,7 @@
 
 import { useId } from "react";
 import Link from "next/link";
-import { BRAND_ORANGE_STOPS, BRAND_WHITE_STOPS, LOGO_GEOMETRY as G } from "@shop/shared";
+import { BRAND_ORANGE_STOPS, BRAND_WHITE_STOPS, LOGO_GEOMETRY as G } from "@shop/ui/brand/logo";
 import { useI18n } from "@/i18n/context";
 
 /**

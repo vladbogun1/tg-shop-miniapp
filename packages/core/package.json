@@ -1,13 +1,14 @@
 {
-  "name": "@shop/shared",
+  "name": "@shop/core",
   "version": "1.0.0",
   "private": true,
-  "description": "Code shared by the customer Mini App, the website and the admin panel (money, dates, order rules, i18n core, phone mask, API core, image URLs, WebSocket)",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "sideEffects": false,
+  "description": "Pure TypeScript core of the shop frontends (no React): money, time, storage, errors, query presets, http, i18n core, order/cart/compare/giftcase rules, DTO types",
   "exports": {
-    ".": "./src/index.ts",
-    "./case-ui": "./src/ui/index.ts"
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@tanstack/query-core": "^5.0.0"
   },
   "peerDependencies": {
     "@stomp/stompjs": ">=7"

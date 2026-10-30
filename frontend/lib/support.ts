@@ -5,16 +5,9 @@
  * Endpoints: /api/me/support/** (see shared/src/support.ts); attachments go through the order-chat
  * upload (POST /api/me/uploads). Realtime: STOMP /topic/support/{threadId}.
  */
-import {
-  connectOrderChat as connect,
-  supportTopic,
-  type ChatConnection,
-  type CreateSupportThreadRequest,
-  type SendMessageRequest,
-  type SupportConfig,
-  type SupportMessage,
-  type SupportThread,
-} from "@shop/shared";
+import { connectOrderChat as connect, type ChatConnection } from "@shop/core/ws";
+import { supportTopic, type CreateSupportThreadRequest, type SupportConfig, type SupportMessage, type SupportThread } from "@shop/core/support";
+import { type SendMessageRequest } from "@shop/core/types";
 import { apiGet, apiPost, getAccessToken, getApiBase } from "@/lib/api";
 
 export type { CreateSupportThreadRequest, SupportConfig, SupportMessage, SupportThread };

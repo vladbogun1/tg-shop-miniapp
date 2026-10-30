@@ -23,7 +23,7 @@ import { NotificationsBell } from "@/components/NotificationsBell";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { PaymentBadge } from "@/components/account/PaymentBadge";
-import { payableMinor, paymentState } from "@shop/shared";
+import { payableMinor, paymentState } from "@shop/core/orders";
 import { customerApi, type OrderSummary } from "@/lib/api";
 import { formatDate, shortOrderId } from "@/lib/format";
 import { money } from "@/lib/money";

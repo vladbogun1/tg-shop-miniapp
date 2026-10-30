@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { StorefrontProduct } from "@shop/shared";
+import type { StorefrontProduct } from "@shop/core/site";
 import { useI18n } from "@/i18n/context";
 import { api } from "@/lib/api";
 import { useSupportConfig } from "@/lib/support";

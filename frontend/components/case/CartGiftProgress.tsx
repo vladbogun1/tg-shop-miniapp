@@ -9,8 +9,8 @@
  */
 import { motion } from "framer-motion";
 import { Gift } from "lucide-react";
-import { CASE_TIER_ORDER, giftProgress, rarestCasePrize, type CaseTier } from "@shop/shared";
-import { GiftCaseArt, GiftCasePrizeDisclosure, GiftCasePrizeRows, GiftCaseTierLadder } from "@shop/shared/case-ui";
+import { CASE_TIER_ORDER, giftProgress, rarestCasePrize, type CaseTier } from "@shop/core/giftcase";
+import { GiftCaseArt, GiftCasePrizeDisclosure, GiftCasePrizeRows, GiftCaseTierLadder } from "@shop/ui/gift-case";
 import { caseImage, caseMoney, CaseRulesInline, useCaseRarityNames } from "@/components/case/OrderGiftCase";
 import { useT } from "@/i18n/context";
 import { useGift } from "@/lib/gift";

@@ -3,7 +3,7 @@
  * Keep transitions springy but quick; motion serves the UX, never distracts.
  */
 import type { Variants, Transition } from "framer-motion";
-import { spring } from "@shop/shared";
+import { spring } from "@shop/ui/motion";
 
 export { spring };
 export const ease: Transition = { duration: 0.28, ease: [0.22, 1, 0.36, 1] };

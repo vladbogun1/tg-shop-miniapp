@@ -5,7 +5,7 @@
  * delivery) / awaiting online payment before the deadline / unpaid.
  */
 import { Check, Clock, CreditCard } from "lucide-react";
-import type { PaymentState } from "@shop/shared";
+import type { PaymentState } from "@shop/core/orders";
 import { useT } from "@/i18n/context";
 
 const CHIP = "flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-display text-[11px] font-semibold uppercase tracking-[.06em]";

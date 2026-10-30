@@ -10,21 +10,11 @@
  * the server already localized by Accept-Language — {@link supportErrorText} shows it as is.
  */
 import { useQuery } from "@tanstack/react-query";
-import {
-  type ChatConnection,
-  connectOrderChat as connect,
-  createHttpClient,
-  type CreateSupportThreadRequest,
-  getActiveLocale,
-  getActiveTag,
-  type Message,
-  type SendMessageRequest,
-  supportAsChatMessage,
-  type SupportConfig,
-  type SupportMessage,
-  type SupportThread,
-  supportTopic,
-} from "@shop/shared";
+import { type ChatConnection, connectOrderChat as connect } from "@shop/core/ws";
+import { createHttpClient } from "@shop/core/http";
+import { type CreateSupportThreadRequest, supportAsChatMessage, type SupportConfig, type SupportMessage, type SupportThread, supportTopic } from "@shop/core/support";
+import { getActiveLocale, getActiveTag } from "@shop/core/i18n";
+import { type Message, type SendMessageRequest } from "@shop/core/types";
 import { makeT, type TFunction } from "@/i18n";
 import { ApiError, isAuthFailure, refreshSession } from "./api";
 import { useSession } from "./session";

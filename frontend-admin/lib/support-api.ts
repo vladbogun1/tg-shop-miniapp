@@ -15,13 +15,8 @@
  *  STOMP /topic/support/{threadId} → SupportMessage
  */
 import { useQuery, type QueryClient } from "@tanstack/react-query";
-import {
-  connectOrderChat,
-  supportTopic,
-  type ChatConnection,
-  type SupportMessage,
-  type SupportThread,
-} from "@shop/shared";
+import { connectOrderChat, type ChatConnection } from "@shop/core/ws";
+import { supportTopic, type SupportMessage, type SupportThread } from "@shop/core/support";
 import {
   apiGet,
   apiOrigin,

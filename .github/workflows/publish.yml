@@ -75,7 +75,7 @@ jobs:
       - name: Build & push customer frontend (same-origin)
         uses: docker/build-push-action@v6
         with:
-          # Repo root: the Next apps are npm workspaces depending on ./shared.
+          # Repo root: the Next apps are npm workspaces depending on ./packages/*.
           context: .
           file: ./frontend/Dockerfile
           push: true

@@ -13,15 +13,9 @@ import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link2, Loader2, Scale, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  compareGroupOf,
-  compareGroups,
-  compareSections,
-  noFadeFlash,
-  onlyDifferences,
-  type CompareBasics,
-  type StorefrontProduct,
-} from "@shop/shared";
+import { compareGroupOf, compareGroups, compareSections, onlyDifferences, type CompareBasics } from "@shop/core/compare";
+import { noFadeFlash } from "@shop/ui/motion";
+import { type StorefrontProduct } from "@shop/core/site";
 import { useI18n } from "@/i18n/context";
 import { api } from "@/lib/api";
 import { trackCompare } from "@/lib/analytics";

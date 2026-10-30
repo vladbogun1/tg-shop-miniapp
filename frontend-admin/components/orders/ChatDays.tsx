@@ -7,7 +7,7 @@
  * and the next day's chip takes over. Days are the browser's (its time zone).
  */
 import { useMemo, type ReactNode } from "react";
-import { dayKey, dayLabel } from "@shop/shared";
+import { dayKey, dayLabel } from "@shop/core/format";
 
 export interface ChatDay<T> {
   key: string;

@@ -17,7 +17,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { noFadeFlash } from "@shop/shared";
+import { noFadeFlash } from "@shop/ui/motion";
 import { artKindOf } from "@/components/mascot/category-kind";
 import { type MenuNode, rootOf } from "@/lib/category-tree";
 import { stripLocale } from "@/i18n";

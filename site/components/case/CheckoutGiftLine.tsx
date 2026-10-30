@@ -1,8 +1,8 @@
 "use client";
 
 /** The gift line in the checkout summary (the gift for the order sum is reached): a case or the gift product, free. */
-import type { GiftProgress } from "@shop/shared";
-import { caseTierAsset } from "@shop/shared/case-ui";
+import type { GiftProgress } from "@shop/core/giftcase";
+import { caseTierAsset } from "@shop/ui/gift-case";
 import type { MessageKey } from "@/i18n";
 import { useI18n } from "@/i18n/context";
 import { Image } from "@/lib/image";

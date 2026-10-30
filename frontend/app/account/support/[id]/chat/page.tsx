@@ -28,7 +28,8 @@ import { Image } from "@/lib/image";
 import { spring } from "@/lib/motion";
 import { connectSupportChat, supportApi, type SupportMessage } from "@/lib/support";
 import { haptic } from "@/lib/telegram";
-import { dayKey, supportAsChatMessage } from "@shop/shared";
+import { dayKey } from "@shop/core/format";
+import { supportAsChatMessage } from "@shop/core/support";
 
 /** Must match SupportService.DEFAULT_PAGE on the backend. */
 const PAGE_SIZE = 50;

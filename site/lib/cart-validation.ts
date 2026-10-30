@@ -9,7 +9,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
-import type { Product } from "@shop/shared";
+import type { Product } from "@shop/core/types";
 import { useI18n } from "@/i18n/context";
 import { api, ApiError } from "./api";
 import { stockOf, useCart } from "./cart";

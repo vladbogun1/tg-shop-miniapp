@@ -30,7 +30,7 @@ import {
   RotateCcw,
   UserRound,
 } from "lucide-react";
-import { sanitizeTelegramHtml, validateTelegramHtml } from "@shop/shared";
+import { sanitizeTelegramHtml, validateTelegramHtml } from "@shop/core/telegram-html";
 import { adminApi, type BroadcastAudience, type UserCardDto, ApiError } from "@/lib/api";
 import { extApi, LANG_LABEL, type BroadcastHistoryItem, type ShopLang } from "@/lib/api-extra";
 import { formatDateTime } from "@/lib/orders";

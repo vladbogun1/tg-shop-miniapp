@@ -8,7 +8,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LogOut, Monitor, Smartphone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { WebSession } from "@shop/shared";
+import type { WebSession } from "@shop/core/site";
 import { LangSwitch } from "@/components/layout/LangSwitch";
 import { Button } from "@/components/ui/Button";
 import { useI18n } from "@/i18n/context";

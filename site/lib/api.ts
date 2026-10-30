@@ -7,45 +7,14 @@
  * client tries `POST /api/auth/web/refresh` ONCE (the refresh cookie is scoped to /api/auth/web, so
  * only that call carries it) and repeats the request; a second failure means "guest".
  */
-import {
-  ApiError,
-  type AuthUser,
-  type BonusCode,
-  type CatalogSchema,
-  type CartLineInput,
-  createHttpClient,
-  type CreateOrderResult,
-  type CaseSize,
-  type GiftCaseOpen,
-  type GiftResponse,
-  getActiveLocale,
-  getActiveTag,
-  type Message,
-  type MyReview,
-  newIdempotencyKey,
-  type NpCity,
-  type NpWarehouse,
-  type OrderDetail,
-  type OrderLimits,
-  type OrderSummary,
-  type PaymentOption,
-  type PaymentStart,
-  type PendingReviewLine,
-  type Product,
-  type PromoPreview,
-  type PublicCategory,
-  type PublicProductPage,
-  type Receipt,
-  type ReviewPage,
-  type SendMessageRequest,
-  type ServerCart,
-  type StorefrontProduct,
-  type SubmitReviewRequest,
-  type SubmitReviewResult,
-  type WebLoginStart,
-  type WebLoginStatus,
-  type WebSession,
-} from "@shop/shared";
+import { ApiError, createHttpClient, newIdempotencyKey } from "@shop/core/http";
+import { type AuthUser, type BonusCode, type CreateOrderResult, type Message, type MyReview, type NpCity, type NpWarehouse, type OrderDetail, type OrderLimits, type OrderSummary, type PaymentOption, type PaymentStart, type PendingReviewLine, type Product, type PromoPreview, type ReviewPage, type SendMessageRequest, type SubmitReviewRequest, type SubmitReviewResult } from "@shop/core/types";
+import { type CatalogSchema } from "@shop/core/catalog";
+import { type CartLineInput, type ServerCart } from "@shop/core/cart";
+import { type CaseSize, type GiftCaseOpen, type GiftResponse } from "@shop/core/giftcase";
+import { getActiveLocale, getActiveTag } from "@shop/core/i18n";
+import { type PublicCategory, type PublicProductPage, type StorefrontProduct, type WebLoginStart, type WebLoginStatus, type WebSession } from "@shop/core/site";
+import { type Receipt } from "@shop/core/receipts";
 import { makeT } from "@/i18n";
 
 export { ApiError, newIdempotencyKey };

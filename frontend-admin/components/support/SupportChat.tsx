@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Paperclip, Send } from "lucide-react";
-import { supportAsChatMessage } from "@shop/shared";
+import { supportAsChatMessage } from "@shop/core/support";
 import { ApiError } from "@/lib/api";
 import {
   refreshSupport,

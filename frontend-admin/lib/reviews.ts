@@ -2,7 +2,7 @@
  * «Отзывы» (Phase C, V44) — admin moderation endpoints. Kept apart from lib/api.ts so parallel
  * work on that file does not collide. Same http client, same error type.
  */
-import type { AdminReview, AdminReviewPage, ReviewStatus } from "@shop/shared";
+import type { AdminReview, AdminReviewPage, ReviewStatus } from "@shop/core/types";
 import { useQuery } from "@tanstack/react-query";
 import { apiDelete, apiGet, apiPost, isAuthenticated } from "./api";
 

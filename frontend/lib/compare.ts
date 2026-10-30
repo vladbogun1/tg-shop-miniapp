@@ -8,15 +8,7 @@
  */
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import {
-  COMPARE_MAX_PER_GROUP,
-  COMPARE_MAX_TOTAL,
-  COMPARE_STORAGE_KEY,
-  compareAdd,
-  parseCompareEntries,
-  type CompareAddResult,
-  type CompareEntry,
-} from "@shop/shared";
+import { COMPARE_MAX_PER_GROUP, COMPARE_MAX_TOTAL, COMPARE_STORAGE_KEY, compareAdd, parseCompareEntries, type CompareAddResult, type CompareEntry } from "@shop/core/compare";
 import { track } from "./analytics";
 
 export interface CompareToast {

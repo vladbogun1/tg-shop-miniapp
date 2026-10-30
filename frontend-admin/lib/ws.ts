@@ -8,7 +8,8 @@
  * queued before the socket opened were never cancelled when a component unmounted. The shared
  * client reads the token on each connect and each subscription owns its connection.
  */
-import { connectOrderChat, type ChatConnection, type Message } from "@shop/shared";
+import { connectOrderChat, type ChatConnection } from "@shop/core/ws";
+import { type Message } from "@shop/core/types";
 import { apiOrigin, getAccessToken } from "./api";
 
 export type { ChatConnection };

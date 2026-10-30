@@ -7,7 +7,6 @@ import legacyLimits from "./eslint.legacy-limits.mjs";
 
 const compat = new FlatCompat({ baseDirectory: dirname(fileURLToPath(import.meta.url)) });
 
-// shared/src раньше не линтился вообще (у пакета не было скриптов). Те же правила, что у приложений.
 const config = [
   { ignores: ["node_modules/**"] },
   ...compat.extends("next/core-web-vitals", "next/typescript"),

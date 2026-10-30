@@ -19,7 +19,7 @@
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import type { AuthUser } from "@shop/shared";
+import type { AuthUser } from "@shop/core/types";
 import { api, isAuthFailure } from "./api";
 import { flushCart } from "./cart-sync";
 

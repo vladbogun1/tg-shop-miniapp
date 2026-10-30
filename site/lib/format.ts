@@ -5,16 +5,9 @@
  * concurrently, so the locale always comes from the route (server) or the I18n context (client,
  * via {@link useFmt}).
  */
-import {
-  dayLabel as sharedDayLabel,
-  formatDate as sharedFormatDate,
-  formatDayMonth as sharedFormatDayMonth,
-  formatDateTime as sharedFormatDateTime,
-  formatTime as sharedFormatTime,
-  type Locale,
-  LOCALE_TAG,
-  money as sharedMoney,
-} from "@shop/shared";
+import { dayLabel as sharedDayLabel, formatDate as sharedFormatDate, formatDayMonth as sharedFormatDayMonth, formatDateTime as sharedFormatDateTime, formatTime as sharedFormatTime } from "@shop/core/format";
+import { type Locale, LOCALE_TAG } from "@shop/core/i18n";
+import { money as sharedMoney } from "@shop/core/money";
 import { makeT } from "@/i18n";
 
 /**

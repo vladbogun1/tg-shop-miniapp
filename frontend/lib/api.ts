@@ -5,35 +5,13 @@
  * customer-specific part: where the token is kept (in memory, re-obtained from Telegram initData
  * on every launch) and the typed endpoint list.
  */
-import {
-  ApiError,
-  type AuthResponse,
-  type CartLineInput,
-  type CatalogSchema,
-  type Conversation,
-  createHttpClient,
-  type CreateOrderResult,
-  type CaseSize,
-  type GiftCaseOpen,
-  type GiftResponse,
-  getActiveLocale,
-  getActiveTag,
-  type Message,
-  newIdempotencyKey,
-  normalizeBaseUrl,
-  type NpCity,
-  type NpWarehouse,
-  type OrderDetail,
-  type OrderLimits,
-  type OrderSummary,
-  type PaymentOption,
-  type PaymentStart,
-  type Product,
-  type PromoPreview,
-  type Receipt,
-  type SendMessageRequest,
-  type ServerCart,
-} from "@shop/shared";
+import { ApiError, createHttpClient, newIdempotencyKey, normalizeBaseUrl } from "@shop/core/http";
+import { type AuthResponse, type Conversation, type CreateOrderResult, type Message, type NpCity, type NpWarehouse, type OrderDetail, type OrderLimits, type OrderSummary, type PaymentOption, type PaymentStart, type Product, type PromoPreview, type SendMessageRequest } from "@shop/core/types";
+import { type CartLineInput, type ServerCart } from "@shop/core/cart";
+import { type CatalogSchema } from "@shop/core/catalog";
+import { type CaseSize, type GiftCaseOpen, type GiftResponse } from "@shop/core/giftcase";
+import { getActiveLocale, getActiveTag } from "@shop/core/i18n";
+import { type Receipt } from "@shop/core/receipts";
 import { en } from "@/i18n/en";
 import { ru } from "@/i18n/ru";
 import { uk } from "@/i18n/uk";
@@ -58,14 +36,7 @@ export type {
   SendMessageRequest,
   ServerCart,
 };
-export type {
-  DeliveryMethod,
-  NpCategory,
-  OrderStatus,
-  ProductImage,
-  ProductTag,
-  ProductVariant,
-} from "@shop/shared";
+export type { DeliveryMethod, NpCategory, OrderStatus, ProductImage, ProductTag, ProductVariant } from "@shop/core/types";
 
 const API_BASE = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, "http://localhost:8080");
 

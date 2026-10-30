@@ -15,7 +15,8 @@
  */
 import { motion } from "framer-motion";
 import { Check, CheckCheck, FileText } from "lucide-react";
-import { type Message, noFadeFlash, spring } from "@shop/shared";
+import { type Message } from "@shop/core/types";
+import { noFadeFlash, spring } from "@shop/ui/motion";
 import { useT } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";

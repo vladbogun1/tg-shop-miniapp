@@ -20,7 +20,7 @@
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { cartSignature, type CartLineInput, type ServerCart, type ServerCartLine } from "@shop/shared";
+import { cartSignature, type CartLineInput, type ServerCart, type ServerCartLine } from "@shop/core/cart";
 import { api, isAuthFailure, putCartOnUnload } from "./api";
 import { lineKey, useCart, type CartLine } from "./cart";
 import { holdFloor } from "./preorder-core";

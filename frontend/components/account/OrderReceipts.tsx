@@ -17,13 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Download, ExternalLink, ReceiptText } from "lucide-react";
 import { useRef, useState } from "react";
-import {
-  hasOnlinePayment,
-  receiptFileName,
-  receiptsPollMs,
-  type Receipt,
-  type ReceiptStatus,
-} from "@shop/shared";
+import { hasOnlinePayment, receiptFileName, receiptsPollMs, type Receipt, type ReceiptStatus } from "@shop/core/receipts";
 import { Button } from "@/components/ui/Button";
 import { useI18n } from "@/i18n/context";
 import { customerApi, mediaUrl, type OrderDetail } from "@/lib/api";

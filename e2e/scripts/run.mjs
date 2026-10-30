@@ -8,7 +8,7 @@
  *      (--skip-backend-build to use whatever jar is there, E2E_BACKEND_JAR to point elsewhere);
  *   3. admin — frontend-admin is copied to .e2e-admin/ and built there with the e2e API URL baked
  *      in (a build in frontend-admin/ itself would clobber the .next of a running `next dev`);
- *      rebuilt only when frontend-admin/ or shared/ changed;
+ *      rebuilt only when frontend-admin/ or packages/ changed;
  *   4. `playwright test` (starts backend + admin, seeds, runs; extra args are passed through);
  *   5. tears MySQL down again unless --keep (then re-runs can use `npx playwright test` directly).
  *
@@ -98,7 +98,7 @@ try {
   const stampFile = path.join(ADMIN_BUILD_DIR, ".e2e-stamp.json");
   const stamp = {
     api: API_URL,
-    src: Math.max(newestMtime(adminSrc), newestMtime(path.join(REPO_ROOT, "shared", "src"))),
+    src: Math.max(newestMtime(adminSrc), newestMtime(path.join(REPO_ROOT, "packages"))),
   };
   const prev = fs.existsSync(stampFile) ? JSON.parse(fs.readFileSync(stampFile, "utf8")) : null;
   const built = fs.existsSync(path.join(ADMIN_BUILD_DIR, ".next", "BUILD_ID"));

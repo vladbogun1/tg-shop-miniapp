@@ -2,8 +2,8 @@
 /**
  * Храповик ESLint для фронтов (docs/ARCHITECTURE-FRONT.md, 2.7.2).
  *
- * Запускает `eslint -f json --no-inline-config` в frontend, frontend-admin, site, shared, считает нарушения
- * отслеживаемых правил (счётные правила из shared/eslint/front-rules.mjs + лимиты размера + exhaustive-deps)
+ * Запускает `eslint -f json --no-inline-config` в frontend, frontend-admin, site, packages/core, packages/ui, считает нарушения
+ * отслеживаемых правил (счётные правила из packages/core/eslint/front-rules.mjs + лимиты размера + exhaustive-deps)
  * и сравнивает с scripts/frontend-baseline.txt (`<правило> <приложение> <число>`, нули не пишутся).
  *   - число ВЫРОСЛО  -> exit 1 (чинить код, а не поднимать baseline);
  *   - число УПАЛО    -> подсказка понизить baseline (`--update`);
@@ -23,7 +23,9 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BASELINE = path.join(ROOT, "scripts/frontend-baseline.txt");
-export const APPS = ["frontend", "frontend-admin", "site", "shared"];
+export const APPS = ["frontend", "frontend-admin", "site", "core", "ui"];
+/** Папка пакета по имени в сводке. */
+const DIRS = { core: "packages/core", ui: "packages/ui" };
 
 /** Порядок колонок сводки. Остальные ruleId ESLint не отслеживаются. */
 export const RULES = [
@@ -66,7 +68,7 @@ function runEslint(app) {
     const out = path.join(os.tmpdir(), `front-ratchet-${app}-${process.pid}.json`);
     const bin = path.join(ROOT, "node_modules/eslint/bin/eslint.js");
     const child = spawn(process.execPath, [bin, ".", "-f", "json", "--no-inline-config", "-o", out], {
-      cwd: path.join(ROOT, app),
+      cwd: path.join(ROOT, DIRS[app] ?? app),
       stdio: ["ignore", "ignore", "pipe"],
     });
     let err = "";

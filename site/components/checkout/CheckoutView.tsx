@@ -22,24 +22,11 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  type DeliveryMethod,
-  formatPhone,
-  giftProgress,
-  guaranteedDiscountMinor,
-  type GiftChoice,
-  isOrderLimitCode,
-  isValidPhone,
-  type NpCity,
-  npCityBounds,
-  npLatLng,
-  type NpWarehouse,
-  type OrderDetail,
-  type OrderLimitCode,
-  phoneE164,
-  resolveNpWarehouse,
-  visiblePaymentOptions,
-} from "@shop/shared";
+import { type DeliveryMethod, type NpCity, type NpWarehouse, type OrderDetail } from "@shop/core/types";
+import { formatPhone, isValidPhone, phoneE164 } from "@shop/core/phone";
+import { giftProgress, guaranteedDiscountMinor, type GiftChoice } from "@shop/core/giftcase";
+import { isOrderLimitCode, type OrderLimitCode, visiblePaymentOptions } from "@shop/core/orders";
+import { npCityBounds, npLatLng, resolveNpWarehouse } from "@shop/core/np-geo";
 import { CheckoutGiftLine } from "@/components/case/CheckoutGiftLine";
 import { orderCreatedHref, PaymentTrust, usePageRestore } from "@/components/order/Payment";
 import { Button } from "@/components/ui/Button";
@@ -60,7 +47,7 @@ import { useFmt } from "@/lib/use-fmt";
 import { CitySearch, WarehouseSearch, npWarehousesQuery } from "./CitySearch";
 import type { MapFocus } from "./NpWarehouseMap";
 import { PromoField, usePromoPreview } from "./PromoField";
-import { GiftChoicePicker, markGiftCaseAutoOpen } from "@shop/shared/case-ui";
+import { GiftChoicePicker, markGiftCaseAutoOpen } from "@shop/ui/gift-case";
 import { useCaseMoney, useCaseRules } from "@/components/case/OrderGiftCase";
 
 function MapLoading() {

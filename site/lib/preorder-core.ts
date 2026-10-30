@@ -4,7 +4,9 @@
  *
  * Isomorphic part: types, the index of open batches, ETA wording (server and client).
  */
-import { availabilityOf, LOCALE_TAG, type Locale, type StorefrontProduct } from "@shop/shared";
+import { availabilityOf } from "@shop/core/availability";
+import { LOCALE_TAG, type Locale } from "@shop/core/i18n";
+import { type StorefrontProduct } from "@shop/core/site";
 import type { TFunction } from "@/i18n";
 
 // ---------------------------------------------------------------- shapes (backend PreorderDtos)

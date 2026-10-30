@@ -4,7 +4,8 @@
  * Only the grouping changes with the language (1 030 ₴ vs 1,030 ₴) — the rounding rules stay in
  * `@shop/shared`, because the app, the admin panel and the Telegram cards must agree on them.
  */
-import { getActiveTag, money as sharedMoney } from "@shop/shared";
+import { getActiveTag } from "@shop/core/i18n";
+import { money as sharedMoney } from "@shop/core/money";
 
 export function money(minor: number | null | undefined, currency = "UAH"): string {
   return sharedMoney(minor, currency, getActiveTag());

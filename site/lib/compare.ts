@@ -11,15 +11,7 @@
 import { useEffect } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import {
-  COMPARE_MAX_PER_GROUP,
-  COMPARE_MAX_TOTAL,
-  COMPARE_STORAGE_KEY,
-  compareAdd,
-  parseCompareEntries,
-  type CompareAddResult,
-  type CompareEntry,
-} from "@shop/shared";
+import { COMPARE_MAX_PER_GROUP, COMPARE_MAX_TOTAL, COMPARE_STORAGE_KEY, compareAdd, parseCompareEntries, type CompareAddResult, type CompareEntry } from "@shop/core/compare";
 import { toast } from "@/components/ui/Toast";
 import type { TFunction } from "@/i18n";
 import { trackCompare } from "./analytics";

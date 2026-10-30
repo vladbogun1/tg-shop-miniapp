@@ -17,7 +17,7 @@
  *   "unavailable" state in its cart and its checkout would fail on them — but they are kept in every
  *   write, so they stay on the server (the site shows them flagged) and come back when sold again.
  */
-import { cartSignature, type CartLineInput, type ServerCart } from "@shop/shared";
+import { cartSignature, type CartLineInput, type ServerCart } from "@shop/core/cart";
 import { customerApi, getAccessToken, onAccessToken, putCartOnUnload } from "./api";
 import { lineKey, useCart, type CartLine } from "./cart";
 

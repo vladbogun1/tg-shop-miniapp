@@ -18,7 +18,7 @@ import { useCartValidation } from "@/lib/cart-validation";
 import { useEscape, useScrollLock } from "@/lib/hooks";
 import { useFmt } from "@/lib/use-fmt";
 import { CartEmpty, CartLines } from "./CartLines";
-import { noFadeFlash } from "@shop/shared";
+import { noFadeFlash } from "@shop/ui/motion";
 
 export function CartDrawer() {
   const { t, href } = useI18n();

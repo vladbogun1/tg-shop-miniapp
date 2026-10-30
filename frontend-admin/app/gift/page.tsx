@@ -15,7 +15,7 @@ import Link from "next/link";
 import { AlertTriangle, BarChart3, FileSpreadsheet, Gift, Save, Undo2 } from "lucide-react";
 import { adminApi, ApiError } from "@/lib/api";
 import { CASE_TIER_LABEL, GIFT_GROUP, giftApi } from "@/lib/gift";
-import { CASE_TIER_METAL } from "@shop/shared";
+import { CASE_TIER_METAL } from "@shop/core/giftcase";
 import { cn } from "@/lib/cn";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";

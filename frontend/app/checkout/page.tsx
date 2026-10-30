@@ -38,19 +38,10 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  formatPhone,
-  isOrderLimitCode,
-  isValidPhone,
-  type NpCity,
-  npCityBounds,
-  npLatLng,
-  type OrderDetail,
-  type OrderLimitCode,
-  phoneE164,
-  resolveNpWarehouse,
-  visiblePaymentOptions,
-} from "@shop/shared";
+import { formatPhone, isValidPhone, phoneE164 } from "@shop/core/phone";
+import { isOrderLimitCode, type OrderLimitCode, visiblePaymentOptions } from "@shop/core/orders";
+import { type NpCity, type OrderDetail } from "@shop/core/types";
+import { npCityBounds, npLatLng, resolveNpWarehouse } from "@shop/core/np-geo";
 import { trackCheckoutStart, trackOrderCreated } from "@/lib/analytics";
 import { useI18n, useT } from "@/i18n/context";
 import { usePromoPreview } from "@/components/cart/PromoField";
@@ -94,8 +85,8 @@ import { cartAfterOrder, flushCart } from "@/lib/cart-sync";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
-import { giftProgress, guaranteedDiscountMinor, type GiftChoice, type GiftTierInfo } from "@shop/shared";
-import { caseTierAsset, GiftChoicePicker, markGiftCaseAutoOpen } from "@shop/shared/case-ui";
+import { giftProgress, guaranteedDiscountMinor, type GiftChoice, type GiftTierInfo } from "@shop/core/giftcase";
+import { caseTierAsset, GiftChoicePicker, markGiftCaseAutoOpen } from "@shop/ui/gift-case";
 import { caseMoney, useCaseRules } from "@/components/case/OrderGiftCase";
 import { useGift } from "@/lib/gift";
 

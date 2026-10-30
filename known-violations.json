@@ -19,8 +19,8 @@
   },
   {
     "type": "dependency",
-    "from": "shared/src/giftcase.ts",
-    "to": "shared/src/types.ts",
+    "from": "packages/core/src/giftcase.ts",
+    "to": "packages/core/src/types.ts",
     "rule": {
       "severity": "error",
       "name": "no-circular"
@@ -28,8 +28,8 @@
   },
   {
     "type": "dependency",
-    "from": "shared/src/types.ts",
-    "to": "shared/src/giftcase.ts",
+    "from": "packages/core/src/types.ts",
+    "to": "packages/core/src/giftcase.ts",
     "rule": {
       "severity": "error",
       "name": "no-circular"
@@ -75,6 +75,33 @@
     "type": "dependency",
     "from": "site/components/chat/OrderChat.tsx",
     "to": "site/lib/ws.ts",
+    "rule": {
+      "severity": "error",
+      "name": "ws-only-from-realtime"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "frontend/lib/support.ts",
+    "to": "packages/core/src/ws.ts",
+    "rule": {
+      "severity": "error",
+      "name": "ws-only-from-realtime"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "frontend-admin/lib/support-api.ts",
+    "to": "packages/core/src/ws.ts",
+    "rule": {
+      "severity": "error",
+      "name": "ws-only-from-realtime"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "site/lib/support.ts",
+    "to": "packages/core/src/ws.ts",
     "rule": {
       "severity": "error",
       "name": "ws-only-from-realtime"

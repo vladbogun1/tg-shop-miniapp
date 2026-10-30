@@ -214,7 +214,7 @@ services:
   # Changing them in .env therefore requires a rebuild (`up -d --build frontend`).
   frontend:
     build:
-      # Repo root: the Next apps are npm workspaces that depend on ./shared.
+      # Repo root: the Next apps are npm workspaces that depend on ./packages/*.
       context: .
       dockerfile: frontend/Dockerfile
       args:

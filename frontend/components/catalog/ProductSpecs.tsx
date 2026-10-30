@@ -6,7 +6,7 @@
  */
 import { AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
 import { useState } from "react";
-import { categoryPath, specRows, type CatalogSchema } from "@shop/shared";
+import { categoryPath, specRows, type CatalogSchema } from "@shop/core/catalog";
 import { useI18n } from "@/i18n/context";
 import type { Product } from "@/lib/api";
 import { haptic } from "@/lib/telegram";

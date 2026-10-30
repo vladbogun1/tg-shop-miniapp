@@ -3,22 +3,9 @@
  * menus, and the server-side listing — filter, facets, sort and pagination over the `all=1` product
  * list with the ONE shared engine (shared/src/catalog.ts). Server-only.
  */
-import {
-  attributesFor,
-  buildFacets,
-  type CatalogFilter,
-  type CatalogSchema,
-  type CatalogSort,
-  categoryBySlug,
-  type Facet,
-  filterProducts,
-  type FilterableProduct,
-  type Locale,
-  MARKDOWN_COLLECTION_SLUG,
-  priceBounds,
-  type PublicCategory,
-  type StorefrontProduct,
-} from "@shop/shared";
+import { attributesFor, buildFacets, type CatalogFilter, type CatalogSchema, categoryBySlug, type Facet, filterProducts, type FilterableProduct, MARKDOWN_COLLECTION_SLUG, priceBounds } from "@shop/core/catalog";
+import { type CatalogSort, type PublicCategory, type StorefrontProduct } from "@shop/core/site";
+import { type Locale } from "@shop/core/i18n";
 import { makeT } from "@/i18n";
 import type { CardContext } from "./card";
 import { PAGE_SIZE } from "./config";

@@ -4,27 +4,14 @@
  * The implementations live in `@shop/shared` so the admin cannot drift; this file only binds them
  * to the language currently on screen. Call sites keep the same signatures they always had.
  */
-import {
-  dayLabel as sharedDayLabel,
-  type Dictionary,
-  formatDate as sharedFormatDate,
-  formatDayMonth as sharedFormatDayMonth,
-  formatShortDateTime as sharedFormatDateTime,
-  formatTime as sharedFormatTime,
-  getActiveLocale,
-  getActiveTag,
-  type Locale,
-  timeAgo as sharedTimeAgo,
-} from "@shop/shared";
+import { dayLabel as sharedDayLabel, formatDate as sharedFormatDate, formatDayMonth as sharedFormatDayMonth, formatShortDateTime as sharedFormatDateTime, formatTime as sharedFormatTime, timeAgo as sharedTimeAgo } from "@shop/core/format";
+import { type Dictionary, getActiveLocale, getActiveTag, type Locale } from "@shop/core/i18n";
 import { ru } from "@/i18n/ru";
 import { uk } from "@/i18n/uk";
 import { en } from "@/i18n/en";
 
-export {
-  ORDER_STATUS_COLOR,
-  ORDER_TIMELINE,
-  shortOrderId,
-} from "@shop/shared";
+export { ORDER_STATUS_COLOR, ORDER_TIMELINE } from "@shop/core/orders";
+export { shortOrderId } from "@shop/core/format";
 
 const DICTIONARIES: Record<Locale, Dictionary> = { ru, uk, en };
 

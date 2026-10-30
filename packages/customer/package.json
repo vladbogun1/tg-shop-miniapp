@@ -1,0 +1,14 @@
+{
+  "name": "@shop/customer",
+  "version": "1.0.0",
+  "private": true,
+  "sideEffects": false,
+  "description": "Customer features shared by the Mini App and the website (cart, catalog, checkout, order, chat, review, compare, gift, ...). Empty until step 5 of docs/ARCHITECTURE-FRONT.md",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@shop/core": "*",
+    "@shop/ui": "*"
+  }
+}

@@ -14,7 +14,8 @@
  * Nothing here may break a page: every path is wrapped, failures are dropped.
  */
 
-import { describeError, describeTap, reportable } from "@shop/shared";
+import { describeError, reportable } from "@shop/core/client-error";
+import { describeTap } from "@shop/ui/tap";
 
 const BUFFER_KEY = "mx-analytics-buffer";
 const ANON_KEY = "mx-aid";

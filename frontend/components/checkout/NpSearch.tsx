@@ -15,13 +15,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Box, MapPin, Store } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import {
-  filterWarehouses,
-  searchWarehouses,
-  type NpCategoryFilter,
-  type NpCity,
-  type NpWarehouse,
-} from "@shop/shared";
+import { filterWarehouses, searchWarehouses, type NpCategoryFilter } from "@shop/core/np-geo";
+import { type NpCity, type NpWarehouse } from "@shop/core/types";
 import { useT } from "@/i18n/context";
 import { customerApi } from "@/lib/api";
 import { NpCombobox } from "./NpCombobox";

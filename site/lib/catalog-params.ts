@@ -4,12 +4,8 @@
  * the site's own `sort`, `page` and `from` («Показати ще»: pages from..page are shown together).
  * Safe for server and client components.
  */
-import {
-  type CatalogFilter,
-  type CatalogSort,
-  filterFromParams,
-  filterToParams,
-} from "@shop/shared";
+import { type CatalogFilter, filterFromParams, filterToParams } from "@shop/core/catalog";
+import { type CatalogSort } from "@shop/core/site";
 
 export type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 

@@ -3,7 +3,7 @@
 /** Small pieces shared by the support pages. */
 import { Info, MessageCircle, Send } from "lucide-react";
 import Link from "next/link";
-import type { SupportStatus, SupportThread } from "@shop/shared";
+import type { SupportStatus, SupportThread } from "@shop/core/support";
 import type { TFunction } from "@/i18n";
 import { useI18n } from "@/i18n/context";
 import { BOT_URL } from "@/lib/config";

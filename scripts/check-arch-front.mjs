@@ -19,9 +19,9 @@ import extractTsConfig from "dependency-cruiser/config-utl/extract-ts-config";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const KNOWN = path.join(ROOT, "known-violations.json");
-const APPS = ["frontend", "frontend-admin", "site", "shared"];
+const APPS = ["frontend", "frontend-admin", "site", "packages/core", "packages/ui"];
 
-/** Один запуск на приложение (у каждого свой tsconfig с алиасом `@/*`); пакет shared — отдельным запуском. */
+/** Один запуск на приложение (у каждого свой tsconfig с алиасом `@/*`); пакеты packages/* — отдельными запусками. */
 async function collect() {
   const ruleSet = await extractConfig(path.join(ROOT, ".dependency-cruiser.cjs"));
   const found = new Map();
@@ -55,12 +55,12 @@ async function collect() {
   return found;
 }
 
-const appOf = (file) => file.split("/")[0];
+const appOf = (file) => (file.startsWith("packages/") ? file.split("/")[1] : file.split("/")[0]);
 const keyOf = (v) => `${v.rule.name}|${v.from}|${v.type === "module" ? "" : v.to}`;
 
 function summary(found, known) {
   const rules = [...new Set([...found.values(), ...known.values()].map((v) => v.rule.name))].sort();
-  const cell = (app, rule, map) => [...map.values()].filter((v) => v.rule.name === rule && appOf(v.from) === app).length;
+  const cell = (app, rule, map) => [...map.values()].filter((v) => v.rule.name === rule && appOf(v.from) === app.replace("packages/", "")).length;
   console.log("\nСводка dependency-cruiser «правило × приложение» (нарушения; baseline в скобках, если отличается):");
   const w = Math.max(14, ...rules.map((r) => r.length));
   console.log(`${"".padEnd(w)}  ${APPS.map((a) => a.padStart(16)).join("")}`);
@@ -73,7 +73,7 @@ function summary(found, known) {
     });
     console.log(`${rule.padEnd(w)}  ${cells.join("")}`);
   }
-  console.log(`${"ИТОГО".padEnd(w)}  ${APPS.map((a) => String([...found.values()].filter((v) => appOf(v.from) === a).length).padStart(16)).join("")}`);
+  console.log(`${"ИТОГО".padEnd(w)}  ${APPS.map((a) => String([...found.values()].filter((v) => appOf(v.from) === a.replace("packages/", "")).length).padStart(16)).join("")}`);
 }
 
 async function main() {

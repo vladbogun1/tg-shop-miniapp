@@ -71,7 +71,7 @@ import { ExchangeModal } from "./ExchangeModal";
 import { MergeModal } from "./MergeModal";
 import { GiftCaseModal } from "./GiftCaseModal";
 import { CASE_RARITY_LABEL } from "@/lib/gift";
-import { caseDiscountText, type CaseTier } from "@shop/shared";
+import { caseDiscountText, type CaseTier } from "@shop/core/giftcase";
 import { money } from "@/lib/money";
 import { ActionSheet, type SheetAction } from "./ActionSheet";
 

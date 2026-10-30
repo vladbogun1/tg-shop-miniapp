@@ -39,7 +39,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { useT } from "@/i18n/context";
-import { withSaneCoords, type NpCategoryFilter } from "@shop/shared";
+import { withSaneCoords, type NpCategoryFilter } from "@shop/core/np-geo";
 import { customerApi, type NpWarehouse, type NpCategory } from "@/lib/api";
 import { sheetVariants } from "@/lib/motion";
 

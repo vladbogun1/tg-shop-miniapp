@@ -5,7 +5,7 @@
  * AWAITING = placed, online payment still due before the deadline (`paymentDueAt`).
  */
 import { Check, Clock } from "lucide-react";
-import type { PaymentState } from "@shop/shared";
+import type { PaymentState } from "@shop/core/orders";
 import { useT } from "@/i18n/context";
 
 export function PaymentBadge({ state, size = "md" }: { state: PaymentState; size?: "sm" | "md" }) {

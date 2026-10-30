@@ -1,7 +1,7 @@
 import { Truck } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import type { StorefrontProduct } from "@shop/shared";
+import type { StorefrontProduct } from "@shop/core/site";
 import { ProductGrid } from "@/components/catalog/ProductCard";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { alternates, localePath, makeT } from "@/i18n";

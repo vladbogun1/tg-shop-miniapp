@@ -7,7 +7,7 @@
  * no-variant products get an inline AddToCartControl, variant products get a
  * a "choose" button that opens the view.
  */
-import { availabilityOf } from "@shop/shared";
+import { availabilityOf } from "@shop/core/availability";
 import { Bell, Check, SlidersHorizontal, Truck } from "lucide-react";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
 import { CompareCardToggle } from "@/components/compare/CompareBits";

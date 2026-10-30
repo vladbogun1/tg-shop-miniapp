@@ -8,7 +8,8 @@
  * (24 h, then the order is cancelled automatically) — with the time left when `showTimeLeft`.
  */
 import { Check, Clock, Wallet } from "lucide-react";
-import { PAYMENT_STATE_LABEL, paymentState, type OrderStatus } from "@shop/shared";
+import { PAYMENT_STATE_LABEL, paymentState } from "@shop/core/orders";
+import { type OrderStatus } from "@shop/core/types";
 import { Badge } from "@/components/ui/Badge";
 import { isOverdue, timeLeft } from "@/lib/online-payment";
 

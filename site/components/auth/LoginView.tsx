@@ -18,7 +18,7 @@ import { CheckCircle2, Loader2, RotateCcw, Send, Smartphone, XCircle } from "luc
 import { QRCodeSVG } from "qrcode.react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { WebLoginStart, WebLoginStatus } from "@shop/shared";
+import type { WebLoginStart, WebLoginStatus } from "@shop/core/site";
 import { LogoFull } from "@/components/layout/Logo";
 import { Button } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/ButtonLink";

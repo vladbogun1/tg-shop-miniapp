@@ -4,7 +4,7 @@
  * of the `gift` group (lib/settings.ts). The three case tiers (bronze/silver/gold: threshold,
  * guaranteed discount, swap), their prizes and the stats have their own endpoints under /api/admin/gift.
  */
-import type { CaseItem, CaseRarity, CaseTier } from "@shop/shared";
+import type { CaseItem, CaseRarity, CaseTier } from "@shop/core/giftcase";
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
 
 export const GIFT_GROUP = "gift";

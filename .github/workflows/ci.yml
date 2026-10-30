@@ -228,7 +228,7 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-  # Mini App, admin, website and the shared package are one npm workspace, so a single install covers
+  # Mini App, admin, website and the packages/* are one npm workspace, so a single install covers
   # all of them and every root script (lint / typecheck / test / arch:front / build) runs ALL workspaces
   # (docs/ARCHITECTURE-FRONT.md, 2.7.6). The build needs no backend (ISR on demand).
   frontends:
@@ -248,7 +248,7 @@ jobs:
       # Architecture ratchet (docs/ARCHITECTURE-FRONT.md 2.7): invariants, dependency-cruiser, ESLint rule counts.
       # Each prints an "app x rule" summary; growth against known-violations.json / frontend-baseline.txt fails.
       - run: npm run arch:front
-      # Java DTO заказа (golden-JSON бэкенда) <-> TS-типы shared/frontend-admin/e2e: docs/ARCHITECTURE-CHECKS.md
+      # Java DTO заказа (golden-JSON бэкенда) <-> TS-типы packages/core/frontend-admin/e2e: docs/ARCHITECTURE-CHECKS.md
       - run: npm run check:dto-drift
       - run: npm run build
       # Both customer apps (Mini App + website): iOS 15.4+ / Chrome 92+. The admin runs on the owner's desktop browser.

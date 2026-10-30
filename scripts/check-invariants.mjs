@@ -3,7 +3,7 @@
  * Инварианты «не убирать» (docs/ARCHITECTURE-FRONT.md, 2.7.4). Быстрая проверка без сборки:
  *  1. CHUNK_RECOVERY_SCRIPT — первым элементом в <head> обоих корневых layout (Mini App и сайт);
  *  2. покупательские nginx-конфиги (infra/gateway.conf, gateway-site.conf) отдают HTML с `no-cache`;
- *  3. в коде фронтов (frontend, site, shared) нет lookbehind `(?<=` / `(?<!` (iOS Safari < 16.4);
+ *  3. в коде фронтов (frontend, site, packages) нет lookbehind `(?<=` / `(?<!` (iOS Safari < 16.4);
  *     серверные файлы-исключения перечислены ниже и должны оставаться серверными.
  *
  *   node scripts/check-invariants.mjs
@@ -52,7 +52,7 @@ function* walk(dir) {
     } else if (/\.(ts|tsx|js|jsx|mjs)$/.test(entry.name)) yield rel;
   }
 }
-for (const dir of ["frontend", "site", "shared"]) {
+for (const dir of ["frontend", "site", "packages"]) {
   for (const file of walk(dir)) {
     if (SERVER_ONLY.has(file)) continue;
     read(file)

@@ -33,9 +33,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/context";
-import type { NpCategory, NpWarehouse } from "@shop/shared";
+import type { NpCategory, NpWarehouse } from "@shop/core/types";
 import { api } from "@/lib/api";
-import { withSaneCoords } from "@shop/shared";
+import { withSaneCoords } from "@shop/core/np-geo";
 
 const UA_CENTER: [number, number] = [49.0, 31.3];
 const UA_ZOOM = 6;

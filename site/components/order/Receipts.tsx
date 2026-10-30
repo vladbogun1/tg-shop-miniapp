@@ -13,7 +13,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Download, ExternalLink, ReceiptText } from "lucide-react";
 import { useRef } from "react";
-import { hasOnlinePayment, receiptsPollMs, type OrderDetail, type Receipt, type ReceiptStatus } from "@shop/shared";
+import { hasOnlinePayment, receiptsPollMs, type Receipt, type ReceiptStatus } from "@shop/core/receipts";
+import { type OrderDetail } from "@shop/core/types";
 import { buttonClass } from "@/components/ui/button-styles";
 import { useI18n } from "@/i18n/context";
 import { api } from "@/lib/api";

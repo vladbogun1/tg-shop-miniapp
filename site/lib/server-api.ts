@@ -10,19 +10,11 @@
  * fetch cache keys on the URL, not on headers, so without the query parameter a cached Russian
  * response could be served to the Ukrainian page of the same path.
  */
-import type {
-  CatalogSchema,
-  CatalogSort,
-  Locale,
-  PublicCategory,
-  PublicCategoryDetail,
-  PublicProductPage,
-  PublicSitemap,
-  GiftResponse,
-  ReviewFeed,
-  ReviewPage,
-  StorefrontProduct,
-} from "@shop/shared";
+import type { CatalogSchema } from "@shop/core/catalog";
+import type { CatalogSort, PublicCategory, PublicCategoryDetail, PublicProductPage, PublicSitemap, StorefrontProduct } from "@shop/core/site";
+import type { Locale } from "@shop/core/i18n";
+import type { GiftResponse } from "@shop/core/giftcase";
+import type { ReviewFeed, ReviewPage } from "@shop/core/types";
 import { catalogSearchParams, type CatalogQuery } from "./api";
 import { PAGE_SIZE, REVALIDATE_SECONDS } from "./config";
 import { buildPreorderIndex, type ComingBatch, type PreorderIndex, type ProductPreorder } from "./preorder-core";

@@ -1,4 +1,4 @@
-import type { Product } from "@shop/shared";
+import type { Product } from "@shop/core/types";
 
 /** Units on hand: the sum over variants when the product has them. */
 export function productStock(p: Pick<Product, "stock" | "variants">): number {

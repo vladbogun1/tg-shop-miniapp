@@ -1,4 +1,5 @@
-import { CASE_RARITY_COLOR, caseDiscountText, type CaseRarity, type GiftInfo, type Locale } from "@shop/shared";
+import { CASE_RARITY_COLOR, caseDiscountText, type CaseRarity, type GiftInfo } from "@shop/core/giftcase";
+import { type Locale } from "@shop/core/i18n";
 import { makeT } from "@/i18n";
 import { makeFmt } from "@/lib/format";
 

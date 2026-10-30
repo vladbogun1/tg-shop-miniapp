@@ -8,7 +8,7 @@
  * a neutral placeholder, a fixed box so nothing shifts, and a friendly fallback tile.
  */
 import { useEffect, useState } from "react";
-import { imgproxySrcSet, resolveImageSrc as resolve } from "@shop/shared";
+import { imgproxySrcSet, resolveImageSrc as resolve } from "@shop/core/image";
 import { getApiBase } from "@/lib/api";
 
 const IMAGE_BASE =

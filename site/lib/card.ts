@@ -6,8 +6,11 @@
  * into the HTML (~128 KB of the home page). The tile shows the first photo, title, prices and
  * stock, the spec line and the condition badge, and the cart keeps the same fields — nothing else is read on the client.
  */
-import type { CatalogSchema, Locale, StorefrontProduct } from "@shop/shared";
-import { compareGroupOf, specSummary } from "@shop/shared";
+import type { CatalogSchema } from "@shop/core/catalog";
+import type { Locale } from "@shop/core/i18n";
+import type { StorefrontProduct } from "@shop/core/site";
+import { compareGroupOf } from "@shop/core/compare";
+import { specSummary } from "@shop/core/catalog";
 import { type PreorderEta, type PreorderIndex, preorderOf } from "./preorder-core";
 
 /** A catalog tile's data: the product fields below + the spec line computed on the server. */

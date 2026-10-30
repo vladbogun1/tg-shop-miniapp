@@ -45,14 +45,8 @@ import { CasePrizeNote, ORDER_PAY_ANCHOR, useOrderGiftCase } from "@/components/
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ApiError, customerApi, type OrderDetail } from "@/lib/api";
-import {
-  CANCEL_REASON_MAX,
-  customerCancelMode,
-  hasOnlinePayment,
-  paymentFirst,
-  paymentState,
-  payableMinor,
-} from "@shop/shared";
+import { CANCEL_REASON_MAX, customerCancelMode, paymentFirst, paymentState, payableMinor } from "@shop/core/orders";
+import { hasOnlinePayment } from "@shop/core/receipts";
 import { formatDateTime, shortOrderId } from "@/lib/format";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";

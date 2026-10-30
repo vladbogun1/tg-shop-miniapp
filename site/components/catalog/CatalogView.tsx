@@ -1,4 +1,5 @@
-import { activeFilterCount, type Facet, type Locale } from "@shop/shared";
+import { activeFilterCount, type Facet } from "@shop/core/catalog";
+import { type Locale } from "@shop/core/i18n";
 import { ChevronLeft, ChevronRight, PackageSearch, Truck, X } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";

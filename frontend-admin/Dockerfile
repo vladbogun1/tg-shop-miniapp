@@ -2,7 +2,7 @@
 # Multi-stage build for the Next.js 15 admin panel.
 #
 # NOTE: the build context is the REPOSITORY ROOT, not ./frontend-admin — the app is an npm
-# workspace that depends on ../shared, so the root manifest, the lockfile and the shared package
+# workspace that depends on ../packages (@shop/core, @shop/ui), so the root manifest, the lockfile and the packages
 # all have to be inside the context. Build it with:
 #   docker build -f frontend-admin/Dockerfile .
 
@@ -10,7 +10,6 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-COPY shared/package.json ./shared/
 # Будущие workspace-пакеты (@shop/core, @shop/ui, @shop/customer, шаг 1 ARCHITECTURE-FRONT.md): npm ci
 # нужны их package.json; каталог пока почти пуст, так что итоговый образ не меняется.
 COPY packages ./packages
@@ -25,7 +24,6 @@ WORKDIR /app
 # dependencies to the root, but anything it cannot hoist (a version conflict) ends up in
 # <workspace>/node_modules, and a COPY of a path that may not exist fails the build.
 COPY --from=deps /app ./
-COPY shared ./shared
 COPY packages ./packages
 COPY frontend-admin ./frontend-admin
 # Public env vars are inlined at build time; the single-origin public build overrides them

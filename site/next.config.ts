@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
   // dev only: the «N» badge sat in the bottom-left corner over the tab bar / catalog tiles
   devIndicators: false,
   output: "standalone",
-  transpilePackages: ["@shop/shared"],
+  transpilePackages: ["@shop/core", "@shop/ui", "@shop/customer"],
   outputFileTracingRoot: path.join(__dirname, ".."),
   // Legal texts are read from disk at render time; make sure they ship in the standalone bundle.
   outputFileTracingIncludes: {

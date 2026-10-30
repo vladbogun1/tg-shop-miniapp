@@ -11,7 +11,8 @@ import { ArrowLeft, Gift, MessageSquareText, Pencil, WifiOff } from "lucide-reac
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { isCaseBonus, type BonusCode } from "@shop/shared";
+import { isCaseBonus } from "@shop/core/bonuses";
+import { type BonusCode } from "@shop/core/types";
 import { BonusCodeCard, ReviewForm } from "@/components/reviews/ReviewForm";
 import { PendingReviewList } from "@/components/reviews/PendingReviewList";
 import { ShopReply } from "@/components/reviews/ProductReviews";

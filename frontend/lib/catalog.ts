@@ -7,7 +7,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
-import type { CatalogFilter, CatalogSchema, FilterableProduct, ProductCondition } from "@shop/shared";
+import type { CatalogFilter, CatalogSchema, FilterableProduct, ProductCondition } from "@shop/core/catalog";
 import { useI18n } from "@/i18n/context";
 import { customerApi, type Product } from "@/lib/api";
 

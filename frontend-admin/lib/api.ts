@@ -6,31 +6,10 @@
  * the admin-only payloads, and the typed endpoint list.
  */
 import { markStaffBrowser } from "./staff-mark";
-import {
-  ApiError,
-  createHttpClient,
-  type AdminInvoice,
-  type MonobankStatus,
-  type Receipt,
-  normalizeBaseUrl,
-  type DeliveryMethod,
-  type Message,
-  type OrderCard,
-  type OrderDetail,
-  type OrderStatus,
-  type Product,
-  type ProductImage,
-  type ProductTag,
-  type ProductVariant,
-  type SendMessageRequest,
-  type SenderType,
-  type TimeRange,
-  type CardStatus,
-  type ProductCondition,
-  type ProductSpecs,
-  type SpecType,
-  type SpecValue,
-} from "@shop/shared";
+import { ApiError, createHttpClient, normalizeBaseUrl } from "@shop/core/http";
+import { type AdminInvoice, type MonobankStatus, type DeliveryMethod, type Message, type OrderCard, type OrderDetail, type OrderStatus, type Product, type ProductImage, type ProductTag, type ProductVariant, type SendMessageRequest, type SenderType, type TimeRange } from "@shop/core/types";
+import { type Receipt } from "@shop/core/receipts";
+import { type CardStatus, type ProductCondition, type ProductSpecs, type SpecType, type SpecValue } from "@shop/core/catalog";
 
 export { ApiError };
 export type {

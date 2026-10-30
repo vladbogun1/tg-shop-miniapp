@@ -1,7 +1,11 @@
 import { BadgeInfo, CreditCard, RotateCcw, ShieldCheck, Truck } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
-import { availabilityOf, type Availability, type CatalogSchema, categoryPath, compareGroupOf, imgproxyUrl, MARKDOWN_COLLECTION_SLUG, type ProductCondition, specRows, type StorefrontProduct } from "@shop/shared";
+import { availabilityOf, type Availability } from "@shop/core/availability";
+import { type CatalogSchema, categoryPath, MARKDOWN_COLLECTION_SLUG, type ProductCondition, specRows } from "@shop/core/catalog";
+import { compareGroupOf } from "@shop/core/compare";
+import { imgproxyUrl } from "@shop/core/image";
+import { type StorefrontProduct } from "@shop/core/site";
 import { ProductGrid } from "@/components/catalog/ProductCard";
 import { Breadcrumbs, breadcrumbJsonLd, JsonLd, type Crumb } from "@/components/layout/Breadcrumbs";
 import { TrackProductView } from "@/components/Analytics";

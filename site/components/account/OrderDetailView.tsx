@@ -12,7 +12,9 @@ import { ArrowLeft, Ban, Check, CheckCircle2, Clock, CreditCard, MapPin, Message
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { CANCEL_REASON_MAX, customerCancelMode, payableMinor, paymentState, shortOrderId, type OrderDetail } from "@shop/shared";
+import { CANCEL_REASON_MAX, customerCancelMode, payableMinor, paymentState } from "@shop/core/orders";
+import { shortOrderId } from "@shop/core/format";
+import { type OrderDetail } from "@shop/core/types";
 import { OrderChat } from "@/components/chat/OrderChat";
 import { isPaymentTimeout, OrderPayment } from "@/components/order/Payment";
 import { OrderReceipts } from "@/components/order/Receipts";

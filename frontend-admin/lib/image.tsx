@@ -8,7 +8,7 @@
  * only the presentation: lazy loading, a neutral placeholder and a graceful fallback.
  */
 import { useState } from "react";
-import { resolveImageSrc as resolve } from "@shop/shared";
+import { resolveImageSrc as resolve } from "@shop/core/image";
 import { apiOrigin } from "@/lib/api";
 
 const IMAGE_BASE =

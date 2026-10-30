@@ -10,8 +10,8 @@
  *   PRODUCT           → the same for the single known gift
  */
 import { Gift } from "lucide-react";
-import { rarestCasePrize } from "@shop/shared";
-import { GiftCaseArt, GiftCasePrizeDisclosure, GiftCasePrizeRows } from "@shop/shared/case-ui";
+import { rarestCasePrize } from "@shop/core/giftcase";
+import { GiftCaseArt, GiftCasePrizeDisclosure, GiftCasePrizeRows } from "@shop/ui/gift-case";
 import { CaseRulesInline, useCaseMoney, useCaseRarityNames, useCaseTierNames } from "@/components/case/OrderGiftCase";
 import { useI18n } from "@/i18n/context";
 import { useGiftProgress } from "@/lib/gift";

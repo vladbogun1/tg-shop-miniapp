@@ -15,7 +15,7 @@ import {
   type CasePromo,
   type CaseRarity,
   type CaseTier,
-} from "../giftcase";
+} from "@shop/core/giftcase";
 
 export type CaseArtFile = "case-closed.webp" | "case-open.webp" | "case-closed-sm.webp";
 

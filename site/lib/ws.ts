@@ -8,7 +8,8 @@
  * A reconnect after the 15-minute access cookie expires would be refused; the chat page refreshes
  * the session before (re)connecting, see `refreshSession` in lib/api.
  */
-import { connectOrderChat as connect, type ChatConnection, type Message } from "@shop/shared";
+import { connectOrderChat as connect, type ChatConnection } from "@shop/core/ws";
+import { type Message } from "@shop/core/types";
 
 export type { ChatConnection };
 

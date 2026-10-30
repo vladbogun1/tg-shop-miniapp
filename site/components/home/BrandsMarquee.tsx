@@ -17,7 +17,8 @@
  */
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { brandLogoSrc, type CatalogBrand } from "@shop/shared";
+import { brandLogoSrc } from "@shop/core/image";
+import { type CatalogBrand } from "@shop/core/catalog";
 import { localePath } from "@/i18n";
 import { useI18n } from "@/i18n/context";
 import { IMAGE_BASE } from "@/lib/config";

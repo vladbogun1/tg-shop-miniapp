@@ -11,7 +11,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Trash2, UploadCloud } from "lucide-react";
-import { brandLogoSrc } from "@shop/shared";
+import { brandLogoSrc } from "@shop/core/image";
 import { adminApi, ApiError, type BrandLogoMode } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { useToast } from "@/lib/toast";

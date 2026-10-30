@@ -23,7 +23,7 @@ import {
   type OrderStatus,
   type SortDir,
 } from "@/lib/api";
-import { payableMinor } from "@shop/shared";
+import { payableMinor } from "@shop/core/orders";
 import { money } from "@/lib/money";
 import { ordersApi, type AdminOrderCard } from "@/lib/orders-api";
 import { ReturnBadge } from "@/components/orders/ReturnBadge";

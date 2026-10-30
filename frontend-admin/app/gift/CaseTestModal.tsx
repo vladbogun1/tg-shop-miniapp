@@ -16,16 +16,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Dices, RotateCcw, Zap } from "lucide-react";
-import {
-  CASE_RARITY_COLOR,
-  CASE_TIER_METAL,
-  caseDiscountText,
-  sortCasePrizes,
-  type CaseItem,
-  type CaseTier,
-  type GiftCaseOpen,
-} from "@shop/shared";
-import { GiftCaseOpening, type GiftCaseTexts } from "@shop/shared/case-ui";
+import { CASE_RARITY_COLOR, CASE_TIER_METAL, caseDiscountText, sortCasePrizes, type CaseItem, type CaseTier, type GiftCaseOpen } from "@shop/core/giftcase";
+import { GiftCaseOpening, type GiftCaseTexts } from "@shop/ui/gift-case";
 import { ApiError } from "@/lib/api";
 import { CASE_RARITY_LABEL, CASE_TIER_LABEL, giftApi, type CaseDraftItem, type CaseItemAdmin, type CaseTestDraw } from "@/lib/gift";
 import { cn } from "@/lib/cn";

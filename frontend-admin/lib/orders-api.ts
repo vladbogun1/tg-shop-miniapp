@@ -2,7 +2,8 @@
  * Order endpoints added in admin v2 (package B) — kept apart from lib/api.ts so parallel work on
  * that file does not collide. Same http client, same error type.
  */
-import type { CaseTier, NpCity, NpWarehouse } from "@shop/shared";
+import type { CaseTier } from "@shop/core/giftcase";
+import type { NpCity, NpWarehouse } from "@shop/core/types";
 import type { ConfirmOptions } from "@/components/ui/ConfirmModal";
 import {
   adminApi,

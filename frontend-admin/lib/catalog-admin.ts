@@ -3,7 +3,7 @@
  * inheritance, "missing required" check, labels of conditions / card statuses / tile art.
  * The storefront logic (filters, facets) lives in `@shop/shared` (catalog.ts).
  */
-import type { CardStatus, ProductCondition, ProductSpecs, SpecType, SpecValue } from "@shop/shared";
+import type { CardStatus, ProductCondition, ProductSpecs, SpecType, SpecValue } from "@shop/core/catalog";
 import type { AdminCategory, AdminProduct, AdminSpecAttribute, AdminSpecGroup } from "@/lib/api";
 import { slugify } from "@/lib/slug";
 

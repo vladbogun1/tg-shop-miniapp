@@ -1,9 +1,8 @@
 {
   "name": "tg-shop-v2",
   "private": true,
-  "description": "Monorepo root: shared library + customer Mini App + admin panel + public website",
+  "description": "Monorepo root: core/ui/customer packages + customer Mini App + admin panel + public website",
   "workspaces": [
-    "shared",
     "packages/*",
     "frontend",
     "frontend-admin",
@@ -12,9 +11,9 @@
   ],
   "scripts": {
     "build": "npm run build -w frontend && npm run build -w frontend-admin && npm run build -w site",
-    "lint": "npm run lint -w shared -w frontend -w frontend-admin -w site",
-    "typecheck": "npm run typecheck -w shared -w frontend -w frontend-admin -w site -w e2e",
-    "test": "npm run test -w shared -w frontend -w frontend-admin -w site",
+    "lint": "npm run lint -w @shop/core -w @shop/ui -w frontend -w frontend-admin -w site",
+    "typecheck": "npm run typecheck -w @shop/core -w @shop/ui -w frontend -w frontend-admin -w site -w e2e",
+    "test": "npm run test -w @shop/core -w @shop/ui -w frontend -w frontend-admin -w site",
     "arch:front": "node scripts/arch-front.mjs",
     "check:bundle": "node scripts/check-bundle.mjs",
     "check:dto-drift": "node scripts/check-dto-drift.mjs",

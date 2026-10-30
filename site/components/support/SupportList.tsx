@@ -4,7 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, LifeBuoy, MessageCircle, Plus } from "lucide-react";
 import Link from "next/link";
-import type { SupportThread } from "@shop/shared";
+import type { SupportThread } from "@shop/core/support";
 import { Button } from "@/components/ui/Button";
 import { buttonClass } from "@/components/ui/button-styles";
 import { useI18n } from "@/i18n/context";

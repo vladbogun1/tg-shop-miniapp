@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { useEffect } from "react";
 import { create } from "zustand";
-import { noFadeFlash } from "@shop/shared";
+import { noFadeFlash } from "@shop/ui/motion";
 
 /** Optional button in the toast («Порівняти» after adding to the comparison). */
 export interface ToastAction {

@@ -30,7 +30,9 @@
 import { motion } from "framer-motion";
 import { Ban, CheckCircle2, CreditCard, ExternalLink, Loader2, RefreshCw, ShieldCheck, WifiOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { codMinor, needsTopUp, paymentState, shortOrderId, type OnlinePaymentStatus } from "@shop/shared";
+import { codMinor, needsTopUp, paymentState } from "@shop/core/orders";
+import { shortOrderId } from "@shop/core/format";
+import { type OnlinePaymentStatus } from "@shop/core/types";
 import { Button } from "@/components/ui/Button";
 import { useI18n } from "@/i18n/context";
 import { ApiError, customerApi, type OrderDetail } from "@/lib/api";

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Browser-compatibility gate for the customer bundles (site + Mini App). Scans the BUILT chunks
- * (`<app>/.next/static/chunks/**.js`) — our code, @shop/shared and every dependency as they really
+ * (`<app>/.next/static/chunks/**.js`) — our code, @shop/core, @shop/ui and every dependency as they really
  * ship — for syntax and APIs the supported browsers do not have. See docs/BROWSER-SUPPORT.md.
  *
  *   node scripts/check-browser-compat.mjs site frontend     # after `next build`; exit 1 on findings
@@ -9,7 +9,7 @@
  * Why built chunks and not the sources: SWC transpiles syntax down to the browserslist target but
  * never touches regular expressions or runtime APIs, and Next's polyfills chunk is `nomodule`, so
  * modern-but-not-modern-enough Safari (iOS 15/16) gets no polyfills at all. 25.10.2026 a lookbehind
- * in shared/src/product-brand.ts killed the whole site and Mini App on iOS < 16.4.
+ * in packages/core/src/product-brand.ts killed the whole site and Mini App on iOS < 16.4.
  *
  * A finding next to a feature test (`typeof X.y` / `"y" in X` within ~80 chars before it) is
  * treated as guarded and not reported.

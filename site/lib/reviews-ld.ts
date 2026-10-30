@@ -3,7 +3,8 @@
  * Returns an empty object while the product has no published reviews, so it can be spread into the
  * Product node unconditionally (Google rejects an AggregateRating with reviewCount 0).
  */
-import type { ReviewPage, StorefrontProduct } from "@shop/shared";
+import type { ReviewPage } from "@shop/core/types";
+import type { StorefrontProduct } from "@shop/core/site";
 
 export function reviewsLd(
   product: Pick<StorefrontProduct, "ratingAvg" | "ratingCount">,

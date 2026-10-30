@@ -20,19 +20,9 @@ import { Check, ChevronDown, Loader2, SlidersHorizontal, X } from "lucide-react"
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
-import {
-  activeFilterCount,
-  buildFacets,
-  type CatalogFilter,
-  type CatalogSort,
-  type Facet,
-  filterProducts,
-  filterToParams,
-  noFadeFlash,
-  parseRange,
-  priceBounds,
-  toggleFacet,
-} from "@shop/shared";
+import { activeFilterCount, buildFacets, type CatalogFilter, type Facet, filterProducts, filterToParams, parseRange, priceBounds, toggleFacet } from "@shop/core/catalog";
+import { type CatalogSort } from "@shop/core/site";
+import { noFadeFlash } from "@shop/ui/motion";
 import { useI18n } from "@/i18n/context";
 import type { MessageKey } from "@/i18n";
 import type { CatalogEngine } from "@/lib/catalog";

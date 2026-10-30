@@ -16,21 +16,11 @@
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CASE_RULES_PATH, CASE_TIER_ORDER, paymentState, shortOrderId, type CaseRarity, type CaseTier, type OrderDetail } from "@shop/shared";
-import {
-  GiftCaseOpening,
-  GiftCaseOrderPanel,
-  hasGiftCaseOrderPanel,
-  GiftCaseRarityChip,
-  GiftCaseSealedCard,
-  takeGiftCaseAutoOpen,
-  unlockCaseAudio,
-  type CasePromoTexts,
-  type CaseRulesLinkProps,
-  type CaseSizeTexts,
-  type GiftCaseTexts,
-  type GiftOrderPanelTexts,
-} from "@shop/shared/case-ui";
+import { CASE_RULES_PATH, CASE_TIER_ORDER, type CaseRarity, type CaseTier } from "@shop/core/giftcase";
+import { paymentState } from "@shop/core/orders";
+import { shortOrderId } from "@shop/core/format";
+import { type OrderDetail } from "@shop/core/types";
+import { GiftCaseOpening, GiftCaseOrderPanel, hasGiftCaseOrderPanel, GiftCaseRarityChip, GiftCaseSealedCard, takeGiftCaseAutoOpen, unlockCaseAudio, type CasePromoTexts, type CaseRulesLinkProps, type CaseSizeTexts, type GiftCaseTexts, type GiftOrderPanelTexts } from "@shop/ui/gift-case";
 import { toast } from "@/components/ui/Toast";
 import type { MessageKey } from "@/i18n";
 import { useI18n } from "@/i18n/context";

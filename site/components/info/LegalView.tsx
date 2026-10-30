@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Info } from "lucide-react";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { makeT } from "@/i18n";
-import { FALLBACK_LOCALE, type Locale } from "@shop/shared";
+import { FALLBACK_LOCALE, type Locale } from "@shop/core/i18n";
 import { makeFmt } from "@/lib/format";
 import type { LegalDoc } from "@/lib/legal";
 

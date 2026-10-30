@@ -7,7 +7,7 @@
  */
 import { Loader2, MessageSquareText, Store } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { PublicReview, ReviewPage, ReviewSummary } from "@shop/shared";
+import type { PublicReview, ReviewPage, ReviewSummary } from "@shop/core/types";
 import { useI18n } from "@/i18n/context";
 import { api, ApiError } from "@/lib/api";
 import { useFmt } from "@/lib/use-fmt";

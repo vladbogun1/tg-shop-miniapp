@@ -9,7 +9,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { localePath, stripLocale } from "@/i18n";
 import { useI18n } from "@/i18n/context";
-import { LOCALE_NAME, LOCALE_SHORT, LOCALES } from "@shop/shared";
+import { LOCALE_NAME, LOCALE_SHORT, LOCALES } from "@shop/core/i18n";
 
 export function LangSwitch() {
   const { locale, t } = useI18n();

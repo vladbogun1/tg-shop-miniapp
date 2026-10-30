@@ -5,32 +5,17 @@
  * each other — or with the backend, which is what happened before (the admin refused NEW → SHIPPED
  * that the server accepts, and offered a "В новые" action the server always rejects).
  */
-export {
-  codMinor,
-  formatDateTime,
-  isNovaPoshtaTtn,
-  ORDER_STATUS_COLOR as STATUS_VAR,
-  REJECT_REASON_LABEL,
-  STATUS_ACTION_LABEL,
-  STATUS_COLUMN_LABEL as STATUS_LABEL,
-  STATUS_ORDER,
-  shortOrderId as shortId,
-  timeAgo,
-  type RejectReasonCode,
-} from "@shop/shared";
+export { codMinor, isNovaPoshtaTtn, ORDER_STATUS_COLOR as STATUS_VAR, REJECT_REASON_LABEL, STATUS_ACTION_LABEL, STATUS_COLUMN_LABEL as STATUS_LABEL, STATUS_ORDER, type RejectReasonCode } from "@shop/core/orders";
+export { formatDateTime, shortOrderId as shortId, timeAgo } from "@shop/core/format";
 
-import {
-  allowedTargets as sharedAllowedTargets,
-  canTransition as sharedCanTransition,
-  type DeliveryMethod,
-  type OrderStatus,
-} from "@shop/shared";
+import { allowedTargets as sharedAllowedTargets, canTransition as sharedCanTransition } from "@shop/core/orders";
+import { type DeliveryMethod, type OrderStatus } from "@shop/core/types";
 
 /**
  * Admin transitions: the shared table still lists DELIVERED → REJECTED, but the server refuses it
  * since 25.10.2026 (ORDER_DELIVERED_REJECT) — a delivered order is handled with «Возврат».
  */
-import { ORDER_STATUS_COLOR, STATUS_COLUMN_LABEL } from "@shop/shared";
+import { ORDER_STATUS_COLOR, STATUS_COLUMN_LABEL } from "@shop/core/orders";
 
 /**
  * «Едет назад» (V68) — a board column, not a status: a refused parcel (REJECTED) or the returned

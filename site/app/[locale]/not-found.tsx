@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ErrorScreen } from "@/components/errors/ErrorScreen";
 import { makeT } from "@/i18n";
-import { isLocale } from "@shop/shared";
+import { isLocale } from "@shop/core/i18n";
 
 /** The 404's own title instead of the home page's (Next adds `noindex` to a 404 itself). */
 export async function generateMetadata(props: { params?: Promise<{ locale?: string }> }): Promise<Metadata> {

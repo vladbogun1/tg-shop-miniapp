@@ -15,7 +15,8 @@
 import { Plus, ShoppingBag, SlidersHorizontal, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import type { CompareSection, StorefrontProduct } from "@shop/shared";
+import type { CompareSection } from "@shop/core/compare";
+import type { StorefrontProduct } from "@shop/core/site";
 import { useI18n } from "@/i18n/context";
 import { trackAddToCart } from "@/lib/analytics";
 import { stockOf, useCart } from "@/lib/cart";

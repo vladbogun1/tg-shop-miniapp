@@ -1,1 +1,1 @@
-export { cn } from "@shop/shared";
+export { cn } from "@shop/ui/cn";

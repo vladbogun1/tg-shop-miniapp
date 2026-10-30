@@ -48,7 +48,7 @@ import {
   type ProductVariant,
   type ProductWriteRequest,
 } from "@/lib/api";
-import { guessProductBrand } from "@shop/shared";
+import { guessProductBrand } from "@shop/core/product-brand";
 import {
   attributesForCategory,
   CARD_STATUS_LABEL,

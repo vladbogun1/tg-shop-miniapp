@@ -8,7 +8,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
-import type { OrderLimits } from "@shop/shared";
+import type { OrderLimits } from "@shop/core/types";
 import { api } from "./api";
 import { setQtyCap } from "./cart";
 

@@ -2,7 +2,7 @@
 
 /** Small catalog v2 marks: card status chip, AI confidence dot, condition chip. */
 import type { CSSProperties } from "react";
-import type { CardStatus, ProductCondition } from "@shop/shared";
+import type { CardStatus, ProductCondition } from "@shop/core/catalog";
 import { CARD_STATUS_LABEL, CONDITION_LABEL, confidenceColor } from "@/lib/catalog-admin";
 import { cn } from "@/lib/cn";
 

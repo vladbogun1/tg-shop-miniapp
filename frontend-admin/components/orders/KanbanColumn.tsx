@@ -13,7 +13,7 @@
 import type { CSSProperties } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { Inbox } from "lucide-react";
-import { payableMinor } from "@shop/shared";
+import { payableMinor } from "@shop/core/orders";
 import type { AdminOrderCard } from "@/lib/orders-api";
 import { money } from "@/lib/money";
 import { BOARD_LABEL, BOARD_VAR, RETURNING, returningMinor, type BoardKey } from "@/lib/orders";

@@ -2,7 +2,7 @@
  * Online payment (monobank acquiring) vocabulary for the admin: invoice status labels and tones,
  * payment method names, the "pay within 24 h" countdown. Russian, admin only.
  */
-import type { AdminInvoice, OnlinePaymentStatus } from "@shop/shared";
+import type { AdminInvoice, OnlinePaymentStatus } from "@shop/core/types";
 
 export type InvoiceTone = "neutral" | "accent" | "ok" | "warn" | "danger" | "info";
 

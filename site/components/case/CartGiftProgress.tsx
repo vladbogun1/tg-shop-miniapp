@@ -9,8 +9,9 @@
  * the discount (what the server counts against the threshold).
  */
 import { Gift } from "lucide-react";
-import { rarestCasePrize, type Product } from "@shop/shared";
-import { GiftCaseArt, GiftCasePrizeDisclosure, GiftCasePrizeRows, GiftCaseTierLadder } from "@shop/shared/case-ui";
+import { rarestCasePrize } from "@shop/core/giftcase";
+import { type Product } from "@shop/core/types";
+import { GiftCaseArt, GiftCasePrizeDisclosure, GiftCasePrizeRows, GiftCaseTierLadder } from "@shop/ui/gift-case";
 import { CaseRulesInline, useCaseMoney, useCaseRarityNames, useCaseTierNames } from "@/components/case/OrderGiftCase";
 import { useI18n } from "@/i18n/context";
 import { useGiftProgress } from "@/lib/gift";

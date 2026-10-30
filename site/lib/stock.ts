@@ -1,4 +1,4 @@
-import type { Product, ProductVariant } from "@shop/shared";
+import type { Product, ProductVariant } from "@shop/core/types";
 
 /** Effective stock: the variant's own, else the sum of variants, else the product's. */
 export function stockOf(product: Product, variant: ProductVariant | null): number {

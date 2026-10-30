@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { categoryBySlug, categoryPath, type Locale, MARKDOWN_COLLECTION_SLUG } from "@shop/shared";
+import { categoryBySlug, categoryPath, MARKDOWN_COLLECTION_SLUG } from "@shop/core/catalog";
+import { type Locale } from "@shop/core/i18n";
 import { CatalogView } from "@/components/catalog/CatalogView";
 import { breadcrumbJsonLd, JsonLd } from "@/components/layout/Breadcrumbs";
 import { makeT } from "@/i18n";

@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
-import { CASE_TIER_METAL, type CaseTier } from "@shop/shared";
+import { CASE_TIER_METAL, type CaseTier } from "@shop/core/giftcase";
 import { adminApi, ApiError } from "@/lib/api";
 import { AUTOFILL_COST_SHARE, CASE_TIER_LABEL, giftApi, type AutofillResult, type GiftTierAdmin } from "@/lib/gift";
 import { settingsApi } from "@/lib/settings";

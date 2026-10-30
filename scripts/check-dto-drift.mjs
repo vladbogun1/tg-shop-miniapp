@@ -42,12 +42,12 @@ function samples(section) {
  * `sections` — секции golden. `mode`: "exact" (по умолчанию) или "subset".
  */
 const CHECKS = [
-  { pkg: "shared", file: "src/types.ts", type: "OrderSummary", sections: ["summary"] },
+  { pkg: "packages/core", file: "src/types.ts", type: "OrderSummary", sections: ["summary"] },
   // shared-типы — база без админских полей (их добавляют типы фронта админки), поэтому subset:
   // лишние ключи JSON ок, а все поля типа обязаны быть в JSON. Строгая проверка «ключ есть в JSON, но нет
   // в типе» — на админских типах ниже.
-  { pkg: "shared", file: "src/types.ts", type: "OrderDetail", sections: ["customerDetail", "adminDetail"], mode: "subset" },
-  { pkg: "shared", file: "src/types.ts", type: "OrderCard", sections: ["card"], mode: "subset" },
+  { pkg: "packages/core", file: "src/types.ts", type: "OrderDetail", sections: ["customerDetail", "adminDetail"], mode: "subset" },
+  { pkg: "packages/core", file: "src/types.ts", type: "OrderCard", sections: ["card"], mode: "subset" },
   { pkg: "frontend-admin", file: "lib/orders-api.ts", type: "AdminOrderDetail", sections: ["adminDetail"] },
   { pkg: "frontend-admin", file: "lib/orders-api.ts", type: "AdminOrderCard", sections: ["card"] },
   { pkg: "frontend-admin", file: "lib/orders-api.ts", type: "AdminDispatchOrder", sections: ["dispatch"] },

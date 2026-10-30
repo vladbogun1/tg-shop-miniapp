@@ -3,7 +3,8 @@
  * from the flat `/api/public/categories` list (catalog v2 adds `parentId`/`artKind`). Pure — safe
  * for client components.
  */
-import { MARKDOWN_COLLECTION_SLUG, type PublicCategory } from "@shop/shared";
+import { MARKDOWN_COLLECTION_SLUG } from "@shop/core/catalog";
+import { type PublicCategory } from "@shop/core/site";
 
 export interface MenuNode {
   id: string;

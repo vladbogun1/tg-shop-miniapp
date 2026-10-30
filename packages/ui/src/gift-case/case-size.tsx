@@ -7,7 +7,7 @@
  * may be changed while the order is still being put together (`changeable`).
  */
 import { useEffect, useState } from "react";
-import type { CaseSize } from "../giftcase";
+import type { CaseSize } from "@shop/core/giftcase";
 
 export interface CaseSizeTexts {
   /** «Оберіть розмір» */

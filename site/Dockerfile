@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Multi-stage build for the public website (Next.js 15, standalone).
 #
-# The build context is the REPOSITORY ROOT (npm workspaces + ../shared):
+# The build context is the REPOSITORY ROOT (npm workspaces + ../packages):
 #   docker build -f site/Dockerfile .
 #
 # Nothing backend-specific is baked in: the site talks to the browser same-origin (/api, /ws, /img
@@ -12,7 +12,6 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-COPY shared/package.json ./shared/
 # Будущие workspace-пакеты (@shop/core, @shop/ui, @shop/customer, шаг 1 ARCHITECTURE-FRONT.md): npm ci
 # нужны их package.json; каталог пока почти пуст, так что итоговый образ не меняется.
 COPY packages ./packages
@@ -25,7 +24,6 @@ RUN npm ci
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=deps /app ./
-COPY shared ./shared
 COPY packages ./packages
 COPY site ./site
 # Canonical origin for metadata/sitemap/OG links (inlined at build time).

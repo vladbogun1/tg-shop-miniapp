@@ -18,7 +18,7 @@
 import { Star } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef } from "react";
-import type { FeedReview, ReviewSummary } from "@shop/shared";
+import type { FeedReview, ReviewSummary } from "@shop/core/types";
 import { localePath } from "@/i18n";
 import { useI18n } from "@/i18n/context";
 import { Image } from "@/lib/image";

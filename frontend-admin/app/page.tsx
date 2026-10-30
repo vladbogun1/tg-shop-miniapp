@@ -27,7 +27,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { Search, RefreshCw, X, Plus } from "lucide-react";
-import { payableMinor } from "@shop/shared";
+import { payableMinor } from "@shop/core/orders";
 import { ApiError, type OrderCardDto, type OrderStatus } from "@/lib/api";
 import { changeStatusConfirmingUnpaid, ordersApi, type AdminBoard } from "@/lib/orders-api";
 import { useConfirm } from "@/components/ui/ConfirmModal";

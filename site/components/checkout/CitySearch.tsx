@@ -13,11 +13,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Box, MapPin, Store } from "lucide-react";
 import { useState } from "react";
-import type { NpCity, NpWarehouse } from "@shop/shared";
+import type { NpCity, NpWarehouse } from "@shop/core/types";
 import { useT } from "@/i18n/context";
 import { api } from "@/lib/api";
 import { useDebounced } from "@/lib/hooks";
-import { searchWarehouses } from "@shop/shared";
+import { searchWarehouses } from "@shop/core/np-geo";
 import { NpCombobox } from "./NpCombobox";
 
 /** One cache entry per city: the branch field and the map framing read the same list. */

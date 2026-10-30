@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Dices, Lock, Package, Percent, Rocket, Settings2, Sparkles, Undo2 } from "lucide-react";
-import { CASE_RARITY_COLOR, CASE_TIER_METAL, CASE_TIER_ORDER, type CaseRarity, type CaseTier } from "@shop/shared";
+import { CASE_RARITY_COLOR, CASE_TIER_METAL, CASE_TIER_ORDER, type CaseRarity, type CaseTier } from "@shop/core/giftcase";
 import type { AdminProduct } from "@/lib/api";
 import { ApiError } from "@/lib/api";
 import {

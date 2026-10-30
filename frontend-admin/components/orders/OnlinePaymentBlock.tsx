@@ -17,7 +17,7 @@
 import { forwardRef, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, Clock, Download, ExternalLink, Loader2, ReceiptText, RefreshCw, Undo2 } from "lucide-react";
-import { receiptsPollMs, type ReceiptKind, type ReceiptStatus } from "@shop/shared";
+import { receiptsPollMs, type ReceiptKind, type ReceiptStatus } from "@shop/core/receipts";
 import { adminApi, ApiError, receiptHref, type AdminInvoice, type Receipt } from "@/lib/api";
 import type { AdminOrderDetail } from "@/lib/orders-api";
 import { money } from "@/lib/money";

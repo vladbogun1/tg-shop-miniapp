@@ -40,18 +40,9 @@ import { preorderCardState, preorderTier, queuedFor, useComing, useMyPreorders }
 import { CompareSheet } from "@/components/compare/CompareSheet";
 import { CompareToastHost } from "@/components/compare/CompareBits";
 import { useCompare } from "@/lib/compare";
-import {
-  activeFilterCount,
-  categoryBySlug,
-  compareGroupOf,
-  categoryPath,
-  childCategories,
-  filterForCategory,
-  filterProducts,
-  getActiveTag,
-  MARKDOWN_COLLECTION_SLUG,
-  specSummary,
-} from "@shop/shared";
+import { activeFilterCount, categoryBySlug, categoryPath, childCategories, filterForCategory, filterProducts, MARKDOWN_COLLECTION_SLUG, specSummary } from "@shop/core/catalog";
+import { compareGroupOf } from "@shop/core/compare";
+import { getActiveTag } from "@shop/core/i18n";
 import { useI18n } from "@/i18n/context";
 import { customerApi, type Product } from "@/lib/api";
 import { EMPTY_FILTER, EMPTY_SCHEMA, productInStock, toEngineItems, useCatalogSchema, useStoredFilter } from "@/lib/catalog";

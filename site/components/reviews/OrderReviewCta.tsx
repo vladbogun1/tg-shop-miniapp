@@ -4,7 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Gift, Star } from "lucide-react";
 import Link from "next/link";
-import type { OrderStatus } from "@shop/shared";
+import type { OrderStatus } from "@shop/core/types";
 import { useI18n } from "@/i18n/context";
 import { api } from "@/lib/api";
 import { Image } from "@/lib/image";

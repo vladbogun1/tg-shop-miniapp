@@ -1,10 +1,10 @@
 "use client";
 
 /** Order-status pill: dark tint of the status colour, text and dot in the colour itself. */
-import type { OrderStatus } from "@shop/shared";
+import type { OrderStatus } from "@shop/core/types";
 import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/context";
-import { ORDER_STATUS_COLOR } from "@shop/shared";
+import { ORDER_STATUS_COLOR } from "@shop/core/orders";
 
 export function StatusChip({ status }: { status: OrderStatus }) {
   const t = useT();

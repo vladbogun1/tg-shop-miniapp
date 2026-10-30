@@ -1,5 +1,5 @@
 import { FEED_REVALIDATE_SECONDS, feedItems, xmlResponse, type FeedItem } from "./feeds";
-import type { Locale } from "@shop/shared";
+import type { Locale } from "@shop/core/i18n";
 import { loadSchema } from "./catalog";
 import { getAllProducts, getPreorderIndex } from "./server-api";
 

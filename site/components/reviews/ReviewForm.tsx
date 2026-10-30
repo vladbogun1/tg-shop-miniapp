@@ -5,7 +5,7 @@
  * while it is still PENDING (same orderItemId). Server refusals (400) arrive already localized.
  */
 import { useId, useState } from "react";
-import type { SubmitReviewResult } from "@shop/shared";
+import type { SubmitReviewResult } from "@shop/core/types";
 import { Button } from "@/components/ui/Button";
 import { useI18n } from "@/i18n/context";
 import { api, ApiError } from "@/lib/api";

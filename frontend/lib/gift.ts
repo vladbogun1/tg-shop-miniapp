@@ -7,7 +7,7 @@
  * on a product page from the product price, in the cart and at checkout from the total after discounts.
  */
 import { useQuery } from "@tanstack/react-query";
-import type { GiftInfo } from "@shop/shared";
+import type { GiftInfo } from "@shop/core/giftcase";
 import { useI18n } from "@/i18n/context";
 import { customerApi } from "@/lib/api";
 

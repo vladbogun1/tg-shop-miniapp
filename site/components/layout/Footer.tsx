@@ -1,6 +1,6 @@
 import { Send } from "lucide-react";
 import Link from "next/link";
-import type { Locale } from "@shop/shared";
+import type { Locale } from "@shop/core/i18n";
 import type { MenuNode } from "@/lib/category-tree";
 import { localePath, makeT } from "@/i18n";
 import { Wordmark } from "@/components/layout/Logo";

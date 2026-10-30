@@ -7,7 +7,7 @@
  * `giftProgress` from the product price / the cart total after the discount.
  */
 import { useQuery } from "@tanstack/react-query";
-import { giftProgress, type GiftInfo, type GiftProgress } from "@shop/shared";
+import { giftProgress, type GiftInfo, type GiftProgress } from "@shop/core/giftcase";
 import { useI18n } from "@/i18n/context";
 import { api } from "./api";
 import { useHydrated } from "./hooks";

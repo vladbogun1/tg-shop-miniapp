@@ -5,7 +5,8 @@
  * the Mini App's vertical timeline: horizontal on wide screens, vertical on phones.
  */
 import { Check, X } from "lucide-react";
-import { ORDER_STATUS_COLOR, ORDER_TIMELINE, type OrderDetail, type OrderStatus } from "@shop/shared";
+import { ORDER_STATUS_COLOR, ORDER_TIMELINE } from "@shop/core/orders";
+import { type OrderDetail, type OrderStatus } from "@shop/core/types";
 import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/context";
 import { useFmt } from "@/lib/use-fmt";

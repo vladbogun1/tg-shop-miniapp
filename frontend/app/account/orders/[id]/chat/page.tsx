@@ -30,7 +30,7 @@ import {
 } from "@/lib/api";
 import { useT } from "@/i18n/context";
 import { dayLabel, shortOrderId } from "@/lib/format";
-import { dayKey } from "@shop/shared";
+import { dayKey } from "@shop/core/format";
 import { Image } from "@/lib/image";
 import { spring } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";

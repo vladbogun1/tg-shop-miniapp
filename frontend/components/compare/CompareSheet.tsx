@@ -14,13 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Plus, Scale, SlidersHorizontal, Trash2, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import {
-  compareGroups,
-  compareSections,
-  onlyDifferences,
-  type CompareBasics,
-  type CompareSection,
-} from "@shop/shared";
+import { compareGroups, compareSections, onlyDifferences, type CompareBasics, type CompareSection } from "@shop/core/compare";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
 import { useI18n } from "@/i18n/context";
 import { customerApi, type Product } from "@/lib/api";

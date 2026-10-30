@@ -7,7 +7,8 @@
  * in-memory token on every (re)connect, so a chat opened from a deep link before authentication
  * finished connects as soon as the token arrives instead of retrying forever unauthenticated.
  */
-import { connectOrderChat as connect, type ChatConnection, type Message } from "@shop/shared";
+import { connectOrderChat as connect, type ChatConnection } from "@shop/core/ws";
+import { type Message } from "@shop/core/types";
 import { getAccessToken, getApiBase } from "@/lib/api";
 
 export type { ChatConnection };

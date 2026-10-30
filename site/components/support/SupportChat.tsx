@@ -13,13 +13,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ImagePlus, Lock, Send, WifiOff, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  dayKey,
-  type Message,
-  noFadeFlash,
-  type SendMessageRequest,
-  type SupportThread,
-} from "@shop/shared";
+import { dayKey } from "@shop/core/format";
+import { type Message, type SendMessageRequest } from "@shop/core/types";
+import { noFadeFlash } from "@shop/ui/motion";
+import { type SupportThread } from "@shop/core/support";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { Button } from "@/components/ui/Button";
 import { useI18n } from "@/i18n/context";

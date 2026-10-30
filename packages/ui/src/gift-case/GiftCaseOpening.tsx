@@ -41,7 +41,7 @@ import {
   type CaseTier,
   type CaseSize,
   type GiftCaseOpen,
-} from "../giftcase";
+} from "@shop/core/giftcase";
 import { CaseSizePicker, type CaseSizeTexts } from "./case-size";
 import { caseOpenSound, caseRevealSound, caseStopSound, caseTick, isCaseAudioMuted, setCaseAudioMuted, unlockCaseAudio } from "./case-audio";
 import { CaseBurst } from "./case-particles";
