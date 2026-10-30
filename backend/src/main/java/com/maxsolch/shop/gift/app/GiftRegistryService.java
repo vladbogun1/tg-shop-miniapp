@@ -1,17 +1,18 @@
 package com.maxsolch.shop.gift.app;
 
-import com.maxsolch.shop.platform.util.UuidUtil;
+import com.maxsolch.shop.gift.domain.GiftLine;
+import com.maxsolch.shop.gift.domain.GiftPerson;
+import com.maxsolch.shop.gift.infra.GiftRegistryStore;
+import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.gift.app.GiftDtos.GiftRegistryDto;
 import com.maxsolch.shop.gift.app.GiftDtos.GiftRegistryRowDto;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -22,6 +23,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Gifts handed to customers (docs/GIFT-CASE.md, «Реестр подарков и месячный лимит»): every gift line
@@ -39,58 +41,23 @@ import java.util.Map;
 @Service
 public class GiftRegistryService {
 
-    static final ZoneId ZONE = ZoneId.of("Europe/Kyiv");
+    private static final ZoneId ZONE = ShopZone.DEFAULT;
 
     /** How far back undelivered gifts are still looked at (an order older than this is long settled). */
     static final Duration LOOKBACK = Duration.ofDays(120);
 
-    private final JdbcTemplate jdbc;
+    private final GiftRegistryStore store;
     private final SettingsService settings;
 
-    public GiftRegistryService(JdbcTemplate jdbc, SettingsService settings) {
-        this.jdbc = jdbc;
+    public GiftRegistryService(GiftRegistryStore store, SettingsService settings) {
+        this.store = store;
         this.settings = settings;
     }
 
-    /** Who received a gift: the keys an order carries. */
-    public record Person(Long userId, Long tgUserId, String phoneKey) {
-
-        public static Person of(Order o) {
-            return new Person(o.getUserId(), o.getTgUserId(), GiftRegistryService.phoneKey(o.getPhone()));
-        }
+    /** The person of an order as the registry keys them. */
+    public static GiftPerson personOf(Order o) {
+        return new GiftPerson(o.getUserId(), o.getTgUserId(), GiftPerson.phoneKey(o.getPhone()));
     }
-
-    /** Last 9 digits of a phone (+380 67…, 067…, 67… are the same number); null when too short. */
-    public static String phoneKey(String phone) {
-        if (phone == null) {
-            return null;
-        }
-        String digits = phone.replaceAll("\\D", "");
-        return digits.length() < 9 ? null : digits.substring(digits.length() - 9);
-    }
-
-    /** One gift line as the registry sees it. */
-    public record Line(String orderId, Instant createdAt, Instant deliveredAt, String status, String customerName,
-                       String phone, String tgUsername, Person person, String title, String variant, int quantity,
-                       long unitMinor, String source, String tier) {
-
-        public long valueMinor() {
-            return unitMinor * quantity;
-        }
-
-        /** When the gift was handed over: delivered, or (not yet) the order date. */
-        public Instant date() {
-            return deliveredAt != null ? deliveredAt : createdAt;
-        }
-
-        public YearMonth month() {
-            return YearMonth.from(date().atZone(ZONE));
-        }
-    }
-
-    public static final String SOURCE_CASE = "CASE";
-    public static final String SOURCE_THRESHOLD = "THRESHOLD";
-    public static final String SOURCE_ADMIN = "ADMIN";
 
     /** The monthly limit per person, kopecks; 0 = no limit. */
     public long limitMinor() {
@@ -102,14 +69,14 @@ public class GiftRegistryService {
      * this month and not delivered yet. {@link Long#MAX_VALUE} when there is no limit.
      */
     @Transactional(readOnly = true)
-    public long remainingMinor(Person person, Instant now) {
+    public long remainingMinor(GiftPerson person, Instant now) {
         long limit = limitMinor();
         if (limit <= 0) {
             return Long.MAX_VALUE;
         }
         YearMonth month = YearMonth.from(now.atZone(ZONE));
         Instant since = month.atDay(1).atStartOfDay(ZONE).toInstant().minus(LOOKBACK);
-        long used = usedMinor(person, lines(since), month);
+        long used = usedMinor(person, store.lines(since), month);
         return Math.max(0, limit - used);
     }
 
@@ -118,28 +85,26 @@ public class GiftRegistryService {
      * gifts already in this order count too. Empty when the order does not exist.
      */
     @Transactional(readOnly = true)
-    public java.util.Optional<GiftDtos.GiftLimitDto> limitForOrder(byte[] orderId, Instant now) {
-        List<Person> found = jdbc.query("select user_id, tg_user_id, phone from orders where id = ?",
-                (rs, n) -> new Person(nullableLong(rs, "user_id"), nullableLong(rs, "tg_user_id"),
-                        phoneKey(rs.getString("phone"))), (Object) orderId);
+    public Optional<GiftDtos.GiftLimitDto> limitForOrder(byte[] orderId, Instant now) {
+        Optional<GiftPerson> found = store.personOfOrder(orderId);
         if (found.isEmpty()) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
         YearMonth month = YearMonth.from(now.atZone(ZONE));
         Instant since = month.atDay(1).atStartOfDay(ZONE).toInstant().minus(LOOKBACK);
-        long used = usedMinor(found.get(0), lines(since), month);
+        long used = usedMinor(found.get(), store.lines(since), month);
         long limit = limitMinor();
-        return java.util.Optional.of(new GiftDtos.GiftLimitDto(month.toString(), limit, used,
+        return Optional.of(new GiftDtos.GiftLimitDto(month.toString(), limit, used,
                 limit > 0 ? Math.max(0, limit - used) : -1));
     }
 
     /** The person's gifts (with everyone joined to them) delivered in {@code month} or not delivered yet. */
-    static long usedMinor(Person person, List<Line> lines, YearMonth month) {
-        List<Line> all = new ArrayList<>(lines);
-        int[] group = groups(all.stream().map(Line::person).toList(), person);
+    static long usedMinor(GiftPerson person, List<GiftLine> lines, YearMonth month) {
+        List<GiftLine> all = new ArrayList<>(lines);
+        int[] group = groups(all.stream().map(GiftLine::person).toList(), person);
         long used = 0;
         for (int i = 0; i < all.size(); i++) {
-            Line l = all.get(i);
+            GiftLine l = all.get(i);
             if (group[i] == group[all.size()] && (l.deliveredAt() == null || l.month().equals(month))) {
                 used += l.valueMinor();
             }
@@ -154,17 +119,17 @@ public class GiftRegistryService {
     @Transactional(readOnly = true)
     public GiftRegistryDto registry(LocalDate from, LocalDate to) {
         if (from == null || to == null || to.isBefore(from)) {
-            throw new BadRequestException("Неверный период");
+            throw new DomainException.BadRequest("Неверный период");
         }
         if (Duration.between(from.atStartOfDay(), to.atStartOfDay()).toDays() > 400) {
-            throw new BadRequestException("Период — не больше года");
+            throw new DomainException.BadRequest("Период — не больше года");
         }
         Instant start = from.atStartOfDay(ZONE).toInstant();
         Instant end = to.plusDays(1).atStartOfDay(ZONE).toInstant();
         // Whole months around the span, so a month total also counts gifts outside the shown dates.
         Instant since = YearMonth.from(from).atDay(1).atStartOfDay(ZONE).toInstant().minus(LOOKBACK);
-        List<Line> lines = lines(since);
-        int[] group = groups(lines.stream().map(Line::person).toList(), null);
+        List<GiftLine> lines = store.lines(since);
+        int[] group = groups(lines.stream().map(GiftLine::person).toList(), null);
 
         Map<String, Long> monthTotal = new HashMap<>();
         for (int i = 0; i < lines.size(); i++) {
@@ -176,7 +141,7 @@ public class GiftRegistryService {
         java.util.Set<Integer> people = new java.util.HashSet<>();
         java.util.Set<Integer> over = new java.util.HashSet<>();
         for (int i = 0; i < lines.size(); i++) {
-            Line l = lines.get(i);
+            GiftLine l = lines.get(i);
             Instant date = l.date();
             if (date.isBefore(start) || !date.isBefore(end)) {
                 continue;
@@ -199,45 +164,12 @@ public class GiftRegistryService {
                 over.size(), rows);
     }
 
-    /** Gift lines of not rejected orders created since {@code since}, units returned left out. */
-    List<Line> lines(Instant since) {
-        return jdbc.query("""
-                select o.id, o.created_at, o.delivered_at, o.status, o.customer_name, o.phone, o.tg_username,
-                       o.user_id, o.tg_user_id, o.gift_tier,
-                       i.title_snapshot, i.variant_name_snapshot, i.quantity - i.returned_qty qty,
-                       case when i.gift_value_minor > 0 then i.gift_value_minor else coalesce(p.price_minor, 0) end unit,
-                       i.auto_gift, i.case_rarity
-                  from order_items i
-                  join orders o on o.id = i.order_id
-                  left join products p on p.id = i.product_id
-                 where i.gift = 1 and o.status <> 'REJECTED' and o.created_at >= ?
-                   and i.quantity - i.returned_qty > 0
-                 order by o.created_at, i.id
-                """, (rs, n) -> {
-            String phone = rs.getString("phone");
-            Timestamp delivered = rs.getTimestamp("delivered_at");
-            boolean isCase = rs.getString("case_rarity") != null;
-            String source = isCase ? SOURCE_CASE : rs.getBoolean("auto_gift") ? SOURCE_THRESHOLD : SOURCE_ADMIN;
-            return new Line(UuidUtil.toString(rs.getBytes("id")), rs.getTimestamp("created_at").toInstant(),
-                    delivered == null ? null : delivered.toInstant(), rs.getString("status"),
-                    rs.getString("customer_name"), phone, rs.getString("tg_username"),
-                    new Person(nullableLong(rs, "user_id"), nullableLong(rs, "tg_user_id"), phoneKey(phone)),
-                    rs.getString("title_snapshot"), rs.getString("variant_name_snapshot"), rs.getInt("qty"),
-                    rs.getLong("unit"), source, isCase ? rs.getString("gift_tier") : null);
-        }, Timestamp.from(since));
-    }
-
-    private static Long nullableLong(java.sql.ResultSet rs, String col) throws java.sql.SQLException {
-        long v = rs.getLong(col);
-        return rs.wasNull() ? null : v;
-    }
-
     /**
      * Joins people that share any key (union–find). With {@code extra} non-null it takes the index
      * {@code people.size()}, so the caller can ask which lines belong to it.
      */
-    static int[] groups(List<Person> people, Person extra) {
-        List<Person> all = new ArrayList<>(people);
+    static int[] groups(List<GiftPerson> people, GiftPerson extra) {
+        List<GiftPerson> all = new ArrayList<>(people);
         if (extra != null) {
             all.add(extra);
         }
@@ -247,7 +179,7 @@ public class GiftRegistryService {
         }
         Map<String, Integer> firstByKey = new HashMap<>();
         for (int i = 0; i < all.size(); i++) {
-            Person p = all.get(i);
+            GiftPerson p = all.get(i);
             for (String key : new String[]{
                     p.userId() == null ? null : "u" + p.userId(),
                     p.tgUserId() == null ? null : "t" + p.tgUserId(),

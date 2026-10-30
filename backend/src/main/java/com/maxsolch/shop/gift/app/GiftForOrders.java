@@ -117,7 +117,7 @@ public class GiftForOrders implements OrderGifts {
 
     @Override
     public long limitLeft(Order order) {
-        return registry.remainingMinor(GiftRegistryService.Person.of(order), clock.instant());
+        return registry.remainingMinor(GiftRegistryService.personOf(order), clock.instant());
     }
 
     @Override
