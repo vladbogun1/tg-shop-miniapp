@@ -1,12 +1,12 @@
 package com.maxsolch.shop.inbox.infra;
 
+import com.maxsolch.shop.inbox.domain.InboxChatRow;
+import com.maxsolch.shop.inbox.domain.InboxOrderRow;
 import com.maxsolch.shop.inbox.domain.InboxItemType;
 import com.maxsolch.shop.inbox.domain.InboxMark;
-import com.maxsolch.shop.inbox.domain.InboxRules;
+
 
 import com.maxsolch.shop.order.domain.OrderStatus;
-import com.maxsolch.shop.inbox.domain.InboxFacts.ChatRow;
-import com.maxsolch.shop.inbox.domain.InboxFacts.OrderRow;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -34,12 +34,12 @@ public class InboxStore {
 
     /**
      * Orders that may produce a row. The WHERE only narrows the scan (the board's
-     * {@code idx_orders_status_created} and the unread index serve it); {@link InboxRules}
+     * {@code idx_orders_status_created} and the unread index serve it); the inbox rules
      * re-checks every condition. The money predicates are coarse supersets of the Java ones:
      * {@code received_minor < total_minor} ⊇ {@link com.maxsolch.shop.order.domain.OrderMoney#amountDueMinor(long, long, long)} > 0,
      * {@code received_minor > refunded_minor} ⊇ {@link com.maxsolch.shop.order.domain.OrderMoney#refundableMinor} > 0.
      */
-    public List<OrderRow> candidateOrders(Instant newCutoff, Instant approvedCutoff, Instant returnsSince) {
+    public List<InboxOrderRow> candidateOrders(Instant newCutoff, Instant approvedCutoff, Instant returnsSince) {
         String sql = "select bin_to_uuid(o.id) id, o.status, o.customer_name, o.total_minor, o.received_minor, "
                 + "o.prepayment_minor, o.refunded_minor, o.created_at, o.approved_at, o.shipped_at, o.rejected_at, "
                 + "o.returned_at, o.paid, o.paid_at, o.reject_reason, o.reject_reason_code, "
@@ -57,7 +57,7 @@ public class InboxStore {
                 + "or (o.returned_at >= ?) "
                 + "or o.id in (select m.order_id from order_messages m "
                 + "where m.sender_type = 'CUSTOMER' and m.read_at is null)";
-        return jdbc.query(sql, (rs, i) -> new OrderRow(
+        return jdbc.query(sql, (rs, i) -> new InboxOrderRow(
                         rs.getString("id"),
                         OrderStatus.valueOf(rs.getString("status")),
                         rs.getString("customer_name"),
@@ -84,14 +84,14 @@ public class InboxStore {
     }
 
     /** One row per order with unread customer messages: count, newest id, oldest time, newest preview. */
-    public List<ChatRow> unreadChats() {
+    public List<InboxChatRow> unreadChats() {
         String sql = "select bin_to_uuid(u.order_id) order_id, u.cnt, u.last_id, u.first_at, "
                 + "m.type, m.text, m.file_name "
                 + "from (select order_id, count(*) cnt, max(id) last_id, min(created_at) first_at "
                 + "      from order_messages where sender_type = 'CUSTOMER' and read_at is null "
                 + "      group by order_id) u "
                 + "join order_messages m on m.id = u.last_id";
-        return jdbc.query(sql, (rs, i) -> new ChatRow(
+        return jdbc.query(sql, (rs, i) -> new InboxChatRow(
                 rs.getString("order_id"),
                 rs.getLong("cnt"),
                 rs.getLong("last_id"),
@@ -121,14 +121,14 @@ public class InboxStore {
     }
 
     /** Insert or replace the mark of one row (the latest action wins). */
-    public void upsert(InboxMark mark, Long adminId, String adminName) {
+    public void upsert(InboxMark mark, Long adminId, String adminName, Instant now) {
         jdbc.update("insert into inbox_marks (item_type, entity_id, item_version, mark, until_at, created_at, "
                         + "created_by, created_by_name) values (?, ?, ?, ?, ?, ?, ?, ?) "
                         + "on duplicate key update item_version = values(item_version), mark = values(mark), "
                         + "until_at = values(until_at), created_at = values(created_at), "
                         + "created_by = values(created_by), created_by_name = values(created_by_name)",
                 mark.type().name(), mark.entityId(), mark.version(), mark.kind().name(),
-                mark.until() == null ? null : Timestamp.from(mark.until()), Timestamp.from(Instant.now()),
+                mark.until() == null ? null : Timestamp.from(mark.until()), Timestamp.from(now),
                 adminId, adminName);
     }
 

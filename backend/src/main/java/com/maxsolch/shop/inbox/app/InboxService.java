@@ -1,9 +1,7 @@
 package com.maxsolch.shop.inbox.app;
 
-import com.maxsolch.shop.inbox.domain.InboxFacts;
 import com.maxsolch.shop.inbox.domain.InboxItemType;
 import com.maxsolch.shop.inbox.domain.InboxMark;
-import com.maxsolch.shop.inbox.domain.InboxRules;
 import com.maxsolch.shop.inbox.infra.InboxStore;
 
 import com.maxsolch.shop.analytics.AnalyticsZone;
@@ -19,12 +17,14 @@ import com.maxsolch.shop.inbox.app.InboxDtos.SnoozeResult;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.site.app.SiteRevalidator;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.web.SecurityUtil;
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.platform.error.ErrorCode;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -63,15 +63,23 @@ public class InboxService {
     private final SettingsService settings;
     private final AdminAuditService audit;
     private final ZoneId zone;
+    private final Clock clock;
+    private final CurrentActor actor;
+    /** Modules that add rows of their own kind (reviews, support threads). */
+    private final List<InboxExtraSource> extraSources;
 
     public InboxService(InboxStore store, AdminMetricsService metrics, SiteRevalidator site,
-                        SettingsService settings, AdminAuditService audit, AppProperties props) {
+                        SettingsService settings, AdminAuditService audit, AppProperties props,
+                        Clock clock, CurrentActor actor, List<InboxExtraSource> extraSources) {
         this.store = store;
         this.metrics = metrics;
         this.site = site;
         this.settings = settings;
         this.audit = audit;
         this.zone = AnalyticsZone.of(props);
+        this.clock = clock;
+        this.actor = actor;
+        this.extraSources = extraSources == null ? List.of() : List.copyOf(extraSources);
     }
 
     /**
@@ -79,7 +87,7 @@ public class InboxService {
      * transactional loader) must not mark a shared transaction rollback-only.
      */
     public Inbox inbox() {
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         InboxRules.Thresholds t = new InboxRules.Thresholds(
                 settings.getInt(SettingsRegistry.INBOX_NEW_STALE_HOURS),
                 settings.getInt(SettingsRegistry.INBOX_APPROVED_STALE_HOURS));
@@ -92,14 +100,6 @@ public class InboxService {
                 runningOut(),
                 site.status());
         return InboxRules.build(facts, store.marks(), t, extraItems(now));
-    }
-
-    /** Rows from other modules (support threads); optional, so tests can build the service bare. */
-    private List<InboxExtraSource> extraSources = List.of();
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setExtraSources(List<InboxExtraSource> sources) {
-        this.extraSources = sources == null ? List.of() : List.copyOf(sources);
     }
 
     private List<InboxDtos.Item> extraItems(Instant now) {
@@ -118,7 +118,7 @@ public class InboxService {
     @Transactional
     public SnoozeResult snooze(SnoozeRequest req) {
         if (req == null) {
-            throw new BadRequestException("Пустой запрос");
+            throw new DomainException.BadRequest("Пустой запрос");
         }
         InboxItemType type = type(req.type());
         String entityId = entityId(req.entityId());
@@ -127,13 +127,13 @@ public class InboxService {
         try {
             preset = SnoozePreset.valueOf(req.preset() == null ? "" : req.preset().trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Неизвестный срок: " + req.preset(), "INBOX_BAD_PRESET");
+            throw new DomainException.BadRequest("Неизвестный срок: " + req.preset(), ErrorCode.of("INBOX_BAD_PRESET"));
         }
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         Instant until = until(preset, now, zone);
         store.purge(now.minus(Duration.ofDays(1)), now.minus(Duration.ofDays(90)));
         store.upsert(new InboxMark(type, entityId, version, InboxMark.Kind.SNOOZED, until),
-                currentAdminId(), audit.currentAdminName());
+                currentAdminId(), audit.currentAdminName(), now);
         return new SnoozeResult(until);
     }
 
@@ -141,19 +141,19 @@ public class InboxService {
     @Transactional
     public void dismiss(DismissRequest req) {
         if (req == null) {
-            throw new BadRequestException("Пустой запрос");
+            throw new DomainException.BadRequest("Пустой запрос");
         }
         InboxItemType type = type(req.type());
         if (!type.dismissible()) {
-            throw new BadRequestException("Эту строку можно только отложить — она уйдёт сама, когда заказ обработают",
-                    "INBOX_NOT_DISMISSIBLE");
+            throw new DomainException.BadRequest("Эту строку можно только отложить — она уйдёт сама, когда заказ обработают",
+                    ErrorCode.of("INBOX_NOT_DISMISSIBLE"));
         }
         String entityId = entityId(req.entityId());
         String version = version(req.version());
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         store.purge(now.minus(Duration.ofDays(1)), now.minus(Duration.ofDays(90)));
         store.upsert(new InboxMark(type, entityId, version, InboxMark.Kind.DISMISSED, null),
-                currentAdminId(), audit.currentAdminName());
+                currentAdminId(), audit.currentAdminName(), now);
         audit.record("INBOX_DISMISS", type.auditEntityType(), auditEntityId(type, entityId),
                 "«Внимание» → " + type.title() + ": разобрано" + orderSuffix(type, entityId));
     }
@@ -162,7 +162,7 @@ public class InboxService {
     @Transactional
     public void restore(RestoreRequest req) {
         if (req == null) {
-            throw new BadRequestException("Пустой запрос");
+            throw new DomainException.BadRequest("Пустой запрос");
         }
         InboxItemType type = type(req.type());
         String entityId = entityId(req.entityId());
@@ -201,21 +201,21 @@ public class InboxService {
     private static InboxItemType type(String raw) {
         InboxItemType type = InboxItemType.parse(raw);
         if (type == null) {
-            throw new BadRequestException("Неизвестный тип строки: " + raw, "INBOX_BAD_TYPE");
+            throw new DomainException.BadRequest("Неизвестный тип строки: " + raw, ErrorCode.of("INBOX_BAD_TYPE"));
         }
         return type;
     }
 
     private static String entityId(String raw) {
         if (raw == null || raw.isBlank() || raw.length() > MAX_ID) {
-            throw new BadRequestException("Не указано, к чему относится строка", "INBOX_BAD_ENTITY");
+            throw new DomainException.BadRequest("Не указано, к чему относится строка", ErrorCode.of("INBOX_BAD_ENTITY"));
         }
         return raw.trim();
     }
 
     private static String version(String raw) {
         if (raw == null || raw.isBlank() || raw.length() > MAX_VERSION) {
-            throw new BadRequestException("Не указана версия строки — обновите экран", "INBOX_BAD_VERSION");
+            throw new DomainException.BadRequest("Не указана версия строки — обновите экран", ErrorCode.of("INBOX_BAD_VERSION"));
         }
         return raw.trim();
     }
@@ -233,11 +233,7 @@ public class InboxService {
         return "ORDER".equals(type.auditEntityType()) ? " (заказ #" + InboxRules.shortId(entityId) + ")" : "";
     }
 
-    private static Long currentAdminId() {
-        try {
-            return SecurityUtil.currentUserId();
-        } catch (Exception e) {
-            return null;
-        }
+    private Long currentAdminId() {
+        return actor.isPresent() ? actor.userId() : null;
     }
 }

@@ -14,7 +14,7 @@ import com.maxsolch.shop.inbox.app.InboxDtos.SnoozeRequest;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.site.app.SiteRevalidator;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -62,7 +62,8 @@ class InboxServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new InboxService(store, metrics, site, settings, audit, new AppProperties());
+        service = new InboxService(store, metrics, site, settings, audit, new AppProperties(),
+                java.time.Clock.systemUTC(), new com.maxsolch.shop.platform.web.CurrentActor(), java.util.List.of());
         lenient().when(audit.currentAdminName()).thenReturn("Max");
     }
 
@@ -97,7 +98,7 @@ class InboxServiceTest {
         var res = service.snooze(new SnoozeRequest("payment", ORDER, "1759570000000", "hour"));
 
         ArgumentCaptor<InboxMark> mark = ArgumentCaptor.forClass(InboxMark.class);
-        verify(store).upsert(mark.capture(), isNull(), eq("Max"));
+        verify(store).upsert(mark.capture(), isNull(), eq("Max"), any());
         assertThat(mark.getValue().type()).isEqualTo(InboxItemType.PAYMENT);
         assertThat(mark.getValue().entityId()).isEqualTo(ORDER);
         assertThat(mark.getValue().version()).isEqualTo("1759570000000");
@@ -110,14 +111,14 @@ class InboxServiceTest {
     @Test
     void snooze_rejectsBadInput() {
         assertThatThrownBy(() -> service.snooze(new SnoozeRequest("NOPE", ORDER, "1", "HOUR")))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> service.snooze(new SnoozeRequest("CHAT", ORDER, "1", "FOREVER")))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> service.snooze(new SnoozeRequest("CHAT", ORDER, " ", "HOUR")))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> service.snooze(new SnoozeRequest("CHAT", "", "1", "HOUR")))
-                .isInstanceOf(BadRequestException.class);
-        verify(store, never()).upsert(any(), any(), any());
+                .isInstanceOf(DomainException.BadRequest.class);
+        verify(store, never()).upsert(any(), any(), any(), any());
     }
 
     // ------------------------------------------------------------------ dismiss
@@ -125,11 +126,11 @@ class InboxServiceTest {
     @Test
     void dismiss_onlyInformationalRows() {
         assertThatThrownBy(() -> service.dismiss(new DismissRequest("PAYMENT", ORDER, "1")))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("только отложить");
         assertThatThrownBy(() -> service.dismiss(new DismissRequest("NEW_STALE", ORDER, "1")))
-                .isInstanceOf(BadRequestException.class);
-        verify(store, never()).upsert(any(), any(), any());
+                .isInstanceOf(DomainException.BadRequest.class);
+        verify(store, never()).upsert(any(), any(), any(), any());
     }
 
     @Test
@@ -137,7 +138,7 @@ class InboxServiceTest {
         service.dismiss(new DismissRequest("RETURN", ORDER, "1759570000000"));
 
         ArgumentCaptor<InboxMark> mark = ArgumentCaptor.forClass(InboxMark.class);
-        verify(store).upsert(mark.capture(), isNull(), eq("Max"));
+        verify(store).upsert(mark.capture(), isNull(), eq("Max"), any());
         assertThat(mark.getValue().kind()).isEqualTo(InboxMark.Kind.DISMISSED);
         assertThat(mark.getValue().until()).isNull();
         verify(audit).record(eq("INBOX_DISMISS"), eq("ORDER"), eq(ORDER), eq(

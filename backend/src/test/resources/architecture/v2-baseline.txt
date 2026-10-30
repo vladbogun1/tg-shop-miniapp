@@ -2,7 +2,6 @@
 # Format: <rule> <module> <count>. Numbers only go DOWN: regenerate with
 #   mvn -B -ntp test -Dtest=ArchitectureV2Test -Darchitecture.v2.update=true
 # after fixing violations; a raised number means the code got worse and the change must be redone.
-A1 inbox 1
 A1 legacy 7
 A1 platform 3
 A1 review 1
@@ -11,14 +10,12 @@ A2 legacy 2
 A2 review 1
 A2 support 2
 C1 gift 8
-C1 inbox 2
 C1 legacy 26
 C1 review 5
 C1 support 2
 CA legacy 4
 E1 finance 1
 E1 gift 9
-E1 inbox 1
 E1 legacy 22
 E1 platform 6
 E1 review 2
@@ -29,7 +26,6 @@ J1 platform 2
 K1 legacy 1
 L1 legacy 1
 L2 legacy 13
-L3 inbox 5
 L3 legacy 1
 L4 legacy 3
 L4 review 1
@@ -40,7 +36,6 @@ M1 review 3
 M1 support 2
 M2 order 16
 M2 promo 1
-M2 support 2
 N1 gift 1
 N1 legacy 45
 N1 platform 7
@@ -54,8 +49,7 @@ T1 review 1
 T1 support 2
 T2 legacy 3
 W1 gift 2
-W1 inbox 2
 W1 legacy 17
 W1 platform 2
 W1 review 1
-W1 support 2
+W1 support 1

@@ -6,7 +6,7 @@ import com.maxsolch.shop.adminauth.LoginMethod;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.translation.app.BotTexts;
-import com.maxsolch.shop.inbox.app.InboxService;
+import com.maxsolch.shop.support.app.AdminBadge;
 import com.maxsolch.shop.preorder.domain.PreorderEvents;
 import com.maxsolch.shop.procurement.app.BatchDtos.EtaDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.MyPreorderDto;
@@ -58,7 +58,10 @@ class NotifiersSnapshotTest {
     private final NotifyHarness h = new NotifyHarness();
 
     private final AdminPushService push = Mockito.mock(AdminPushService.class);
-    private final InboxService inbox = Mockito.mock(InboxService.class);
+    /** No inbox total unless a test says so: the push goes without a badge, as before. */
+    private final AdminBadge inbox = Mockito.mock(AdminBadge.class, call -> {
+        throw new IllegalStateException("no inbox");
+    });
     private final SupportThreadRepository threads = Mockito.mock(SupportThreadRepository.class);
     private final PreorderQueueReader queue = Mockito.mock(PreorderQueueReader.class);
     private final AdminSessions sessions = Mockito.mock(AdminSessions.class);
@@ -172,7 +175,6 @@ class NotifiersSnapshotTest {
     @Test
     void supportCustomerWroteToAdmins() throws Exception {
         SupportNotifier n = support();
-        when(inbox.inbox()).thenThrow(new IllegalStateException("no inbox"));
         thread(NotifyHarness.TG_UK, "Іван <Петренко>", "Lamzu <Atlantis> " + "x".repeat(130));
         h.scene("new thread about a product, badge lookup fails", null,
                 () -> n.onMessage(new SupportEvents.MessagePosted(THREAD, false, true, "Є <в> наявності? " + "ы".repeat(320))));

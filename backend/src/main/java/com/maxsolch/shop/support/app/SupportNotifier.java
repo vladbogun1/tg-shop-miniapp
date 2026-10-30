@@ -6,14 +6,12 @@ import com.maxsolch.shop.support.infra.SupportThreadRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.i18n.ChatPreview;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.inbox.app.InboxService;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.push.AdminPushService;
 import com.maxsolch.shop.push.AdminPushService.PushMessage;
 import com.maxsolch.shop.tg.CustomerBot;
 import com.maxsolch.shop.tg.SellerChannel;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -41,16 +39,16 @@ public class SupportNotifier {
     private final SellerChannel seller;
     private final Messages messages;
     private final AdminPushService push;
-    private final InboxService inbox;
+    private final AdminBadge adminBadge;
     private final SupportThreadRepository threads;
 
     public SupportNotifier(CustomerBot customer, SellerChannel seller, Messages messages, AdminPushService push,
-                           @Lazy InboxService inbox, SupportThreadRepository threads) {
+                           AdminBadge adminBadge, SupportThreadRepository threads) {
         this.customer = customer;
         this.seller = seller;
         this.messages = messages;
         this.push = push;
-        this.inbox = inbox;
+        this.adminBadge = adminBadge;
         this.threads = threads;
     }
 
@@ -133,7 +131,7 @@ public class SupportNotifier {
 
     private Integer badge() {
         try {
-            return inbox.inbox().total();
+            return adminBadge.total();
         } catch (RuntimeException e) {
             return null;
         }

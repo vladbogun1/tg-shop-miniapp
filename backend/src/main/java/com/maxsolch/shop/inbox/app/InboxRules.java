@@ -1,6 +1,9 @@
-package com.maxsolch.shop.inbox.domain;
+package com.maxsolch.shop.inbox.app;
 
-import com.maxsolch.shop.inbox.app.InboxService;
+import com.maxsolch.shop.inbox.domain.InboxChatRow;
+import com.maxsolch.shop.inbox.domain.InboxOrderRow;
+import com.maxsolch.shop.inbox.domain.InboxItemType;
+import com.maxsolch.shop.inbox.domain.InboxMark;
 
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.ReorderRow;
 import com.maxsolch.shop.order.domain.OrderMoney;
@@ -8,8 +11,6 @@ import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.inbox.app.InboxDtos.Group;
 import com.maxsolch.shop.inbox.app.InboxDtos.Inbox;
 import com.maxsolch.shop.inbox.app.InboxDtos.Item;
-import com.maxsolch.shop.inbox.domain.InboxFacts.ChatRow;
-import com.maxsolch.shop.inbox.domain.InboxFacts.OrderRow;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 
 import java.time.Duration;
@@ -88,8 +89,8 @@ public final class InboxRules {
             }
         }
 
-        Map<String, OrderRow> byId = new HashMap<>();
-        for (OrderRow o : facts.orders()) {
+        Map<String, InboxOrderRow> byId = new HashMap<>();
+        for (InboxOrderRow o : facts.orders()) {
             byId.put(o.id(), o);
             if (isCancelRequested(o)) {
                 // Takes the place of "paid — confirm": the customer no longer wants the order.
@@ -112,7 +113,7 @@ public final class InboxRules {
                 all.get(InboxItemType.RETURN).add(returned(o, now));
             }
         }
-        for (ChatRow c : facts.chats()) {
+        for (InboxChatRow c : facts.chats()) {
             if (c.unread() <= 0) {
                 continue;
             }
@@ -163,13 +164,13 @@ public final class InboxRules {
     // ------------------------------------------------------------------ selection
 
     /** The customer asked to cancel a paid order that has not shipped: an admin approves or declines. */
-    static boolean isCancelRequested(OrderRow o) {
+    static boolean isCancelRequested(InboxOrderRow o) {
         return "PENDING".equals(o.cancelRequestStatus())
                 && (o.status() == OrderStatus.NEW || o.status() == OrderStatus.APPROVED);
     }
 
     /** Paid online (monobank) and still NEW: the payment does not move the status, an admin confirms. */
-    static boolean isPaidAwaitingConfirm(OrderRow o) {
+    static boolean isPaidAwaitingConfirm(InboxOrderRow o) {
         return o.status() == OrderStatus.NEW && o.paidOnline() && o.paid() && o.receivedMinor() > 0;
     }
 
@@ -177,7 +178,7 @@ public final class InboxRules {
      * Paid online, then cancelled before it shipped, and not all of the money went back. Refusals
      * after shipping belong to {@link InboxItemType#RETURN}.
      */
-    static boolean isPaidCancelled(OrderRow o) {
+    static boolean isPaidCancelled(InboxOrderRow o) {
         return o.status() == OrderStatus.REJECTED && o.paidOnline() && o.shippedAt() == null
                 && o.refundedMinor() < o.receivedMinor();
     }
@@ -187,29 +188,29 @@ public final class InboxRules {
      * or the whole order for «Полная оплата онлайн» — has not arrived. A pending cancellation
      * request is shown in «Оплаты» instead.
      */
-    static boolean isApprovedUnpaid(OrderRow o) {
+    static boolean isApprovedUnpaid(InboxOrderRow o) {
         return o.status() == OrderStatus.APPROVED && o.paymentDueAt() != null && onlineDue(o) > 0
                 && !isCancelRequested(o);
     }
 
     /** What is still to pay online; the formula lives in {@link OrderMoney#amountDueMinor(long, long, long)}. */
-    static long onlineDue(OrderRow o) {
+    static long onlineDue(InboxOrderRow o) {
         return OrderMoney.amountDueMinor(o.totalMinor(), o.prepaymentMinor(), o.receivedMinor());
     }
 
-    static boolean isNewStale(OrderRow o, Instant now, int hours) {
+    static boolean isNewStale(InboxOrderRow o, Instant now, int hours) {
         return o.status() == OrderStatus.NEW && o.createdAt() != null
                 && !o.createdAt().isAfter(now.minus(Duration.ofHours(hours)));
     }
 
-    static boolean isApprovedStale(OrderRow o, Instant now, int hours) {
+    static boolean isApprovedStale(InboxOrderRow o, Instant now, int hours) {
         Instant from = approvedFrom(o);
         return o.status() == OrderStatus.APPROVED && from != null
                 && !from.isAfter(now.minus(Duration.ofHours(hours)));
     }
 
     /** Refused after it was shipped, or a return registered — within {@link #RETURNS_DAYS}. */
-    static boolean isReturnEvent(OrderRow o, Instant now) {
+    static boolean isReturnEvent(InboxOrderRow o, Instant now) {
         return returnEventAt(o, now) != null;
     }
 
@@ -218,17 +219,17 @@ public final class InboxRules {
                 && (s.lastSuccessAt() == null || s.lastErrorAt().isAfter(s.lastSuccessAt()));
     }
 
-    private static Instant approvedFrom(OrderRow o) {
+    private static Instant approvedFrom(InboxOrderRow o) {
         // Orders approved before status timestamps existed have no approved_at.
         return o.approvedAt() != null ? o.approvedAt() : o.createdAt();
     }
 
-    private static boolean refusedAfterShipping(OrderRow o) {
+    private static boolean refusedAfterShipping(InboxOrderRow o) {
         return o.status() == OrderStatus.REJECTED && o.shippedAt() != null && o.rejectedAt() != null;
     }
 
     /** Time of the latest refusal/return event inside the window, or null. */
-    private static Instant returnEventAt(OrderRow o, Instant now) {
+    private static Instant returnEventAt(InboxOrderRow o, Instant now) {
         Instant since = now.minus(Duration.ofDays(RETURNS_DAYS));
         Instant at = null;
         if (refusedAfterShipping(o) && !o.rejectedAt().isBefore(since)) {
@@ -243,7 +244,7 @@ public final class InboxRules {
 
     // ------------------------------------------------------------------ rows
 
-    private static Item paidConfirm(OrderRow o, Instant now) {
+    private static Item paidConfirm(InboxOrderRow o, Instant now) {
         Instant since = o.paidAt() != null ? o.paidAt() : o.createdAt();
         boolean partial = o.receivedMinor() < o.totalMinor();
         return orderItem(InboxItemType.PAYMENT, o, "paid:" + version(since), PAID_CONFIRM,
@@ -251,7 +252,7 @@ public final class InboxRules {
                 null, since, now, overdue(since, now, PAYMENT_OVERDUE));
     }
 
-    private static Item cancelRequest(OrderRow o, Instant now) {
+    private static Item cancelRequest(InboxOrderRow o, Instant now) {
         Instant since = o.cancelRequestedAt() != null ? o.cancelRequestedAt() : o.createdAt();
         String reason = o.cancelRequestReason() == null || o.cancelRequestReason().isBlank()
                 ? "" : " · " + shorten(o.cancelRequestReason(), 100);
@@ -259,7 +260,7 @@ public final class InboxRules {
                 o.receivedMinor(), "оплачено", null, since, now, overdue(since, now, PAYMENT_OVERDUE));
     }
 
-    private static Item paidRefund(OrderRow o, Instant now) {
+    private static Item paidRefund(InboxOrderRow o, Instant now) {
         Instant since = o.rejectedAt() != null ? o.rejectedAt() : o.createdAt();
         // The version follows the refunded amount too: a partial refund brings the row back.
         return orderItem(InboxItemType.PAYMENT, o, "refund:" + version(since) + ":" + o.refundedMinor(),
@@ -267,13 +268,13 @@ public final class InboxRules {
                 null, since, now, overdue(since, now, PAYMENT_OVERDUE));
     }
 
-    private static Item newStale(OrderRow o, Instant now, int hours) {
+    private static Item newStale(InboxOrderRow o, Instant now, int hours) {
         return orderItem(InboxItemType.NEW_STALE, o, version(o.createdAt()), "Новый заказ ждёт одобрения",
                 o.totalMinor(), null, null, o.createdAt(), now,
                 overdue(o.createdAt(), now, Duration.ofHours(2L * hours)));
     }
 
-    private static Item approvedStale(OrderRow o, Instant now, int hours) {
+    private static Item approvedStale(InboxOrderRow o, Instant now, int hours) {
         Instant from = approvedFrom(o);
         return orderItem(InboxItemType.APPROVED_STALE, o, version(from), "Одобрен, но ещё не отправлен",
                 o.totalMinor(), null, null, from, now, overdue(from, now, Duration.ofHours(2L * hours)));
@@ -282,7 +283,7 @@ public final class InboxRules {
     /** Subtitle of an {@link InboxItemType#APPROVED_UNPAID} row. */
     public static final String APPROVED_UNPAID_TEXT = "Одобрен, но онлайн-оплата не пришла";
 
-    private static Item approvedUnpaid(OrderRow o, Instant now) {
+    private static Item approvedUnpaid(InboxOrderRow o, Instant now) {
         Instant from = approvedFrom(o);
         boolean expired = !o.paymentDueAt().isAfter(now);
         // The version follows the received amount: a partial payment brings a snoozed row back.
@@ -292,7 +293,7 @@ public final class InboxRules {
                 null, from, now, expired);
     }
 
-    private static Item returned(OrderRow o, Instant now) {
+    private static Item returned(InboxOrderRow o, Instant now) {
         Instant at = returnEventAt(o, now);
         boolean isReturn = o.returnedAt() != null && o.returnedAt().equals(at);
         String subtitle;
@@ -314,7 +315,7 @@ public final class InboxRules {
         return orderItem(InboxItemType.RETURN, o, version(at), subtitle, amount, note, null, at, now, false);
     }
 
-    private static Item chat(ChatRow c, OrderRow o, Instant now) {
+    private static Item chat(InboxChatRow c, InboxOrderRow o, Instant now) {
         String title = o == null ? "Заказ #" + shortId(c.orderId()) : name(o);
         long wait = waitMinutes(c.firstUnreadAt(), now);
         return new Item(InboxMark.key(InboxItemType.CHAT, c.orderId()), InboxItemType.CHAT.name(), c.orderId(),
@@ -350,7 +351,7 @@ public final class InboxRules {
                 s.lastErrorAt(), waitMinutes(s.lastErrorAt(), now), false);
     }
 
-    private static Item orderItem(InboxItemType type, OrderRow o, String version, String subtitle, Long amount,
+    private static Item orderItem(InboxItemType type, InboxOrderRow o, String version, String subtitle, Long amount,
                                   String amountNote, Integer unread, Instant since, Instant now, boolean overdue) {
         return new Item(InboxMark.key(type, o.id()), type.name(), o.id(), version, name(o), subtitle,
                 o.id(), shortId(o.id()), o.status().name(), amount, amountNote, null, null, null, null, unread,
@@ -371,7 +372,7 @@ public final class InboxRules {
         return since == null ? 0 : Math.max(0, Duration.between(since, now).toMinutes());
     }
 
-    private static String name(OrderRow o) {
+    private static String name(InboxOrderRow o) {
         return o.customerName() == null || o.customerName().isBlank() ? "Без имени" : o.customerName().trim();
     }
 

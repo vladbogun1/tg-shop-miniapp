@@ -1,12 +1,14 @@
-package com.maxsolch.shop.inbox.domain;
+package com.maxsolch.shop.inbox.app;
 
+import com.maxsolch.shop.inbox.domain.InboxItemType;
+import com.maxsolch.shop.inbox.domain.InboxMark;
+import com.maxsolch.shop.inbox.domain.InboxChatRow;
+import com.maxsolch.shop.inbox.domain.InboxOrderRow;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.ReorderRow;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.inbox.app.InboxDtos.Group;
 import com.maxsolch.shop.inbox.app.InboxDtos.Inbox;
 import com.maxsolch.shop.inbox.app.InboxDtos.Item;
-import com.maxsolch.shop.inbox.domain.InboxFacts.ChatRow;
-import com.maxsolch.shop.inbox.domain.InboxFacts.OrderRow;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 import org.junit.jupiter.api.Test;
 
@@ -107,8 +109,8 @@ class InboxRulesTest {
             return this;
         }
 
-        OrderRow row() {
-            return new OrderRow(id, status, name, total, received, prepayment, refunded, created, approved, shipped,
+        InboxOrderRow row() {
+            return new InboxOrderRow(id, status, name, total, received, prepayment, refunded, created, approved, shipped,
                     rejected, returned, paid, paidAt, paidOnline, reason, reasonCode);
         }
     }
@@ -121,12 +123,12 @@ class InboxRulesTest {
         return String.format("%08d-0000-0000-0000-000000000000", n);
     }
 
-    static InboxFacts facts(List<OrderRow> orders, List<ChatRow> chats, List<ReorderRow> stock,
+    static InboxFacts facts(List<InboxOrderRow> orders, List<InboxChatRow> chats, List<ReorderRow> stock,
                             SiteRevalidator.Status site) {
         return new InboxFacts(NOW, orders, chats, stock, site);
     }
 
-    static InboxFacts orders(OrderRow... rows) {
+    static InboxFacts orders(InboxOrderRow... rows) {
         return facts(List.of(rows), List.of(), List.of(), null);
     }
 
@@ -177,9 +179,9 @@ class InboxRulesTest {
     void cancelRequest_pendingOnUnshippedOrder_replacesPaidConfirm() {
         O paidNew = order().id(id(1)).paidOnline(Duration.ofHours(2));
         O paidShipped = order().id(id(2)).paidOnline(Duration.ofHours(2)).status(OrderStatus.SHIPPED);
-        OrderRow pending = withRequest(paidNew.row(), "PENDING", "не той розмір", NOW.minus(Duration.ofMinutes(15)));
-        OrderRow shipped = withRequest(paidShipped.row(), "PENDING", "x", NOW.minus(Duration.ofMinutes(15)));
-        OrderRow declined = withRequest(order().id(id(3)).paidOnline(Duration.ofHours(2)).row(), "DECLINED", "x",
+        InboxOrderRow pending = withRequest(paidNew.row(), "PENDING", "не той розмір", NOW.minus(Duration.ofMinutes(15)));
+        InboxOrderRow shipped = withRequest(paidShipped.row(), "PENDING", "x", NOW.minus(Duration.ofMinutes(15)));
+        InboxOrderRow declined = withRequest(order().id(id(3)).paidOnline(Duration.ofHours(2)).row(), "DECLINED", "x",
                 NOW.minus(Duration.ofMinutes(15)));
 
         Inbox inbox = InboxRules.build(orders(pending, shipped, declined), Map.of(), T);
@@ -194,8 +196,8 @@ class InboxRulesTest {
         assertThat(payment.stream().map(Item::entityId)).doesNotContain(id(2));
     }
 
-    static OrderRow withRequest(OrderRow r, String status, String reason, Instant at) {
-        return new OrderRow(r.id(), r.status(), r.customerName(), r.totalMinor(), r.receivedMinor(),
+    static InboxOrderRow withRequest(InboxOrderRow r, String status, String reason, Instant at) {
+        return new InboxOrderRow(r.id(), r.status(), r.customerName(), r.totalMinor(), r.receivedMinor(),
                 r.prepaymentMinor(), r.refundedMinor(), r.createdAt(), r.approvedAt(), r.shippedAt(), r.rejectedAt(),
                 r.returnedAt(), r.paid(), r.paidAt(), r.paidOnline(), r.rejectReason(), r.rejectReasonCode(),
                 status, reason, at);
@@ -240,7 +242,7 @@ class InboxRulesTest {
 
     @Test
     void newOrder_thresholdComesFromSettings() {
-        OrderRow o = order().created(Duration.ofHours(2)).row();
+        InboxOrderRow o = order().created(Duration.ofHours(2)).row();
 
         assertThat(ids(InboxRules.build(orders(o), Map.of(), new InboxRules.Thresholds(1, 24)),
                 InboxItemType.NEW_STALE)).hasSize(1);
@@ -283,7 +285,7 @@ class InboxRulesTest {
 
     @Test
     void returns_refusalWithLaterReturnIsOneRowVersionedByTheLatestEvent() {
-        OrderRow o = order().status(OrderStatus.REJECTED).shipped(Duration.ofDays(6))
+        InboxOrderRow o = order().status(OrderStatus.REJECTED).shipped(Duration.ofDays(6))
                 .rejected(Duration.ofDays(3)).returned(Duration.ofDays(1), 10_000).row();
         List<Item> items = group(InboxRules.build(orders(o), Map.of(), T), InboxItemType.RETURN).items();
 
@@ -293,10 +295,10 @@ class InboxRulesTest {
 
     @Test
     void chats_oldestUnreadFirst_withOrderData() {
-        OrderRow o = order().id(id(1)).status(OrderStatus.SHIPPED).row();
+        InboxOrderRow o = order().id(id(1)).status(OrderStatus.SHIPPED).row();
         InboxFacts f = facts(List.of(o), List.of(
-                new ChatRow(id(1), 2, 501, NOW.minus(Duration.ofMinutes(10)), "Где посылка?"),
-                new ChatRow(id(2), 1, 777, NOW.minus(Duration.ofHours(3)), "")), List.of(), null);
+                new InboxChatRow(id(1), 2, 501, NOW.minus(Duration.ofMinutes(10)), "Где посылка?"),
+                new InboxChatRow(id(2), 1, 777, NOW.minus(Duration.ofHours(3)), "")), List.of(), null);
 
         Inbox inbox = InboxRules.build(f, Map.of(), T);
 
@@ -361,7 +363,7 @@ class InboxRulesTest {
 
     @Test
     void snooze_hidesUntilItEnds_andCountsAsSnoozed() {
-        OrderRow o = order().id(id(1)).paidOnline(Duration.ofMinutes(20)).row();
+        InboxOrderRow o = order().id(id(1)).paidOnline(Duration.ofMinutes(20)).row();
         String version = "paid:" + InboxRules.version(o.paidAt());
         Map<String, InboxMark> marks = Map.of(InboxMark.key(InboxItemType.PAYMENT, id(1)),
                 new InboxMark(InboxItemType.PAYMENT, id(1), version, InboxMark.Kind.SNOOZED, NOW.plus(Duration.ofHours(1))));
@@ -382,7 +384,7 @@ class InboxRulesTest {
         Map<String, InboxMark> marks = new HashMap<>();
         marks.put(InboxMark.key(InboxItemType.CHAT, id(1)),
                 new InboxMark(InboxItemType.CHAT, id(1), "500", InboxMark.Kind.SNOOZED, NOW.plus(Duration.ofDays(3))));
-        InboxFacts f = facts(List.of(), List.of(new ChatRow(id(1), 2, 501, NOW.minus(Duration.ofMinutes(30)), "ещё вопрос")),
+        InboxFacts f = facts(List.of(), List.of(new InboxChatRow(id(1), 2, 501, NOW.minus(Duration.ofMinutes(30)), "ещё вопрос")),
                 List.of(), null);
 
         Inbox inbox = InboxRules.build(f, marks, T);
@@ -393,7 +395,7 @@ class InboxRulesTest {
 
     @Test
     void dismiss_hidesForGood_untilTheEventChanges() {
-        OrderRow o = order().id(id(1)).status(OrderStatus.DELIVERED).returned(Duration.ofDays(1), 1_000).row();
+        InboxOrderRow o = order().id(id(1)).status(OrderStatus.DELIVERED).returned(Duration.ofDays(1), 1_000).row();
         String version = InboxRules.version(o.returnedAt());
         Map<String, InboxMark> marks = Map.of(InboxMark.key(InboxItemType.RETURN, id(1)),
                 new InboxMark(InboxItemType.RETURN, id(1), version, InboxMark.Kind.DISMISSED, null));
@@ -403,7 +405,7 @@ class InboxRulesTest {
         assertThat(group(inbox, InboxItemType.RETURN).snoozed()).isZero();
 
         // a second return registered later is a new event
-        OrderRow again = order().id(id(1)).status(OrderStatus.DELIVERED).returned(Duration.ofHours(1), 2_000).row();
+        InboxOrderRow again = order().id(id(1)).status(OrderStatus.DELIVERED).returned(Duration.ofHours(1), 2_000).row();
         assertThat(ids(InboxRules.build(orders(again), marks, T), InboxItemType.RETURN)).containsExactly(id(1));
     }
 
@@ -418,8 +420,8 @@ class InboxRulesTest {
                 marks, T).total()).isEqualTo(1);
     }
 
-    static OrderRow approvedOnline(String id, long total, long prepayment, long received, Instant dueAt) {
-        return new OrderRow(id, OrderStatus.APPROVED, "Оля", total, received, prepayment, 0,
+    static InboxOrderRow approvedOnline(String id, long total, long prepayment, long received, Instant dueAt) {
+        return new InboxOrderRow(id, OrderStatus.APPROVED, "Оля", total, received, prepayment, 0,
                 NOW.minus(Duration.ofDays(2)), NOW.minus(Duration.ofHours(1)), null, null, null,
                 received > 0, received > 0 ? NOW.minus(Duration.ofHours(2)) : null, received > 0, null, null,
                 null, null, null, dueAt);
