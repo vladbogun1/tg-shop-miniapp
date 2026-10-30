@@ -118,8 +118,8 @@ class AdminAuthServiceTest {
         cipher = keys.cipher();
         PreAuthTokens preAuth = new PreAuthTokens(keys.preAuthKey(), clock,
                 com.maxsolch.shop.platform.cache.CacheConfig.onClock(StaffCaches.PREAUTH_USED, clock));
-        AdminTotp totp = new AdminTotp(cipher, repo, "ChiSetup Admin", clock);
-        AdminLockout lockout = new AdminLockout(repo, audit, loginLog, alerts, ZoneId.of("Europe/Kyiv"), clock);
+        AdminTotp totp = new AdminTotp(cipher, new AdminCounters(repo), "ChiSetup Admin", clock);
+        AdminLockout lockout = new AdminLockout(new AdminCounters(repo), audit, loginLog, alerts, ZoneId.of("Europe/Kyiv"), clock);
         service = new AdminAuthService(repo, encoder, mock(TgInitDataValidator.class), mock(AuthService.class),
                 jwtService, preAuth, totp, lockout, trustedDevices, loginLog, audit, alerts, java.time.Clock.systemUTC(),
                 caches(clock));

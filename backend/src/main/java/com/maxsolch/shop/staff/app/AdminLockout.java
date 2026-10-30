@@ -5,7 +5,6 @@ import com.maxsolch.shop.staff.domain.LoginMethod;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.staff.domain.AdminUser;
-import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -34,7 +33,7 @@ public class AdminLockout {
     public static final Duration LOCK_DURATION = Duration.ofMinutes(15);
     private static final DateTimeFormatter HHMM = DateTimeFormatter.ofPattern("HH:mm");
 
-    private final AdminUserRepository adminUserRepository;
+    private final AdminCounters counters;
     private final AdminAuditService audit;
     private final AdminLoginLogService loginLog;
     private final AdminSecurityAlerts alerts;
@@ -42,15 +41,15 @@ public class AdminLockout {
     private final Clock clock;
 
     @Autowired
-    public AdminLockout(AdminUserRepository adminUserRepository, AdminAuditService audit,
+    public AdminLockout(AdminCounters counters, AdminAuditService audit,
                         AdminLoginLogService loginLog, AdminSecurityAlerts alerts, AppProperties props,
                         Clock clock) {
-        this(adminUserRepository, audit, loginLog, alerts, ShopZone.of(props.getTimezone()).zone(), clock);
+        this(counters, audit, loginLog, alerts, ShopZone.of(props.getTimezone()).zone(), clock);
     }
 
-    AdminLockout(AdminUserRepository adminUserRepository, AdminAuditService audit, AdminLoginLogService loginLog,
+    AdminLockout(AdminCounters counters, AdminAuditService audit, AdminLoginLogService loginLog,
                  AdminSecurityAlerts alerts, ZoneId zone, Clock clock) {
-        this.adminUserRepository = adminUserRepository;
+        this.counters = counters;
         this.audit = audit;
         this.loginLog = loginLog;
         this.alerts = alerts;
@@ -75,13 +74,13 @@ public class AdminLockout {
      * @return the lock end when this failure locked the account
      */
     public Optional<Instant> registerFailure(long adminId, LoginMethod method, ClientInfo client) {
-        adminUserRepository.incrementFailures(adminId);
-        int failures = adminUserRepository.failuresOf(adminId).orElse(0);
+        counters.incrementFailures(adminId);
+        int failures = counters.failuresOf(adminId).orElse(0);
         if (failures < MAX_FAILURES) {
             return Optional.empty();
         }
         Instant until = clock.instant().plus(LOCK_DURATION);
-        adminUserRepository.lockUntil(adminId, until);
+        counters.lockUntil(adminId, until);
         log.warn("Admin {} locked until {} after {} failed sign-in attempts (last from {})",
                 adminId, until, failures, client.ip());
         AdminLoginLogService.Recorded rec = loginLog.record(adminId, null, method,
@@ -98,7 +97,7 @@ public class AdminLockout {
     }
 
     public void reset(long adminId) {
-        adminUserRepository.resetFailures(adminId);
+        counters.resetFailures(adminId);
     }
 
     public ResponseStatusException lockedError(Instant until) {

@@ -69,7 +69,7 @@ class AdminInviteServiceTest {
         AppProperties props = new AppProperties();
         props.getSecurity().setJwtSecret(JWT_SECRET);
         cipher = new AdminAuthKeys(props).cipher();
-        totp = new AdminTotp(cipher, admins.repo, "ChiSetup Admin", clock);
+        totp = new AdminTotp(cipher, new AdminCounters(admins.repo), "ChiSetup Admin", clock);
         encoder = new BCryptPasswordEncoder(4);
         admins.add(BOSS, "boss", AdminRole.SUPER_ADMIN, cipher.encrypt(Totp.newSecret(), BOSS));
         service = service("https://admin.example.com/");

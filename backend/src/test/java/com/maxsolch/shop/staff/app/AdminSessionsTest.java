@@ -21,7 +21,7 @@ class AdminSessionsTest {
     private final AdminTokenValidator validator = mock(AdminTokenValidator.class);
     private final TrustedDeviceService devices = mock(TrustedDeviceService.class);
     private final AdminPushService push = mock(AdminPushService.class);
-    private final AdminSessions sessions = new AdminSessions(repo, validator, devices, push);
+    private final AdminSessions sessions = new AdminSessions(new AdminCounters(repo), validator, devices, push);
 
     @Test
     void revokeEverythingDropsTokensDevicesAndPushOfThatAdminOnly() {

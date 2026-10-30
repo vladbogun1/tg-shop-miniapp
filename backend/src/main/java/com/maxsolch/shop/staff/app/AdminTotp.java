@@ -5,7 +5,6 @@ import com.maxsolch.shop.staff.domain.SecretCipher;
 import com.maxsolch.shop.staff.domain.Totp;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.staff.domain.AdminUser;
-import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -31,18 +30,18 @@ public class AdminTotp {
     }
 
     private final SecretCipher cipher;
-    private final AdminUserRepository adminUserRepository;
+    private final AdminCounters counters;
     private final String issuer;
     private final Clock clock;
 
     @Autowired
-    public AdminTotp(AdminAuthKeys keys, AdminUserRepository adminUserRepository, AppProperties props, Clock clock) {
-        this(keys.cipher(), adminUserRepository, props.getSecurity().getAdmin2faIssuer(), clock);
+    public AdminTotp(AdminAuthKeys keys, AdminCounters counters, AppProperties props, Clock clock) {
+        this(keys.cipher(), counters, props.getSecurity().getAdmin2faIssuer(), clock);
     }
 
-    AdminTotp(SecretCipher cipher, AdminUserRepository adminUserRepository, String issuer, Clock clock) {
+    AdminTotp(SecretCipher cipher, AdminCounters counters, String issuer, Clock clock) {
         this.cipher = cipher;
-        this.adminUserRepository = adminUserRepository;
+        this.counters = counters;
         this.issuer = issuer == null || issuer.isBlank() ? "ChiSetup Admin" : issuer;
         this.clock = clock;
     }
@@ -100,7 +99,7 @@ public class AdminTotp {
         if (step.isEmpty()) {
             return false;
         }
-        boolean fresh = adminUserRepository.acceptTotpStep(admin.getTelegramUserId(), step.getAsLong()) == 1;
+        boolean fresh = counters.acceptTotpStep(admin.getTelegramUserId(), step.getAsLong()) == 1;
         if (!fresh) {
             log.warn("Admin {}: a TOTP code was reused (replay refused)", admin.getTelegramUserId());
         }

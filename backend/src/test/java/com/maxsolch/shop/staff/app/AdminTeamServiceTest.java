@@ -67,12 +67,12 @@ class AdminTeamServiceTest {
         admins.add(BOSS, "boss", AdminRole.SUPER_ADMIN, cipher.encrypt(bossSecret, BOSS));
         admins.add(HELPER, "helper", AdminRole.ADMIN, cipher.encrypt(Totp.newSecret(), HELPER));
 
-        AdminTotp totp = new AdminTotp(cipher, admins.repo, "ChiSetup Admin", clock);
+        AdminTotp totp = new AdminTotp(cipher, new AdminCounters(admins.repo), "ChiSetup Admin", clock);
         audit = mock(AdminAuditService.class);
         AdminLoginLogService loginLog = mock(AdminLoginLogService.class);
         when(loginLog.record(any(), any(), any(), any(), any(), any()))
                 .thenReturn(new AdminLoginLogService.Recorded("Киев", "Windows · Chrome", false, false));
-        AdminLockout lockout = new AdminLockout(admins.repo, audit, loginLog, mock(AdminSecurityAlerts.class),
+        AdminLockout lockout = new AdminLockout(new AdminCounters(admins.repo), audit, loginLog, mock(AdminSecurityAlerts.class),
                 ZoneId.of("Europe/Kyiv"), clock);
         sessions = mock(AdminSessions.class);
         when(sessions.revokeEverything(anyLong())).thenAnswer(i -> {

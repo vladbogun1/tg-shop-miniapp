@@ -1,7 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
 import com.maxsolch.shop.notification.app.AdminPushService;
-import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import com.maxsolch.shop.platform.security.AdminTokenValidator;
 import org.springframework.stereotype.Service;
 
@@ -15,16 +14,16 @@ import org.springframework.stereotype.Service;
 @Service
 public class AdminSessions {
 
-    private final AdminUserRepository adminUserRepository;
+    private final AdminCounters counters;
     private final AdminTokenValidator adminTokenValidator;
     private final TrustedDeviceService trustedDevices;
     private final AdminPushService pushSubscriptions;
 
-    public AdminSessions(AdminUserRepository adminUserRepository,
+    public AdminSessions(AdminCounters counters,
                          AdminTokenValidator adminTokenValidator,
                          TrustedDeviceService trustedDevices,
                          AdminPushService pushSubscriptions) {
-        this.adminUserRepository = adminUserRepository;
+        this.counters = counters;
         this.adminTokenValidator = adminTokenValidator;
         this.trustedDevices = trustedDevices;
         this.pushSubscriptions = pushSubscriptions;
@@ -32,7 +31,7 @@ public class AdminSessions {
 
     /** @return how many trusted devices were forgotten */
     public int revokeEverything(long adminId) {
-        adminUserRepository.bumpTokenVersion(adminId);
+        counters.bumpTokenVersion(adminId);
         adminTokenValidator.invalidate(adminId);
         pushSubscriptions.forgetAdmin(adminId);
         return trustedDevices.revokeAll(adminId);
