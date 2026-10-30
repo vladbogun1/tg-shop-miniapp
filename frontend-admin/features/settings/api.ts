@@ -3,7 +3,7 @@ import { apiGet, apiPut } from "@/lib/api";
 
 export type SettingType = "INT" | "BOOL" | "STRING" | "TEXT" | "SELECT";
 export type SettingValue = number | boolean | string;
-export type SettingOption = Schemas["PlatformSettingDefinitionOption"];
+export type SettingOption = Schemas["SettingsSettingDefinitionOption"];
 
 /** В OpenAPI тип и значения — `string`/`unknown`; здесь сужены до того, что отдаёт бэкенд (SettingType, SettingValue). */
 export type SettingItem = Omit<Schemas["SettingItemDto"], "type" | "value" | "defaultValue"> & {
