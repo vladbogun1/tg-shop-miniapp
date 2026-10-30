@@ -7,8 +7,13 @@
  * русский текст сервера.
  */
 
-/** Код причины с бэкенда (`ErrorCode.code()`); пустой, если сервер его не прислал. */
-export type ErrorCode = string;
+import type { ServerErrorCode } from "./api/error-codes";
+
+/**
+ * Код причины с бэкенда (`ErrorCode.code()`): union из `api/error-codes.d.ts`, который генерируется из enum'ов
+ * `<Модуль>Error` (`npm run gen:api`). Опечатка в `e.code === "…"` или `hasErrorCode(e, "…")` — ошибка typecheck.
+ */
+export type ErrorCode = ServerErrorCode;
 
 export type ErrorParams = Record<string, string | number>;
 
@@ -22,11 +27,11 @@ export class ApiError extends Error {
   /** Подстановки для текста `error.<code>`, если сервер их прислал. */
   readonly params?: ErrorParams;
 
-  constructor(message: string, status: number, code?: ErrorCode, params?: ErrorParams) {
+  constructor(message: string, status: number, code?: ErrorCode | (string & {}), params?: ErrorParams) {
     super(message);
     this.name = "ApiError";
     this.status = status;
-    this.code = code;
+    this.code = code as ErrorCode | undefined;
     this.params = params;
   }
 }

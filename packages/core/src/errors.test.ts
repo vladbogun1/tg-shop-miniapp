@@ -33,8 +33,8 @@ describe("errorMessage", () => {
 
 describe("hasErrorCode", () => {
   it("matches only an ApiError with one of the codes", () => {
-    expect(hasErrorCode(new ApiError("m", 400, "A"), "A", "B")).toBe(true);
-    expect(hasErrorCode(new ApiError("m", 400), "A")).toBe(false);
-    expect(hasErrorCode({ code: "A" }, "A")).toBe(false);
+    expect(hasErrorCode(new ApiError("m", 400, "BAD_CODE"), "BAD_CODE", "BAD_AMOUNT")).toBe(true);
+    expect(hasErrorCode(new ApiError("m", 400), "BAD_CODE")).toBe(false);
+    expect(hasErrorCode({ code: "BAD_CODE" }, "BAD_CODE")).toBe(false);
   });
 });

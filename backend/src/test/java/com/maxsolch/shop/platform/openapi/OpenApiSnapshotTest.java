@@ -44,6 +44,14 @@ class OpenApiSnapshotTest {
         compareOrUpdate(ERROR_CODES, OpenApiDocs.render(OpenApiDocs.errorCodes()));
     }
 
+    @Test
+    void filterCodesAreStillSentByTheFilter() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/maxsolch/shop/platform/security/JwtAuthFilter.java"));
+        for (String code : OpenApiDocs.FILTER_CODES) {
+            assertThat(source).as("JwtAuthFilter sends " + code).contains("\"" + code + "\"");
+        }
+    }
+
     /**
      * Every property of every schema is either required or nullable-by-annotation, never silently optional:
      * the front-ends lose the ability to catch a vanished field if the types turn into {@code field?: T}.

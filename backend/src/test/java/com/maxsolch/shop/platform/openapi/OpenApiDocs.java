@@ -59,6 +59,9 @@ final class OpenApiDocs {
 
     private static final String BASE = "com.maxsolch.shop";
 
+    /** Codes sent by the security filter, not by an {@code ErrorCode} enum ({@code JwtAuthFilter.forbid}). */
+    static final List<String> FILTER_CODES = List.of("ORIGIN_NOT_ALLOWED", "TWO_FACTOR_REQUIRED");
+
     private OpenApiDocs() {
     }
 
@@ -84,7 +87,7 @@ final class OpenApiDocs {
         ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(false);
         scanner.addIncludeFilter(new AssignableTypeFilter(ErrorCode.class));
         Map<String, Object> byEnum = new TreeMap<>();
-        Set<String> all = new TreeSet<>();
+        Set<String> all = new TreeSet<>(FILTER_CODES);
         for (BeanDefinition d : scanner.findCandidateComponents(BASE)) {
             Class<?> type = Class.forName(d.getBeanClassName());
             if (!type.isEnum() || type.getName().contains("Test")) {
