@@ -15,7 +15,7 @@ import com.maxsolch.shop.inbox.app.InboxDtos.Item;
 import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.media.app.MediaSigner;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
-import com.maxsolch.shop.customer.infra.UserRepository;
+import com.maxsolch.shop.customer.app.Customers;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.support.app.SupportDtos.CreateThreadRequest;
@@ -63,7 +63,7 @@ class SupportServiceTest {
     @Mock
     ProductRepository productRepository;
     @Mock
-    UserRepository userRepository;
+    Customers userRepository;
     @Mock
     SettingsService settings;
     @Mock

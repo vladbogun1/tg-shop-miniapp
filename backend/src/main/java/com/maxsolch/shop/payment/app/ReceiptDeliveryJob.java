@@ -11,7 +11,7 @@ import org.springframework.cache.CacheManager;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.app.OrderLookup;
-import com.maxsolch.shop.customer.infra.UserRepository;
+import com.maxsolch.shop.customer.app.Customers;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import lombok.extern.slf4j.Slf4j;
@@ -50,7 +50,7 @@ public class ReceiptDeliveryJob {
     private final MonobankGateway mono;
     private final PaymentInvoiceRepository invoices;
     private final OrderLookup orders;
-    private final UserRepository users;
+    private final Customers users;
     private final ReceiptDeliveryStore store;
     private final ReceiptService receipts;
     private final ReceiptNotifier notifications;
@@ -66,7 +66,7 @@ public class ReceiptDeliveryJob {
     private final Cache quiet;
 
     public ReceiptDeliveryJob(MonobankGateway mono, PaymentInvoiceRepository invoices, OrderLookup orders,
-                              UserRepository users, ReceiptDeliveryStore store, ReceiptService receipts,
+                              Customers users, ReceiptDeliveryStore store, ReceiptService receipts,
                               ReceiptNotifier notifications, SettingsService settings,
                               CacheManager caches, Clock clock) {
         this.quiet = java.util.Objects.requireNonNull(caches.getCache(CacheConfig.RECEIPT_DELIVERY_QUIET));

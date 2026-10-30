@@ -40,7 +40,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // ---- Block tracking ----
 
     @Modifying
-    @Transactional
     @Query("UPDATE User u SET u.botBlocked = true, u.botBlockedAt = :now WHERE u.telegramUserId = :id")
     void markBotBlocked(@Param("id") long id, @Param("now") Instant now);
 

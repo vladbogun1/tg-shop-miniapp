@@ -8,7 +8,7 @@ import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.Role;
 import com.maxsolch.shop.platform.web.CurrentActor;
-import com.maxsolch.shop.staff.infra.AdminUserRepository;
+import com.maxsolch.shop.staff.app.Admins;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,7 +37,7 @@ class MeControllerTest {
     @Mock
     UserRepository users;
     @Mock
-    AdminUserRepository admins;
+    Admins admins;
     @Mock
     ActivityLog activity;
 
@@ -107,7 +107,7 @@ class MeControllerTest {
         user.setFirstName("A");
         user.setLastName("B");
         when(users.findById(100L)).thenReturn(Optional.of(user));
-        when(admins.existsByTelegramUserIdAndActiveTrue(100L)).thenReturn(true);
+        when(admins.isActive(100L)).thenReturn(true);
 
         assertThat(controller().me()).isEqualTo(new MeProfileDto(100L, "nick", "A", "B", true));
     }

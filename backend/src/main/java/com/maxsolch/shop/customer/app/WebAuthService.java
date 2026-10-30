@@ -10,7 +10,7 @@ import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.customer.domain.WebLoginStatus;
 import com.maxsolch.shop.customer.domain.WebLoginToken;
 import com.maxsolch.shop.customer.domain.WebSession;
-import com.maxsolch.shop.staff.infra.AdminUserRepository;
+import com.maxsolch.shop.staff.app.Admins;
 import com.maxsolch.shop.customer.infra.UserRepository;
 import com.maxsolch.shop.customer.infra.WebLoginTokenRepository;
 import com.maxsolch.shop.customer.infra.WebSessionRepository;
@@ -19,8 +19,6 @@ import com.maxsolch.shop.platform.security.WebSessionValidator;
 import com.maxsolch.shop.customer.app.WebAuthDtos.WebSessionDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -81,7 +79,7 @@ public class WebAuthService {
     private final WebLoginTokenRepository tokenRepository;
     private final WebSessionRepository sessionRepository;
     private final UserRepository userRepository;
-    private final AdminUserRepository adminUserRepository;
+    private final Admins adminUserRepository;
     private final JwtService jwtService;
     private final AppProperties props;
     private final WebSessionValidator sessionValidator;
@@ -89,21 +87,18 @@ public class WebAuthService {
 
     private final SecureRandom random = new SecureRandom();
     /** Hashes of refresh tokens rotated away in the last {@link #ROTATION_GRACE} (ticks on {@link #clock}). */
-    private final Cache<String, String> recentlyRotated = Caffeine.newBuilder()
-            .maximumSize(10_000)
-            .expireAfterWrite(ROTATION_GRACE)
-            .ticker(() -> java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(this.clock.millis()))
-            .build();
-    private Clock clock = Clock.systemUTC();
+    private final Cache<String, String> recentlyRotated;
+    private final Clock clock;
 
     public WebAuthService(WebLoginTokenRepository tokenRepository,
                           WebSessionRepository sessionRepository,
                           UserRepository userRepository,
-                          AdminUserRepository adminUserRepository,
+                          Admins adminUserRepository,
                           JwtService jwtService,
                           AppProperties props,
                           WebSessionValidator sessionValidator,
-                          ApplicationEventPublisher events) {
+                          ApplicationEventPublisher events,
+                          Clock clock) {
         this.tokenRepository = tokenRepository;
         this.sessionRepository = sessionRepository;
         this.userRepository = userRepository;
@@ -112,11 +107,12 @@ public class WebAuthService {
         this.props = props;
         this.sessionValidator = sessionValidator;
         this.events = events;
-    }
-
-    /** Tests move time. */
-    void setClock(Clock clock) {
         this.clock = clock;
+        this.recentlyRotated = Caffeine.newBuilder()
+                .maximumSize(10_000)
+                .expireAfterWrite(ROTATION_GRACE)
+                .ticker(() -> java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(clock.millis()))
+                .build();
     }
 
     // ================================================================== results / events
@@ -434,19 +430,6 @@ public class WebAuthService {
 
     // ================================================================== housekeeping
 
-    /** Hourly: login requests a day past expiry, sessions expired or revoked over 30 days ago. */
-    @SchedulerLock(name = "WebAuthService.cleanup", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
-    @Scheduled(cron = "${app.site.cleanup-cron:0 7 * * * *}")
-    @Transactional
-    public void cleanup() {
-        Instant now = now();
-        int tokens = tokenRepository.deleteExpiredBefore(now.minus(Duration.ofDays(1)));
-        int sessions = sessionRepository.deleteStale(now, now.minus(Duration.ofDays(30)));
-        if (tokens + sessions > 0) {
-            log.info("Web auth cleanup: {} login requests, {} sessions removed", tokens, sessions);
-        }
-    }
-
     // ================================================================== internals
 
     /** Second precision — what the TIMESTAMP columns store, so responses match the database. */
@@ -477,7 +460,7 @@ public class WebAuthService {
 
     private AuthUserDto userDto(long telegramUserId) {
         User u = userRepository.findById(telegramUserId).orElse(null);
-        boolean admin = adminUserRepository.existsByTelegramUserIdAndActiveTrue(telegramUserId);
+        boolean admin = adminUserRepository.isActive(telegramUserId);
         return new AuthUserDto(telegramUserId,
                 u == null ? null : u.getUsername(),
                 u == null ? null : u.getFirstName(),

@@ -6,7 +6,7 @@ import com.maxsolch.shop.order.domain.OrderSource;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.customer.infra.UserRepository;
+import com.maxsolch.shop.customer.app.Customers;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -28,7 +28,7 @@ class OrderPlacementTest {
 
     private final Checkout checkout = mock(Checkout.class);
     private final OrderLookup lookup = mock(OrderLookup.class);
-    private final UserRepository users = mock(UserRepository.class);
+    private final Customers users = mock(Customers.class);
     private final OrderIdempotencyService idempotency = mock(OrderIdempotencyService.class);
     private final OrderGuard guard = mock(OrderGuard.class);
     private final ActivityLog activity = mock(ActivityLog.class);

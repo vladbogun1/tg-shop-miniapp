@@ -19,7 +19,7 @@ import com.maxsolch.shop.promo.app.PromoCodes;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.review.domain.ReviewEvents;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
-import com.maxsolch.shop.customer.infra.UserRepository;
+import com.maxsolch.shop.customer.app.Customers;
 import com.maxsolch.shop.review.app.ReviewDtos.SubmitRequest;
 import com.maxsolch.shop.review.app.ReviewDtos.SubmitResult;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
@@ -68,7 +68,7 @@ class ReviewServiceTest {
     @Mock
     OrderLookup orders;
     @Mock
-    UserRepository users;
+    Customers users;
     @Mock
     PromoCodeRepository promoCodes;
     @Mock

@@ -1,7 +1,7 @@
 package com.maxsolch.shop.customer.app;
 
 import com.maxsolch.shop.customer.domain.User;
-import com.maxsolch.shop.staff.infra.AdminUserRepository;
+import com.maxsolch.shop.staff.app.Admins;
 import com.maxsolch.shop.customer.infra.UserRepository;
 import com.maxsolch.shop.platform.security.JwtService;
 import com.maxsolch.shop.platform.security.Role;
@@ -23,19 +23,22 @@ public class AuthService implements BotUsers {
     private final TgInitDataValidator initDataValidator;
     private final JwtService jwtService;
     private final UserRepository userRepository;
-    private final AdminUserRepository adminUserRepository;
+    private final Admins adminUserRepository;
     private final com.maxsolch.shop.platform.journal.ActivityLog activity;
+    private final java.time.Clock clock;
 
     public AuthService(TgInitDataValidator initDataValidator,
                        JwtService jwtService,
                        UserRepository userRepository,
-                       AdminUserRepository adminUserRepository,
-                       com.maxsolch.shop.platform.journal.ActivityLog activity) {
+                       Admins adminUserRepository,
+                       com.maxsolch.shop.platform.journal.ActivityLog activity,
+                       java.time.Clock clock) {
         this.initDataValidator = initDataValidator;
         this.jwtService = jwtService;
         this.userRepository = userRepository;
         this.adminUserRepository = adminUserRepository;
         this.activity = activity;
+        this.clock = clock;
     }
 
     /**
@@ -46,7 +49,7 @@ public class AuthService implements BotUsers {
     public AuthResponse authenticateCustomer(String initData) {
         TelegramUser tgUser = initDataValidator.validate(initData);
         User user = upsertUser(tgUser, com.maxsolch.shop.platform.journal.ActivityLog.MINIAPP);
-        boolean admin = adminUserRepository.existsByTelegramUserIdAndActiveTrue(tgUser.id());
+        boolean admin = adminUserRepository.isActive(tgUser.id());
 
         String token = jwtService.issueToken(tgUser.id(), Role.CUSTOMER);
         AuthUserDto dto = new AuthUserDto(
@@ -102,7 +105,7 @@ public class AuthService implements BotUsers {
         // They're clearly reachable again — clear any previous "blocked" flag.
         user.setBotBlocked(false);
         user.setBotBlockedAt(null);
-        user.setLastSeenAt(Instant.now());
+        user.setLastSeenAt(clock.instant());
         return userRepository.save(user);
     }
 }

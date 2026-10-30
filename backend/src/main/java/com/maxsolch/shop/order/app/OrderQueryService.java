@@ -13,7 +13,7 @@ import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.order.infra.OrderItemRepository;
 import com.maxsolch.shop.order.infra.OrderMessageRepository;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.customer.infra.UserRepository;
+import com.maxsolch.shop.customer.app.Customers;
 import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
@@ -45,7 +45,7 @@ public class OrderQueryService {
     private final Products productImages;
     private final TranslationService translationService;
     private final CatalogNames catalogNames;
-    private final UserRepository userRepository;
+    private final Customers userRepository;
     private final CustomerRejectReason customerRejectReason;
     private final OrderReturnsView returnsView;
 
@@ -62,7 +62,7 @@ public class OrderQueryService {
                              Products productImages,
                              TranslationService translationService,
                              CatalogNames catalogNames,
-                             UserRepository userRepository,
+                             Customers userRepository,
                              CustomerRejectReason customerRejectReason,
                              OrderReturnsView returnsView,
                              com.maxsolch.shop.order.infra.OrderMoneyMovementRepository movementRepository,

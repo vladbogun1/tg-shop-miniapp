@@ -10,7 +10,7 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.order.app.OrderLookup;
-import com.maxsolch.shop.customer.infra.UserRepository;
+import com.maxsolch.shop.customer.app.Customers;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,7 +49,7 @@ class ReceiptDeliveryJobTest {
     @Mock
     OrderLookup orders;
     @Mock
-    UserRepository users;
+    Customers users;
     @Mock
     ReceiptDeliveryStore store;
     @Mock

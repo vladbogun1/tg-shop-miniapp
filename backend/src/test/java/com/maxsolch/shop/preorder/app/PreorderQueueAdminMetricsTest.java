@@ -7,7 +7,7 @@ import com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository;
 import com.maxsolch.shop.procurement.app.BatchCatalog;
 import com.maxsolch.shop.procurement.app.LineProducts;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
-import com.maxsolch.shop.customer.infra.UserRepository;
+import com.maxsolch.shop.customer.app.Customers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,7 +37,7 @@ class PreorderQueueAdminMetricsTest {
     @Mock PreorderSubscriptionRepository subs;
     @Mock BatchCatalog batches;
     @Mock LineProducts lineProducts;
-    @Mock UserRepository users;
+    @Mock Customers users;
     @Mock ProductRepository products;
     @Mock PreorderQueueService queue;
     @Mock SettingsService settings;

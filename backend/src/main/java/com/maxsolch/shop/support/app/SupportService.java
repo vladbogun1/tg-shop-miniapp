@@ -13,7 +13,7 @@ import com.maxsolch.shop.catalog.domain.ProductImage;
 import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.catalog.app.Products;
-import com.maxsolch.shop.customer.infra.UserRepository;
+import com.maxsolch.shop.customer.app.Customers;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.support.app.SupportDtos.ConfigDto;
@@ -67,7 +67,7 @@ public class SupportService {
     private final SupportThreadRepository threads;
     private final SupportMessageRepository messageRepository;
     private final Products productRepository;
-    private final UserRepository userRepository;
+    private final Customers userRepository;
     private final SettingsService settings;
     private final SupportLimits limits;
     private final SupportMapper mapper;
@@ -78,7 +78,7 @@ public class SupportService {
     public SupportService(SupportThreadRepository threads,
                           SupportMessageRepository messageRepository,
                           Products productRepository,
-                          UserRepository userRepository,
+                          Customers userRepository,
                           SettingsService settings,
                           SupportLimits limits,
                           SupportMapper mapper,

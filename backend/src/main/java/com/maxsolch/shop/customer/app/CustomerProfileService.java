@@ -1,6 +1,6 @@
 package com.maxsolch.shop.customer.app;
 
-import com.maxsolch.shop.staff.infra.AdminUserRepository;
+import com.maxsolch.shop.staff.app.Admins;
 import com.maxsolch.shop.customer.infra.UserRepository;
 import org.springframework.stereotype.Service;
 
@@ -15,16 +15,16 @@ public class CustomerProfileService {
     }
 
     private final UserRepository userRepository;
-    private final AdminUserRepository adminUserRepository;
+    private final Admins adminUserRepository;
 
-    public CustomerProfileService(UserRepository userRepository, AdminUserRepository adminUserRepository) {
+    public CustomerProfileService(UserRepository userRepository, Admins adminUserRepository) {
         this.userRepository = userRepository;
         this.adminUserRepository = adminUserRepository;
     }
 
     /** Name and username as Telegram gave them; a bare profile when the user row is not there yet. */
     public MeProfileDto profile(long userId) {
-        boolean admin = adminUserRepository.existsByTelegramUserIdAndActiveTrue(userId);
+        boolean admin = adminUserRepository.isActive(userId);
         return userRepository.findById(userId)
                 .map(u -> new MeProfileDto(u.getTelegramUserId(), u.getUsername(),
                         u.getFirstName(), u.getLastName(), admin))

@@ -3,7 +3,7 @@ package com.maxsolch.shop.customer.api;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.WebCookies;
 import com.maxsolch.shop.customer.app.WebAuthService;
-import com.maxsolch.shop.platform.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.customer.app.WebAuthDtos.WebSessionDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -29,23 +29,25 @@ public class MeSessionsController {
 
     private final WebAuthService webAuthService;
     private final WebCookies cookies;
+    private final CurrentActor actor;
 
-    public MeSessionsController(WebAuthService webAuthService, WebCookies cookies) {
+    public MeSessionsController(WebAuthService webAuthService, WebCookies cookies, CurrentActor actor) {
         this.webAuthService = webAuthService;
         this.cookies = cookies;
+        this.actor = actor;
     }
 
     @GetMapping
     @Operation(summary = "Active site sessions; `current` marks the one making this request")
     public List<WebSessionDto> list() {
-        AuthPrincipal p = SecurityUtil.currentPrincipal();
+        AuthPrincipal p = actor.principal();
         return webAuthService.listSessions(p.telegramUserId(), p.isWeb() ? p.sessionId() : null);
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "End one site session")
     public ResponseEntity<Void> revoke(@PathVariable String id, HttpServletResponse response) {
-        AuthPrincipal p = SecurityUtil.currentPrincipal();
+        AuthPrincipal p = actor.principal();
         webAuthService.revokeSession(p.telegramUserId(), id);
         if (p.isWeb() && id.equalsIgnoreCase(p.sessionId())) {
             cookies.clearSession(response);
@@ -56,7 +58,7 @@ public class MeSessionsController {
     @DeleteMapping
     @Operation(summary = "End all site sessions (including this one)")
     public ResponseEntity<Void> revokeAll(HttpServletResponse response) {
-        AuthPrincipal p = SecurityUtil.currentPrincipal();
+        AuthPrincipal p = actor.principal();
         webAuthService.revokeAll(p.telegramUserId());
         if (p.isWeb()) {
             cookies.clearSession(response);

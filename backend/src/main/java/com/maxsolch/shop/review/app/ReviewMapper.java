@@ -4,7 +4,7 @@ import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.order.app.OrderLines;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.customer.infra.UserRepository;
+import com.maxsolch.shop.customer.app.Customers;
 import com.maxsolch.shop.review.app.ReviewDtos.AdminReview;
 import com.maxsolch.shop.review.app.ReviewDtos.MyReview;
 import com.maxsolch.shop.review.domain.ProductReview;
@@ -28,9 +28,9 @@ public class ReviewMapper {
 
     private final ReviewStore store;
     private final OrderLines orderLines;
-    private final UserRepository users;
+    private final Customers users;
 
-    public ReviewMapper(ReviewStore store, OrderLines orderLines, UserRepository users) {
+    public ReviewMapper(ReviewStore store, OrderLines orderLines, Customers users) {
         this.store = store;
         this.orderLines = orderLines;
         this.users = users;

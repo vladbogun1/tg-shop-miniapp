@@ -20,7 +20,7 @@ import java.util.List;
  * itself, so the JVM and session time zones never have to agree.
  */
 @Service
-public class UserGeoAdminService {
+public class UserGeoQueries {
 
     /** "Online now" = an event in the last few minutes (the apps flush their journal every ~15 s). */
     static final int ONLINE_WINDOW_MINUTES = 5;
@@ -35,10 +35,12 @@ public class UserGeoAdminService {
 
     private final JdbcTemplate jdbc;
     private final GeoIpLookup geo;
+    private final java.time.Clock clock;
 
-    public UserGeoAdminService(JdbcTemplate jdbc, GeoIpLookup geo) {
+    public UserGeoQueries(JdbcTemplate jdbc, GeoIpLookup geo, java.time.Clock clock) {
         this.jdbc = jdbc;
         this.geo = geo;
+        this.clock = clock;
     }
 
     public static int clampDays(int days) {
@@ -85,7 +87,7 @@ public class UserGeoAdminService {
         Long total = jdbc.queryForObject("SELECT COUNT(DISTINCT " + VISITOR + ") FROM client_events "
                 + "WHERE created_at >= NOW() - INTERVAL " + ONLINE_WINDOW_MINUTES + " MINUTE", Long.class);
         return new UserGeoDtos.Online(byChannel[0], byChannel[1], total == null ? 0 : total,
-                ONLINE_WINDOW_MINUTES, Instant.now());
+                ONLINE_WINDOW_MINUTES, clock.instant());
     }
 
     public UserGeoDtos.PointDetails point(BigDecimal lat, BigDecimal lon, int days) {

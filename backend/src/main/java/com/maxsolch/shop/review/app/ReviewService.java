@@ -13,7 +13,7 @@ import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.customer.infra.UserRepository;
+import com.maxsolch.shop.customer.app.Customers;
 import com.maxsolch.shop.review.app.ReviewDtos.Bonus;
 import com.maxsolch.shop.review.app.ReviewDtos.MyReview;
 import com.maxsolch.shop.review.app.ReviewDtos.PendingLine;
@@ -66,7 +66,7 @@ public class ReviewService {
     private final ProductReviewRepository reviews;
     private final OrderLookup orders;
     private final OrderLines orderLines;
-    private final UserRepository users;
+    private final Customers users;
     private final ReviewStore store;
     private final SettingsService settings;
     private final Messages messages;
@@ -77,7 +77,7 @@ public class ReviewService {
     private final Clock clock;
 
     public ReviewService(ProductReviewRepository reviews, OrderLookup orders, OrderLines orderLines,
-                         UserRepository users, ReviewStore store, SettingsService settings, Messages messages,
+                         Customers users, ReviewStore store, SettingsService settings, Messages messages,
                          ReviewMapper mapper, ReviewPublishing publishing, ReviewBonus bonus, DomainEvents events,
                          Clock clock) {
         this.reviews = reviews;

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.customer.app;
 
+import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.platform.time.TimeRange;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.customer.domain.UserCardDto;
@@ -60,9 +61,9 @@ public class UserAdminService {
     static ZoneId businessZone(String configured) {
         try {
             return configured == null || configured.isBlank()
-                    ? ZoneId.of("Europe/Kyiv") : ZoneId.of(configured.trim());
+                    ? ShopZone.DEFAULT : ZoneId.of(configured.trim());
         } catch (Exception e) {
-            return ZoneId.of("Europe/Kyiv");
+            return ShopZone.DEFAULT;
         }
     }
 

@@ -7,7 +7,7 @@ import com.maxsolch.shop.order.domain.OrderSource;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.customer.infra.UserRepository;
+import com.maxsolch.shop.customer.app.Customers;
 import org.springframework.stereotype.Service;
 
 import static com.maxsolch.shop.platform.util.Texts.trimToNull;
@@ -29,12 +29,12 @@ public class OrderPlacement {
 
     private final Checkout checkout;
     private final OrderLookup orderLookup;
-    private final UserRepository userRepository;
+    private final Customers userRepository;
     private final OrderIdempotencyService idempotency;
     private final OrderGuard orderGuard;
     private final ActivityLog activity;
 
-    public OrderPlacement(Checkout checkout, OrderLookup orderLookup, UserRepository userRepository,
+    public OrderPlacement(Checkout checkout, OrderLookup orderLookup, Customers userRepository,
                           OrderIdempotencyService idempotency, OrderGuard orderGuard, ActivityLog activity) {
         this.checkout = checkout;
         this.orderLookup = orderLookup;

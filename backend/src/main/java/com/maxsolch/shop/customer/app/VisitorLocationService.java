@@ -7,7 +7,7 @@ import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.maxsolch.shop.platform.config.AppProperties;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.maxsolch.shop.customer.infra.VisitorLocationStore;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -46,28 +46,20 @@ public class VisitorLocationService {
 
     private static final Pattern ANON_ID = Pattern.compile("[A-Za-z0-9_-]{8,64}");
 
-    private static final String UPSERT = "INSERT INTO visitor_locations "
-            + "(visitor_key, telegram_user_id, anon_id, channel, ip, country_code, country, city, lat, lon, seen_at) "
-            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) "
-            + "ON DUPLICATE KEY UPDATE telegram_user_id = VALUES(telegram_user_id), anon_id = VALUES(anon_id), "
-            + "channel = VALUES(channel), ip = VALUES(ip), country_code = VALUES(country_code), "
-            + "country = VALUES(country), city = VALUES(city), lat = VALUES(lat), lon = VALUES(lon), "
-            + "seen_at = CURRENT_TIMESTAMP";
-
-    private final JdbcTemplate jdbc;
+    private final VisitorLocationStore store;
     private final GeoIpLookup geo;
     private final Executor executor;
     private final Cache<String, Boolean> recent;
     private final boolean enabled;
 
     @Autowired
-    public VisitorLocationService(JdbcTemplate jdbc, GeoIpLookup geo, AppProperties props) {
-        this(jdbc, geo, props.getGeoip().isEnabled(), props.getGeoip().getThrottle(), newWorker());
+    public VisitorLocationService(VisitorLocationStore store, GeoIpLookup geo, AppProperties props) {
+        this(store, geo, props.getGeoip().isEnabled(), props.getGeoip().getThrottle(), newWorker());
     }
 
-    VisitorLocationService(JdbcTemplate jdbc, GeoIpLookup geo, boolean enabled, Duration throttle,
+    VisitorLocationService(VisitorLocationStore store, GeoIpLookup geo, boolean enabled, Duration throttle,
                            Executor executor) {
-        this.jdbc = jdbc;
+        this.store = store;
         this.geo = geo;
         this.enabled = enabled;
         this.executor = executor;
@@ -126,33 +118,19 @@ public class VisitorLocationService {
                        String supersededKey) {
         try {
             GeoIpLookup.Place p = geo.lookup(ip).orElse(null);
-            jdbc.update(UPSERT, key, telegramUserId, anonId, channel, ip,
+            store.upsert(key, telegramUserId, anonId, channel, ip,
                     p == null ? null : p.countryCode(),
                     p == null ? null : p.country(),
                     p == null ? null : p.city(),
                     p == null ? null : p.lat(),
                     p == null ? null : p.lon());
             if (supersededKey != null) {
-                jdbc.update("DELETE FROM visitor_locations WHERE visitor_key = ?", supersededKey);
+                store.delete(supersededKey);
             }
         } catch (Exception e) {
             // Let the next request try again instead of waiting out the throttle.
             recent.invalidate(key);
             log.debug("Visitor location write failed for {}: {}", key, e.toString());
-        }
-    }
-
-    @SchedulerLock(name = "VisitorLocationService.purgeOld", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
-    @Scheduled(cron = "${app.geoip.purge-cron:0 25 4 * * *}")
-    public void purgeOld() {
-        try {
-            int removed = jdbc.update("DELETE FROM visitor_locations WHERE seen_at < NOW() - INTERVAL "
-                    + RETENTION_DAYS + " DAY");
-            if (removed > 0) {
-                log.info("Purged {} visitor location(s) older than {} days", removed, RETENTION_DAYS);
-            }
-        } catch (Exception e) {
-            log.warn("Visitor location purge failed: {}", e.toString());
         }
     }
 

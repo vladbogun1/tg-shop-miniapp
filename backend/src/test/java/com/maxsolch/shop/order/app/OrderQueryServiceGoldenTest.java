@@ -35,7 +35,7 @@ import com.maxsolch.shop.order.infra.OrderMoneyMovementRepository;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.catalog.infra.ProductImageRepository;
 import com.maxsolch.shop.inventory.infra.StockWriteoffRepository;
-import com.maxsolch.shop.customer.infra.UserRepository;
+import com.maxsolch.shop.customer.app.Customers;
 import com.maxsolch.shop.translation.app.TranslationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -99,7 +99,7 @@ class OrderQueryServiceGoldenTest {
         ProductImageRepository images = mock(ProductImageRepository.class);
         TranslationService translation = mock(TranslationService.class);
         com.maxsolch.shop.catalog.app.CatalogNames catalogNames = mock(com.maxsolch.shop.catalog.app.CatalogNames.class);
-        UserRepository users = mock(UserRepository.class);
+        Customers users = mock(Customers.class);
         CustomerRejectReason rejectReason = mock(CustomerRejectReason.class);
         OrderExchangeRepository exchangeRepo = mock(OrderExchangeRepository.class);
         OrderMoneyMovementRepository movementRepo = mock(OrderMoneyMovementRepository.class);
