@@ -18,7 +18,7 @@
 - Код по бизнес-модулям `com.maxsolch.shop.<модуль>.{api,app,domain,infra}` + `platform`; не в `service/`, `web/`, `repository/`.
 - `api → app → domain`, `infra → domain`; другой модуль — только через его `app`; циклов между модулями нет.
 - Ошибки — `platform.error.DomainException` с `ErrorCode`; после коммита — доменное событие
-  + `@TransactionalEventListener(AFTER_COMMIT)` (`platform.tx.DomainEvents`); время — `Clock` + `ShopZone`; текущий админ — `CurrentActor`;
+  + `@OnCommitted` (`platform.tx.DomainEvents`; события в `<модуль>.domain`, потоки — `platform.jobs.Workers`, кэши — `CacheSpec`); время — `Clock` + `ShopZone`; текущий админ — `CurrentActor`;
   настройки — `@ConfigurationProperties` (не `@Value`); фоновая задача — `@Scheduled` + `@SchedulerLock`;
   внешний HTTP — через `platform.http` (таймауты обязательны, ретрай только идемпотентных).
 - Статус заказа — только методами `Order`; деньги — minor-единицы, формулы в `OrderMoney`.

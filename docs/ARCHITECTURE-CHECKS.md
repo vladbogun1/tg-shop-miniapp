@@ -49,6 +49,13 @@
   R1 — класс вне `<модуль>.{api,app,domain,infra}` и `platform`; C1 — без исключения для `platform`: время только через `Clock`, пояс — только через
   бин `ShopZone` (конструктор `new ShopZone(app.timezone)`, статических `of`/`DEFAULT` нет), `System.currentTimeMillis`/`nanoTime` запрещены.
   Литерал `Europe/Kyiv` допустим только в `AppProperties.DEFAULT_TIMEZONE` (`ShopZoneLiteralTest`).
+- **Шаг 9в: события, потоки, мемо.** T3 `ApplicationEventPublisher` только внутри `platform.tx` (`DomainEvents`); T4 слушатели только `@OnCommitted`/`@OnCompleted`
+  (`@TransactionalEventListener` вне `platform.tx` запрещён; `@EventListener` допустим только на событиях самого Spring — `ApplicationReadyEvent`, `SessionDisconnectEvent`);
+  T5 параметр слушателя — тип из `<модуль>.domain` или `platform`, а класс с именем `*Event(s)` не лежит в app/api/infra; J2 `Executors.*`, `new Thread`,
+  `new ThreadPoolExecutor`, `CompletableFuture.*Async` только в `platform.jobs` (`Workers`); K2 `volatile`-поля не `boolean` запрещены (мемо — Spring Cache);
+  CA усилено: Caffeine только в `platform.cache`. Новых точечных исключений нет. Проверено фикстурой `BadEvents`; порядок публикаций в транзакциях —
+  `OrderEventsPublishedInTransactionTest`, набор слушателей (событие, фаза, fallback) — снимок `EventListenersSnapshotTest`
+  (`-Dsnapshot.update=true` только осознанно).
 - **Точечные исключения** (имя класса в `V2Rules.ALLOWED`, причина рядом): S1 — `platform.jobs.JobsConfig`; K1 — `payment.app.CustomerPaymentRefresh` и
   `platform.config.WebSocketConfig` (ARCHITECTURE.md, раздел 6); E1 — `payment.domain.MonobankGateway` (`MonobankException` — сбой порта, всегда перехватывается
   в `payment.app` и превращается в `DomainException`); C1 — `platform.time.TimeConfig` (создаёт системный `Clock` и `ShopZone`), `platform.time.ShopZone`

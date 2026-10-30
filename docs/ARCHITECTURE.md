@@ -102,7 +102,7 @@ Ousterhout, Fowler, Feathers, Nygard). Правила проверяет ArchUni
 | Деньги | `long` minor; формулы только в `OrderMoney` / методах `Order` | ArchUnit + golden |
 | Ошибки | `platform.error`: `DomainException(ErrorCode, args)`; коды — enum в модуле; текст покупателю — через i18n по коду, админу — по-русски; HTTP-статус по типу ошибки в одном обработчике | ArchUnit: в `app`/`domain` нет `web`-исключений |
 | Валидация | формат — Bean Validation на DTO в `api`; бизнес-правила — в `domain` | ревью |
-| После коммита | только доменное событие + `@TransactionalEventListener(AFTER_COMMIT)`; `AfterCommit` и ручной `TransactionSynchronizationManager` удаляются | ArchUnit |
+| События | публикуем только `platform.tx.DomainEvents.publish(...)`; слушаем только `@OnCommitted` (после коммита, и сразу, если публикация была вне транзакции) или `@OnCompleted` (после коммита и после отката — например сброс кэша). Тип события — в `<модуль>.domain`, имя в прошедшем времени (`OrderStatusChanged`-стиль); платформенное событие — в `platform` (`TopicMessagePosted`). `ApplicationEventPublisher`, `@TransactionalEventListener`, ручной `TransactionSynchronizationManager` запрещены | ArchUnit T1, T3, T4, T5 |
 | Уведомления | модуль публикует событие → его `XxxNotifier` в `app` слушает и шлёт через порты `notification` (`CustomerBot`, `SellerChannel`, `PushSender`) | ArchUnit: Telegram/push только из `notification` и `*Notifier` |
 | Аудит админа | в сценарии `app`, не в контроллере; кто действует — `CurrentActor` (вместо статического `SecurityUtil`) | ArchUnit: контроллеры не зовут аудит |
 | Права | только аннотации: `@RequiredAdmin`, `@RequiredSuperAdmin`, новая `@RequiresFinance` | ArchUnit: нет ручных `require*` в контроллерах |
@@ -110,7 +110,8 @@ Ousterhout, Fowler, Feathers, Nygard). Правила проверяет ArchUni
 | Блокировки | только в БД (`SELECT … FOR UPDATE`); замки в памяти (`ConcurrentHashMap`, `synchronized`) уходят — иначе второй экземпляр бэкенда их не видит | ArchUnit |
 | Время | бин `Clock` + `ShopZone` (часовой пояс из `app.timezone`, создаётся только конструктором в `TimeConfig`); `Instant.now()`, `System.currentTimeMillis`, `ZoneId.of` запрещены везде, в том числе в `platform` (точечно: `TimeConfig`, `ShopZone`, `DbLocks` — `nanoTime` как дедлайн) | ArchUnit C1 + `ShopZoneLiteralTest` |
 | Конфиг | `@ConfigurationProperties` с `@Validated` на модуль; `@Value` запрещён | ArchUnit |
-| Кэш | только Spring Cache (Caffeine) с именованными кэшами и TTL; самодельные мемо удаляются | ArchUnit |
+| Кэш | только Spring Cache: размер и срок жизни — бин `CacheSpec` (в `platform.cache` или в `*Caches` модуля), получаем через `CacheConfig.require`; `Caffeine.newBuilder` вне `platform.cache` и `volatile`-поля с данными запрещены; одно значение — кэш на один ключ | ArchUnit CA, K2 |
+| Фоновые потоки | только `platform.jobs.Workers` (`single`, `bounded`, `scheduled`): именованный поток-демон, остановка при закрытии контекста (`bounded` дожидается очереди заданное время); `Executors.*`, `new Thread`, `CompletableFuture.*Async` вне `platform.jobs` запрещены | ArchUnit J2 |
 | Фоновые задачи | `app/*Jobs` + ShedLock (замок в БД, одна новая таблица) — задача не запустится дважды | ArchUnit: `@Scheduled` только в `*Jobs` с `@SchedulerLock` |
 | Внешние HTTP | порт в `domain`, клиент в `infra` через общий `platform.http`: таймауты обязательны, ретраи — только идемпотентных вызовов, ограниченные; Telegram и MinIO получают таймауты | ArchUnit + тест конфигурации |
 | Зависимости бинов | только конструктор; `@Autowired(required=false)`, сеттеры, поля, `@Lazy` — нет | ArchUnit |
@@ -170,11 +171,12 @@ API (URL и JSON), схема БД и поведение не меняются; 
 |---|---|---|---|
 | Статус идущей рассылки (счётчики на экране) | `BroadcastService` | вторую рассылку не даст запустить замок в БД; итог пишется в таблицу рассылок | читать статус из строки рассылки |
 | Троттлинг опроса оплаты клиентом (5 с на заказ) | `CustomerPaymentRefresh` | лишний опрос monobank безвреден: чтение, идемпотентно | общий кэш или строка с временем |
-| Лимиты запросов | `RateLimitFilter` (Caffeine) | лимит на экземпляр = лимит × N, защита от перебора остаётся | общий счётчик |
+| Лимиты запросов | `RateLimitFilter` (кэши `SecurityCaches.RATE_*`) | лимит на экземпляр = лимит × N, защита от перебора остаётся | общий счётчик |
 | Неверные пароли несуществующих логинов | `StaffCaches.ADMIN_UNKNOWN_LOGINS` | для настоящих учёток счётчик и блокировка в БД (`AdminCounters`); тут только неизвестные имена | кэш в БД |
 | Использованные pre-auth токены 2FA | `StaffCaches.ADMIN_PREAUTH_USED` | токен живёт минуты, подбор кода ограничен счётчиком в БД | таблица использованных `jti` |
 | Грейс ротации refresh (20 с), геолокация визитов | `CustomerCaches` | потеря = один 401, который лечит следующий refresh, или одна лишняя запись | не требуется |
 | Кэш проверки админского токена, кэш отзывов токена (30 с) | `AdminTokenValidator`, `AdminTokenRevocations` | источник правды — БД, кэш короткий | не требуется |
-| Снимок настроек (60 с) | `SettingsService` | сбрасывается при сохранении, в том числе откатившемся; на втором экземпляре отстаёт до 60 с | событие через БД или шину |
+| Снимок настроек (60 с) и последний удачно прочитанный (неделя, ответ при сбое БД) | `SettingsService`, `SettingsCaches` | сбрасываются при сохранении, в том числе откатившемся; на втором экземпляре отстаёт до 60 с | событие через БД или шину |
+| Мемо чтения: названия для аналитики (10 мин), факты метрик (15 с), сотрудники в посетителях (5 мин), тексты бота от «Переводов» (1 ч, сброс при сохранении), публичный ключ monobank (сутки; при неверной подписи перечитывается не чаще раза в минуту) | `AnalyticsReadCaches`, `BotTextCaches`, `PaymentCaches` | источник правды — БД/API; потеря кэша = один лишний запрос | не требуется |
 | Флаги `running` в `PaymentJobs`, `ReceiptDeliveryJob`, `NovaPoshtaSyncService` | сами задачи | не дают ручному и плановому запуску наложиться внутри экземпляра; между экземплярами задачу держит `@SchedulerLock` | не требуется |
 | Сессии WebSocket админки | `WebSocketConfig` | соединение принадлежит процессу по природе | брокер сообщений |
