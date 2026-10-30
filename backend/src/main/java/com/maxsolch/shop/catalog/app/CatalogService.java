@@ -4,7 +4,7 @@ import com.maxsolch.shop.catalog.app.CatalogDtos.BrandRefDto;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.catalog.domain.Product;
-import com.maxsolch.shop.order.infra.OrderItemRepository;
+import com.maxsolch.shop.catalog.domain.LineKey;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.app.TranslationService;
@@ -12,7 +12,6 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,25 +31,25 @@ public class CatalogService {
 
     private final ProductRepository productRepository;
     private final CatalogDirectory catalogDirectory;
-    private final OrderItemRepository orderItemRepository;
+    private final SalesStats salesStats;
     private final TranslationService translationService;
     /** Pre-order holds: units kept for people in a queue are not shown as in stock. */
-    private final com.maxsolch.shop.preorder.app.PreorderQueueService preorders;
+    private final HeldUnits heldUnits;
 
     public CatalogService(ProductRepository productRepository,
                           CatalogDirectory catalogDirectory,
-                          OrderItemRepository orderItemRepository,
+                          SalesStats salesStats,
                           TranslationService translationService,
-                          com.maxsolch.shop.preorder.app.PreorderQueueService preorders) {
+                          HeldUnits heldUnits) {
         this.productRepository = productRepository;
         this.catalogDirectory = catalogDirectory;
-        this.orderItemRepository = orderItemRepository;
+        this.salesStats = salesStats;
         this.translationService = translationService;
-        this.preorders = preorders;
+        this.heldUnits = heldUnits;
     }
 
     private Map<String, Integer> held() {
-        return preorders.heldByLine();
+        return heldUnits.heldByLine();
     }
 
     @Transactional(readOnly = true)
@@ -79,21 +78,9 @@ public class CatalogService {
                 .map(dto -> CatalogOverlay.product(translationService.overlay(lang), dto));
     }
 
-    /**
-     * Units sold per product, keyed by product id.
-     *
-     * <p>{@code soldCount} shipped as a hardcoded {@code 0}, which quietly broke the catalog's
-     * default "популярные сначала" sort and the admin's "Продажи ↓" — both silently degraded to
-     * alphabetical. One grouped query, and it rides the same catalog cache as the products.
-     */
+    /** Units sold per product, keyed by product id (the order module's figures). */
     private Map<String, Long> soldCounts() {
-        Map<String, Long> sold = new HashMap<>();
-        for (Object[] row : orderItemRepository.soldCountsByProduct()) {
-            if (row[0] != null) {
-                sold.put(UuidUtil.toString((byte[]) row[0]), ((Number) row[1]).longValue());
-            }
-        }
-        return sold;
+        return salesStats.soldByProduct();
     }
 
     /** The stock a customer sees: minus the units held for people in a pre-order queue. */
@@ -103,10 +90,10 @@ public class CatalogService {
         }
         int heldHere = 0;
         if (p.getVariants() == null || p.getVariants().isEmpty()) {
-            heldHere = held.getOrDefault(com.maxsolch.shop.procurement.domain.Lines.key(p.getId(), null), 0);
+            heldHere = held.getOrDefault(LineKey.of(p.getId(), null), 0);
         } else {
             for (var v : p.getVariants()) {
-                heldHere += held.getOrDefault(com.maxsolch.shop.procurement.domain.Lines.key(p.getId(), v.getId()), 0);
+                heldHere += held.getOrDefault(LineKey.of(p.getId(), v.getId()), 0);
             }
         }
         return Math.max(0, p.getStock() - heldHere);
@@ -119,7 +106,7 @@ public class CatalogService {
         List<ProductVariantDto> variants = p.getVariants().stream()
                 .map(v -> new ProductVariantDto(UuidUtil.toString(v.getId()), v.getName(),
                         Math.max(0, v.getStock() - held.getOrDefault(
-                                com.maxsolch.shop.procurement.domain.Lines.key(p.getId(), v.getId()), 0)),
+                                LineKey.of(p.getId(), v.getId()), 0)),
                         v.getSortOrder()))
                 .toList();
         CatalogSnapshot catalog = catalogDirectory.snapshot();

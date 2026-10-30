@@ -1,5 +1,8 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.catalog.domain.CatalogChanged;
+import com.maxsolch.shop.platform.tx.DomainEvents;
+import com.maxsolch.shop.platform.tx.OnCommitted;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
 import com.maxsolch.shop.catalog.domain.Category;
 import com.maxsolch.shop.catalog.domain.SpecAttribute;
@@ -16,8 +19,6 @@ import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,16 +41,19 @@ public class CatalogDirectory {
     private final SpecAttributeRepository attributeRepository;
     private final SpecOptionRepository optionRepository;
     private final CacheManager cacheManager;
+    private final DomainEvents events;
 
     public CatalogDirectory(CategoryRepository categoryRepository, BrandRepository brandRepository,
                             SpecGroupRepository groupRepository, SpecAttributeRepository attributeRepository,
-                            SpecOptionRepository optionRepository, CacheManager cacheManager) {
+                            SpecOptionRepository optionRepository, CacheManager cacheManager,
+                            DomainEvents events) {
         this.categoryRepository = categoryRepository;
         this.brandRepository = brandRepository;
         this.groupRepository = groupRepository;
         this.attributeRepository = attributeRepository;
         this.optionRepository = optionRepository;
         this.cacheManager = cacheManager;
+        this.events = events;
     }
 
     @Transactional(readOnly = true)
@@ -130,18 +134,14 @@ public class CatalogDirectory {
         return o == null ? null : o.toString();
     }
 
-    /** Drops the catalog caches — after the commit when inside a transaction. */
+    /** Drops the catalog caches: after the commit when inside a transaction, at once otherwise. */
     public void evictAll() {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    clear();
-                }
-            });
-        } else {
-            clear();
-        }
+        events.publish(new CatalogChanged());
+    }
+
+    @OnCommitted
+    void onCatalogChanged(CatalogChanged event) {
+        clear();
     }
 
     private void clear() {

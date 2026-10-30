@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.catalog.domain.CatalogErrors;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
 import com.maxsolch.shop.catalog.domain.CategoryRules;
 import com.maxsolch.shop.catalog.domain.SpecAttribute;
@@ -21,9 +22,6 @@ import com.maxsolch.shop.catalog.app.CatalogDtos.RenameOption;
 import com.maxsolch.shop.catalog.app.CatalogDtos.SpecAttributeUpsertRequest;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.ConflictException;
-import com.maxsolch.shop.platform.error.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -86,7 +84,7 @@ public class SpecAttributeAdminService {
         List<SpecsRow> rows = specsRows();
         String cid = trimToNull(categoryId);
         if (cid != null && s.category(cid) == null) {
-            throw new NotFoundException("category not found");
+            throw CatalogErrors.notFound("category not found");
         }
         List<CatalogSnapshot.Attr> attrs = cid == null
                 ? s.attributes().stream().filter(a -> a.categoryId() == null).toList()
@@ -110,20 +108,20 @@ public class SpecAttributeAdminService {
         String cid = trimToNull(req.categoryId());
         if (cid != null) {
             a.setCategoryId(categoryRepository.findById(bytes(cid, "category"))
-                    .orElseThrow(() -> new NotFoundException("category not found")).getId());
+                    .orElseThrow(() -> CatalogErrors.notFound("category not found")).getId());
         }
         String key = trimToNull(req.key());
         if (key == null || !CatalogSchemaImporter.KEY.matcher(key).matches()) {
-            throw new BadRequestException("key: snake_case латиницей (a-z, 0-9, _), до 48 символов");
+            throw CatalogErrors.badRequest("key: snake_case латиницей (a-z, 0-9, _), до 48 символов");
         }
         a.setKey(key);
         SpecType type = SpecType.parse(req.type());
         if (type == null) {
-            throw new BadRequestException("type: number | enum | multi | bool | text");
+            throw CatalogErrors.badRequest("type: number | enum | multi | bool | text");
         }
         a.setType(type);
         if (trimToNull(req.labelRu()) == null) {
-            throw new BadRequestException("labelRu: укажите подпись");
+            throw CatalogErrors.badRequest("labelRu: укажите подпись");
         }
         apply(a, req);
         if (a.getGroupKey() == null) {
@@ -147,21 +145,21 @@ public class SpecAttributeAdminService {
         String key = trimToNull(req.key());
         if (key != null && !key.equals(a.getKey())) {
             if (!CatalogSchemaImporter.KEY.matcher(key).matches()) {
-                throw new BadRequestException("key: snake_case латиницей (a-z, 0-9, _), до 48 символов");
+                throw CatalogErrors.badRequest("key: snake_case латиницей (a-z, 0-9, _), до 48 символов");
             }
             if (used > 0) {
-                throw new ConflictException("ключ «" + a.getKey() + "» уже заполнен у " + used
+                throw CatalogErrors.conflict("ключ «" + a.getKey() + "» уже заполнен у " + used
                         + " товаров — его нельзя переименовать", IN_USE, Map.of("count", used));
             }
             a.setKey(key);
         }
         SpecType type = req.type() == null ? null : SpecType.parse(req.type());
         if (req.type() != null && type == null) {
-            throw new BadRequestException("type: number | enum | multi | bool | text");
+            throw CatalogErrors.badRequest("type: number | enum | multi | bool | text");
         }
         if (type != null && type != a.getType()) {
             if (used > 0 && !force) {
-                throw new ConflictException("характеристика заполнена у " + used + " товаров — смена типа сотрёт "
+                throw CatalogErrors.conflict("характеристика заполнена у " + used + " товаров — смена типа сотрёт "
                         + "значения (force=1)", IN_USE, Map.of("count", used));
             }
             if (used > 0) {
@@ -172,10 +170,10 @@ public class SpecAttributeAdminService {
         if (req.categoryId() != null) {
             String cid = trimToNull(req.categoryId());
             byte[] newCat = cid == null ? null : categoryRepository.findById(bytes(cid, "category"))
-                    .orElseThrow(() -> new NotFoundException("category not found")).getId();
+                    .orElseThrow(() -> CatalogErrors.notFound("category not found")).getId();
             if (!java.util.Arrays.equals(newCat, a.getCategoryId())) {
                 if (used > 0) {
-                    throw new ConflictException("характеристика заполнена у " + used + " товаров — её нельзя "
+                    throw CatalogErrors.conflict("характеристика заполнена у " + used + " товаров — её нельзя "
                             + "перенести в другую категорию", IN_USE, Map.of("count", used));
                 }
                 a.setCategoryId(newCat);
@@ -212,7 +210,7 @@ public class SpecAttributeAdminService {
         List<SpecsRow> rows = scoped(a);
         long used = rows.stream().filter(r -> r.specs().containsKey(a.getKey())).count();
         if (used > 0 && !force) {
-            throw new ConflictException("характеристика «" + a.getLabelRu() + "» заполнена у " + used + " товаров",
+            throw CatalogErrors.conflict("характеристика «" + a.getLabelRu() + "» заполнена у " + used + " товаров",
                     IN_USE, Map.of("count", used));
         }
         stripKey(rows, a.getKey());
@@ -237,7 +235,7 @@ public class SpecAttributeAdminService {
     @Transactional
     public List<AdminSpecGroupDto> putGroups(List<AdminSpecGroupDto> groups) {
         if (groups == null) {
-            throw new BadRequestException("groups required");
+            throw CatalogErrors.badRequest("groups required");
         }
         Set<String> keep = new HashSet<>();
         int i = 0;
@@ -245,10 +243,10 @@ public class SpecAttributeAdminService {
             i++;
             String key = trimToNull(g.key());
             if (key == null || !CatalogSchemaImporter.KEY.matcher(key).matches() || key.length() > 32) {
-                throw new BadRequestException("group key «" + g.key() + "»: a-z, 0-9, _");
+                throw CatalogErrors.badRequest("group key «" + g.key() + "»: a-z, 0-9, _");
             }
             if (!keep.add(key)) {
-                throw new BadRequestException("group «" + key + "» twice");
+                throw CatalogErrors.badRequest("group «" + key + "» twice");
             }
             SpecGroup row = groupRepository.findById(key).orElseGet(SpecGroup::new);
             row.setKey(key);
@@ -266,7 +264,7 @@ public class SpecAttributeAdminService {
         for (SpecGroup g : groupRepository.findAll()) {
             if (!keep.contains(g.getKey())) {
                 if (used.contains(g.getKey())) {
-                    throw new ConflictException("группа «" + g.getLabelRu() + "» используется характеристиками",
+                    throw CatalogErrors.conflict("группа «" + g.getLabelRu() + "» используется характеристиками",
                             GROUP_IN_USE);
                 }
                 groupRepository.delete(g);
@@ -319,7 +317,7 @@ public class SpecAttributeAdminService {
                 groupRepository.save(main);
             }
             if (g == null || groupRepository.findById(g).isEmpty()) {
-                throw new BadRequestException("group «" + req.group() + "» не найдена");
+                throw CatalogErrors.badRequest("group «" + req.group() + "» не найдена");
             }
             a.setGroupKey(g);
         }
@@ -358,11 +356,11 @@ public class SpecAttributeAdminService {
                 continue;
             }
             if (b.min() != null && b.max() != null && b.min() > b.max()) {
-                throw new BadRequestException("бакет: «от» больше «до»");
+                throw CatalogErrors.badRequest("бакет: «от» больше «до»");
             }
             String id = CatalogSnapshot.bucketId(b.min(), b.max());
             if (!ids.add(id)) {
-                throw new BadRequestException("бакет " + id + " повторяется");
+                throw CatalogErrors.badRequest("бакет " + id + " повторяется");
             }
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("min", b.min());
@@ -388,10 +386,10 @@ public class SpecAttributeAdminService {
             i++;
             String value = trimToNull(in.value());
             if (value == null || !CatalogSchemaImporter.VALUE.matcher(value).matches()) {
-                throw new BadRequestException("значение опции «" + in.value() + "»: a-z, 0-9, _ . + -");
+                throw CatalogErrors.badRequest("значение опции «" + in.value() + "»: a-z, 0-9, _ . + -");
             }
             if (!keep.add(value)) {
-                throw new BadRequestException("опция «" + value + "» повторяется");
+                throw CatalogErrors.badRequest("опция «" + value + "» повторяется");
             }
             SpecOption o = existing.get(value);
             if (o == null) {
@@ -416,7 +414,7 @@ public class SpecAttributeAdminService {
             }
             long used = rows.stream().filter(r -> usesValue(r.specs().get(a.getKey()), o.getValue())).count();
             if (used > 0 && !force) {
-                throw new ConflictException("вариант «" + o.getLabelRu() + "» выбран у " + used + " товаров",
+                throw CatalogErrors.conflict("вариант «" + o.getLabelRu() + "» выбран у " + used + " товаров",
                         OPTION_IN_USE, Map.of("count", used, "value", o.getValue()));
             }
             if (used > 0) {
@@ -430,14 +428,14 @@ public class SpecAttributeAdminService {
         String f = trimToNull(from);
         String t = trimToNull(to);
         if (f == null || t == null || !CatalogSchemaImporter.VALUE.matcher(t).matches()) {
-            throw new BadRequestException("renameOption: from/to — значения опций (a-z, 0-9, _ . + -)");
+            throw CatalogErrors.badRequest("renameOption: from/to — значения опций (a-z, 0-9, _ . + -)");
         }
         if (f.equals(t)) {
             return;
         }
         List<SpecOption> options = optionRepository.findByAttribute(a.getId());
         SpecOption src = options.stream().filter(o -> o.getValue().equals(f)).findFirst()
-                .orElseThrow(() -> new NotFoundException("option «" + f + "» not found"));
+                .orElseThrow(() -> CatalogErrors.notFound("option «" + f + "» not found"));
         SpecOption dst = options.stream().filter(o -> o.getValue().equals(t)).findFirst().orElse(null);
         if (dst == null) {
             src.setValue(t);
@@ -556,14 +554,14 @@ public class SpecAttributeAdminService {
 
     private SpecAttribute load(String id) {
         return attributeRepository.findById(bytes(id, "attribute"))
-                .orElseThrow(() -> new NotFoundException("attribute not found"));
+                .orElseThrow(() -> CatalogErrors.notFound("attribute not found"));
     }
 
     static byte[] bytes(String id, String what) {
         try {
             return UuidUtil.toBytes(id.trim());
         } catch (IllegalArgumentException | NullPointerException e) {
-            throw new BadRequestException("invalid " + what + " id: " + id);
+            throw CatalogErrors.badRequest("invalid " + what + " id: " + id);
         }
     }
 }

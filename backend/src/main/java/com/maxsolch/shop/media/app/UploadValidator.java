@@ -1,7 +1,7 @@
 package com.maxsolch.shop.media.app;
 
+import com.maxsolch.shop.media.domain.MediaErrors;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.platform.error.BadRequestException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -69,17 +69,17 @@ public class UploadValidator {
         String kind = messages.current("api.upload.kind.logo");
         validate(file, LOGO_TYPES, LOGO_EXTENSIONS, kind);
         if (file.getSize() > LOGO_MAX_BYTES) {
-            throw new BadRequestException(messages.current("api.upload.tooBig", LOGO_MAX_BYTES / 1024 / 1024));
+            throw MediaErrors.badRequest(messages.current("api.upload.tooBig", LOGO_MAX_BYTES / 1024 / 1024));
         }
         if ("svg".equals(extensionOf(file.getOriginalFilename()))) {
             String text;
             try {
                 text = new String(file.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
             } catch (java.io.IOException e) {
-                throw new BadRequestException(messages.current("api.upload.badType", kind));
+                throw MediaErrors.badRequest(messages.current("api.upload.badType", kind));
             }
             if (!text.toLowerCase(Locale.ROOT).contains("<svg") || SVG_ACTIVE.matcher(text).find()) {
-                throw new BadRequestException(messages.current("api.upload.badType", kind));
+                throw MediaErrors.badRequest(messages.current("api.upload.badType", kind));
             }
         }
     }
@@ -87,10 +87,10 @@ public class UploadValidator {
     private void validate(MultipartFile file, Set<String> allowedTypes,
                           Set<String> allowedExtensions, String humanList) {
         if (file == null || file.isEmpty()) {
-            throw new BadRequestException(messages.current("api.upload.noFile"));
+            throw MediaErrors.badRequest(messages.current("api.upload.noFile"));
         }
         if (file.getSize() > MAX_BYTES) {
-            throw new BadRequestException(messages.current("api.upload.tooBig", MAX_BYTES / 1024 / 1024));
+            throw MediaErrors.badRequest(messages.current("api.upload.tooBig", MAX_BYTES / 1024 / 1024));
         }
         String contentType = file.getContentType() == null
                 ? "" : file.getContentType().toLowerCase(Locale.ROOT).trim();
@@ -100,11 +100,11 @@ public class UploadValidator {
             contentType = contentType.substring(0, semicolon).trim();
         }
         if (!allowedTypes.contains(contentType)) {
-            throw new BadRequestException(messages.current("api.upload.badType", humanList));
+            throw MediaErrors.badRequest(messages.current("api.upload.badType", humanList));
         }
         String extension = extensionOf(file.getOriginalFilename());
         if (!allowedExtensions.contains(extension)) {
-            throw new BadRequestException(messages.current("api.upload.badExtension", humanList));
+            throw MediaErrors.badRequest(messages.current("api.upload.badExtension", humanList));
         }
     }
 

@@ -50,6 +50,7 @@ final class InMemoryCatalog {
     final ProductRepository productRepository = mock(ProductRepository.class);
     final ContentTranslationRepository translationRepository = mock(ContentTranslationRepository.class);
     final CatalogDirectory directory;
+    final com.maxsolch.shop.translation.app.StoredTranslations storedTranslations;
 
     InMemoryCatalog() {
         lenient().when(categoryRepository.findAll()).thenAnswer(i -> new ArrayList<>(categories));
@@ -115,7 +116,20 @@ final class InMemoryCatalog {
         lenient().when(translationRepository.save(any())).thenAnswer(i -> save(translations, i.getArgument(0)));
 
         directory = new CatalogDirectory(categoryRepository, brandRepository, groupRepository, attributeRepository,
-                optionRepository, new ConcurrentMapCacheManager("catalogSchema", "products", "productById"));
+                optionRepository, new ConcurrentMapCacheManager("catalogSchema", "products", "productById"), events(null));
+        storedTranslations = new com.maxsolch.shop.translation.app.StoredTranslations(translationRepository);
+    }
+
+    /** Domain events as they would run after the commit: cache eviction and file deletion happen at once. */
+
+    com.maxsolch.shop.platform.tx.DomainEvents events(com.maxsolch.shop.media.app.ImageStorageService storage) {
+        return new com.maxsolch.shop.platform.tx.DomainEvents(ev -> {
+            if (ev instanceof com.maxsolch.shop.catalog.domain.CatalogChanged c) {
+                directory.onCatalogChanged(c);
+            } else if (ev instanceof com.maxsolch.shop.catalog.domain.CatalogFilesDropped d && storage != null) {
+                d.keys().forEach(storage::deleteQuietly);
+            }
+        });
     }
 
     private static <T> T save(List<T> list, T item) {

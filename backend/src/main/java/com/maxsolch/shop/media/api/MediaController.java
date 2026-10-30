@@ -1,11 +1,10 @@
 package com.maxsolch.shop.media.api;
 
+import com.maxsolch.shop.media.domain.MediaErrors;
 import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.media.app.MediaSigner;
 import com.maxsolch.shop.media.app.MediaThumbnailer;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.platform.error.ForbiddenException;
-import com.maxsolch.shop.platform.error.NotFoundException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
@@ -69,10 +68,10 @@ public class MediaController {
                                                    @RequestParam(value = "w", required = false) Integer w) {
         if (key == null || !key.startsWith(ALLOWED_PREFIX)) {
             // Never let a signed link be pointed at, say, a product image or another prefix.
-            throw new ForbiddenException(messages.current("api.media.forbidden"));
+            throw MediaErrors.forbidden(messages.current("api.media.forbidden"));
         }
         if (!signer.isValid(key, exp, sig)) {
-            throw new ForbiddenException(messages.current("api.media.expired"));
+            throw MediaErrors.forbidden(messages.current("api.media.expired"));
         }
 
         if (MediaThumbnailer.isAllowedWidth(w)) {
@@ -84,7 +83,7 @@ public class MediaController {
 
         ImageStorageService.StoredObject object = storage.get(key);
         if (object == null) {
-            throw new NotFoundException(messages.current("api.media.notFound"));
+            throw MediaErrors.notFound(messages.current("api.media.notFound"));
         }
         return body(object.stream(), parseType(object.contentType()));
     }

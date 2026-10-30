@@ -7,7 +7,7 @@ import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.app.TranslationService;
-import com.maxsolch.shop.platform.error.NotFoundException;
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.catalog.app.PublicCatalogDtos.CategoryDto;
 import com.maxsolch.shop.catalog.app.PublicCatalogDtos.ProductPage;
 import com.maxsolch.shop.catalog.app.PublicCatalogDtos.SitemapCategory;
@@ -88,7 +88,7 @@ class PublicCatalogServiceSitemapTest {
 
     @Test
     void unknownCategoryIs404AndSearchFindsBrands() {
-        assertThatThrownBy(() -> service.search(query("nope", null, null), "ru")).isInstanceOf(NotFoundException.class);
+        assertThatThrownBy(() -> service.search(query("nope", null, null), "ru")).isInstanceOf(DomainException.NotFound.class);
         ProductPage page = service.search(query(null, "akko", null), "ru");
         assertThat(page.items()).extracting(ProductDto::slug).containsExactly("mech");
     }

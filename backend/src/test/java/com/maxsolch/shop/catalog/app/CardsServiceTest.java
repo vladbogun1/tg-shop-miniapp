@@ -46,11 +46,12 @@ class CardsServiceTest {
     @BeforeEach
     void setUp() {
         db = new InMemoryCatalog();
+        ImageStorageService storage = mock(ImageStorageService.class);
         BrandAdminService brands = new BrandAdminService(db.brandRepository, db.productRepository, db.directory,
-                mock(ImageStorageService.class));
+                storage, db.events(storage));
         admins = mock(AdminUserRepository.class);
-        service = new CardsService(db.productRepository, db.directory, brands, db.translationRepository,
-                mock(TranslationService.class), admins);
+        service = new CardsService(db.productRepository, db.directory, brands, db.storedTranslations,
+                db.events(storage), java.time.Clock.systemUTC(), admins);
         mice = db.category("myshki", "Мыши", null);
         keyboards = db.category("klaviatury", "Клавиатуры", null);
         db.category("klv-magnitnye", "Магнитные", keyboards);

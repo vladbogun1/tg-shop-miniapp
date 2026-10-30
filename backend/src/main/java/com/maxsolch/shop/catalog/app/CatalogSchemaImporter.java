@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.translation.app.StoredTranslations;
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.catalog.domain.Brand;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
@@ -67,14 +68,14 @@ public class CatalogSchemaImporter {
     private final SpecAttributeRepository attributeRepository;
     private final SpecOptionRepository optionRepository;
     private final ProductRepository productRepository;
-    private final ContentTranslationRepository translationRepository;
+    private final StoredTranslations translations;
     private final DomainEvents events;
     private final CatalogDirectory directory;
 
     public CatalogSchemaImporter(CategoryRepository categoryRepository, BrandRepository brandRepository,
                                  SpecGroupRepository groupRepository, SpecAttributeRepository attributeRepository,
                                  SpecOptionRepository optionRepository, ProductRepository productRepository,
-                                 ContentTranslationRepository translationRepository,
+                                 StoredTranslations translations,
                                  DomainEvents events, CatalogDirectory directory) {
         this.categoryRepository = categoryRepository;
         this.brandRepository = brandRepository;
@@ -82,7 +83,7 @@ public class CatalogSchemaImporter {
         this.attributeRepository = attributeRepository;
         this.optionRepository = optionRepository;
         this.productRepository = productRepository;
-        this.translationRepository = translationRepository;
+        this.translations = translations;
         this.events = events;
         this.directory = directory;
     }
@@ -441,17 +442,13 @@ public class CatalogSchemaImporter {
             if (text == null) {
                 continue;
             }
-            ContentTranslationId id = new ContentTranslationId(TranslationEntityType.CATEGORY, cat.getId(),
-                    TranslationEntityType.NAME, locale);
-            ContentTranslation row = translationRepository.findById(id).orElseGet(() -> new ContentTranslation(id));
-            if (Objects.equals(row.getText(), text) && hash.equals(row.getSourceHash())) {
+            StoredTranslations.Stored row = translations
+                    .find(TranslationEntityType.CATEGORY, cat.getId(), TranslationEntityType.NAME, locale).orElse(null);
+            if (row != null && Objects.equals(row.text(), text) && hash.equals(row.sourceHash())) {
                 continue;
             }
-            row.setText(text);
-            row.setSource(source);
-            row.setOrigin(TranslationOrigin.AI);
-            row.setReviewedAt(null);
-            translationRepository.save(row);
+            translations.write(TranslationEntityType.CATEGORY, cat.getId(), TranslationEntityType.NAME, locale, text,
+                    source, TranslationOrigin.AI, null);
         }
     }
 

@@ -76,9 +76,7 @@ class CatalogServiceCacheTest {
 
         @Bean
         CatalogService catalogService(ProductRepository products, CatalogDirectory tags, TranslationService ts) {
-            OrderItemRepository orderItems = mock(OrderItemRepository.class);
-            when(orderItems.soldCountsByProduct()).thenReturn(List.of());
-            return new CatalogService(products, tags, orderItems, ts, mock(com.maxsolch.shop.preorder.app.PreorderQueueService.class));
+            return new CatalogService(products, tags, java.util.Map::of, ts, java.util.Map::of);
         }
     }
 

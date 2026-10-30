@@ -11,7 +11,7 @@ import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.translation.domain.ContentTranslation;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.translation.app.TranslationService;
-import com.maxsolch.shop.platform.error.ConflictException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -61,7 +61,7 @@ class CatalogSchemaImporterTest {
     void setUp() {
         db = new InMemoryCatalog();
         importer = new CatalogSchemaImporter(db.categoryRepository, db.brandRepository, db.groupRepository,
-                db.attributeRepository, db.optionRepository, db.productRepository, db.translationRepository,
+                db.attributeRepository, db.optionRepository, db.productRepository, db.storedTranslations,
                 mock(DomainEvents.class), db.directory);
         kovriki = db.category("kovriki", "Коврики", null);
         naushniki = db.category("naushniki", "Наушники", null);
@@ -134,8 +134,8 @@ class CatalogSchemaImporterTest {
     void aParentWithProductsWithoutAMoveRollsBack() throws Exception {
         String noMoves = SCHEMA.replace("\"product_moves\"", "\"ignored\"");
         assertThatThrownBy(() -> importer.importSchema(json(noMoves), 1L))
-                .isInstanceOf(ConflictException.class)
-                .satisfies(e -> assertThat(((ConflictException) e).getCode()).isEqualTo(CategoryRules.HAS_PRODUCTS));
+                .isInstanceOf(DomainException.Conflict.class)
+                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CategoryRules.HAS_PRODUCTS));
     }
 
     @Test
@@ -144,7 +144,7 @@ class CatalogSchemaImporterTest {
                 {"global_attributes":[{"key":"color","label_ru":"Цвет","type":"multi","group":"main","options":[]}],
                  "categories":[{"slug":"kovriki","name_ru":"Коврики","attributes":[
                    {"key":"color","label_ru":"Цвет","type":"enum","group":"main","options":[]}]}]}"""), 1L))
-                .isInstanceOf(ConflictException.class);
+                .isInstanceOf(DomainException.Conflict.class);
     }
 
     /** Small helper so the test reads naturally. */

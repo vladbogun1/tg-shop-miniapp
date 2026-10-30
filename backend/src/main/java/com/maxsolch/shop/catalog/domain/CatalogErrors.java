@@ -20,6 +20,10 @@ public final class CatalogErrors {
         return new DomainException.BadRequest(message);
     }
 
+    public static DomainException.BadRequest badRequest(String message, String code) {
+        return new DomainException.BadRequest(message, code == null ? null : ErrorCode.of(code));
+    }
+
     public static DomainException.NotFound notFound(String message) {
         return new DomainException.NotFound(message);
     }

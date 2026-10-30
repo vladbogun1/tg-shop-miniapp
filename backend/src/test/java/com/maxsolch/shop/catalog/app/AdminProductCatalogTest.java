@@ -6,8 +6,7 @@ import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.translation.app.TranslationService;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.ConflictException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -36,13 +35,9 @@ class AdminProductCatalogTest {
 
     @BeforeEach
     void setUp() {
-        service = new AdminProductService(products, mock(ImageStorageService.class), mock(SlugService.class),
-                mock(TranslationService.class), directory, brands,
-                mock(com.maxsolch.shop.inventory.app.StockWriteoffs.class),
-                mock(com.maxsolch.shop.platform.audit.AdminAuditService.class),
-                mock(com.maxsolch.shop.inventory.app.LotLedger.class),
-                mock(com.maxsolch.shop.preorder.app.PreorderQueueService.class),
-                mock(com.maxsolch.shop.preorder.app.WaitingCounts.class));
+        service = new AdminProductService(products, new ProductStorefront(mock(SlugService.class), products),
+                mock(TranslationService.class), directory, brands, mock(ProductStock.class), mock(ProductQueues.class),
+                mock(com.maxsolch.shop.platform.tx.DomainEvents.class), java.time.Clock.systemUTC());
         when(directory.load()).thenReturn(CatalogFixtures.snapshot());
         when(directory.snapshot()).thenReturn(CatalogFixtures.snapshot());
         when(products.save(any())).thenAnswer(i -> i.getArgument(0));
@@ -97,21 +92,21 @@ class AdminProductCatalogTest {
         assertThat(created.missingRequired()).containsExactly("sensor");
 
         assertThatThrownBy(() -> service.create(req(0, 5, null, CatalogFixtures.MICE, null, null, null)))
-                .isInstanceOf(BadRequestException.class).hasMessageContaining("priceMinor");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("priceMinor");
         assertThatThrownBy(() -> service.create(req(100, null, null, CatalogFixtures.MICE, null, null, null)))
-                .isInstanceOf(BadRequestException.class).hasMessageContaining("stock");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("stock");
         assertThatThrownBy(() -> service.create(req(100, 1, null, null, null, null, null)))
-                .isInstanceOf(BadRequestException.class).hasMessageContaining("categoryId");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("categoryId");
         assertThatThrownBy(() -> service.create(req(100, 1, null, CatalogFixtures.KEYBOARDS, null, null, null)))
-                .isInstanceOf(BadRequestException.class).hasMessageContaining("подкатегорию");
+                .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("подкатегорию");
     }
 
     @Test
     void publishingADraftNeedsForce() {
         product.setCategoryId(UuidUtil.toBytes(CatalogFixtures.MICE));
         assertThatThrownBy(() -> service.setActive(id, true, false))
-                .isInstanceOf(ConflictException.class)
-                .satisfies(e -> assertThat(((ConflictException) e).getCode()).isEqualTo(AdminProductService.CARD_NOT_READY));
+                .isInstanceOf(DomainException.Conflict.class)
+                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(AdminProductService.CARD_NOT_READY));
         product.setUnfinished(true);
         AdminProductDto published = service.setActive(id, true, true);
         assertThat(published.active()).isTrue();
@@ -125,9 +120,9 @@ class AdminProductCatalogTest {
         product.setCardStatus(CardStatus.READY);
         product.setPriceMinor(0);
         assertThatThrownBy(() -> service.setActive(id, true, true))
-                .isInstanceOf(ConflictException.class)
+                .isInstanceOf(DomainException.Conflict.class)
                 .satisfies(e -> {
-                    ConflictException c = (ConflictException) e;
+                    DomainException.Conflict c = (DomainException.Conflict) e;
                     assertThat(c.getCode()).isEqualTo(AdminProductService.NOT_PUBLISHABLE);
                     assertThat(c.getDetails()).containsEntry("missing", List.of("price", "category"));
                 });

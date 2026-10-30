@@ -1,8 +1,6 @@
 package com.maxsolch.shop.catalog.domain;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.ConflictException;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,14 +40,14 @@ public final class CategoryRules {
             String pid = UuidUtil.toString(c.getParentId());
             Category parent = byId.get(pid);
             if (parent == null) {
-                throw new BadRequestException("категория «" + c.getSlug() + "»: нет родителя " + pid);
+                throw CatalogErrors.badRequest("категория «" + c.getSlug() + "»: нет родителя " + pid);
             }
             if (pid.equals(UuidUtil.toString(c.getId()))) {
-                throw new ConflictException("категория «" + c.getSlug() + "» не может быть родителем самой себе",
+                throw CatalogErrors.conflict("категория «" + c.getSlug() + "» не может быть родителем самой себе",
                         TOO_DEEP);
             }
             if (parent.getParentId() != null) {
-                throw new ConflictException("не больше двух уровней: «" + parent.getSlug()
+                throw CatalogErrors.conflict("не больше двух уровней: «" + parent.getSlug()
                         + "» уже подкатегория, в неё нельзя вложить «" + c.getSlug() + "»", TOO_DEEP);
             }
             parents.add(pid);
@@ -58,7 +56,7 @@ public final class CategoryRules {
             Category parent = byId.get(pid);
             long count = directProducts.applyAsLong(parent.getId());
             if (count > 0) {
-                throw new ConflictException("в категории «" + parent.getSlug() + "» лежат товары (" + count
+                throw CatalogErrors.conflict("в категории «" + parent.getSlug() + "» лежат товары (" + count
                         + ") — у категории с подкатегориями товаров быть не может; сначала перенесите их",
                         HAS_PRODUCTS);
             }
@@ -70,14 +68,14 @@ public final class CategoryRules {
         Set<String> global = new HashSet<>();
         for (CatalogSnapshot.Attr a : s.attributes()) {
             if (a.categoryId() == null && !global.add(a.key())) {
-                throw new ConflictException("ключ «" + a.key() + "» дважды среди глобальных характеристик", KEY_TAKEN);
+                throw CatalogErrors.conflict("ключ «" + a.key() + "» дважды среди глобальных характеристик", KEY_TAKEN);
             }
         }
         for (CatalogSnapshot.Cat c : s.categories()) {
             Set<String> keys = new HashSet<>();
             for (CatalogSnapshot.Attr a : s.attributesFor(c.id())) {
                 if (!keys.add(a.key())) {
-                    throw new ConflictException("ключ «" + a.key() + "» повторяется в пути категории «" + c.slug()
+                    throw CatalogErrors.conflict("ключ «" + a.key() + "» повторяется в пути категории «" + c.slug()
                             + "» (у родителя или среди глобальных)", KEY_TAKEN);
                 }
             }

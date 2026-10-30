@@ -1,5 +1,11 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.platform.tx.DomainEvents;
+import com.maxsolch.shop.translation.app.StoredTranslations;
+import com.maxsolch.shop.translation.domain.TranslationsChanged;
+import java.time.Clock;
+import com.maxsolch.shop.catalog.domain.CatalogErrors;
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.catalog.domain.Brand;
 import com.maxsolch.shop.catalog.domain.CardStatus;
@@ -32,12 +38,8 @@ import com.maxsolch.shop.translation.app.TranslationAdminService;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.translation.domain.TranslationOrigin;
 import com.maxsolch.shop.translation.app.TranslationService;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -66,18 +68,20 @@ public class CardsService {
     private final ProductRepository productRepository;
     private final CatalogDirectory directory;
     private final BrandAdminService brandService;
-    private final ContentTranslationRepository translationRepository;
-    private final TranslationService translationService;
+    private final StoredTranslations translations;
+    private final DomainEvents events;
+    private final Clock clock;
     private final AdminUserRepository adminUserRepository;
 
     public CardsService(ProductRepository productRepository, CatalogDirectory directory,
-                        BrandAdminService brandService, ContentTranslationRepository translationRepository,
-                        TranslationService translationService, AdminUserRepository adminUserRepository) {
+                        BrandAdminService brandService, StoredTranslations translations,
+                        DomainEvents events, Clock clock, AdminUserRepository adminUserRepository) {
         this.productRepository = productRepository;
         this.directory = directory;
         this.brandService = brandService;
-        this.translationRepository = translationRepository;
-        this.translationService = translationService;
+        this.translations = translations;
+        this.events = events;
+        this.clock = clock;
         this.adminUserRepository = adminUserRepository;
     }
 
@@ -145,7 +149,7 @@ public class CardsService {
         CatalogSnapshot s = directory.snapshot();
         String st = status == null || status.isBlank() ? "all" : status.trim().toLowerCase(Locale.ROOT);
         if (!Set.of("draft", "ai_filled", "ready", "incomplete", "unfinished", "all").contains(st)) {
-            throw new BadRequestException("status: draft | ai_filled | ready | incomplete | unfinished | all");
+            throw CatalogErrors.badRequest("status: draft | ai_filled | ready | incomplete | unfinished | all");
         }
         Set<String> wanted = null;
         if (ids != null && !ids.isBlank()) {
@@ -210,10 +214,10 @@ public class CardsService {
     @Transactional
     public CardsImportResult importCards(CardsImportRequest req, Long adminId) {
         if (req == null || req.items() == null) {
-            throw new BadRequestException("items required");
+            throw CatalogErrors.badRequest("items required");
         }
         if (req.items().size() > MAX_IMPORT_ITEMS) {
-            throw new BadRequestException("too many items (max " + MAX_IMPORT_ITEMS + ")");
+            throw CatalogErrors.badRequest("too many items (max " + MAX_IMPORT_ITEMS + ")");
         }
         boolean replace = Boolean.TRUE.equals(req.replaceSpecs());
         Run run = new Run();
@@ -225,7 +229,7 @@ public class CardsService {
             String pid;
             try {
                 pid = normalizeId(item.productId().trim());
-            } catch (BadRequestException e) {
+            } catch (DomainException.BadRequest e) {
                 run.rejected.add(new CardRejected(item.productId(), "INVALID_ID"));
                 run.results.add(new CardItemResult(item.productId(), false, false, "INVALID_ID", Map.of(), 0));
                 continue;
@@ -252,7 +256,7 @@ public class CardsService {
     public CardsImportResult accept(String productId, CardAcceptRequest req, Long adminId) {
         String pid = normalizeId(productId == null ? "" : productId.trim());
         Product p = productRepository.findByIdForUpdate(UuidUtil.toBytes(pid))
-                .orElseThrow(() -> new NotFoundException("product not found"));
+                .orElseThrow(() -> CatalogErrors.notFound("product not found"));
         CardAcceptRequest r = req == null ? new CardAcceptRequest(null, null, null, null, true) : req;
         CardImportItem item = new CardImportItem(pid, null, null, r.specs(), null, null, r.description(), null, null,
                 null, !Boolean.FALSE.equals(r.ready()), null, null, r.title(), r.translations(), null, null);
@@ -265,7 +269,7 @@ public class CardsService {
 
     private void finish(Run run) {
         if (run.anyTranslation) {
-            afterCommit(translationService::invalidate);
+            events.publish(new TranslationsChanged());
         }
         directory.evictAll();
     }
@@ -374,7 +378,7 @@ public class CardsService {
             textChanges.put("ru/description", new Object[]{descriptionBefore, p.getDescription()});
         }
         if (Boolean.TRUE.equals(item.markReady())) {
-            AdminProductService.setStatus(p, CardStatus.READY, adminId);
+            AdminProductService.setStatus(p, CardStatus.READY, adminId, clock.instant());
         } else if (content && !manual) {
             p.setCardStatus(CardStatus.AI_FILLED);
         }
@@ -486,9 +490,9 @@ public class CardsService {
         return m;
     }
 
-    private static Map<String, Object> lastOf(Map<String, Object> changed, CardImportItem item) {
+    private Map<String, Object> lastOf(Map<String, Object> changed, CardImportItem item) {
         Map<String, Object> last = new LinkedHashMap<>();
-        last.put("at", Instant.now().toString());
+        last.put("at", clock.instant().toString());
         if (item.model() != null) {
             last.put("model", cut(item.model(), 120));
         }
@@ -501,7 +505,7 @@ public class CardsService {
      * (the value before the AI) and gets the new «after»; a new one is added. Both get edited=true.
      */
     @SuppressWarnings("unchecked")
-    static Map<String, Object> mergeLast(Object old, Map<String, Object> edits) {
+    Map<String, Object> mergeLast(Object old, Map<String, Object> edits) {
         Map<String, Object> last = old instanceof Map<?, ?> m ? new LinkedHashMap<>((Map<String, Object>) m)
                 : new LinkedHashMap<>();
         Map<String, Object> changed = last.get("changed") instanceof Map<?, ?> m
@@ -521,7 +525,7 @@ public class CardsService {
             }
             changed.put(group, target);
         }
-        String now = Instant.now().toString();
+        String now = clock.instant().toString();
         last.putIfAbsent("at", now);
         last.put("editedAt", now);
         last.put("changed", changed);
@@ -539,7 +543,7 @@ public class CardsService {
 
     /** card_meta: confidence (+ source) per field (merged), sources, notes, model, overall, importedAt. */
     @SuppressWarnings("unchecked")
-    static Map<String, Object> meta(Product p, CardImportItem item) {
+    Map<String, Object> meta(Product p, CardImportItem item) {
         Map<String, Object> meta = SpecsJson.readMap(p.getCardMetaJson());
         Map<String, Object> fields = meta.get("fields") instanceof Map<?, ?> m
                 ? new LinkedHashMap<>((Map<String, Object>) m) : new LinkedHashMap<>();
@@ -570,7 +574,7 @@ public class CardsService {
         if (item.overall() != null) {
             meta.put("overall", Math.max(0, Math.min(100, item.overall())));
         }
-        meta.put("importedAt", Instant.now().toString());
+        meta.put("importedAt", clock.instant().toString());
         return meta;
     }
 
@@ -592,7 +596,7 @@ public class CardsService {
         String pid = normalizeId(productId == null ? "" : productId.trim());
         Product p = productRepository.findByIdWithDetails(UuidUtil.toBytes(pid))
                 .filter(x -> !x.isArchived())
-                .orElseThrow(() -> new NotFoundException("product not found"));
+                .orElseThrow(() -> CatalogErrors.notFound("product not found"));
         CardExportItem item = exportItem(directory.snapshot(), p);
         Map<String, Object> meta = item.cardMeta() == null ? Map.of() : item.cardMeta();
         @SuppressWarnings("unchecked")
@@ -605,18 +609,18 @@ public class CardsService {
         sources.put(TranslationEntityType.TITLE, p.getTitle());
         sources.put(TranslationEntityType.DESCRIPTION, p.getDescription());
         sources.put(TranslationEntityType.CONDITION_NOTE, p.getConditionNote());
-        Map<String, Map<String, CardTextState>> translations = new LinkedHashMap<>();
+        Map<String, Map<String, CardTextState>> byLocale = new LinkedHashMap<>();
         for (String locale : ContentLocale.TRANSLATED) {
             Map<String, CardTextState> texts = new LinkedHashMap<>();
-            sources.forEach((field, source) -> translationRepository
-                    .findById(new ContentTranslationId(TranslationEntityType.PRODUCT, p.getId(), field, locale))
-                    .ifPresent(row -> texts.put(textKey(field), new CardTextState(row.getText(),
-                            row.getOrigin().name(),
-                            source == null || !SourceHash.sha256Hex(source).equals(row.getSourceHash())))));
-            translations.put(locale, texts);
+            sources.forEach((field, source) -> translations
+                    .find(TranslationEntityType.PRODUCT, p.getId(), field, locale)
+                    .ifPresent(row -> texts.put(textKey(field), new CardTextState(row.text(),
+                            row.origin().name(),
+                            source == null || !SourceHash.sha256Hex(source).equals(row.sourceHash())))));
+            byLocale.put(locale, texts);
         }
         return new CardReview(item, last, str(meta.get("importedAt")), str(meta.get("reviewedAt")), reviewedBy,
-                reviewedByName, translations);
+                reviewedByName, byLocale);
     }
 
     private static String str(Object o) {
@@ -657,24 +661,17 @@ public class CardsService {
             tr.issues().add(new CardIssue(tr.pid(), key, "NO_SOURCE", "нет русского текста для перевода"));
             return;
         }
-        ContentTranslationId id = new ContentTranslationId(TranslationEntityType.PRODUCT, tr.p().getId(), field,
-                tr.locale());
-        ContentTranslation row = translationRepository.findById(id).orElse(null);
-        if (row != null && row.getOrigin() == TranslationOrigin.MANUAL && !tr.manual()) {
+        StoredTranslations.Stored row = translations
+                .find(TranslationEntityType.PRODUCT, tr.p().getId(), field, tr.locale()).orElse(null);
+        if (row != null && row.origin() == TranslationOrigin.MANUAL && !tr.manual()) {
             tr.counts()[1]++;
             return;
         }
-        String before = row == null ? null : row.getText();
-        if (row == null) {
-            row = new ContentTranslation(id);
-        }
-        row.setText(text);
-        row.setSource(source);
-        row.setOrigin(tr.manual() ? TranslationOrigin.MANUAL : TranslationOrigin.AI);
+        String before = row == null ? null : row.text();
         // An admin's accepted text is reviewed; new AI text goes back to «Проверить ИИ» on the «Переводы» screen.
-        row.setReviewedAt(tr.manual() ? Instant.now() : null);
-        row.setUpdatedBy(tr.adminId());
-        translationRepository.save(row);
+        translations.write(TranslationEntityType.PRODUCT, tr.p().getId(), field, tr.locale(), text, source,
+                tr.manual() ? TranslationOrigin.MANUAL : TranslationOrigin.AI,
+                tr.manual() ? clock.instant() : null, tr.adminId());
         tr.counts()[0]++;
         if (!text.equals(before)) {
             tr.changes().put(tr.locale() + "/" + textKey(field), new Object[]{before, text});
@@ -689,20 +686,7 @@ public class CardsService {
         try {
             return UuidUtil.toString(UuidUtil.toBytes(id));
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("invalid id: " + id);
-        }
-    }
-
-    private static void afterCommit(Runnable r) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    r.run();
-                }
-            });
-        } else {
-            r.run();
+            throw CatalogErrors.badRequest("invalid id: " + id);
         }
     }
 }

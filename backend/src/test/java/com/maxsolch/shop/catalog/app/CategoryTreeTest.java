@@ -8,7 +8,7 @@ import com.maxsolch.shop.catalog.app.CatalogDtos.CategoryUpsertRequest;
 import com.maxsolch.shop.catalog.app.CatalogDtos.ReorderItem;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.translation.app.TranslationService;
-import com.maxsolch.shop.platform.error.ConflictException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -51,16 +51,16 @@ class CategoryTreeTest {
     @Test
     void aThirdLevelIsRefused() {
         assertThatThrownBy(() -> service.update(id(mice), parent(id(magnetic))))
-                .isInstanceOf(ConflictException.class)
-                .satisfies(e -> assertThat(((ConflictException) e).getCode()).isEqualTo(CategoryRules.TOO_DEEP));
+                .isInstanceOf(DomainException.Conflict.class)
+                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CategoryRules.TOO_DEEP));
     }
 
     @Test
     void aCategoryWithProductsCannotBecomeAParent() {
         Category other = db.category("klv-mekhanicheskie", "Механические", null);
         assertThatThrownBy(() -> service.update(id(other), parent(id(mice))))
-                .isInstanceOf(ConflictException.class)
-                .satisfies(e -> assertThat(((ConflictException) e).getCode()).isEqualTo(CategoryRules.HAS_PRODUCTS));
+                .isInstanceOf(DomainException.Conflict.class)
+                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CategoryRules.HAS_PRODUCTS));
     }
 
     @Test
@@ -72,15 +72,15 @@ class CategoryTreeTest {
         assertThat(s.category().sortOrder()).isEqualTo(10);
         assertThatThrownBy(() -> service.create(new CategoryUpsertRequest("механические", null, id(keyboards),
                 null, null, null, null, null, null, null)))
-                .isInstanceOf(com.maxsolch.shop.platform.error.BadRequestException.class);
+                .isInstanceOf(com.maxsolch.shop.platform.error.DomainException.BadRequest.class);
     }
 
     @Test
     void deleteIsRefusedForChildrenAndProducts() {
         assertThatThrownBy(() -> service.delete(id(keyboards)))
-                .satisfies(e -> assertThat(((ConflictException) e).getCode()).isEqualTo(CategoryRules.HAS_CHILDREN));
+                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CategoryRules.HAS_CHILDREN));
         assertThatThrownBy(() -> service.delete(id(mice)))
-                .satisfies(e -> assertThat(((ConflictException) e).getCode()).isEqualTo(CategoryRules.HAS_PRODUCTS));
+                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CategoryRules.HAS_PRODUCTS));
         Category empty = db.category("pusto", "Пусто", null);
         assertThat(service.delete(id(empty)).slug()).isEqualTo("pusto");
         assertThat(db.categories).doesNotContain(empty);
@@ -96,7 +96,7 @@ class CategoryTreeTest {
 
         // moving the parent under another root would make three levels
         assertThatThrownBy(() -> service.reorder(List.of(new ReorderItem(id(keyboards), id(mice), 1))))
-                .isInstanceOf(ConflictException.class);
+                .isInstanceOf(DomainException.Conflict.class);
     }
 
     @Test
@@ -107,6 +107,6 @@ class CategoryTreeTest {
         attrs.add(CatalogFixtures.attr("hot_swap", CatalogFixtures.MAGNETIC, SpecType.BOOL, false, false, List.of()));
         CatalogSnapshot clash = new CatalogSnapshot(ok.categories(), ok.brands(), ok.groups(), attrs);
         assertThatThrownBy(() -> CategoryRules.checkKeys(clash))
-                .satisfies(e -> assertThat(((ConflictException) e).getCode()).isEqualTo(CategoryRules.KEY_TAKEN));
+                .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CategoryRules.KEY_TAKEN));
     }
 }

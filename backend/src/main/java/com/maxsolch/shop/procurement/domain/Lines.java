@@ -16,7 +16,7 @@ public final class Lines {
 
     /** Stable key of a line: {@code productId:variantId} (variant part empty for a plain product). */
     public static String key(byte[] productId, byte[] variantId) {
-        return UuidUtil.toString(productId) + ":" + (variantId == null ? "" : UuidUtil.toString(variantId));
+        return com.maxsolch.shop.catalog.domain.LineKey.of(productId, variantId);
     }
 
     /** A UUID text from a request as bytes; a blank or malformed one is a 400. */

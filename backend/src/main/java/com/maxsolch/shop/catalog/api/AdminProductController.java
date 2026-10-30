@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.api;
 
+import com.maxsolch.shop.catalog.domain.CatalogErrors;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.media.app.ImageStorageService;
@@ -7,7 +8,6 @@ import com.maxsolch.shop.media.app.UploadValidator;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.catalog.app.AdminProductService;
 import com.maxsolch.shop.site.app.SiteRevalidator;
-import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.catalog.app.AdminProductDto;
 import com.maxsolch.shop.web.dto.BooleanFlagRequest;
 import com.maxsolch.shop.catalog.app.ProductUpsertRequest;
@@ -225,7 +225,7 @@ public class AdminProductController {
     public AdminProductDto active(@PathVariable String id, @RequestBody BooleanFlagRequest body,
                                   @RequestParam(required = false) String force) {
         if (body.active() == null) {
-            throw new BadRequestException("active is required");
+            throw CatalogErrors.badRequest("active is required");
         }
         AdminProductDto saved = productService.setActive(id, body.active(), flag(force));
         // Journal after the fact: a 404 must not leave a "показан" entry for something that never happened.
@@ -237,7 +237,7 @@ public class AdminProductController {
     @Operation(summary = "Toggle product archived")
     public AdminProductDto archive(@PathVariable String id, @RequestBody BooleanFlagRequest body) {
         if (body.archived() == null) {
-            throw new BadRequestException("archived is required");
+            throw CatalogErrors.badRequest("archived is required");
         }
         AdminProductDto saved = productService.setArchived(id, body.archived());
         audit.record("PRODUCT_ARCHIVE", "PRODUCT", id, body.archived() ? "в архив" : "из архива");

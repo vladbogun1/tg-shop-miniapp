@@ -11,8 +11,7 @@ import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
 import com.maxsolch.shop.translation.app.TranslationService;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.ConflictException;
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.catalog.app.ProductUpsertRequest.VariantInput;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,11 +55,22 @@ class AdminProductServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AdminProductService(productRepository, imageStorageService, slugService, translationService,
-                catalogDirectory, brandService, new com.maxsolch.shop.inventory.app.StockWriteoffs(writeoffRepository, java.time.Clock.systemUTC()), audit,
-                org.mockito.Mockito.mock(com.maxsolch.shop.inventory.app.LotLedger.class),
-                org.mockito.Mockito.mock(com.maxsolch.shop.preorder.app.PreorderQueueService.class),
-                new com.maxsolch.shop.preorder.app.WaitingCounts(preorderSubs));
+        com.maxsolch.shop.preorder.app.WaitingCounts waitingCounts = new com.maxsolch.shop.preorder.app.WaitingCounts(preorderSubs);
+        ProductQueues queues = new ProductQueues() {
+            public void closeFor(byte[] productId) {
+            }
+
+            public java.util.Map<String, int[]> waitingByProduct() {
+                return waitingCounts.byProduct();
+            }
+        };
+        service = new AdminProductService(productRepository, new ProductStorefront(slugService, productRepository),
+                translationService, catalogDirectory, brandService,
+                new com.maxsolch.shop.inventory.app.CatalogStock(
+                        org.mockito.Mockito.mock(com.maxsolch.shop.inventory.app.LotLedger.class),
+                        new com.maxsolch.shop.inventory.app.StockWriteoffs(writeoffRepository, java.time.Clock.systemUTC()), audit),
+                queues, org.mockito.Mockito.mock(com.maxsolch.shop.platform.tx.DomainEvents.class),
+                java.time.Clock.systemUTC());
         lenient().when(audit.currentAdminName()).thenReturn("Влад");
         lenient().when(catalogDirectory.load()).thenReturn(CatalogSnapshot.EMPTY);
         lenient().when(catalogDirectory.snapshot()).thenReturn(CatalogSnapshot.EMPTY);
@@ -137,7 +147,7 @@ class AdminProductServiceTest {
     void skuOfAnotherProductIsRejected() {
         when(productRepository.skuTaken("MX-01", product.getId())).thenReturn(true);
         assertThatThrownBy(() -> service.update(id, seoReq(null, "MX-01")))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("MX-01");
         verify(productRepository, never()).save(any());
     }
@@ -153,7 +163,7 @@ class AdminProductServiceTest {
     @Test
     void changedStockOverAStaleValueIsRejected() {
         assertThatThrownBy(() -> service.update(id, req(5, 3, null)))
-                .isInstanceOf(ConflictException.class)
+                .isInstanceOf(DomainException.Conflict.class)
                 .hasMessageContaining("было 3, стало 1")
                 .extracting("code").isEqualTo("STOCK_CONFLICT");
         verify(productRepository, never()).save(any());
@@ -200,7 +210,7 @@ class AdminProductServiceTest {
 
         assertThatThrownBy(() -> service.update(id, req(null, null, List.of(
                 new VariantInput(UuidUtil.toString(white.getId()), "white", 4, 3)))))
-                .isInstanceOf(ConflictException.class)
+                .isInstanceOf(DomainException.Conflict.class)
                 .hasMessageContaining("white");
     }
 
@@ -215,7 +225,7 @@ class AdminProductServiceTest {
     void loweringStockWithoutAReasonIsRefused() {
         product.setStock(5);
         assertThatThrownBy(() -> service.update(id, req(3, null, null)))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("причину")
                 .extracting("code").isEqualTo("STOCK_REASON_REQUIRED");
         verify(productRepository, never()).save(any());
@@ -226,7 +236,7 @@ class AdminProductServiceTest {
     void reasonOtherNeedsANote() {
         product.setStock(5);
         assertThatThrownBy(() -> service.update(id, withReason(3, null, "OTHER", "  ")))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .extracting("code").isEqualTo("STOCK_REASON_REQUIRED");
         verify(writeoffRepository, never()).save(any());
     }
@@ -235,7 +245,7 @@ class AdminProductServiceTest {
     void unknownReasonCountsAsMissing() {
         product.setStock(5);
         assertThatThrownBy(() -> service.update(id, withReason(3, null, "BECAUSE", null)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test

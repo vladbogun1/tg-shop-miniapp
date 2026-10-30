@@ -1,12 +1,12 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.catalog.domain.CatalogErrors;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
 import com.maxsolch.shop.catalog.domain.ProductCondition;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.translation.app.TranslationService;
-import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.catalog.app.PublicCatalogDtos.CategoryDetailDto;
 import com.maxsolch.shop.catalog.app.PublicCatalogDtos.CategoryDto;
 import com.maxsolch.shop.catalog.app.PublicCatalogDtos.ProductPage;
@@ -85,7 +85,7 @@ public class PublicCatalogService {
         if (category != null && !markdownOnly) {
             CatalogSnapshot.Cat c = catalog.categoryBySlug(category);
             if (c == null) {
-                throw new NotFoundException("category not found");
+                throw CatalogErrors.notFound("category not found");
             }
             scope = catalog.subtree(c.id());
         }

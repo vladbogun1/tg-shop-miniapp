@@ -1,6 +1,6 @@
 package com.maxsolch.shop.media.app;
 
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
@@ -41,20 +41,20 @@ class UploadValidatorTest {
     void rejectsHtmlDisguisedAsAnImage() {
         // Content type says image, extension says otherwise: this is the stored-XSS shape.
         assertThatThrownBy(() -> validator.validateImage(file("evil.html", "image/png", 128)))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("api.upload.badExtension");
     }
 
     @Test
     void rejectsSvgEvenWithAnImageContentType() {
         assertThatThrownBy(() -> validator.validateImage(file("logo.svg", "image/svg+xml", 128)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test
     void rejectsAnExecutableContentType() {
         assertThatThrownBy(() -> validator.validateImage(file("x.jpg", "application/x-msdownload", 128)))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("api.upload.badType");
     }
 
@@ -68,14 +68,14 @@ class UploadValidatorTest {
     void rejectsFilesOverFifteenMegabytes() {
         assertThatThrownBy(() -> validator.validateImage(
                 file("huge.jpg", "image/jpeg", 16 * 1024 * 1024)))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("api.upload.tooBig");
     }
 
     @Test
     void rejectsAnEmptyUpload() {
         assertThatThrownBy(() -> validator.validateImage(file("a.jpg", "image/jpeg", 0)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test
@@ -84,7 +84,7 @@ class UploadValidatorTest {
                 .doesNotThrowAnyException();
         // ...but a PDF is not a product image.
         assertThatThrownBy(() -> validator.validateImage(file("receipt.pdf", "application/pdf", 2048)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 
     private MockMultipartFile svg(String body) {
@@ -106,16 +106,16 @@ class UploadValidatorTest {
     @Test
     void brandLogoRefusesActiveSvgAndOtherTypes() {
         assertThatThrownBy(() -> validator.validateBrandLogo(svg("<svg><script>alert(1)</script></svg>")))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> validator.validateBrandLogo(svg("<svg onload=\"alert(1)\"></svg>")))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> validator.validateBrandLogo(svg("<svg><a href=\"javascript:x\"/></svg>")))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> validator.validateBrandLogo(svg("<html>not a logo</html>")))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> validator.validateBrandLogo(file("logo.jpg", "image/jpeg", 1024)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> validator.validateBrandLogo(file("logo.png", "image/png", 3 * 1024 * 1024)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 }

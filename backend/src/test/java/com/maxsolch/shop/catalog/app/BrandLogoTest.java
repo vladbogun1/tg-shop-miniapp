@@ -5,7 +5,7 @@ import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
 import com.maxsolch.shop.catalog.app.CatalogDtos.AdminBrandDto;
 import com.maxsolch.shop.catalog.app.CatalogDtos.BrandUpsertRequest;
 import com.maxsolch.shop.media.app.ImageStorageService;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +28,8 @@ class BrandLogoTest {
     void setUp() {
         db = new InMemoryCatalog();
         storage = mock(ImageStorageService.class);
-        service = new BrandAdminService(db.brandRepository, db.productRepository, db.directory, storage);
+        service = new BrandAdminService(db.brandRepository, db.productRepository, db.directory, storage,
+                db.events(storage));
     }
 
     private static BrandUpsertRequest req(String name, String logoUrl, String logoMode) {
@@ -62,17 +63,17 @@ class BrandLogoTest {
     void refusesKeysOutsideTheLogoPrefix() {
         // A customer's private chat file must not become a public brand logo.
         assertThatThrownBy(() -> service.create(req("Lamzu", "chat/u1/x/passport.jpg", null)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> service.create(req("Lamzu", ImageStorageService.BRAND_LOGO_PREFIX + "../chat/x",
-                null))).isInstanceOf(BadRequestException.class);
+                null))).isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> service.create(req("Lamzu", "http://cdn.example.com/a.png", null)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test
     void refusesAnUnknownMode() {
         assertThatThrownBy(() -> service.create(req("Lamzu", null, "RAINBOW")))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test
