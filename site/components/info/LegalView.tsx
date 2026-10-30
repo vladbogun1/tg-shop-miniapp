@@ -3,7 +3,7 @@ import { Info } from "lucide-react";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { makeT } from "@/i18n";
 import { FALLBACK_LOCALE, type Locale } from "@shop/core/i18n";
-import { makeFmt } from "@/lib/format";
+import { makeFmt, SHOP_TIME_ZONE } from "@/lib/format";
 import type { LegalDoc } from "@/lib/legal";
 
 /** Where a page's live block goes in its markdown (`<!-- live -->` on a line of its own). */
@@ -17,7 +17,7 @@ const LIVE_MARKER = /<!--\s*live\s*-->/;
  */
 export function LegalView({ locale, title, doc, live }: { locale: Locale; title: string; doc: LegalDoc; live?: ReactNode }) {
   const t = makeT(locale);
-  const fmt = makeFmt(locale);
+  const fmt = makeFmt(locale, SHOP_TIME_ZONE);
   const [before, after] = live ? doc.html.split(LIVE_MARKER, 2) : [doc.html];
   return (
     <div className="container-site pt-6">

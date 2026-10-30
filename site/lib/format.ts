@@ -11,9 +11,11 @@ import { money as sharedMoney } from "@shop/core/money";
 import { makeT } from "@/i18n";
 
 /**
- * Dates print in the shop's zone, not the runtime's: the server renders in UTC and the browser
- * hydrates in the visitor's zone, so a review posted at 23:30 UTC read «27 жовтня» in the HTML and
- * «28 жовтня» in a Kyiv browser — React error #418 on the home page (reviews ribbon).
+ * Time is shown in the viewer's zone. The server renders in UTC and cannot know it, so the first
+ * client pass (hydration) must print exactly what the server printed, or React throws #418 (a review
+ * posted at 23:30 UTC read «27 жовтня» in the HTML and «28 жовтня» in a Kyiv browser). Hence
+ * {@link useFmt} passes {@link SHOP_TIME_ZONE} until hydration is done and the viewer's zone (undefined)
+ * afterwards. Business calendar dates (legal documents) stay pinned to it via makeFmt(locale, SHOP_TIME_ZONE).
  */
 export const SHOP_TIME_ZONE = "Europe/Kyiv";
 
@@ -27,7 +29,8 @@ export interface Fmt {
   dayLabel: (iso: string) => string;
 }
 
-export function makeFmt(locale: Locale): Fmt {
+/** `timeZone` undefined = the viewer's own zone; pass {@link SHOP_TIME_ZONE} for server render / calendar dates. */
+export function makeFmt(locale: Locale, timeZone?: string): Fmt {
   const tag = LOCALE_TAG[locale];
   const t = makeT(locale);
   const labels = {
@@ -39,10 +42,10 @@ export function makeFmt(locale: Locale): Fmt {
   };
   return {
     money: (minor, currency = "UAH") => sharedMoney(minor, currency, tag),
-    date: (iso) => sharedFormatDate(iso, tag, SHOP_TIME_ZONE),
-    dayMonth: (iso) => sharedFormatDayMonth(iso, tag, SHOP_TIME_ZONE),
-    dateTime: (iso) => sharedFormatDateTime(iso, tag, SHOP_TIME_ZONE),
-    time: (iso) => sharedFormatTime(iso, tag, SHOP_TIME_ZONE),
+    date: (iso) => sharedFormatDate(iso, tag, timeZone),
+    dayMonth: (iso) => sharedFormatDayMonth(iso, tag, timeZone),
+    dateTime: (iso) => sharedFormatDateTime(iso, tag, timeZone),
+    time: (iso) => sharedFormatTime(iso, tag, timeZone),
     dayLabel: (iso) => sharedDayLabel(iso, tag, labels),
   };
 }

@@ -55,7 +55,7 @@ function isRoutine(i: Incident): boolean {
 
 function dt(iso: string | null): string {
   return iso
-    ? formatDateTime(iso, "ru-RU", "Europe/Kyiv")
+    ? formatDateTime(iso)
     : "—";
 }
 
