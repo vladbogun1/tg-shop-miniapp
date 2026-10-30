@@ -1,7 +1,6 @@
 package com.maxsolch.shop.platform.audit;
 
-import com.maxsolch.shop.staff.domain.AdminUser;
-import com.maxsolch.shop.staff.infra.AdminUserRepository;
+import com.maxsolch.shop.platform.security.AdminDirectory;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.Role;
 import com.maxsolch.shop.platform.web.SecurityUtil;
@@ -26,12 +25,12 @@ public class AdminAuditService {
     public static final String DEFAULT_ADMIN_NAME = "Менеджер";
 
     private final AdminAuditRepository repository;
-    private final AdminUserRepository adminUserRepository;
+    private final AdminDirectory admins;
 
     public AdminAuditService(AdminAuditRepository repository,
-                             AdminUserRepository adminUserRepository) {
+                             AdminDirectory admins) {
         this.repository = repository;
-        this.adminUserRepository = adminUserRepository;
+        this.admins = admins;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -111,19 +110,7 @@ public class AdminAuditService {
     }
 
     private String displayName(long adminId) {
-        return adminUserRepository.findById(adminId)
-                .map(AdminAuditService::nameOf)
-                .orElse(DEFAULT_ADMIN_NAME);
-    }
-
-    private static String nameOf(AdminUser admin) {
-        if (admin.getName() != null && !admin.getName().isBlank()) {
-            return admin.getName().trim();
-        }
-        if (admin.getUsername() != null && !admin.getUsername().isBlank()) {
-            return admin.getUsername().trim();
-        }
-        return DEFAULT_ADMIN_NAME;
+        return admins.displayName(adminId).orElse(DEFAULT_ADMIN_NAME);
     }
 
     private static String trim(String s) {

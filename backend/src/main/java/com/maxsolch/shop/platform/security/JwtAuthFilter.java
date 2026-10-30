@@ -1,6 +1,5 @@
 package com.maxsolch.shop.platform.security;
 
-import com.maxsolch.shop.staff.app.PreAuthTokens;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -32,7 +31,7 @@ import java.util.List;
  *       otherwise 403 ({@link CookieOriginGuard}) — the browser attaches the cookie by itself.</li>
  *   <li>An admin pre-auth token (password/Telegram passed, 2FA not yet) is never a principal: sent as
  *       a bearer token anywhere but the sign-in endpoints it gets 403 «2FA required»
- *       ({@link PreAuthTokens}).</li>
+ *       ({@link PreAuthTokenCheck}).</li>
  * </ul>
  */
 @Slf4j
@@ -47,13 +46,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final AdminTokenValidator adminTokenValidator;
     private final WebSessionValidator webSessionValidator;
     private final CookieOriginGuard originGuard;
-    private final PreAuthTokens preAuthTokens;
+    private final PreAuthTokenCheck preAuthTokens;
 
     public JwtAuthFilter(JwtService jwtService,
                          AdminTokenValidator adminTokenValidator,
                          WebSessionValidator webSessionValidator,
                          CookieOriginGuard originGuard,
-                         PreAuthTokens preAuthTokens) {
+                         PreAuthTokenCheck preAuthTokens) {
         this.jwtService = jwtService;
         this.adminTokenValidator = adminTokenValidator;
         this.webSessionValidator = webSessionValidator;

@@ -29,7 +29,7 @@ import java.util.UUID;
  * successful second step burns its {@code jti}.
  */
 @Component
-public class PreAuthTokens {
+public class PreAuthTokens implements com.maxsolch.shop.platform.security.PreAuthTokenCheck {
 
     public static final long TTL_MINUTES = 5;
     static final String TYPE = "admin-preauth";
@@ -97,6 +97,7 @@ public class PreAuthTokens {
     }
 
     /** True for any well-signed pre-auth token (expired or used ones included) — for the 403 in the filter. */
+    @Override
     public boolean looksLikePreAuth(String token) {
         if (token == null || token.isBlank()) {
             return false;

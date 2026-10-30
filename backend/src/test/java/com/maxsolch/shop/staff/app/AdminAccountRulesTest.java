@@ -51,7 +51,7 @@ class AdminAccountRulesTest {
         when(repo.findByTelegramUserIdAndActiveTrue(1L)).thenReturn(Optional.of(boss));
         when(repo.findByTelegramUserIdAndActiveTrue(2L)).thenReturn(Optional.of(helper));
         when(repo.findByTelegramUserIdAndActiveTrue(3L)).thenReturn(Optional.empty());
-        AdminAccess access = new AdminAccess(repo);
+        AdminAccess access = new AdminAccess(new StaffAdminDirectory(repo));
 
         assertThat(access.isSuperAdmin(auth(1L, Role.ADMIN))).isTrue();
         assertThat(access.isSuperAdmin(auth(2L, Role.ADMIN))).isFalse();

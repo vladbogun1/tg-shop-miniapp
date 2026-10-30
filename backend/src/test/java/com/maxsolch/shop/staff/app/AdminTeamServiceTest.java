@@ -275,7 +275,7 @@ class AdminTeamServiceTest {
     @Test
     void demotionTakesEffectOnTheNextRequest() {
         admins.add(3L, "second-boss", AdminRole.SUPER_ADMIN, cipher.encrypt(Totp.newSecret(), 3L));
-        AdminAccess access = new AdminAccess(admins.repo);
+        AdminAccess access = new AdminAccess(new StaffAdminDirectory(admins.repo));
         var auth = new UsernamePasswordAuthenticationToken(new AuthPrincipal(3L, Role.ADMIN, 0), null, List.of());
         assertThat(access.isSuperAdmin(auth)).isTrue();
         team.update(BOSS, 3L, null, "ADMIN", code(), CLIENT);

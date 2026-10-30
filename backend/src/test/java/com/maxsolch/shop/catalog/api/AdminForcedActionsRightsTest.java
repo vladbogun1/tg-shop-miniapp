@@ -48,7 +48,7 @@ class AdminForcedActionsRightsTest {
         AdminUser u = new AdminUser();
         u.setRole(role);
         org.mockito.Mockito.when(repo.findByTelegramUserIdAndActiveTrue(ADMIN_ID)).thenReturn(Optional.of(u));
-        return new AdminAccess(repo);
+        return new AdminAccess(new com.maxsolch.shop.staff.app.StaffAdminDirectory(repo));
     }
 
 

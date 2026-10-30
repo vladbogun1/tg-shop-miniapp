@@ -1,7 +1,5 @@
 package com.maxsolch.shop.platform.security;
 
-import com.maxsolch.shop.staff.domain.AdminUser;
-import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import com.maxsolch.shop.platform.error.ForbiddenException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
@@ -15,10 +13,10 @@ import org.springframework.stereotype.Component;
 @Component("adminAccess")
 public class AdminAccess {
 
-    private final AdminUserRepository adminUserRepository;
+    private final AdminDirectory admins;
 
-    public AdminAccess(AdminUserRepository adminUserRepository) {
-        this.adminUserRepository = adminUserRepository;
+    public AdminAccess(AdminDirectory admins) {
+        this.admins = admins;
     }
 
     public boolean isSuperAdmin(Authentication authentication) {
@@ -60,8 +58,8 @@ public class AdminAccess {
 
     /** The same by the admin's id, for a use case that reads the actor from {@code CurrentActor}. */
     public boolean canSeeFinance(long adminId) {
-        return adminUserRepository.findByTelegramUserIdAndActiveTrue(adminId)
-                .map(a -> a.isSuperAdmin() || a.isFinance())
+        return admins.findActive(adminId)
+                .map(a -> a.superAdmin() || a.finance())
                 .orElse(false);
     }
 
@@ -82,8 +80,8 @@ public class AdminAccess {
     }
 
     public boolean isSuperAdmin(long adminId) {
-        return adminUserRepository.findByTelegramUserIdAndActiveTrue(adminId)
-                .map(AdminUser::isSuperAdmin)
+        return admins.findActive(adminId)
+                .map(AdminDirectory.ActiveAdmin::superAdmin)
                 .orElse(false);
     }
 }

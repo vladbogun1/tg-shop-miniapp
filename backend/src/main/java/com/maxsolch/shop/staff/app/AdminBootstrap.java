@@ -1,20 +1,18 @@
-package com.maxsolch.shop.platform.config;
+package com.maxsolch.shop.staff.app;
 
-import com.maxsolch.shop.staff.app.AdminAuthKeys;
-import com.maxsolch.shop.staff.app.AdminTotp;
-import com.maxsolch.shop.staff.app.TrustedDeviceService;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
+import com.maxsolch.shop.staff.infra.EmergencyResetStore;
 import com.maxsolch.shop.platform.security.AdminTokenValidator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
+import java.time.Clock;
 
 import static com.maxsolch.shop.platform.util.Texts.trimToNull;
 
@@ -46,7 +44,8 @@ public class AdminBootstrap implements CommandLineRunner {
     private final TrustedDeviceService trustedDevices;
     private final AdminAuthKeys keys;
     private final AdminAuditService audit;
-    private final JdbcTemplate jdbc;
+    private final EmergencyResetStore resets;
+    private final Clock clock;
 
     public AdminBootstrap(AppProperties props,
                           AdminUserRepository adminUserRepository,
@@ -55,7 +54,8 @@ public class AdminBootstrap implements CommandLineRunner {
                           TrustedDeviceService trustedDevices,
                           AdminAuthKeys keys,
                           AdminAuditService audit,
-                          JdbcTemplate jdbc) {
+                          EmergencyResetStore resets,
+                          Clock clock) {
         this.props = props;
         this.adminUserRepository = adminUserRepository;
         this.passwordEncoder = passwordEncoder;
@@ -63,7 +63,8 @@ public class AdminBootstrap implements CommandLineRunner {
         this.trustedDevices = trustedDevices;
         this.keys = keys;
         this.audit = audit;
-        this.jdbc = jdbc;
+        this.resets = resets;
+        this.clock = clock;
     }
 
     @Override
@@ -92,7 +93,7 @@ public class AdminBootstrap implements CommandLineRunner {
         AdminUser admin = adminUserRepository.findById(tgId).orElseGet(() -> newAdmin(tgId));
         admin.setUsername(login);
         admin.setPasswordHash(passwordEncoder.encode(password));
-        admin.setPasswordChangedAt(Instant.now());
+        admin.setPasswordChangedAt(clock.instant());
         admin.setActive(true);
         admin.setTokenVersion(admin.getTokenVersion() + 1);
         adminUserRepository.save(admin);
@@ -103,9 +104,7 @@ public class AdminBootstrap implements CommandLineRunner {
     private void emergencyReset(String login, String password) {
         long tgId = props.getSecurity().getAdminBootstrapTgId();
         String marker = keys.fingerprint("emergency-reset:" + tgId + ":" + password);
-        Integer done = jdbc.queryForObject("SELECT COUNT(*) FROM admin_emergency_resets WHERE marker = ?",
-                Integer.class, marker);
-        if (done != null && done > 0) {
+        if (resets.done(marker)) {
             log.warn("ADMIN_EMERGENCY_RESET=true: сброс с этим ADMIN_PASSWORD уже выполнялся — повторно не делаю. "
                     + "Уберите ADMIN_EMERGENCY_RESET из .env (для нового сброса задайте новый ADMIN_PASSWORD).");
             return;
@@ -119,7 +118,7 @@ public class AdminBootstrap implements CommandLineRunner {
         AdminUser admin = adminUserRepository.findById(tgId).orElseGet(() -> newAdmin(tgId));
         admin.setUsername(login);
         admin.setPasswordHash(passwordEncoder.encode(password));
-        admin.setPasswordChangedAt(Instant.now());
+        admin.setPasswordChangedAt(clock.instant());
         admin.setActive(true);
         AdminTotp.clear(admin);
         admin.setFailedAttempts(0);
@@ -128,7 +127,7 @@ public class AdminBootstrap implements CommandLineRunner {
         adminUserRepository.save(admin);
         int devices = trustedDevices.revokeAll(tgId);
         adminTokenValidator.invalidate(tgId);
-        jdbc.update("INSERT INTO admin_emergency_resets (admin_id, marker) VALUES (?, ?)", tgId, marker);
+        resets.mark(tgId, marker);
         audit.recordFor(tgId, "ADMIN_EMERGENCY_RESET", "AUTH", login,
                 "аварийный сброс при старте (ADMIN_EMERGENCY_RESET): пароль из ADMIN_PASSWORD, 2FA сброшена, "
                         + "все сессии завершены, забыто доверенных устройств: " + devices);

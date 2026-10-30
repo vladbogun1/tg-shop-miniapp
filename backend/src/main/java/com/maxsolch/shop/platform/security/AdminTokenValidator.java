@@ -2,8 +2,6 @@ package com.maxsolch.shop.platform.security;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.maxsolch.shop.staff.domain.AdminUser;
-import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -33,11 +31,11 @@ public class AdminTokenValidator {
             .expireAfterWrite(Duration.ofSeconds(CACHE_SECONDS))
             .build();
 
-    private final AdminUserRepository adminUserRepository;
+    private final AdminDirectory admins;
     private final AdminTokenRevocations revocations;
 
-    public AdminTokenValidator(AdminUserRepository adminUserRepository, AdminTokenRevocations revocations) {
-        this.adminUserRepository = adminUserRepository;
+    public AdminTokenValidator(AdminDirectory admins, AdminTokenRevocations revocations) {
+        this.admins = admins;
         this.revocations = revocations;
     }
 
@@ -61,7 +59,7 @@ public class AdminTokenValidator {
     }
 
     private Optional<Integer> loadVersion(Long telegramUserId) {
-        return adminUserRepository.findByTelegramUserIdAndActiveTrue(telegramUserId)
-                .map(AdminUser::getTokenVersion);
+        return admins.findActive(telegramUserId)
+                .map(AdminDirectory.ActiveAdmin::tokenVersion);
     }
 }

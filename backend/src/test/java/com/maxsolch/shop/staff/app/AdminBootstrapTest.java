@@ -1,7 +1,5 @@
-package com.maxsolch.shop.platform.config;
+package com.maxsolch.shop.staff.app;
 
-import com.maxsolch.shop.staff.app.AdminAuthKeys;
-import com.maxsolch.shop.staff.app.TrustedDeviceService;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
@@ -9,7 +7,8 @@ import com.maxsolch.shop.platform.security.AdminTokenValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.staff.infra.EmergencyResetStore;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.time.Instant;
@@ -28,7 +27,7 @@ class AdminBootstrapTest {
 
     AppProperties props;
     AdminUserRepository repo;
-    JdbcTemplate jdbc;
+    EmergencyResetStore resets;
     TrustedDeviceService trustedDevices;
     AdminAuditService audit;
     BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(4);
@@ -42,13 +41,13 @@ class AdminBootstrapTest {
         props.getSecurity().setAdminPassword("from-env-password");
         props.getSecurity().setAdminBootstrapTgId(593289478L);
         repo = mock(AdminUserRepository.class);
-        jdbc = mock(JdbcTemplate.class);
+        resets = mock(EmergencyResetStore.class);
         trustedDevices = mock(TrustedDeviceService.class);
         audit = mock(AdminAuditService.class);
         when(repo.save(any(AdminUser.class))).thenAnswer(i -> i.getArgument(0));
         when(repo.findByUsername(anyString())).thenReturn(Optional.empty());
         bootstrap = new AdminBootstrap(props, repo, encoder, mock(AdminTokenValidator.class), trustedDevices,
-                new AdminAuthKeys(props), audit, jdbc);
+                new AdminAuthKeys(props), audit, resets, java.time.Clock.systemUTC());
     }
 
     private AdminUser existing() {
@@ -88,7 +87,7 @@ class AdminBootstrapTest {
         props.getSecurity().setAdminEmergencyReset(true);
         AdminUser admin = existing();
         when(repo.findById(593289478L)).thenReturn(Optional.of(admin));
-        when(jdbc.queryForObject(anyString(), eq(Integer.class), anyString())).thenReturn(0);
+        when(resets.done(anyString())).thenReturn(false);
 
         bootstrap.run();
 
@@ -96,12 +95,11 @@ class AdminBootstrapTest {
         assertThat(admin.isTotpEnabled()).isFalse();
         assertThat(admin.getTokenVersion()).isEqualTo(10);
         verify(trustedDevices).revokeAll(593289478L);
-        verify(jdbc).update(eq("INSERT INTO admin_emergency_resets (admin_id, marker) VALUES (?, ?)"),
-                eq(593289478L), anyString());
+        verify(resets).mark(eq(593289478L), anyString());
         verify(audit).recordFor(eq(593289478L), eq("ADMIN_EMERGENCY_RESET"), any(), any(), any());
 
         // Restarted with the flag still on and the same ADMIN_PASSWORD: nothing happens again.
-        when(jdbc.queryForObject(anyString(), eq(Integer.class), anyString())).thenReturn(1);
+        when(resets.done(anyString())).thenReturn(true);
         AdminUser again = existing();
         when(repo.findById(593289478L)).thenReturn(Optional.of(again));
         bootstrap.run();

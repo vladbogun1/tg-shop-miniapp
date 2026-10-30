@@ -1,7 +1,5 @@
 package com.maxsolch.shop.platform.security;
 
-import com.maxsolch.shop.staff.domain.AdminUser;
-import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -22,7 +20,7 @@ import static org.mockito.Mockito.when;
 class AdminTokenValidatorTest {
 
     @Mock
-    AdminUserRepository adminUserRepository;
+    AdminDirectory admins;
 
     @Mock
     AdminTokenRevocations revocations;
@@ -30,12 +28,8 @@ class AdminTokenValidatorTest {
     @InjectMocks
     AdminTokenValidator validator;
 
-    private AdminUser admin(int tokenVersion) {
-        AdminUser a = new AdminUser();
-        a.setTelegramUserId(42L);
-        a.setTokenVersion(tokenVersion);
-        a.setActive(true);
-        return a;
+    private AdminDirectory.ActiveAdmin admin(int tokenVersion) {
+        return new AdminDirectory.ActiveAdmin(tokenVersion, false, false);
     }
 
     @Test
@@ -46,7 +40,7 @@ class AdminTokenValidatorTest {
 
     @Test
     void matchingTokenVersionIsAccepted() {
-        when(adminUserRepository.findByTelegramUserIdAndActiveTrue(anyLong()))
+        when(admins.findActive(anyLong()))
                 .thenReturn(Optional.of(admin(3)));
 
         assertThat(validator.isValid(new AuthPrincipal(42L, Role.ADMIN, 3))).isTrue();
@@ -54,7 +48,7 @@ class AdminTokenValidatorTest {
 
     @Test
     void tokenMintedBeforeAPasswordChangeIsRejected() {
-        when(adminUserRepository.findByTelegramUserIdAndActiveTrue(anyLong()))
+        when(admins.findActive(anyLong()))
                 .thenReturn(Optional.of(admin(4))); // version bumped by the password change
 
         assertThat(validator.isValid(new AuthPrincipal(42L, Role.ADMIN, 3))).isFalse();
@@ -63,7 +57,7 @@ class AdminTokenValidatorTest {
     @Test
     void deactivatedAdminIsRejected() {
         // findByTelegramUserIdAndActiveTrue returns nothing once the account is switched off.
-        when(adminUserRepository.findByTelegramUserIdAndActiveTrue(anyLong()))
+        when(admins.findActive(anyLong()))
                 .thenReturn(Optional.empty());
 
         assertThat(validator.isValid(new AuthPrincipal(42L, Role.ADMIN, 0))).isFalse();
@@ -71,7 +65,7 @@ class AdminTokenValidatorTest {
 
     @Test
     void tokenRevokedByLogoutIsRejected_otherTokensOfTheSameAdminAreNot() {
-        when(adminUserRepository.findByTelegramUserIdAndActiveTrue(anyLong()))
+        when(admins.findActive(anyLong()))
                 .thenReturn(Optional.of(admin(3)));
         when(revocations.isRevoked("jti-logged-out")).thenReturn(true);
 
