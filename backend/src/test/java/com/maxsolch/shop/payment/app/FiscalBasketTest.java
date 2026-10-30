@@ -27,7 +27,8 @@ class FiscalBasketTest {
         inv.setBasketJson(stored);
 
         OnlinePaymentService svc = new OnlinePaymentService(null, null, null, null, null, null, null,
-                org.mockito.Mockito.mock(SettingsService.class), null, java.time.Clock.systemUTC());
+                org.mockito.Mockito.mock(SettingsService.class), null, java.time.Clock.systemUTC(),
+                new com.maxsolch.shop.platform.jobs.DbLocks(new com.maxsolch.shop.platform.jobs.InMemoryLockProvider(), java.time.Clock.systemUTC()));
         assertThat(svc.refundItems(inv, 350000, true)).containsExactlyElementsOf(sold);
 
         List<MonobankGateway.BasketItem> partial = svc.refundItems(inv, 10000, false);

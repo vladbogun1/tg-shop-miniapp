@@ -23,6 +23,8 @@ import java.util.Optional;
 @Component
 public class DbLocks {
 
+    private static final Duration POLL = Duration.ofMillis(100);
+
     private final LockProvider provider;
     private final Clock clock;
 
@@ -34,6 +36,26 @@ public class DbLocks {
     /** The lock {@code name} when nobody holds it, else empty. */
     public Optional<Held> tryLock(String name, Duration atMostFor) {
         return provider.lock(new LockConfiguration(clock.instant(), name, atMostFor, Duration.ZERO)).map(Held::new);
+    }
+
+    /**
+     * Like {@link #tryLock}, but polls for up to {@code maxWait} while someone else holds it: the second of two
+     * simultaneous requests waits for the first instead of being refused (what {@code synchronized} did in memory).
+     */
+    public Optional<Held> lockWaiting(String name, Duration atMostFor, Duration maxWait) {
+        long deadline = System.nanoTime() + maxWait.toNanos();
+        while (true) {
+            Optional<Held> held = tryLock(name, atMostFor);
+            if (held.isPresent() || System.nanoTime() >= deadline) {
+                return held;
+            }
+            try {
+                Thread.sleep(POLL.toMillis());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return Optional.empty();
+            }
+        }
     }
 
     /** A lock taken by {@link #tryLock}; release it in {@code finally}. */

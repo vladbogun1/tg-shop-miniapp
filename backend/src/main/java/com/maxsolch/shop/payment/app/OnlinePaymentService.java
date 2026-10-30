@@ -15,6 +15,7 @@ import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.payment.domain.PaymentErrors;
+import com.maxsolch.shop.platform.jobs.DbLocks;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
@@ -29,8 +30,6 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static com.maxsolch.shop.platform.util.Texts.cut;
 
@@ -69,13 +68,16 @@ public class OnlinePaymentService {
     private final ActivityLog activity;
     private final Clock clock;
     private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
-    /** One start per order at a time (double tap → one invoice). Single backend instance. */
-    private final Map<String, Object> startLocks = new ConcurrentHashMap<>();
+    private static final String START_LOCK = "payment-start:";
+    private static final java.time.Duration START_LOCK_TTL = java.time.Duration.ofMinutes(2);
+    private static final java.time.Duration START_LOCK_WAIT = java.time.Duration.ofSeconds(30);
+    private final DbLocks locks;
 
     public OnlinePaymentService(MonobankGateway mono, PaymentInvoiceRepository invoices, OrderLookup orders,
                                 AppProperties props, Messages messages,
                                 TransactionTemplate tx, PaymentStatusApplier applier,
-                                SettingsService settings, ActivityLog activity, Clock clock) {
+                                SettingsService settings, ActivityLog activity, Clock clock, DbLocks locks) {
+        this.locks = locks;
         this.mono = mono;
         this.invoices = invoices;
         this.orders = orders;
@@ -128,13 +130,11 @@ public class OnlinePaymentService {
             throw PaymentErrors.conflict(messages.current("api.payment.unavailable"), "PAYMENT_UNAVAILABLE");
         }
         String key = UuidUtil.toString(orderId);
-        Object lock = startLocks.computeIfAbsent(key, k -> new Object());
-        try {
-            synchronized (lock) {
-                return startLocked(orderId, returnTo, locale, embedded);
-            }
-        } finally {
-            startLocks.remove(key, lock);
+        // One start per order at a time, across backend instances (double tap -> one invoice). The lock lives in the
+        // database on its own, outside any transaction: the monobank call below must not run inside one.
+        try (DbLocks.Held ignored = locks.lockWaiting(START_LOCK + key, START_LOCK_TTL, START_LOCK_WAIT)
+                .orElseThrow(() -> PaymentErrors.conflict(messages.current("api.payment.unavailable"), "PAYMENT_UNAVAILABLE"))) {
+            return startLocked(orderId, returnTo, locale, embedded);
         }
     }
 

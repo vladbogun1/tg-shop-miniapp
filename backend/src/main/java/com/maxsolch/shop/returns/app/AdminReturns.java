@@ -9,6 +9,7 @@ import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.app.OrderOnlinePayments;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.platform.jobs.DbLocks;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.returns.domain.ReturnPlan;
@@ -16,8 +17,7 @@ import com.maxsolch.shop.returns.domain.WizardLine;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+
 
 /**
  * What the admin does with returns, one method per button: loads the order of the URL, runs the scenario and
@@ -25,9 +25,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * into these arguments and the returned order into a page.
  *
  * <p>Not {@code @Transactional}: the wizard moves money through the bank between two separate transactions of
- * {@link Returns}, and the audit entries are written on their own. Only one wizard per order runs at a time on this
- * instance ({@link #inFlight}); a second submit is refused rather than queued. The lock is in memory, so it does
- * not cover a second backend instance.
+ * {@link Returns}, and the audit entries are written on their own. Only one wizard per order runs at a time on any
+ * instance (a database lock, {@link DbLocks}); a second submit is refused rather than queued.
  */
 @Service
 public class AdminReturns {
@@ -42,12 +41,15 @@ public class AdminReturns {
     private final AdminAuditService audit;
     private final DefectWriteoffs defects;
 
-    /** Orders whose return wizard is running right now (one backend instance): no double submit. */
-    private final Set<String> inFlight = ConcurrentHashMap.newKeySet();
+    private static final String LOCK = "order-return:";
+    /** Longer than the bank call timeout: it frees itself if the instance dies mid-wizard. */
+    private static final java.time.Duration LOCK_TTL = java.time.Duration.ofMinutes(3);
+    private final DbLocks locks;
 
     public AdminReturns(AdminOrderQueries queries, OrderLookup orders, Returns returns, ReturnReceiving receiving,
                         Exchanges exchanges, ReturnCancellation cancellation, OrderOnlinePayments payments,
-                        AdminAuditService audit, DefectWriteoffs defects) {
+                        AdminAuditService audit, DefectWriteoffs defects, DbLocks locks) {
+        this.locks = locks;
         this.queries = queries;
         this.orders = orders;
         this.returns = returns;
@@ -82,9 +84,8 @@ public class AdminReturns {
         Order order = queries.load(id);
         long mono = plan.monoRefundMinor();
         String key = UuidUtil.toString(order.getId());
-        if (!inFlight.add(key)) {
-            throw OrderErrors.badRequest("возврат по этому заказу уже оформляется — дождитесь окончания");
-        }
+        DbLocks.Held held = locks.tryLock(LOCK + key, LOCK_TTL)
+                .orElseThrow(() -> OrderErrors.badRequest("возврат по этому заказу уже оформляется — дождитесь окончания"));
         try {
             // Check first, then the bank, then the books: a refused plan sends no money, and a refund
             // monobank refuses leaves nothing half-saved to be entered twice on a retry.
@@ -103,7 +104,7 @@ public class AdminReturns {
             OrderChange r = returns.registerPlan(order.getId(), plan, audit.currentAdminName(), mono > 0);
             audit.record("ORDER_RETURN", "ORDER", id, r.auditDetails());
         } finally {
-            inFlight.remove(key);
+            held.release();
         }
         return orders.get(order.getId());
     }

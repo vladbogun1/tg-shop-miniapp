@@ -64,7 +64,8 @@ class OnlinePaymentServiceTest {
         props.getSite().setBaseUrl("https://chisetup.com.ua");
         props.setWebappBaseUrl("https://app.chisetup.com.ua");
         service = new OnlinePaymentService(mono, invoices, orders, props, messages, tx, applier,
-                mock(SettingsService.class), mock(ActivityLog.class), Clock.systemUTC());
+                mock(SettingsService.class), mock(ActivityLog.class), Clock.systemUTC(),
+                new com.maxsolch.shop.platform.jobs.DbLocks(new com.maxsolch.shop.platform.jobs.InMemoryLockProvider(), java.time.Clock.systemUTC()));
         lenient().when(mono.isEnabled()).thenReturn(true);
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
     }
