@@ -14,16 +14,17 @@ import java.util.Locale;
 public class CustomerAudiences implements BroadcastAudiences {
 
     private final UserRepository users;
+    private final OrderHistory orders;
 
-    public CustomerAudiences(UserRepository users) {
+    public CustomerAudiences(UserRepository users, OrderHistory orders) {
         this.users = users;
+        this.orders = orders;
     }
 
     @Override
     public long count(String audience) {
         return switch (normalize(audience)) {
-            case "active" -> users.audienceActiveCount();
-            case "inactive" -> users.audienceInactiveCount();
+            case "active", "inactive" -> ids(audience).size();
             case "premium" -> users.audiencePremiumCount();
             default -> users.audienceAllCount();
         };
@@ -32,8 +33,8 @@ public class CustomerAudiences implements BroadcastAudiences {
     @Override
     public List<Long> ids(String audience) {
         return switch (normalize(audience)) {
-            case "active" -> users.audienceActive();
-            case "inactive" -> users.audienceInactive();
+            case "active" -> withOrders(true);
+            case "inactive" -> withOrders(false);
             case "premium" -> users.audiencePremium();
             default -> users.audienceAll();
         };
@@ -50,6 +51,12 @@ public class CustomerAudiences implements BroadcastAudiences {
     @Transactional
     public void markBotBlocked(long telegramUserId, Instant at) {
         users.markBotBlocked(telegramUserId, at);
+    }
+
+    /** Reachable customers who have (or have not) placed an order; the orders are asked from their owner. */
+    private List<Long> withOrders(boolean ordered) {
+        java.util.Set<Long> buyers = orders.customersWithOrders();
+        return users.audienceAll().stream().filter(id -> buyers.contains(id) == ordered).toList();
     }
 
     private static String normalize(String audience) {

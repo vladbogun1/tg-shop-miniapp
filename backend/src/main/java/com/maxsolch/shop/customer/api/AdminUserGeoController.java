@@ -1,6 +1,6 @@
 package com.maxsolch.shop.customer.api;
 
-import com.maxsolch.shop.customer.app.UserGeoQueries;
+import com.maxsolch.shop.customer.app.UserGeo;
 import com.maxsolch.shop.customer.app.UserGeoDtos;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,9 +24,9 @@ import java.math.BigDecimal;
 @SecurityRequirement(name = "bearer-jwt")
 public class AdminUserGeoController {
 
-    private final UserGeoQueries service;
+    private final UserGeo service;
 
-    public AdminUserGeoController(UserGeoQueries service) {
+    public AdminUserGeoController(UserGeo service) {
         this.service = service;
     }
 

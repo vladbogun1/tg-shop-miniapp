@@ -36,7 +36,9 @@ final class V2Rules {
         RULES.put("L3", "domain knows no web, Jdbc, HTTP clients, Spring stereotypes, app or infra");
         RULES.put("L4", "infra depends on domain only (not on app or api)");
         RULES.put("M1", "another module is called through its app only (not its api or infra)");
-        RULES.put("M2", "no dependency against the module direction (lower modules do not know upper ones)");
+        RULES.put("M2", "no dependency against the module direction, and no cycle between modules of one row (SCC of the module graph)");
+        RULES.put("M3", "SQL/JPQL strings of a module touch its own tables and entities only (analytics, finance, inbox read any); the rest asks the owner through a port");
+        RULES.put("L5", "app knows no web types (org.springframework.web.*, jakarta.servlet.*): requests are parsed in api");
         RULES.put("P1", "platform knows no business module");
         RULES.put("E1", "business errors are DomainException with an ErrorCode (no other RuntimeException subclass, no ResponseStatusException)");
         RULES.put("E2", "an error reason is an enum constant (no class or lambda implementing ErrorCode outside platform.error, no ErrorCode built from a string)");
@@ -112,6 +114,7 @@ final class V2Rules {
 
     List<Violation> evaluate(JavaClasses classes) {
         List<Violation> out = new ArrayList<>();
+        List<Edge> edges = new ArrayList<>();
         for (JavaClass c : classes) {
             if (!placement.inProject(c) || c.getSimpleName().equals("package-info")) {
                 continue;
@@ -120,13 +123,80 @@ final class V2Rules {
             String origin = Placement.outermost(c).getName();
             List<Violation> own = new ArrayList<>();
             placementRule(from, origin, own);
-            layering(c, from, origin, own);
+            layering(c, from, origin, own, edges);
             practices(c, from, origin, own);
             members(c, from, origin, own);
             guardedEntity(c, from, origin, own);
             own.stream().filter(v -> !isAllowed(v.rule(), origin)).forEach(out::add);
         }
+        cyclesInsideTiers(edges).stream().filter(v -> !isAllowed(v.rule(), v.key().split(" -> ")[0])).forEach(out::add);
         return out.stream().distinct().toList();
+    }
+
+    /** M3: the SQL of every module reads its own tables only; sources are read from disk (bytecode does not show strings). */
+    List<Violation> sqlOwnership(java.nio.file.Path sources) {
+        return SqlOwnership.scan(sources, root).stream().filter(v -> !isAllowed(v.rule(), v.key().split(" -> ")[0])).toList();
+    }
+
+    /** A dependency between two business modules, kept to find cycles in the module graph. */
+    private record Edge(String from, String to, String detail) {
+    }
+
+    /**
+     * M2, second half: modules of one row may know each other, but not in a circle. Strongly connected components of the
+     * module graph (Tarjan); every dependency inside a component between two modules of one row is a violation.
+     */
+    private static List<Violation> cyclesInsideTiers(List<Edge> edges) {
+        java.util.Map<String, java.util.Set<String>> graph = new java.util.HashMap<>();
+        for (Edge e : edges) {
+            graph.computeIfAbsent(e.from(), k -> new java.util.HashSet<>()).add(e.to());
+            graph.computeIfAbsent(e.to(), k -> new java.util.HashSet<>());
+        }
+        java.util.Map<String, Integer> component = new java.util.HashMap<>();
+        new Object() {
+            int counter;
+            int comp;
+            final java.util.Map<String, Integer> index = new java.util.HashMap<>();
+            final java.util.Map<String, Integer> low = new java.util.HashMap<>();
+            final java.util.Deque<String> stack = new java.util.ArrayDeque<>();
+            final java.util.Set<String> onStack = new java.util.HashSet<>();
+
+            void run() {
+                graph.keySet().stream().sorted().filter(n -> !index.containsKey(n)).forEach(this::visit);
+            }
+
+            void visit(String v) {
+                index.put(v, counter);
+                low.put(v, counter++);
+                stack.push(v);
+                onStack.add(v);
+                for (String w : graph.get(v)) {
+                    if (!index.containsKey(w)) {
+                        visit(w);
+                        low.put(v, Math.min(low.get(v), low.get(w)));
+                    } else if (onStack.contains(w)) {
+                        low.put(v, Math.min(low.get(v), index.get(w)));
+                    }
+                }
+                if (low.get(v).equals(index.get(v))) {
+                    String w;
+                    do {
+                        w = stack.pop();
+                        onStack.remove(w);
+                        component.put(w, comp);
+                    } while (!w.equals(v));
+                    comp++;
+                }
+            }
+        }.run();
+        List<Violation> out = new ArrayList<>();
+        for (Edge e : edges) {
+            boolean sameRow = Placement.TIER_OF.get(e.from()).equals(Placement.TIER_OF.get(e.to()));
+            if (sameRow && component.get(e.from()).equals(component.get(e.to()))) {
+                out.add(new Violation("M2", e.from(), e.detail() + " (a cycle between modules of one row)"));
+            }
+        }
+        return out;
     }
 
     private boolean isGuarded(String className) {
@@ -166,7 +236,7 @@ final class V2Rules {
 
     // ---- layering and module boundaries -------------------------------------------------------------------
 
-    private void layering(JavaClass c, Place from, String origin, List<Violation> out) {
+    private void layering(JavaClass c, Place from, String origin, List<Violation> out, List<Edge> edges) {
         for (Dependency d : c.getDirectDependenciesFromSelf()) {
             JavaClass target = d.getTargetClass();
             if (Placement.outermost(target).equals(Placement.outermost(c))) {
@@ -196,10 +266,17 @@ final class V2Rules {
                     && (to.layer() == Layer.API || to.layer() == Layer.INFRA)) {
                 out.add(new Violation("M1", from.module(), detail));
             }
+            if (tracked && isBusinessModule(from.module()) && isBusinessModule(to.module()) && !to.module().equals(from.module())) {
+                edges.add(new Edge(from.module(), to.module(), detail));
+            }
             if (tracked && isBusinessModule(from.module()) && isBusinessModule(to.module())
                     && !to.module().equals(from.module())
                     && Placement.TIER_OF.get(to.module()) < Placement.TIER_OF.get(from.module())) {
                 out.add(new Violation("M2", from.module(), detail));
+            }
+            if (from.layer() == Layer.APP && (target.getName().startsWith("org.springframework.web.")
+                    || target.getName().startsWith("jakarta.servlet."))) {
+                out.add(new Violation("L5", from.module(), detail));
             }
             if (from.module().equals(Placement.PLATFORM) && tracked && !to.module().equals(Placement.PLATFORM)) {
                 out.add(new Violation("P1", from.module(), detail));

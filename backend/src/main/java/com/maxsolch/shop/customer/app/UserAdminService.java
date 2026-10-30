@@ -3,18 +3,15 @@ package com.maxsolch.shop.customer.app;
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.platform.time.TimeRange;
 import com.maxsolch.shop.customer.domain.UserCardDto;
+import com.maxsolch.shop.customer.infra.UserListQueries;
+import com.maxsolch.shop.customer.infra.UserListQueries.Column;
+import com.maxsolch.shop.customer.infra.UserListQueries.UserRow;
 import com.maxsolch.shop.customer.infra.UserRepository;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -31,24 +28,24 @@ public class UserAdminService {
      */
     private final DateTimeFormatter day;
 
-    /**
-     * Whitelisted sort columns → SQL. Entity columns AND the two computed aliases
-     * (ordersCount / totalSpentMinor) — MySQL can ORDER BY a SELECT alias.
-     */
-    private static final Map<String, String> SORT_SQL = Map.of(
-            "createdAt", "u.created_at",
-            "lastSeenAt", "u.last_seen_at",
-            "username", "u.username",
-            "telegramUserId", "u.telegram_user_id",
-            "ordersCount", "ordersCount",
-            "totalSpentMinor", "totalSpentMinor");
+    /** Whitelisted sort columns of the users table; everything else falls back to the signup date. */
+    private static final Map<String, Column> SORT_COLUMNS = Map.of(
+            "createdAt", Column.CREATED_AT,
+            "lastSeenAt", Column.LAST_SEEN_AT,
+            "username", Column.USERNAME,
+            "telegramUserId", Column.TELEGRAM_USER_ID);
+    /** The two sorts that need the order totals (the computed columns of the list). */
+    private static final java.util.Set<String> ORDER_SORTS = java.util.Set.of("ordersCount", "totalSpentMinor");
 
-    private final EntityManager em;
+    private final UserListQueries users;
+    private final OrderHistory orders;
     private final UserRepository userRepository;
     private final Clock clock;
 
-    public UserAdminService(EntityManager em, UserRepository userRepository, ShopZone shopZone, Clock clock) {
-        this.em = em;
+    public UserAdminService(UserListQueries users, OrderHistory orders, UserRepository userRepository, ShopZone shopZone,
+                            Clock clock) {
+        this.users = users;
+        this.orders = orders;
         this.userRepository = userRepository;
         this.clock = clock;
         this.day = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(shopZone.zone());
@@ -78,74 +75,40 @@ public class UserAdminService {
         if (like == null) {
             like = "";
         }
-        String col = SORT_SQL.getOrDefault(sortBy, "u.created_at");
-        String dir = "asc".equalsIgnoreCase(sortDir) ? "ASC" : "DESC";
+        boolean asc = "asc".equalsIgnoreCase(sortDir);
         int sz = Math.max(1, Math.min(size, 100));
         int off = Math.max(0, page) * sz;
 
-        String sql = "SELECT u.telegram_user_id, u.username, u.first_name, u.last_name, "
-                + "u.language_code, u.is_premium, u.bot_blocked, "
-                + "(SELECT COUNT(*) FROM orders o WHERE o.tg_user_id = u.telegram_user_id) AS ordersCount, "
-                + "(SELECT COALESCE(SUM(o.total_minor), 0) FROM orders o "
-                + "   WHERE o.tg_user_id = u.telegram_user_id AND o.status <> 'REJECTED') AS totalSpentMinor, "
-                + "u.created_at, u.last_seen_at, u.locale "
-                + "FROM users u "
-                + "WHERE (:hasQ = FALSE OR ("
-                + "   LOWER(COALESCE(u.username, '')) LIKE :like "
-                + "   OR LOWER(COALESCE(u.first_name, '')) LIKE :like "
-                + "   OR LOWER(COALESCE(u.last_name, '')) LIKE :like "
-                + "   OR CAST(u.telegram_user_id AS CHAR) LIKE :like)) "
-                + "AND (:blockedOnly = FALSE OR u.bot_blocked = TRUE) "
-                + "ORDER BY " + col + " " + dir + ", u.telegram_user_id DESC "
-                + "LIMIT :lim OFFSET :off";
-
-        Query query = em.createNativeQuery(sql);
-        query.setParameter("hasQ", hasQ);
-        query.setParameter("like", like);
-        query.setParameter("blockedOnly", blockedOnly);
-        query.setParameter("lim", sz);
-        query.setParameter("off", off);
-
-        @SuppressWarnings("unchecked")
-        List<Object[]> rows = query.getResultList();
-        return rows.stream().map(UserAdminService::toCard).toList();
+        if (ORDER_SORTS.contains(sortBy)) {
+            return sortedByOrders(hasQ, like, blockedOnly, "ordersCount".equals(sortBy), asc, sz, off);
+        }
+        List<UserRow> rows = users.page(hasQ, like, blockedOnly, SORT_COLUMNS.getOrDefault(sortBy, Column.CREATED_AT), asc, sz, off);
+        Map<Long, OrderHistory.Totals> totals = orders.totalsOf(rows.stream().map(UserRow::telegramUserId).toList());
+        return rows.stream().map(r -> toCard(r, totals)).toList();
     }
 
-    private static UserCardDto toCard(Object[] r) {
-        return new UserCardDto(
-                asLong(r[0]),
-                asString(r[1]),
-                asString(r[2]),
-                asString(r[3]),
-                asString(r[4]),
-                asBool(r[5]),
-                asBool(r[6]),
-                asLong(r[7]),
-                asLong(r[8]),
-                asInstant(r[9]),
-                asInstant(r[10]),
-                asString(r[11]));
+    /**
+     * Sorting by the number of orders or the money spent: the totals come from the owner of the orders, so the order is
+     * made here (ties: the newest Telegram id first, as in the other sorts) and only the page is read from the users table.
+     */
+    private List<UserCardDto> sortedByOrders(boolean hasQ, String like, boolean blockedOnly, boolean byCount, boolean asc,
+                                             int size, int offset) {
+        Map<Long, OrderHistory.Totals> totals = orders.totalsOfAll();
+        java.util.function.ToLongFunction<Long> value = id -> {
+            OrderHistory.Totals t = totals.getOrDefault(id, OrderHistory.Totals.NONE);
+            return byCount ? t.ordersCount() : t.spentMinor();
+        };
+        java.util.Comparator<Long> byValue = java.util.Comparator.comparingLong(value::applyAsLong);
+        List<Long> ids = users.matchingIds(hasQ, like, blockedOnly).stream()
+                .sorted((asc ? byValue : byValue.reversed()).thenComparing(java.util.Comparator.<Long>reverseOrder()))
+                .skip(offset).limit(size).toList();
+        return users.byIds(ids).stream().map(r -> toCard(r, totals)).toList();
     }
 
-    private static long asLong(Object o) {
-        return o == null ? 0L : ((Number) o).longValue();
-    }
-
-    private static String asString(Object o) {
-        return o == null ? null : o.toString();
-    }
-
-    private static boolean asBool(Object o) {
-        if (o instanceof Boolean b) return b;
-        return o != null && ((Number) o).intValue() != 0;
-    }
-
-    private static Instant asInstant(Object o) {
-        if (o == null) return null;
-        if (o instanceof Timestamp ts) return ts.toInstant();
-        if (o instanceof Instant i) return i;
-        if (o instanceof LocalDateTime ldt) return ldt.toInstant(ZoneOffset.UTC);
-        return null;
+    private static UserCardDto toCard(UserRow r, Map<Long, OrderHistory.Totals> totals) {
+        OrderHistory.Totals t = totals.getOrDefault(r.telegramUserId(), OrderHistory.Totals.NONE);
+        return new UserCardDto(r.telegramUserId(), r.username(), r.firstName(), r.lastName(), r.languageCode(),
+                r.premium(), r.botBlocked(), t.ordersCount(), t.spentMinor(), r.createdAt(), r.lastSeenAt(), r.locale());
     }
 
     @Transactional(readOnly = true)
@@ -153,7 +116,7 @@ public class UserAdminService {
         long total = userRepository.count();
         long blocked = userRepository.countByBotBlockedTrue();
         long premium = userRepository.countByPremiumTrue();
-        long active = userRepository.countUsersWithOrders();
+        long active = orders.countCustomersWithOrders();
         long inactive = Math.max(0, total - active);
 
         Instant from = range.from(clock.instant());
@@ -176,13 +139,7 @@ public class UserAdminService {
                 .limit(10)
                 .toList();
 
-        List<UserMetricsDto.TopCustomer> topCustomers = userRepository.topCustomers(PageRequest.of(0, 10)).stream()
-                .map(r -> new UserMetricsDto.TopCustomer(
-                        ((Number) r[0]).longValue(),
-                        r[1] == null ? "—" : r[1].toString(),
-                        ((Number) r[2]).longValue(),
-                        ((Number) r[3]).longValue()))
-                .toList();
+        List<UserMetricsDto.TopCustomer> topCustomers = orders.topCustomers(10);
 
         return new UserMetricsDto(range.name().toLowerCase(), CURRENCY, total, newInRange,
                 active, inactive, blocked, premium, newUsersByDay, languages, topCustomers);

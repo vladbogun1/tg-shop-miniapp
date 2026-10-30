@@ -32,6 +32,7 @@ class ArchitectureV2Test {
 
     private static final String ROOT = "com.maxsolch.shop";
     private static final Path BASELINE = Path.of("src/test/resources/architecture/v2-baseline.txt");
+    private static final Path SOURCES = Path.of("src/main/java/com/maxsolch/shop");
     private static final Path SUMMARY = Path.of("target/architecture-v2-summary.txt");
 
     @Test
@@ -39,7 +40,9 @@ class ArchitectureV2Test {
         JavaClasses classes = new ClassFileImporter()
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPackages(ROOT);
-        List<Violation> violations = new V2Rules(ROOT).evaluate(classes);
+        V2Rules rules = new V2Rules(ROOT);
+        List<Violation> violations = new ArrayList<>(rules.evaluate(classes));
+        violations.addAll(rules.sqlOwnership(SOURCES));
         Map<String, Integer> actual = count(violations);
         Map<String, Integer> baseline = readBaseline();
 

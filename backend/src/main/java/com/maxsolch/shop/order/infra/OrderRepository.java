@@ -134,4 +134,32 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
     @Query("select o from Order o where o.promoCode like concat(:prefix, '%') and o.discountMinor > 0 "
             + "order by o.createdAt desc")
     List<Order> ordersWithManualDiscount(@Param("prefix") String prefix, Pageable pageable);
+
+    // ---- read side for the customer module (customer.app.OrderHistory) ----
+
+    /** [tgUserId, orders, spent] of these customers: spent counts every order but REJECTED. */
+    @Query("select o.tgUserId, count(o), coalesce(sum(case when o.status <> com.maxsolch.shop.order.domain.OrderStatus.REJECTED "
+            + "then o.totalMinor else 0 end), 0) from Order o where o.tgUserId in :ids group by o.tgUserId")
+    List<Object[]> totalsOf(@Param("ids") java.util.Collection<Long> ids);
+
+    @Query("select o.tgUserId, count(o), coalesce(sum(case when o.status <> com.maxsolch.shop.order.domain.OrderStatus.REJECTED "
+            + "then o.totalMinor else 0 end), 0) from Order o where o.tgUserId is not null group by o.tgUserId")
+    List<Object[]> totalsOfAll();
+
+    @Query("select distinct o.tgUserId from Order o where o.tgUserId is not null")
+    List<Long> customersWithOrders();
+
+    @Query("select count(distinct o.tgUserId) from Order o where o.tgUserId is not null and o.tgUserId > 0")
+    long countCustomersWithOrders();
+
+    /** [tgUserId, name, orders, spent] without REJECTED orders, best spender first. */
+    @Query("""
+            select o.tgUserId, max(o.customerName), count(o), coalesce(sum(o.totalMinor), 0)
+            from Order o
+            where o.tgUserId is not null and o.tgUserId > 0
+              and o.status <> com.maxsolch.shop.order.domain.OrderStatus.REJECTED
+            group by o.tgUserId
+            order by sum(o.totalMinor) desc
+            """)
+    List<Object[]> topCustomers(Pageable pageable);
 }
