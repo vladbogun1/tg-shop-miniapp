@@ -16,16 +16,17 @@ import com.maxsolch.shop.gift.app.GiftDtos.GiftInfoDto;
 import com.maxsolch.shop.gift.app.GiftDtos.TestDrawDto;
 import com.maxsolch.shop.gift.app.GiftDtos.TestHitDto;
 import com.maxsolch.shop.gift.app.GiftDtos.TierInfoDto;
-import com.maxsolch.shop.promo.infra.PromoCodeRepository;
+import com.maxsolch.shop.promo.app.PromoCodes;
 import com.maxsolch.shop.catalog.app.CatalogService;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.catalog.app.ProductDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -74,17 +75,19 @@ public class GiftService {
     private final GiftCaseItemRepository caseRepository;
     private final GiftCaseTierRepository tierRepository;
     private final OrderGiftCaseRepository orderCaseRepository;
-    private final PromoCodeRepository promoCodes;
+    private final PromoCodes promoCodes;
+    private final Clock clock;
 
     public GiftService(SettingsService settings, CatalogService catalogService, GiftCaseItemRepository caseRepository,
                        GiftCaseTierRepository tierRepository, OrderGiftCaseRepository orderCaseRepository,
-                       PromoCodeRepository promoCodes) {
+                       PromoCodes promoCodes, Clock clock) {
         this.settings = settings;
         this.catalogService = catalogService;
         this.caseRepository = caseRepository;
         this.tierRepository = tierRepository;
         this.orderCaseRepository = orderCaseRepository;
         this.promoCodes = promoCodes;
+        this.clock = clock;
     }
 
     /**
@@ -285,117 +288,6 @@ public class GiftService {
         return w;
     }
 
-    // ---- «Тест кейса» in the admin ----
-
-    /** Upper bound of one test run. */
-    public static final int TEST_MAX_COUNT = 10_000;
-    /** How many draws of a run come back one by one (the strip of ×10). */
-    public static final int TEST_DROPS_SHOWN = 20;
-
-    private static final SecureRandom TEST_RANDOM = new SecureRandom();
-
-    /**
-     * «Тест кейса»: {@code count} draws of the tier exactly as the checkout draws them (the same pool —
-     * active prizes with weight &gt; 0, a product only in stock — and {@link #draw}), read-only: no order,
-     * promo code, stock reserve or journal entry. A disabled tier may be tested too.
-     */
-    @Transactional(readOnly = true)
-    public TestDrawDto testDraw(String tierCode, int count) {
-        return testDraw(tierCode, count, null, false, TEST_RANDOM);
-    }
-
-    TestDrawDto testDraw(String tierCode, int count, RandomGenerator random) {
-        return testDraw(tierCode, count, null, false, random);
-    }
-
-    /**
-     * «Тест кейса» of the case builder's unpublished draft ({@code draft} non-null) instead of the saved
-     * prizes. A draft prize without an id gets {@code -(index + 1)} as its id in the hits.
-     */
-    @Transactional(readOnly = true)
-    public TestDrawDto testDraw(String tierCode, int count, List<GiftDtos.CaseDraftItem> draft) {
-        return testDraw(tierCode, count, draft, false, TEST_RANDOM);
-    }
-
-    /**
-     * @param lowMargin draw as for an order with a low-margin product: product prizes get the tier's
-     *                  {@code lowMarginProductPercent} of the chance ({@link #skewedWeights})
-     */
-    @Transactional(readOnly = true)
-    public TestDrawDto testDraw(String tierCode, int count, List<GiftDtos.CaseDraftItem> draft, boolean lowMargin) {
-        return testDraw(tierCode, count, draft, lowMargin, TEST_RANDOM);
-    }
-
-    TestDrawDto testDraw(String tierCode, int count, List<GiftDtos.CaseDraftItem> draft, RandomGenerator random) {
-        return testDraw(tierCode, count, draft, false, random);
-    }
-
-    TestDrawDto testDraw(String tierCode, int count, List<GiftDtos.CaseDraftItem> draft, boolean lowMargin,
-                         RandomGenerator random) {
-        GiftCaseTier.Tier tier = parseTier(tierCode)
-                .orElseThrow(() -> new BadRequestException("Неизвестный кейс: " + tierCode));
-        if (count < 1 || count > TEST_MAX_COUNT) {
-            throw new BadRequestException("Число открытий — от 1 до " + TEST_MAX_COUNT);
-        }
-        Map<String, ProductDto> byId = byId("ru");
-        TierConfig cfg = draft == null ? tier(tier).orElse(null) : draftConfig(tier, draft);
-        List<CaseEntry> pool = cfg == null ? List.of()
-                : cfg.prizes().stream().filter(c -> c.isDiscount() || inStock(byId.get(c.productId()))).toList();
-        if (pool.isEmpty()) {
-            throw new BadRequestException("Ни один приз этого кейса сейчас не может выпасть");
-        }
-        int productPercent = cfg.productPercent(lowMargin);
-        long[] weights = skewedWeights(pool, productPercent);
-        Map<Long, Long> chanceWeight = new HashMap<>();
-        for (int i = 0; i < pool.size(); i++) {
-            chanceWeight.put(pool.get(i).id(), weights[i]);
-        }
-        long total = Arrays.stream(weights).sum();
-        Map<Long, Integer> hits = new HashMap<>();
-        List<CaseItemDto> drops = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            CaseEntry c = draw(pool, id -> true, random, productPercent).orElseThrow();
-            hits.merge(c.id(), 1, Integer::sum);
-            if (drops.size() < TEST_DROPS_SHOWN) {
-                drops.add(itemDto(c, c.isDiscount() ? null : byId.get(c.productId())));
-            }
-        }
-        List<TestHitDto> out = pool.stream()
-                .map(c -> new TestHitDto(c.id(), c.isDiscount() ? "d" + c.id() : "p" + c.productId(),
-                        hits.getOrDefault(c.id(), 0), chancePercent(chanceWeight.get(c.id()), total)))
-                .toList();
-        return new TestDrawDto(tier.name(), count, drops.get(0), drops, casePrizes(cfg, byId), out);
-    }
-
-    private TierConfig draftConfig(GiftCaseTier.Tier tier, List<GiftDtos.CaseDraftItem> draft) {
-        GiftCaseTier t = tierRepository.findById(tier).orElseThrow(() -> new BadRequestException("Неизвестный кейс"));
-        List<CaseEntry> prizes = new ArrayList<>();
-        for (int i = 0; i < draft.size(); i++) {
-            GiftDtos.CaseDraftItem d = draft.get(i);
-            boolean discount = "DISCOUNT".equalsIgnoreCase(d.kind());
-            int pc = d.discountPercent() == null ? 0 : Math.max(0, Math.min(50, d.discountPercent()));
-            int uah = d.discountUah() == null ? 0 : Math.max(0, d.discountUah());
-            int weight = d.weight() == null ? 0 : Math.max(0, d.weight());
-            if (Boolean.FALSE.equals(d.active()) || weight <= 0 || (discount ? pc == 0 && uah == 0 : d.productId() == null)) {
-                continue;
-            }
-            prizes.add(new CaseEntry(d.id() != null ? d.id() : -(i + 1L), tier,
-                    discount ? GiftCaseItem.Kind.DISCOUNT : GiftCaseItem.Kind.PRODUCT,
-                    discount ? null : d.productId().trim().toLowerCase(Locale.ROOT), pc, pc > 0 ? 0 : uah,
-                    parseRarity(d.rarity()), weight));
-        }
-        return new TierConfig(tier, t.thresholdMinor(), t.getGuaranteedPercent(), t.getGuaranteedMaxUah(),
-                t.getSwapPercent(), List.copyOf(prizes), t.getLowMarginProductPercent());
-    }
-
-    private static String parseRarity(String value) {
-        try {
-            return GiftCaseItem.Rarity.valueOf(value == null ? "" : value.trim().toUpperCase(Locale.ROOT)).name();
-        } catch (IllegalArgumentException e) {
-            return GiftCaseItem.Rarity.COMMON.name();
-        }
-    }
-
     // ---- the order's prize ----
 
     @Transactional(readOnly = true)
@@ -445,7 +337,7 @@ public class GiftService {
         promo.setActive(true);
         promo.setOwnerUserId(ownerUserId);
         int days = Math.max(1, tierSettings(tier).map(GiftCaseTier::getPromoValidDays).orElse(30));
-        promo.setExpiresAt(Instant.now().plus(Duration.ofDays(days)));
+        promo.setExpiresAt(clock.instant().plus(Duration.ofDays(days)));
         promo.setSource(PromoCode.SOURCE_GIFT_CASE);
         promo.setSourceOrderId(orderId);
         return promoCodes.save(promo);
@@ -453,7 +345,7 @@ public class GiftService {
 
     @Transactional(readOnly = true)
     public Optional<PromoCode> promo(String code) {
-        return code == null ? Optional.empty() : promoCodes.findByCode(code);
+        return code == null ? Optional.empty() : promoCodes.find(code);
     }
 
     /**
@@ -463,7 +355,7 @@ public class GiftService {
     @Transactional
     public void revokeCasePromo(byte[] orderId) {
         orderCaseRepository.findById(orderId).map(OrderGiftCase::getPromoCode)
-                .flatMap(promoCodes::findByCode)
+                .flatMap(promoCodes::find)
                 .filter(p -> p.getUsesCount() == 0 && p.isActive())
                 .ifPresent(p -> {
                     p.setActive(false);
@@ -478,7 +370,7 @@ public class GiftService {
                 sb.append(CODE_ALPHABET[CODE_RANDOM.nextInt(CODE_ALPHABET.length)]);
             }
             String code = sb.toString();
-            if (promoCodes.findByCode(code).isEmpty()) {
+            if (promoCodes.find(code).isEmpty()) {
                 return code;
             }
         }

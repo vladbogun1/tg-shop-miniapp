@@ -4,6 +4,7 @@ import com.maxsolch.shop.gift.domain.GiftLine;
 import com.maxsolch.shop.gift.domain.GiftPerson;
 import com.maxsolch.shop.gift.infra.GiftRegistryStore;
 import com.maxsolch.shop.platform.time.ShopZone;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.gift.app.GiftDtos.GiftRegistryDto;
 import com.maxsolch.shop.gift.app.GiftDtos.GiftRegistryRowDto;
@@ -13,10 +14,12 @@ import com.maxsolch.shop.platform.error.DomainException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.format.DateTimeParseException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -47,11 +50,34 @@ public class GiftRegistryService {
     static final Duration LOOKBACK = Duration.ofDays(120);
 
     private final GiftRegistryStore store;
+    private final Clock clock;
     private final SettingsService settings;
 
-    public GiftRegistryService(GiftRegistryStore store, SettingsService settings) {
+    public GiftRegistryService(GiftRegistryStore store, SettingsService settings, Clock clock) {
         this.store = store;
+        this.clock = clock;
         this.settings = settings;
+    }
+
+    /** The limit for the order with this id (text from the request); 400 for a bad id, 404 without the order. */
+    public GiftDtos.GiftLimitDto limitForOrder(String orderId) {
+        byte[] id;
+        try {
+            id = UuidUtil.toBytes(orderId.trim());
+        } catch (IllegalArgumentException e) {
+            throw new DomainException.BadRequest("Неверный id заказа");
+        }
+        return limitForOrder(id, clock.instant())
+                .orElseThrow(() -> new DomainException.NotFound("Заказ не найден"));
+    }
+
+    /** The registry for dates given as {@code YYYY-MM-DD} text. */
+    public GiftRegistryDto registry(String from, String to) {
+        try {
+            return registry(LocalDate.parse(from), LocalDate.parse(to));
+        } catch (DateTimeParseException e) {
+            throw new DomainException.BadRequest("Дата — в формате ГГГГ-ММ-ДД");
+        }
     }
 
     /** The person of an order as the registry keys them. */

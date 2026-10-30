@@ -7,7 +7,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
+import org.hibernate.annotations.CreationTimestamp;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -69,17 +69,11 @@ public class GiftCaseItem {
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     public boolean isDiscount() {
         return kind == Kind.DISCOUNT;
-    }
-
-    @PrePersist
-    void prePersist() {
-        if (createdAt == null) {
-            createdAt = Instant.now();
-        }
     }
 }

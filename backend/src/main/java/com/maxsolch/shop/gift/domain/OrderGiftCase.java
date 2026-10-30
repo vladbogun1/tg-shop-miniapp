@@ -3,7 +3,7 @@ package com.maxsolch.shop.gift.domain;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
+import org.hibernate.annotations.CreationTimestamp;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -65,17 +65,11 @@ public class OrderGiftCase {
     @Column(name = "low_margin", nullable = false)
     private boolean lowMargin;
 
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     public boolean isDiscount() {
         return GiftCaseItem.Kind.DISCOUNT.name().equals(kind);
-    }
-
-    @PrePersist
-    void prePersist() {
-        if (createdAt == null) {
-            createdAt = Instant.now();
-        }
     }
 }

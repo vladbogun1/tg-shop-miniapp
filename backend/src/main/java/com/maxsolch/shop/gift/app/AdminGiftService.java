@@ -19,14 +19,14 @@ import com.maxsolch.shop.gift.app.GiftDtos.TierStatsDto;
 import com.maxsolch.shop.catalog.app.CatalogService;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.NotFoundException;
+import com.maxsolch.shop.gift.domain.GiftTally;
+import com.maxsolch.shop.gift.infra.GiftQueries;
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.catalog.app.ProductDto;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -51,54 +51,33 @@ public class AdminGiftService {
     private final GiftCaseTierRepository tierRepository;
     private final CatalogService catalogService;
     private final AdminAuditService audit;
-    private final JdbcTemplate jdbc;
+    private final GiftQueries queries;
+    private final Clock clock;
     private final SettingsService settings;
     private final CaseLowMargin lowMargin;
 
     public AdminGiftService(GiftCaseItemRepository caseRepository, GiftCaseTierRepository tierRepository,
-                            CatalogService catalogService, AdminAuditService audit, JdbcTemplate jdbc,
-                            SettingsService settings, CaseLowMargin lowMargin) {
+                            CatalogService catalogService, AdminAuditService audit, GiftQueries queries,
+                            SettingsService settings, CaseLowMargin lowMargin, Clock clock) {
         this.settings = settings;
         this.lowMargin = lowMargin;
         this.caseRepository = caseRepository;
         this.tierRepository = tierRepository;
         this.catalogService = catalogService;
         this.audit = audit;
-        this.jdbc = jdbc;
+        this.queries = queries;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
     public GiftStatsDto stats() {
-        Instant since = Instant.now().minus(Duration.ofDays(30));
-        Timestamp ts = Timestamp.from(since);
-        // REJECTED orders are left out: the gift was not really given.
-        List<TierStatsDto> tiers = jdbc.query("""
-                select o.gift_tier tier,
-                       coalesce(sum(o.gift_case_status is not null), 0) cases,
-                       coalesce(sum(o.gift_case_status = 'OPENED'), 0) opened,
-                       coalesce(sum(o.gift_discount_minor > 0), 0) guaranteed
-                  from orders o
-                 where o.created_at >= ? and o.status <> 'REJECTED' and o.gift_tier is not null
-                 group by o.gift_tier
-                """, (rs, n) -> new TierStatsDto(rs.getString("tier"), rs.getLong("cases"), rs.getLong("opened"),
-                rs.getLong("guaranteed")), ts);
-        tiers = new ArrayList<>(tiers);
+        Instant since = clock.instant().minus(Duration.ofDays(30));
+        List<TierStatsDto> tiers = new ArrayList<>(queries.tierTallies(since).stream()
+                .map(t -> new TierStatsDto(t.tier(), t.cases(), t.opened(), t.guaranteed())).toList());
         tiers.sort(Comparator.comparingInt(t -> GiftService.parseTier(t.tier()).map(Enum::ordinal).orElse(9)));
-        List<TierStatsDto> byTier = List.copyOf(tiers);
-        return jdbc.queryForObject("""
-                select count(*) orders,
-                       coalesce(sum(exists(select 1 from order_items i where i.order_id = o.id and i.auto_gift)), 0) gift_orders,
-                       coalesce(sum(o.gift_case_status is not null), 0) case_orders,
-                       coalesce(sum(o.gift_case_status = 'OPENED'), 0) cases_opened,
-                       coalesce(sum(o.gift_discount_minor > 0), 0) guaranteed_orders,
-                       coalesce(sum(o.gift_discount_minor), 0) guaranteed_minor,
-                       coalesce(sum(exists(select 1 from order_gift_cases g where g.order_id = o.id and g.swapped_at is not null)), 0) swaps,
-                       coalesce(sum(exists(select 1 from order_gift_cases g where g.order_id = o.id and g.kind = 'DISCOUNT')), 0) discount_prizes
-                  from orders o
-                 where o.created_at >= ? and o.status <> 'REJECTED'
-                """, (rs, n) -> new GiftStatsDto(since, rs.getLong("orders"), rs.getLong("gift_orders"),
-                rs.getLong("case_orders"), rs.getLong("cases_opened"), rs.getLong("guaranteed_orders"),
-                rs.getLong("guaranteed_minor"), rs.getLong("swaps"), rs.getLong("discount_prizes"), byTier), ts);
+        GiftTally all = queries.tally(since);
+        return new GiftStatsDto(since, all.orders(), all.giftOrders(), all.caseOrders(), all.casesOpened(),
+                all.guaranteedOrders(), all.guaranteedMinor(), all.swaps(), all.discountPrizes(), List.copyOf(tiers));
     }
 
     // ---- tiers ----
@@ -132,21 +111,20 @@ public class AdminGiftService {
         List<GiftCaseTier> sorted = tierRepository.findAll().stream()
                 .sorted(Comparator.comparingInt(GiftCaseTier::getThresholdUah)).toList();
         Map<GiftCaseTier.Tier, Double> out = new EnumMap<>(GiftCaseTier.Tier.class);
-        Timestamp since = Timestamp.from(Instant.now().minus(Duration.ofDays(90)));
+        Instant since = clock.instant().minus(Duration.ofDays(90));
         for (int i = 0; i < sorted.size(); i++) {
             long from = sorted.get(i).thresholdMinor();
             long to = i + 1 < sorted.size() ? sorted.get(i + 1).thresholdMinor() : Long.MAX_VALUE;
-            Long n = jdbc.queryForObject("select count(*) from orders where created_at >= ? and status <> 'REJECTED' "
-                    + "and total_minor >= ? and total_minor < ?", Long.class, since, from, to);
-            out.put(sorted.get(i).getTier(), Math.round((n == null ? 0 : n) / 3.0 * 10) / 10.0);
+            long n = queries.countOrdersByTotal(since, from, to);
+            out.put(sorted.get(i).getTier(), Math.round(n / 3.0 * 10) / 10.0);
         }
         return out;
     }
 
     @Transactional
     public TierAdminDto updateTier(String code, TierRequest body) {
-        GiftCaseTier.Tier tier = GiftService.parseTier(code).orElseThrow(() -> new NotFoundException("уровень не найден"));
-        GiftCaseTier t = tierRepository.findById(tier).orElseThrow(() -> new NotFoundException("уровень не найден"));
+        GiftCaseTier.Tier tier = GiftService.parseTier(code).orElseThrow(() -> new DomainException.NotFound("уровень не найден"));
+        GiftCaseTier t = tierRepository.findById(tier).orElseThrow(() -> new DomainException.NotFound("уровень не найден"));
         if (body != null) {
             if (body.enabled() != null) {
                 t.setEnabled(body.enabled());
@@ -215,7 +193,7 @@ public class AdminGiftService {
                 try {
                     UuidUtil.toBytes(id);
                 } catch (IllegalArgumentException e) {
-                    throw new BadRequestException("Неверный id товара: " + id);
+                    throw new DomainException.BadRequest("Неверный id товара: " + id);
                 }
             });
             changes.put(SettingsRegistry.GIFT_LOW_MARGIN_PRODUCTS, String.join(",", ids));
@@ -256,10 +234,10 @@ public class AdminGiftService {
     @Transactional
     public CaseItemAdminDto addCaseItem(CaseItemRequest body) {
         if (body == null) {
-            throw new BadRequestException("Пустой запрос");
+            throw new DomainException.BadRequest("Пустой запрос");
         }
         GiftCaseTier.Tier tier = GiftService.parseTier(body.tier())
-                .orElseThrow(() -> new BadRequestException("Выберите кейс: бронзовый, серебряный или золотой"));
+                .orElseThrow(() -> new DomainException.BadRequest("Выберите кейс: бронзовый, серебряный или золотой"));
         GiftCaseItem.Kind kind = kind(body.kind());
         GiftCaseItem item = new GiftCaseItem();
         item.setTier(tier);
@@ -267,18 +245,18 @@ public class AdminGiftService {
         String label;
         if (kind == GiftCaseItem.Kind.PRODUCT) {
             if (body.productId() == null || body.productId().isBlank()) {
-                throw new BadRequestException("Выберите товар-приз");
+                throw new DomainException.BadRequest("Выберите товар-приз");
             }
             byte[] pid;
             try {
                 pid = UuidUtil.toBytes(body.productId().trim());
             } catch (IllegalArgumentException e) {
-                throw new BadRequestException("Неверный товар");
+                throw new DomainException.BadRequest("Неверный товар");
             }
             ProductDto p = catalogService.getProduct(body.productId().trim(), ADMIN_LANG)
-                    .orElseThrow(() -> new BadRequestException("Товар не найден или скрыт"));
+                    .orElseThrow(() -> new DomainException.BadRequest("Товар не найден или скрыт"));
             if (caseRepository.existsByTierAndProductId(tier, pid)) {
-                throw new BadRequestException("Этот товар уже есть в этом кейсе: " + p.title());
+                throw new DomainException.BadRequest("Этот товар уже есть в этом кейсе: " + p.title());
             }
             item.setProductId(pid);
             label = p.title();
@@ -299,7 +277,7 @@ public class AdminGiftService {
 
     @Transactional
     public CaseItemAdminDto updateCaseItem(long id, CaseItemRequest body) {
-        GiftCaseItem item = caseRepository.findById(id).orElseThrow(() -> new NotFoundException("приз не найден"));
+        GiftCaseItem item = caseRepository.findById(id).orElseThrow(() -> new DomainException.NotFound("приз не найден"));
         if (body != null) {
             if (body.rarity() != null) {
                 item.setRarity(rarity(body.rarity(), item.getRarity()));
@@ -334,10 +312,10 @@ public class AdminGiftService {
      */
     @Transactional
     public List<CaseItemAdminDto> replaceItems(String code, List<CaseDraftItem> draft) {
-        GiftCaseTier.Tier tier = GiftService.parseTier(code).orElseThrow(() -> new NotFoundException("уровень не найден"));
+        GiftCaseTier.Tier tier = GiftService.parseTier(code).orElseThrow(() -> new DomainException.NotFound("уровень не найден"));
         List<CaseDraftItem> items = draft == null ? List.of() : draft;
         if (items.size() > 40) {
-            throw new BadRequestException("Слишком много призов: не больше 40 в кейсе");
+            throw new DomainException.BadRequest("Слишком много призов: не больше 40 в кейсе");
         }
         Map<Long, GiftCaseItem> existing = new HashMap<>();
         caseRepository.findAllByOrderBySortOrderAscIdAsc().stream()
@@ -353,13 +331,13 @@ public class AdminGiftService {
                 try {
                     pid = UuidUtil.toBytes(id);
                 } catch (IllegalArgumentException e) {
-                    throw new BadRequestException("Неверный товар в призе №" + (k + 1));
+                    throw new DomainException.BadRequest("Неверный товар в призе №" + (k + 1));
                 }
                 if (!products.add(id)) {
-                    throw new BadRequestException("Товар повторяется в кейсе — оставьте его один раз");
+                    throw new DomainException.BadRequest("Товар повторяется в кейсе — оставьте его один раз");
                 }
                 if (catalogService.getProduct(id, ADMIN_LANG).isEmpty()) {
-                    throw new BadRequestException("Товар приза №" + (k + 1) + " не найден или скрыт");
+                    throw new DomainException.BadRequest("Товар приза №" + (k + 1) + " не найден или скрыт");
                 }
             }
             GiftCaseItem row = d.id() == null ? null : existing.get(d.id());
@@ -397,7 +375,7 @@ public class AdminGiftService {
 
     @Transactional
     public void deleteCaseItem(long id) {
-        GiftCaseItem item = caseRepository.findById(id).orElseThrow(() -> new NotFoundException("приз не найден"));
+        GiftCaseItem item = caseRepository.findById(id).orElseThrow(() -> new DomainException.NotFound("приз не найден"));
         caseRepository.delete(item);
         audit.record("GIFT_CASE_ITEM_DELETE", "GIFT_CASE_ITEM", String.valueOf(id),
                 item.getTier() + " · " + (item.isDiscount() ? discountLabel(item) : UuidUtil.toString(item.getProductId())));
@@ -432,13 +410,13 @@ public class AdminGiftService {
         int pc = percent == null ? 0 : percent;
         int amount = uah == null ? 0 : uah;
         if (pc < 0 || pc > 50) {
-            throw new BadRequestException("Скидка — от 1 до 50 %");
+            throw new DomainException.BadRequest("Скидка — от 1 до 50 %");
         }
         if (amount < 0 || amount > 100_000) {
-            throw new BadRequestException("Скидка — от 1 до 100 000 ₴");
+            throw new DomainException.BadRequest("Скидка — от 1 до 100 000 ₴");
         }
         if (pc == 0 && amount == 0) {
-            throw new BadRequestException("Укажите скидку: процент или сумму в ₴");
+            throw new DomainException.BadRequest("Укажите скидку: процент или сумму в ₴");
         }
         item.setDiscountPercent(pc);
         item.setDiscountUah(pc > 0 ? 0 : amount);
@@ -451,7 +429,7 @@ public class AdminGiftService {
         try {
             return GiftCaseItem.Kind.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Неизвестный вид приза: " + value);
+            throw new DomainException.BadRequest("Неизвестный вид приза: " + value);
         }
     }
 
@@ -462,7 +440,7 @@ public class AdminGiftService {
         try {
             return GiftCaseItem.Rarity.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Неизвестная редкость: " + value);
+            throw new DomainException.BadRequest("Неизвестная редкость: " + value);
         }
     }
 
@@ -471,14 +449,14 @@ public class AdminGiftService {
             return def;
         }
         if (value < 0 || value > 100 * GiftService.CASE_WEIGHT_PER_PERCENT) {
-            throw new BadRequestException("Шанс — от 0 до 100 %");
+            throw new DomainException.BadRequest("Шанс — от 0 до 100 %");
         }
         return value;
     }
 
     private static int range(int v, int min, int max, String error) {
         if (v < min || v > max) {
-            throw new BadRequestException(error);
+            throw new DomainException.BadRequest(error);
         }
         return v;
     }

@@ -4,7 +4,7 @@ import com.maxsolch.shop.gift.app.AdminGiftService;
 import com.maxsolch.shop.gift.app.CaseAutofill;
 import com.maxsolch.shop.gift.app.GiftDtos;
 import com.maxsolch.shop.gift.app.GiftRegistryService;
-import com.maxsolch.shop.gift.app.GiftService;
+import com.maxsolch.shop.gift.app.GiftTestDraw;
 
 import com.maxsolch.shop.gift.app.GiftDtos.AutofillDto;
 import com.maxsolch.shop.gift.app.GiftDtos.AutofillRequest;
@@ -45,14 +45,14 @@ import java.util.List;
 public class AdminGiftController {
 
     private final AdminGiftService service;
-    private final GiftService giftService;
+    private final GiftTestDraw testDraw;
     private final CaseAutofill autofill;
     private final GiftRegistryService registry;
 
-    public AdminGiftController(AdminGiftService service, GiftService giftService, CaseAutofill autofill,
+    public AdminGiftController(AdminGiftService service, GiftTestDraw testDraw, CaseAutofill autofill,
                                GiftRegistryService registry) {
         this.service = service;
-        this.giftService = giftService;
+        this.testDraw = testDraw;
         this.autofill = autofill;
         this.registry = registry;
     }
@@ -87,7 +87,7 @@ public class AdminGiftController {
     public TestDrawDto testDraw(@PathVariable String tier, @RequestParam(defaultValue = "1") int count,
                                 @RequestParam(defaultValue = "false") boolean lowMargin,
                                 @RequestBody(required = false) CaseDraftRequest body) {
-        return giftService.testDraw(tier, count, body == null ? null : body.items(), lowMargin);
+        return testDraw.testDraw(tier, count, body == null ? null : body.items(), lowMargin);
     }
 
     @PutMapping("/tiers/{tier}/items")
@@ -142,23 +142,12 @@ public class AdminGiftController {
     @GetMapping("/limit")
     @Operation(summary = "Gifts of the order's customer this month against the monthly limit (before an admin adds a gift)")
     public GiftDtos.GiftLimitDto limit(@RequestParam String orderId) {
-        byte[] id;
-        try {
-            id = com.maxsolch.shop.platform.util.UuidUtil.toBytes(orderId.trim());
-        } catch (IllegalArgumentException e) {
-            throw new com.maxsolch.shop.platform.error.BadRequestException("Неверный id заказа");
-        }
-        return registry.limitForOrder(id, java.time.Instant.now())
-                .orElseThrow(() -> new com.maxsolch.shop.platform.error.NotFoundException("Заказ не найден"));
+        return registry.limitForOrder(orderId);
     }
 
     @GetMapping("/registry")
     @Operation(summary = "Gifts handed over in a period (dates inclusive, Kyiv) with per-person month totals")
     public GiftDtos.GiftRegistryDto registry(@RequestParam String from, @RequestParam String to) {
-        try {
-            return registry.registry(java.time.LocalDate.parse(from), java.time.LocalDate.parse(to));
-        } catch (java.time.format.DateTimeParseException e) {
-            throw new com.maxsolch.shop.platform.error.BadRequestException("Дата — в формате ГГГГ-ММ-ДД");
-        }
+        return registry.registry(from, to);
     }
 }

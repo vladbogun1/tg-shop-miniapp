@@ -1,21 +1,18 @@
 package com.maxsolch.shop.gift.app;
 
-import com.maxsolch.shop.promo.domain.PromoCode;
-import com.maxsolch.shop.order.infra.OrderRepository;
+import com.maxsolch.shop.gift.domain.PromoReminder;
+import com.maxsolch.shop.gift.infra.GiftReminderStore;
+import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.tg.NotificationService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.jdbc.core.JdbcTemplate;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 
 /**
  * "Your code from the case runs out soon": a bot DM {@code gift.promoReminderDays} before an unused
@@ -30,21 +27,18 @@ public class GiftCasePromoReminderJob {
 
     static final int BATCH = 50;
 
-    private final JdbcTemplate jdbc;
+    private final GiftReminderStore store;
     private final SettingsService settings;
-    private final OrderRepository orders;
-    private final NotificationService notifications;
-    private Clock clock = Clock.systemUTC();
+    private final OrderLookup orders;
+    private final GiftNotifier notifier;
+    private final Clock clock;
 
-    public GiftCasePromoReminderJob(JdbcTemplate jdbc, SettingsService settings, OrderRepository orders,
-                                    NotificationService notifications) {
-        this.jdbc = jdbc;
+    public GiftCasePromoReminderJob(GiftReminderStore store, SettingsService settings, OrderLookup orders,
+                                    GiftNotifier notifier, Clock clock) {
+        this.store = store;
         this.settings = settings;
         this.orders = orders;
-        this.notifications = notifications;
-    }
-
-    void setClock(Clock clock) {
+        this.notifier = notifier;
         this.clock = clock;
     }
 
@@ -61,10 +55,6 @@ public class GiftCasePromoReminderJob {
         }
     }
 
-    /** An unused case code that runs out soon. */
-    record Candidate(byte[] promoId, byte[] orderId, String code, int percent, long amountMinor, Instant expiresAt) {
-    }
-
     /** @return how many reminders went out */
     int sendDue() {
         if (!settings.get(SettingsRegistry.NOTIFY_CUSTOMER_STATUS, true)) {
@@ -77,41 +67,16 @@ public class GiftCasePromoReminderJob {
         Instant now = clock.instant();
         Duration window = Duration.ofDays(days);
         int sent = 0;
-        for (Candidate c : candidates(now, now.plus(window), now.minus(window))) {
+        for (PromoReminder c : store.candidates(now, now.plus(window), now.minus(window), BATCH)) {
             // Claimed before sending: a second instance (or a retry) never DMs the same code twice.
-            if (jdbc.update("update promo_codes set expiry_reminded_at = ? where id = ? and expiry_reminded_at is null",
-                    Timestamp.from(now), c.promoId()) != 1) {
+            if (!store.claim(c.promoId(), now)) {
                 continue;
             }
-            var order = orders.findById(c.orderId()).orElse(null);
-            if (order != null && notifications.notifyCustomerCasePromoExpiring(order, c.code(), c.percent(),
-                    c.amountMinor(), c.expiresAt())) {
+            var order = orders.find(c.orderId()).orElse(null);
+            if (order != null && notifier.promoExpiring(order, c.code(), c.percent(), c.amountMinor(), c.expiresAt())) {
                 sent++;
             }
         }
         return sent;
-    }
-
-    /**
-     * Unused, still valid case codes expiring in {@code (now, expiresBy]}, issued no later than
-     * {@code issuedBefore}, not reminded yet, of an order with a Telegram chat whose owner has not
-     * blocked the bot; soonest first.
-     */
-    List<Candidate> candidates(Instant now, Instant expiresBy, Instant issuedBefore) {
-        return jdbc.query("select p.id, p.source_order_id, p.code, p.discount_percent, p.discount_amount_minor, "
-                        + "p.expires_at from promo_codes p "
-                        + "join orders o on o.id = p.source_order_id "
-                        + "left join users u on u.telegram_user_id = o.tg_user_id "
-                        + "where p.source = '" + PromoCode.SOURCE_GIFT_CASE + "' and p.active = true "
-                        + "and p.expiry_reminded_at is null "
-                        + "and o.tg_user_id is not null and o.tg_user_id > 0 "
-                        + "and p.expires_at > ? and p.expires_at <= ? and p.created_at <= ? "
-                        + "and (p.max_uses is null or p.uses_count < p.max_uses) "
-                        + "and coalesce(u.bot_blocked, false) = false "
-                        + "order by p.expires_at limit ?",
-                (rs, i) -> new Candidate(rs.getBytes("id"), rs.getBytes("source_order_id"), rs.getString("code"),
-                        rs.getInt("discount_percent"), rs.getLong("discount_amount_minor"),
-                        rs.getTimestamp("expires_at").toInstant()),
-                Timestamp.from(now), Timestamp.from(expiresBy), Timestamp.from(issuedBefore), BATCH);
     }
 }

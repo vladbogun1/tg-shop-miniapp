@@ -18,14 +18,16 @@ import com.maxsolch.shop.order.app.OrderGiftDtos.SwapDto;
 import com.maxsolch.shop.catalog.app.CatalogService;
 import com.maxsolch.shop.order.app.OrderGiftCases;
 import com.maxsolch.shop.order.app.OrderGiftView;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.gift.infra.GiftQueries;
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.platform.error.ErrorCode;
 import com.maxsolch.shop.catalog.app.ProductDto;
 import com.maxsolch.shop.order.app.OrderEvents;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,16 +44,18 @@ public class GiftCaseService implements OrderGiftView {
     private final OrderGiftCases giftCases;
     private final GiftService giftService;
     private final CatalogService catalogService;
-    private final JdbcTemplate jdbc;
+    private final GiftQueries queries;
     private final ApplicationEventPublisher events;
+    private final Clock clock;
 
     public GiftCaseService(OrderGiftCases giftCases, GiftService giftService, CatalogService catalogService,
-                           JdbcTemplate jdbc, ApplicationEventPublisher events) {
+                           GiftQueries queries, ApplicationEventPublisher events, Clock clock) {
         this.giftCases = giftCases;
         this.giftService = giftService;
         this.catalogService = catalogService;
-        this.jdbc = jdbc;
+        this.queries = queries;
         this.events = events;
+        this.clock = clock;
     }
 
     /** POST …/gift-case/open: SEALED → OPENED once, only paid; a discount prize gets its code. */
@@ -86,14 +90,15 @@ public class GiftCaseService implements OrderGiftView {
         Order saved = giftCases.removeCasePrizeForSwap(orderId);
         PromoCode promo = giftService.issuePromo(order.getUserId(), orderId, rec.getTier(), 0, offer.amountMinor());
         rec.setPromoCode(promo.getCode());
-        rec.setSwappedAt(Instant.now());
+        rec.setSwappedAt(clock.instant());
         rec.setSwapAmountMinor(offer.amountMinor());
         rec = giftService.saveOrderCase(rec);
         return openDto(saved, rec, lang);
     }
 
-    private static BadRequestException swapUnavailable() {
-        return new BadRequestException("Заменить приз уже нельзя", GiftCaseRules.GIFT_CASE_SWAP_UNAVAILABLE);
+    private static DomainException.BadRequest swapUnavailable() {
+        return new DomainException.BadRequest("Заменить приз уже нельзя",
+                ErrorCode.of(GiftCaseRules.GIFT_CASE_SWAP_UNAVAILABLE));
     }
 
     /** The gift block of an order page; {@code customer}: the prize stays hidden until the case is opened. */
@@ -163,7 +168,7 @@ public class GiftCaseService implements OrderGiftView {
     /** An order sealed before the prize records existed: the prize line is all there is. */
     private CaseItemDto legacyWon(Order order, String lang) {
         var line = GiftCaseRules.casePrizeLine(order).orElseThrow(
-                () -> new BadRequestException("в заказе нет приза кейса", GiftCaseRules.GIFT_CASE_NONE));
+                () -> new DomainException.BadRequest("в заказе нет приза кейса", ErrorCode.of(GiftCaseRules.GIFT_CASE_NONE)));
         String pid = UuidUtil.toString(line.getProductId());
         ProductDto p = catalogService.getProduct(pid, lang).orElse(null);
         return new CaseItemDto("p" + pid, GiftCaseItem.Kind.PRODUCT.name(), pid,
@@ -199,18 +204,6 @@ public class GiftCaseService implements OrderGiftView {
     }
 
     private boolean similarBought(Order order, byte[] prizeProductId) {
-        Boolean found = jdbc.queryForObject("""
-                select exists(
-                  select 1
-                    from order_items i
-                    join orders o on o.id = i.order_id
-                    join products p on p.id = i.product_id
-                    join products q on q.id = ?
-                   where (o.id = ? or (? is not null and o.user_id = ?))
-                     and o.status <> 'REJECTED'
-                     and i.gift = 0
-                     and (i.product_id = q.id or (p.category_id is not null and p.category_id = q.category_id)))
-                """, Boolean.class, prizeProductId, order.getId(), order.getUserId(), order.getUserId());
-        return Boolean.TRUE.equals(found);
+        return queries.similarBought(prizeProductId, order.getId(), order.getUserId());
     }
 }

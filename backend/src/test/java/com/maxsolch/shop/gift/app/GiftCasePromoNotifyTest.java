@@ -6,6 +6,7 @@ import com.maxsolch.shop.gift.domain.OrderGiftCase;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.catalog.app.CatalogService;
+import com.maxsolch.shop.gift.infra.GiftQueries;
 import com.maxsolch.shop.order.app.OrderEvents;
 import com.maxsolch.shop.order.app.OrderGiftCases;
 import org.junit.jupiter.api.Test;
@@ -14,7 +15,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Instant;
 import java.util.List;
@@ -38,13 +38,13 @@ class GiftCasePromoNotifyTest {
     @Mock OrderGiftCases orderService;
     @Mock GiftService giftService;
     @Mock CatalogService catalogService;
-    @Mock JdbcTemplate jdbc;
+    @Mock GiftQueries queries;
     @Mock ApplicationEventPublisher events;
 
     private static final byte[] ORDER_ID = new byte[16];
 
     private GiftCaseService service() {
-        return new GiftCaseService(orderService, giftService, catalogService, jdbc, events);
+        return new GiftCaseService(orderService, giftService, catalogService, queries, events, java.time.Clock.systemUTC());
     }
 
     private OrderGiftCase discountPrize(String code) {

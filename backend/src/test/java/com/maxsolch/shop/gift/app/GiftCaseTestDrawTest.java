@@ -11,7 +11,7 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.catalog.app.CatalogService;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.catalog.app.ProductDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,7 +44,8 @@ class GiftCaseTestDrawTest {
     private OrderGiftCaseRepository orderCases;
     private PromoCodeRepository promoCodes;
     private SettingsService settings;
-    private GiftService service;
+    private GiftService giftService;
+    private GiftTestDraw service;
 
     @BeforeEach
     void setUp() {
@@ -54,7 +55,9 @@ class GiftCaseTestDrawTest {
         promoCodes = mock(PromoCodeRepository.class);
         settings = mock(SettingsService.class);
         CatalogService catalog = mock(CatalogService.class);
-        service = new GiftService(settings, catalog, items, tiers, orderCases, promoCodes);
+        giftService = new GiftService(settings, catalog, items, tiers, orderCases,
+                new com.maxsolch.shop.promo.app.PromoCodes(promoCodes), java.time.Clock.systemUTC());
+        service = new GiftTestDraw(giftService, tiers);
 
         GiftCaseTier silver = new GiftCaseTier();
         silver.setTier(GiftCaseTier.Tier.SILVER);
@@ -73,7 +76,7 @@ class GiftCaseTestDrawTest {
 
     @Test
     void drawsByWeightsAmongPrizesThatCanDrop() {
-        int n = GiftService.TEST_MAX_COUNT;
+        int n = GiftTestDraw.TEST_MAX_COUNT;
         GiftDtos.TestDrawDto res = service.testDraw("silver", n, new SplittableRandom(11));
 
         assertThat(res.tier()).isEqualTo("SILVER");
@@ -92,7 +95,7 @@ class GiftCaseTestDrawTest {
         assertThat(hits.get(1L).key()).isEqualTo("p" + IN_STOCK);
         assertThat(hits.get(2L).key()).isEqualTo("d2");
 
-        assertThat(res.drops()).hasSize(GiftService.TEST_DROPS_SHOWN);
+        assertThat(res.drops()).hasSize(GiftTestDraw.TEST_DROPS_SHOWN);
         assertThat(res.won()).isEqualTo(res.drops().get(0));
         assertThat(res.reel()).extracting(OrderGiftDtos.CaseItemDto::key).containsExactlyInAnyOrder("p" + IN_STOCK, "d2", "d3");
     }
@@ -136,14 +139,14 @@ class GiftCaseTestDrawTest {
     @Test
     void refusesBadInput() {
         assertThatThrownBy(() -> service.testDraw("PLATINUM", 1, new SplittableRandom(1)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> service.testDraw("SILVER", 0, new SplittableRandom(1)))
-                .isInstanceOf(BadRequestException.class);
-        assertThatThrownBy(() -> service.testDraw("SILVER", GiftService.TEST_MAX_COUNT + 1, new SplittableRandom(1)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
+        assertThatThrownBy(() -> service.testDraw("SILVER", GiftTestDraw.TEST_MAX_COUNT + 1, new SplittableRandom(1)))
+                .isInstanceOf(DomainException.BadRequest.class);
         // A tier without prizes that can drop.
         assertThatThrownBy(() -> service.testDraw("GOLD", 1, new SplittableRandom(1)))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 
     private static GiftCaseItem product(long id, String productId, GiftCaseItem.Rarity rarity, int weight) {
