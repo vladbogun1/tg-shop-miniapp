@@ -70,7 +70,7 @@ export function summarize(rows, goal) {
     oldTotal: n((r) => r.old),
     oldJoined: n((r) => r.invite === "joined"),
     oldGrey: n((r) => r.invite === "grey"),
-    blocked: n((r) => r.broadcast === "blocked"),
+    blocked: n((r) => r.broadcast === "blocked" || r.botBlocked === true),
     excluded: n((r) => r.excluded !== null),
   };
 }
