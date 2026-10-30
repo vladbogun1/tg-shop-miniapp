@@ -66,13 +66,18 @@ class PreorderQueueServiceTest {
     com.maxsolch.shop.translation.app.TranslationService translations;
 
     PreorderQueueService service;
+    PreorderHoldExpiry expiry;
     Product product;
     final AtomicLong ids = new AtomicLong(100);
 
     @BeforeEach
     void setUp() {
-        service = new PreorderQueueService(subs, batches, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), settings, events, messages, translations,
-                Clock.fixed(NOW, ZoneOffset.UTC), new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"));
+        com.maxsolch.shop.catalog.app.Products productsApp = new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class));
+        Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
+        PreorderCards cards = new PreorderCards(subs, batches, productsApp, translations, clock,
+                new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"));
+        service = new PreorderQueueService(subs, batches, productsApp, settings, events, messages, cards, clock);
+        expiry = new PreorderHoldExpiry(subs, productsApp, events, service, clock);
         product = new Product();
         product.setId(UuidUtil.toBytes(UUID.randomUUID()));
         product.setTitle("Lamzu Maya");
@@ -287,7 +292,7 @@ class PreorderQueueServiceTest {
         when(subs.findForUpdate(1L)).thenReturn(Optional.of(late));
         when(subs.lockQueue(any(), isNull())).thenReturn(new ArrayList<>(List.of(next)));
 
-        assertThat(service.expireHolds()).isEqualTo(1);
+        assertThat(expiry.expireHolds()).isEqualTo(1);
 
         assertThat(late.getStatus()).isEqualTo("EXPIRED");
         assertThat(next.getStatus()).isEqualTo("HELD");
@@ -303,7 +308,7 @@ class PreorderQueueServiceTest {
         when(subs.findExpiredHoldIds(eq(NOW), any())).thenReturn(List.<Object[]>of(new Object[]{1L, product.getId()}));
         when(subs.findForUpdate(1L)).thenReturn(Optional.of(bought)); // the fresh row: the buyer won the race
 
-        assertThat(service.expireHolds()).isZero();
+        assertThat(expiry.expireHolds()).isZero();
 
         assertThat(bought.getStatus()).isEqualTo("BOUGHT");
         verify(events, never()).publish(any(PreorderEvents.HoldExpired.class));
@@ -314,7 +319,7 @@ class PreorderQueueServiceTest {
         PreorderSubscription s = seat(1, 11, Status.HELD, 1, 1, 3000);
         when(subs.findHoldsToRemind(eq(NOW), eq(NOW.plus(Duration.ofHours(3))), any())).thenReturn(List.of(s));
 
-        assertThat(service.remindHolds()).isEqualTo(1);
+        assertThat(expiry.remindHolds()).isEqualTo(1);
         assertThat(s.getRemindedAt()).isEqualTo(NOW);
         verify(events).publish(new PreorderEvents.HoldEnding(1L));
     }

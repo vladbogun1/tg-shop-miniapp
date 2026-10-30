@@ -41,7 +41,7 @@ class GiftCaseDrawTest {
         Map<String, Integer> hits = new HashMap<>();
         int n = 100_000;
         for (int i = 0; i < n; i++) {
-            hits.merge(key(GiftService.draw(CASE, id -> true, random).orElseThrow()), 1, Integer::sum);
+            hits.merge(key(GiftCaseDraw.draw(CASE, id -> true, random).orElseThrow()), 1, Integer::sum);
         }
         assertThat(hits.get("common") / (double) n).isCloseTo(0.70, within(0.01));
         assertThat(hits.get("rare") / (double) n).isCloseTo(0.25, within(0.01));
@@ -53,14 +53,14 @@ class GiftCaseDrawTest {
         var random = new SplittableRandom(7);
         Set<String> inStock = Set.of("rare");
         for (int i = 0; i < 1000; i++) {
-            assertThat(GiftService.draw(CASE, inStock::contains, random).orElseThrow().productId()).isEqualTo("rare");
+            assertThat(GiftCaseDraw.draw(CASE, inStock::contains, random).orElseThrow().productId()).isEqualTo("rare");
         }
     }
 
     @Test
     void nothingInStockGivesNothing() {
-        assertThat(GiftService.draw(CASE, id -> false, new SplittableRandom(1))).isEmpty();
-        assertThat(GiftService.draw(List.of(), id -> true, new SplittableRandom(1))).isEmpty();
+        assertThat(GiftCaseDraw.draw(CASE, id -> false, new SplittableRandom(1))).isEmpty();
+        assertThat(GiftCaseDraw.draw(List.of(), id -> true, new SplittableRandom(1))).isEmpty();
     }
 
     @Test
@@ -69,7 +69,7 @@ class GiftCaseDrawTest {
         var random = new SplittableRandom(3);
         int discounts = 0;
         for (int i = 0; i < 1000; i++) {
-            GiftService.CaseEntry won = GiftService.draw(pool, id -> false, random).orElseThrow();
+            GiftService.CaseEntry won = GiftCaseDraw.draw(pool, id -> false, random).orElseThrow();
             assertThat(won.isDiscount()).isTrue();
             discounts++;
         }

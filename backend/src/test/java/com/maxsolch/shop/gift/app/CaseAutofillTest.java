@@ -95,7 +95,7 @@ class CaseAutofillTest {
 
     @Test
     void sharesKeepTheCaps() {
-        Map<GiftCaseItem.Rarity, Double> s = CaseAutofillPlan.shares(EnumSet.allOf(GiftCaseItem.Rarity.class), 5);
+        Map<GiftCaseItem.Rarity, Double> s = CaseAutofillChances.shares(EnumSet.allOf(GiftCaseItem.Rarity.class), 5);
         assertThat(s.get(GiftCaseItem.Rarity.GOLD)).isLessThanOrEqualTo(CaseAutofillPlan.CAP_GOLD + 1e-9);
         assertThat(s.get(GiftCaseItem.Rarity.LEGENDARY)).isLessThanOrEqualTo(CaseAutofillPlan.CAP_LEGENDARY + 1e-9);
         assertThat(s.get(GiftCaseItem.Rarity.COMMON)).isGreaterThanOrEqualTo(CaseAutofillPlan.MIN_COMMON - 1e-9);

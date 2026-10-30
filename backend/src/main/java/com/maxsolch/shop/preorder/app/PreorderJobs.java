@@ -12,9 +12,9 @@ public class PreorderJobs {
 
     private static final Logger log = LoggerFactory.getLogger(PreorderJobs.class);
 
-    private final PreorderQueueService queue;
+    private final PreorderHoldExpiry queue;
 
-    public PreorderJobs(PreorderQueueService queue) {
+    public PreorderJobs(PreorderHoldExpiry queue) {
         this.queue = queue;
     }
 

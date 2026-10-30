@@ -103,7 +103,7 @@ public class GiftForOrders implements OrderGifts {
     /** A prize of the tier among those that can drop: a product the gate lets through (giftable, within the limit) or a discount. */
     private static Optional<GiftService.CaseEntry> draw(GiftService.TierConfig tier, Gate gate, long left,
                                                         boolean lowMargin) {
-        return GiftService.draw(tier.prizes(), id -> id != null && gate.allows(id, left), CASE_RANDOM,
+        return GiftCaseDraw.draw(tier.prizes(), id -> id != null && gate.allows(id, left), CASE_RANDOM,
                 tier.productPercent(lowMargin));
     }
 

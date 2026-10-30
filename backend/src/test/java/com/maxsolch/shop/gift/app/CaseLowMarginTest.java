@@ -43,7 +43,7 @@ class CaseLowMarginTest {
         var random = new SplittableRandom(seed);
         Map<Long, Integer> hits = new HashMap<>();
         for (int i = 0; i < n; i++) {
-            hits.merge(GiftService.draw(CASE, id -> true, random, productPercent).orElseThrow().id(), 1, Integer::sum);
+            hits.merge(GiftCaseDraw.draw(CASE, id -> true, random, productPercent).orElseThrow().id(), 1, Integer::sum);
         }
         Map<Long, Double> out = new HashMap<>();
         hits.forEach((k, v) -> out.put(k, v / (double) n));
@@ -64,7 +64,7 @@ class CaseLowMarginTest {
 
     @Test
     void exactWeights() {
-        long[] w = GiftService.skewedWeights(CASE, 10);
+        long[] w = GiftCaseDraw.skewedWeights(CASE, 10);
         long products = w[0] + w[1] + w[2];
         long discounts = w[3] + w[4];
         assertThat(products * 9).isEqualTo(discounts);
@@ -73,18 +73,18 @@ class CaseLowMarginTest {
 
     @Test
     void hundredOrOneSidedPoolIsUnchanged() {
-        assertThat(GiftService.skewedWeights(CASE, 100)).containsExactly(600_000, 190_000, 10_000, 150_000, 50_000);
+        assertThat(GiftCaseDraw.skewedWeights(CASE, 100)).containsExactly(600_000, 190_000, 10_000, 150_000, 50_000);
         List<GiftService.CaseEntry> onlyProducts = CASE.subList(0, 3);
-        assertThat(GiftService.skewedWeights(onlyProducts, 10)).containsExactly(600_000, 190_000, 10_000);
+        assertThat(GiftCaseDraw.skewedWeights(onlyProducts, 10)).containsExactly(600_000, 190_000, 10_000);
         List<GiftService.CaseEntry> onlyDiscounts = CASE.subList(3, 5);
-        assertThat(GiftService.skewedWeights(onlyDiscounts, 0)).containsExactly(150_000, 50_000);
+        assertThat(GiftCaseDraw.skewedWeights(onlyDiscounts, 0)).containsExactly(150_000, 50_000);
     }
 
     @Test
     void zeroPercentNeverGivesAProduct() {
         var random = new SplittableRandom(5);
         for (int i = 0; i < 5000; i++) {
-            assertThat(GiftService.draw(CASE, id -> true, random, 0).orElseThrow().isDiscount()).isTrue();
+            assertThat(GiftCaseDraw.draw(CASE, id -> true, random, 0).orElseThrow().isDiscount()).isTrue();
         }
     }
 
@@ -95,7 +95,7 @@ class CaseLowMarginTest {
         int pads = 0;
         int n = 100_000;
         for (int i = 0; i < n; i++) {
-            if ("pad".equals(GiftService.draw(CASE, "pad"::equals, random, 10).orElseThrow().productId())) {
+            if ("pad".equals(GiftCaseDraw.draw(CASE, "pad"::equals, random, 10).orElseThrow().productId())) {
                 pads++;
             }
         }

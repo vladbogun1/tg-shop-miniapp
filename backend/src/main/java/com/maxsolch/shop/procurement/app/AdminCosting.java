@@ -29,7 +29,7 @@ import java.util.Locale;
 
 /**
  * What the finance admin does with batch money, one method per button (the «Финансы» right is checked by {@code @RequiresFinance} on the controller): runs the
- * scenario of {@link CostingService} and writes the audit entry. The margin reports are in
+ * scenario of {@link CostingService} / {@link StockLotCosting} and writes the audit entry. The margin reports are in
  * {@code finance.app.AdminMargin}. Not {@code @Transactional}: each audit entry is written on its own after the
  * transaction of the scenario has committed.
  */
@@ -41,6 +41,7 @@ public class AdminCosting {
     }
 
     private final CostingService costing;
+    private final StockLotCosting lots;
     private final NbuRates nbu;
     private final AdminAccess access;
     private final CurrentActor actor;
@@ -50,10 +51,11 @@ public class AdminCosting {
     private final Clock clock;
     private final ShopZone shopZone;
 
-    public AdminCosting(CostingService costing, NbuRates nbu, AdminAccess access, CurrentActor actor,
+    public AdminCosting(CostingService costing, StockLotCosting lots, NbuRates nbu, AdminAccess access, CurrentActor actor,
                         AdminAuditService audit, ImageStorageService storage, UploadValidator uploads, Clock clock,
                         ShopZone shopZone) {
         this.costing = costing;
+        this.lots = lots;
         this.nbu = nbu;
         this.access = access;
         this.actor = actor;
@@ -134,23 +136,23 @@ public class AdminCosting {
     }
 
     public ProductCostDto product(String productId) {
-        return costing.product(productId);
+        return lots.product(productId);
     }
 
     public List<OpeningRowDto> opening() {
-        return costing.opening();
+        return lots.opening();
     }
 
     public List<OpeningRowDto> setOpening(OpeningRequest req) {
-        costing.setOpening(req);
+        lots.setOpening(req);
         audit.record("COSTING_OPENING", "PRODUCT", req.productId(),
                 (req.variantId() == null ? "" : "вариант " + req.variantId() + ": ")
                         + (req.unitCostMinor() == null ? "очищено" : req.unitCostMinor() / 100.0 + " ₴"));
-        return costing.opening();
+        return lots.opening();
     }
 
     public ReconcileDto reconcile() {
-        ReconcileDto r = costing.reconcile();
+        ReconcileDto r = lots.reconcile();
         audit.record("COSTING_RECONCILE", "STOCK", "all", "выровнено ключей: " + r.fixed());
         return r;
     }

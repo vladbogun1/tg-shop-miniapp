@@ -7,12 +7,10 @@ import com.maxsolch.shop.preorder.domain.PreorderRules;
 import com.maxsolch.shop.preorder.domain.PreorderSubscription;
 import com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository;
 import com.maxsolch.shop.procurement.domain.PreorderBatch;
-import com.maxsolch.shop.procurement.domain.PreorderBatchItem;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.procurement.domain.BatchEta;
 import com.maxsolch.shop.procurement.domain.BatchQueue.HandOut;
 import com.maxsolch.shop.procurement.domain.Lines;
 import com.maxsolch.shop.procurement.domain.PreorderBatch.Distribution;
@@ -24,21 +22,13 @@ import com.maxsolch.shop.preorder.domain.PreorderSubscription.Status;
 import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.platform.time.ShopZone;
-import com.maxsolch.shop.translation.domain.ContentLocale;
-import com.maxsolch.shop.translation.domain.TranslationEntityType;
-import com.maxsolch.shop.translation.app.TranslationService;
 import com.maxsolch.shop.platform.tx.DomainEvents;
-import org.springframework.context.i18n.LocaleContextHolder;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -59,7 +49,6 @@ public class PreorderQueueService {
     public static final String SOURCE_MINIAPP = "MINIAPP";
     public static final String SOURCE_WEB = "WEB";
 
-    static final Duration REMIND_BEFORE = Duration.ofHours(3);
     static final List<String> LIVE = List.of(Status.WAITING.name(), Status.HELD.name(), Status.NOTIFIED.name());
     /** Queue size when the anti-hoarding limit is off. */
     static final int DEFAULT_MAX_QTY = 10;
@@ -70,21 +59,20 @@ public class PreorderQueueService {
     private final SettingsService settings;
     private final DomainEvents events;
     private final Messages messages;
-    private final TranslationService translations;
+    /** The customer's card of a place (title, ETA, position). */
+    private final PreorderCards cards;
     private final Clock clock;
-    private final ShopZone shopZone;
 
     public PreorderQueueService(PreorderSubscriptionRepository subs, BatchCatalog batches, Products products,
                                 SettingsService settings, DomainEvents events, Messages messages,
-                                TranslationService translations, Clock clock, ShopZone shopZone) {
-        this.shopZone = shopZone;
+                                PreorderCards cards, Clock clock) {
         this.subs = subs;
         this.batches = batches;
         this.products = products;
         this.settings = settings;
         this.events = events;
         this.messages = messages;
-        this.translations = translations;
+        this.cards = cards;
         this.clock = clock;
     }
 
@@ -118,14 +106,14 @@ public class PreorderQueueService {
                 s.setQty(qty);
                 subs.save(s);
             }
-            return toMine(s, product, openEta(productId, variantId));
+            return cards.toMine(s, product, cards.openEta(productId, variantId));
         }
 
         List<PreorderSubscription> queue = subs.queue(productId, variantId);
         if (PreorderRules.free(Lines.stockOf(product, variant), seats(queue)) > 0) {
             throw new DomainException.BadRequest(PreorderError.IN_STOCK);
         }
-        EtaDto eta = openEta(productId, variantId);
+        EtaDto eta = cards.openEta(productId, variantId);
         if (eta == null && !settings.getBool(SettingsRegistry.PREORDER_ANY_PRODUCT)) {
             throw new DomainException.BadRequest(PreorderError.PRODUCT_UNAVAILABLE, product.getTitle());
         }
@@ -143,7 +131,7 @@ public class PreorderQueueService {
         s.setCreatedAt(clock.instant());
         PreorderSubscription saved = subs.save(s);
         events.publish(new PreorderEvents.Subscribed(saved.getId()));
-        return toMine(saved, product, eta);
+        return cards.toMine(saved, product, eta);
     }
 
     /** Leaves a queue. A held unit goes to the next person at once. */
@@ -311,7 +299,7 @@ public class PreorderQueueService {
      * Holds of a product changed: the catalog shows stock minus holds, so its cache and the site pages are
      * rebuilt once the transaction commits ({@link HoldsCacheFlush}).
      */
-    private void holdsChanged(Product product) {
+    void holdsChanged(Product product) {
         events.publish(new PreorderEvents.HoldsChanged(product.getSlug()));
     }
 
@@ -331,49 +319,6 @@ public class PreorderQueueService {
         return new HandOut(a.grants().size(), a.grantedQty(), 0, a.shorts().size(), a.freeLeft());
     }
 
-    // ---------------------------------------------------------------- jobs
-
-    /** Ends holds and notices past their deadline; held units pass to the next person. */
-    @Transactional
-    public int expireHolds() {
-        Instant now = clock.instant();
-        int done = 0;
-        for (Object[] candidate : subs.findExpiredHoldIds(now, PageRequest.of(0, 50))) {
-            // product lock first (like checkout), then the place itself, read fresh: a buyer who held the
-            // lock before us may have bought the hold meanwhile — then there is nothing to expire
-            Product product = products.findByIdForUpdate((byte[]) candidate[1]).orElse(null);
-            PreorderSubscription s = subs.findForUpdate(((Number) candidate[0]).longValue()).orElse(null);
-            if (s == null || !(s.statusEnum() == Status.HELD || s.statusEnum() == Status.NOTIFIED)
-                    || s.getHoldUntil() == null || !s.getHoldUntil().isBefore(now)) {
-                continue;
-            }
-            boolean wasHeld = s.statusEnum() == Status.HELD;
-            s.close(Status.EXPIRED, wasHeld ? "бронь закончилась" : "не купил после уведомления", now);
-            subs.save(s);
-            events.publish(new PreorderEvents.HoldExpired(s.getId()));
-            done++;
-            if (wasHeld && product != null) {
-                holdsChanged(product);
-                handOut(product, Lines.variantById(product, s.getVariantId()), s.getBatchId(), Distribution.QUEUE_HOLD,
-                        holdHours(s.getBatchId()), false);
-            }
-        }
-        return done;
-    }
-
-    /** One reminder per hold, {@link #REMIND_BEFORE} before it ends. */
-    @Transactional
-    public int remindHolds() {
-        Instant now = clock.instant();
-        List<PreorderSubscription> due = subs.findHoldsToRemind(now, now.plus(REMIND_BEFORE), PageRequest.of(0, 100));
-        for (PreorderSubscription s : due) {
-            s.setRemindedAt(now);
-            events.publish(new PreorderEvents.HoldEnding(s.getId()));
-        }
-        subs.saveAll(due);
-        return due.size();
-    }
-
     // ---------------------------------------------------------------- helpers (shared with the batch service)
 
     public int holdHours(Long batchId) {
@@ -389,64 +334,6 @@ public class PreorderQueueService {
     int maxQty() {
         int antibot = settings.getInt(SettingsRegistry.ANTIBOT_MAX_QTY_PER_PRODUCT);
         return antibot > 0 ? antibot : DEFAULT_MAX_QTY;
-    }
-
-    /** ETA of the soonest open public batch per line. */
-    Map<String, EtaDto> openEtas() {
-        Map<String, PreorderBatch> best = new HashMap<>();
-        for (BatchCatalog.PublicLine row : batches.publicLines()) {
-            PreorderBatchItem i = row.item();
-            best.merge(Lines.key(i.getProductId(), i.getVariantId()), row.batch(), BatchEta::sooner);
-        }
-        LocalDate today = shopZone.today(clock);
-        Map<String, EtaDto> out = new HashMap<>();
-        best.forEach((k, b) -> out.put(k, BatchCatalog.eta(b, today)));
-        return out;
-    }
-
-    private EtaDto openEta(byte[] productId, byte[] variantId) {
-        PreorderBatch best = null;
-        for (BatchCatalog.PublicLine row : batches.publicLines(productId)) {
-            if (Arrays.equals(row.item().getVariantId(), variantId)) {
-                best = best == null ? row.batch() : BatchEta.sooner(best, row.batch());
-            }
-        }
-        return best == null ? null : BatchCatalog.eta(best, shopZone.today(clock));
-    }
-
-    MyPreorderDto toMine(PreorderSubscription s, Product p, EtaDto eta) {
-        return toMine(s, p, eta, ContentLocale.normalize(LocaleContextHolder.getLocale()));
-    }
-
-    /** {@code lang}: the product and variant names come in it (uk/en translations; ru is the source). */
-    MyPreorderDto toMine(PreorderSubscription s, Product p, EtaDto eta, String lang) {
-        Integer position = null;
-        if (s.statusEnum() == Status.WAITING) {
-            position = (int) subs.countAhead(s.getProductId(), s.getVariantId(), s.getCreatedAt(), s.getId()) + 1;
-        }
-        ProductVariant v = Lines.variantById(p, s.getVariantId());
-        String productId = UuidUtil.toString(s.getProductId());
-        String variantId = s.getVariantId() == null ? null : UuidUtil.toString(s.getVariantId());
-        TranslationService.Overlay overlay = translations.overlay(lang);
-        String title = overlay == null ? p.getTitle()
-                : overlay.text(TranslationEntityType.PRODUCT, productId, TranslationEntityType.TITLE, p.getTitle());
-        String variantName = v == null ? null : overlay == null ? v.getName()
-                : overlay.text(TranslationEntityType.VARIANT, variantId, TranslationEntityType.NAME, v.getName());
-        return new MyPreorderDto(s.getId(), productId, variantId,
-                title, p.getSlug(), Lines.imageOf(p), variantName, s.getQty(), s.getStatus(),
-                position, s.getHeldQty(), s.getHoldUntil(), s.getCreatedAt(),
-                s.statusEnum().live() ? eta : null);
-    }
-
-    Map<String, Product> productsOf(Collection<byte[]> ids) {
-        Map<String, Product> out = new HashMap<>();
-        if (ids.isEmpty()) {
-            return out;
-        }
-        for (Product p : products.findAllById(ids)) {
-            out.put(UuidUtil.toString(p.getId()), p);
-        }
-        return out;
     }
 
     static List<PreorderRules.Seat> seats(List<PreorderSubscription> queue) {

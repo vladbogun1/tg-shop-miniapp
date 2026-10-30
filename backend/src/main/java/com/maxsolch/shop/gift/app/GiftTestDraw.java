@@ -37,7 +37,7 @@ public class GiftTestDraw {
 
     /**
      * «Тест кейса»: {@code count} draws of the tier exactly as the checkout draws them (the same pool —
-     * active prizes with weight &gt; 0, a product only in stock — and {@link GiftService#draw}), read-only: no order,
+     * active prizes with weight &gt; 0, a product only in stock — and {@link GiftCaseDraw#draw}), read-only: no order,
      * promo code, stock reserve or journal entry. A disabled tier may be tested too.
      */
     @Transactional(readOnly = true)
@@ -60,7 +60,7 @@ public class GiftTestDraw {
 
     /**
      * @param lowMargin draw as for an order with a low-margin product: product prizes get the tier's
-     *                  {@code lowMarginProductPercent} of the chance ({@link GiftService#skewedWeights})
+     *                  {@code lowMarginProductPercent} of the chance ({@link GiftCaseDraw#skewedWeights})
      */
     @Transactional(readOnly = true)
     public TestDrawDto testDraw(String tierCode, int count, List<CaseDraftItem> draft, boolean lowMargin) {
@@ -86,7 +86,7 @@ public class GiftTestDraw {
             throw new DomainException.BadRequest(GiftError.NO_DROPPABLE_PRIZE);
         }
         int productPercent = cfg.productPercent(lowMargin);
-        long[] weights = GiftService.skewedWeights(pool, productPercent);
+        long[] weights = GiftCaseDraw.skewedWeights(pool, productPercent);
         Map<Long, Long> chanceWeight = new HashMap<>();
         for (int i = 0; i < pool.size(); i++) {
             chanceWeight.put(pool.get(i).id(), weights[i]);
@@ -95,7 +95,7 @@ public class GiftTestDraw {
         Map<Long, Integer> hits = new HashMap<>();
         List<CaseItemDto> drops = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            CaseEntry c = GiftService.draw(pool, id -> true, random, productPercent).orElseThrow();
+            CaseEntry c = GiftCaseDraw.draw(pool, id -> true, random, productPercent).orElseThrow();
             hits.merge(c.id(), 1, Integer::sum);
             if (drops.size() < TEST_DROPS_SHOWN) {
                 drops.add(GiftService.itemDto(c, c.isDiscount() ? null : byId.get(c.productId())));
@@ -103,7 +103,7 @@ public class GiftTestDraw {
         }
         List<TestHitDto> out = pool.stream()
                 .map(c -> new TestHitDto(c.id(), c.isDiscount() ? "d" + c.id() : "p" + c.productId(),
-                        hits.getOrDefault(c.id(), 0), GiftService.chancePercent(chanceWeight.get(c.id()), total)))
+                        hits.getOrDefault(c.id(), 0), GiftCaseDraw.chancePercent(chanceWeight.get(c.id()), total)))
                 .toList();
         return new TestDrawDto(tier.name(), count, drops.get(0), drops, GiftService.casePrizes(cfg, byId), out);
     }

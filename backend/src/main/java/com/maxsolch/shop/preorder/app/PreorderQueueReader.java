@@ -53,33 +53,33 @@ public class PreorderQueueReader {
     private final SettingsService settings;
     private final Messages messages;
     private final Clock clock;
-    private final PreorderQueueService queue;
     private final ShopZone shopZone;
+    private final PreorderCards cards;
 
     public PreorderQueueReader(PreorderSubscriptionRepository subs, BatchCatalog batches, Products products,
-                               SettingsService settings, Messages messages, Clock clock, PreorderQueueService queue,
-                               ShopZone shopZone) {
+                               SettingsService settings, Messages messages, Clock clock,
+                               ShopZone shopZone, PreorderCards cards) {
         this.subs = subs;
         this.batches = batches;
         this.products = products;
         this.settings = settings;
         this.messages = messages;
         this.clock = clock;
-        this.queue = queue;
         this.shopZone = shopZone;
+        this.cards = cards;
     }
 
     /** My queues, live first, then the latest history («Мої очікування»). */
     @Transactional(readOnly = true)
     public List<MyPreorderDto> listMine(long userId) {
         List<PreorderSubscription> rows = subs.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, 50));
-        Map<String, Product> byId = queue.productsOf(rows.stream().map(PreorderSubscription::getProductId).toList());
-        Map<String, EtaDto> etas = queue.openEtas();
+        Map<String, Product> byId = cards.productsOf(rows.stream().map(PreorderSubscription::getProductId).toList());
+        Map<String, EtaDto> etas = cards.openEtas();
         List<MyPreorderDto> out = new ArrayList<>();
         for (PreorderSubscription s : rows) {
             Product p = byId.get(UuidUtil.toString(s.getProductId()));
             if (p != null) {
-                out.add(queue.toMine(s, p, etas.get(Lines.key(s.getProductId(), s.getVariantId()))));
+                out.add(cards.toMine(s, p, etas.get(Lines.key(s.getProductId(), s.getVariantId()))));
             }
         }
         // A hold (act now) first, then the queues, then history; newest first inside each.
@@ -112,10 +112,10 @@ public class PreorderQueueReader {
         Integer waiting = showFrom > 0 && people >= showFrom ? (int) people : null;
         List<MyPreorderDto> mine = new ArrayList<>();
         if (userId != null) {
-            Map<String, EtaDto> etas = queue.openEtas();
+            Map<String, EtaDto> etas = cards.openEtas();
             for (PreorderSubscription s : subs.findByUserIdAndStatusIn(userId, PreorderQueueService.LIVE)) {
                 if (Arrays.equals(s.getProductId(), productId)) {
-                    mine.add(queue.toMine(s, product, etas.get(Lines.key(s.getProductId(), s.getVariantId()))));
+                    mine.add(cards.toMine(s, product, etas.get(Lines.key(s.getProductId(), s.getVariantId()))));
                 }
             }
         }
@@ -155,7 +155,7 @@ public class PreorderQueueReader {
     @Transactional(readOnly = true)
     public Optional<Described> describe(long subscriptionId, Locale locale) {
         return subs.findById(subscriptionId).flatMap(s -> products.findById(s.getProductId()).map(p ->
-                new Described(s.getUserId(), queue.toMine(s, p, queue.openEtas().get(Lines.key(s.getProductId(), s.getVariantId())),
+                new Described(s.getUserId(), cards.toMine(s, p, cards.openEtas().get(Lines.key(s.getProductId(), s.getVariantId())),
                         ContentLocale.normalize(locale)), p.getPriceMinor())));
     }
 

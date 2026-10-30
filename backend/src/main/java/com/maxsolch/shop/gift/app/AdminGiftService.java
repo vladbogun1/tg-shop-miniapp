@@ -1,5 +1,13 @@
 package com.maxsolch.shop.gift.app;
 
+import static com.maxsolch.shop.gift.app.CasePrizeRules.caseDto;
+import static com.maxsolch.shop.gift.app.CasePrizeRules.discountLabel;
+import static com.maxsolch.shop.gift.app.CasePrizeRules.kind;
+import static com.maxsolch.shop.gift.app.CasePrizeRules.live;
+import static com.maxsolch.shop.gift.app.CasePrizeRules.rarity;
+import static com.maxsolch.shop.gift.app.CasePrizeRules.setDiscount;
+import static com.maxsolch.shop.gift.app.CasePrizeRules.weight;
+
 import com.maxsolch.shop.gift.domain.GiftError;
 import com.maxsolch.shop.promo.app.CaseLowMargin;
 
@@ -379,79 +387,6 @@ public class AdminGiftService {
         caseRepository.delete(item);
         audit.record("GIFT_CASE_ITEM_DELETE", "GIFT_CASE_ITEM", String.valueOf(id),
                 item.getTier() + " · " + (item.isDiscount() ? discountLabel(item) : UuidUtil.toString(item.getProductId())));
-    }
-
-    private static boolean live(GiftCaseItem i, Map<String, ProductDto> byId) {
-        if (!i.isActive() || i.getWeight() <= 0) {
-            return false;
-        }
-        if (i.isDiscount()) {
-            return i.getDiscountPercent() > 0 || i.getDiscountUah() > 0;
-        }
-        return i.getProductId() != null && GiftService.inStock(byId.get(UuidUtil.toString(i.getProductId())));
-    }
-
-    private static CaseItemAdminDto caseDto(GiftCaseItem i, ProductDto p, long total, boolean live) {
-        double chance = live ? GiftService.chancePercent(i.getWeight(), total) : 0;
-        boolean discount = i.isDiscount();
-        String title = discount ? discountLabel(i) : p == null ? "(товар скрыт или удалён)" : p.title();
-        return new CaseItemAdminDto(i.getId(), i.getTier().name(), i.getKind().name(),
-                i.getProductId() == null ? null : UuidUtil.toString(i.getProductId()), title,
-                discount ? null : GiftService.image(p), discount || p == null ? 0 : p.priceMinor(),
-                discount || p == null ? 0 : p.effectiveStock(), discount || p != null, i.getDiscountPercent(),
-                i.getDiscountUah(), i.getRarity().name(), i.getWeight(), chance, i.getSortOrder(), i.isActive());
-    }
-
-    private static String discountLabel(GiftCaseItem i) {
-        return i.getDiscountPercent() > 0 ? "Скидка " + i.getDiscountPercent() + " %" : "Скидка " + i.getDiscountUah() + " ₴";
-    }
-
-    private static void setDiscount(GiftCaseItem item, Integer percent, Integer uah) {
-        int pc = percent == null ? 0 : percent;
-        int amount = uah == null ? 0 : uah;
-        if (pc < 0 || pc > 50) {
-            throw new DomainException.BadRequest(GiftError.PERCENT_OUT_OF_RANGE);
-        }
-        if (amount < 0 || amount > 100_000) {
-            throw new DomainException.BadRequest(GiftError.AMOUNT_OUT_OF_RANGE);
-        }
-        if (pc == 0 && amount == 0) {
-            throw new DomainException.BadRequest(GiftError.DISCOUNT_REQUIRED);
-        }
-        item.setDiscountPercent(pc);
-        item.setDiscountUah(pc > 0 ? 0 : amount);
-    }
-
-    private static GiftCaseItem.Kind kind(String value) {
-        if (value == null || value.isBlank()) {
-            return GiftCaseItem.Kind.PRODUCT;
-        }
-        try {
-            return GiftCaseItem.Kind.valueOf(value.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            throw new DomainException.BadRequest(GiftError.UNKNOWN_PRIZE_KIND, value);
-        }
-    }
-
-    private static GiftCaseItem.Rarity rarity(String value, GiftCaseItem.Rarity def) {
-        if (value == null || value.isBlank()) {
-            return def;
-        }
-        try {
-            return GiftCaseItem.Rarity.valueOf(value.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            throw new DomainException.BadRequest(GiftError.UNKNOWN_RARITY, value);
-        }
-    }
-
-    private static int weight(Integer value, int def) {
-        if (value == null) {
-            return def;
-        }
-        if (value < 0 || value > 100 * GiftService.CASE_WEIGHT_PER_PERCENT) {
-            throw new DomainException.BadRequest(GiftError.CHANCE_OUT_OF_RANGE);
-        }
-        return value;
     }
 
     private static int range(int v, int min, int max, GiftError error) {
