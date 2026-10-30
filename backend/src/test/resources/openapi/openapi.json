@@ -4474,6 +4474,7 @@
             "type" : "string"
           },
           "deliveryMethod" : {
+            "nullable" : true,
             "type" : "string"
           },
           "id" : {
@@ -7631,6 +7632,7 @@
             "type" : "string"
           },
           "deliveryMethod" : {
+            "nullable" : true,
             "type" : "string"
           },
           "exchangeOfId" : {
@@ -7850,6 +7852,7 @@
             "type" : "string"
           },
           "npCityRef" : {
+            "nullable" : true,
             "type" : "string"
           },
           "npWarehouseName" : {
@@ -7857,6 +7860,7 @@
             "type" : "string"
           },
           "npWarehouseRef" : {
+            "nullable" : true,
             "type" : "string"
           },
           "paid" : {
@@ -7918,6 +7922,7 @@
           },
           "returnedAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "shippedAt" : {

@@ -11,7 +11,7 @@ public record OrderCardDto(
         long totalMinor,
         String currency,
         int itemsCount,
-        String deliveryMethod,
+        @Nullable String deliveryMethod,
         String paymentOptionTitle,
         long unreadCount,
         Instant createdAt,

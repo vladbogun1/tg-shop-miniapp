@@ -51,10 +51,10 @@ public record OrderDetailDto(
         @Nullable String rejectReasonCode,
         /** Money given back to the customer (returns). */
         long refundedMinor,
-        Instant returnedAt,
+        @Nullable Instant returnedAt,
         /** Nova Poshta refs — the admin's delivery editor needs them to keep the address valid. */
-        String npCityRef,
-        String npWarehouseRef,
+        @Nullable String npCityRef,
+        @Nullable String npWarehouseRef,
         /** Customer's cancellation request of a paid order: PENDING | APPROVED | DECLINED, null = none. */
         @Nullable String cancelRequestStatus,
         @Nullable String cancelRequestReason,

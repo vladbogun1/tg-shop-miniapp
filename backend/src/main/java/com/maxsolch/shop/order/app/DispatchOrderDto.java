@@ -17,7 +17,7 @@ public record DispatchOrderDto(
         String shortId,
         String customerName,
         String phone,
-        String deliveryMethod,
+        @Nullable String deliveryMethod,
         @Nullable String npCityName,
         @Nullable String npWarehouseName,
         List<DispatchItem> items,
