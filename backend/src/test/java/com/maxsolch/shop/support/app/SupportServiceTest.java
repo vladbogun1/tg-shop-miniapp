@@ -81,9 +81,11 @@ class SupportServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new SupportService(threads, messageRepository, new com.maxsolch.shop.catalog.app.Products(productRepository, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), userRepository, settings,
-                new SupportLimits(settings, threads, messageRepository, messages), new SupportMapper(mediaSigner, messages),
-                events, messages, Clock.fixed(NOW, ZoneOffset.UTC));
+        SupportMapper mapper = new SupportMapper(mediaSigner, messages);
+        service = new SupportService(threads, messageRepository, new com.maxsolch.shop.catalog.app.Products(productRepository, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), settings,
+                new SupportLimits(settings, threads, messageRepository, messages), mapper,
+                messages, Clock.fixed(NOW, ZoneOffset.UTC),
+                new SupportPosts(threads, messageRepository, userRepository, mapper, events), new SupportThreadLookup(threads));
         when(settings.getBool(SettingsRegistry.SUPPORT_ENABLED)).thenReturn(true);
         when(settings.getInt(SettingsRegistry.SUPPORT_COOLDOWN_SEC)).thenReturn(10);
         when(settings.getInt(SettingsRegistry.SUPPORT_MAX_MESSAGES_PER_HOUR)).thenReturn(30);

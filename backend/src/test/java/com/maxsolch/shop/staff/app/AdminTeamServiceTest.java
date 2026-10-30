@@ -52,6 +52,7 @@ class AdminTeamServiceTest {
     AdminAuditService audit;
     AdminTeamMessenger messenger;
     AdminTeamService team;
+    AdminTeamView view;
     SecretCipher cipher;
     byte[] bossSecret;
 
@@ -91,6 +92,7 @@ class AdminTeamServiceTest {
                 org.springframework.transaction.support.TransactionOperations.withoutTransaction(), "", clock);
         team = new AdminTeamService(admins.repo, invites, store, totp, lockout, sessions, trustedDevices,
                 mock(AdminTokenValidator.class), facts, audit, messenger, clock);
+        view = new AdminTeamView(admins.repo, store, facts, clock);
     }
 
     /** A code of the boss's authenticator not used yet (each code is accepted once). */
@@ -259,15 +261,15 @@ class AdminTeamServiceTest {
     @Test
     void listShowsAdminsAndOpenInvites() {
         team.invite(BOSS, 500L, "Новичок", "ADMIN", code(), CLIENT);
-        AdminTeamService.Team t = team.team(BOSS);
-        assertThat(t.admins()).extracting(AdminTeamService.AdminRow::telegramUserId).containsExactly(BOSS, HELPER);
+        AdminTeamView.Team t = view.team(BOSS);
+        assertThat(t.admins()).extracting(AdminTeamView.AdminRow::telegramUserId).containsExactly(BOSS, HELPER);
         assertThat(t.admins().get(0).self()).isTrue();
         assertThat(t.admins().get(0).status()).isEqualTo("SUPER_ADMIN");
         assertThat(t.invites()).hasSize(1);
         assertThat(t.invites().get(0).name()).isEqualTo("Новичок");
 
         team.revokeInvite(BOSS, t.invites().get(0).id());
-        assertThat(team.team(BOSS).invites()).isEmpty();
+        assertThat(view.team(BOSS).invites()).isEmpty();
     }
 
     // ------------------------------------------------------------------ role from the database

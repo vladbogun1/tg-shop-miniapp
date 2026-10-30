@@ -33,13 +33,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Collections;
 import java.util.HexFormat;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 
+import static com.maxsolch.shop.customer.app.WebTokens.constantTimeEquals;
+import static com.maxsolch.shop.customer.app.WebTokens.sessionIdOf;
 import static com.maxsolch.shop.platform.util.Texts.cut;
 
 /**
@@ -308,8 +306,6 @@ public class WebAuthService {
         sessionValidator.invalidateAll();
     }
 
-    // ================================================================== housekeeping
-
     // ================================================================== internals
 
     /** Second precision — what the TIMESTAMP columns store, so responses match the database. */
@@ -357,23 +353,6 @@ public class WebAuthService {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(sessionId) + "." + randomToken(SECRET_BYTES);
     }
 
-    /** Session id encoded in a refresh token, or null if it is not one of ours. */
-    static byte[] sessionIdOf(String refreshToken) {
-        if (refreshToken == null) {
-            return null;
-        }
-        int dot = refreshToken.indexOf('.');
-        if (dot <= 0 || dot == refreshToken.length() - 1 || refreshToken.length() > 200) {
-            return null;
-        }
-        try {
-            byte[] id = Base64.getUrlDecoder().decode(refreshToken.substring(0, dot));
-            return id.length == 16 ? id : null;
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
     private String randomToken(int bytes) {
         byte[] b = new byte[bytes];
         random.nextBytes(b);
@@ -403,12 +382,5 @@ public class WebAuthService {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException(e);
         }
-    }
-
-    private static boolean constantTimeEquals(String a, String b) {
-        if (a == null || b == null) {
-            return false;
-        }
-        return MessageDigest.isEqual(a.getBytes(StandardCharsets.US_ASCII), b.getBytes(StandardCharsets.US_ASCII));
     }
 }

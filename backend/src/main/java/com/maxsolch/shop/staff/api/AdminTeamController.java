@@ -2,6 +2,7 @@ package com.maxsolch.shop.staff.api;
 
 import com.maxsolch.shop.staff.app.AdminInviteService;
 import com.maxsolch.shop.staff.app.AdminTeamService;
+import com.maxsolch.shop.staff.app.AdminTeamView;
 import com.maxsolch.shop.staff.app.ClientInfo;
 import com.maxsolch.shop.platform.security.RequiredSuperAdmin;
 import com.maxsolch.shop.platform.web.CurrentActor;
@@ -40,17 +41,19 @@ import java.util.Map;
 public class AdminTeamController {
 
     private final AdminTeamService team;
+    private final AdminTeamView view;
     private final CurrentActor actor;
 
-    public AdminTeamController(AdminTeamService team, CurrentActor actor) {
+    public AdminTeamController(AdminTeamService team, AdminTeamView view, CurrentActor actor) {
         this.actor = actor;
         this.team = team;
+        this.view = view;
     }
 
     @GetMapping
     @Operation(summary = "Admins (role, 2FA, last sign-in, devices) and open invites of new admins")
-    public AdminTeamService.Team list() {
-        return team.team(actor.userId());
+    public AdminTeamView.Team list() {
+        return view.team(actor.userId());
     }
 
     @PostMapping("/invites")

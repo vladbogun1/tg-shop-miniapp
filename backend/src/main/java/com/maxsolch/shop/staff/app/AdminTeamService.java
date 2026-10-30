@@ -17,16 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * «Админы» — the super admin manages the other admins (stage 2). Every endpoint in front of this is
@@ -49,23 +40,6 @@ import java.util.stream.Collectors;
 public class AdminTeamService {
 
     public static final int MAX_NAME = 64;
-
-    public record InviteRow(long id, String kind, long telegramUserId, String name, String role, Instant createdAt,
-                            Instant expiresAt, boolean delivered, String invitedByName, String telegramLabel) {
-    }
-
-    /**
-     * @param status {@code SUPER_ADMIN} / {@code ADMIN} / {@code BLOCKED}; an open invite of a NEW admin
-     *               is in {@link Team#invites()} instead
-     */
-    public record AdminRow(long telegramUserId, String name, String username, String role, String status,
-                           boolean active, boolean totpEnabled, boolean passwordSet, Instant createdAt,
-                           AdminTeamQueries.LastLogin lastLogin, int trustedDevices, Instant lockedUntil,
-                           InviteRow invite, String telegramLabel, boolean self, boolean finance) {
-    }
-
-    public record Team(List<AdminRow> admins, List<InviteRow> invites) {
-    }
 
     private final AdminUserRepository repo;
     private final AdminInviteService invites;
@@ -97,49 +71,6 @@ public class AdminTeamService {
         this.audit = audit;
         this.messenger = messenger;
         this.clock = clock;
-    }
-
-    // ================================================================== list
-
-    public Team team(long callerId) {
-        Instant now = clock.instant();
-        List<AdminUser> all = repo.findAll();
-        Map<Long, AdminUser> byId = all.stream().collect(Collectors.toMap(AdminUser::getTelegramUserId, Function.identity()));
-        List<AdminInvite> open = inviteStore.live(now);
-        Set<Long> tgIds = new HashSet<>(byId.keySet());
-        open.forEach(i -> tgIds.add(i.telegramUserId()));
-        Map<Long, String> labels = facts.telegramLabels(tgIds);
-        Map<Long, AdminTeamQueries.LastLogin> logins = facts.lastLogins();
-        Map<Long, Integer> devices = facts.trustedDevices(clock.instant());
-
-        List<InviteRow> newInvites = new ArrayList<>();
-        Map<Long, InviteRow> inviteOf = new java.util.HashMap<>();
-        for (AdminInvite i : open) {
-            InviteRow row = new InviteRow(i.id(), i.kind().name(), i.telegramUserId(),
-                    i.kind() == AdminInvite.Kind.NEW ? i.name()
-                            : Optional.ofNullable(byId.get(i.telegramUserId())).map(AdminAuthService::displayName).orElse(i.name()),
-                    i.role().name(), i.createdAt(), i.expiresAt(), i.delivered(),
-                    Optional.ofNullable(byId.get(i.invitedBy())).map(AdminAuthService::displayName).orElse(null),
-                    labels.get(i.telegramUserId()));
-            if (i.kind() == AdminInvite.Kind.NEW && !byId.containsKey(i.telegramUserId())) {
-                newInvites.add(row);
-            } else {
-                inviteOf.putIfAbsent(i.telegramUserId(), row);
-            }
-        }
-
-        List<AdminRow> rows = all.stream()
-                .sorted(Comparator.comparingInt((AdminUser a) -> !a.isActive() ? 2 : a.isSuperAdmin() ? 0 : 1)
-                        .thenComparing(a -> a.getCreatedAt() == null ? Instant.EPOCH : a.getCreatedAt()))
-                .map(a -> new AdminRow(a.getTelegramUserId(), a.getName(), a.getUsername(), a.getRole().name(),
-                        !a.isActive() ? "BLOCKED" : a.getRole().name(), a.isActive(), a.isTotpEnabled(),
-                        a.getPasswordHash() != null, a.getCreatedAt(), logins.get(a.getTelegramUserId()),
-                        devices.getOrDefault(a.getTelegramUserId(), 0),
-                        a.getLockedUntil() != null && a.getLockedUntil().isAfter(now) ? a.getLockedUntil() : null,
-                        inviteOf.get(a.getTelegramUserId()), labels.get(a.getTelegramUserId()),
-                        a.getTelegramUserId() == callerId, a.isFinance() || a.isSuperAdmin()))
-                .toList();
-        return new Team(rows, newInvites);
     }
 
     // ================================================================== invites

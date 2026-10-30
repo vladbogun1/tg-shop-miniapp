@@ -4,6 +4,7 @@ import com.maxsolch.shop.notification.domain.NotificationError;
 import com.maxsolch.shop.platform.jobs.Workers;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.notification.app.BroadcastRules.Recipient;
 import com.maxsolch.shop.notification.domain.Broadcast;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.jobs.DbLocks;
@@ -27,7 +28,6 @@ import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static com.maxsolch.shop.notification.app.BroadcastRules.DEFAULT_BUTTON;
 import static com.maxsolch.shop.platform.util.Texts.blankToNull;
 
 /**
@@ -53,18 +54,9 @@ public class BroadcastService {
 
     private enum Outcome { OK, BLOCKED, FAILED }
 
-    /** One message to send: chat id + language that picks the text variant. */
-    record Recipient(long id, String lang) {
-    }
-
     /** The lock of the running broadcast: renewed while it makes progress, free {@value} minutes after a crash. */
     static final String LOCK_NAME = "broadcast";
     private static final Duration LOCK_TTL = Duration.ofMinutes(5);
-
-    private static final Map<String, String> DEFAULT_BUTTON = Map.of(
-            "uk", "🛍 Відкрити магазин",
-            "ru", "🛍 Открыть магазин",
-            "en", "🛍 Open the shop");
 
     private final TelegramGateway bot;
     private final AppProperties props;
@@ -128,7 +120,7 @@ public class BroadcastService {
      * materialised id lists; with one, the lists are intersected with the language map.
      */
     public Map<String, Long> audienceCounts(String lang) {
-        String l = normLang(lang);
+        String l = BroadcastRules.normLang(lang);
         if (l == null) {
             return Map.of(
                     "all", audiences.count("all"),
@@ -190,8 +182,8 @@ public class BroadcastService {
     private Started begin(BroadcastRequest req, Long adminId, String adminName, DbLocks.Held lock) {
         String audience = req.audience() == null || req.audience().isBlank()
                 ? "all" : req.audience().trim().toLowerCase(Locale.ROOT);
-        String lang = normLang(req.lang());
-        List<Recipient> recipients = recipients(resolveAudience(audience), languages(), lang);
+        String lang = BroadcastRules.normLang(req.lang());
+        List<Recipient> recipients = BroadcastRules.recipients(resolveAudience(audience), languages(), lang);
 
         Broadcast row = new Broadcast();
         row.setAdminId(adminId);
@@ -245,7 +237,7 @@ public class BroadcastService {
         try {
             int i = 0;
             for (Recipient r : recipients) {
-                String html = textFor(r.lang(), row.getText(), row.getTextUk(), row.getTextRu(), row.getTextEn());
+                String html = BroadcastRules.textFor(r.lang(), row.getText(), row.getTextUk(), row.getTextRu(), row.getTextEn());
                 InlineKeyboardMarkup markup = buttons.computeIfAbsent(String.valueOf(r.lang()),
                         k -> shopButton(withButton, buttonText, r.lang()));
                 Outcome o = sendOne(r.id(), html, markup, ActivityLog.Entry.bot("BROADCAST")
@@ -361,51 +353,9 @@ public class BroadcastService {
     private Map<Long, String> languages() {
         Map<Long, String> out = new HashMap<>();
         for (BroadcastAudiences.Reachable r : audiences.reachable()) {
-            out.put(r.telegramUserId(), langOf(r.locale(), r.languageCode()));
+            out.put(r.telegramUserId(), BroadcastRules.langOf(r.locale(), r.languageCode()));
         }
         return out;
-    }
-
-    // ------------------------------------------------------------------ pure rules (unit-tested)
-
-    /** Shop choice first, then the Telegram language, then the shop fallback (Ukrainian). */
-    static String langOf(String locale, String languageCode) {
-        Locale picked = Messages.normalize(locale);
-        if (picked == null) {
-            picked = Messages.normalize(languageCode);
-        }
-        return (picked == null ? Messages.FALLBACK : picked).getLanguage();
-    }
-
-    /** Audience ids → recipients with their language, narrowed to {@code lang} when given. */
-    static List<Recipient> recipients(List<Long> ids, Map<Long, String> langs, String lang) {
-        List<Recipient> out = new ArrayList<>(ids.size());
-        for (Long id : ids) {
-            String l = langs.getOrDefault(id, Messages.FALLBACK.getLanguage());
-            if (lang == null || lang.equals(l)) {
-                out.add(new Recipient(id, l));
-            }
-        }
-        return out;
-    }
-
-    /** The version written for the recipient's language, else the main text. */
-    static String textFor(String lang, String text, String uk, String ru, String en) {
-        String v = switch (lang == null ? "" : lang) {
-            case "uk" -> uk;
-            case "ru" -> ru;
-            case "en" -> en;
-            default -> null;
-        };
-        return v == null || v.isBlank() ? text : v;
-    }
-
-    static String normLang(String lang) {
-        if (lang == null || lang.isBlank()) {
-            return null;
-        }
-        String l = lang.trim().toLowerCase(Locale.ROOT);
-        return DEFAULT_BUTTON.containsKey(l) ? l : null;
     }
 
     private static void sleep(long ms) {
