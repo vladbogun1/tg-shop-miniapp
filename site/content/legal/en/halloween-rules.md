@@ -14,8 +14,8 @@ A Halloween prize draw among ChiSetup customers and viewers. The winners are pic
 
 ## 2. Dates
 
-- Pumpkins and orders count from **Friday 30.10.2026 00:00** to **Sunday 01.11.2026 18:00** (Kyiv time).
-- The draws are live on **Sunday 01.11.2026 at 19:00** on [TikTok](https://www.tiktok.com/@lessons_maxsolch) and [Kick](https://kick.com/maxsolkh).
+- Pumpkins and orders count from **Friday 30.10.2026 00:00** to **Sunday 01.11.2026 20:00** (Kyiv time).
+- The draws are live on **Sunday 01.11.2026 at 21:00** on [TikTok](https://www.tiktok.com/@lessons_maxsolch) and [Kick](https://kick.com/maxsolkh).
 
 ## 3. How to enter
 
@@ -33,7 +33,7 @@ There are **two separate draws**:
 - 1 ticket per full 500 UAH, up to 5 tickets.
 - Orders placed during the event and paid or accepted by the shop count; cancelled, rejected and refunded amounts do not.
 
-**Returning customers.** Anyone who bought from ChiSetup for **1000 UAH or more** in total before the event (before 30.10.2026 00:00) gets an invitation to the purchase draw from the bot. After tapping «Join» in the bot message or in the 🎃 panel, they are in the draw with **1 ticket**. New orders during the event add tickets under the same rules, up to 5 in total. Joining is open until **01.11.2026 18:00**.
+**Returning customers.** Anyone who bought from ChiSetup for **1000 UAH or more** in total before the event (before 30.10.2026 00:00) gets an invitation to the purchase draw from the bot. After tapping «Join» in the bot message or in the 🎃 panel, they are in the draw with **1 ticket**. New orders during the event add tickets under the same rules, up to 5 in total. Joining is open until **01.11.2026 20:00**.
 
 The pumpkin draw is free, no purchase needed. Whether you are in is shown in the 🎃 panel on the site and in the Mini App.
 

@@ -20,12 +20,12 @@ export const config = {
   },
   // Kyiv is UTC+2 from 25.10.2026 (DST ended that night).
   startsAt: new Date(env.HW_STARTS_AT || "2026-10-29T22:00:00Z"), // Fri 30.10 00:00 Kyiv
-  endsAt: new Date(env.HW_ENDS_AT || "2026-11-01T16:00:00Z"), // Sun 01.11 18:00 Kyiv, an hour before the stream
+  endsAt: new Date(env.HW_ENDS_AT || "2026-11-01T18:00:00Z"), // Sun 01.11 20:00 Kyiv, an hour before the stream
   /** Purchases window; defaults to the pumpkin window. */
   ordersFrom: new Date(env.HW_ORDERS_FROM || env.HW_STARTS_AT || "2026-10-29T22:00:00Z"),
-  ordersTo: new Date(env.HW_ORDERS_TO || env.HW_ENDS_AT || "2026-11-01T16:00:00Z"),
+  ordersTo: new Date(env.HW_ORDERS_TO || env.HW_ENDS_AT || "2026-11-01T18:00:00Z"),
   /** When the stream starts (ISO); the widget shows it in the reader's time. */
-  streamAt: env.HW_STREAM_AT || "2026-11-01T17:00:00Z",
+  streamAt: env.HW_STREAM_AT || "2026-11-01T19:00:00Z",
   /** Where the draw is streamed: "Name|url" pairs, comma separated. HW_STREAM_URL = the first one. */
   streams: (env.HW_STREAMS || "TikTok|https://www.tiktok.com/@lessons_maxsolch,Kick|https://kick.com/maxsolkh")
     .split(",").map((s) => s.trim().split("|")).filter((p) => p.length === 2 && /^https:\/\//.test(p[1])).map(([name, url]) => ({ name, url })),
