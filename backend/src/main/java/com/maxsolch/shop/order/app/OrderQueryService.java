@@ -14,7 +14,7 @@ import com.maxsolch.shop.order.infra.OrderItemRepository;
 import com.maxsolch.shop.order.infra.OrderMessageRepository;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.repository.UserRepository;
-import com.maxsolch.shop.catalog.infra.ProductImageRepository;
+import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.catalog.app.CatalogNames;
@@ -42,7 +42,7 @@ public class OrderQueryService {
     private final OrderMessageRepository messageRepository;
     private final OrderItemRepository orderItemRepository;
     private final OrderOnlinePayments onlinePayments;
-    private final ProductImageRepository productImageRepository;
+    private final Products productImages;
     private final TranslationService translationService;
     private final CatalogNames catalogNames;
     private final UserRepository userRepository;
@@ -59,7 +59,7 @@ public class OrderQueryService {
                              OrderMessageRepository messageRepository,
                              OrderItemRepository orderItemRepository,
                              OrderOnlinePayments onlinePayments,
-                             ProductImageRepository productImageRepository,
+                             Products productImages,
                              TranslationService translationService,
                              CatalogNames catalogNames,
                              UserRepository userRepository,
@@ -72,7 +72,7 @@ public class OrderQueryService {
         this.messageRepository = messageRepository;
         this.orderItemRepository = orderItemRepository;
         this.onlinePayments = onlinePayments;
-        this.productImageRepository = productImageRepository;
+        this.productImages = productImages;
         this.translationService = translationService;
         this.catalogNames = catalogNames;
         this.userRepository = userRepository;
@@ -525,7 +525,7 @@ public class OrderQueryService {
             return Map.of();
         }
         Map<String, String> first = new HashMap<>();
-        for (ProductImage image : productImageRepository.findForProducts(productIds)) {
+        for (ProductImage image : productImages.findImagesForProducts(productIds)) {
             // Results are ordered by sortOrder, so the first one seen per product wins.
             first.putIfAbsent(UuidUtil.toString(image.getProduct().getId()), image.getUrl());
         }

@@ -124,11 +124,11 @@ public final class OrderApp {
         OrderLifecycle lifecycle = new OrderLifecycle(ops, orders, stock, events,
                 new AppProperties());
         OrderPromos orderPromos = new OrderPromos(ops, new com.maxsolch.shop.promo.app.PromoUses(promos), promoService, messages, lowMargin);
-        OrderEditing editing = new OrderEditing(ops, orders, products, stock, shelf, events, gift, orderPromos);
+        OrderEditing editing = new OrderEditing(ops, orders, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), stock, shelf, events, gift, orderPromos);
         OrderGiftPrizes prizes = new OrderGiftPrizes(ops, registry, shelf);
-        OrderGiftCases giftCases = new OrderGiftCases(ops, orders, products, stock, events, messages, gift, orderPromos,
+        OrderGiftCases giftCases = new OrderGiftCases(ops, orders, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), stock, events, messages, gift, orderPromos,
                 prizes);
-        Checkout checkout = new Checkout(orders, products, new com.maxsolch.shop.payment.app.OrderPaymentOptionsAdapter(options), events, orderPromos, carts, messages,
+        Checkout checkout = new Checkout(orders, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), new com.maxsolch.shop.payment.app.OrderPaymentOptionsAdapter(options), events, orderPromos, carts, messages,
                 stock, shelf, payments, gift, ops, prizes, new AppProperties());
         return new OrderApp(ops, payments, archive, cancelRequests, lifecycle, editing, orderPromos, giftCases,
                 checkout);

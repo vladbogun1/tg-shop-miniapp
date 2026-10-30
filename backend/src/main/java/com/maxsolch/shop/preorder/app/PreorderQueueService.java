@@ -19,7 +19,7 @@ import com.maxsolch.shop.procurement.app.BatchDtos.EtaDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.MyPreorderDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.SubscribeRequest;
 import com.maxsolch.shop.preorder.domain.PreorderSubscription.Status;
-import com.maxsolch.shop.catalog.infra.ProductRepository;
+import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.platform.time.ShopZone;
@@ -66,14 +66,14 @@ public class PreorderQueueService {
 
     private final PreorderSubscriptionRepository subs;
     private final BatchCatalog batches;
-    private final ProductRepository products;
+    private final Products products;
     private final SettingsService settings;
     private final ApplicationEventPublisher events;
     private final Messages messages;
     private final TranslationService translations;
     private final Clock clock;
 
-    public PreorderQueueService(PreorderSubscriptionRepository subs, BatchCatalog batches, ProductRepository products,
+    public PreorderQueueService(PreorderSubscriptionRepository subs, BatchCatalog batches, Products products,
                                 SettingsService settings, ApplicationEventPublisher events, Messages messages,
                                 TranslationService translations, Clock clock) {
         this.subs = subs;

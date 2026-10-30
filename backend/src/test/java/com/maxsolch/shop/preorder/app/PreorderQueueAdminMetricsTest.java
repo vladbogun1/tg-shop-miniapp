@@ -47,7 +47,7 @@ class PreorderQueueAdminMetricsTest {
 
     @BeforeEach
     void setUp() {
-        admin = new PreorderQueueAdmin(subs, batches, lineProducts, users, products, queue, settings, events,
+        admin = new PreorderQueueAdmin(subs, batches, lineProducts, users, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), queue, settings, events,
                 Clock.fixed(Instant.parse("2026-10-27T10:00:00Z"), ZoneOffset.UTC));
     }
 

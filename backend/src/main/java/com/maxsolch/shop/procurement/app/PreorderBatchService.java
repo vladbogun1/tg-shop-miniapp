@@ -20,7 +20,7 @@ import com.maxsolch.shop.procurement.app.BatchDtos.BatchSummaryDto;
 import com.maxsolch.shop.procurement.app.BatchDtos.CancelRequest;
 import com.maxsolch.shop.procurement.app.BatchDtos.ItemDto;
 import com.maxsolch.shop.procurement.app.BatchDtos.ItemRequest;
-import com.maxsolch.shop.catalog.infra.ProductRepository;
+import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.platform.settings.SettingsService;
@@ -64,7 +64,7 @@ public class PreorderBatchService {
     private final PreorderBatchRepository batches;
     private final PreorderBatchItemRepository items;
     private final SupplierRepository suppliers;
-    private final ProductRepository products;
+    private final Products products;
     private final BatchQueue queue;
     private final LineProducts lineProducts;
     private final SettingsService settings;
@@ -76,7 +76,7 @@ public class PreorderBatchService {
 
     public PreorderBatchService(PreorderBatchRepository batches, PreorderBatchItemRepository items,
                                 SupplierRepository suppliers,
-                                ProductRepository products, BatchQueue queue, LineProducts lineProducts,
+                                Products products, BatchQueue queue, LineProducts lineProducts,
                                 SettingsService settings,
                                 com.maxsolch.shop.inventory.app.LotLedger ledger,
                                 com.maxsolch.shop.site.app.SiteRevalidator siteRevalidator, Clock clock) {

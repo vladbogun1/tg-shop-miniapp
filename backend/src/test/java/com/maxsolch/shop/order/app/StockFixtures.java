@@ -17,11 +17,11 @@ public final class StockFixtures {
 
     /** The shelf ({@link Stock}) over the given repository; lots and holds do nothing. */
     public static Stock shelf(ProductRepository products, Messages messages) {
-        return new Stock(products, messages, mock(LotLedger.class), mock(StockHolds.class));
+        return new Stock(new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), messages, mock(LotLedger.class), mock(StockHolds.class));
     }
 
     /** The order-line side ({@link OrderStock}) over {@link #shelf}. */
     public static OrderStock stock(ProductRepository products, Messages messages) {
-        return new OrderStock(products, shelf(products, messages), mock(PreorderQueueService.class));
+        return new OrderStock(new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), shelf(products, messages), mock(PreorderQueueService.class));
     }
 }

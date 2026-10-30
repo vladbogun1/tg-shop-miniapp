@@ -1,10 +1,10 @@
 package com.maxsolch.shop.gift;
 
 import com.maxsolch.shop.catalog.domain.Brand;
-import com.maxsolch.shop.catalog.infra.BrandRepository;
+import com.maxsolch.shop.catalog.app.Taxonomy;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.catalog.domain.Product;
-import com.maxsolch.shop.catalog.infra.ProductRepository;
+import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import org.springframework.stereotype.Service;
@@ -31,10 +31,10 @@ import java.util.stream.Collectors;
 public class CaseLowMargin {
 
     private final SettingsService settings;
-    private final BrandRepository brands;
-    private final ProductRepository products;
+    private final Taxonomy brands;
+    private final Products products;
 
-    public CaseLowMargin(SettingsService settings, BrandRepository brands, ProductRepository products) {
+    public CaseLowMargin(SettingsService settings, Taxonomy brands, Products products) {
         this.settings = settings;
         this.brands = brands;
         this.products = products;
@@ -53,7 +53,7 @@ public class CaseLowMargin {
     /** The marked brands that exist. */
     @Transactional(readOnly = true)
     public List<Brand> brands() {
-        return brandSlugs().stream().map(brands::findBySlug).flatMap(Optional::stream).toList();
+        return brandSlugs().stream().map(brands::brandBySlug).flatMap(Optional::stream).toList();
     }
 
     /** Every low-margin product id: of the marked brands and marked one by one. */

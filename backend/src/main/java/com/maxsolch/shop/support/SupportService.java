@@ -10,7 +10,7 @@ import com.maxsolch.shop.platform.i18n.ChatPreview;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.media.app.MediaSigner;
-import com.maxsolch.shop.catalog.infra.ProductRepository;
+import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
@@ -70,7 +70,7 @@ public class SupportService {
 
     private final SupportThreadRepository threads;
     private final SupportMessageRepository messageRepository;
-    private final ProductRepository productRepository;
+    private final Products productRepository;
     private final UserRepository userRepository;
     private final SettingsService settings;
     private final SimpMessagingTemplate messagingTemplate;
@@ -82,7 +82,7 @@ public class SupportService {
     @Autowired
     public SupportService(SupportThreadRepository threads,
                           SupportMessageRepository messageRepository,
-                          ProductRepository productRepository,
+                          Products productRepository,
                           UserRepository userRepository,
                           SettingsService settings,
                           SimpMessagingTemplate messagingTemplate,
@@ -95,7 +95,7 @@ public class SupportService {
 
     SupportService(SupportThreadRepository threads,
                    SupportMessageRepository messageRepository,
-                   ProductRepository productRepository,
+                   Products productRepository,
                    UserRepository userRepository,
                    SettingsService settings,
                    SimpMessagingTemplate messagingTemplate,

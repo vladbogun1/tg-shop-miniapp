@@ -10,7 +10,7 @@ import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.cart.infra.CartItemRepository;
 import com.maxsolch.shop.cart.infra.CartRepository;
-import com.maxsolch.shop.catalog.infra.ProductRepository;
+import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.cart.domain.CartRules.Line;
 import com.maxsolch.shop.cart.domain.CartRules.LineKey;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
@@ -58,14 +58,14 @@ public class CartService {
 
     private final CartRepository cartRepository;
     private final CartItemRepository itemRepository;
-    private final ProductRepository productRepository;
+    private final Products productRepository;
     private final TranslationService translationService;
     private final Messages messages;
     private final Clock clock;
 
     public CartService(CartRepository cartRepository,
                        CartItemRepository itemRepository,
-                       ProductRepository productRepository,
+                       Products productRepository,
                        TranslationService translationService,
                        Messages messages,
                        Clock clock) {

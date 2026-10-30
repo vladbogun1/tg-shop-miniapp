@@ -29,7 +29,7 @@ import com.maxsolch.shop.procurement.infra.PreorderBatchItemRepository;
 import com.maxsolch.shop.procurement.infra.PreorderBatchRepository;
 import com.maxsolch.shop.procurement.domain.Lines;
 import com.maxsolch.shop.procurement.domain.ProcurementErrors;
-import com.maxsolch.shop.catalog.infra.ProductRepository;
+import com.maxsolch.shop.catalog.app.Products;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -60,14 +60,14 @@ public class CostingService {
     private final PreorderBatchRepository batches;
     private final PreorderBatchItemRepository items;
     private final BatchExpenseRepository expenses;
-    private final ProductRepository products;
+    private final Products products;
     private final LineProducts queue;
     private final LotLedger ledger;
     private final BatchExpenseFileRepository files;
     private final ImageStorageService storage;
 
     public CostingService(PreorderBatchRepository batches, PreorderBatchItemRepository items,
-                          BatchExpenseRepository expenses, ProductRepository products,
+                          BatchExpenseRepository expenses, Products products,
                           LineProducts queue, LotLedger ledger, BatchExpenseFileRepository files,
                           ImageStorageService storage) {
         this.files = files;

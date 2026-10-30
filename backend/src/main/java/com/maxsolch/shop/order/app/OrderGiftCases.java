@@ -12,7 +12,7 @@ import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.catalog.infra.ProductRepository;
+import com.maxsolch.shop.catalog.app.Products;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,7 +37,7 @@ public class OrderGiftCases {
 
     private final OrderOps ops;
     private final OrderRepository orderRepository;
-    private final ProductRepository productRepository;
+    private final Products productRepository;
     private final OrderStock stock;
     private final ApplicationEventPublisher events;
     private final Messages messages;
@@ -45,7 +45,7 @@ public class OrderGiftCases {
     private final OrderPromos promos;
     private final OrderGiftPrizes prizes;
 
-    OrderGiftCases(OrderOps ops, OrderRepository orderRepository, ProductRepository productRepository, OrderStock stock,
+    OrderGiftCases(OrderOps ops, OrderRepository orderRepository, Products productRepository, OrderStock stock,
                    ApplicationEventPublisher events, Messages messages, GiftService giftService, OrderPromos promos,
                    OrderGiftPrizes prizes) {
         this.ops = ops;

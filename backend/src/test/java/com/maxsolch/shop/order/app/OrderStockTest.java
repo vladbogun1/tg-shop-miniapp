@@ -95,10 +95,10 @@ class OrderStockTest {
     }
 
     private OrderApp newApp() {
-        Stock shelf = new Stock(productRepository, messages, lots, holds);
+        Stock shelf = new Stock(new com.maxsolch.shop.catalog.app.Products(productRepository, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), messages, lots, holds);
         return OrderApp.create(orderRepository, productRepository, promoCodeRepository,
                 paymentOptionRepository, notificationService, events, promoService, cartService, messages, entityManager,
-                new OrderStock(productRepository, shelf, queue), shelf, org.mockito.Mockito.mock(MoneyLedger.class));
+                new OrderStock(new com.maxsolch.shop.catalog.app.Products(productRepository, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), shelf, queue), shelf, org.mockito.Mockito.mock(MoneyLedger.class));
     }
 
     private Product product(int stock) {

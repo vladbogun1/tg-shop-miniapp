@@ -18,13 +18,8 @@ L1 legacy 1
 L2 legacy 14
 L3 legacy 6
 L4 legacy 9
-M1 cart 1
-M1 inventory 1
-M1 legacy 13
-M1 order 5
+M1 legacy 9
 M1 platform 1
-M1 preorder 3
-M1 procurement 3
 N1 legacy 46
 N1 platform 7
 P1 platform 24

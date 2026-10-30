@@ -69,7 +69,7 @@ class PreorderBatchServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PreorderBatchService(batches, items, suppliers, products, queue, lineProducts, settings,
+        service = new PreorderBatchService(batches, items, suppliers, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), queue, lineProducts, settings,
                 ledger, revalidator, Clock.fixed(NOW, ZoneOffset.UTC));
         batch = new PreorderBatch();
         batch.setId(5L);

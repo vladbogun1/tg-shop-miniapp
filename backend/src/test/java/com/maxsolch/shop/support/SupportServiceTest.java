@@ -76,7 +76,7 @@ class SupportServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new SupportService(threads, messageRepository, productRepository, userRepository, settings,
+        service = new SupportService(threads, messageRepository, new com.maxsolch.shop.catalog.app.Products(productRepository, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), userRepository, settings,
                 messagingTemplate, events, mediaSigner, messages, Clock.fixed(NOW, ZoneOffset.UTC));
         when(settings.getBool(SettingsRegistry.SUPPORT_ENABLED)).thenReturn(true);
         when(settings.getInt(SettingsRegistry.SUPPORT_COOLDOWN_SEC)).thenReturn(10);

@@ -2,7 +2,7 @@ package com.maxsolch.shop.procurement.app;
 
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.catalog.infra.ProductRepository;
+import com.maxsolch.shop.catalog.app.Products;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
@@ -13,9 +13,9 @@ import java.util.Map;
 @Component
 public class LineProducts {
 
-    private final ProductRepository products;
+    private final Products products;
 
-    public LineProducts(ProductRepository products) {
+    public LineProducts(Products products) {
         this.products = products;
     }
 

@@ -72,7 +72,7 @@ class CartServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new CartService(cartRepository, itemRepository, productRepository, translationService, messages, java.time.Clock.systemUTC());
+        service = new CartService(cartRepository, itemRepository, new com.maxsolch.shop.catalog.app.Products(productRepository, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), translationService, messages, java.time.Clock.systemUTC());
         cart.setUserId(USER);
         cart.setVersion(0);
         cart.setUpdatedAt(Instant.EPOCH);

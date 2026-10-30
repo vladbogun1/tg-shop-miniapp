@@ -21,7 +21,7 @@ import com.maxsolch.shop.preorder.app.PreorderDtos.LineDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.MyPreorderDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.ProductPreorderDto;
 import com.maxsolch.shop.preorder.domain.PreorderSubscription.Status;
-import com.maxsolch.shop.catalog.infra.ProductRepository;
+import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.platform.time.ShopZone;
@@ -50,13 +50,13 @@ public class PreorderQueueReader {
 
     private final PreorderSubscriptionRepository subs;
     private final BatchCatalog batches;
-    private final ProductRepository products;
+    private final Products products;
     private final SettingsService settings;
     private final Messages messages;
     private final Clock clock;
     private final PreorderQueueService queue;
 
-    public PreorderQueueReader(PreorderSubscriptionRepository subs, BatchCatalog batches, ProductRepository products,
+    public PreorderQueueReader(PreorderSubscriptionRepository subs, BatchCatalog batches, Products products,
                                SettingsService settings, Messages messages, Clock clock, PreorderQueueService queue) {
         this.subs = subs;
         this.batches = batches;

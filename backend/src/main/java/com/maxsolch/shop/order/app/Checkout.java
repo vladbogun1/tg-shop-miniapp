@@ -18,7 +18,7 @@ import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.catalog.infra.ProductRepository;
+import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.platform.config.AppProperties;
 import org.springframework.context.ApplicationEventPublisher;
@@ -46,7 +46,7 @@ import java.util.Optional;
 public class Checkout {
 
     private final OrderRepository orderRepository;
-    private final ProductRepository productRepository;
+    private final Products productRepository;
     private final OrderPaymentOptions paymentOptions;
     private final ApplicationEventPublisher events;
     private final OrderPromos promos;
@@ -64,7 +64,7 @@ public class Checkout {
     private final AppProperties props;
 
     Checkout(OrderRepository orderRepository,
-                        ProductRepository productRepository,
+                        Products productRepository,
                         OrderPaymentOptions paymentOptions,
                         ApplicationEventPublisher events,
                         OrderPromos promos,

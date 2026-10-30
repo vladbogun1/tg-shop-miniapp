@@ -1,7 +1,7 @@
 package com.maxsolch.shop.gift;
 
 import com.maxsolch.shop.catalog.domain.Category;
-import com.maxsolch.shop.catalog.infra.CategoryRepository;
+import com.maxsolch.shop.catalog.app.Taxonomy;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.gift.GiftDtos.AutofillDto;
 import com.maxsolch.shop.gift.GiftDtos.AutofillRequest;
@@ -67,7 +67,7 @@ public class CaseAutofill {
     static final int MIN_GOLD_WEIGHT = 10;
 
     private final CatalogService catalogService;
-    private final CategoryRepository categoryRepository;
+    private final Taxonomy categoryRepository;
     private final GiftCaseTierRepository tierRepository;
     private final SettingsService settings;
     private final AdminGiftService adminGift;
@@ -84,7 +84,7 @@ public class CaseAutofill {
         return lowMargin == null || lowMargin.none() ? Set.of() : lowMargin.productIds();
     }
 
-    public CaseAutofill(CatalogService catalogService, CategoryRepository categoryRepository,
+    public CaseAutofill(CatalogService catalogService, Taxonomy categoryRepository,
                         GiftCaseTierRepository tierRepository, SettingsService settings, AdminGiftService adminGift) {
         this.catalogService = catalogService;
         this.categoryRepository = categoryRepository;
@@ -530,7 +530,7 @@ public class CaseAutofill {
 
     private Map<String, Category> categories() {
         Map<String, Category> out = new HashMap<>();
-        categoryRepository.findAll().forEach(c -> out.put(UuidUtil.toString(c.getId()), c));
+        categoryRepository.allCategories().forEach(c -> out.put(UuidUtil.toString(c.getId()), c));
         return out;
     }
 

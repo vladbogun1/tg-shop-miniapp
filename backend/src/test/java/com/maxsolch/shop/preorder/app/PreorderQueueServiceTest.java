@@ -71,7 +71,7 @@ class PreorderQueueServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PreorderQueueService(subs, batches, products, settings, events, messages, translations,
+        service = new PreorderQueueService(subs, batches, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), settings, events, messages, translations,
                 Clock.fixed(NOW, ZoneOffset.UTC));
         product = new Product();
         product.setId(UuidUtil.toBytes(UUID.randomUUID()));

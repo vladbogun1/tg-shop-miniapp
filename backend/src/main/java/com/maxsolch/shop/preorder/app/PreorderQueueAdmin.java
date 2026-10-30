@@ -23,7 +23,7 @@ import com.maxsolch.shop.procurement.domain.Lines;
 import com.maxsolch.shop.procurement.domain.PreorderBatch;
 import com.maxsolch.shop.procurement.domain.PreorderBatch.Distribution;
 import com.maxsolch.shop.procurement.domain.PreorderBatchItem;
-import com.maxsolch.shop.catalog.infra.ProductRepository;
+import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.repository.UserRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -55,14 +55,14 @@ public class PreorderQueueAdmin {
     private final BatchCatalog batches;
     private final LineProducts lineProducts;
     private final UserRepository users;
-    private final ProductRepository products;
+    private final Products products;
     private final PreorderQueueService queue;
     private final SettingsService settings;
     private final ApplicationEventPublisher events;
     private final Clock clock;
 
     public PreorderQueueAdmin(PreorderSubscriptionRepository subs, BatchCatalog batches, LineProducts lineProducts,
-                          UserRepository users, ProductRepository products, PreorderQueueService queue,
+                          UserRepository users, Products products, PreorderQueueService queue,
                           SettingsService settings, ApplicationEventPublisher events, Clock clock) {
         this.subs = subs;
         this.batches = batches;

@@ -11,7 +11,7 @@ import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.promo.domain.PromoDiscount;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.promo.domain.PromoCode;
-import com.maxsolch.shop.catalog.infra.ProductRepository;
+import com.maxsolch.shop.catalog.app.Products;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,14 +28,14 @@ public class OrderEditing {
 
     private final OrderOps ops;
     private final OrderRepository orderRepository;
-    private final ProductRepository productRepository;
+    private final Products productRepository;
     private final OrderStock stock;
     private final Stock shelf;
     private final ApplicationEventPublisher events;
     private final GiftService giftService;
     private final OrderPromos promos;
 
-    OrderEditing(OrderOps ops, OrderRepository orderRepository, ProductRepository productRepository, OrderStock stock, Stock shelf,
+    OrderEditing(OrderOps ops, OrderRepository orderRepository, Products productRepository, OrderStock stock, Stock shelf,
                  ApplicationEventPublisher events, GiftService giftService, OrderPromos promos) {
         this.ops = ops;
         this.orderRepository = orderRepository;

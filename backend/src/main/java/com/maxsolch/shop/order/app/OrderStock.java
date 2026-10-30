@@ -8,7 +8,7 @@ import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.preorder.app.PreorderQueueService;
-import com.maxsolch.shop.catalog.infra.ProductRepository;
+import com.maxsolch.shop.catalog.app.Products;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -24,11 +24,11 @@ import java.util.List;
 @Component
 public class OrderStock {
 
-    private final ProductRepository productRepository;
+    private final Products productRepository;
     private final Stock stock;
     private final PreorderQueueService queue;
 
-    public OrderStock(ProductRepository productRepository, Stock stock, PreorderQueueService queue) {
+    public OrderStock(Products productRepository, Stock stock, PreorderQueueService queue) {
         this.productRepository = productRepository;
         this.stock = stock;
         this.queue = queue;

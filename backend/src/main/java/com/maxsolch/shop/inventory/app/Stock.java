@@ -6,7 +6,7 @@ import com.maxsolch.shop.inventory.domain.InventoryErrors;
 import com.maxsolch.shop.inventory.domain.LotAllocations;
 import com.maxsolch.shop.inventory.domain.StockHolds;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.catalog.infra.ProductRepository;
+import com.maxsolch.shop.catalog.app.Products;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -20,17 +20,17 @@ import java.util.Arrays;
  * {@link LotAllocations} that remembers the lots.
  *
  * <p>Methods run inside the caller's transaction. The product row is locked by the caller
- * ({@link ProductRepository#findByIdForUpdate}) except in {@link #restockProduct}, which locks it itself.
+ * ({@link Products#findByIdForUpdate}) except in {@link #restockProduct}, which locks it itself.
  */
 @Component
 public class Stock {
 
-    private final ProductRepository products;
+    private final Products products;
     private final Messages messages;
     private final LotLedger lots;
     private final StockHolds holds;
 
-    public Stock(ProductRepository products, Messages messages, LotLedger lots, StockHolds holds) {
+    public Stock(Products products, Messages messages, LotLedger lots, StockHolds holds) {
         this.products = products;
         this.messages = messages;
         this.lots = lots;
