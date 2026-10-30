@@ -39,6 +39,16 @@ public class AdminAccess {
         }
     }
 
+    /**
+     * The same rule for a use case that reads the actor from {@code CurrentActor}: a check that depends on the
+     * request (e.g. {@code force=1}) lives in the scenario, because a method annotation cannot see the parameter.
+     */
+    public void requireSuperAdmin(long adminId, String what) {
+        if (!isSuperAdmin(adminId)) {
+            throw new ForbiddenException(what + " — только главный админ");
+        }
+    }
+
     /** «Финансы»: purchase prices, batch expenses and margin — the main admin, or one he gave the right. */
     public boolean canSeeFinance(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal p)

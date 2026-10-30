@@ -4,12 +4,7 @@
 # after fixing violations; a raised number means the code got worse and the change must be redone.
 A1 legacy 11
 A1 platform 3
-A2 catalog 2
 A2 legacy 5
-A2 site 1
-A2 translation 1
-A3 catalog 1
-A3 translation 1
 C1 legacy 43
 CA legacy 4
 E1 finance 1

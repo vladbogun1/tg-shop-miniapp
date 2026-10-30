@@ -55,21 +55,21 @@ class AdminForcedActionsRightsTest {
     static boolean forceDeleteAttribute(AdminAccess access) {
         var attributes = mock(com.maxsolch.shop.catalog.app.SpecAttributeAdminService.class);
         when(attributes.delete("id", true)).thenReturn("key");
-        var controller = new AdminCatalogController(null, null, attributes, null, null, null, null,
+        var scenario = new com.maxsolch.shop.catalog.app.AdminCatalog(null, null, attributes, null, null,
                 mock(com.maxsolch.shop.platform.audit.AdminAuditService.class),
-                mock(com.maxsolch.shop.site.app.SiteRevalidator.class), null, null, access,
+                mock(com.maxsolch.shop.site.app.SiteRevalidator.class), access,
                 new com.maxsolch.shop.platform.web.CurrentActor());
-        controller.deleteAttribute("id", "1");
+        scenario.deleteAttribute("id", true);
         return true;
     }
 
     static boolean blankEntityDelete(AdminAccess access) {
-        var service = mock(com.maxsolch.shop.translation.app.TranslationAdminService.class);
-        var controller = new com.maxsolch.shop.translation.api.AdminTranslationController(service,
+        var upkeep = mock(com.maxsolch.shop.translation.app.TranslationAdminService.class);
+        var scenario = new com.maxsolch.shop.translation.app.AdminTranslations(null, null, upkeep,
                 mock(com.maxsolch.shop.platform.audit.AdminAuditService.class),
                 mock(com.maxsolch.shop.site.app.SiteRevalidator.class), access,
                 new com.maxsolch.shop.platform.web.CurrentActor());
-        controller.delete("uk", null, " ", null);
+        scenario.delete("uk", null, " ", null);
         return true;
     }
 

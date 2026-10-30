@@ -1,15 +1,16 @@
 package com.maxsolch.shop.catalog.api;
 
 import com.maxsolch.shop.catalog.app.BrandAdminService;
+import com.maxsolch.shop.catalog.app.AdminCards;
+import com.maxsolch.shop.catalog.app.AdminCatalog;
 import com.maxsolch.shop.catalog.app.CardsService;
+import com.maxsolch.shop.catalog.app.SpecGroupAdminService;
 import com.maxsolch.shop.catalog.app.CatalogDtos;
 import com.maxsolch.shop.catalog.app.CatalogSchemaImporter;
 import com.maxsolch.shop.catalog.app.CatalogSchemaService;
 import com.maxsolch.shop.catalog.app.CategoryAdminService;
 import com.maxsolch.shop.catalog.app.SpecAttributeAdminService;
-import com.maxsolch.shop.catalog.domain.Category;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.catalog.app.CatalogDtos.AdminBrandDto;
 import com.maxsolch.shop.catalog.app.CatalogDtos.AdminCategoryDto;
 import com.maxsolch.shop.catalog.app.CatalogDtos.AdminSpecAttributeDto;
@@ -26,11 +27,7 @@ import com.maxsolch.shop.catalog.app.CatalogDtos.ReorderItem;
 import com.maxsolch.shop.catalog.app.CatalogDtos.SpecAttributeUpsertRequest;
 import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.media.app.UploadValidator;
-import com.maxsolch.shop.platform.security.AdminAccess;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
-import com.maxsolch.shop.catalog.app.AdminProductService;
-import com.maxsolch.shop.site.app.SiteRevalidator;
-import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.catalog.app.AdminProductDto;
 import com.maxsolch.shop.media.app.UploadResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -68,40 +65,29 @@ public class AdminCatalogController {
     private final CategoryAdminService categories;
     private final BrandAdminService brands;
     private final SpecAttributeAdminService attributes;
+    private final SpecGroupAdminService groups;
     private final CatalogSchemaService schema;
-    private final CatalogSchemaImporter importer;
     private final CardsService cards;
-    private final AdminProductService products;
-    private final AdminAuditService audit;
-    private final SiteRevalidator siteRevalidator;
+    private final AdminCatalog catalog;
+    private final AdminCards adminCards;
     private final UploadValidator uploadValidator;
     private final ImageStorageService imageStorageService;
-    private final AdminAccess adminAccess;
-    private final CurrentActor actor;
 
     public AdminCatalogController(CategoryAdminService categories, BrandAdminService brands,
-                                  SpecAttributeAdminService attributes, CatalogSchemaService schema,
-                                  CatalogSchemaImporter importer, CardsService cards, AdminProductService products,
-                                  AdminAuditService audit, SiteRevalidator siteRevalidator,
-                                  UploadValidator uploadValidator, ImageStorageService imageStorageService,
-                                  AdminAccess adminAccess, CurrentActor actor) {
-        this.actor = actor;
+                                  SpecAttributeAdminService attributes, SpecGroupAdminService groups,
+                                  CatalogSchemaService schema, CardsService cards, AdminCatalog catalog,
+                                  AdminCards adminCards, UploadValidator uploadValidator,
+                                  ImageStorageService imageStorageService) {
         this.categories = categories;
         this.brands = brands;
         this.attributes = attributes;
+        this.groups = groups;
         this.schema = schema;
-        this.importer = importer;
         this.cards = cards;
-        this.products = products;
-        this.audit = audit;
-        this.siteRevalidator = siteRevalidator;
+        this.catalog = catalog;
+        this.adminCards = adminCards;
         this.uploadValidator = uploadValidator;
         this.imageStorageService = imageStorageService;
-        this.adminAccess = adminAccess;
-    }
-
-    private Long adminId() {
-        return actor.isPresent() ? actor.userId() : null;
     }
 
     // ------------------------------------------------------------------ categories
@@ -115,40 +101,25 @@ public class AdminCatalogController {
     @PostMapping("/categories")
     @Operation(summary = "Create category (parentId null = root; depth ≤ 2)")
     public AdminCategoryDto createCategory(@Valid @RequestBody CategoryUpsertRequest req) {
-        CategoryAdminService.Saved s = categories.create(req);
-        audit.record("CATEGORY_CREATE", "CATEGORY", s.category().id(), s.category().name() + ", slug "
-                + s.category().slug());
-        siteRevalidator.allChanged();
-        return s.category();
+        return catalog.createCategory(req);
     }
 
     @PatchMapping("/categories/reorder")
     @Operation(summary = "Move/reorder categories: [{id, parentId, sortOrder}]")
     public List<AdminCategoryDto> reorder(@Valid @RequestBody List<ReorderItem> items) {
-        List<AdminCategoryDto> out = categories.reorder(items);
-        audit.record("CATEGORY_REORDER", "CATEGORY", null, "категорий: " + items.size());
-        siteRevalidator.allChanged();
-        return out;
+        return catalog.reorderCategories(items);
     }
 
     @PatchMapping("/categories/{id}")
     @Operation(summary = "Edit category (null = keep; parentId \"\" = make root)")
     public AdminCategoryDto updateCategory(@PathVariable String id, @Valid @RequestBody CategoryUpsertRequest req) {
-        CategoryAdminService.Saved s = categories.update(id, req);
-        AdminCategoryDto c = s.category();
-        audit.record("CATEGORY_UPDATE", "CATEGORY", id, c.name() + ", slug " + c.slug() + ", order "
-                + c.sortOrder() + (c.showInMenu() ? "" : ", скрыта из меню")
-                + (s.seoChanged().isEmpty() ? "" : ", изменено: " + String.join(", ", s.seoChanged())));
-        siteRevalidator.allChanged();
-        return c;
+        return catalog.updateCategory(id, req);
     }
 
     @DeleteMapping("/categories/{id}")
     @Operation(summary = "Delete category (409 CATEGORY_HAS_PRODUCTS / CATEGORY_HAS_CHILDREN)")
     public ResponseEntity<Void> deleteCategory(@PathVariable String id) {
-        CategoryAdminService.Deleted d = categories.delete(id);
-        audit.record("CATEGORY_DELETE", "CATEGORY", id, d.name() + ", slug " + d.slug());
-        siteRevalidator.allChanged();
+        catalog.deleteCategory(id);
         return ResponseEntity.noContent().build();
     }
 
@@ -162,10 +133,7 @@ public class AdminCatalogController {
 
     @PostMapping("/brands")
     public AdminBrandDto createBrand(@Valid @RequestBody BrandUpsertRequest req) {
-        AdminBrandDto b = brands.create(req);
-        audit.record("BRAND_CREATE", "BRAND", b.id(), b.name());
-        siteRevalidator.allChanged();
-        return b;
+        return catalog.createBrand(req);
     }
 
     @PostMapping("/brands/uploads")
@@ -177,30 +145,20 @@ public class AdminCatalogController {
 
     @PatchMapping("/brands/{id}")
     public AdminBrandDto updateBrand(@PathVariable String id, @Valid @RequestBody BrandUpsertRequest req) {
-        AdminBrandDto b = brands.update(id, req);
-        audit.record("BRAND_UPDATE", "BRAND", id, b.name() + ", slug " + b.slug()
-                + (req.logoUrl() == null ? "" : req.logoUrl().isBlank() ? ", логотип удалён" : ", логотип")
-                + (req.logoMode() == null ? "" : ", режим логотипа " + b.logoMode()));
-        siteRevalidator.allChanged();
-        return b;
+        return catalog.updateBrand(id, req);
     }
 
     @DeleteMapping("/brands/{id}")
     @Operation(summary = "Delete brand (its products keep existing without a brand)")
     public ResponseEntity<Void> deleteBrand(@PathVariable String id) {
-        String name = brands.delete(id);
-        audit.record("BRAND_DELETE", "BRAND", id, name);
-        siteRevalidator.allChanged();
+        catalog.deleteBrand(id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/brands/{id}/merge-into/{targetId}")
     @Operation(summary = "Merge a brand into another (products move, the name becomes an alias)")
     public AdminBrandDto mergeBrand(@PathVariable String id, @PathVariable String targetId) {
-        AdminBrandDto b = brands.merge(id, targetId);
-        audit.record("BRAND_MERGE", "BRAND", targetId, "объединён в «" + b.name() + "» (" + id + ")");
-        siteRevalidator.allChanged();
-        return b;
+        return catalog.mergeBrand(id, targetId);
     }
 
     // ------------------------------------------------------------------ attributes / groups
@@ -213,10 +171,7 @@ public class AdminCatalogController {
 
     @PostMapping("/spec-attributes")
     public AdminSpecAttributeDto createAttribute(@Valid @RequestBody SpecAttributeUpsertRequest req) {
-        AdminSpecAttributeDto a = attributes.create(req);
-        audit.record("SPEC_ATTRIBUTE_CREATE", "SPEC_ATTRIBUTE", a.id(), a.key() + " «" + a.labelRu() + "»");
-        siteRevalidator.allChanged();
-        return a;
+        return catalog.createAttribute(req);
     }
 
     @PatchMapping("/spec-attributes/{id}")
@@ -224,49 +179,32 @@ public class AdminCatalogController {
     public AdminSpecAttributeDto updateAttribute(@PathVariable String id,
                                                  @Valid @RequestBody SpecAttributeUpsertRequest req,
                                                  @RequestParam(required = false) String force) {
-        AdminSpecAttributeDto a = attributes.update(id, req, flag(force));
-        audit.record("SPEC_ATTRIBUTE_UPDATE", "SPEC_ATTRIBUTE", id, a.key() + " «" + a.labelRu() + "»"
-                + (flag(force) ? ", принудительно" : ""));
-        siteRevalidator.allChanged();
-        return a;
+        return catalog.updateAttribute(id, req, flag(force));
     }
 
     @PostMapping("/spec-attributes/{id}/rename-option")
     @Operation(summary = "Rename (or merge) an option value and rewrite the products' specs")
     public AdminSpecAttributeDto renameOption(@PathVariable String id, @Valid @RequestBody RenameOption body) {
-        AdminSpecAttributeDto a = attributes.renameOption(id, body.from(), body.to());
-        audit.record("SPEC_ATTRIBUTE_UPDATE", "SPEC_ATTRIBUTE", id, a.key() + ": опция " + body.from() + " → "
-                + body.to());
-        siteRevalidator.allChanged();
-        return a;
+        return catalog.renameOption(id, body);
     }
 
     @DeleteMapping("/spec-attributes/{id}")
     @Operation(summary = "Delete attribute (409 ATTRIBUTE_IN_USE {count} unless force=1; force=1 — main admin only)")
     public ResponseEntity<Void> deleteAttribute(@PathVariable String id,
                                                 @RequestParam(required = false) String force) {
-        if (flag(force)) {
-            adminAccess.requireSuperAdmin(org.springframework.security.core.context.SecurityContextHolder
-                    .getContext().getAuthentication(), "Принудительное удаление характеристики");
-        }
-        String key = attributes.delete(id, flag(force));
-        audit.record("SPEC_ATTRIBUTE_DELETE", "SPEC_ATTRIBUTE", id, key + (flag(force) ? ", принудительно" : ""));
-        siteRevalidator.allChanged();
+        catalog.deleteAttribute(id, flag(force));
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/spec-groups")
     public List<AdminSpecGroupDto> groups() {
-        return attributes.groups();
+        return groups.groups();
     }
 
     @PutMapping("/spec-groups")
     @Operation(summary = "Replace the list of groups (409 GROUP_IN_USE when removing a used one)")
-    public List<AdminSpecGroupDto> putGroups(@Valid @RequestBody List<AdminSpecGroupDto> groups) {
-        List<AdminSpecGroupDto> out = attributes.putGroups(groups);
-        audit.record("SPEC_GROUPS_UPDATE", "SPEC_GROUP", null, "групп: " + out.size());
-        siteRevalidator.allChanged();
-        return out;
+    public List<AdminSpecGroupDto> putGroups(@Valid @RequestBody List<AdminSpecGroupDto> input) {
+        return catalog.putGroups(input);
     }
 
     // ------------------------------------------------------------------ schema
@@ -281,12 +219,7 @@ public class AdminCatalogController {
     @Operation(summary = "Import a whole schema (schema-draft.json format; upsert, never deletes; "
             + "optional product_moves [{from_category_slug, to_category_slug}])")
     public CatalogSchemaImporter.Result importSchema(@RequestBody JsonNode body) {
-        CatalogSchemaImporter.Result r = importer.importSchema(body, adminId());
-        audit.record("CATALOG_SCHEMA_IMPORT", "CATALOG", null, "категорий +" + r.categoriesCreated() + " ~"
-                + r.categoriesUpdated() + ", характеристик +" + r.attributesCreated() + " ~" + r.attributesUpdated()
-                + ", опций +" + r.optionsCreated() + ", перенесено товаров " + r.productsMoved());
-        siteRevalidator.allChanged();
-        return r;
+        return catalog.importSchema(body);
     }
 
     // ------------------------------------------------------------------ cards
@@ -306,14 +239,7 @@ public class AdminCatalogController {
     @PutMapping("/cards/import")
     @Operation(summary = "Apply an AI answer: specs/brand/category/description/title/translations, publish")
     public CardsImportResult cardsImport(@RequestBody CardsImportRequest body) {
-        CardsImportResult r = cards.importCards(body, adminId());
-        long published = r.items().stream().filter(i -> i.published()).count();
-        audit.record("CARDS_IMPORT", "PRODUCT", null, "применено " + r.applied() + ", отклонено "
-                + r.rejected().size() + ", замечаний " + r.issues().size()
-                + (r.createdBrands().isEmpty() ? "" : ", новые бренды: " + String.join(", ", r.createdBrands()))
-                + ", на витрине " + published);
-        siteRevalidator.allChanged();
-        return r;
+        return adminCards.importCards(body);
     }
 
     @GetMapping("/cards/{productId}/review")
@@ -327,23 +253,13 @@ public class AdminCatalogController {
     @Operation(summary = "«Принять»: the admin's edits (title/description/specs/uk·en) + READY")
     public CardsImportResult cardAccept(@PathVariable String productId,
                                         @RequestBody(required = false) CatalogDtos.CardAcceptRequest body) {
-        CardsImportResult r = cards.accept(productId, body, adminId());
-        boolean edited = body != null && (body.title() != null || body.description() != null
-                || body.specs() != null || body.translations() != null);
-        audit.record("CARD_ACCEPT", "PRODUCT", productId, (edited ? "принято с правками" : "принято")
-                + (r.issues().isEmpty() ? "" : ", замечаний " + r.issues().size()));
-        if (edited) {
-            siteRevalidator.allChanged();
-        }
-        return r;
+        return adminCards.accept(productId, body);
     }
 
     @PatchMapping("/products/{id}/card-status")
     @Operation(summary = "Card status DRAFT | AI_FILLED | READY («Проверено»)")
     public AdminProductDto cardStatus(@PathVariable String id, @RequestBody CardStatusRequest body) {
-        AdminProductDto p = products.setCardStatus(id, body == null ? null : body.status(), adminId());
-        audit.record("PRODUCT_CARD_STATUS", "PRODUCT", id, p.title() + ": " + p.cardStatus());
-        return p;
+        return adminCards.setCardStatus(id, body == null ? null : body.status());
     }
 
     static boolean flag(String v) {

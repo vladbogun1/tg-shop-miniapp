@@ -38,6 +38,7 @@ class CardsServiceTest {
 
     InMemoryCatalog db;
     CardsService service;
+    CardsImporter importer;
     Category mice;
     Category keyboards;
     Product mouse;
@@ -50,8 +51,9 @@ class CardsServiceTest {
         BrandAdminService brands = new BrandAdminService(db.brandRepository, db.productRepository, db.directory,
                 storage, db.events(storage));
         admins = mock(AdminUserRepository.class);
-        service = new CardsService(db.productRepository, db.directory, brands, db.storedTranslations,
-                db.events(storage), java.time.Clock.systemUTC(), admins);
+        service = new CardsService(db.productRepository, db.directory, db.storedTranslations, admins);
+        importer = new CardsImporter(db.productRepository, db.directory, brands, db.storedTranslations,
+                db.events(storage), java.time.Clock.systemUTC(), new CardMeta(java.time.Clock.systemUTC()));
         mice = db.category("myshki", "Мыши", null);
         keyboards = db.category("klaviatury", "Клавиатуры", null);
         db.category("klv-magnitnye", "Магнитные", keyboards);
@@ -102,14 +104,14 @@ class CardsServiceTest {
 
     @Test
     void mergeKeepsAbsentKeysAndReplaceDropsThem() {
-        service.importCards(new CardsImportRequest(List.of(item(id(), null, null, Map.of("weight_g", 49), null,
+        importer.importCards(new CardsImportRequest(List.of(item(id(), null, null, Map.of("weight_g", 49), null,
                 false, false, null)), false), 1L);
         assertThat(SpecsJson.readMap(mouse.getSpecsJson())).containsEntry("weight_g", 49).containsEntry("wireless", true);
         assertThat(mouse.getCardStatus()).isEqualTo(CardStatus.AI_FILLED);
         assertThat(mouse.getCardConfidence()).isEqualTo(90);
         assertThat(SpecsJson.readMap(mouse.getCardMetaJson())).containsKeys("fields", "sources", "notes", "importedAt");
 
-        service.importCards(new CardsImportRequest(List.of(item(id(), null, null, Map.of("weight_g", 50), null,
+        importer.importCards(new CardsImportRequest(List.of(item(id(), null, null, Map.of("weight_g", 50), null,
                 true, false, null)), true), 7L);
         assertThat(SpecsJson.readMap(mouse.getSpecsJson())).containsOnlyKeys("weight_g");
         assertThat(mouse.getCardStatus()).isEqualTo(CardStatus.READY);
@@ -118,19 +120,19 @@ class CardsServiceTest {
 
     @Test
     void unknownOrParentCategoryIsAnIssueAndTheRestApplies() {
-        CardsImportResult r = service.importCards(new CardsImportRequest(List.of(
+        CardsImportResult r = importer.importCards(new CardsImportRequest(List.of(
                 item(id(), "nope", null, Map.of("weight_g", 49, "dpi", 1), null, false, false, null)), false), 1L);
         assertThat(r.applied()).isEqualTo(1);
         assertThat(r.issues()).extracting(CatalogDtos.CardIssue::reason).containsExactlyInAnyOrder("UNKNOWN_CATEGORY",
                 "UNKNOWN_KEY");
         assertThat(SpecsJson.readMap(mouse.getSpecsJson())).containsEntry("weight_g", 49);
 
-        r = service.importCards(new CardsImportRequest(List.of(item(id(), "klaviatury", null, null, null, false,
+        r = importer.importCards(new CardsImportRequest(List.of(item(id(), "klaviatury", null, null, null, false,
                 false, null)), false), 1L);
         assertThat(r.issues()).extracting(CatalogDtos.CardIssue::reason).containsExactly("CATEGORY_NOT_LEAF");
         assertThat(mouse.getCategoryId()).isEqualTo(mice.getId());
 
-        r = service.importCards(new CardsImportRequest(List.of(
+        r = importer.importCards(new CardsImportRequest(List.of(
                 new CardImportItem("00000000-0000-0000-0000-000000000000", null, null, null, null, null, null, null,
                         null, null, null, null, null, null, null, null, null)), false), 1L);
         assertThat(r.rejected()).extracting(CatalogDtos.CardRejected::reason).containsExactly("NOT_FOUND");
@@ -138,12 +140,12 @@ class CardsServiceTest {
 
     @Test
     void brandsAreFoundByAliasOrCreated() {
-        CardsImportResult r = service.importCards(new CardsImportRequest(List.of(
+        CardsImportResult r = importer.importCards(new CardsImportRequest(List.of(
                 item(id(), null, "lamzu maya", null, null, false, false, null)), false), 1L);
         assertThat(r.createdBrands()).isEmpty();
         assertThat(UuidUtil.toString(mouse.getBrandId())).isEqualTo(UuidUtil.toString(db.brands.get(0).getId()));
 
-        r = service.importCards(new CardsImportRequest(List.of(
+        r = importer.importCards(new CardsImportRequest(List.of(
                 item(id(), null, "VAXEE", null, null, false, false, null)), false), 1L);
         assertThat(r.createdBrands()).containsExactly("VAXEE");
         assertThat(db.brands).extracting(Brand::getSlug).contains("vaxee");
@@ -154,19 +156,19 @@ class CardsServiceTest {
         mouse.setActive(false);
         mouse.setUnfinished(true);
         // only a brand → no content → stays DRAFT → not published
-        CardsImportResult r = service.importCards(new CardsImportRequest(List.of(
+        CardsImportResult r = importer.importCards(new CardsImportRequest(List.of(
                 item(id(), null, "Lamzu", null, null, false, true, null)), false), 1L);
         assertThat(r.items().get(0).published()).isFalse();
         assertThat(r.items().get(0).reason()).isEqualTo("CARD_NOT_READY");
 
         mouse.setPriceMinor(0);
-        r = service.importCards(new CardsImportRequest(List.of(
+        r = importer.importCards(new CardsImportRequest(List.of(
                 item(id(), null, null, Map.of("weight_g", 49), null, false, true, null)), false), 1L);
         assertThat(r.items().get(0).reason()).isEqualTo("NOT_PUBLISHABLE: price");
         assertThat(mouse.isActive()).isFalse();
 
         mouse.setPriceMinor(1000_00);
-        r = service.importCards(new CardsImportRequest(List.of(
+        r = importer.importCards(new CardsImportRequest(List.of(
                 item(id(), null, null, Map.of("weight_g", 49), null, false, true, null)), false), 1L);
         assertThat(r.items().get(0).published()).isTrue();
         assertThat(mouse.isActive()).isTrue();
@@ -182,7 +184,7 @@ class CardsServiceTest {
         manual.setOrigin(TranslationOrigin.MANUAL);
         db.translations.add(manual);
 
-        CardsImportResult r = service.importCards(new CardsImportRequest(List.of(item(id(), null, null, null,
+        CardsImportResult r = importer.importCards(new CardsImportRequest(List.of(item(id(), null, null, null,
                 "Новое описание", false, false, Map.of(
                         "uk", new CardTranslation("Lamzu Maya укр", "Новий опис", null),
                         "en", new CardTranslation(null, "New description", "  ")))), false), 1L);
@@ -248,7 +250,7 @@ class CardsServiceTest {
     @Test
     void importKeepsASnapshotOfWhatChangedAndTheNextImportReplacesIt() {
         mouse.setTitle("Lamzu Maya old");
-        service.importCards(new CardsImportRequest(List.of(new CardImportItem(id(), null, "VAXEE",
+        importer.importCards(new CardsImportRequest(List.of(new CardImportItem(id(), null, "VAXEE",
                 Map.of("weight_g", 49, "wireless", true), Map.of("weight_g", 95, "wireless", 40), 90, "Новое описание",
                 List.of("https://lamzu.com"), null, "gpt", false, null, null, "Lamzu Maya", Map.of(
                         "uk", new CardTranslation("Lamzu Maya", null, null)),
@@ -271,7 +273,7 @@ class CardsServiceTest {
                 .containsEntry("c", 95).containsEntry("src", "https://lamzu.com/maya");
 
         // the next AI import replaces the snapshot: only its own changes
-        service.importCards(new CardsImportRequest(List.of(item(id(), null, null, Map.of("weight_g", 50), null,
+        importer.importCards(new CardsImportRequest(List.of(item(id(), null, null, Map.of("weight_g", 50), null,
                 false, false, null)), false), 1L);
         changed = at(last(), "changed");
         assertThat(changed).doesNotContainKey("brand");
@@ -282,7 +284,7 @@ class CardsServiceTest {
 
     @Test
     void acceptMergesTheAdminsEditsIntoTheSnapshotAndMarksReady() {
-        service.importCards(new CardsImportRequest(List.of(item(id(), null, null, Map.of("weight_g", 49), null,
+        importer.importCards(new CardsImportRequest(List.of(item(id(), null, null, Map.of("weight_g", 49), null,
                 false, false, null)), false), 1L);
         assertThat(mouse.getCardStatus()).isEqualTo(CardStatus.AI_FILLED);
         ContentTranslation manualText = new ContentTranslation(new ContentTranslationId(TranslationEntityType.PRODUCT,
@@ -292,7 +294,7 @@ class CardsServiceTest {
         manualText.setOrigin(TranslationOrigin.MANUAL);
         db.translations.add(manualText);
 
-        service.accept(id(), new CardAcceptRequest(null, null, Map.of("weight_g", 52, "wireless", false),
+        importer.accept(id(), new CardAcceptRequest(null, null, Map.of("weight_g", 52, "wireless", false),
                 Map.of("en", new CardTranslation(null, "Edited", null)), null), 7L);
 
         assertThat(mouse.getCardStatus()).isEqualTo(CardStatus.READY);
@@ -314,7 +316,7 @@ class CardsServiceTest {
         // plain «Принять» without edits: only the status, the snapshot is untouched
         mouse.setCardStatus(CardStatus.AI_FILLED);
         Map<String, Object> before = last();
-        service.accept(id(), null, 7L);
+        importer.accept(id(), null, 7L);
         assertThat(mouse.getCardStatus()).isEqualTo(CardStatus.READY);
         assertThat(last()).isEqualTo(before);
     }
@@ -325,7 +327,7 @@ class CardsServiceTest {
         admin.setTelegramUserId(7L);
         admin.setName("Влад");
         when(admins.findById(7L)).thenReturn(Optional.of(admin));
-        service.importCards(new CardsImportRequest(List.of(item(id(), null, null, Map.of("weight_g", 49),
+        importer.importCards(new CardsImportRequest(List.of(item(id(), null, null, Map.of("weight_g", 49),
                 "Новое описание", true, false, Map.of("uk", new CardTranslation(null, "Новий опис", null)))),
                 false), 7L);
 

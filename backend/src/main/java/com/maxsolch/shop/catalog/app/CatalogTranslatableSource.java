@@ -9,7 +9,7 @@ import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.catalog.infra.ProductVariantRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.translation.app.TranslatableSource;
-import com.maxsolch.shop.translation.app.TranslationAdminService;
+import com.maxsolch.shop.translation.app.TranslationLimits;
 import com.maxsolch.shop.translation.app.TranslationService.Key;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import org.springframework.stereotype.Component;
@@ -23,7 +23,7 @@ import java.util.Set;
 @Component
 public class CatalogTranslatableSource implements TranslatableSource {
 
-    private static final int TEXT = TranslationAdminService.MAX_TEXT_CHARS;
+    private static final int TEXT = TranslationLimits.MAX_TEXT_CHARS;
 
     /** Column sizes of the Russian sources ({@code entityType:field} to max chars). */
     private static final Map<String, Integer> MAX_CHARS = Map.ofEntries(
