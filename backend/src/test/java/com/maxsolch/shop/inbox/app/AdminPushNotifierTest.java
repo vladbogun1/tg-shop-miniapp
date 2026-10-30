@@ -1,8 +1,8 @@
-package com.maxsolch.shop.notification.app;
+package com.maxsolch.shop.inbox.app;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.inbox.app.InboxDtos.Inbox;
-import com.maxsolch.shop.inbox.app.InboxService;
+import com.maxsolch.shop.notification.app.AdminPushService;
 import com.maxsolch.shop.media.app.MediaSigner;
 import com.maxsolch.shop.notification.app.AdminPushService.PushMessage;
 import com.maxsolch.shop.order.app.OrderEvents;
@@ -27,7 +27,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /** Which events ping the owner's phone, with what text and which screen a tap opens. */
-class PushNotificationListenerTest {
+class AdminPushNotifierTest {
 
     static final String ORDER = "9a6feb7d-08a9-4ecb-b046-7d1e9ccd9b97";
 
@@ -35,7 +35,7 @@ class PushNotificationListenerTest {
     JdbcTemplate jdbc;
     InboxService inbox;
     MediaSigner media;
-    PushNotificationListener listener;
+    AdminPushNotifier listener;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
@@ -44,7 +44,7 @@ class PushNotificationListenerTest {
         jdbc = mock(JdbcTemplate.class);
         inbox = mock(InboxService.class);
         media = mock(MediaSigner.class);
-        listener = new PushNotificationListener(push, jdbc, inbox, media);
+        listener = new AdminPushNotifier(push, new PushOrderQueries(jdbc), inbox, media);
         when(jdbc.queryForList(anyString(), eq(String.class), any(Object.class))).thenReturn(List.of("Иван Петров"));
         when(media.signedUrl("chat/a.jpg")).thenReturn("/api/media?key=chat%2Fa.jpg&exp=1&sig=s");
         // The push thread runs inline in the test.
@@ -53,7 +53,7 @@ class PushNotificationListenerTest {
             return null;
         }).when(push).runAsync(any());
         when(jdbc.query(anyString(), any(RowMapper.class), any(Object.class))).thenReturn(List.of(
-                new PushNotificationListener.OrderInfo(ORDER, "9a6feb7d", 130000, "UAH", "WEB")));
+                new PushOrderQueries.OrderInfo(ORDER, "9a6feb7d", 130000, "UAH", "WEB")));
         when(inbox.inbox()).thenReturn(new Inbox(Instant.now(), 4, List.of(), 2, 24, 14));
     }
 
@@ -103,7 +103,7 @@ class PushNotificationListenerTest {
         PushMessage m = sent();
         assertThat(m.title()).isEqualTo("📷 Иван П. · #9a6feb7d");
         assertThat(m.body()).isEqualTo("Фото");
-        assertThat(m.image()).isEqualTo("/api/media?key=chat%2Fa.jpg&exp=1&sig=s&w=" + PushNotificationListener.IMAGE_WIDTH);
+        assertThat(m.image()).isEqualTo("/api/media?key=chat%2Fa.jpg&exp=1&sig=s&w=" + AdminPushNotifier.IMAGE_WIDTH);
         assertThat(m.group().line()).isEqualTo("📷 Фото");
     }
 
@@ -119,11 +119,11 @@ class PushNotificationListenerTest {
 
     @Test
     void customerNames() {
-        assertThat(PushNotificationListener.shortName("Иван Петров")).isEqualTo("Иван П.");
-        assertThat(PushNotificationListener.shortName("  иван  петров сидорович ")).isEqualTo("иван П.");
-        assertThat(PushNotificationListener.shortName("Иван")).isEqualTo("Иван");
-        assertThat(PushNotificationListener.shortName(" ")).isEqualTo("Клиент");
-        assertThat(PushNotificationListener.shortName(null)).isEqualTo("Клиент");
+        assertThat(AdminPushNotifier.shortName("Иван Петров")).isEqualTo("Иван П.");
+        assertThat(AdminPushNotifier.shortName("  иван  петров сидорович ")).isEqualTo("иван П.");
+        assertThat(AdminPushNotifier.shortName("Иван")).isEqualTo("Иван");
+        assertThat(AdminPushNotifier.shortName(" ")).isEqualTo("Клиент");
+        assertThat(AdminPushNotifier.shortName(null)).isEqualTo("Клиент");
     }
 
     @Test

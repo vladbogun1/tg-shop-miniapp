@@ -1,9 +1,7 @@
 package com.maxsolch.shop.notification.api;
 
-import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.notification.app.BroadcastService;
-import com.maxsolch.shop.platform.web.SecurityUtil;
 import com.maxsolch.shop.notification.app.BroadcastHistoryDto;
 import com.maxsolch.shop.notification.app.BroadcastRequest;
 import com.maxsolch.shop.notification.app.BroadcastResult;
@@ -31,12 +29,9 @@ import java.util.Map;
 public class AdminBroadcastController {
 
     private final BroadcastService broadcastService;
-    private final AdminAuditService audit;
 
-    public AdminBroadcastController(BroadcastService broadcastService,
-                                    AdminAuditService audit) {
+    public AdminBroadcastController(BroadcastService broadcastService) {
         this.broadcastService = broadcastService;
-        this.audit = audit;
     }
 
     @GetMapping("/audiences")
@@ -60,28 +55,12 @@ public class AdminBroadcastController {
     @PostMapping("/test")
     @Operation(summary = "Send one test message (telegramUserId null = to yourself)")
     public BroadcastResult test(@Valid @RequestBody BroadcastTestRequest req) {
-        long to = req.telegramUserId() != null ? req.telegramUserId() : SecurityUtil.currentUserId();
-        BroadcastResult result = broadcastService.test(req.text(), to, req.withButton(), req.buttonText());
-        audit.record("BROADCAST_TEST", "BROADCAST", null,
-                "тест → " + (req.telegramUserId() == null ? "себе" : String.valueOf(to))
-                        + (result.ok() ? "" : " (" + result.detail() + ")"));
-        return result;
+        return broadcastService.sendTest(req);
     }
 
     @PostMapping
     @Operation(summary = "Start an async broadcast to the chosen audience")
     public BroadcastStatus start(@Valid @RequestBody BroadcastRequest req) {
-        BroadcastService.Started started = broadcastService.start(req,
-                SecurityUtil.currentUserId(), audit.currentAdminName());
-        // Written after the start succeeded: a refused start ("уже идёт") is not an action.
-        String langs = (req.textUk() != null && !req.textUk().isBlank() ? " uk" : "")
-                + (req.textRu() != null && !req.textRu().isBlank() ? " ru" : "")
-                + (req.textEn() != null && !req.textEn().isBlank() ? " en" : "");
-        audit.record("BROADCAST_START", "BROADCAST", String.valueOf(started.historyId()),
-                "аудитория " + (req.audience() == null ? "all" : req.audience())
-                        + (req.lang() == null || req.lang().isBlank() ? "" : ", язык " + req.lang())
-                        + ", получателей " + started.recipients()
-                        + (langs.isEmpty() ? "" : ", версии:" + langs));
-        return started.status();
+        return broadcastService.startAsAdmin(req);
     }
 }

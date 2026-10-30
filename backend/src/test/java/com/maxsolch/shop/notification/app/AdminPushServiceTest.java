@@ -1,5 +1,6 @@
 package com.maxsolch.shop.notification.app;
 
+import com.maxsolch.shop.inbox.app.AdminPushNotifier;
 import com.maxsolch.shop.notification.infra.PushSubscriptionStore;
 import com.maxsolch.shop.notification.infra.PushTransport;
 import com.maxsolch.shop.notification.infra.WebPushCrypto;
@@ -192,10 +193,10 @@ class AdminPushServiceTest {
 
     @Test
     void moneyAndSourceLabels() {
-        assertThat(PushNotificationListener.money(130000, "UAH")).isEqualTo("1 300 ₴");
-        assertThat(PushNotificationListener.money(99950, "UAH")).isEqualTo("999,50 ₴");
-        assertThat(PushNotificationListener.sourceLabel("WEB")).isEqualTo("сайт");
-        assertThat(PushNotificationListener.sourceLabel("MINIAPP")).isEqualTo("Mini App");
+        assertThat(AdminPushNotifier.money(130000, "UAH")).isEqualTo("1 300 ₴");
+        assertThat(AdminPushNotifier.money(99950, "UAH")).isEqualTo("999,50 ₴");
+        assertThat(AdminPushNotifier.sourceLabel("WEB")).isEqualTo("сайт");
+        assertThat(AdminPushNotifier.sourceLabel("MINIAPP")).isEqualTo("Mini App");
     }
 
     private static AppProperties props(String pub, String priv, String subject) {

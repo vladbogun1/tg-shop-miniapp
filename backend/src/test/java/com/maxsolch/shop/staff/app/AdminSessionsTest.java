@@ -1,6 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
-import com.maxsolch.shop.notification.infra.PushSubscriptionStore;
+import com.maxsolch.shop.notification.app.AdminPushService;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import com.maxsolch.shop.platform.security.AdminTokenValidator;
 import org.junit.jupiter.api.Test;
@@ -20,7 +20,7 @@ class AdminSessionsTest {
     private final AdminUserRepository repo = mock(AdminUserRepository.class);
     private final AdminTokenValidator validator = mock(AdminTokenValidator.class);
     private final TrustedDeviceService devices = mock(TrustedDeviceService.class);
-    private final PushSubscriptionStore push = mock(PushSubscriptionStore.class);
+    private final AdminPushService push = mock(AdminPushService.class);
     private final AdminSessions sessions = new AdminSessions(repo, validator, devices, push);
 
     @Test
@@ -33,7 +33,7 @@ class AdminSessionsTest {
         verify(repo).bumpTokenVersion(7L);
         verify(validator).invalidate(7L);
         verify(devices).revokeAll(7L);
-        verify(push).deleteByAdmin(7L);
-        verify(push, never()).deleteByAdmin(8L);
+        verify(push).forgetAdmin(7L);
+        verify(push, never()).forgetAdmin(8L);
     }
 }

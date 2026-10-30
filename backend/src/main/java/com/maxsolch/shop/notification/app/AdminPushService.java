@@ -229,6 +229,11 @@ public class AdminPushService {
         });
     }
 
+    /** The admin signed out everywhere: every device of theirs stops getting notifications. */
+    public int forgetAdmin(long adminId) {
+        return store.deleteByAdmin(adminId);
+    }
+
     /** Runs {@code task} on the push thread (the listener loads the order there, off the request). */
     public void runAsync(Runnable task) {
         if (!enabled()) {

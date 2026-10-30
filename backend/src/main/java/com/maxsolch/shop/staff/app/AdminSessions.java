@@ -1,6 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
-import com.maxsolch.shop.notification.infra.PushSubscriptionStore;
+import com.maxsolch.shop.notification.app.AdminPushService;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import com.maxsolch.shop.platform.security.AdminTokenValidator;
 import org.springframework.stereotype.Service;
@@ -18,12 +18,12 @@ public class AdminSessions {
     private final AdminUserRepository adminUserRepository;
     private final AdminTokenValidator adminTokenValidator;
     private final TrustedDeviceService trustedDevices;
-    private final PushSubscriptionStore pushSubscriptions;
+    private final AdminPushService pushSubscriptions;
 
     public AdminSessions(AdminUserRepository adminUserRepository,
                          AdminTokenValidator adminTokenValidator,
                          TrustedDeviceService trustedDevices,
-                         PushSubscriptionStore pushSubscriptions) {
+                         AdminPushService pushSubscriptions) {
         this.adminUserRepository = adminUserRepository;
         this.adminTokenValidator = adminTokenValidator;
         this.trustedDevices = trustedDevices;
@@ -34,7 +34,7 @@ public class AdminSessions {
     public int revokeEverything(long adminId) {
         adminUserRepository.bumpTokenVersion(adminId);
         adminTokenValidator.invalidate(adminId);
-        pushSubscriptions.deleteByAdmin(adminId);
+        pushSubscriptions.forgetAdmin(adminId);
         return trustedDevices.revokeAll(adminId);
     }
 }

@@ -1,15 +1,16 @@
-package com.maxsolch.shop.notification.app;
+package com.maxsolch.shop.inbox.app;
 
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.inbox.app.InboxService;
 import com.maxsolch.shop.media.app.MediaSigner;
+import com.maxsolch.shop.notification.app.AdminPushService;
 import com.maxsolch.shop.notification.app.AdminPushService.PushMessage;
+import com.maxsolch.shop.inbox.app.PushOrderQueries.OrderInfo;
 import com.maxsolch.shop.order.app.OrderEvents;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -27,31 +28,27 @@ import java.util.Locale;
  */
 @Slf4j
 @Component
-public class PushNotificationListener {
+public class AdminPushNotifier {
 
     private final AdminPushService push;
-    private final JdbcTemplate jdbc;
+    private final PushOrderQueries queries;
     private final InboxService inbox;
     private final MediaSigner media;
 
     /** Photo preview width: one of MediaThumbnailer's widths, plenty for a notification picture. */
     static final int IMAGE_WIDTH = 480;
 
-    public PushNotificationListener(AdminPushService push, JdbcTemplate jdbc, InboxService inbox, MediaSigner media) {
+    public AdminPushNotifier(AdminPushService push, PushOrderQueries queries, InboxService inbox, MediaSigner media) {
         this.push = push;
-        this.jdbc = jdbc;
+        this.queries = queries;
         this.inbox = inbox;
         this.media = media;
-    }
-
-    /** Amount + where the order came from, read fresh after the commit. */
-    record OrderInfo(String id, String shortId, long totalMinor, String currency, String source) {
     }
 
     @TransactionalEventListener(fallbackExecution = true)
     public void onCreated(OrderEvents.Created event) {
         byte[] id = event.orderId();
-        push.runAsync(() -> order(id).ifPresent(o -> push.notifyAdmins(new PushMessage(
+        push.runAsync(() -> queries.order(id).ifPresent(o -> push.notifyAdmins(new PushMessage(
                 "Новый заказ #" + o.shortId(),
                 money(o.totalMinor(), o.currency()) + " · " + sourceLabel(o.source()),
                 "/orders/" + o.id(), "order-" + o.id(), badge(), true))));
@@ -61,7 +58,7 @@ public class PushNotificationListener {
     public void onPaymentReceived(OrderEvents.PaymentReceived event) {
         byte[] id = event.orderId();
         long amount = event.amountMinor();
-        push.runAsync(() -> order(id).ifPresent(o -> push.notifyAdmins(new PushMessage(
+        push.runAsync(() -> queries.order(id).ifPresent(o -> push.notifyAdmins(new PushMessage(
                 "Оплачено онлайн #" + o.shortId(),
                 money(amount, o.currency()) + " через monobank — подтвердите заказ",
                 "/orders/" + o.id(), "paid-" + o.id(), badge(), true))));
@@ -70,7 +67,7 @@ public class PushNotificationListener {
     @TransactionalEventListener(fallbackExecution = true)
     public void onCancelRequested(OrderEvents.CancelRequested event) {
         byte[] id = event.orderId();
-        push.runAsync(() -> order(id).ifPresent(o -> push.notifyAdmins(new PushMessage(
+        push.runAsync(() -> queries.order(id).ifPresent(o -> push.notifyAdmins(new PushMessage(
                 "Запрос отмены #" + o.shortId(),
                 "Покупатель просит отменить оплаченный заказ — одобрите или отклоните",
                 "/orders/" + o.id(), "cancel-" + o.id(), badge(), true))));
@@ -84,7 +81,7 @@ public class PushNotificationListener {
         byte[] id = event.orderId();
         // The text itself is shown, like any messenger does: hiding it on a locked screen is the
         // phone's own setting (Android «скрывать содержимое», iOS «Показ миниатюр»).
-        push.runAsync(() -> order(id).ifPresent(o -> push.notifyAdmins(chatMessage(o, customerName(id), event))));
+        push.runAsync(() -> queries.order(id).ifPresent(o -> push.notifyAdmins(chatMessage(o, queries.customerName(id), event))));
     }
 
     /** «💬 Иван П. · #467611ad» + what was written; a photo comes with its preview. */
@@ -129,28 +126,6 @@ public class PushNotificationListener {
                 "/inbox", "site-error", badge(), false)));
     }
 
-    java.util.Optional<OrderInfo> order(byte[] orderId) {
-        List<OrderInfo> rows = jdbc.query(
-                "select total_minor, currency, source from orders where id = ?",
-                (rs, i) -> {
-                    String uuid = UuidUtil.toString(orderId);
-                    return new OrderInfo(uuid, uuid.substring(0, 8), rs.getLong("total_minor"),
-                            rs.getString("currency"), rs.getString("source"));
-                },
-                (Object) orderId);
-        return rows.stream().findFirst();
-    }
-
-    String customerName(byte[] orderId) {
-        try {
-            List<String> names = jdbc.queryForList("select customer_name from orders where id = ?", String.class, (Object) orderId);
-            return names.isEmpty() ? null : names.get(0);
-        } catch (RuntimeException e) {
-            log.debug("Customer name for push failed: {}", e.toString());
-            return null;
-        }
-    }
-
     /** «Иван Петров» → «Иван П.»: enough to recognise the customer, less to read over a shoulder. */
     static String shortName(String name) {
         if (blank(name)) {
@@ -181,13 +156,13 @@ public class PushNotificationListener {
         }
     }
 
-    static String money(long minor, String currency) {
+    public static String money(long minor, String currency) {
         return currency == null || "UAH".equalsIgnoreCase(currency)
                 ? MoneyFormat.uah(minor)
                 : MoneyFormat.amount(minor) + " " + currency;
     }
 
-    static String sourceLabel(String source) {
+    public static String sourceLabel(String source) {
         if (source == null) {
             return "Mini App";
         }
