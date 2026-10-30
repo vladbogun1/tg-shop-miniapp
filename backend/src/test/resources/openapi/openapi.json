@@ -6563,6 +6563,81 @@
         },
         "type" : "object"
       },
+      "JournalActivityFeedRow" : {
+        "properties" : {
+          "chatId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "customerName" : {
+            "type" : "string"
+          },
+          "customerUsername" : {
+            "type" : "string"
+          },
+          "details" : {
+            "type" : "string"
+          },
+          "error" : {
+            "type" : "string"
+          },
+          "errorCode" : {
+            "type" : "string"
+          },
+          "groupId" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "orderId" : {
+            "type" : "string"
+          },
+          "recipient" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "string"
+          },
+          "source" : {
+            "type" : "string"
+          },
+          "summary" : {
+            "type" : "string"
+          },
+          "tgUserId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "chatId",
+          "createdAt",
+          "customerName",
+          "customerUsername",
+          "details",
+          "error",
+          "errorCode",
+          "groupId",
+          "id",
+          "orderId",
+          "recipient",
+          "result",
+          "source",
+          "summary",
+          "tgUserId",
+          "type"
+        ],
+        "type" : "object"
+      },
       "JsonNode" : { },
       "Keys" : {
         "properties" : {
@@ -9190,7 +9265,7 @@
         "properties" : {
           "items" : {
             "items" : {
-              "$ref" : "#/components/schemas/PlatformActivityLogStoreRow"
+              "$ref" : "#/components/schemas/JournalActivityFeedRow"
             },
             "type" : "array"
           },
@@ -9338,96 +9413,6 @@
           "prevTo",
           "to",
           "token"
-        ],
-        "type" : "object"
-      },
-      "PlatformActivityLogStoreRow" : {
-        "properties" : {
-          "chatId" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "createdAt" : {
-            "format" : "date-time",
-            "type" : "string"
-          },
-          "customerName" : {
-            "type" : "string"
-          },
-          "customerUsername" : {
-            "type" : "string"
-          },
-          "details" : {
-            "type" : "string"
-          },
-          "error" : {
-            "type" : "string"
-          },
-          "errorCode" : {
-            "type" : "string"
-          },
-          "groupId" : {
-            "type" : "string"
-          },
-          "id" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "orderId" : {
-            "type" : "string"
-          },
-          "recipient" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "string"
-          },
-          "source" : {
-            "type" : "string"
-          },
-          "summary" : {
-            "type" : "string"
-          },
-          "tgUserId" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "type" : {
-            "type" : "string"
-          }
-        },
-        "required" : [
-          "chatId",
-          "createdAt",
-          "customerName",
-          "customerUsername",
-          "details",
-          "error",
-          "errorCode",
-          "groupId",
-          "id",
-          "orderId",
-          "recipient",
-          "result",
-          "source",
-          "summary",
-          "tgUserId",
-          "type"
-        ],
-        "type" : "object"
-      },
-      "PlatformSettingDefinitionOption" : {
-        "properties" : {
-          "label" : {
-            "type" : "string"
-          },
-          "value" : {
-            "type" : "string"
-          }
-        },
-        "required" : [
-          "label",
-          "value"
         ],
         "type" : "object"
       },
@@ -11504,7 +11489,7 @@
           },
           "options" : {
             "items" : {
-              "$ref" : "#/components/schemas/PlatformSettingDefinitionOption"
+              "$ref" : "#/components/schemas/SettingsSettingDefinitionOption"
             },
             "type" : "array"
           },
@@ -11582,6 +11567,21 @@
         "required" : [
           "groups",
           "items"
+        ],
+        "type" : "object"
+      },
+      "SettingsSettingDefinitionOption" : {
+        "properties" : {
+          "label" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "label",
+          "value"
         ],
         "type" : "object"
       },

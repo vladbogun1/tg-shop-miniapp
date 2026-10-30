@@ -6555,6 +6555,28 @@ export interface components {
             unitPriceFx?: number;
             variantId?: string;
         };
+        JournalActivityFeedRow: {
+            /** Format: int64 */
+            chatId: number;
+            /** Format: date-time */
+            createdAt: string;
+            customerName: string;
+            customerUsername: string;
+            details: string;
+            error: string;
+            errorCode: string;
+            groupId: string;
+            /** Format: int64 */
+            id: number;
+            orderId: string;
+            recipient: string;
+            result: string;
+            source: string;
+            summary: string;
+            /** Format: int64 */
+            tgUserId: number;
+            type: string;
+        };
         JsonNode: unknown;
         Keys: {
             auth: string;
@@ -7331,7 +7353,7 @@ export interface components {
             unreadCount: number;
         };
         Page: {
-            items: components["schemas"]["PlatformActivityLogStoreRow"][];
+            items: components["schemas"]["JournalActivityFeedRow"][];
             totals: {
                 [key: string]: number;
             };
@@ -7376,32 +7398,6 @@ export interface components {
             /** Format: date-time */
             to: string;
             token: string;
-        };
-        PlatformActivityLogStoreRow: {
-            /** Format: int64 */
-            chatId: number;
-            /** Format: date-time */
-            createdAt: string;
-            customerName: string;
-            customerUsername: string;
-            details: string;
-            error: string;
-            errorCode: string;
-            groupId: string;
-            /** Format: int64 */
-            id: number;
-            orderId: string;
-            recipient: string;
-            result: string;
-            source: string;
-            summary: string;
-            /** Format: int64 */
-            tgUserId: number;
-            type: string;
-        };
-        PlatformSettingDefinitionOption: {
-            label: string;
-            value: string;
         };
         Point: {
             /** Format: int64 */
@@ -8050,7 +8046,7 @@ export interface components {
             maxLength: number;
             /** Format: int64 */
             min: number;
-            options: components["schemas"]["PlatformSettingDefinitionOption"][];
+            options: components["schemas"]["SettingsSettingDefinitionOption"][];
             overridden: boolean;
             type: string;
             unit: string;
@@ -8067,6 +8063,10 @@ export interface components {
         SettingsResponse: {
             groups: components["schemas"]["SettingsGroupDto"][];
             items: components["schemas"]["SettingItemDto"][];
+        };
+        SettingsSettingDefinitionOption: {
+            label: string;
+            value: string;
         };
         SettingsUpdateRequest: {
             values?: {
