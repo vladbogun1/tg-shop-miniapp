@@ -26,13 +26,13 @@ public class MyReviews {
         try {
             result = reviews.submit(actor.userId(), req);
         } catch (RuntimeException e) {
-            activity.record(ActivityLog.fromRequest("REVIEW_FAILED")
+            activity.record(activity.fromRequest("REVIEW_FAILED")
                     .text("Отзыв не принят: " + e.getMessage()).rejected(e));
             throw e;
         }
         if (result != null && result.review() != null) {
             var r = result.review();
-            activity.record(ActivityLog.fromRequest("REVIEW_SUBMITTED")
+            activity.record(activity.fromRequest("REVIEW_SUBMITTED")
                     .order(r.orderId())
                     .text("Отзыв " + "★".repeat(Math.max(0, Math.min(5, r.rating()))) + " на «" + r.title() + "»"
                             + (result.bonus() != null ? " · выдан бонус −" + ReviewRules.discountRu(

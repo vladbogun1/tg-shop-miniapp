@@ -34,6 +34,11 @@ class OrderPlacementTest {
     private final ActivityLog activity = mock(ActivityLog.class);
     private final OrderPlacement placement = new OrderPlacement(checkout, lookup, users, idempotency, guard, activity);
 
+    {
+        org.mockito.Mockito.when(activity.fromRequest(org.mockito.ArgumentMatchers.anyString()))
+                .thenAnswer(i -> ActivityLog.Entry.of(ActivityLog.MINIAPP, i.getArgument(0)));
+    }
+
     private static CreateOrderCommand draft() {
         return new CreateOrderCommand(7L, 7L, null, List.of(new CreateOrderCommand.Line("p", null, 1)),
                 "Имя", "+380", null, null, "PICKUP", null, null, null, null, "opt", null, null);

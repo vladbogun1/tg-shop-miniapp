@@ -153,7 +153,7 @@ final class NotifyHarness {
             }).when(bot).execute(any(org.telegram.telegrambots.meta.api.methods.send.SendDocument.class));
             doAnswer(inv -> {
                 events.add(render((ActivityLog.Entry) inv.getArgument(0)));
-                return ((ActivityLog.BotCall<?>) inv.getArgument(1)).call();
+                return ((ActivityLog.BotCall<?, ?>) inv.getArgument(1)).call();
             }).when(activity).bot(any(), any());
             doAnswer(inv -> {
                 events.add(render((ActivityLog.Entry) inv.getArgument(0)));

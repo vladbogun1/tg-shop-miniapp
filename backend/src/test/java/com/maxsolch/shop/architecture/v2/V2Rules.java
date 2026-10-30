@@ -64,11 +64,17 @@ final class V2Rules {
     private static final Set<String> OLD_EXCEPTIONS = Set.of("BadRequestException", "NotFoundException",
             "ConflictException", "ForbiddenException", "UnauthorizedException", "TooManyRequestsException");
 
+    /**
+     * The one JdbcTemplate user outside infra: ShedLock's JDBC lock provider is built from a JdbcTemplate. It is wiring
+     * (a bean definition), not data access, and it has to live next to {@code @EnableSchedulerLock}.
+     */
+    private final String jobsConfig;
     private final Placement placement;
     private final String root;
 
     V2Rules(String root) {
         this.root = root;
+        this.jobsConfig = root + ".platform.jobs.JobsConfig";
         this.placement = new Placement(root);
     }
 
@@ -179,7 +185,7 @@ final class V2Rules {
                 out.add(new Violation("CA", from.module(), detail));
             }
             if (JDBC.contains(tn) && from.layer() != Layer.INFRA && !c.getSimpleName().endsWith("Store")
-                    && !c.getSimpleName().endsWith("Queries")) {
+                    && !c.getSimpleName().endsWith("Queries") && !origin.equals(jobsConfig)) {
                 out.add(new Violation("S1", from.module(), detail));
             }
         }

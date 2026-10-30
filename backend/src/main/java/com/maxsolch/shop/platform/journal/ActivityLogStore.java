@@ -1,5 +1,6 @@
 package com.maxsolch.shop.platform.journal;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -16,6 +17,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import static com.maxsolch.shop.platform.util.Texts.ellipsize;
+
 /**
  * Reads of {@code activity_log} for the admin «Журнал → Бот и сайт» tab: the filtered feed, filter
  * values, the per-broadcast delivery breakdown and the 24 h counters; plus the retention purge.
@@ -31,6 +34,55 @@ public class ActivityLogStore {
 
     public ActivityLogStore(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
+    }
+
+    private static final String INSERT = "INSERT INTO activity_log "
+            + "(created_at, source, type, result, recipient, tg_user_id, chat_id, order_id, group_id, summary, "
+            + "error_code, error, details) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    private static final ObjectMapper JSON = new ObjectMapper();
+
+    /** Writes one journal row; the customer of the order is looked up when the entry has an order but no customer. */
+    void write(ActivityLog.Entry e) {
+        Long tgUserId = e.tgUserId;
+        if (tgUserId == null && e.orderId != null && !ActivityLog.TO_ADMINS.equals(e.recipient)) {
+            tgUserId = orderCustomer(e.orderId);
+        }
+        jdbc.update(INSERT,
+                Timestamp.from(e.at),
+                e.source,
+                ellipsize(e.type, 48),
+                e.result == null ? ActivityLog.OK : e.result,
+                e.recipient,
+                tgUserId,
+                e.chatId,
+                e.orderId,
+                ellipsize(e.groupId, 64),
+                ellipsize(e.summary, 500),
+                ellipsize(e.errorCode, 32),
+                ellipsize(e.error, 500),
+                detailsJson(e.details));
+    }
+
+    private Long orderCustomer(byte[] orderId) {
+        try {
+            List<Long> ids = jdbc.queryForList("SELECT tg_user_id FROM orders WHERE id = ?", Long.class, orderId);
+            return ids.isEmpty() ? null : ids.get(0);
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    private static String detailsJson(Map<String, Object> details) {
+        if (details == null || details.isEmpty()) {
+            return null;
+        }
+        try {
+            String s = JSON.writeValueAsString(details);
+            return s.length() <= 2000 ? s : null;
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     /** Filters of the feed; null = any. */

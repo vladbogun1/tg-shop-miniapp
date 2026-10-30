@@ -1,24 +1,18 @@
 package com.maxsolch.shop.platform.journal;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.Role;
-import com.maxsolch.shop.platform.web.SecurityUtil;
+import com.maxsolch.shop.platform.tx.DomainEvents;
+import com.maxsolch.shop.platform.tx.OnCommitted;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 
-import java.io.IOException;
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -65,26 +59,29 @@ public class ActivityLog {
         return "broadcast:" + broadcastId;
     }
 
-    private static final String INSERT = "INSERT INTO activity_log "
-            + "(created_at, source, type, result, recipient, tg_user_id, chat_id, order_id, group_id, summary, "
-            + "error_code, error, details) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-    private static final ObjectMapper JSON = new ObjectMapper();
     /** {@code bot123456:AA...} — a bot token inside an exception text (URLs of the Bot API). */
     private static final Pattern BOT_TOKEN = Pattern.compile("bot\\d{5,}:[A-Za-z0-9_-]{20,}");
     private static final Pattern HTML_TAG = Pattern.compile("<[^>]{1,200}>");
 
-    private final JdbcTemplate jdbc;
+    private final ActivityLogStore store;
+    private final BotFailureClassifier classifier;
+    private final DomainEvents events;
+    private final CurrentActor actor;
     private final ExecutorService executor;
     private final AtomicLong dropped = new AtomicLong();
 
     @Autowired
-    public ActivityLog(JdbcTemplate jdbc) {
-        this(jdbc, newWorker());
+    public ActivityLog(ActivityLogStore store, BotFailureClassifier classifier, DomainEvents events,
+                       CurrentActor actor) {
+        this(store, classifier, events, actor, newWorker());
     }
 
-    ActivityLog(JdbcTemplate jdbc, ExecutorService executor) {
-        this.jdbc = jdbc;
+    ActivityLog(ActivityLogStore store, BotFailureClassifier classifier, DomainEvents events, CurrentActor actor,
+                ExecutorService executor) {
+        this.store = store;
+        this.classifier = classifier;
+        this.events = events;
+        this.actor = actor;
         this.executor = executor;
     }
 
@@ -122,96 +119,56 @@ public class ActivityLog {
 
     /**
      * Inside a transaction: queues the entry only once it commits (a rolled-back payment or order
-     * must not show up as done). Outside one: right away.
+     * must not show up as done). Outside one: right away. The entry rides a domain event
+     * ({@link DomainEvents}); on rollback the listener never runs, exactly like the old afterCommit hook.
      */
     public void recordAfterCommit(Entry e) {
         if (e == null) {
             return;
         }
         try {
-            if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
-                org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
-                        new org.springframework.transaction.support.TransactionSynchronization() {
-                            @Override
-                            public void afterCommit() {
-                                record(e);
-                            }
-                        });
-                return;
-            }
+            events.publish(new EntryCommitted(e));
         } catch (RuntimeException ex) {
-            log.debug("Activity log: no transaction synchronization ({})", ex.getMessage());
+            log.debug("Activity log: entry not published ({})", ex.getMessage());
+            record(e);
         }
-        record(e);
+    }
+
+    /** A journal entry waiting for its transaction to commit. */
+    public record EntryCommitted(Entry entry) {
+    }
+
+    @OnCommitted
+    public void onCommitted(EntryCommitted event) {
+        record(event.entry());
     }
 
     /**
-     * Runs one Telegram call and records how it went: OK, or FAILED with the classified reason.
-     * The call's exception is re-thrown untouched, so the caller keeps its own handling.
+     * Runs one bot call and records how it went: OK, or FAILED with the classified reason
+     * ({@link BotFailureClassifier}). The call's exception is re-thrown untouched, so the caller keeps its own handling.
      */
-    public <T> T bot(Entry e, BotCall<T> call) throws TelegramApiException {
+    public <T, X extends Exception> T bot(Entry e, BotCall<T, X> call) throws X {
         try {
             T result = call.call();
             record(e.result(OK));
             return result;
-        } catch (TelegramApiException ex) {
-            record(e.failed(ex));
-            throw ex;
-        } catch (RuntimeException ex) {
-            record(e.failed(ex));
+        } catch (Exception ex) {
+            record(e.failed(classifier.classify(ex)));
             throw ex;
         }
     }
 
-    /** A Telegram Bot API call. */
+    /** A bot (Telegram Bot API) call. */
     @FunctionalInterface
-    public interface BotCall<T> {
-        T call() throws TelegramApiException;
+    public interface BotCall<T, X extends Exception> {
+        T call() throws X;
     }
 
     void write(Entry e) {
         try {
-            Long tgUserId = e.tgUserId;
-            if (tgUserId == null && e.orderId != null && !TO_ADMINS.equals(e.recipient)) {
-                tgUserId = orderCustomer(e.orderId);
-            }
-            jdbc.update(INSERT,
-                    Timestamp.from(e.at),
-                    e.source,
-                    ellipsize(e.type, 48),
-                    e.result == null ? OK : e.result,
-                    e.recipient,
-                    tgUserId,
-                    e.chatId,
-                    e.orderId,
-                    ellipsize(e.groupId, 64),
-                    ellipsize(e.summary, 500),
-                    ellipsize(e.errorCode, 32),
-                    ellipsize(e.error, 500),
-                    detailsJson(e.details));
+            store.write(e);
         } catch (Exception ex) {
             log.warn("Activity log write failed ({} {}): {}", e.source, e.type, ex.getMessage());
-        }
-    }
-
-    private Long orderCustomer(byte[] orderId) {
-        try {
-            List<Long> ids = jdbc.queryForList("SELECT tg_user_id FROM orders WHERE id = ?", Long.class, orderId);
-            return ids.isEmpty() ? null : ids.get(0);
-        } catch (Exception ex) {
-            return null;
-        }
-    }
-
-    private static String detailsJson(Map<String, Object> details) {
-        if (details == null || details.isEmpty()) {
-            return null;
-        }
-        try {
-            String s = JSON.writeValueAsString(details);
-            return s.length() <= 2000 ? s : null;
-        } catch (Exception ex) {
-            return null;
         }
     }
 
@@ -232,9 +189,9 @@ public class ActivityLog {
      * Where the current customer request came from: {@link #SITE} for the website's cookie token,
      * {@link #MINIAPP} for the Mini App, {@link #SYSTEM} outside a customer request.
      */
-    public static String requestSource() {
+    public String requestSource() {
         try {
-            AuthPrincipal p = SecurityUtil.currentPrincipal();
+            AuthPrincipal p = actor.principal();
             if (p.role() != Role.CUSTOMER) {
                 return SYSTEM;
             }
@@ -245,9 +202,9 @@ public class ActivityLog {
     }
 
     /** Telegram id of the current customer, null outside a customer request. */
-    public static Long requestUserId() {
+    public Long requestUserId() {
         try {
-            AuthPrincipal p = SecurityUtil.currentPrincipal();
+            AuthPrincipal p = actor.principal();
             return p.role() == Role.CUSTOMER ? p.telegramUserId() : null;
         } catch (RuntimeException e) {
             return null;
@@ -255,82 +212,18 @@ public class ActivityLog {
     }
 
     /** A customer action of the current request (source SITE / MINIAPP, customer filled in). */
-    public static Entry fromRequest(String type) {
+    public Entry fromRequest(String type) {
         return Entry.of(requestSource(), type).customer(requestUserId());
     }
 
     // ------------------------------------------------------------------ failure reasons
 
-    /** Why a Telegram call failed: a stable code for filters + a readable, sanitised text. */
+    /** Why a bot call failed: a stable code for filters + a readable, sanitised text. */
     public record Failure(String code, String message) {
     }
 
-    public static Failure classify(Throwable t) {
-        if (t == null) {
-            return new Failure("ERROR", null);
-        }
-        Integer status = null;
-        String api = null;
-        Integer retryAfter = null;
-        if (t instanceof TelegramApiRequestException r) {
-            status = r.getErrorCode();
-            api = r.getApiResponse();
-            if (r.getParameters() != null) {
-                retryAfter = r.getParameters().getRetryAfter();
-            }
-        }
-        String text = (api != null ? api : String.valueOf(t.getMessage())).toLowerCase(Locale.ROOT);
-        String full = (t.getMessage() == null ? "" : t.getMessage().toLowerCase(Locale.ROOT)) + " " + text;
-        String code;
-        if (Integer.valueOf(429).equals(status) || full.contains("too many requests") || full.contains("retry after")) {
-            code = "RATE_LIMITED";
-        } else if (full.contains("bot was blocked")) {
-            code = "BOT_BLOCKED";
-        } else if (full.contains("user is deactivated") || full.contains("deactivated")) {
-            code = "USER_DEACTIVATED";
-        } else if (full.contains("bot can't initiate")) {
-            code = "NOT_STARTED";
-        } else if (full.contains("chat not found")) {
-            code = "CHAT_NOT_FOUND";
-        } else if (full.contains("bot was kicked") || full.contains("not a member")) {
-            code = "BOT_KICKED";
-        } else if (full.contains("can't parse entities")) {
-            code = "BAD_MARKUP";
-        } else if (full.contains("message thread not found") || full.contains("topic_closed")
-                || full.contains("topic_deleted")) {
-            code = "TOPIC_NOT_FOUND";
-        } else if (Integer.valueOf(403).equals(status) || full.contains("forbidden")) {
-            code = "FORBIDDEN";
-        } else if (Integer.valueOf(400).equals(status) || full.contains("bad request")) {
-            code = "BAD_REQUEST";
-        } else if (hasCause(t, IOException.class) || full.contains("unable to execute")
-                || full.contains("timed out") || full.contains("connection")) {
-            code = "NETWORK";
-        } else {
-            code = "ERROR";
-        }
-        StringBuilder msg = new StringBuilder();
-        if (status != null) {
-            msg.append('[').append(status).append("] ");
-        }
-        msg.append(api != null ? api : t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage());
-        if (retryAfter != null) {
-            msg.append(" (retry after ").append(retryAfter).append(" s)");
-        }
-        return new Failure(code, sanitize(msg.toString()));
-    }
-
-    private static boolean hasCause(Throwable t, Class<? extends Throwable> type) {
-        for (Throwable c = t; c != null; c = c.getCause() == c ? null : c.getCause()) {
-            if (type.isInstance(c)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     /** Hides a bot token in an error text and trims it. */
-    static String sanitize(String s) {
+    public static String sanitize(String s) {
         if (s == null) {
             return null;
         }
@@ -447,8 +340,7 @@ public class ActivityLog {
             return this;
         }
 
-        public Entry failed(Throwable t) {
-            Failure f = classify(t);
+        public Entry failed(Failure f) {
             return failed(f.code(), f.message());
         }
 

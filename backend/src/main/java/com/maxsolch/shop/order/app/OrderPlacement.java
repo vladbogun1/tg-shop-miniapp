@@ -61,7 +61,7 @@ public class OrderPlacement {
         try {
             order = create(userId, web, draft);
         } catch (RuntimeException e) {
-            activity.record(ActivityLog.fromRequest("ORDER_FAILED")
+            activity.record(activity.fromRequest("ORDER_FAILED")
                     .text("Заказ не оформлен: " + e.getMessage())
                     .detail("items", draft.items().size())
                     .detail("promoCode", trimToNull(draft.promoCode()))
@@ -70,7 +70,7 @@ public class OrderPlacement {
         }
         String orderId = UuidUtil.toString(order.getId());
         idempotency.remember(userId, idempotencyKey, orderId);
-        activity.record(ActivityLog.fromRequest("ORDER_CREATED")
+        activity.record(activity.fromRequest("ORDER_CREATED")
                 .order(order.getId())
                 .text("Заказ #" + orderId.substring(0, 8) + " на " + MoneyFormat.amount(order.getTotalMinor())
                         + " " + order.getCurrency()

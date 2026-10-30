@@ -55,7 +55,7 @@ class CasePromoNotificationTest {
         Messages messages = new Messages((MessageSource) source, new com.maxsolch.shop.customer.app.UserLanguages(users));
         service = new OrderCustomerNotifier(props, messages, settings, rejectReason,
                 new CustomerBot(bot, props, messages, activity));
-        lenient().when(activity.bot(any(), any())).thenAnswer(inv -> ((ActivityLog.BotCall<?>) inv.getArgument(1)).call());
+        lenient().when(activity.bot(any(), any())).thenAnswer(inv -> ((ActivityLog.BotCall<?, ?>) inv.getArgument(1)).call());
     }
 
     private Order order(Long tgUserId) {

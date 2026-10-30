@@ -53,7 +53,7 @@ public class MePromoController {
                 CaseLowMargin.parseItems(items));
         // Only accepted codes: the cart checks as the code is typed, so refusals are mostly half-typed words.
         if (preview != null && preview.valid()) {
-            activity.record(ActivityLog.fromRequest("PROMO_APPLIED")
+            activity.record(activity.fromRequest("PROMO_APPLIED")
                     .text("Промокод " + code.trim().toUpperCase(Locale.ROOT) + " принят: скидка "
                             + MoneyFormat.amount(preview.discountMinor()) + " грн")
                     .detail("code", code.trim().toUpperCase(Locale.ROOT))

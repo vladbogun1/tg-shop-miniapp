@@ -112,7 +112,7 @@ public class MeOrdersController {
         String name = order.getCustomerName();
         MessageDto sent = messageService.postCustomerMessage(order.getId(), order.getUserId(), name, req);
         // The text itself stays in the chat — the journal only notes that the customer wrote.
-        activity.record(ActivityLog.fromRequest("CHAT_MESSAGE").order(order.getId())
+        activity.record(activity.fromRequest("CHAT_MESSAGE").order(order.getId())
                 .text("Покупатель написал в чат заказа #" + id.substring(0, Math.min(8, id.length())))
                 .detail("kind", req == null ? null : req.type()));
         return sent;
@@ -129,11 +129,11 @@ public class MeOrdersController {
         try {
             cancelled = cancelRequests.cancelUnpaid(order.getId(), req == null ? null : req.reason());
         } catch (RuntimeException e) {
-            activity.record(ActivityLog.fromRequest("ORDER_CANCEL_FAILED").order(order.getId())
+            activity.record(activity.fromRequest("ORDER_CANCEL_FAILED").order(order.getId())
                     .text("Отмена заказа не прошла: " + e.getMessage()).rejected(e));
             throw e;
         }
-        activity.record(ActivityLog.fromRequest("ORDER_CANCELLED").order(order.getId())
+        activity.record(activity.fromRequest("ORDER_CANCELLED").order(order.getId())
                 .text("Покупатель отменил неоплаченный заказ" + reasonSuffix(req)));
         return orderQueryService.toDetail(cancelled, ContentLocale.normalize(locale));
     }
@@ -148,11 +148,11 @@ public class MeOrdersController {
         try {
             updated = cancelRequests.request(order.getId(), req == null ? null : req.reason());
         } catch (RuntimeException e) {
-            activity.record(ActivityLog.fromRequest("CANCEL_REQUEST_FAILED").order(order.getId())
+            activity.record(activity.fromRequest("CANCEL_REQUEST_FAILED").order(order.getId())
                     .text("Заявка на отмену не принята: " + e.getMessage()).rejected(e));
             throw e;
         }
-        activity.record(ActivityLog.fromRequest("CANCEL_REQUESTED").order(order.getId())
+        activity.record(activity.fromRequest("CANCEL_REQUESTED").order(order.getId())
                 .text("Заявка на отмену оплаченного заказа" + reasonSuffix(req)));
         return orderQueryService.toDetail(updated, ContentLocale.normalize(locale));
     }

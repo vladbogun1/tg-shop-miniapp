@@ -47,7 +47,7 @@ public class MeGiftCaseController {
     public GiftDtos.CaseOpenDto openGiftCase(@PathVariable String id, Locale locale) {
         Order order = ownedOrder(id);
         GiftDtos.CaseOpenDto opened = giftCaseService.open(order.getId(), ContentLocale.normalize(locale));
-        activity.record(ActivityLog.fromRequest("GIFT_CASE_OPENED").order(order.getId())
+        activity.record(activity.fromRequest("GIFT_CASE_OPENED").order(order.getId())
                 .text("Покупатель открыл кейс (" + opened.tier() + "): " + prizeText(opened.won())
                         + " (" + opened.won().rarity() + ")"));
         return opened;
@@ -59,7 +59,7 @@ public class MeGiftCaseController {
     public GiftDtos.CaseOpenDto swapGiftCase(@PathVariable String id, Locale locale) {
         Order order = ownedOrder(id);
         GiftDtos.CaseOpenDto swapped = giftCaseService.swap(order.getId(), ContentLocale.normalize(locale));
-        activity.record(ActivityLog.fromRequest("GIFT_CASE_SWAPPED").order(order.getId())
+        activity.record(activity.fromRequest("GIFT_CASE_SWAPPED").order(order.getId())
                 .text("Покупатель заменил приз кейса «" + swapped.won().title() + "» на промокод −"
                         + swapped.swap().amountMinor() / 100 + " ₴"));
         return swapped;
@@ -74,7 +74,7 @@ public class MeGiftCaseController {
     public OrderGiftDtos.SizeDto chooseGiftCaseSize(@PathVariable String id, @RequestBody CaseSizeRequest req) {
         Order order = ownedOrder(id);
         OrderGiftDtos.SizeDto size = giftCaseService.chooseSize(order.getId(), req.variantId());
-        activity.record(ActivityLog.fromRequest("GIFT_CASE_SIZE").order(order.getId())
+        activity.record(activity.fromRequest("GIFT_CASE_SIZE").order(order.getId())
                 .text("Покупатель выбрал размер приза кейса: " + size.name()));
         return size;
     }

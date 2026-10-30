@@ -28,7 +28,7 @@ public class CustomerSupport {
     public ThreadDto ask(CreateThreadRequest req) {
         String source = actor.principal().isWeb() ? SupportService.SOURCE_WEB : SupportService.SOURCE_MINIAPP;
         ThreadDto thread = support.create(actor.userId(), source, req);
-        activity.record(ActivityLog.fromRequest("SUPPORT_REQUEST")
+        activity.record(activity.fromRequest("SUPPORT_REQUEST")
                 .text(thread.productTitle() != null && !thread.productTitle().isBlank()
                         ? "Вопрос в поддержку о товаре «" + thread.productTitle() + "»"
                         : "Вопрос в поддержку")
@@ -38,7 +38,7 @@ public class CustomerSupport {
 
     public MessageDto write(String threadId, SendMessageRequest req) {
         MessageDto sent = support.sendAsCustomer(actor.userId(), threadId, req);
-        activity.record(ActivityLog.fromRequest("SUPPORT_MESSAGE")
+        activity.record(activity.fromRequest("SUPPORT_MESSAGE")
                 .text("Сообщение в поддержку").detail("thread", threadId));
         return sent;
     }

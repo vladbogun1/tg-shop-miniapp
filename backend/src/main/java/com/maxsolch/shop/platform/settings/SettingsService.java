@@ -6,12 +6,12 @@ import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.settings.SettingsDtos.SettingItemDto;
 import com.maxsolch.shop.platform.settings.SettingsDtos.SettingsGroupDto;
 import com.maxsolch.shop.platform.settings.SettingsDtos.SettingsResponse;
+import com.maxsolch.shop.platform.tx.DomainEvents;
+import com.maxsolch.shop.platform.tx.OnCompleted;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -49,10 +49,13 @@ public class SettingsService {
     private final ShopSettingRepository repository;
     private final AdminAuditService audit;
     private final CurrentActor actor;
+    private final DomainEvents events;
     private volatile Snapshot snapshot;
 
-    public SettingsService(ShopSettingRepository repository, AdminAuditService audit, CurrentActor actor) {
+    public SettingsService(ShopSettingRepository repository, AdminAuditService audit, CurrentActor actor,
+                           DomainEvents events) {
         this.actor = actor;
+        this.events = events;
         this.repository = repository;
         this.audit = audit;
     }
@@ -368,18 +371,21 @@ public class SettingsService {
         snapshot = null;
     }
 
+    /** Published by {@link #update}: the transaction that saved settings is over (committed or rolled back). */
+    public record SettingsSaved() {
+    }
+
     private void invalidateAfterCommit() {
         invalidate();
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            // A read before the commit (another thread: old rows; ours: uncommitted ones) would
-            // otherwise stay cached for MAX_AGE — drop it again once the outcome is known.
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCompletion(int status) {
-                    invalidate();
-                }
-            });
-        }
+        // A read before the commit (another thread: old rows; ours: uncommitted ones) would otherwise stay cached
+        // for MAX_AGE — drop it again once the outcome is known. AFTER_COMPLETION, not AFTER_COMMIT: after a rollback
+        // the snapshot may hold uncommitted values and must go too (the pre-event code used afterCompletion).
+        events.publish(new SettingsSaved());
+    }
+
+    @OnCompleted
+    public void onTransactionCompleted(SettingsSaved event) {
+        invalidate();
     }
 
     private static SettingItemDto toDto(SettingDefinition d, Stored stored) {

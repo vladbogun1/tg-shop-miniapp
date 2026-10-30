@@ -92,7 +92,7 @@ public class MeOrderPaymentController {
         try {
             p = onlinePayments.start(order.getId(), returnTo, lang, embedded);
         } catch (RuntimeException e) {
-            activity.record(ActivityLog.fromRequest("PAYMENT_START_FAILED").order(order.getId())
+            activity.record(activity.fromRequest("PAYMENT_START_FAILED").order(order.getId())
                     .text("Не удалось открыть оплату: " + e.getMessage())
                     .detail("returnTo", returnTo).rejected(e));
             throw e;

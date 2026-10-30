@@ -59,7 +59,7 @@ public class MeController {
         Locale parsed = Messages.normalize(locale);
         if (parsed != null) {
             profiles.changeLocale(actor.userId(), parsed.getLanguage()).ifPresent(change ->
-                    activity.record(ActivityLog.fromRequest("LOCALE_CHANGED")
+                    activity.record(activity.fromRequest("LOCALE_CHANGED")
                             .text("Язык: " + (change.before() == null ? "—" : change.before()) + " → " + change.after())
                             .detail("from", change.before()).detail("to", change.after())));
         }

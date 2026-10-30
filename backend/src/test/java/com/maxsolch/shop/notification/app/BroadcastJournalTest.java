@@ -36,7 +36,19 @@ class BroadcastJournalTest {
         bot = mock(TelegramGateway.class);
         users = mock(BroadcastAudiences.class);
         activity = mock(ActivityLog.class);
-        when(activity.bot(any(), any())).thenCallRealMethod();
+        TelegramFailures classifier = new TelegramFailures();
+        when(activity.bot(any(), any())).thenAnswer(inv -> {
+            ActivityLog.Entry entry = inv.getArgument(0);
+            ActivityLog.BotCall<?, ?> call = inv.getArgument(1);
+            try {
+                Object result = call.call();
+                activity.record(entry.result(ActivityLog.OK));
+                return result;
+            } catch (Exception ex) {
+                activity.record(entry.failed(classifier.classify(ex)));
+                throw ex;
+            }
+        });
         AppProperties props = new AppProperties();
         props.getTelegram().setBotToken("123:test");
         service = new BroadcastService(bot, props, users, mock(BroadcastRepository.class), activity,

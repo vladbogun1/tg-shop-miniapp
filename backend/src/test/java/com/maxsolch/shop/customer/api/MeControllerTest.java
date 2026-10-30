@@ -43,6 +43,8 @@ class MeControllerTest {
 
     @BeforeEach
     void setUp() {
+        org.mockito.Mockito.lenient().when(activity.fromRequest(org.mockito.ArgumentMatchers.anyString()))
+                .thenAnswer(i -> ActivityLog.Entry.of(ActivityLog.MINIAPP, i.getArgument(0)));
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 new AuthPrincipal(100L, Role.CUSTOMER), null, List.of()));
     }

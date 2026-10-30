@@ -1,7 +1,10 @@
 package com.maxsolch.shop.platform.journal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.maxsolch.shop.notification.app.TelegramFailures;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.platform.util.UuidUtil;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.platform.error.ConflictException;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,13 +33,20 @@ import static org.mockito.Mockito.when;
 /** «Журнал → Бот и сайт»: failure reasons of the bot, what a row holds, and that it never breaks the caller. */
 class ActivityLogTest {
 
+    private static final TelegramFailures CLASSIFIER = new TelegramFailures();
+
     private JdbcTemplate jdbc;
     private ActivityLog log;
 
     @BeforeEach
     void setUp() {
         jdbc = mock(JdbcTemplate.class);
-        log = new ActivityLog(jdbc, new DirectExecutor());
+        log = newLog(new DirectExecutor());
+    }
+
+    private ActivityLog newLog(java.util.concurrent.ExecutorService executor) {
+        return new ActivityLog(new ActivityLogStore(jdbc), CLASSIFIER, mock(DomainEvents.class),
+                mock(CurrentActor.class), executor);
     }
 
     static TelegramApiRequestException apiError(int code, String description, Integer retryAfter) throws Exception {
@@ -50,34 +60,34 @@ class ActivityLogTest {
 
     @Test
     void telegramErrorsAreClassified() throws Exception {
-        assertThat(ActivityLog.classify(apiError(403, "Forbidden: bot was blocked by the user", null)).code())
+        assertThat(CLASSIFIER.classify(apiError(403, "Forbidden: bot was blocked by the user", null)).code())
                 .isEqualTo("BOT_BLOCKED");
-        assertThat(ActivityLog.classify(apiError(403, "Forbidden: user is deactivated", null)).code())
+        assertThat(CLASSIFIER.classify(apiError(403, "Forbidden: user is deactivated", null)).code())
                 .isEqualTo("USER_DEACTIVATED");
-        assertThat(ActivityLog.classify(apiError(403, "Forbidden: bot can't initiate conversation with a user", null)).code())
+        assertThat(CLASSIFIER.classify(apiError(403, "Forbidden: bot can't initiate conversation with a user", null)).code())
                 .isEqualTo("NOT_STARTED");
-        assertThat(ActivityLog.classify(apiError(400, "Bad Request: chat not found", null)).code())
+        assertThat(CLASSIFIER.classify(apiError(400, "Bad Request: chat not found", null)).code())
                 .isEqualTo("CHAT_NOT_FOUND");
-        assertThat(ActivityLog.classify(apiError(400, "Bad Request: can't parse entities: unsupported tag", null)).code())
+        assertThat(CLASSIFIER.classify(apiError(400, "Bad Request: can't parse entities: unsupported tag", null)).code())
                 .isEqualTo("BAD_MARKUP");
-        assertThat(ActivityLog.classify(apiError(400, "Bad Request: message is too long", null)).code())
+        assertThat(CLASSIFIER.classify(apiError(400, "Bad Request: message is too long", null)).code())
                 .isEqualTo("BAD_REQUEST");
 
-        ActivityLog.Failure limited = ActivityLog.classify(apiError(429, "Too Many Requests: retry after 7", 7));
+        ActivityLog.Failure limited = CLASSIFIER.classify(apiError(429, "Too Many Requests: retry after 7", 7));
         assertThat(limited.code()).isEqualTo("RATE_LIMITED");
         assertThat(limited.message()).startsWith("[429]").contains("retry after 7 s");
     }
 
     @Test
     void networkFailuresAndUnknownErrors() {
-        assertThat(ActivityLog.classify(new TelegramApiException("Unable to execute sendmessage method",
+        assertThat(CLASSIFIER.classify(new TelegramApiException("Unable to execute sendmessage method",
                 new IOException("Connect timed out"))).code()).isEqualTo("NETWORK");
-        assertThat(ActivityLog.classify(new IllegalStateException("boom")).code()).isEqualTo("ERROR");
+        assertThat(CLASSIFIER.classify(new IllegalStateException("boom")).code()).isEqualTo("ERROR");
     }
 
     @Test
     void botTokenNeverReachesTheJournal() {
-        ActivityLog.Failure f = ActivityLog.classify(new TelegramApiException(
+        ActivityLog.Failure f = CLASSIFIER.classify(new TelegramApiException(
                 "Unable to execute https://api.telegram.org/bot123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw/sendMessage",
                 new IOException("reset")));
         assertThat(f.message()).doesNotContain("AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw").contains("bot***");
@@ -173,7 +183,7 @@ class ActivityLogTest {
 
     @Test
     void aFullQueueDropsEntriesInsteadOfBlocking() {
-        ActivityLog full = new ActivityLog(jdbc, new DirectExecutor() {
+        ActivityLog full = newLog(new DirectExecutor() {
             @Override
             public void execute(Runnable command) {
                 throw new java.util.concurrent.RejectedExecutionException("full");

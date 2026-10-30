@@ -44,7 +44,7 @@ public class MyPreorders {
                 ? PreorderQueueService.SOURCE_WEB : PreorderQueueService.SOURCE_MINIAPP;
         MyPreorderDto dto = queue.subscribe(actor.userId(), source, req);
         try {
-            activity.record(ActivityLog.fromRequest("PREORDER_JOIN")
+            activity.record(activity.fromRequest("PREORDER_JOIN")
                     .text("Встал в очередь на «" + dto.productTitle() + "»"
                             + (dto.variantName() == null ? "" : " (" + dto.variantName() + ")")
                             + ", " + dto.qty() + " шт."));
