@@ -56,7 +56,7 @@ class ReviewFeedServiceTest {
         when(settings.get(SettingsRegistry.REVIEWS_ENABLED, true)).thenReturn(true);
         when(translations.overlay("ru")).thenReturn(new TranslationService.Overlay(Map.of()));
         when(store.latestFeed(24)).thenReturn(List.of(row("Мышка", false)));
-        when(store.shopSummary()).thenReturn(new Summary(5.0, 1, List.of(0L, 0L, 0L, 0L, 1L)));
+        when(store.shopSummary()).thenReturn(new com.maxsolch.shop.review.domain.RatingSummary(5.0, 1, List.of(0L, 0L, 0L, 0L, 1L)));
 
         ReviewFeed feed = service().latest(24, "ru");
 
@@ -83,7 +83,7 @@ class ReviewFeedServiceTest {
                 new TranslationService.Key(TranslationEntityType.PRODUCT, PID, TranslationEntityType.TITLE),
                 new TranslationService.Entry("Мишка", SourceHash.sha256Hex(source), TranslationOrigin.values()[0]))));
         when(store.latestFeed(ReviewFeedService.MAX_SIZE)).thenReturn(List.of(row(source)));
-        when(store.shopSummary()).thenReturn(new Summary(5.0, 1, List.of(0L, 0L, 0L, 0L, 1L)));
+        when(store.shopSummary()).thenReturn(new com.maxsolch.shop.review.domain.RatingSummary(5.0, 1, List.of(0L, 0L, 0L, 0L, 1L)));
 
         ReviewFeed feed = service().latest(1000, "uk");
 

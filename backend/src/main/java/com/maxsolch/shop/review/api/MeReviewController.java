@@ -5,8 +5,9 @@ import com.maxsolch.shop.review.app.ReviewDtos.MyReview;
 import com.maxsolch.shop.review.app.ReviewDtos.PendingLine;
 import com.maxsolch.shop.review.app.ReviewDtos.SubmitRequest;
 import com.maxsolch.shop.review.app.ReviewDtos.SubmitResult;
+import com.maxsolch.shop.review.app.MyReviews;
 import com.maxsolch.shop.review.app.ReviewService;
-import com.maxsolch.shop.platform.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,60 +30,36 @@ import java.util.List;
 public class MeReviewController {
 
     private final ReviewService reviewService;
-    /** «Журнал → Бот и сайт». */
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private com.maxsolch.shop.platform.journal.ActivityLog activity;
+    private final MyReviews myReviews;
+    private final CurrentActor actor;
 
-    public MeReviewController(ReviewService reviewService) {
+    public MeReviewController(ReviewService reviewService, MyReviews myReviews, CurrentActor actor) {
         this.reviewService = reviewService;
+        this.myReviews = myReviews;
+        this.actor = actor;
     }
 
     @GetMapping("/reviews/pending")
     @Operation(summary = "Lines of my delivered orders without a review (optionally of one order)")
     public List<PendingLine> pending(@RequestParam(required = false) String orderId) {
-        return reviewService.pendingLines(SecurityUtil.currentUserId(), orderId);
+        return reviewService.pendingLines(actor.userId(), orderId);
     }
 
     @PostMapping("/reviews")
     @Operation(summary = "Review a line of my delivered order (or edit my review while it is PENDING)")
     public SubmitResult submit(@RequestBody SubmitRequest req) {
-        SubmitResult result;
-        try {
-            result = reviewService.submit(SecurityUtil.currentUserId(), req);
-        } catch (RuntimeException e) {
-            journal(com.maxsolch.shop.platform.journal.ActivityLog.fromRequest("REVIEW_FAILED")
-                    .text("Отзыв не принят: " + e.getMessage()).rejected(e));
-            throw e;
-        }
-        if (result != null && result.review() != null) {
-            var r = result.review();
-            journal(com.maxsolch.shop.platform.journal.ActivityLog.fromRequest("REVIEW_SUBMITTED")
-                    .order(r.orderId())
-                    .text("Отзыв " + "★".repeat(Math.max(0, Math.min(5, r.rating()))) + " на «" + r.title() + "»"
-                            + (result.bonus() != null ? " · выдан бонус −" + com.maxsolch.shop.review.domain.ReviewRules.discountRu(
-                                    result.bonus().percent(), result.bonus().maxDiscountMinor()) : ""))
-                    .detail("reviewId", r.id())
-                    .detail("rating", r.rating())
-                    .detail("status", r.status()));
-        }
-        return result;
-    }
-
-    private void journal(com.maxsolch.shop.platform.journal.ActivityLog.Entry entry) {
-        if (activity != null) {
-            activity.record(entry);
-        }
+        return myReviews.submit(req);
     }
 
     @GetMapping("/reviews")
     @Operation(summary = "My reviews with their status")
     public List<MyReview> mine() {
-        return reviewService.myReviews(SecurityUtil.currentUserId());
+        return reviewService.myReviews(actor.userId());
     }
 
     @GetMapping("/bonuses")
     @Operation(summary = "My personal promo codes (review bonuses)")
     public List<Bonus> bonuses() {
-        return reviewService.bonuses(SecurityUtil.currentUserId());
+        return reviewService.bonuses(actor.userId());
     }
 }

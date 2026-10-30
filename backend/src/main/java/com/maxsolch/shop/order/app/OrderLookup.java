@@ -32,6 +32,12 @@ public class OrderLookup {
                 .orElseThrow(() -> OrderErrors.notFound("order not found"));
     }
 
+    /** The customer's orders, newest first (lines load lazily: read inside a transaction). */
+    @Transactional(readOnly = true)
+    public List<Order> ofUser(long userId) {
+        return orderRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+
     /** The order as stored, or empty. */
     @Transactional(readOnly = true)
     public Optional<Order> find(byte[] orderId) {

@@ -1,10 +1,9 @@
 package com.maxsolch.shop.review.api;
 
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.review.app.AdminReviews;
 import com.maxsolch.shop.review.app.ReviewDtos.AdminPage;
 import com.maxsolch.shop.review.app.ReviewDtos.AdminReview;
 import com.maxsolch.shop.review.app.ReviewDtos.ReplyRequest;
-import com.maxsolch.shop.review.app.ReviewService;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.platform.security.RequiredSuperAdmin;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,14 +27,10 @@ import org.springframework.web.bind.annotation.RestController;
 @SecurityRequirement(name = "bearer-jwt")
 public class AdminReviewController {
 
-    private static final String ENTITY = "REVIEW";
+    private final AdminReviews reviews;
 
-    private final ReviewService reviewService;
-    private final AdminAuditService audit;
-
-    public AdminReviewController(ReviewService reviewService, AdminAuditService audit) {
-        this.reviewService = reviewService;
-        this.audit = audit;
+    public AdminReviewController(AdminReviews reviews) {
+        this.reviews = reviews;
     }
 
     @GetMapping
@@ -44,50 +39,32 @@ public class AdminReviewController {
                           @RequestParam(required = false) String productId,
                           @RequestParam(defaultValue = "0") int page,
                           @RequestParam(defaultValue = "30") int size) {
-        return reviewService.adminList(status, productId, page, size);
+        return reviews.list(status, productId, page, size);
     }
 
     @PostMapping("/{id}/publish")
     @Operation(summary = "Publish (the first published review of an order issues the customer's bonus code)")
     public AdminReview publish(@PathVariable long id) {
-        AdminReview r = reviewService.publish(id);
-        audit.record("REVIEW_PUBLISH", ENTITY, String.valueOf(id), describe(r));
-        return r;
+        return reviews.publish(id);
     }
 
     @PostMapping("/{id}/hide")
     @Operation(summary = "Hide from the product page")
     public AdminReview hide(@PathVariable long id) {
-        AdminReview r = reviewService.hide(id);
-        audit.record("REVIEW_HIDE", ENTITY, String.valueOf(id), describe(r));
-        return r;
+        return reviews.hide(id);
     }
 
     @PostMapping("/{id}/reply")
     @Operation(summary = "Public reply of the shop; blank text removes it")
     public AdminReview reply(@PathVariable long id, @RequestBody ReplyRequest req) {
-        AdminReview r = reviewService.reply(id, req == null ? null : req.text());
-        audit.record(r.adminReply() == null ? "REVIEW_REPLY_REMOVE" : "REVIEW_REPLY", ENTITY,
-                String.valueOf(id), describe(r));
-        return r;
+        return reviews.reply(id, req == null ? null : req.text());
     }
 
     @DeleteMapping("/{id}")
     @RequiredSuperAdmin
     @Operation(summary = "Delete a review for good (main admin only)")
     public ResponseEntity<Void> delete(@PathVariable long id) {
-        AdminReview r = reviewService.delete(id);
-        audit.record("REVIEW_DELETE", ENTITY, String.valueOf(id), describe(r));
+        reviews.delete(id);
         return ResponseEntity.noContent().build();
-    }
-
-    private static String describe(AdminReview r) {
-        String text = r.text() == null ? "" : r.text().replaceAll("\\s+", " ").trim();
-        if (text.length() > 80) {
-            text = text.substring(0, 79) + "…";
-        }
-        return r.rating() + "★ " + (r.productTitle() == null ? "" : r.productTitle())
-                + (r.orderShortId() == null ? "" : ", заказ #" + r.orderShortId())
-                + (text.isEmpty() ? "" : ": " + text);
     }
 }

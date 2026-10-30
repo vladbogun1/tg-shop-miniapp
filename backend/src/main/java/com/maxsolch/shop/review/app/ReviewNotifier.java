@@ -7,6 +7,9 @@ import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.push.AdminPushService;
 import com.maxsolch.shop.tg.CustomerBot;
+import com.maxsolch.shop.platform.time.ShopZone;
+import com.maxsolch.shop.platform.tx.OnCommitted;
+import com.maxsolch.shop.review.domain.ReviewEvents;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -28,7 +31,7 @@ import static com.maxsolch.shop.platform.util.Texts.nullToEmpty;
 @Service
 public class ReviewNotifier {
 
-    private static final ZoneId KYIV = ZoneId.of("Europe/Kyiv");
+    private static final ZoneId KYIV = ShopZone.DEFAULT;
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private final CustomerBot customer;
@@ -51,6 +54,16 @@ public class ReviewNotifier {
         return maxMinor > 0
                 ? messages.get(locale, "bot.review.bonus.discountCapped", String.valueOf(percent), ReviewRules.uah(maxMinor))
                 : messages.get(locale, "bot.review.bonus.discount", String.valueOf(percent));
+    }
+
+    @OnCommitted
+    public void on(ReviewEvents.BonusIssued e) {
+        bonusIssued(e.tgUserId(), e.code(), e.percent(), e.maxMinor(), e.expiresAt());
+    }
+
+    @OnCommitted
+    public void on(ReviewEvents.PendingForModeration e) {
+        pendingForModeration(e.productTitle(), e.rating(), e.pendingCount());
     }
 
     /** "Thanks for the review — here is your personal code". */

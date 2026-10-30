@@ -1,7 +1,7 @@
 package com.maxsolch.shop.inbox.app;
 
 import com.maxsolch.shop.review.app.ReviewDtos;
-import com.maxsolch.shop.review.app.ReviewService;
+import com.maxsolch.shop.review.app.ReviewModeration;
 import com.maxsolch.shop.review.domain.ReviewStatus;
 
 import com.maxsolch.shop.inbox.app.InboxDtos.Item;
@@ -25,9 +25,9 @@ public class ReviewInboxSource implements InboxExtraSource {
     static final Duration OVERDUE = Duration.ofHours(24);
     private static final int LIMIT = 100;
 
-    private final ReviewService reviews;
+    private final ReviewModeration reviews;
 
-    public ReviewInboxSource(ReviewService reviews) {
+    public ReviewInboxSource(ReviewModeration reviews) {
         this.reviews = reviews;
     }
 

@@ -28,15 +28,12 @@ public class BonusExpiryReminderJob {
     private final ReviewStore store;
     private final SettingsService settings;
     private final ReviewNotifier notifier;
-    private Clock clock = Clock.systemUTC();
+    private final Clock clock;
 
-    public BonusExpiryReminderJob(ReviewStore store, SettingsService settings, ReviewNotifier notifier) {
+    public BonusExpiryReminderJob(ReviewStore store, SettingsService settings, ReviewNotifier notifier, Clock clock) {
         this.store = store;
         this.settings = settings;
         this.notifier = notifier;
-    }
-
-    void setClock(Clock clock) {
         this.clock = clock;
     }
 

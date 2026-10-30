@@ -1,5 +1,6 @@
 package com.maxsolch.shop.review.app;
 
+import com.maxsolch.shop.review.domain.RatingSummary;
 import com.maxsolch.shop.review.infra.ReviewStore;
 
 import com.maxsolch.shop.review.app.ReviewDtos.FeedReview;
@@ -43,7 +44,7 @@ public class ReviewFeedService {
         List<FeedReview> items = store.latestFeed(limit).stream()
                 .map(r -> toDto(r, overlay))
                 .toList();
-        return new ReviewFeed(store.shopSummary(), items);
+        return new ReviewFeed(summaryOf(store.shopSummary()), items);
     }
 
     private static FeedReview toDto(FeedRow r, TranslationService.Overlay overlay) {
@@ -52,5 +53,9 @@ public class ReviewFeedService {
         // A hidden product has no page: no slug, the site shows the quote without a link.
         return new FeedReview(r.id(), r.author(), r.rating(), r.text(), r.publishedAt(), title,
                 r.productLive() ? r.productSlug() : null, r.imageUrl());
+    }
+
+    private static ReviewDtos.Summary summaryOf(RatingSummary s) {
+        return new ReviewDtos.Summary(s.avg(), s.count(), s.distribution());
     }
 }

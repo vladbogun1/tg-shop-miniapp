@@ -13,7 +13,11 @@ import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.infra.OrderItemRepository;
-import com.maxsolch.shop.order.infra.OrderRepository;
+import com.maxsolch.shop.order.app.OrderLookup;
+import com.maxsolch.shop.order.app.OrderLines;
+import com.maxsolch.shop.promo.app.PromoCodes;
+import com.maxsolch.shop.platform.tx.DomainEvents;
+import com.maxsolch.shop.review.domain.ReviewEvents;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.review.app.ReviewDtos.SubmitRequest;
@@ -21,14 +25,13 @@ import com.maxsolch.shop.review.app.ReviewDtos.SubmitResult;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.site.app.SiteRevalidator;
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.cache.CacheManager;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -63,7 +66,7 @@ class ReviewServiceTest {
     @Mock
     OrderItemRepository orderItems;
     @Mock
-    OrderRepository orders;
+    OrderLookup orders;
     @Mock
     UserRepository users;
     @Mock
@@ -77,20 +80,32 @@ class ReviewServiceTest {
     @Mock
     ReviewNotifier notifier;
     @Mock
-    CacheManager cacheManager;
-    @Mock
     SiteRevalidator siteRevalidator;
 
     ReviewService service;
+    ReviewModeration moderation;
 
     boolean premoderation = true;
     int bonusPercent = 5;
 
     @BeforeEach
     void setUp() {
-        service = new ReviewService(reviews, orderItems, orders, users, promoCodes, store, settings, messages,
-                notifier, cacheManager, siteRevalidator);
-        service.setClock(Clock.fixed(NOW, ZoneOffset.UTC));
+        Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
+        // What @OnCommitted listeners do after the commit, run at once: the notifier is the only one that matters here.
+        DomainEvents events = new DomainEvents(e -> {
+            if (e instanceof ReviewEvents.BonusIssued b) {
+                notifier.bonusIssued(b.tgUserId(), b.code(), b.percent(), b.maxMinor(), b.expiresAt());
+            } else if (e instanceof ReviewEvents.PendingForModeration m) {
+                notifier.pendingForModeration(m.productTitle(), m.rating(), m.pendingCount());
+            }
+        });
+        OrderLines orderLines = new OrderLines(orderItems);
+        ReviewMapper mapper = new ReviewMapper(store, orderLines, users);
+        ReviewBonus bonus = new ReviewBonus(store, settings, new PromoCodes(promoCodes), events, clock);
+        ReviewPublishing publishing = new ReviewPublishing(store, mapper, bonus, siteRevalidator, events);
+        service = new ReviewService(reviews, orders, orderLines, users, store, settings, messages, mapper, publishing,
+                bonus, events, clock);
+        moderation = new ReviewModeration(reviews, mapper, publishing, clock);
         lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_ENABLED), any(Boolean.class))).thenReturn(true);
         lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_PREMODERATION), any(Boolean.class)))
                 .thenAnswer(inv -> premoderation);
@@ -210,7 +225,7 @@ class ReviewServiceTest {
         when(reviews.findById(3L)).thenReturn(Optional.of(pending));
         when(store.claimBonus(pending.getOrderId(), NOW)).thenReturn(true);
 
-        ReviewDtos.AdminReview published = service.publish(3L);
+        ReviewDtos.AdminReview published = moderation.publish(3L);
 
         assertThat(published.status()).isEqualTo("PUBLISHED");
         assertThat(pending.getPublishedAt()).isEqualTo(NOW);
@@ -218,7 +233,7 @@ class ReviewServiceTest {
         verify(promoCodes).save(any(PromoCode.class));
 
         // Publishing it again (already published) changes nothing and issues nothing.
-        service.publish(3L);
+        moderation.publish(3L);
         verify(promoCodes).save(any(PromoCode.class));
     }
 
@@ -230,7 +245,7 @@ class ReviewServiceTest {
         when(reviews.findByOrderItemId(11L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.submit(USER, request()))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessage("api.review.notDelivered");
         verify(reviews, never()).saveAndFlush(any());
     }
@@ -240,7 +255,7 @@ class ReviewServiceTest {
         deliveredLine(200L);
 
         assertThatThrownBy(() -> service.submit(USER, request()))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessage("api.review.notYours");
     }
 
@@ -271,12 +286,12 @@ class ReviewServiceTest {
     void textAndDailyLimitAreEnforced() {
         deliveredLine(USER);
         assertThatThrownBy(() -> service.submit(USER, new SubmitRequest(11L, 5, "мало")))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> service.submit(USER, new SubmitRequest(11L, 0, "Отличная мышь, рекомендую")))
                 .hasMessage("api.review.rating");
 
         when(reviews.countByUserIdAndCreatedAtAfter(eq(USER), any())).thenReturn(10L);
-        assertThatThrownBy(() -> service.submit(USER, request())).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> service.submit(USER, request())).isInstanceOf(DomainException.BadRequest.class);
         verify(reviews, never()).saveAndFlush(any());
     }
 
@@ -287,10 +302,10 @@ class ReviewServiceTest {
         p.setDiscountPercent(5);
         p.setMaxUses(1);
         p.setExpiresAt(NOW.plus(Duration.ofDays(1)));
-        assertThat(ReviewService.toBonus(p, NOW).state()).isEqualTo("ACTIVE");
-        assertThat(ReviewService.toBonus(p, NOW.plus(Duration.ofDays(2))).state()).isEqualTo("EXPIRED");
+        assertThat(ReviewBonus.toBonus(p, NOW).state()).isEqualTo("ACTIVE");
+        assertThat(ReviewBonus.toBonus(p, NOW.plus(Duration.ofDays(2))).state()).isEqualTo("EXPIRED");
         p.setUsesCount(1);
-        assertThat(ReviewService.toBonus(p, NOW).state()).isEqualTo("USED");
+        assertThat(ReviewBonus.toBonus(p, NOW).state()).isEqualTo("USED");
     }
 
     @Test
@@ -303,7 +318,7 @@ class ReviewServiceTest {
         when(reviews.countByProductIdAndStatus(any(), eq(ReviewStatus.PUBLISHED))).thenReturn(4L);
         when(reviews.countByProductIdAndStatus(any(), eq(ReviewStatus.HIDDEN))).thenReturn(0L);
 
-        ReviewDtos.AdminPage page = service.adminList("PENDING", productId, 0, 30);
+        ReviewDtos.AdminPage page = moderation.adminList("PENDING", productId, 0, 30);
 
         assertThat(page.pendingCount()).isEqualTo(1);
         assertThat(page.publishedCount()).isEqualTo(4);

@@ -47,8 +47,7 @@ class ReviewReminderJobTest {
 
     @BeforeEach
     void setUp() {
-        job = new ReviewReminderJob(store, settings, notifier);
-        job.setClock(Clock.fixed(NOW, ZoneOffset.UTC));
+        job = new ReviewReminderJob(store, settings, notifier, Clock.fixed(NOW, ZoneOffset.UTC));
         lenient().when(settings.get(eq(SettingsRegistry.REVIEWS_ENABLED), any(Boolean.class))).thenAnswer(i -> enabled);
         lenient().when(settings.get(eq(SettingsRegistry.NOTIFY_CUSTOMER_STATUS), any(Boolean.class)))
                 .thenAnswer(i -> notify);

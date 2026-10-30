@@ -3,7 +3,7 @@ package com.maxsolch.shop.review.infra;
 import com.maxsolch.shop.review.domain.ReviewRules;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.review.app.ReviewDtos.Summary;
+import com.maxsolch.shop.review.domain.RatingSummary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -114,7 +114,7 @@ public class ReviewStore {
      * {@code [avg, count]} over all published reviews — of hidden and archived products too, so the site
      * shows the same count as the admin's «Опубликованы»; avg null when none.
      */
-    public Summary shopSummary() {
+    public RatingSummary shopSummary() {
         long[] dist = new long[5];
         long[] total = {0, 0};
         jdbc.query("select r.rating, count(*) n from product_reviews r join products p on p.id = r.product_id "
@@ -128,7 +128,7 @@ public class ReviewStore {
             }
         });
         Double avg = total[0] == 0 ? null : Math.round(total[1] * 100.0 / total[0]) / 100.0;
-        return new Summary(avg, total[0], Arrays.stream(dist).boxed().toList());
+        return new RatingSummary(avg, total[0], Arrays.stream(dist).boxed().toList());
     }
 
     /** A delivered order that may be due for a reminder (re-checked by {@link ReviewRules#reminderDue}). */

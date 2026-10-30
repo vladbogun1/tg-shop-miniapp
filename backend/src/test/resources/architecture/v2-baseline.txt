@@ -4,18 +4,14 @@
 # after fixing violations; a raised number means the code got worse and the change must be redone.
 A1 legacy 7
 A1 platform 3
-A1 review 1
 A2 legacy 2
-A2 review 1
 C1 gift 8
 C1 legacy 26
-C1 review 5
 CA legacy 4
 E1 finance 1
 E1 gift 9
 E1 legacy 22
 E1 platform 6
-E1 review 2
 H1 legacy 1
 J1 legacy 7
 J1 platform 2
@@ -24,11 +20,9 @@ L1 legacy 1
 L2 legacy 13
 L3 legacy 1
 L4 legacy 3
-L4 review 1
 M1 gift 2
 M1 legacy 2
 M1 platform 1
-M1 review 3
 M2 order 16
 M2 promo 1
 N1 gift 1
@@ -40,9 +34,7 @@ S1 gift 4
 S1 legacy 13
 S1 platform 4
 T1 platform 4
-T1 review 1
 T2 legacy 3
 W1 gift 2
 W1 legacy 17
 W1 platform 1
-W1 review 1
