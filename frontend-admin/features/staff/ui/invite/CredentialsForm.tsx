@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@shop/ui/admin-button";
-import { useForm } from "@shop/ui/form";
+import { useForm, useFormValues } from "@shop/ui/form";
 import { toast } from "@shop/ui/toast";
 import { ArrowRight, KeyRound, Lock, ShieldCheck, User, UserPlus } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -69,7 +69,7 @@ function formTitle(reset: boolean, info: InviteInfo): string {
 export function CredentialsForm({ token, info, onNext, onFail }: Props) {
   const reset = info.kind === "PASSWORD_RESET" && !info.loginEditable;
   const form = useForm<Values>({ defaultValues: { username: info.username ?? "", password: "", repeat: "" } });
-  const { username, password, repeat } = form.watch();
+  const { username, password, repeat } = useFormValues(form);
   const [usernameError, setUsernameError] = useState<string | undefined>();
 
   const accept = useAcceptInvite();

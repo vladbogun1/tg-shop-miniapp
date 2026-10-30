@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@shop/ui/admin-button";
-import { useForm } from "@shop/ui/form";
+import { useForm, useFormValues } from "@shop/ui/form";
 import { Modal } from "@shop/ui/overlay";
 import { Send } from "lucide-react";
 import { useState } from "react";
@@ -142,7 +142,7 @@ export function InviteModal({ initialTelegramId, admins, onClose, onCreated }: P
   const form = useForm<Values>({
     defaultValues: { manualId: initialTelegramId ? String(initialTelegramId) : "", name: "", role: "ADMIN", code: "" },
   });
-  const { manualId, name, role, code } = form.watch();
+  const { manualId, name, role, code } = useFormValues(form);
 
   const tgId = manual ? (/^\d{1,15}$/.test(manualId.trim()) ? Number(manualId.trim()) : null) : (picked?.telegramUserId ?? null);
   const existing = tgId ? admins.find((a) => a.telegramUserId === tgId) : undefined;
