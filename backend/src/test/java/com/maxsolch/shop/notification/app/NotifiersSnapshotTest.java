@@ -407,12 +407,12 @@ class NotifiersSnapshotTest {
         AdminSecurityNotifier n = adminSecurity();
         when(adminUsers.findById(900L)).thenReturn(Optional.of(new com.maxsolch.shop.staff.domain.AdminUser()));
         when(sessions.revokeEverything(900L)).thenReturn(2);
-        h.scene("pressed by the admin, alert text kept", null, () -> n.onCallback(callback(900L, 900L, "asb:900", "🔐 Вход <в> админку")));
-        h.scene("pressed by the admin, no message", null, () -> n.onCallback(callback(900L, 900L, "asb:900", null)));
-        h.scene("pressed by someone else", null, () -> n.onCallback(callback(901L, 901L, "asb:900", "x")));
-        h.scene("data is not a number", null, () -> n.onCallback(callback(900L, 900L, "asb:zzz", "x")));
+        h.scene("pressed by the admin, alert text kept", null, () -> n.onCallback(callback(900L, 900L, "asb:900", "🔐 Вход <в> админку"), java.util.Locale.of("ru")));
+        h.scene("pressed by the admin, no message", null, () -> n.onCallback(callback(900L, 900L, "asb:900", null), java.util.Locale.of("ru")));
+        h.scene("pressed by someone else", null, () -> n.onCallback(callback(901L, 901L, "asb:900", "x"), java.util.Locale.of("ru")));
+        h.scene("data is not a number", null, () -> n.onCallback(callback(900L, 900L, "asb:zzz", "x"), java.util.Locale.of("ru")));
         when(adminUsers.findById(900L)).thenReturn(Optional.empty());
-        h.scene("admin no longer exists", null, () -> n.onCallback(callback(900L, 900L, "asb:900", "x")));
+        h.scene("admin no longer exists", null, () -> n.onCallback(callback(900L, 900L, "asb:900", "x"), java.util.Locale.of("ru")));
         h.assertSnapshot("adminSecurityBlockButton");
         Mockito.verify(audit, Mockito.times(2)).recordFor(eq(900L), eq("ADMIN_BLOCK_TG"), eq("AUTH"), eq("900"), any());
     }

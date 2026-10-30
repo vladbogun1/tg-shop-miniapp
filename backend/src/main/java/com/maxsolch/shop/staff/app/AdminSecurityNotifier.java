@@ -1,7 +1,8 @@
 package com.maxsolch.shop.staff.app;
 
 import com.maxsolch.shop.notification.app.SellerChannel;
-import com.maxsolch.shop.notification.infra.ShopBot;
+import com.maxsolch.shop.notification.domain.BotCallbackHandler;
+import com.maxsolch.shop.notification.domain.TelegramGateway;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 
 import com.maxsolch.shop.staff.domain.AdminInvite;
@@ -25,6 +26,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -47,13 +49,13 @@ import static com.maxsolch.shop.platform.util.Texts.escHtml;
  */
 @Slf4j
 @Component
-public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMessenger {
+public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMessenger, BotCallbackHandler {
 
     static final String BLOCK_PREFIX = "asb:";
     private static final DateTimeFormatter HHMM = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DAY_TIME = DateTimeFormatter.ofPattern("dd.MM HH:mm");
 
-    private final ShopBot bot;
+    private final TelegramGateway bot;
     private final SellerChannel seller;
     private final AdminSessions sessions;
     private final AdminUserRepository adminUserRepository;
@@ -65,7 +67,7 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
         return t;
     });
 
-    public AdminSecurityNotifier(@Lazy ShopBot bot, SellerChannel seller, AppProperties props,
+    public AdminSecurityNotifier(TelegramGateway bot, SellerChannel seller, AppProperties props,
                                  @Lazy AdminSessions sessions, AdminUserRepository adminUserRepository,
                                  AdminAuditService audit) {
         this.bot = bot;
@@ -85,7 +87,8 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
         return nl < 0 ? html : html.substring(0, nl);
     }
 
-    public static boolean handles(String callbackData) {
+    @Override
+    public boolean handles(String callbackData) {
         return callbackData != null && callbackData.startsWith(BLOCK_PREFIX);
     }
 
@@ -161,8 +164,14 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
                 ActivityLog.Entry.bot("ADMIN_SECURITY_ALERT").text(firstLine(text)), text, block));
     }
 
+    @Override
+    public boolean recordsUser() {
+        return false;
+    }
+
     /** [Заблокировать] pressed. */
-    public void onCallback(CallbackQuery cq) {
+    @Override
+    public void onCallback(CallbackQuery cq, Locale locale) {
         String data = cq.getData();
         long fromId = cq.getFrom().getId();
         long adminId;

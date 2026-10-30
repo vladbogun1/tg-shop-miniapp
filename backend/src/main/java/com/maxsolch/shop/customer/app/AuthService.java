@@ -7,6 +7,7 @@ import com.maxsolch.shop.platform.security.JwtService;
 import com.maxsolch.shop.platform.security.Role;
 import com.maxsolch.shop.platform.security.TelegramUser;
 import com.maxsolch.shop.platform.security.TgInitDataValidator;
+import com.maxsolch.shop.notification.domain.BotUsers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,7 +18,7 @@ import java.time.Instant;
  * sign-in (password / Telegram + 2FA) lives in {@link com.maxsolch.shop.staff.app.AdminAuthService}.
  */
 @Service
-public class AuthService {
+public class AuthService implements BotUsers {
 
     private final TgInitDataValidator initDataValidator;
     private final JwtService jwtService;
@@ -62,6 +63,7 @@ public class AuthService {
      * so the admin Users list captures people who opened the bot but not the Mini App.
      */
     @Transactional
+    @Override
     public void recordBotUser(TelegramUser tgUser) {
         if (tgUser == null || tgUser.id() <= 0) {
             return;

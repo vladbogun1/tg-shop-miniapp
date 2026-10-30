@@ -19,4 +19,12 @@ public class HttpClients {
     public ResilientHttp create(HttpClientSettings defaults) {
         return ResilientHttp.create(properties.applyTo(defaults));
     }
+
+    /**
+     * The effective settings for a client that is not built on {@link ResilientHttp} (a library with its own HTTP
+     * stack): the module's defaults with the {@code app.http.clients.<name>} overrides applied.
+     */
+    public HttpClientSettings settings(HttpClientSettings defaults) {
+        return properties.applyTo(defaults);
+    }
 }

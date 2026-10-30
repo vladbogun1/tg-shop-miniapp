@@ -8,7 +8,7 @@ import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.procurement.app.BatchDtos.EtaDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.MyPreorderDto;
 import com.maxsolch.shop.customer.infra.UserRepository;
-import com.maxsolch.shop.notification.infra.ShopBot;
+import com.maxsolch.shop.notification.domain.TelegramGateway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,7 +40,7 @@ class PreorderNotifierTest {
     static final long USER = 42L;
     static final String PRODUCT = "79c3e54e-0000-4000-8000-000000000001";
 
-    @Mock ShopBot bot;
+    @Mock TelegramGateway bot;
     @Mock UserRepository users;
     @Mock ActivityLog activity;
     @Mock PreorderQueueReader queue;

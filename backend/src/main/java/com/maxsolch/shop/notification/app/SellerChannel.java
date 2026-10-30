@@ -1,6 +1,6 @@
 package com.maxsolch.shop.notification.app;
 
-import com.maxsolch.shop.notification.infra.ShopBot;
+import com.maxsolch.shop.notification.domain.TelegramGateway;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
@@ -36,11 +36,11 @@ import static com.maxsolch.shop.notification.app.TgFormat.shortId;
 @Component
 public class SellerChannel {
 
-    private final ShopBot bot;
+    private final TelegramGateway bot;
     private final AppProperties props;
     private final ActivityLog activity;
 
-    public SellerChannel(@Lazy ShopBot bot, AppProperties props, ActivityLog activity) {
+    public SellerChannel(TelegramGateway bot, AppProperties props, ActivityLog activity) {
         this.bot = bot;
         this.props = props;
         this.activity = activity;

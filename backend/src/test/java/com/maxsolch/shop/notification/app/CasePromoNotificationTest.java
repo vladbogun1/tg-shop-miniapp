@@ -1,6 +1,6 @@
 package com.maxsolch.shop.notification.app;
 
-import com.maxsolch.shop.notification.infra.ShopBot;
+import com.maxsolch.shop.notification.domain.TelegramGateway;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.customer.domain.User;
@@ -34,7 +34,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class CasePromoNotificationTest {
 
-    @Mock ShopBot bot;
+    @Mock TelegramGateway bot;
     @Mock UserRepository users;
     @Mock SettingsService settings;
     @Mock CustomerRejectReason rejectReason;

@@ -5,7 +5,7 @@ import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.notification.infra.BroadcastRepository;
 import com.maxsolch.shop.customer.infra.UserRepository;
-import com.maxsolch.shop.notification.infra.ShopBot;
+import com.maxsolch.shop.notification.domain.TelegramGateway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -24,14 +24,14 @@ import static org.mockito.Mockito.when;
 /** Every message of a broadcast lands in «Журнал → Бот и сайт» with its outcome. */
 class BroadcastJournalTest {
 
-    private ShopBot bot;
+    private TelegramGateway bot;
     private UserRepository users;
     private ActivityLog activity;
     private BroadcastService service;
 
     @BeforeEach
     void setUp() throws Exception {
-        bot = mock(ShopBot.class);
+        bot = mock(TelegramGateway.class);
         users = mock(UserRepository.class);
         activity = mock(ActivityLog.class);
         when(activity.bot(any(), any())).thenCallRealMethod();

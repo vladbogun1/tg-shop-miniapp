@@ -1,17 +1,16 @@
 package com.maxsolch.shop.notification.infra;
 
-import com.maxsolch.shop.staff.app.AdminSecurityNotifier;
-import com.maxsolch.shop.notification.app.NotificationService;
-import com.maxsolch.shop.customer.app.WebLoginBotHandler;
+import com.maxsolch.shop.notification.domain.BotCallbackHandler;
+import com.maxsolch.shop.notification.domain.BotLoginStarter;
+import com.maxsolch.shop.notification.domain.BotUsers;
+import com.maxsolch.shop.notification.domain.TelegramGateway;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.security.TelegramUser;
-import com.maxsolch.shop.customer.app.AuthService;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -25,48 +24,37 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Thin long-polling bot. Handles /start and /help, plus the website login: {@code /start
- * login_<nonce>} and the inline-button callbacks it produces (delegated to
- * {@link WebLoginBotHandler}) and [Заблокировать] under admin sign-in alerts
- * ({@link AdminSecurityNotifier}). All rich notifications are sent out-of-band by
- * {@link NotificationService}. Registration happens in TelegramBotConfig and only when a token is
- * configured.
+ * Thin long-polling bot: it only RECEIVES. Handles /start and /help, plus the website login: {@code /start
+ * login_<nonce>} ({@link BotLoginStarter}) and the inline-button callbacks ({@link BotCallbackHandler}s: the sign-in
+ * confirmation, [Заблокировать] under admin alerts). Everything it says goes out through {@link TelegramGateway};
+ * rich notifications are sent by the modules' notifiers. Registration happens in TelegramBotConfig, only when a
+ * token is configured.
  */
 @Slf4j
 @Component
 public class ShopBot extends TelegramLongPollingBot {
 
-    /**
-     * {@code execute(SendDocument)} is final in DefaultAbsSender, so through the {@code @Lazy}
-     * proxy that NotificationService holds it ran on the empty proxy instance (null ObjectMapper).
-     * This plain method is proxied and delegates to the real bot.
-     */
-    public org.telegram.telegrambots.meta.api.objects.Message sendDocument(
-            org.telegram.telegrambots.meta.api.methods.send.SendDocument document)
-            throws org.telegram.telegrambots.meta.exceptions.TelegramApiException {
-        return execute(document);
-    }
-
-
     private final AppProperties props;
-    private final AuthService authService;
+    private final BotUsers users;
     private final Messages messages;
-    private final WebLoginBotHandler webLogin;
+    private final BotLoginStarter loginStarter;
+    private final List<BotCallbackHandler> callbackHandlers;
+    private final TelegramGateway gateway;
     private final SettingsService settings;
-    private final AdminSecurityNotifier adminSecurity;
     private final ActivityLog activity;
 
-    public ShopBot(AppProperties props, @Lazy AuthService authService, Messages messages,
-                   @Lazy WebLoginBotHandler webLogin, SettingsService settings,
-                   @Lazy AdminSecurityNotifier adminSecurity, ActivityLog activity) {
+    public ShopBot(AppProperties props, BotUsers users, Messages messages, BotLoginStarter loginStarter,
+                   List<BotCallbackHandler> callbackHandlers, SettingsService settings, ActivityLog activity,
+                   TelegramGateway gateway) {
         super(props.getTelegram().getBotToken() == null ? "" : props.getTelegram().getBotToken());
         this.props = props;
-        this.authService = authService;
+        this.users = users;
         this.messages = messages;
-        this.webLogin = webLogin;
+        this.loginStarter = loginStarter;
+        this.callbackHandlers = callbackHandlers;
         this.settings = settings;
-        this.adminSecurity = adminSecurity;
         this.activity = activity;
+        this.gateway = gateway;
     }
 
     @Override
@@ -97,7 +85,7 @@ public class ShopBot extends TelegramLongPollingBot {
             if (loginNonce != null) {
                 // Only in a private chat: the chat id is then the person confirming the login.
                 if (update.getMessage().getChat() != null && update.getMessage().getChat().isUserChat()) {
-                    webLogin.onStartLogin(chatId, loginNonce, localeFor(chatId, languageCode));
+                    loginStarter.onStartLogin(chatId, loginNonce, localeFor(chatId, languageCode));
                 }
             } else if (text.startsWith("/start")) {
                 sendStart(chatId, languageCode);
@@ -129,16 +117,15 @@ public class ShopBot extends TelegramLongPollingBot {
         if (cq.getFrom() == null) {
             return;
         }
-        if (AdminSecurityNotifier.handles(cq.getData())) {
-            // [Заблокировать] under an admin sign-in alert.
-            adminSecurity.onCallback(cq);
-            return;
+        for (BotCallbackHandler handler : callbackHandlers) {
+            if (handler.handles(cq.getData())) {
+                if (handler.recordsUser()) {
+                    recordUser(cq.getFrom());
+                }
+                handler.onCallback(cq, localeFor(cq.getFrom().getId(), cq.getFrom().getLanguageCode()));
+                return;
+            }
         }
-        if (!WebLoginBotHandler.handles(cq.getData())) {
-            return;
-        }
-        recordUser(cq.getFrom());
-        webLogin.onCallback(cq, localeFor(cq.getFrom().getId(), cq.getFrom().getLanguageCode()));
     }
 
     private void sendStart(long chatId, String languageCode) {
@@ -196,7 +183,7 @@ public class ShopBot extends TelegramLongPollingBot {
             return;
         }
         try {
-            authService.recordBotUser(new TelegramUser(
+            users.recordBotUser(new TelegramUser(
                     from.getId(),
                     from.getUserName(),
                     from.getFirstName(),
@@ -213,9 +200,9 @@ public class ShopBot extends TelegramLongPollingBot {
         try {
             // Only private chats are journaled: /start in a group is not a customer.
             if (chatId > 0) {
-                activity.bot(ActivityLog.Entry.bot(type).toCustomer(chatId).text(msg.getText()), () -> execute(msg));
+                activity.bot(ActivityLog.Entry.bot(type).toCustomer(chatId).text(msg.getText()), () -> gateway.execute(msg));
             } else {
-                execute(msg);
+                gateway.execute(msg);
             }
         } catch (TelegramApiException e) {
             log.warn("Failed to send message: {}", e.getMessage());

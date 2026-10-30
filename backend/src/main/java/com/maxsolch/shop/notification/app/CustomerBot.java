@@ -1,6 +1,6 @@
 package com.maxsolch.shop.notification.app;
 
-import com.maxsolch.shop.notification.infra.ShopBot;
+import com.maxsolch.shop.notification.domain.TelegramGateway;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.platform.i18n.Messages;
@@ -47,12 +47,12 @@ public class CustomerBot {
         }
     }
 
-    private final ShopBot bot;
+    private final TelegramGateway bot;
     private final AppProperties props;
     private final Messages messages;
     private final ActivityLog activity;
 
-    public CustomerBot(@Lazy ShopBot bot, AppProperties props, Messages messages, ActivityLog activity) {
+    public CustomerBot(TelegramGateway bot, AppProperties props, Messages messages, ActivityLog activity) {
         this.bot = bot;
         this.props = props;
         this.messages = messages;
@@ -138,7 +138,7 @@ public class CustomerBot {
      * the failure is thrown: the caller decides what it means (blocked bot, retry, …).
      */
     public Message sendDocument(SendDocument doc, ActivityLog.Entry entry) throws TelegramApiException {
-        return activity.bot(entry, () -> bot.sendDocument(doc));
+        return activity.bot(entry, () -> bot.execute(doc));
     }
 
     // ----- buttons that open the Mini App (null while there is no public HTTPS address) -----

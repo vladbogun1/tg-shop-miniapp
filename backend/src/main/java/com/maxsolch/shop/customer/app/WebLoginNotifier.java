@@ -1,6 +1,8 @@
 package com.maxsolch.shop.customer.app;
 
-import com.maxsolch.shop.notification.infra.ShopBot;
+import com.maxsolch.shop.notification.domain.BotCallbackHandler;
+import com.maxsolch.shop.notification.domain.BotLoginStarter;
+import com.maxsolch.shop.notification.domain.TelegramGateway;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.journal.ActivityLog;
@@ -45,12 +47,12 @@ import static com.maxsolch.shop.platform.util.Texts.escHtml;
  */
 @Slf4j
 @Component
-public class WebLoginBotHandler {
+public class WebLoginNotifier implements BotCallbackHandler, BotLoginStarter {
 
     static final String LOGIN_PREFIX = "wl:";
     static final String SESSION_PREFIX = "ws:";
 
-    private final ShopBot bot;
+    private final TelegramGateway bot;
     private final WebAuthService webAuthService;
     private final Messages messages;
     private final AppProperties props;
@@ -62,7 +64,7 @@ public class WebLoginBotHandler {
         return t;
     });
 
-    public WebLoginBotHandler(@Lazy ShopBot bot, WebAuthService webAuthService, Messages messages,
+    public WebLoginNotifier(TelegramGateway bot, WebAuthService webAuthService, Messages messages,
                               AppProperties props, ActivityLog activity) {
         this.bot = bot;
         this.webAuthService = webAuthService;
@@ -71,12 +73,18 @@ public class WebLoginBotHandler {
         this.activity = activity;
     }
 
-    public static boolean handles(String callbackData) {
+    public static boolean isLoginCallback(String callbackData) {
         return callbackData != null
                 && (callbackData.startsWith(LOGIN_PREFIX) || callbackData.startsWith(SESSION_PREFIX));
     }
 
+    @Override
+    public boolean handles(String callbackData) {
+        return isLoginCallback(callbackData);
+    }
+
     /** {@code /start login_<nonce>} in a private chat. */
+    @Override
     public void onStartLogin(long chatId, String nonce, Locale locale) {
         Optional<BotPrompt> prompt = webAuthService.openFromBot(nonce, chatId);
         if (prompt.isEmpty()) {
@@ -113,6 +121,7 @@ public class WebLoginBotHandler {
     }
 
     /** A press on one of our inline buttons. */
+    @Override
     public void onCallback(CallbackQuery cq, Locale locale) {
         String data = cq.getData();
         long fromId = cq.getFrom().getId();

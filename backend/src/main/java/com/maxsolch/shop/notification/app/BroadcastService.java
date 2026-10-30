@@ -6,7 +6,7 @@ import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.notification.infra.BroadcastRepository;
 import com.maxsolch.shop.customer.infra.UserRepository;
-import com.maxsolch.shop.notification.infra.ShopBot;
+import com.maxsolch.shop.notification.domain.TelegramGateway;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Lazy;
@@ -57,7 +57,7 @@ public class BroadcastService {
             "ru", "🛍 Открыть магазин",
             "en", "🛍 Open the shop");
 
-    private final ShopBot bot;
+    private final TelegramGateway bot;
     private final AppProperties props;
     private final UserRepository userRepository;
     private final BroadcastRepository broadcastRepository;
@@ -70,7 +70,7 @@ public class BroadcastService {
     });
     private final AtomicReference<BroadcastStatus> status = new AtomicReference<>(BroadcastStatus.idle());
 
-    public BroadcastService(@Lazy ShopBot bot, AppProperties props, UserRepository userRepository,
+    public BroadcastService(TelegramGateway bot, AppProperties props, UserRepository userRepository,
                             BroadcastRepository broadcastRepository, ActivityLog activity) {
         this.bot = bot;
         this.props = props;

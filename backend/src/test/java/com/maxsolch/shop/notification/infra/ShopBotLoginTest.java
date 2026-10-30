@@ -1,6 +1,6 @@
 package com.maxsolch.shop.notification.infra;
 
-import com.maxsolch.shop.customer.app.WebLoginBotHandler;
+import com.maxsolch.shop.customer.app.WebLoginNotifier;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -26,10 +26,10 @@ class ShopBotLoginTest {
 
     @Test
     void onlyOurCallbackPrefixesAreHandled() {
-        assertThat(WebLoginBotHandler.handles("wl:1216ca51-af1e-4146-8ecb-70bf46fa339c:42")).isTrue();
-        assertThat(WebLoginBotHandler.handles("ws:1216ca51-af1e-4146-8ecb-70bf46fa339c:end")).isTrue();
-        assertThat(WebLoginBotHandler.handles("something-else")).isFalse();
-        assertThat(WebLoginBotHandler.handles(null)).isFalse();
+        assertThat(WebLoginNotifier.isLoginCallback("wl:1216ca51-af1e-4146-8ecb-70bf46fa339c:42")).isTrue();
+        assertThat(WebLoginNotifier.isLoginCallback("ws:1216ca51-af1e-4146-8ecb-70bf46fa339c:end")).isTrue();
+        assertThat(WebLoginNotifier.isLoginCallback("something-else")).isFalse();
+        assertThat(WebLoginNotifier.isLoginCallback(null)).isFalse();
     }
 
     @Test

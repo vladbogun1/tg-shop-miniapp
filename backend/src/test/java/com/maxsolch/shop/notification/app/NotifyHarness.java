@@ -1,6 +1,6 @@
 package com.maxsolch.shop.notification.app;
 
-import com.maxsolch.shop.notification.infra.ShopBot;
+import com.maxsolch.shop.notification.domain.TelegramGateway;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.config.AppProperties;
@@ -63,7 +63,7 @@ final class NotifyHarness {
     private static final Path SNAPSHOTS = Path.of("src/test/resources/snapshots/notify");
 
     final AppProperties props = new AppProperties();
-    final ShopBot bot = Mockito.mock(ShopBot.class);
+    final TelegramGateway bot = Mockito.mock(TelegramGateway.class);
     final ActivityLog activity = Mockito.mock(ActivityLog.class);
     final SettingsService settings = Mockito.mock(SettingsService.class);
     final Messages messages;
@@ -142,7 +142,7 @@ final class NotifyHarness {
                 events.add(render(d));
                 throwIfFails(d);
                 return message(d.getChatId());
-            }).when(bot).sendDocument(any());
+            }).when(bot).execute(any(org.telegram.telegrambots.meta.api.methods.send.SendDocument.class));
             doAnswer(inv -> {
                 events.add(render((ActivityLog.Entry) inv.getArgument(0)));
                 return ((ActivityLog.BotCall<?>) inv.getArgument(1)).call();
