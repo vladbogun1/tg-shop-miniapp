@@ -5,9 +5,12 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.core.converter.ModelConverter;
+import io.swagger.v3.core.jackson.ModelResolver;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springdoc.core.customizers.OperationCustomizer;
+import org.springdoc.core.providers.ObjectMapperProvider;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.annotation.Order;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
@@ -32,8 +35,16 @@ public class OpenApiConfig {
 
     /** Record components are required, `@Nullable` ones nullable: the TypeScript types are generated from this. */
     @Bean
+    @Order(10)
     public ModelConverter recordSchemas() {
         return new OpenApiRecordSchemas();
+    }
+
+    /** Unique schema names (see {@link OpenApiTypeNames}); springdoc's own resolver backs off when there is one. */
+    @Bean
+    @Order(0)
+    public ModelResolver modelResolver(ObjectMapperProvider objectMapperProvider) {
+        return new ModelResolver(objectMapperProvider.jsonMapper(), new OpenApiTypeNames());
     }
 
     /** Applies the required / nullable facts of {@link OpenApiRecordSchemas} to the schemas of responses. */

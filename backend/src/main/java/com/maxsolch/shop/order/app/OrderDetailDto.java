@@ -28,7 +28,7 @@ public record OrderDetailDto(
         @Nullable String rejectReason,
         List<OrderItemDto> items,
         /** Online payment (monobank) state — latest invoice; never null. */
-        @Nullable OnlinePaymentDto payment,
+        OnlinePaymentDto payment,
         @Nullable Long tgUserId,
         @Nullable String tgUsername,
         Instant createdAt,
@@ -66,7 +66,7 @@ public record OrderDetailDto(
         /** Exchanges made on this order (V51), oldest first; empty when none. */
         List<ExchangeDto> exchanges,
         /** Gift case (V57): null = none, SEALED (the customer has not opened it; the prize line is hidden from them), OPENED. */
-        @Nullable String giftCaseStatus,
+        @Schema(allowableValues = {"SEALED", "OPENED"}) @Nullable String giftCaseStatus,
         @Nullable Instant giftCaseOpenedAt,
         /** SEALED and the order is paid — the customer may open it now (once). */
         boolean giftCaseOpenable,
@@ -132,14 +132,14 @@ public record OrderDetailDto(
     }
 
     public record MovementDto(long id,
-                              String kind,
-                              String channel,
+                              @Schema(implementation = com.maxsolch.shop.order.domain.OrderMoneyMovement.Kind.class) String kind,
+                              @Schema(implementation = com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.class) String channel,
                               long amountMinor,
                               Instant occurredAt,
                               @Nullable String adminName,
                               @Nullable String note,
                               @Nullable String invoiceExtId,
-                              String source) {
+                              @Schema(implementation = com.maxsolch.shop.order.domain.OrderMoneyMovement.Source.class) String source) {
     }
 
     public record WriteoffDto(long id,

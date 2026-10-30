@@ -8,6 +8,12 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 
+import com.maxsolch.shop.platform.config.OpenApiTypeNames;
+import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
+import org.springframework.core.type.filter.AssignableTypeFilter;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -15,6 +21,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.Set;
 import java.util.Map;
 import java.util.TreeMap;
@@ -43,6 +51,31 @@ class OpenApiSnapshotTest {
     @Test
     void errorCodesEqualTheCommittedSnapshot() throws Exception {
         compareOrUpdate(ERROR_CODES, OpenApiDocs.render(OpenApiDocs.errorCodes()));
+    }
+
+    /** One schema per name: two records with one name would silently replace each other in the document. */
+    @Test
+    void everyDtoRecordHasItsOwnSchemaName() throws Exception {
+        ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(false) {
+            @Override
+            protected boolean isCandidateComponent(AnnotatedBeanDefinition definition) {
+                return true;
+            }
+        };
+        scanner.addIncludeFilter(new AssignableTypeFilter(Record.class));
+        Map<String, String> owner = new TreeMap<>();
+        List<String> clashes = new ArrayList<>();
+        for (BeanDefinition d : scanner.findCandidateComponents("com.maxsolch.shop")) {
+            Class<?> type = Class.forName(d.getBeanClassName());
+            if (type.getName().contains("Test") || !(type.getName().contains(".api.") || type.getName().contains(".app."))) {
+                continue;
+            }
+            String previous = owner.put(OpenApiTypeNames.nameOf(type), type.getName());
+            if (previous != null) {
+                clashes.add(OpenApiTypeNames.nameOf(type) + ": " + previous + " / " + type.getName());
+            }
+        }
+        assertThat(clashes).isEmpty();
     }
 
     @Test

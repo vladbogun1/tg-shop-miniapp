@@ -13,8 +13,11 @@ export type SenderType = "CUSTOMER" | "ADMIN" | "SYSTEM";
 export type MessageType = "TEXT" | "PHOTO" | "FILE" | "SYSTEM";
 export type TimeRange = "month" | "halfyear" | "year" | "all";
 
+type Schemas = components["schemas"];
+
 // ---- catalog ----------------------------------------------------------------
 
+import type { components } from "./api/generated";
 import type { CatalogFields } from "./catalog";
 import type { OrderGift } from "./giftcase";
 
@@ -209,31 +212,8 @@ export interface AdminReviewPage {
 
 // ---- orders -----------------------------------------------------------------
 
-export interface OrderItem {
-  /** order_items.id — an auto-increment number, not a UUID. */
-  id?: number;
-  productId?: string;
-  variantId?: string | null;
-  title: string;
-  variantName?: string | null;
-  quantity: number;
-  priceMinor: number;
-  currency?: string;
-  imageUrl?: string | null;
-  gift?: boolean;
-  /** Gift the shop added by itself for the order sum (V57). */
-  autoGift?: boolean;
-  /** Rarity of the gift-case prize (V57); null = not from a case. */
-  caseRarity?: "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD" | null;
-  /** A case prize whose size the customer has not chosen yet (V59). */
-  variantPending?: boolean;
-  /** Units the customer gave back (a return, or refused at the post office and already received). */
-  returnedQty?: number;
-  /** Units on their way back to the shop (V68). */
-  returnPendingQty?: number;
-  /** What one unit actually cost: the price with the order discount spread in (V68). */
-  unitPaidMinor?: number;
-}
+/** Строка заказа (OrderItemDto бэкенда). */
+export type OrderItem = Schemas["OrderItemDto"];
 
 /** Latest monobank invoice state: "none" = the customer never opened the payment page. */
 export type OnlinePaymentStatus =
@@ -246,21 +226,8 @@ export type OnlinePaymentStatus =
   | "reversed"
   | "expired";
 
-/** Online payment (monobank) of an order — OrderDetail.payment. */
-export interface OnlinePayment {
-  /** Online payment is configured on the server (token set). */
-  enabled: boolean;
-  status: OnlinePaymentStatus;
-  /** Live payment page; only while it can still be paid. */
-  pageUrl?: string | null;
-  expiresAt?: string | null;
-  amountMinor: number;
-  /** e.g. "444403******1902" */
-  maskedPan?: string | null;
-  /** pan | apple | google | monobank | wallet | direct */
-  paymentMethod?: string | null;
-  failureReason?: string | null;
-}
+/** Онлайн-оплата (monobank) заказа — OrderDetail.payment. */
+export type OnlinePayment = Schemas["OnlinePaymentDto"];
 
 /** POST /api/me/orders/{id}/payment — send the customer to pageUrl. */
 export interface PaymentStart {
@@ -270,12 +237,8 @@ export interface PaymentStart {
   expiresAt: string;
 }
 
-/** POST /api/orders. Next step: start the payment for orderId. */
-export interface CreateOrderResult {
-  orderId: string;
-  /** What has to be paid online now (the whole order or the prepayment). */
-  amountDueMinor: number;
-}
+/** POST /api/orders: дальше старт оплаты для orderId. */
+export type CreateOrderResult = Schemas["CreateOrderResponse"];
 
 /** GET /api/admin/orders/{id}/payments — one monobank invoice. */
 export interface AdminInvoice {
@@ -310,148 +273,25 @@ export interface MonobankStatus {
   lastWebhookSignatureOk?: boolean | null;
 }
 
-export interface OrderSummary {
-  id: string;
-  status: OrderStatus;
-  totalMinor: number;
-  currency: string;
-  createdAt: string;
-  itemsCount: number;
-  unreadCount: number;
-  /** Money arrived (online payment or settled on delivery). */
-  paid: boolean;
-  /** Amount received so far. */
-  receivedMinor: number;
-  /** Pay online by then or the order is cancelled; null = placed before online payment. */
-  paymentDueAt?: string | null;
-  /** Still to pay online now; 0 = nothing to pay. */
-  amountDueMinor?: number;
-  /** My cancellation request of a paid order; null = none. */
-  cancelRequestStatus?: CancelRequestStatus | null;
-  /** Gift case (V57): SEALED = waits to be opened. */
-  giftCaseStatus?: "SEALED" | "OPENED" | null;
-  /** SEALED and the order is paid (not rejected): the customer can open it now. */
-  giftCaseOpenable?: boolean;
-  /** Refused at the Nova Poshta branch (partial pickup): not paid for. */
-  uncollectedMinor?: number;
-}
+/** Заказ в списке покупателя (GET /api/me/orders). */
+export type OrderSummary = Schemas["OrderSummaryDto"];
 
 /** Customer's request to cancel a PAID order (one per order). */
 export type CancelRequestStatus = "PENDING" | "APPROVED" | "DECLINED";
 
-/** GET /api/public/order-limits — anti-bot limits; 0 = no limit. */
-export interface OrderLimits {
-  maxQtyPerProduct: number;
-  maxUnitsPerOrder: number;
-  maxUnpaidOrders: number;
-  orderCooldownSec: number;
-  maxOrdersPerDay: number;
-  maxSelfCancelsPerDay: number;
-}
+/** GET /api/public/order-limits — антибот-лимиты; 0  */
+export type OrderLimits = Schemas["Limits"];
 
-export interface OrderDetail {
-  id: string;
-  status: OrderStatus;
-  subtotalMinor: number;
-  discountMinor: number;
-  /** Gift case (V57): null = none; SEALED = waits to be opened (its prize line is hidden until then); OPENED. */
-  giftCaseStatus?: "SEALED" | "OPENED" | null;
-  giftCaseOpenedAt?: string | null;
-  /** SEALED and the order is paid (not rejected): opens now; otherwise only after payment. Opens once. */
-  giftCaseOpenable?: boolean;
-  /** Part of discountMinor that is the guaranteed gift discount (the customer chose it instead of the case). */
-  giftDiscountMinor?: number;
-  /** Replacement of an exchange on that order (V69): the difference is paid online or on delivery. */
-  exchangeOfId?: string | null;
-  /** Paid value of the units refused at the branch (partial pickup, V72): not part of наложка. */
-  uncollectedMinor?: number;
-  /** The gift of the order: tier, guaranteed discount or case, prize (once opened), code, swap. */
-  gift?: OrderGift | null;
-  totalMinor: number;
-  currency: string;
-  customerName: string;
-  phone: string;
-  comment?: string | null;
-  promoCode?: string | null;
-  deliveryMethod: DeliveryMethod;
-  npCityName?: string | null;
-  npWarehouseName?: string | null;
-  paymentOptionTitle?: string | null;
-  trackingNumber?: string | null;
-  rejectReason?: string | null;
-  /** RejectReasonCode name (shared/orders.ts), e.g. PAYMENT_TIMEOUT; null = not specified. */
-  rejectReasonCode?: string | null;
-  items: OrderItem[];
-  /** Online payment (monobank) state. */
-  payment: OnlinePayment;
-  paid: boolean;
-  paidAt?: string | null;
-  prepaymentMinor: number;
-  receivedMinor: number;
-  /** Pay online by then or the order is cancelled; null = placed before online payment. */
-  paymentDueAt?: string | null;
-  /** Still to pay online now (prepayment or total minus what arrived); 0 = nothing to pay. */
-  amountDueMinor: number;
-  createdAt: string;
-  approvedAt?: string | null;
-  shippedAt?: string | null;
-  deliveredAt?: string | null;
-  rejectedAt?: string | null;
-  /** Cancellation request of a paid order (POST /api/me/orders/{id}/cancel-request); null = none. */
-  cancelRequestStatus?: CancelRequestStatus | null;
-  cancelRequestReason?: string | null;
-  cancelRequestedAt?: string | null;
-  cancelRequestResolvedAt?: string | null;
-  /** The shop's answer — shown to the customer when DECLINED. */
-  cancelRequestAdminComment?: string | null;
-  /** Admin-only extras (GET /api/admin/orders/{id}). */
-  tgUserId?: number | null;
-  tgUsername?: string | null;
-}
+/** Заказ целиком; у покупателя admin  */
+export type OrderDetail = Schemas["OrderDetailDto"];
 
-export interface OrderCard {
-  id: string;
-  customerName: string;
-  totalMinor: number;
-  currency: string;
-  itemsCount: number;
-  deliveryMethod: DeliveryMethod;
-  paymentOptionTitle: string;
-  unreadCount: number;
-  createdAt: string;
-  status: OrderStatus;
-  paid: boolean;
-  /** Amount received, so a partial payment is distinguishable on the board. */
-  receivedMinor: number;
-  paymentDueAt?: string | null;
-  amountDueMinor?: number;
-  /** PENDING = the customer asks to cancel this paid order. */
-  cancelRequestStatus?: CancelRequestStatus | null;
-  /** Refused at the Nova Poshta branch (partial pickup): the card shows total − this. */
-  uncollectedMinor?: number;
-}
+/** Карточка заказа на доске админки. */
+export type OrderCard = Schemas["OrderCardDto"];
 
 // ---- chat -------------------------------------------------------------------
 
-export interface Message {
-  /** order_messages.id — an auto-increment number. */
-  id: number;
-  orderId: string;
-  senderType: SenderType;
-  senderName?: string | null;
-  type: MessageType;
-  text?: string | null;
-  /**
-   * Ready-to-use, short-lived signed URL (`/api/media?...`) — NOT a raw storage key.
-   * Attachments live in a private bucket, so only this link can fetch them.
-   */
-  attachmentUrl?: string | null;
-  fileName?: string | null;
-  mimeType?: string | null;
-  replyToMessageId?: number | null;
-  createdAt: string;
-  readAt?: string | null;
-}
+/** Сообщение чата заказа. */
+export type Message = Schemas["MessageDto"];
 
 export interface SendMessageRequest {
   text?: string;
@@ -463,16 +303,8 @@ export interface SendMessageRequest {
   replyToMessageId?: number;
 }
 
-export interface Conversation {
-  orderId: string;
-  shortId: string;
-  customerName?: string | null;
-  status: OrderStatus;
-  lastPreview: string;
-  lastSenderType?: SenderType | null;
-  lastAt?: string | null;
-  unreadCount: number;
-}
+/** Беседа в списке чатов. */
+export type Conversation = Schemas["ConversationDto"];
 
 // ---- payment / delivery -----------------------------------------------------
 

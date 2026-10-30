@@ -4573,18 +4573,6 @@ export interface components {
         AcceptRequest: {
             items?: components["schemas"]["AcceptItem"][];
         };
-        AcceptResult: {
-            /** Format: int32 */
-            accepted: number;
-            /** Format: int32 */
-            invalid: number;
-            /** Format: int32 */
-            notFound: number;
-            /** Format: int32 */
-            rebased: number;
-            /** Format: int32 */
-            skippedStale: number;
-        };
         AccessTokenResponse: {
             accessToken: string;
         };
@@ -4657,7 +4645,7 @@ export interface components {
             comment?: string;
             customerName: string;
             deliveryMethod?: string;
-            items: components["schemas"]["Line"][];
+            items: components["schemas"]["OrderAdminCreateOrderRequestLine"][];
             note?: string;
             npCityName?: string;
             npCityRef?: string;
@@ -4902,6 +4890,65 @@ export interface components {
         };
         AdminTelegramAuthRequest: {
             initData: string;
+        };
+        AnalyticsChannelRow: {
+            /** Format: int64 */
+            aovMinor: number;
+            /** Format: int64 */
+            buyers: number;
+            /** Format: double */
+            conversionPct: number;
+            /** Format: int64 */
+            orders: number;
+            /** Format: double */
+            rejectRatePct: number;
+            /** Format: int64 */
+            soldMinor: number;
+            source: string;
+            /** Format: int64 */
+            visitors: number;
+        };
+        AnalyticsOverview: {
+            categories: components["schemas"]["CategoryRow"][];
+            channels: components["schemas"]["AnalyticsChannelRow"][];
+            giveaways: components["schemas"]["Giveaways"];
+            heatmap: number[][];
+            kpis: components["schemas"]["Kpis"];
+            money: components["schemas"]["MoneyNow"];
+            online: components["schemas"]["OnlinePayments"];
+            period: components["schemas"]["PeriodInfo"];
+            prevSeries: components["schemas"]["SeriesPoint"][];
+            schemes: components["schemas"]["SchemeRow"][];
+            series: components["schemas"]["SeriesPoint"][];
+        };
+        AnalyticsReturnsRowsChannelRow: {
+            /** Format: int64 */
+            amountMinor: number;
+            channel: string;
+            /** Format: int64 */
+            count: number;
+        };
+        AnalyticsTopCustomer: {
+            name: string;
+            /** Format: int64 */
+            orders: number;
+            /** Format: int64 */
+            receivedMinor: number;
+            /** Format: int64 */
+            soldMinor: number;
+            /** Format: int64 */
+            telegramUserId: number;
+            username: string;
+        };
+        AnalyticsViolation: {
+            customerName: string;
+            /** Format: double */
+            hours: number;
+            orderId: string;
+            /** Format: date-time */
+            since: string;
+            /** Format: int64 */
+            totalMinor: number;
         };
         AovBucket: {
             label: string;
@@ -5601,6 +5648,29 @@ export interface components {
             productCount: number;
             slug: string;
         };
+        CatalogCatalogSchemaImporterResult: {
+            /** Format: int32 */
+            attributesCreated: number;
+            /** Format: int32 */
+            attributesUpdated: number;
+            /** Format: int32 */
+            brandsCreated: number;
+            /** Format: int32 */
+            brandsUpdated: number;
+            /** Format: int32 */
+            categoriesCreated: number;
+            /** Format: int32 */
+            categoriesUpdated: number;
+            /** Format: int32 */
+            groups: number;
+            /** Format: int32 */
+            optionsCreated: number;
+            /** Format: int32 */
+            optionsUpdated: number;
+            /** Format: int32 */
+            productsMoved: number;
+            warnings: string[];
+        };
         CatalogCategoryDto: {
             artKind: string | null;
             id: string;
@@ -5648,6 +5718,19 @@ export interface components {
             /** Format: int32 */
             sortOrder: number;
         };
+        CategoryRow: {
+            /** Format: int64 */
+            liveProducts: number;
+            name: string;
+            /** Format: int64 */
+            revenueMinor: number;
+            /** Format: double */
+            sharePct: number;
+            /** Format: int64 */
+            units: number;
+            /** Format: double */
+            unitsPerProduct: number;
+        };
         CategoryStock: {
             /** Format: double */
             daysOfCover: number;
@@ -5676,13 +5759,6 @@ export interface components {
             notifyCustomer?: boolean;
             /** Format: int32 */
             quantity?: number;
-        };
-        ChannelRow: {
-            /** Format: int64 */
-            amountMinor: number;
-            channel: string;
-            /** Format: int64 */
-            count: number;
         };
         ClientEventBatch: {
             events?: components["schemas"]["ClientEventDto"][];
@@ -5776,7 +5852,7 @@ export interface components {
             customerName: string;
             deliveryMethod: string;
             giftChoice?: string;
-            items: components["schemas"]["Item"][];
+            items: components["schemas"]["OrderCreateOrderRequestItem"][];
             npCityName?: string;
             npCityRef?: string;
             npWarehouseName?: string;
@@ -5811,6 +5887,26 @@ export interface components {
             /** Format: double */
             repeatPct: number;
         };
+        CustomerOverview: {
+            /** Format: int32 */
+            days: number;
+            geoAvailable: boolean;
+            online: components["schemas"]["Online"];
+            points: components["schemas"]["Point"][];
+            /** Format: int64 */
+            visitors: number;
+            /** Format: int64 */
+            withoutLocation: number;
+        };
+        CustomerUserMetricsDtoTopCustomer: {
+            name: string;
+            /** Format: int64 */
+            ordersCount: number;
+            /** Format: int64 */
+            telegramUserId: number;
+            /** Format: int64 */
+            totalSpentMinor: number;
+        };
         Customers: {
             aovBuckets: components["schemas"]["AovBucket"][];
             /** Format: double */
@@ -5821,7 +5917,7 @@ export interface components {
             promoCodes: components["schemas"]["PromoRow"][];
             repeatDistribution: components["schemas"]["RepeatBucket"][];
             signups: components["schemas"]["SignupWeek"][];
-            topCustomers: components["schemas"]["TopCustomer"][];
+            topCustomers: components["schemas"]["AnalyticsTopCustomer"][];
         };
         DeadStockBucket: {
             /** Format: int32 */
@@ -6002,10 +6098,10 @@ export interface components {
             totalBeforeMinor: number;
         };
         ExchangeRequest: {
-            items?: components["schemas"]["NewLine"][];
+            items?: components["schemas"]["ReturnsExchangeRequestNewLine"][];
             note?: string;
             notifyCustomer?: boolean;
-            returned?: components["schemas"]["WizardLine"][];
+            returned?: components["schemas"]["ReturnsReturnWizardRequestWizardLine"][];
             targetStatus?: string;
         };
         ExpenseDto: {
@@ -6215,16 +6311,15 @@ export interface components {
             swaps: number;
             tiers: components["schemas"]["TierStatsDto"][];
         };
-        Group: {
-            /** Format: int32 */
-            count: number;
-            dismissible: boolean;
-            hint: string;
-            id: string;
-            items: components["schemas"]["Item"][];
-            /** Format: int32 */
-            snoozed: number;
-            title: string;
+        Giveaways: {
+            /** Format: int64 */
+            discountMinor: number;
+            /** Format: int64 */
+            giftUnits: number;
+            /** Format: int64 */
+            giftValueMinor: number;
+            /** Format: int64 */
+            promoOrders: number;
         };
         ImportItem: {
             entityId?: string;
@@ -6257,13 +6352,51 @@ export interface components {
             approvedStaleHours: number;
             /** Format: date-time */
             generatedAt: string;
-            groups: components["schemas"]["Group"][];
+            groups: components["schemas"]["InboxGroup"][];
             /** Format: int32 */
             newStaleHours: number;
             /** Format: int32 */
             returnsDays: number;
             /** Format: int32 */
             total: number;
+        };
+        InboxGroup: {
+            /** Format: int32 */
+            count: number;
+            dismissible: boolean;
+            hint: string;
+            id: string;
+            items: components["schemas"]["InboxItem"][];
+            /** Format: int32 */
+            snoozed: number;
+            title: string;
+        };
+        InboxItem: {
+            /** Format: int64 */
+            amountMinor: number;
+            amountNote: string;
+            /** Format: double */
+            daysToZero: number;
+            entityId: string;
+            key: string;
+            orderId: string;
+            overdue: boolean;
+            productId: string;
+            shortId: string;
+            /** Format: date-time */
+            since: string;
+            status: string;
+            /** Format: int32 */
+            stock: number;
+            subtitle: string;
+            title: string;
+            type: string;
+            /** Format: int32 */
+            unread: number;
+            variantId: string;
+            version: string;
+            /** Format: int64 */
+            waitMinutes: number;
         };
         IncidentDto: {
             auto: boolean;
@@ -6302,6 +6435,29 @@ export interface components {
             viewers: number;
             /** Format: int64 */
             views: number;
+        };
+        InventoryStockWriteoffReportServiceLine: {
+            adminName: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int64 */
+            id: number;
+            note: string;
+            orderId: string;
+            orderShortId: string;
+            productId: string;
+            /** Format: int32 */
+            quantity: number;
+            reason: string;
+            title: string;
+            undoneNote: string;
+            /** Format: int32 */
+            undoneQty: number;
+            /** Format: int64 */
+            unitValueMinor: number;
+            /** Format: int64 */
+            valueMinor: number;
+            variantId: string;
         };
         InviteAcceptRequest: {
             password?: string;
@@ -6368,12 +6524,6 @@ export interface components {
             message: string;
             reason: string;
         };
-        Item: {
-            productId: string;
-            /** Format: int32 */
-            quantity: number;
-            variantId: string;
-        };
         ItemDto: {
             /** Format: int64 */
             id: number;
@@ -6408,6 +6558,10 @@ export interface components {
             variantId?: string;
         };
         JsonNode: Record<string, never>;
+        Keys: {
+            auth: string;
+            p256dh: string;
+        };
         Kpi: {
             /** Format: double */
             changePct: number;
@@ -6415,6 +6569,13 @@ export interface components {
             prev: number;
             /** Format: double */
             value: number;
+        };
+        Kpis: {
+            aovMinor: components["schemas"]["Kpi"];
+            orders: components["schemas"]["Kpi"];
+            receivedMinor: components["schemas"]["Kpi"];
+            rejectRatePct: components["schemas"]["Kpi"];
+            soldMinor: components["schemas"]["Kpi"];
         };
         LanguageCount: {
             /** Format: int64 */
@@ -6441,12 +6602,6 @@ export interface components {
             maxUnpaidOrders: number;
             /** Format: int32 */
             orderCooldownSec: number;
-        };
-        Line: {
-            productId: string;
-            /** Format: int32 */
-            quantity: number;
-            variantId: string | null;
         };
         LineDto: {
             eta: components["schemas"]["EtaDto"];
@@ -6614,24 +6769,6 @@ export interface components {
             sourceId: string;
             useSourceDelivery?: boolean;
         };
-        MessageDto: {
-            attachmentUrl: string;
-            /** Format: date-time */
-            createdAt: string;
-            fileName: string;
-            /** Format: int64 */
-            id: number;
-            mimeType: string;
-            /** Format: date-time */
-            readAt: string;
-            /** Format: int64 */
-            replyToMessageId: number;
-            senderName: string;
-            senderType: string;
-            text: string;
-            threadId: string;
-            type: string;
-        };
         MetricsDto: {
             /** Format: int32 */
             arrivedUnits: number;
@@ -6695,6 +6832,20 @@ export interface components {
             /** Format: int32 */
             weightG?: number;
         };
+        MoneyNow: {
+            /** Format: int64 */
+            awaitingPaymentConfirm: number;
+            /** Format: int64 */
+            awaitingPaymentMinor: number;
+            /** Format: int64 */
+            awaitingPaymentOrders: number;
+            /** Format: int64 */
+            codInTransitMinor: number;
+            /** Format: int64 */
+            codInTransitOrders: number;
+            /** Format: int64 */
+            refundedMinor: number;
+        };
         MoneyRequest: {
             allocation?: string;
             costsFinal?: boolean;
@@ -6729,15 +6880,18 @@ export interface components {
             adminName: string | null;
             /** Format: int64 */
             amountMinor: number;
-            channel: string;
+            /** @enum {string} */
+            channel: "MONO" | "NP_COD" | "NP_PAYMENT_CONTROL" | "CARD_TRANSFER" | "CASH" | "NP_CLAIM" | "OTHER" | "EXCHANGE" | "MERGE";
             /** Format: int64 */
             id: number;
             invoiceExtId: string | null;
-            kind: string;
+            /** @enum {string} */
+            kind: "PAYMENT" | "REFUND" | "RETAINED" | "CORRECTION";
             note: string | null;
             /** Format: date-time */
             occurredAt: string;
-            source: string;
+            /** @enum {string} */
+            source: "AUTO" | "ADMIN" | "BACKFILL";
         };
         MyPreorderDto: {
             /** Format: date-time */
@@ -6783,11 +6937,22 @@ export interface components {
             title: string;
             variantName: string;
         };
-        NewLine: {
-            productId: string;
-            /** Format: int32 */
-            quantity?: number;
-            variantId?: string;
+        NotificationAdminPushControllerSubscribeRequest: {
+            endpoint: string;
+            keys: components["schemas"]["Keys"];
+        };
+        NotificationBroadcastDeliveryReportSummary: {
+            broadcast: components["schemas"]["BroadcastHistoryDto"];
+            /** Format: int64 */
+            delivered: number;
+            /** Format: int64 */
+            failed: number;
+            group: string;
+            reasons: {
+                [key: string]: number;
+            };
+            /** Format: int64 */
+            skipped: number;
         };
         NpCityDto: {
             area: string;
@@ -6832,6 +6997,36 @@ export interface components {
             /** @enum {string} */
             status: "none" | "created" | "processing" | "hold" | "success" | "failure" | "reversed" | "expired";
         };
+        OnlinePayments: {
+            /** Format: int64 */
+            awaiting: number;
+            /** Format: double */
+            conversionPct: number;
+            /** Format: int64 */
+            feeMinor: number;
+            /** Format: int64 */
+            fullOrders: number;
+            /** Format: int64 */
+            invoices: number;
+            /** Format: int64 */
+            invoicesFailed: number;
+            /** Format: int64 */
+            invoicesPaid: number;
+            /** Format: int64 */
+            orders: number;
+            /** Format: int64 */
+            paidMinor: number;
+            /** Format: int64 */
+            paidOrders: number;
+            /** Format: int64 */
+            prepayOrders: number;
+            /** Format: int64 */
+            refundedMinor: number;
+            /** Format: date-time */
+            since: string;
+            /** Format: int64 */
+            timedOut: number;
+        };
         OpeningRequest: {
             productId?: string;
             /** Format: int64 */
@@ -6852,18 +7047,14 @@ export interface components {
             variantName: string;
         };
         Operations: {
-            approvedNotShipped: components["schemas"]["Violation"][];
+            approvedNotShipped: components["schemas"]["AnalyticsViolation"][];
             clientErrors: components["schemas"]["ErrorRow"][];
             deliveryMethods: components["schemas"]["CountRow"][];
             paymentOptions: components["schemas"]["CountRow"][];
             period: components["schemas"]["PeriodInfo"];
             rejects: components["schemas"]["RejectStats"];
-            shippedNotDelivered: components["schemas"]["Violation"][];
+            shippedNotDelivered: components["schemas"]["AnalyticsViolation"][];
             speed: components["schemas"]["SpeedRow"][];
-        };
-        Option: {
-            label: string;
-            value: string;
         };
         OptionInput: {
             aliases?: string[];
@@ -6873,6 +7064,15 @@ export interface components {
             /** Format: int32 */
             sort?: number;
             value?: string;
+        };
+        OrderAdminCancelRequestControllerResolveRequest: {
+            comment?: string;
+        };
+        OrderAdminCreateOrderRequestLine: {
+            productId: string;
+            /** Format: int32 */
+            quantity?: number;
+            variantId?: string;
         };
         OrderBoardDto: {
             columns: {
@@ -6925,6 +7125,12 @@ export interface components {
             /** Format: int64 */
             unreadCount: number;
         };
+        OrderCreateOrderRequestItem: {
+            productId: string;
+            /** Format: int32 */
+            quantity?: number;
+            variantId?: string;
+        };
         OrderDetailDto: {
             admin: components["schemas"]["AdminExtras"] | null;
             /** Format: int64 */
@@ -6957,7 +7163,8 @@ export interface components {
             giftCaseOpenable: boolean;
             /** Format: date-time */
             giftCaseOpenedAt: string | null;
-            giftCaseStatus: string | null;
+            /** @enum {string|null} */
+            giftCaseStatus: "SEALED" | "OPENED" | null;
             /** Format: int64 */
             giftDiscountMinor: number;
             id: string;
@@ -6969,7 +7176,7 @@ export interface components {
             paid: boolean;
             /** Format: date-time */
             paidAt: string | null;
-            payment: components["schemas"]["OnlinePaymentDto"] | null;
+            payment: components["schemas"]["OnlinePaymentDto"];
             /** Format: date-time */
             paymentDueAt: string | null;
             paymentOptionTitle: string | null;
@@ -7005,7 +7212,8 @@ export interface components {
             uncollectedMinor: number;
         };
         OrderGiftDto: {
-            caseStatus: string | null;
+            /** @enum {string|null} */
+            caseStatus: "SEALED" | "OPENED" | null;
             /** Format: int64 */
             guaranteedDiscountMinor: number;
             lowMargin: boolean | null;
@@ -7014,7 +7222,8 @@ export interface components {
             promo: components["schemas"]["PromoDto"] | null;
             size: components["schemas"]["SizeDto"] | null;
             swap: components["schemas"]["SwapDto"] | null;
-            tier: string | null;
+            /** @enum {string|null} */
+            tier: "BRONZE" | "SILVER" | "GOLD" | null;
         };
         OrderItemDto: {
             autoGift: boolean;
@@ -7055,6 +7264,26 @@ export interface components {
             /** Format: int32 */
             unknownUnits: number;
             variantName: string;
+        };
+        OrderMessageDto: {
+            attachmentUrl: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            fileName: string | null;
+            /** Format: int64 */
+            id: number;
+            mimeType: string | null;
+            orderId: string;
+            /** Format: date-time */
+            readAt: string | null;
+            /** Format: int64 */
+            replyToMessageId: number | null;
+            senderName: string | null;
+            /** @enum {string} */
+            senderType: "CUSTOMER" | "ADMIN" | "SYSTEM";
+            text: string | null;
+            /** @enum {string} */
+            type: "TEXT" | "PHOTO" | "FILE" | "SYSTEM";
         };
         OrderProfitDto: {
             complete: boolean;
@@ -7100,19 +7329,8 @@ export interface components {
             /** Format: int64 */
             unreadCount: number;
         };
-        Overview: {
-            /** Format: int32 */
-            days: number;
-            geoAvailable: boolean;
-            online: components["schemas"]["Online"];
-            points: components["schemas"]["Point"][];
-            /** Format: int64 */
-            visitors: number;
-            /** Format: int64 */
-            withoutLocation: number;
-        };
         Page: {
-            items: components["schemas"]["Row"][];
+            items: components["schemas"]["PlatformActivityLogStoreRow"][];
             totals: {
                 [key: string]: number;
             };
@@ -7157,6 +7375,32 @@ export interface components {
             /** Format: date-time */
             to: string;
             token: string;
+        };
+        PlatformActivityLogStoreRow: {
+            /** Format: int64 */
+            chatId: number;
+            /** Format: date-time */
+            createdAt: string;
+            customerName: string;
+            customerUsername: string;
+            details: string;
+            error: string;
+            errorCode: string;
+            groupId: string;
+            /** Format: int64 */
+            id: number;
+            orderId: string;
+            recipient: string;
+            result: string;
+            source: string;
+            summary: string;
+            /** Format: int64 */
+            tgUserId: number;
+            type: string;
+        };
+        PlatformSettingDefinitionOption: {
+            label: string;
+            value: string;
         };
         Point: {
             /** Format: int64 */
@@ -7203,6 +7447,12 @@ export interface components {
         };
         PreAuthRequest: {
             preAuthToken: string;
+        };
+        PreorderSubscribeRequest: {
+            productId?: string;
+            /** Format: int32 */
+            qty?: number;
+            variantId?: string;
         };
         ProductCostDto: {
             /** Format: int64 */
@@ -7477,7 +7727,7 @@ export interface components {
             taxUrl: string;
         };
         ReceiveReturnRequest: {
-            lines?: components["schemas"]["WizardLine"][];
+            lines?: components["schemas"]["ReturnsReturnWizardRequestWizardLine"][];
             note?: string;
         };
         ReconcileDto: {
@@ -7498,7 +7748,7 @@ export interface components {
             amountMinor?: number;
         };
         RegisterReturnRequest: {
-            lines?: components["schemas"]["ReturnLine"][];
+            lines?: components["schemas"]["ReturnsRegisterReturnRequestReturnLine"][];
             note?: string;
             /** Format: int64 */
             refundMinor?: number;
@@ -7599,15 +7849,12 @@ export interface components {
         };
         Report: {
             byReason: components["schemas"]["ReasonTotal"][];
-            lines: components["schemas"]["Line"][];
+            lines: components["schemas"]["InventoryStockWriteoffReportServiceLine"][];
             range: string;
             /** Format: int32 */
             totalUnits: number;
             /** Format: int64 */
             totalValueMinor: number;
-        };
-        ResolveRequest: {
-            comment?: string;
         };
         RestoreRequest: {
             entityId?: string;
@@ -7617,36 +7864,6 @@ export interface components {
             note?: string;
             /** Format: int32 */
             quantity?: number;
-        };
-        Result: {
-            /** Format: int32 */
-            attributesCreated: number;
-            /** Format: int32 */
-            attributesUpdated: number;
-            /** Format: int32 */
-            brandsCreated: number;
-            /** Format: int32 */
-            brandsUpdated: number;
-            /** Format: int32 */
-            categoriesCreated: number;
-            /** Format: int32 */
-            categoriesUpdated: number;
-            /** Format: int32 */
-            groups: number;
-            /** Format: int32 */
-            optionsCreated: number;
-            /** Format: int32 */
-            optionsUpdated: number;
-            /** Format: int32 */
-            productsMoved: number;
-            warnings: string[];
-        };
-        ReturnLine: {
-            /** Format: int64 */
-            itemId?: number;
-            /** Format: int32 */
-            quantity?: number;
-            restock?: boolean;
         };
         ReturnRecordDto: {
             adminName: string | null;
@@ -7690,7 +7907,7 @@ export interface components {
             title: string;
         };
         ReturnWizardRequest: {
-            lines?: components["schemas"]["WizardLine"][];
+            lines?: components["schemas"]["ReturnsReturnWizardRequestWizardLine"][];
             /** Format: int64 */
             monoRefundMinor?: number;
             note?: string;
@@ -7700,7 +7917,7 @@ export interface components {
             retainMinor?: number;
         };
         Returns: {
-            byChannel: components["schemas"]["ChannelRow"][];
+            byChannel: components["schemas"]["AnalyticsReturnsRowsChannelRow"][];
             /** Format: int64 */
             refundOrders: number;
             /** Format: int64 */
@@ -7717,6 +7934,26 @@ export interface components {
             writeoffUnits: number;
             writeoffsByReason: components["schemas"]["ReasonRow"][];
         };
+        ReturnsExchangeRequestNewLine: {
+            productId: string;
+            /** Format: int32 */
+            quantity?: number;
+            variantId?: string;
+        };
+        ReturnsRegisterReturnRequestReturnLine: {
+            /** Format: int64 */
+            itemId?: number;
+            /** Format: int32 */
+            quantity?: number;
+            restock?: boolean;
+        };
+        ReturnsReturnWizardRequestWizardLine: {
+            /** Format: int64 */
+            itemId?: number;
+            outcome?: string;
+            /** Format: int32 */
+            quantity?: number;
+        };
         RevalidateResult: {
             error: string;
             ok: boolean;
@@ -7724,7 +7961,7 @@ export interface components {
         };
         ReviewFeed: {
             items: components["schemas"]["FeedReview"][];
-            summary: components["schemas"]["Summary"];
+            summary: components["schemas"]["ReviewSummary"];
         };
         ReviewPage: {
             items: components["schemas"]["PublicReview"][];
@@ -7733,33 +7970,37 @@ export interface components {
             productId: string;
             /** Format: int32 */
             size: number;
-            summary: components["schemas"]["Summary"];
+            summary: components["schemas"]["ReviewSummary"];
             /** Format: int64 */
             total: number;
             /** Format: int32 */
             totalPages: number;
         };
-        Row: {
+        ReviewSummary: {
+            /** Format: double */
+            avg: number;
             /** Format: int64 */
-            chatId: number;
-            /** Format: date-time */
-            createdAt: string;
-            customerName: string;
-            customerUsername: string;
-            details: string;
-            error: string;
-            errorCode: string;
-            groupId: string;
+            count: number;
+            distribution: number[];
+        };
+        SchemeRow: {
             /** Format: int64 */
-            id: number;
-            orderId: string;
-            recipient: string;
-            result: string;
-            source: string;
-            summary: string;
+            aovMinor: number;
             /** Format: int64 */
-            tgUserId: number;
-            type: string;
+            awaiting: number;
+            key: string;
+            label: string;
+            online: boolean;
+            /** Format: int64 */
+            orders: number;
+            /** Format: int64 */
+            receivedMinor: number;
+            /** Format: int64 */
+            rejected: number;
+            /** Format: int64 */
+            soldMinor: number;
+            /** Format: int64 */
+            timedOut: number;
         };
         SendMessageRequest: {
             attachmentUrl?: string;
@@ -7777,6 +8018,17 @@ export interface components {
             removed: number;
             /** Format: int32 */
             sent: number;
+        };
+        SeriesPoint: {
+            bucket: string;
+            /** Format: int64 */
+            orders: number;
+            /** Format: int64 */
+            receivedMinor: number;
+            /** Format: int64 */
+            rejected: number;
+            /** Format: int64 */
+            soldMinor: number;
         };
         SetPaidRequest: {
             channel?: string;
@@ -7796,7 +8048,7 @@ export interface components {
             maxLength: number;
             /** Format: int64 */
             min: number;
-            options: components["schemas"]["Option"][];
+            options: components["schemas"]["PlatformSettingDefinitionOption"][];
             overridden: boolean;
             type: string;
             unit: string;
@@ -7956,6 +8208,9 @@ export interface components {
             /** Format: double */
             p90Hours: number;
         };
+        StaffAdminIncidentControllerResolveRequest: {
+            resolution?: string;
+        };
         StartPaymentRequest: {
             display?: string;
             locale?: string;
@@ -8032,12 +8287,6 @@ export interface components {
             bonus: components["schemas"]["Bonus"];
             review: components["schemas"]["MyReview"];
         };
-        SubscribeRequest: {
-            productId?: string;
-            /** Format: int32 */
-            qty?: number;
-            variantId?: string;
-        };
         SubscriberDto: {
             botBlocked: boolean;
             closeReason: string;
@@ -8066,13 +8315,6 @@ export interface components {
             variantId: string;
             variantName: string;
         };
-        Summary: {
-            /** Format: double */
-            avg: number;
-            /** Format: int64 */
-            count: number;
-            distribution: number[];
-        };
         SupplierDto: {
             /** Format: int64 */
             id: number;
@@ -8082,6 +8324,24 @@ export interface components {
         SupplierRequest: {
             name?: string;
             note?: string;
+        };
+        SupportMessageDto: {
+            attachmentUrl: string;
+            /** Format: date-time */
+            createdAt: string;
+            fileName: string;
+            /** Format: int64 */
+            id: number;
+            mimeType: string;
+            /** Format: date-time */
+            readAt: string;
+            /** Format: int64 */
+            replyToMessageId: number;
+            senderName: string;
+            senderType: string;
+            text: string;
+            threadId: string;
+            type: string;
         };
         SwapDto: {
             /** Format: int64 */
@@ -8287,15 +8547,6 @@ export interface components {
             /** Format: int64 */
             toShip: number;
         };
-        TopCustomer: {
-            name: string;
-            /** Format: int64 */
-            ordersCount: number;
-            /** Format: int64 */
-            telegramUserId: number;
-            /** Format: int64 */
-            totalSpentMinor: number;
-        };
         TopProduct: {
             live: boolean;
             /** Format: int64 */
@@ -8311,6 +8562,18 @@ export interface components {
         };
         TotpCodeRequest: {
             code: string;
+        };
+        TranslationAcceptResult: {
+            /** Format: int32 */
+            accepted: number;
+            /** Format: int32 */
+            invalid: number;
+            /** Format: int32 */
+            notFound: number;
+            /** Format: int32 */
+            rebased: number;
+            /** Format: int32 */
+            skippedStale: number;
         };
         TwoFactorRequest: {
             code?: string;
@@ -8386,7 +8649,7 @@ export interface components {
             /** Format: int64 */
             premiumUsers: number;
             range: string;
-            topCustomers: components["schemas"]["TopCustomer"][];
+            topCustomers: components["schemas"]["CustomerUserMetricsDtoTopCustomer"][];
             /** Format: int64 */
             totalUsers: number;
         };
@@ -8397,16 +8660,6 @@ export interface components {
             name: string;
             /** Format: int32 */
             stock?: number;
-        };
-        Violation: {
-            customerName: string;
-            /** Format: double */
-            hours: number;
-            orderId: string;
-            /** Format: date-time */
-            since: string;
-            /** Format: int64 */
-            totalMinor: number;
         };
         WebAuthResponse: {
             user: components["schemas"]["AuthUserDto"];
@@ -8425,13 +8678,6 @@ export interface components {
             /** Format: date-time */
             lastUsedAt: string;
             userAgent: string;
-        };
-        WizardLine: {
-            /** Format: int64 */
-            itemId?: number;
-            outcome?: string;
-            /** Format: int32 */
-            quantity?: number;
         };
         WriteoffDto: {
             adminName: string | null;
@@ -8644,7 +8890,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["Summary"][];
+                    "*/*": components["schemas"]["NotificationBroadcastDeliveryReportSummary"][];
                 };
             };
         };
@@ -9438,7 +9684,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["Result"];
+                    "*/*": components["schemas"]["CatalogCatalogSchemaImporterResult"];
                 };
             };
         };
@@ -10443,7 +10689,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ResolveRequest"];
+                "application/json": components["schemas"]["StaffAdminIncidentControllerResolveRequest"];
             };
         };
         responses: {
@@ -10611,7 +10857,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["Overview"];
+                    "*/*": components["schemas"]["AnalyticsOverview"];
                 };
             };
         };
@@ -10990,7 +11236,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["ResolveRequest"];
+                "application/json": components["schemas"]["OrderAdminCancelRequestControllerResolveRequest"];
             };
         };
         responses: {
@@ -11016,7 +11262,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["ResolveRequest"];
+                "application/json": components["schemas"]["OrderAdminCancelRequestControllerResolveRequest"];
             };
         };
         responses: {
@@ -11281,7 +11527,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["MessageDto"][];
+                    "*/*": components["schemas"]["OrderMessageDto"][];
                 };
             };
         };
@@ -11307,7 +11553,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["MessageDto"];
+                    "*/*": components["schemas"]["OrderMessageDto"];
                 };
             };
         };
@@ -12495,7 +12741,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SubscribeRequest"];
+                "application/json": components["schemas"]["NotificationAdminPushControllerSubscribeRequest"];
             };
         };
         responses: {
@@ -13196,7 +13442,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["MessageDto"][];
+                    "*/*": components["schemas"]["SupportMessageDto"][];
                 };
             };
         };
@@ -13222,7 +13468,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["MessageDto"];
+                    "*/*": components["schemas"]["SupportMessageDto"];
                 };
             };
         };
@@ -13353,7 +13599,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["AcceptResult"];
+                    "*/*": components["schemas"]["TranslationAcceptResult"];
                 };
             };
         };
@@ -13521,7 +13767,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["Overview"];
+                    "*/*": components["schemas"]["CustomerOverview"];
                 };
             };
         };
@@ -14306,7 +14552,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["MessageDto"][];
+                    "*/*": components["schemas"]["OrderMessageDto"][];
                 };
             };
         };
@@ -14332,7 +14578,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["MessageDto"];
+                    "*/*": components["schemas"]["OrderMessageDto"];
                 };
             };
         };
@@ -14456,7 +14702,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SubscribeRequest"];
+                "application/json": components["schemas"]["PreorderSubscribeRequest"];
             };
         };
         responses: {
@@ -14809,7 +15055,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["MessageDto"][];
+                    "*/*": components["schemas"]["SupportMessageDto"][];
                 };
             };
         };
@@ -14835,7 +15081,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["MessageDto"];
+                    "*/*": components["schemas"]["SupportMessageDto"];
                 };
             };
         };

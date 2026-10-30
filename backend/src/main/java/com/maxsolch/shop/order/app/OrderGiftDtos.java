@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.lang.Nullable;
 
 import java.time.Instant;
@@ -56,7 +57,7 @@ public final class OrderGiftDtos {
      * or the case (prize details only after opening).
      */
     /** @param lowMargin admin only (null for the customer): the case was drawn leaning to discounts */
-    public record OrderGiftDto(@Nullable String tier, long guaranteedDiscountMinor, @Nullable String caseStatus, boolean openable,
+    public record OrderGiftDto(@Schema(implementation = com.maxsolch.shop.gift.domain.GiftCaseTier.Tier.class) @Nullable String tier, long guaranteedDiscountMinor, @Schema(allowableValues = {"SEALED", "OPENED"}) @Nullable String caseStatus, boolean openable,
                                @Nullable CaseItemDto prize, @Nullable PromoDto promo, @Nullable SwapDto swap, @Nullable SizeDto size, @Nullable Boolean lowMargin) {
     }
 }

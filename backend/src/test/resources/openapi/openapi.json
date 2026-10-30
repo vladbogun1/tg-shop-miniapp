@@ -32,38 +32,6 @@
         },
         "type" : "object"
       },
-      "AcceptResult" : {
-        "properties" : {
-          "accepted" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "invalid" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "notFound" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "rebased" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "skippedStale" : {
-            "format" : "int32",
-            "type" : "integer"
-          }
-        },
-        "required" : [
-          "accepted",
-          "invalid",
-          "notFound",
-          "rebased",
-          "skippedStale"
-        ],
-        "type" : "object"
-      },
       "AccessTokenResponse" : {
         "properties" : {
           "accessToken" : {
@@ -315,7 +283,7 @@
           },
           "items" : {
             "items" : {
-              "$ref" : "#/components/schemas/Line"
+              "$ref" : "#/components/schemas/OrderAdminCreateOrderRequestLine"
             },
             "type" : "array"
           },
@@ -1219,6 +1187,211 @@
         },
         "required" : [
           "initData"
+        ],
+        "type" : "object"
+      },
+      "AnalyticsChannelRow" : {
+        "properties" : {
+          "aovMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "buyers" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "conversionPct" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "orders" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "rejectRatePct" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "soldMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "source" : {
+            "type" : "string"
+          },
+          "visitors" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "aovMinor",
+          "buyers",
+          "conversionPct",
+          "orders",
+          "rejectRatePct",
+          "soldMinor",
+          "source",
+          "visitors"
+        ],
+        "type" : "object"
+      },
+      "AnalyticsOverview" : {
+        "properties" : {
+          "categories" : {
+            "items" : {
+              "$ref" : "#/components/schemas/CategoryRow"
+            },
+            "type" : "array"
+          },
+          "channels" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AnalyticsChannelRow"
+            },
+            "type" : "array"
+          },
+          "giveaways" : {
+            "$ref" : "#/components/schemas/Giveaways"
+          },
+          "heatmap" : {
+            "items" : {
+              "items" : {
+                "format" : "int64",
+                "type" : "integer"
+              },
+              "type" : "array"
+            },
+            "type" : "array"
+          },
+          "kpis" : {
+            "$ref" : "#/components/schemas/Kpis"
+          },
+          "money" : {
+            "$ref" : "#/components/schemas/MoneyNow"
+          },
+          "online" : {
+            "$ref" : "#/components/schemas/OnlinePayments"
+          },
+          "period" : {
+            "$ref" : "#/components/schemas/PeriodInfo"
+          },
+          "prevSeries" : {
+            "items" : {
+              "$ref" : "#/components/schemas/SeriesPoint"
+            },
+            "type" : "array"
+          },
+          "schemes" : {
+            "items" : {
+              "$ref" : "#/components/schemas/SchemeRow"
+            },
+            "type" : "array"
+          },
+          "series" : {
+            "items" : {
+              "$ref" : "#/components/schemas/SeriesPoint"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [
+          "categories",
+          "channels",
+          "giveaways",
+          "heatmap",
+          "kpis",
+          "money",
+          "online",
+          "period",
+          "prevSeries",
+          "schemes",
+          "series"
+        ],
+        "type" : "object"
+      },
+      "AnalyticsReturnsRowsChannelRow" : {
+        "properties" : {
+          "amountMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "channel" : {
+            "type" : "string"
+          },
+          "count" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "amountMinor",
+          "channel",
+          "count"
+        ],
+        "type" : "object"
+      },
+      "AnalyticsTopCustomer" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "orders" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "receivedMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "soldMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "telegramUserId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "username" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "name",
+          "orders",
+          "receivedMinor",
+          "soldMinor",
+          "telegramUserId",
+          "username"
+        ],
+        "type" : "object"
+      },
+      "AnalyticsViolation" : {
+        "properties" : {
+          "customerName" : {
+            "type" : "string"
+          },
+          "hours" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "orderId" : {
+            "type" : "string"
+          },
+          "since" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "totalMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "customerName",
+          "hours",
+          "orderId",
+          "since",
+          "totalMinor"
         ],
         "type" : "object"
       },
@@ -3407,6 +3580,70 @@
         ],
         "type" : "object"
       },
+      "CatalogCatalogSchemaImporterResult" : {
+        "properties" : {
+          "attributesCreated" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "attributesUpdated" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "brandsCreated" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "brandsUpdated" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "categoriesCreated" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "categoriesUpdated" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "groups" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "optionsCreated" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "optionsUpdated" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "productsMoved" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "warnings" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [
+          "attributesCreated",
+          "attributesUpdated",
+          "brandsCreated",
+          "brandsUpdated",
+          "categoriesCreated",
+          "categoriesUpdated",
+          "groups",
+          "optionsCreated",
+          "optionsUpdated",
+          "productsMoved",
+          "warnings"
+        ],
+        "type" : "object"
+      },
       "CatalogCategoryDto" : {
         "properties" : {
           "artKind" : {
@@ -3598,6 +3835,42 @@
         ],
         "type" : "object"
       },
+      "CategoryRow" : {
+        "properties" : {
+          "liveProducts" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "revenueMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "sharePct" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "units" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "unitsPerProduct" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        },
+        "required" : [
+          "liveProducts",
+          "name",
+          "revenueMinor",
+          "sharePct",
+          "units",
+          "unitsPerProduct"
+        ],
+        "type" : "object"
+      },
       "CategoryStock" : {
         "properties" : {
           "daysOfCover" : {
@@ -3691,27 +3964,6 @@
             "type" : "integer"
           }
         },
-        "type" : "object"
-      },
-      "ChannelRow" : {
-        "properties" : {
-          "amountMinor" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "channel" : {
-            "type" : "string"
-          },
-          "count" : {
-            "format" : "int64",
-            "type" : "integer"
-          }
-        },
-        "required" : [
-          "amountMinor",
-          "channel",
-          "count"
-        ],
         "type" : "object"
       },
       "ClientEventBatch" : {
@@ -4022,7 +4274,7 @@
           },
           "items" : {
             "items" : {
-              "$ref" : "#/components/schemas/Item"
+              "$ref" : "#/components/schemas/OrderCreateOrderRequestItem"
             },
             "type" : "array"
           },
@@ -4133,6 +4385,69 @@
         ],
         "type" : "object"
       },
+      "CustomerOverview" : {
+        "properties" : {
+          "days" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "geoAvailable" : {
+            "type" : "boolean"
+          },
+          "online" : {
+            "$ref" : "#/components/schemas/Online"
+          },
+          "points" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Point"
+            },
+            "type" : "array"
+          },
+          "visitors" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "withoutLocation" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "days",
+          "geoAvailable",
+          "online",
+          "points",
+          "visitors",
+          "withoutLocation"
+        ],
+        "type" : "object"
+      },
+      "CustomerUserMetricsDtoTopCustomer" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "ordersCount" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "telegramUserId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "totalSpentMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "name",
+          "ordersCount",
+          "telegramUserId",
+          "totalSpentMinor"
+        ],
+        "type" : "object"
+      },
       "Customers" : {
         "properties" : {
           "aovBuckets" : {
@@ -4177,7 +4492,7 @@
           },
           "topCustomers" : {
             "items" : {
-              "$ref" : "#/components/schemas/TopCustomer"
+              "$ref" : "#/components/schemas/AnalyticsTopCustomer"
             },
             "type" : "array"
           }
@@ -4767,7 +5082,7 @@
         "properties" : {
           "items" : {
             "items" : {
-              "$ref" : "#/components/schemas/NewLine"
+              "$ref" : "#/components/schemas/ReturnsExchangeRequestNewLine"
             },
             "type" : "array"
           },
@@ -4781,7 +5096,7 @@
           },
           "returned" : {
             "items" : {
-              "$ref" : "#/components/schemas/WizardLine"
+              "$ref" : "#/components/schemas/ReturnsReturnWizardRequestWizardLine"
             },
             "type" : "array"
           },
@@ -5474,43 +5789,30 @@
         ],
         "type" : "object"
       },
-      "Group" : {
+      "Giveaways" : {
         "properties" : {
-          "count" : {
-            "format" : "int32",
+          "discountMinor" : {
+            "format" : "int64",
             "type" : "integer"
           },
-          "dismissible" : {
-            "type" : "boolean"
-          },
-          "hint" : {
-            "type" : "string"
-          },
-          "id" : {
-            "type" : "string"
-          },
-          "items" : {
-            "items" : {
-              "$ref" : "#/components/schemas/Item"
-            },
-            "type" : "array"
-          },
-          "snoozed" : {
-            "format" : "int32",
+          "giftUnits" : {
+            "format" : "int64",
             "type" : "integer"
           },
-          "title" : {
-            "type" : "string"
+          "giftValueMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "promoOrders" : {
+            "format" : "int64",
+            "type" : "integer"
           }
         },
         "required" : [
-          "count",
-          "dismissible",
-          "hint",
-          "id",
-          "items",
-          "snoozed",
-          "title"
+          "discountMinor",
+          "giftUnits",
+          "giftValueMinor",
+          "promoOrders"
         ],
         "type" : "object"
       },
@@ -5605,7 +5907,7 @@
           },
           "groups" : {
             "items" : {
-              "$ref" : "#/components/schemas/Group"
+              "$ref" : "#/components/schemas/InboxGroup"
             },
             "type" : "array"
           },
@@ -5629,6 +5931,135 @@
           "newStaleHours",
           "returnsDays",
           "total"
+        ],
+        "type" : "object"
+      },
+      "InboxGroup" : {
+        "properties" : {
+          "count" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "dismissible" : {
+            "type" : "boolean"
+          },
+          "hint" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/InboxItem"
+            },
+            "type" : "array"
+          },
+          "snoozed" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "count",
+          "dismissible",
+          "hint",
+          "id",
+          "items",
+          "snoozed",
+          "title"
+        ],
+        "type" : "object"
+      },
+      "InboxItem" : {
+        "properties" : {
+          "amountMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "amountNote" : {
+            "type" : "string"
+          },
+          "daysToZero" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "entityId" : {
+            "type" : "string"
+          },
+          "key" : {
+            "type" : "string"
+          },
+          "orderId" : {
+            "type" : "string"
+          },
+          "overdue" : {
+            "type" : "boolean"
+          },
+          "productId" : {
+            "type" : "string"
+          },
+          "shortId" : {
+            "type" : "string"
+          },
+          "since" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "stock" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "subtitle" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "unread" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "variantId" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          },
+          "waitMinutes" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "amountMinor",
+          "amountNote",
+          "daysToZero",
+          "entityId",
+          "key",
+          "orderId",
+          "overdue",
+          "productId",
+          "shortId",
+          "since",
+          "status",
+          "stock",
+          "subtitle",
+          "title",
+          "type",
+          "unread",
+          "variantId",
+          "version",
+          "waitMinutes"
         ],
         "type" : "object"
       },
@@ -5749,6 +6180,79 @@
           "unitsSold",
           "viewers",
           "views"
+        ],
+        "type" : "object"
+      },
+      "InventoryStockWriteoffReportServiceLine" : {
+        "properties" : {
+          "adminName" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "orderId" : {
+            "type" : "string"
+          },
+          "orderShortId" : {
+            "type" : "string"
+          },
+          "productId" : {
+            "type" : "string"
+          },
+          "quantity" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "undoneNote" : {
+            "type" : "string"
+          },
+          "undoneQty" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "unitValueMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "valueMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "variantId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "adminName",
+          "createdAt",
+          "id",
+          "note",
+          "orderId",
+          "orderShortId",
+          "productId",
+          "quantity",
+          "reason",
+          "title",
+          "undoneNote",
+          "undoneQty",
+          "unitValueMinor",
+          "valueMinor",
+          "variantId"
         ],
         "type" : "object"
       },
@@ -5975,26 +6479,6 @@
         ],
         "type" : "object"
       },
-      "Item" : {
-        "properties" : {
-          "productId" : {
-            "type" : "string"
-          },
-          "quantity" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "variantId" : {
-            "type" : "string"
-          }
-        },
-        "required" : [
-          "productId",
-          "quantity",
-          "variantId"
-        ],
-        "type" : "object"
-      },
       "ItemDto" : {
         "properties" : {
           "id" : {
@@ -6088,6 +6572,25 @@
       "JsonNode" : {
         "type" : "object"
       },
+      "Keys" : {
+        "properties" : {
+          "auth" : {
+            "maxLength" : 64,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "p256dh" : {
+            "maxLength" : 255,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "auth",
+          "p256dh"
+        ],
+        "type" : "object"
+      },
       "Kpi" : {
         "properties" : {
           "changePct" : {
@@ -6107,6 +6610,33 @@
           "changePct",
           "prev",
           "value"
+        ],
+        "type" : "object"
+      },
+      "Kpis" : {
+        "properties" : {
+          "aovMinor" : {
+            "$ref" : "#/components/schemas/Kpi"
+          },
+          "orders" : {
+            "$ref" : "#/components/schemas/Kpi"
+          },
+          "receivedMinor" : {
+            "$ref" : "#/components/schemas/Kpi"
+          },
+          "rejectRatePct" : {
+            "$ref" : "#/components/schemas/Kpi"
+          },
+          "soldMinor" : {
+            "$ref" : "#/components/schemas/Kpi"
+          }
+        },
+        "required" : [
+          "aovMinor",
+          "orders",
+          "receivedMinor",
+          "rejectRatePct",
+          "soldMinor"
         ],
         "type" : "object"
       },
@@ -6184,27 +6714,6 @@
           "maxUnitsPerOrder",
           "maxUnpaidOrders",
           "orderCooldownSec"
-        ],
-        "type" : "object"
-      },
-      "Line" : {
-        "properties" : {
-          "productId" : {
-            "type" : "string"
-          },
-          "quantity" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "variantId" : {
-            "nullable" : true,
-            "type" : "string"
-          }
-        },
-        "required" : [
-          "productId",
-          "quantity",
-          "variantId"
         ],
         "type" : "object"
       },
@@ -6761,65 +7270,6 @@
         ],
         "type" : "object"
       },
-      "MessageDto" : {
-        "properties" : {
-          "attachmentUrl" : {
-            "type" : "string"
-          },
-          "createdAt" : {
-            "format" : "date-time",
-            "type" : "string"
-          },
-          "fileName" : {
-            "type" : "string"
-          },
-          "id" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "mimeType" : {
-            "type" : "string"
-          },
-          "readAt" : {
-            "format" : "date-time",
-            "type" : "string"
-          },
-          "replyToMessageId" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "senderName" : {
-            "type" : "string"
-          },
-          "senderType" : {
-            "type" : "string"
-          },
-          "text" : {
-            "type" : "string"
-          },
-          "threadId" : {
-            "type" : "string"
-          },
-          "type" : {
-            "type" : "string"
-          }
-        },
-        "required" : [
-          "attachmentUrl",
-          "createdAt",
-          "fileName",
-          "id",
-          "mimeType",
-          "readAt",
-          "replyToMessageId",
-          "senderName",
-          "senderType",
-          "text",
-          "threadId",
-          "type"
-        ],
-        "type" : "object"
-      },
       "MetricsDto" : {
         "properties" : {
           "arrivedUnits" : {
@@ -6985,6 +7435,43 @@
         },
         "type" : "object"
       },
+      "MoneyNow" : {
+        "properties" : {
+          "awaitingPaymentConfirm" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "awaitingPaymentMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "awaitingPaymentOrders" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "codInTransitMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "codInTransitOrders" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "refundedMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "awaitingPaymentConfirm",
+          "awaitingPaymentMinor",
+          "awaitingPaymentOrders",
+          "codInTransitMinor",
+          "codInTransitOrders",
+          "refundedMinor"
+        ],
+        "type" : "object"
+      },
       "MoneyRequest" : {
         "properties" : {
           "allocation" : {
@@ -7088,6 +7575,17 @@
             "type" : "integer"
           },
           "channel" : {
+            "enum" : [
+              "MONO",
+              "NP_COD",
+              "NP_PAYMENT_CONTROL",
+              "CARD_TRANSFER",
+              "CASH",
+              "NP_CLAIM",
+              "OTHER",
+              "EXCHANGE",
+              "MERGE"
+            ],
             "type" : "string"
           },
           "id" : {
@@ -7099,6 +7597,12 @@
             "type" : "string"
           },
           "kind" : {
+            "enum" : [
+              "PAYMENT",
+              "REFUND",
+              "RETAINED",
+              "CORRECTION"
+            ],
             "type" : "string"
           },
           "note" : {
@@ -7110,6 +7614,11 @@
             "type" : "string"
           },
           "source" : {
+            "enum" : [
+              "AUTO",
+              "ADMIN",
+              "BACKFILL"
+            ],
             "type" : "string"
           }
         },
@@ -7267,21 +7776,58 @@
         ],
         "type" : "object"
       },
-      "NewLine" : {
+      "NotificationAdminPushControllerSubscribeRequest" : {
         "properties" : {
-          "productId" : {
+          "endpoint" : {
+            "maxLength" : 2048,
+            "minLength" : 0,
             "type" : "string"
           },
-          "quantity" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "variantId" : {
-            "type" : "string"
+          "keys" : {
+            "$ref" : "#/components/schemas/Keys"
           }
         },
         "required" : [
-          "productId"
+          "endpoint",
+          "keys"
+        ],
+        "type" : "object"
+      },
+      "NotificationBroadcastDeliveryReportSummary" : {
+        "properties" : {
+          "broadcast" : {
+            "$ref" : "#/components/schemas/BroadcastHistoryDto"
+          },
+          "delivered" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "failed" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "group" : {
+            "type" : "string"
+          },
+          "reasons" : {
+            "additionalProperties" : {
+              "format" : "int64",
+              "type" : "integer"
+            },
+            "type" : "object"
+          },
+          "skipped" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "broadcast",
+          "delivered",
+          "failed",
+          "group",
+          "reasons",
+          "skipped"
         ],
         "type" : "object"
       },
@@ -7437,6 +7983,83 @@
         ],
         "type" : "object"
       },
+      "OnlinePayments" : {
+        "properties" : {
+          "awaiting" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "conversionPct" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "feeMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "fullOrders" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "invoices" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "invoicesFailed" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "invoicesPaid" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "orders" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "paidMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "paidOrders" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "prepayOrders" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "refundedMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "since" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "timedOut" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "awaiting",
+          "conversionPct",
+          "feeMinor",
+          "fullOrders",
+          "invoices",
+          "invoicesFailed",
+          "invoicesPaid",
+          "orders",
+          "paidMinor",
+          "paidOrders",
+          "prepayOrders",
+          "refundedMinor",
+          "since",
+          "timedOut"
+        ],
+        "type" : "object"
+      },
       "OpeningRequest" : {
         "properties" : {
           "productId" : {
@@ -7498,7 +8121,7 @@
         "properties" : {
           "approvedNotShipped" : {
             "items" : {
-              "$ref" : "#/components/schemas/Violation"
+              "$ref" : "#/components/schemas/AnalyticsViolation"
             },
             "type" : "array"
           },
@@ -7528,7 +8151,7 @@
           },
           "shippedNotDelivered" : {
             "items" : {
-              "$ref" : "#/components/schemas/Violation"
+              "$ref" : "#/components/schemas/AnalyticsViolation"
             },
             "type" : "array"
           },
@@ -7548,21 +8171,6 @@
           "rejects",
           "shippedNotDelivered",
           "speed"
-        ],
-        "type" : "object"
-      },
-      "Option" : {
-        "properties" : {
-          "label" : {
-            "type" : "string"
-          },
-          "value" : {
-            "type" : "string"
-          }
-        },
-        "required" : [
-          "label",
-          "value"
         ],
         "type" : "object"
       },
@@ -7601,6 +8209,32 @@
             "type" : "string"
           }
         },
+        "type" : "object"
+      },
+      "OrderAdminCancelRequestControllerResolveRequest" : {
+        "properties" : {
+          "comment" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "OrderAdminCreateOrderRequestLine" : {
+        "properties" : {
+          "productId" : {
+            "type" : "string"
+          },
+          "quantity" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "variantId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "productId"
+        ],
         "type" : "object"
       },
       "OrderBoardDto" : {
@@ -7781,6 +8415,24 @@
         ],
         "type" : "object"
       },
+      "OrderCreateOrderRequestItem" : {
+        "properties" : {
+          "productId" : {
+            "type" : "string"
+          },
+          "quantity" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "variantId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "productId"
+        ],
+        "type" : "object"
+      },
       "OrderDetailDto" : {
         "properties" : {
           "admin" : {
@@ -7889,6 +8541,10 @@
             "type" : "string"
           },
           "giftCaseStatus" : {
+            "enum" : [
+              "SEALED",
+              "OPENED"
+            ],
             "nullable" : true,
             "type" : "string"
           },
@@ -7930,12 +8586,7 @@
             "type" : "string"
           },
           "payment" : {
-            "allOf" : [
-              {
-                "$ref" : "#/components/schemas/OnlinePaymentDto"
-              }
-            ],
-            "nullable" : true
+            "$ref" : "#/components/schemas/OnlinePaymentDto"
           },
           "paymentDueAt" : {
             "format" : "date-time",
@@ -8091,6 +8742,10 @@
       "OrderGiftDto" : {
         "properties" : {
           "caseStatus" : {
+            "enum" : [
+              "SEALED",
+              "OPENED"
+            ],
             "nullable" : true,
             "type" : "string"
           },
@@ -8138,6 +8793,11 @@
             "nullable" : true
           },
           "tier" : {
+            "enum" : [
+              "BRONZE",
+              "SILVER",
+              "GOLD"
+            ],
             "nullable" : true,
             "type" : "string"
           }
@@ -8289,6 +8949,83 @@
         ],
         "type" : "object"
       },
+      "OrderMessageDto" : {
+        "properties" : {
+          "attachmentUrl" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "fileName" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "mimeType" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "orderId" : {
+            "type" : "string"
+          },
+          "readAt" : {
+            "format" : "date-time",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "replyToMessageId" : {
+            "format" : "int64",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "senderName" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "senderType" : {
+            "enum" : [
+              "CUSTOMER",
+              "ADMIN",
+              "SYSTEM"
+            ],
+            "type" : "string"
+          },
+          "text" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "type" : {
+            "enum" : [
+              "TEXT",
+              "PHOTO",
+              "FILE",
+              "SYSTEM"
+            ],
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "attachmentUrl",
+          "createdAt",
+          "fileName",
+          "id",
+          "mimeType",
+          "orderId",
+          "readAt",
+          "replyToMessageId",
+          "senderName",
+          "senderType",
+          "text",
+          "type"
+        ],
+        "type" : "object"
+      },
       "OrderProfitDto" : {
         "properties" : {
           "complete" : {
@@ -8434,48 +9171,11 @@
         ],
         "type" : "object"
       },
-      "Overview" : {
-        "properties" : {
-          "days" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "geoAvailable" : {
-            "type" : "boolean"
-          },
-          "online" : {
-            "$ref" : "#/components/schemas/Online"
-          },
-          "points" : {
-            "items" : {
-              "$ref" : "#/components/schemas/Point"
-            },
-            "type" : "array"
-          },
-          "visitors" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "withoutLocation" : {
-            "format" : "int64",
-            "type" : "integer"
-          }
-        },
-        "required" : [
-          "days",
-          "geoAvailable",
-          "online",
-          "points",
-          "visitors",
-          "withoutLocation"
-        ],
-        "type" : "object"
-      },
       "Page" : {
         "properties" : {
           "items" : {
             "items" : {
-              "$ref" : "#/components/schemas/Row"
+              "$ref" : "#/components/schemas/PlatformActivityLogStoreRow"
             },
             "type" : "array"
           },
@@ -8623,6 +9323,96 @@
           "prevTo",
           "to",
           "token"
+        ],
+        "type" : "object"
+      },
+      "PlatformActivityLogStoreRow" : {
+        "properties" : {
+          "chatId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "customerName" : {
+            "type" : "string"
+          },
+          "customerUsername" : {
+            "type" : "string"
+          },
+          "details" : {
+            "type" : "string"
+          },
+          "error" : {
+            "type" : "string"
+          },
+          "errorCode" : {
+            "type" : "string"
+          },
+          "groupId" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "orderId" : {
+            "type" : "string"
+          },
+          "recipient" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "string"
+          },
+          "source" : {
+            "type" : "string"
+          },
+          "summary" : {
+            "type" : "string"
+          },
+          "tgUserId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "chatId",
+          "createdAt",
+          "customerName",
+          "customerUsername",
+          "details",
+          "error",
+          "errorCode",
+          "groupId",
+          "id",
+          "orderId",
+          "recipient",
+          "result",
+          "source",
+          "summary",
+          "tgUserId",
+          "type"
+        ],
+        "type" : "object"
+      },
+      "PlatformSettingDefinitionOption" : {
+        "properties" : {
+          "label" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "label",
+          "value"
         ],
         "type" : "object"
       },
@@ -8784,6 +9574,21 @@
         "required" : [
           "preAuthToken"
         ],
+        "type" : "object"
+      },
+      "PreorderSubscribeRequest" : {
+        "properties" : {
+          "productId" : {
+            "type" : "string"
+          },
+          "qty" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "variantId" : {
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "ProductCostDto" : {
@@ -9686,7 +10491,7 @@
         "properties" : {
           "lines" : {
             "items" : {
-              "$ref" : "#/components/schemas/WizardLine"
+              "$ref" : "#/components/schemas/ReturnsReturnWizardRequestWizardLine"
             },
             "type" : "array"
           },
@@ -9752,7 +10557,7 @@
         "properties" : {
           "lines" : {
             "items" : {
-              "$ref" : "#/components/schemas/ReturnLine"
+              "$ref" : "#/components/schemas/ReturnsRegisterReturnRequestReturnLine"
             },
             "type" : "array"
           },
@@ -10074,7 +10879,7 @@
           },
           "lines" : {
             "items" : {
-              "$ref" : "#/components/schemas/Line"
+              "$ref" : "#/components/schemas/InventoryStockWriteoffReportServiceLine"
             },
             "type" : "array"
           },
@@ -10099,14 +10904,6 @@
         ],
         "type" : "object"
       },
-      "ResolveRequest" : {
-        "properties" : {
-          "comment" : {
-            "type" : "string"
-          }
-        },
-        "type" : "object"
-      },
       "RestoreRequest" : {
         "properties" : {
           "entityId" : {
@@ -10128,86 +10925,6 @@
           "quantity" : {
             "format" : "int32",
             "type" : "integer"
-          }
-        },
-        "type" : "object"
-      },
-      "Result" : {
-        "properties" : {
-          "attributesCreated" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "attributesUpdated" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "brandsCreated" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "brandsUpdated" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "categoriesCreated" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "categoriesUpdated" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "groups" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "optionsCreated" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "optionsUpdated" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "productsMoved" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "warnings" : {
-            "items" : {
-              "type" : "string"
-            },
-            "type" : "array"
-          }
-        },
-        "required" : [
-          "attributesCreated",
-          "attributesUpdated",
-          "brandsCreated",
-          "brandsUpdated",
-          "categoriesCreated",
-          "categoriesUpdated",
-          "groups",
-          "optionsCreated",
-          "optionsUpdated",
-          "productsMoved",
-          "warnings"
-        ],
-        "type" : "object"
-      },
-      "ReturnLine" : {
-        "properties" : {
-          "itemId" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "quantity" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "restock" : {
-            "type" : "boolean"
           }
         },
         "type" : "object"
@@ -10355,7 +11072,7 @@
         "properties" : {
           "lines" : {
             "items" : {
-              "$ref" : "#/components/schemas/WizardLine"
+              "$ref" : "#/components/schemas/ReturnsReturnWizardRequestWizardLine"
             },
             "type" : "array"
           },
@@ -10388,7 +11105,7 @@
         "properties" : {
           "byChannel" : {
             "items" : {
-              "$ref" : "#/components/schemas/ChannelRow"
+              "$ref" : "#/components/schemas/AnalyticsReturnsRowsChannelRow"
             },
             "type" : "array"
           },
@@ -10440,6 +11157,56 @@
         ],
         "type" : "object"
       },
+      "ReturnsExchangeRequestNewLine" : {
+        "properties" : {
+          "productId" : {
+            "type" : "string"
+          },
+          "quantity" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "variantId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "productId"
+        ],
+        "type" : "object"
+      },
+      "ReturnsRegisterReturnRequestReturnLine" : {
+        "properties" : {
+          "itemId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "quantity" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "restock" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "ReturnsReturnWizardRequestWizardLine" : {
+        "properties" : {
+          "itemId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "outcome" : {
+            "type" : "string"
+          },
+          "quantity" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "RevalidateResult" : {
         "properties" : {
           "error" : {
@@ -10468,7 +11235,7 @@
             "type" : "array"
           },
           "summary" : {
-            "$ref" : "#/components/schemas/Summary"
+            "$ref" : "#/components/schemas/ReviewSummary"
           }
         },
         "required" : [
@@ -10497,7 +11264,7 @@
             "type" : "integer"
           },
           "summary" : {
-            "$ref" : "#/components/schemas/Summary"
+            "$ref" : "#/components/schemas/ReviewSummary"
           },
           "total" : {
             "format" : "int64",
@@ -10519,78 +11286,82 @@
         ],
         "type" : "object"
       },
-      "Row" : {
+      "ReviewSummary" : {
         "properties" : {
-          "chatId" : {
+          "avg" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "count" : {
             "format" : "int64",
             "type" : "integer"
           },
-          "createdAt" : {
-            "format" : "date-time",
-            "type" : "string"
-          },
-          "customerName" : {
-            "type" : "string"
-          },
-          "customerUsername" : {
-            "type" : "string"
-          },
-          "details" : {
-            "type" : "string"
-          },
-          "error" : {
-            "type" : "string"
-          },
-          "errorCode" : {
-            "type" : "string"
-          },
-          "groupId" : {
-            "type" : "string"
-          },
-          "id" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "orderId" : {
-            "type" : "string"
-          },
-          "recipient" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "string"
-          },
-          "source" : {
-            "type" : "string"
-          },
-          "summary" : {
-            "type" : "string"
-          },
-          "tgUserId" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "type" : {
-            "type" : "string"
+          "distribution" : {
+            "items" : {
+              "format" : "int64",
+              "type" : "integer"
+            },
+            "type" : "array"
           }
         },
         "required" : [
-          "chatId",
-          "createdAt",
-          "customerName",
-          "customerUsername",
-          "details",
-          "error",
-          "errorCode",
-          "groupId",
-          "id",
-          "orderId",
-          "recipient",
-          "result",
-          "source",
-          "summary",
-          "tgUserId",
-          "type"
+          "avg",
+          "count",
+          "distribution"
+        ],
+        "type" : "object"
+      },
+      "SchemeRow" : {
+        "properties" : {
+          "aovMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "awaiting" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "key" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "online" : {
+            "type" : "boolean"
+          },
+          "orders" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "receivedMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "rejected" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "soldMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "timedOut" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "aovMinor",
+          "awaiting",
+          "key",
+          "label",
+          "online",
+          "orders",
+          "receivedMinor",
+          "rejected",
+          "soldMinor",
+          "timedOut"
         ],
         "type" : "object"
       },
@@ -10637,6 +11408,37 @@
           "failed",
           "removed",
           "sent"
+        ],
+        "type" : "object"
+      },
+      "SeriesPoint" : {
+        "properties" : {
+          "bucket" : {
+            "type" : "string"
+          },
+          "orders" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "receivedMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "rejected" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "soldMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "bucket",
+          "orders",
+          "receivedMinor",
+          "rejected",
+          "soldMinor"
         ],
         "type" : "object"
       },
@@ -10688,7 +11490,7 @@
           },
           "options" : {
             "items" : {
-              "$ref" : "#/components/schemas/Option"
+              "$ref" : "#/components/schemas/PlatformSettingDefinitionOption"
             },
             "type" : "array"
           },
@@ -11276,6 +12078,14 @@
         ],
         "type" : "object"
       },
+      "StaffAdminIncidentControllerResolveRequest" : {
+        "properties" : {
+          "resolution" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "StartPaymentRequest" : {
         "properties" : {
           "display" : {
@@ -11517,21 +12327,6 @@
         ],
         "type" : "object"
       },
-      "SubscribeRequest" : {
-        "properties" : {
-          "productId" : {
-            "type" : "string"
-          },
-          "qty" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "variantId" : {
-            "type" : "string"
-          }
-        },
-        "type" : "object"
-      },
       "SubscriberDto" : {
         "properties" : {
           "botBlocked" : {
@@ -11619,31 +12414,6 @@
         ],
         "type" : "object"
       },
-      "Summary" : {
-        "properties" : {
-          "avg" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "count" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "distribution" : {
-            "items" : {
-              "format" : "int64",
-              "type" : "integer"
-            },
-            "type" : "array"
-          }
-        },
-        "required" : [
-          "avg",
-          "count",
-          "distribution"
-        ],
-        "type" : "object"
-      },
       "SupplierDto" : {
         "properties" : {
           "id" : {
@@ -11673,6 +12443,65 @@
             "type" : "string"
           }
         },
+        "type" : "object"
+      },
+      "SupportMessageDto" : {
+        "properties" : {
+          "attachmentUrl" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "fileName" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "mimeType" : {
+            "type" : "string"
+          },
+          "readAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "replyToMessageId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "senderName" : {
+            "type" : "string"
+          },
+          "senderType" : {
+            "type" : "string"
+          },
+          "text" : {
+            "type" : "string"
+          },
+          "threadId" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "attachmentUrl",
+          "createdAt",
+          "fileName",
+          "id",
+          "mimeType",
+          "readAt",
+          "replyToMessageId",
+          "senderName",
+          "senderType",
+          "text",
+          "threadId",
+          "type"
+        ],
         "type" : "object"
       },
       "SwapDto" : {
@@ -12310,32 +13139,6 @@
         ],
         "type" : "object"
       },
-      "TopCustomer" : {
-        "properties" : {
-          "name" : {
-            "type" : "string"
-          },
-          "ordersCount" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "telegramUserId" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "totalSpentMinor" : {
-            "format" : "int64",
-            "type" : "integer"
-          }
-        },
-        "required" : [
-          "name",
-          "ordersCount",
-          "telegramUserId",
-          "totalSpentMinor"
-        ],
-        "type" : "object"
-      },
       "TopProduct" : {
         "properties" : {
           "live" : {
@@ -12385,6 +13188,38 @@
         },
         "required" : [
           "code"
+        ],
+        "type" : "object"
+      },
+      "TranslationAcceptResult" : {
+        "properties" : {
+          "accepted" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "invalid" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "notFound" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "rebased" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "skippedStale" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "accepted",
+          "invalid",
+          "notFound",
+          "rebased",
+          "skippedStale"
         ],
         "type" : "object"
       },
@@ -12646,7 +13481,7 @@
           },
           "topCustomers" : {
             "items" : {
-              "$ref" : "#/components/schemas/TopCustomer"
+              "$ref" : "#/components/schemas/CustomerUserMetricsDtoTopCustomer"
             },
             "type" : "array"
           },
@@ -12691,36 +13526,6 @@
         },
         "required" : [
           "name"
-        ],
-        "type" : "object"
-      },
-      "Violation" : {
-        "properties" : {
-          "customerName" : {
-            "type" : "string"
-          },
-          "hours" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "orderId" : {
-            "type" : "string"
-          },
-          "since" : {
-            "format" : "date-time",
-            "type" : "string"
-          },
-          "totalMinor" : {
-            "format" : "int64",
-            "type" : "integer"
-          }
-        },
-        "required" : [
-          "customerName",
-          "hours",
-          "orderId",
-          "since",
-          "totalMinor"
         ],
         "type" : "object"
       },
@@ -12783,22 +13588,6 @@
           "lastUsedAt",
           "userAgent"
         ],
-        "type" : "object"
-      },
-      "WizardLine" : {
-        "properties" : {
-          "itemId" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "outcome" : {
-            "type" : "string"
-          },
-          "quantity" : {
-            "format" : "int32",
-            "type" : "integer"
-          }
-        },
         "type" : "object"
       },
       "WriteoffDto" : {
@@ -13224,7 +14013,7 @@
               "*/*" : {
                 "schema" : {
                   "items" : {
-                    "$ref" : "#/components/schemas/Summary"
+                    "$ref" : "#/components/schemas/NotificationBroadcastDeliveryReportSummary"
                   },
                   "type" : "array"
                 }
@@ -14539,7 +15328,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/Result"
+                  "$ref" : "#/components/schemas/CatalogCatalogSchemaImporterResult"
                 }
               }
             },
@@ -16201,7 +16990,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/ResolveRequest"
+                "$ref" : "#/components/schemas/StaffAdminIncidentControllerResolveRequest"
               }
             }
           },
@@ -16535,7 +17324,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/Overview"
+                  "$ref" : "#/components/schemas/AnalyticsOverview"
                 }
               }
             },
@@ -17302,7 +18091,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/ResolveRequest"
+                "$ref" : "#/components/schemas/OrderAdminCancelRequestControllerResolveRequest"
               }
             }
           }
@@ -17347,7 +18136,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/ResolveRequest"
+                "$ref" : "#/components/schemas/OrderAdminCancelRequestControllerResolveRequest"
               }
             }
           }
@@ -17827,7 +18616,7 @@
               "*/*" : {
                 "schema" : {
                   "items" : {
-                    "$ref" : "#/components/schemas/MessageDto"
+                    "$ref" : "#/components/schemas/OrderMessageDto"
                   },
                   "type" : "array"
                 }
@@ -17873,7 +18662,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/MessageDto"
+                  "$ref" : "#/components/schemas/OrderMessageDto"
                 }
               }
             },
@@ -19906,7 +20695,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/SubscribeRequest"
+                "$ref" : "#/components/schemas/NotificationAdminPushControllerSubscribeRequest"
               }
             }
           },
@@ -21064,7 +21853,7 @@
               "*/*" : {
                 "schema" : {
                   "items" : {
-                    "$ref" : "#/components/schemas/MessageDto"
+                    "$ref" : "#/components/schemas/SupportMessageDto"
                   },
                   "type" : "array"
                 }
@@ -21110,7 +21899,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/MessageDto"
+                  "$ref" : "#/components/schemas/SupportMessageDto"
                 }
               }
             },
@@ -21323,7 +22112,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/AcceptResult"
+                  "$ref" : "#/components/schemas/TranslationAcceptResult"
                 }
               }
             },
@@ -21645,7 +22434,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/Overview"
+                  "$ref" : "#/components/schemas/CustomerOverview"
                 }
               }
             },
@@ -22767,7 +23556,7 @@
               "*/*" : {
                 "schema" : {
                   "items" : {
-                    "$ref" : "#/components/schemas/MessageDto"
+                    "$ref" : "#/components/schemas/OrderMessageDto"
                   },
                   "type" : "array"
                 }
@@ -22813,7 +23602,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/MessageDto"
+                  "$ref" : "#/components/schemas/OrderMessageDto"
                 }
               }
             },
@@ -23014,7 +23803,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/SubscribeRequest"
+                "$ref" : "#/components/schemas/PreorderSubscribeRequest"
               }
             }
           },
@@ -23564,7 +24353,7 @@
               "*/*" : {
                 "schema" : {
                   "items" : {
-                    "$ref" : "#/components/schemas/MessageDto"
+                    "$ref" : "#/components/schemas/SupportMessageDto"
                   },
                   "type" : "array"
                 }
@@ -23610,7 +24399,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/MessageDto"
+                  "$ref" : "#/components/schemas/SupportMessageDto"
                 }
               }
             },
