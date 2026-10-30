@@ -134,7 +134,12 @@ const SECTIONS: NavSection[] = [
       { href: "/promocodes", label: "Промокоды", icon: Ticket },
       { href: "/gift", label: "Кейс", icon: Gift },
       // Halloween 2026 stream draw (events/halloween) — disappears with the event date, remove after.
-      ...(isHalloween() ? [{ href: "/hw/draw/", label: "Розыгрыш 🎃", icon: Ghost, external: true }] : []),
+      ...(isHalloween()
+        ? [
+            { href: "/halloween", label: "Участники 🎃", icon: Ghost },
+            { href: "/hw/draw/", label: "Розыгрыш 🎃", icon: Ghost, external: true },
+          ]
+        : []),
     ],
   },
   {
@@ -177,6 +182,7 @@ const TITLE: Record<string, string> = {
   "/metrics": "Метрики",
   "/writeoffs": "Списания",
   "/users": "Пользователи",
+  "/halloween": "Участники акции",
   "/broadcasts": "Рассылки",
   "/products": "Товары",
   "/preorders": "Поставки",
