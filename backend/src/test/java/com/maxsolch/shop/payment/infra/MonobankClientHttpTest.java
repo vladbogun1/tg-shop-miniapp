@@ -6,7 +6,6 @@ import com.maxsolch.shop.platform.http.HttpClientsProperties;
 import com.maxsolch.shop.payment.domain.MonobankInvoiceStatus;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.maxsolch.shop.platform.config.AppProperties;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,14 +58,14 @@ class MonobankClientHttpTest {
     }
 
     private MonobankClient client(String token) {
-        AppProperties props = new AppProperties();
+        PaymentProperties props = new PaymentProperties();
         props.getPayment().getMonobank().setToken(token);
         props.getPayment().getMonobank().setApiUrl("http://127.0.0.1:" + server.getAddress().getPort() + "/");
         return newClient(props);
     }
 
     /** One place that builds the client, so the construction can change without touching the cases. */
-    private static MonobankClient newClient(AppProperties props) {
+    private static MonobankClient newClient(PaymentProperties props) {
         return new MonobankClient(props, JSON, new HttpClients(new HttpClientsProperties()));
     }
 
@@ -138,7 +137,7 @@ class MonobankClientHttpTest {
         monobank.setMaxRetries(2);
         monobank.setRetryBackoff(java.time.Duration.ofMillis(1));
         overrides.getClients().put("monobank", monobank);
-        AppProperties props = new AppProperties();
+        PaymentProperties props = new PaymentProperties();
         props.getPayment().getMonobank().setToken("t");
         props.getPayment().getMonobank().setApiUrl("http://127.0.0.1:" + server.getAddress().getPort());
         MonobankClient client = new MonobankClient(props, JSON, new HttpClients(overrides));
@@ -164,7 +163,7 @@ class MonobankClientHttpTest {
     void anUnreachableServerIsAnIoException() {
         int port = server.getAddress().getPort();
         server.stop(0);
-        AppProperties props = new AppProperties();
+        PaymentProperties props = new PaymentProperties();
         props.getPayment().getMonobank().setToken("t");
         props.getPayment().getMonobank().setApiUrl("http://127.0.0.1:" + port);
 

@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.maxsolch.shop.delivery.domain.NovaPoshtaApi;
-import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.http.HttpClientSettings;
 import com.maxsolch.shop.platform.http.HttpClients;
 import com.maxsolch.shop.platform.http.ResilientHttp;
@@ -33,11 +32,11 @@ public class NovaPoshtaHttpClient implements NovaPoshtaApi {
 
     static final String CLIENT_NAME = "novaposhta";
 
-    private final AppProperties props;
+    private final DeliveryProperties props;
     private final ObjectMapper mapper;
     private final ResilientHttp http;
 
-    public NovaPoshtaHttpClient(AppProperties props, ObjectMapper mapper, HttpClients clients) {
+    public NovaPoshtaHttpClient(DeliveryProperties props, ObjectMapper mapper, HttpClients clients) {
         this.props = props;
         this.mapper = mapper;
         this.http = clients.create(HttpClientSettings.defaults(CLIENT_NAME)

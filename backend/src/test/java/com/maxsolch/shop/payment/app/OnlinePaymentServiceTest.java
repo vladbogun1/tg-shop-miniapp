@@ -9,7 +9,7 @@ import com.maxsolch.shop.payment.domain.MonobankGateway;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.payment.infra.PaymentProperties;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderStatus;
@@ -56,12 +56,12 @@ class OnlinePaymentServiceTest {
     @Mock
     PaymentStatusApplier applier;
 
-    AppProperties props;
+    PaymentProperties props;
     OnlinePaymentService service;
 
     @BeforeEach
     void setUp() {
-        props = new AppProperties();
+        props = new PaymentProperties();
         props.getSite().setBaseUrl("https://chisetup.com.ua");
         props.setWebappBaseUrl("https://app.chisetup.com.ua");
         service = new OnlinePaymentService(mono, invoices, orders, props, messages, tx, applier,

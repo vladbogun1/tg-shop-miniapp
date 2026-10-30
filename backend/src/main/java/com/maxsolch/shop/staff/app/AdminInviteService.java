@@ -7,7 +7,7 @@ import com.maxsolch.shop.staff.domain.AdminInvite;
 import com.maxsolch.shop.staff.domain.AdminInviteStore;
 import com.maxsolch.shop.staff.domain.Totp;
 import com.maxsolch.shop.audit.app.AdminAuditService;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.staff.infra.StaffProperties;
 import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
@@ -101,7 +101,7 @@ public class AdminInviteService {
                               PasswordEncoder passwordEncoder, AdminTotp totp, AdminSessions sessions,
                               AdminTokenValidator adminTokenValidator, AdminAuthService authService,
                               AdminAuditService audit, AdminTeamMessenger messenger,
-                              PlatformTransactionManager txManager, AppProperties props, Clock clock) {
+                              PlatformTransactionManager txManager, StaffProperties props, Clock clock) {
         this(store, adminUserRepository, passwordEncoder, totp, sessions, adminTokenValidator, authService, audit,
                 messenger, new TransactionTemplate(txManager), props.getAdminBaseUrl(), clock);
     }

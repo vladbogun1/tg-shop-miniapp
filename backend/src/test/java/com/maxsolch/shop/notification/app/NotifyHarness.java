@@ -4,7 +4,7 @@ import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.notification.domain.TelegramGateway;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.notification.infra.NotificationProperties;
 import com.maxsolch.shop.order.domain.DeliveryMethod;
 import com.maxsolch.shop.order.app.OrderCustomerNotifier;
 import com.maxsolch.shop.order.app.OrderSellerNotifier;
@@ -66,7 +66,7 @@ final class NotifyHarness {
 
     private static final Path SNAPSHOTS = Path.of("src/test/resources/snapshots/notify");
 
-    final AppProperties props = new AppProperties();
+    final NotificationProperties props = new NotificationProperties();
     final TelegramGateway bot = Mockito.mock(TelegramGateway.class);
     final ActivityLog activity = Mockito.mock(ActivityLog.class);
     final SettingsService settings = Mockito.mock(SettingsService.class);

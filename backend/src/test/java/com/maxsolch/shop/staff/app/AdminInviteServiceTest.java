@@ -6,7 +6,7 @@ import com.maxsolch.shop.staff.domain.Base32;
 import com.maxsolch.shop.staff.domain.SecretCipher;
 import com.maxsolch.shop.staff.domain.Totp;
 import com.maxsolch.shop.audit.app.AdminAuditService;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.staff.infra.StaffProperties;
 import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import com.maxsolch.shop.platform.security.AdminTokenValidator;
@@ -66,7 +66,7 @@ class AdminInviteServiceTest {
                 new AdminAuthService.Outcome(AdminAuthService.Status.OK, "access-token", null, null, "Newbie"));
         sessions = mock(AdminSessions.class);
         audit = mock(AdminAuditService.class);
-        AppProperties props = new AppProperties();
+        StaffProperties props = new StaffProperties();
         props.getSecurity().setJwtSecret(JWT_SECRET);
         cipher = new AdminAuthKeys(props).cipher();
         totp = new AdminTotp(cipher, new AdminCounters(admins.repo), "ChiSetup Admin", clock);

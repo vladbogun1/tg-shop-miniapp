@@ -3,7 +3,7 @@ package com.maxsolch.shop.notification.app;
 import com.maxsolch.shop.notification.domain.NotificationError;
 import com.maxsolch.shop.platform.jobs.Workers;
 import com.maxsolch.shop.platform.error.DomainException;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.notification.infra.NotificationProperties;
 import com.maxsolch.shop.notification.app.BroadcastRules.Recipient;
 import com.maxsolch.shop.notification.domain.Broadcast;
 import com.maxsolch.shop.platform.i18n.Messages;
@@ -59,7 +59,7 @@ public class BroadcastService {
     private static final Duration LOCK_TTL = Duration.ofMinutes(5);
 
     private final TelegramGateway bot;
-    private final AppProperties props;
+    private final NotificationProperties props;
     private final BroadcastAudiences audiences;
     private final BroadcastRepository broadcastRepository;
     private final ActivityLog activity;
@@ -71,7 +71,7 @@ public class BroadcastService {
     private final ExecutorService exec;
     private final AtomicReference<BroadcastStatus> status = new AtomicReference<>(BroadcastStatus.idle());
 
-    public BroadcastService(TelegramGateway bot, AppProperties props, BroadcastAudiences audiences,
+    public BroadcastService(TelegramGateway bot, NotificationProperties props, BroadcastAudiences audiences,
                             BroadcastRepository broadcastRepository, ActivityLog activity, Clock clock,
                             AdminAuditService audit, CurrentActor actor, DbLocks locks, Workers workers) {
         this.exec = workers.single("broadcast");

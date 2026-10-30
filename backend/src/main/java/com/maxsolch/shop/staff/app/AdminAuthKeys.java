@@ -2,7 +2,7 @@ package com.maxsolch.shop.staff.app;
 
 import com.maxsolch.shop.staff.domain.Hkdf;
 import com.maxsolch.shop.staff.domain.SecretCipher;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.staff.infra.StaffProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -27,7 +27,7 @@ public class AdminAuthKeys {
     private final byte[] preAuthKey;
     private final byte[] markerKey;
 
-    public AdminAuthKeys(AppProperties props) {
+    public AdminAuthKeys(StaffProperties props) {
         byte[] jwtSecret = Base64.getDecoder().decode(props.getSecurity().getJwtSecret());
         this.preAuthKey = Hkdf.derive(jwtSecret, SALT, ascii("admin-preauth-jwt"), 32);
         this.markerKey = Hkdf.derive(jwtSecret, SALT, ascii("admin-emergency-reset"), 32);

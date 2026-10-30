@@ -3,7 +3,7 @@ package com.maxsolch.shop.staff.app;
 import com.maxsolch.shop.staff.domain.Base32;
 import com.maxsolch.shop.staff.domain.SecretCipher;
 import com.maxsolch.shop.staff.domain.Totp;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.staff.infra.StaffProperties;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +35,7 @@ public class AdminTotp {
     private final Clock clock;
 
     @Autowired
-    public AdminTotp(AdminAuthKeys keys, AdminCounters counters, AppProperties props, Clock clock) {
+    public AdminTotp(AdminAuthKeys keys, AdminCounters counters, StaffProperties props, Clock clock) {
         this(keys.cipher(), counters, props.getSecurity().getAdmin2faIssuer(), clock);
     }
 

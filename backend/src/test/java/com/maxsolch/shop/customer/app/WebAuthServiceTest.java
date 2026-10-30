@@ -1,7 +1,7 @@
 package com.maxsolch.shop.customer.app;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.customer.infra.CustomerProperties;
 import com.maxsolch.shop.customer.domain.WebLoginStatus;
 import com.maxsolch.shop.customer.domain.WebLoginToken;
 import com.maxsolch.shop.customer.domain.WebSession;
@@ -75,7 +75,7 @@ class WebAuthServiceTest {
 
     @BeforeEach
     void setUp() {
-        AppProperties props = new AppProperties();
+        CustomerProperties props = new CustomerProperties();
         props.getTelegram().setBotUsername("@maxsolch_bot");
         MutableClock clock = new MutableClock();
         org.springframework.cache.support.SimpleCacheManager caches = new org.springframework.cache.support.SimpleCacheManager();

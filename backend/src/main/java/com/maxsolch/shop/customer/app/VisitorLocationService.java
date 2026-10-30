@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import com.maxsolch.shop.platform.cache.CacheConfig;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.customer.infra.CustomerProperties;
 import com.maxsolch.shop.customer.infra.VisitorLocationStore;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -51,7 +51,7 @@ public class VisitorLocationService {
     private final boolean enabled;
 
     @Autowired
-    public VisitorLocationService(VisitorLocationStore store, GeoIpLookup geo, AppProperties props,
+    public VisitorLocationService(VisitorLocationStore store, GeoIpLookup geo, CustomerProperties props,
                                   CacheManager caches, Workers workers) {
         this(store, geo, props.getGeoip().isEnabled(),
                 CacheConfig.require(caches, CustomerCaches.VISITOR_LOCATION_RECENT),

@@ -1,7 +1,6 @@
 package com.maxsolch.shop.notification.infra;
 
 import com.maxsolch.shop.notification.domain.BotUpdateHandler;
-import com.maxsolch.shop.platform.config.AppProperties;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -13,10 +12,10 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 @Component
 public class ShopBot extends TelegramLongPollingBot {
 
-    private final AppProperties props;
+    private final NotificationProperties props;
     private final BotUpdateHandler handler;
 
-    public ShopBot(AppProperties props, BotUpdateHandler handler) {
+    public ShopBot(NotificationProperties props, BotUpdateHandler handler) {
         super(props.getTelegram().getBotToken() == null ? "" : props.getTelegram().getBotToken());
         this.props = props;
         this.handler = handler;

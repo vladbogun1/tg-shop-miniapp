@@ -23,7 +23,7 @@ import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.catalog.app.Products;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.order.infra.OrderProperties;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,7 +65,7 @@ public class Checkout {
     private final OrderOps ops;
     /** Drawing and placing the gift of the order sum. */
     private final OrderGiftPrizes giftPrizes;
-    private final AppProperties props;
+    private final OrderProperties props;
 
     Checkout(OrderRepository orderRepository,
                         Products productRepository,
@@ -80,7 +80,7 @@ public class Checkout {
                         OrderGifts gifts,
                         OrderOps ops,
                         OrderGiftPrizes giftPrizes,
-                        AppProperties props) {
+                        OrderProperties props) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.paymentOptions = paymentOptions;

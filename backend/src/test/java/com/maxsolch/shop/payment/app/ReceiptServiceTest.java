@@ -6,7 +6,7 @@ import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.domain.MonobankGateway;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.payment.infra.PaymentProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,7 +39,7 @@ class ReceiptServiceTest {
 
     @BeforeEach
     void setUp() {
-        AppProperties props = new AppProperties();
+        PaymentProperties props = new PaymentProperties();
         props.getSecurity().setJwtSecret("c29tZS1yZWFsbHktbG9uZy1zZWNyZXQtdmFsdWUtaGVyZQ==");
         service = new ReceiptService(mono, invoices, new ReceiptSigner(props, java.time.Clock.systemUTC()),
                 new org.springframework.cache.concurrent.ConcurrentMapCacheManager(

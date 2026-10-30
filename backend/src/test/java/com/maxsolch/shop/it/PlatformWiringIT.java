@@ -30,6 +30,10 @@ class PlatformWiringIT extends AbstractMysqlIT {
     ShopZone shopZone;
     @Autowired
     AppProperties props;
+    @Autowired
+    com.maxsolch.shop.journal.infra.JournalProperties journalProps;
+    @Autowired
+    com.maxsolch.shop.media.infra.MediaProperties mediaProps;
 
     @Test
     void jobLockIsExclusiveUntilReleased() {
@@ -51,7 +55,7 @@ class PlatformWiringIT extends AbstractMysqlIT {
     void timeAndPropertiesBeansAreWired() {
         assertThat(clock).isNotNull();
         assertThat(shopZone.zone().getId()).isEqualTo(props.getTimezone());
-        assertThat(props.getJournal().getRetentionDays()).isEqualTo(90);
-        assertThat(props.getMedia().getImgproxyUrl()).isNotBlank();
+        assertThat(journalProps.getJournal().getRetentionDays()).isEqualTo(90);
+        assertThat(mediaProps.getMedia().getImgproxyUrl()).isNotBlank();
     }
 }

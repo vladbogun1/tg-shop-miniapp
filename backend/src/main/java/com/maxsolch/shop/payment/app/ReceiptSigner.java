@@ -1,7 +1,7 @@
 package com.maxsolch.shop.payment.app;
 
 import com.maxsolch.shop.payment.domain.ReceiptKind;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.payment.infra.PaymentProperties;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Mac;
@@ -35,7 +35,7 @@ public class ReceiptSigner {
     private final byte[] key;
     private final Clock clock;
 
-    public ReceiptSigner(AppProperties props, Clock clock) {
+    public ReceiptSigner(PaymentProperties props, Clock clock) {
         // Derived from the JWT secret, with its own prefix: a media signature is never a receipt one.
         String secret = props.getSecurity().getJwtSecret();
         this.key = ("receipt:" + (secret == null ? "" : secret)).getBytes(StandardCharsets.UTF_8);

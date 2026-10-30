@@ -1,7 +1,7 @@
 package com.maxsolch.shop.notification.app;
 
 import com.maxsolch.shop.notification.domain.TelegramGateway;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.notification.infra.NotificationProperties;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.journal.app.ActivityLog;
 import lombok.extern.slf4j.Slf4j;
@@ -47,11 +47,11 @@ public class CustomerBot {
     }
 
     private final TelegramGateway bot;
-    private final AppProperties props;
+    private final NotificationProperties props;
     private final Messages messages;
     private final ActivityLog activity;
 
-    public CustomerBot(TelegramGateway bot, AppProperties props, Messages messages, ActivityLog activity) {
+    public CustomerBot(TelegramGateway bot, NotificationProperties props, Messages messages, ActivityLog activity) {
         this.bot = bot;
         this.props = props;
         this.messages = messages;

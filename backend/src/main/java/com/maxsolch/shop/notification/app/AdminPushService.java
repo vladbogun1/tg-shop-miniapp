@@ -6,7 +6,7 @@ import com.maxsolch.shop.notification.infra.PushSubscriptionStore;
 import com.maxsolch.shop.notification.infra.PushTransport;
 import com.maxsolch.shop.notification.infra.WebPushCrypto;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.notification.infra.NotificationProperties;
 import com.maxsolch.shop.notification.infra.PushSubscriptionStore.Subscription;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.journal.app.ActivityLog;
@@ -95,12 +95,12 @@ public class AdminPushService {
     private final String subject;
 
     @Autowired
-    public AdminPushService(AppProperties props, PushSubscriptionStore store, PushTransport transport,
+    public AdminPushService(NotificationProperties props, PushSubscriptionStore store, PushTransport transport,
                             ObjectMapper objectMapper, ActivityLog activity, Clock clock, Workers workers) {
         this(props, store, transport, objectMapper, workers.single("admin-push"), clock, activity);
     }
 
-    AdminPushService(AppProperties props, PushSubscriptionStore store, PushTransport transport,
+    AdminPushService(NotificationProperties props, PushSubscriptionStore store, PushTransport transport,
                      ObjectMapper objectMapper, ExecutorService executor, Clock clock, ActivityLog activity) {
         this.activity = activity;
         this.store = store;
@@ -109,7 +109,7 @@ public class AdminPushService {
         this.executor = executor;
         this.clock = clock;
 
-        AppProperties.Push cfg = props.getPush();
+        NotificationProperties.Push cfg = props.getPush();
         String pub = cfg == null ? null : cfg.getVapidPublicKey();
         String priv = cfg == null ? null : cfg.getVapidPrivateKey();
         String sub = cfg == null ? null : cfg.getVapidSubject();

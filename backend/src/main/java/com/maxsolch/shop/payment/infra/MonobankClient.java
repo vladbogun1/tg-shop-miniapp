@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.payment.domain.MonobankGateway;
 import com.maxsolch.shop.payment.domain.MonobankInvoiceStatus;
-import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.http.HttpClientSettings;
 import com.maxsolch.shop.platform.http.HttpClients;
 import com.maxsolch.shop.platform.http.ResilientHttp;
@@ -33,11 +32,11 @@ public class MonobankClient implements MonobankGateway {
 
     static final String CLIENT_NAME = "monobank";
 
-    private final AppProperties props;
+    private final PaymentProperties props;
     private final ObjectMapper mapper;
     private final ResilientHttp http;
 
-    public MonobankClient(AppProperties props, ObjectMapper mapper, HttpClients clients) {
+    public MonobankClient(PaymentProperties props, ObjectMapper mapper, HttpClients clients) {
         this.props = props;
         this.mapper = mapper;
         this.http = clients.create(HttpClientSettings.defaults(CLIENT_NAME)
@@ -148,7 +147,7 @@ public class MonobankClient implements MonobankGateway {
     }
 
     private JsonNode call(String method, String path, Object body) {
-        AppProperties.Monobank cfg = props.getPayment().getMonobank();
+        PaymentProperties.Monobank cfg = props.getPayment().getMonobank();
         if (!cfg.isEnabled()) {
             throw new MonobankException(0, "DISABLED", "monobank token is not configured");
         }

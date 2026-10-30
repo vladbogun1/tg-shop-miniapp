@@ -40,6 +40,7 @@ final class V2Rules {
         RULES.put("M3", "SQL/JPQL strings of a module touch its own tables and entities only (analytics, finance, inbox read any); the rest asks the owner through a port");
         RULES.put("L5", "app knows no web types (org.springframework.web.*, jakarta.servlet.*): requests are parsed in api");
         RULES.put("P1", "platform knows no business module");
+        RULES.put("P2", "platform holds technical code only: no @RestController and no @Entity (a business endpoint or table belongs to a module)");
         RULES.put("E1", "business errors are DomainException with an ErrorCode (no other RuntimeException subclass, no ResponseStatusException)");
         RULES.put("E2", "an error reason is an enum constant (no class or lambda implementing ErrorCode outside platform.error, no ErrorCode built from a string)");
         RULES.put("T1", "after commit only through domain events (no TransactionSynchronizationManager)");
@@ -401,6 +402,11 @@ final class V2Rules {
             if (dateNow || owner.getName().equals(root + ".platform.time.ShopZone")) {
                 out.add(new Violation("C1", from.module(), detail));
             }
+        }
+        if (from.module().equals(Placement.PLATFORM)
+                && (c.isAnnotatedWith("org.springframework.web.bind.annotation.RestController")
+                || c.isAnnotatedWith("jakarta.persistence.Entity"))) {
+            out.add(new Violation("P2", from.module(), origin + " is a controller or an entity inside platform"));
         }
         if (c.isAnnotatedWith("org.springframework.boot.context.properties.ConfigurationProperties")
                 && !c.isAnnotatedWith("org.springframework.validation.annotation.Validated")) {

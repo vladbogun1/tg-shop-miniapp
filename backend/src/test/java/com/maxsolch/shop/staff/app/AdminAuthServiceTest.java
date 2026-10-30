@@ -8,7 +8,7 @@ import com.maxsolch.shop.staff.domain.Totp;
 import com.maxsolch.shop.staff.app.AdminAuthService.Outcome;
 import com.maxsolch.shop.staff.app.AdminAuthService.Status;
 import com.maxsolch.shop.audit.app.AdminAuditService;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.staff.infra.StaffProperties;
 import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
@@ -110,9 +110,11 @@ class AdminAuthServiceTest {
         alerts = mock(AdminSecurityAlerts.class);
         audit = mock(AdminAuditService.class);
 
-        AppProperties props = new AppProperties();
+        StaffProperties props = new StaffProperties();
         props.getSecurity().setJwtSecret(JWT_SECRET);
-        jwtService = new JwtService(props, java.time.Clock.systemUTC());
+        com.maxsolch.shop.platform.config.AppProperties platformProps = new com.maxsolch.shop.platform.config.AppProperties();
+        platformProps.getSecurity().setJwtSecret(JWT_SECRET);
+        jwtService = new JwtService(platformProps, java.time.Clock.systemUTC());
         AdminAuthKeys keys = new AdminAuthKeys(props);
         cipher = keys.cipher();
         PreAuthTokens preAuth = new PreAuthTokens(keys.preAuthKey(), clock,

@@ -2,7 +2,7 @@ package com.maxsolch.shop.notification.app;
 
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.notification.domain.TelegramGateway;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.notification.infra.NotificationProperties;
 import com.maxsolch.shop.order.app.OrderCustomerNotifier;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.customer.domain.User;
@@ -50,7 +50,7 @@ class CasePromoNotificationTest {
         source.setBasename("i18n/messages");
         source.setDefaultEncoding("UTF-8");
         source.setFallbackToSystemLocale(false);
-        AppProperties props = new AppProperties();
+        NotificationProperties props = new NotificationProperties();
         props.getTelegram().setBotToken("test-token");
         props.setWebappBaseUrl("https://app.example.test");
         Messages messages = new Messages((MessageSource) source, new com.maxsolch.shop.customer.app.UserLanguages(users));

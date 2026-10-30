@@ -1,7 +1,7 @@
 package com.maxsolch.shop.staff.app;
 
 import com.maxsolch.shop.staff.domain.LoginMethod;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.staff.infra.StaffProperties;
 import com.maxsolch.shop.platform.security.AdminTokenValidator;
 import com.maxsolch.shop.platform.security.CookieOriginGuard;
 import com.maxsolch.shop.platform.security.JwtAuthFilter;
@@ -42,13 +42,15 @@ class PreAuthTokenFilterTest {
 
     @BeforeEach
     void setUp() {
-        AppProperties props = new AppProperties();
+        StaffProperties props = new StaffProperties();
         props.getSecurity().setJwtSecret(JWT_SECRET);
+        com.maxsolch.shop.platform.config.AppProperties platformProps = new com.maxsolch.shop.platform.config.AppProperties();
+        platformProps.getSecurity().setJwtSecret(JWT_SECRET);
         AdminAuthKeys keys = new AdminAuthKeys(props);
         clock = new MutableClock(Instant.now());
         preAuth = new PreAuthTokens(keys.preAuthKey(), clock,
                 com.maxsolch.shop.platform.cache.CacheConfig.onClock(StaffCaches.PREAUTH_USED, clock));
-        jwtService = new JwtService(props, java.time.Clock.systemUTC());
+        jwtService = new JwtService(platformProps, java.time.Clock.systemUTC());
         filter = new JwtAuthFilter(jwtService, mock(AdminTokenValidator.class), mock(WebSessionValidator.class),
                 mock(CookieOriginGuard.class), preAuth);
         chain = mock(FilterChain.class);

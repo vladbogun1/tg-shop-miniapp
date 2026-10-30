@@ -1,6 +1,5 @@
 package com.maxsolch.shop.media.infra;
 
-import com.maxsolch.shop.platform.config.AppProperties;
 import io.minio.MinioClient;
 import io.minio.http.HttpUtils;
 import org.springframework.context.annotation.Bean;
@@ -19,8 +18,8 @@ public class MinioConfig {
     static final Duration IO_TIMEOUT = Duration.ofSeconds(30);
 
     @Bean
-    public MinioClient minioClient(AppProperties props) {
-        AppProperties.S3 s3 = props.getS3();
+    public MinioClient minioClient(MediaProperties props) {
+        MediaProperties.S3 s3 = props.getS3();
         return MinioClient.builder()
                 .endpoint(s3.getEndpoint())
                 .credentials(s3.getAccessKey(), s3.getSecretKey())

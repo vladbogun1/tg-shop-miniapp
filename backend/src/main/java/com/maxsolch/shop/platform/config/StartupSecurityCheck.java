@@ -31,15 +31,13 @@ public class StartupSecurityCheck {
     private static final String PLACEHOLDER_JWT_SECRET =
             "Y2hhbmdlLW1lLWJhc2U2NC0yNTZiaXQtc2VjcmV0LWZvci1qd3Qtc2lnbmluZw==";
 
-    /** Placeholders from .env.example — a deploy that still carries them is misconfigured. */
-    private static final List<String> PLACEHOLDER_PASSWORDS =
-            List.of("change_me", "change_me_admin", "change_me_minio", "admin", "password");
-
     private final AppProperties props;
     private final Environment environment;
+    private final List<StartupCheck> moduleChecks;
 
-    public StartupSecurityCheck(AppProperties props, Environment environment) {
+    public StartupSecurityCheck(AppProperties props, Environment environment, List<StartupCheck> moduleChecks) {
         this.props = props;
+        this.moduleChecks = moduleChecks;
         this.environment = environment;
     }
 
@@ -73,39 +71,18 @@ public class StartupSecurityCheck {
             }
         }
 
-        String adminPassword = props.getSecurity().getAdminPassword();
-        if (adminPassword != null && !adminPassword.isBlank()
-                && PLACEHOLDER_PASSWORDS.contains(adminPassword.trim().toLowerCase())) {
-            String message = "ADMIN_PASSWORD — это плейсхолдер из .env.example. Задайте настоящий пароль.";
-            if (dev) {
-                log.warn("SECURITY: {}", message);
-            } else {
-                fatal.add(message);
-            }
-        }
-
-        // Public site: auth cookies without Secure would travel over plain http, and an unsigned
-        // revalidation webhook lets anyone make the site rebuild pages.
+        // Public site: auth cookies without Secure would travel over plain http.
         AppProperties.Site site = props.getSite();
         if (!dev && Boolean.FALSE.equals(site.getWebCookieSecure())) {
             log.warn("SECURITY: WEB_COOKIE_SECURE=false вне профиля dev — cookie входа на сайт "
                     + "уйдут по http. На проде должно быть true (или не задано).");
         }
-        if (site.getRevalidateUrl() != null && !site.getRevalidateUrl().isBlank()
-                && (site.getRevalidateSecret() == null || site.getRevalidateSecret().isBlank())) {
-            log.warn("SECURITY: SITE_REVALIDATE_URL задан, а SITE_REVALIDATE_SECRET пуст — "
-                    + "сайт должен отклонять неподписанные запросы ревалидации.");
-        }
         if (!dev && (site.getBaseUrl() == null || site.getBaseUrl().isBlank())) {
             log.warn("SITE_BASE_URL не задан — запросы сайта с cookie-авторизацией будут отклоняться (403).");
         }
 
-        // Payment is online-only: without a monobank token orders can be placed but never paid
-        // (and they are cancelled automatically once the payment deadline passes).
-        if (!dev && !props.getPayment().getMonobank().isEnabled()) {
-            log.warn("MONOBANK_TOKEN не задан — online payment disabled — customers cannot pay. "
-                    + "Заказы будут создаваться и через {} ч отменяться как неоплаченные.",
-                    props.getPayment().getDueHours());
+        for (StartupCheck check : moduleChecks) {
+            check.check(dev, fatal);
         }
 
         if (!fatal.isEmpty()) {

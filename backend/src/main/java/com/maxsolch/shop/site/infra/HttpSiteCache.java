@@ -1,7 +1,6 @@
 package com.maxsolch.shop.site.infra;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.http.HttpClientSettings;
 import com.maxsolch.shop.platform.http.HttpClients;
 import com.maxsolch.shop.platform.http.ResilientHttp;
@@ -32,11 +31,11 @@ public class HttpSiteCache implements SiteCache {
     private static final HttpClientSettings HTTP = HttpClientSettings.defaults("site-revalidate")
             .withTimeouts(Duration.ofSeconds(3), Duration.ofSeconds(10)).withHttp11();
 
-    private final AppProperties props;
+    private final SiteProperties props;
     private final ObjectMapper objectMapper;
     private final ResilientHttp http;
 
-    public HttpSiteCache(AppProperties props, ObjectMapper objectMapper, HttpClients httpClients) {
+    public HttpSiteCache(SiteProperties props, ObjectMapper objectMapper, HttpClients httpClients) {
         this.props = props;
         this.objectMapper = objectMapper;
         this.http = httpClients.create(HTTP);

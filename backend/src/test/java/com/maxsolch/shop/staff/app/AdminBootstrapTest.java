@@ -7,7 +7,7 @@ import com.maxsolch.shop.platform.security.AdminTokenValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.staff.infra.StaffProperties;
 import com.maxsolch.shop.staff.infra.EmergencyResetStore;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
@@ -25,7 +25,7 @@ import static org.mockito.Mockito.when;
 
 class AdminBootstrapTest {
 
-    AppProperties props;
+    StaffProperties props;
     AdminUserRepository repo;
     EmergencyResetStore resets;
     TrustedDeviceService trustedDevices;
@@ -35,7 +35,7 @@ class AdminBootstrapTest {
 
     @BeforeEach
     void setUp() {
-        props = new AppProperties();
+        props = new StaffProperties();
         props.getSecurity().setJwtSecret("ZTJlLW9ubHktand0LXNlY3JldC1ub3QtZm9yLXByb2R1Y3Rpb24tdXNlLTAwMDAwMDA=");
         props.getSecurity().setAdminLogin("admin");
         props.getSecurity().setAdminPassword("from-env-password");

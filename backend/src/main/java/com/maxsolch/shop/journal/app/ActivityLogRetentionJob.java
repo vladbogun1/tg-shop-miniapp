@@ -3,7 +3,7 @@ package com.maxsolch.shop.journal.app;
 import com.maxsolch.shop.journal.infra.ActivityLogStore;
 import java.time.Clock;
 import lombok.extern.slf4j.Slf4j;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.journal.infra.JournalProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -28,7 +28,7 @@ public class ActivityLogRetentionJob {
     private final Clock clock;
 
     @Autowired
-    public ActivityLogRetentionJob(ActivityLogStore store, AppProperties props, Clock clock) {
+    public ActivityLogRetentionJob(ActivityLogStore store, JournalProperties props, Clock clock) {
         this(store, props.getJournal().getRetentionDays(), props.getJournal().getMoneyRetentionDays(), clock);
     }
 

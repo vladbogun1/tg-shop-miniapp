@@ -4,7 +4,7 @@ import com.maxsolch.shop.platform.jobs.Workers;
 import com.maxsolch.shop.notification.domain.BotCallbackHandler;
 import com.maxsolch.shop.notification.domain.BotLoginStarter;
 import com.maxsolch.shop.notification.domain.TelegramGateway;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.customer.infra.CustomerProperties;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.customer.app.WebLoginBotFlow.BotDecision;
@@ -54,13 +54,13 @@ public class WebLoginNotifier implements BotCallbackHandler, BotLoginStarter {
     private final TelegramGateway bot;
     private final WebLoginBotFlow botFlow;
     private final Messages messages;
-    private final AppProperties props;
+    private final CustomerProperties props;
     private final ActivityLog activity;
     /** Notifications after a site login are sent off the HTTP request thread. */
     private final ExecutorService executor;
 
     public WebLoginNotifier(TelegramGateway bot, WebLoginBotFlow botFlow, Messages messages,
-                              AppProperties props, ActivityLog activity, Workers workers) {
+                              CustomerProperties props, ActivityLog activity, Workers workers) {
         this.executor = workers.single("web-login-bot");
         this.bot = bot;
         this.botFlow = botFlow;

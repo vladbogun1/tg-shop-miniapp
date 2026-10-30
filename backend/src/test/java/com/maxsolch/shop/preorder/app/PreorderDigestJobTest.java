@@ -2,7 +2,7 @@ package com.maxsolch.shop.preorder.app;
 
 import com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.preorder.infra.PreorderProperties;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.procurement.app.LineProducts;
@@ -34,7 +34,7 @@ class PreorderDigestJobTest {
     final LineProducts queue = mock(LineProducts.class);
     final SettingsService settings = mock(SettingsService.class);
     final PreorderDigestNotifier seller = mock(PreorderDigestNotifier.class);
-    final AppProperties props = new AppProperties();
+    final PreorderProperties props = new PreorderProperties();
     PreorderDigestJob job;
     final byte[][] ids = {UuidUtil.randomBytes(), UuidUtil.randomBytes(), UuidUtil.randomBytes(), UuidUtil.randomBytes()};
 

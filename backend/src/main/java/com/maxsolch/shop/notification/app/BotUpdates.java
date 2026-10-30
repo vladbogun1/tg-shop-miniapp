@@ -6,7 +6,7 @@ import com.maxsolch.shop.notification.domain.BotUpdateHandler;
 import com.maxsolch.shop.notification.domain.BotLoginStarter;
 import com.maxsolch.shop.notification.domain.BotUsers;
 import com.maxsolch.shop.notification.domain.TelegramGateway;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.notification.infra.NotificationProperties;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.platform.security.TelegramUser;
@@ -33,7 +33,7 @@ import java.util.Locale;
 @Component
 public class BotUpdates implements BotUpdateHandler {
 
-    private final AppProperties props;
+    private final NotificationProperties props;
     private final BotUsers users;
     private final Messages messages;
     private final BotLoginStarter loginStarter;
@@ -42,7 +42,7 @@ public class BotUpdates implements BotUpdateHandler {
     private final SettingsService settings;
     private final ActivityLog activity;
 
-    public BotUpdates(AppProperties props, BotUsers users, Messages messages, BotLoginStarter loginStarter,
+    public BotUpdates(NotificationProperties props, BotUsers users, Messages messages, BotLoginStarter loginStarter,
                    List<BotCallbackHandler> callbackHandlers, SettingsService settings, ActivityLog activity,
                    TelegramGateway gateway) {
         this.props = props;

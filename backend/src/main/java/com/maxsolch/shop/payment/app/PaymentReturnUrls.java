@@ -1,15 +1,15 @@
 package com.maxsolch.shop.payment.app;
 
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.payment.infra.PaymentProperties;
 import com.maxsolch.shop.platform.util.UuidUtil;
 
 /** The addresses given to monobank with an invoice: where the browser returns after paying, where the webhook goes. */
 final class PaymentReturnUrls {
 
-    private final AppProperties props;
+    private final PaymentProperties props;
 
-    PaymentReturnUrls(AppProperties props) {
+    PaymentReturnUrls(PaymentProperties props) {
         this.props = props;
     }
 

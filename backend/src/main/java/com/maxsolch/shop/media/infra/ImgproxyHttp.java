@@ -1,7 +1,6 @@
 package com.maxsolch.shop.media.infra;
 
 import com.maxsolch.shop.media.domain.Imgproxy;
-import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.http.HttpClientSettings;
 import com.maxsolch.shop.platform.http.HttpClients;
 import com.maxsolch.shop.platform.http.ResilientHttp;
@@ -30,7 +29,7 @@ public class ImgproxyHttp implements Imgproxy {
     private final String imgproxyUrl;
     private final String bucket;
 
-    public ImgproxyHttp(AppProperties props, HttpClients httpClients) {
+    public ImgproxyHttp(MediaProperties props, HttpClients httpClients) {
         this.http = httpClients.create(HTTP);
         String url = props.getMedia().getImgproxyUrl();
         this.imgproxyUrl = url == null ? "" : url.replaceAll("/+$", "");

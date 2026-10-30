@@ -1,6 +1,5 @@
 package com.maxsolch.shop.notification.infra;
 
-import com.maxsolch.shop.platform.config.AppProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Configuration;
@@ -18,11 +17,11 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 @Configuration
 public class TelegramBotConfig {
 
-    private final AppProperties props;
+    private final NotificationProperties props;
     private final ShopBot shopBot;
     private BotSession session;
 
-    public TelegramBotConfig(AppProperties props, ShopBot shopBot) {
+    public TelegramBotConfig(NotificationProperties props, ShopBot shopBot) {
         this.props = props;
         this.shopBot = shopBot;
     }

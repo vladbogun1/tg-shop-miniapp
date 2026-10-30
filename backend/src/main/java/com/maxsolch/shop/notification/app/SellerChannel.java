@@ -2,7 +2,7 @@ package com.maxsolch.shop.notification.app;
 
 import com.maxsolch.shop.notification.domain.SellerTopic;
 import com.maxsolch.shop.notification.domain.TelegramGateway;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.notification.infra.NotificationProperties;
 import com.maxsolch.shop.journal.app.ActivityLog;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -41,10 +41,10 @@ public class SellerChannel {
     public enum Edited { DONE, NOT_MODIFIED, GONE, FAILED }
 
     private final TelegramGateway bot;
-    private final AppProperties props;
+    private final NotificationProperties props;
     private final ActivityLog activity;
 
-    public SellerChannel(TelegramGateway bot, AppProperties props, ActivityLog activity) {
+    public SellerChannel(TelegramGateway bot, NotificationProperties props, ActivityLog activity) {
         this.bot = bot;
         this.props = props;
         this.activity = activity;
@@ -79,7 +79,7 @@ public class SellerChannel {
     }
 
     private int topicId(SellerTopic topic) {
-        AppProperties.Telegram t = props.getTelegram();
+        NotificationProperties.Telegram t = props.getTelegram();
         return switch (topic) {
             case NEW -> t.getNotifyTopicNew();
             case PROCESSING -> t.getNotifyTopicProcessing();

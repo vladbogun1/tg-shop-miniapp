@@ -10,7 +10,7 @@ import com.maxsolch.shop.order.domain.OrderMoney;
 
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.payment.infra.PaymentProperties;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.i18n.Messages;
@@ -55,7 +55,7 @@ public class OnlinePaymentService {
     private final MonobankGateway mono;
     private final PaymentInvoiceRepository invoices;
     private final OrderLookup orders;
-    private final AppProperties props;
+    private final PaymentProperties props;
     private final Messages messages;
     private final TransactionTemplate tx;
     private final PaymentStatusApplier applier;
@@ -71,7 +71,7 @@ public class OnlinePaymentService {
     private final DbLocks locks;
 
     public OnlinePaymentService(MonobankGateway mono, PaymentInvoiceRepository invoices, OrderLookup orders,
-                                AppProperties props, Messages messages,
+                                PaymentProperties props, Messages messages,
                                 TransactionTemplate tx, PaymentStatusApplier applier,
                                 SettingsService settings, ActivityLog activity, Clock clock, DbLocks locks) {
         this.locks = locks;

@@ -1,6 +1,6 @@
 package com.maxsolch.shop.notification.app;
 
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.notification.infra.NotificationProperties;
 
 /** Small formatting and config helpers shared by the Telegram notification classes. */
 public final class TgFormat {
@@ -9,7 +9,7 @@ public final class TgFormat {
     }
 
     /** A bot token is configured: there is a bot to send anything with. */
-    public static boolean botConfigured(AppProperties props) {
+    public static boolean botConfigured(NotificationProperties props) {
         String token = props.getTelegram().getBotToken();
         return token != null && !token.isBlank();
     }

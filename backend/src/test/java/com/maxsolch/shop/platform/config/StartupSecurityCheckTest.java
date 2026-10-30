@@ -3,6 +3,8 @@ package com.maxsolch.shop.platform.config;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -18,11 +20,10 @@ class StartupSecurityCheckTest {
             "Y2hhbmdlLW1lLWJhc2U2NC0yNTZiaXQtc2VjcmV0LWZvci1qd3Qtc2lnbmluZw==";
     private static final String REAL_SECRET = "c29tZS1yZWFsbHktbG9uZy1zZWNyZXQtdmFsdWUtaGVyZQ==";
 
-    private AppProperties props(boolean allowUnsigned, String jwtSecret, String adminPassword) {
+    private AppProperties props(boolean allowUnsigned, String jwtSecret) {
         AppProperties p = new AppProperties();
         p.getTelegram().setAllowUnsignedInitData(allowUnsigned);
         p.getSecurity().setJwtSecret(jwtSecret);
-        p.getSecurity().setAdminPassword(adminPassword);
         return p;
     }
 
@@ -35,7 +36,7 @@ class StartupSecurityCheckTest {
     @Test
     void unsignedInitDataOutsideDev_refusesToStart() {
         StartupSecurityCheck check = new StartupSecurityCheck(
-                props(true, REAL_SECRET, "s3cret"), env("prod"));
+                props(true, REAL_SECRET), env("prod"), List.of());
 
         assertThatThrownBy(check::verify)
                 .isInstanceOf(IllegalStateException.class)
@@ -46,7 +47,7 @@ class StartupSecurityCheckTest {
     void noProfileAtAllIsTreatedAsProduction() {
         // The server runs without an explicit profile, so "no profile" must NOT mean "dev".
         StartupSecurityCheck check = new StartupSecurityCheck(
-                props(true, REAL_SECRET, "s3cret"), env());
+                props(true, REAL_SECRET), env(), List.of());
 
         assertThatThrownBy(check::verify).isInstanceOf(IllegalStateException.class);
     }
@@ -54,7 +55,7 @@ class StartupSecurityCheckTest {
     @Test
     void unsignedInitDataUnderDev_isAllowed() {
         StartupSecurityCheck check = new StartupSecurityCheck(
-                props(true, PLACEHOLDER_SECRET, "change_me_admin"), env("dev"));
+                props(true, PLACEHOLDER_SECRET), env("dev"), List.of());
 
         assertThatCode(check::verify).doesNotThrowAnyException();
     }
@@ -62,7 +63,7 @@ class StartupSecurityCheckTest {
     @Test
     void placeholderJwtSecretOutsideDev_refusesToStart() {
         StartupSecurityCheck check = new StartupSecurityCheck(
-                props(false, PLACEHOLDER_SECRET, "s3cret"), env("prod"));
+                props(false, PLACEHOLDER_SECRET), env("prod"), List.of());
 
         assertThatThrownBy(check::verify)
                 .isInstanceOf(IllegalStateException.class)
@@ -70,19 +71,10 @@ class StartupSecurityCheckTest {
     }
 
     @Test
-    void placeholderAdminPasswordOutsideDev_refusesToStart() {
-        StartupSecurityCheck check = new StartupSecurityCheck(
-                props(false, REAL_SECRET, "change_me_admin"), env("prod"));
-
-        assertThatThrownBy(check::verify)
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("ADMIN_PASSWORD");
-    }
-
-    @Test
     void allProblemsAreReportedTogether() {
         StartupSecurityCheck check = new StartupSecurityCheck(
-                props(true, PLACEHOLDER_SECRET, "admin"), env("prod"));
+                props(true, PLACEHOLDER_SECRET), env("prod"),
+                List.of((dev, fatal) -> fatal.add("ADMIN_PASSWORD из модуля")));
 
         assertThatThrownBy(check::verify)
                 .isInstanceOf(IllegalStateException.class)
@@ -95,7 +87,7 @@ class StartupSecurityCheckTest {
     @Test
     void properlyConfiguredProduction_starts() {
         StartupSecurityCheck check = new StartupSecurityCheck(
-                props(false, REAL_SECRET, "a-real-password"), env("prod"));
+                props(false, REAL_SECRET), env("prod"), List.of());
 
         assertThatCode(check::verify).doesNotThrowAnyException();
     }

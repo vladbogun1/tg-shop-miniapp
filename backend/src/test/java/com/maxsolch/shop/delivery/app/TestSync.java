@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.delivery.infra.NovaPoshtaCityRepository;
 import com.maxsolch.shop.delivery.infra.NovaPoshtaHttpClient;
 import com.maxsolch.shop.delivery.infra.NovaPoshtaWarehouseRepository;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.delivery.infra.DeliveryProperties;
 import com.maxsolch.shop.platform.http.HttpClients;
 import com.maxsolch.shop.platform.http.HttpClientsProperties;
 import com.maxsolch.shop.settings.app.SettingsService;
@@ -17,12 +17,12 @@ final class TestSync {
     private TestSync() {
     }
 
-    static NovaPoshtaSyncService create(AppProperties props, NovaPoshtaWarehouseRepository warehouses,
+    static NovaPoshtaSyncService create(DeliveryProperties props, NovaPoshtaWarehouseRepository warehouses,
                                         NovaPoshtaCityRepository cities, SettingsService settings) {
         return create(props, warehouses, cities, settings, Clock.systemUTC());
     }
 
-    static NovaPoshtaSyncService create(AppProperties props, NovaPoshtaWarehouseRepository warehouses,
+    static NovaPoshtaSyncService create(DeliveryProperties props, NovaPoshtaWarehouseRepository warehouses,
                                         NovaPoshtaCityRepository cities, SettingsService settings, Clock clock) {
         NovaPoshtaHttpClient api = new NovaPoshtaHttpClient(props, new ObjectMapper(),
                 new HttpClients(new HttpClientsProperties()));

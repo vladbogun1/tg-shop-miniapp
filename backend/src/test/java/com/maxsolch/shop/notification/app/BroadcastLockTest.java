@@ -5,7 +5,7 @@ import com.maxsolch.shop.notification.domain.BroadcastAudiences;
 import com.maxsolch.shop.notification.domain.TelegramGateway;
 import com.maxsolch.shop.notification.infra.BroadcastRepository;
 import com.maxsolch.shop.audit.app.AdminAuditService;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.notification.infra.NotificationProperties;
 import com.maxsolch.shop.platform.jobs.DbLocks;
 import com.maxsolch.shop.platform.jobs.InMemoryLockProvider;
 import com.maxsolch.shop.journal.app.ActivityLog;
@@ -42,7 +42,7 @@ class BroadcastLockTest {
         BroadcastAudiences users = mock(BroadcastAudiences.class);
         when(users.ids(any())).thenReturn(List.of(42L));
         when(users.reachable()).thenReturn(List.of());
-        AppProperties props = new AppProperties();
+        NotificationProperties props = new NotificationProperties();
         props.getTelegram().setBotToken("123:test");
         ActivityLog activity = mock(ActivityLog.class);
         when(activity.bot(any(), any())).thenAnswer(inv -> ((ActivityLog.BotCall<?, ?>) inv.getArgument(1)).call());
@@ -95,8 +95,8 @@ class BroadcastLockTest {
         assertThat(svc).isNotNull();
     }
 
-    private static AppProperties tokenProps() {
-        AppProperties props = new AppProperties();
+    private static NotificationProperties tokenProps() {
+        NotificationProperties props = new NotificationProperties();
         props.getTelegram().setBotToken("123:test");
         return props;
     }

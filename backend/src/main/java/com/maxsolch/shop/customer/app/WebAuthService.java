@@ -5,7 +5,7 @@ import com.maxsolch.shop.customer.domain.WebLoginCompleted;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.web.UserAgents;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.customer.infra.CustomerProperties;
 import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.customer.domain.WebLoginStatus;
 import com.maxsolch.shop.customer.domain.WebLoginToken;
@@ -78,7 +78,7 @@ public class WebAuthService {
     private final UserRepository userRepository;
     private final AdminCheck adminCheck;
     private final JwtService jwtService;
-    private final AppProperties props;
+    private final CustomerProperties props;
     private final WebSessionValidator sessionValidator;
     private final DomainEvents events;
 
@@ -92,7 +92,7 @@ public class WebAuthService {
                           UserRepository userRepository,
                           AdminCheck adminCheck,
                           JwtService jwtService,
-                          AppProperties props,
+                          CustomerProperties props,
                           WebSessionValidator sessionValidator,
                           DomainEvents events,
                           Clock clock,

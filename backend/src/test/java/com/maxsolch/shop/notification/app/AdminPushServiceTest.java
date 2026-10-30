@@ -5,7 +5,7 @@ import com.maxsolch.shop.notification.infra.PushSubscriptionStore;
 import com.maxsolch.shop.notification.infra.PushTransport;
 import com.maxsolch.shop.notification.infra.WebPushCrypto;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.notification.infra.NotificationProperties;
 import com.maxsolch.shop.notification.app.AdminPushService.PushMessage;
 import com.maxsolch.shop.notification.app.AdminPushService.SendResult;
 import com.maxsolch.shop.notification.infra.PushSubscriptionStore.Subscription;
@@ -199,8 +199,8 @@ class AdminPushServiceTest {
         assertThat(AdminPushNotifier.sourceLabel("MINIAPP")).isEqualTo("Mini App");
     }
 
-    private static AppProperties props(String pub, String priv, String subject) {
-        AppProperties p = new AppProperties();
+    private static NotificationProperties props(String pub, String priv, String subject) {
+        NotificationProperties p = new NotificationProperties();
         p.getPush().setVapidPublicKey(pub);
         p.getPush().setVapidPrivateKey(priv);
         p.getPush().setVapidSubject(subject);

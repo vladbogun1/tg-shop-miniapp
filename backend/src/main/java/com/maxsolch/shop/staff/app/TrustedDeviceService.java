@@ -1,7 +1,7 @@
 package com.maxsolch.shop.staff.app;
 
 import com.maxsolch.shop.platform.web.UserAgents;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.staff.infra.StaffProperties;
 import lombok.extern.slf4j.Slf4j;
 import com.maxsolch.shop.staff.infra.TrustedDeviceStore;
 import org.springframework.stereotype.Service;
@@ -36,7 +36,7 @@ public class TrustedDeviceService {
     private final Clock clock;
     private final int days;
 
-    public TrustedDeviceService(TrustedDeviceStore store, AppProperties props, Clock clock) {
+    public TrustedDeviceService(TrustedDeviceStore store, StaffProperties props, Clock clock) {
         this.store = store;
         this.clock = clock;
         this.days = Math.max(1, props.getSecurity().getAdminTrustedDeviceDays());

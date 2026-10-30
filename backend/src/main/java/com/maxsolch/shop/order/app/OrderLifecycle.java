@@ -13,7 +13,7 @@ import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.domain.RejectCause;
 import com.maxsolch.shop.order.domain.RejectReasonCode;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.order.infra.OrderProperties;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
@@ -34,10 +34,10 @@ public class OrderLifecycle {
     private final OrderRepository orderRepository;
     private final OrderStock stock;
     private final DomainEvents events;
-    private final AppProperties props;
+    private final OrderProperties props;
 
     OrderLifecycle(OrderOps ops, OrderRepository orderRepository, OrderStock stock, DomainEvents events,
-                   AppProperties props) {
+                   OrderProperties props) {
         this.ops = ops;
         this.orderRepository = orderRepository;
         this.stock = stock;

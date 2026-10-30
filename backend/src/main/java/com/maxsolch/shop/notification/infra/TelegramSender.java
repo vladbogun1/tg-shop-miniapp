@@ -1,7 +1,6 @@
 package com.maxsolch.shop.notification.infra;
 
 import com.maxsolch.shop.notification.domain.TelegramGateway;
-import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.http.HttpClientSettings;
 import com.maxsolch.shop.platform.http.HttpClients;
 import org.apache.http.client.config.RequestConfig;
@@ -28,7 +27,7 @@ public class TelegramSender extends DefaultAbsSender implements TelegramGateway 
 
     private final String token;
 
-    public TelegramSender(AppProperties props, HttpClients httpClients) {
+    public TelegramSender(NotificationProperties props, HttpClients httpClients) {
         super(options(httpClients.settings(DEFAULTS)));
         String t = props.getTelegram().getBotToken();
         this.token = t == null ? "" : t;

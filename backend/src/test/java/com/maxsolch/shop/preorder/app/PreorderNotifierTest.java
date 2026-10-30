@@ -1,7 +1,7 @@
 package com.maxsolch.shop.preorder.app;
 
 import com.maxsolch.shop.preorder.domain.PreorderEvents;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.notification.infra.NotificationProperties;
 import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.journal.app.ActivityLog;
@@ -45,7 +45,7 @@ class PreorderNotifierTest {
     @Mock ActivityLog activity;
     @Mock PreorderQueueReader queue;
 
-    AppProperties props = new AppProperties();
+    NotificationProperties props = new NotificationProperties();
     PreorderNotifier notifier;
 
     @BeforeEach

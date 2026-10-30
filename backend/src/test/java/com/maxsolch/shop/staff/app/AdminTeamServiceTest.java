@@ -6,7 +6,7 @@ import com.maxsolch.shop.staff.domain.AdminInvite;
 import com.maxsolch.shop.staff.domain.SecretCipher;
 import com.maxsolch.shop.staff.domain.Totp;
 import com.maxsolch.shop.audit.app.AdminAuditService;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.staff.infra.StaffProperties;
 import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import com.maxsolch.shop.platform.security.AdminAccess;
@@ -61,7 +61,7 @@ class AdminTeamServiceTest {
         clock = new MutableClock(Instant.parse("2026-10-05T10:00:00Z"));
         admins = new FakeAdmins();
         store = new InMemoryInviteStore();
-        AppProperties props = new AppProperties();
+        StaffProperties props = new StaffProperties();
         props.getSecurity().setJwtSecret(JWT_SECRET);
         cipher = new AdminAuthKeys(props).cipher();
         bossSecret = Totp.newSecret();

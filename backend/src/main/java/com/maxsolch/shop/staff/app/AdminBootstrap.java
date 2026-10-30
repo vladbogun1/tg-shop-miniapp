@@ -1,7 +1,7 @@
 package com.maxsolch.shop.staff.app;
 
 import com.maxsolch.shop.audit.app.AdminAuditService;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.staff.infra.StaffProperties;
 import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
@@ -37,7 +37,7 @@ import static com.maxsolch.shop.platform.util.Texts.trimToNull;
 @Component
 public class AdminBootstrap implements CommandLineRunner {
 
-    private final AppProperties props;
+    private final StaffProperties props;
     private final AdminUserRepository adminUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final AdminTokenValidator adminTokenValidator;
@@ -47,7 +47,7 @@ public class AdminBootstrap implements CommandLineRunner {
     private final EmergencyResetStore resets;
     private final Clock clock;
 
-    public AdminBootstrap(AppProperties props,
+    public AdminBootstrap(StaffProperties props,
                           AdminUserRepository adminUserRepository,
                           PasswordEncoder passwordEncoder,
                           AdminTokenValidator adminTokenValidator,

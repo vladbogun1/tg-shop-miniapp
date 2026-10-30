@@ -1,6 +1,6 @@
 package com.maxsolch.shop.media.app;
 
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.media.infra.MediaProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -20,7 +20,7 @@ class MediaSignerTest {
 
     @BeforeEach
     void setUp() {
-        AppProperties props = new AppProperties();
+        MediaProperties props = new MediaProperties();
         props.getSecurity().setJwtSecret("c29tZS1yZWFsbHktbG9uZy1zZWNyZXQtdmFsdWUtaGVyZQ==");
         signer = new MediaSigner(props, java.time.Clock.systemUTC());
     }
@@ -86,7 +86,7 @@ class MediaSignerTest {
         long exp = Long.parseLong(param(url, "exp"));
         String sig = param(url, "sig");
 
-        AppProperties rotated = new AppProperties();
+        MediaProperties rotated = new MediaProperties();
         rotated.getSecurity().setJwtSecret("YS1jb21wbGV0ZWx5LWRpZmZlcmVudC1zZWNyZXQtdmFsdWU=");
         MediaSigner other = new MediaSigner(rotated, java.time.Clock.systemUTC());
 

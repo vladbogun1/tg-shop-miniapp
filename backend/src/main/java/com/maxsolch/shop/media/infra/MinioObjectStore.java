@@ -1,7 +1,6 @@
 package com.maxsolch.shop.media.infra;
 
 import com.maxsolch.shop.media.domain.ObjectStore;
-import com.maxsolch.shop.platform.config.AppProperties;
 import io.minio.BucketExistsArgs;
 import io.minio.GetObjectArgs;
 import io.minio.MakeBucketArgs;
@@ -23,7 +22,7 @@ public class MinioObjectStore implements ObjectStore {
     private final MinioClient client;
     private final String bucket;
 
-    public MinioObjectStore(MinioClient client, AppProperties props) {
+    public MinioObjectStore(MinioClient client, MediaProperties props) {
         this.client = client;
         this.bucket = props.getS3().getBucket();
     }

@@ -1,7 +1,7 @@
 package com.maxsolch.shop.payment.app;
 
 import com.maxsolch.shop.payment.domain.ReceiptKind;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.payment.infra.PaymentProperties;
 import org.junit.jupiter.api.Test;
 
 import java.net.URLDecoder;
@@ -19,7 +19,7 @@ class ReceiptSignerTest {
     private static final String INV = "0f8b7c1e-1111-2222-3333-444455556666";
 
     private static ReceiptSigner signer(Instant at, String secret) {
-        AppProperties props = new AppProperties();
+        PaymentProperties props = new PaymentProperties();
         props.getSecurity().setJwtSecret(secret);
         return new ReceiptSigner(props, Clock.fixed(at, ZoneOffset.UTC));
     }

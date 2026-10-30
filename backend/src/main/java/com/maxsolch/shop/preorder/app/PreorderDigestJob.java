@@ -2,7 +2,7 @@ package com.maxsolch.shop.preorder.app;
 
 import com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.preorder.infra.PreorderProperties;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.platform.time.ShopZone;
@@ -39,13 +39,13 @@ public class PreorderDigestJob {
     private final PreorderSubscriptionRepository subs;
     private final LineProducts lineProducts;
     private final SettingsService settings;
-    private final AppProperties props;
+    private final PreorderProperties props;
     private final PreorderDigestNotifier notifier;
     private final Clock clock;
     private final ShopZone shopZone;
 
     public PreorderDigestJob(PreorderSubscriptionRepository subs, LineProducts lineProducts, SettingsService settings,
-                             AppProperties props, PreorderDigestNotifier notifier, Clock clock, ShopZone shopZone) {
+                             PreorderProperties props, PreorderDigestNotifier notifier, Clock clock, ShopZone shopZone) {
         this.subs = subs;
         this.lineProducts = lineProducts;
         this.settings = settings;

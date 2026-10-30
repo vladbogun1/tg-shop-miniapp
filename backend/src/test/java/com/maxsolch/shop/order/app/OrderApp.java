@@ -6,7 +6,7 @@ import com.maxsolch.shop.inventory.app.Stock;
 import com.maxsolch.shop.gift.app.GiftRegistryService;
 import com.maxsolch.shop.gift.app.GiftService;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.order.infra.OrderProperties;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.promo.app.PromoService;
@@ -122,14 +122,14 @@ public final class OrderApp {
         OrderArchive archive = new OrderArchive(ops, orders, events, onlinePayments);
         CancelRequests cancelRequests = new CancelRequests(ops, orders, stock, events, messages);
         OrderLifecycle lifecycle = new OrderLifecycle(ops, orders, stock, events,
-                new AppProperties());
+                new OrderProperties());
         OrderPromos orderPromos = new OrderPromos(ops, new com.maxsolch.shop.promo.app.PromoUses(promos), promoService, messages, lowMargin);
         OrderEditing editing = new OrderEditing(ops, orders, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), stock, shelf, events, gifts, orderPromos);
         OrderGiftPrizes prizes = new OrderGiftPrizes(gifts, shelf);
         OrderGiftCases giftCases = new OrderGiftCases(ops, orders, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), stock, events, messages, gifts, orderPromos,
                 prizes);
         Checkout checkout = new Checkout(orders, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), new com.maxsolch.shop.payment.app.OrderPaymentOptionsAdapter(options), events, orderPromos, carts, messages,
-                stock, shelf, payments, gifts, ops, prizes, new AppProperties());
+                stock, shelf, payments, gifts, ops, prizes, new OrderProperties());
         return new OrderApp(ops, payments, archive, cancelRequests, lifecycle, editing, orderPromos, giftCases,
                 checkout);
     }

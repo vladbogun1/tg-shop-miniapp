@@ -1,7 +1,7 @@
 package com.maxsolch.shop.notification.app;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.notification.infra.NotificationProperties;
 import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.notification.infra.BroadcastRepository;
 import com.maxsolch.shop.notification.domain.BroadcastAudiences;
@@ -49,7 +49,7 @@ class BroadcastJournalTest {
                 throw ex;
             }
         });
-        AppProperties props = new AppProperties();
+        NotificationProperties props = new NotificationProperties();
         props.getTelegram().setBotToken("123:test");
         service = new BroadcastService(bot, props, users, mock(BroadcastRepository.class), activity,
                 java.time.Clock.systemUTC(), mock(AdminAuditService.class), mock(CurrentActor.class),

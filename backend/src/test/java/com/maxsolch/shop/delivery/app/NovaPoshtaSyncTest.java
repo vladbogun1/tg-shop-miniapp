@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.delivery.domain.NovaPoshtaApi;
 import com.maxsolch.shop.delivery.domain.NovaPoshtaCity;
 import com.maxsolch.shop.delivery.domain.NovaPoshtaWarehouse;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.delivery.infra.DeliveryProperties;
 import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.delivery.infra.NovaPoshtaCityRepository;
 import com.maxsolch.shop.delivery.infra.NovaPoshtaWarehouseRepository;
@@ -65,7 +65,7 @@ class NovaPoshtaSyncTest {
         settings = mock(SettingsService.class);
         when(warehouses.findById(anyString())).thenReturn(Optional.empty());
         when(cities.findById(anyString())).thenReturn(Optional.empty());
-        AppProperties props = new AppProperties();
+        DeliveryProperties props = new DeliveryProperties();
         props.getNovaposhta().setApiUrl("http://127.0.0.1:" + server.getAddress().getPort() + "/");
         props.getNovaposhta().setApiKey("test-key");
         sync = TestSync.create(props, warehouses, cities, settings);
@@ -122,7 +122,7 @@ class NovaPoshtaSyncTest {
 
     @Test
     void withoutAnApiUrlNothingIsAsked() throws Exception {
-        NovaPoshtaSyncService idle = TestSync.create(new AppProperties(), warehouses, cities, settings);
+        NovaPoshtaSyncService idle = TestSync.create(new DeliveryProperties(), warehouses, cities, settings);
 
         idle.sync();
 
@@ -201,8 +201,8 @@ class NovaPoshtaSyncTest {
         assertThat(bodies).isNotEmpty();
     }
 
-    private static AppProperties propsFor(HttpServer server) {
-        AppProperties props = new AppProperties();
+    private static DeliveryProperties propsFor(HttpServer server) {
+        DeliveryProperties props = new DeliveryProperties();
         props.getNovaposhta().setApiUrl("http://127.0.0.1:" + server.getAddress().getPort() + "/");
         return props;
     }

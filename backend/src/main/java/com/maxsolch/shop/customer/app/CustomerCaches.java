@@ -1,7 +1,7 @@
 package com.maxsolch.shop.customer.app;
 
 import com.maxsolch.shop.platform.cache.CacheSpec;
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.customer.infra.CustomerProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -26,7 +26,7 @@ class CustomerCaches {
     }
 
     @Bean
-    CacheSpec visitorLocationRecentCache(AppProperties props) {
+    CacheSpec visitorLocationRecentCache(CustomerProperties props) {
         return new CacheSpec(VISITOR_LOCATION_RECENT, 200_000, props.getGeoip().getThrottle());
     }
 }

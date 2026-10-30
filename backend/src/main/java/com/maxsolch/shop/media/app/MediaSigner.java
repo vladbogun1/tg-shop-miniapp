@@ -1,6 +1,6 @@
 package com.maxsolch.shop.media.app;
 
-import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.media.infra.MediaProperties;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Mac;
@@ -44,7 +44,7 @@ public class MediaSigner {
     private final byte[] key;
     private final Clock clock;
 
-    public MediaSigner(AppProperties props, Clock clock) {
+    public MediaSigner(MediaProperties props, Clock clock) {
         this.clock = clock;
         // Derived from the JWT secret: one secret to configure, and rotating it invalidates
         // outstanding media links too, which is the behaviour you want.
