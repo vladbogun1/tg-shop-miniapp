@@ -21,7 +21,7 @@ public final class OrderGiftDtos {
      * @param discountAmountMinor DISCOUNT: fixed amount off the next order
      */
     public record CaseItemDto(String key, @Schema(allowableValues = {"PRODUCT", "DISCOUNT"}) String kind, @Nullable String productId, @Nullable String title, @Nullable String imageUrl,
-                              long priceMinor, @Schema(implementation = com.maxsolch.shop.gift.domain.GiftCaseItem.Rarity.class) String rarity, int discountPercent, long discountAmountMinor) {
+                              long priceMinor, @Schema(allowableValues = {"COMMON", "RARE", "EPIC", "LEGENDARY", "GOLD"}) String rarity, int discountPercent, long discountAmountMinor) {
     }
 
     /**
@@ -57,7 +57,7 @@ public final class OrderGiftDtos {
      * or the case (prize details only after opening).
      */
     /** @param lowMargin admin only (null for the customer): the case was drawn leaning to discounts */
-    public record OrderGiftDto(@Schema(implementation = com.maxsolch.shop.gift.domain.GiftCaseTier.Tier.class) @Nullable String tier, long guaranteedDiscountMinor, @Schema(allowableValues = {"SEALED", "OPENED"}) @Nullable String caseStatus, boolean openable,
+    public record OrderGiftDto(@Schema(allowableValues = {"BRONZE", "SILVER", "GOLD"}) @Nullable String tier, long guaranteedDiscountMinor, @Schema(allowableValues = {"SEALED", "OPENED"}) @Nullable String caseStatus, boolean openable,
                                @Nullable CaseItemDto prize, @Nullable PromoDto promo, @Nullable SwapDto swap, @Nullable SizeDto size, @Nullable Boolean lowMargin) {
     }
 }
