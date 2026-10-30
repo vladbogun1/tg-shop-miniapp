@@ -14,6 +14,7 @@ import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.platform.tx.DomainEvents;
+import com.maxsolch.shop.platform.util.Money;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -179,7 +180,7 @@ public class OrderEditing {
             order.labelPromo("Ручная скидка");
         } else if (percent != null && percent > 0) {
             int pc = Math.min(percent, 100);
-            discount = subtotal * pc / 100;
+            discount = Money.percentOf(subtotal, pc);
             order.labelPromo("Ручная скидка " + pc + "%");
         } else {
             order.labelPromo(null);

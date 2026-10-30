@@ -1,5 +1,7 @@
 package com.maxsolch.shop.procurement.domain;
 
+import com.maxsolch.shop.platform.util.Money;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -137,7 +139,7 @@ public final class BatchCost {
         List<LineCost> out = new ArrayList<>();
         for (Line l : lines) {
             long extra = share.getOrDefault(l.id(), 0L) + direct.getOrDefault(l.id(), 0L);
-            long extraUnit = l.qty() > 0 ? Math.round((double) extra / l.qty()) : 0;
+            long extraUnit = l.qty() > 0 ? Money.quotient(extra, l.qty()) : 0;
             Long pu = purchaseUnit.get(l.id());
             out.add(new LineCost(l.id(), l.qty(), pu, purchaseLine.get(l.id()), extra, extraUnit,
                     pu == null ? null : pu + extraUnit));
@@ -155,7 +157,7 @@ public final class BatchCost {
 
     /** Minor units of a currency × rate = UAH kopecks. */
     public static long toUah(long minor, BigDecimal rate) {
-        return BigDecimal.valueOf(minor).multiply(rate).setScale(0, RoundingMode.HALF_UP).longValueExact();
+        return Money.convert(minor, rate);
     }
 
     /** {@code total} split by {@code weights}, largest remainder: the parts add up to {@code total} exactly. */

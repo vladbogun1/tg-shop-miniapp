@@ -1,5 +1,7 @@
 package com.maxsolch.shop.promo.domain;
 
+import com.maxsolch.shop.platform.util.Money;
+
 
 /** What a promo code takes off an order subtotal. */
 public final class PromoDiscount {
@@ -33,7 +35,7 @@ public final class PromoDiscount {
             discount = promo.getDiscountAmountMinor();
         } else if (promo.getDiscountPercent() > 0) {
             int percent = Math.min(100, promo.getDiscountPercent());
-            discount = subtotal * percent / 100;
+            discount = Money.percentOf(subtotal, percent);
         } else {
             discount = 0;
         }
