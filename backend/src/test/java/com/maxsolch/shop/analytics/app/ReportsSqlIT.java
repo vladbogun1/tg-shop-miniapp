@@ -234,12 +234,12 @@ class ReportsSqlIT extends AbstractMysqlIT {
         ReturnsReport.Returns r = returnsReport.compute(day.from(), day.to());
         assertThat(r.refundedMinor()).isEqualTo(2_200);
         assertThat(r.refundOrders()).isEqualTo(1);
-        assertThat(r.byChannel()).extracting(ReturnsReport.ChannelRow::channel).containsExactly("CASH", "MONO");
+        assertThat(r.byChannel()).extracting(com.maxsolch.shop.analytics.domain.ReturnsRows.ChannelRow::channel).containsExactly("CASH", "MONO");
         assertThat(r.retainedMinor()).isEqualTo(300);
         assertThat(r.retainedOrders()).isEqualTo(1);
         assertThat(r.writeoffUnits()).isEqualTo(3);
         assertThat(r.writeoffMinor()).isEqualTo(1_400);
-        assertThat(r.writeoffsByReason()).extracting(ReturnsReport.ReasonRow::reason)
+        assertThat(r.writeoffsByReason()).extracting(com.maxsolch.shop.analytics.domain.ReturnsRows.ReasonRow::reason)
                 .containsExactly("DEFECT", "INVENTORY");
         assertThat(r.returnedOrders()).isEqualTo(1);
     }

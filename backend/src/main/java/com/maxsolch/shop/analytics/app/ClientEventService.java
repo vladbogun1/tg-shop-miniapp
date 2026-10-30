@@ -9,11 +9,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import lombok.extern.slf4j.Slf4j;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -51,10 +50,12 @@ public class ClientEventService {
 
     private final ClientEventRepository repository;
     private final ObjectMapper objectMapper;
+    private final Clock clock;
 
-    public ClientEventService(ClientEventRepository repository, ObjectMapper objectMapper) {
+    public ClientEventService(ClientEventRepository repository, ObjectMapper objectMapper, Clock clock) {
         this.repository = repository;
         this.objectMapper = objectMapper;
+        this.clock = clock;
     }
 
     /** A Mini App flush: always a signed-in Telegram user. */
@@ -118,7 +119,7 @@ public class ClientEventService {
     private List<ClientEvent> build(EventChannel channel, Long telegramUserId, String anonId,
                                     String sessionId, List<ClientEventDto> events, int cap,
                                     boolean whitelistOnly) {
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         List<ClientEvent> rows = new ArrayList<>();
         for (ClientEventDto dto : events.stream().limit(cap).toList()) {
             String event = dto == null ? null : trim(dto.event(), 64);
@@ -171,11 +172,10 @@ public class ClientEventService {
         }
     }
 
-    @SchedulerLock(name = "ClientEventService.purgeOld", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
-    @Scheduled(cron = "${app.analytics.purge-cron:0 15 4 * * *}")
+    /** Called by {@link AnalyticsJobs} every night. */
     @Transactional
     public void purgeOld() {
-        int removed = repository.deleteOlderThan(Instant.now().minus(RETENTION));
+        int removed = repository.deleteOlderThan(clock.instant().minus(RETENTION));
         if (removed > 0) {
             log.info("Purged {} client event(s) older than {} days", removed, RETENTION.toDays());
         }

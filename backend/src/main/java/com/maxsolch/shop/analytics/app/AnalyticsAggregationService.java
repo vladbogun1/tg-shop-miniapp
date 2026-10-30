@@ -1,28 +1,22 @@
 package com.maxsolch.shop.analytics.app;
 
 import com.maxsolch.shop.analytics.domain.EventClassifier;
-
+import com.maxsolch.shop.analytics.infra.AnalyticsQueries;
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.jdbc.core.JdbcTemplate;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.sql.Date;
-import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -39,9 +33,10 @@ import java.util.Set;
 @Service
 public class AnalyticsAggregationService {
 
-    private final JdbcTemplate jdbc;
+    private final AnalyticsQueries queries;
     private final TransactionTemplate tx;
     private final ZoneId zone;
+    private final Clock clock;
     private final StaffVisitors staffVisitors;
 
     /**
@@ -50,11 +45,12 @@ public class AnalyticsAggregationService {
      */
     static final Instant STAFF_FILTER_SINCE = Instant.parse("2026-10-11T00:00:00Z");
 
-    public AnalyticsAggregationService(JdbcTemplate jdbc, TransactionTemplate tx, ShopZone shopZone,
-                                       StaffVisitors staffVisitors) {
-        this.jdbc = jdbc;
+    public AnalyticsAggregationService(AnalyticsQueries queries, TransactionTemplate tx, ShopZone shopZone,
+                                       Clock clock, StaffVisitors staffVisitors) {
+        this.queries = queries;
         this.tx = tx;
         this.zone = shopZone.zone();
+        this.clock = clock;
         this.staffVisitors = staffVisitors;
     }
 
@@ -67,8 +63,7 @@ public class AnalyticsAggregationService {
         }
     }
 
-    @SchedulerLock(name = "AnalyticsAggregationService.nightly", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
-    @Scheduled(cron = "${app.analytics.rollup-cron:0 30 3 * * *}", zone = "${app.timezone:Europe/Kyiv}")
+    /** Called by {@link AnalyticsJobs} every night; a failure is logged, the next night retries. */
     public void nightly() {
         try {
             aggregatePending();
@@ -82,17 +77,15 @@ public class AnalyticsAggregationService {
      * up before the staff were left out).
      */
     public int aggregatePending() {
-        LocalDate yesterday = LocalDate.now(zone).minusDays(1);
-        Timestamp oldest = jdbc.queryForObject("select min(created_at) from client_events", Timestamp.class);
+        LocalDate yesterday = LocalDate.now(clock.withZone(zone)).minusDays(1);
+        Instant oldest = queries.oldestEventAt();
         if (oldest == null) {
             return 0;
         }
         // The oldest day is usually cut in half by the purge: start from the first complete one.
-        LocalDate first = LocalDate.ofInstant(oldest.toInstant(), zone).plusDays(1);
-        Set<LocalDate> done = new HashSet<>(jdbc.query(
-                "select day from analytics_daily_runs where day >= ? and aggregated_at >= ?",
-                (rs, i) -> rs.getDate(1).toLocalDate(), Date.valueOf(first), Timestamp.from(STAFF_FILTER_SINCE)));
-        TitleLookup lookup = new TitleLookup(jdbc);
+        LocalDate first = LocalDate.ofInstant(oldest, zone).plusDays(1);
+        Set<LocalDate> done = queries.daysRolledUp(first, STAFF_FILTER_SINCE);
+        TitleLookup lookup = new TitleLookup(queries);
         int count = 0;
         for (LocalDate day = first; !day.isAfter(yesterday); day = day.plusDays(1)) {
             if (!done.contains(day)) {
@@ -109,36 +102,24 @@ public class AnalyticsAggregationService {
     void aggregateDay(LocalDate day, EventClassifier.TitleIndex titles) {
         Instant from = day.atStartOfDay(zone).toInstant();
         Instant to = day.plusDays(1).atStartOfDay(zone).toInstant();
-        List<EventClassifier.RawEvent> events = AnalyticsReader.loadRaw(jdbc, from, to, null);
+        List<EventClassifier.RawEvent> events = queries.loadRaw(from, to, null);
         EventClassifier.DayResult result = classifyWithoutStaff(events, staffVisitors.get(), titles);
+        List<EventClassifier.VisitorDay> visitors = result.visitors().stream()
+                .filter(v -> v.day().equals(day)).toList();
+        List<EventClassifier.ProductDay> products = new ArrayList<>();
+        List<byte[]> productIds = new ArrayList<>();
+        for (EventClassifier.ProductDay p : result.products()) {
+            byte[] pid = toBytesOrNull(p.productId());
+            if (p.day().equals(day) && pid != null) {
+                products.add(p);
+                productIds.add(pid);
+            }
+        }
         tx.executeWithoutResult(status -> {
-            Date d = Date.valueOf(day);
-            jdbc.update("delete from analytics_daily_visitors where day = ?", d);
-            jdbc.update("delete from analytics_daily where day = ?", d);
-            List<Object[]> vRows = new ArrayList<>();
-            for (EventClassifier.VisitorDay v : result.visitors()) {
-                if (v.day().equals(day)) {
-                    vRows.add(new Object[]{d, v.channel(), v.visitorKey(), v.telegramUserId(), v.stages(), v.events()});
-                }
-            }
-            if (!vRows.isEmpty()) {
-                jdbc.batchUpdate("insert into analytics_daily_visitors "
-                        + "(day, channel, visitor_key, telegram_user_id, stages, events) values (?,?,?,?,?,?)", vRows);
-            }
-            List<Object[]> pRows = new ArrayList<>();
-            for (EventClassifier.ProductDay p : result.products()) {
-                byte[] pid = toBytesOrNull(p.productId());
-                if (p.day().equals(day) && pid != null) {
-                    pRows.add(new Object[]{d, p.channel(), pid, p.views(), p.viewers(), p.cartAdds()});
-                }
-            }
-            if (!pRows.isEmpty()) {
-                jdbc.batchUpdate("insert into analytics_daily "
-                        + "(day, channel, product_id, views, viewers, cart_adds) values (?,?,?,?,?,?)", pRows);
-            }
-            jdbc.update("insert into analytics_daily_runs (day, events, aggregated_at) values (?, ?, ?) "
-                    + "on duplicate key update events = values(events), aggregated_at = values(aggregated_at)",
-                    d, events.size(), Timestamp.from(Instant.now()));
+            queries.deleteRolledDay(day);
+            queries.insertVisitorDays(day, visitors);
+            queries.insertProductDays(day, products, productIds);
+            queries.markDayRolledUp(day, events.size(), clock.instant());
         });
     }
 
@@ -172,33 +153,18 @@ public class AnalyticsAggregationService {
 
     /** Builds the title index lazily (only when there is a day to roll up). */
     static final class TitleLookup {
-        private final JdbcTemplate jdbc;
+        private final AnalyticsQueries queries;
         private EventClassifier.TitleIndex index;
 
-        TitleLookup(JdbcTemplate jdbc) {
-            this.jdbc = jdbc;
+        TitleLookup(AnalyticsQueries queries) {
+            this.queries = queries;
         }
 
         EventClassifier.TitleIndex index() {
             if (index == null) {
-                index = load(jdbc);
+                index = queries.loadTitleIndex();
             }
             return index;
-        }
-
-        static EventClassifier.TitleIndex load(JdbcTemplate jdbc) {
-            Map<String, String> titles = new HashMap<>();
-            jdbc.query("select bin_to_uuid(id) id, title from products",
-                    rs -> {
-                        titles.put(rs.getString("title"), rs.getString("id"));
-                    });
-            // Card labels are rendered in the reader's language: translated titles must match too.
-            jdbc.query("select bin_to_uuid(entity_id) id, text from content_translations "
-                            + "where entity_type = 'PRODUCT' and field = 'title'",
-                    rs -> {
-                        titles.putIfAbsent(rs.getString("text"), rs.getString("id"));
-                    });
-            return new EventClassifier.TitleIndex(titles);
         }
     }
 }

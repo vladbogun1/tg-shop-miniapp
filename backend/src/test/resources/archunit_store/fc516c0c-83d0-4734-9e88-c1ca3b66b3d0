@@ -1,4 +1,2 @@
-Package cycle: analytics -> order (and order reaches analytics back)
 Package cycle: customer -> staff (and staff reaches customer back)
-Package cycle: order -> analytics (and analytics reaches order back)
 Package cycle: staff -> customer (and customer reaches staff back)

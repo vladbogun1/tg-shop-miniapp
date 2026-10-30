@@ -60,7 +60,7 @@ class StaffVisitorsTest {
                 ev("WEB", ADMIN, "admin-browser", "product_view", "p1"),
                 ev("WEB", null, "customer-1", "product_view", "p1"));
 
-        EventClassifier.DayResult r = new AnalyticsAggregationService(null, null, ShopZone.of(null), null)
+        EventClassifier.DayResult r = new AnalyticsAggregationService(null, null, ShopZone.of(null), java.time.Clock.systemUTC(), null)
                 .classifyWithoutStaff(events, staff, EventClassifier.TitleIndex.empty());
 
         assertThat(r.products()).singleElement().satisfies(p -> {

@@ -1,8 +1,7 @@
 package com.maxsolch.shop.analytics.app;
 
 import com.maxsolch.shop.analytics.domain.EventClassifier;
-
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.maxsolch.shop.analytics.infra.StaffQueries;
 import org.springframework.stereotype.Component;
 
 import java.util.HashSet;
@@ -37,12 +36,12 @@ public class StaffVisitors {
 
     private static final long TTL_MILLIS = 5 * 60_000;
 
-    private final JdbcTemplate jdbc;
+    private final StaffQueries queries;
     private volatile Staff cached;
     private volatile long cachedAt;
 
-    public StaffVisitors(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
+    public StaffVisitors(StaffQueries queries) {
+        this.queries = queries;
     }
 
     /** Staff Telegram ids and browsers. */
@@ -102,18 +101,11 @@ public class StaffVisitors {
     }
 
     private Staff load() {
-        Set<Long> ids = new HashSet<>(jdbc.queryForList("select telegram_user_id from admin_users", Long.class));
+        Set<Long> ids = queries.adminTelegramIds();
         if (ids.isEmpty()) {
             return Staff.NONE;
         }
-        String admins = "(select telegram_user_id from admin_users)";
-        Set<String> anon = new HashSet<>();
-        anon.addAll(jdbc.queryForList("select distinct anon_id from client_events "
-                + "where anon_id is not null and telegram_user_id in " + admins, String.class));
-        anon.addAll(jdbc.queryForList("select distinct anon_id from visitor_locations "
-                + "where anon_id is not null and telegram_user_id in " + admins, String.class));
-        anon.addAll(jdbc.queryForList("select distinct substring(visitor_key, 3) from analytics_daily_visitors "
-                + "where channel = 'WEB' and visitor_key like 'a:%' and telegram_user_id in " + admins, String.class));
+        Set<String> anon = queries.adminBrowsers();
         anon.remove(null);
         return new Staff(Set.copyOf(ids), Set.copyOf(anon));
     }

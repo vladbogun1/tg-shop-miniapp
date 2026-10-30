@@ -27,7 +27,7 @@ class ClientEventServiceTest {
     ClientEventRepository repository;
 
     private ClientEventService service() {
-        return new ClientEventService(repository, new ObjectMapper());
+        return new ClientEventService(repository, new ObjectMapper(), java.time.Clock.systemUTC());
     }
 
     private static ClientEventDto ev(String event, String meta) {

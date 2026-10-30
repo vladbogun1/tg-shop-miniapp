@@ -3,6 +3,7 @@ package com.maxsolch.shop.analytics.api;
 import com.maxsolch.shop.analytics.app.AdminMetricsService;
 import com.maxsolch.shop.analytics.domain.ChannelFilter;
 import com.maxsolch.shop.analytics.app.MetricsDtos;
+import com.maxsolch.shop.analytics.app.ReturnsReport;
 import com.maxsolch.shop.analytics.domain.MetricsPeriod;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,9 +27,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminMetricsController {
 
     private final AdminMetricsService metrics;
+    private final ReturnsReport returnsReport;
 
-    public AdminMetricsController(AdminMetricsService metrics) {
+    public AdminMetricsController(AdminMetricsService metrics, ReturnsReport returnsReport) {
         this.metrics = metrics;
+        this.returnsReport = returnsReport;
     }
 
     @GetMapping("/overview")
@@ -90,17 +93,9 @@ public class AdminMetricsController {
         return metrics.today();
     }
 
-    /** «Возвраты» (V68); a setter so the tests' constructor stays. */
-    private com.maxsolch.shop.analytics.app.ReturnsReport returnsReport;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setReturnsReport(com.maxsolch.shop.analytics.app.ReturnsReport returnsReport) {
-        this.returnsReport = returnsReport;
-    }
-
     @GetMapping("/returns")
     @Operation(summary = "Returns block: refunds by the date they went back and by channel, retained money, write-offs")
-    public com.maxsolch.shop.analytics.app.ReturnsReport.Returns returns(
+    public ReturnsReport.Returns returns(
             @RequestParam(defaultValue = "month") String period,
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String to) {

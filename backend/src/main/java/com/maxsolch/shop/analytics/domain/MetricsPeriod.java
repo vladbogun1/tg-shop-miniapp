@@ -1,6 +1,6 @@
 package com.maxsolch.shop.analytics.domain;
 
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.DomainException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -109,7 +109,7 @@ public record MetricsPeriod(String token,
             from = LocalDate.parse(fromDate);
             to = LocalDate.parse(toDate);
         } catch (DateTimeParseException | NullPointerException e) {
-            throw new BadRequestException("custom period needs from/to as yyyy-MM-dd");
+            throw new DomainException.BadRequest("custom period needs from/to as yyyy-MM-dd");
         }
         if (to.isBefore(from)) {
             LocalDate tmp = from;
@@ -118,7 +118,7 @@ public record MetricsPeriod(String token,
         }
         long days = ChronoUnit.DAYS.between(from, to) + 1;
         if (days > MAX_CUSTOM_DAYS) {
-            throw new BadRequestException("custom period is limited to " + MAX_CUSTOM_DAYS + " days");
+            throw new DomainException.BadRequest("custom period is limited to " + MAX_CUSTOM_DAYS + " days");
         }
         Instant start = from.atStartOfDay(zone).toInstant();
         Instant end = to.plusDays(1).atStartOfDay(zone).toInstant();

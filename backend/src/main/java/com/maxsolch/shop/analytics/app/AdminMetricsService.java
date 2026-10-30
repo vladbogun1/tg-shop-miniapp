@@ -16,6 +16,7 @@ import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -38,9 +39,11 @@ public class AdminMetricsService {
     private final AnalyticsReader analytics;
     private final ZoneId zone;
     private final SettingsService settings;
+    private final Clock clock;
 
     public AdminMetricsService(MetricsFactsLoader loader, AnalyticsReader analytics, AppProperties props,
-                               SettingsService settings) {
+                               SettingsService settings, Clock clock) {
+        this.clock = clock;
         this.loader = loader;
         this.analytics = analytics;
         this.zone = ShopZone.of(props.getTimezone()).zone();
@@ -48,7 +51,7 @@ public class AdminMetricsService {
     }
 
     public MetricsPeriod period(String token, String from, String to) {
-        return MetricsPeriod.parse(token, from, to, zone, Instant.now());
+        return MetricsPeriod.parse(token, from, to, zone, clock.instant());
     }
 
     public MetricsDtos.Overview overview(MetricsPeriod period, ChannelFilter channel) {
@@ -87,7 +90,7 @@ public class AdminMetricsService {
     }
 
     public MetricsDtos.Operations operations(MetricsPeriod period, ChannelFilter channel) {
-        List<ErrorRow> errors = analytics.topErrors(Instant.now().minus(Duration.ofDays(7)), 10).stream()
+        List<ErrorRow> errors = analytics.topErrors(clock.instant().minus(Duration.ofDays(7)), 10).stream()
                 .map(r -> new ErrorRow((String) r[0], (Long) r[1], (Long) r[2]))
                 .toList();
         return new OperationsCalculator().compute(loader.load(), period, channel,

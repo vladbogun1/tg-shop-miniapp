@@ -2,7 +2,7 @@ package com.maxsolch.shop.analytics.app;
 
 import com.maxsolch.shop.analytics.domain.MetricsPeriod;
 
-import com.maxsolch.shop.platform.error.BadRequestException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -109,7 +109,7 @@ class MetricsPeriodTest {
     @Test
     void custom_withoutDates_isABadRequest() {
         assertThatThrownBy(() -> MetricsPeriod.parse("custom", null, "2026-09-01", KYIV, now))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test
