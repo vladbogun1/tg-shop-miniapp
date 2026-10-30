@@ -123,6 +123,51 @@ public class Exchanges {
         }
 
         // 1. What comes back and what it was paid for (checked again by the return below).
+        GoodsBack goodsBack = goodsBack(order, back);
+        long credit = goodsBack.credit();
+
+        // 2. The replacement: a new order of the same customer and address, no gift, no deadline.
+        String shortId = ReturnText.shortId(order.getId());
+        Order child = checkout.createExchangeOrder(order,
+                out.stream().map(l -> new CreateOrderCommand.Line(l.productId(), l.variantId(), l.quantity())).toList(),
+                adminName);
+        String childShort = ReturnText.shortId(child.getId());
+        long retainedBefore = moneyLedger.retainedMinor(order.getId());
+        long moved = Math.max(0, Math.min(Math.min(credit, OrderMoney.refundableMinor(order) - retainedBefore),
+                child.getTotalMinor()));
+        child = settleReplacement(order, child, moved, to, shortId, adminName);
+
+        // 3. This order: the units come back (or are on their way), their paid value moves over.
+        List<ManualRefund> refunds = moved > 0
+                ? List.of(new ManualRefund(OrderMoneyMovement.Channel.EXCHANGE, moved, "зачёт в обмен, заказ #" + childShort))
+                : List.of();
+        returns.registerPlan(order.getId(), new ReturnPlan(back, refunds, 0, 0,
+                cleanNote == null ? "обмен, новый заказ #" + childShort : cleanNote, false), adminName, false);
+
+        List<String> outParts = child.getItems().stream()
+                .map(i -> ReturnText.title(i) + " ×" + i.getQuantity())
+                .toList();
+        recordExchange(order, child, goodsBack, outParts, cleanNote, adminName);
+
+        events.publish(new OrderEvents.Exchanged(child.getId(), notifyCustomer, String.join(", ", outParts)));
+
+        long due = child.getTotalMinor() - moved;
+        long over = credit - moved;
+        String details = "обмен: вернули " + String.join(", ", goodsBack.parts())
+                + "; взамен новый заказ #" + childShort + " (" + String.join(", ", outParts) + ") на "
+                + MoneyFormat.uah(child.getTotalMinor())
+                + "; зачтено " + MoneyFormat.uah(moved)
+                + (due > 0 ? "; доплата " + MoneyFormat.uah(due) : "")
+                + (over > 0 ? "; к возврату " + MoneyFormat.uah(over) + " (кнопка «Возврат» в заказе #" + shortId + ")" : "")
+                + (cleanNote == null ? "" : "; " + cleanNote);
+        return new OrderChange(child, details);
+    }
+
+    /** What comes back in an exchange: its paid value, the audit parts and the exchange lines (not saved yet). */
+    private record GoodsBack(long credit, List<String> parts, List<OrderExchangeLine> lines) {
+    }
+
+    private static GoodsBack goodsBack(Order order, List<WizardLine> back) {
         long credit = 0;
         List<String> backParts = new ArrayList<>();
         List<OrderExchangeLine> backLines = new ArrayList<>();
@@ -157,55 +202,45 @@ public class Exchanges {
             el.setOutcome(outcome.name());
             backLines.add(el);
         }
+        return new GoodsBack(credit, backParts, backLines);
+    }
 
-        // 2. The replacement: a new order of the same customer and address, no gift, no deadline.
-        String shortId = ReturnText.shortId(order.getId());
-        Order child = checkout.createExchangeOrder(order,
-                out.stream().map(l -> new CreateOrderCommand.Line(l.productId(), l.variantId(), l.quantity())).toList(),
-                adminName);
-        String childShort = ReturnText.shortId(child.getId());
-        long retainedBefore = moneyLedger.retainedMinor(order.getId());
-        long moved = Math.max(0, Math.min(Math.min(credit, OrderMoney.refundableMinor(order) - retainedBefore),
-                child.getTotalMinor()));
+    /** The replacement order credited with {@code moved}, linked to the original, approved if asked, and saved. */
+    private Order settleReplacement(Order order, Order child, long moved, OrderStatus to, String shortId, String adminName) {
+        Order replacement = child;
         if (moved > 0) {
-            child = orderPayments.markPaid(child.getId(), moved, OrderMoneyMovement.Channel.EXCHANGE, adminName,
+            replacement = orderPayments.markPaid(child.getId(), moved, OrderMoneyMovement.Channel.EXCHANGE, adminName,
                     "зачёт по обмену из заказа #" + shortId);
         }
-        child.replaces(order);
+        replacement.replaces(order);
         // The customer chooses how to pay the difference: online in the order («Доплатити», the whole
         // rest through monobank) or наложкой on delivery. A prepayment snapshot would cap the online part.
-        child.dropPrepayment();
+        replacement.dropPrepayment();
         if (to == OrderStatus.APPROVED) {
-            child.approve(clock.instant());
+            replacement.approve(clock.instant());
         }
-        child = orders.save(child);
+        return orders.save(replacement);
+    }
 
-        // 3. This order: the units come back (or are on their way), their paid value moves over.
-        List<ManualRefund> refunds = moved > 0
-                ? List.of(new ManualRefund(OrderMoneyMovement.Channel.EXCHANGE, moved, "зачёт в обмен, заказ #" + childShort))
-                : List.of();
-        returns.registerPlan(order.getId(), new ReturnPlan(back, refunds, 0, 0,
-                cleanNote == null ? "обмен, новый заказ #" + childShort : cleanNote, false), adminName, false);
-
-        List<String> outParts = child.getItems().stream()
-                .map(i -> ReturnText.title(i) + " ×" + i.getQuantity())
-                .toList();
+    /** The exchange record with its lines, and the return just registered tied to it. */
+    private void recordExchange(Order order, Order child, GoodsBack goodsBack, List<String> outParts,
+                                String cleanNote, String adminName) {
         OrderExchange ex = new OrderExchange();
         ex.setCreatedAt(clock.instant());
         ex.setOrderId(order.getId());
         ex.setNewOrderId(child.getId());
         ex.setPreviousStatus(order.getStatus().name());
         ex.setPreviousTracking(order.getTrackingNumber());
-        ex.setReturnedSummary(ReturnText.cut(String.join("; ", backParts), 2000));
+        ex.setReturnedSummary(ReturnText.cut(String.join("; ", goodsBack.parts()), 2000));
         ex.setGivenSummary(ReturnText.cut(String.join("; ", outParts), 2000));
-        ex.setTotalBeforeMinor(credit);
+        ex.setTotalBeforeMinor(goodsBack.credit());
         ex.setTotalAfterMinor(child.getTotalMinor());
         ex.setNote(cleanNote);
         ex.setAdminName(adminName);
         OrderExchange savedEx = exchangeRepository.save(ex);
         if (savedEx != null && savedEx.getId() != null) {
-            backLines.forEach(l -> l.setExchangeId(savedEx.getId()));
-            exchangeLines.saveAll(backLines);
+            goodsBack.lines().forEach(l -> l.setExchangeId(savedEx.getId()));
+            exchangeLines.saveAll(goodsBack.lines());
         }
         if (savedEx != null) {
             // The return registered above belongs to this exchange: cancelling it cancels the exchange.
@@ -216,18 +251,5 @@ public class Exchanges {
                 returnRecords.save(rec);
             }
         }
-
-        events.publish(new OrderEvents.Exchanged(child.getId(), notifyCustomer, String.join(", ", outParts)));
-
-        long due = child.getTotalMinor() - moved;
-        long over = credit - moved;
-        String details = "обмен: вернули " + String.join(", ", backParts)
-                + "; взамен новый заказ #" + childShort + " (" + String.join(", ", outParts) + ") на "
-                + MoneyFormat.uah(child.getTotalMinor())
-                + "; зачтено " + MoneyFormat.uah(moved)
-                + (due > 0 ? "; доплата " + MoneyFormat.uah(due) : "")
-                + (over > 0 ? "; к возврату " + MoneyFormat.uah(over) + " (кнопка «Возврат» в заказе #" + shortId + ")" : "")
-                + (cleanNote == null ? "" : "; " + cleanNote);
-        return new OrderChange(child, details);
     }
 }

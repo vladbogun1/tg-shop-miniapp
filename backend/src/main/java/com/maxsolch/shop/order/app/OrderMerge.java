@@ -123,35 +123,11 @@ public class OrderMerge {
         String sourceShort = shortId(source.getId());
 
         // 1. Lines: copies on the target (the same product at the same price adds up).
-        List<String> moved = new ArrayList<>();
-        for (OrderItem from : source.getItems()) {
-            OrderItem same = from.isGift() ? null : target.getItems().stream()
-                    .filter(i -> !i.isGift() && Arrays.equals(i.getProductId(), from.getProductId())
-                            && Arrays.equals(i.getVariantId(), from.getVariantId())
-                            && i.getPriceMinorSnapshot() == from.getPriceMinorSnapshot()
-                            && i.isVariantPending() == from.isVariantPending())
-                    .findFirst().orElse(null);
-            OrderItem to;
-            if (same != null) {
-                same.addQuantity(from.getQuantity());
-                to = same;
-            } else {
-                to = from.copyTo(target);
-                target.addLine(to);
-            }
-            to.takeLotsOf(from);
-            moved.add(from.getTitleSnapshot()
-                    + (from.getVariantNameSnapshot() == null ? "" : " (" + from.getVariantNameSnapshot() + ")")
-                    + " ×" + from.getQuantity());
-        }
+        List<String> moved = moveLines(source, target);
 
         // 2. Discounts add up (a promo code, a manual one, the case tier's guaranteed one).
         target.absorbDiscountsOf(source, joinPromo(target.getPromoCode(), source.getPromoCode()));
-        if (source.getComment() != null && !source.getComment().isBlank()) {
-            String c = (target.getComment() == null || target.getComment().isBlank() ? ""
-                    : target.getComment().trim() + "\n") + "#" + sourceShort + ": " + source.getComment().trim();
-            target.changeComment(c.length() > 1000 ? c.substring(0, 1000) : c);
-        }
+        joinComments(target, source, sourceShort);
         if (useSourceDelivery) {
             target.takeRecipientOf(source);
         }
@@ -179,6 +155,41 @@ public class OrderMerge {
                 + (useSourceDelivery ? "; адрес из #" + sourceShort : "")
                 + (cleanNote == null ? "" : "; " + cleanNote);
         return new Result(savedTarget, savedSource, details);
+    }
+
+    /** Copies of the source's lines on the target (the same product at the same price adds up); returns the audit parts. */
+    private static List<String> moveLines(Order source, Order target) {
+        List<String> moved = new ArrayList<>();
+        for (OrderItem from : source.getItems()) {
+            OrderItem same = from.isGift() ? null : target.getItems().stream()
+                    .filter(i -> !i.isGift() && Arrays.equals(i.getProductId(), from.getProductId())
+                            && Arrays.equals(i.getVariantId(), from.getVariantId())
+                            && i.getPriceMinorSnapshot() == from.getPriceMinorSnapshot()
+                            && i.isVariantPending() == from.isVariantPending())
+                    .findFirst().orElse(null);
+            OrderItem to;
+            if (same != null) {
+                same.addQuantity(from.getQuantity());
+                to = same;
+            } else {
+                to = from.copyTo(target);
+                target.addLine(to);
+            }
+            to.takeLotsOf(from);
+            moved.add(from.getTitleSnapshot()
+                    + (from.getVariantNameSnapshot() == null ? "" : " (" + from.getVariantNameSnapshot() + ")")
+                    + " ×" + from.getQuantity());
+        }
+        return moved;
+    }
+
+    /** The source's comment appended to the target's, marked with the source's short id. */
+    private static void joinComments(Order target, Order source, String sourceShort) {
+        if (source.getComment() != null && !source.getComment().isBlank()) {
+            String c = (target.getComment() == null || target.getComment().isBlank() ? ""
+                    : target.getComment().trim() + "\n") + "#" + sourceShort + ": " + source.getComment().trim();
+            target.changeComment(c.length() > 1000 ? c.substring(0, 1000) : c);
+        }
     }
 
     /**

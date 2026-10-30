@@ -189,40 +189,7 @@ public class Returns {
         List<OrderReturnLine> recordLines = new ArrayList<>();
         int units = 0;
         for (WizardLine line : lines) {
-            OrderItem item = ReturnText.item(order, line.itemId());
-            LineOutcome outcome = line.outcome() == null ? LineOutcome.RESTOCK : line.outcome();
-            if (outcome != LineOutcome.KEPT) {
-                checkLeft(item, line);
-            }
-            String title = ReturnText.title(item);
-            OrderReturnLine rl = OrderReturnLine.of(item.getId(), line.quantity(), outcome.name());
-            recordLines.add(rl);
-            switch (outcome) {
-                case RESTOCK -> {
-                    item.registerReturned(line.quantity());
-                    int canRestock = item.getQuantity() - item.getRestockedQty();
-                    int restocked = Math.min(line.quantity(), canRestock);
-                    stock.restockUnits(item, restocked);
-                    rl.recordRestocked(restocked);
-                    parts.add(title + " ×" + line.quantity() + " (на склад)");
-                    customerParts.add(title + " ×" + line.quantity());
-                }
-                case DEFECT -> {
-                    item.registerReturned(line.quantity());
-                    StockWriteoff w = defects.writeOff(item, line.quantity(), OrderMoney.unitPaidMinor(order, item),
-                            order.getId(), cleanNote, adminName);
-                    rl.recordDefect(line.quantity(), w == null ? null : w.getId());
-                    parts.add(title + " ×" + line.quantity() + " (брак, списан)");
-                    customerParts.add(title + " ×" + line.quantity());
-                }
-                case KEPT -> parts.add(title + " ×" + line.quantity() + " (осталось у покупателя, компенсация)");
-                case IN_TRANSIT -> {
-                    item.registerSentBack(line.quantity());
-                    order.markUnitsSentBack(clock.instant());
-                    parts.add(title + " ×" + line.quantity() + " (едет назад)");
-                    customerParts.add(title + " ×" + line.quantity());
-                }
-            }
+            recordLines.add(applyLine(order, line, cleanNote, adminName, parts, customerParts));
             units += line.quantity();
         }
         if (units == 0 && manual == 0 && plan.monoRefundMinor() == 0 && plan.retainMinor() == 0) {
@@ -260,6 +227,48 @@ public class Returns {
                 String.join(", ", customerParts), refundedNow));
         String details = "возврат: " + String.join(", ", parts) + (cleanNote == null ? "" : "; " + cleanNote);
         return new OrderChange(saved, details);
+    }
+
+    /**
+     * One wizard line applied to the order by its outcome (on the shelf, written off, kept, on its way back); the
+     * audit texts are added to {@code parts} / {@code customerParts}. Returns the record line (not saved yet).
+     */
+    private OrderReturnLine applyLine(Order order, WizardLine line, String cleanNote, String adminName,
+                                      List<String> parts, List<String> customerParts) {
+        OrderItem item = ReturnText.item(order, line.itemId());
+        LineOutcome outcome = line.outcome() == null ? LineOutcome.RESTOCK : line.outcome();
+        if (outcome != LineOutcome.KEPT) {
+            checkLeft(item, line);
+        }
+        String title = ReturnText.title(item);
+        OrderReturnLine rl = OrderReturnLine.of(item.getId(), line.quantity(), outcome.name());
+        switch (outcome) {
+            case RESTOCK -> {
+                item.registerReturned(line.quantity());
+                int canRestock = item.getQuantity() - item.getRestockedQty();
+                int restocked = Math.min(line.quantity(), canRestock);
+                stock.restockUnits(item, restocked);
+                rl.recordRestocked(restocked);
+                parts.add(title + " ×" + line.quantity() + " (на склад)");
+                customerParts.add(title + " ×" + line.quantity());
+            }
+            case DEFECT -> {
+                item.registerReturned(line.quantity());
+                StockWriteoff w = defects.writeOff(item, line.quantity(), OrderMoney.unitPaidMinor(order, item),
+                        order.getId(), cleanNote, adminName);
+                rl.recordDefect(line.quantity(), w == null ? null : w.getId());
+                parts.add(title + " ×" + line.quantity() + " (брак, списан)");
+                customerParts.add(title + " ×" + line.quantity());
+            }
+            case KEPT -> parts.add(title + " ×" + line.quantity() + " (осталось у покупателя, компенсация)");
+            case IN_TRANSIT -> {
+                item.registerSentBack(line.quantity());
+                order.markUnitsSentBack(clock.instant());
+                parts.add(title + " ×" + line.quantity() + " (едет назад)");
+                customerParts.add(title + " ×" + line.quantity());
+            }
+        }
+        return rl;
     }
 
     /** The wizard run as a record, so it can be cancelled later (V70). */

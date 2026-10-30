@@ -109,37 +109,8 @@ public class Checkout {
         }
 
         DeliveryMethod deliveryMethod = parseDelivery(cmd.deliveryMethod());
-
-        // Accumulate duplicate (productId, variantId) lines into a single requested quantity.
-        Map<String, AccLine> acc = new LinkedHashMap<>();
-        for (CreateOrderCommand.Line line : cmd.items()) {
-            if (line.quantity() <= 0) {
-                throw new DomainException.BadRequest(OrderError.QUANTITY_NOT_POSITIVE);
-            }
-            String key = line.productId() + "::" + (line.variantId() == null ? "" : line.variantId());
-            acc.computeIfAbsent(key, k -> new AccLine(line.productId(), line.variantId()))
-                    .quantity += line.quantity();
-        }
-
-        Order order = new Order();
-        order.placeBy(new OrderBuyer(cmd.userId(), cmd.tgUserId(), cmd.tgUsername(),
-                required(cmd.customerName(), "customerName"), required(cmd.phone(), "phone"), cmd.comment()),
-                cmd.source());
-
-        boolean pickup = deliveryMethod != DeliveryMethod.NOVA_POSHTA;
-        order.deliverTo(new DeliveryTarget(deliveryMethod,
-                pickup ? null : cmd.npCityRef(), pickup ? null : cmd.npCityName(),
-                pickup ? null : cmd.npWarehouseRef(), pickup ? null : cmd.npWarehouseName()));
-
-        // Payment option snapshot. Every option is paid online now (in full, or a prepayment with
-        // the rest cash on delivery), so one must be chosen; the clock to pay starts here.
-        if (cmd.paymentOptionId() == null || cmd.paymentOptionId().isBlank()) {
-            throw new DomainException.BadRequest(OrderError.PAYMENT_METHOD_REQUIRED);
-        }
-        OrderPaymentOptions.Option po = paymentOptions.findActive(ops.toBytes(cmd.paymentOptionId(), "paymentOptionId"))
-                .orElseThrow(() -> new DomainException.BadRequest(OrderError.PAYMENT_METHOD_UNKNOWN));
-        order.choosePayment(po.id(), po.title(), po.requiresPrepayment() ? po.prepaymentMinor() : 0,
-                ops.now().plus(Duration.ofHours(Math.max(1, props.getPayment().getDueHours()))));
+        Map<String, AccLine> acc = accumulateLines(cmd);
+        Order order = newOrder(cmd, deliveryMethod);
 
         List<Product> toSave = new ArrayList<>();
         // Lock products in a deterministic order (by id): two concurrent orders touching the same
@@ -151,57 +122,12 @@ public class Checkout {
         // An exchange replacement (CHOICE_NONE) earns no gift: the goods were paid for in the first order.
         Optional<OrderGifts.ThresholdPlan> giftCfg = OrderGifts.CHOICE_NONE.equalsIgnoreCase(String.valueOf(cmd.giftChoice()))
                 ? Optional.empty() : gifts.thresholdPlan();
-        Map<String, Optional<Product>> locked = new HashMap<>();
-        java.util.SortedSet<String> lockIds = new java.util.TreeSet<>();
-        lines.forEach(l -> lockIds.add(l.productId));
-        giftCfg.ifPresent(g -> lockIds.addAll(g.productIds()));
-        for (String id : lockIds) {
-            // FOR UPDATE: the stock check and the decrement below must not interleave with another
-            // checkout, or both orders pass "one left in stock" and the shop oversells.
-            locked.put(id, productRepository.findByIdForUpdate(ops.toBytes(id, "productId")));
-        }
+        Map<String, Optional<Product>> locked = lockProducts(lines, giftCfg);
         for (AccLine line : lines) {
-            Product product = locked.get(line.productId)
-                    .orElseThrow(() -> new DomainException.BadRequest(OrderError.PRODUCT_UNKNOWN_IN_CART));
-            if (!product.isActive() || product.isArchived()) {
-                throw new DomainException.BadRequest(OrderError.PRODUCT_UNAVAILABLE, product.getTitle());
-            }
-
-            OrderItem item = OrderItem.sold(order, product.getId(), product.getTitle(), product.getPriceMinor(), line.quantity);
-
-            boolean hasVariants = product.getVariants() != null && !product.getVariants().isEmpty();
-            ProductVariant variant = null;
-            if (line.variantId != null && !line.variantId.isBlank()) {
-                variant = ops.findVariant(product, line.variantId);
-                if (variant == null) {
-                    throw new DomainException.BadRequest(OrderError.VARIANT_MISMATCH, product.getTitle());
-                }
-                item.withVariant(variant.getId(), variant.getName());
-            } else if (hasVariants) {
-                throw new DomainException.BadRequest(OrderError.VARIANT_REQUIRED, product.getTitle());
-            }
-            shelf.requireAvailable(product, variant, line.quantity, cmd.userId());
-            shelf.reserve(product, variant, line.quantity, item);
-
-            order.addLine(item);
-            toSave.add(product);
+            toSave.add(reserveLine(order, line, locked, cmd.userId()));
         }
 
-        // Promo: fixed amount takes priority over percent.
-        long discount = 0;
-        long subtotal = OrderMoney.subtotalMinor(order);
-        PromoCode promo = promos.resolve(cmd.promoCode(), cmd.tgUserId(), true);
-        long lowMarginMinor = promos.lowMarginMinor(order);
-        if (promo != null) {
-            discount = PromoDiscount.discountFor(promo, subtotal, promos.excluded(promo, lowMarginMinor, subtotal));
-            order.labelPromo(promo.getCode());
-            promos.countUse(promo);
-            if (cmd.tgUserId() != null) {
-                promos.consumeHold(promo, cmd.tgUserId());
-            }
-        }
-
-        order.priceWith(discount);
+        long lowMarginMinor = applyPromo(order, cmd);
 
         // The gift for the order sum (docs/GIFT-CASE.md), against the total after the discount: the
         // tier's guaranteed discount (the customer's choice) or its case — the prize is drawn now.
@@ -232,6 +158,105 @@ public class Checkout {
         // then failed to save.
         events.publish(new OrderEvents.Created(saved.getId()));
         return saved;
+    }
+
+    /** Duplicate (productId, variantId) lines accumulated into a single requested quantity. */
+    private static Map<String, AccLine> accumulateLines(CreateOrderCommand cmd) {
+        Map<String, AccLine> acc = new LinkedHashMap<>();
+        for (CreateOrderCommand.Line line : cmd.items()) {
+            if (line.quantity() <= 0) {
+                throw new DomainException.BadRequest(OrderError.QUANTITY_NOT_POSITIVE);
+            }
+            String key = line.productId() + "::" + (line.variantId() == null ? "" : line.variantId());
+            acc.computeIfAbsent(key, k -> new AccLine(line.productId(), line.variantId()))
+                    .quantity += line.quantity();
+        }
+        return acc;
+    }
+
+    /** The new order with its buyer, delivery target and payment option snapshot - no lines yet. */
+    private Order newOrder(CreateOrderCommand cmd, DeliveryMethod deliveryMethod) {
+        Order order = new Order();
+        order.placeBy(new OrderBuyer(cmd.userId(), cmd.tgUserId(), cmd.tgUsername(),
+                required(cmd.customerName(), "customerName"), required(cmd.phone(), "phone"), cmd.comment()),
+                cmd.source());
+
+        boolean pickup = deliveryMethod != DeliveryMethod.NOVA_POSHTA;
+        order.deliverTo(new DeliveryTarget(deliveryMethod,
+                pickup ? null : cmd.npCityRef(), pickup ? null : cmd.npCityName(),
+                pickup ? null : cmd.npWarehouseRef(), pickup ? null : cmd.npWarehouseName()));
+
+        // Payment option snapshot. Every option is paid online now (in full, or a prepayment with
+        // the rest cash on delivery), so one must be chosen; the clock to pay starts here.
+        if (cmd.paymentOptionId() == null || cmd.paymentOptionId().isBlank()) {
+            throw new DomainException.BadRequest(OrderError.PAYMENT_METHOD_REQUIRED);
+        }
+        OrderPaymentOptions.Option po = paymentOptions.findActive(ops.toBytes(cmd.paymentOptionId(), "paymentOptionId"))
+                .orElseThrow(() -> new DomainException.BadRequest(OrderError.PAYMENT_METHOD_UNKNOWN));
+        order.choosePayment(po.id(), po.title(), po.requiresPrepayment() ? po.prepaymentMinor() : 0,
+                ops.now().plus(Duration.ofHours(Math.max(1, props.getPayment().getDueHours()))));
+        return order;
+    }
+
+    /** The cart's products and the gift's, locked FOR UPDATE in id order. */
+    private Map<String, Optional<Product>> lockProducts(List<AccLine> lines, Optional<OrderGifts.ThresholdPlan> giftCfg) {
+        Map<String, Optional<Product>> locked = new HashMap<>();
+        java.util.SortedSet<String> lockIds = new java.util.TreeSet<>();
+        lines.forEach(l -> lockIds.add(l.productId));
+        giftCfg.ifPresent(g -> lockIds.addAll(g.productIds()));
+        for (String id : lockIds) {
+            // FOR UPDATE: the stock check and the decrement below must not interleave with another
+            // checkout, or both orders pass "one left in stock" and the shop oversells.
+            locked.put(id, productRepository.findByIdForUpdate(ops.toBytes(id, "productId")));
+        }
+        return locked;
+    }
+
+    /** One cart line checked, reserved on the shelf and added to the order; returns its product to save. */
+    private Product reserveLine(Order order, AccLine line, Map<String, Optional<Product>> locked, Long userId) {
+        Product product = locked.get(line.productId)
+                .orElseThrow(() -> new DomainException.BadRequest(OrderError.PRODUCT_UNKNOWN_IN_CART));
+        if (!product.isActive() || product.isArchived()) {
+            throw new DomainException.BadRequest(OrderError.PRODUCT_UNAVAILABLE, product.getTitle());
+        }
+
+        OrderItem item = OrderItem.sold(order, product.getId(), product.getTitle(), product.getPriceMinor(), line.quantity);
+
+        boolean hasVariants = product.getVariants() != null && !product.getVariants().isEmpty();
+        ProductVariant variant = null;
+        if (line.variantId != null && !line.variantId.isBlank()) {
+            variant = ops.findVariant(product, line.variantId);
+            if (variant == null) {
+                throw new DomainException.BadRequest(OrderError.VARIANT_MISMATCH, product.getTitle());
+            }
+            item.withVariant(variant.getId(), variant.getName());
+        } else if (hasVariants) {
+            throw new DomainException.BadRequest(OrderError.VARIANT_REQUIRED, product.getTitle());
+        }
+        shelf.requireAvailable(product, variant, line.quantity, userId);
+        shelf.reserve(product, variant, line.quantity, item);
+
+        order.addLine(item);
+        return product;
+    }
+
+    /** Promo (fixed amount takes priority over percent), then the order priced; returns the low-margin part. */
+    private long applyPromo(Order order, CreateOrderCommand cmd) {
+        long discount = 0;
+        long subtotal = OrderMoney.subtotalMinor(order);
+        PromoCode promo = promos.resolve(cmd.promoCode(), cmd.tgUserId(), true);
+        long lowMarginMinor = promos.lowMarginMinor(order);
+        if (promo != null) {
+            discount = PromoDiscount.discountFor(promo, subtotal, promos.excluded(promo, lowMarginMinor, subtotal));
+            order.labelPromo(promo.getCode());
+            promos.countUse(promo);
+            if (cmd.tgUserId() != null) {
+                promos.consumeHold(promo, cmd.tgUserId());
+            }
+        }
+
+        order.priceWith(discount);
+        return lowMarginMinor;
     }
 
     /**
