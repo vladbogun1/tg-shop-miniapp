@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.lang.Nullable;
 
 import com.maxsolch.shop.catalog.domain.SpecAttribute;
@@ -28,25 +29,25 @@ public final class CatalogDtos {
 
     /** {@code logoUrl}: MinIO key or absolute URL, null = no logo; {@code logoMode}: MONO | ORIGINAL. */
     public record CatalogBrandDto(String id, String slug, String name, long productCount, @Nullable String logoUrl,
-                                  @Nullable String logoMode) {
+                                  @Schema(allowableValues = {"MONO", "ORIGINAL"}) @Nullable String logoMode) {
     }
 
-    public record SpecGroupDto(String key, @Nullable String label, int sort) {
+    public record SpecGroupDto(String key, String label, int sort) {
     }
 
-    public record SpecOptionDto(String value, @Nullable String label, int sort) {
+    public record SpecOptionDto(String value, String label, int sort) {
     }
 
     public record FacetBucketDto(String id, @Nullable String label, @Nullable Double min, @Nullable Double max) {
     }
 
-    public record SpecAttributeDto(String id, String key, @Nullable String label, String type, @Nullable String unit, boolean range,
+    public record SpecAttributeDto(String id, String key, String label, @Schema(allowableValues = {"number", "enum", "multi", "bool", "text"}) String type, @Nullable String unit, boolean range,
                                    String group, boolean filterable, boolean comparable, boolean required,
                                    boolean highlight, int sort, @Nullable String categoryId, @Nullable List<SpecOptionDto> options,
                                    @Nullable List<FacetBucketDto> buckets, @Nullable String hint) {
     }
 
-    public record ConditionDto(String value, @Nullable String label) {
+    public record ConditionDto(@Schema(implementation = com.maxsolch.shop.catalog.domain.ProductCondition.class) String value, String label) {
     }
 
     public record CatalogSchemaDto(List<CatalogCategoryDto> categories, List<CatalogBrandDto> brands,
@@ -98,7 +99,7 @@ public final class CatalogDtos {
     // ------------------------------------------------------------------ admin: brands
 
     public record AdminBrandDto(String id, String name, String slug, List<String> aliases, @Nullable String website,
-                                int sortOrder, long productCount, @Nullable String logoUrl, @Nullable String logoMode) {
+                                int sortOrder, long productCount, @Nullable String logoUrl, @Schema(allowableValues = {"MONO", "ORIGINAL"}) @Nullable String logoMode) {
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.lang.Nullable;
 
 import java.time.Instant;
@@ -43,7 +44,7 @@ public record ProductDto(
         String categoryId,
         @Nullable BrandRefDto brandRef,
         /** NEW | MARKDOWN | USED. */
-        @Nullable String condition,
+        @Schema(implementation = com.maxsolch.shop.catalog.domain.ProductCondition.class) @Nullable String condition,
         /** Translated like the title. */
         @Nullable String conditionNote,
         /** Attribute key → value (see SpecType); unknown = key absent. */

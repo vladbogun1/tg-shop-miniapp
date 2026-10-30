@@ -85,25 +85,32 @@
 
 `next build` тоже запускает ESLint, поэтому ошибка лимита в новом файле уронит и Docker-сборку — так и задумано.
 
-## Дрифт Java DTO заказа ↔ TypeScript-типы (`scripts/check-dto-drift.mjs`, шаг в джобе `frontends`)
+## Типы ответов API из OpenAPI (шаг 3 плана фронтов)
 
-Типы заказа написаны руками в `shared/src/types.ts`, `frontend-admin/lib/{api,orders-api}.ts` и `e2e/lib/api.ts`,
-а Java DTO правятся часто. Эталон — golden-JSON `backend/src/test/resources/golden/order/*.json` (реальный ответ API;
-его уже охраняет `OrderQueryServiceGoldenTest`). Скрипт строит TS-тип через compiler API (tsconfig пакета) и рекурсивно
-сверяет с JSON: ключ есть в JSON, но нет в типе (тип устарел); обязательного поля типа нет в JSON (убрали/переименовали в DTO);
-необязательное поле типа не встречается ни в одном образце; вид значения (null/число/строка/массив) не допускается типом.
-`e2e` и `shared` проверяются в режиме `subset` (минимальные/базовые типы: лишние ключи JSON — норма).
+Типы ответов генерируются из того, что отдаёт бэкенд, а не пишутся руками.
 
-**Почему так.** Присваивание JSON типу (`resolveJsonModule` + `satisfies`) не годится: JSON-литералы расширяются
-(`"NEW"` → `string`, не лезет в `OrderStatus`), а пропавшие необязательные поля и лишние ключи оно не ловит.
-Генерация через springdoc/OpenAPI — новая зависимость в backend, генератор и перегенерация типов, дороже. Скрипт — 200 строк,
-без зависимостей сверх `typescript`, и бежит в уже существующей джобе за секунды. Слабое место: покрытие = набор образцов в
-golden (поле, которого нет ни в одном образце, считается пропавшим — тогда добавьте образец в golden-тест).
+- **Бэкенд.** `OpenApiSnapshotTest` поднимает контекст (без БД: контроллеры с моками) и снимает `/v3/api-docs`; результат
+  сверяется со снимком `backend/src/test/resources/openapi/openapi.json` (ключи отсортированы, `operationId` = `<Контроллер>_<метод>`).
+  Обновить: `mvn -B -ntp -q test -Dtest=OpenApiSnapshotTest -Dopenapi.update=true` из папки `backend`. Тот же тест хранит
+  `error-codes.json` (коды клиентских ошибок из enum'ов `<Модуль>Error` + два кода security-фильтра) и проверяет, что у каждого
+  record-DTO своё имя схемы, а у response-схем нет молча необязательных полей.
+- **Строгость.** `OpenApiRecordSchemas` + `OpenApiResponseSchemas`: у схем, достижимых из ответа, каждый компонент record — required,
+  `@Nullable` (`org.springframework.lang`) — nullable; enum'ы подключаются `@Schema(implementation = Enum.class)` / `allowableValues`
+  без изменения JSON. Свободное значение (`Object`, `Map<String, Object>`) = `unknown`, а не `Record<string, never>`.
+  Схемы запросов остаются как читает springdoc по `@NotNull`. Новое поле DTO: nullable? поставь `@Nullable`, иначе тип скажет «всегда есть».
+- **Фронт.** `npm run gen:api` = `openapi-typescript` (только dev, ноль рантайма) → `packages/core/src/api/generated.d.ts` +
+  `scripts/gen-error-codes.mjs` → `packages/core/src/api/error-codes.d.ts` (union `ServerErrorCode`, его берёт `core/errors`).
+  Подключение: `import type { Schemas } from "@shop/core/api/schemas"` и `export type X = Schemas["XDto"]`. Ручной вид ответа
+  сужается только как view-модель (`Omit<…> & {…}`) с комментарием.
+- **CI.** Шаг «Generated API types are up to date»: `npm run gen:api` + `git diff --exit-code -- packages/core/src/api`.
+  `npm run check:golden-schema` (`scripts/check-golden-schema.mjs`) сверяет настоящие ответы заказа (golden-JSON) со схемами:
+  лишний ключ, пропавший required, null в non-nullable, не тот вид значения, значение не из enum. Три устаревших значения в синтетических
+  фикстурах (`rejectReasonCode: UNPAID`, `movements.kind: RECEIVED`, `movements.channel: MONOBANK`) пропускаются явно (`STALE_ENUM_PATHS`).
+- **Правило.** `scripts/check-api-types.mjs` (в `arch:front`): в пилотных модулях order и catalog нельзя объявлять руками типы ответов
+  из списка `GENERATED_ONLY`; в `frontend-admin/lib/orders-api.ts` ручные интерфейсы — только тела запросов.
+  Переезжает ещё модуль — добавь его имена в список.
 
-Запуск: `npm run check:dto-drift`. Поменяли DTO → бэкенд перегенерирует golden (`-Dgolden.update=true`) → скрипт покажет,
-какой TS-тип поправить. Исключения — `EXCEPTIONS` в начале скрипта (с причиной, список может только уменьшаться; исключение,
-которое перестало срабатывать, тоже падает). Сейчас там: `deliveryMethod` и `items[].id` = null (артефакт фикстуры) и мёртвое
-`OrderItem.currency` (читается фоллбеком на странице заказа Mini App — убрать вместе с кодом).
+Заменил `check-dto-drift.mjs` (сверял TS-типы с golden-образцами): теперь сверяется сама схема, а TS-типы сгенерированы из неё.
 
 ## Что делать, если проверка упала
 

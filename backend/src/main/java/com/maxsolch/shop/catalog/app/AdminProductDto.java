@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.lang.Nullable;
 
 import com.maxsolch.shop.catalog.app.CatalogDtos.BrandRefDto;
@@ -33,10 +34,10 @@ public record AdminProductDto(
         // ---- catalog v2 ----
         String categoryId,
         @Nullable BrandRefDto brandRef,
-        @Nullable String condition,
+        @Schema(implementation = com.maxsolch.shop.catalog.domain.ProductCondition.class) @Nullable String condition,
         @Nullable String conditionNote,
         Map<String, Object> specs,
-        String cardStatus,
+        @Schema(implementation = com.maxsolch.shop.catalog.domain.CardStatus.class) String cardStatus,
         @Nullable Integer cardConfidence,
         Map<String, Object> cardMeta,
         /** Required attributes of the category path without a value. */

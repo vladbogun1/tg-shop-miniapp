@@ -227,6 +227,16 @@ e2e/            Playwright — админка (есть) + смоук покуп
 `springdoc.default-flat-param-object` / `OpenApiCustomizer` (все не-nullable record-компоненты — required). Если пилот не сходится за 2 сессии — **откат на план Б**: расширить
 `check-dto-drift` golden-образцами на `catalog`, `cart`, `payment`, `gift` (дешевле, но покрытие = образцы).
 
+**Статус шага 3 (пилот order + catalog), ветка `arch/front-step-3-openapi`.** Критерий выхода пройден: типы строгие (у response-схем всё required,
+честные nullable и enum'ы; снимок вырос с 41 required / 0 nullable до required у всех полей ответов). Устройство и правила — в
+ARCHITECTURE-CHECKS.md («Типы ответов API из OpenAPI»). Переехало: весь `order` (core/types.ts, giftcase, support, `orders-api.ts`, карточка/детали/доска
+в админке, `OrderCardDto`/`OrderDetailDto`/`DispatchOrder`) и витринные типы `catalog` (SpecOption, FacetBucket, SpecAttribute, SpecGroup,
+CatalogCategory, CatalogBrand, CatalogSchema, ProductBrandRef). **Осталось (шаг 4+, не сходится механически — нужны решения):**
+1. `Product`/`ProductImage`/`ProductVariant` и `AdminProduct` — один ручной `Product` сейчас служит и витрине, и админке, и формам; `ProductDto` (null вместо undefined,
+   без `archived`, `StorefrontProduct extends Product`) даёт ~50 ошибок; нужно разделить витрину и админку.
+2. Админский каталог (`AdminCategory`, `AdminBrand`, `AdminSpecAttribute`, `AdminSpecGroup`…): фронт читает и пишет `sortOrder`, а бэкенд шлёт и принимает `sort`
+   (несовпадение, которое типы показали; поведение не менялось) — решить владельцу, чей вариант верный.
+
 ### 2.7. Проверки в CI (только то, что реально работает в нашем стеке)
 
 Принцип бэкенда сохраняется: **нарушений нет, новое запрещено; число — объём работы; цель ноль.** Две механики:

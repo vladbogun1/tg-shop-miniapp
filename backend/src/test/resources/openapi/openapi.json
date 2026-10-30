@@ -115,6 +115,10 @@
             "type" : "string"
           },
           "logoMode" : {
+            "enum" : [
+              "MONO",
+              "ORIGINAL"
+            ],
             "nullable" : true,
             "type" : "string"
           },
@@ -730,12 +734,15 @@
             "type" : "integer"
           },
           "cardMeta" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
+            "additionalProperties" : { },
             "type" : "object"
           },
           "cardStatus" : {
+            "enum" : [
+              "DRAFT",
+              "AI_FILLED",
+              "READY"
+            ],
             "type" : "string"
           },
           "categoryId" : {
@@ -747,6 +754,11 @@
             "type" : "integer"
           },
           "condition" : {
+            "enum" : [
+              "NEW",
+              "MARKDOWN",
+              "USED"
+            ],
             "nullable" : true,
             "type" : "string"
           },
@@ -804,9 +816,7 @@
             "type" : "array"
           },
           "specs" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
+            "additionalProperties" : { },
             "type" : "object"
           },
           "stock" : {
@@ -2676,9 +2686,7 @@
             "type" : "boolean"
           },
           "specs" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
+            "additionalProperties" : { },
             "type" : "object"
           },
           "title" : {
@@ -2707,9 +2715,7 @@
             "type" : "integer"
           },
           "cardMeta" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
+            "additionalProperties" : { },
             "type" : "object"
           },
           "cardStatus" : {
@@ -2756,9 +2762,7 @@
             "type" : "string"
           },
           "specs" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
+            "additionalProperties" : { },
             "type" : "object"
           },
           "stock" : {
@@ -2818,9 +2822,7 @@
             "type" : "string"
           },
           "confidence" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
+            "additionalProperties" : { },
             "type" : "object"
           },
           "description" : {
@@ -2858,9 +2860,7 @@
             "type" : "array"
           },
           "specs" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
+            "additionalProperties" : { },
             "type" : "object"
           },
           "title" : {
@@ -2999,9 +2999,7 @@
             "$ref" : "#/components/schemas/CardExportItem"
           },
           "last" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
+            "additionalProperties" : { },
             "type" : "object"
           },
           "reviewedAt" : {
@@ -3567,6 +3565,10 @@
             "type" : "string"
           },
           "logoMode" : {
+            "enum" : [
+              "MONO",
+              "ORIGINAL"
+            ],
             "nullable" : true,
             "type" : "string"
           },
@@ -4102,10 +4104,14 @@
       "ConditionDto" : {
         "properties" : {
           "label" : {
-            "nullable" : true,
             "type" : "string"
           },
           "value" : {
+            "enum" : [
+              "NEW",
+              "MARKDOWN",
+              "USED"
+            ],
             "type" : "string"
           }
         },
@@ -6584,9 +6590,7 @@
         },
         "type" : "object"
       },
-      "JsonNode" : {
-        "type" : "object"
-      },
+      "JsonNode" : { },
       "Keys" : {
         "properties" : {
           "auth" : {
@@ -9712,6 +9716,11 @@
             "type" : "integer"
           },
           "condition" : {
+            "enum" : [
+              "NEW",
+              "MARKDOWN",
+              "USED"
+            ],
             "nullable" : true,
             "type" : "string"
           },
@@ -9775,9 +9784,7 @@
             "type" : "integer"
           },
           "specs" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
+            "additionalProperties" : { },
             "type" : "object"
           },
           "stock" : {
@@ -9973,9 +9980,7 @@
             "type" : "string"
           },
           "specs" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
+            "additionalProperties" : { },
             "type" : "object"
           },
           "stock" : {
@@ -11499,9 +11504,7 @@
       },
       "SettingItemDto" : {
         "properties" : {
-          "defaultValue" : {
-            "type" : "object"
-          },
+          "defaultValue" : { },
           "description" : {
             "type" : "string"
           },
@@ -11548,9 +11551,7 @@
           "updatedBy" : {
             "type" : "string"
           },
-          "value" : {
-            "type" : "object"
-          }
+          "value" : { }
         },
         "required" : [
           "defaultValue",
@@ -11614,9 +11615,7 @@
       "SettingsUpdateRequest" : {
         "properties" : {
           "values" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
+            "additionalProperties" : { },
             "type" : "object"
           }
         },
@@ -11895,7 +11894,6 @@
             "type" : "string"
           },
           "label" : {
-            "nullable" : true,
             "type" : "string"
           },
           "options" : {
@@ -11916,6 +11914,13 @@
             "type" : "integer"
           },
           "type" : {
+            "enum" : [
+              "number",
+              "enum",
+              "multi",
+              "bool",
+              "text"
+            ],
             "type" : "string"
           },
           "unit" : {
@@ -12046,7 +12051,6 @@
             "type" : "string"
           },
           "label" : {
-            "nullable" : true,
             "type" : "string"
           },
           "sort" : {
@@ -12064,7 +12068,6 @@
       "SpecOptionDto" : {
         "properties" : {
           "label" : {
-            "nullable" : true,
             "type" : "string"
           },
           "sort" : {

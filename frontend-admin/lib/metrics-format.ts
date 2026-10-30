@@ -13,9 +13,9 @@ export function shortDate(iso: string): string {
 }
 
 /** minor units -> "1 234 ₴" (rounded major). */
-export function moneyShort(minor: number | null | undefined, currency = "UAH"): string {
+export function moneyShort(minor: number | null | undefined, currency: string | null = "UAH"): string {
   const major = Math.round((minor ?? 0) / 100);
-  const symbol = currency === "UAH" ? "₴" : currency;
+  const symbol = currency === "UAH" || currency == null ? "₴" : currency;
   return `${formatNumber(major, "ru-RU")} ${symbol}`;
 }
 

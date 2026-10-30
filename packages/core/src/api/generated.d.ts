@@ -4600,7 +4600,8 @@ export interface components {
         AdminBrandDto: {
             aliases: string[];
             id: string;
-            logoMode: string | null;
+            /** @enum {string|null} */
+            logoMode: "MONO" | "ORIGINAL" | null;
             logoUrl: string | null;
             name: string;
             /** Format: int64 */
@@ -4772,13 +4773,15 @@ export interface components {
             /** Format: int32 */
             cardConfidence: number | null;
             cardMeta: {
-                [key: string]: Record<string, never>;
+                [key: string]: unknown;
             };
-            cardStatus: string;
+            /** @enum {string} */
+            cardStatus: "DRAFT" | "AI_FILLED" | "READY";
             categoryId: string;
             /** Format: int64 */
             compareAtMinor: number | null;
-            condition: string | null;
+            /** @enum {string|null} */
+            condition: "NEW" | "MARKDOWN" | "USED" | null;
             conditionNote: string | null;
             currency: string;
             description: string | null;
@@ -4793,7 +4796,7 @@ export interface components {
             slug: string | null;
             specIssues: components["schemas"]["Issue"][];
             specs: {
-                [key: string]: Record<string, never>;
+                [key: string]: unknown;
             };
             /** Format: int32 */
             stock: number;
@@ -5362,7 +5365,7 @@ export interface components {
             description?: string;
             ready?: boolean;
             specs?: {
-                [key: string]: Record<string, never>;
+                [key: string]: unknown;
             };
             title?: string;
             translations?: {
@@ -5375,7 +5378,7 @@ export interface components {
             /** Format: int32 */
             cardConfidence: number | null;
             cardMeta: {
-                [key: string]: Record<string, never>;
+                [key: string]: unknown;
             };
             cardStatus: string;
             categoryId: string;
@@ -5392,7 +5395,7 @@ export interface components {
             priceMinor: number;
             slug: string;
             specs: {
-                [key: string]: Record<string, never>;
+                [key: string]: unknown;
             };
             /** Format: int32 */
             stock: number;
@@ -5406,7 +5409,7 @@ export interface components {
             condition?: string;
             conditionNote?: string;
             confidence?: {
-                [key: string]: Record<string, never>;
+                [key: string]: unknown;
             };
             description?: string;
             fieldSources?: {
@@ -5421,7 +5424,7 @@ export interface components {
             publish?: boolean;
             sources?: string[];
             specs?: {
-                [key: string]: Record<string, never>;
+                [key: string]: unknown;
             };
             title?: string;
             translations?: {
@@ -5466,7 +5469,7 @@ export interface components {
             importedAt: string | null;
             item: components["schemas"]["CardExportItem"];
             last: {
-                [key: string]: Record<string, never>;
+                [key: string]: unknown;
             };
             reviewedAt: string | null;
             /** Format: int64 */
@@ -5644,7 +5647,8 @@ export interface components {
         };
         CatalogBrandDto: {
             id: string;
-            logoMode: string | null;
+            /** @enum {string|null} */
+            logoMode: "MONO" | "ORIGINAL" | null;
             logoUrl: string | null;
             name: string;
             /** Format: int64 */
@@ -5798,8 +5802,9 @@ export interface components {
             loginId: string;
         };
         ConditionDto: {
-            label: string | null;
-            value: string;
+            label: string;
+            /** @enum {string} */
+            value: "NEW" | "MARKDOWN" | "USED";
         };
         ConfigDto: {
             /** Format: int32 */
@@ -6560,7 +6565,7 @@ export interface components {
             unitPriceFx?: number;
             variantId?: string;
         };
-        JsonNode: Record<string, never>;
+        JsonNode: unknown;
         Keys: {
             auth: string;
             p256dh: string;
@@ -7486,7 +7491,8 @@ export interface components {
             categoryId: string;
             /** Format: int64 */
             compareAtMinor: number | null;
-            condition: string | null;
+            /** @enum {string|null} */
+            condition: "NEW" | "MARKDOWN" | "USED" | null;
             conditionNote: string | null;
             /** Format: date-time */
             createdAt: string;
@@ -7507,7 +7513,7 @@ export interface components {
             /** Format: int64 */
             soldCount: number;
             specs: {
-                [key: string]: Record<string, never>;
+                [key: string]: unknown;
             };
             /** Format: int32 */
             stock: number;
@@ -7554,7 +7560,7 @@ export interface components {
             sku?: string;
             slug?: string;
             specs?: {
-                [key: string]: Record<string, never>;
+                [key: string]: unknown;
             };
             /** Format: int32 */
             stock?: number;
@@ -8043,7 +8049,7 @@ export interface components {
             receivedMinor?: number;
         };
         SettingItemDto: {
-            defaultValue: Record<string, never>;
+            defaultValue: unknown;
             description: string;
             group: string;
             key: string;
@@ -8061,7 +8067,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             updatedBy: string;
-            value: Record<string, never>;
+            value: unknown;
         };
         SettingsGroupDto: {
             description: string;
@@ -8074,7 +8080,7 @@ export interface components {
         };
         SettingsUpdateRequest: {
             values?: {
-                [key: string]: Record<string, never>;
+                [key: string]: unknown;
             };
         };
         SignupWeek: {
@@ -8159,13 +8165,14 @@ export interface components {
             hint: string | null;
             id: string;
             key: string;
-            label: string | null;
+            label: string;
             options: components["schemas"]["SpecOptionDto"][] | null;
             range: boolean;
             required: boolean;
             /** Format: int32 */
             sort: number;
-            type: string;
+            /** @enum {string} */
+            type: "number" | "enum" | "multi" | "bool" | "text";
             unit: string | null;
         };
         SpecAttributeUpsertRequest: {
@@ -8193,12 +8200,12 @@ export interface components {
         };
         SpecGroupDto: {
             key: string;
-            label: string | null;
+            label: string;
             /** Format: int32 */
             sort: number;
         };
         SpecOptionDto: {
-            label: string | null;
+            label: string;
             /** Format: int32 */
             sort: number;
             value: string;

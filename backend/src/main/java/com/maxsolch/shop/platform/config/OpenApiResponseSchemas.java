@@ -32,6 +32,7 @@ public final class OpenApiResponseSchemas implements OpenApiCustomizer {
             return;
         }
         Map<String, Schema> schemas = openApi.getComponents().getSchemas();
+        schemas.values().forEach(OpenApiResponseSchemas::openUpAnyValues);
         Set<String> inResponses = reachable(schemas, responseSchemas(openApi));
         for (Map.Entry<String, Schema> e : schemas.entrySet()) {
             Schema model = e.getValue();
@@ -51,6 +52,31 @@ public final class OpenApiResponseSchemas implements OpenApiCustomizer {
                     props.put(name, nullable(props.get(name)));
                 }
             }
+        }
+    }
+
+    /**
+     * A free-form value ({@code Object}, the values of a {@code Map<String, Object>}) is read by springdoc as
+     * {@code {type: object}} with no properties, which the TypeScript generator turns into {@code Record<string, never>}:
+     * nothing can be read from it. It is "any JSON value" ({@code {}} → {@code unknown}), and a client narrows it itself.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static void openUpAnyValues(Schema s) {
+        if (s == null) {
+            return;
+        }
+        if ("object".equals(s.getType()) && s.getProperties() == null && s.getAdditionalProperties() == null
+                && s.get$ref() == null && s.getAllOf() == null && s.getOneOf() == null && s.getAnyOf() == null
+                && s.getEnum() == null) {
+            s.setType(null);
+            return;
+        }
+        openUpAnyValues(s.getItems());
+        if (s.getAdditionalProperties() instanceof Schema inner) {
+            openUpAnyValues(inner);
+        }
+        if (s.getProperties() != null) {
+            ((Collection<Schema>) s.getProperties().values()).forEach(OpenApiResponseSchemas::openUpAnyValues);
         }
     }
 

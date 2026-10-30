@@ -6,6 +6,7 @@
  * the admin-only payloads, and the typed endpoint list.
  */
 import { markStaffBrowser } from "./staff-mark";
+import type { Schemas } from "@shop/core/api/schemas";
 import { ApiError } from "@shop/core/errors";
 import { createHttpClient, normalizeBaseUrl } from "@shop/core/http";
 import { type AdminInvoice, type MonobankStatus, type DeliveryMethod, type Message, type OrderCard, type OrderDetail, type OrderStatus, type Product, type ProductImage, type ProductTag, type ProductVariant, type SendMessageRequest, type SenderType, type TimeRange } from "@shop/core/types";
@@ -40,9 +41,9 @@ export type {
 export type OrderSource = "MINIAPP" | "WEB" | "ADMIN";
 
 /** Names the admin UI already uses for the shared shapes (+ admin-only fields). */
-export type OrderCardDto = OrderCard & { source?: OrderSource };
+export type OrderCardDto = Schemas["OrderCardDto"];
 /** `customerLocale`: uk/ru/en chosen by the customer in the shop (users.locale) — answer in it. */
-export type OrderDetailDto = OrderDetail & { source?: OrderSource; customerLocale?: string | null };
+export type OrderDetailDto = Schemas["OrderDetailDto"];
 
 /**
  * Product as the admin API returns it: the shared shape plus the public-site fields
@@ -765,42 +766,9 @@ export interface BoardDto {
   counts: Record<OrderStatus, number>;
 }
 
-export interface DispatchItem {
-  title: string;
-  variantName?: string | null;
-  quantity: number;
-  priceMinor: number;
-  /** First photo of the product; null when it has none. */
-  imageUrl?: string | null;
-}
+export type DispatchItem = Schemas["DispatchItem"];
 
-/**
- * Seller dispatch row for an APPROVED order: what to ship and how much cash to collect.
- * `receivedMinor` is what actually arrived (online via monobank, or recorded by an admin).
- */
-export interface DispatchOrder {
-  id: string;
-  shortId: string;
-  customerName: string;
-  phone: string;
-  deliveryMethod: DeliveryMethod;
-  npCityName?: string | null;
-  npWarehouseName?: string | null;
-  items: DispatchItem[];
-  totalMinor: number;
-  prepaymentMinor: number;
-  receivedMinor: number;
-  codMinor: number;
-  paid: boolean;
-  /** Online payment deadline — for «Ждёт оплаты» on the card (optional: older backends omit it). */
-  paymentDueAt?: string | null;
-  amountDueMinor?: number;
-  currency: string;
-  paymentOptionTitle?: string | null;
-  trackingNumber?: string | null;
-  createdAt: string;
-  approvedAt?: string | null;
-}
+export type DispatchOrder = Schemas["DispatchOrderDto"];
 
 export type OrderSortBy = "createdAt" | "totalMinor" | "customerName" | "status";
 export type SortDir = "asc" | "desc";

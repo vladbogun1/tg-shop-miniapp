@@ -20,7 +20,7 @@ import { makeT } from "@/i18n";
 export const SHOP_TIME_ZONE = "Europe/Kyiv";
 
 export interface Fmt {
-  money: (minor: number | null | undefined, currency?: string) => string;
+  money: (minor: number | null | undefined, currency?: string | null) => string;
   date: (iso: string) => string;
   /** "10 окт." — no year, for tight spots. */
   dayMonth: (iso: string) => string;
@@ -41,7 +41,7 @@ export function makeFmt(locale: Locale, timeZone?: string): Fmt {
     hours: t("time.hours"),
   };
   return {
-    money: (minor, currency = "UAH") => sharedMoney(minor, currency, tag),
+    money: (minor, currency) => sharedMoney(minor, currency ?? "UAH", tag),
     date: (iso) => sharedFormatDate(iso, tag, timeZone),
     dayMonth: (iso) => sharedFormatDayMonth(iso, tag, timeZone),
     dateTime: (iso) => sharedFormatDateTime(iso, tag, timeZone),

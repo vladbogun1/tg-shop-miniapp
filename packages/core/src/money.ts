@@ -8,11 +8,11 @@
  */
 export function money(
   minor: number | null | undefined,
-  currency = "UAH",
+  currency: string | null = "UAH",
   locale = "ru-RU"
 ): string {
   const kop = Math.round(minor ?? 0);
-  const symbol = currency === "UAH" ? "₴" : currency;
+  const symbol = currency === "UAH" || currency == null ? "₴" : currency;
   // Kopecks are shown whenever there are any (0,95 ₴ — never "1 ₴" for 95 kopecks: rounding a
   // price up or down misleads the customer); whole amounts stay without decimals (1 030 ₴).
   // Grouping and the decimal sign follow the language; the currency sign does not.
