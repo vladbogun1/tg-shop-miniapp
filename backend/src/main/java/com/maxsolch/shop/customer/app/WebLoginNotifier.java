@@ -1,5 +1,6 @@
 package com.maxsolch.shop.customer.app;
 
+import com.maxsolch.shop.platform.jobs.Workers;
 import com.maxsolch.shop.notification.domain.BotCallbackHandler;
 import com.maxsolch.shop.notification.domain.BotLoginStarter;
 import com.maxsolch.shop.notification.domain.TelegramGateway;
@@ -9,7 +10,6 @@ import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.customer.app.WebLoginBotFlow.BotDecision;
 import com.maxsolch.shop.customer.app.WebLoginBotFlow.BotPrompt;
 import com.maxsolch.shop.customer.app.WebAuthService.WebLoginCompletedEvent;
-import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static com.maxsolch.shop.platform.util.Texts.escHtml;
 
@@ -58,14 +57,11 @@ public class WebLoginNotifier implements BotCallbackHandler, BotLoginStarter {
     private final AppProperties props;
     private final ActivityLog activity;
     /** Notifications after a site login are sent off the HTTP request thread. */
-    private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "web-login-bot");
-        t.setDaemon(true);
-        return t;
-    });
+    private final ExecutorService executor;
 
     public WebLoginNotifier(TelegramGateway bot, WebLoginBotFlow botFlow, Messages messages,
-                              AppProperties props, ActivityLog activity) {
+                              AppProperties props, ActivityLog activity, Workers workers) {
+        this.executor = workers.single("web-login-bot");
         this.bot = bot;
         this.botFlow = botFlow;
         this.messages = messages;
@@ -233,10 +229,5 @@ public class WebLoginNotifier implements BotCallbackHandler, BotLoginStarter {
         } catch (TelegramApiException e) {
             log.debug("answerCallbackQuery failed: {}", e.getMessage());
         }
-    }
-
-    @PreDestroy
-    void shutdown() {
-        executor.shutdownNow();
     }
 }

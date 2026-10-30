@@ -1,5 +1,6 @@
 package com.maxsolch.shop.notification.app;
 
+import com.maxsolch.shop.platform.jobs.Workers;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.notification.domain.Broadcast;
@@ -32,7 +33,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static com.maxsolch.shop.platform.util.Texts.blankToNull;
@@ -75,16 +75,13 @@ public class BroadcastService {
     private final CurrentActor actor;
     private final DbLocks locks;
 
-    private final ExecutorService exec = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "broadcast");
-        t.setDaemon(true);
-        return t;
-    });
+    private final ExecutorService exec;
     private final AtomicReference<BroadcastStatus> status = new AtomicReference<>(BroadcastStatus.idle());
 
     public BroadcastService(TelegramGateway bot, AppProperties props, BroadcastAudiences audiences,
                             BroadcastRepository broadcastRepository, ActivityLog activity, Clock clock,
-                            AdminAuditService audit, CurrentActor actor, DbLocks locks) {
+                            AdminAuditService audit, CurrentActor actor, DbLocks locks, Workers workers) {
+        this.exec = workers.single("broadcast");
         this.locks = locks;
         this.bot = bot;
         this.props = props;

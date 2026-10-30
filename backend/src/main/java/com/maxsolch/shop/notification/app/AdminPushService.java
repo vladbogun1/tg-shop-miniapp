@@ -1,5 +1,6 @@
 package com.maxsolch.shop.notification.app;
 
+import com.maxsolch.shop.platform.jobs.Workers;
 import com.maxsolch.shop.notification.infra.PushSubscriptionStore;
 import com.maxsolch.shop.notification.infra.PushTransport;
 import com.maxsolch.shop.notification.infra.WebPushCrypto;

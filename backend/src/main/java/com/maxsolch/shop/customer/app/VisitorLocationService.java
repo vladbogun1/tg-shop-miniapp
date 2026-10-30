@@ -1,5 +1,6 @@
 package com.maxsolch.shop.customer.app;
 
+import com.maxsolch.shop.platform.jobs.Workers;
 import com.maxsolch.shop.platform.web.GeoIpLookup;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
@@ -55,9 +56,10 @@ public class VisitorLocationService {
 
     @Autowired
     public VisitorLocationService(VisitorLocationStore store, GeoIpLookup geo, AppProperties props,
-                                  CacheManager caches) {
+                                  CacheManager caches, Workers workers) {
         this(store, geo, props.getGeoip().isEnabled(),
-                CacheConfig.require(caches, CustomerCaches.VISITOR_LOCATION_RECENT), newWorker());
+                CacheConfig.require(caches, CustomerCaches.VISITOR_LOCATION_RECENT),
+                workers.bounded("visitor-location", 2_000, new ThreadPoolExecutor.DiscardPolicy(), Duration.ofSeconds(2)));
     }
 
     VisitorLocationService(VisitorLocationStore store, GeoIpLookup geo, boolean enabled, Cache recent,

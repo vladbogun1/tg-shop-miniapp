@@ -1,5 +1,6 @@
 package com.maxsolch.shop.delivery.app;
 
+import com.maxsolch.shop.platform.jobs.Workers;
 import com.maxsolch.shop.delivery.domain.NovaPoshtaApi;
 import com.maxsolch.shop.delivery.domain.NovaPoshtaApi.ApiWarehouse;
 import com.maxsolch.shop.delivery.domain.NovaPoshtaCity;
@@ -32,10 +33,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * transaction is opened by {@link NovaPoshtaUpsertService} instead of a {@code @Transactional} method
  * called from within this class.
  *
- * <p>The thread is owned here instead of injecting a {@code TaskExecutor}: this application
- * registers its own {@code Executor} beans for the STOMP channels, which makes Boot's
- * {@code applicationTaskExecutor} auto-configuration back off - so there is no unambiguous
- * {@code TaskExecutor} to inject, and asking for one prevents the context from starting at all.
+ * <p>The thread is a named worker from {@link com.maxsolch.shop.platform.jobs.Workers} (not a Boot
+ * {@code TaskExecutor}: this application registers its own {@code Executor} beans for the STOMP channels, so
+ * Boot's one backs off and there is none to inject).
  */
 @Slf4j
 @Service
@@ -62,7 +62,7 @@ public class NovaPoshtaSyncService {
                                  NovaPoshtaWarehouseRepository warehouseRepository,
                                  NovaPoshtaUpsertService upsertService,
                                  SettingsService settings,
-                                 Clock clock) {
+                                 Clock clock, Workers workers) {
         this.api = api;
         this.warehouseRepository = warehouseRepository;
         this.upsertService = upsertService;

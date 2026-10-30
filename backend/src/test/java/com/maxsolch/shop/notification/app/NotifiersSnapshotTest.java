@@ -96,7 +96,7 @@ class NotifiersSnapshotTest {
     }
 
     private AdminSecurityNotifier adminSecurity() {
-        return new AdminSecurityNotifier(h.bot, sellerChannel(), new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"), sessions, adminUsers, audit);
+        return new AdminSecurityNotifier(h.bot, sellerChannel(), new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"), sessions, adminUsers, audit, new com.maxsolch.shop.platform.jobs.Workers());
     }
 
     private CustomerBot customerBot() {

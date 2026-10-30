@@ -1,5 +1,6 @@
 package com.maxsolch.shop.platform.journal;
 
+import com.maxsolch.shop.platform.jobs.Workers;
 import java.time.Clock;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.security.AuthPrincipal;

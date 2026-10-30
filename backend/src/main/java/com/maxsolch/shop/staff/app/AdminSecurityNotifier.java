@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import com.maxsolch.shop.platform.jobs.Workers;
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.notification.app.SellerChannel;
 import com.maxsolch.shop.notification.domain.BotCallbackHandler;
@@ -10,7 +11,6 @@ import com.maxsolch.shop.staff.domain.AdminInvite;
 import com.maxsolch.shop.staff.domain.LoginMethod;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
-import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
@@ -27,7 +27,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static com.maxsolch.shop.platform.util.Texts.escHtml;
 
@@ -60,15 +59,12 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
     private final AdminUserRepository adminUserRepository;
     private final AdminAuditService audit;
     private final ZoneId zone;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "admin-security-alerts");
-        t.setDaemon(true);
-        return t;
-    });
+    private final ExecutorService executor;
 
     public AdminSecurityNotifier(TelegramGateway bot, SellerChannel seller, ShopZone shopZone,
                                  AdminSessions sessions, AdminUserRepository adminUserRepository,
-                                 AdminAuditService audit) {
+                                 AdminAuditService audit, Workers workers) {
+        this.executor = workers.single("admin-security-alerts");
         this.bot = bot;
         this.seller = seller;
         this.sessions = sessions;
@@ -218,8 +214,4 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
         return HHMM.format(at.atZone(zone));
     }
 
-    @PreDestroy
-    void shutdown() {
-        executor.shutdownNow();
-    }
 }

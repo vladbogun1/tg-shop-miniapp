@@ -1,5 +1,6 @@
 package com.maxsolch.shop.site.app;
 
+import com.maxsolch.shop.platform.jobs.Workers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.http.HttpClientSettings;
@@ -8,7 +9,6 @@ import com.maxsolch.shop.platform.http.ResilientHttp;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.platform.tx.OnCommitted;
 import com.maxsolch.shop.site.domain.SiteRevalidationRequested;
-import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -34,9 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * {@code POST ${SITE_REVALIDATE_URL}} with {@code x-revalidate-secret} and
  * {@code {"paths": [...]}}.
  *
- * <p>Fire-and-forget on a thread owned here (not a Boot {@code TaskExecutor}: this app registers
- * its own Executor beans for STOMP, so Boot's one backs off and there is none to inject — see
- * NovaPoshtaSyncService). A failure is a WARN, never an error for the admin: the pages fall back
+ * <p>Fire-and-forget on a named worker of {@link com.maxsolch.shop.platform.jobs.Workers}. A failure is a WARN, never an error for the admin: the pages fall back
  * to their normal ISR expiry. Blank URL = feature off.
  *
  * <p>Each path is sent unprefixed and with the {@code /ru} and {@code /en} locale prefixes, since
@@ -64,11 +61,7 @@ public class SiteRevalidator {
             .withTimeouts(Duration.ofSeconds(3), Duration.ofSeconds(10)).withHttp11();
 
     private final ResilientHttp http;
-    private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(r -> {
-        Thread t = new Thread(r, "site-revalidate");
-        t.setDaemon(true);
-        return t;
-    });
+    private final ScheduledExecutorService executor;
 
     /** Outcome of the most recent call, for {@code GET /api/admin/site/revalidate/status}. */
     public record Status(boolean enabled, Instant lastSuccessAt, Instant lastErrorAt, String lastError) {
@@ -89,7 +82,8 @@ public class SiteRevalidator {
     private final Clock clock;
 
     public SiteRevalidator(AppProperties props, ObjectMapper objectMapper, DomainEvents events,
-                           HttpClients httpClients, Clock clock) {
+                           HttpClients httpClients, Clock clock, Workers workers) {
+        this.executor = workers.scheduled("site-revalidate");
         this.props = props;
         this.objectMapper = objectMapper;
         this.events = events;
@@ -243,8 +237,4 @@ public class SiteRevalidator {
         return error;
     }
 
-    @PreDestroy
-    void shutdown() {
-        executor.shutdownNow();
-    }
 }

@@ -54,7 +54,7 @@ class BroadcastLockTest {
         });
         return new BroadcastService(bot, props, users, repo, activity, Clock.systemUTC(),
                 mock(AdminAuditService.class), mock(CurrentActor.class),
-                new DbLocks(table, Clock.systemUTC()));
+                new DbLocks(table, Clock.systemUTC()), new com.maxsolch.shop.platform.jobs.Workers());
     }
 
     private static BroadcastRequest request() {
@@ -86,7 +86,7 @@ class BroadcastLockTest {
         when(broken.ids(any())).thenThrow(new IllegalStateException("db down"));
         BroadcastService failing = new BroadcastService(mock(TelegramGateway.class), tokenProps(), broken,
                 mock(BroadcastRepository.class), mock(ActivityLog.class), Clock.systemUTC(),
-                mock(AdminAuditService.class), mock(CurrentActor.class), new DbLocks(table, Clock.systemUTC()));
+                mock(AdminAuditService.class), mock(CurrentActor.class), new DbLocks(table, Clock.systemUTC()), new com.maxsolch.shop.platform.jobs.Workers());
 
         assertThatThrownBy(() -> failing.start(request(), 1L, "Max")).isInstanceOf(IllegalStateException.class);
 
