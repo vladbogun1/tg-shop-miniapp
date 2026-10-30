@@ -123,17 +123,16 @@ test("«Выйти везде» в меню: это устройство и вт
     const box = await button.boundingBox();
     expect(box!.height).toBeLessThan(48);
 
-    // First a «no» in the browser's confirm: nothing happens.
-    a.once("dialog", (d) => void d.dismiss());
+    // First a «no» in the confirm dialog: nothing happens.
     await button.click();
+    const ask = dialog(a, "Выйти на всех устройствах?");
+    await ask.getByRole("button", { name: "Отмена" }).click();
+    await expect(ask).toBeHidden();
     await expect(a.getByRole("heading", { name: "Заказы", level: 1 })).toBeVisible();
     expect(await apiStatus(tokenA)).toBe(200);
 
-    a.once("dialog", (d) => {
-      expect(d.message()).toContain("Выйти на всех устройствах?");
-      void d.accept();
-    });
     await button.click();
+    await dialog(a, "Выйти на всех устройствах?").getByRole("button", { name: "Выйти", exact: true }).click();
     await expect(a.getByRole("button", { name: "Войти" })).toBeVisible();
     expect(await a.evaluate(() => localStorage.getItem("tgshop_admin_jwt"))).toBeNull();
 
