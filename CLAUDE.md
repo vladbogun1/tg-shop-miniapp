@@ -27,3 +27,8 @@
 - Нарушений ноль, исключений нет: `v2-baseline.txt` пустой, файл ≤ 500 строк. Упала проверка — чинить код, а не записывать в baseline.
 - Замок, защищающий деньги/данные от двойного выполнения, — только в БД (`platform.jobs.DbLocks`, `@SchedulerLock`); `synchronized` и карты замков запрещены (K1).
   `spring.jpa.open-in-view: false`: то, что рендерит контроллер, загружается внутри транзакции app (fetch join / read-модель).
+
+## Фронты: проверки (шаг 0 плана ARCHITECTURE-FRONT.md)
+
+- Перед пушем: `npm run lint && npm run typecheck && npm run test && npm run arch:front && npm run build`, затем `node scripts/check-browser-compat.mjs site frontend` и `npm run check:bundle`.
+- Храповик: `scripts/frontend-baseline.txt`, `known-violations.json`, `scripts/bundle-baseline.txt` — числа только падают; упало — чинить код, не поднимать baseline ([docs/ARCHITECTURE-CHECKS.md](docs/ARCHITECTURE-CHECKS.md)).

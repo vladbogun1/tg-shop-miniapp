@@ -89,3 +89,23 @@ golden (поле, которого нет ни в одном образце, с�
 3. Как добавить исключение во фронтах, если оно действительно нужно: путь файла в нужный массив `eslint.legacy-limits.mjs`
    (путь от корня фронта, скобки в `app/[locale]/…` экранирует helper). В бэкенде исключений нет: ни baseline, ни список размеров.
 4. Новое правило бэкенда: добавить в `V2Rules` и фикстуру `shopfixture` (`V2RulesTest`); в коде оно должно сразу давать ноль.
+
+## Фронты: храповик шага 0 (`npm run arch:front`, `npm run check:bundle`)
+
+План — [ARCHITECTURE-FRONT.md](ARCHITECTURE-FRONT.md) (2.5, 2.7). Принцип тот же, что у бэкенда: **число нарушений только падает**, ноль = правило становится error.
+Корневые `npm run lint | typecheck | test | arch:front | build` обходят **все** workspaces (`shared`, `frontend`, `frontend-admin`, `site`; `typecheck` ещё и `e2e`).
+
+- **ESLint-храповик.** Счётные правила (warn) — `shared/eslint/front-rules.mjs`: `no-fetch`, `no-web-storage`, `no-confirm-alert`, `query-key-literal`,
+  `stale-time-literal`, `refetch-interval-literal`, `money-div-mul-100`, `to-fixed`, `time-new-date`, `time-date-now`, `time-to-locale`, `time-intl-datetimeformat`,
+  `cyrillic-literal` (только Mini App и сайт; словари `i18n/**` не считаются), плюс `react-hooks/exhaustive-deps`, `max-lines`, `max-lines-per-function` (200), `complexity`, `max-depth`.
+  `scripts/check-front-ratchet.mjs` запускает ESLint с `--no-inline-config` (то есть `eslint-disable` не прячет долг), печатает сводку «правило × приложение» и сравнивает
+  с `scripts/frontend-baseline.txt` (`<правило> <приложение> <число>`). Рост — падение; снижение — подсказка; понизить: `node scripts/check-front-ratchet.mjs --update`
+  (рост без `--allow-growth=<правила>` команда не запишет; причину роста — в сообщение коммита). По правилу ноль → переключить в error и убрать строки из baseline.
+  Исключения у правил — только файлы, ради которых правило есть (`shared/src/http.ts` для `fetch`, `shared/src/money.ts`/`format.ts`, `site/lib/server-api.ts`).
+- **Запреты совместимости (error, `docs/BROWSER-SUPPORT.md`).** Lookbehind (литерал и `new RegExp("…")`), флаг `v`, `static {}`, `toSorted/toReversed/toSpliced`, `Set#isSubsetOf…`,
+  `Object/Map.groupBy`, `Promise.withResolvers`, `Array.fromAsync` — в Mini App, сайте и `shared`; в админке (десктоп) не действуют; `site/lib/feeds.ts` (XML рендерит сервер) — исключение.
+- **dependency-cruiser.** Правила — `.dependency-cruiser.cjs` (циклы, чужое приложение, ядро без React, `components → app`, WebSocket только из `realtime.ts`, границы будущих `features/*`).
+  `scripts/check-arch-front.mjs`: новое нарушение, которого нет в `known-violations.json`, — падение; стало меньше — `node scripts/check-arch-front.mjs --update`.
+- **Инварианты** `scripts/check-invariants.mjs`: `CHUNK_RECOVERY_SCRIPT` первым в `<head>` обоих layout, `no-cache` для HTML в `infra/gateway.conf` и `gateway-site.conf`, нет lookbehind.
+- **Бандл** `scripts/check-bundle.mjs` (после `npm run build`): First Load JS (gzip) каждого маршрута Mini App и сайта против `scripts/bundle-baseline.txt`, рост > 3 % — падение.
+- **Тесты:** `vitest` в каждом workspace (`*.test.ts` рядом с кодом), `npm run test`.

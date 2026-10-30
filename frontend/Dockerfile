@@ -12,6 +12,9 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY shared/package.json ./shared/
+# Будущие workspace-пакеты (@shop/core, @shop/ui, @shop/customer, шаг 1 ARCHITECTURE-FRONT.md): npm ci
+# нужны их package.json; каталог пока почти пуст, так что итоговый образ не меняется.
+COPY packages ./packages
 COPY frontend/package.json ./frontend/
 COPY frontend-admin/package.json ./frontend-admin/
 # Installs the whole workspace: npm needs every member's manifest to resolve the lockfile.
@@ -25,6 +28,7 @@ WORKDIR /app
 # <workspace>/node_modules, and a COPY of a path that may not exist fails the build.
 COPY --from=deps /app ./
 COPY shared ./shared
+COPY packages ./packages
 COPY frontend ./frontend
 # Public env vars are inlined into the bundle at build time. Defaults target the standalone
 # localhost dev stack; the single-origin public build overrides these with "" (relative

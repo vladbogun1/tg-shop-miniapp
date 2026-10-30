@@ -11,5 +11,20 @@
   },
   "peerDependencies": {
     "@stomp/stompjs": ">=7"
+  },
+  "scripts": {
+    "lint": "eslint . --quiet",
+    "lint:warn": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.18.0",
+    "eslint-config-next": "^15.5.4",
+    "typescript": "^5.7.0"
   }
 }

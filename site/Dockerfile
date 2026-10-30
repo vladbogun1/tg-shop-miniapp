@@ -13,6 +13,9 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY shared/package.json ./shared/
+# Будущие workspace-пакеты (@shop/core, @shop/ui, @shop/customer, шаг 1 ARCHITECTURE-FRONT.md): npm ci
+# нужны их package.json; каталог пока почти пуст, так что итоговый образ не меняется.
+COPY packages ./packages
 COPY frontend/package.json ./frontend/
 COPY frontend-admin/package.json ./frontend-admin/
 COPY site/package.json ./site/
@@ -23,6 +26,7 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=deps /app ./
 COPY shared ./shared
+COPY packages ./packages
 COPY site ./site
 # Canonical origin for metadata/sitemap/OG links (inlined at build time).
 ARG NEXT_PUBLIC_SITE_URL=https://chisetup.com.ua
