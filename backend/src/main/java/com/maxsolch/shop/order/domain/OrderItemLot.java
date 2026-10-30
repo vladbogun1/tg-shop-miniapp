@@ -10,13 +10,11 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.time.Instant;
 
 /** {@code qty} units of an order line taken from stock lot {@code lotId} (V74). */
 @Getter
-@Setter
 @Entity
 @Table(name = "order_item_lots")
 public class OrderItemLot {
@@ -38,4 +36,17 @@ public class OrderItemLot {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    static OrderItemLot of(OrderItem item, long lotId, int qty, Instant createdAt) {
+        OrderItemLot a = new OrderItemLot();
+        a.item = item;
+        a.lotId = lotId;
+        a.qty = qty;
+        a.createdAt = createdAt;
+        return a;
+    }
+
+    void changeQty(int newQty) {
+        qty = newQty;
+    }
 }

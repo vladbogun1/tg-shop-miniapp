@@ -111,15 +111,15 @@ class OrderTransitionsTest {
 
     private Order order(OrderStatus status) {
         Order o = new Order();
-        o.setId(UuidUtil.randomBytes());
+        OrderFixtures.set(o, "id", UuidUtil.randomBytes());
         OrderStates.withStatus(o, status);
-        o.setTotalMinor(100_000);
+        OrderFixtures.set(o, "totalMinor", 100_000);
         OrderItem it = new OrderItem();
-        it.setOrder(o);
-        it.setProductId(product.getId());
-        it.setQuantity(2);
-        it.setTitleSnapshot("Кепка");
-        o.setItems(new ArrayList<>(List.of(it)));
+        OrderFixtures.set(it, "order", o);
+        OrderFixtures.set(it, "productId", product.getId());
+        OrderFixtures.set(it, "quantity", 2);
+        OrderFixtures.set(it, "titleSnapshot", "Кепка");
+        OrderFixtures.set(o, "items", new ArrayList<>(List.of(it)));
         lenient().when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         return o;
     }
@@ -199,7 +199,7 @@ class OrderTransitionsTest {
         assertThat(s.getTrackingNumber()).isEqualTo("20450000000001");
 
         Order d = order(OrderStatus.SHIPPED);
-        d.setDeliveryMethod(DeliveryMethod.NOVA_POSHTA);
+        OrderFixtures.set(d, "deliveryMethod", DeliveryMethod.NOVA_POSHTA);
         app.lifecycle().deliver(d.getId());
         assertThat(d.getDeliveredAt()).isNotNull();
         assertThat(d.isPaid()).isTrue();
@@ -217,14 +217,14 @@ class OrderTransitionsTest {
     @Test
     void ship_andApprove_areBothBlockedByAPendingCancelRequest() {
         Order shipIt = order(OrderStatus.NEW);
-        shipIt.setCancelRequestStatus("PENDING");
+        OrderFixtures.set(shipIt, "cancelRequestStatus", "PENDING");
         assertThatThrownBy(() -> app.lifecycle().ship(shipIt.getId(), null))
                 .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("запрос отмены");
         assertThat(shipIt.getStatus()).isEqualTo(OrderStatus.NEW);
 
         // Owner's decision 29.10.2026: approve is blocked the same way as ship.
         Order approveIt = order(OrderStatus.NEW);
-        approveIt.setCancelRequestStatus("PENDING");
+        OrderFixtures.set(approveIt, "cancelRequestStatus", "PENDING");
         assertThatThrownBy(() -> app.lifecycle().approve(approveIt.getId()))
                 .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("запрос отмены");
         assertThat(approveIt.getStatus()).isEqualTo(OrderStatus.NEW);
@@ -235,7 +235,7 @@ class OrderTransitionsTest {
     @Test
     void ship_unpaidOnlineOrderNeedsConfirmation() {
         Order o = order(OrderStatus.APPROVED);
-        o.setPaymentDueAt(Instant.now().plusSeconds(3600));
+        OrderFixtures.set(o, "paymentDueAt", Instant.now().plusSeconds(3600));
         assertThatThrownBy(() -> app.lifecycle().ship(o.getId(), null))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class,
                         e -> assertThat(e.getCode()).isEqualTo(Order.SHIP_UNPAID_CODE));
@@ -247,7 +247,7 @@ class OrderTransitionsTest {
     @Test
     void cancelByCustomer_endState() {
         Order o = order(OrderStatus.APPROVED);
-        o.setReturnStatus("X");
+        OrderFixtures.set(o, "returnStatus", "X");
 
         Order r = app.cancelRequests().cancelByCustomer(o.getId(), "  передумав  ");
 
@@ -283,7 +283,7 @@ class OrderTransitionsTest {
     void cancelByCustomer_leavesAPendingRequestUntouched() {
         // Unreachable through the API (a pending request needs a paid order), pinned as is.
         Order o = order(OrderStatus.NEW);
-        o.setCancelRequestStatus("PENDING");
+        OrderFixtures.set(o, "cancelRequestStatus", "PENDING");
         app.cancelRequests().cancelByCustomer(o.getId(), "x");
         assertThat(o.getCancelRequestStatus()).isEqualTo("PENDING");
         assertThat(o.getCancelRequestResolvedAt()).isNull();
@@ -292,12 +292,12 @@ class OrderTransitionsTest {
     @Test
     void cancelByCustomer_refusals() {
         Order paid = order(OrderStatus.NEW);
-        paid.setPaid(true);
+        OrderFixtures.set(paid, "paid", true);
         assertThatThrownBy(() -> app.cancelRequests().cancelByCustomer(paid.getId(), "x"))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class,
                         e -> assertThat(e.getCode()).isEqualTo(CancelRequests.PAID_NEEDS_REQUEST));
         Order received = order(OrderStatus.NEW);
-        received.setReceivedMinor(1);
+        OrderFixtures.set(received, "receivedMinor", 1);
         assertThatThrownBy(() -> app.cancelRequests().cancelByCustomer(received.getId(), "x"))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class,
                         e -> assertThat(e.getCode()).isEqualTo(CancelRequests.PAID_NEEDS_REQUEST));
@@ -314,11 +314,11 @@ class OrderTransitionsTest {
     @Test
     void approveCancelRequest_endState() {
         Order o = order(OrderStatus.APPROVED);
-        o.setPaid(true);
-        o.setReceivedMinor(100_000);
-        o.setReturnStatus("X");
-        o.setCancelRequestStatus("PENDING");
-        o.setCancelRequestReason("передумала");
+        OrderFixtures.set(o, "paid", true);
+        OrderFixtures.set(o, "receivedMinor", 100_000);
+        OrderFixtures.set(o, "returnStatus", "X");
+        OrderFixtures.set(o, "cancelRequestStatus", "PENDING");
+        OrderFixtures.set(o, "cancelRequestReason", "передумала");
 
         Order r = app.cancelRequests().approveCancelRequest(o.getId(), "  ок  ");
 
@@ -345,7 +345,7 @@ class OrderTransitionsTest {
     @Test
     void approveCancelRequest_blankCommentIsNull_noRequest_wrongStatus() {
         Order o = order(OrderStatus.NEW);
-        o.setCancelRequestStatus("PENDING");
+        OrderFixtures.set(o, "cancelRequestStatus", "PENDING");
         app.cancelRequests().approveCancelRequest(o.getId(), "  ");
         assertThat(o.getCancelRequestAdminComment()).isNull();
         // Empty request reason: no dangling colon.
@@ -357,7 +357,7 @@ class OrderTransitionsTest {
                         e -> assertThat(e.getCode()).isEqualTo(CancelRequests.NO_PENDING_REQUEST));
 
         Order shipped = order(OrderStatus.SHIPPED);
-        shipped.setCancelRequestStatus("PENDING");
+        OrderFixtures.set(shipped, "cancelRequestStatus", "PENDING");
         assertThatThrownBy(() -> app.cancelRequests().approveCancelRequest(shipped.getId(), null))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class, e -> {
                     assertThat(e.getCode()).isEqualTo(CancelRequests.CANNOT_CANCEL);
@@ -368,7 +368,7 @@ class OrderTransitionsTest {
     @Test
     void reject_endState_restock() {
         Order o = order(OrderStatus.APPROVED);
-        o.setReturnStatus("X");
+        OrderFixtures.set(o, "returnStatus", "X");
 
         Order r = app.lifecycle().reject(o.getId(), "  нет в наличии ", RejectReasonCode.OUT_OF_STOCK, true);
 
@@ -397,9 +397,9 @@ class OrderTransitionsTest {
     @Test
     void reject_whileACancelRequestIsPending_closesItAsApproved_andAnswersTheCustomer() {
         Order o = order(OrderStatus.NEW);
-        o.setPaid(true);
-        o.setReceivedMinor(100_000);
-        o.setCancelRequestStatus("PENDING");
+        OrderFixtures.set(o, "paid", true);
+        OrderFixtures.set(o, "receivedMinor", 100_000);
+        OrderFixtures.set(o, "cancelRequestStatus", "PENDING");
 
         app.lifecycle().reject(o.getId(), "x", null, true);
 
@@ -438,9 +438,9 @@ class OrderTransitionsTest {
     @Test
     void reject_shippedKeepsThePrepaymentAsRetained() {
         Order o = order(OrderStatus.SHIPPED);
-        o.setPrepaymentMinor(10_000);
-        o.setReceivedMinor(10_000);
-        o.setPaid(true);
+        OrderFixtures.set(o, "prepaymentMinor", 10_000);
+        OrderFixtures.set(o, "receivedMinor", 10_000);
+        OrderFixtures.set(o, "paid", true);
 
         app.lifecycle().reject(o.getId(), null, null, true, true);
 
@@ -452,12 +452,12 @@ class OrderTransitionsTest {
     @Test
     void reject_nonShipped_orMoreThanPrepaid_retainsNothing() {
         Order approved = order(OrderStatus.APPROVED);
-        approved.setPrepaymentMinor(10_000);
-        approved.setReceivedMinor(10_000);
+        OrderFixtures.set(approved, "prepaymentMinor", 10_000);
+        OrderFixtures.set(approved, "receivedMinor", 10_000);
         app.lifecycle().reject(approved.getId(), null, null, true);
         Order shipped = order(OrderStatus.SHIPPED);
-        shipped.setPrepaymentMinor(10_000);
-        shipped.setReceivedMinor(50_000);
+        OrderFixtures.set(shipped, "prepaymentMinor", 10_000);
+        OrderFixtures.set(shipped, "receivedMinor", 50_000);
         app.lifecycle().reject(shipped.getId(), null, null, true);
         verifyNoLedgerEntries();
     }
@@ -466,8 +466,8 @@ class OrderTransitionsTest {
     void expireUnpaid_endState() {
         Order o = order(OrderStatus.NEW);
         Instant now = Instant.now();
-        o.setPaymentDueAt(now.minusSeconds(1));
-        o.setReturnStatus("X");
+        OrderFixtures.set(o, "paymentDueAt", now.minusSeconds(1));
+        OrderFixtures.set(o, "returnStatus", "X");
 
         Order r = app.lifecycle().expireUnpaid(o.getId(), now);
 
@@ -487,18 +487,18 @@ class OrderTransitionsTest {
         Instant now = Instant.now();
         List<Order> skipped = new ArrayList<>();
         Order approved = order(OrderStatus.APPROVED);
-        approved.setPaymentDueAt(now.minusSeconds(1));
+        OrderFixtures.set(approved, "paymentDueAt", now.minusSeconds(1));
         skipped.add(approved);
         Order paid = order(OrderStatus.NEW);
-        paid.setPaymentDueAt(now.minusSeconds(1));
-        paid.setPaid(true);
+        OrderFixtures.set(paid, "paymentDueAt", now.minusSeconds(1));
+        OrderFixtures.set(paid, "paid", true);
         skipped.add(paid);
         Order received = order(OrderStatus.NEW);
-        received.setPaymentDueAt(now.minusSeconds(1));
-        received.setReceivedMinor(5);
+        OrderFixtures.set(received, "paymentDueAt", now.minusSeconds(1));
+        OrderFixtures.set(received, "receivedMinor", 5);
         skipped.add(received);
         Order notDue = order(OrderStatus.NEW);
-        notDue.setPaymentDueAt(now.plusSeconds(60));
+        OrderFixtures.set(notDue, "paymentDueAt", now.plusSeconds(60));
         skipped.add(notDue);
         skipped.add(order(OrderStatus.NEW)); // no deadline at all
         for (Order o : skipped) {
@@ -515,11 +515,11 @@ class OrderTransitionsTest {
 
     private Order mergeable(OrderStatus status, long tgUser) {
         Order o = order(status);
-        o.setTgUserId(tgUser);
-        o.setPhone("+380671234567");
-        o.setCreatedAt(Instant.now());
-        o.getItems().get(0).setPriceMinorSnapshot(50_000);
-        o.setSubtotalMinor(100_000);
+        OrderFixtures.set(o, "tgUserId", tgUser);
+        OrderFixtures.set(o, "phone", "+380671234567");
+        OrderFixtures.set(o, "createdAt", Instant.now());
+        OrderFixtures.set(o.getItems().get(0), "priceMinorSnapshot", 50_000);
+        OrderFixtures.set(o, "subtotalMinor", 100_000);
         return o;
     }
 
@@ -529,7 +529,7 @@ class OrderTransitionsTest {
         OrderMerge merge = app.merge(orderRepository, mergeEvents, ledger);
         Order target = mergeable(OrderStatus.APPROVED, 42);
         Order source = mergeable(OrderStatus.NEW, 42);
-        source.setPromoCode("CASE9TSRK7");
+        OrderFixtures.set(source, "promoCode", "CASE9TSRK7");
 
         OrderMerge.Result r = merge.merge(target.getId(), source.getId(), false, false, null, "admin");
 
@@ -548,25 +548,25 @@ class OrderTransitionsTest {
     void exchange_newOrderStartedApproved_noStatusChangedAndNoRevoke() {
         Exchanges adjust = ReturnsApp.create(app, orderRepository, StockFixtures.stock(productRepository, messages), StockFixtures.shelf(productRepository, messages), events, ledger, exchangeRepository).exchanges;
         Order o = order(OrderStatus.DELIVERED);
-        o.setCustomerName("Іван Петренко");
-        o.setPhone("+380501112233");
-        o.setDeliveryMethod(DeliveryMethod.NOVA_POSHTA);
-        o.setNpCityRef("city-1");
-        o.setNpCityName("Київ");
-        o.setNpWarehouseRef("wh-1");
-        o.setNpWarehouseName("Відділення №1");
-        o.setPaymentOptionId(UuidUtil.randomBytes());
-        o.setReceivedMinor(100_000);
-        o.setPaid(true);
-        o.setUserId(77L);
-        o.getItems().get(0).setId(1L);
-        o.getItems().get(0).setPriceMinorSnapshot(50_000);
-        o.setSubtotalMinor(100_000);
+        OrderFixtures.set(o, "customerName", "Іван Петренко");
+        OrderFixtures.set(o, "phone", "+380501112233");
+        OrderFixtures.set(o, "deliveryMethod", DeliveryMethod.NOVA_POSHTA);
+        OrderFixtures.set(o, "npCityRef", "city-1");
+        OrderFixtures.set(o, "npCityName", "Київ");
+        OrderFixtures.set(o, "npWarehouseRef", "wh-1");
+        OrderFixtures.set(o, "npWarehouseName", "Відділення №1");
+        OrderFixtures.set(o, "paymentOptionId", UuidUtil.randomBytes());
+        OrderFixtures.set(o, "receivedMinor", 100_000);
+        OrderFixtures.set(o, "paid", true);
+        OrderFixtures.set(o, "userId", 77L);
+        OrderFixtures.set(o.getItems().get(0), "id", 1L);
+        OrderFixtures.set(o.getItems().get(0), "priceMinorSnapshot", 50_000);
+        OrderFixtures.set(o, "subtotalMinor", 100_000);
         List<Order> all = new ArrayList<>(List.of(o));
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
             Order x = inv.getArgument(0);
             if (x.getId() == null) {
-                x.setId(UuidUtil.randomBytes());
+                OrderFixtures.set(x, "id", UuidUtil.randomBytes());
             }
             if (all.stream().noneMatch(y -> y == x)) {
                 all.add(x);

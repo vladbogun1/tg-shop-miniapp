@@ -122,7 +122,7 @@ public class Returns {
                 throw OrderErrors.badRequest("по позиции «" + item.getTitleSnapshot()
                         + "» можно вернуть не больше " + left + " шт.");
             }
-            item.setReturnedQty(item.getReturnedQty() + line.quantity());
+            item.registerReturned(line.quantity());
             if (line.restock()) {
                 // Never more than is still out of stock for this line.
                 int canRestock = item.getQuantity() - item.getRestockedQty();
@@ -135,12 +135,12 @@ public class Returns {
             throw OrderErrors.badRequest("укажите, что вернули, или сумму возврата");
         }
         if (refundMinor > 0) {
-            order.setRefundedMinor(order.getRefundedMinor() + refundMinor);
+            order.registerRefund(refundMinor);
             parts.add("возврат денег " + MoneyFormat.uah(refundMinor));
             moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, OrderMoneyMovement.Channel.OTHER,
                     refundMinor, OrderMoneyMovement.Source.ADMIN, null, note, null);
         }
-        order.setReturnedAt(clock.instant());
+        order.markReturned(clock.instant());
         Order saved = orders.save(order);
         events.publish(OrderEvents.Edited.silent(saved.getId()));
         String details = "возврат: " + String.join(", ", parts)
@@ -203,7 +203,7 @@ public class Returns {
             recordLines.add(rl);
             switch (outcome) {
                 case RESTOCK -> {
-                    item.setReturnedQty(item.getReturnedQty() + line.quantity());
+                    item.registerReturned(line.quantity());
                     int canRestock = item.getQuantity() - item.getRestockedQty();
                     int restocked = Math.min(line.quantity(), canRestock);
                     stock.restockUnits(item, restocked);
@@ -212,7 +212,7 @@ public class Returns {
                     customerParts.add(title + " ×" + line.quantity());
                 }
                 case DEFECT -> {
-                    item.setReturnedQty(item.getReturnedQty() + line.quantity());
+                    item.registerReturned(line.quantity());
                     StockWriteoff w = defects.writeOff(item, line.quantity(), OrderMoney.unitPaidMinor(order, item),
                             order.getId(), cleanNote, adminName);
                     rl.setDefectQty(line.quantity());
@@ -222,13 +222,8 @@ public class Returns {
                 }
                 case KEPT -> parts.add(title + " ×" + line.quantity() + " (осталось у покупателя, компенсация)");
                 case IN_TRANSIT -> {
-                    item.setReturnedQty(item.getReturnedQty() + line.quantity());
-                    item.setReturnPendingQty(item.getReturnPendingQty() + line.quantity());
-                    if (!Order.RETURN_IN_TRANSIT.equals(order.getReturnStatus())) {
-                        order.setReturnStatus(Order.RETURN_IN_TRANSIT);
-                        order.setReturnSentAt(clock.instant());
-                        order.setReturnReceivedAt(null);
-                    }
+                    item.registerSentBack(line.quantity());
+                    order.markUnitsSentBack(clock.instant());
                     parts.add(title + " ×" + line.quantity() + " (едет назад)");
                     customerParts.add(title + " ×" + line.quantity());
                 }
@@ -242,13 +237,13 @@ public class Returns {
             // Partial pickup: what the customer refused at the branch is never paid for.
             long refused = PartialPickup.refusedValueMinor(order, lines, true);
             if (refused > 0) {
-                order.setUncollectedMinor(Math.max(0, order.getUncollectedMinor()) + refused);
+                order.registerUncollected(refused);
                 parts.add("не выкуплено на почте " + MoneyFormat.uah(refused) + ", наложка теперь "
                         + MoneyFormat.uah(OrderMoney.codMinor(order)));
             }
         }
         for (ManualRefund r : refunds) {
-            order.setRefundedMinor(order.getRefundedMinor() + r.amountMinor());
+            order.registerRefund(r.amountMinor());
             parts.add("возврат " + MoneyFormat.uah(r.amountMinor()) + " (" + MoneyLedger.channelLabel(r.channel()) + ")");
             moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, r.channel(), r.amountMinor(),
                     OrderMoneyMovement.Source.ADMIN, adminName, r.note() == null ? cleanNote : r.note(), null);
@@ -262,7 +257,7 @@ public class Returns {
                     plan.retainMinor(), OrderMoneyMovement.Source.ADMIN, adminName,
                     cleanNote == null ? "удержано: доставка" : cleanNote, null);
         }
-        order.setReturnedAt(clock.instant());
+        order.markReturned(clock.instant());
         Order saved = orders.save(order);
         saveRecord(order, plan, refunds, manual, cleanNote, adminName, recordLines);
         long refundedNow = manual + plan.monoRefundMinor();

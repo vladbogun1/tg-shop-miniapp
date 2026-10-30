@@ -1,5 +1,6 @@
 package com.maxsolch.shop.notification.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.notification.domain.TelegramGateway;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -343,55 +344,55 @@ final class NotifyHarness {
 
     static Order order(Long tgUserId, OrderStatus status) {
         Order o = new Order();
-        o.setId(UuidUtil.toBytes("1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9"));
-        o.setTgUserId(tgUserId);
+        OrderFixtures.set(o, "id", UuidUtil.toBytes("1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9"));
+        OrderFixtures.set(o, "tgUserId", tgUserId);
         OrderStates.withStatus(o, status);
-        o.setCurrency("₴");
-        o.setCustomerName("Іван <Петренко> & Co");
-        o.setPhone("+380501234567");
-        o.setTgUsername("@ivan_test");
-        o.setComment("Передзвоніть <до> 18:00");
-        o.setSubtotalMinor(1_070_000);
-        o.setDiscountMinor(20_000);
-        o.setTotalMinor(1_050_000);
-        o.setPaymentOptionTitle("Оплата при отриманні");
-        o.setDeliveryMethod(DeliveryMethod.NOVA_POSHTA);
-        o.setNpCityName("Київ");
-        o.setNpWarehouseName("Відділення №5 <вул. Хрещатик>");
-        o.getItems().add(item(o, "Lamzu Atlantis <Mini>", "Black", 459_000, 2, false, false, null));
-        o.getItems().add(item(o, "Pulsar Fanatic", null, 152_000, 1, false, false, null));
-        o.getItems().add(item(o, "Килимок", "XL", 0, 1, true, false, null));
-        o.getItems().add(item(o, "Стікери", null, 0, 3, false, true, "RARE"));
-        o.getItems().add(item(o, "Кабель", null, 0, 1, false, true, null));
+        OrderFixtures.set(o, "currency", "₴");
+        OrderFixtures.set(o, "customerName", "Іван <Петренко> & Co");
+        OrderFixtures.set(o, "phone", "+380501234567");
+        OrderFixtures.set(o, "tgUsername", "@ivan_test");
+        OrderFixtures.set(o, "comment", "Передзвоніть <до> 18:00");
+        OrderFixtures.set(o, "subtotalMinor", 1_070_000);
+        OrderFixtures.set(o, "discountMinor", 20_000);
+        OrderFixtures.set(o, "totalMinor", 1_050_000);
+        OrderFixtures.set(o, "paymentOptionTitle", "Оплата при отриманні");
+        OrderFixtures.set(o, "deliveryMethod", DeliveryMethod.NOVA_POSHTA);
+        OrderFixtures.set(o, "npCityName", "Київ");
+        OrderFixtures.set(o, "npWarehouseName", "Відділення №5 <вул. Хрещатик>");
+        o.addLine(item(o, "Lamzu Atlantis <Mini>", "Black", 459_000, 2, false, false, null));
+        o.addLine(item(o, "Pulsar Fanatic", null, 152_000, 1, false, false, null));
+        o.addLine(item(o, "Килимок", "XL", 0, 1, true, false, null));
+        o.addLine(item(o, "Стікери", null, 0, 3, false, true, "RARE"));
+        o.addLine(item(o, "Кабель", null, 0, 1, false, true, null));
         return o;
     }
 
     static OrderItem item(Order o, String title, String variant, long price, int qty, boolean gift,
                           boolean autoGift, String rarity) {
         OrderItem it = new OrderItem();
-        it.setOrder(o);
-        it.setTitleSnapshot(title);
-        it.setVariantNameSnapshot(variant);
-        it.setPriceMinorSnapshot(price);
-        it.setQuantity(qty);
-        it.setGift(gift);
-        it.setAutoGift(autoGift);
-        it.setCaseRarity(rarity);
+        OrderFixtures.set(it, "order", o);
+        OrderFixtures.set(it, "titleSnapshot", title);
+        OrderFixtures.set(it, "variantNameSnapshot", variant);
+        OrderFixtures.set(it, "priceMinorSnapshot", price);
+        OrderFixtures.set(it, "quantity", qty);
+        OrderFixtures.set(it, "gift", gift);
+        OrderFixtures.set(it, "autoGift", autoGift);
+        OrderFixtures.set(it, "caseRarity", rarity);
         return it;
     }
 
     static Order pickupOrder(Long tgUserId, OrderStatus status) {
         Order o = new Order();
-        o.setId(UuidUtil.toBytes("9f8e7d6c-5b4a-4392-8180-0a1b2c3d4e5f"));
-        o.setTgUserId(tgUserId);
+        OrderFixtures.set(o, "id", UuidUtil.toBytes("9f8e7d6c-5b4a-4392-8180-0a1b2c3d4e5f"));
+        OrderFixtures.set(o, "tgUserId", tgUserId);
         OrderStates.withStatus(o, status);
-        o.setSource(OrderSource.WEB);
-        o.setCurrency("₴");
-        o.setCustomerName("Олена");
-        o.setPhone("+380671112233");
-        o.setTotalMinor(250_000);
-        o.setDeliveryMethod(DeliveryMethod.PICKUP);
-        o.getItems().add(item(o, "Скло", null, 250_000, 1, false, false, null));
+        OrderFixtures.set(o, "source", OrderSource.WEB);
+        OrderFixtures.set(o, "currency", "₴");
+        OrderFixtures.set(o, "customerName", "Олена");
+        OrderFixtures.set(o, "phone", "+380671112233");
+        OrderFixtures.set(o, "totalMinor", 250_000);
+        OrderFixtures.set(o, "deliveryMethod", DeliveryMethod.PICKUP);
+        o.addLine(item(o, "Скло", null, 250_000, 1, false, false, null));
         return o;
     }
 }

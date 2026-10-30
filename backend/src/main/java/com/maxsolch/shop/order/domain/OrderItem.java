@@ -14,14 +14,12 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 @Getter
-@Setter
 @Entity
 @Table(name = "order_items")
 public class OrderItem implements LotAllocations {
@@ -102,6 +100,139 @@ public class OrderItem implements LotAllocations {
     @OrderBy("id ASC")
     private List<OrderItemLot> lots = new ArrayList<>();
 
+    // ---- creating a line: through these factories, the snapshot of the product is taken once
+
+    /** A sold line: the price of the unit at the moment of the order. */
+    public static OrderItem sold(Order order, byte[] productId, String title, long priceMinor, int quantity) {
+        OrderItem i = new OrderItem();
+        i.order = order;
+        i.productId = productId;
+        i.titleSnapshot = title;
+        i.priceMinorSnapshot = priceMinor;
+        i.quantity = quantity;
+        return i;
+    }
+
+    /** A free line added by an admin: price 0, the usual price of a unit is kept for the gift registry. */
+    public static OrderItem gift(Order order, byte[] productId, String title, long valueMinor, int quantity) {
+        OrderItem i = sold(order, productId, title, 0, quantity);
+        i.gift = true;
+        i.giftValueMinor = valueMinor;
+        return i;
+    }
+
+    /** The gift the shop itself added (for the order sum, or the prize of a case): one unit at price 0. */
+    public static OrderItem autoGift(Order order, byte[] productId, String title, long valueMinor, String rarity) {
+        OrderItem i = gift(order, productId, title, valueMinor, 1);
+        i.autoGift = true;
+        i.caseRarity = rarity;
+        return i;
+    }
+
+    /** The same line on another order (a merge): the snapshot, the flags, no stock lots yet. */
+    public OrderItem copyTo(Order target) {
+        OrderItem i = sold(target, productId, titleSnapshot, priceMinorSnapshot, quantity);
+        i.variantId = variantId;
+        i.variantNameSnapshot = variantNameSnapshot;
+        i.gift = gift;
+        i.autoGift = autoGift;
+        i.caseRarity = caseRarity;
+        i.giftValueMinor = giftValueMinor;
+        i.variantPending = variantPending;
+        return i;
+    }
+
+    // ---- the line
+
+    /** The chosen size / colour. */
+    public OrderItem withVariant(byte[] id, String name) {
+        variantId = id;
+        variantNameSnapshot = name;
+        return this;
+    }
+
+    /** A case prize with sizes: the fullest one is held until the customer picks theirs. */
+    public OrderItem pendingVariant(boolean pending) {
+        variantPending = pending;
+        return this;
+    }
+
+    public void changeQuantity(int newQuantity) {
+        quantity = newQuantity;
+    }
+
+    public void addQuantity(int more) {
+        quantity += more;
+    }
+
+    /** The customer picked their size: the line moves to it and no longer waits for a choice. */
+    public void chooseVariant(byte[] id, String name) {
+        variantId = id;
+        variantNameSnapshot = name;
+        variantPending = false;
+    }
+
+    public void confirmVariant() {
+        variantPending = false;
+    }
+
+    // ---- returns and the shelf
+
+    /** Units put back on the shelf: never more than the line has. */
+    public void markRestocked(int units) {
+        restockedQty = Math.min(quantity, restockedQty + units);
+    }
+
+    /** Units taken off the shelf again (a cancelled return): never below 0. */
+    public void unmarkRestocked(int units) {
+        restockedQty = Math.max(0, restockedQty - units);
+    }
+
+    /** Units the customer sent back (a return). */
+    public void registerReturned(int units) {
+        returnedQty += units;
+    }
+
+    /** A cancelled return: the units are in the order again. */
+    public void unregisterReturned(int units) {
+        returnedQty = Math.max(0, returnedQty - units);
+    }
+
+    /** Units sent back that are on their way to the shop. */
+    public void registerSentBack(int units) {
+        returnedQty += units;
+        returnPendingQty += units;
+    }
+
+    /** A refused parcel is on its way back: every unit not restocked yet waits for it. */
+    public void awaitReturn() {
+        returnPendingQty = Math.max(0, quantity - restockedQty);
+    }
+
+    /** Units of the way back that a cancelled return takes away from the waiting ones. */
+    public void reduceReturnPending(int units) {
+        returnPendingQty = Math.max(0, returnPendingQty - units);
+    }
+
+    /** The parcel arrived: nothing is on its way any more. */
+    public void clearReturnPending() {
+        returnPendingQty = 0;
+    }
+
+    /** The stock lots of {@code from} (a merged line) move here with the units, never counted twice. */
+    public void takeLotsOf(OrderItem from) {
+        if (from.lots == null || from.lots.isEmpty()) {
+            return;
+        }
+        if (lots == null) {
+            lots = new ArrayList<>();
+        }
+        for (OrderItemLot a : from.lots) {
+            lots.add(OrderItemLot.of(this, a.getLotId(), a.getQty(), a.getCreatedAt()));
+        }
+        from.lots.clear();
+    }
+
     // ---- LotAllocations: inventory records on the line which stock lots its units came from
 
     @Override
@@ -116,21 +247,16 @@ public class OrderItem implements LotAllocations {
         }
         OrderItemLot last = lots.isEmpty() ? null : lots.get(lots.size() - 1);
         if (last != null && last.getLotId() == lotId) {
-            last.setQty(last.getQty() + qty);
+            last.changeQty(last.getQty() + qty);
             return;
         }
-        OrderItemLot a = new OrderItemLot();
-        a.setItem(this);
-        a.setLotId(lotId);
-        a.setQty(qty);
-        a.setCreatedAt(at);
-        lots.add(a);
+        lots.add(OrderItemLot.of(this, lotId, qty, at));
     }
 
     @Override
     public void reduceAt(int index, int qty) {
         OrderItemLot a = lots.get(index);
-        a.setQty(a.getQty() - qty);
+        a.changeQty(a.getQty() - qty);
         if (a.getQty() == 0) {
             lots.remove(index);
         }

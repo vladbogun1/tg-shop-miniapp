@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderMoney;
 
 import com.maxsolch.shop.order.domain.Order;
@@ -20,19 +21,19 @@ class OrderMoneyTest {
 
     private static Order order(long total, long received) {
         Order o = new Order();
-        o.setItems(new ArrayList<>());
-        o.setTotalMinor(total);
-        o.setReceivedMinor(received);
+        OrderFixtures.set(o, "items", new ArrayList<>());
+        OrderFixtures.set(o, "totalMinor", total);
+        OrderFixtures.set(o, "receivedMinor", received);
         return o;
     }
 
     private static OrderItem line(Order o, long price, int qty, boolean gift) {
         OrderItem it = new OrderItem();
-        it.setOrder(o);
-        it.setPriceMinorSnapshot(price);
-        it.setQuantity(qty);
-        it.setGift(gift);
-        o.getItems().add(it);
+        OrderFixtures.set(it, "order", o);
+        OrderFixtures.set(it, "priceMinorSnapshot", price);
+        OrderFixtures.set(it, "quantity", qty);
+        OrderFixtures.set(it, "gift", gift);
+        o.addLine(it);
         return it;
     }
 
@@ -40,12 +41,12 @@ class OrderMoneyTest {
 
     private static Order repriced(long discount, long giftDiscount, long[][] priceQty) {
         Order o = new Order();
-        o.setItems(new ArrayList<>());
+        OrderFixtures.set(o, "items", new ArrayList<>());
         for (long[] pq : priceQty) {
             line(o, pq[0], (int) pq[1], false);
         }
-        o.setDiscountMinor(discount);
-        o.setGiftDiscountMinor(giftDiscount);
+        OrderFixtures.set(o, "discountMinor", discount);
+        OrderFixtures.set(o, "giftDiscountMinor", giftDiscount);
         OrderApp.create(null, null, null, null, null, null, null, null, null, null, null, null).ops().recomputeTotals(o);
         return o;
     }
@@ -90,9 +91,9 @@ class OrderMoneyTest {
     void dueOnline_isTotalWithoutPrepayment_orThePrepaymentCappedAtTotal() {
         Order o = order(100_000, 0);
         assertThat(OrderMoney.dueOnlineMinor(o)).isEqualTo(100_000);
-        o.setPrepaymentMinor(20_000);
+        OrderFixtures.set(o, "prepaymentMinor", 20_000);
         assertThat(OrderMoney.dueOnlineMinor(o)).isEqualTo(20_000);
-        o.setPrepaymentMinor(500_000);
+        OrderFixtures.set(o, "prepaymentMinor", 500_000);
         assertThat(OrderMoney.dueOnlineMinor(o)).isEqualTo(100_000);
     }
 
@@ -100,16 +101,16 @@ class OrderMoneyTest {
     void amountDue_isDueOnlineMinusReceived_neverNegative() {
         Order o = order(100_000, 30_000);
         assertThat(OrderMoney.amountDueMinor(o)).isEqualTo(70_000);
-        o.setReceivedMinor(100_000);
+        OrderFixtures.set(o, "receivedMinor", 100_000);
         assertThat(OrderMoney.amountDueMinor(o)).isZero();
-        o.setReceivedMinor(150_000);
+        OrderFixtures.set(o, "receivedMinor", 150_000);
         assertThat(OrderMoney.amountDueMinor(o)).isZero();
-        o.setReceivedMinor(-5);
+        OrderFixtures.set(o, "receivedMinor", -5);
         assertThat(OrderMoney.amountDueMinor(o)).isEqualTo(100_000);
         Order pre = order(100_000, 5_000);
-        pre.setPrepaymentMinor(20_000);
+        OrderFixtures.set(pre, "prepaymentMinor", 20_000);
         assertThat(OrderMoney.amountDueMinor(pre)).isEqualTo(15_000);
-        pre.setReceivedMinor(20_000);
+        OrderFixtures.set(pre, "receivedMinor", 20_000);
         assertThat(OrderMoney.amountDueMinor(pre)).isZero();
     }
 
@@ -117,11 +118,11 @@ class OrderMoneyTest {
     void collectable_isTotalMinusUncollected_neverNegative() {
         Order o = order(100_000, 0);
         assertThat(OrderMoney.collectableMinor(o)).isEqualTo(100_000);
-        o.setUncollectedMinor(30_000);
+        OrderFixtures.set(o, "uncollectedMinor", 30_000);
         assertThat(OrderMoney.collectableMinor(o)).isEqualTo(70_000);
-        o.setUncollectedMinor(900_000);
+        OrderFixtures.set(o, "uncollectedMinor", 900_000);
         assertThat(OrderMoney.collectableMinor(o)).isZero();
-        o.setUncollectedMinor(-10);
+        OrderFixtures.set(o, "uncollectedMinor", -10);
         assertThat(OrderMoney.collectableMinor(o)).isEqualTo(100_000);
     }
 
@@ -129,13 +130,13 @@ class OrderMoneyTest {
     void onlinePaymentMissing_needsDeadline_andSomethingStillDue() {
         Order o = order(100_000, 0);
         assertThat(OrderMoney.onlinePaymentMissing(o)).isFalse(); // older order: no deadline
-        o.setPaymentDueAt(Instant.now());
+        OrderFixtures.set(o, "paymentDueAt", Instant.now());
         assertThat(OrderMoney.onlinePaymentMissing(o)).isTrue();
-        o.setReceivedMinor(100_000);
+        OrderFixtures.set(o, "receivedMinor", 100_000);
         assertThat(OrderMoney.onlinePaymentMissing(o)).isFalse();
         Order pre = order(100_000, 20_000);
-        pre.setPrepaymentMinor(20_000);
-        pre.setPaymentDueAt(Instant.now());
+        OrderFixtures.set(pre, "prepaymentMinor", 20_000);
+        OrderFixtures.set(pre, "paymentDueAt", Instant.now());
         assertThat(OrderMoney.onlinePaymentMissing(pre)).isFalse();
     }
 
@@ -144,14 +145,14 @@ class OrderMoneyTest {
         Order o = order(100_000, 30_000);
         assertThat(OrderMoney.receivedMinor(o)).isEqualTo(30_000);
         assertThat(OrderMoney.codMinor(o)).isEqualTo(70_000);
-        o.setReceivedMinor(250_000);
+        OrderFixtures.set(o, "receivedMinor", 250_000);
         assertThat(OrderMoney.receivedMinor(o)).isEqualTo(100_000);
         assertThat(OrderMoney.codMinor(o)).isZero();
-        o.setReceivedMinor(-7);
+        OrderFixtures.set(o, "receivedMinor", -7);
         assertThat(OrderMoney.receivedMinor(o)).isZero();
         assertThat(OrderMoney.codMinor(o)).isEqualTo(100_000);
         Order part = order(100_000, 20_000);
-        part.setUncollectedMinor(30_000);
+        OrderFixtures.set(part, "uncollectedMinor", 30_000);
         assertThat(OrderMoney.codMinor(part)).isEqualTo(50_000);
     }
 
@@ -160,14 +161,14 @@ class OrderMoneyTest {
     @Test
     void refundable_isRawReceivedMinusRefunded_notCappedAtTotal() {
         Order o = order(100_000, 130_000);
-        o.setRefundedMinor(10_000);
+        OrderFixtures.set(o, "refundedMinor", 10_000);
         assertThat(OrderMoney.refundableMinor(o)).isEqualTo(120_000);
-        o.setRefundedMinor(-5);
+        OrderFixtures.set(o, "refundedMinor", -5);
         assertThat(OrderMoney.refundableMinor(o)).isEqualTo(130_000);
-        o.setRefundedMinor(900_000);
+        OrderFixtures.set(o, "refundedMinor", 900_000);
         assertThat(OrderMoney.refundableMinor(o)).isZero();
-        o.setReceivedMinor(-1);
-        o.setRefundedMinor(0);
+        OrderFixtures.set(o, "receivedMinor", -1);
+        OrderFixtures.set(o, "refundedMinor", 0);
         assertThat(OrderMoney.refundableMinor(o)).isZero();
     }
 
@@ -175,15 +176,15 @@ class OrderMoneyTest {
 
     private static Order orderOf(long discount, long[][] priceQty) {
         Order o = new Order();
-        o.setItems(new ArrayList<>());
+        OrderFixtures.set(o, "items", new ArrayList<>());
         long sub = 0;
         for (long[] pq : priceQty) {
             line(o, pq[0], (int) pq[1], false);
             sub += pq[0] * pq[1];
         }
-        o.setSubtotalMinor(sub);
-        o.setDiscountMinor(discount);
-        o.setTotalMinor(Math.max(0, sub - discount));
+        OrderFixtures.set(o, "subtotalMinor", sub);
+        OrderFixtures.set(o, "discountMinor", discount);
+        OrderFixtures.set(o, "totalMinor", Math.max(0, sub - discount));
         return o;
     }
 
@@ -270,8 +271,8 @@ class OrderMoneyTest {
     @Test
     void unitPaid_giftAndZeroPriceCostNothing() {
         Order o = order(10_000, 0);
-        o.setSubtotalMinor(10_000);
-        o.setDiscountMinor(1_000);
+        OrderFixtures.set(o, "subtotalMinor", 10_000);
+        OrderFixtures.set(o, "discountMinor", 1_000);
         OrderItem gift = line(o, 5_000, 1, true);
         OrderItem free = line(o, 0, 1, false);
         assertThat(OrderMoney.linePaidMinor(o, gift)).isZero();
@@ -309,7 +310,7 @@ class OrderMoneyTest {
         OrderItem a = line(o, 5_000, 1, false);
         OrderItem gift = line(o, 0, 1, true);
         OrderItem b = line(o, 5_000, 1, false);
-        o.setDiscountMinor(1_001);
+        OrderFixtures.set(o, "discountMinor", 1_001);
         assertThat(OrderMoney.linePaidMinor(o, gift)).isZero();
         assertThat(OrderMoney.linePaidMinor(o, a) + OrderMoney.linePaidMinor(o, b)).isEqualTo(8_999);
     }

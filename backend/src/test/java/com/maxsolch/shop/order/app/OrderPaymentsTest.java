@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.platform.error.DomainException;
@@ -23,8 +24,8 @@ class OrderPaymentsTest extends OrderScenarioTestBase {
     @Test
     void recordOnlinePayment_creditsTheMoneyMarksPaidAndKeepsTheStatus() {
         Order o = persistedOrder(OrderStatus.NEW);
-        o.setTotalMinor(50_000);
-        o.setPrepaymentMinor(10_000);
+        OrderFixtures.set(o, "totalMinor", 50_000);
+        OrderFixtures.set(o, "prepaymentMinor", 10_000);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         Order paid = payments.recordOnlinePayment(o.getId(), 10_000);
@@ -45,11 +46,11 @@ class OrderPaymentsTest extends OrderScenarioTestBase {
     void recordOnlinePayment_receivedIsCappedAtTheTotal() {
         // e.g. the total was lowered (a discount) after the customer had paid in full
         Order o = persistedOrder(OrderStatus.NEW);
-        o.setTotalMinor(30_000);
-        o.setReceivedMinor(20_000);
-        o.setPaid(true);
+        OrderFixtures.set(o, "totalMinor", 30_000);
+        OrderFixtures.set(o, "receivedMinor", 20_000);
+        OrderFixtures.set(o, "paid", true);
         Instant paidAt = Instant.now().minus(java.time.Duration.ofHours(1));
-        o.setPaidAt(paidAt);
+        OrderFixtures.set(o, "paidAt", paidAt);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         Order paid = payments.recordOnlinePayment(o.getId(), 20_000);
@@ -62,7 +63,7 @@ class OrderPaymentsTest extends OrderScenarioTestBase {
     @Test
     void recordOnlineRefund_addsToRefunded() {
         Order o = persistedOrder(OrderStatus.REJECTED);
-        o.setRefundedMinor(1_000);
+        OrderFixtures.set(o, "refundedMinor", 1_000);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         assertThat(payments.recordOnlineRefund(o.getId(), 4_000).getRefundedMinor()).isEqualTo(5_000);
@@ -71,7 +72,7 @@ class OrderPaymentsTest extends OrderScenarioTestBase {
     @Test
     void markPaid_recordsTheAmountAndShrinksCod() {
         Order o = persistedOrder(OrderStatus.APPROVED);
-        o.setTotalMinor(50_000);
+        OrderFixtures.set(o, "totalMinor", 50_000);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         Order paid = payments.markPaid(o.getId(), 10_000);
@@ -84,8 +85,8 @@ class OrderPaymentsTest extends OrderScenarioTestBase {
     @Test
     void markPaid_moreThanTheTotal_isRejectedInsteadOfSilentlyCapped() {
         Order o = persistedOrder(OrderStatus.APPROVED);
-        o.setTotalMinor(50_000);
-        o.setCurrency("UAH");
+        OrderFixtures.set(o, "totalMinor", 50_000);
+        OrderFixtures.set(o, "currency", "UAH");
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         assertThatThrownBy(() -> payments.markPaid(o.getId(), 999_999))
@@ -98,7 +99,7 @@ class OrderPaymentsTest extends OrderScenarioTestBase {
     @Test
     void markPaid_fullTotalIsAccepted() {
         Order o = persistedOrder(OrderStatus.APPROVED);
-        o.setTotalMinor(50_000);
+        OrderFixtures.set(o, "totalMinor", 50_000);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         Order paid = payments.markPaid(o.getId(), 50_000);
@@ -110,9 +111,9 @@ class OrderPaymentsTest extends OrderScenarioTestBase {
     @Test
     void markPaid_withZeroClearsThePayment() {
         Order o = persistedOrder(OrderStatus.APPROVED);
-        o.setTotalMinor(50_000);
-        o.setPaid(true);
-        o.setReceivedMinor(50_000);
+        OrderFixtures.set(o, "totalMinor", 50_000);
+        OrderFixtures.set(o, "paid", true);
+        OrderFixtures.set(o, "receivedMinor", 50_000);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         Order cleared = payments.markPaid(o.getId(), 0);
@@ -125,11 +126,11 @@ class OrderPaymentsTest extends OrderScenarioTestBase {
     @Test
     void markPaid_correctingAPaidOrder_keepsTheOriginalPaymentDate() {
         Order o = persistedOrder(OrderStatus.APPROVED);
-        o.setTotalMinor(50_000);
+        OrderFixtures.set(o, "totalMinor", 50_000);
         Instant paidAt = Instant.parse("2026-10-01T10:00:00Z");
-        o.setPaid(true);
-        o.setPaidAt(paidAt);
-        o.setReceivedMinor(10_000);
+        OrderFixtures.set(o, "paid", true);
+        OrderFixtures.set(o, "paidAt", paidAt);
+        OrderFixtures.set(o, "receivedMinor", 10_000);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         Order fixed = payments.markPaid(o.getId(), 50_000);
@@ -141,7 +142,7 @@ class OrderPaymentsTest extends OrderScenarioTestBase {
     @Test
     void markPaid_firstPayment_isDatedNow() {
         Order o = persistedOrder(OrderStatus.APPROVED);
-        o.setTotalMinor(50_000);
+        OrderFixtures.set(o, "totalMinor", 50_000);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         Instant before = Instant.now();
 

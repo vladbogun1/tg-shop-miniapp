@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.cart.app.CartService;
@@ -122,7 +123,7 @@ abstract class OrderScenarioTestBase {
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
             Order o = inv.getArgument(0);
             if (o.getId() == null) {
-                o.setId(UuidUtil.randomBytes());
+                OrderFixtures.set(o, "id", UuidUtil.randomBytes());
             }
             return o;
         });
@@ -199,30 +200,30 @@ abstract class OrderScenarioTestBase {
 
     Order persistedOrder(OrderStatus status) {
         Order o = new Order();
-        o.setId(UuidUtil.randomBytes());
+        OrderFixtures.set(o, "id", UuidUtil.randomBytes());
         OrderStates.withStatus(o, status);
-        o.setItems(new ArrayList<>());
+        OrderFixtures.set(o, "items", new ArrayList<>());
         return o;
     }
 
     Order approvedPrepaymentNotPaid() {
         Order o = persistedOrder(OrderStatus.APPROVED);
-        o.setTotalMinor(135_000);
-        o.setPrepaymentMinor(10_000);
-        o.setReceivedMinor(0);
-        o.setPaymentDueAt(Instant.now().minusSeconds(3600));
+        OrderFixtures.set(o, "totalMinor", 135_000);
+        OrderFixtures.set(o, "prepaymentMinor", 10_000);
+        OrderFixtures.set(o, "receivedMinor", 0);
+        OrderFixtures.set(o, "paymentDueAt", Instant.now().minusSeconds(3600));
         return o;
     }
 
     Order unpaidOrderWithOneItem(Product p, int qty, Instant dueAt) {
         Order o = persistedOrder(OrderStatus.NEW);
-        o.setTotalMinor(p.getPriceMinor() * qty);
-        o.setPaymentDueAt(dueAt);
+        OrderFixtures.set(o, "totalMinor", p.getPriceMinor() * qty);
+        OrderFixtures.set(o, "paymentDueAt", dueAt);
         OrderItem it = new OrderItem();
-        it.setProductId(p.getId());
-        it.setQuantity(qty);
-        it.setTitleSnapshot(p.getTitle());
-        o.getItems().add(it);
+        OrderFixtures.set(it, "productId", p.getId());
+        OrderFixtures.set(it, "quantity", qty);
+        OrderFixtures.set(it, "titleSnapshot", p.getTitle());
+        o.addLine(it);
         return o;
     }
 
@@ -249,21 +250,21 @@ abstract class OrderScenarioTestBase {
         xl.setSortOrder(2);
         p.setVariants(new ArrayList<>(List.of(m, l, xl)));
         Order o = new Order();
-        o.setId(UuidUtil.randomBytes());
+        OrderFixtures.set(o, "id", UuidUtil.randomBytes());
         OrderStates.withStatus(o, status);
-        o.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_OPENED);
+        OrderFixtures.set(o, "giftCaseStatus", GiftCaseRules.GIFT_CASE_OPENED);
         OrderItem line = new OrderItem();
-        line.setOrder(o);
-        line.setProductId(productId);
-        line.setTitleSnapshot(p.getTitle());
-        line.setQuantity(1);
-        line.setGift(true);
-        line.setAutoGift(true);
-        line.setCaseRarity("RARE");
-        line.setVariantId(m.getId());
-        line.setVariantNameSnapshot("M");
-        line.setVariantPending(true);
-        o.getItems().add(line);
+        OrderFixtures.set(line, "order", o);
+        OrderFixtures.set(line, "productId", productId);
+        OrderFixtures.set(line, "titleSnapshot", p.getTitle());
+        OrderFixtures.set(line, "quantity", 1);
+        OrderFixtures.set(line, "gift", true);
+        OrderFixtures.set(line, "autoGift", true);
+        OrderFixtures.set(line, "caseRarity", "RARE");
+        OrderFixtures.set(line, "variantId", m.getId());
+        OrderFixtures.set(line, "variantNameSnapshot", "M");
+        OrderFixtures.set(line, "variantPending", true);
+        o.addLine(line);
         lenient().when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         lenient().when(productRepository.findByIdForUpdate(productId)).thenReturn(Optional.of(p));
         lenient().when(productRepository.findById(productId)).thenReturn(Optional.of(p));
@@ -306,13 +307,13 @@ abstract class OrderScenarioTestBase {
     Order orderWithOneLine(OrderStatus status, long price, int qty) {
         Order o = persistedOrder(status);
         OrderItem item = new OrderItem();
-        item.setOrder(o);
-        item.setProductId(productId);
-        item.setPriceMinorSnapshot(price);
-        item.setQuantity(qty);
-        o.getItems().add(item);
-        o.setSubtotalMinor(price * qty);
-        o.setTotalMinor(price * qty);
+        OrderFixtures.set(item, "order", o);
+        OrderFixtures.set(item, "productId", productId);
+        OrderFixtures.set(item, "priceMinorSnapshot", price);
+        OrderFixtures.set(item, "quantity", qty);
+        o.addLine(item);
+        OrderFixtures.set(o, "subtotalMinor", price * qty);
+        OrderFixtures.set(o, "totalMinor", price * qty);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         return o;
     }

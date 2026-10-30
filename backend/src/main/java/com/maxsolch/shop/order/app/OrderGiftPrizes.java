@@ -46,10 +46,7 @@ class OrderGiftPrizes {
         Decision d = plan.decide(order.getTotalMinor(), choice, gate(locked), () -> gifts.limitLeft(order), lowMargin);
         switch (d) {
             case Decision.Discount x -> {
-                order.setGiftTier(x.tier());
-                order.setGiftDiscountMinor(x.amountMinor());
-                order.setDiscountMinor(Math.min(order.getSubtotalMinor(), order.getDiscountMinor() + x.amountMinor()));
-                order.setTotalMinor(OrderMoney.totalMinor(order.getSubtotalMinor(), order.getDiscountMinor()));
+                order.grantGiftDiscount(x.tier(), x.amountMinor());
                 return null;
             }
             case Decision.Prize p -> {
@@ -87,9 +84,7 @@ class OrderGiftPrizes {
             }
             title = p.getTitle();
         }
-        order.setGiftTier(prize.tier());
-        order.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_SEALED);
-        order.setGiftCaseOpenedAt(null);
+        order.sealGiftCase(prize.tier());
         String productTitle = title;
         return orderId -> prize.recorder().save(orderId, productTitle);
     }
@@ -109,26 +104,15 @@ class OrderGiftPrizes {
                     .max(Comparator.comparingInt(ProductVariant::getStock))
                     .orElseThrow();
         }
-        OrderItem item = new OrderItem();
+        OrderItem item = OrderItem.autoGift(order, product.getId(), product.getTitle(), product.getPriceMinor(), caseRarity);
         stock.reserve(product, variant, 1, item);
-        item.setOrder(order);
-        item.setProductId(product.getId());
-        item.setTitleSnapshot(product.getTitle());
-        item.setPriceMinorSnapshot(0);
-        item.setQuantity(1);
-        item.setGift(true);
-        item.setGiftValueMinor(product.getPriceMinor());
-        item.setAutoGift(true);
-        item.setCaseRarity(caseRarity);
         if (variant != null) {
-            item.setVariantId(variant.getId());
-            item.setVariantNameSnapshot(variant.getName());
             // A case prize with a choice of sizes: the fullest one is held until the customer picks theirs.
             ProductVariant held = variant;
-            item.setVariantPending(caseRarity != null
+            item.withVariant(variant.getId(), variant.getName()).pendingVariant(caseRarity != null
                     && product.getVariants().stream().anyMatch(v -> v != held && v.getStock() > 0));
         }
-        order.getItems().add(item);
+        order.addLine(item);
         toSave.add(product);
         return true;
     }

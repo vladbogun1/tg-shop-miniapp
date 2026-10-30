@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.platform.error.DomainException;
@@ -43,9 +44,9 @@ class OrderEditingTest extends OrderScenarioTestBase {
     @Test
     void applyDiscount_clearReleasesTheRealPromoUsageAndDropsTheDiscount() {
         Order o = orderWithOneLine(OrderStatus.APPROVED, 10_000, 1);
-        o.setPromoCode("SAVE10");
-        o.setDiscountMinor(1_000);
-        o.setTotalMinor(9_000);
+        OrderFixtures.set(o, "promoCode", "SAVE10");
+        OrderFixtures.set(o, "discountMinor", 1_000);
+        OrderFixtures.set(o, "totalMinor", 9_000);
         PromoCode code = new PromoCode();
         code.setCode("SAVE10");
         code.setUsesCount(3);

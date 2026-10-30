@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.domain.Order;
@@ -12,11 +13,11 @@ class GiftCaseOpenableTest {
 
     private static Order order(String caseStatus, OrderStatus status, boolean paid, long received) {
         Order o = new Order();
-        o.setGiftCaseStatus(caseStatus);
+        OrderFixtures.set(o, "giftCaseStatus", caseStatus);
         OrderStates.withStatus(o, status);
-        o.setTotalMinor(300_000);
-        o.setPaid(paid);
-        o.setReceivedMinor(received);
+        OrderFixtures.set(o, "totalMinor", 300_000);
+        OrderFixtures.set(o, "paid", paid);
+        OrderFixtures.set(o, "receivedMinor", received);
         return o;
     }
 

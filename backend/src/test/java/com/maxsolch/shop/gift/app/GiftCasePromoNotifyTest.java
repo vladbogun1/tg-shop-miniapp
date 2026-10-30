@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.gift.domain.GiftCaseItem;
 import com.maxsolch.shop.gift.domain.OrderGiftCase;
 
@@ -57,7 +58,7 @@ class GiftCasePromoNotifyTest {
         rec.setDiscountPercent(10);
         rec.setPromoCode(code);
         Order order = new Order();
-        order.setUserId(42L);
+        OrderFixtures.set(order, "userId", 42L);
         when(orderService.openGiftCase(ORDER_ID)).thenReturn(order);
         when(giftService.orderCase(ORDER_ID)).thenReturn(Optional.of(rec));
         lenient().when(giftService.casePrizes(anyString(), anyString())).thenReturn(List.of());

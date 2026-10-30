@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.gift.domain.GiftCaseItem;
 import com.maxsolch.shop.gift.domain.GiftCaseTier;
 import com.maxsolch.shop.gift.domain.OrderGiftCase;
@@ -121,7 +122,7 @@ class GiftForOrdersTest {
     @Test
     void theLimitLeftComesFromTheRegistryOfThePersonOfTheOrder() {
         var order = new com.maxsolch.shop.order.domain.Order();
-        order.setUserId(1L);
+        OrderFixtures.set(order, "userId", 1L);
         when(registry.remainingMinor(any(), any())).thenReturn(123L);
 
         assertThat(gifts.limitLeft(order)).isEqualTo(123L);

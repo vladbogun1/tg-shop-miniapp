@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment.api;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.app.CustomerOrders;
 import com.maxsolch.shop.order.app.OrderDetailDto;
 import com.maxsolch.shop.order.app.OrderLookup;
@@ -59,8 +60,8 @@ class MeOrderPaymentRefreshTest {
     @BeforeEach
     void setUp() {
         order = new Order();
-        order.setId(UuidUtil.randomBytes());
-        order.setUserId(100L);
+        OrderFixtures.set(order, "id", UuidUtil.randomBytes());
+        OrderFixtures.set(order, "userId", 100L);
         id = UuidUtil.toString(order.getId());
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(orders.findById(any())).thenReturn(Optional.of(order));
@@ -96,8 +97,8 @@ class MeOrderPaymentRefreshTest {
         verify(lookup, times(2)).get(order.getId());
 
         Order second = new Order();
-        second.setId(UuidUtil.randomBytes());
-        second.setUserId(100L);
+        OrderFixtures.set(second, "id", UuidUtil.randomBytes());
+        OrderFixtures.set(second, "userId", 100L);
         when(orders.findById(second.getId())).thenReturn(Optional.of(second));
         when(lookup.get(second.getId())).thenReturn(second);
         c.refreshPayment(UuidUtil.toString(second.getId()), Locale.forLanguageTag("uk"));

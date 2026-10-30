@@ -45,15 +45,7 @@ public class OrderPayments {
     public Order markPaid(byte[] orderId, long receivedMinor, OrderMoneyMovement.Channel channel,
                           String adminName, String note) {
         Order order = ops.lock(orderId);
-        if (receivedMinor < 0) {
-            throw OrderErrors.badRequest("сумма не может быть отрицательной");
-        }
-        if (receivedMinor > order.getTotalMinor()) {
-            // Used to be clamped silently: a typo (an extra zero) recorded "paid in full" without
-            // the admin noticing the amount they typed was never what got saved.
-            throw OrderErrors.badRequest("получено больше суммы заказа ("
-                    + MoneyFormat.uah(order.getTotalMinor()) + ")");
-        }
+        order.requireReceivable(receivedMinor);
         long received = receivedMinor;
         long diff = received - order.getReceivedMinor();
         ops.ledger(order, diff > 0 ? OrderMoneyMovement.Kind.PAYMENT : OrderMoneyMovement.Kind.CORRECTION,
@@ -61,13 +53,9 @@ public class OrderPayments {
                 OrderMoneyMovement.Source.ADMIN, adminName,
                 note == null || note.isBlank() ? (diff > 0 ? "отмечено получено" : "исправлено «получено»") : note,
                 null);
-        order.setReceivedMinor(received);
-        boolean paid = received > 0 || order.getTotalMinor() == 0; // a free order stays paid (settleIfFree)
         // Correcting the amount of an order that is already paid keeps the original payment date:
         // resetting it to "now" moved the money to the day of the edit in the metrics ("Получено").
-        boolean wasPaid = order.isPaid() && order.getPaidAt() != null;
-        order.setPaid(paid);
-        order.setPaidAt(!paid ? null : wasPaid ? order.getPaidAt() : ops.now());
+        order.recordReceived(received, ops.now());
         Order saved = orderRepository.save(order);
         // COD on the seller's card changes with the received amount: keep it in sync.
         events.publish(OrderEvents.Edited.silent(saved.getId()));
@@ -87,21 +75,15 @@ public class OrderPayments {
     @Transactional
     public Order recordOnlinePayment(byte[] orderId, long amountMinor, String invoiceExtId) {
         Order order = ops.lock(orderId);
-        long before = Math.max(0, order.getReceivedMinor());
-        long received = Math.min(order.getTotalMinor(), before + amountMinor);
         // The journal books what the order counts (received is capped at the total), so it always
         // matches received - refunded; the bank's full amount stays in the note.
-        long counted = Math.max(0, received - before);
+        long counted = order.creditableOnlineMinor(amountMinor);
         ops.ledger(order, OrderMoneyMovement.Kind.PAYMENT, OrderMoneyMovement.Channel.MONO, counted,
                 OrderMoneyMovement.Source.AUTO, null,
                 counted == amountMinor ? "оплата monobank"
                         : "оплата monobank " + MoneyFormat.uah(amountMinor) + ", зачтено в пределах суммы заказа",
                 invoiceExtId);
-        order.setReceivedMinor(received);
-        if (received > 0 && !order.isPaid()) {
-            order.setPaid(true);
-            order.setPaidAt(ops.now());
-        }
+        order.receiveOnline(amountMinor, ops.now());
         Order saved = orderRepository.save(order);
         events.publish(new OrderEvents.PaymentReceived(saved.getId(), amountMinor));
         return saved;
@@ -118,7 +100,7 @@ public class OrderPayments {
         Order order = ops.lock(orderId);
         ops.ledger(order, OrderMoneyMovement.Kind.REFUND, OrderMoneyMovement.Channel.MONO, amountMinor,
                 OrderMoneyMovement.Source.AUTO, null, "возврат на карту (monobank)", invoiceExtId);
-        order.setRefundedMinor(Math.max(0, order.getRefundedMinor()) + amountMinor);
+        order.registerRefund(amountMinor);
         Order saved = orderRepository.save(order);
         events.publish(OrderEvents.Edited.silent(saved.getId()));
         return saved;

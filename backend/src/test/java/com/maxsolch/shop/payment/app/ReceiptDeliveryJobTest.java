@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.platform.cache.CacheConfig;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.domain.ReceiptKind;
@@ -69,8 +70,8 @@ class ReceiptDeliveryJobTest {
                 new org.springframework.cache.concurrent.ConcurrentMapCacheManager(CacheConfig.RECEIPT_DELIVERY_QUIET),
                 java.time.Clock.systemUTC());
         order = new Order();
-        order.setId(UuidUtil.randomBytes());
-        order.setTgUserId(TG);
+        OrderFixtures.set(order, "id", UuidUtil.randomBytes());
+        OrderFixtures.set(order, "tgUserId", TG);
         inv = new PaymentInvoice();
         inv.setId(UuidUtil.randomBytes());
         inv.setOrderId(order.getId());
@@ -222,12 +223,12 @@ class ReceiptDeliveryJobTest {
 
     @Test
     void noTelegramAccountOrBlocked_skipped() {
-        order.setTgUserId(null);
+        OrderFixtures.set(order, "tgUserId", null);
         job.deliver(NOW);
 
         User blocked = new User();
         blocked.setBotBlocked(true);
-        order.setTgUserId(TG);
+        OrderFixtures.set(order, "tgUserId", TG);
         when(users.findById(TG)).thenReturn(Optional.of(blocked));
         job.deliver(NOW);
 

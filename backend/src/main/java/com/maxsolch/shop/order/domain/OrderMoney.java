@@ -3,8 +3,8 @@ package com.maxsolch.shop.order.domain;
 import java.util.List;
 
 /**
- * Денежная арифметика заказа в одном месте: всё в минорных единицах (копейки), без Spring и без
- * состояния. Формулы перенесены из старого OrderService / OrderQueryService / OrderAdjustmentService без
+ * Денежная арифметика заказа в одном месте: всё в минорных единицах (копейки), без Spring, без
+ * состояния и без изменения заказа (числа в заказ пишут только методы {@link Order}). Формулы перенесены из старого OrderService / OrderQueryService / OrderAdjustmentService без
  * изменений — у каждой ниже записано, чем она отличается от соседней (кап received, знак и т.п.).
  */
 public final class OrderMoney {
@@ -23,20 +23,6 @@ public final class OrderMoney {
     /** Итог заказа: подитог минус скидка, не меньше нуля. */
     public static long totalMinor(long subtotalMinor, long discountMinor) {
         return Math.max(0, subtotalMinor - discountMinor);
-    }
-
-    /**
-     * Пересчёт после правки состава: подитог из строк, сохранённая скидка ограничена подитогом,
-     * скидка подарка не больше скидки, итог = подитог минус скидка. Заказ на 0 ₴ «оплачивает»
-     * вызывающий (settleFreeOrder) — это статус, а не арифметика.
-     */
-    public static void reprice(Order order) {
-        long subtotal = subtotalMinor(order);
-        order.setSubtotalMinor(subtotal);
-        long discount = Math.min(Math.max(0, order.getDiscountMinor()), subtotal);
-        order.setDiscountMinor(discount);
-        order.setGiftDiscountMinor(Math.min(order.getGiftDiscountMinor(), discount));
-        order.setTotalMinor(totalMinor(subtotal, discount));
     }
 
     // ----- к оплате / наложка -----

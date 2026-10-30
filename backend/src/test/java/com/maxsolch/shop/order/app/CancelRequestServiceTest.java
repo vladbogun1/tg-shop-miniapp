@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
@@ -48,10 +49,10 @@ class CancelRequestServiceTest {
 
     private Order rejected(long received) {
         Order o = new Order();
-        o.setId(orderId);
+        OrderFixtures.set(o, "id", orderId);
         OrderStates.withStatus(o, OrderStatus.REJECTED);
-        o.setTotalMinor(100_000);
-        o.setReceivedMinor(received);
+        OrderFixtures.set(o, "totalMinor", 100_000);
+        OrderFixtures.set(o, "receivedMinor", received);
         return o;
     }
 

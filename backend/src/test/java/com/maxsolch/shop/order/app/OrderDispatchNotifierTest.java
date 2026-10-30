@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.OrderStatus;
@@ -32,9 +33,9 @@ class OrderDispatchNotifierTest {
 
     private static Order approvedOrder() {
         Order o = new Order();
-        o.setId(UuidUtil.randomBytes());
+        OrderFixtures.set(o, "id", UuidUtil.randomBytes());
         OrderStates.withStatus(o, OrderStatus.APPROVED);
-        o.setItems(new ArrayList<>());
+        OrderFixtures.set(o, "items", new ArrayList<>());
         return o;
     }
 
@@ -42,10 +43,10 @@ class OrderDispatchNotifierTest {
     void broadcastDispatch_writesOnlyChangedCardIds_withoutDirtyFlushingTheOrder() {
         Order posted = approvedOrder();
         Order unchanged = approvedOrder();
-        unchanged.setDispatchMessageId(5);
+        OrderFixtures.set(unchanged, "dispatchMessageId", 5);
         when(orderRepository.findWithItemsByStatus(OrderStatus.APPROVED)).thenReturn(List.of(posted, unchanged));
         when(notificationService.syncDispatchCard(posted)).thenAnswer(inv -> {
-            posted.setDispatchMessageId(99);
+            OrderFixtures.set(posted, "dispatchMessageId", 99);
             return true;
         });
         when(notificationService.syncDispatchCard(unchanged)).thenReturn(false);

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.returns.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
@@ -23,8 +24,8 @@ class DefectWriteoffsTest extends ReturnsTestBase {
     @Test
     void restoreWriteoff_defectGoesBackOnTheShelf_andCancelThenTakesItFromThere() {
         Order o = order(OrderStatus.DELIVERED);
-        o.setReceivedMinor(30_000);
-        o.setPaid(true);
+        OrderFixtures.set(o, "receivedMinor", 30_000);
+        OrderFixtures.set(o, "paid", true);
         Product p = product(0);
         OrderItem it = item(o, p, 1L, 1);
         when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));

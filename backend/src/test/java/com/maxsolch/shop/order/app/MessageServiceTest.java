@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.platform.web.TopicBroadcaster;
 import com.maxsolch.shop.platform.web.TopicMessagePosted;
 import com.maxsolch.shop.media.app.MediaSigner;
@@ -42,7 +43,7 @@ class MessageServiceTest {
     @BeforeEach
     void setUp() {
         Order order = new Order();
-        order.setId(orderId);
+        OrderFixtures.set(order, "id", orderId);
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(messageRepository.saveAndFlush(any(OrderMessage.class))).thenAnswer(inv -> inv.getArgument(0));
         service = new MessageService(messageRepository, orderRepository, events, signer,

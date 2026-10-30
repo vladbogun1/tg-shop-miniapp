@@ -1,5 +1,6 @@
 package com.maxsolch.shop.returns.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.order.app.MoneyLedger;
 import com.maxsolch.shop.order.app.OrderApp;
@@ -35,18 +36,18 @@ class ExchangesTest extends ReturnsTestBase {
     @Test
     void exchange_deliveredOrderKeepsItsTracking_replacementIsANewLinkedOrder() {
         Order o = order(OrderStatus.DELIVERED);
-        o.setTrackingNumber("20450000000000");
-        o.setPaymentOptionId(UuidUtil.randomBytes());
-        o.setReceivedMinor(20_000);
-        o.setPaid(true);
-        o.setUserId(77L);
+        OrderFixtures.set(o, "trackingNumber", "20450000000000");
+        OrderFixtures.set(o, "paymentOptionId", UuidUtil.randomBytes());
+        OrderFixtures.set(o, "receivedMinor", 20_000);
+        OrderFixtures.set(o, "paid", true);
+        OrderFixtures.set(o, "userId", 77L);
         Product mouse = product(5);
         Product other = product(3);
         other.setTitle("Клава");
         other.setPriceMinor(15_000);
         item(o, mouse, 1L, 2);
-        o.setSubtotalMinor(20_000);
-        o.setTotalMinor(20_000);
+        OrderFixtures.set(o, "subtotalMinor", 20_000);
+        OrderFixtures.set(o, "totalMinor", 20_000);
         List<Order> all = trackOrders(o);
         when(productRepository.findByIdForUpdate(other.getId())).thenReturn(Optional.of(other));
 
@@ -93,17 +94,17 @@ class ExchangesTest extends ReturnsTestBase {
     void exchange_creditFollowsTheExactPaidAmountOfTheLine() {
         // 3333 x 3 with 10 ₴ off, paid 89.99: exchanging all three moves exactly 89.99 over, not 90.00.
         Order o = order(OrderStatus.DELIVERED);
-        o.setPaymentOptionId(UuidUtil.randomBytes());
-        o.setReceivedMinor(8_999);
-        o.setPaid(true);
-        o.setUserId(77L);
+        OrderFixtures.set(o, "paymentOptionId", UuidUtil.randomBytes());
+        OrderFixtures.set(o, "receivedMinor", 8_999);
+        OrderFixtures.set(o, "paid", true);
+        OrderFixtures.set(o, "userId", 77L);
         Product other = product(3);
         other.setPriceMinor(20_000);
         OrderItem line = item(o, product(5), 1L, 3);
-        line.setPriceMinorSnapshot(3_333);
-        o.setSubtotalMinor(9_999);
-        o.setDiscountMinor(1_000);
-        o.setTotalMinor(8_999);
+        OrderFixtures.set(line, "priceMinorSnapshot", 3_333);
+        OrderFixtures.set(o, "subtotalMinor", 9_999);
+        OrderFixtures.set(o, "discountMinor", 1_000);
+        OrderFixtures.set(o, "totalMinor", 8_999);
         trackOrders(o);
         when(productRepository.findByIdForUpdate(other.getId())).thenReturn(Optional.of(other));
 
@@ -122,9 +123,9 @@ class ExchangesTest extends ReturnsTestBase {
         Product other = product(3);
         other.setPriceMinor(5_000);
         item(o, mouse, 1L, 1);
-        o.setSubtotalMinor(10_000);
-        o.setTotalMinor(10_000);
-        o.setReceivedMinor(10_000);
+        OrderFixtures.set(o, "subtotalMinor", 10_000);
+        OrderFixtures.set(o, "totalMinor", 10_000);
+        OrderFixtures.set(o, "receivedMinor", 10_000);
         trackOrders(o);
         when(productRepository.findByIdForUpdate(other.getId())).thenReturn(Optional.of(other));
 
@@ -177,9 +178,9 @@ class ExchangesTest extends ReturnsTestBase {
     @Test
     void deliver_afterCheaperExchange_keepsTheOverpayment() {
         Order o = order(OrderStatus.SHIPPED);
-        o.setTotalMinor(5_000);
-        o.setReceivedMinor(10_000);
-        o.setPaid(true);
+        OrderFixtures.set(o, "totalMinor", 5_000);
+        OrderFixtures.set(o, "receivedMinor", 10_000);
+        OrderFixtures.set(o, "paid", true);
         OrderApp app = OrderApp.create(orderRepository, productRepository,
                 promoCodeRepository, paymentOptionRepository, events,
                 promoService, cartService, messages, entityManager,

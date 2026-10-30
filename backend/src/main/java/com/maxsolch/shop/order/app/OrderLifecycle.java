@@ -135,8 +135,7 @@ public class OrderLifecycle {
         if (requestWasOpen) {
             // Rejected by hand while the customer request was open: the request is fulfilled
             // (the refund, if any, stays the admin call; the inbox keeps reminding).
-            order.setCancelRequestStatus(CancelRequestStatus.APPROVED.name());
-            order.setCancelRequestResolvedAt(now);
+            order.fulfilCancelRequest(now);
         }
         Order saved = ops.reject(order, new RejectCause(now,
                 reason == null || reason.isBlank() ? null : reason.trim(),

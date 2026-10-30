@@ -59,9 +59,7 @@ public class OrderArchive {
             throw OrderErrors.badRequest("причина длиннее 500 символов");
         }
         requireNoOnlineMoneyInFlight(orderId);
-        order.setArchivedAt(ops.now());
-        order.setArchivedBy(adminName);
-        order.setArchiveReason(why);
+        order.archive(ops.now(), adminName, why);
         Order saved = orderRepository.save(order);
         events.publish(OrderEvents.Edited.silent(saved.getId()));
         return saved;
@@ -74,9 +72,7 @@ public class OrderArchive {
         if (order.getArchivedAt() == null) {
             throw OrderErrors.badRequest("заказ не в архиве");
         }
-        order.setArchivedAt(null);
-        order.setArchivedBy(null);
-        order.setArchiveReason(null);
+        order.unarchive();
         Order saved = orderRepository.save(order);
         events.publish(OrderEvents.Edited.silent(saved.getId()));
         return saved;

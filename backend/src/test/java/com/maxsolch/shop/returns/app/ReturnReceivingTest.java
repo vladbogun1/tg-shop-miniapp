@@ -1,5 +1,6 @@
 package com.maxsolch.shop.returns.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.order.app.OrderChange;
 import com.maxsolch.shop.order.domain.Order;
@@ -31,7 +32,7 @@ class ReturnReceivingTest extends ReturnsTestBase {
     @Test
     void receiveReturn_brokenUnits_areWrittenOff_andTheParcelIsMarkedReceived() {
         Order o = order(OrderStatus.REJECTED);
-        o.setReturnStatus(Order.RETURN_IN_TRANSIT);
+        OrderFixtures.set(o, "returnStatus", Order.RETURN_IN_TRANSIT);
         Product p = product(0);
         OrderItem it = item(o, p, 1L, 1);
 
@@ -48,11 +49,11 @@ class ReturnReceivingTest extends ReturnsTestBase {
     @Test
     void receiveReturn_partialReturnOfADeliveredOrder_takesOnlyTheTravellingUnits() {
         Order o = order(OrderStatus.DELIVERED);
-        o.setReturnStatus(Order.RETURN_IN_TRANSIT);
+        OrderFixtures.set(o, "returnStatus", Order.RETURN_IN_TRANSIT);
         Product mouse = product(0);
         OrderItem back = item(o, mouse, 1L, 3);
-        back.setReturnedQty(2);
-        back.setReturnPendingQty(2);
+        OrderFixtures.set(back, "returnedQty", 2);
+        OrderFixtures.set(back, "returnPendingQty", 2);
         OrderItem stays = item(o, product(0), 2L, 1);
         when(productRepository.findByIdForUpdate(mouse.getId())).thenReturn(Optional.of(mouse));
 

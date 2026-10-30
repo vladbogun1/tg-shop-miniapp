@@ -67,13 +67,7 @@ public class OrderSellerNotifier {
         if (sent == null) {
             return;
         }
-        if (sent.chatId() != null) {
-            order.setNotifyChatId(sent.chatId());
-        }
-        order.setNotifyThreadId(sent.threadId() > 0 ? sent.threadId() : null);
-        if (sent.confirmed()) {
-            order.setNotifyMessageId(sent.messageId());
-        }
+        order.rememberSellerCard(sent.chatId(), sent.threadId(), sent.messageId(), sent.confirmed());
     }
 
     /** Delete a previously posted card (best-effort). */
@@ -84,7 +78,7 @@ public class OrderSellerNotifier {
             return;
         }
         channel.delete("deleteCard failed for order " + idStr(order), chatId, messageId);
-        order.setNotifyMessageId(null);
+        order.forgetSellerCard();
     }
 
     private static SellerTopic topicFor(OrderStatus status) {
@@ -174,7 +168,7 @@ public class OrderSellerNotifier {
                     entry("ADMIN_DISPATCH_CARD", order, "Карточка «К отправке» #" + shortId(order)),
                     SellerCards.buildDispatchCard(order), adminPath(order), SellerTopic.DISPATCH);
             if (sent != null && sent.confirmed()) {
-                order.setDispatchMessageId(sent.messageId());
+                order.rememberDispatchCard(sent.messageId());
                 return true;
             }
         } catch (Exception e) {
@@ -205,7 +199,7 @@ public class OrderSellerNotifier {
                     messageId, SellerCards.buildDispatchCard(order), adminPath(order));
             if (edited == SellerChannel.Edited.GONE) {
                 // The seller deleted it by hand — drop the stale id and re-post a fresh card.
-                order.setDispatchMessageId(null);
+                order.forgetDispatchCard();
                 return postDispatchCard(order);
             }
             return false;
@@ -222,7 +216,7 @@ public class OrderSellerNotifier {
      */
     public void removeDispatchCard(Order order) {
         removeDispatchCard(order.getDispatchMessageId());
-        order.setDispatchMessageId(null);
+        order.forgetDispatchCard();
     }
 
     /** Deletes a dispatch card by its message id (best-effort; null = nothing to do). */

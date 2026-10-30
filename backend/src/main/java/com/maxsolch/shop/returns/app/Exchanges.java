@@ -171,11 +171,10 @@ public class Exchanges {
             child = orderPayments.markPaid(child.getId(), moved, OrderMoneyMovement.Channel.EXCHANGE, adminName,
                     "зачёт по обмену из заказа #" + shortId);
         }
-        child.setExchangeOfOrderId(order.getId());
-        child.setUserId(order.getUserId());
+        child.replaces(order);
         // The customer chooses how to pay the difference: online in the order («Доплатити», the whole
         // rest through monobank) or наложкой on delivery. A prepayment snapshot would cap the online part.
-        child.setPrepaymentMinor(0);
+        child.dropPrepayment();
         if (to == OrderStatus.APPROVED) {
             child.approve(clock.instant());
         }

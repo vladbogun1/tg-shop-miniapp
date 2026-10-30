@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.cart.app.CartService;
@@ -86,7 +87,7 @@ class OrderStockTest {
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
             Order o = inv.getArgument(0);
             if (o.getId() == null) {
-                o.setId(UuidUtil.randomBytes());
+                OrderFixtures.set(o, "id", UuidUtil.randomBytes());
             }
             return o;
         });
@@ -124,23 +125,23 @@ class OrderStockTest {
 
     private Order order(OrderStatus status) {
         Order o = new Order();
-        o.setId(UuidUtil.randomBytes());
+        OrderFixtures.set(o, "id", UuidUtil.randomBytes());
         OrderStates.withStatus(o, status);
-        o.setItems(new ArrayList<>());
+        OrderFixtures.set(o, "items", new ArrayList<>());
         lenient().when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         return o;
     }
 
     private OrderItem line(Order o, Product p, ProductVariant v, long id, int qty) {
         OrderItem it = new OrderItem();
-        it.setId(id);
-        it.setOrder(o);
-        it.setProductId(p.getId());
-        it.setVariantId(v == null ? null : v.getId());
-        it.setTitleSnapshot(p.getTitle());
-        it.setQuantity(qty);
-        it.setPriceMinorSnapshot(1_000);
-        o.getItems().add(it);
+        OrderFixtures.set(it, "id", id);
+        OrderFixtures.set(it, "order", o);
+        OrderFixtures.set(it, "productId", p.getId());
+        OrderFixtures.set(it, "variantId", v == null ? null : v.getId());
+        OrderFixtures.set(it, "titleSnapshot", p.getTitle());
+        OrderFixtures.set(it, "quantity", qty);
+        OrderFixtures.set(it, "priceMinorSnapshot", 1_000);
+        o.addLine(it);
         return it;
     }
 
@@ -276,7 +277,7 @@ class OrderStockTest {
         Product p = product(2);
         Order o = order(OrderStatus.NEW);
         OrderItem it = line(o, p, null, 1, 3);
-        it.setVariantId(UuidUtil.randomBytes()); // variant that no longer exists
+        OrderFixtures.set(it, "variantId", UuidUtil.randomBytes()); // variant that no longer exists
 
         app.lifecycle().reject(o.getId(), "нет", true);
 
@@ -303,8 +304,8 @@ class OrderStockTest {
         Product p = product(0);
         Order o = order(OrderStatus.NEW);
         OrderItem it = line(o, p, null, 1, 5);
-        it.setRestockedQty(2);
-        it.setReturnedQty(2);
+        OrderFixtures.set(it, "restockedQty", 2);
+        OrderFixtures.set(it, "returnedQty", 2);
 
         app.lifecycle().reject(o.getId(), "нет", true);
 
@@ -318,7 +319,7 @@ class OrderStockTest {
         Product p = product(0);
         Order o = order(OrderStatus.NEW);
         OrderItem it = line(o, p, null, 1, 2);
-        it.setReturnedQty(2);
+        OrderFixtures.set(it, "returnedQty", 2);
 
         app.lifecycle().reject(o.getId(), "нет", true);
 
@@ -349,7 +350,7 @@ class OrderStockTest {
         Product p = product(5);
         Order o = order(OrderStatus.NEW);
         OrderItem it = line(o, p, null, 1, 1);
-        it.setGift(true);
+        OrderFixtures.set(it, "gift", true);
 
         app.editing().addItem(o.getId(), UuidUtil.toString(p.getId()), null, 2, true, false);
 
@@ -455,11 +456,11 @@ class OrderStockTest {
         Product p = product(0);
         ProductVariant m = variant(p, "M", 3);
         Order o = order(OrderStatus.NEW);
-        o.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_OPENED);
+        OrderFixtures.set(o, "giftCaseStatus", GiftCaseRules.GIFT_CASE_OPENED);
         OrderItem it = line(o, p, m, 5, 1);
-        it.setGift(true);
-        it.setAutoGift(true);
-        it.setCaseRarity("RARE");
+        OrderFixtures.set(it, "gift", true);
+        OrderFixtures.set(it, "autoGift", true);
+        OrderFixtures.set(it, "caseRarity", "RARE");
 
         app.giftCases().removeCasePrizeForSwap(o.getId());
 
@@ -474,12 +475,12 @@ class OrderStockTest {
         ProductVariant m = variant(p, "M", 3);
         ProductVariant l = variant(p, "L", 1);
         Order o = order(OrderStatus.NEW);
-        o.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_OPENED);
+        OrderFixtures.set(o, "giftCaseStatus", GiftCaseRules.GIFT_CASE_OPENED);
         OrderItem it = line(o, p, m, 5, 1);
-        it.setGift(true);
-        it.setAutoGift(true);
-        it.setCaseRarity("RARE");
-        it.setVariantPending(true);
+        OrderFixtures.set(it, "gift", true);
+        OrderFixtures.set(it, "autoGift", true);
+        OrderFixtures.set(it, "caseRarity", "RARE");
+        OrderFixtures.set(it, "variantPending", true);
 
         app.giftCases().chooseCasePrizeSize(o.getId(), UuidUtil.toString(l.getId()));
 

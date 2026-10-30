@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment.api;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.platform.i18n.Messages;
@@ -52,8 +53,8 @@ class MeReceiptsOwnershipTest {
                 null, new CurrentActor());
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
         order = new Order();
-        order.setId(UuidUtil.randomBytes());
-        order.setUserId(100L);
+        OrderFixtures.set(order, "id", UuidUtil.randomBytes());
+        OrderFixtures.set(order, "userId", 100L);
         lenient().when(orders.findById(any())).thenReturn(Optional.of(order));
     }
 
@@ -89,7 +90,7 @@ class MeReceiptsOwnershipTest {
     @Test
     void orderWithoutOwner_forbidden() {
         loginAs(100L);
-        order.setUserId(null);
+        OrderFixtures.set(order, "userId", null);
 
         assertThatThrownBy(() -> controller.receipts(UuidUtil.toString(order.getId())))
                 .isInstanceOf(DomainException.Forbidden.class);

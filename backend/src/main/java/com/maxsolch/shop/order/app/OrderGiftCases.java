@@ -76,8 +76,7 @@ public class OrderGiftCases {
         if (!GiftCaseRules.giftCaseOpenable(order)) {
             throw OrderErrors.badRequest(messages.current("api.giftCase.unpaid"), GiftCaseRules.GIFT_CASE_UNPAID);
         }
-        order.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_OPENED);
-        order.setGiftCaseOpenedAt(ops.now());
+        order.openGiftCase(ops.now());
         return orderRepository.save(order);
     }
 
@@ -94,7 +93,7 @@ public class OrderGiftCases {
         }
         OrderItem item = GiftCaseRules.casePrizeLine(order).orElseThrow();
         stock.restoreLine(item);
-        order.getItems().remove(item);
+        order.removeLine(item);
         ops.recomputeTotals(order);
         Order saved = orderRepository.save(order);
         events.publish(OrderEvents.Edited.silent(saved.getId()));
@@ -149,10 +148,9 @@ public class OrderGiftCases {
                 throw sizeUnavailable();
             }
             stock.moveLine(product, target, item);
-            item.setVariantId(target.getId());
-            item.setVariantNameSnapshot(target.getName());
+            item.withVariant(target.getId(), target.getName());
         }
-        item.setVariantPending(false);
+        item.confirmVariant();
         Order saved = orderRepository.save(order);
         events.publish(OrderEvents.Edited.silent(saved.getId()));
         return saved;

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.order.domain.OrderStates;
@@ -28,7 +29,7 @@ class OrderNotificationListenerTest {
 
     private Order order(OrderStatus status) {
         Order o = new Order();
-        o.setId(ID);
+        OrderFixtures.set(o, "id", ID);
         OrderStates.withStatus(o, status);
         when(orders.findById(ID)).thenReturn(Optional.of(o));
         return o;

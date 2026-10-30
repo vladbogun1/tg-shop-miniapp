@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.domain.OrderMoney;
@@ -49,28 +50,28 @@ class OrderMergeTest {
         doAnswer(inv -> {
             Order o = inv.getArgument(0);
             long sub = o.getItems().stream().mapToLong(i -> i.getPriceMinorSnapshot() * i.getQuantity()).sum();
-            o.setSubtotalMinor(sub);
-            o.setDiscountMinor(Math.min(o.getDiscountMinor(), sub));
-            o.setTotalMinor(sub - o.getDiscountMinor());
+            OrderFixtures.set(o, "subtotalMinor", sub);
+            OrderFixtures.set(o, "discountMinor", Math.min(o.getDiscountMinor(), sub));
+            OrderFixtures.set(o, "totalMinor", sub - o.getDiscountMinor());
             return null;
         }).when(ops).recomputeTotals(any());
     }
 
     private Order order(OrderStatus status, long tgUserId, OrderItem... items) {
         Order o = new Order();
-        o.setId(UuidUtil.toBytes(UUID.randomUUID().toString()));
+        OrderFixtures.set(o, "id", UuidUtil.toBytes(UUID.randomUUID().toString()));
         OrderStates.withStatus(o, status);
-        o.setTgUserId(tgUserId);
-        o.setPhone("+380671234567");
-        o.setCreatedAt(Instant.now());
+        OrderFixtures.set(o, "tgUserId", tgUserId);
+        OrderFixtures.set(o, "phone", "+380671234567");
+        OrderFixtures.set(o, "createdAt", Instant.now());
         long sub = 0;
         for (OrderItem i : items) {
-            i.setOrder(o);
-            o.getItems().add(i);
+            OrderFixtures.set(i, "order", o);
+            o.addLine(i);
             sub += i.getPriceMinorSnapshot() * i.getQuantity();
         }
-        o.setSubtotalMinor(sub);
-        o.setTotalMinor(sub);
+        OrderFixtures.set(o, "subtotalMinor", sub);
+        OrderFixtures.set(o, "totalMinor", sub);
         when(ops.lock(argThat(o.getId()))).thenReturn(o);
         return o;
     }
@@ -81,10 +82,10 @@ class OrderMergeTest {
 
     private static OrderItem item(String title, long price, int qty) {
         OrderItem i = new OrderItem();
-        i.setProductId(UuidUtil.toBytes(UUID.randomUUID().toString()));
-        i.setTitleSnapshot(title);
-        i.setPriceMinorSnapshot(price);
-        i.setQuantity(qty);
+        OrderFixtures.set(i, "productId", UuidUtil.toBytes(UUID.randomUUID().toString()));
+        OrderFixtures.set(i, "titleSnapshot", title);
+        OrderFixtures.set(i, "priceMinorSnapshot", price);
+        OrderFixtures.set(i, "quantity", qty);
         return i;
     }
 
@@ -92,15 +93,15 @@ class OrderMergeTest {
     @Test
     void merge_freeOrderIntoPrepaidOne_oneParcelWithTheRestOnDelivery() {
         Order mouse = order(OrderStatus.APPROVED, 42, item("Мышь", 280_000, 1));
-        mouse.setPrepaymentMinor(10_000);
-        mouse.setReceivedMinor(10_000);
-        mouse.setPaid(true);
-        mouse.setPaymentDueAt(Instant.now());
+        OrderFixtures.set(mouse, "prepaymentMinor", 10_000);
+        OrderFixtures.set(mouse, "receivedMinor", 10_000);
+        OrderFixtures.set(mouse, "paid", true);
+        OrderFixtures.set(mouse, "paymentDueAt", Instant.now());
         Order glides = order(OrderStatus.APPROVED, 42, item("Глайды", 15_000, 1));
-        glides.setDiscountMinor(15_000);
-        glides.setTotalMinor(0);
-        glides.setPromoCode("CASE9TSRK7");
-        glides.setPaid(true);
+        OrderFixtures.set(glides, "discountMinor", 15_000);
+        OrderFixtures.set(glides, "totalMinor", 0);
+        OrderFixtures.set(glides, "promoCode", "CASE9TSRK7");
+        OrderFixtures.set(glides, "paid", true);
 
         OrderMerge.Result r = service.merge(mouse.getId(), glides.getId(), false, true, null, "admin");
 
@@ -125,12 +126,12 @@ class OrderMergeTest {
     void merge_movesTheReceivedMoneyThroughTheJournal_andSameLinesAddUp() {
         OrderItem pad = item("Коврик", 80_000, 1);
         Order first = order(OrderStatus.NEW, 7, pad);
-        first.setPaymentDueAt(Instant.now().plusSeconds(3600));
+        OrderFixtures.set(first, "paymentDueAt", Instant.now().plusSeconds(3600));
         OrderItem pad2 = item("Коврик", 80_000, 1);
-        pad2.setProductId(pad.getProductId());
+        OrderFixtures.set(pad2, "productId", pad.getProductId());
         Order second = order(OrderStatus.NEW, 7, pad2);
-        second.setReceivedMinor(80_000);
-        second.setPaid(true);
+        OrderFixtures.set(second, "receivedMinor", 80_000);
+        OrderFixtures.set(second, "paid", true);
 
         OrderMerge.Result r = service.merge(first.getId(), second.getId(), false, false, null, "admin");
 
@@ -151,7 +152,7 @@ class OrderMergeTest {
     void merge_otherCustomer_shippedOrder_orSealedCaseAway_areRefused() {
         Order a = order(OrderStatus.NEW, 1, item("A", 1_000, 1));
         Order b = order(OrderStatus.NEW, 2, item("B", 1_000, 1));
-        b.setPhone("+380509999999");
+        OrderFixtures.set(b, "phone", "+380509999999");
         assertThatThrownBy(() -> service.merge(a.getId(), b.getId(), false, false, null, "admin"))
                 .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("одного покупателя");
 
@@ -160,7 +161,7 @@ class OrderMergeTest {
                 .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("до отправки");
 
         Order sealed = order(OrderStatus.APPROVED, 1, item("D", 1_000, 1));
-        sealed.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_SEALED);
+        OrderFixtures.set(sealed, "giftCaseStatus", GiftCaseRules.GIFT_CASE_SEALED);
         assertThatThrownBy(() -> service.merge(a.getId(), sealed.getId(), false, false, null, "admin"))
                 .isInstanceOf(DomainException.BadRequest.class).hasMessageContaining("кейс");
         // The other way round is fine: the case stays with the order that stays.
@@ -170,11 +171,11 @@ class OrderMergeTest {
     @Test
     void sameCustomer_byPhoneInAnyFormat() {
         Order a = new Order();
-        a.setPhone("+38 (067) 123-45-67");
+        OrderFixtures.set(a, "phone", "+38 (067) 123-45-67");
         Order b = new Order();
-        b.setPhone("0671234567");
+        OrderFixtures.set(b, "phone", "0671234567");
         assertThat(OrderMerge.sameCustomer(a, b)).isTrue();
-        b.setPhone("0671234568");
+        OrderFixtures.set(b, "phone", "0671234568");
         assertThat(OrderMerge.sameCustomer(a, b)).isFalse();
     }
 }

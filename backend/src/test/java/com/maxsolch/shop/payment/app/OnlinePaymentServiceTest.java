@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import java.time.Clock;
@@ -74,23 +75,23 @@ class OnlinePaymentServiceTest {
 
     private static OrderItem line(String title, String variant, long price, int qty) {
         OrderItem it = new OrderItem();
-        it.setProductId(UuidUtil.randomBytes());
-        it.setTitleSnapshot(title);
-        it.setVariantNameSnapshot(variant);
-        it.setPriceMinorSnapshot(price);
-        it.setQuantity(qty);
+        OrderFixtures.set(it, "productId", UuidUtil.randomBytes());
+        OrderFixtures.set(it, "titleSnapshot", title);
+        OrderFixtures.set(it, "variantNameSnapshot", variant);
+        OrderFixtures.set(it, "priceMinorSnapshot", price);
+        OrderFixtures.set(it, "quantity", qty);
         return it;
     }
 
     /** NEW order, 2 × 300 + 1 × 400 = 1000 UAH, due in 20 hours. */
     private static Order order() {
         Order o = new Order();
-        o.setId(UuidUtil.randomBytes());
+        OrderFixtures.set(o, "id", UuidUtil.randomBytes());
         OrderStates.withStatus(o, OrderStatus.NEW);
-        o.setItems(new ArrayList<>(List.of(line("Свеча", "Лаванда", 300_00, 2), line("Плед", null, 400_00, 1))));
-        o.setSubtotalMinor(1000_00);
-        o.setTotalMinor(1000_00);
-        o.setPaymentDueAt(Instant.now().plus(Duration.ofHours(20)));
+        OrderFixtures.set(o, "items", new ArrayList<>(List.of(line("Свеча", "Лаванда", 300_00, 2), line("Плед", null, 400_00, 1))));
+        OrderFixtures.set(o, "subtotalMinor", 1000_00);
+        OrderFixtures.set(o, "totalMinor", 1000_00);
+        OrderFixtures.set(o, "paymentDueAt", Instant.now().plus(Duration.ofHours(20)));
         return o;
     }
 
@@ -119,7 +120,7 @@ class OnlinePaymentServiceTest {
     @Test
     void basket_isItemisedWhenTheLinesAddUpToTheAmount() {
         Order o = order();
-        o.getItems().add(line("Подарок", null, 0, 1)); // gifts are not on the receipt
+        o.addLine(line("Подарок", null, 0, 1)); // gifts are not on the receipt
 
         List<MonobankGateway.BasketItem> basket = OnlinePaymentService.basket(o, 1000_00, "abcd1234");
 
@@ -131,7 +132,7 @@ class OnlinePaymentServiceTest {
     @Test
     void basket_prepaymentIsOneLine() {
         Order o = order();
-        o.setPrepaymentMinor(100_00);
+        OrderFixtures.set(o, "prepaymentMinor", 100_00);
 
         List<MonobankGateway.BasketItem> basket = OnlinePaymentService.basket(o, 100_00, "abcd1234");
 
@@ -145,8 +146,8 @@ class OnlinePaymentServiceTest {
     @Test
     void basket_discountedOrderIsOneLine() {
         Order o = order();
-        o.setDiscountMinor(50_00);
-        o.setTotalMinor(950_00);
+        OrderFixtures.set(o, "discountMinor", 50_00);
+        OrderFixtures.set(o, "totalMinor", 950_00);
 
         List<MonobankGateway.BasketItem> basket = OnlinePaymentService.basket(o, 950_00, "abcd1234");
 
@@ -185,7 +186,7 @@ class OnlinePaymentServiceTest {
     @Test
     void start_prepaymentAsksOnlyForThePrepayment() {
         Order o = order();
-        o.setPrepaymentMinor(100_00);
+        OrderFixtures.set(o, "prepaymentMinor", 100_00);
         given(o);
         when(mono.createInvoice(any())).thenReturn(new MonobankGateway.CreatedInvoice("inv-new", "https://pay/inv-new"));
 
@@ -220,8 +221,8 @@ class OnlinePaymentServiceTest {
     @Test
     void start_refusesWhenNothingIsDue() {
         Order o = order();
-        o.setReceivedMinor(1000_00);
-        o.setPaid(true);
+        OrderFixtures.set(o, "receivedMinor", 1000_00);
+        OrderFixtures.set(o, "paid", true);
         given(o);
 
         assertThatThrownBy(() -> service.start(o.getId(), OnlinePaymentService.ReturnTo.SITE, "uk"))
@@ -246,7 +247,7 @@ class OnlinePaymentServiceTest {
     void start_refusesAnOrderCancelledForNonPayment() {
         Order o = order();
         OrderStates.withStatus(o, OrderStatus.REJECTED);
-        o.setRejectReasonCode("PAYMENT_TIMEOUT");
+        OrderFixtures.set(o, "rejectReasonCode", "PAYMENT_TIMEOUT");
         given(o);
 
         assertThatThrownBy(() -> service.start(o.getId(), OnlinePaymentService.ReturnTo.SITE, "uk"))
@@ -257,7 +258,7 @@ class OnlinePaymentServiceTest {
     @Test
     void start_refusesAfterTheDeadline() {
         Order o = order();
-        o.setPaymentDueAt(Instant.now().minusSeconds(1));
+        OrderFixtures.set(o, "paymentDueAt", Instant.now().minusSeconds(1));
         given(o);
 
         assertThatThrownBy(() -> service.start(o.getId(), OnlinePaymentService.ReturnTo.SITE, "uk"))
@@ -271,8 +272,8 @@ class OnlinePaymentServiceTest {
         // The shop approved it (maybe agreed in the chat): the customer may pay late until it is rejected.
         Order o = order();
         OrderStates.withStatus(o, OrderStatus.APPROVED);
-        o.setPrepaymentMinor(100_00);
-        o.setPaymentDueAt(Instant.now().minus(Duration.ofHours(5)));
+        OrderFixtures.set(o, "prepaymentMinor", 100_00);
+        OrderFixtures.set(o, "paymentDueAt", Instant.now().minus(Duration.ofHours(5)));
         given(o);
         when(mono.createInvoice(any())).thenReturn(new MonobankGateway.CreatedInvoice("inv-late", "https://pay/inv-late"));
 
@@ -290,10 +291,10 @@ class OnlinePaymentServiceTest {
         // Paid 1000 in full, then the shop added a 250 item: only the difference is invoiced,
         // and the long-gone checkout deadline does not apply to a paid order.
         Order o = order();
-        o.setPaid(true);
-        o.setReceivedMinor(1000_00);
-        o.setTotalMinor(1250_00);
-        o.setPaymentDueAt(Instant.now().minus(Duration.ofDays(2)));
+        OrderFixtures.set(o, "paid", true);
+        OrderFixtures.set(o, "receivedMinor", 1000_00);
+        OrderFixtures.set(o, "totalMinor", 1250_00);
+        OrderFixtures.set(o, "paymentDueAt", Instant.now().minus(Duration.ofDays(2)));
         given(o);
         when(mono.createInvoice(any())).thenReturn(new MonobankGateway.CreatedInvoice("inv-top", "https://pay/inv-top"));
 

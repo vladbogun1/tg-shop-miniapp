@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
@@ -33,11 +34,11 @@ class OrderArchiveTest extends OrderScenarioTestBase {
     @Test
     void archive_keepsEverything_noStockNoPromoNoDelete() {
         Order o = persistedOrder(OrderStatus.DELIVERED);
-        o.setPromoCode("SALE");
+        OrderFixtures.set(o, "promoCode", "SALE");
         OrderItem it = new OrderItem();
-        it.setProductId(productId);
-        it.setQuantity(2);
-        o.getItems().add(it);
+        OrderFixtures.set(it, "productId", productId);
+        OrderFixtures.set(it, "quantity", 2);
+        o.addLine(it);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         Order archived = archive.archive(o.getId(), "тестовый заказ", "Влад");

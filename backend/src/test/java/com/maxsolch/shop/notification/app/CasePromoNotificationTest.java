@@ -1,5 +1,6 @@
 package com.maxsolch.shop.notification.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.notification.domain.TelegramGateway;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.order.app.OrderCustomerNotifier;
@@ -60,9 +61,9 @@ class CasePromoNotificationTest {
 
     private Order order(Long tgUserId) {
         Order o = new Order();
-        o.setId(new byte[16]);
-        o.setTgUserId(tgUserId);
-        o.setCurrency("₴");
+        OrderFixtures.set(o, "id", new byte[16]);
+        OrderFixtures.set(o, "tgUserId", tgUserId);
+        OrderFixtures.set(o, "currency", "₴");
         return o;
     }
 

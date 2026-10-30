@@ -55,7 +55,7 @@ public class OrderDeliveryEditing {
         if (ttn.equals(old)) {
             return new OrderChange(order, "ТТН не изменилась");
         }
-        order.setTrackingNumber(ttn);
+        order.changeTrackingNumber(ttn);
         Order saved = orderRepository.save(order);
         events.publish(OrderEvents.Edited.of(saved.getId(), OrderEvents.EditKind.TRACKING, true));
         return new OrderChange(saved, "ТТН: " + (old == null ? "—" : old) + " → " + ttn);
@@ -107,7 +107,7 @@ public class OrderDeliveryEditing {
         }
         if (!name.equals(order.getCustomerName())) {
             changes.add("ФИО: " + order.getCustomerName() + " → " + name);
-            order.setCustomerName(name);
+            order.rename(name);
         }
     }
 
@@ -121,7 +121,7 @@ public class OrderDeliveryEditing {
         }
         if (!phone.equals(order.getPhone())) {
             changes.add("телефон: " + order.getPhone() + " → " + phone);
-            order.setPhone(phone);
+            order.changePhone(phone);
         }
     }
 
@@ -142,10 +142,8 @@ public class OrderDeliveryEditing {
                 || !Objects.equals(patch.npCityRef().trim(), order.getNpCityRef())) {
             changes.add("доставка: " + nz(order.getNpCityName()) + ", " + nz(order.getNpWarehouseName())
                     + " → " + patch.npCityName().trim() + ", " + patch.npWarehouseName().trim());
-            order.setNpCityRef(patch.npCityRef().trim());
-            order.setNpCityName(patch.npCityName().trim());
-            order.setNpWarehouseRef(patch.npWarehouseRef().trim());
-            order.setNpWarehouseName(patch.npWarehouseName().trim());
+            order.changeBranch(patch.npCityRef().trim(), patch.npCityName().trim(),
+                    patch.npWarehouseRef().trim(), patch.npWarehouseName().trim());
         }
     }
 

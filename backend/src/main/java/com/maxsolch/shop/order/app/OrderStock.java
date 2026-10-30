@@ -77,7 +77,7 @@ public class OrderStock {
             return;
         }
         releaseUnits(item, units);
-        item.setRestockedQty(Math.min(item.getQuantity(), item.getRestockedQty() + units));
+        item.markRestocked(units);
     }
 
     /** Puts {@code units} of one order line back on the shelf without recording them on the line. */
@@ -117,7 +117,7 @@ public class OrderStock {
             stock.reserve(product, variant, units, item);
         }
         productRepository.save(product);
-        item.setRestockedQty(Math.max(0, item.getRestockedQty() - units));
+        item.unmarkRestocked(units);
     }
 
     /**

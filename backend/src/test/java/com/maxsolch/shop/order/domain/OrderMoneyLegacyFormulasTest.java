@@ -55,8 +55,8 @@ class OrderMoneyLegacyFormulasTest {
         for (long t : TOTALS) {
             for (long r : OTHER) {
                 Order o = new Order();
-                o.setTotalMinor(t);
-                o.setReceivedMinor(r);
+                OrderFixtures.set(o, "totalMinor", t);
+                OrderFixtures.set(o, "receivedMinor", r);
                 // NotificationService: Math.min(Math.max(0, received), total)
                 assertEquals(Math.min(Math.max(0, r), t), OrderMoney.receivedMinor(o));
                 // CancelRequestService: Math.max(0, Math.min(received, total) - onlineReceived), онлайн >= 0

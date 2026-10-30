@@ -76,9 +76,12 @@ public class OrderMerge {
                         : b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .map(o -> {
                     String why = own != null ? own : blocker(o, false);
-                    Order preview = preview(order, o);
-                    return new Candidate(o, why, preview.getTotalMinor(), preview.getReceivedMinor(),
-                            OrderMoney.amountDueMinor(preview), OrderMoney.codMinor(preview));
+                    // the target as it would be after the merge: numbers only, nothing saved
+                    long total = order.getTotalMinor() + o.getTotalMinor();
+                    long received = Math.max(0, order.getReceivedMinor()) + OrderMoney.refundableMinor(o);
+                    return new Candidate(o, why, total, received,
+                            OrderMoney.amountDueMinor(total, order.getPrepaymentMinor(), received),
+                            OrderMoney.codMinor(total, 0, received));
                 })
                 .toList();
     }
@@ -133,38 +136,27 @@ public class OrderMerge {
                     .findFirst().orElse(null);
             OrderItem to;
             if (same != null) {
-                same.setQuantity(same.getQuantity() + from.getQuantity());
+                same.addQuantity(from.getQuantity());
                 to = same;
             } else {
-                to = copy(from, target);
-                target.getItems().add(to);
+                to = from.copyTo(target);
+                target.addLine(to);
             }
-            moveLots(from, to);
+            to.takeLotsOf(from);
             moved.add(from.getTitleSnapshot()
                     + (from.getVariantNameSnapshot() == null ? "" : " (" + from.getVariantNameSnapshot() + ")")
                     + " ×" + from.getQuantity());
         }
 
         // 2. Discounts add up (a promo code, a manual one, the case tier's guaranteed one).
-        target.setDiscountMinor(target.getDiscountMinor() + source.getDiscountMinor());
-        target.setGiftDiscountMinor(target.getGiftDiscountMinor() + source.getGiftDiscountMinor());
-        target.setPromoCode(joinPromo(target.getPromoCode(), source.getPromoCode()));
-        if (target.getGiftTier() == null) {
-            target.setGiftTier(source.getGiftTier());
-        }
+        target.absorbDiscountsOf(source, joinPromo(target.getPromoCode(), source.getPromoCode()));
         if (source.getComment() != null && !source.getComment().isBlank()) {
             String c = (target.getComment() == null || target.getComment().isBlank() ? ""
                     : target.getComment().trim() + "\n") + "#" + sourceShort + ": " + source.getComment().trim();
-            target.setComment(c.length() > 1000 ? c.substring(0, 1000) : c);
+            target.changeComment(c.length() > 1000 ? c.substring(0, 1000) : c);
         }
         if (useSourceDelivery) {
-            target.setCustomerName(source.getCustomerName());
-            target.setPhone(source.getPhone());
-            target.setDeliveryMethod(source.getDeliveryMethod());
-            target.setNpCityRef(source.getNpCityRef());
-            target.setNpCityName(source.getNpCityName());
-            target.setNpWarehouseRef(source.getNpWarehouseRef());
-            target.setNpWarehouseName(source.getNpWarehouseName());
+            target.takeRecipientOf(source);
         }
         ops.recomputeTotals(target);
 
@@ -172,18 +164,10 @@ public class OrderMerge {
         long money = OrderMoney.refundableMinor(source);
         if (money > 0) {
             ledger(source, OrderMoneyMovement.Kind.REFUND, money, adminName, "перенесено в заказ #" + targetShort);
-            source.setRefundedMinor(Math.max(0, source.getRefundedMinor()) + money);
+            source.registerRefund(money);
             ledger(target, OrderMoneyMovement.Kind.PAYMENT, money, adminName, "перенесено из заказа #" + sourceShort);
-            target.setReceivedMinor(Math.max(0, target.getReceivedMinor()) + money);
         }
-        boolean paid = target.getReceivedMinor() > 0 || target.getTotalMinor() == 0;
-        if (paid && !target.isPaid()) {
-            target.setPaidAt(source.getPaidAt() != null ? source.getPaidAt() : ops.now());
-        }
-        target.setPaid(paid);
-        if (paid && OrderMoney.amountDueMinor(target) == 0) {
-            target.setPaymentDueAt(null);
-        }
+        target.absorbPaid(money, source, ops.now());
 
         // 4. The merged order is closed, keeping its lines and money history.
         source.markMerged(ops.now(), MERGED_PREFIX + targetShort, target.getId());
@@ -247,49 +231,6 @@ public class OrderMerge {
         }
         String d = phone.replaceAll("\\D", "");
         return d.length() < 9 ? null : d.substring(d.length() - 9);
-    }
-
-    /** The target as it would be after the merge (numbers only, nothing saved). */
-    private static Order preview(Order target, Order source) {
-        Order p = new Order();
-        p.setTotalMinor(target.getTotalMinor() + source.getTotalMinor());
-        p.setPrepaymentMinor(target.getPrepaymentMinor());
-        p.setReceivedMinor(Math.max(0, target.getReceivedMinor())
-                + OrderMoney.refundableMinor(source));
-        return p;
-    }
-
-    private static OrderItem copy(OrderItem from, Order to) {
-        OrderItem i = new OrderItem();
-        i.setOrder(to);
-        i.setProductId(from.getProductId());
-        i.setTitleSnapshot(from.getTitleSnapshot());
-        i.setPriceMinorSnapshot(from.getPriceMinorSnapshot());
-        i.setVariantId(from.getVariantId());
-        i.setVariantNameSnapshot(from.getVariantNameSnapshot());
-        i.setQuantity(from.getQuantity());
-        i.setGift(from.isGift());
-        i.setAutoGift(from.isAutoGift());
-        i.setCaseRarity(from.getCaseRarity());
-        i.setGiftValueMinor(from.getGiftValueMinor());
-        i.setVariantPending(from.isVariantPending());
-        return i;
-    }
-
-    /** The stock lots the units came from move with them (V74 cost of goods), never counted twice. */
-    private static void moveLots(OrderItem from, OrderItem to) {
-        if (from.getLots() == null || from.getLots().isEmpty()) {
-            return;
-        }
-        for (OrderItemLot a : from.getLots()) {
-            OrderItemLot b = new OrderItemLot();
-            b.setItem(to);
-            b.setLotId(a.getLotId());
-            b.setQty(a.getQty());
-            b.setCreatedAt(a.getCreatedAt());
-            to.getLots().add(b);
-        }
-        from.getLots().clear();
     }
 
     private static String joinPromo(String a, String b) {

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.platform.error.DomainException;
@@ -478,11 +479,11 @@ class CheckoutTest extends OrderScenarioTestBase {
     @Test
     void exchangePaymentOptionId_prefersTheOriginalsOptionThenTheFirstActiveOne() {
         Order original = new Order();
-        original.setPaymentOptionId(fullPayment.getId());
+        OrderFixtures.set(original, "paymentOptionId", fullPayment.getId());
         assertThat(service.exchangePaymentOptionId(original)).isEqualTo(UuidUtil.toString(fullPayment.getId()));
 
         Order gone = new Order();
-        gone.setPaymentOptionId(UuidUtil.randomBytes());
+        OrderFixtures.set(gone, "paymentOptionId", UuidUtil.randomBytes());
         when(paymentOptionRepository.findByActiveTrueOrderBySortOrderAsc()).thenReturn(List.of(fullPayment));
         assertThat(service.exchangePaymentOptionId(gone)).isEqualTo(UuidUtil.toString(fullPayment.getId()));
 

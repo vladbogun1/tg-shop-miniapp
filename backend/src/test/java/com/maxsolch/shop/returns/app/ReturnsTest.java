@@ -1,5 +1,6 @@
 package com.maxsolch.shop.returns.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.order.app.MoneyLedger;
 import com.maxsolch.shop.order.app.OrderApp;
@@ -32,8 +33,8 @@ class ReturnsTest extends ReturnsTestBase {
     @Test
     void registerReturn_newOrderAfterCheaperExchange_refundsOnlyTheOverpayment() {
         Order o = order(OrderStatus.NEW);
-        o.setTotalMinor(5_000);
-        o.setReceivedMinor(20_000);
+        OrderFixtures.set(o, "totalMinor", 5_000);
+        OrderFixtures.set(o, "receivedMinor", 20_000);
 
         assertThatThrownBy(() -> returns.register(o.getId(), List.of(), 16_000, null))
                 .isInstanceOf(DomainException.BadRequest.class);
@@ -47,7 +48,7 @@ class ReturnsTest extends ReturnsTestBase {
     @Test
     void registerReturn_partial_restocksOnlyChosenUnits_andRecordsRefund() {
         Order o = order(OrderStatus.DELIVERED);
-        o.setReceivedMinor(30_000);
+        OrderFixtures.set(o, "receivedMinor", 30_000);
         Product mouse = product(5);
         Product pad = product(2);
         OrderItem a = item(o, mouse, 1L, 2);
@@ -75,7 +76,7 @@ class ReturnsTest extends ReturnsTestBase {
         Order o = order(OrderStatus.SHIPPED);
         Product mouse = product(5);
         OrderItem a = item(o, mouse, 1L, 2);
-        a.setReturnedQty(2);
+        OrderFixtures.set(a, "returnedQty", 2);
 
         assertThatThrownBy(() -> returns.register(o.getId(),
                 List.of(new Returns.ReturnLine(1L, 1, true)), 0, null))
@@ -86,8 +87,8 @@ class ReturnsTest extends ReturnsTestBase {
     @Test
     void registerReturn_refundAboveReceived_isRejected() {
         Order o = order(OrderStatus.DELIVERED);
-        o.setReceivedMinor(10_000);
-        o.setRefundedMinor(5_000);
+        OrderFixtures.set(o, "receivedMinor", 10_000);
+        OrderFixtures.set(o, "refundedMinor", 5_000);
 
         assertThatThrownBy(() -> returns.register(o.getId(), List.of(), 6_000, null))
                 .isInstanceOf(DomainException.BadRequest.class);
@@ -96,7 +97,7 @@ class ReturnsTest extends ReturnsTestBase {
     @Test
     void registerReturn_rejectedOrder_allowsRefundOnly() {
         Order o = order(OrderStatus.REJECTED);
-        o.setReceivedMinor(10_000);
+        OrderFixtures.set(o, "receivedMinor", 10_000);
         Product mouse = product(5);
         item(o, mouse, 1L, 1);
 
@@ -119,7 +120,7 @@ class ReturnsTest extends ReturnsTestBase {
     @Test
     void wizard_rejectedOrder_retainsPrepaymentAndRefundsTheRest_inTheJournal() {
         Order o = order(OrderStatus.REJECTED);
-        o.setReceivedMinor(30_000);
+        OrderFixtures.set(o, "receivedMinor", 30_000);
         MoneyLedger ledger = wireLedger();
 
         OrderChange r = returns.registerPlan(o.getId(), plan(List.of(),
@@ -140,8 +141,8 @@ class ReturnsTest extends ReturnsTestBase {
     @Test
     void wizard_moreThanReceived_isRejected() {
         Order o = order(OrderStatus.REJECTED);
-        o.setReceivedMinor(10_000);
-        o.setRefundedMinor(2_000);
+        OrderFixtures.set(o, "receivedMinor", 10_000);
+        OrderFixtures.set(o, "refundedMinor", 2_000);
         wireLedger();
 
         assertThatThrownBy(() -> returns.registerPlan(o.getId(), plan(List.of(),
@@ -155,7 +156,7 @@ class ReturnsTest extends ReturnsTestBase {
     @Test
     void wizard_rejectedOrder_withGoods_isRejected() {
         Order o = order(OrderStatus.REJECTED);
-        o.setReceivedMinor(10_000);
+        OrderFixtures.set(o, "receivedMinor", 10_000);
         Product p = product(0);
         item(o, p, 1L, 1);
 
@@ -168,7 +169,7 @@ class ReturnsTest extends ReturnsTestBase {
     @Test
     void wizard_refundWithoutChannel_isRejected() {
         Order o = order(OrderStatus.DELIVERED);
-        o.setReceivedMinor(30_000);
+        OrderFixtures.set(o, "receivedMinor", 30_000);
 
         assertThatThrownBy(() -> returns.registerPlan(o.getId(), plan(List.of(),
                 List.of(new ManualRefund(null, 1_000, null)), 0, 0), "owner"))
@@ -178,9 +179,9 @@ class ReturnsTest extends ReturnsTestBase {
     @Test
     void wizard_defect_isWrittenOffAtThePaidPrice_notRestocked() {
         Order o = order(OrderStatus.DELIVERED);
-        o.setReceivedMinor(30_000);
-        o.setSubtotalMinor(20_000);
-        o.setDiscountMinor(2_000);
+        OrderFixtures.set(o, "receivedMinor", 30_000);
+        OrderFixtures.set(o, "subtotalMinor", 20_000);
+        OrderFixtures.set(o, "discountMinor", 2_000);
         Product p = product(0);
         OrderItem it = item(o, p, 1L, 2);
         wireLedger();
@@ -206,7 +207,7 @@ class ReturnsTest extends ReturnsTestBase {
     @Test
     void wizard_prepaymentAlreadyRetainedOnRefusal_cannotBeKeptOrRefundedAgain() {
         Order o = order(OrderStatus.REJECTED);
-        o.setReceivedMinor(20_000);
+        OrderFixtures.set(o, "receivedMinor", 20_000);
         MoneyLedger ledger = wireLedger();
         when(ledger.retainedMinor(o.getId())).thenReturn(20_000L);
 
@@ -222,8 +223,8 @@ class ReturnsTest extends ReturnsTestBase {
     @Test
     void wizard_monoAlreadySent_isLeftOutOfTheLimit() {
         Order o = order(OrderStatus.DELIVERED);
-        o.setReceivedMinor(10_000);
-        o.setRefundedMinor(10_000); // the bank refund is already booked by the time the books are written
+        OrderFixtures.set(o, "receivedMinor", 10_000);
+        OrderFixtures.set(o, "refundedMinor", 10_000); // the bank refund is already booked by the time the books are written
         wireLedger();
 
         OrderChange r = returns.registerPlan(o.getId(), plan(List.of(), List.of(), 0, 10_000),
@@ -234,7 +235,7 @@ class ReturnsTest extends ReturnsTestBase {
     @Test
     void wizard_inTransit_countsTheUnitsReturned_butKeepsThemOffTheShelf() {
         Order o = order(OrderStatus.DELIVERED);
-        o.setReceivedMinor(30_000);
+        OrderFixtures.set(o, "receivedMinor", 30_000);
         Product mouse = product(0);
         OrderItem it = item(o, mouse, 1L, 3);
         wireLedger();
@@ -256,7 +257,7 @@ class ReturnsTest extends ReturnsTestBase {
     @Test
     void wizard_shippedParcelRefusedWhole_isARejectionNotAPartialPickup() {
         Order o = order(OrderStatus.SHIPPED);
-        o.setReceivedMinor(30_000);
+        OrderFixtures.set(o, "receivedMinor", 30_000);
         item(o, product(0), 1L, 1);
 
         assertThatThrownBy(() -> returns.registerPlan(o.getId(), plan(
@@ -270,11 +271,11 @@ class ReturnsTest extends ReturnsTestBase {
     void wizard_partialPickupWithCod_refusedPartComesOffNalozhka_andDeliveryBooksOnlyTheRest() {
         // 1C60C7C7: prepayment 100 ₴, the customer took the keyboard and refused the mouse at the branch.
         Order o = order(OrderStatus.SHIPPED);
-        o.setTotalMinor(30_000);
-        o.setSubtotalMinor(30_000);
-        o.setPrepaymentMinor(100);
-        o.setReceivedMinor(100);
-        o.setPaid(true);
+        OrderFixtures.set(o, "totalMinor", 30_000);
+        OrderFixtures.set(o, "subtotalMinor", 30_000);
+        OrderFixtures.set(o, "prepaymentMinor", 100);
+        OrderFixtures.set(o, "receivedMinor", 100);
+        OrderFixtures.set(o, "paid", true);
         Product mouse = product(0);
         OrderItem keyboard = item(o, product(0), 1L, 2);
         OrderItem refused = item(o, mouse, 2L, 1);
@@ -312,11 +313,11 @@ class ReturnsTest extends ReturnsTestBase {
     void wizard_partialPickupWithADiscount_refusingALineInStepsNeverExceedsItsPaidAmount() {
         // 3333 x 3 with 10 ₴ off: the line cost 89.99 (total), not 90.00.
         Order o = order(OrderStatus.SHIPPED);
-        o.setSubtotalMinor(9_999);
-        o.setDiscountMinor(1_000);
-        o.setTotalMinor(8_999);
+        OrderFixtures.set(o, "subtotalMinor", 9_999);
+        OrderFixtures.set(o, "discountMinor", 1_000);
+        OrderFixtures.set(o, "totalMinor", 8_999);
         OrderItem line = item(o, product(0), 1L, 3);
-        line.setPriceMinorSnapshot(3_333);
+        OrderFixtures.set(line, "priceMinorSnapshot", 3_333);
         List<WizardLine> one =
                 List.of(new WizardLine(1L, 1, LineOutcome.IN_TRANSIT));
 
@@ -331,10 +332,10 @@ class ReturnsTest extends ReturnsTestBase {
     @Test
     void wizard_partialPickupOfAPrepaidOrder_refundsTheRefusedPart() {
         Order o = order(OrderStatus.SHIPPED);
-        o.setTotalMinor(30_000);
-        o.setSubtotalMinor(30_000);
-        o.setReceivedMinor(30_000);
-        o.setPaid(true);
+        OrderFixtures.set(o, "totalMinor", 30_000);
+        OrderFixtures.set(o, "subtotalMinor", 30_000);
+        OrderFixtures.set(o, "receivedMinor", 30_000);
+        OrderFixtures.set(o, "paid", true);
         item(o, product(0), 1L, 2);
         item(o, product(0), 2L, 1);
         List<WizardLine> back =
@@ -358,8 +359,8 @@ class ReturnsTest extends ReturnsTestBase {
     @Test
     void checkReturnPlan_refusesWhatTheWizardWouldRefuse_andChangesNothing() {
         Order o = order(OrderStatus.DELIVERED);
-        o.setReceivedMinor(30_000);
-        o.setPaid(true);
+        OrderFixtures.set(o, "receivedMinor", 30_000);
+        OrderFixtures.set(o, "paid", true);
         Product p = product(3);
         OrderItem it = item(o, p, 1L, 2);
         when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o)); // the check reads, it does not lock

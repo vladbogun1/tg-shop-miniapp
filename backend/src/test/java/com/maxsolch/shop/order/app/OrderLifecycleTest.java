@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.platform.error.DomainException;
@@ -82,11 +83,11 @@ class OrderLifecycleTest extends OrderScenarioTestBase {
         p.getVariants().add(v);
 
         OrderItem it = new OrderItem();
-        it.setProductId(p.getId());
-        it.setVariantId(v.getId());
-        it.setQuantity(3);
-        it.setTitleSnapshot("Test Product");
-        o.getItems().add(it);
+        OrderFixtures.set(it, "productId", p.getId());
+        OrderFixtures.set(it, "variantId", v.getId());
+        OrderFixtures.set(it, "quantity", 3);
+        OrderFixtures.set(it, "titleSnapshot", "Test Product");
+        o.addLine(it);
 
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
@@ -140,13 +141,13 @@ class OrderLifecycleTest extends OrderScenarioTestBase {
         Order o = persistedOrder(OrderStatus.SHIPPED);
         Product p = simpleProduct(0, 1_000);
         OrderItem it = new OrderItem();
-        it.setProductId(p.getId());
-        it.setQuantity(3);
-        it.setTitleSnapshot("Test Product");
+        OrderFixtures.set(it, "productId", p.getId());
+        OrderFixtures.set(it, "quantity", 3);
+        OrderFixtures.set(it, "titleSnapshot", "Test Product");
         // One unit already came back and was put on the shelf by a partial return.
-        it.setReturnedQty(1);
-        it.setRestockedQty(1);
-        o.getItems().add(it);
+        OrderFixtures.set(it, "returnedQty", 1);
+        OrderFixtures.set(it, "restockedQty", 1);
+        o.addLine(it);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
 
@@ -161,13 +162,13 @@ class OrderLifecycleTest extends OrderScenarioTestBase {
         Order o = persistedOrder(OrderStatus.SHIPPED);
         Product p = simpleProduct(0, 1_000);
         OrderItem it = new OrderItem();
-        it.setProductId(p.getId());
-        it.setQuantity(3);
-        it.setTitleSnapshot("Test Product");
+        OrderFixtures.set(it, "productId", p.getId());
+        OrderFixtures.set(it, "quantity", 3);
+        OrderFixtures.set(it, "titleSnapshot", "Test Product");
         // One unit came back damaged: returned, but «на склад» was off — it is written off.
-        it.setReturnedQty(1);
-        it.setRestockedQty(0);
-        o.getItems().add(it);
+        OrderFixtures.set(it, "returnedQty", 1);
+        OrderFixtures.set(it, "restockedQty", 0);
+        o.addLine(it);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
 
@@ -179,7 +180,7 @@ class OrderLifecycleTest extends OrderScenarioTestBase {
     @Test
     void ship_withPendingCancelRequest_throws() {
         Order o = persistedOrder(OrderStatus.APPROVED);
-        o.setCancelRequestStatus(com.maxsolch.shop.order.domain.CancelRequestStatus.PENDING.name());
+        OrderFixtures.set(o, "cancelRequestStatus", com.maxsolch.shop.order.domain.CancelRequestStatus.PENDING.name());
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         assertThatThrownBy(() -> app.lifecycle().ship(o.getId(), null))
@@ -208,10 +209,10 @@ class OrderLifecycleTest extends OrderScenarioTestBase {
     void onlinePaymentMissing_onlyForOnlineOrdersWithMoneyStillDue() {
         Order o = approvedPrepaymentNotPaid();
         assertThat(OrderMoney.onlinePaymentMissing(o)).isTrue();
-        o.setReceivedMinor(10_000); // the prepayment arrived; the rest is наложка
+        OrderFixtures.set(o, "receivedMinor", 10_000); // the prepayment arrived; the rest is наложка
         assertThat(OrderMoney.onlinePaymentMissing(o)).isFalse();
         Order legacy = persistedOrder(OrderStatus.APPROVED);
-        legacy.setTotalMinor(50_000); // before online payments: no deadline, nothing "missing"
+        OrderFixtures.set(legacy, "totalMinor", 50_000); // before online payments: no deadline, nothing "missing"
         assertThat(OrderMoney.onlinePaymentMissing(legacy)).isFalse();
     }
 
@@ -270,10 +271,10 @@ class OrderLifecycleTest extends OrderScenarioTestBase {
         Product p = simpleProduct(1, 1_000);
 
         Order paid = unpaidOrderWithOneItem(p, 1, now.minusSeconds(60));
-        paid.setPaid(true);
-        paid.setReceivedMinor(1_000);
+        OrderFixtures.set(paid, "paid", true);
+        OrderFixtures.set(paid, "receivedMinor", 1_000);
         Order partlyPaid = unpaidOrderWithOneItem(p, 1, now.minusSeconds(60));
-        partlyPaid.setReceivedMinor(100);
+        OrderFixtures.set(partlyPaid, "receivedMinor", 100);
         Order notDue = unpaidOrderWithOneItem(p, 1, now.plusSeconds(60));
         Order legacy = unpaidOrderWithOneItem(p, 1, null); // placed before online payment existed
         Order approved = unpaidOrderWithOneItem(p, 1, now.minusSeconds(60));
@@ -313,9 +314,9 @@ class OrderLifecycleTest extends OrderScenarioTestBase {
         Order o = persistedOrder(OrderStatus.NEW);
         Product p = simpleProduct(5, 1_000);
         OrderItem it = new OrderItem();
-        it.setProductId(p.getId());
-        it.setQuantity(2);
-        o.getItems().add(it);
+        OrderFixtures.set(it, "productId", p.getId());
+        OrderFixtures.set(it, "quantity", 2);
+        o.addLine(it);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         org.mockito.Mockito.doAnswer(inv -> {
             OrderStates.withStatus(inv.getArgument(0), OrderStatus.REJECTED);
@@ -335,9 +336,9 @@ class OrderLifecycleTest extends OrderScenarioTestBase {
         byte[] low = UuidUtil.toBytes("00000000-0000-0000-0000-000000000001");
         for (byte[] pid : List.of(high, low)) {
             OrderItem it = new OrderItem();
-            it.setProductId(pid);
-            it.setQuantity(1);
-            o.getItems().add(it);
+            OrderFixtures.set(it, "productId", pid);
+            OrderFixtures.set(it, "quantity", 1);
+            o.addLine(it);
         }
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.empty());
@@ -352,12 +353,12 @@ class OrderLifecycleTest extends OrderScenarioTestBase {
     @Test
     void rejectShipped_withReturnInTransit_doesNotRestock_andRetainsPrepayment() {
         Order o = persistedOrder(OrderStatus.SHIPPED);
-        o.setPrepaymentMinor(10_000);
-        o.setReceivedMinor(10_000);
+        OrderFixtures.set(o, "prepaymentMinor", 10_000);
+        OrderFixtures.set(o, "receivedMinor", 10_000);
         OrderItem it = new OrderItem();
-        it.setProductId(productId);
-        it.setQuantity(1);
-        o.getItems().add(it);
+        OrderFixtures.set(it, "productId", productId);
+        OrderFixtures.set(it, "quantity", 1);
+        o.addLine(it);
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
 
         Order rejected = app.lifecycle().reject(o.getId(), null, RejectReasonCode.REFUSED_AT_POST, true, true);

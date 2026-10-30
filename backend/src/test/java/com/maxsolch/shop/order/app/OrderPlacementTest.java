@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderSource;
@@ -46,9 +47,9 @@ class OrderPlacementTest {
 
     private static Order created() {
         Order o = new Order();
-        o.setId(UuidUtil.randomBytes());
-        o.setItems(new ArrayList<>());
-        o.setCurrency("UAH");
+        OrderFixtures.set(o, "id", UuidUtil.randomBytes());
+        OrderFixtures.set(o, "items", new ArrayList<>());
+        OrderFixtures.set(o, "currency", "UAH");
         return o;
     }
 

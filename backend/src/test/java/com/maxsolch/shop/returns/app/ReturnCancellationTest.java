@@ -1,5 +1,6 @@
 package com.maxsolch.shop.returns.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.order.app.MoneyLedger;
 import com.maxsolch.shop.order.domain.Order;
@@ -27,8 +28,8 @@ class ReturnCancellationTest extends ReturnsTestBase {
     @Test
     void cancelReturn_restockedUnitsLeaveTheShelf_andTheMoneyComesBack() {
         Order o = order(OrderStatus.DELIVERED);
-        o.setReceivedMinor(30_000);
-        o.setPaid(true);
+        OrderFixtures.set(o, "receivedMinor", 30_000);
+        OrderFixtures.set(o, "paid", true);
         Product p = product(3);
         OrderItem it = item(o, p, 1L, 2);
         when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
@@ -71,8 +72,8 @@ class ReturnCancellationTest extends ReturnsTestBase {
     @Test
     void cancelReturn_unitAlreadySoldAgain_isRefused_andDebtIsRecordedOtherwise() {
         Order o = order(OrderStatus.DELIVERED);
-        o.setReceivedMinor(30_000);
-        o.setPaid(true);
+        OrderFixtures.set(o, "receivedMinor", 30_000);
+        OrderFixtures.set(o, "paid", true);
         Product p = product(0);
         item(o, p, 1L, 1);
         when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
@@ -121,18 +122,18 @@ class ReturnCancellationTest extends ReturnsTestBase {
         assertThat(exchange.cancelBlocker(delivered)).contains("уже отправили");
 
         Order paidMore = order(OrderStatus.NEW);
-        paidMore.setReceivedMinor(30_000);
+        OrderFixtures.set(paidMore, "receivedMinor", 30_000);
         assertThat(exchange.cancelBlocker(paidMore)).contains("уже доплатили 200 ₴");
         Order onlyCredit = order(OrderStatus.NEW);
-        onlyCredit.setReceivedMinor(10_000);
+        OrderFixtures.set(onlyCredit, "receivedMinor", 10_000);
         assertThat(exchange.cancelBlocker(onlyCredit)).isNull();
     }
 
     @Test
     void cancelReturn_onlyTheNewestRecord_andNotWithoutAReason() {
         Order o = order(OrderStatus.DELIVERED);
-        o.setReceivedMinor(30_000);
-        o.setPaid(true);
+        OrderFixtures.set(o, "receivedMinor", 30_000);
+        OrderFixtures.set(o, "paid", true);
         Product p = product(0);
         item(o, p, 1L, 2);
         when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));

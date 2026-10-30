@@ -1,5 +1,6 @@
 package com.maxsolch.shop.returns.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.order.app.MoneyLedger;
@@ -109,17 +110,17 @@ abstract class ReturnsTestBase {
 
     Order order(OrderStatus status) {
         Order o = new Order();
-        o.setId(UuidUtil.randomBytes());
+        OrderFixtures.set(o, "id", UuidUtil.randomBytes());
         OrderStates.withStatus(o, status);
-        o.setCustomerName("Іван Петренко");
-        o.setPhone("+380501112233");
-        o.setDeliveryMethod(DeliveryMethod.NOVA_POSHTA);
-        o.setNpCityRef("city-1");
-        o.setNpCityName("Київ");
-        o.setNpWarehouseRef("wh-1");
-        o.setNpWarehouseName("Відділення №1");
-        o.setItems(new ArrayList<>());
-        o.setTotalMinor(30_000);
+        OrderFixtures.set(o, "customerName", "Іван Петренко");
+        OrderFixtures.set(o, "phone", "+380501112233");
+        OrderFixtures.set(o, "deliveryMethod", DeliveryMethod.NOVA_POSHTA);
+        OrderFixtures.set(o, "npCityRef", "city-1");
+        OrderFixtures.set(o, "npCityName", "Київ");
+        OrderFixtures.set(o, "npWarehouseRef", "wh-1");
+        OrderFixtures.set(o, "npWarehouseName", "Відділення №1");
+        OrderFixtures.set(o, "items", new ArrayList<>());
+        OrderFixtures.set(o, "totalMinor", 30_000);
         lenient().when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         return o;
     }
@@ -135,13 +136,13 @@ abstract class ReturnsTestBase {
 
     OrderItem item(Order o, Product p, long id, int qty) {
         OrderItem it = new OrderItem();
-        it.setId(id);
-        it.setOrder(o);
-        it.setProductId(p.getId());
-        it.setTitleSnapshot(p.getTitle());
-        it.setQuantity(qty);
-        it.setPriceMinorSnapshot(10_000);
-        o.getItems().add(it);
+        OrderFixtures.set(it, "id", id);
+        OrderFixtures.set(it, "order", o);
+        OrderFixtures.set(it, "productId", p.getId());
+        OrderFixtures.set(it, "titleSnapshot", p.getTitle());
+        OrderFixtures.set(it, "quantity", qty);
+        OrderFixtures.set(it, "priceMinorSnapshot", 10_000);
+        o.addLine(it);
         return it;
     }
 
@@ -151,7 +152,7 @@ abstract class ReturnsTestBase {
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
             Order x = inv.getArgument(0);
             if (x.getId() == null) {
-                x.setId(UuidUtil.randomBytes());
+                OrderFixtures.set(x, "id", UuidUtil.randomBytes());
             }
             if (all.stream().noneMatch(y -> y == x)) {
                 all.add(x);
@@ -214,13 +215,13 @@ abstract class ReturnsTestBase {
     /** An exchange of 1 of 2 mice (paid 200 ₴) for a keyboard of 150 ₴: the credit of 100 ₴ moves to the new order. */
     Order deliveredOrderForExchange(Product mouse) {
         Order o = order(OrderStatus.DELIVERED);
-        o.setPaymentOptionId(UuidUtil.randomBytes());
-        o.setReceivedMinor(20_000);
-        o.setPaid(true);
-        o.setUserId(77L);
+        OrderFixtures.set(o, "paymentOptionId", UuidUtil.randomBytes());
+        OrderFixtures.set(o, "receivedMinor", 20_000);
+        OrderFixtures.set(o, "paid", true);
+        OrderFixtures.set(o, "userId", 77L);
         item(o, mouse, 1L, 2);
-        o.setSubtotalMinor(20_000);
-        o.setTotalMinor(20_000);
+        OrderFixtures.set(o, "subtotalMinor", 20_000);
+        OrderFixtures.set(o, "totalMinor", 20_000);
         return o;
     }
 

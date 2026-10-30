@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.api;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.app.CustomerOrders;
 import com.maxsolch.shop.order.app.MessageService;
 import com.maxsolch.shop.order.app.OrderQueryService;
@@ -59,8 +60,8 @@ class MeOrdersControllerTest {
     @BeforeEach
     void setUp() {
         order = new Order();
-        order.setId(UuidUtil.randomBytes());
-        order.setUserId(100L);
+        OrderFixtures.set(order, "id", UuidUtil.randomBytes());
+        OrderFixtures.set(order, "userId", 100L);
         id = UuidUtil.toString(order.getId());
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(orders.findById(any())).thenReturn(Optional.of(order));
@@ -84,7 +85,7 @@ class MeOrdersControllerTest {
 
     @Test
     void ownedOrder_archived_isNotFound() {
-        order.setArchivedAt(Instant.now());
+        OrderFixtures.set(order, "archivedAt", Instant.now());
 
         assertThatThrownBy(() -> controller().markRead(id))
                 .isInstanceOf(DomainException.NotFound.class).hasMessage("api.order.notFound");
@@ -126,7 +127,7 @@ class MeOrdersControllerTest {
     @Test
     void myOrders_hidesArchived_andMapsTheRest() {
         Order archived = new Order();
-        archived.setArchivedAt(Instant.now());
+        OrderFixtures.set(archived, "archivedAt", Instant.now());
         when(orders.findByUserIdOrderByCreatedAtDesc(100L)).thenReturn(List.of(archived, order));
         List<OrderSummaryDto> summaries = List.of(mock(OrderSummaryDto.class));
         when(queries.toSummaries(List.of(order))).thenReturn(summaries);

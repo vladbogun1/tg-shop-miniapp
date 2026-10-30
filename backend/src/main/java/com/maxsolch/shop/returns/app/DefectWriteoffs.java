@@ -77,7 +77,7 @@ public class DefectWriteoffs {
                 OrderItem line = order.getItems().stream()
                         .filter(i -> i.getId() != null && i.getId() == l.getItemId()).findFirst().orElse(null);
                 if (line != null) {
-                    line.setRestockedQty(Math.min(line.getQuantity(), line.getRestockedQty() + take));
+                    line.markRestocked(take);
                 }
                 // the units go back into the lots the order took them from, so their cost stays known
                 stock.restockProduct(w.getProductId(), w.getVariantId(), take, line);

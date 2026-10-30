@@ -81,23 +81,17 @@ public class OrderEditing {
                 .filter(i -> Arrays.equals(i.getProductId(), product.getId()))
                 .filter(i -> Arrays.equals(i.getVariantId(), vId))
                 .findFirst().orElse(null);
-        OrderItem item = existing != null ? existing : new OrderItem();
+        OrderItem item = existing != null ? existing
+                : gift ? OrderItem.gift(order, product.getId(), product.getTitle(), product.getPriceMinor(), qty)
+                : OrderItem.sold(order, product.getId(), product.getTitle(), product.getPriceMinor(), qty);
         shelf.reserve(product, variant, qty, item);
         if (existing != null) {
-            existing.setQuantity(existing.getQuantity() + qty);
+            existing.addQuantity(qty);
         } else {
-            item.setOrder(order);
-            item.setProductId(product.getId());
-            item.setTitleSnapshot(product.getTitle());
-            item.setPriceMinorSnapshot(gift ? 0 : product.getPriceMinor());
-            item.setQuantity(qty);
-            item.setGift(gift);
-            item.setGiftValueMinor(gift ? product.getPriceMinor() : 0);
             if (variant != null) {
-                item.setVariantId(variant.getId());
-                item.setVariantNameSnapshot(variant.getName());
+                item.withVariant(variant.getId(), variant.getName());
             }
-            order.getItems().add(item);
+            order.addLine(item);
         }
         productRepository.save(product);
         ops.recomputeTotals(order);
@@ -122,14 +116,10 @@ public class OrderEditing {
                 .findFirst()
                 .orElseThrow(() -> OrderErrors.notFound("order item not found"));
         stock.restoreLine(item);
-        order.getItems().remove(item);
+        order.removeLine(item);
         if (item.isAutoGift() && item.getCaseRarity() != null) {
             // The case prize is gone: no case left to open.
-            order.setGiftCaseStatus(null);
-            order.setGiftCaseOpenedAt(null);
-            if (order.getGiftDiscountMinor() <= 0) {
-                order.setGiftTier(null);
-            }
+            order.dropGiftCase();
             gifts.deleteCase(order.getId());
         }
         ops.recomputeTotals(order);
@@ -154,7 +144,7 @@ public class OrderEditing {
         if (delta != 0) {
             stock.resizeLine(item, delta);
         }
-        item.setQuantity(newQty);
+        item.changeQuantity(newQty);
         ops.recomputeTotals(order);
         Order saved = orderRepository.save(order);
         events.publish(OrderEvents.Edited.of(
@@ -168,15 +158,14 @@ public class OrderEditing {
                                Integer percent, boolean clear, boolean notifyCustomer) {
         Order order = ops.lock(orderId);
         order.requireEditable();
-        long subtotal = order.getItems().stream()
-                .mapToLong(i -> i.getPriceMinorSnapshot() * (long) i.getQuantity()).sum();
+        long subtotal = OrderMoney.subtotalMinor(order);
 
         // Release any previous REAL promo usage before re-applying.
         promos.release(order.getPromoCode());
 
         long discount = 0;
         if (clear) {
-            order.setPromoCode(null);
+            order.labelPromo(null);
         } else if (promoCode != null && !promoCode.isBlank()) {
             // An admin applying a code by hand is a deliberate decision, so customers' half-hour
             // holds do not stand in their way, only the code own usage limit does.
@@ -184,23 +173,20 @@ public class OrderEditing {
             PromoCode p = promos.resolve(promoCode, order.getUserId(), false);
             discount = PromoDiscount.discountFor(p, subtotal, promos.excluded(p, promos.lowMarginMinor(order), subtotal));
             promos.countUse(p);
-            order.setPromoCode(p.getCode());
+            order.labelPromo(p.getCode());
         } else if (amountMinor != null && amountMinor > 0) {
             discount = Math.min(amountMinor, subtotal);
-            order.setPromoCode("Ручная скидка");
+            order.labelPromo("Ручная скидка");
         } else if (percent != null && percent > 0) {
             int pc = Math.min(percent, 100);
             discount = subtotal * pc / 100;
-            order.setPromoCode("Ручная скидка " + pc + "%");
+            order.labelPromo("Ручная скидка " + pc + "%");
         } else {
-            order.setPromoCode(null);
+            order.labelPromo(null);
         }
 
-        order.setSubtotalMinor(subtotal);
         // The guaranteed discount of the gift case stays: the customer chose it instead of a case.
-        order.setDiscountMinor(Math.min(Math.max(0, discount) + Math.max(0, order.getGiftDiscountMinor()), subtotal));
-        order.setGiftDiscountMinor(Math.min(order.getGiftDiscountMinor(), order.getDiscountMinor()));
-        order.setTotalMinor(OrderMoney.totalMinor(subtotal, order.getDiscountMinor()));
+        order.applyDiscount(discount);
         order.settleIfFree(ops.now());
         Order saved = orderRepository.save(order);
         events.publish(OrderEvents.Edited.of(

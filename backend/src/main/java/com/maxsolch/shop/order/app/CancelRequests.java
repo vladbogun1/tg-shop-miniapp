@@ -103,11 +103,7 @@ public class CancelRequests {
         if (!order.isPaid() && order.getReceivedMinor() <= 0) {
             throw OrderErrors.badRequest(messages.current("api.cancelRequest.unpaid"), CANCEL_REQUEST_UNPAID);
         }
-        order.setCancelRequestStatus(CancelRequestStatus.PENDING.name());
-        order.setCancelRequestReason(r);
-        order.setCancelRequestedAt(ops.now());
-        order.setCancelRequestResolvedAt(null);
-        order.setCancelRequestAdminComment(null);
+        order.requestCancel(r, ops.now());
         Order saved = orderRepository.save(order);
         events.publish(new OrderEvents.CancelRequested(saved.getId()));
         return saved;
@@ -128,9 +124,7 @@ public class CancelRequests {
         }
         Instant now = ops.now();
         stock.restoreAll(order);
-        order.setCancelRequestStatus(CancelRequestStatus.APPROVED.name());
-        order.setCancelRequestResolvedAt(now);
-        order.setCancelRequestAdminComment(comment == null || comment.isBlank() ? null : comment.trim());
+        order.approveCancelRequest(now, comment);
         Order saved = ops.reject(order, new RejectCause(now,
                 byRequestReason(order.getCancelRequestReason()),
                 RejectReasonCode.CHANGED_MIND.name(), true));
@@ -150,9 +144,7 @@ public class CancelRequests {
         if (c.length() > 1000) {
             throw OrderErrors.badRequest("комментарий длиннее 1000 символов");
         }
-        order.setCancelRequestStatus(CancelRequestStatus.DECLINED.name());
-        order.setCancelRequestResolvedAt(ops.now());
-        order.setCancelRequestAdminComment(c);
+        order.declineCancelRequest(ops.now(), c);
         Order saved = orderRepository.save(order);
         events.publish(new OrderEvents.CancelRequestResolved(saved.getId(), false));
         return saved;

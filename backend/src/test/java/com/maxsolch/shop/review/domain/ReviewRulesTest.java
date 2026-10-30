@@ -1,5 +1,6 @@
 package com.maxsolch.shop.review.domain;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.review.app.ReviewService;
 
 import com.maxsolch.shop.order.domain.OrderStates;
@@ -25,21 +26,21 @@ public class ReviewRulesTest {
 
     public static Order order(long userId, OrderStatus status) {
         Order o = new Order();
-        o.setId(UuidUtil.randomBytes());
-        o.setUserId(userId);
-        o.setTgUserId(userId);
+        OrderFixtures.set(o, "id", UuidUtil.randomBytes());
+        OrderFixtures.set(o, "userId", userId);
+        OrderFixtures.set(o, "tgUserId", userId);
         OrderStates.withStatus(o, status);
         return o;
     }
 
     public static OrderItem line(Order order, long id) {
         OrderItem i = new OrderItem();
-        i.setId(id);
-        i.setOrder(order);
-        i.setProductId(UuidUtil.randomBytes());
-        i.setTitleSnapshot("Мышь");
-        i.setQuantity(1);
-        order.getItems().add(i);
+        OrderFixtures.set(i, "id", id);
+        OrderFixtures.set(i, "order", order);
+        OrderFixtures.set(i, "productId", UuidUtil.randomBytes());
+        OrderFixtures.set(i, "titleSnapshot", "Мышь");
+        OrderFixtures.set(i, "quantity", 1);
+        order.addLine(i);
         return i;
     }
 
@@ -61,7 +62,7 @@ public class ReviewRulesTest {
         Order o = order(200L, OrderStatus.DELIVERED);
         assertThat(ReviewRules.eligibility(o, line(o, 1), USER, false)).isEqualTo(Eligibility.NOT_YOURS);
         Order guest = order(USER, OrderStatus.DELIVERED);
-        guest.setUserId(null);
+        OrderFixtures.set(guest, "userId", null);
         assertThat(ReviewRules.eligibility(guest, line(guest, 2), USER, false)).isEqualTo(Eligibility.NOT_YOURS);
     }
 
@@ -75,13 +76,13 @@ public class ReviewRulesTest {
     void giftsAndReturnedLinesAreNotReviewed() {
         Order o = order(USER, OrderStatus.DELIVERED);
         OrderItem gift = line(o, 1);
-        gift.setGift(true);
+        OrderFixtures.set(gift, "gift", true);
         OrderItem returned = line(o, 2);
-        returned.setQuantity(2);
-        returned.setReturnedQty(2);
+        OrderFixtures.set(returned, "quantity", 2);
+        OrderFixtures.set(returned, "returnedQty", 2);
         OrderItem partlyReturned = line(o, 3);
-        partlyReturned.setQuantity(2);
-        partlyReturned.setReturnedQty(1);
+        OrderFixtures.set(partlyReturned, "quantity", 2);
+        OrderFixtures.set(partlyReturned, "returnedQty", 1);
 
         assertThat(ReviewRules.eligibility(o, gift, USER, false)).isEqualTo(Eligibility.NOT_REVIEWABLE);
         assertThat(ReviewRules.eligibility(o, returned, USER, false)).isEqualTo(Eligibility.NOT_REVIEWABLE);

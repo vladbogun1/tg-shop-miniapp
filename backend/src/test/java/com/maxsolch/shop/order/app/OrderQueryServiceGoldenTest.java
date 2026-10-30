@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.fasterxml.jackson.core.util.DefaultIndenter;
@@ -203,19 +204,19 @@ class OrderQueryServiceGoldenTest {
     @Test
     void mergeCandidates() throws IOException {
         Order free = baseOrder(4, OrderStatus.NEW);
-        free.setPaid(true);
-        free.setReceivedMinor(50000);
-        free.setPrepaymentMinor(20000);
-        free.setTotalMinor(50000);
-        free.setTrackingNumber("20450000555666");
-        free.setGiftCaseStatus("SEALED");
-        free.setPaymentOptionTitle("Оплата картой онлайн");
+        OrderFixtures.set(free, "paid", true);
+        OrderFixtures.set(free, "receivedMinor", 50000);
+        OrderFixtures.set(free, "prepaymentMinor", 20000);
+        OrderFixtures.set(free, "totalMinor", 50000);
+        OrderFixtures.set(free, "trackingNumber", "20450000555666");
+        OrderFixtures.set(free, "giftCaseStatus", "SEALED");
+        OrderFixtures.set(free, "paymentOptionTitle", "Оплата картой онлайн");
         item(free, 41, "Мышь Lamzu Atlantis", "Чёрная", 50000, 1);
         Order blocked = baseOrder(5, OrderStatus.APPROVED);
-        blocked.setReceivedMinor(-5);
-        blocked.setTotalMinor(30000);
+        OrderFixtures.set(blocked, "receivedMinor", -5);
+        OrderFixtures.set(blocked, "totalMinor", 30000);
         OrderItem gift = item(blocked, 51, "Коврик", null, 0, 2);
-        gift.setGift(true);
+        OrderFixtures.set(gift, "gift", true);
         List<OrderMerge.Candidate> found = List.of(
                 new OrderMerge.Candidate(free, null, 80000, 50000, 10000, 20000),
                 new OrderMerge.Candidate(blocked, "Заказ уже отправлен", 30000, 0, 0, 30000));
@@ -226,20 +227,20 @@ class OrderQueryServiceGoldenTest {
     @Test
     void paidShippedOrder() throws IOException {
         Order o = baseOrder(1, OrderStatus.SHIPPED);
-        o.setPaid(true);
-        o.setPaidAt(Instant.parse("2026-10-02T10:05:00Z"));
-        o.setReceivedMinor(150000);
-        o.setPrepaymentMinor(0);
-        o.setTrackingNumber("20450000111222");
-        o.setComment("Позвоните перед доставкой");
-        o.setPaymentOptionId(id(91));
-        o.setPaymentOptionTitle("Оплата картой онлайн");
-        o.setNpCityRef("city-ref-1");
-        o.setNpWarehouseRef("wh-ref-1");
+        OrderFixtures.set(o, "paid", true);
+        OrderFixtures.set(o, "paidAt", Instant.parse("2026-10-02T10:05:00Z"));
+        OrderFixtures.set(o, "receivedMinor", 150000);
+        OrderFixtures.set(o, "prepaymentMinor", 0);
+        OrderFixtures.set(o, "trackingNumber", "20450000111222");
+        OrderFixtures.set(o, "comment", "Позвоните перед доставкой");
+        OrderFixtures.set(o, "paymentOptionId", id(91));
+        OrderFixtures.set(o, "paymentOptionTitle", "Оплата картой онлайн");
+        OrderFixtures.set(o, "npCityRef", "city-ref-1");
+        OrderFixtures.set(o, "npWarehouseRef", "wh-ref-1");
         OrderItem a = item(o, 11, "Мышь Lamzu Atlantis", "Чёрная", 100000, 1);
         OrderItem b = item(o, 12, "Коврик Artisan", null, 50000, 1);
-        o.setSubtotalMinor(150000);
-        o.setTotalMinor(150000);
+        OrderFixtures.set(o, "subtotalMinor", 150000);
+        OrderFixtures.set(o, "totalMinor", 150000);
         thumbs.put(UuidUtil.toString(a.getProductId()), "https://img/p11.jpg");
         thumbs.put(UuidUtil.toString(b.getProductId()), "https://img/p12.jpg");
         invoices.put(key(o.getId()), List.of(invoice(o, "success", 150000, Instant.parse("2026-10-02T10:05:00Z"))));
@@ -251,23 +252,23 @@ class OrderQueryServiceGoldenTest {
     @Test
     void novaPoshtaCodPartialPickup() throws IOException {
         Order o = baseOrder(2, OrderStatus.DELIVERED);
-        o.setPaid(false);
-        o.setPrepaymentMinor(20000);
-        o.setReceivedMinor(20000);
-        o.setPaymentDueAt(Instant.parse("2026-10-03T10:00:00Z"));
-        o.setUncollectedMinor(30000);
-        o.setDeliveredAt(Instant.parse("2026-10-06T09:00:00Z"));
-        o.setReturnStatus(Order.RETURN_IN_TRANSIT);
-        o.setReturnedAt(Instant.parse("2026-10-07T08:00:00Z"));
-        o.setRefundedMinor(0);
-        o.setTrackingNumber("20450000333444");
-        o.setPaymentOptionTitle("Наложенный платёж (предоплата 200 ₴)");
+        OrderFixtures.set(o, "paid", false);
+        OrderFixtures.set(o, "prepaymentMinor", 20000);
+        OrderFixtures.set(o, "receivedMinor", 20000);
+        OrderFixtures.set(o, "paymentDueAt", Instant.parse("2026-10-03T10:00:00Z"));
+        OrderFixtures.set(o, "uncollectedMinor", 30000);
+        OrderFixtures.set(o, "deliveredAt", Instant.parse("2026-10-06T09:00:00Z"));
+        OrderFixtures.set(o, "returnStatus", Order.RETURN_IN_TRANSIT);
+        OrderFixtures.set(o, "returnedAt", Instant.parse("2026-10-07T08:00:00Z"));
+        OrderFixtures.set(o, "refundedMinor", 0);
+        OrderFixtures.set(o, "trackingNumber", "20450000333444");
+        OrderFixtures.set(o, "paymentOptionTitle", "Наложенный платёж (предоплата 200 ₴)");
         OrderItem a = item(o, 21, "Клавиатура Wooting", "60HE", 70000, 1);
         OrderItem b = item(o, 22, "Свитчи Gateron", null, 15000, 2);
-        b.setReturnedQty(1);
-        b.setReturnPendingQty(1);
-        o.setSubtotalMinor(100000);
-        o.setTotalMinor(100000);
+        OrderFixtures.set(b, "returnedQty", 1);
+        OrderFixtures.set(b, "returnPendingQty", 1);
+        OrderFixtures.set(o, "subtotalMinor", 100000);
+        OrderFixtures.set(o, "totalMinor", 100000);
         thumbs.put(UuidUtil.toString(a.getProductId()), "https://img/p21.jpg");
         invoices.put(key(o.getId()), List.of(invoice(o, "success", 20000, Instant.parse("2026-10-02T10:05:00Z"))));
 
@@ -277,25 +278,25 @@ class OrderQueryServiceGoldenTest {
     @Test
     void returnAndExchange() throws IOException {
         Order o = baseOrder(3, OrderStatus.DELIVERED);
-        o.setPaid(true);
-        o.setPaidAt(Instant.parse("2026-10-02T10:05:00Z"));
-        o.setReceivedMinor(220000);
-        o.setRefundedMinor(40000);
-        o.setReturnedAt(Instant.parse("2026-10-09T12:00:00Z"));
-        o.setExchangeOfOrderId(id(30));
-        o.setMergedIntoOrderId(id(31));
-        o.setArchivedAt(Instant.parse("2026-10-20T12:00:00Z"));
-        o.setArchivedBy("claude-tech");
-        o.setArchiveReason("Закрыт");
-        o.setReturnStatus("RECEIVED");
-        o.setReturnReceivedAt(Instant.parse("2026-10-12T12:00:00Z"));
+        OrderFixtures.set(o, "paid", true);
+        OrderFixtures.set(o, "paidAt", Instant.parse("2026-10-02T10:05:00Z"));
+        OrderFixtures.set(o, "receivedMinor", 220000);
+        OrderFixtures.set(o, "refundedMinor", 40000);
+        OrderFixtures.set(o, "returnedAt", Instant.parse("2026-10-09T12:00:00Z"));
+        OrderFixtures.set(o, "exchangeOfOrderId", id(30));
+        OrderFixtures.set(o, "mergedIntoOrderId", id(31));
+        OrderFixtures.set(o, "archivedAt", Instant.parse("2026-10-20T12:00:00Z"));
+        OrderFixtures.set(o, "archivedBy", "claude-tech");
+        OrderFixtures.set(o, "archiveReason", "Закрыт");
+        OrderFixtures.set(o, "returnStatus", "RECEIVED");
+        OrderFixtures.set(o, "returnReceivedAt", Instant.parse("2026-10-12T12:00:00Z"));
         OrderItem a = item(o, 33, "Наушники Arctis", "Белые", 120000, 1);
-        a.setId(301L);
-        a.setReturnedQty(1);
+        OrderFixtures.set(a, "id", 301L);
+        OrderFixtures.set(a, "returnedQty", 1);
         OrderItem b = item(o, 34, "Подставка", null, 100000, 1);
-        b.setId(302L);
-        o.setSubtotalMinor(220000);
-        o.setTotalMinor(220000);
+        OrderFixtures.set(b, "id", 302L);
+        OrderFixtures.set(o, "subtotalMinor", 220000);
+        OrderFixtures.set(o, "totalMinor", 220000);
         thumbs.put(UuidUtil.toString(a.getProductId()), "https://img/p33.jpg");
 
         OrderExchange ex = new OrderExchange();
@@ -346,36 +347,36 @@ class OrderQueryServiceGoldenTest {
     @Test
     void giftCasePromoAndRejectReason() throws IOException {
         Order o = baseOrder(4, OrderStatus.REJECTED);
-        o.setSource(OrderSource.WEB);
-        o.setPaid(false);
-        o.setPrepaymentMinor(0);
-        o.setReceivedMinor(0);
-        o.setPaymentDueAt(Instant.parse("2026-10-03T10:00:00Z"));
-        o.setPromoCode("LEVELUP10");
-        o.setDiscountMinor(18000);
-        o.setGiftDiscountMinor(5000);
-        o.setGiftTier("SILVER");
-        o.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_SEALED);
-        o.setRejectReason("Не оплачен в течение 24 ч");
-        o.setRejectReasonCode("UNPAID");
-        o.setRejectedAt(Instant.parse("2026-10-03T10:01:00Z"));
-        o.setCancelRequestStatus("DECLINED");
-        o.setCancelRequestReason("Передумал");
-        o.setCancelRequestedAt(Instant.parse("2026-10-02T15:00:00Z"));
-        o.setCancelRequestResolvedAt(Instant.parse("2026-10-02T16:00:00Z"));
-        o.setCancelRequestAdminComment("Уже отправлен");
-        o.setPaymentOptionId(id(92));
-        o.setPaymentOptionTitle("Оплата картой онлайн");
-        o.setDeliveryMethod(null);
+        OrderFixtures.set(o, "source", OrderSource.WEB);
+        OrderFixtures.set(o, "paid", false);
+        OrderFixtures.set(o, "prepaymentMinor", 0);
+        OrderFixtures.set(o, "receivedMinor", 0);
+        OrderFixtures.set(o, "paymentDueAt", Instant.parse("2026-10-03T10:00:00Z"));
+        OrderFixtures.set(o, "promoCode", "LEVELUP10");
+        OrderFixtures.set(o, "discountMinor", 18000);
+        OrderFixtures.set(o, "giftDiscountMinor", 5000);
+        OrderFixtures.set(o, "giftTier", "SILVER");
+        OrderFixtures.set(o, "giftCaseStatus", GiftCaseRules.GIFT_CASE_SEALED);
+        OrderFixtures.set(o, "rejectReason", "Не оплачен в течение 24 ч");
+        OrderFixtures.set(o, "rejectReasonCode", "UNPAID");
+        OrderFixtures.set(o, "rejectedAt", Instant.parse("2026-10-03T10:01:00Z"));
+        OrderFixtures.set(o, "cancelRequestStatus", "DECLINED");
+        OrderFixtures.set(o, "cancelRequestReason", "Передумал");
+        OrderFixtures.set(o, "cancelRequestedAt", Instant.parse("2026-10-02T15:00:00Z"));
+        OrderFixtures.set(o, "cancelRequestResolvedAt", Instant.parse("2026-10-02T16:00:00Z"));
+        OrderFixtures.set(o, "cancelRequestAdminComment", "Уже отправлен");
+        OrderFixtures.set(o, "paymentOptionId", id(92));
+        OrderFixtures.set(o, "paymentOptionTitle", "Оплата картой онлайн");
+        OrderFixtures.set(o, "deliveryMethod", null);
         item(o, 41, "Мышь Lamzu Maya", "Белая", 200000, 1);
         OrderItem prize = item(o, 42, "Приз кейса", null, 0, 1);
-        prize.setGift(true);
-        prize.setAutoGift(true);
-        prize.setCaseRarity("RARE");
-        prize.setVariantPending(true);
-        prize.setGiftValueMinor(25000);
-        o.setSubtotalMinor(200000);
-        o.setTotalMinor(182000);
+        OrderFixtures.set(prize, "gift", true);
+        OrderFixtures.set(prize, "autoGift", true);
+        OrderFixtures.set(prize, "caseRarity", "RARE");
+        OrderFixtures.set(prize, "variantPending", true);
+        OrderFixtures.set(prize, "giftValueMinor", 25000);
+        OrderFixtures.set(o, "subtotalMinor", 200000);
+        OrderFixtures.set(o, "totalMinor", 182000);
         invoices.put(key(o.getId()), List.of(invoice(o, "created", 182000, Instant.parse("2099-01-01T00:00:00Z"))));
 
         verifyGolden("gift-promo-rejected", o, "uk", "en");
@@ -440,36 +441,36 @@ class OrderQueryServiceGoldenTest {
 
     private Order baseOrder(int n, OrderStatus status) {
         Order o = new Order();
-        o.setId(id(n));
-        o.setUserId(7000L + n);
+        OrderFixtures.set(o, "id", id(n));
+        OrderFixtures.set(o, "userId", 7000L + n);
         OrderStates.withStatus(o, status);
-        o.setSource(OrderSource.MINIAPP);
-        o.setCurrency("UAH");
-        o.setCustomerName("Иван Петренко " + n);
-        o.setPhone("+38067123456" + n);
-        o.setDeliveryMethod(DeliveryMethod.NOVA_POSHTA);
-        o.setNpCityName("Харьков");
-        o.setNpWarehouseName("Отделение №" + n);
-        o.setTgUserId(1000L + n);
-        o.setTgUsername("buyer" + n);
-        o.setCreatedAt(Instant.parse("2026-10-02T10:00:00Z"));
-        o.setApprovedAt(Instant.parse("2026-10-02T11:00:00Z"));
-        o.setShippedAt(Instant.parse("2026-10-03T12:00:00Z"));
-        o.setPaymentOptionTitle("Оплата");
+        OrderFixtures.set(o, "source", OrderSource.MINIAPP);
+        OrderFixtures.set(o, "currency", "UAH");
+        OrderFixtures.set(o, "customerName", "Иван Петренко " + n);
+        OrderFixtures.set(o, "phone", "+38067123456" + n);
+        OrderFixtures.set(o, "deliveryMethod", DeliveryMethod.NOVA_POSHTA);
+        OrderFixtures.set(o, "npCityName", "Харьков");
+        OrderFixtures.set(o, "npWarehouseName", "Отделение №" + n);
+        OrderFixtures.set(o, "tgUserId", 1000L + n);
+        OrderFixtures.set(o, "tgUsername", "buyer" + n);
+        OrderFixtures.set(o, "createdAt", Instant.parse("2026-10-02T10:00:00Z"));
+        OrderFixtures.set(o, "approvedAt", Instant.parse("2026-10-02T11:00:00Z"));
+        OrderFixtures.set(o, "shippedAt", Instant.parse("2026-10-03T12:00:00Z"));
+        OrderFixtures.set(o, "paymentOptionTitle", "Оплата");
         ordersById.put(key(o.getId()), o);
         return o;
     }
 
     private static OrderItem item(Order o, int productN, String title, String variant, long price, int qty) {
         OrderItem it = new OrderItem();
-        it.setOrder(o);
-        it.setProductId(id(productN));
-        it.setVariantId(variant == null ? null : id(productN + 1000));
-        it.setTitleSnapshot(title);
-        it.setVariantNameSnapshot(variant);
-        it.setPriceMinorSnapshot(price);
-        it.setQuantity(qty);
-        o.getItems().add(it);
+        OrderFixtures.set(it, "order", o);
+        OrderFixtures.set(it, "productId", id(productN));
+        OrderFixtures.set(it, "variantId", variant == null ? null : id(productN + 1000));
+        OrderFixtures.set(it, "titleSnapshot", title);
+        OrderFixtures.set(it, "variantNameSnapshot", variant);
+        OrderFixtures.set(it, "priceMinorSnapshot", price);
+        OrderFixtures.set(it, "quantity", qty);
+        o.addLine(it);
         return it;
     }
 

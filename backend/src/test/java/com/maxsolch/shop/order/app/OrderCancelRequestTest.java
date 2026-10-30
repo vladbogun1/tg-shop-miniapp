@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.platform.error.DomainException;
@@ -82,17 +83,17 @@ class OrderCancelRequestTest {
 
     private Order order(OrderStatus status, long received) {
         Order o = new Order();
-        o.setId(UuidUtil.randomBytes());
+        OrderFixtures.set(o, "id", UuidUtil.randomBytes());
         OrderStates.withStatus(o, status);
-        o.setTotalMinor(100_000);
-        o.setReceivedMinor(received);
-        o.setPaid(received > 0);
+        OrderFixtures.set(o, "totalMinor", 100_000);
+        OrderFixtures.set(o, "receivedMinor", received);
+        OrderFixtures.set(o, "paid", received > 0);
         OrderItem it = new OrderItem();
-        it.setOrder(o);
-        it.setProductId(product.getId());
-        it.setQuantity(2);
-        it.setTitleSnapshot("Кепка");
-        o.setItems(new ArrayList<>(java.util.List.of(it)));
+        OrderFixtures.set(it, "order", o);
+        OrderFixtures.set(it, "productId", product.getId());
+        OrderFixtures.set(it, "quantity", 2);
+        OrderFixtures.set(it, "titleSnapshot", "Кепка");
+        OrderFixtures.set(o, "items", new ArrayList<>(java.util.List.of(it)));
         when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         return o;
     }

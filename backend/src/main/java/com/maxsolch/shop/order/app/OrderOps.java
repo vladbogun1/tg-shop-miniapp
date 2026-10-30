@@ -101,7 +101,7 @@ class OrderOps {
 
     /** Recompute subtotal from items; keep the stored (absolute) discount capped at subtotal. */
     void recomputeTotals(Order order) {
-        OrderMoney.reprice(order);
+        order.reprice();
         order.settleIfFree(now());
     }
 

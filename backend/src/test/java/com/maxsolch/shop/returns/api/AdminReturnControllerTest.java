@@ -1,5 +1,6 @@
 package com.maxsolch.shop.returns.api;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.app.OrderDetailDto;
 import com.maxsolch.shop.order.app.AdminOrderQueries;
 import com.maxsolch.shop.order.app.OrderChange;
@@ -70,8 +71,8 @@ class AdminReturnControllerTest {
     @BeforeEach
     void setUp() {
         order = new Order();
-        order.setId(UuidUtil.randomBytes());
-        order.setTotalMinor(10_000);
+        OrderFixtures.set(order, "id", UuidUtil.randomBytes());
+        OrderFixtures.set(order, "totalMinor", 10_000);
         id = UuidUtil.toString(order.getId());
         detail = mock(OrderDetailDto.class);
         lenient().when(orders.findById(any())).thenReturn(Optional.of(order));
@@ -118,7 +119,7 @@ class AdminReturnControllerTest {
                         new ReturnDtos.ReturnWizardRequest.Refund("CARD_TRANSFER", 4_000, "n")),
                 null, 300L);
         Order fresh = new Order();
-        fresh.setId(order.getId());
+        OrderFixtures.set(fresh, "id", order.getId());
         when(returns.registerPlan(any(byte[].class), any(), any(), anyBoolean()))
                 .thenReturn(new OrderChange(order, "возврат: 1"));
         when(lookup.get(order.getId())).thenReturn(fresh);
@@ -224,7 +225,7 @@ class AdminReturnControllerTest {
     void wizard_lockIsPerOrder() {
         var req = wizard(List.of(), List.of(), null, null);
         Order other = new Order();
-        other.setId(UuidUtil.randomBytes());
+        OrderFixtures.set(other, "id", UuidUtil.randomBytes());
         String otherId = UuidUtil.toString(other.getId());
         when(orders.findById(other.getId())).thenReturn(Optional.of(other));
         AdminReturnController c = controller();

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.notification.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
@@ -33,7 +34,7 @@ class NotificationSnapshotTest {
     @Test
     void onNewOrder() throws Exception {
         Order rich = order(NotifyHarness.TG_UK, OrderStatus.NEW);
-        rich.setSource(com.maxsolch.shop.order.domain.OrderSource.WEB);
+        OrderFixtures.set(rich, "source", com.maxsolch.shop.order.domain.OrderSource.WEB);
         h.scene("NEW rich web order", rich, () -> h.seller.onNewOrder(rich));
         Order pickup = pickupOrder(null, OrderStatus.NEW);
         h.scene("NEW pickup order, no telegram", pickup, () -> h.seller.onNewOrder(pickup));
@@ -48,18 +49,18 @@ class NotificationSnapshotTest {
     void onStatusChanged() throws Exception {
         for (OrderStatus s : OrderStatus.values()) {
             Order o = order(NotifyHarness.TG_UK, s);
-            o.setTrackingNumber(s == OrderStatus.SHIPPED || s == OrderStatus.DELIVERED ? "20450123456789" : null);
-            o.setRejectReason(s == OrderStatus.REJECTED ? "Нет в наличии <срочно>" : null);
-            o.setNotifyChatId(CHAT);
-            o.setNotifyMessageId(321);
-            o.setNotifyThreadId(11);
+            OrderFixtures.set(o, "trackingNumber", s == OrderStatus.SHIPPED || s == OrderStatus.DELIVERED ? "20450123456789" : null);
+            OrderFixtures.set(o, "rejectReason", s == OrderStatus.REJECTED ? "Нет в наличии <срочно>" : null);
+            OrderFixtures.set(o, "notifyChatId", CHAT);
+            OrderFixtures.set(o, "notifyMessageId", 321);
+            OrderFixtures.set(o, "notifyThreadId", 11);
             h.scene(s + " with a card in the old topic", o, () -> h.seller.onStatusChanged(o));
         }
         Order fresh = order(NotifyHarness.TG_UK, OrderStatus.APPROVED);
         h.scene("APPROVED without a card", fresh, () -> h.seller.onStatusChanged(fresh));
         Order stale = order(NotifyHarness.TG_UK, OrderStatus.SHIPPED);
-        stale.setNotifyChatId(CHAT);
-        stale.setNotifyMessageId(77);
+        OrderFixtures.set(stale, "notifyChatId", CHAT);
+        OrderFixtures.set(stale, "notifyMessageId", 77);
         h.failure = call -> call instanceof org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
                 ? new TelegramApiException("Bad Request: message to delete not found") : null;
         h.scene("delete fails, card is re-posted anyway", stale, () -> h.seller.onStatusChanged(stale));
@@ -81,8 +82,8 @@ class NotificationSnapshotTest {
     @Test
     void onCancelRequested() throws Exception {
         Order o = order(NotifyHarness.TG_UK, OrderStatus.APPROVED);
-        o.setReceivedMinor(2_000_000); // more than the total: capped
-        o.setCancelRequestReason("Передумав <зовсім> " + "x".repeat(320));
+        OrderFixtures.set(o, "receivedMinor", 2_000_000); // more than the total: capped
+        OrderFixtures.set(o, "cancelRequestReason", "Передумав <зовсім> " + "x".repeat(320));
         h.scene("with reason", o, () -> h.seller.onCancelRequested(o));
         Order bare = order(NotifyHarness.TG_UK, OrderStatus.APPROVED);
         h.scene("no reason, nothing received", bare, () -> h.seller.onCancelRequested(bare));
@@ -92,13 +93,13 @@ class NotificationSnapshotTest {
     @Test
     void dispatchCard() throws Exception {
         Order o = order(NotifyHarness.TG_UK, OrderStatus.APPROVED);
-        o.setReceivedMinor(300_000);
+        OrderFixtures.set(o, "receivedMinor", 300_000);
         h.scene("post: new card, part prepaid", o, () -> h.seller.postDispatchCard(o));
         h.scene("post again: already tracked", o, () -> h.seller.postDispatchCard(o));
 
         Order paid = order(NotifyHarness.TG_UK, OrderStatus.APPROVED);
-        paid.setPaid(true);
-        paid.setReceivedMinor(paid.getTotalMinor());
+        OrderFixtures.set(paid, "paid", true);
+        OrderFixtures.set(paid, "receivedMinor", paid.getTotalMinor());
         h.scene("post: fully paid, COD 0", paid, () -> h.seller.postDispatchCard(paid));
 
         Order unpaid = pickupOrder(null, OrderStatus.APPROVED);
@@ -123,7 +124,7 @@ class NotificationSnapshotTest {
         h.scene("remove(id)", null, () -> h.seller.removeDispatchCard(Integer.valueOf(900)));
         h.scene("remove(null)", null, () -> h.seller.removeDispatchCard((Integer) null));
         Order failing = order(NotifyHarness.TG_UK, OrderStatus.APPROVED);
-        failing.setDispatchMessageId(55);
+        OrderFixtures.set(failing, "dispatchMessageId", 55);
         h.failure = call -> new TelegramApiException("Bad Request: message to delete not found");
         h.scene("remove(order) when telegram fails: id cleared anyway", failing, () -> h.seller.removeDispatchCard(failing));
         h.assertSnapshot("dispatchCard");
@@ -135,7 +136,7 @@ class NotificationSnapshotTest {
         Order o = order(NotifyHarness.TG_UK, OrderStatus.APPROVED);
         h.scene("post, blank chat", o, () -> h.seller.postDispatchCard(o));
         h.scene("sync, blank chat", o, () -> h.seller.syncDispatchCard(o));
-        o.setDispatchMessageId(5);
+        OrderFixtures.set(o, "dispatchMessageId", 5);
         h.scene("remove(id), blank chat", o, () -> h.seller.removeDispatchCard(5));
         h.props.getTelegram().setNotifyChatId("0");
         Order zero = order(NotifyHarness.TG_UK, OrderStatus.APPROVED);
@@ -153,23 +154,23 @@ class NotificationSnapshotTest {
                 h.scene(l + " / " + s, o, () -> h.customer.notifyCustomerStatus(o));
             }
             Order shipped = order(tg, OrderStatus.SHIPPED);
-            shipped.setTrackingNumber("20450123456789");
+            OrderFixtures.set(shipped, "trackingNumber", "20450123456789");
             h.scene(l + " / SHIPPED with tracking", shipped, () -> h.customer.notifyCustomerStatus(shipped));
             for (String reason : new String[]{"Нет в наличии <срочно>", "Отменён покупателем",
                     "Не оплачен в течение 24 ч", "Объединён с заказом #1a2b3c4d"}) {
                 Order rej = order(tg, OrderStatus.REJECTED);
-                rej.setRejectReason(reason);
+                OrderFixtures.set(rej, "rejectReason", reason);
                 h.scene(l + " / REJECTED: " + reason, rej, () -> h.customer.notifyCustomerStatus(rej));
             }
             Order paidCase = order(tg, OrderStatus.APPROVED);
-            paidCase.setGiftCaseStatus("SEALED");
-            paidCase.setPaid(true);
+            OrderFixtures.set(paidCase, "giftCaseStatus", "SEALED");
+            OrderFixtures.set(paidCase, "paid", true);
             h.scene(l + " / APPROVED with a sealed case, paid", paidCase, () -> h.customer.notifyCustomerStatus(paidCase));
             Order unpaidCase = order(tg, OrderStatus.NEW);
-            unpaidCase.setGiftCaseStatus("SEALED");
+            OrderFixtures.set(unpaidCase, "giftCaseStatus", "SEALED");
             h.scene(l + " / NEW with a sealed case, unpaid", unpaidCase, () -> h.customer.notifyCustomerStatus(unpaidCase));
             Order rejCase = order(tg, OrderStatus.REJECTED);
-            rejCase.setGiftCaseStatus("SEALED");
+            OrderFixtures.set(rejCase, "giftCaseStatus", "SEALED");
             h.scene(l + " / REJECTED with a sealed case (no case line)", rejCase, () -> h.customer.notifyCustomerStatus(rejCase));
         });
         Mockito.when(h.settings.getBool(SettingsRegistry.NOTIFY_CUSTOMER_STATUS)).thenReturn(false);
@@ -195,11 +196,11 @@ class NotificationSnapshotTest {
     void notifyCustomerGiftCase() throws Exception {
         h.eachLang("", (l, tg) -> {
             Order paid = order(tg, OrderStatus.APPROVED);
-            paid.setGiftCaseStatus("SEALED");
-            paid.setPaid(true);
+            OrderFixtures.set(paid, "giftCaseStatus", "SEALED");
+            OrderFixtures.set(paid, "paid", true);
             h.scene(l + " / openable", paid, () -> h.customer.notifyCustomerGiftCase(paid));
             Order unpaid = order(tg, OrderStatus.NEW);
-            unpaid.setGiftCaseStatus("SEALED");
+            OrderFixtures.set(unpaid, "giftCaseStatus", "SEALED");
             h.scene(l + " / after payment", unpaid, () -> h.customer.notifyCustomerGiftCase(unpaid));
         });
         h.assertSnapshot("notifyCustomerGiftCase");
@@ -261,16 +262,16 @@ class NotificationSnapshotTest {
             Order plain = order(tg, OrderStatus.APPROVED);
             h.scene(l + " / nothing to pay", plain, () -> h.customer.notifyCustomerExchange(plain, "Lamzu <Atlantis> × 1"));
             Order cod = order(tg, OrderStatus.APPROVED);
-            cod.setReceivedMinor(500_000);
+            OrderFixtures.set(cod, "receivedMinor", 500_000);
             h.scene(l + " / COD difference", cod, () -> h.customer.notifyCustomerExchange(cod, null));
             Order replacement = order(tg, OrderStatus.APPROVED);
-            replacement.setExchangeOfOrderId(UuidUtil.toBytes("11111111-2222-4333-8444-555555555555"));
+            OrderFixtures.set(replacement, "exchangeOfOrderId", UuidUtil.toBytes("11111111-2222-4333-8444-555555555555"));
             h.scene(l + " / replacement, pay online or COD", replacement,
                     () -> h.customer.notifyCustomerExchange(replacement, "Pulsar × 1"));
             Order replacementPaid = order(tg, OrderStatus.APPROVED);
-            replacementPaid.setExchangeOfOrderId(UuidUtil.toBytes("11111111-2222-4333-8444-555555555555"));
-            replacementPaid.setPaid(true);
-            replacementPaid.setReceivedMinor(replacementPaid.getTotalMinor());
+            OrderFixtures.set(replacementPaid, "exchangeOfOrderId", UuidUtil.toBytes("11111111-2222-4333-8444-555555555555"));
+            OrderFixtures.set(replacementPaid, "paid", true);
+            OrderFixtures.set(replacementPaid, "receivedMinor", replacementPaid.getTotalMinor());
             h.scene(l + " / replacement, fully paid", replacementPaid,
                     () -> h.customer.notifyCustomerExchange(replacementPaid, "Pulsar × 1"));
         });
@@ -281,18 +282,18 @@ class NotificationSnapshotTest {
     void notifyCustomerMerged() throws Exception {
         h.eachLang("", (l, tg) -> {
             Order paidMore = order(tg, OrderStatus.APPROVED);
-            paidMore.setPaid(true);
-            paidMore.setReceivedMinor(400_000);
+            OrderFixtures.set(paidMore, "paid", true);
+            OrderFixtures.set(paidMore, "receivedMinor", 400_000);
             h.scene(l + " / paid, difference left", paidMore, () -> h.customer.notifyCustomerMerged(paidMore, "deadbeef"));
             Order online = order(tg, OrderStatus.APPROVED);
-            online.setPrepaymentMinor(300_000);
-            online.setReceivedMinor(100_000);
+            OrderFixtures.set(online, "prepaymentMinor", 300_000);
+            OrderFixtures.set(online, "receivedMinor", 100_000);
             h.scene(l + " / prepayment still due", online, () -> h.customer.notifyCustomerMerged(online, "deadbeef"));
             Order cod = order(tg, OrderStatus.APPROVED);
             h.scene(l + " / COD", cod, () -> h.customer.notifyCustomerMerged(cod, "deadbeef"));
             Order done = order(tg, OrderStatus.APPROVED);
-            done.setPaid(true);
-            done.setReceivedMinor(done.getTotalMinor());
+            OrderFixtures.set(done, "paid", true);
+            OrderFixtures.set(done, "receivedMinor", done.getTotalMinor());
             h.scene(l + " / fully paid", done, () -> h.customer.notifyCustomerMerged(done, "deadbeef"));
         });
         h.assertSnapshot("notifyCustomerMerged");
@@ -312,7 +313,7 @@ class NotificationSnapshotTest {
     void notifyCustomerTracking() throws Exception {
         h.eachLang("", (l, tg) -> {
             Order o = order(tg, OrderStatus.SHIPPED);
-            o.setTrackingNumber("2045<01>23456789");
+            OrderFixtures.set(o, "trackingNumber", "2045<01>23456789");
             h.scene(l, o, () -> h.customer.notifyCustomerTracking(o));
             Order none = order(tg, OrderStatus.SHIPPED);
             h.scene(l + " / no tracking number → nothing", none, () -> h.customer.notifyCustomerTracking(none));
@@ -337,8 +338,8 @@ class NotificationSnapshotTest {
     void notifyCustomerCancelRequest() throws Exception {
         h.eachLang("", (l, tg) -> {
             Order o = order(tg, OrderStatus.APPROVED);
-            o.setReceivedMinor(500_000);
-            o.setCancelRequestAdminComment("Вже <відправлено>");
+            OrderFixtures.set(o, "receivedMinor", 500_000);
+            OrderFixtures.set(o, "cancelRequestAdminComment", "Вже <відправлено>");
             h.scene(l + " / approved", o, () -> h.customer.notifyCustomerCancelRequest(o, true));
             h.scene(l + " / declined", o, () -> h.customer.notifyCustomerCancelRequest(o, false));
         });
@@ -349,15 +350,15 @@ class NotificationSnapshotTest {
     void onPaymentReceived() throws Exception {
         h.eachLang("", (l, tg) -> {
             Order part = order(tg, OrderStatus.NEW);
-            part.setReceivedMinor(300_000);
+            OrderFixtures.set(part, "receivedMinor", 300_000);
             h.scene(l + " / part paid, COD left", part, () -> h.onPaymentReceived(part, 300_000));
             Order full = order(tg, OrderStatus.NEW);
-            full.setPaid(true);
-            full.setReceivedMinor(full.getTotalMinor());
+            OrderFixtures.set(full, "paid", true);
+            OrderFixtures.set(full, "receivedMinor", full.getTotalMinor());
             h.scene(l + " / paid in full", full, () -> h.onPaymentReceived(full, full.getTotalMinor()));
         });
         Order noTg = order(null, OrderStatus.NEW);
-        noTg.setReceivedMinor(300_000);
+        OrderFixtures.set(noTg, "receivedMinor", 300_000);
         h.scene("no telegram → admins only", noTg, () -> h.onPaymentReceived(noTg, 300_000));
         h.props.getTelegram().setNotifyChatId("0");
         Order zero = order(NotifyHarness.TG_RU, OrderStatus.NEW);
@@ -413,8 +414,8 @@ class NotificationSnapshotTest {
                 h.props.getTelegram().setBotToken("  ");
             }
             Order o = order(tg, OrderStatus.SHIPPED);
-            o.setTrackingNumber("123");
-            o.setReceivedMinor(100_000);
+            OrderFixtures.set(o, "trackingNumber", "123");
+            OrderFixtures.set(o, "receivedMinor", 100_000);
             byte[] pdf = {1};
             h.scene(state + " / notifyCustomerStatus", o, () -> h.customer.notifyCustomerStatus(o));
             h.scene(state + " / notifyCustomerGift", o, () -> h.customer.notifyCustomerGift(o, "T", null, 1));
@@ -449,8 +450,8 @@ class NotificationSnapshotTest {
             h.props.getTelegram().setNotifyChatId(chat);
             String label = "admin chat " + (chat == null ? "null" : "'" + chat + "'");
             Order o = order(null, OrderStatus.APPROVED);
-            o.setReceivedMinor(100_000);
-            o.setCancelRequestReason("r");
+            OrderFixtures.set(o, "receivedMinor", 100_000);
+            OrderFixtures.set(o, "cancelRequestReason", "r");
             h.scene(label + " / onNewOrder", o, () -> h.seller.onNewOrder(o));
             h.scene(label + " / onStatusChanged", o, () -> h.seller.onStatusChanged(o));
             h.scene(label + " / onCustomerChatMessage", o, () -> h.seller.onCustomerChatMessage(o, "hi"));
@@ -467,10 +468,10 @@ class NotificationSnapshotTest {
     void failuresAreSwallowed() throws Exception {
         h.failure = call -> new TelegramApiException("Bad Gateway");
         Order o = order(NotifyHarness.TG_UK, OrderStatus.APPROVED);
-        o.setTrackingNumber("123");
-        o.setReceivedMinor(100_000);
-        o.setNotifyChatId(CHAT);
-        o.setNotifyMessageId(5);
+        OrderFixtures.set(o, "trackingNumber", "123");
+        OrderFixtures.set(o, "receivedMinor", 100_000);
+        OrderFixtures.set(o, "notifyChatId", CHAT);
+        OrderFixtures.set(o, "notifyMessageId", 5);
         h.scene("onNewOrder", o, () -> h.seller.onNewOrder(o));
         h.scene("onStatusChanged", o, () -> h.seller.onStatusChanged(o));
         h.scene("notifyCustomerStatus", o, () -> h.customer.notifyCustomerStatus(o));

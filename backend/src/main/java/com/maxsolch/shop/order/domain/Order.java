@@ -1,35 +1,25 @@
 package com.maxsolch.shop.order.domain;
 
+import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import com.maxsolch.shop.platform.util.MoneyFormat;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.time.Instant;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-@Getter
-@Setter
+/**
+ * The order aggregate: status, lines, discounts, what was received / refunded / left uncollected. The columns
+ * are in {@link OrderColumns} (read-only outside), the request / archive / return-trail bookkeeping in {@link OrderHousekeeping}; every change goes through a method here, which keeps the
+ * invariants: {@code total = subtotal - discount} (never below 0), {@code giftDiscount <= discount}, no negative
+ * money, the status only along {@link OrderTransitions}. Calculations (to pay, COD, per-line shares) are pure
+ * and live in {@link OrderMoney}.
+ */
 @Entity
 @Table(name = "orders")
-public class Order {
-
-    /** {@link #getReturnStatus()}: the refused parcel is on its way back / has arrived. */
-    public static final String RETURN_IN_TRANSIT = "IN_TRANSIT";
-    public static final String RETURN_RECEIVED = "RECEIVED";
+public class Order extends OrderHousekeeping {
 
     /** Error code: shipping needs the online payment that has not arrived (the admin may confirm). */
     public static final String SHIP_UNPAID_CODE = "ORDER_UNPAID_SHIP";
@@ -37,228 +27,256 @@ public class Order {
     public static final String REJECT_DELIVERED =
             "Доставленный заказ не отклоняют — оформите «Возврат»: деньги и товар запишутся как надо";
 
-    @Id
-    @Column(name = "id", columnDefinition = "BINARY(16)", nullable = false)
-    private byte[] id;
+    /** Lines are read here; they change only through {@link #addLine}, {@link #removeLine} and the line methods. */
+    @Override
+    public List<OrderItem> getItems() {
+        return Collections.unmodifiableList(items);
+    }
 
-    @Column(name = "user_id")
-    private Long userId;
+    // ----- placing: who, where to, how it is paid -----
 
-    @Column(name = "subtotal_minor", nullable = false)
-    private long subtotalMinor = 0;
+    /** The buyer and the contact of a new order; the source defaults to the Mini App. */
+    public void placeBy(OrderBuyer buyer, OrderSource orderSource) {
+        currency = "UAH";
+        customerName = buyer.customerName();
+        phone = buyer.phone();
+        comment = buyer.comment();
+        userId = buyer.userId();
+        tgUserId = buyer.tgUserId();
+        tgUsername = buyer.tgUsername();
+        source = orderSource == null ? OrderSource.MINIAPP : orderSource;
+    }
 
-    @Column(name = "discount_minor", nullable = false)
-    private long discountMinor = 0;
+    /** Where the parcel goes: the method and (for Nova Poshta) the branch. */
+    public void deliverTo(DeliveryTarget target) {
+        deliveryMethod = target.method();
+        npCityRef = target.npCityRef();
+        npCityName = target.npCityName();
+        npWarehouseRef = target.npWarehouseRef();
+        npWarehouseName = target.npWarehouseName();
+    }
 
-    /** Gift case (V57): null = none, SEALED = the prize is in the order but not revealed, OPENED. */
-    @Column(name = "gift_case_status", length = 16)
-    private String giftCaseStatus;
+    /** A new Nova Poshta branch for the same delivery method. */
+    public void changeBranch(String cityRef, String cityName, String warehouseRef, String warehouseName) {
+        npCityRef = cityRef;
+        npCityName = cityName;
+        npWarehouseRef = warehouseRef;
+        npWarehouseName = warehouseName;
+    }
 
-    @Column(name = "gift_case_opened_at")
-    private java.time.Instant giftCaseOpenedAt;
+    /** The snapshot of the chosen payment option; the clock to pay ends at {@code dueAt}. */
+    public void choosePayment(byte[] optionId, String title, long prepayment, Instant dueAt) {
+        paymentOptionId = optionId;
+        paymentOptionTitle = title;
+        prepaymentMinor = Math.max(0, prepayment);
+        paymentDueAt = dueAt;
+    }
 
-    /** Gift case tier of the order (V57): BRONZE | SILVER | GOLD — of its case or its guaranteed discount. */
-    @Column(name = "gift_tier", length = 8)
-    private String giftTier;
+    /** The online part is not capped by a prepayment snapshot any more (an exchange replacement). */
+    public void dropPrepayment() {
+        prepaymentMinor = 0;
+    }
 
-    /** Part of discountMinor the customer took as the tier's guaranteed discount instead of a case (V57). */
-    @Column(name = "gift_discount_minor", nullable = false)
-    private long giftDiscountMinor = 0;
+    /** No deadline to pay (an admin sale, a fully covered or merged order). */
+    public void dropPaymentDeadline() {
+        paymentDueAt = null;
+    }
 
-    @Column(name = "total_minor", nullable = false)
-    private long totalMinor;
+    public void rename(String name) {
+        customerName = name;
+    }
 
-    @Column(name = "promo_code", length = 64)
-    private String promoCode;
+    public void changePhone(String newPhone) {
+        phone = newPhone;
+    }
 
-    @Column(name = "currency", nullable = false, length = 8)
-    private String currency = "UAH";
+    public void changeComment(String newComment) {
+        comment = newComment;
+    }
 
-    @Column(name = "customer_name", nullable = false, length = 255)
-    private String customerName;
+    public void changeTrackingNumber(String ttn) {
+        trackingNumber = ttn;
+    }
 
-    @Column(name = "phone", nullable = false, length = 64)
-    private String phone;
+    /** The recipient and the address of {@code other} (a merged order): name, phone, method, branch. */
+    public void takeRecipientOf(Order other) {
+        customerName = other.customerName;
+        phone = other.phone;
+        deliverTo(new DeliveryTarget(other.deliveryMethod, other.npCityRef, other.npCityName,
+                other.npWarehouseRef, other.npWarehouseName));
+    }
 
-    @Column(name = "comment", length = 1024)
-    private String comment;
+    /** This order replaces goods of {@code original} (an exchange): the same customer. */
+    public void replaces(Order original) {
+        exchangeOfOrderId = original.id;
+        userId = original.userId;
+    }
 
-    /** Changes only through the transition methods below ({@link #approve}, {@link #ship}, ...). */
-    @Setter(AccessLevel.NONE)
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private OrderStatus status = OrderStatus.NEW;
+    // ----- lines -----
 
-    /** Where the order was placed: Mini App (default, everything before the site), site, admin. */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "source", nullable = false)
-    private OrderSource source = OrderSource.MINIAPP;
+    public void addLine(OrderItem line) {
+        items.add(line);
+    }
 
-    @Column(name = "tracking_number", length = 128)
-    private String trackingNumber;
+    public void removeLine(OrderItem line) {
+        items.remove(line);
+    }
 
-    @Column(name = "reject_reason", length = 1024)
-    private String rejectReason;
+    // ----- money: discounts and totals -----
 
-    /** {@link RejectReasonCode} name; null = not specified (historical orders). */
-    @Column(name = "reject_reason_code", length = 32)
-    private String rejectReasonCode;
-
-    /** Money given back to the customer (returns / cancelled prepaid orders). */
-    @Column(name = "refunded_minor", nullable = false)
-    private long refundedMinor = 0;
-
-    /**
-     * Paid value of the units refused at the Nova Poshta branch (partial pickup, V72): never
-     * collected, so «Доставлен», наложка and the metrics count the total minus this.
-     */
-    @Column(name = "uncollected_minor", nullable = false)
-    private long uncollectedMinor = 0;
-
-    /** When the latest return was registered. */
-    @Column(name = "returned_at")
-    private Instant returnedAt;
-
-    @Column(name = "approved_at")
-    private Instant approvedAt;
-
-    @Column(name = "shipped_at")
-    private Instant shippedAt;
-
-    @Column(name = "delivered_at")
-    private Instant deliveredAt;
-
-    @Column(name = "rejected_at")
-    private Instant rejectedAt;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "delivery_method", nullable = false)
-    private DeliveryMethod deliveryMethod = DeliveryMethod.NOVA_POSHTA;
-
-    @Column(name = "np_city_ref", length = 64)
-    private String npCityRef;
-
-    @Column(name = "np_city_name", length = 255)
-    private String npCityName;
-
-    @Column(name = "np_warehouse_ref", length = 64)
-    private String npWarehouseRef;
-
-    @Column(name = "np_warehouse_name", length = 512)
-    private String npWarehouseName;
-
-    @Column(name = "payment_option_id", columnDefinition = "BINARY(16)")
-    private byte[] paymentOptionId;
-
-    @Column(name = "payment_option_title", length = 255)
-    private String paymentOptionTitle;
-
-    @Column(name = "paid", nullable = false)
-    private boolean paid = false;
-
-    @Column(name = "paid_at")
-    private Instant paidAt;
+    /** The label shown for the discount: a promo code, «Ручная скидка …», or none. */
+    public void labelPromo(String label) {
+        promoCode = label;
+    }
 
     /**
-     * Deadline to pay online (created + 24 h); an order still unpaid past it is rejected
-     * automatically and restocked. Null = placed before online payment existed.
+     * Recount after the lines changed: the subtotal from the lines, the stored discount capped by it, the
+     * gift part not above the discount, total = subtotal - discount. A free order is settled by
+     * {@link #settleIfFree}.
      */
-    @Column(name = "payment_due_at")
-    private Instant paymentDueAt;
+    public void reprice() {
+        long subtotal = OrderMoney.subtotalMinor(this);
+        subtotalMinor = subtotal;
+        discountMinor = Math.min(Math.max(0, discountMinor), subtotal);
+        giftDiscountMinor = Math.min(giftDiscountMinor, discountMinor);
+        totalMinor = OrderMoney.totalMinor(subtotal, discountMinor);
+    }
 
-    /** Prepayment amount snapshot for this order (0 for full-payment options). */
-    @Column(name = "prepayment_minor", nullable = false)
-    private long prepaymentMinor = 0;
-
-    /** How much money has actually been received for this order (drives наложка/COD). */
-    @Column(name = "received_minor", nullable = false)
-    private long receivedMinor = 0;
-
-    /** Customer's cancellation request of a paid order: PENDING | APPROVED | DECLINED, null = none. */
-    @Column(name = "cancel_request_status", length = 16)
-    private String cancelRequestStatus;
-
-    @Column(name = "cancel_request_reason", length = 500)
-    private String cancelRequestReason;
-
-    @Column(name = "cancel_requested_at")
-    private Instant cancelRequestedAt;
-
-    @Column(name = "cancel_request_resolved_at")
-    private Instant cancelRequestResolvedAt;
-
-    /** Why the request was declined (shown to the customer), or a note on approval. */
-    @Column(name = "cancel_request_admin_comment", length = 1000)
-    private String cancelRequestAdminComment;
-
-    /** Cancelled on the customer's initiative (feeds antibot.maxSelfCancelsPerDay). */
-    @Column(name = "cancelled_by_customer", nullable = false)
-    private boolean cancelledByCustomer = false;
-
-    @Column(name = "tg_user_id")
-    private Long tgUserId;
-
-    @Column(name = "tg_username", length = 255)
-    private String tgUsername;
-
-    @Column(name = "notify_chat_id")
-    private Long notifyChatId;
-
-    @Column(name = "notify_thread_id")
-    private Integer notifyThreadId;
-
-    @Column(name = "notify_message_id")
-    private Integer notifyMessageId;
-
-    /** Message id of the seller dispatch ("К ОТПРАВКЕ") card, while the order is APPROVED. */
-    @Column(name = "dispatch_message_id")
-    private Integer dispatchMessageId;
+    /** First pricing of a new order: the discount of the promo, as it was computed against the subtotal. */
+    public void priceWith(long discount) {
+        subtotalMinor = OrderMoney.subtotalMinor(this);
+        discountMinor = discount;
+        totalMinor = OrderMoney.totalMinor(subtotalMinor, discountMinor);
+    }
 
     /**
-     * Archived by the main admin (V68): hidden from the board, the lists and the customer's
-     * history, kept with everything attached. Orders are never deleted.
+     * An admin's discount: the new one plus the guaranteed discount of the gift case (the customer chose it
+     * instead of a case, it stays), both capped by the subtotal.
      */
-    @Column(name = "archived_at")
-    private Instant archivedAt;
+    public void applyDiscount(long discount) {
+        long subtotal = OrderMoney.subtotalMinor(this);
+        subtotalMinor = subtotal;
+        discountMinor = Math.min(Math.max(0, discount) + Math.max(0, giftDiscountMinor), subtotal);
+        giftDiscountMinor = Math.min(giftDiscountMinor, discountMinor);
+        totalMinor = OrderMoney.totalMinor(subtotal, discountMinor);
+    }
 
-    @Column(name = "archived_by", length = 255)
-    private String archivedBy;
+    /** The tier's guaranteed discount, chosen instead of a case: comes off the order and is remembered. */
+    public void grantGiftDiscount(String tier, long amountMinor) {
+        giftTier = tier;
+        giftDiscountMinor = amountMinor;
+        discountMinor = Math.min(subtotalMinor, discountMinor + amountMinor);
+        totalMinor = OrderMoney.totalMinor(subtotalMinor, discountMinor);
+    }
 
-    @Column(name = "archive_reason", length = 500)
-    private String archiveReason;
+    /** The discounts of a merged order add up: amounts, the gift part, the labels, the first tier. */
+    public void absorbDiscountsOf(Order other, String joinedPromo) {
+        discountMinor = discountMinor + other.discountMinor;
+        giftDiscountMinor = giftDiscountMinor + other.giftDiscountMinor;
+        promoCode = joinedPromo;
+        if (giftTier == null) {
+            giftTier = other.giftTier;
+        }
+    }
 
-    /** Refused / sent-back parcel on its way to the shop (V68): IN_TRANSIT, then RECEIVED; null = none. */
-    @Column(name = "return_status", length = 16)
-    private String returnStatus;
+    // ----- gift case -----
 
-    /** When the parcel (or the returned units) set off back to the shop: «едет назад» since. */
-    @Column(name = "return_sent_at")
-    private Instant returnSentAt;
+    /** A case prize is drawn: the case waits sealed for the customer to open it. */
+    public void sealGiftCase(String tier) {
+        giftTier = tier;
+        giftCaseStatus = GiftCaseRules.GIFT_CASE_SEALED;
+        giftCaseOpenedAt = null;
+    }
 
-    /** The order this one replaces goods of (V69): set on the replacement parcel of an exchange. */
-    @Column(name = "exchange_of_order_id", columnDefinition = "BINARY(16)")
-    private byte[] exchangeOfOrderId;
+    public void openGiftCase(Instant now) {
+        giftCaseStatus = GiftCaseRules.GIFT_CASE_OPENED;
+        giftCaseOpenedAt = now;
+    }
 
-    /** The order this one was merged into (V71): closed as REJECTED with code MERGED, its lines live on there. */
-    @Column(name = "merged_into_order_id", columnDefinition = "BINARY(16)")
-    private byte[] mergedIntoOrderId;
+    /** The case prize left the order: no case to open; the tier stays only while a guaranteed discount holds it. */
+    public void dropGiftCase() {
+        giftCaseStatus = null;
+        giftCaseOpenedAt = null;
+        if (giftDiscountMinor <= 0) {
+            giftTier = null;
+        }
+    }
 
-    @Column(name = "return_received_at")
-    private Instant returnReceivedAt;
+    // ----- money: received, refunded, uncollected -----
 
-    @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
-    private Instant createdAt;
+    /** Throws when {@code amountMinor} cannot be the received sum: negative, or above the order total. */
+    public void requireReceivable(long amountMinor) {
+        if (amountMinor < 0) {
+            throw OrderErrors.badRequest("сумма не может быть отрицательной");
+        }
+        if (amountMinor > totalMinor) {
+            // Used to be clamped silently: a typo (an extra zero) recorded "paid in full" unnoticed.
+            throw OrderErrors.badRequest("получено больше суммы заказа (" + MoneyFormat.uah(totalMinor) + ")");
+        }
+    }
 
-    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
-    private Instant updatedAt;
+    /**
+     * The admin states how much was received (up or down). Paid = something received or a free order;
+     * correcting an order that is already paid keeps the original payment date.
+     */
+    public void recordReceived(long amountMinor, Instant now) {
+        requireReceivable(amountMinor);
+        receivedMinor = amountMinor;
+        boolean nowPaid = amountMinor > 0 || totalMinor == 0;
+        boolean wasPaid = paid && paidAt != null;
+        paid = nowPaid;
+        paidAt = !nowPaid ? null : wasPaid ? paidAt : now;
+    }
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @OrderBy("id ASC")
-    private List<OrderItem> items = new ArrayList<>();
+    /** What an online payment of {@code amountMinor} adds to «received»: never above the total. */
+    public long creditableOnlineMinor(long amountMinor) {
+        long before = Math.max(0, receivedMinor);
+        return Math.max(0, Math.min(totalMinor, before + amountMinor) - before);
+    }
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @OrderBy("createdAt ASC, id ASC")
-    private List<OrderMessage> messages = new ArrayList<>();
+    /** Money arrived online: added to «received» (capped by the total), the order becomes paid; the status stays. */
+    public void receiveOnline(long amountMinor, Instant now) {
+        receivedMinor = Math.min(totalMinor, Math.max(0, receivedMinor) + amountMinor);
+        if (receivedMinor > 0 && !paid) {
+            paid = true;
+            paidAt = now;
+        }
+    }
+
+    /** Money given back to the customer. */
+    public void registerRefund(long amountMinor) {
+        refundedMinor = Math.max(0, Math.max(0, refundedMinor) + amountMinor);
+    }
+
+    /** A refund is reversed (a cancelled return): «returned» goes down, never below 0. */
+    public void undoRefund(long amountMinor) {
+        refundedMinor = Math.max(0, refundedMinor - amountMinor);
+    }
+
+    /** Units refused at the branch (partial pickup) were never paid: their value leaves the collectable sum. */
+    public void registerUncollected(long valueMinor) {
+        uncollectedMinor = Math.max(0, uncollectedMinor) + valueMinor;
+    }
+
+    /** A cancelled return puts units back: that much is collected again. */
+    public void restoreCollected(long valueMinor) {
+        uncollectedMinor = Math.max(0, uncollectedMinor - valueMinor);
+    }
+
+    /** A merged order gave its refundable money over (no real money moves); the order counts as paid when covered. */
+    public void absorbPaid(long moneyMinor, Order source, Instant now) {
+        if (moneyMinor > 0) {
+            receivedMinor = Math.max(0, receivedMinor) + moneyMinor;
+        }
+        boolean nowPaid = receivedMinor > 0 || totalMinor == 0;
+        if (nowPaid && !paid) {
+            paidAt = source.paidAt != null ? source.paidAt : now;
+        }
+        paid = nowPaid;
+        if (nowPaid && OrderMoney.amountDueMinor(this) == 0) {
+            paymentDueAt = null;
+        }
+    }
 
     // ----- state machine: the status moves only through these methods -----
 
@@ -294,7 +312,7 @@ public class Order {
      * @param allowUnpaid the admin confirmed shipping although the online payment (prepayment or the whole
      *                    order) has not arrived — e.g. agreed with the customer in the chat
      */
-    public void ship(String trackingNumber, boolean allowUnpaid, Instant now) {
+    public void ship(String ttn, boolean allowUnpaid, Instant now) {
         if (!OrderTransitions.allowed(status, OrderStatus.SHIPPED)) {
             throw OrderErrors.badRequest("отправить можно только новый или одобренный заказ");
         }
@@ -307,8 +325,8 @@ public class Order {
         }
         status = OrderStatus.SHIPPED;
         shippedAt = now;
-        if (trackingNumber != null && !trackingNumber.isBlank()) {
-            this.trackingNumber = trackingNumber.trim();
+        if (ttn != null && !ttn.isBlank()) {
+            trackingNumber = ttn.trim();
         }
     }
 
@@ -361,7 +379,7 @@ public class Order {
         returnStatus = RETURN_IN_TRANSIT;
         returnSentAt = now;
         for (OrderItem item : items) {
-            item.setReturnPendingQty(Math.max(0, item.getQuantity() - item.getRestockedQty()));
+            item.awaitReturn();
         }
     }
 

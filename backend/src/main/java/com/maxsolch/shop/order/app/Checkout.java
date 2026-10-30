@@ -8,6 +8,8 @@ import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.cart.domain.CartRules;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.DeliveryMethod;
+import com.maxsolch.shop.order.domain.DeliveryTarget;
+import com.maxsolch.shop.order.domain.OrderBuyer;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
@@ -119,22 +121,14 @@ public class Checkout {
         }
 
         Order order = new Order();
-        order.setCurrency("UAH");
-        order.setCustomerName(required(cmd.customerName(), "customerName"));
-        order.setPhone(required(cmd.phone(), "phone"));
-        order.setComment(cmd.comment());
-        order.setUserId(cmd.userId());
-        order.setTgUserId(cmd.tgUserId());
-        order.setTgUsername(cmd.tgUsername());
-        order.setSource(cmd.source() == null ? OrderSource.MINIAPP : cmd.source());
+        order.placeBy(new OrderBuyer(cmd.userId(), cmd.tgUserId(), cmd.tgUsername(),
+                required(cmd.customerName(), "customerName"), required(cmd.phone(), "phone"), cmd.comment()),
+                cmd.source());
 
-        order.setDeliveryMethod(deliveryMethod);
-        if (deliveryMethod == DeliveryMethod.NOVA_POSHTA) {
-            order.setNpCityRef(cmd.npCityRef());
-            order.setNpCityName(cmd.npCityName());
-            order.setNpWarehouseRef(cmd.npWarehouseRef());
-            order.setNpWarehouseName(cmd.npWarehouseName());
-        }
+        boolean pickup = deliveryMethod != DeliveryMethod.NOVA_POSHTA;
+        order.deliverTo(new DeliveryTarget(deliveryMethod,
+                pickup ? null : cmd.npCityRef(), pickup ? null : cmd.npCityName(),
+                pickup ? null : cmd.npWarehouseRef(), pickup ? null : cmd.npWarehouseName()));
 
         // Payment option snapshot. Every option is paid online now (in full, or a prepayment with
         // the rest cash on delivery), so one must be chosen; the clock to pay starts here.
@@ -143,12 +137,9 @@ public class Checkout {
         }
         OrderPaymentOptions.Option po = paymentOptions.findActive(ops.toBytes(cmd.paymentOptionId(), "paymentOptionId"))
                 .orElseThrow(() -> OrderErrors.badRequest(messages.current("api.order.paymentUnknown")));
-        order.setPaymentOptionId(po.id());
-        order.setPaymentOptionTitle(po.title());
-        order.setPrepaymentMinor(po.requiresPrepayment() ? po.prepaymentMinor() : 0);
-        order.setPaymentDueAt(ops.now().plus(Duration.ofHours(Math.max(1, props.getPayment().getDueHours()))));
+        order.choosePayment(po.id(), po.title(), po.requiresPrepayment() ? po.prepaymentMinor() : 0,
+                ops.now().plus(Duration.ofHours(Math.max(1, props.getPayment().getDueHours()))));
 
-        long subtotal = 0;
         List<Product> toSave = new ArrayList<>();
         // Lock products in a deterministic order (by id): two concurrent orders touching the same
         // pair of products would otherwise be able to deadlock against each other.
@@ -175,12 +166,7 @@ public class Checkout {
                 throw OrderErrors.badRequest(messages.current("api.order.unavailable", product.getTitle()));
             }
 
-            OrderItem item = new OrderItem();
-            item.setOrder(order);
-            item.setProductId(product.getId());
-            item.setTitleSnapshot(product.getTitle());
-            item.setPriceMinorSnapshot(product.getPriceMinor());
-            item.setQuantity(line.quantity);
+            OrderItem item = OrderItem.sold(order, product.getId(), product.getTitle(), product.getPriceMinor(), line.quantity);
 
             boolean hasVariants = product.getVariants() != null && !product.getVariants().isEmpty();
             ProductVariant variant = null;
@@ -189,35 +175,32 @@ public class Checkout {
                 if (variant == null) {
                     throw OrderErrors.badRequest(messages.current("api.order.variantMismatch", product.getTitle()));
                 }
-                item.setVariantId(variant.getId());
-                item.setVariantNameSnapshot(variant.getName());
+                item.withVariant(variant.getId(), variant.getName());
             } else if (hasVariants) {
                 throw OrderErrors.badRequest(messages.current("api.order.variantRequired", product.getTitle()));
             }
             shelf.requireAvailable(product, variant, line.quantity, cmd.userId());
             shelf.reserve(product, variant, line.quantity, item);
 
-            subtotal += product.getPriceMinor() * (long) line.quantity;
-            order.getItems().add(item);
+            order.addLine(item);
             toSave.add(product);
         }
 
         // Promo: fixed amount takes priority over percent.
         long discount = 0;
+        long subtotal = OrderMoney.subtotalMinor(order);
         PromoCode promo = promos.resolve(cmd.promoCode(), cmd.tgUserId(), true);
         long lowMarginMinor = promos.lowMarginMinor(order);
         if (promo != null) {
             discount = PromoDiscount.discountFor(promo, subtotal, promos.excluded(promo, lowMarginMinor, subtotal));
-            order.setPromoCode(promo.getCode());
+            order.labelPromo(promo.getCode());
             promos.countUse(promo);
             if (cmd.tgUserId() != null) {
                 promos.consumeHold(promo, cmd.tgUserId());
             }
         }
 
-        order.setSubtotalMinor(subtotal);
-        order.setDiscountMinor(discount);
-        order.setTotalMinor(OrderMoney.totalMinor(subtotal, discount));
+        order.priceWith(discount);
 
         // The gift for the order sum (docs/GIFT-CASE.md), against the total after the discount: the
         // tier's guaranteed discount (the customer's choice) or its case — the prize is drawn now.
@@ -259,7 +242,7 @@ public class Checkout {
     public Order createAdminOrder(CreateOrderCommand cmd, long paidMinor, OrderMoneyMovement.Channel channel,
                                   String adminName, String note) {
         Order order = createOrder(cmd);
-        order.setPaymentDueAt(null);
+        order.dropPaymentDeadline();
         orderRepository.save(order);
         if (paidMinor > 0) {
             return payments.markPaid(order.getId(), paidMinor, channel, adminName,

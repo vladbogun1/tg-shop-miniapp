@@ -1,5 +1,6 @@
 package com.maxsolch.shop.support.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.DeliveryMethod;
@@ -111,15 +112,15 @@ class ReplyTemplateServiceTest {
     void renderForOrder_fillsOrderValuesInCustomerLanguage() {
         ReplyTemplateService service = service();
         Order o = new Order();
-        o.setId(UuidUtil.randomBytes());
-        o.setTgUserId(42L);
-        o.setCustomerName("Іван");
-        o.setTotalMinor(100_000);
-        o.setReceivedMinor(20_000);
-        o.setTrackingNumber("20450000000001");
-        o.setDeliveryMethod(DeliveryMethod.NOVA_POSHTA);
-        o.setNpCityName("Київ");
-        o.setNpWarehouseName("Відділення №1");
+        OrderFixtures.set(o, "id", UuidUtil.randomBytes());
+        OrderFixtures.set(o, "tgUserId", 42L);
+        OrderFixtures.set(o, "customerName", "Іван");
+        OrderFixtures.set(o, "totalMinor", 100_000);
+        OrderFixtures.set(o, "receivedMinor", 20_000);
+        OrderFixtures.set(o, "trackingNumber", "20450000000001");
+        OrderFixtures.set(o, "deliveryMethod", DeliveryMethod.NOVA_POSHTA);
+        OrderFixtures.set(o, "npCityName", "Київ");
+        OrderFixtures.set(o, "npWarehouseName", "Відділення №1");
         when(orderRepository.find(o.getId())).thenReturn(Optional.of(o));
         when(messages.localeOf(42L)).thenReturn(Locale.forLanguageTag("uk"));
         when(repository.findAllByOrderBySortAscIdAsc()).thenReturn(List.of(template("RU {name}")));
@@ -138,9 +139,9 @@ class ReplyTemplateServiceTest {
     void renderForOrder_staleTranslationIsNotUsed() {
         ReplyTemplateService service = service();
         Order o = new Order();
-        o.setId(UuidUtil.randomBytes());
-        o.setTgUserId(42L);
-        o.setCustomerName("Іван");
+        OrderFixtures.set(o, "id", UuidUtil.randomBytes());
+        OrderFixtures.set(o, "tgUserId", 42L);
+        OrderFixtures.set(o, "customerName", "Іван");
         when(orderRepository.find(o.getId())).thenReturn(Optional.of(o));
         when(messages.localeOf(42L)).thenReturn(Locale.forLanguageTag("uk"));
         when(repository.findAllByOrderBySortAscIdAsc()).thenReturn(List.of(template("Новый текст {name}")));

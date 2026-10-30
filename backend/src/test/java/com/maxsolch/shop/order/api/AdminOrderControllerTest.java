@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.api;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.app.UpdateOrderStatusRequest;
 import com.maxsolch.shop.order.app.MessageDto;
 import com.maxsolch.shop.order.app.OrderBoardDto;
@@ -100,8 +101,8 @@ class AdminOrderControllerTest {
     @BeforeEach
     void setUp() {
         order = new Order();
-        order.setId(UuidUtil.randomBytes());
-        order.setTotalMinor(10_000);
+        OrderFixtures.set(order, "id", UuidUtil.randomBytes());
+        OrderFixtures.set(order, "totalMinor", 10_000);
         id = UuidUtil.toString(order.getId());
         detail = mock(OrderDetailDto.class);
         lenient().when(orders.findById(any())).thenReturn(Optional.of(order));
@@ -177,7 +178,7 @@ class AdminOrderControllerTest {
     @Test
     void status_approve_changesStatus_auditsOnce_returnsDetail() {
         Order updated = new Order();
-        updated.setId(order.getId());
+        OrderFixtures.set(updated, "id", order.getId());
         when(lifecycle.changeStatus(eq(order.getId()), eq(OrderStatus.APPROVED), any(), any(), any(),
                 anyBoolean(), anyBoolean())).thenReturn(updated);
         when(queries.toDetail(updated)).thenReturn(detail);
@@ -194,7 +195,7 @@ class AdminOrderControllerTest {
     @Test
     void status_ship_passesTrackingAndShipUnpaid_auditsTracking() {
         Order updated = new Order();
-        updated.setId(order.getId());
+        OrderFixtures.set(updated, "id", order.getId());
         when(lifecycle.changeStatus(any(byte[].class), eq(OrderStatus.SHIPPED), any(), any(), any(),
                 anyBoolean(), anyBoolean())).thenReturn(updated);
 
@@ -207,10 +208,10 @@ class AdminOrderControllerTest {
 
     @Test
     void status_shipWithoutOnlineMoney_auditsDecisionBeforeStatusEntry() {
-        order.setPaymentDueAt(Instant.now());
-        order.setReceivedMinor(2_500);
+        OrderFixtures.set(order, "paymentDueAt", Instant.now());
+        OrderFixtures.set(order, "receivedMinor", 2_500);
         Order updated = new Order();
-        updated.setId(order.getId());
+        OrderFixtures.set(updated, "id", order.getId());
         when(lifecycle.changeStatus(any(byte[].class), eq(OrderStatus.SHIPPED), any(), any(), any(),
                 anyBoolean(), anyBoolean())).thenReturn(updated);
 
@@ -226,7 +227,7 @@ class AdminOrderControllerTest {
     @Test
     void status_reject_closesInvoices_andAuditsRestock() {
         Order updated = new Order();
-        updated.setId(order.getId());
+        OrderFixtures.set(updated, "id", order.getId());
         when(lifecycle.changeStatus(any(byte[].class), eq(OrderStatus.REJECTED), any(), any(), any(),
                 anyBoolean(), anyBoolean())).thenReturn(updated);
 
@@ -243,7 +244,7 @@ class AdminOrderControllerTest {
     @Test
     void status_rejectWithoutRestock_auditsIt() {
         Order updated = new Order();
-        updated.setId(order.getId());
+        OrderFixtures.set(updated, "id", order.getId());
         when(lifecycle.changeStatus(any(byte[].class), eq(OrderStatus.REJECTED), any(), any(), any(),
                 anyBoolean(), anyBoolean())).thenReturn(updated);
 
@@ -255,8 +256,8 @@ class AdminOrderControllerTest {
     @Test
     void status_rejectInTransit_goesThroughReject_andAuditsTheTrip() {
         Order updated = new Order();
-        updated.setId(order.getId());
-        updated.setReturnStatus(Order.RETURN_IN_TRANSIT);
+        OrderFixtures.set(updated, "id", order.getId());
+        OrderFixtures.set(updated, "returnStatus", Order.RETURN_IN_TRANSIT);
         when(lifecycle.reject(any(byte[].class), any(), any(), anyBoolean(), anyBoolean())).thenReturn(updated);
 
         controller().updateStatus(id, status("REJECTED", null, "отказ на почте", null, "REFUSED_AT_POST", null, true));
@@ -272,7 +273,7 @@ class AdminOrderControllerTest {
     @Test
     void status_returnInTransit_ignoredForNonReject() {
         Order updated = new Order();
-        updated.setId(order.getId());
+        OrderFixtures.set(updated, "id", order.getId());
         when(lifecycle.changeStatus(any(byte[].class), eq(OrderStatus.DELIVERED), any(), any(), any(),
                 anyBoolean(), anyBoolean())).thenReturn(updated);
 
@@ -295,7 +296,7 @@ class AdminOrderControllerTest {
     @Test
     void status_invoiceClosingFails_exceptionPropagates_andNothingIsAudited() {
         Order updated = new Order();
-        updated.setId(order.getId());
+        OrderFixtures.set(updated, "id", order.getId());
         when(lifecycle.changeStatus(any(byte[].class), any(), any(), any(), any(), anyBoolean(), anyBoolean()))
                 .thenReturn(updated);
         org.mockito.Mockito.doThrow(new IllegalStateException("mono down")).when(payments).closeOpenInvoices(any());
@@ -310,7 +311,7 @@ class AdminOrderControllerTest {
     @Test
     void board_columnsCountsAndSums() {
         Order a = new Order();
-        a.setId(UuidUtil.randomBytes());
+        OrderFixtures.set(a, "id", UuidUtil.randomBytes());
         OrderCardDto card = mock(OrderCardDto.class);
         OrderQueryService.CardContext ctx = mock(OrderQueryService.CardContext.class);
         when(orders.searchByStatus(any(), any(), any(), any(), any(), any(), any())).thenReturn(List.of());

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.order.domain.DeliveryMethod;
@@ -54,16 +55,16 @@ class OrderDeliveryEditingTest {
 
     private Order order(OrderStatus status) {
         Order o = new Order();
-        o.setId(UuidUtil.randomBytes());
+        OrderFixtures.set(o, "id", UuidUtil.randomBytes());
         OrderStates.withStatus(o, status);
-        o.setCustomerName("Іван Петренко");
-        o.setPhone("+380501112233");
-        o.setDeliveryMethod(DeliveryMethod.NOVA_POSHTA);
-        o.setNpCityRef("city-1");
-        o.setNpCityName("Київ");
-        o.setNpWarehouseRef("wh-1");
-        o.setNpWarehouseName("Відділення №1");
-        o.setItems(new ArrayList<>());
+        OrderFixtures.set(o, "customerName", "Іван Петренко");
+        OrderFixtures.set(o, "phone", "+380501112233");
+        OrderFixtures.set(o, "deliveryMethod", DeliveryMethod.NOVA_POSHTA);
+        OrderFixtures.set(o, "npCityRef", "city-1");
+        OrderFixtures.set(o, "npCityName", "Київ");
+        OrderFixtures.set(o, "npWarehouseRef", "wh-1");
+        OrderFixtures.set(o, "npWarehouseName", "Відділення №1");
+        OrderFixtures.set(o, "items", new ArrayList<>());
         lenient().when(orderRepository.findByIdForUpdate(o.getId())).thenReturn(Optional.of(o));
         return o;
     }
@@ -73,7 +74,7 @@ class OrderDeliveryEditingTest {
     @Test
     void updateTracking_shippedOrder_replacesNumberAndNotifiesCustomer() {
         Order o = order(OrderStatus.SHIPPED);
-        o.setTrackingNumber("20450000000000");
+        OrderFixtures.set(o, "trackingNumber", "20450000000000");
 
         OrderChange r = service.updateTracking(o.getId(), " 2045 0000 0000 01 ");
 
@@ -99,7 +100,7 @@ class OrderDeliveryEditingTest {
     @Test
     void updateTracking_sameEmptyOrTooLong_isNotAChange() {
         Order o = order(OrderStatus.DELIVERED);
-        o.setTrackingNumber("20450000000000");
+        OrderFixtures.set(o, "trackingNumber", "20450000000000");
 
         assertThat(service.updateTracking(o.getId(), "2045 0000 0000 00").auditDetails()).isEqualTo("ТТН не изменилась");
         assertThatThrownBy(() -> service.updateTracking(o.getId(), "  "))
@@ -158,7 +159,7 @@ class OrderDeliveryEditingTest {
         assertThatThrownBy(() -> service.updateDelivery(o.getId(),
                 new OrderDeliveryEditing.DeliveryPatch(null, "12345", null, null, null, null)))
                 .isInstanceOf(DomainException.BadRequest.class).hasMessage("проверьте номер телефона");
-        o.setDeliveryMethod(DeliveryMethod.PICKUP);
+        OrderFixtures.set(o, "deliveryMethod", DeliveryMethod.PICKUP);
         assertThatThrownBy(() -> service.updateDelivery(o.getId(),
                 new OrderDeliveryEditing.DeliveryPatch(null, null, "c", "Львів", "w", "№9")))
                 .isInstanceOf(DomainException.BadRequest.class).hasMessage("у заказа самовывоз — отделение не указывается");

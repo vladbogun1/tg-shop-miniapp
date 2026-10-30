@@ -112,21 +112,17 @@ public class ReturnCancellation {
         long refusedBack = putGoodsBack(order, recs, rec, exchange, adminName, parts);
         if (refusedBack > 0 && order.getUncollectedMinor() > 0) {
             long back = Math.min(refusedBack, order.getUncollectedMinor());
-            order.setUncollectedMinor(order.getUncollectedMinor() - back);
+            order.restoreCollected(back);
             parts.add("снова к оплате наложкой " + MoneyFormat.uah(back));
         }
         boolean otherPosted = otherTransitLines(recs, rec);
         boolean anyPending = order.getItems().stream().anyMatch(i -> i.getReturnPendingQty() > 0);
         if (!anyPending && order.getStatus() != OrderStatus.REJECTED) {
-            order.setReturnStatus(otherPosted ? Order.RETURN_RECEIVED : null);
-            if (!otherPosted) {
-                order.setReturnSentAt(null);
-                order.setReturnReceivedAt(null);
-            }
+            order.settleReturnTrail(otherPosted);
         }
         if (order.getStatus() != OrderStatus.REJECTED && order.getItems().stream().allMatch(i -> i.getReturnedQty() <= 0)) {
             // Nothing is returned any more — the timeline stops saying «Возврат оформлен».
-            order.setReturnedAt(null);
+            order.clearReturned();
         }
 
         // The money.
@@ -175,7 +171,7 @@ public class ReturnCancellation {
             long kept = OrderMoney.keptMinor(child);
             creditBack = Math.max(0, Math.min(rec.getRefundMinor(), kept));
             if (creditBack > 0) {
-                child.setRefundedMinor(Math.max(0, child.getRefundedMinor()) + creditBack);
+                child.registerRefund(creditBack);
                 moneyLedger.record(child.getId(), OrderMoneyMovement.Kind.REFUND, OrderMoneyMovement.Channel.EXCHANGE,
                         creditBack, OrderMoneyMovement.Source.ADMIN, adminName,
                         "обмен отменён, зачёт обратно в заказ #" + ReturnText.shortId(order.getId()), null);
@@ -229,7 +225,7 @@ public class ReturnCancellation {
             }
             int pending = l.pendingQty();
             if (pending > 0) {
-                item.setReturnPendingQty(Math.max(0, item.getReturnPendingQty() - pending));
+                item.reduceReturnPending(pending);
             }
             if (l.getRestockedQty() > 0) {
                 stock.takeBackUnits(item, l.getRestockedQty());
@@ -238,7 +234,7 @@ public class ReturnCancellation {
                 writeoffs.find(l.getWriteoffId())
                         .ifPresent(w -> writeoffs.undo(w, l.getDefectQty(), adminName, "возврат отменён"));
             }
-            item.setReturnedQty(Math.max(0, item.getReturnedQty() - l.getQuantity()));
+            item.unregisterReturned(l.getQuantity());
             parts.add(ReturnText.title(item) + " ×" + l.getQuantity() + " снова в заказе");
         }
         return refusedBack;
@@ -267,7 +263,7 @@ public class ReturnCancellation {
 
     /** Money of a cancelled return came back: «возвращено» goes down, the journal gets a minus refund. */
     private void bookMoneyBack(Order order, long amount, OrderMoneyMovement.Channel channel, String adminName, String note) {
-        order.setRefundedMinor(Math.max(0, order.getRefundedMinor() - amount));
+        order.undoRefund(amount);
         moneyLedger.record(order.getId(), OrderMoneyMovement.Kind.REFUND, channel, -amount,
                 OrderMoneyMovement.Source.ADMIN, adminName, note, null);
     }

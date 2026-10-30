@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
@@ -41,7 +42,7 @@ class AdminOrdersTest {
     private AdminOrders orders;
 
     AdminOrdersTest() {
-        order.setId(UuidUtil.randomBytes());
+        OrderFixtures.set(order, "id", UuidUtil.randomBytes());
         id = UuidUtil.toString(order.getId());
     }
 
@@ -95,7 +96,7 @@ class AdminOrdersTest {
     @Test
     void merge_refusedWhileTheBankIsProcessingAPayment_changesNothing() {
         Order source = new Order();
-        source.setId(UuidUtil.randomBytes());
+        OrderFixtures.set(source, "id", UuidUtil.randomBytes());
         String sourceId = UuidUtil.toString(source.getId());
         when(queries.load(sourceId)).thenReturn(source);
         when(payments.hasPaymentInFlight(source.getId())).thenReturn(true);

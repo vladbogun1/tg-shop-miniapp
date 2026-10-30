@@ -16,7 +16,7 @@ class OrderTest {
 
     private static Order order(OrderStatus status) {
         Order o = new Order();
-        o.setId(UuidUtil.randomBytes());
+        OrderFixtures.set(o, "id", UuidUtil.randomBytes());
         OrderStates.withStatus(o, status);
         return o;
     }
@@ -25,9 +25,9 @@ class OrderTest {
     void newOrderStartsNewAndWalksApproveShipDeliver() {
         Order o = new Order();
         assertThat(o.getStatus()).isEqualTo(OrderStatus.NEW);
-        o.setTotalMinor(10_000);
-        o.setReceivedMinor(10_000);
-        o.setPaid(true);
+        OrderFixtures.set(o, "totalMinor", 10_000);
+        OrderFixtures.set(o, "receivedMinor", 10_000);
+        OrderFixtures.set(o, "paid", true);
 
         o.approve(NOW);
         assertThat(o.getStatus()).isEqualTo(OrderStatus.APPROVED);
@@ -45,16 +45,16 @@ class OrderTest {
     @Test
     void deliverSettlesTheRestAsReceivedAndNeverLowersIt() {
         Order cod = order(OrderStatus.SHIPPED);
-        cod.setTotalMinor(10_000);
-        cod.setReceivedMinor(2_000);
+        OrderFixtures.set(cod, "totalMinor", 10_000);
+        OrderFixtures.set(cod, "receivedMinor", 2_000);
         cod.deliver(NOW);
         assertThat(cod.getReceivedMinor()).isEqualTo(10_000);
         assertThat(cod.isPaid()).isTrue();
         assertThat(cod.getPaidAt()).isEqualTo(NOW);
 
         Order overpaid = order(OrderStatus.SHIPPED);
-        overpaid.setTotalMinor(5_000);
-        overpaid.setReceivedMinor(8_000);
+        OrderFixtures.set(overpaid, "totalMinor", 5_000);
+        OrderFixtures.set(overpaid, "receivedMinor", 8_000);
         overpaid.deliver(NOW);
         assertThat(overpaid.getReceivedMinor()).isEqualTo(8_000);
     }
@@ -74,7 +74,7 @@ class OrderTest {
     @Test
     void pendingCancelRequestBlocksApproveAndShip() {
         Order o = order(OrderStatus.NEW);
-        o.setCancelRequestStatus(CancelRequestStatus.PENDING.name());
+        OrderFixtures.set(o, "cancelRequestStatus", CancelRequestStatus.PENDING.name());
         assertThatThrownBy(() -> o.approve(NOW)).hasMessageContaining("запрос отмены");
         assertThatThrownBy(() -> o.ship("1", true, NOW)).hasMessageContaining("запрос отмены");
         assertThat(o.getStatus()).isEqualTo(OrderStatus.NEW);
@@ -83,8 +83,8 @@ class OrderTest {
     @Test
     void shipWithoutTheOnlinePaymentNeedsConfirmation() {
         Order o = order(OrderStatus.APPROVED);
-        o.setTotalMinor(10_000);
-        o.setPaymentDueAt(NOW);
+        OrderFixtures.set(o, "totalMinor", 10_000);
+        OrderFixtures.set(o, "paymentDueAt", NOW);
         assertThatThrownBy(() -> o.ship("1", false, NOW)).isInstanceOfSatisfying(DomainException.class,
                 e -> assertThat(e.getCode()).isEqualTo(Order.SHIP_UNPAID_CODE));
         o.ship("1", true, NOW);
@@ -113,7 +113,7 @@ class OrderTest {
     @Test
     void markMergedClosesTheOrderIntoTheTargetWithoutDeadline() {
         Order o = order(OrderStatus.NEW);
-        o.setPaymentDueAt(NOW);
+        OrderFixtures.set(o, "paymentDueAt", NOW);
         byte[] target = UuidUtil.randomBytes();
         o.markMerged(NOW, "Объединён в заказ #abc", target);
         assertThat(o.getStatus()).isEqualTo(OrderStatus.REJECTED);
@@ -130,14 +130,14 @@ class OrderTest {
         assertThat(empty.isPaid()).isFalse();
 
         Order free = order(OrderStatus.NEW);
-        free.getItems().add(new OrderItem());
-        free.setPaymentDueAt(NOW);
+        free.addLine(new OrderItem());
+        OrderFixtures.set(free, "paymentDueAt", NOW);
         free.settleIfFree(NOW);
         assertThat(free.isPaid()).isTrue();
         assertThat(free.getPaymentDueAt()).isNull();
 
         Order shipped = order(OrderStatus.SHIPPED);
-        shipped.getItems().add(new OrderItem());
+        shipped.addLine(new OrderItem());
         shipped.settleIfFree(NOW);
         assertThat(shipped.isPaid()).isFalse();
     }
@@ -146,9 +146,9 @@ class OrderTest {
     void returnInTransitWaitsForTheUnitsNotYetRestocked() {
         Order o = order(OrderStatus.SHIPPED);
         OrderItem line = new OrderItem();
-        line.setQuantity(3);
-        line.setRestockedQty(1);
-        o.getItems().add(line);
+        OrderFixtures.set(line, "quantity", 3);
+        OrderFixtures.set(line, "restockedQty", 1);
+        o.addLine(line);
         o.markReturnInTransit(NOW);
         assertThat(o.getReturnStatus()).isEqualTo(Order.RETURN_IN_TRANSIT);
         assertThat(o.getReturnSentAt()).isEqualTo(NOW);

@@ -72,7 +72,7 @@ public class ReturnReceiving {
             // Units on their way back; a refused parcel from before the per-line count travels whole.
             int out = anyPending ? item.getReturnPendingQty()
                     : refused ? item.getQuantity() - Math.max(item.getReturnedQty(), item.getRestockedQty()) : 0;
-            item.setReturnPendingQty(0);
+            item.clearReturnPending();
             if (out <= 0) {
                 continue;
             }
@@ -93,7 +93,7 @@ public class ReturnReceiving {
             if (defect > 0) {
                 if (refused) {
                     // A delivered order's returned units were counted when the return was registered.
-                    item.setReturnedQty(item.getReturnedQty() + defect);
+                    item.registerReturned(defect);
                 }
                 w = defects.writeOff(item, defect, OrderMoney.unitPaidMinor(order, item), order.getId(), cleanNote,
                         adminName);
@@ -101,8 +101,7 @@ public class ReturnReceiving {
             }
             settleInTransit(order, item, restocked, defect, w);
         }
-        order.setReturnStatus(Order.RETURN_RECEIVED);
-        order.setReturnReceivedAt(clock.instant());
+        order.markReturnReceived(clock.instant());
         Order saved = orders.save(order);
         events.publish(OrderEvents.Edited.silent(saved.getId()));
         return new OrderChange(saved, "посылка вернулась: " + (parts.isEmpty() ? "без товара" : String.join(", ", parts))
