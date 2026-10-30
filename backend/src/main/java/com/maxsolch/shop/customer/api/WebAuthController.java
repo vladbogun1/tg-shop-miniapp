@@ -1,12 +1,11 @@
 package com.maxsolch.shop.customer.api;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.web.ClientIp;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.CookieOriginGuard;
 import com.maxsolch.shop.platform.security.WebCookies;
 import com.maxsolch.shop.customer.app.WebAuthService;
-import com.maxsolch.shop.platform.error.ForbiddenException;
-import com.maxsolch.shop.platform.error.UnauthorizedException;
 import com.maxsolch.shop.customer.app.WebAuthDtos.CompleteRequest;
 import com.maxsolch.shop.customer.app.WebAuthDtos.StartResponse;
 import com.maxsolch.shop.customer.app.WebAuthDtos.StatusResponse;
@@ -83,7 +82,7 @@ public class WebAuthController {
         requireTrustedOrigin(request);
         String refresh = WebCookies.read(request, WebCookies.REFRESH);
         if (refresh == null) {
-            throw new UnauthorizedException("no refresh token");
+            throw new DomainException.Unauthorized("no refresh token", null);
         }
         try {
             WebAuthService.Tokens t = webAuthService.refresh(refresh,
@@ -91,7 +90,7 @@ public class WebAuthController {
             cookies.setAccess(response, t.accessJwt());
             cookies.setRefresh(response, t.refreshToken());
             return new WebAuthResponse(t.user());
-        } catch (UnauthorizedException e) {
+        } catch (DomainException.Unauthorized e) {
             // A rotated-away token from a parallel tab keeps its cookies (the winner already set
             // fresh ones); anything else means this browser is logged out.
             if (!WebAuthService.REFRESH_RACE.equals(e.getMessage())) {
@@ -113,7 +112,7 @@ public class WebAuthController {
 
     private void requireTrustedOrigin(HttpServletRequest request) {
         if (!originGuard.isTrustedOrigin(request)) {
-            throw new ForbiddenException("origin not allowed");
+            throw new DomainException.Forbidden("origin not allowed");
         }
     }
 

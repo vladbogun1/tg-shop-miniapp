@@ -1,8 +1,9 @@
-package com.maxsolch.shop.customer.api;
+package com.maxsolch.shop.payment.api;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.platform.i18n.Messages;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.payment.app.ReceiptService;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
@@ -18,7 +19,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -43,14 +43,13 @@ class MeReceiptsOwnershipTest {
     @Mock
     ReceiptService receipts;
 
-    MeController controller;
+    MeOrderPaymentController controller;
     Order order;
 
     @BeforeEach
     void setUp() {
-        controller = new MeController(null, new CustomerOrders(orders, messages), null, null, null, null, null, null,
-                null, messages, null, null);
-        ReflectionTestUtils.setField(controller, "receipts", receipts);
+        controller = new MeOrderPaymentController(new CustomerOrders(orders, messages), null, null, null, null, receipts,
+                null, new CurrentActor());
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
         order = new Order();
         order.setId(UuidUtil.randomBytes());

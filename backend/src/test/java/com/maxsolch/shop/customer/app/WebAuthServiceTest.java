@@ -16,8 +16,7 @@ import com.maxsolch.shop.customer.app.WebAuthService.BotPrompt;
 import com.maxsolch.shop.customer.app.WebAuthService.StartResult;
 import com.maxsolch.shop.customer.app.WebAuthService.Tokens;
 import com.maxsolch.shop.customer.app.WebAuthService.WebLoginCompletedEvent;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.UnauthorizedException;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -163,7 +162,7 @@ class WebAuthServiceTest {
         assertThat(service.status(r.loginId())).isEqualTo(WebLoginStatus.EXPIRED);
         assertThat(service.openFromBot(nonceOf(r), USER)).isEmpty();
         assertThatThrownBy(() -> service.complete(r.loginId(), r.bindSecret(), UA, "ip"))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test
@@ -175,7 +174,7 @@ class WebAuthServiceTest {
         now = now.plus(Duration.ofMinutes(5));
 
         assertThatThrownBy(() -> service.complete(r.loginId(), r.bindSecret(), UA, "ip"))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
         verify(sessionRepository, never()).save(any());
     }
 
@@ -186,9 +185,9 @@ class WebAuthServiceTest {
         service.decideFromBot(r.loginId(), USER, r.matchCode());
 
         assertThatThrownBy(() -> service.complete(r.loginId(), "someone-elses-bind", UA, "ip"))
-                .isInstanceOf(UnauthorizedException.class);
+                .isInstanceOf(DomainException.Unauthorized.class);
         assertThatThrownBy(() -> service.complete(r.loginId(), null, UA, "ip"))
-                .isInstanceOf(UnauthorizedException.class);
+                .isInstanceOf(DomainException.Unauthorized.class);
         assertThat(service.status(r.loginId())).isEqualTo(WebLoginStatus.CONFIRMED);
         verify(sessionRepository, never()).save(any());
 
@@ -206,7 +205,7 @@ class WebAuthServiceTest {
         assertThat(service.decideFromBot(r.loginId(), USER, r.matchCode())).isEqualTo(BotDecision.INVALID);
         assertThat(service.status(r.loginId())).isEqualTo(WebLoginStatus.REJECTED);
         assertThatThrownBy(() -> service.complete(r.loginId(), r.bindSecret(), UA, "ip"))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test
@@ -226,7 +225,7 @@ class WebAuthServiceTest {
         service.complete(r.loginId(), r.bindSecret(), UA, "ip");
 
         assertThatThrownBy(() -> service.complete(r.loginId(), r.bindSecret(), UA, "ip"))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("used");
         assertThat(sessions).hasSize(1);
         assertThat(service.decideFromBot(r.loginId(), USER, r.matchCode())).isEqualTo(BotDecision.INVALID);
@@ -276,7 +275,7 @@ class WebAuthServiceTest {
         now = now.plus(Duration.ofMinutes(1)); // well past the parallel-tab grace window
 
         assertThatThrownBy(() -> service.refresh(first.refreshToken(), UA, "ip"))
-                .isInstanceOf(UnauthorizedException.class)
+                .isInstanceOf(DomainException.Unauthorized.class)
                 .hasMessageContaining("reused");
 
         WebSession s = sessions.get(hex(UuidUtil.toBytes(first.sessionId())));
@@ -284,7 +283,7 @@ class WebAuthServiceTest {
         verify(sessionValidator).invalidate(first.sessionId());
         // The legitimate holder of the newest token is logged out too — that is the point.
         assertThatThrownBy(() -> service.refresh(second.refreshToken(), UA, "ip"))
-                .isInstanceOf(UnauthorizedException.class);
+                .isInstanceOf(DomainException.Unauthorized.class);
     }
 
     @Test
@@ -294,7 +293,7 @@ class WebAuthServiceTest {
         now = now.plus(Duration.ofSeconds(3));
 
         assertThatThrownBy(() -> service.refresh(first.refreshToken(), UA, "ip"))
-                .isInstanceOf(UnauthorizedException.class)
+                .isInstanceOf(DomainException.Unauthorized.class)
                 .hasMessage(WebAuthService.REFRESH_RACE);
 
         assertThat(sessions.get(hex(UuidUtil.toBytes(first.sessionId()))).getRevokedAt()).isNull();
@@ -305,12 +304,12 @@ class WebAuthServiceTest {
     void refreshOfAnExpiredOrMalformedTokenIsUnauthorized() {
         Tokens first = service.devLogin(USER, UA, "ip");
 
-        assertThatThrownBy(() -> service.refresh("garbage", UA, "ip")).isInstanceOf(UnauthorizedException.class);
-        assertThatThrownBy(() -> service.refresh(null, UA, "ip")).isInstanceOf(UnauthorizedException.class);
+        assertThatThrownBy(() -> service.refresh("garbage", UA, "ip")).isInstanceOf(DomainException.Unauthorized.class);
+        assertThatThrownBy(() -> service.refresh(null, UA, "ip")).isInstanceOf(DomainException.Unauthorized.class);
 
         now = now.plus(Duration.ofDays(31));
         assertThatThrownBy(() -> service.refresh(first.refreshToken(), UA, "ip"))
-                .isInstanceOf(UnauthorizedException.class)
+                .isInstanceOf(DomainException.Unauthorized.class)
                 .hasMessageContaining("ended");
     }
 
@@ -324,7 +323,7 @@ class WebAuthServiceTest {
         assertThat(service.revokeFromBot(t.sessionId(), USER)).contains("Chrome, Windows");
         assertThat(sessions.get(hex(UuidUtil.toBytes(t.sessionId()))).getRevokedAt()).isNotNull();
         assertThatThrownBy(() -> service.refresh(t.refreshToken(), UA, "ip"))
-                .isInstanceOf(UnauthorizedException.class);
+                .isInstanceOf(DomainException.Unauthorized.class);
     }
 
     // ================================================================== helpers
