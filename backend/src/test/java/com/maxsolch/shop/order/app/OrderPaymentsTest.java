@@ -34,7 +34,7 @@ class OrderPaymentsTest extends OrderScenarioTestBase {
         assertThat(OrderMoney.codMinor(paid)).isEqualTo(40_000);
         assertThat(OrderMoney.amountDueMinor(paid)).isZero();
         ArgumentCaptor<Object> event = ArgumentCaptor.forClass(Object.class);
-        verify(events).publishEvent(event.capture());
+        verify(events).publish(event.capture());
         assertThat(event.getValue()).isInstanceOf(OrderEvents.PaymentReceived.class);
         assertThat(((OrderEvents.PaymentReceived) event.getValue()).amountMinor()).isEqualTo(10_000);
     }

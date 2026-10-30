@@ -24,7 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +55,7 @@ abstract class OrderScenarioTestBase {
 
 
     @Mock
-    ApplicationEventPublisher events;
+    DomainEvents events;
 
     @Mock
     PromoService promoService;

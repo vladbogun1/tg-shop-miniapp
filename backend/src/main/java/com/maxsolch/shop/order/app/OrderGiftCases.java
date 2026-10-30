@@ -10,7 +10,7 @@ import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.catalog.app.Products;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,14 +36,14 @@ public class OrderGiftCases {
     private final OrderRepository orderRepository;
     private final Products productRepository;
     private final OrderStock stock;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
     private final Messages messages;
     private final OrderGifts gifts;
     private final OrderPromos promos;
     private final OrderGiftPrizes prizes;
 
     OrderGiftCases(OrderOps ops, OrderRepository orderRepository, Products productRepository, OrderStock stock,
-                   ApplicationEventPublisher events, Messages messages, OrderGifts gifts, OrderPromos promos,
+                   DomainEvents events, Messages messages, OrderGifts gifts, OrderPromos promos,
                    OrderGiftPrizes prizes) {
         this.ops = ops;
         this.orderRepository = orderRepository;
@@ -95,7 +95,7 @@ public class OrderGiftCases {
         order.getItems().remove(item);
         ops.recomputeTotals(order);
         Order saved = orderRepository.save(order);
-        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        events.publish(OrderEvents.Edited.silent(saved.getId()));
         return saved;
     }
 
@@ -152,7 +152,7 @@ public class OrderGiftCases {
         }
         item.setVariantPending(false);
         Order saved = orderRepository.save(order);
-        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        events.publish(OrderEvents.Edited.silent(saved.getId()));
         return saved;
     }
 
@@ -193,7 +193,7 @@ public class OrderGiftCases {
         ops.recomputeTotals(order);
         Order saved = orderRepository.save(order);
         record.accept(saved.getId());
-        events.publishEvent(new OrderEvents.Edited(saved.getId(), OrderEvents.EditKind.GIFT_CASE, notifyCustomer,
+        events.publish(new OrderEvents.Edited(saved.getId(), OrderEvents.EditKind.GIFT_CASE, notifyCustomer,
                 null, null, 1));
         return saved;
     }

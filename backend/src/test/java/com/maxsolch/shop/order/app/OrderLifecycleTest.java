@@ -47,7 +47,7 @@ class OrderLifecycleTest extends OrderScenarioTestBase {
         assertThat(delivered.getStatus()).isEqualTo(OrderStatus.DELIVERED);
         assertThat(delivered.getDeliveredAt()).isNotNull();
 
-        verify(events, times(3)).publishEvent(any(OrderEvents.StatusChanged.class));
+        verify(events, times(3)).publish(any(OrderEvents.StatusChanged.class));
     }
 
     @Test
@@ -259,7 +259,7 @@ class OrderLifecycleTest extends OrderScenarioTestBase {
         assertThat(expired.getRejectedAt()).isEqualTo(now);
         assertThat(expired.getRejectReason()).contains("24");
         assertThat(p.getStock()).isEqualTo(3); // 1 + 2 back on the shelf
-        verify(events).publishEvent(any(OrderEvents.StatusChanged.class));
+        verify(events).publish(any(OrderEvents.StatusChanged.class));
     }
 
     @Test
@@ -285,7 +285,7 @@ class OrderLifecycleTest extends OrderScenarioTestBase {
         assertThat(notDue.getStatus()).isEqualTo(OrderStatus.NEW);
         verify(productRepository, never()).findByIdForUpdate(any());
         verify(orderRepository, never()).save(any());
-        verify(events, never()).publishEvent(any());
+        verify(events, never()).publish(any());
     }
 
     @Test

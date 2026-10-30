@@ -19,7 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import com.maxsolch.shop.platform.cache.CacheConfig;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -84,7 +84,7 @@ public class WebAuthService {
     private final JwtService jwtService;
     private final AppProperties props;
     private final WebSessionValidator sessionValidator;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
 
     private final SecureRandom random = new SecureRandom();
     /** Hashes of refresh tokens rotated away in the last {@link #ROTATION_GRACE} (ticks on {@link #clock}). */
@@ -98,7 +98,7 @@ public class WebAuthService {
                           JwtService jwtService,
                           AppProperties props,
                           WebSessionValidator sessionValidator,
-                          ApplicationEventPublisher events,
+                          DomainEvents events,
                           Clock clock,
                           CacheManager caches) {
         this.tokenRepository = tokenRepository;
@@ -183,7 +183,7 @@ public class WebAuthService {
         ensureUser(t.getTelegramUserId());
 
         Tokens tokens = openSession(t.getTelegramUserId(), userAgent, ip);
-        events.publishEvent(new WebLoginCompletedEvent(tokens.sessionId(), t.getTelegramUserId(),
+        events.publish(new WebLoginCompletedEvent(tokens.sessionId(), t.getTelegramUserId(),
                 UserAgents.describe(userAgent)));
         return tokens;
     }

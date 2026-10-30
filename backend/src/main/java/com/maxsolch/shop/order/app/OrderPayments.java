@@ -5,7 +5,7 @@ import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.util.MoneyFormat;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,9 +18,9 @@ public class OrderPayments {
 
     private final OrderOps ops;
     private final OrderRepository orderRepository;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
 
-    OrderPayments(OrderOps ops, OrderRepository orderRepository, ApplicationEventPublisher events) {
+    OrderPayments(OrderOps ops, OrderRepository orderRepository, DomainEvents events) {
         this.ops = ops;
         this.orderRepository = orderRepository;
         this.events = events;
@@ -68,7 +68,7 @@ public class OrderPayments {
         order.setPaidAt(!paid ? null : wasPaid ? order.getPaidAt() : ops.now());
         Order saved = orderRepository.save(order);
         // COD on the seller's card changes with the received amount: keep it in sync.
-        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        events.publish(OrderEvents.Edited.silent(saved.getId()));
         return saved;
     }
 
@@ -101,7 +101,7 @@ public class OrderPayments {
             order.setPaidAt(ops.now());
         }
         Order saved = orderRepository.save(order);
-        events.publishEvent(new OrderEvents.PaymentReceived(saved.getId(), amountMinor));
+        events.publish(new OrderEvents.PaymentReceived(saved.getId(), amountMinor));
         return saved;
     }
 
@@ -118,7 +118,7 @@ public class OrderPayments {
                 OrderMoneyMovement.Source.AUTO, null, "возврат на карту (monobank)", invoiceExtId);
         order.setRefundedMinor(Math.max(0, order.getRefundedMinor()) + amountMinor);
         Order saved = orderRepository.save(order);
-        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        events.publish(OrderEvents.Edited.silent(saved.getId()));
         return saved;
     }
 }

@@ -15,7 +15,7 @@ import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.domain.RejectReasonCode;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.order.domain.OrderErrors;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,11 +42,11 @@ public class OrderMerge {
 
     private final OrderRepository orderRepository;
     private final OrderOps ops;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
     private final MoneyLedger moneyLedger;
 
     public OrderMerge(OrderRepository orderRepository, OrderOps ops,
-                             ApplicationEventPublisher events, MoneyLedger moneyLedger) {
+                             DomainEvents events, MoneyLedger moneyLedger) {
         this.orderRepository = orderRepository;
         this.ops = ops;
         this.events = events;
@@ -188,7 +188,7 @@ public class OrderMerge {
 
         Order savedTarget = orderRepository.save(target);
         Order savedSource = orderRepository.save(source);
-        events.publishEvent(new OrderEvents.Merged(savedTarget.getId(), savedSource.getId(), notifyCustomer));
+        events.publish(new OrderEvents.Merged(savedTarget.getId(), savedSource.getId(), notifyCustomer));
 
         String details = "объединён с #" + sourceShort + ": " + String.join(", ", moved)
                 + "; итого " + MoneyFormat.uah(savedTarget.getTotalMinor())

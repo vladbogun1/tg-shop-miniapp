@@ -14,7 +14,7 @@ import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -33,12 +33,12 @@ class OrderOps {
     private final EntityManager entityManager;
     private final MoneyLedger moneyLedger;
     private final OrderGifts gifts;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
     private final Messages messages;
     private final Clock clock;
 
     OrderOps(OrderRepository orderRepository, EntityManager entityManager, MoneyLedger moneyLedger,
-             OrderGifts gifts, ApplicationEventPublisher events, Messages messages, Clock clock) {
+             OrderGifts gifts, DomainEvents events, Messages messages, Clock clock) {
         this.orderRepository = orderRepository;
         this.entityManager = entityManager;
         this.moneyLedger = moneyLedger;
@@ -87,7 +87,7 @@ class OrderOps {
             gifts.revokeCasePromo(order.getId());
         }
         Order saved = orderRepository.save(order);
-        events.publishEvent(new OrderEvents.StatusChanged(saved.getId()));
+        events.publish(new OrderEvents.StatusChanged(saved.getId()));
         return saved;
     }
 

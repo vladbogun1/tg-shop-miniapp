@@ -15,7 +15,7 @@ import com.maxsolch.shop.returns.domain.OrderReturnLine;
 import com.maxsolch.shop.returns.infra.OrderReturnLineRepository;
 import com.maxsolch.shop.returns.infra.OrderReturnRepository;
 import com.maxsolch.shop.order.app.OrderStock;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,12 +32,12 @@ public class ReturnReceiving {
     private final DefectWriteoffs defects;
     private final OrderReturnRepository returnRecords;
     private final OrderReturnLineRepository returnLines;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
     private final Clock clock;
 
     public ReturnReceiving(OrderLookup orders, OrderStock stock, DefectWriteoffs defects,
                            OrderReturnRepository returnRecords, OrderReturnLineRepository returnLines,
-                           ApplicationEventPublisher events, Clock clock) {
+                           DomainEvents events, Clock clock) {
         this.orders = orders;
         this.stock = stock;
         this.defects = defects;
@@ -104,7 +104,7 @@ public class ReturnReceiving {
         order.setReturnStatus(Order.RETURN_RECEIVED);
         order.setReturnReceivedAt(clock.instant());
         Order saved = orders.save(order);
-        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        events.publish(OrderEvents.Edited.silent(saved.getId()));
         return new OrderChange(saved, "посылка вернулась: " + (parts.isEmpty() ? "без товара" : String.join(", ", parts))
                 + (cleanNote == null ? "" : "; " + cleanNote));
     }

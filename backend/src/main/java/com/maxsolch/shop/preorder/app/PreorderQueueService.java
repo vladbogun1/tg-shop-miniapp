@@ -27,7 +27,7 @@ import com.maxsolch.shop.preorder.domain.PreorderErrors;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.translation.app.TranslationService;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -67,14 +67,14 @@ public class PreorderQueueService {
     private final BatchCatalog batches;
     private final Products products;
     private final SettingsService settings;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
     private final Messages messages;
     private final TranslationService translations;
     private final Clock clock;
     private final ShopZone shopZone;
 
     public PreorderQueueService(PreorderSubscriptionRepository subs, BatchCatalog batches, Products products,
-                                SettingsService settings, ApplicationEventPublisher events, Messages messages,
+                                SettingsService settings, DomainEvents events, Messages messages,
                                 TranslationService translations, Clock clock, ShopZone shopZone) {
         this.shopZone = shopZone;
         this.subs = subs;
@@ -141,7 +141,7 @@ public class PreorderQueueService {
         s.setSource(SOURCE_WEB.equals(source) ? SOURCE_WEB : SOURCE_MINIAPP);
         s.setCreatedAt(clock.instant());
         PreorderSubscription saved = subs.save(s);
-        events.publishEvent(new PreorderEvents.Subscribed(saved.getId()));
+        events.publish(new PreorderEvents.Subscribed(saved.getId()));
         return toMine(saved, product, eta);
     }
 
@@ -175,7 +175,7 @@ public class PreorderQueueService {
         for (PreorderSubscription s : subs.findLiveByProduct(productId)) {
             s.close(Status.CANCELLED, "товар снят с продажи", now);
             subs.save(s);
-            events.publishEvent(new PreorderEvents.Closed(s.getId(), "PRODUCT_GONE"));
+            events.publish(new PreorderEvents.Closed(s.getId(), "PRODUCT_GONE"));
             n++;
         }
         return n;
@@ -274,7 +274,7 @@ public class PreorderQueueService {
                     s.setHoldUntil(until);
                     s.setBatchId(batchId);
                     told++;
-                    events.publishEvent(new PreorderEvents.ArrivedNotice(s.getId()));
+                    events.publish(new PreorderEvents.ArrivedNotice(s.getId()));
                 }
             }
             subs.saveAll(queue);
@@ -292,11 +292,11 @@ public class PreorderQueueService {
             s.setNotifiedAt(now);
             s.setRemindedAt(null);
             s.setBatchId(batchId);
-            events.publishEvent(new PreorderEvents.HoldGranted(s.getId()));
+            events.publish(new PreorderEvents.HoldGranted(s.getId()));
         }
         if (tellShort && !a.grants().isEmpty()) {
             for (PreorderRules.Short sh : a.shorts()) {
-                events.publishEvent(new PreorderEvents.StillWaiting(sh.subscriptionId(), sh.position()));
+                events.publish(new PreorderEvents.StillWaiting(sh.subscriptionId(), sh.position()));
             }
         }
         subs.saveAll(queue);
@@ -311,7 +311,7 @@ public class PreorderQueueService {
      * rebuilt once the transaction commits ({@link HoldsCacheFlush}).
      */
     private void holdsChanged(Product product) {
-        events.publishEvent(new PreorderEvents.HoldsChanged(product.getSlug()));
+        events.publish(new PreorderEvents.HoldsChanged(product.getSlug()));
     }
 
     /** The same hand-out without touching anything — the «Приехала» preview. */
@@ -349,7 +349,7 @@ public class PreorderQueueService {
             boolean wasHeld = s.statusEnum() == Status.HELD;
             s.close(Status.EXPIRED, wasHeld ? "бронь закончилась" : "не купил после уведомления", now);
             subs.save(s);
-            events.publishEvent(new PreorderEvents.HoldExpired(s.getId()));
+            events.publish(new PreorderEvents.HoldExpired(s.getId()));
             done++;
             if (wasHeld && product != null) {
                 holdsChanged(product);
@@ -367,7 +367,7 @@ public class PreorderQueueService {
         List<PreorderSubscription> due = subs.findHoldsToRemind(now, now.plus(REMIND_BEFORE), PageRequest.of(0, 100));
         for (PreorderSubscription s : due) {
             s.setRemindedAt(now);
-            events.publishEvent(new PreorderEvents.HoldEnding(s.getId()));
+            events.publish(new PreorderEvents.HoldEnding(s.getId()));
         }
         subs.saveAll(due);
         return due.size();

@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 
 import java.util.ArrayList;
 import java.util.Optional;
@@ -46,7 +46,7 @@ class OrderCancelRequestTest {
     @Mock
     PaymentOptionRepository paymentOptionRepository;
     @Mock
-    ApplicationEventPublisher events;
+    DomainEvents events;
     @Mock
     PromoService promoService;
     @Mock
@@ -138,7 +138,7 @@ class OrderCancelRequestTest {
         assertThat(r.getCancelRequestedAt()).isNotNull();
         assertThat(r.getStatus()).isEqualTo(OrderStatus.APPROVED);
         assertThat(product.getStock()).isEqualTo(3);
-        verify(events).publishEvent(any(OrderEvents.CancelRequested.class));
+        verify(events).publish(any(OrderEvents.CancelRequested.class));
     }
 
     @Test
@@ -192,8 +192,8 @@ class OrderCancelRequestTest {
         assertThat(r.getCancelRequestResolvedAt()).isNotNull();
         assertThat(r.isCancelledByCustomer()).isTrue();
         assertThat(product.getStock()).isEqualTo(5);
-        verify(events).publishEvent(any(OrderEvents.StatusChanged.class));
-        verify(events).publishEvent(new OrderEvents.CancelRequestResolved(o.getId(), true));
+        verify(events).publish(any(OrderEvents.StatusChanged.class));
+        verify(events).publish(new OrderEvents.CancelRequestResolved(o.getId(), true));
     }
 
     @Test
@@ -218,7 +218,7 @@ class OrderCancelRequestTest {
                 .satisfies(e -> assertThat(code(e)).isEqualTo(CancelRequests.NO_PENDING_REQUEST));
         assertThatThrownBy(() -> app.cancelRequests().declineCancelRequest(o.getId(), "x"))
                 .satisfies(e -> assertThat(code(e)).isEqualTo(CancelRequests.NO_PENDING_REQUEST));
-        verify(events, never()).publishEvent(any(OrderEvents.CancelRequestResolved.class));
+        verify(events, never()).publish(any(OrderEvents.CancelRequestResolved.class));
     }
 
     @Test

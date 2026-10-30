@@ -52,9 +52,8 @@ class OrderEventsPublishedInTransactionTest {
             }
             for (JavaCodeUnit unit : units(c)) {
                 boolean publishes = unit.getMethodCallsFromSelf().stream().anyMatch(call ->
-                        (call.getTargetOwner().getName().endsWith(".DomainEvents") && call.getName().equals("publish"))
-                                || (call.getTargetOwner().getName().endsWith(".ApplicationEventPublisher")
-                                && call.getName().equals("publishEvent")));
+                        call.getTargetOwner().getName().equals("com.maxsolch.shop.platform.tx.DomainEvents")
+                                && call.getName().equals("publish"));
                 if (publishes) {
                     publishers++;
                     if (!covered(unit, callers, new HashSet<>())) {

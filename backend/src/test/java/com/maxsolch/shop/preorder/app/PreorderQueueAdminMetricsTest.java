@@ -15,7 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -41,7 +41,7 @@ class PreorderQueueAdminMetricsTest {
     @Mock ProductRepository products;
     @Mock PreorderQueueService queue;
     @Mock SettingsService settings;
-    @Mock ApplicationEventPublisher events;
+    @Mock DomainEvents events;
 
     PreorderQueueAdmin admin;
 

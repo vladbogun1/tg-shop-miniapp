@@ -24,7 +24,7 @@ import com.maxsolch.shop.returns.domain.WizardLine;
 import com.maxsolch.shop.returns.infra.OrderReturnLineRepository;
 import com.maxsolch.shop.returns.infra.OrderReturnRepository;
 import com.maxsolch.shop.order.app.OrderStock;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,12 +48,12 @@ public class Returns {
     private final DefectWriteoffs defects;
     private final OrderReturnRepository returnRecords;
     private final OrderReturnLineRepository returnLines;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
     private final Clock clock;
 
     public Returns(OrderLookup orders, OrderStock stock, MoneyLedger moneyLedger, DefectWriteoffs defects,
                    OrderReturnRepository returnRecords, OrderReturnLineRepository returnLines,
-                   ApplicationEventPublisher events, Clock clock) {
+                   DomainEvents events, Clock clock) {
         this.orders = orders;
         this.stock = stock;
         this.moneyLedger = moneyLedger;
@@ -142,7 +142,7 @@ public class Returns {
         }
         order.setReturnedAt(clock.instant());
         Order saved = orders.save(order);
-        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        events.publish(OrderEvents.Edited.silent(saved.getId()));
         String details = "возврат: " + String.join(", ", parts)
                 + (note == null || note.isBlank() ? "" : "; " + note.trim());
         return new OrderChange(saved, details);
@@ -266,7 +266,7 @@ public class Returns {
         Order saved = orders.save(order);
         saveRecord(order, plan, refunds, manual, cleanNote, adminName, recordLines);
         long refundedNow = manual + plan.monoRefundMinor();
-        events.publishEvent(new OrderEvents.Returned(saved.getId(), plan.notifyCustomer(),
+        events.publish(new OrderEvents.Returned(saved.getId(), plan.notifyCustomer(),
                 String.join(", ", customerParts), refundedNow));
         String details = "возврат: " + String.join(", ", parts) + (cleanNote == null ? "" : "; " + cleanNote);
         return new OrderChange(saved, details);

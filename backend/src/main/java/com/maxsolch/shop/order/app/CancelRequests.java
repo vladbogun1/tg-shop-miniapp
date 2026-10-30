@@ -9,7 +9,7 @@ import com.maxsolch.shop.order.domain.RejectReasonCode;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.platform.i18n.Messages;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,10 +38,10 @@ public class CancelRequests {
     private final OrderOps ops;
     private final OrderRepository orderRepository;
     private final OrderStock stock;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
     private final Messages messages;
 
-    CancelRequests(OrderOps ops, OrderRepository orderRepository, OrderStock stock, ApplicationEventPublisher events,
+    CancelRequests(OrderOps ops, OrderRepository orderRepository, OrderStock stock, DomainEvents events,
                    Messages messages) {
         this.ops = ops;
         this.orderRepository = orderRepository;
@@ -107,7 +107,7 @@ public class CancelRequests {
         order.setCancelRequestResolvedAt(null);
         order.setCancelRequestAdminComment(null);
         Order saved = orderRepository.save(order);
-        events.publishEvent(new OrderEvents.CancelRequested(saved.getId()));
+        events.publish(new OrderEvents.CancelRequested(saved.getId()));
         return saved;
     }
 
@@ -132,7 +132,7 @@ public class CancelRequests {
         Order saved = ops.reject(order, new RejectCause(now,
                 byRequestReason(order.getCancelRequestReason()),
                 RejectReasonCode.CHANGED_MIND.name(), true));
-        events.publishEvent(new OrderEvents.CancelRequestResolved(saved.getId(), true));
+        events.publish(new OrderEvents.CancelRequestResolved(saved.getId(), true));
         return saved;
     }
 
@@ -152,7 +152,7 @@ public class CancelRequests {
         order.setCancelRequestResolvedAt(ops.now());
         order.setCancelRequestAdminComment(c);
         Order saved = orderRepository.save(order);
-        events.publishEvent(new OrderEvents.CancelRequestResolved(saved.getId(), false));
+        events.publish(new OrderEvents.CancelRequestResolved(saved.getId(), false));
         return saved;
     }
 

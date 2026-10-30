@@ -11,7 +11,7 @@ import com.maxsolch.shop.promo.domain.PromoDiscount;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.catalog.app.Products;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,12 +30,12 @@ public class OrderEditing {
     private final Products productRepository;
     private final OrderStock stock;
     private final Stock shelf;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
     private final OrderGifts gifts;
     private final OrderPromos promos;
 
     OrderEditing(OrderOps ops, OrderRepository orderRepository, Products productRepository, OrderStock stock, Stock shelf,
-                 ApplicationEventPublisher events, OrderGifts gifts, OrderPromos promos) {
+                 DomainEvents events, OrderGifts gifts, OrderPromos promos) {
         this.ops = ops;
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
@@ -100,7 +100,7 @@ public class OrderEditing {
         productRepository.save(product);
         ops.recomputeTotals(order);
         Order saved = orderRepository.save(order);
-        events.publishEvent(new OrderEvents.Edited(
+        events.publish(new OrderEvents.Edited(
                 saved.getId(),
                 gift ? OrderEvents.EditKind.GIFT : OrderEvents.EditKind.COMPOSITION,
                 notifyCustomer,
@@ -132,7 +132,7 @@ public class OrderEditing {
         }
         ops.recomputeTotals(order);
         Order saved = orderRepository.save(order);
-        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        events.publish(OrderEvents.Edited.silent(saved.getId()));
         return saved;
     }
 
@@ -155,7 +155,7 @@ public class OrderEditing {
         item.setQuantity(newQty);
         ops.recomputeTotals(order);
         Order saved = orderRepository.save(order);
-        events.publishEvent(OrderEvents.Edited.of(
+        events.publish(OrderEvents.Edited.of(
                 saved.getId(), OrderEvents.EditKind.COMPOSITION, notifyCustomer));
         return saved;
     }
@@ -201,7 +201,7 @@ public class OrderEditing {
         order.setTotalMinor(OrderMoney.totalMinor(subtotal, order.getDiscountMinor()));
         order.settleIfFree(ops.now());
         Order saved = orderRepository.save(order);
-        events.publishEvent(OrderEvents.Edited.of(
+        events.publish(OrderEvents.Edited.of(
                 saved.getId(), OrderEvents.EditKind.DISCOUNT, notifyCustomer));
         return saved;
     }

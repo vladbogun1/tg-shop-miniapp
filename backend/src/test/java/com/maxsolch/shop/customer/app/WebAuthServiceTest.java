@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -66,7 +66,7 @@ class WebAuthServiceTest {
     @Mock
     WebSessionValidator sessionValidator;
     @Mock
-    ApplicationEventPublisher events;
+    DomainEvents events;
 
     final Map<String, WebLoginToken> tokens = new HashMap<>();
     final Map<String, WebSession> sessions = new HashMap<>();
@@ -151,7 +151,7 @@ class WebAuthServiceTest {
         assertThat(s.getUserId()).isEqualTo(USER);
         assertThat(s.getRefreshHash()).isEqualTo(WebAuthService.sha256(t.refreshToken()));
         assertThat(s.getExpiresAt()).isEqualTo(now.plus(Duration.ofDays(30)));
-        verify(events).publishEvent(new WebLoginCompletedEvent(t.sessionId(), USER, "Chrome, Windows"));
+        verify(events).publish(new WebLoginCompletedEvent(t.sessionId(), USER, "Chrome, Windows"));
     }
 
     // ================================================================== failures

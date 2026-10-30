@@ -14,7 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 
 import java.time.Clock;
 import java.util.ArrayList;
@@ -35,7 +35,7 @@ class OrderDeliveryEditingTest {
     @Mock
     OrderRepository orderRepository;
     @Mock
-    ApplicationEventPublisher events;
+    DomainEvents events;
     @Mock
     EntityManager entityManager;
 
@@ -78,7 +78,7 @@ class OrderDeliveryEditingTest {
         assertThat(r.order().getTrackingNumber()).isEqualTo("20450000000001");
         assertThat(r.auditDetails()).contains("20450000000000").contains("20450000000001");
         ArgumentCaptor<Object> event = ArgumentCaptor.forClass(Object.class);
-        verify(events).publishEvent(event.capture());
+        verify(events).publish(event.capture());
         OrderEvents.Edited edited = (OrderEvents.Edited) event.getValue();
         assertThat(edited.kind()).isEqualTo(OrderEvents.EditKind.TRACKING);
         assertThat(edited.notifyCustomer()).isTrue();
@@ -91,7 +91,7 @@ class OrderDeliveryEditingTest {
         assertThatThrownBy(() -> service.updateTracking(o.getId(), "20450000000001"))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessage("ТТН можно изменить только у отправленного или доставленного заказа");
-        verify(events, never()).publishEvent(any());
+        verify(events, never()).publish(any());
     }
 
     @Test
@@ -104,7 +104,7 @@ class OrderDeliveryEditingTest {
                 .isInstanceOf(DomainException.BadRequest.class).hasMessage("укажите номер ТТН");
         assertThatThrownBy(() -> service.updateTracking(o.getId(), "1".repeat(129)))
                 .isInstanceOf(DomainException.BadRequest.class).hasMessage("номер ТТН слишком длинный");
-        verify(events, never()).publishEvent(any());
+        verify(events, never()).publish(any());
     }
 
     @Test
@@ -132,7 +132,7 @@ class OrderDeliveryEditingTest {
         assertThat(r.order().getNpCityName()).isEqualTo("Львів");
         assertThat(r.auditDetails()).contains("телефон").contains("Львів");
         ArgumentCaptor<Object> event = ArgumentCaptor.forClass(Object.class);
-        verify(events).publishEvent(event.capture());
+        verify(events).publish(event.capture());
         assertThat(((OrderEvents.Edited) event.getValue()).kind()).isEqualTo(OrderEvents.EditKind.DETAILS);
     }
 
@@ -144,7 +144,7 @@ class OrderDeliveryEditingTest {
                 new OrderDeliveryEditing.DeliveryPatch("Іван Петренко", "+380501112233", "city-1", "Київ", "wh-1", "Відділення №1"));
 
         assertThat(r.auditDetails()).isEqualTo("без изменений");
-        verify(events, never()).publishEvent(any());
+        verify(events, never()).publish(any());
     }
 
     @Test

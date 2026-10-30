@@ -35,7 +35,7 @@ class OrderEditingTest extends OrderScenarioTestBase {
         assertThat(p.getPromoCode()).isEqualTo("Ручная скидка 25%");
         app.editing().applyDiscount(p.getId(), null, null, 400, false, true);
         assertThat(p.getDiscountMinor()).isEqualTo(20_000);
-        verify(events, org.mockito.Mockito.atLeastOnce()).publishEvent(any(OrderEvents.Edited.class));
+        verify(events, org.mockito.Mockito.atLeastOnce()).publish(any(OrderEvents.Edited.class));
     }
 
     @Test

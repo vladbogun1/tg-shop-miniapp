@@ -32,7 +32,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
@@ -56,7 +56,7 @@ abstract class ReturnsTestBase {
 
 
     @Mock
-    ApplicationEventPublisher events;
+    DomainEvents events;
 
     @Mock
     PromoService promoService;

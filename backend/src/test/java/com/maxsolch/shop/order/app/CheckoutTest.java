@@ -59,7 +59,7 @@ class CheckoutTest extends OrderScenarioTestBase {
         verify(productRepository).saveAll(any());
         verify(orderRepository).save(any(Order.class));
         // Telegram is notified from an after-commit listener now, so the service only publishes.
-        verify(events).publishEvent(any(OrderEvents.Created.class));
+        verify(events).publish(any(OrderEvents.Created.class));
 
         // payment snapshot + the clock to pay online
         assertThat(order.getPaymentOptionTitle()).isEqualTo("Полная оплата онлайн");

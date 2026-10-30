@@ -25,7 +25,7 @@ import com.maxsolch.shop.procurement.domain.PreorderBatch.Distribution;
 import com.maxsolch.shop.procurement.domain.PreorderBatchItem;
 import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.customer.app.Customers;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,13 +58,13 @@ public class PreorderQueueAdmin {
     private final Products products;
     private final PreorderQueueService queue;
     private final SettingsService settings;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
     private final Clock clock;
     private final ShopZone shopZone;
 
     public PreorderQueueAdmin(PreorderSubscriptionRepository subs, BatchCatalog batches, LineProducts lineProducts,
                           Customers users, Products products, PreorderQueueService queue,
-                          SettingsService settings, ApplicationEventPublisher events, Clock clock, ShopZone shopZone) {
+                          SettingsService settings, DomainEvents events, Clock clock, ShopZone shopZone) {
         this.subs = subs;
         this.batches = batches;
         this.lineProducts = lineProducts;
@@ -144,7 +144,7 @@ public class PreorderQueueAdmin {
         boolean wasHeld = s.statusEnum() == Status.HELD;
         s.close(Status.CANCELLED, "убран админом" + (adminName == null ? "" : " (" + adminName + ")"), clock.instant());
         subs.save(s);
-        events.publishEvent(new PreorderEvents.Closed(s.getId(), "ADMIN"));
+        events.publish(new PreorderEvents.Closed(s.getId(), "ADMIN"));
         if (wasHeld && p != null) {
             queue.handOut(p, Lines.variantById(p, s.getVariantId()), s.getBatchId(),
                     Distribution.QUEUE_HOLD, queue.holdHours(s.getBatchId()), false);

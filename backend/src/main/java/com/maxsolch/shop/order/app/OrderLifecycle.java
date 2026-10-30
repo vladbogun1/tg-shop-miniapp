@@ -13,7 +13,7 @@ import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.platform.util.MoneyFormat;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,10 +31,10 @@ public class OrderLifecycle {
     private final OrderOps ops;
     private final OrderRepository orderRepository;
     private final OrderStock stock;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
     private final AppProperties props;
 
-    OrderLifecycle(OrderOps ops, OrderRepository orderRepository, OrderStock stock, ApplicationEventPublisher events,
+    OrderLifecycle(OrderOps ops, OrderRepository orderRepository, OrderStock stock, DomainEvents events,
                    AppProperties props) {
         this.ops = ops;
         this.orderRepository = orderRepository;
@@ -141,7 +141,7 @@ public class OrderLifecycle {
                 reasonCode == null ? null : reasonCode.name(), false));
         if (requestWasOpen) {
             // The customer asked to cancel and got what they asked for: answer like approveCancelRequest does.
-            events.publishEvent(new OrderEvents.CancelRequestResolved(saved.getId(), true));
+            events.publish(new OrderEvents.CancelRequestResolved(saved.getId(), true));
         }
         return saved;
     }

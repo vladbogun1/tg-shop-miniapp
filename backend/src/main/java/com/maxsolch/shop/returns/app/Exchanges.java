@@ -24,7 +24,7 @@ import com.maxsolch.shop.returns.domain.WizardLine;
 import com.maxsolch.shop.returns.infra.OrderExchangeLineRepository;
 import com.maxsolch.shop.returns.infra.OrderExchangeRepository;
 import com.maxsolch.shop.returns.infra.OrderReturnRepository;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,13 +56,13 @@ public class Exchanges {
     private final OrderExchangeRepository exchangeRepository;
     private final OrderExchangeLineRepository exchangeLines;
     private final OrderReturnRepository returnRecords;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
     private final Clock clock;
 
     public Exchanges(OrderLookup orders, Checkout checkout, OrderPayments orderPayments, MoneyLedger moneyLedger,
                      Returns returns, OrderExchangeRepository exchangeRepository,
                      OrderExchangeLineRepository exchangeLines, OrderReturnRepository returnRecords,
-                     ApplicationEventPublisher events, Clock clock) {
+                     DomainEvents events, Clock clock) {
         this.orders = orders;
         this.checkout = checkout;
         this.orderPayments = orderPayments;
@@ -219,7 +219,7 @@ public class Exchanges {
             }
         }
 
-        events.publishEvent(new OrderEvents.Exchanged(child.getId(), notifyCustomer, String.join(", ", outParts)));
+        events.publish(new OrderEvents.Exchanged(child.getId(), notifyCustomer, String.join(", ", outParts)));
 
         long due = child.getTotalMinor() - moved;
         long over = credit - moved;

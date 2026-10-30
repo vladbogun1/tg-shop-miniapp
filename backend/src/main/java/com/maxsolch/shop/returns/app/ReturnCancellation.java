@@ -22,7 +22,7 @@ import com.maxsolch.shop.returns.infra.OrderExchangeRepository;
 import com.maxsolch.shop.returns.infra.OrderReturnLineRepository;
 import com.maxsolch.shop.returns.infra.OrderReturnRepository;
 import com.maxsolch.shop.order.app.OrderStock;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,13 +46,13 @@ public class ReturnCancellation {
     private final OrderReturnRepository returnRecords;
     private final OrderReturnLineRepository returnLines;
     private final OrderExchangeRepository exchangeRepository;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
     private final Clock clock;
 
     public ReturnCancellation(OrderLookup orders, OrderLifecycle lifecycle, OrderStock stock, MoneyLedger moneyLedger,
                               StockWriteoffs writeoffs, OrderReturnRepository returnRecords,
                               OrderReturnLineRepository returnLines, OrderExchangeRepository exchangeRepository,
-                              ApplicationEventPublisher events, Clock clock) {
+                              DomainEvents events, Clock clock) {
         this.orders = orders;
         this.lifecycle = lifecycle;
         this.stock = stock;
@@ -153,7 +153,7 @@ public class ReturnCancellation {
         rec.setCancelNote(cleanNote);
         returnRecords.save(rec);
         Order saved = orders.save(order);
-        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        events.publish(OrderEvents.Edited.silent(saved.getId()));
         return new OrderChange(saved, (exchange ? "обмен отменён: " : "возврат отменён: ")
                 + (parts.isEmpty() ? "без товара" : String.join(", ", parts)) + "; " + cleanNote);
     }
@@ -261,7 +261,7 @@ public class ReturnCancellation {
         rec.setDebtPaidAt(clock.instant());
         returnRecords.save(rec);
         Order saved = orders.save(order);
-        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        events.publish(OrderEvents.Edited.silent(saved.getId()));
         return new OrderChange(saved, "деньги по отменённому возврату пришли: " + MoneyFormat.uah(amount));
     }
 

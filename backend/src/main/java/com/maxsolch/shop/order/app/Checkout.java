@@ -19,7 +19,7 @@ import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.platform.config.AppProperties;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,7 +47,7 @@ public class Checkout {
     private final OrderRepository orderRepository;
     private final Products productRepository;
     private final OrderPaymentOptions paymentOptions;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
     private final OrderPromos promos;
     private final CartService cartService;
     private final Messages messages;
@@ -65,7 +65,7 @@ public class Checkout {
     Checkout(OrderRepository orderRepository,
                         Products productRepository,
                         OrderPaymentOptions paymentOptions,
-                        ApplicationEventPublisher events,
+                        DomainEvents events,
                         OrderPromos promos,
                         CartService cartService,
                         Messages messages,
@@ -244,7 +244,7 @@ public class Checkout {
         // OrderNotificationListener): otherwise the DB connection and the stock row locks stay
         // held for the whole API round trip, and a customer could be told about an order that
         // then failed to save.
-        events.publishEvent(new OrderEvents.Created(saved.getId()));
+        events.publish(new OrderEvents.Created(saved.getId()));
         return saved;
     }
 

@@ -60,7 +60,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -172,7 +172,7 @@ class ClientEndpointsLazyLoadingIT {
     @Autowired
     PlatformTransactionManager txManager;
     @Autowired
-    ApplicationEventPublisher events;
+    DomainEvents events;
     @Autowired
     SettingsService settings;
     @Autowired
@@ -423,7 +423,7 @@ class ClientEndpointsLazyLoadingIT {
         ok(get("/api/public/products/" + productA + "/reviews", null, "uk"));
         ok(get("/api/public/reviews/latest", null, "en"));
         // the events of a review: bonus issued, moderation ping (listeners build texts and push)
-        events.publishEvent(new ReviewEvents.RatingChanged(UuidUtil.toBytes(productA)));
+        events.publish(new ReviewEvents.RatingChanged(UuidUtil.toBytes(productA)));
         assertNoLazyFailures();
     }
 
@@ -459,14 +459,14 @@ class ClientEndpointsLazyLoadingIT {
         assertThat(subs).isNotEmpty();
         long id = subs.get(0);
         new TransactionTemplate(txManager).executeWithoutResult(s -> {
-            events.publishEvent(new PreorderEvents.Subscribed(id));
-            events.publishEvent(new PreorderEvents.HoldGranted(id));
-            events.publishEvent(new PreorderEvents.ArrivedNotice(id));
-            events.publishEvent(new PreorderEvents.HoldEnding(id));
-            events.publishEvent(new PreorderEvents.HoldExpired(id));
-            events.publishEvent(new PreorderEvents.StillWaiting(id, 2));
-            events.publishEvent(new PreorderEvents.BatchCancelledKept(id));
-            events.publishEvent(new PreorderEvents.HoldsChanged("it"));
+            events.publish(new PreorderEvents.Subscribed(id));
+            events.publish(new PreorderEvents.HoldGranted(id));
+            events.publish(new PreorderEvents.ArrivedNotice(id));
+            events.publish(new PreorderEvents.HoldEnding(id));
+            events.publish(new PreorderEvents.HoldExpired(id));
+            events.publish(new PreorderEvents.StillWaiting(id, 2));
+            events.publish(new PreorderEvents.BatchCancelledKept(id));
+            events.publish(new PreorderEvents.HoldsChanged("it"));
         });
         Long sid = id;
         ok(delete("/api/me/preorders/" + sid, token, "uk"));
@@ -517,17 +517,17 @@ class ClientEndpointsLazyLoadingIT {
         for (String id : orders.values()) {
             byte[] oid = UuidUtil.toBytes(id);
             new TransactionTemplate(txManager).executeWithoutResult(s -> {
-                events.publishEvent(new OrderEvents.Created(oid));
-                events.publishEvent(new OrderEvents.StatusChanged(oid));
-                events.publishEvent(new OrderEvents.PaymentReceived(oid, 100));
-                events.publishEvent(new OrderEvents.Returned(oid, true, "товар x1", 100));
-                events.publishEvent(new OrderEvents.Exchanged(oid, true, "товар"));
-                events.publishEvent(new OrderEvents.CancelRequested(oid));
-                events.publishEvent(new OrderEvents.CancelRequestResolved(oid, true));
-                events.publishEvent(new OrderEvents.ChatMessage(oid, true, "привіт", "TEXT", "привіт", null, null));
-                events.publishEvent(new OrderEvents.ChatMessage(oid, false, "привіт", "TEXT", "привіт", null, null));
+                events.publish(new OrderEvents.Created(oid));
+                events.publish(new OrderEvents.StatusChanged(oid));
+                events.publish(new OrderEvents.PaymentReceived(oid, 100));
+                events.publish(new OrderEvents.Returned(oid, true, "товар x1", 100));
+                events.publish(new OrderEvents.Exchanged(oid, true, "товар"));
+                events.publish(new OrderEvents.CancelRequested(oid));
+                events.publish(new OrderEvents.CancelRequestResolved(oid, true));
+                events.publish(new OrderEvents.ChatMessage(oid, true, "привіт", "TEXT", "привіт", null, null));
+                events.publish(new OrderEvents.ChatMessage(oid, false, "привіт", "TEXT", "привіт", null, null));
                 for (OrderEvents.EditKind kind : OrderEvents.EditKind.values()) {
-                    events.publishEvent(new OrderEvents.Edited(oid, kind, true, "Товар", "Розмір", 1));
+                    events.publish(new OrderEvents.Edited(oid, kind, true, "Товар", "Розмір", 1));
                 }
             });
         }

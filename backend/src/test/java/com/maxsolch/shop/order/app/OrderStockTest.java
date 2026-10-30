@@ -28,7 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,7 +58,7 @@ class OrderStockTest {
     @Mock ProductRepository productRepository;
     @Mock PromoCodeRepository promoCodeRepository;
     @Mock PaymentOptionRepository paymentOptionRepository;
-    @Mock ApplicationEventPublisher events;
+    @Mock DomainEvents events;
     @Mock PromoService promoService;
     @Mock CartService cartService;
     @Mock Messages messages;

@@ -31,7 +31,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -69,7 +69,7 @@ class OrderTransitionsTest {
     @Mock
     PaymentOptionRepository paymentOptionRepository;
     @Mock
-    ApplicationEventPublisher events;
+    DomainEvents events;
     @Mock
     PromoService promoService;
     @Mock
@@ -126,7 +126,7 @@ class OrderTransitionsTest {
 
     private List<Object> published() {
         ArgumentCaptor<Object> c = ArgumentCaptor.forClass(Object.class);
-        verify(events, org.mockito.Mockito.atLeast(0)).publishEvent(c.capture());
+        verify(events, org.mockito.Mockito.atLeast(0)).publish(c.capture());
         return c.getAllValues();
     }
 
@@ -335,8 +335,8 @@ class OrderTransitionsTest {
         InOrder order = inOrder(giftService, orderRepository, events);
         order.verify(giftService).revokeCasePromo(o.getId());
         order.verify(orderRepository).save(o);
-        order.verify(events).publishEvent(any(OrderEvents.StatusChanged.class));
-        order.verify(events).publishEvent(any(OrderEvents.CancelRequestResolved.class));
+        order.verify(events).publish(any(OrderEvents.StatusChanged.class));
+        order.verify(events).publish(any(OrderEvents.CancelRequestResolved.class));
         List<Object> ev = published();
         assertThat(ev).hasSize(2);
         assertThat(((OrderEvents.CancelRequestResolved) ev.get(1)).approved()).isTrue();
@@ -508,7 +508,7 @@ class OrderTransitionsTest {
         }
         assertThat(product.getStock()).isEqualTo(3);
         verifyNoInteractions(giftService);
-        verify(events, never()).publishEvent(any(Object.class));
+        verify(events, never()).publish(any(Object.class));
     }
 
     // ------------------------------------------------------------------ (в) merge / exchange bypass afterTransition
@@ -525,7 +525,7 @@ class OrderTransitionsTest {
 
     @Test
     void merge_closesTheSourceWithoutStatusChangedAndWithoutRevokingTheCasePromo() {
-        ApplicationEventPublisher mergeEvents = org.mockito.Mockito.mock(ApplicationEventPublisher.class);
+        DomainEvents mergeEvents = org.mockito.Mockito.mock(DomainEvents.class);
         OrderMerge merge = app.merge(orderRepository, mergeEvents, ledger);
         Order target = mergeable(OrderStatus.APPROVED, 42);
         Order source = mergeable(OrderStatus.NEW, 42);
@@ -538,9 +538,9 @@ class OrderTransitionsTest {
         // Intentionally: no StatusChanged, and the case prize code stays with the buyer
         // (an open case is not sealed, the prize remains his); see docs/tech-debt-2026-10.md.
         ArgumentCaptor<Object> c = ArgumentCaptor.forClass(Object.class);
-        verify(mergeEvents).publishEvent(c.capture());
+        verify(mergeEvents).publish(c.capture());
         assertThat(c.getAllValues()).hasSize(1).first().isInstanceOf(OrderEvents.Merged.class);
-        verify(events, never()).publishEvent(any(OrderEvents.StatusChanged.class));
+        verify(events, never()).publish(any(OrderEvents.StatusChanged.class));
         verify(giftService, never()).revokeCasePromo(any());
     }
 
@@ -591,8 +591,8 @@ class OrderTransitionsTest {
         assertThat(o.getStatus()).isEqualTo(OrderStatus.DELIVERED);
         // Intentionally: the replacement order is born APPROVED without StatusChanged (the
         // dispatch card is posted by the Exchanged handler); see docs/tech-debt-2026-10.md.
-        verify(events, never()).publishEvent(any(OrderEvents.StatusChanged.class));
-        verify(events).publishEvent(any(OrderEvents.Exchanged.class));
+        verify(events, never()).publish(any(OrderEvents.StatusChanged.class));
+        verify(events).publish(any(OrderEvents.Exchanged.class));
         verify(giftService, never()).revokeCasePromo(any());
     }
 }

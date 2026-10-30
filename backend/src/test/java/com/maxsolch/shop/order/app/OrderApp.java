@@ -14,7 +14,7 @@ import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
 import jakarta.persistence.EntityManager;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 
 import java.time.Clock;
 
@@ -69,7 +69,7 @@ public final class OrderApp {
     @SuppressWarnings("checkstyle:ParameterNumber")
     public static OrderApp create(OrderRepository orders, ProductRepository products, PromoCodeRepository promos,
                                   PaymentOptionRepository options,
-                                  ApplicationEventPublisher events, PromoService promoService, CartService carts,
+                                  DomainEvents events, PromoService promoService, CartService carts,
                                   Messages messages, EntityManager em, OrderStock stock, MoneyLedger ledger) {
         return create(orders, products, promos, options, events, promoService, carts, messages, em,
                 stock, StockFixtures.shelf(products, messages), ledger);
@@ -79,7 +79,7 @@ public final class OrderApp {
     @SuppressWarnings("checkstyle:ParameterNumber")
     public static OrderApp create(OrderRepository orders, ProductRepository products, PromoCodeRepository promos,
                                   PaymentOptionRepository options,
-                                  ApplicationEventPublisher events, PromoService promoService, CartService carts,
+                                  DomainEvents events, PromoService promoService, CartService carts,
                                   Messages messages, EntityManager em, OrderStock stock, Stock shelf,
                                   MoneyLedger ledger) {
         return create(orders, products, promos, options, events, promoService, carts, messages, em,
@@ -90,7 +90,7 @@ public final class OrderApp {
     @SuppressWarnings("checkstyle:ParameterNumber")
     public static OrderApp create(OrderRepository orders, ProductRepository products, PromoCodeRepository promos,
                                   PaymentOptionRepository options,
-                                  ApplicationEventPublisher events, PromoService promoService, CartService carts,
+                                  DomainEvents events, PromoService promoService, CartService carts,
                                   Messages messages, EntityManager em, OrderStock stock, MoneyLedger ledger,
                                   PaymentInvoiceRepository invoices, GiftService gift, GiftRegistryService registry,
                                   CaseLowMargin lowMargin) {
@@ -101,7 +101,7 @@ public final class OrderApp {
     @SuppressWarnings("checkstyle:ParameterNumber")
     public static OrderApp create(OrderRepository orders, ProductRepository products, PromoCodeRepository promos,
                                   PaymentOptionRepository options,
-                                  ApplicationEventPublisher events, PromoService promoService, CartService carts,
+                                  DomainEvents events, PromoService promoService, CartService carts,
                                   Messages messages, EntityManager em, OrderStock stock, Stock shelf, MoneyLedger ledger,
                                   PaymentInvoiceRepository invoices, GiftService gift, GiftRegistryService registry,
                                   CaseLowMargin lowMargin) {
@@ -167,11 +167,11 @@ public final class OrderApp {
     }
 
     /** The merge scenario over the same ops, with its own repository / events / ledger mocks. */
-    public OrderMerge merge(OrderRepository orders, ApplicationEventPublisher events, MoneyLedger ledger) {
+    public OrderMerge merge(OrderRepository orders, DomainEvents events, MoneyLedger ledger) {
         return new OrderMerge(orders, ops, events, ledger);
     }
 
-    public OrderDeliveryEditing deliveryEditing(OrderRepository orders, ApplicationEventPublisher events) {
+    public OrderDeliveryEditing deliveryEditing(OrderRepository orders, DomainEvents events) {
         return new OrderDeliveryEditing(ops, orders, events);
     }
 

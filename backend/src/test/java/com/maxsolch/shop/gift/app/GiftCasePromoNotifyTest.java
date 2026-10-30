@@ -14,7 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 
 import java.time.Instant;
 import java.util.List;
@@ -39,7 +39,7 @@ class GiftCasePromoNotifyTest {
     @Mock GiftService giftService;
     @Mock CatalogService catalogService;
     @Mock GiftQueries queries;
-    @Mock ApplicationEventPublisher events;
+    @Mock DomainEvents events;
 
     private static final byte[] ORDER_ID = new byte[16];
 
@@ -78,7 +78,7 @@ class GiftCasePromoNotifyTest {
         service().open(ORDER_ID, "uk");
 
         ArgumentCaptor<Object> event = ArgumentCaptor.forClass(Object.class);
-        verify(events).publishEvent(event.capture());
+        verify(events).publish(event.capture());
         assertThat(event.getValue()).isInstanceOfSatisfying(OrderEvents.GiftCasePromo.class, e -> {
             assertThat(e.code()).isEqualTo("CASE-ABC123");
             assertThat(e.percent()).isEqualTo(10);
@@ -93,6 +93,6 @@ class GiftCasePromoNotifyTest {
         service().open(ORDER_ID, "uk");
 
         verify(giftService, never()).issuePromo(any(), any(), any(), anyInt(), anyLong());
-        verify(events, never()).publishEvent(any(Object.class));
+        verify(events, never()).publish(any(Object.class));
     }
 }

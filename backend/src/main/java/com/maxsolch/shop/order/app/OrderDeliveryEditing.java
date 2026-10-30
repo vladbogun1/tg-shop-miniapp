@@ -5,7 +5,7 @@ import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,9 +24,9 @@ public class OrderDeliveryEditing {
 
     private final OrderOps ops;
     private final OrderRepository orderRepository;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
 
-    OrderDeliveryEditing(OrderOps ops, OrderRepository orderRepository, ApplicationEventPublisher events) {
+    OrderDeliveryEditing(OrderOps ops, OrderRepository orderRepository, DomainEvents events) {
         this.ops = ops;
         this.orderRepository = orderRepository;
         this.events = events;
@@ -55,7 +55,7 @@ public class OrderDeliveryEditing {
         }
         order.setTrackingNumber(ttn);
         Order saved = orderRepository.save(order);
-        events.publishEvent(OrderEvents.Edited.of(saved.getId(), OrderEvents.EditKind.TRACKING, true));
+        events.publish(OrderEvents.Edited.of(saved.getId(), OrderEvents.EditKind.TRACKING, true));
         return new OrderChange(saved, "ТТН: " + (old == null ? "—" : old) + " → " + ttn);
     }
 
@@ -88,7 +88,7 @@ public class OrderDeliveryEditing {
         }
         Order saved = orderRepository.save(order);
         // Refreshes the seller's dispatch card ("К ОТПРАВКЕ") and the channel card.
-        events.publishEvent(OrderEvents.Edited.of(saved.getId(), OrderEvents.EditKind.DETAILS, false));
+        events.publish(OrderEvents.Edited.of(saved.getId(), OrderEvents.EditKind.DETAILS, false));
         return new OrderChange(saved, String.join("; ", changes));
     }
 

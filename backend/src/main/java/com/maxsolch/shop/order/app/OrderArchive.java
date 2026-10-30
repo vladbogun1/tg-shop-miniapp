@@ -4,7 +4,7 @@ import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,10 +23,10 @@ public class OrderArchive {
 
     private final OrderOps ops;
     private final OrderRepository orderRepository;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
     private final OrderOnlinePayments payments;
 
-    OrderArchive(OrderOps ops, OrderRepository orderRepository, ApplicationEventPublisher events,
+    OrderArchive(OrderOps ops, OrderRepository orderRepository, DomainEvents events,
                  OrderOnlinePayments payments) {
         this.ops = ops;
         this.orderRepository = orderRepository;
@@ -61,7 +61,7 @@ public class OrderArchive {
         order.setArchivedBy(adminName);
         order.setArchiveReason(why);
         Order saved = orderRepository.save(order);
-        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        events.publish(OrderEvents.Edited.silent(saved.getId()));
         return saved;
     }
 
@@ -76,7 +76,7 @@ public class OrderArchive {
         order.setArchivedBy(null);
         order.setArchiveReason(null);
         Order saved = orderRepository.save(order);
-        events.publishEvent(OrderEvents.Edited.silent(saved.getId()));
+        events.publish(OrderEvents.Edited.silent(saved.getId()));
         return saved;
     }
 

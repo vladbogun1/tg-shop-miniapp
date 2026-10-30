@@ -12,7 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -37,7 +37,7 @@ class QueueBatchPortTest {
 
     @Mock PreorderSubscriptionRepository subs;
     @Mock PreorderQueueService queue;
-    @Mock ApplicationEventPublisher events;
+    @Mock DomainEvents events;
 
     QueueBatchPort port;
     byte[] productId;
@@ -73,9 +73,9 @@ class QueueBatchPortTest {
         port.onBatchCancelled(List.<byte[][]>of(new byte[][]{productId, null}), false, NOW);
 
         assertThat(q).extracting(PreorderSubscription::getStatus).containsExactly("WAITING", "HELD", "WAITING");
-        verify(events).publishEvent(new PreorderEvents.BatchCancelledKept(1));
-        verify(events).publishEvent(new PreorderEvents.BatchCancelledKept(3));
-        verify(events, never()).publishEvent(new PreorderEvents.BatchCancelledKept(2));
+        verify(events).publish(new PreorderEvents.BatchCancelledKept(1));
+        verify(events).publish(new PreorderEvents.BatchCancelledKept(3));
+        verify(events, never()).publish(new PreorderEvents.BatchCancelledKept(2));
     }
 
     @Test
@@ -85,8 +85,8 @@ class QueueBatchPortTest {
         port.onBatchCancelled(List.<byte[][]>of(new byte[][]{productId, null}), true, NOW);
 
         assertThat(q).extracting(PreorderSubscription::getStatus).containsExactly("CANCELLED", "HELD", "CANCELLED");
-        verify(events).publishEvent(new PreorderEvents.Closed(1, "BATCH_CANCELLED"));
-        verify(events).publishEvent(new PreorderEvents.Closed(3, "BATCH_CANCELLED"));
+        verify(events).publish(new PreorderEvents.Closed(1, "BATCH_CANCELLED"));
+        verify(events).publish(new PreorderEvents.Closed(3, "BATCH_CANCELLED"));
     }
 
     @Test
@@ -95,7 +95,7 @@ class QueueBatchPortTest {
 
         port.onBatchCancelled(List.<byte[][]>of(new byte[][]{productId, null}, new byte[][]{productId, null}), false, NOW);
 
-        verify(events).publishEvent(new PreorderEvents.BatchCancelledKept(1));
+        verify(events).publish(new PreorderEvents.BatchCancelledKept(1));
     }
 
     @Test

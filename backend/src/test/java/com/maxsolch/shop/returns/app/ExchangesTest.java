@@ -86,7 +86,7 @@ class ExchangesTest extends ReturnsTestBase {
         assertThat(ex.getValue().getNewOrderId()).isEqualTo(child.getId());
         assertThat(ex.getValue().getReturnedSummary()).contains("(едет назад)");
         assertThat(ex.getValue().getTotalBeforeMinor()).isEqualTo(10_000);
-        verify(events).publishEvent(any(OrderEvents.Exchanged.class));
+        verify(events).publish(any(OrderEvents.Exchanged.class));
     }
 
     @Test
@@ -171,7 +171,7 @@ class ExchangesTest extends ReturnsTestBase {
                 List.of(new Exchanges.NewLine(UuidUtil.toString(mouse.getId()), null, 1)),
                 OrderStatus.NEW, true, null, "admin"))
                 .isInstanceOf(DomainException.BadRequest.class);
-        verify(events, never()).publishEvent(any());
+        verify(events, never()).publish(any());
     }
 
     @Test

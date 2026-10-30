@@ -9,7 +9,7 @@ import com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository;
 import com.maxsolch.shop.procurement.domain.BatchQueue;
 import com.maxsolch.shop.procurement.domain.Lines;
 import com.maxsolch.shop.procurement.domain.PreorderBatch.Distribution;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -29,10 +29,10 @@ class QueueBatchPort implements BatchQueue {
 
     private final PreorderQueueService queue;
     private final PreorderSubscriptionRepository subs;
-    private final ApplicationEventPublisher events;
+    private final DomainEvents events;
     private final Clock clock;
 
-    QueueBatchPort(PreorderQueueService queue, PreorderSubscriptionRepository subs, ApplicationEventPublisher events,
+    QueueBatchPort(PreorderQueueService queue, PreorderSubscriptionRepository subs, DomainEvents events,
                    Clock clock) {
         this.queue = queue;
         this.subs = subs;
@@ -64,9 +64,9 @@ class QueueBatchPort implements BatchQueue {
                 if (closeQueue) {
                     s.close(Status.CANCELLED, "поставка отменена", now);
                     subs.save(s);
-                    events.publishEvent(new PreorderEvents.Closed(s.getId(), "BATCH_CANCELLED"));
+                    events.publish(new PreorderEvents.Closed(s.getId(), "BATCH_CANCELLED"));
                 } else {
-                    events.publishEvent(new PreorderEvents.BatchCancelledKept(s.getId()));
+                    events.publish(new PreorderEvents.BatchCancelledKept(s.getId()));
                 }
             }
         }

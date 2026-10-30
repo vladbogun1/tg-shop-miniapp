@@ -373,7 +373,7 @@ class ReturnsTest extends ReturnsTestBase {
         assertThat(it.getReturnedQty()).isZero();
         assertThat(o.getRefundedMinor()).isZero();
         assertThat(p.getStock()).isEqualTo(3);
-        verify(events, never()).publishEvent(any());
+        verify(events, never()).publish(any());
         verify(orderRepository, never()).save(any(Order.class));
 
         // more than ordered

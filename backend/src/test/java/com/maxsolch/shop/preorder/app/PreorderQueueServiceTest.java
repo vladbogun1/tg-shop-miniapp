@@ -22,7 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -59,7 +59,7 @@ class PreorderQueueServiceTest {
     @Mock
     SettingsService settings;
     @Mock
-    ApplicationEventPublisher events;
+    DomainEvents events;
     @Mock
     Messages messages;
     @Mock
@@ -124,7 +124,7 @@ class PreorderQueueServiceTest {
         assertThat(saved.getValue().getSource()).isEqualTo("WEB");
         assertThat(saved.getValue().getCreatedAt()).isEqualTo(NOW);
         assertThat(dto.status()).isEqualTo("WAITING");
-        verify(events).publishEvent(any(PreorderEvents.Subscribed.class));
+        verify(events).publish(any(PreorderEvents.Subscribed.class));
     }
 
     @Test
@@ -163,7 +163,7 @@ class PreorderQueueServiceTest {
 
         assertThat(mine.getQty()).isEqualTo(3);
         assertThat(dto.id()).isEqualTo(5);
-        verify(events, never()).publishEvent(any(PreorderEvents.Subscribed.class));
+        verify(events, never()).publish(any(PreorderEvents.Subscribed.class));
     }
 
     @Test
@@ -204,7 +204,7 @@ class PreorderQueueServiceTest {
         assertThat(queue.get(0).getHoldUntil()).isEqualTo(NOW.plus(Duration.ofHours(24)));
         assertThat(queue.get(0).getBatchId()).isEqualTo(9L);
         assertThat(queue.get(2).getStatus()).isEqualTo("WAITING");
-        verify(events).publishEvent(new PreorderEvents.StillWaiting(3, 1));
+        verify(events).publish(new PreorderEvents.StillWaiting(3, 1));
     }
 
     @Test
@@ -291,8 +291,8 @@ class PreorderQueueServiceTest {
 
         assertThat(late.getStatus()).isEqualTo("EXPIRED");
         assertThat(next.getStatus()).isEqualTo("HELD");
-        verify(events).publishEvent(new PreorderEvents.HoldExpired(1L));
-        verify(events).publishEvent(new PreorderEvents.HoldGranted(2L));
+        verify(events).publish(new PreorderEvents.HoldExpired(1L));
+        verify(events).publish(new PreorderEvents.HoldGranted(2L));
     }
 
     @Test
@@ -306,7 +306,7 @@ class PreorderQueueServiceTest {
         assertThat(service.expireHolds()).isZero();
 
         assertThat(bought.getStatus()).isEqualTo("BOUGHT");
-        verify(events, never()).publishEvent(any(PreorderEvents.HoldExpired.class));
+        verify(events, never()).publish(any(PreorderEvents.HoldExpired.class));
     }
 
     @Test
@@ -316,7 +316,7 @@ class PreorderQueueServiceTest {
 
         assertThat(service.remindHolds()).isEqualTo(1);
         assertThat(s.getRemindedAt()).isEqualTo(NOW);
-        verify(events).publishEvent(new PreorderEvents.HoldEnding(1L));
+        verify(events).publish(new PreorderEvents.HoldEnding(1L));
     }
 
     @Test
@@ -343,7 +343,7 @@ class PreorderQueueServiceTest {
 
         assertThat(next.getStatus()).isEqualTo("HELD");
         assertThat(next.getHoldUntil()).isEqualTo(NOW.plus(Duration.ofHours(24)));
-        verify(events).publishEvent(new PreorderEvents.HoldGranted(2L));
+        verify(events).publish(new PreorderEvents.HoldGranted(2L));
     }
 
     @Test

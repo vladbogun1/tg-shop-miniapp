@@ -10,7 +10,7 @@ import com.maxsolch.shop.returns.infra.OrderExchangeRepository;
 import com.maxsolch.shop.returns.infra.OrderReturnLineRepository;
 import com.maxsolch.shop.returns.infra.OrderReturnRepository;
 import com.maxsolch.shop.order.app.OrderStock;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 
 import java.time.Clock;
 
@@ -36,7 +36,7 @@ public final class ReturnsApp {
 
     /** With empty mocks for the write-off, return-record and exchange-line repositories. */
     public static ReturnsApp create(OrderApp app, OrderRepository orders, OrderStock stock, com.maxsolch.shop.inventory.app.Stock shelf,
-                                    ApplicationEventPublisher events, MoneyLedger ledger,
+                                    DomainEvents events, MoneyLedger ledger,
                                     OrderExchangeRepository exchangeRepository) {
         return create(app, orders, stock, shelf, events, ledger, exchangeRepository, mock(StockWriteoffRepository.class),
                 mock(OrderReturnRepository.class), mock(OrderReturnLineRepository.class),
@@ -45,7 +45,7 @@ public final class ReturnsApp {
 
     @SuppressWarnings("checkstyle:ParameterNumber")
     public static ReturnsApp create(OrderApp app, OrderRepository orders, OrderStock stock, com.maxsolch.shop.inventory.app.Stock shelf,
-                                    ApplicationEventPublisher events, MoneyLedger ledger,
+                                    DomainEvents events, MoneyLedger ledger,
                                     OrderExchangeRepository exchangeRepository, StockWriteoffRepository writeoffs,
                                     OrderReturnRepository returnRecords, OrderReturnLineRepository returnLines,
                                     OrderExchangeLineRepository exchangeLines) {

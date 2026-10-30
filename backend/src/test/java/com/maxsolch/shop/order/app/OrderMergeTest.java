@@ -13,7 +13,7 @@ import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -43,7 +43,7 @@ class OrderMergeTest {
         ops = mock(OrderOps.class);
         when(ops.now()).thenAnswer(inv -> Instant.now());
         ledger = mock(MoneyLedger.class);
-        service = new OrderMerge(orders, ops, mock(ApplicationEventPublisher.class), ledger);
+        service = new OrderMerge(orders, ops, mock(DomainEvents.class), ledger);
         when(orders.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
         // The real recompute: subtotal from the lines, the absolute discount capped at it.
         doAnswer(inv -> {
