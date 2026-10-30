@@ -7,7 +7,6 @@ import com.maxsolch.shop.delivery.domain.NovaPoshtaCity;
 import com.maxsolch.shop.delivery.infra.NovaPoshtaWarehouseRepository;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -18,7 +17,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -49,12 +47,8 @@ public class NovaPoshtaSyncService {
     private final NovaPoshtaUpsertService upsertService;
     private final SettingsService settings;
     private final Clock clock;
-    /** One daemon thread: the sync is a rare, long, strictly serial job. */
-    private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "np-sync");
-        t.setDaemon(true);
-        return t;
-    });
+    /** One thread of the platform workers: the sync is a rare, long, strictly serial job. */
+    private final ExecutorService executor;
     /** Guards against a scheduled run starting while the previous one is still going. */
     private final AtomicBoolean running = new AtomicBoolean(false);
 
@@ -68,11 +62,7 @@ public class NovaPoshtaSyncService {
         this.upsertService = upsertService;
         this.settings = settings;
         this.clock = clock;
-    }
-
-    @PreDestroy
-    void shutdown() {
-        executor.shutdownNow();
+        this.executor = workers.single("np-sync");
     }
 
     @EventListener(ApplicationReadyEvent.class)

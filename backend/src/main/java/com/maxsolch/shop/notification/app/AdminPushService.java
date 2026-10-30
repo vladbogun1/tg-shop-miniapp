@@ -10,7 +10,6 @@ import com.maxsolch.shop.notification.infra.PushSubscriptionStore.Subscription;
 import com.maxsolch.shop.notification.domain.PushError;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.journal.ActivityLog;
-import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,7 +25,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static com.maxsolch.shop.platform.util.Texts.ellipsize;
 import static com.maxsolch.shop.platform.util.Texts.nullToEmpty;
@@ -98,12 +96,8 @@ public class AdminPushService {
 
     @Autowired
     public AdminPushService(AppProperties props, PushSubscriptionStore store, PushTransport transport,
-                            ObjectMapper objectMapper, ActivityLog activity, Clock clock) {
-        this(props, store, transport, objectMapper, Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r, "admin-push");
-            t.setDaemon(true);
-            return t;
-        }), clock, activity);
+                            ObjectMapper objectMapper, ActivityLog activity, Clock clock, Workers workers) {
+        this(props, store, transport, objectMapper, workers.single("admin-push"), clock, activity);
     }
 
     AdminPushService(AppProperties props, PushSubscriptionStore store, PushTransport transport,
@@ -349,10 +343,5 @@ public class AdminPushService {
 
     private static boolean blank(String s) {
         return s == null || s.isBlank();
-    }
-
-    @PreDestroy
-    void shutdown() {
-        executor.shutdownNow();
     }
 }

@@ -2,7 +2,6 @@ package com.maxsolch.shop.customer.app;
 
 import com.maxsolch.shop.platform.jobs.Workers;
 import com.maxsolch.shop.platform.web.GeoIpLookup;
-import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.Cache;
@@ -15,11 +14,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 /**
@@ -69,16 +65,6 @@ public class VisitorLocationService {
         this.enabled = enabled;
         this.executor = executor;
         this.recent = recent;
-    }
-
-    private static ExecutorService newWorker() {
-        ThreadPoolExecutor pool = new ThreadPoolExecutor(1, 1, 0, TimeUnit.MILLISECONDS,
-                new ArrayBlockingQueue<>(2_000), r -> {
-                    Thread t = new Thread(r, "visitor-location");
-                    t.setDaemon(true);
-                    return t;
-                }, new ThreadPoolExecutor.DiscardPolicy());
-        return pool;
     }
 
     /** A request from a signed-in customer (Mini App or the site's cookie session). */
@@ -133,13 +119,6 @@ public class VisitorLocationService {
             // Let the next request try again instead of waiting out the throttle.
             recent.evict(key);
             log.debug("Visitor location write failed for {}: {}", key, e.toString());
-        }
-    }
-
-    @PreDestroy
-    void shutdown() {
-        if (executor instanceof ExecutorService es) {
-            es.shutdown();
         }
     }
 }

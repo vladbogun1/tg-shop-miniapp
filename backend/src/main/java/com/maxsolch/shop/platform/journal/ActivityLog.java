@@ -2,13 +2,13 @@ package com.maxsolch.shop.platform.journal;
 
 import com.maxsolch.shop.platform.jobs.Workers;
 import java.time.Clock;
+import java.time.Duration;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.Role;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.platform.tx.OnCommitted;
 import com.maxsolch.shop.platform.web.CurrentActor;
-import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -17,9 +17,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
@@ -75,8 +73,11 @@ public class ActivityLog {
 
     @Autowired
     public ActivityLog(ActivityLogStore store, BotFailureClassifier classifier, DomainEvents events,
-                       CurrentActor actor, Clock clock) {
-        this(store, classifier, events, actor, clock, newWorker());
+                       CurrentActor actor, Clock clock, Workers workers) {
+        this(store, classifier, events, actor, clock, workers.bounded("activity-log", 20_000,
+                (r, e) -> {
+                    throw new RejectedExecutionException("activity log queue is full");
+                }, Duration.ofSeconds(5)));
     }
 
     ActivityLog(ActivityLogStore store, BotFailureClassifier classifier, DomainEvents events, CurrentActor actor,
@@ -87,19 +88,6 @@ public class ActivityLog {
         this.events = events;
         this.actor = actor;
         this.executor = executor;
-    }
-
-    private static ExecutorService newWorker() {
-        ThreadPoolExecutor ex = new ThreadPoolExecutor(1, 1, 0, TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>(20_000), r -> {
-            Thread t = new Thread(r, "activity-log");
-            t.setDaemon(true);
-            return t;
-        });
-        ex.setRejectedExecutionHandler((r, e) -> {
-            throw new RejectedExecutionException("activity log queue is full");
-        });
-        return ex;
     }
 
     // ------------------------------------------------------------------ recording
@@ -182,17 +170,6 @@ public class ActivityLog {
             store.write(e);
         } catch (Exception ex) {
             log.warn("Activity log write failed ({} {}): {}", e.source, e.type, ex.getMessage());
-        }
-    }
-
-    /** Lets queued entries land on shutdown (a few seconds at most). */
-    @PreDestroy
-    void shutdown() {
-        executor.shutdown();
-        try {
-            executor.awaitTermination(5, TimeUnit.SECONDS);
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
         }
     }
 
