@@ -20,7 +20,6 @@ import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
-import com.maxsolch.shop.notification.app.NotificationService;
 import com.maxsolch.shop.platform.error.DomainException;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,7 +58,6 @@ class OrderStockTest {
     @Mock ProductRepository productRepository;
     @Mock PromoCodeRepository promoCodeRepository;
     @Mock PaymentOptionRepository paymentOptionRepository;
-    @Mock NotificationService notificationService;
     @Mock ApplicationEventPublisher events;
     @Mock PromoService promoService;
     @Mock CartService cartService;
@@ -97,7 +95,7 @@ class OrderStockTest {
     private OrderApp newApp() {
         Stock shelf = new Stock(new com.maxsolch.shop.catalog.app.Products(productRepository, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), messages, lots, holds);
         return OrderApp.create(orderRepository, productRepository, promoCodeRepository,
-                paymentOptionRepository, notificationService, events, promoService, cartService, messages, entityManager,
+                paymentOptionRepository, events, promoService, cartService, messages, entityManager,
                 new OrderStock(new com.maxsolch.shop.catalog.app.Products(productRepository, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), shelf, queue), shelf, org.mockito.Mockito.mock(MoneyLedger.class));
     }
 

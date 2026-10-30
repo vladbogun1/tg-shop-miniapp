@@ -3,7 +3,6 @@ package com.maxsolch.shop.order.app;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.notification.app.NotificationService;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -27,14 +26,14 @@ public class OrderDispatchNotifier {
 
     private final OrderRepository orderRepository;
     private final EntityManager entityManager;
-    private final NotificationService notificationService;
+    private final OrderSellerNotifier seller;
     private final TransactionTemplate tx;
 
     OrderDispatchNotifier(OrderRepository orderRepository, EntityManager entityManager,
-                          NotificationService notificationService, TransactionTemplate tx) {
+                          OrderSellerNotifier seller, TransactionTemplate tx) {
         this.orderRepository = orderRepository;
         this.entityManager = entityManager;
-        this.notificationService = notificationService;
+        this.seller = seller;
         this.tx = tx;
     }
 
@@ -48,7 +47,7 @@ public class OrderDispatchNotifier {
             // a status change made meanwhile). Only the targeted update below writes it.
             entityManager.detach(o);
             Integer before = o.getDispatchMessageId();
-            if (notificationService.syncDispatchCard(o)) {
+            if (seller.syncDispatchCard(o)) {
                 posted++;
             }
             if (!Objects.equals(before, o.getDispatchMessageId())) {

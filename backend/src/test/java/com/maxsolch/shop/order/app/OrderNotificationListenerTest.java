@@ -1,6 +1,5 @@
 package com.maxsolch.shop.order.app;
 
-import com.maxsolch.shop.notification.app.NotificationService;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
@@ -22,9 +21,9 @@ class OrderNotificationListenerTest {
     private static final byte[] ID = new byte[16];
 
     private final OrderRepository orders = mock(OrderRepository.class);
-    private final NotificationService notifications = mock(NotificationService.class);
+    private final OrderSellerNotifier notifications = mock(OrderSellerNotifier.class);
     private final OrderNotificationListener listener =
-            new OrderNotificationListener(orders, notifications, mock(ImageStorageService.class));
+            new OrderNotificationListener(orders, notifications, mock(OrderCustomerNotifier.class), mock(ImageStorageService.class));
 
     private Order order(OrderStatus status) {
         Order o = new Order();

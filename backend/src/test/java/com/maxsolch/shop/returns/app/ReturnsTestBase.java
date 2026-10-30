@@ -24,7 +24,6 @@ import com.maxsolch.shop.returns.infra.OrderReturnLineRepository;
 import com.maxsolch.shop.returns.infra.OrderReturnRepository;
 import com.maxsolch.shop.order.app.OrderStock;
 import com.maxsolch.shop.order.app.StockFixtures;
-import com.maxsolch.shop.notification.app.NotificationService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -55,8 +54,6 @@ abstract class ReturnsTestBase {
     @Mock
     PaymentOptionRepository paymentOptionRepository;
 
-    @Mock
-    NotificationService notificationService;
 
     @Mock
     ApplicationEventPublisher events;
@@ -98,7 +95,7 @@ abstract class ReturnsTestBase {
         ledgerMock = Mockito.mock(MoneyLedger.class);
         OrderStock stock = StockFixtures.stock(productRepository, messages);
         OrderApp app = OrderApp.create(orderRepository, productRepository,
-                promoCodeRepository, paymentOptionRepository, notificationService, events,
+                promoCodeRepository, paymentOptionRepository, events,
                 promoService, cartService, messages, entityManager, stock, Mockito.mock(MoneyLedger.class));
         ReturnsApp returnsApp = ReturnsApp.create(app, orderRepository, stock, StockFixtures.shelf(productRepository, messages), events, ledgerMock, exchangeRepository,
                 writeoffs, recRepo, lineRepo, exchangeLineRepo);

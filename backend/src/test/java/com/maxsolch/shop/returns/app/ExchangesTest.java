@@ -181,7 +181,7 @@ class ExchangesTest extends ReturnsTestBase {
         o.setReceivedMinor(10_000);
         o.setPaid(true);
         OrderApp app = OrderApp.create(orderRepository, productRepository,
-                promoCodeRepository, paymentOptionRepository, notificationService, events,
+                promoCodeRepository, paymentOptionRepository, events,
                 promoService, cartService, messages, entityManager,
                 StockFixtures.stock(productRepository, messages), org.mockito.Mockito.mock(MoneyLedger.class));
 

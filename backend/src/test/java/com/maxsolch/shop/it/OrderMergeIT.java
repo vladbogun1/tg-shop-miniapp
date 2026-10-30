@@ -34,7 +34,7 @@ class OrderMergeIT extends AbstractMysqlIT {
         Order source = orders.createOrder(checkout(9_101, "+380674440001", a, 2));
         orderPayments.markPaid(source.getId(), 20_000);
         int stockA = stockOf(a);
-        Mockito.reset(notificationService);
+        Mockito.reset(sellerNotifier, customerNotifier);
 
         OrderMerge.Result r = merge.merge(target.getId(), source.getId(), false, false, null, "it");
 
@@ -63,6 +63,6 @@ class OrderMergeIT extends AbstractMysqlIT {
         assertThat(moved).isEqualTo(20_000);
         assertThat(r.target().getId()).isEqualTo(target.getId());
         // The Merged event goes out after the commit.
-        verify(notificationService, atLeastOnce()).onStatusChanged(any());
+        verify(sellerNotifier, atLeastOnce()).onStatusChanged(any());
     }
 }

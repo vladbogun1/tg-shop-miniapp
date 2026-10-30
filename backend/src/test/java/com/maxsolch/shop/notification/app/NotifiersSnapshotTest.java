@@ -42,7 +42,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
 /**
- * Characterization of the four small notifiers that talk to Telegram next to {@link NotificationService}:
+ * Characterization of the four small notifiers that talk to Telegram next to the order notifiers:
  * support, reviews, pre-orders and the admin's own security alerts. Text, chat, topic, keyboard, journal
  * entry and the «nothing is sent» guards, for a uk / ru / en customer. The snapshots in
  * {@code src/test/resources/snapshots/notify} (files {@code support*}, {@code review*}, {@code preorder*},

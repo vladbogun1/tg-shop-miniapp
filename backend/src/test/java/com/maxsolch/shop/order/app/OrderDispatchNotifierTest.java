@@ -5,7 +5,7 @@ import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.notification.app.NotificationService;
+import com.maxsolch.shop.order.app.OrderSellerNotifier;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -26,7 +26,7 @@ class OrderDispatchNotifierTest {
 
     private final OrderRepository orderRepository = mock(OrderRepository.class);
     private final EntityManager entityManager = mock(EntityManager.class);
-    private final NotificationService notificationService = mock(NotificationService.class);
+    private final OrderSellerNotifier notificationService = mock(OrderSellerNotifier.class);
     private final OrderDispatchNotifier notifier = new OrderDispatchNotifier(orderRepository, entityManager,
             notificationService, new TransactionTemplate(mock(PlatformTransactionManager.class)));
 

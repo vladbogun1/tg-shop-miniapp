@@ -2,6 +2,7 @@ package com.maxsolch.shop.notification.app;
 
 import com.maxsolch.shop.notification.domain.TelegramGateway;
 import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.order.app.OrderCustomerNotifier;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
@@ -40,7 +41,7 @@ class CasePromoNotificationTest {
     @Mock CustomerRejectReason rejectReason;
     @Mock ActivityLog activity;
 
-    NotificationService service;
+    OrderCustomerNotifier service;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -52,8 +53,8 @@ class CasePromoNotificationTest {
         props.getTelegram().setBotToken("test-token");
         props.setWebappBaseUrl("https://app.example.test");
         Messages messages = new Messages((MessageSource) source, users);
-        service = new NotificationService(props, messages, settings, rejectReason,
-                new CustomerBot(bot, props, messages, activity), new SellerChannel(bot, props, activity));
+        service = new OrderCustomerNotifier(props, messages, settings, rejectReason,
+                new CustomerBot(bot, props, messages, activity));
         lenient().when(activity.bot(any(), any())).thenAnswer(inv -> ((ActivityLog.BotCall<?>) inv.getArgument(1)).call());
     }
 

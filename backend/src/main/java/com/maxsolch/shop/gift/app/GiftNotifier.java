@@ -1,7 +1,7 @@
 package com.maxsolch.shop.gift.app;
 
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.notification.app.NotificationService;
+import com.maxsolch.shop.order.app.OrderCustomerNotifier;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -10,9 +10,9 @@ import java.time.Instant;
 @Component
 public class GiftNotifier {
 
-    private final NotificationService notifications;
+    private final OrderCustomerNotifier notifications;
 
-    public GiftNotifier(NotificationService notifications) {
+    public GiftNotifier(OrderCustomerNotifier notifications) {
         this.notifications = notifications;
     }
 

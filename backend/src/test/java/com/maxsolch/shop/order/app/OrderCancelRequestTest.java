@@ -13,7 +13,6 @@ import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
-import com.maxsolch.shop.notification.app.NotificationService;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,8 +46,6 @@ class OrderCancelRequestTest {
     @Mock
     PaymentOptionRepository paymentOptionRepository;
     @Mock
-    NotificationService notificationService;
-    @Mock
     ApplicationEventPublisher events;
     @Mock
     PromoService promoService;
@@ -66,7 +63,7 @@ class OrderCancelRequestTest {
     @BeforeEach
     void setUp() {
         app = OrderApp.create(orderRepository, productRepository, promoCodeRepository,
-                paymentOptionRepository, notificationService, events, promoService, cartService, messages,
+                paymentOptionRepository, events, promoService, cartService, messages,
                 entityManager,
                 StockFixtures.stock(productRepository, messages), org.mockito.Mockito.mock(MoneyLedger.class));
         service = app.checkout();

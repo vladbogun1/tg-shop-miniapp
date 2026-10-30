@@ -1,6 +1,5 @@
 package com.maxsolch.shop.order.app;
 
-import com.maxsolch.shop.notification.app.NotificationService;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.media.app.ImageStorageService;
@@ -21,7 +20,7 @@ import java.util.function.Consumer;
  * write message ids back onto the order ({@code notify_message_id}, {@code dispatch_message_id}) —
  * those need a live persistence context to be flushed.
  *
- * <p>Failures are contained: {@link NotificationService} already swallows Telegram errors, and the
+ * <p>Failures are contained: {@link OrderSellerNotifier} and {@link OrderCustomerNotifier} already swallow Telegram errors, and the
  * listener runs after commit, so nothing here can roll back the order the customer just placed.
  */
 @Slf4j
@@ -29,14 +28,16 @@ import java.util.function.Consumer;
 public class OrderNotificationListener {
 
     private final OrderRepository orderRepository;
-    private final NotificationService notificationService;
+    private final OrderSellerNotifier seller;
+    private final OrderCustomerNotifier customer;
     private final ImageStorageService imageStorageService;
 
     public OrderNotificationListener(OrderRepository orderRepository,
-                                     NotificationService notificationService,
+                                     OrderSellerNotifier seller, OrderCustomerNotifier customer,
                                      ImageStorageService imageStorageService) {
         this.orderRepository = orderRepository;
-        this.notificationService = notificationService;
+        this.seller = seller;
+        this.customer = customer;
         this.imageStorageService = imageStorageService;
     }
 
@@ -44,10 +45,10 @@ public class OrderNotificationListener {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onCreated(OrderEvents.Created event) {
         withOrder(event.orderId(), order -> {
-            notificationService.onNewOrder(order);
+            seller.onNewOrder(order);
             // The replacement of an exchange is announced by onExchanged (one message, not two).
             if (order.getExchangeOfOrderId() == null) {
-                notificationService.notifyCustomerStatus(order);
+                customer.notifyCustomerStatus(order);
             }
         });
     }
@@ -56,8 +57,8 @@ public class OrderNotificationListener {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onStatusChanged(OrderEvents.StatusChanged event) {
         withOrder(event.orderId(), order -> {
-            notificationService.onStatusChanged(order);
-            notificationService.notifyCustomerStatus(order);
+            seller.onStatusChanged(order);
+            customer.notifyCustomerStatus(order);
             reconcileDispatch(order);
         });
     }
@@ -68,10 +69,10 @@ public class OrderNotificationListener {
         withOrder(event.orderId(), order -> {
             // The channel card moves to the new status column; the seller's "К ОТПРАВКЕ" card
             // appears again only when the order goes straight to APPROVED.
-            notificationService.onStatusChanged(order);
+            seller.onStatusChanged(order);
             reconcileDispatch(order);
             if (event.notifyCustomer()) {
-                notificationService.notifyCustomerExchange(order, event.givenSummary());
+                customer.notifyCustomerExchange(order, event.givenSummary());
             }
         });
     }
@@ -80,15 +81,15 @@ public class OrderNotificationListener {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onMerged(OrderEvents.Merged event) {
         withOrder(event.sourceId(), source -> {
-            notificationService.onStatusChanged(source);
-            notificationService.removeDispatchCard(source);
+            seller.onStatusChanged(source);
+            seller.removeDispatchCard(source);
         });
         withOrder(event.targetId(), target -> {
-            notificationService.onStatusChanged(target);
+            seller.onStatusChanged(target);
             refreshDispatch(target);
             if (event.notifyCustomer()) {
                 String from = com.maxsolch.shop.platform.util.UuidUtil.toString(event.sourceId());
-                notificationService.notifyCustomerMerged(target, from == null ? "" : from.substring(0, 8));
+                customer.notifyCustomerMerged(target, from == null ? "" : from.substring(0, 8));
             }
         });
     }
@@ -99,7 +100,7 @@ public class OrderNotificationListener {
         withOrder(event.orderId(), order -> {
             refreshDispatch(order);
             if (event.notifyCustomer()) {
-                notificationService.notifyCustomerReturn(order, event.itemsSummary(), event.refundMinor());
+                customer.notifyCustomerReturn(order, event.itemsSummary(), event.refundMinor());
             }
         });
     }
@@ -107,7 +108,7 @@ public class OrderNotificationListener {
     @TransactionalEventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onGiftCasePromo(OrderEvents.GiftCasePromo event) {
-        withOrder(event.orderId(), order -> notificationService.notifyCustomerCasePromo(
+        withOrder(event.orderId(), order -> customer.notifyCustomerCasePromo(
                 order, event.code(), event.percent(), event.amountMinor(), event.expiresAt()));
     }
 
@@ -115,7 +116,8 @@ public class OrderNotificationListener {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onPaymentReceived(OrderEvents.PaymentReceived event) {
         withOrder(event.orderId(), order -> {
-            notificationService.onPaymentReceived(order, event.amountMinor());
+            seller.onPaymentReceived(order, event.amountMinor());
+            customer.onPaymentReceived(order, event.amountMinor());
             refreshDispatch(order);
         });
     }
@@ -128,22 +130,22 @@ public class OrderNotificationListener {
             if (event.kind() == OrderEvents.EditKind.TRACKING
                     || event.kind() == OrderEvents.EditKind.DETAILS) {
                 // The channel card prints the ТТН and the address — re-post it with the fix.
-                notificationService.onStatusChanged(order);
+                seller.onStatusChanged(order);
             }
             if (!event.notifyCustomer()) {
                 return;
             }
             switch (event.kind()) {
-                case GIFT -> notificationService.notifyCustomerGift(
+                case GIFT -> customer.notifyCustomerGift(
                         order, event.productTitle(), event.variantName(), event.quantity());
-                case GIFT_CASE -> notificationService.notifyCustomerGiftCase(order);
+                case GIFT_CASE -> customer.notifyCustomerGiftCase(order);
                 case DISCOUNT -> {
                     if (order.getDiscountMinor() > 0) {
-                        notificationService.notifyCustomerDiscount(order);
+                        customer.notifyCustomerDiscount(order);
                     }
                 }
-                case COMPOSITION -> notificationService.notifyCustomerOrderChanged(order);
-                case TRACKING -> notificationService.notifyCustomerTracking(order);
+                case COMPOSITION -> customer.notifyCustomerOrderChanged(order);
+                case TRACKING -> customer.notifyCustomerTracking(order);
                 case DETAILS, SILENT -> {
                     // dispatch card refresh only
                 }
@@ -154,13 +156,13 @@ public class OrderNotificationListener {
     @TransactionalEventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onCancelRequested(OrderEvents.CancelRequested event) {
-        withOrder(event.orderId(), notificationService::onCancelRequested);
+        withOrder(event.orderId(), seller::onCancelRequested);
     }
 
     @TransactionalEventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onCancelRequestResolved(OrderEvents.CancelRequestResolved event) {
-        withOrder(event.orderId(), order -> notificationService.notifyCustomerCancelRequest(order, event.approved()));
+        withOrder(event.orderId(), order -> customer.notifyCustomerCancelRequest(order, event.approved()));
     }
 
     @TransactionalEventListener
@@ -168,9 +170,9 @@ public class OrderNotificationListener {
     public void onChatMessage(OrderEvents.ChatMessage event) {
         withOrder(event.orderId(), order -> {
             if (event.fromAdmin()) {
-                notificationService.onAdminChatMessage(order, event.preview());
+                customer.onAdminChatMessage(order, event.preview());
             } else {
-                notificationService.onCustomerChatMessage(order, event.preview());
+                seller.onCustomerChatMessage(order, event.preview());
             }
         });
     }
@@ -182,7 +184,7 @@ public class OrderNotificationListener {
      */
     @TransactionalEventListener
     public void onDeleted(OrderEvents.Deleted event) {
-        notificationService.removeDispatchCard(event.dispatchMessageId());
+        seller.removeDispatchCard(event.dispatchMessageId());
         if (event.attachmentKeys() != null) {
             event.attachmentKeys().forEach(imageStorageService::deleteQuietly);
         }
@@ -194,9 +196,9 @@ public class OrderNotificationListener {
      */
     private void reconcileDispatch(Order order) {
         if (order.getStatus() == OrderStatus.APPROVED) {
-            notificationService.syncDispatchCard(order);
+            seller.syncDispatchCard(order);
         } else {
-            notificationService.removeDispatchCard(order);
+            seller.removeDispatchCard(order);
         }
     }
 
@@ -207,7 +209,7 @@ public class OrderNotificationListener {
      */
     private void refreshDispatch(Order order) {
         if (order.getStatus() == OrderStatus.APPROVED) {
-            notificationService.syncDispatchCard(order);
+            seller.syncDispatchCard(order);
         }
     }
 

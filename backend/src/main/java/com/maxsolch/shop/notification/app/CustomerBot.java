@@ -2,35 +2,34 @@ package com.maxsolch.shop.notification.app;
 
 import com.maxsolch.shop.notification.domain.TelegramGateway;
 import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.io.ByteArrayInputStream;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
 
-import static com.maxsolch.shop.notification.app.TgFormat.idStr;
 import static com.maxsolch.shop.notification.app.TgFormat.isHttps;
 
 /**
- * The bot talking to ONE customer about ONE of their orders, best-effort.
+ * The bot talking to ONE customer, best-effort. It knows nothing about orders: the notifier of the module that owns
+ * the event brings the text, the journal entry and the rules of when to stay silent.
  *
- * <p>Everything a customer DM has in common lives here, so a notification only has to say what it
- * says: no message when there is no bot token or the order has no Telegram chat; the customer's
- * language; every failure swallowed with a log line (an order or chat transaction never fails
- * because of a Telegram hiccup); every message that goes out written to the «Бот и сайт» journal.
- * The buttons that open the Mini App also live here — they are the customer's, and need the language.
+ * <p>Everything a customer DM has in common lives here: no message when there is no bot token or no Telegram chat;
+ * the customer's language; every failure swallowed with a log line (a business transaction never fails because of a
+ * Telegram hiccup); every message that goes out written to the «Бот и сайт» journal. The button that opens the Mini
+ * App lives here too: it needs the public address and is the customer's.
  */
 @Slf4j
 @Component
@@ -64,34 +63,15 @@ public class CustomerBot {
         return TgFormat.botConfigured(props);
     }
 
-    /** The bot is on and the order's customer has a Telegram chat to write to (tg_user_id > 0). */
-    public boolean canReach(Order order) {
-        return canReach(order.getTgUserId());
-    }
-
     /** The bot is on and this Telegram user is a real chat to write to (id > 0). */
     public boolean canReach(Long tgUserId) {
         return enabled() && tgUserId != null && tgUserId > 0;
     }
 
     /**
-     * Sends one HTML message to the order's customer, in their language ({@code compose} gets it),
-     * and records it in the journal as {@code journalType}. Nothing happens when the customer cannot
-     * be reached; a failure is logged as «{@code name} failed for order …».
-     *
-     * @return whether the message went out
-     */
-    public boolean send(String name, String journalType, Order order, Function<Locale, Dm> compose) {
-        if (!canReach(order)) {
-            return false;
-        }
-        return deliver(name + " failed for order " + idStr(order), order.getTgUserId(), journal(journalType, order), compose);
-    }
-
-    /**
-     * The same for a customer who is not tied to an order (a support thread, a review, a place in the
-     * pre-order queue). {@code entry} is the journal row without its text; {@code failure} is the log line
-     * prefix for a failed send. {@code compose} may return null: there is nothing to say after all.
+     * Sends one HTML message to a customer in their language ({@code compose} gets it) and records it in the journal
+     * as {@code entry} (the journal row without its text). {@code failure} is the log line prefix for a failed send.
+     * {@code compose} may return null: there is nothing to say after all.
      *
      * @return whether the message went out
      */
@@ -119,58 +99,44 @@ public class CustomerBot {
         }
     }
 
-    /** Journal entry for a message to this order's customer. */
-    public ActivityLog.Entry journal(String type, Order order) {
-        return ActivityLog.Entry.bot(type).toCustomer(order.getTgUserId()).order(order.getId());
-    }
-
     /** Journal entry for a message that was NOT sent, and why. */
-    public void skipped(Order order, String type, String text, String reason) {
-        activity.record(journal(type, order).text(text).skipped(reason));
+    public void skipped(ActivityLog.Entry entry, String text, String reason) {
+        activity.record(entry.text(text).skipped(reason));
     }
 
-    public Locale localeOf(Order order) {
-        return messages.localeOf(order.getTgUserId());
+    /** The language this Telegram user chose (else the bundle's fallback). */
+    public Locale localeOf(Long tgUserId) {
+        return messages.localeOf(tgUserId);
     }
 
     /**
-     * Sends a document to the customer's DMs and records it in {@code entry}. Unlike {@link #send}
-     * the failure is thrown: the caller decides what it means (blocked bot, retry, …).
+     * Sends a PDF to the customer's DMs and records it in {@code entry}. Unlike {@link #sendTo} the failure is
+     * thrown: the caller decides what it means (blocked bot, retry, …).
      */
-    public Message sendDocument(SendDocument doc, ActivityLog.Entry entry) throws TelegramApiException {
+    public Message sendDocument(Long tgUserId, byte[] content, String fileName, String captionHtml,
+                                InlineKeyboardMarkup markup, ActivityLog.Entry entry) throws TelegramApiException {
+        SendDocument doc = SendDocument.builder()
+                .chatId(String.valueOf(tgUserId))
+                .document(new InputFile(new ByteArrayInputStream(content), fileName))
+                .caption(captionHtml)
+                .parseMode("HTML")
+                .replyMarkup(markup)
+                .build();
         return activity.bot(entry, () -> bot.execute(doc));
     }
 
-    // ----- buttons that open the Mini App (null while there is no public HTTPS address) -----
-
-    /** Opens the order page itself in the Mini App (deep link view_<id>). */
-    public InlineKeyboardMarkup orderButton(Order order, Locale locale) {
-        return webAppButton(messages.get(locale, "bot.openOrder"), "?startapp=view_" + idStr(order));
-    }
-
-    /** Opens the cart in the Mini App (deep link {@code cart}). */
-    public InlineKeyboardMarkup cartButton(Locale locale) {
-        return webAppButton(messages.get(locale, "bot.giftCase.toCart"), "?startapp=cart");
-    }
-
-    /** Opens the order's chat in the Mini App. */
-    public InlineKeyboardMarkup chatButton(Order order, Locale locale) {
-        return webAppButton(messages.get(locale, "bot.openChat"), "?startapp=order_" + idStr(order));
-    }
-
-    /** Opens the Mini App ({@code startApp} null = its home) with the given button text. */
+    /**
+     * A button that opens the Mini App with the given text ({@code startApp} null = its home; otherwise the deep
+     * link such as {@code view_<id>}, {@code order_<id>} or {@code cart}); null while there is no public HTTPS address.
+     */
     public InlineKeyboardMarkup miniAppButton(String text, String startApp) {
-        return webAppButton(text, startApp == null ? "" : "?startapp=" + startApp);
-    }
-
-    private InlineKeyboardMarkup webAppButton(String text, String startApp) {
         String webapp = props.getWebappBaseUrl();
         if (!isHttps(webapp)) {
             return null;
         }
         InlineKeyboardButton btn = InlineKeyboardButton.builder()
                 .text(text)
-                .webApp(WebAppInfo.builder().url(webapp + startApp).build())
+                .webApp(WebAppInfo.builder().url(webapp + (startApp == null ? "" : "?startapp=" + startApp)).build())
                 .build();
         return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(btn))).build();
     }

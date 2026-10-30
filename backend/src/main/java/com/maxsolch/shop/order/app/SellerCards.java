@@ -1,4 +1,4 @@
-package com.maxsolch.shop.notification.app;
+package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.order.domain.DeliveryMethod;
 import com.maxsolch.shop.order.domain.Order;
@@ -10,7 +10,7 @@ import com.maxsolch.shop.order.domain.OrderStatus;
 import static com.maxsolch.shop.platform.util.Texts.escHtml;
 import static com.maxsolch.shop.notification.app.TgFormat.money;
 import static com.maxsolch.shop.notification.app.TgFormat.nz;
-import static com.maxsolch.shop.notification.app.TgFormat.shortId;
+import static com.maxsolch.shop.order.app.OrderTg.shortId;
 
 /**
  * What the seller's cards say (Telegram parse_mode=HTML): the order card of the status topics and the

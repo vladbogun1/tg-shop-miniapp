@@ -38,7 +38,7 @@ M1 review 2
 M1 staff 2
 M1 support 1
 M2 customer 25
-M2 notification 19
+M2 notification 4
 N1 platform 3
 P1 platform 23
 S1 customer 2

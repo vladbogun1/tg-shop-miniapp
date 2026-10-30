@@ -17,7 +17,6 @@ import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
-import com.maxsolch.shop.notification.app.NotificationService;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,8 +53,6 @@ abstract class OrderScenarioTestBase {
     @Mock
     PaymentOptionRepository paymentOptionRepository;
 
-    @Mock
-    NotificationService notificationService;
 
     @Mock
     ApplicationEventPublisher events;
@@ -102,7 +99,7 @@ abstract class OrderScenarioTestBase {
     @BeforeEach
     void setUp() {
         app = OrderApp.create(orderRepository, productRepository,
-                promoCodeRepository, paymentOptionRepository, notificationService, events,
+                promoCodeRepository, paymentOptionRepository, events,
                 promoService, cartService, messages, entityManager,
                 StockFixtures.stock(productRepository, messages), moneyLedger,
                 paymentInvoices, gift, giftRegistry, caseLowMargin);

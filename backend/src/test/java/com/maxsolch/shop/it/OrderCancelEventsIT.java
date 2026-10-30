@@ -35,7 +35,7 @@ class OrderCancelEventsIT extends AbstractMysqlIT {
     private Order placed(long tg, String phone, Product p, int qty) {
         Order o = orders.createOrder(checkout(tg, phone, p, qty));
         // Placing an order notifies as well; these tests are about the cancellation only.
-        Mockito.reset(notificationService);
+        Mockito.reset(sellerNotifier, customerNotifier);
         return o;
     }
 
@@ -46,11 +46,11 @@ class OrderCancelEventsIT extends AbstractMysqlIT {
 
         tx.executeWithoutResult(s -> {
             cancelRequests.cancelByCustomer(o.getId(), "передумал");
-            verifyNoInteractions(notificationService); // still inside the transaction
+            verifyNoInteractions(sellerNotifier, customerNotifier); // still inside the transaction
         });
 
-        verify(notificationService).onStatusChanged(any());
-        verify(notificationService).notifyCustomerStatus(any());
+        verify(sellerNotifier).onStatusChanged(any());
+        verify(customerNotifier).notifyCustomerStatus(any());
         assertThat(statusOf(o.getId())).isEqualTo("REJECTED");
         assertThat(stockOf(p)).isEqualTo(3);
     }
@@ -65,7 +65,7 @@ class OrderCancelEventsIT extends AbstractMysqlIT {
             throw new IllegalStateException("boom");
         })).isInstanceOf(IllegalStateException.class);
 
-        verifyNoInteractions(notificationService);
+        verifyNoInteractions(sellerNotifier, customerNotifier);
         assertThat(statusOf(o.getId())).isEqualTo("NEW");
         assertThat(stockOf(p)).isEqualTo(1);
         assertThat(lotsLeftOf(p)).isEqualTo(1);
@@ -77,21 +77,21 @@ class OrderCancelEventsIT extends AbstractMysqlIT {
         Order o = placed(9_003, "+380673330003", p, 1);
         orderPayments.markPaid(o.getId(), 5_000);
         cancelRequests.requestCancel(o.getId(), "не нужен");
-        Mockito.reset(notificationService);
+        Mockito.reset(sellerNotifier, customerNotifier);
 
         assertThatThrownBy(() -> tx.executeWithoutResult(s -> {
             cancelRequests.approveCancelRequest(o.getId(), "ок");
             throw new IllegalStateException("boom");
         })).isInstanceOf(IllegalStateException.class);
-        verifyNoInteractions(notificationService);
+        verifyNoInteractions(sellerNotifier, customerNotifier);
         assertThat(statusOf(o.getId())).isEqualTo("NEW");
         assertThat(stockOf(p)).isEqualTo(2);
 
         tx.executeWithoutResult(s -> {
             cancelRequests.approveCancelRequest(o.getId(), "ок");
-            verify(notificationService, never()).notifyCustomerCancelRequest(any(), eq(true));
+            verify(customerNotifier, never()).notifyCustomerCancelRequest(any(), eq(true));
         });
-        verify(notificationService).notifyCustomerCancelRequest(any(), eq(true));
+        verify(customerNotifier).notifyCustomerCancelRequest(any(), eq(true));
         assertThat(statusOf(o.getId())).isEqualTo("REJECTED");
         assertThat(stockOf(p)).isEqualTo(3);
         assertThat(lotsLeftOf(p)).isEqualTo(3);

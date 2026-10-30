@@ -5,7 +5,10 @@ import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.order.domain.DeliveryMethod;
+import com.maxsolch.shop.order.app.OrderCustomerNotifier;
+import com.maxsolch.shop.order.app.OrderSellerNotifier;
 import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.payment.app.ReceiptNotifier;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderSource;
 import com.maxsolch.shop.order.domain.OrderStatus;
@@ -67,7 +70,9 @@ final class NotifyHarness {
     final ActivityLog activity = Mockito.mock(ActivityLog.class);
     final SettingsService settings = Mockito.mock(SettingsService.class);
     final Messages messages;
-    final NotificationService service;
+    final OrderCustomerNotifier customer;
+    final OrderSellerNotifier seller;
+    final ReceiptNotifier receipts;
 
     /** Decides whether a Telegram call fails: returns the exception or null. */
     Function<Object, TelegramApiException> failure = call -> null;
@@ -102,14 +107,17 @@ final class NotifyHarness {
         }
         messages = new Messages((MessageSource) source, users);
         Mockito.when(settings.getBool(any())).thenReturn(true);
-        service = build(messages, new CustomerRejectReason(messages));
+        customer = new OrderCustomerNotifier(props, messages, settings, new CustomerRejectReason(messages),
+                new CustomerBot(bot, props, messages, activity));
+        seller = new OrderSellerNotifier(new SellerChannel(bot, props, activity));
+        receipts = new ReceiptNotifier(messages, new CustomerBot(bot, props, messages, activity));
         wire();
     }
 
-    /** The only place that changes when the service constructor does. */
-    private NotificationService build(Messages messages, CustomerRejectReason rejectReason) {
-        return new NotificationService(props, messages, settings, rejectReason,
-                new CustomerBot(bot, props, messages, activity), new SellerChannel(bot, props, activity));
+    /** What the order listener does on a payment: the seller's note first, then the customer's DM. */
+    void onPaymentReceived(Order order, long amountMinor) {
+        seller.onPaymentReceived(order, amountMinor);
+        customer.onPaymentReceived(order, amountMinor);
     }
 
     private void wire() {

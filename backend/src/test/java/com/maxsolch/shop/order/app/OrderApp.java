@@ -13,7 +13,6 @@ import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
-import com.maxsolch.shop.notification.app.NotificationService;
 import jakarta.persistence.EntityManager;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -69,39 +68,39 @@ public final class OrderApp {
 
     @SuppressWarnings("checkstyle:ParameterNumber")
     public static OrderApp create(OrderRepository orders, ProductRepository products, PromoCodeRepository promos,
-                                  PaymentOptionRepository options, NotificationService notifications,
+                                  PaymentOptionRepository options,
                                   ApplicationEventPublisher events, PromoService promoService, CartService carts,
                                   Messages messages, EntityManager em, OrderStock stock, MoneyLedger ledger) {
-        return create(orders, products, promos, options, notifications, events, promoService, carts, messages, em,
+        return create(orders, products, promos, options, events, promoService, carts, messages, em,
                 stock, StockFixtures.shelf(products, messages), ledger);
     }
 
     /** With an explicit shelf, for tests that watch what the shelf does to lots and holds. */
     @SuppressWarnings("checkstyle:ParameterNumber")
     public static OrderApp create(OrderRepository orders, ProductRepository products, PromoCodeRepository promos,
-                                  PaymentOptionRepository options, NotificationService notifications,
+                                  PaymentOptionRepository options,
                                   ApplicationEventPublisher events, PromoService promoService, CartService carts,
                                   Messages messages, EntityManager em, OrderStock stock, Stock shelf,
                                   MoneyLedger ledger) {
-        return create(orders, products, promos, options, notifications, events, promoService, carts, messages, em,
+        return create(orders, products, promos, options, events, promoService, carts, messages, em,
                 stock, shelf, ledger, mock(PaymentInvoiceRepository.class), mock(GiftService.class), unlimitedRegistry(),
                 noLowMargin());
     }
 
     @SuppressWarnings("checkstyle:ParameterNumber")
     public static OrderApp create(OrderRepository orders, ProductRepository products, PromoCodeRepository promos,
-                                  PaymentOptionRepository options, NotificationService notifications,
+                                  PaymentOptionRepository options,
                                   ApplicationEventPublisher events, PromoService promoService, CartService carts,
                                   Messages messages, EntityManager em, OrderStock stock, MoneyLedger ledger,
                                   PaymentInvoiceRepository invoices, GiftService gift, GiftRegistryService registry,
                                   CaseLowMargin lowMargin) {
-        return create(orders, products, promos, options, notifications, events, promoService, carts, messages, em,
+        return create(orders, products, promos, options, events, promoService, carts, messages, em,
                 stock, StockFixtures.shelf(products, messages), ledger, invoices, gift, registry, lowMargin);
     }
 
     @SuppressWarnings("checkstyle:ParameterNumber")
     public static OrderApp create(OrderRepository orders, ProductRepository products, PromoCodeRepository promos,
-                                  PaymentOptionRepository options, NotificationService notifications,
+                                  PaymentOptionRepository options,
                                   ApplicationEventPublisher events, PromoService promoService, CartService carts,
                                   Messages messages, EntityManager em, OrderStock stock, Stock shelf, MoneyLedger ledger,
                                   PaymentInvoiceRepository invoices, GiftService gift, GiftRegistryService registry,

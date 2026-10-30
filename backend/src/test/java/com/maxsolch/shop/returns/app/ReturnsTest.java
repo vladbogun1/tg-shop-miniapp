@@ -299,7 +299,7 @@ class ReturnsTest extends ReturnsTestBase {
         assertThat(r.auditDetails()).contains("не выкуплено на почте 100 ₴").contains("наложка теперь 199 ₴");
 
         OrderApp app = OrderApp.create(orderRepository, productRepository,
-                promoCodeRepository, paymentOptionRepository, notificationService, events,
+                promoCodeRepository, paymentOptionRepository, events,
                 promoService, cartService, messages, entityManager,
                 StockFixtures.stock(productRepository, messages), org.mockito.Mockito.mock(MoneyLedger.class));
         Order delivered = app.lifecycle().deliver(o.getId());

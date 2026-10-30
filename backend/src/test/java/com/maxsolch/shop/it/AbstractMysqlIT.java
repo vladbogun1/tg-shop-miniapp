@@ -8,7 +8,8 @@ import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.order.app.CreateOrderCommand;
-import com.maxsolch.shop.notification.app.NotificationService;
+import com.maxsolch.shop.order.app.OrderCustomerNotifier;
+import com.maxsolch.shop.order.app.OrderSellerNotifier;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +31,7 @@ import java.util.UUID;
  * real (locks and after-commit events are the point), so every test creates its own products and orders
  * with fresh ids and never relies on an empty database.
  *
- * <p>Everything outside the database is a stub: Telegram goes through a mocked {@link NotificationService},
+ * <p>Everything outside the database is a stub: Telegram goes through mocked {@link OrderSellerNotifier} and {@link OrderCustomerNotifier},
  * MinIO through a mocked {@link ImageStorageService}; there are no tokens and no network calls (the bot,
  * monobank and Nova Poshta stay off because their keys are blank).
  */
@@ -42,7 +43,10 @@ import java.util.UUID;
 public abstract class AbstractMysqlIT {
 
     @MockitoBean
-    protected NotificationService notificationService;
+    protected OrderSellerNotifier sellerNotifier;
+
+    @MockitoBean
+    protected OrderCustomerNotifier customerNotifier;
 
     @MockitoBean
     protected ImageStorageService imageStorageService;
@@ -68,7 +72,7 @@ public abstract class AbstractMysqlIT {
         po.setTitle("IT: оплата онлайн");
         po.setSortOrder(0);
         paymentOptionId = UuidUtil.toString(paymentOptions.save(po).getId());
-        Mockito.reset(notificationService);
+        Mockito.reset(sellerNotifier, customerNotifier);
     }
 
     /** A product with {@code stock} units, split into the FIFO lots given (their sum must be the stock). */
