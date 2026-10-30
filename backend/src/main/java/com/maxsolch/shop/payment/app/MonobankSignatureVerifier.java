@@ -1,5 +1,8 @@
 package com.maxsolch.shop.payment.app;
 
+import com.maxsolch.shop.platform.cache.CacheConfig;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import com.maxsolch.shop.payment.domain.MonobankGateway;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,18 +33,20 @@ import java.util.function.Supplier;
 public class MonobankSignatureVerifier {
 
     private static final Duration REFETCH_MIN_INTERVAL = Duration.ofMinutes(1);
+    private static final String KEY = "pubkey";
 
     private final Supplier<String> keySource;
     private final Clock clock;
-    private volatile PublicKey key;
+    private final Cache keys;
     private final AtomicReference<Instant> lastFetch = new AtomicReference<>(Instant.EPOCH);
 
     @Autowired
-    public MonobankSignatureVerifier(MonobankGateway client, Clock clock) {
-        this(client::pubkey, clock);
+    public MonobankSignatureVerifier(MonobankGateway client, Clock clock, CacheManager caches) {
+        this(client::pubkey, clock, CacheConfig.require(caches, PaymentCaches.MONOBANK_PUBKEY.name()));
     }
 
-    MonobankSignatureVerifier(Supplier<String> keySource, Clock clock) {
+    MonobankSignatureVerifier(Supplier<String> keySource, Clock clock, Cache keys) {
+        this.keys = keys;
         this.keySource = keySource;
         this.clock = clock;
     }
@@ -56,7 +61,7 @@ public class MonobankSignatureVerifier {
         } catch (IllegalArgumentException e) {
             return false;
         }
-        PublicKey current = key;
+        PublicKey current = key();
         if (current == null) {
             current = refetch(true);
         }
@@ -79,15 +84,19 @@ public class MonobankSignatureVerifier {
         } else {
             Instant prev = lastFetch.get();
             if (prev.plus(REFETCH_MIN_INTERVAL).isAfter(now) || !lastFetch.compareAndSet(prev, now)) {
-                return key;
+                return key();
             }
         }
         try {
-            key = parse(keySource.get());
+            keys.put(KEY, parse(keySource.get()));
         } catch (Exception e) {
             log.warn("monobank pubkey fetch failed: {}", e.getMessage());
         }
-        return key;
+        return key();
+    }
+
+    private PublicKey key() {
+        return keys.get(KEY, PublicKey.class);
     }
 
     /** {@code key} from the API: base64 of a PEM "PUBLIC KEY" (X.509 EC key). */

@@ -1,5 +1,8 @@
 package com.maxsolch.shop.analytics.app;
 
+import com.maxsolch.shop.platform.cache.CacheConfig;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import com.maxsolch.shop.analytics.domain.MetricsFacts;
 import com.maxsolch.shop.analytics.infra.MetricsFactsQueries;
 import lombok.extern.slf4j.Slf4j;
@@ -18,30 +21,26 @@ import java.time.Clock;
 @Component
 public class MetricsFactsLoader {
 
-    private static final long MEMO_MILLIS = 15_000;
-
     private final MetricsFactsQueries queries;
     private final Clock clock;
-    private volatile MetricsFacts memo;
-    private volatile long memoAt;
+    private final Cache memo;
 
-    public MetricsFactsLoader(MetricsFactsQueries queries, Clock clock) {
+    public MetricsFactsLoader(MetricsFactsQueries queries, Clock clock, CacheManager caches) {
+        this.memo = CacheConfig.require(caches, AnalyticsReadCaches.METRICS_FACTS.name());
         this.queries = queries;
         this.clock = clock;
     }
 
     @Transactional(readOnly = true)
     public MetricsFacts load() {
-        long nowMs = clock.millis();
-        MetricsFacts cached = memo;
-        if (cached != null && nowMs - memoAt < MEMO_MILLIS) {
+        MetricsFacts cached = memo.get(AnalyticsReadCaches.KEY, MetricsFacts.class);
+        if (cached != null) {
             return new MetricsFacts(cached.orders(), cached.items(), cached.products(), cached.users(),
                     cached.invoices(), clock.instant());
         }
         MetricsFacts fresh = new MetricsFacts(queries.loadOrders(), queries.loadItems(), queries.loadProducts(),
                 queries.loadUsers(), queries.loadInvoices(), clock.instant());
-        memo = fresh;
-        memoAt = nowMs;
+        memo.put(AnalyticsReadCaches.KEY, fresh);
         return fresh;
     }
 

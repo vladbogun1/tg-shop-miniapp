@@ -1,7 +1,8 @@
 package com.maxsolch.shop.platform.security;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import com.maxsolch.shop.platform.cache.CacheConfig;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -18,12 +19,10 @@ public class WebSessionValidator {
 
     private final WebSessionLookup sessions;
     private final Clock clock;
-    private final Cache<String, Boolean> cache = Caffeine.newBuilder()
-            .maximumSize(10_000)
-            .expireAfterWrite(Duration.ofSeconds(30))
-            .build();
+    private final Cache cache;
 
-    public WebSessionValidator(WebSessionLookup sessions, Clock clock) {
+    public WebSessionValidator(WebSessionLookup sessions, Clock clock, CacheManager caches) {
+        this.cache = CacheConfig.require(caches, SecurityCaches.WEB_SESSIONS_LIVE.name());
         this.sessions = sessions;
         this.clock = clock;
     }
@@ -37,18 +36,18 @@ public class WebSessionValidator {
         if (sid == null || sid.isBlank()) {
             return false;
         }
-        Boolean live = cache.get(sid, this::lookup);
+        Boolean live = CacheConfig.load(cache, sid, () -> lookup(sid));
         return Boolean.TRUE.equals(live);
     }
 
     public void invalidate(String sessionId) {
         if (sessionId != null) {
-            cache.invalidate(sessionId);
+            cache.evict(sessionId);
         }
     }
 
     public void invalidateAll() {
-        cache.invalidateAll();
+        cache.clear();
     }
 
     private Boolean lookup(String sid) {

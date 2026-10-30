@@ -1,7 +1,8 @@
 package com.maxsolch.shop.platform.security;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import com.maxsolch.shop.platform.cache.CacheConfig;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -23,18 +24,16 @@ import java.util.Optional;
 @Component
 public class AdminTokenValidator {
 
-    private static final long CACHE_SECONDS = 30;
+    static final long CACHE_SECONDS = 30;
 
     /** telegram_user_id -> current token version, or null when the admin is gone/inactive. */
-    private final Cache<Long, Optional<Integer>> cache = Caffeine.newBuilder()
-            .maximumSize(256)
-            .expireAfterWrite(Duration.ofSeconds(CACHE_SECONDS))
-            .build();
+    private final Cache cache;
 
     private final AdminDirectory admins;
     private final AdminTokenRevocations revocations;
 
-    public AdminTokenValidator(AdminDirectory admins, AdminTokenRevocations revocations) {
+    public AdminTokenValidator(AdminDirectory admins, AdminTokenRevocations revocations, CacheManager caches) {
+        this.cache = CacheConfig.require(caches, SecurityCaches.ADMIN_TOKEN_VERSIONS.name());
         this.admins = admins;
         this.revocations = revocations;
     }
@@ -46,7 +45,8 @@ public class AdminTokenValidator {
         if (principal == null || principal.role() != Role.ADMIN) {
             return true; // customer tokens carry no revocation state
         }
-        Optional<Integer> current = cache.get(principal.telegramUserId(), this::loadVersion);
+        Optional<Integer> current = CacheConfig.load(cache, principal.telegramUserId(),
+                () -> loadVersion(principal.telegramUserId()));
         return current != null
                 && current.isPresent()
                 && current.get() == principal.tokenVersion()
@@ -55,7 +55,7 @@ public class AdminTokenValidator {
 
     /** Drops the cached version so a revocation takes effect immediately for this instance. */
     public void invalidate(long telegramUserId) {
-        cache.invalidate(telegramUserId);
+        cache.evict(telegramUserId);
     }
 
     private Optional<Integer> loadVersion(Long telegramUserId) {

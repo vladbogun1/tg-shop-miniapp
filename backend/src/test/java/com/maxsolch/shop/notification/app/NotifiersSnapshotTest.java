@@ -91,7 +91,7 @@ class NotifiersSnapshotTest {
     }
 
     private PreorderNotifier preorder() {
-        BotTexts texts = new BotTexts(h.messages, Mockito.mock(SettingsService.class), Mockito.mock(TranslationService.class));
+        BotTexts texts = new BotTexts(h.messages, Mockito.mock(SettingsService.class), Mockito.mock(TranslationService.class), new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
         return new PreorderNotifier(queue, customerBot(), texts, new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"));
     }
 

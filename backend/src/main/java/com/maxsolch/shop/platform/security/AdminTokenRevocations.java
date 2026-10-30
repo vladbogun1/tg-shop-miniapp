@@ -1,7 +1,8 @@
 package com.maxsolch.shop.platform.security;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import com.maxsolch.shop.platform.cache.CacheConfig;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -17,17 +18,15 @@ import java.time.Instant;
 @Component
 public class AdminTokenRevocations {
 
-    private static final long CACHE_SECONDS = 30;
+    static final long CACHE_SECONDS = 30;
 
-    private final Cache<String, Boolean> cache = Caffeine.newBuilder()
-            .maximumSize(10_000)
-            .expireAfterWrite(Duration.ofSeconds(CACHE_SECONDS))
-            .build();
+    private final Cache cache;
 
     private final AdminRevokedTokenStore store;
     private final Clock clock;
 
-    public AdminTokenRevocations(AdminRevokedTokenStore store, Clock clock) {
+    public AdminTokenRevocations(AdminRevokedTokenStore store, Clock clock, CacheManager caches) {
+        this.cache = CacheConfig.require(caches, SecurityCaches.ADMIN_TOKEN_REVOKED.name());
         this.store = store;
         this.clock = clock;
     }
@@ -36,7 +35,7 @@ public class AdminTokenRevocations {
         if (jti == null || jti.isBlank()) {
             return false;
         }
-        Boolean revoked = cache.get(jti, store::exists);
+        Boolean revoked = CacheConfig.load(cache, jti, () -> store.exists(jti));
         return Boolean.TRUE.equals(revoked);
     }
 

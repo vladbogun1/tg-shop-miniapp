@@ -7,10 +7,13 @@ import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.settings.SettingsDtos.SettingItemDto;
 import com.maxsolch.shop.platform.settings.SettingsDtos.SettingsGroupDto;
 import com.maxsolch.shop.platform.settings.SettingsDtos.SettingsResponse;
+import com.maxsolch.shop.platform.cache.CacheConfig;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.platform.tx.OnCompleted;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,19 +47,19 @@ public class SettingsService {
     record Stored(String value, Instant updatedAt, String updatedByName) {
     }
 
-    private record Snapshot(Map<String, Stored> values, Instant loadedAt) {
-    }
-
     private final ShopSettingRepository repository;
     private final AdminAuditService audit;
     private final CurrentActor actor;
     private final DomainEvents events;
     private final Clock clock;
-    private volatile Snapshot snapshot;
+    private final Cache snapshot;
+    private final Cache lastGood;
 
     public SettingsService(ShopSettingRepository repository, AdminAuditService audit, CurrentActor actor,
-                           DomainEvents events, Clock clock) {
+                           DomainEvents events, Clock clock, CacheManager caches) {
         this.clock = clock;
+        this.snapshot = CacheConfig.require(caches, SettingsCaches.SNAPSHOT.name());
+        this.lastGood = CacheConfig.require(caches, SettingsCaches.LAST_GOOD.name());
         this.actor = actor;
         this.events = events;
         this.repository = repository;
@@ -347,31 +350,39 @@ public class SettingsService {
     }
 
     private Map<String, Stored> values() {
-        Snapshot s = snapshot;
-        if (s == null || s.loadedAt().plus(MAX_AGE).isBefore(clock.instant())) {
+        Map<String, Stored> s = rows(snapshot);
+        if (s == null) {
             s = load();
-            snapshot = s;
+            snapshot.put(SettingsCaches.KEY, s);
         }
-        return s.values();
+        return s;
     }
 
-    private Snapshot load() {
+    @SuppressWarnings("unchecked")
+    private static Map<String, Stored> rows(Cache cache) {
+        return cache.get(SettingsCaches.KEY, Map.class);
+    }
+
+    private Map<String, Stored> load() {
         try {
             Map<String, Stored> map = new HashMap<>();
             for (ShopSetting row : repository.findAll()) {
                 map.put(row.getKey(), new Stored(row.getValue(), row.getUpdatedAt(), row.getUpdatedByName()));
             }
-            return new Snapshot(Map.copyOf(map), clock.instant());
+            Map<String, Stored> loaded = Map.copyOf(map);
+            lastGood.put(SettingsCaches.KEY, loaded);
+            return loaded;
         } catch (Exception e) {
             // Defaults everywhere is the pre-settings behaviour — far better than failing checkout.
             log.warn("Failed to load shop settings, using defaults: {}", e.getMessage());
-            Snapshot stale = snapshot;
-            return new Snapshot(stale == null ? Map.of() : stale.values(), clock.instant());
+            Map<String, Stored> stale = rows(lastGood);
+            return stale == null ? Map.of() : stale;
         }
     }
 
     void invalidate() {
-        snapshot = null;
+        snapshot.clear();
+        lastGood.clear();
     }
 
     /** Published by {@link #update}: the transaction that saved settings is over (committed or rolled back). */

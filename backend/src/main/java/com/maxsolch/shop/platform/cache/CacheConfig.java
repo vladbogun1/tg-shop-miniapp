@@ -59,6 +59,21 @@ public class CacheConfig {
     }
 
     /**
+     * The value of {@code key}, loaded by {@code loader} on a miss. An exception of the loader reaches the caller as it is
+     * (Spring wraps it in {@code ValueRetrievalException}; a caller that catches a {@code DomainException} must not notice).
+     */
+    public static <T> T load(Cache cache, Object key, java.util.function.Supplier<T> loader) {
+        try {
+            return cache.get(key, loader::get);
+        } catch (Cache.ValueRetrievalException e) {
+            if (e.getCause() instanceof RuntimeException cause) {
+                throw cause;
+            }
+            throw e;
+        }
+    }
+
+    /**
      * A cache with the limits of {@code spec} whose lifetime ticks on {@code clock} instead of the wall clock: unit
      * tests of expiry (a rotation grace, a lock window) move a mutable {@link Clock} instead of sleeping.
      */

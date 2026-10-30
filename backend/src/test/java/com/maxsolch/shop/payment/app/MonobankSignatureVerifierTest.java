@@ -71,7 +71,7 @@ class MonobankSignatureVerifierTest {
     @Test
     void validSignature_verifies() throws Exception {
         KeyPair kp = keyPair();
-        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(new Keys(apiKey(kp)), clock);
+        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(new Keys(apiKey(kp)), clock, new org.springframework.cache.concurrent.ConcurrentMapCache("k"));
 
         assertThat(verifier.verify(BODY, sign(kp.getPrivate(), BODY))).isTrue();
     }
@@ -79,7 +79,7 @@ class MonobankSignatureVerifierTest {
     @Test
     void tamperedBody_fails() throws Exception {
         KeyPair kp = keyPair();
-        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(new Keys(apiKey(kp)), clock);
+        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(new Keys(apiKey(kp)), clock, new org.springframework.cache.concurrent.ConcurrentMapCache("k"));
         String xSign = sign(kp.getPrivate(), BODY);
 
         byte[] tampered = new String(BODY, StandardCharsets.UTF_8).replace("4200", "1")
@@ -91,7 +91,7 @@ class MonobankSignatureVerifierTest {
     @Test
     void missingOrGarbageHeader_fails() throws Exception {
         KeyPair kp = keyPair();
-        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(new Keys(apiKey(kp)), clock);
+        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(new Keys(apiKey(kp)), clock, new org.springframework.cache.concurrent.ConcurrentMapCache("k"));
 
         assertThat(verifier.verify(BODY, null)).isFalse();
         assertThat(verifier.verify(BODY, " ")).isFalse();
@@ -103,7 +103,7 @@ class MonobankSignatureVerifierTest {
     void signatureByAnotherKey_fails() throws Exception {
         KeyPair ours = keyPair();
         KeyPair attacker = keyPair();
-        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(new Keys(apiKey(ours)), clock);
+        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(new Keys(apiKey(ours)), clock, new org.springframework.cache.concurrent.ConcurrentMapCache("k"));
 
         assertThat(verifier.verify(BODY, sign(attacker.getPrivate(), BODY))).isFalse();
     }
@@ -113,7 +113,7 @@ class MonobankSignatureVerifierTest {
         KeyPair oldKey = keyPair();
         KeyPair newKey = keyPair();
         Keys keys = new Keys(apiKey(oldKey), apiKey(newKey));
-        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(keys, clock);
+        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(keys, clock, new org.springframework.cache.concurrent.ConcurrentMapCache("k"));
         // the old key is cached by a first webhook...
         assertThat(verifier.verify(BODY, sign(oldKey.getPrivate(), BODY))).isTrue();
         assertThat(keys.fetches).hasValue(1);
@@ -133,7 +133,7 @@ class MonobankSignatureVerifierTest {
         KeyPair ours = keyPair();
         KeyPair attacker = keyPair();
         Keys keys = new Keys(apiKey(ours));
-        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(keys, clock);
+        MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(keys, clock, new org.springframework.cache.concurrent.ConcurrentMapCache("k"));
 
         for (int i = 0; i < 5; i++) {
             assertThat(verifier.verify(BODY, sign(attacker.getPrivate(), BODY))).isFalse();
@@ -147,7 +147,7 @@ class MonobankSignatureVerifierTest {
         KeyPair kp = keyPair();
         MonobankSignatureVerifier verifier = new MonobankSignatureVerifier(() -> {
             throw new MonobankGateway.MonobankException(0, null, "down");
-        }, clock);
+        }, clock, new org.springframework.cache.concurrent.ConcurrentMapCache("k"));
 
         assertThat(verifier.verify(BODY, sign(kp.getPrivate(), BODY))).isFalse();
     }

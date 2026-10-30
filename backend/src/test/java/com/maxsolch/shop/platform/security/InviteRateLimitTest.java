@@ -25,7 +25,7 @@ class InviteRateLimitTest {
     void invitePageIsThrottledPerIp() throws Exception {
         AppProperties props = new AppProperties();
         props.getSecurity().setAdminAuthRateLimit(1000);
-        RateLimitFilter filter = new RateLimitFilter(mock(Messages.class), props);
+        RateLimitFilter filter = new RateLimitFilter(mock(Messages.class), props, new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
         for (int i = 0; i < 30; i++) {
             assertThat(call(filter, "/api/auth/admin/invite/check", "203.0.113.7")).isEqualTo(200);
         }

@@ -1,14 +1,15 @@
 package com.maxsolch.shop.platform.security;
 
-import com.github.benmanes.caffeine.cache.Cache;
+import com.maxsolch.shop.platform.cache.CacheConfig;
 import com.maxsolch.shop.platform.web.ClientIp;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
@@ -16,7 +17,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -55,13 +55,24 @@ public class RateLimitFilter extends OncePerRequestFilter {
     /** {@code app.security.admin-auth-rate-limit}: a sign-in with 2FA is 2–3 requests. */
     private final int adminAuthLimit;
 
-    public RateLimitFilter(Messages messages, com.maxsolch.shop.platform.config.AppProperties props) {
+    public RateLimitFilter(Messages messages, com.maxsolch.shop.platform.config.AppProperties props, CacheManager caches) {
         this.messages = messages;
+        this.authAttempts = CacheConfig.require(caches, SecurityCaches.RATE_AUTH.name());
+        this.inviteAttempts = CacheConfig.require(caches, SecurityCaches.RATE_INVITE.name());
+        this.customerAuthAttempts = CacheConfig.require(caches, SecurityCaches.RATE_CUSTOMER_AUTH.name());
+        this.uploadAttempts = CacheConfig.require(caches, SecurityCaches.RATE_UPLOAD.name());
+        this.publicReads = CacheConfig.require(caches, SecurityCaches.RATE_PUBLIC_READS.name());
+        this.webLoginStarts = CacheConfig.require(caches, SecurityCaches.RATE_WEB_LOGIN_STARTS.name());
+        this.webAuthCalls = CacheConfig.require(caches, SecurityCaches.RATE_WEB_AUTH.name());
+        this.orderCreates = CacheConfig.require(caches, SecurityCaches.RATE_ORDER_CREATES.name());
+        this.receiptFiles = CacheConfig.require(caches, SecurityCaches.RATE_RECEIPT_FILES.name());
+        this.supportPosts = CacheConfig.require(caches, SecurityCaches.RATE_SUPPORT_POSTS.name());
+        this.analyticsFlushes = CacheConfig.require(caches, SecurityCaches.RATE_ANALYTICS.name());
         this.adminAuthLimit = Math.max(1, props.getSecurity().getAdminAuthRateLimit());
     }
 
     private static final int AUTH_LIMIT = 10;
-    private static final int AUTH_WINDOW_MINUTES = 5;
+    static final int AUTH_WINDOW_MINUTES = 5;
     private static final int CUSTOMER_AUTH_LIMIT = 60;
     /** /invite: check + accept + complete is 3 requests; a few retries on a typo. */
     private static final int INVITE_LIMIT = 30;
@@ -73,49 +84,25 @@ public class RateLimitFilter extends OncePerRequestFilter {
     /** Site status polling (every ~2 s while the login dialog is open) + refresh/complete/logout. */
     private static final int WEB_AUTH_LIMIT = 90;
 
-    private final Cache<String, AtomicInteger> authAttempts = Caffeine.newBuilder()
-            .maximumSize(10_000)
-            .expireAfterWrite(Duration.ofMinutes(AUTH_WINDOW_MINUTES))
-            .build();
+    private final Cache authAttempts;
 
-    private final Cache<String, AtomicInteger> inviteAttempts = Caffeine.newBuilder()
-            .maximumSize(10_000)
-            .expireAfterWrite(Duration.ofMinutes(AUTH_WINDOW_MINUTES))
-            .build();
+    private final Cache inviteAttempts;
 
-    private final Cache<String, AtomicInteger> customerAuthAttempts = Caffeine.newBuilder()
-            .maximumSize(50_000)
-            .expireAfterWrite(Duration.ofMinutes(AUTH_WINDOW_MINUTES))
-            .build();
+    private final Cache customerAuthAttempts;
 
-    private final Cache<String, AtomicInteger> uploadAttempts = Caffeine.newBuilder()
-            .maximumSize(10_000)
-            .expireAfterWrite(Duration.ofMinutes(1))
-            .build();
+    private final Cache uploadAttempts;
 
-    private final Cache<String, AtomicInteger> publicReads = Caffeine.newBuilder()
-            .maximumSize(50_000)
-            .expireAfterWrite(Duration.ofMinutes(1))
-            .build();
+    private final Cache publicReads;
 
-    private final Cache<String, AtomicInteger> webLoginStarts = Caffeine.newBuilder()
-            .maximumSize(10_000)
-            .expireAfterWrite(Duration.ofMinutes(1))
-            .build();
+    private final Cache webLoginStarts;
 
-    private final Cache<String, AtomicInteger> webAuthCalls = Caffeine.newBuilder()
-            .maximumSize(50_000)
-            .expireAfterWrite(Duration.ofMinutes(1))
-            .build();
+    private final Cache webAuthCalls;
 
     /** POST /api/orders per IP: {@value #ORDER_CREATE_LIMIT} per {@value #ORDER_CREATE_WINDOW_MINUTES} min. */
     private static final int ORDER_CREATE_LIMIT = 10;
-    private static final int ORDER_CREATE_WINDOW_MINUTES = 10;
+    static final int ORDER_CREATE_WINDOW_MINUTES = 10;
 
-    private final Cache<String, AtomicInteger> orderCreates = Caffeine.newBuilder()
-            .maximumSize(50_000)
-            .expireAfterWrite(Duration.ofMinutes(ORDER_CREATE_WINDOW_MINUTES))
-            .build();
+    private final Cache orderCreates;
 
     /**
      * GET /api/receipts/file per IP: every call fetches a PDF from monobank, whose own limits are
@@ -123,23 +110,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
      */
     private static final int RECEIPT_FILE_LIMIT = 20;
 
-    private final Cache<String, AtomicInteger> receiptFiles = Caffeine.newBuilder()
-            .maximumSize(10_000)
-            .expireAfterWrite(Duration.ofMinutes(1))
-            .build();
+    private final Cache receiptFiles;
 
     /** POST /api/me/support/** per IP (questions, messages, read/close): {@value #SUPPORT_POST_LIMIT}/min. */
     private static final int SUPPORT_POST_LIMIT = 30;
 
-    private final Cache<String, AtomicInteger> supportPosts = Caffeine.newBuilder()
-            .maximumSize(50_000)
-            .expireAfterWrite(Duration.ofMinutes(1))
-            .build();
+    private final Cache supportPosts;
 
-    private final Cache<String, AtomicInteger> analyticsFlushes = Caffeine.newBuilder()
-            .maximumSize(50_000)
-            .expireAfterWrite(Duration.ofMinutes(1))
-            .build();
+    private final Cache analyticsFlushes;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -232,7 +210,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private boolean exceeded(Bucket bucket, String ip) {
-        AtomicInteger counter = bucket.cache.get(ip, k -> new AtomicInteger());
+        AtomicInteger counter = CacheConfig.load(bucket.cache, ip, AtomicInteger::new);
         return counter != null && counter.incrementAndGet() > bucket.limit;
     }
 
@@ -261,6 +239,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
                         + "\"message\":\"" + messages.get(locale, "api.error.rateLimited") + "\"}");
     }
 
-    private record Bucket(Cache<String, AtomicInteger> cache, int limit, int retryAfterSeconds) {
+    private record Bucket(Cache cache, int limit, int retryAfterSeconds) {
     }
 }

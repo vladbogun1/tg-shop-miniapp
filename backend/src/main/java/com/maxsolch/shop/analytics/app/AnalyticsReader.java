@@ -1,5 +1,8 @@
 package com.maxsolch.shop.analytics.app;
 
+import com.maxsolch.shop.platform.cache.CacheConfig;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import com.maxsolch.shop.analytics.domain.EventClassifier;
 import com.maxsolch.shop.analytics.infra.AnalyticsQueries;
 import com.maxsolch.shop.platform.time.ShopZone;
@@ -19,18 +22,17 @@ import java.util.List;
 @Component
 public class AnalyticsReader {
 
-    private static final long TITLE_TTL_MILLIS = 10 * 60_000;
 
     private final AnalyticsQueries queries;
     private final ZoneId zone;
     private final StaffVisitors staffVisitors;
     private final java.time.Clock clock;
-    private volatile EventClassifier.TitleIndex titles;
-    private volatile long titlesAt;
+    private final Cache titles;
 
     public AnalyticsReader(AnalyticsQueries queries, ShopZone shopZone, StaffVisitors staffVisitors,
-                           java.time.Clock clock) {
+                           java.time.Clock clock, CacheManager caches) {
         this.clock = clock;
+        this.titles = CacheConfig.require(caches, AnalyticsReadCaches.TITLE_INDEX.name());
         this.queries = queries;
         this.zone = shopZone.zone();
         this.staffVisitors = staffVisitors;
@@ -95,12 +97,10 @@ public class AnalyticsReader {
     }
 
     private EventClassifier.TitleIndex titleIndex() {
-        long now = clock.millis();
-        EventClassifier.TitleIndex t = titles;
-        if (t == null || now - titlesAt > TITLE_TTL_MILLIS) {
+        EventClassifier.TitleIndex t = titles.get(AnalyticsReadCaches.KEY, EventClassifier.TitleIndex.class);
+        if (t == null) {
             t = queries.loadTitleIndex();
-            titles = t;
-            titlesAt = now;
+            titles.put(AnalyticsReadCaches.KEY, t);
         }
         return t;
     }

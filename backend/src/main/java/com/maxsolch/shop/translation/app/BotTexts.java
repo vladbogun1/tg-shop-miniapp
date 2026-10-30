@@ -1,5 +1,6 @@
 package com.maxsolch.shop.translation.app;
 
+import com.maxsolch.shop.platform.cache.CacheConfig;
 import com.maxsolch.shop.platform.tx.OnCommitted;
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.translation.domain.TranslationsChanged;
@@ -8,6 +9,8 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
@@ -59,9 +62,10 @@ public class BotTexts {
     private final Map<String, String> defaultsRu = new HashMap<>();
     /** The built-in texts of messages_uk / messages_en.properties, by language. */
     private final Map<String, Map<String, String>> builtin = new HashMap<>();
-    private volatile Map<String, String> ruOverrides;
+    private final Cache ruOverrides;
 
-    public BotTexts(Messages messages, SettingsService settings, TranslationService translations) {
+    public BotTexts(Messages messages, SettingsService settings, TranslationService translations, CacheManager caches) {
+        this.ruOverrides = CacheConfig.require(caches, BotTextCaches.RU_OVERRIDES.name());
         this.messages = messages;
         this.settings = settings;
         this.translations = translations;
@@ -154,17 +158,18 @@ public class BotTexts {
     }
 
     public void invalidate() {
-        ruOverrides = null;
+        ruOverrides.clear();
         translations.invalidate();
     }
 
     @OnCommitted
     void onTranslationsChanged(TranslationsChanged event) {
-        ruOverrides = null;
+        ruOverrides.clear();
     }
 
     private Map<String, String> overrides() {
-        Map<String, String> m = ruOverrides;
+        @SuppressWarnings("unchecked")
+        Map<String, String> m = ruOverrides.get(BotTextCaches.KEY, Map.class);
         if (m == null) {
             m = new HashMap<>();
             for (String k : KEYS) {
@@ -177,7 +182,7 @@ public class BotTexts {
                     log.debug("bot text override read failed for {}: {}", k, e.toString());
                 }
             }
-            ruOverrides = m;
+            ruOverrides.put(BotTextCaches.KEY, m);
         }
         return m;
     }

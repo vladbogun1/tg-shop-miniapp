@@ -1,5 +1,8 @@
 package com.maxsolch.shop.analytics.app;
 
+import com.maxsolch.shop.platform.cache.CacheConfig;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import com.maxsolch.shop.analytics.domain.EventClassifier;
 import com.maxsolch.shop.analytics.infra.StaffQueries;
 import org.springframework.stereotype.Component;
@@ -34,16 +37,14 @@ public class StaffVisitors {
     /** Set by the admin panel on the shop's parent domain; the website's flushes carry it. */
     public static final String STAFF_COOKIE = "mx_staff";
 
-    private static final long TTL_MILLIS = 5 * 60_000;
-
     private final StaffQueries queries;
-    private volatile Staff cached;
-    private volatile long cachedAt;
+    private final Cache cached;
 
     private final java.time.Clock clock;
 
-    public StaffVisitors(StaffQueries queries, java.time.Clock clock) {
+    public StaffVisitors(StaffQueries queries, java.time.Clock clock, CacheManager caches) {
         this.clock = clock;
+        this.cached = CacheConfig.require(caches, AnalyticsReadCaches.STAFF.name());
         this.queries = queries;
     }
 
@@ -93,12 +94,10 @@ public class StaffVisitors {
 
     /** Current staff (cached for a few minutes; a new admin or browser shows up within that). */
     public Staff get() {
-        long now = clock.millis();
-        Staff s = cached;
-        if (s == null || now - cachedAt > TTL_MILLIS) {
+        Staff s = cached.get(AnalyticsReadCaches.KEY, Staff.class);
+        if (s == null) {
             s = load();
-            cached = s;
-            cachedAt = now;
+            cached.put(AnalyticsReadCaches.KEY, s);
         }
         return s;
     }

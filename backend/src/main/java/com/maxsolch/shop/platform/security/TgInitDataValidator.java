@@ -2,8 +2,9 @@ package com.maxsolch.shop.platform.security;
 
 import java.time.Clock;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import com.maxsolch.shop.platform.cache.CacheConfig;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.error.DomainException;
@@ -49,7 +50,8 @@ public class TgInitDataValidator {
     private final AppProperties props;
     private final Clock clock;
 
-    public TgInitDataValidator(AppProperties props, Clock clock) {
+    public TgInitDataValidator(AppProperties props, Clock clock, CacheManager caches) {
+        this.usedForAdmin = CacheConfig.require(caches, SecurityCaches.INIT_DATA_USED_FOR_ADMIN.name());
         this.props = props;
         this.clock = clock;
     }
@@ -64,10 +66,7 @@ public class TgInitDataValidator {
     }
 
     /** Signatures of initData already used for an ADMIN sign-in (outlive the admin TTL). */
-    private final Cache<String, Boolean> usedForAdmin = Caffeine.newBuilder()
-            .maximumSize(10_000)
-            .expireAfterWrite(Duration.ofHours(1))
-            .build();
+    private final Cache usedForAdmin;
 
     /**
      * ADMIN sign-in: short TTL (capped at an hour) and single use (see the class comment).
@@ -110,7 +109,7 @@ public class TgInitDataValidator {
             // Keyed by the signature (the whole string when unsigned in dev). Checked after the
             // signature, so junk cannot fill the cache.
             String key = StringUtils.hasText(hash) ? hash.toLowerCase(java.util.Locale.ROOT) : initData;
-            if (usedForAdmin.asMap().putIfAbsent(key, Boolean.TRUE) != null) {
+            if (usedForAdmin.putIfAbsent(key, Boolean.TRUE) != null) {
                 throw invalid("initData was already used, reopen the panel from Telegram");
             }
         }

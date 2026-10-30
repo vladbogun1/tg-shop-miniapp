@@ -50,7 +50,7 @@ class BotTextsTest {
         }).when(settings).putSystem(anyString(), anyString());
         when(translations.snapshot("uk")).thenReturn(uk);
         when(translations.snapshot("en")).thenReturn(Map.of());
-        texts = new BotTexts(messages, settings, translations);
+        texts = new BotTexts(messages, settings, translations, new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
     }
 
     private void translate(String text, String sourceRu) {

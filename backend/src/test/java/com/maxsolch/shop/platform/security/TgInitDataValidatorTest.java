@@ -88,7 +88,7 @@ class TgInitDataValidatorTest {
         String hash = computeHash(params, BOT_TOKEN);
         String initData = toQuery(params, hash);
 
-        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400), java.time.Clock.systemUTC());
+        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400), java.time.Clock.systemUTC(), new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
         TelegramUser user = validator.validate(initData);
 
         assertThat(user.id()).isEqualTo(777L);
@@ -106,7 +106,7 @@ class TgInitDataValidatorTest {
         String badHash = hash.substring(0, hash.length() - 1) + (hash.endsWith("0") ? "1" : "0");
         String initData = toQuery(params, badHash);
 
-        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400), java.time.Clock.systemUTC());
+        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400), java.time.Clock.systemUTC(), new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
 
         assertThatThrownBy(() -> validator.validate(initData))
                 .isInstanceOf(DomainException.Unauthorized.class)
@@ -122,7 +122,7 @@ class TgInitDataValidatorTest {
         params.put("query_id", "TAMPERED");
         String initData = toQuery(params, hash);
 
-        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400), java.time.Clock.systemUTC());
+        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400), java.time.Clock.systemUTC(), new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
 
         assertThatThrownBy(() -> validator.validate(initData))
                 .isInstanceOf(DomainException.Unauthorized.class)
@@ -137,7 +137,7 @@ class TgInitDataValidatorTest {
         String initData = toQuery(params, hash);
 
         // TTL of 60s -> the 10000s-old auth_date is expired (signature itself is valid).
-        TgInitDataValidator validator = new TgInitDataValidator(props(false, 60), java.time.Clock.systemUTC());
+        TgInitDataValidator validator = new TgInitDataValidator(props(false, 60), java.time.Clock.systemUTC(), new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
 
         assertThatThrownBy(() -> validator.validate(initData))
                 .isInstanceOf(DomainException.Unauthorized.class)
@@ -146,7 +146,7 @@ class TgInitDataValidatorTest {
 
     @Test
     void emptyInitData_fails() {
-        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400), java.time.Clock.systemUTC());
+        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400), java.time.Clock.systemUTC(), new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
 
         assertThatThrownBy(() -> validator.validate(""))
                 .isInstanceOf(DomainException.Unauthorized.class)
@@ -158,7 +158,7 @@ class TgInitDataValidatorTest {
         Map<String, String> params = baseParams(Instant.now().getEpochSecond());
         String initData = toQuery(params, null); // no hash
 
-        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400), java.time.Clock.systemUTC());
+        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400), java.time.Clock.systemUTC(), new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
 
         assertThatThrownBy(() -> validator.validate(initData))
                 .isInstanceOf(DomainException.Unauthorized.class)
@@ -171,7 +171,7 @@ class TgInitDataValidatorTest {
         Map<String, String> params = baseParams(Instant.now().getEpochSecond());
         String initData = toQuery(params, null);
 
-        TgInitDataValidator validator = new TgInitDataValidator(props(true, 86400), java.time.Clock.systemUTC());
+        TgInitDataValidator validator = new TgInitDataValidator(props(true, 86400), java.time.Clock.systemUTC(), new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
         TelegramUser user = validator.validate(initData);
 
         assertThat(user.id()).isEqualTo(777L);
@@ -183,7 +183,7 @@ class TgInitDataValidatorTest {
         params.put("auth_date", String.valueOf(Instant.now().getEpochSecond()));
         String initData = toQuery(params, null); // no user param
 
-        TgInitDataValidator validator = new TgInitDataValidator(props(true, 86400), java.time.Clock.systemUTC());
+        TgInitDataValidator validator = new TgInitDataValidator(props(true, 86400), java.time.Clock.systemUTC(), new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
 
         assertThatThrownBy(() -> validator.validate(initData))
                 .isInstanceOf(DomainException.Unauthorized.class)
@@ -200,7 +200,7 @@ class TgInitDataValidatorTest {
     @Test
     void adminLogin_acceptsAnInitDataOnlyOnce() throws Exception {
         String initData = signed(Instant.now().getEpochSecond());
-        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400), java.time.Clock.systemUTC());
+        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400), java.time.Clock.systemUTC(), new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
 
         assertThat(validator.validateForAdmin(initData).id()).isEqualTo(777L);
         assertThatThrownBy(() -> validator.validateForAdmin(initData))
@@ -215,7 +215,7 @@ class TgInitDataValidatorTest {
         String tenMinutesOld = signed(Instant.now().getEpochSecond() - 600);
         AppProperties p = props(false, 86400);
         p.getTelegram().setAdminInitDataTtlSeconds(300);
-        TgInitDataValidator validator = new TgInitDataValidator(p, java.time.Clock.systemUTC());
+        TgInitDataValidator validator = new TgInitDataValidator(p, java.time.Clock.systemUTC(), new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
 
         assertThat(validator.validate(tenMinutesOld).id()).isEqualTo(777L); // customer: a day
         assertThatThrownBy(() -> validator.validateForAdmin(tenMinutesOld))
@@ -226,7 +226,7 @@ class TgInitDataValidatorTest {
     @Test
     void authDateFromTheFuture_fails() throws Exception {
         String initData = signed(Instant.now().getEpochSecond() + 3600);
-        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400), java.time.Clock.systemUTC());
+        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400), java.time.Clock.systemUTC(), new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
 
         assertThatThrownBy(() -> validator.validate(initData))
                 .isInstanceOf(DomainException.Unauthorized.class)
@@ -236,7 +236,7 @@ class TgInitDataValidatorTest {
     @Test
     void repeatedKey_fails() throws Exception {
         String initData = signed(Instant.now().getEpochSecond()) + "&user=" + enc("{\"id\":1}");
-        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400), java.time.Clock.systemUTC());
+        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400), java.time.Clock.systemUTC(), new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
 
         assertThatThrownBy(() -> validator.validate(initData))
                 .isInstanceOf(DomainException.Unauthorized.class)
@@ -246,7 +246,7 @@ class TgInitDataValidatorTest {
     @Test
     void malformedHash_failsWithoutException() throws Exception {
         Map<String, String> params = baseParams(Instant.now().getEpochSecond());
-        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400), java.time.Clock.systemUTC());
+        TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400), java.time.Clock.systemUTC(), new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
         for (String bad : new String[]{"zz", "not-hex-" + "0".repeat(56), computeHash(params, BOT_TOKEN).toUpperCase() + "0"}) {
             String initData = toQuery(params, bad);
             assertThatThrownBy(() -> validator.validate(initData))

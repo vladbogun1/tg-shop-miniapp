@@ -2,7 +2,6 @@ package com.maxsolch.shop.platform.security;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -25,8 +24,12 @@ class AdminTokenValidatorTest {
     @Mock
     AdminTokenRevocations revocations;
 
-    @InjectMocks
     AdminTokenValidator validator;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        validator = new AdminTokenValidator(admins, revocations, new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
+    }
 
     private AdminDirectory.ActiveAdmin admin(int tokenVersion) {
         return new AdminDirectory.ActiveAdmin(tokenVersion, false, false);
