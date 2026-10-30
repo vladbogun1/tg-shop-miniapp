@@ -5845,16 +5845,6 @@ export interface components {
             key: string;
             label: string;
         };
-        Counts: {
-            /** Format: int32 */
-            missing: number;
-            /** Format: int32 */
-            stale: number;
-            /** Format: int32 */
-            translated: number;
-            /** Format: int32 */
-            unreviewed: number;
-        };
         CreateOrderRequest: {
             comment?: string;
             customerName: string;
@@ -8240,7 +8230,7 @@ export interface components {
         Stats: {
             locales: {
                 [key: string]: {
-                    [key: string]: components["schemas"]["Counts"];
+                    [key: string]: components["schemas"]["TranslationCounts"];
                 };
             };
             texts: components["schemas"]["TextCounts"];
@@ -8587,6 +8577,16 @@ export interface components {
             rebased: number;
             /** Format: int32 */
             skippedStale: number;
+        };
+        TranslationCounts: {
+            /** Format: int32 */
+            missing: number;
+            /** Format: int32 */
+            stale: number;
+            /** Format: int32 */
+            translated: number;
+            /** Format: int32 */
+            unreviewed: number;
         };
         TwoFactorRequest: {
             code?: string;

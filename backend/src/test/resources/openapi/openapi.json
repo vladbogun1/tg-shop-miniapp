@@ -4252,33 +4252,6 @@
         ],
         "type" : "object"
       },
-      "Counts" : {
-        "properties" : {
-          "missing" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "stale" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "translated" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "unreviewed" : {
-            "format" : "int32",
-            "type" : "integer"
-          }
-        },
-        "required" : [
-          "missing",
-          "stale",
-          "translated",
-          "unreviewed"
-        ],
-        "type" : "object"
-      },
       "CreateOrderRequest" : {
         "properties" : {
           "comment" : {
@@ -12171,7 +12144,7 @@
           "locales" : {
             "additionalProperties" : {
               "additionalProperties" : {
-                "$ref" : "#/components/schemas/Counts"
+                "$ref" : "#/components/schemas/TranslationCounts"
               },
               "type" : "object"
             },
@@ -13261,6 +13234,33 @@
           "notFound",
           "rebased",
           "skippedStale"
+        ],
+        "type" : "object"
+      },
+      "TranslationCounts" : {
+        "properties" : {
+          "missing" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "stale" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "translated" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "unreviewed" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "missing",
+          "stale",
+          "translated",
+          "unreviewed"
         ],
         "type" : "object"
       },
