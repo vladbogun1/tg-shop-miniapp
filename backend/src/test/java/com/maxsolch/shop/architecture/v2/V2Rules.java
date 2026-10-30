@@ -45,7 +45,7 @@ final class V2Rules {
         RULES.put("T1", "after commit only through domain events (no TransactionSynchronizationManager)");
         RULES.put("T2", "@Transactional only on public methods of app (not api, domain, infra)");
         RULES.put("A1", "current actor through CurrentActor (SecurityContextHolder only in platform.web and platform.security)");
-        RULES.put("A2", "controllers do not write the audit log");
+        RULES.put("A2", "controllers do not write the audit log or the activity journal (a scenario in app does)");
         RULES.put("A3", "rights by annotations only (controllers do not call AdminAccess.require*)");
         RULES.put("N1", "Telegram and push only from notification and *Notifier");
         RULES.put("T3", "events are published through platform.tx.DomainEvents only (no ApplicationEventPublisher)");
@@ -335,7 +335,8 @@ final class V2Rules {
                     && !pkg.equals(root + ".platform.web") && !pkg.equals(root + ".platform.security")) {
                 out.add(new Violation("A1", from.module(), detail));
             }
-            if (from.layer() == Layer.API && tn.equals(root + ".platform.audit.AdminAuditService")) {
+            if (from.layer() == Layer.API && (tn.equals(root + ".platform.audit.AdminAuditService")
+                    || tn.equals(root + ".platform.journal.ActivityLog"))) {
                 out.add(new Violation("A2", from.module(), detail));
             }
             if (isTelegram(tn, c, from)) {

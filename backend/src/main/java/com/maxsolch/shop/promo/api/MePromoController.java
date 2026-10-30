@@ -1,9 +1,7 @@
 package com.maxsolch.shop.promo.api;
 
-import com.maxsolch.shop.platform.journal.ActivityLog;
-import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.web.CurrentActor;
-import com.maxsolch.shop.promo.app.CaseLowMargin;
+import com.maxsolch.shop.promo.app.CartPromo;
 import com.maxsolch.shop.promo.app.PromoPreviewDto;
 import com.maxsolch.shop.promo.app.PromoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,8 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Locale;
-
 /** The promo code in the cart: check and hold while it is typed, give back when it is cleared. */
 @RestController
 @RequestMapping("/api/me")
@@ -28,12 +24,12 @@ import java.util.Locale;
 public class MePromoController {
 
     private final PromoService promoService;
-    private final ActivityLog activity;
+    private final CartPromo cartPromo;
     private final CurrentActor actor;
 
-    public MePromoController(PromoService promoService, ActivityLog activity, CurrentActor actor) {
+    public MePromoController(PromoService promoService, CartPromo cartPromo, CurrentActor actor) {
         this.promoService = promoService;
-        this.activity = activity;
+        this.cartPromo = cartPromo;
         this.actor = actor;
     }
 
@@ -48,19 +44,7 @@ public class MePromoController {
     public PromoPreviewDto reservePromo(@RequestParam String code,
                                         @RequestParam long subtotalMinor,
                                         @RequestParam(required = false) String items) {
-        // items: the cart's lines "id*qty,…" — a case code is counted without the low-margin products.
-        PromoPreviewDto preview = promoService.reserve(code, subtotalMinor, actor.userId(),
-                CaseLowMargin.parseItems(items));
-        // Only accepted codes: the cart checks as the code is typed, so refusals are mostly half-typed words.
-        if (preview != null && preview.valid()) {
-            activity.record(activity.fromRequest("PROMO_APPLIED")
-                    .text("Промокод " + code.trim().toUpperCase(Locale.ROOT) + " принят: скидка "
-                            + MoneyFormat.amount(preview.discountMinor()) + " грн")
-                    .detail("code", code.trim().toUpperCase(Locale.ROOT))
-                    .detail("discountMinor", preview.discountMinor())
-                    .detail("subtotalMinor", subtotalMinor));
-        }
-        return preview;
+        return cartPromo.reserve(code, subtotalMinor, actor.userId(), items);
     }
 
     /** Gives a held code back when the customer clears or replaces it. */

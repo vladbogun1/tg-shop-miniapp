@@ -74,8 +74,9 @@ class MeOrderPaymentRefreshTest {
     }
 
     MeOrderPaymentController controller() {
-        return new MeOrderPaymentController(new CustomerOrders(orders, messages), queries, lookup, payments,
-                new CustomerPaymentRefresh(payments, java.time.Clock.systemUTC()), null, null, new CurrentActor());
+        return new MeOrderPaymentController(new CustomerOrders(orders, messages), queries, lookup,
+                new com.maxsolch.shop.payment.app.CustomerPaymentStart(payments, null),
+                new CustomerPaymentRefresh(payments, java.time.Clock.systemUTC()), null, new CurrentActor());
     }
 
     private static void loginAs(long telegramUserId) {

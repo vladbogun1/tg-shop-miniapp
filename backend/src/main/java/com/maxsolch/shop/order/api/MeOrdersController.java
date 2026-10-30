@@ -4,8 +4,8 @@ import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.media.app.UploadResponse;
 import com.maxsolch.shop.media.app.UploadValidator;
-import com.maxsolch.shop.order.app.CancelRequestService;
 import com.maxsolch.shop.order.app.ConversationDto;
+import com.maxsolch.shop.order.app.CustomerOrderActions;
 import com.maxsolch.shop.order.app.CustomerOrders;
 import com.maxsolch.shop.order.app.MessageDto;
 import com.maxsolch.shop.order.app.MessageService;
@@ -17,7 +17,6 @@ import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import io.swagger.v3.oas.annotations.Operation;
@@ -52,23 +51,21 @@ public class MeOrdersController {
     private final MessageService messageService;
     private final ImageStorageService imageStorageService;
     private final UploadValidator uploadValidator;
-    private final CancelRequestService cancelRequests;
+    private final CustomerOrderActions orderActions;
     private final Messages messages;
-    private final ActivityLog activity;
     private final CurrentActor actor;
 
     public MeOrdersController(CustomerOrders customerOrders, OrderQueryService orderQueryService,
                               MessageService messageService, ImageStorageService imageStorageService,
-                              UploadValidator uploadValidator, CancelRequestService cancelRequests,
-                              Messages messages, ActivityLog activity, CurrentActor actor) {
+                              UploadValidator uploadValidator, CustomerOrderActions orderActions,
+                              Messages messages, CurrentActor actor) {
         this.customerOrders = customerOrders;
         this.orderQueryService = orderQueryService;
         this.messageService = messageService;
         this.imageStorageService = imageStorageService;
         this.uploadValidator = uploadValidator;
-        this.cancelRequests = cancelRequests;
+        this.orderActions = orderActions;
         this.messages = messages;
-        this.activity = activity;
         this.actor = actor;
     }
 
@@ -111,13 +108,7 @@ public class MeOrdersController {
     public MessageDto sendMessage(@PathVariable String id, @RequestBody SendMessageRequest req) {
         Order order = ownedOrder(id);
         requireOwnAttachment(req);
-        String name = order.getCustomerName();
-        MessageDto sent = messageService.postCustomerMessage(order.getId(), order.getUserId(), name, req);
-        // The text itself stays in the chat — the journal only notes that the customer wrote.
-        activity.record(activity.fromRequest("CHAT_MESSAGE").order(order.getId())
-                .text("Покупатель написал в чат заказа #" + id.substring(0, Math.min(8, id.length())))
-                .detail("kind", req == null ? null : req.type()));
-        return sent;
+        return orderActions.sendMessage(order, id, req);
     }
 
     @PostMapping("/orders/{id}/cancel")
@@ -125,18 +116,7 @@ public class MeOrdersController {
     public OrderDetailDto cancel(@PathVariable String id, @RequestBody(required = false) CancelOrderRequest req,
                                  Locale locale) {
         Order order = ownedOrder(id);
-        // Refreshes the payment state first; 400 PAYMENT_IN_PROGRESS while the bank is charging,
-        // 400 PAID_NEEDS_REQUEST once money arrived (→ cancel-request).
-        Order cancelled;
-        try {
-            cancelled = cancelRequests.cancelUnpaid(order.getId(), req == null ? null : req.reason());
-        } catch (RuntimeException e) {
-            activity.record(activity.fromRequest("ORDER_CANCEL_FAILED").order(order.getId())
-                    .text("Отмена заказа не прошла: " + e.getMessage()).rejected(e));
-            throw e;
-        }
-        activity.record(activity.fromRequest("ORDER_CANCELLED").order(order.getId())
-                .text("Покупатель отменил неоплаченный заказ" + reasonSuffix(req)));
+        Order cancelled = orderActions.cancelUnpaid(order, req == null ? null : req.reason());
         return orderQueryService.toDetail(cancelled, ContentLocale.normalize(locale));
     }
 
@@ -146,16 +126,7 @@ public class MeOrdersController {
     public OrderDetailDto cancelRequest(@PathVariable String id, @RequestBody(required = false) CancelOrderRequest req,
                                         Locale locale) {
         Order order = ownedOrder(id);
-        Order updated;
-        try {
-            updated = cancelRequests.request(order.getId(), req == null ? null : req.reason());
-        } catch (RuntimeException e) {
-            activity.record(activity.fromRequest("CANCEL_REQUEST_FAILED").order(order.getId())
-                    .text("Заявка на отмену не принята: " + e.getMessage()).rejected(e));
-            throw e;
-        }
-        activity.record(activity.fromRequest("CANCEL_REQUESTED").order(order.getId())
-                .text("Заявка на отмену оплаченного заказа" + reasonSuffix(req)));
+        Order updated = orderActions.requestCancel(order, req == null ? null : req.reason());
         return orderQueryService.toDetail(updated, ContentLocale.normalize(locale));
     }
 
@@ -186,10 +157,5 @@ public class MeOrdersController {
 
     private Order ownedOrder(String id) {
         return customerOrders.ownedBy(id, actor.userId());
-    }
-
-    private static String reasonSuffix(CancelOrderRequest req) {
-        String r = req == null || req.reason() == null ? "" : req.reason().trim();
-        return r.isEmpty() ? "" : ": " + (r.length() > 200 ? r.substring(0, 199) + "…" : r);
     }
 }

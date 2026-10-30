@@ -50,7 +50,7 @@ class MeReceiptsOwnershipTest {
     @BeforeEach
     void setUp() {
         controller = new MeOrderPaymentController(new CustomerOrders(orders, messages), null, null, null, null, receipts,
-                null, new CurrentActor());
+                new CurrentActor());
         lenient().when(messages.current(anyString())).thenAnswer(inv -> inv.getArgument(0));
         order = new Order();
         OrderFixtures.set(order, "id", UuidUtil.randomBytes());

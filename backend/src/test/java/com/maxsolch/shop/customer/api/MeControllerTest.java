@@ -55,7 +55,9 @@ class MeControllerTest {
     }
 
     MeController controller() {
-        return new MeController(new CustomerProfileService(users, admins), activity, new CurrentActor());
+        return new MeController(new CustomerProfileService(users, admins),
+                new com.maxsolch.shop.customer.app.CustomerLocaleChoice(new CustomerProfileService(users, admins), activity),
+                new CurrentActor());
     }
 
     @Test

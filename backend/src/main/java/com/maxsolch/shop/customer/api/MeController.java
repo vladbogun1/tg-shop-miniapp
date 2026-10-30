@@ -1,9 +1,8 @@
 package com.maxsolch.shop.customer.api;
 
+import com.maxsolch.shop.customer.app.CustomerLocaleChoice;
 import com.maxsolch.shop.customer.app.CustomerProfileService;
 import com.maxsolch.shop.customer.app.MeProfileDto;
-import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -15,8 +14,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Locale;
 
 /**
  * The customer's own profile. Orders, chat and uploads are {@code order.api.MeOrdersController}, the money of an order
@@ -31,12 +28,12 @@ import java.util.Locale;
 public class MeController {
 
     private final CustomerProfileService profiles;
-    private final ActivityLog activity;
+    private final CustomerLocaleChoice localeChoice;
     private final CurrentActor actor;
 
-    public MeController(CustomerProfileService profiles, ActivityLog activity, CurrentActor actor) {
+    public MeController(CustomerProfileService profiles, CustomerLocaleChoice localeChoice, CurrentActor actor) {
         this.profiles = profiles;
-        this.activity = activity;
+        this.localeChoice = localeChoice;
         this.actor = actor;
     }
 
@@ -56,13 +53,7 @@ public class MeController {
     @PostMapping("/locale")
     @Operation(summary = "Remember the customer's interface language")
     public ResponseEntity<Void> setLocale(@RequestParam String locale) {
-        Locale parsed = Messages.normalize(locale);
-        if (parsed != null) {
-            profiles.changeLocale(actor.userId(), parsed.getLanguage()).ifPresent(change ->
-                    activity.record(activity.fromRequest("LOCALE_CHANGED")
-                            .text("Язык: " + (change.before() == null ? "—" : change.before()) + " → " + change.after())
-                            .detail("from", change.before()).detail("to", change.after())));
-        }
+        localeChoice.choose(actor.userId(), locale);
         return ResponseEntity.noContent().build();
     }
 }

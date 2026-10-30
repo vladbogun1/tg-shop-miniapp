@@ -7,13 +7,13 @@ import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.app.OrderQueryService;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.payment.app.CustomerPaymentRefresh;
+import com.maxsolch.shop.payment.app.CustomerPaymentStart;
 import com.maxsolch.shop.payment.app.OnlinePaymentService;
 import com.maxsolch.shop.payment.app.PaymentStartResponse;
 import com.maxsolch.shop.payment.app.ReceiptDto;
 import com.maxsolch.shop.payment.app.ReceiptService;
 import com.maxsolch.shop.payment.app.StartPaymentRequest;
 import com.maxsolch.shop.platform.error.DomainException;
-import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import io.swagger.v3.oas.annotations.Operation;
@@ -41,23 +41,21 @@ public class MeOrderPaymentController {
     private final CustomerOrders customerOrders;
     private final OrderQueryService orderQueryService;
     private final OrderLookup orderLookup;
-    private final OnlinePaymentService onlinePayments;
+    private final CustomerPaymentStart paymentStart;
     private final CustomerPaymentRefresh paymentRefresh;
     private final ReceiptService receipts;
-    private final ActivityLog activity;
     private final CurrentActor actor;
 
     public MeOrderPaymentController(CustomerOrders customerOrders, OrderQueryService orderQueryService,
-                                    OrderLookup orderLookup, OnlinePaymentService onlinePayments,
+                                    OrderLookup orderLookup, CustomerPaymentStart paymentStart,
                                     CustomerPaymentRefresh paymentRefresh, ReceiptService receipts,
-                                    ActivityLog activity, CurrentActor actor) {
+                                    CurrentActor actor) {
         this.customerOrders = customerOrders;
         this.orderQueryService = orderQueryService;
         this.orderLookup = orderLookup;
-        this.onlinePayments = onlinePayments;
+        this.paymentStart = paymentStart;
         this.paymentRefresh = paymentRefresh;
         this.receipts = receipts;
-        this.activity = activity;
         this.actor = actor;
     }
 
@@ -90,14 +88,7 @@ public class MeOrderPaymentController {
                 ? ContentLocale.normalize(Locale.forLanguageTag(req.locale())) : ContentLocale.normalize(locale);
         boolean embedded = req != null && "IFRAME".equalsIgnoreCase(req.display());
         OnlinePaymentService.StartedPayment p;
-        try {
-            p = onlinePayments.start(order.getId(), returnTo, lang, embedded);
-        } catch (RuntimeException e) {
-            activity.record(activity.fromRequest("PAYMENT_START_FAILED").order(order.getId())
-                    .text("Не удалось открыть оплату: " + e.getMessage())
-                    .detail("returnTo", returnTo).rejected(e));
-            throw e;
-        }
+        p = paymentStart.start(order, returnTo, lang, embedded);
         return new PaymentStartResponse(p.invoiceId(), p.pageUrl(), p.amountMinor(), p.expiresAt());
     }
 

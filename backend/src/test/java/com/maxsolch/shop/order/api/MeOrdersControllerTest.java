@@ -75,8 +75,9 @@ class MeOrdersControllerTest {
     }
 
     MeOrdersController controller() {
-        return new MeOrdersController(new CustomerOrders(orders, messages), queries, chat, null, null, null,
-                messages, activity, new CurrentActor());
+        return new MeOrdersController(new CustomerOrders(orders, messages), queries, chat, null, null,
+                new com.maxsolch.shop.order.app.CustomerOrderActions(chat, null, activity),
+                messages, new CurrentActor());
     }
 
     private static void loginAs(long telegramUserId) {
