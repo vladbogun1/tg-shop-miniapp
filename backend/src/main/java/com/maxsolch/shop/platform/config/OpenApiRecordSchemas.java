@@ -18,21 +18,24 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Makes the schema of a DTO record say what the JSON really is, so the front-end types generated from it
- * are as strict as the Java.
+ * Reads what a DTO record promises, so the front-end types generated from the schema are as strict as the Java.
  *
- * <p>springdoc alone calls every property optional ({@code field?: T}), which would make the front-ends
- * unable to notice a vanished field. The JSON of a record always carries every component (nothing in the
- * app sets a global {@code NON_NULL}), so:
+ * <p>springdoc alone calls every property optional ({@code field?: T}), which would make the front-ends unable
+ * to notice a vanished field. The JSON of a record always carries every component (nothing in the app sets a
+ * global {@code NON_NULL}), so for a record that goes out in a response:
  * <ul>
  *   <li>every component is {@code required}, unless the record or the component is
  *       {@code @JsonInclude(NON_NULL / NON_EMPTY)} - then the key may be missing (optional, not nullable);</li>
  *   <li>a component annotated {@code @Nullable} may be {@code null} ({@code nullable: true}); an unannotated
  *       one never is.</li>
  * </ul>
- * Only the schema changes, never the JSON the API sends.
+ * This converter only records those facts in an extension; {@link OpenApiResponseSchemas} applies them to the
+ * schemas reachable from a response. Only the schema changes, never the JSON the API sends.
  */
 public final class OpenApiRecordSchemas implements ModelConverter {
+
+    /** Where {@link #resolve} leaves what a schema must look like as a response; {@link OpenApiResponseSchemas} applies it. */
+    static final String RESPONSE_EXTENSION = "x-response";
 
     @Override
     @SuppressWarnings("rawtypes")
@@ -59,31 +62,21 @@ public final class OpenApiRecordSchemas implements ModelConverter {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static void strengthen(Class<?> record, Schema model) {
         boolean classOptional = omitsNull(record);
-        Map<String, Schema> props = model.getProperties();
         List<String> required = new ArrayList<>();
-        for (Map.Entry<String, Schema> e : props.entrySet()) {
-            RecordComponent component = componentFor(record, e.getKey());
+        List<String> nullable = new ArrayList<>();
+        for (String property : ((Map<String, Schema>) model.getProperties()).keySet()) {
+            RecordComponent component = componentFor(record, property);
             boolean optional = classOptional || (component != null && omitsNull(fieldOf(record, component)));
-            boolean nullable = component != null && isNullable(record, component);
             if (!optional) {
-                required.add(e.getKey());
+                required.add(property);
             }
-            if (nullable) {
-                e.setValue(nullable(e.getValue()));
+            if (component != null && isNullable(record, component)) {
+                nullable.add(property);
             }
         }
         required.sort(String::compareTo);
-        model.setRequired(required.isEmpty() ? null : required);
-    }
-
-    /** OpenAPI 3.0 ignores siblings of a {@code $ref}, so a nullable reference is wrapped in a one-element allOf. */
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private static Schema nullable(Schema prop) {
-        if (prop.get$ref() != null) {
-            return new Schema<>().allOf(List.of(prop)).nullable(true);
-        }
-        prop.setNullable(true);
-        return prop;
+        nullable.sort(String::compareTo);
+        model.addExtension(RESPONSE_EXTENSION, Map.of("required", required, "nullable", nullable));
     }
 
     private static boolean isNullable(Class<?> record, RecordComponent c) {

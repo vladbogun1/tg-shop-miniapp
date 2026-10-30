@@ -1,4 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
-public record ProductImageDto(Long id, String url, int sortOrder) {
+import org.springframework.lang.Nullable;
+
+public record ProductImageDto(@Nullable Long id, @Nullable String url, int sortOrder) {
 }

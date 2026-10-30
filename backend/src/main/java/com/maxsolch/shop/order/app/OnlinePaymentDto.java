@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.app;
 
+import org.springframework.lang.Nullable;
+
 import java.time.Instant;
 
 /**
@@ -17,10 +19,10 @@ import java.time.Instant;
 public record OnlinePaymentDto(
         boolean enabled,
         String status,
-        String pageUrl,
-        Instant expiresAt,
+        @Nullable String pageUrl,
+        @Nullable Instant expiresAt,
         long amountMinor,
-        String maskedPan,
-        String paymentMethod,
-        String failureReason) {
+        @Nullable String maskedPan,
+        @Nullable String paymentMethod,
+        @Nullable String failureReason) {
 }

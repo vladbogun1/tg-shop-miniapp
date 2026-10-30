@@ -1,5 +1,7 @@
 package com.maxsolch.shop.catalog.infra;
 
+import org.springframework.lang.Nullable;
+
 import com.maxsolch.shop.platform.util.UuidUtil;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -11,7 +13,7 @@ import java.util.List;
 @Component
 public class MarkdownTagQueries {
 
-    public record Row(String id, String name, String seoTitle, String seoDescription, String h1, String introText) {
+    public record Row(String id, String name, @Nullable String seoTitle, @Nullable String seoDescription, @Nullable String h1, @Nullable String introText) {
     }
 
     private final JdbcTemplate jdbc;

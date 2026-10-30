@@ -1,5 +1,7 @@
 package com.maxsolch.shop.catalog.app;
 
+import org.springframework.lang.Nullable;
+
 import java.time.Instant;
 import com.maxsolch.shop.catalog.app.CatalogDtos.BrandRefDto;
 
@@ -55,7 +57,7 @@ public final class PublicCatalogDtos {
     }
 
     public record CategoryDto(String id, String slug, String name, int sortOrder, long productCount,
-                              String parentId, String artKind, boolean showInMenu) {
+                              @Nullable String parentId, @Nullable String artKind, boolean showInMenu) {
     }
 
     /**
@@ -64,8 +66,8 @@ public final class PublicCatalogDtos {
      * page and the intro text is long.
      */
     public record CategoryDetailDto(String id, String slug, String name, int sortOrder, long productCount,
-                                    boolean showInMenu, String seoTitle, String seoDescription, String h1,
-                                    String introText, String parentId, String artKind) {
+                                    boolean showInMenu, @Nullable String seoTitle, @Nullable String seoDescription, @Nullable String h1,
+                                    @Nullable String introText, @Nullable String parentId, @Nullable String artKind) {
     }
 
     public record SitemapProduct(String slug, Instant updatedAt) {

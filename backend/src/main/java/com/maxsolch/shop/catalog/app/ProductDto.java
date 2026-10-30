@@ -1,5 +1,7 @@
 package com.maxsolch.shop.catalog.app;
 
+import org.springframework.lang.Nullable;
+
 import java.time.Instant;
 import com.maxsolch.shop.catalog.app.CatalogDtos.BrandRefDto;
 
@@ -15,35 +17,35 @@ import java.util.Map;
 public record ProductDto(
         String id,
         String title,
-        String description,
+        @Nullable String description,
         long priceMinor,
-        String currency,
+        @Nullable String currency,
         int stock,
         boolean active,
         long soldCount,
-        List<ProductImageDto> images,
-        List<ProductVariantDto> variants,
-        List<TagDto> tags,
-        String slug,
-        Long compareAtMinor,
-        String seoTitle,
-        String seoDescription,
+        @Nullable List<ProductImageDto> images,
+        @Nullable List<ProductVariantDto> variants,
+        @Nullable List<TagDto> tags,
+        @Nullable String slug,
+        @Nullable Long compareAtMinor,
+        @Nullable String seoTitle,
+        @Nullable String seoDescription,
         Instant createdAt,
         /** Brand for schema.org (V36, not translated); null = the site's heuristic. */
-        String brand,
+        @Nullable String brand,
         /** Article number (V36); null = the site uses the id. */
-        String sku,
+        @Nullable String sku,
         /** Average of the published reviews (V44), null while there are none. */
-        Double ratingAvg,
+        @Nullable Double ratingAvg,
         /** Number of published reviews (V44). */
         int ratingCount,
         // ---- catalog v2 (V52, docs/CATALOG-SPECS.md); {@code tags} = the category path, {@code brand} = brandRef.name ----
         String categoryId,
-        BrandRefDto brandRef,
+        @Nullable BrandRefDto brandRef,
         /** NEW | MARKDOWN | USED. */
-        String condition,
+        @Nullable String condition,
         /** Translated like the title. */
-        String conditionNote,
+        @Nullable String conditionNote,
         /** Attribute key → value (see SpecType); unknown = key absent. */
         Map<String, Object> specs) {
 

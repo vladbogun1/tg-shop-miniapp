@@ -1,18 +1,20 @@
 package com.maxsolch.shop.order.app;
 
+import org.springframework.lang.Nullable;
+
 import java.time.Instant;
 
 public record MessageDto(
         Long id,
         String orderId,
         String senderType,
-        String senderName,
+        @Nullable String senderName,
         String type,
-        String text,
-        String attachmentUrl,
-        String fileName,
-        String mimeType,
-        Long replyToMessageId,
+        @Nullable String text,
+        @Nullable String attachmentUrl,
+        @Nullable String fileName,
+        @Nullable String mimeType,
+        @Nullable Long replyToMessageId,
         Instant createdAt,
-        Instant readAt) {
+        @Nullable Instant readAt) {
 }

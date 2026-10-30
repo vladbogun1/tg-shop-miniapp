@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.app;
 
+import org.springframework.lang.Nullable;
+
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -23,7 +25,7 @@ public class PromoOrdersView {
     public record PromoOrderDto(
             String id,
             String status,
-            String customerName,
+            @Nullable String customerName,
             long totalMinor,
             long discountMinor,
             Instant createdAt) {
@@ -34,9 +36,9 @@ public class PromoOrdersView {
             String id,
             String status,
             String customerName,
-            Long tgUserId,
+            @Nullable Long tgUserId,
             /** The label as stored: «Ручная скидка» or «Ручная скидка 10%». */
-            String label,
+            @Nullable String label,
             long totalMinor,
             long discountMinor,
             Instant createdAt) {

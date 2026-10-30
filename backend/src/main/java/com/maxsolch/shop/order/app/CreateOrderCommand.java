@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.app;
 
+import org.springframework.lang.Nullable;
+
 import com.maxsolch.shop.order.domain.OrderSource;
 
 import java.util.List;
@@ -47,6 +49,6 @@ public record CreateOrderCommand(
                 paymentOptionId, OrderSource.MINIAPP);
     }
 
-    public record Line(String productId, String variantId, int quantity) {
+    public record Line(String productId, @Nullable String variantId, int quantity) {
     }
 }

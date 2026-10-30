@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.app;
 
+import org.springframework.lang.Nullable;
+
 import java.time.Instant;
 import java.util.List;
 
@@ -17,7 +19,7 @@ public final class OrderGiftDtos {
      * @param discountPercent     DISCOUNT: % off the next order (0 = see {@code discountAmountMinor})
      * @param discountAmountMinor DISCOUNT: fixed amount off the next order
      */
-    public record CaseItemDto(String key, String kind, String productId, String title, String imageUrl,
+    public record CaseItemDto(String key, String kind, @Nullable String productId, @Nullable String title, @Nullable String imageUrl,
                               long priceMinor, String rarity, int discountPercent, long discountAmountMinor) {
     }
 
@@ -36,7 +38,7 @@ public final class OrderGiftDtos {
     }
 
     /** A personal code the case gave: {@code percent} or {@code amountMinor} off the next order. */
-    public record PromoDto(String code, int percent, long amountMinor, Instant expiresAt, boolean used) {
+    public record PromoDto(String code, int percent, long amountMinor, @Nullable Instant expiresAt, boolean used) {
     }
 
     /**
@@ -46,7 +48,7 @@ public final class OrderGiftDtos {
      * @param amountMinor what the swap gives (a fixed-amount code)
      * @param swappedAt   done (the prize left the order)
      */
-    public record SwapDto(boolean available, long amountMinor, Instant swappedAt) {
+    public record SwapDto(boolean available, long amountMinor, @Nullable Instant swappedAt) {
     }
 
     /**
@@ -54,7 +56,7 @@ public final class OrderGiftDtos {
      * or the case (prize details only after opening).
      */
     /** @param lowMargin admin only (null for the customer): the case was drawn leaning to discounts */
-    public record OrderGiftDto(String tier, long guaranteedDiscountMinor, String caseStatus, boolean openable,
-                               CaseItemDto prize, PromoDto promo, SwapDto swap, SizeDto size, Boolean lowMargin) {
+    public record OrderGiftDto(@Nullable String tier, long guaranteedDiscountMinor, @Nullable String caseStatus, boolean openable,
+                               @Nullable CaseItemDto prize, @Nullable PromoDto promo, @Nullable SwapDto swap, @Nullable SizeDto size, @Nullable Boolean lowMargin) {
     }
 }

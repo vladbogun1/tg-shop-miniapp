@@ -5,6 +5,7 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.core.converter.ModelConverter;
+import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springdoc.core.customizers.OperationCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,6 +34,12 @@ public class OpenApiConfig {
     @Bean
     public ModelConverter recordSchemas() {
         return new OpenApiRecordSchemas();
+    }
+
+    /** Applies the required / nullable facts of {@link OpenApiRecordSchemas} to the schemas of responses. */
+    @Bean
+    public OpenApiCustomizer responseSchemas() {
+        return new OpenApiResponseSchemas();
     }
 
     /** A stable id per endpoint (springdoc numbers duplicates in scan order, which differs between machines). */

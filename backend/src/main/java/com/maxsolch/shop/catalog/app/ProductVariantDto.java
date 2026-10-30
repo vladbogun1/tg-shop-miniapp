@@ -1,4 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
-public record ProductVariantDto(String id, String name, int stock, int sortOrder) {
+import org.springframework.lang.Nullable;
+
+public record ProductVariantDto(@Nullable String id, String name, int stock, int sortOrder) {
 }

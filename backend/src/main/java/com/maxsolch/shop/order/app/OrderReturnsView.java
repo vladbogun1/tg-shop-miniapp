@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.app;
 
+import org.springframework.lang.Nullable;
+
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
 
@@ -29,27 +31,27 @@ public interface OrderReturnsView {
                            /** RETURN | EXCHANGE */
                            String kind,
                            Instant createdAt,
-                           String adminName,
-                           String note,
+                           @Nullable String adminName,
+                           @Nullable String note,
                            List<ReturnRecordLineDto> lines,
                            long refundMinor,
-                           String refundChannel,
+                           @Nullable String refundChannel,
                            long monoRefundMinor,
                            /** Replacement order of an exchange. */
-                           String newOrderId,
-                           Instant cancelledAt,
-                           String cancelledBy,
-                           String cancelNote,
+                           @Nullable String newOrderId,
+                           @Nullable Instant cancelledAt,
+                           @Nullable String cancelledBy,
+                           @Nullable String cancelNote,
                            long debtMinor,
-                           Instant debtPaidAt,
+                           @Nullable Instant debtPaidAt,
                            boolean cancellable,
                            /** Why the newest record cannot be cancelled now (shown on the button). */
-                           String cancelBlocker) {
+                           @Nullable String cancelBlocker) {
     }
 
     record ReturnRecordLineDto(long itemId,
                                String title,
-                               String imageUrl,
+                               @Nullable String imageUrl,
                                int quantity,
                                /** RESTOCK | DEFECT | KEPT | IN_TRANSIT */
                                String outcome,
@@ -60,14 +62,14 @@ public interface OrderReturnsView {
 
     record ExchangeDto(Instant createdAt,
                        String previousStatus,
-                       String previousTracking,
+                       @Nullable String previousTracking,
                        String returnedSummary,
                        String givenSummary,
                        long totalBeforeMinor,
                        long totalAfterMinor,
-                       String note,
-                       String adminName,
+                       @Nullable String note,
+                       @Nullable String adminName,
                        /** The replacement order (V69); null for exchanges made before it. */
-                       String newOrderId) {
+                       @Nullable String newOrderId) {
     }
 }

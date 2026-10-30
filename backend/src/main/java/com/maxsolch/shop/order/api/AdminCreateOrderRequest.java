@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.api;
 
+import org.springframework.lang.Nullable;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -34,6 +36,6 @@ public record AdminCreateOrderRequest(
         String paidChannel,
         @Size(max = 500) String note) {
 
-    public record Line(@NotBlank String productId, String variantId, int quantity) {
+    public record Line(@NotBlank String productId, @Nullable String variantId, int quantity) {
     }
 }

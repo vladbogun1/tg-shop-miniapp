@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.app;
 
+import org.springframework.lang.Nullable;
+
 import java.time.Instant;
 import java.util.List;
 
@@ -16,8 +18,8 @@ public record DispatchOrderDto(
         String customerName,
         String phone,
         String deliveryMethod,
-        String npCityName,
-        String npWarehouseName,
+        @Nullable String npCityName,
+        @Nullable String npWarehouseName,
         List<DispatchItem> items,
         long totalMinor,
         long prepaymentMinor,
@@ -25,18 +27,18 @@ public record DispatchOrderDto(
         long codMinor,
         boolean paid,
         String currency,
-        String paymentOptionTitle,
-        String trackingNumber,
+        @Nullable String paymentOptionTitle,
+        @Nullable String trackingNumber,
         Instant createdAt,
-        Instant approvedAt,
+        @Nullable Instant approvedAt,
         /** APPROVED, or NEW when the list includes not-yet-approved orders (NEW → SHIPPED is allowed). */
         String status,
         /** Pay online by then or the order is cancelled; null = placed before online payment. */
-        Instant paymentDueAt,
+        @Nullable Instant paymentDueAt,
         /** Still to pay online now; 0 = nothing to pay. */
         long amountDueMinor) {
 
     /** {@code imageUrl}: the product's first photo, null when it has none or the product is gone. */
-    public record DispatchItem(String title, String variantName, int quantity, long priceMinor, String imageUrl) {
+    public record DispatchItem(String title, @Nullable String variantName, int quantity, long priceMinor, @Nullable String imageUrl) {
     }
 }

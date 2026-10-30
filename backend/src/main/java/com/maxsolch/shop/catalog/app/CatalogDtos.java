@@ -1,5 +1,7 @@
 package com.maxsolch.shop.catalog.app;
 
+import org.springframework.lang.Nullable;
+
 import com.maxsolch.shop.catalog.domain.SpecAttribute;
 import com.maxsolch.shop.catalog.domain.SpecGroup;
 import jakarta.validation.Valid;
@@ -20,31 +22,31 @@ public final class CatalogDtos {
 
     // ------------------------------------------------------------------ storefront
 
-    public record CatalogCategoryDto(String id, String slug, String name, String parentId, int sortOrder,
-                                     boolean showInMenu, String artKind, long productCount) {
+    public record CatalogCategoryDto(String id, String slug, String name, @Nullable String parentId, int sortOrder,
+                                     boolean showInMenu, @Nullable String artKind, long productCount) {
     }
 
     /** {@code logoUrl}: MinIO key or absolute URL, null = no logo; {@code logoMode}: MONO | ORIGINAL. */
-    public record CatalogBrandDto(String id, String slug, String name, long productCount, String logoUrl,
-                                  String logoMode) {
+    public record CatalogBrandDto(String id, String slug, String name, long productCount, @Nullable String logoUrl,
+                                  @Nullable String logoMode) {
     }
 
-    public record SpecGroupDto(String key, String label, int sort) {
+    public record SpecGroupDto(String key, @Nullable String label, int sort) {
     }
 
-    public record SpecOptionDto(String value, String label, int sort) {
+    public record SpecOptionDto(String value, @Nullable String label, int sort) {
     }
 
-    public record FacetBucketDto(String id, String label, Double min, Double max) {
+    public record FacetBucketDto(String id, @Nullable String label, @Nullable Double min, @Nullable Double max) {
     }
 
-    public record SpecAttributeDto(String id, String key, String label, String type, String unit, boolean range,
+    public record SpecAttributeDto(String id, String key, @Nullable String label, String type, @Nullable String unit, boolean range,
                                    String group, boolean filterable, boolean comparable, boolean required,
-                                   boolean highlight, int sort, String categoryId, List<SpecOptionDto> options,
-                                   List<FacetBucketDto> buckets, String hint) {
+                                   boolean highlight, int sort, @Nullable String categoryId, @Nullable List<SpecOptionDto> options,
+                                   @Nullable List<FacetBucketDto> buckets, @Nullable String hint) {
     }
 
-    public record ConditionDto(String value, String label) {
+    public record ConditionDto(String value, @Nullable String label) {
     }
 
     public record CatalogSchemaDto(List<CatalogCategoryDto> categories, List<CatalogBrandDto> brands,
@@ -58,14 +60,14 @@ public final class CatalogDtos {
 
     // ------------------------------------------------------------------ admin: categories
 
-    public record AdminCategoryDto(String id, String slug, String name, String parentId, int sortOrder,
-                                   boolean showInMenu, String artKind,
+    public record AdminCategoryDto(String id, String slug, String name, @Nullable String parentId, int sortOrder,
+                                   boolean showInMenu, @Nullable String artKind,
                                    /** Active products in the category and its descendants. */
                                    long productCount,
                                    /** Non-archived products directly in this category. */
                                    long productCountDirect,
                                    boolean leaf, int depth,
-                                   String seoTitle, String seoDescription, String h1, String introText) {
+                                   @Nullable String seoTitle, @Nullable String seoDescription, @Nullable String h1, @Nullable String introText) {
     }
 
     /**
@@ -95,8 +97,8 @@ public final class CatalogDtos {
 
     // ------------------------------------------------------------------ admin: brands
 
-    public record AdminBrandDto(String id, String name, String slug, List<String> aliases, String website,
-                                int sortOrder, long productCount, String logoUrl, String logoMode) {
+    public record AdminBrandDto(String id, String name, String slug, List<String> aliases, @Nullable String website,
+                                int sortOrder, long productCount, @Nullable String logoUrl, @Nullable String logoMode) {
     }
 
     /**
@@ -111,18 +113,18 @@ public final class CatalogDtos {
 
     // ------------------------------------------------------------------ admin: attributes
 
-    public record AdminBucketDto(String id, Double min, Double max, String labelRu, String labelUk, String labelEn) {
+    public record AdminBucketDto(String id, @Nullable Double min, @Nullable Double max, String labelRu, String labelUk, String labelEn) {
     }
 
     public record AdminOptionDto(String value, String labelRu, String labelUk, String labelEn, List<String> aliases,
                                  int sort, long usedCount) {
     }
 
-    public record AdminSpecAttributeDto(String id, String categoryId, String key, String labelRu, String labelUk,
-                                        String labelEn, String type, String unitRu, String unitUk, String unitEn,
+    public record AdminSpecAttributeDto(String id, @Nullable String categoryId, String key, String labelRu, String labelUk,
+                                        String labelEn, String type, @Nullable String unitRu, @Nullable String unitUk, @Nullable String unitEn,
                                         boolean range, String group, boolean filterable, boolean comparable,
-                                        boolean required, boolean highlight, int sort, List<AdminBucketDto> buckets,
-                                        String hint, List<AdminOptionDto> options,
+                                        boolean required, boolean highlight, int sort, @Nullable List<AdminBucketDto> buckets,
+                                        @Nullable String hint, List<AdminOptionDto> options,
                                         /** Defined on an ancestor (or global) of the requested category. */
                                         boolean inherited,
                                         /** Products that have a value for it. */
@@ -170,7 +172,7 @@ public final class CatalogDtos {
     }
 
     public record AdminSpecGroupDto(@NotBlank @Size(max = 32) String key, @Size(max = 64) String labelRu,
-                                    @Size(max = 64) String labelUk, @Size(max = 64) String labelEn, Integer sort) {
+                                    @Size(max = 64) String labelUk, @Size(max = 64) String labelEn, @Nullable Integer sort) {
     }
 
     // ------------------------------------------------------------------ admin: cards
@@ -183,8 +185,8 @@ public final class CatalogDtos {
     }
 
     public record CardExportItem(String id, String title, String slug, String categoryId, String categorySlug,
-                                 String brand, String condition, String conditionNote, String description,
-                                 Map<String, Object> specs, String cardStatus, Integer cardConfidence,
+                                 String brand, @Nullable String condition, @Nullable String conditionNote, String description,
+                                 Map<String, Object> specs, String cardStatus, @Nullable Integer cardConfidence,
                                  Map<String, Object> cardMeta, List<String> missingRequired, List<String> variants,
                                  String imageUrl, long priceMinor, long price, boolean active, int stock,
                                  boolean unfinished) {
@@ -225,8 +227,8 @@ public final class CatalogDtos {
      * Review panel data: the card, the snapshot of the last AI import ({@code last}: what changed,
      * before → after), who reviewed it (name) and the current uk/en texts.
      */
-    public record CardReview(CardExportItem item, Map<String, Object> last, String importedAt, String reviewedAt,
-                             Long reviewedBy, String reviewedByName,
+    public record CardReview(CardExportItem item, Map<String, Object> last, @Nullable String importedAt, @Nullable String reviewedAt,
+                             @Nullable Long reviewedBy, @Nullable String reviewedByName,
                              Map<String, Map<String, CardTextState>> translations) {
     }
 

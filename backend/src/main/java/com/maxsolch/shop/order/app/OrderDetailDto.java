@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.app;
 
+import org.springframework.lang.Nullable;
+
 import com.maxsolch.shop.order.app.OrderReturnsView.ExchangeDto;
 import com.maxsolch.shop.order.app.OrderReturnsView.ReturnRecordDto;
 import java.time.Instant;
@@ -15,38 +17,38 @@ public record OrderDetailDto(
         String currency,
         String customerName,
         String phone,
-        String comment,
-        String promoCode,
-        String deliveryMethod,
-        String npCityName,
-        String npWarehouseName,
-        String paymentOptionTitle,
-        String trackingNumber,
-        String rejectReason,
+        @Nullable String comment,
+        @Nullable String promoCode,
+        @Nullable String deliveryMethod,
+        @Nullable String npCityName,
+        @Nullable String npWarehouseName,
+        @Nullable String paymentOptionTitle,
+        @Nullable String trackingNumber,
+        @Nullable String rejectReason,
         List<OrderItemDto> items,
         /** Online payment (monobank) state — latest invoice; never null. */
-        OnlinePaymentDto payment,
-        Long tgUserId,
-        String tgUsername,
+        @Nullable OnlinePaymentDto payment,
+        @Nullable Long tgUserId,
+        @Nullable String tgUsername,
         Instant createdAt,
-        Instant approvedAt,
-        Instant shippedAt,
-        Instant deliveredAt,
-        Instant rejectedAt,
+        @Nullable Instant approvedAt,
+        @Nullable Instant shippedAt,
+        @Nullable Instant deliveredAt,
+        @Nullable Instant rejectedAt,
         boolean paid,
-        Instant paidAt,
+        @Nullable Instant paidAt,
         long prepaymentMinor,
         long receivedMinor,
         /** Pay online by then or the order is cancelled; null = order placed before online payment. */
-        Instant paymentDueAt,
+        @Nullable Instant paymentDueAt,
         /** Still to pay online now (prepayment or total minus what arrived); 0 = nothing to pay. */
         long amountDueMinor,
         /** MINIAPP | WEB | ADMIN — where the order was placed. */
         String source,
         /** uk | ru | en chosen by the customer in the shop (users.locale); null = never chose. */
-        String customerLocale,
+        @Nullable String customerLocale,
         /** RejectReasonCode name, null = not specified. */
-        String rejectReasonCode,
+        @Nullable String rejectReasonCode,
         /** Money given back to the customer (returns). */
         long refundedMinor,
         Instant returnedAt,
@@ -54,37 +56,37 @@ public record OrderDetailDto(
         String npCityRef,
         String npWarehouseRef,
         /** Customer's cancellation request of a paid order: PENDING | APPROVED | DECLINED, null = none. */
-        String cancelRequestStatus,
-        String cancelRequestReason,
-        Instant cancelRequestedAt,
-        Instant cancelRequestResolvedAt,
+        @Nullable String cancelRequestStatus,
+        @Nullable String cancelRequestReason,
+        @Nullable Instant cancelRequestedAt,
+        @Nullable Instant cancelRequestResolvedAt,
         /** Admin's answer (decline reason) shown to the customer. */
-        String cancelRequestAdminComment,
+        @Nullable String cancelRequestAdminComment,
         /** Exchanges made on this order (V51), oldest first; empty when none. */
         List<ExchangeDto> exchanges,
         /** Gift case (V57): null = none, SEALED (the customer has not opened it; the prize line is hidden from them), OPENED. */
-        String giftCaseStatus,
-        Instant giftCaseOpenedAt,
+        @Nullable String giftCaseStatus,
+        @Nullable Instant giftCaseOpenedAt,
         /** SEALED and the order is paid — the customer may open it now (once). */
         boolean giftCaseOpenable,
         /** Gift of the order (V57): tier, guaranteed discount or the case with its prize, code and swap; null = none. */
-        com.maxsolch.shop.order.app.OrderGiftDtos.OrderGiftDto gift,
+        @Nullable com.maxsolch.shop.order.app.OrderGiftDtos.OrderGiftDto gift,
         /** Part of discountMinor taken as the case tier's guaranteed discount (V57). */
         long giftDiscountMinor,
         /** Replacement of an exchange on that order (V69): the difference is paid online or наложкой. */
-        String exchangeOfId,
+        @Nullable String exchangeOfId,
         /** Paid value of the units refused at the branch (partial pickup, V72): not part of наложка. */
         long uncollectedMinor,
         /** Admin only (V68): archive, money journal, write-offs, the parcel coming back; null for customers. */
-        AdminExtras admin) {
+        @Nullable AdminExtras admin) {
 
     @lombok.Builder
-    public record AdminExtras(Instant archivedAt,
-                              String archivedBy,
-                              String archiveReason,
+    public record AdminExtras(@Nullable Instant archivedAt,
+                              @Nullable String archivedBy,
+                              @Nullable String archiveReason,
                               /** IN_TRANSIT | RECEIVED | null — the refused parcel on its way back. */
-                              String returnStatus,
-                              Instant returnReceivedAt,
+                              @Nullable String returnStatus,
+                              @Nullable Instant returnReceivedAt,
                               List<MovementDto> movements,
                               /** Sum of RETAINED rows: kept by the shop on purpose (delivery). */
                               long retainedMinor,
@@ -92,13 +94,13 @@ public record OrderDetailDto(
                               long monoRefundableMinor,
                               List<WriteoffDto> writeoffs,
                               /** This order replaces goods of that one (V69 exchange); null = not. */
-                              String exchangeOfId,
+                              @Nullable String exchangeOfId,
                               /** Replacement orders of exchanges made on this one, oldest first. */
                               List<String> exchangeOrderIds,
                               /** Returns and exchanges of this order (V70), oldest first. */
                               List<ReturnRecordDto> returns,
                               /** This order was merged into that one (V71); null = not. */
-                              String mergedIntoId,
+                              @Nullable String mergedIntoId,
                               /** Orders merged into this one, oldest first. */
                               List<String> mergedFromIds) {
     }
@@ -112,15 +114,15 @@ public record OrderDetailDto(
                                     long receivedMinor,
                                     long prepaymentMinor,
                                     boolean paid,
-                                    String paymentOptionTitle,
-                                    String npCityName,
-                                    String npWarehouseName,
-                                    String customerName,
-                                    String trackingNumber,
-                                    String giftCaseStatus,
+                                    @Nullable String paymentOptionTitle,
+                                    @Nullable String npCityName,
+                                    @Nullable String npWarehouseName,
+                                    @Nullable String customerName,
+                                    @Nullable String trackingNumber,
+                                    @Nullable String giftCaseStatus,
                                     List<String> lines,
                                     /** Why it cannot be merged now; null = it can. */
-                                    String blocker,
+                                    @Nullable String blocker,
                                     /** The order that stays, after the merge. */
                                     long mergedTotalMinor,
                                     long mergedReceivedMinor,
@@ -133,9 +135,9 @@ public record OrderDetailDto(
                               String channel,
                               long amountMinor,
                               Instant occurredAt,
-                              String adminName,
-                              String note,
-                              String invoiceExtId,
+                              @Nullable String adminName,
+                              @Nullable String note,
+                              @Nullable String invoiceExtId,
                               String source) {
     }
 
@@ -144,11 +146,11 @@ public record OrderDetailDto(
                               int quantity,
                               /** Of them: cancelled with the return or back on the shelf (V70). */
                               int undoneQty,
-                              String undoneNote,
+                              @Nullable String undoneNote,
                               String reason,
                               long unitValueMinor,
-                              String note,
-                              String adminName,
+                              @Nullable String note,
+                              @Nullable String adminName,
                               Instant createdAt) {
     }
 }

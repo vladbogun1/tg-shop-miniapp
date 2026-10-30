@@ -19,13 +19,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "entityId",
-          "entityType",
-          "field",
-          "locale",
-          "sourceHash"
-        ],
         "type" : "object"
       },
       "AcceptRequest" : {
@@ -37,9 +30,6 @@
             "type" : "array"
           }
         },
-        "required" : [
-          "items"
-        ],
         "type" : "object"
       },
       "AcceptResult" : {
@@ -141,11 +131,7 @@
           }
         },
         "required" : [
-          "gift",
-          "notifyCustomer",
-          "productId",
-          "quantity",
-          "variantId"
+          "productId"
         ],
         "type" : "object"
       },
@@ -161,9 +147,11 @@
             "type" : "string"
           },
           "logoMode" : {
+            "nullable" : true,
             "type" : "string"
           },
           "logoUrl" : {
+            "nullable" : true,
             "type" : "string"
           },
           "name" : {
@@ -181,6 +169,7 @@
             "type" : "integer"
           },
           "website" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -213,10 +202,12 @@
           },
           "max" : {
             "format" : "double",
+            "nullable" : true,
             "type" : "number"
           },
           "min" : {
             "format" : "double",
+            "nullable" : true,
             "type" : "number"
           }
         },
@@ -233,6 +224,7 @@
       "AdminCategoryDto" : {
         "properties" : {
           "artKind" : {
+            "nullable" : true,
             "type" : "string"
           },
           "depth" : {
@@ -240,12 +232,14 @@
             "type" : "integer"
           },
           "h1" : {
+            "nullable" : true,
             "type" : "string"
           },
           "id" : {
             "type" : "string"
           },
           "introText" : {
+            "nullable" : true,
             "type" : "string"
           },
           "leaf" : {
@@ -255,6 +249,7 @@
             "type" : "string"
           },
           "parentId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "productCount" : {
@@ -266,9 +261,11 @@
             "type" : "integer"
           },
           "seoDescription" : {
+            "nullable" : true,
             "type" : "string"
           },
           "seoTitle" : {
+            "nullable" : true,
             "type" : "string"
           },
           "showInMenu" : {
@@ -363,37 +360,29 @@
           }
         },
         "required" : [
-          "comment",
           "customerName",
-          "deliveryMethod",
           "items",
-          "note",
-          "npCityName",
-          "npCityRef",
-          "npWarehouseName",
-          "npWarehouseRef",
-          "paidChannel",
-          "paidMinor",
-          "paymentOptionId",
-          "phone",
-          "promoCode",
-          "tgUserId"
+          "phone"
         ],
         "type" : "object"
       },
       "AdminExtras" : {
         "properties" : {
           "archiveReason" : {
+            "nullable" : true,
             "type" : "string"
           },
           "archivedAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "archivedBy" : {
+            "nullable" : true,
             "type" : "string"
           },
           "exchangeOfId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "exchangeOrderIds" : {
@@ -409,6 +398,7 @@
             "type" : "array"
           },
           "mergedIntoId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "monoRefundableMinor" : {
@@ -427,9 +417,11 @@
           },
           "returnReceivedAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "returnStatus" : {
+            "nullable" : true,
             "type" : "string"
           },
           "returns" : {
@@ -753,10 +745,16 @@
             "type" : "string"
           },
           "brandRef" : {
-            "$ref" : "#/components/schemas/BrandRefDto"
+            "allOf" : [
+              {
+                "$ref" : "#/components/schemas/BrandRefDto"
+              }
+            ],
+            "nullable" : true
           },
           "cardConfidence" : {
             "format" : "int32",
+            "nullable" : true,
             "type" : "integer"
           },
           "cardMeta" : {
@@ -773,18 +771,22 @@
           },
           "compareAtMinor" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "condition" : {
+            "nullable" : true,
             "type" : "string"
           },
           "conditionNote" : {
+            "nullable" : true,
             "type" : "string"
           },
           "currency" : {
             "type" : "string"
           },
           "description" : {
+            "nullable" : true,
             "type" : "string"
           },
           "id" : {
@@ -794,6 +796,7 @@
             "items" : {
               "$ref" : "#/components/schemas/ProductImageDto"
             },
+            "nullable" : true,
             "type" : "array"
           },
           "missingRequired" : {
@@ -807,15 +810,19 @@
             "type" : "integer"
           },
           "seoDescription" : {
+            "nullable" : true,
             "type" : "string"
           },
           "seoTitle" : {
+            "nullable" : true,
             "type" : "string"
           },
           "sku" : {
+            "nullable" : true,
             "type" : "string"
           },
           "slug" : {
+            "nullable" : true,
             "type" : "string"
           },
           "specIssues" : {
@@ -838,6 +845,7 @@
             "items" : {
               "$ref" : "#/components/schemas/TagDto"
             },
+            "nullable" : true,
             "type" : "array"
           },
           "title" : {
@@ -850,6 +858,7 @@
             "items" : {
               "$ref" : "#/components/schemas/ProductVariantDto"
             },
+            "nullable" : true,
             "type" : "array"
           },
           "waitingPeople" : {
@@ -1062,9 +1071,11 @@
             "items" : {
               "$ref" : "#/components/schemas/AdminBucketDto"
             },
+            "nullable" : true,
             "type" : "array"
           },
           "categoryId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "comparable" : {
@@ -1080,6 +1091,7 @@
             "type" : "boolean"
           },
           "hint" : {
+            "nullable" : true,
             "type" : "string"
           },
           "id" : {
@@ -1120,12 +1132,15 @@
             "type" : "string"
           },
           "unitEn" : {
+            "nullable" : true,
             "type" : "string"
           },
           "unitRu" : {
+            "nullable" : true,
             "type" : "string"
           },
           "unitUk" : {
+            "nullable" : true,
             "type" : "string"
           },
           "usedCount" : {
@@ -1183,6 +1198,7 @@
           },
           "sort" : {
             "format" : "int32",
+            "nullable" : true,
             "type" : "integer"
           }
         },
@@ -1269,13 +1285,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "amountMinor",
-          "clear",
-          "notifyCustomer",
-          "percent",
-          "promoCode"
-        ],
         "type" : "object"
       },
       "ApproveResponse" : {
@@ -1319,9 +1328,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "reason"
-        ],
         "type" : "object"
       },
       "ArriveLine" : {
@@ -1339,11 +1345,6 @@
             "type" : "integer"
           }
         },
-        "required" : [
-          "itemId",
-          "priceMinor",
-          "qtyArrived"
-        ],
         "type" : "object"
       },
       "ArriveLineResult" : {
@@ -1425,12 +1426,6 @@
             "type" : "array"
           }
         },
-        "required" : [
-          "distribution",
-          "dryRun",
-          "holdHours",
-          "items"
-        ],
         "type" : "object"
       },
       "ArriveResult" : {
@@ -1641,19 +1636,6 @@
             "type" : "array"
           }
         },
-        "required" : [
-          "categories",
-          "costShare",
-          "discounts",
-          "jackpot",
-          "locked",
-          "marginPercent",
-          "minStock",
-          "newOnly",
-          "prizes",
-          "seed",
-          "superCategories"
-        ],
         "type" : "object"
       },
       "BatchDto" : {
@@ -1902,21 +1884,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "currency",
-          "distribution",
-          "etaFrom",
-          "etaMode",
-          "etaTo",
-          "fxRate",
-          "holdHours",
-          "items",
-          "preorderOpen",
-          "privateNote",
-          "publicNote",
-          "supplierId",
-          "title"
-        ],
         "type" : "object"
       },
       "BatchSalesDto" : {
@@ -2196,10 +2163,6 @@
             "type" : "boolean"
           }
         },
-        "required" : [
-          "active",
-          "archived"
-        ],
         "type" : "object"
       },
       "BrandRefDto" : {
@@ -2263,15 +2226,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "aliases",
-          "logoMode",
-          "logoUrl",
-          "name",
-          "slug",
-          "sortOrder",
-          "website"
-        ],
         "type" : "object"
       },
       "BroadcastHistoryDto" : {
@@ -2391,14 +2345,7 @@
           }
         },
         "required" : [
-          "audience",
-          "buttonText",
-          "lang",
-          "text",
-          "textEn",
-          "textRu",
-          "textUk",
-          "withButton"
+          "text"
         ],
         "type" : "object"
       },
@@ -2479,10 +2426,7 @@
           }
         },
         "required" : [
-          "buttonText",
-          "telegramUserId",
-          "text",
-          "withButton"
+          "text"
         ],
         "type" : "object"
       },
@@ -2512,13 +2456,6 @@
             "type" : "number"
           }
         },
-        "required" : [
-          "labelEn",
-          "labelRu",
-          "labelUk",
-          "max",
-          "min"
-        ],
         "type" : "object"
       },
       "CancelOrderRequest" : {
@@ -2527,9 +2464,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "reason"
-        ],
         "type" : "object"
       },
       "CancelRequest" : {
@@ -2541,10 +2475,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "closeQueue",
-          "note"
-        ],
         "type" : "object"
       },
       "CancelReturnRequest" : {
@@ -2558,10 +2488,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "money",
-          "note"
-        ],
         "type" : "object"
       },
       "CardAcceptRequest" : {
@@ -2588,13 +2514,6 @@
             "type" : "object"
           }
         },
-        "required" : [
-          "description",
-          "ready",
-          "specs",
-          "title",
-          "translations"
-        ],
         "type" : "object"
       },
       "CardExportItem" : {
@@ -2607,6 +2526,7 @@
           },
           "cardConfidence" : {
             "format" : "int32",
+            "nullable" : true,
             "type" : "integer"
           },
           "cardMeta" : {
@@ -2625,9 +2545,11 @@
             "type" : "string"
           },
           "condition" : {
+            "nullable" : true,
             "type" : "string"
           },
           "conditionNote" : {
+            "nullable" : true,
             "type" : "string"
           },
           "description" : {
@@ -2774,25 +2696,6 @@
             "type" : "object"
           }
         },
-        "required" : [
-          "brand",
-          "categorySlug",
-          "condition",
-          "conditionNote",
-          "confidence",
-          "description",
-          "fieldSources",
-          "markReady",
-          "model",
-          "notes",
-          "overall",
-          "productId",
-          "publish",
-          "sources",
-          "specs",
-          "title",
-          "translations"
-        ],
         "type" : "object"
       },
       "CardIssue" : {
@@ -2860,6 +2763,7 @@
             "type" : "boolean"
           },
           "imageUrl" : {
+            "nullable" : true,
             "type" : "string"
           },
           "quantity" : {
@@ -2911,6 +2815,7 @@
       "CardReview" : {
         "properties" : {
           "importedAt" : {
+            "nullable" : true,
             "type" : "string"
           },
           "item" : {
@@ -2923,13 +2828,16 @@
             "type" : "object"
           },
           "reviewedAt" : {
+            "nullable" : true,
             "type" : "string"
           },
           "reviewedBy" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "reviewedByName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "translations" : {
@@ -2959,9 +2867,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "status"
-        ],
         "type" : "object"
       },
       "CardTextState" : {
@@ -2995,11 +2900,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "conditionNote",
-          "description",
-          "title"
-        ],
         "type" : "object"
       },
       "CardsImportRequest" : {
@@ -3014,10 +2914,6 @@
             "type" : "boolean"
           }
         },
-        "required" : [
-          "items",
-          "replaceSpecs"
-        ],
         "type" : "object"
       },
       "CardsImportResult" : {
@@ -3207,11 +3103,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "productId",
-          "quantity",
-          "variantId"
-        ],
         "type" : "object"
       },
       "CartWriteRequest" : {
@@ -3259,16 +3150,6 @@
             "type" : "integer"
           }
         },
-        "required" : [
-          "active",
-          "discountPercent",
-          "discountUah",
-          "id",
-          "kind",
-          "productId",
-          "rarity",
-          "weight"
-        ],
         "type" : "object"
       },
       "CaseDraftRequest" : {
@@ -3280,9 +3161,6 @@
             "type" : "array"
           }
         },
-        "required" : [
-          "items"
-        ],
         "type" : "object"
       },
       "CaseItemAdminDto" : {
@@ -3375,6 +3253,7 @@
             "type" : "integer"
           },
           "imageUrl" : {
+            "nullable" : true,
             "type" : "string"
           },
           "key" : {
@@ -3388,12 +3267,14 @@
             "type" : "integer"
           },
           "productId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "rarity" : {
             "type" : "string"
           },
           "title" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -3444,17 +3325,6 @@
             "type" : "integer"
           }
         },
-        "required" : [
-          "active",
-          "discountPercent",
-          "discountUah",
-          "kind",
-          "productId",
-          "rarity",
-          "sortOrder",
-          "tier",
-          "weight"
-        ],
         "type" : "object"
       },
       "CaseOpenDto" : {
@@ -3501,9 +3371,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "variantId"
-        ],
         "type" : "object"
       },
       "CatalogBrandDto" : {
@@ -3512,9 +3379,11 @@
             "type" : "string"
           },
           "logoMode" : {
+            "nullable" : true,
             "type" : "string"
           },
           "logoUrl" : {
+            "nullable" : true,
             "type" : "string"
           },
           "name" : {
@@ -3541,6 +3410,7 @@
       "CatalogCategoryDto" : {
         "properties" : {
           "artKind" : {
+            "nullable" : true,
             "type" : "string"
           },
           "id" : {
@@ -3550,6 +3420,7 @@
             "type" : "string"
           },
           "parentId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "productCount" : {
@@ -3624,21 +3495,25 @@
       "CategoryDetailDto" : {
         "properties" : {
           "artKind" : {
+            "nullable" : true,
             "type" : "string"
           },
           "h1" : {
+            "nullable" : true,
             "type" : "string"
           },
           "id" : {
             "type" : "string"
           },
           "introText" : {
+            "nullable" : true,
             "type" : "string"
           },
           "name" : {
             "type" : "string"
           },
           "parentId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "productCount" : {
@@ -3646,9 +3521,11 @@
             "type" : "integer"
           },
           "seoDescription" : {
+            "nullable" : true,
             "type" : "string"
           },
           "seoTitle" : {
+            "nullable" : true,
             "type" : "string"
           },
           "showInMenu" : {
@@ -3681,6 +3558,7 @@
       "CategoryDto" : {
         "properties" : {
           "artKind" : {
+            "nullable" : true,
             "type" : "string"
           },
           "id" : {
@@ -3690,6 +3568,7 @@
             "type" : "string"
           },
           "parentId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "productCount" : {
@@ -3798,18 +3677,6 @@
             "type" : "integer"
           }
         },
-        "required" : [
-          "artKind",
-          "h1",
-          "introText",
-          "name",
-          "parentId",
-          "seoDescription",
-          "seoTitle",
-          "showInMenu",
-          "slug",
-          "sortOrder"
-        ],
         "type" : "object"
       },
       "ChangeItemQtyRequest" : {
@@ -3824,10 +3691,6 @@
             "type" : "integer"
           }
         },
-        "required" : [
-          "notifyCustomer",
-          "quantity"
-        ],
         "type" : "object"
       },
       "ChannelRow" : {
@@ -3863,10 +3726,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "events",
-          "sessionId"
-        ],
         "type" : "object"
       },
       "ClientEventDto" : {
@@ -3888,13 +3747,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "clientTime",
-          "event",
-          "meta",
-          "path",
-          "target"
-        ],
         "type" : "object"
       },
       "CodeRequest" : {
@@ -3905,9 +3757,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "code"
-        ],
         "type" : "object"
       },
       "CohortRow" : {
@@ -3986,6 +3835,7 @@
       "ConditionDto" : {
         "properties" : {
           "label" : {
+            "nullable" : true,
             "type" : "string"
           },
           "value" : {
@@ -4032,16 +3882,20 @@
       "ConversationDto" : {
         "properties" : {
           "customerName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "lastAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "lastPreview" : {
+            "nullable" : true,
             "type" : "string"
           },
           "lastSenderType" : {
+            "nullable" : true,
             "type" : "string"
           },
           "orderId" : {
@@ -4188,18 +4042,10 @@
           }
         },
         "required" : [
-          "comment",
           "customerName",
           "deliveryMethod",
-          "giftChoice",
           "items",
-          "npCityName",
-          "npCityRef",
-          "npWarehouseName",
-          "npWarehouseRef",
-          "paymentOptionId",
-          "phone",
-          "promoCode"
+          "phone"
         ],
         "type" : "object"
       },
@@ -4243,15 +4089,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "attachmentUrl",
-          "fileName",
-          "mimeType",
-          "productId",
-          "subject",
-          "text",
-          "type"
-        ],
         "type" : "object"
       },
       "CustomerKpis" : {
@@ -4578,16 +4415,12 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "entityId",
-          "type",
-          "version"
-        ],
         "type" : "object"
       },
       "DispatchItem" : {
         "properties" : {
           "imageUrl" : {
+            "nullable" : true,
             "type" : "string"
           },
           "priceMinor" : {
@@ -4602,6 +4435,7 @@
             "type" : "string"
           },
           "variantName" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -4622,6 +4456,7 @@
           },
           "approvedAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "codMinor" : {
@@ -4651,9 +4486,11 @@
             "type" : "array"
           },
           "npCityName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "npWarehouseName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "paid" : {
@@ -4661,9 +4498,11 @@
           },
           "paymentDueAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "paymentOptionTitle" : {
+            "nullable" : true,
             "type" : "string"
           },
           "phone" : {
@@ -4688,6 +4527,7 @@
             "type" : "integer"
           },
           "trackingNumber" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -4793,9 +4633,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "endpoint"
-        ],
         "type" : "object"
       },
       "ErrorRow" : {
@@ -4856,6 +4693,7 @@
       "ExchangeDto" : {
         "properties" : {
           "adminName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "createdAt" : {
@@ -4866,15 +4704,18 @@
             "type" : "string"
           },
           "newOrderId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "note" : {
+            "nullable" : true,
             "type" : "string"
           },
           "previousStatus" : {
             "type" : "string"
           },
           "previousTracking" : {
+            "nullable" : true,
             "type" : "string"
           },
           "returnedSummary" : {
@@ -4929,13 +4770,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "items",
-          "note",
-          "notifyCustomer",
-          "returned",
-          "targetStatus"
-        ],
         "type" : "object"
       },
       "ExpenseDto" : {
@@ -5059,15 +4893,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "amountMinor",
-          "currency",
-          "fxRate",
-          "itemId",
-          "kind",
-          "note",
-          "spentOn"
-        ],
         "type" : "object"
       },
       "ExportItem" : {
@@ -5131,14 +4956,17 @@
             "type" : "string"
           },
           "label" : {
+            "nullable" : true,
             "type" : "string"
           },
           "max" : {
             "format" : "double",
+            "nullable" : true,
             "type" : "number"
           },
           "min" : {
             "format" : "double",
+            "nullable" : true,
             "type" : "number"
           }
         },
@@ -5203,10 +5031,6 @@
             "type" : "boolean"
           }
         },
-        "required" : [
-          "code",
-          "finance"
-        ],
         "type" : "object"
       },
       "Forecast" : {
@@ -5689,13 +5513,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "entityId",
-          "entityType",
-          "field",
-          "sourceHash",
-          "text"
-        ],
         "type" : "object"
       },
       "ImportRequest" : {
@@ -5716,12 +5533,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "force",
-          "items",
-          "locale",
-          "origin"
-        ],
         "type" : "object"
       },
       "ImportResult" : {
@@ -5941,9 +5752,7 @@
           }
         },
         "required" : [
-          "password",
-          "token",
-          "username"
+          "token"
         ],
         "type" : "object"
       },
@@ -5975,9 +5784,7 @@
           }
         },
         "required" : [
-          "code",
-          "token",
-          "trustDevice"
+          "token"
         ],
         "type" : "object"
       },
@@ -6064,12 +5871,6 @@
             "type" : "integer"
           }
         },
-        "required" : [
-          "code",
-          "name",
-          "role",
-          "telegramUserId"
-        ],
         "type" : "object"
       },
       "InviteRow" : {
@@ -6263,13 +6064,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "id",
-          "productId",
-          "qtyOrdered",
-          "unitPriceFx",
-          "variantId"
-        ],
         "type" : "object"
       },
       "JsonNode" : {
@@ -6384,6 +6178,7 @@
             "type" : "integer"
           },
           "variantId" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -6604,10 +6399,6 @@
             "type" : "array"
           }
         },
-        "required" : [
-          "brands",
-          "products"
-        ],
         "type" : "object"
       },
       "ManualDiscountDto" : {
@@ -6627,6 +6418,7 @@
             "type" : "string"
           },
           "label" : {
+            "nullable" : true,
             "type" : "string"
           },
           "status" : {
@@ -6634,6 +6426,7 @@
           },
           "tgUserId" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "totalMinor" : {
@@ -6829,6 +6622,7 @@
       "MergeCandidateDto" : {
         "properties" : {
           "blocker" : {
+            "nullable" : true,
             "type" : "string"
           },
           "createdAt" : {
@@ -6836,9 +6630,11 @@
             "type" : "string"
           },
           "customerName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "giftCaseStatus" : {
+            "nullable" : true,
             "type" : "string"
           },
           "id" : {
@@ -6867,15 +6663,18 @@
             "type" : "integer"
           },
           "npCityName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "npWarehouseName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "paid" : {
             "type" : "boolean"
           },
           "paymentOptionTitle" : {
+            "nullable" : true,
             "type" : "string"
           },
           "prepaymentMinor" : {
@@ -6894,6 +6693,7 @@
             "type" : "integer"
           },
           "trackingNumber" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -6938,10 +6738,7 @@
           }
         },
         "required" : [
-          "note",
-          "notifyCustomer",
-          "sourceId",
-          "useSourceDelivery"
+          "sourceId"
         ],
         "type" : "object"
       },
@@ -7167,12 +6964,6 @@
             "type" : "integer"
           }
         },
-        "required" : [
-          "itemId",
-          "manualExtraMinor",
-          "unitPriceFx",
-          "weightG"
-        ],
         "type" : "object"
       },
       "MoneyRequest" : {
@@ -7196,13 +6987,6 @@
             "type" : "array"
           }
         },
-        "required" : [
-          "allocation",
-          "costsFinal",
-          "currency",
-          "fxRate",
-          "lines"
-        ],
         "type" : "object"
       },
       "MonobankStatusDto" : {
@@ -7277,6 +7061,7 @@
       "MovementDto" : {
         "properties" : {
           "adminName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "amountMinor" : {
@@ -7291,12 +7076,14 @@
             "type" : "integer"
           },
           "invoiceExtId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "kind" : {
             "type" : "string"
           },
           "note" : {
+            "nullable" : true,
             "type" : "string"
           },
           "occurredAt" : {
@@ -7475,9 +7262,7 @@
           }
         },
         "required" : [
-          "productId",
-          "quantity",
-          "variantId"
+          "productId"
         ],
         "type" : "object"
       },
@@ -7588,18 +7373,23 @@
           },
           "expiresAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "failureReason" : {
+            "nullable" : true,
             "type" : "string"
           },
           "maskedPan" : {
+            "nullable" : true,
             "type" : "string"
           },
           "pageUrl" : {
+            "nullable" : true,
             "type" : "string"
           },
           "paymentMethod" : {
+            "nullable" : true,
             "type" : "string"
           },
           "status" : {
@@ -7631,11 +7421,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "productId",
-          "unitCostMinor",
-          "variantId"
-        ],
         "type" : "object"
       },
       "OpeningRowDto" : {
@@ -7787,14 +7572,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "aliases",
-          "labelEn",
-          "labelRu",
-          "labelUk",
-          "sort",
-          "value"
-        ],
         "type" : "object"
       },
       "OrderBoardDto" : {
@@ -7840,6 +7617,7 @@
             "type" : "boolean"
           },
           "cancelRequestStatus" : {
+            "nullable" : true,
             "type" : "string"
           },
           "createdAt" : {
@@ -7856,6 +7634,7 @@
             "type" : "string"
           },
           "exchangeOfId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "exchangeOrderIds" : {
@@ -7882,6 +7661,7 @@
           },
           "paymentDueAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "paymentOptionTitle" : {
@@ -7892,6 +7672,7 @@
             "type" : "integer"
           },
           "returnStatus" : {
+            "nullable" : true,
             "type" : "string"
           },
           "returnedUnits" : {
@@ -7952,7 +7733,12 @@
       "OrderDetailDto" : {
         "properties" : {
           "admin" : {
-            "$ref" : "#/components/schemas/AdminExtras"
+            "allOf" : [
+              {
+                "$ref" : "#/components/schemas/AdminExtras"
+              }
+            ],
+            "nullable" : true
           },
           "amountDueMinor" : {
             "format" : "int64",
@@ -7960,26 +7746,33 @@
           },
           "approvedAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "cancelRequestAdminComment" : {
+            "nullable" : true,
             "type" : "string"
           },
           "cancelRequestReason" : {
+            "nullable" : true,
             "type" : "string"
           },
           "cancelRequestResolvedAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "cancelRequestStatus" : {
+            "nullable" : true,
             "type" : "string"
           },
           "cancelRequestedAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "comment" : {
+            "nullable" : true,
             "type" : "string"
           },
           "createdAt" : {
@@ -7990,6 +7783,7 @@
             "type" : "string"
           },
           "customerLocale" : {
+            "nullable" : true,
             "type" : "string"
           },
           "customerName" : {
@@ -7997,9 +7791,11 @@
           },
           "deliveredAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "deliveryMethod" : {
+            "nullable" : true,
             "type" : "string"
           },
           "discountMinor" : {
@@ -8007,6 +7803,7 @@
             "type" : "integer"
           },
           "exchangeOfId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "exchanges" : {
@@ -8016,16 +7813,23 @@
             "type" : "array"
           },
           "gift" : {
-            "$ref" : "#/components/schemas/OrderGiftDto"
+            "allOf" : [
+              {
+                "$ref" : "#/components/schemas/OrderGiftDto"
+              }
+            ],
+            "nullable" : true
           },
           "giftCaseOpenable" : {
             "type" : "boolean"
           },
           "giftCaseOpenedAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "giftCaseStatus" : {
+            "nullable" : true,
             "type" : "string"
           },
           "giftDiscountMinor" : {
@@ -8042,12 +7846,14 @@
             "type" : "array"
           },
           "npCityName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "npCityRef" : {
             "type" : "string"
           },
           "npWarehouseName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "npWarehouseRef" : {
@@ -8058,16 +7864,24 @@
           },
           "paidAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "payment" : {
-            "$ref" : "#/components/schemas/OnlinePaymentDto"
+            "allOf" : [
+              {
+                "$ref" : "#/components/schemas/OnlinePaymentDto"
+              }
+            ],
+            "nullable" : true
           },
           "paymentDueAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "paymentOptionTitle" : {
+            "nullable" : true,
             "type" : "string"
           },
           "phone" : {
@@ -8078,6 +7892,7 @@
             "type" : "integer"
           },
           "promoCode" : {
+            "nullable" : true,
             "type" : "string"
           },
           "receivedMinor" : {
@@ -8089,13 +7904,16 @@
             "type" : "integer"
           },
           "rejectReason" : {
+            "nullable" : true,
             "type" : "string"
           },
           "rejectReasonCode" : {
+            "nullable" : true,
             "type" : "string"
           },
           "rejectedAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "returnedAt" : {
@@ -8104,6 +7922,7 @@
           },
           "shippedAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "source" : {
@@ -8118,9 +7937,11 @@
           },
           "tgUserId" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "tgUsername" : {
+            "nullable" : true,
             "type" : "string"
           },
           "totalMinor" : {
@@ -8128,6 +7949,7 @@
             "type" : "integer"
           },
           "trackingNumber" : {
+            "nullable" : true,
             "type" : "string"
           },
           "uncollectedMinor" : {
@@ -8194,6 +8016,7 @@
       "OrderGiftDto" : {
         "properties" : {
           "caseStatus" : {
+            "nullable" : true,
             "type" : "string"
           },
           "guaranteedDiscountMinor" : {
@@ -8201,24 +8024,46 @@
             "type" : "integer"
           },
           "lowMargin" : {
+            "nullable" : true,
             "type" : "boolean"
           },
           "openable" : {
             "type" : "boolean"
           },
           "prize" : {
-            "$ref" : "#/components/schemas/CaseItemDto"
+            "allOf" : [
+              {
+                "$ref" : "#/components/schemas/CaseItemDto"
+              }
+            ],
+            "nullable" : true
           },
           "promo" : {
-            "$ref" : "#/components/schemas/PromoDto"
+            "allOf" : [
+              {
+                "$ref" : "#/components/schemas/PromoDto"
+              }
+            ],
+            "nullable" : true
           },
           "size" : {
-            "$ref" : "#/components/schemas/SizeDto"
+            "allOf" : [
+              {
+                "$ref" : "#/components/schemas/SizeDto"
+              }
+            ],
+            "nullable" : true
           },
           "swap" : {
-            "$ref" : "#/components/schemas/SwapDto"
+            "allOf" : [
+              {
+                "$ref" : "#/components/schemas/SwapDto"
+              }
+            ],
+            "nullable" : true
           },
           "tier" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -8241,6 +8086,7 @@
             "type" : "boolean"
           },
           "caseRarity" : {
+            "nullable" : true,
             "type" : "string"
           },
           "gift" : {
@@ -8248,9 +8094,11 @@
           },
           "id" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "imageUrl" : {
+            "nullable" : true,
             "type" : "string"
           },
           "priceMinor" : {
@@ -8258,6 +8106,7 @@
             "type" : "integer"
           },
           "productId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "quantity" : {
@@ -8280,9 +8129,11 @@
             "type" : "integer"
           },
           "variantId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "variantName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "variantPending" : {
@@ -8418,6 +8269,7 @@
             "type" : "integer"
           },
           "cancelRequestStatus" : {
+            "nullable" : true,
             "type" : "string"
           },
           "createdAt" : {
@@ -8431,6 +8283,7 @@
             "type" : "boolean"
           },
           "giftCaseStatus" : {
+            "nullable" : true,
             "type" : "string"
           },
           "id" : {
@@ -8445,6 +8298,7 @@
           },
           "paymentDueAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "receivedMinor" : {
@@ -8901,22 +8755,31 @@
             "type" : "boolean"
           },
           "brand" : {
+            "nullable" : true,
             "type" : "string"
           },
           "brandRef" : {
-            "$ref" : "#/components/schemas/BrandRefDto"
+            "allOf" : [
+              {
+                "$ref" : "#/components/schemas/BrandRefDto"
+              }
+            ],
+            "nullable" : true
           },
           "categoryId" : {
             "type" : "string"
           },
           "compareAtMinor" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "condition" : {
+            "nullable" : true,
             "type" : "string"
           },
           "conditionNote" : {
+            "nullable" : true,
             "type" : "string"
           },
           "createdAt" : {
@@ -8924,9 +8787,11 @@
             "type" : "string"
           },
           "currency" : {
+            "nullable" : true,
             "type" : "string"
           },
           "description" : {
+            "nullable" : true,
             "type" : "string"
           },
           "id" : {
@@ -8936,6 +8801,7 @@
             "items" : {
               "$ref" : "#/components/schemas/ProductImageDto"
             },
+            "nullable" : true,
             "type" : "array"
           },
           "priceMinor" : {
@@ -8944,6 +8810,7 @@
           },
           "ratingAvg" : {
             "format" : "double",
+            "nullable" : true,
             "type" : "number"
           },
           "ratingCount" : {
@@ -8951,15 +8818,19 @@
             "type" : "integer"
           },
           "seoDescription" : {
+            "nullable" : true,
             "type" : "string"
           },
           "seoTitle" : {
+            "nullable" : true,
             "type" : "string"
           },
           "sku" : {
+            "nullable" : true,
             "type" : "string"
           },
           "slug" : {
+            "nullable" : true,
             "type" : "string"
           },
           "soldCount" : {
@@ -8980,6 +8851,7 @@
             "items" : {
               "$ref" : "#/components/schemas/TagDto"
             },
+            "nullable" : true,
             "type" : "array"
           },
           "title" : {
@@ -8989,6 +8861,7 @@
             "items" : {
               "$ref" : "#/components/schemas/ProductVariantDto"
             },
+            "nullable" : true,
             "type" : "array"
           }
         },
@@ -9025,6 +8898,7 @@
         "properties" : {
           "id" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "sortOrder" : {
@@ -9032,6 +8906,7 @@
             "type" : "integer"
           },
           "url" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -9193,35 +9068,14 @@
           }
         },
         "required" : [
-          "active",
-          "brandId",
-          "brandName",
-          "cardStatus",
-          "categoryId",
-          "compareAtMinor",
-          "condition",
-          "conditionNote",
-          "currency",
-          "description",
-          "expectedStock",
-          "imageKeys",
-          "priceMinor",
-          "seoDescription",
-          "seoTitle",
-          "sku",
-          "slug",
-          "specs",
-          "stock",
-          "stockNote",
-          "stockReason",
-          "title",
-          "variants"
+          "title"
         ],
         "type" : "object"
       },
       "ProductVariantDto" : {
         "properties" : {
           "id" : {
+            "nullable" : true,
             "type" : "string"
           },
           "name" : {
@@ -9400,12 +9254,7 @@
           }
         },
         "required" : [
-          "active",
-          "code",
-          "discountAmountMinor",
-          "discountPercent",
-          "maxDiscountMinor",
-          "maxUses"
+          "code"
         ],
         "type" : "object"
       },
@@ -9420,6 +9269,7 @@
           },
           "expiresAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "percent" : {
@@ -9446,6 +9296,7 @@
             "type" : "string"
           },
           "customerName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "discountMinor" : {
@@ -9751,10 +9602,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "lines",
-          "note"
-        ],
         "type" : "object"
       },
       "ReconcileDto" : {
@@ -9796,11 +9643,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "amountMinor",
-          "channel",
-          "note"
-        ],
         "type" : "object"
       },
       "RefundRequest" : {
@@ -9810,9 +9652,6 @@
             "type" : "integer"
           }
         },
-        "required" : [
-          "amountMinor"
-        ],
         "type" : "object"
       },
       "RegisterReturnRequest" : {
@@ -9833,11 +9672,6 @@
             "type" : "integer"
           }
         },
-        "required" : [
-          "lines",
-          "note",
-          "refundMinor"
-        ],
         "type" : "object"
       },
       "RejectStats" : {
@@ -9925,10 +9759,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "productId",
-          "variantId"
-        ],
         "type" : "object"
       },
       "ReleaseResult" : {
@@ -10041,9 +9871,7 @@
           }
         },
         "required" : [
-          "id",
-          "parentId",
-          "sortOrder"
+          "id"
         ],
         "type" : "object"
       },
@@ -10140,9 +9968,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "text"
-        ],
         "type" : "object"
       },
       "Report" : {
@@ -10186,9 +10011,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "comment"
-        ],
         "type" : "object"
       },
       "RestoreRequest" : {
@@ -10200,10 +10022,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "entityId",
-          "type"
-        ],
         "type" : "object"
       },
       "RestoreWriteoffRequest" : {
@@ -10218,10 +10036,6 @@
             "type" : "integer"
           }
         },
-        "required" : [
-          "note",
-          "quantity"
-        ],
         "type" : "object"
       },
       "Result" : {
@@ -10302,22 +10116,20 @@
             "type" : "boolean"
           }
         },
-        "required" : [
-          "itemId",
-          "quantity",
-          "restock"
-        ],
         "type" : "object"
       },
       "ReturnRecordDto" : {
         "properties" : {
           "adminName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "cancelBlocker" : {
+            "nullable" : true,
             "type" : "string"
           },
           "cancelNote" : {
+            "nullable" : true,
             "type" : "string"
           },
           "cancellable" : {
@@ -10325,9 +10137,11 @@
           },
           "cancelledAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "cancelledBy" : {
+            "nullable" : true,
             "type" : "string"
           },
           "createdAt" : {
@@ -10340,6 +10154,7 @@
           },
           "debtPaidAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "id" : {
@@ -10360,12 +10175,15 @@
             "type" : "integer"
           },
           "newOrderId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "note" : {
+            "nullable" : true,
             "type" : "string"
           },
           "refundChannel" : {
+            "nullable" : true,
             "type" : "string"
           },
           "refundMinor" : {
@@ -10401,6 +10219,7 @@
             "type" : "integer"
           },
           "imageUrl" : {
+            "nullable" : true,
             "type" : "string"
           },
           "itemId" : {
@@ -10469,14 +10288,6 @@
             "type" : "integer"
           }
         },
-        "required" : [
-          "lines",
-          "monoRefundMinor",
-          "note",
-          "notifyCustomer",
-          "refunds",
-          "retainMinor"
-        ],
         "type" : "object"
       },
       "Returns" : {
@@ -10711,14 +10522,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "attachmentUrl",
-          "fileName",
-          "mimeType",
-          "replyToMessageId",
-          "text",
-          "type"
-        ],
         "type" : "object"
       },
       "SendResult" : {
@@ -10758,11 +10561,6 @@
             "type" : "integer"
           }
         },
-        "required" : [
-          "channel",
-          "note",
-          "receivedMinor"
-        ],
         "type" : "object"
       },
       "SettingItemDto" : {
@@ -10888,9 +10686,6 @@
             "type" : "object"
           }
         },
-        "required" : [
-          "values"
-        ],
         "type" : "object"
       },
       "SignupWeek" : {
@@ -11036,12 +10831,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "entityId",
-          "preset",
-          "type",
-          "version"
-        ],
         "type" : "object"
       },
       "SnoozeResult" : {
@@ -11074,11 +10863,6 @@
             "type" : "object"
           }
         },
-        "required" : [
-          "items",
-          "source",
-          "translations"
-        ],
         "type" : "object"
       },
       "SourceFixResult" : {
@@ -11139,12 +10923,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "entityId",
-          "entityType",
-          "field",
-          "sourceHash"
-        ],
         "type" : "object"
       },
       "SpecAttributeDto" : {
@@ -11153,9 +10931,11 @@
             "items" : {
               "$ref" : "#/components/schemas/FacetBucketDto"
             },
+            "nullable" : true,
             "type" : "array"
           },
           "categoryId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "comparable" : {
@@ -11171,6 +10951,7 @@
             "type" : "boolean"
           },
           "hint" : {
+            "nullable" : true,
             "type" : "string"
           },
           "id" : {
@@ -11180,12 +10961,14 @@
             "type" : "string"
           },
           "label" : {
+            "nullable" : true,
             "type" : "string"
           },
           "options" : {
             "items" : {
               "$ref" : "#/components/schemas/SpecOptionDto"
             },
+            "nullable" : true,
             "type" : "array"
           },
           "range" : {
@@ -11202,6 +10985,7 @@
             "type" : "string"
           },
           "unit" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -11320,28 +11104,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "buckets",
-          "categoryId",
-          "comparable",
-          "filterable",
-          "group",
-          "highlight",
-          "hint",
-          "key",
-          "labelEn",
-          "labelRu",
-          "labelUk",
-          "options",
-          "range",
-          "renameOptions",
-          "required",
-          "sort",
-          "type",
-          "unitEn",
-          "unitRu",
-          "unitUk"
-        ],
         "type" : "object"
       },
       "SpecGroupDto" : {
@@ -11350,6 +11112,7 @@
             "type" : "string"
           },
           "label" : {
+            "nullable" : true,
             "type" : "string"
           },
           "sort" : {
@@ -11367,6 +11130,7 @@
       "SpecOptionDto" : {
         "properties" : {
           "label" : {
+            "nullable" : true,
             "type" : "string"
           },
           "sort" : {
@@ -11430,11 +11194,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "display",
-          "locale",
-          "returnTo"
-        ],
         "type" : "object"
       },
       "StartResponse" : {
@@ -11514,9 +11273,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "status"
-        ],
         "type" : "object"
       },
       "StatusResponse" : {
@@ -11650,11 +11406,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "orderItemId",
-          "rating",
-          "text"
-        ],
         "type" : "object"
       },
       "SubmitResult" : {
@@ -11685,11 +11436,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "productId",
-          "qty",
-          "variantId"
-        ],
         "type" : "object"
       },
       "SubscriberDto" : {
@@ -11833,10 +11579,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "name",
-          "note"
-        ],
         "type" : "object"
       },
       "SwapDto" : {
@@ -11850,6 +11592,7 @@
           },
           "swappedAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -12036,10 +11779,7 @@
           }
         },
         "required" : [
-          "bodyEn",
           "bodyRu",
-          "bodyUk",
-          "sort",
           "title"
         ],
         "type" : "object"
@@ -12370,15 +12110,6 @@
             "type" : "integer"
           }
         },
-        "required" : [
-          "enabled",
-          "guaranteedMaxUah",
-          "guaranteedPercent",
-          "lowMarginProductPercent",
-          "promoValidDays",
-          "swapPercent",
-          "thresholdUah"
-        ],
         "type" : "object"
       },
       "TierStatsDto" : {
@@ -12580,9 +12311,7 @@
           }
         },
         "required" : [
-          "code",
-          "preAuthToken",
-          "trustDevice"
+          "preAuthToken"
         ],
         "type" : "object"
       },
@@ -12642,14 +12371,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "customerName",
-          "npCityName",
-          "npCityRef",
-          "npWarehouseName",
-          "npWarehouseRef",
-          "phone"
-        ],
         "type" : "object"
       },
       "UpdateOrderStatusRequest" : {
@@ -12677,13 +12398,7 @@
           }
         },
         "required" : [
-          "rejectReason",
-          "rejectReasonCode",
-          "restock",
-          "returnInTransit",
-          "shipUnpaid",
-          "status",
-          "trackingNumber"
+          "status"
         ],
         "type" : "object"
       },
@@ -12705,11 +12420,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "code",
-          "name",
-          "role"
-        ],
         "type" : "object"
       },
       "UpdateTrackingRequest" : {
@@ -12886,10 +12596,7 @@
           }
         },
         "required" : [
-          "expectedStock",
-          "id",
-          "name",
-          "stock"
+          "name"
         ],
         "type" : "object"
       },
@@ -12949,11 +12656,6 @@
             "type" : "string"
           }
         },
-        "required" : [
-          "anonId",
-          "events",
-          "sessionId"
-        ],
         "type" : "object"
       },
       "WebSessionDto" : {
@@ -13003,16 +12705,12 @@
             "type" : "integer"
           }
         },
-        "required" : [
-          "itemId",
-          "outcome",
-          "quantity"
-        ],
         "type" : "object"
       },
       "WriteoffDto" : {
         "properties" : {
           "adminName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "createdAt" : {
@@ -13024,6 +12722,7 @@
             "type" : "integer"
           },
           "note" : {
+            "nullable" : true,
             "type" : "string"
           },
           "quantity" : {
@@ -13037,6 +12736,7 @@
             "type" : "string"
           },
           "undoneNote" : {
+            "nullable" : true,
             "type" : "string"
           },
           "undoneQty" : {

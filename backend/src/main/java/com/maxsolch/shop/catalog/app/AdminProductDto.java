@@ -1,5 +1,7 @@
 package com.maxsolch.shop.catalog.app;
 
+import org.springframework.lang.Nullable;
+
 import com.maxsolch.shop.catalog.app.CatalogDtos.BrandRefDto;
 import com.maxsolch.shop.catalog.domain.SpecsValidator;
 
@@ -13,29 +15,29 @@ import java.util.Map;
 public record AdminProductDto(
         String id,
         String title,
-        String description,
+        @Nullable String description,
         long priceMinor,
         String currency,
         int stock,
         boolean active,
         boolean archived,
-        List<ProductImageDto> images,
-        List<ProductVariantDto> variants,
-        List<TagDto> tags,
-        String slug,
-        Long compareAtMinor,
-        String seoTitle,
-        String seoDescription,
+        @Nullable List<ProductImageDto> images,
+        @Nullable List<ProductVariantDto> variants,
+        @Nullable List<TagDto> tags,
+        @Nullable String slug,
+        @Nullable Long compareAtMinor,
+        @Nullable String seoTitle,
+        @Nullable String seoDescription,
         String brand,
-        String sku,
+        @Nullable String sku,
         // ---- catalog v2 ----
         String categoryId,
-        BrandRefDto brandRef,
-        String condition,
-        String conditionNote,
+        @Nullable BrandRefDto brandRef,
+        @Nullable String condition,
+        @Nullable String conditionNote,
         Map<String, Object> specs,
         String cardStatus,
-        Integer cardConfidence,
+        @Nullable Integer cardConfidence,
         Map<String, Object> cardMeta,
         /** Required attributes of the category path without a value. */
         List<String> missingRequired,

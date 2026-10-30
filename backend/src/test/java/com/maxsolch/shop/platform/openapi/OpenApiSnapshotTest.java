@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -53,27 +54,50 @@ class OpenApiSnapshotTest {
     }
 
     /**
-     * Every property of every schema is either required or nullable-by-annotation, never silently optional:
-     * the front-ends lose the ability to catch a vanished field if the types turn into {@code field?: T}.
+     * A schema a response carries has no silently optional property: the front-ends lose the ability to catch a
+     * vanished field if their types turn into {@code field?: T}. (Request-only schemas may leave fields out.)
      */
     @Test
-    void noSchemaPropertyIsSilentlyOptional() throws Exception {
+    void responseSchemasHaveNoSilentlyOptionalProperty() throws Exception {
         JsonNode docs = OpenApiDocs.fetch();
+        JsonNode schemas = docs.path("components").path("schemas");
+        Set<String> inResponses = new TreeSet<>();
+        for (JsonNode path : docs.path("paths")) {
+            for (JsonNode operation : path) {
+                collectRefs(operation.path("responses"), schemas, inResponses);
+            }
+        }
+        assertThat(inResponses).as("response schemas").hasSizeGreaterThan(200);
         List<String> soft = new ArrayList<>();
-        for (Iterator<Map.Entry<String, JsonNode>> it = docs.path("components").path("schemas").fields(); it.hasNext(); ) {
-            Map.Entry<String, JsonNode> schema = it.next();
-            JsonNode props = schema.getValue().path("properties");
+        for (String name : inResponses) {
+            JsonNode schema = schemas.path(name);
             TreeSet<String> required = new TreeSet<>();
-            schema.getValue().path("required").forEach(n -> required.add(n.asText()));
-            for (Iterator<String> p = props.fieldNames(); p.hasNext(); ) {
-                String name = p.next();
-                boolean allowed = OpenApiDocs.OPTIONAL_ON_PURPOSE.contains(schema.getKey()) || OpenApiDocs.OPTIONAL_ON_PURPOSE.contains(schema.getKey() + "." + name);
-                if (!required.contains(name) && !allowed) {
-                    soft.add(schema.getKey() + "." + name);
+            schema.path("required").forEach(n -> required.add(n.asText()));
+            for (Iterator<String> p = schema.path("properties").fieldNames(); p.hasNext(); ) {
+                String property = p.next();
+                boolean allowed = OpenApiDocs.OPTIONAL_ON_PURPOSE.contains(name) || OpenApiDocs.OPTIONAL_ON_PURPOSE.contains(name + "." + property);
+                if (!required.contains(property) && !allowed) {
+                    soft.add(name + "." + property);
                 }
             }
         }
-        assertThat(soft).as("optional properties (mark the record component @JsonInclude(NON_NULL) on purpose)").isEmpty();
+        assertThat(soft).as("optional properties of response schemas (use @JsonInclude(NON_NULL) on purpose and list it in OPTIONAL_ON_PURPOSE)").isEmpty();
+        assertThat(docs.toString()).doesNotContain("x-response");
+    }
+
+    private static void collectRefs(JsonNode node, JsonNode schemas, Set<String> out) {
+        if (node.isObject()) {
+            JsonNode ref = node.get("$ref");
+            if (ref != null) {
+                String name = ref.asText().substring(ref.asText().lastIndexOf('/') + 1);
+                if (out.add(name)) {
+                    collectRefs(schemas.path(name), schemas, out);
+                }
+            }
+            node.fields().forEachRemaining(e -> collectRefs(e.getValue(), schemas, out));
+        } else if (node.isArray()) {
+            node.forEach(e -> collectRefs(e, schemas, out));
+        }
     }
 
     private static void compareOrUpdate(Path file, String actual) throws IOException {
