@@ -8,8 +8,8 @@
 import { Check, Copy, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { copyText } from "@/components/orders/CopyButton";
-import { QrCode } from "@/components/auth/QrCode";
-import type { TwoFactorSetup } from "@/lib/api";
+import { QrCode } from "./QrCode";
+import type { TwoFactorSetup } from "../../api";
 import { toast } from "@shop/ui/toast";
 
 export function groupSecret(secret: string): string {

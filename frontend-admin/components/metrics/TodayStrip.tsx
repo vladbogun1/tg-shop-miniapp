@@ -9,7 +9,7 @@
  * board reads those query parameters; without that support the links simply open the board.
  */
 import { cn } from "@/lib/cn";
-import { useShopSetting } from "@/lib/settings";
+import { useShopSetting } from "@/features/settings";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowDownRight, ArrowUpRight, CircleDollarSign, Hourglass, PackageCheck, Send, TrendingUp, Wallet } from "lucide-react";
 import Link from "next/link";

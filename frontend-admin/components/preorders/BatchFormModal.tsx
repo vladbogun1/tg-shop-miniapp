@@ -25,10 +25,10 @@ import {
   type Distribution,
   type EtaMode,
 } from "@/lib/preorders";
-import { useShopSetting } from "@/lib/settings";
+import { useShopSetting } from "@/features/settings";
 import { toast } from "@shop/ui/toast";
 import { Image } from "@/lib/image";
-import { useIsSuperAdmin } from "@/components/layout/Shell";
+import { useIsSuperAdmin } from "@/features/staff";
 import { ProductPickModal } from "@/components/ProductPickModal";
 import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";

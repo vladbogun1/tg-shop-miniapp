@@ -39,7 +39,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Toggle } from "@/components/ui/Toggle";
 import { Spinner } from "@/components/ui/Spinner";
 import { useConfirm } from "@shop/ui/confirm";
-import { useIsSuperAdmin } from "@/components/layout/Shell";
+import { useIsSuperAdmin } from "@/features/staff";
 import { AttributeDialog } from "./AttributeDialog";
 import { GroupsDialog } from "./GroupsDialog";
 

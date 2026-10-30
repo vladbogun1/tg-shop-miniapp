@@ -490,7 +490,7 @@ function maybeRefresh(token: string): void {
   })
     .then(async (res) => {
       if (!res.ok) return;
-      const body = (await res.json()) as AdminAuthResponse;
+      const body = (await res.json()) as Schemas["AccessTokenResponse"];
       // Only if nobody logged out / in meanwhile.
       if (body.accessToken && getAccessToken() === token) setAccessToken(body.accessToken);
     })
@@ -532,228 +532,6 @@ export const apiDelete = http.del;
 export function uploadFile(path: string, file: File): Promise<{ key: string }> {
   return http.upload<{ key: string }>(path, file);
 }
-
-// ---- admin auth ------------------------------------------------------------
-// Two steps: password or Telegram → { status: TOTP_REQUIRED | SETUP_REQUIRED, preAuthToken } → the
-// code from the authenticator app (or the 2FA setup) → { status: OK, accessToken }. A remembered
-// device («Доверять этому устройству») answers OK right after the first step.
-export interface AdminAuthResponse {
-  accessToken: string;
-}
-
-export type AdminLoginStatus = "OK" | "TOTP_REQUIRED" | "SETUP_REQUIRED";
-
-export interface AdminLoginResult {
-  status: AdminLoginStatus;
-  accessToken?: string;
-  /** 5-minute token for the second step; grants nothing else. Kept in memory only. */
-  preAuthToken?: string;
-  name?: string;
-}
-
-export interface TwoFactorSetup {
-  /** Base32 secret for manual entry. */
-  secret: string;
-  /** otpauth://totp/… — the QR content; opens the authenticator on the same phone. */
-  otpauthUri: string;
-  account: string;
-  issuer: string;
-}
-
-function signedIn(res: AdminLoginResult): AdminLoginResult {
-  if (res.status === "OK" && res.accessToken) setAccessToken(res.accessToken);
-  return res;
-}
-
-/** POST /api/auth/admin/telegram { initData } — first factor. */
-export async function authAdminTelegram(initData: string): Promise<AdminLoginResult> {
-  return signedIn(await http.post<AdminLoginResult>("/api/auth/admin/telegram", { initData }));
-}
-
-/** POST /api/auth/admin/login { username, password } — first factor. */
-export async function authAdminLogin(username: string, password: string): Promise<AdminLoginResult> {
-  return signedIn(await http.post<AdminLoginResult>("/api/auth/admin/login", { username, password }));
-}
-
-/** POST /api/auth/admin/2fa/verify — the code from the app. */
-export async function verifyTwoFactor(preAuthToken: string, code: string, trustDevice: boolean): Promise<AdminLoginResult> {
-  return signedIn(await http.post<AdminLoginResult>("/api/auth/admin/2fa/verify", { preAuthToken, code, trustDevice }));
-}
-
-/** POST /api/auth/admin/2fa/setup — first sign-in without 2FA: a new secret. */
-export function startTwoFactorSetup(preAuthToken: string): Promise<TwoFactorSetup> {
-  return http.post<TwoFactorSetup>("/api/auth/admin/2fa/setup", { preAuthToken });
-}
-
-/** POST /api/auth/admin/2fa/confirm — the first code from the new secret; signs in. */
-export async function confirmTwoFactorSetup(
-  preAuthToken: string,
-  code: string,
-  trustDevice: boolean
-): Promise<AdminLoginResult> {
-  return signedIn(await http.post<AdminLoginResult>("/api/auth/admin/2fa/confirm", { preAuthToken, code, trustDevice }));
-}
-
-// ---- «Мой аккаунт» -----------------------------------------------------------
-
-export interface AdminAccount {
-  telegramUserId: number;
-  name: string | null;
-  username: string | null;
-  role: "ADMIN" | "SUPER_ADMIN";
-  superAdmin: boolean;
-  passwordSet: boolean;
-  passwordChangedAt: string | null;
-  totpEnabled: boolean;
-  totpEnabledAt: string | null;
-  trustedDevices: number;
-  trustedDeviceDays: number;
-}
-
-export type LoginResultCode = "OK" | "BAD_PASSWORD" | "UNKNOWN_LOGIN" | "BAD_CODE" | "LOCKED" | "NOT_ADMIN" | "BAD_TELEGRAM";
-
-export interface AdminLoginEntry {
-  id: number;
-  at: string;
-  method: "PASSWORD" | "TELEGRAM" | "INVITE";
-  result: LoginResultCode;
-  secondFactor: "TOTP" | "TRUSTED_DEVICE" | "SETUP" | null;
-  ip: string | null;
-  country: string | null;
-  city: string | null;
-  device: string | null;
-  newDevice: boolean;
-  newCity: boolean;
-}
-
-export const accountApi = {
-  get: () => http.get<AdminAccount>("/api/admin/account"),
-  logins: () => http.get<AdminLoginEntry[]>("/api/admin/account/logins"),
-  /** Ends every other session; the answer carries this device's new token (stored here). */
-  async changePassword(currentPassword: string, newPassword: string, code: string): Promise<void> {
-    const res = await http.post<AdminAuthResponse>("/api/admin/account/password", { currentPassword, newPassword, code });
-    setAccessToken(res.accessToken);
-  },
-  startTotpReset: (code: string) => http.post<TwoFactorSetup>("/api/admin/account/2fa/reset", { code }),
-  async confirmTotpReset(code: string): Promise<void> {
-    const res = await http.post<AdminAuthResponse>("/api/admin/account/2fa/confirm", { code });
-    setAccessToken(res.accessToken);
-  },
-  forgetDevices: () => http.post<{ forgotten: number }>("/api/admin/account/devices/forget"),
-};
-
-// ---- «Админы» (SUPER_ADMIN only, /api/admin/admins/**) ----------------------
-
-export type AdminRoleCode = "ADMIN" | "SUPER_ADMIN";
-export type InviteKind = "NEW" | "CREDENTIALS" | "PASSWORD_RESET";
-
-export interface TeamInvite {
-  id: number;
-  kind: InviteKind;
-  telegramUserId: number;
-  name: string | null;
-  role: AdminRoleCode;
-  createdAt: string;
-  expiresAt: string;
-  /** The bot delivered the link (otherwise the super admin handed it over). */
-  delivered: boolean;
-  invitedByName: string | null;
-  /** «@username · Имя» from the shop's users, when known. */
-  telegramLabel: string | null;
-}
-
-export interface TeamAdmin {
-  telegramUserId: number;
-  name: string | null;
-  username: string | null;
-  role: AdminRoleCode;
-  status: "SUPER_ADMIN" | "ADMIN" | "BLOCKED";
-  active: boolean;
-  totpEnabled: boolean;
-  passwordSet: boolean;
-  createdAt: string | null;
-  lastLogin: { at: string; city: string | null; country: string | null; method: string } | null;
-  trustedDevices: number;
-  /** Locked for wrong passwords / codes until then (stage 1 lockout), or null. */
-  lockedUntil: string | null;
-  /** Open login / password link of this admin. */
-  invite: TeamInvite | null;
-  telegramLabel: string | null;
-  /** «Финансы»: закупка, расходы, маржа. У главного админа включено всегда. */
-  finance: boolean;
-  /** The caller — managed in «Мой аккаунт», not here. */
-  self: boolean;
-}
-
-export interface Team {
-  admins: TeamAdmin[];
-  /** Open invites of NEW admins (no account yet). */
-  invites: TeamInvite[];
-}
-
-/** A new invite link; `link`/`path` only when the bot could NOT deliver it. */
-export interface InviteCreated {
-  inviteId: number;
-  kind: InviteKind;
-  delivered: boolean;
-  link?: string;
-  path?: string;
-  expiresAt: string;
-}
-
-export const teamApi = {
-  list: () => http.get<Team>("/api/admin/admins"),
-  invite: (body: { telegramUserId: number; name?: string; role?: AdminRoleCode; code: string }) =>
-    http.post<InviteCreated>("/api/admin/admins/invites", body),
-  resendInvite: (id: number) => http.post<InviteCreated>(`/api/admin/admins/invites/${id}/resend`),
-  revokeInvite: (id: number) => http.del<void>(`/api/admin/admins/invites/${id}`),
-  update: (id: number, body: { name?: string; role?: AdminRoleCode; code?: string }) =>
-    http.patch<void>(`/api/admin/admins/${id}`, body),
-  resetTwoFactor: (id: number, code: string) => http.post<void>(`/api/admin/admins/${id}/reset-2fa`, { code }),
-  resetPassword: (id: number, code: string) => http.post<InviteCreated>(`/api/admin/admins/${id}/reset-password`, { code }),
-  forgetDevices: (id: number) => http.post<{ forgotten: number }>(`/api/admin/admins/${id}/forget-devices`),
-  block: (id: number, code: string) => http.post<void>(`/api/admin/admins/${id}/block`, { code }),
-  unblock: (id: number, code: string) => http.post<void>(`/api/admin/admins/${id}/unblock`, { code }),
-  setFinance: (id: number, finance: boolean, code: string) => http.put<void>(`/api/admin/admins/${id}/finance`, { finance, code }),
-  remove: (id: number, code: string) => http.post<void>(`/api/admin/admins/${id}/delete`, { code }),
-};
-
-/** The full invite URL to hand over: the backend's absolute link, or this admin's origin + path. */
-export function inviteUrl(c: InviteCreated): string | null {
-  if (c.link) return c.link;
-  if (c.path && typeof window !== "undefined") return `${window.location.origin}${c.path}`;
-  return null;
-}
-
-// ---- public /invite/<token> (no sign-in) -------------------------------------
-
-export interface InviteInfo {
-  kind: InviteKind;
-  name: string | null;
-  /** «админ» / «главный админ». */
-  role: string;
-  /** Fixed login (password reset), or null when the person chooses one. */
-  username: string | null;
-  loginEditable: boolean;
-  /** true: a new authenticator entry is set up; false: the current code is asked. */
-  twoFactorSetup: boolean;
-  expiresAt: string;
-}
-
-export interface InviteAccepted {
-  next: "SETUP" | "VERIFY";
-  setup?: TwoFactorSetup;
-}
-
-export const inviteApi = {
-  check: (token: string) => http.post<InviteInfo>("/api/auth/admin/invite/check", { token }),
-  accept: (token: string, username: string, password: string) =>
-    http.post<InviteAccepted>("/api/auth/admin/invite/accept", { token, username, password }),
-  /** Burns the link, activates the account and signs in (the token is stored). */
-  async complete(token: string, code: string, trustDevice: boolean): Promise<AdminLoginResult> {
-    return signedIn(await http.post<AdminLoginResult>("/api/auth/admin/invite/complete", { token, code, trustDevice }));
-  },
-};
 
 // ============================================================================
 // Admin-only payloads
@@ -834,27 +612,6 @@ export interface PaymentOption {
   description?: string;
   requiresPrepayment: boolean;
   prepaymentMinor?: number | null;
-}
-
-/** Outcome of the public site's on-demand rebuild (GET /api/admin/site/revalidate/status). */
-export interface SiteRevalidateStatus {
-  /** False when SITE_REVALIDATE_URL is not configured. */
-  enabled: boolean;
-  lastSuccessAt?: string | null;
-  lastErrorAt?: string | null;
-  lastError?: string | null;
-}
-
-/** One row of the admin action log (GET /api/admin/audit). */
-export interface AuditEntry {
-  id: number;
-  adminId: number;
-  adminName?: string | null;
-  action: string;
-  entityType: string;
-  entityId?: string | null;
-  details?: string | null;
-  createdAt: string;
 }
 
 // ---- users -----------------------------------------------------------------
@@ -1298,11 +1055,6 @@ export const adminApi = {
     buttonText?: string;
   }) => apiPost<BroadcastResult>("/api/admin/broadcast/test", body),
 
-  // ---- audit log ----
-  /** GET /api/admin/audit -> recent admin actions (newest first). */
-  audit: (page = 0, size = 50) =>
-    apiGet<AuditEntry[]>(`/api/admin/audit?page=${page}&size=${size}`),
-
   // ---- content translations ----
   translationsExport: (locale: TrLocale, status: "missing" | "stale" | "translated" | "all" = "all") =>
     apiGet<TrExportItem[]>(`/api/admin/translations/export?locale=${locale}&status=${status}`),
@@ -1327,13 +1079,6 @@ export const adminApi = {
     source: string;
     translations: Partial<Record<TrLocale, string>>;
   }) => apiPut<TrSourceFixResult>("/api/admin/translations/source-fix", body),
-
-  // ---- public site ----
-  /** POST /api/admin/site/revalidate -> rebuild every page now; `error` is null on success. */
-  siteRevalidate: () =>
-    apiPost<{ ok: boolean; error?: string | null; status: SiteRevalidateStatus }>(
-      "/api/admin/site/revalidate"
-    ),
 
   // ---- payment settings ----
   paymentOptions: () => apiGet<PaymentOption[]>("/api/admin/payment-options"),

@@ -17,7 +17,7 @@ import { toast } from "@shop/ui/toast";
 import { Button } from "@shop/ui/admin-button";
 import { Select } from "@/components/ui/Select";
 import { ProductPickModal } from "@/components/ProductPickModal";
-import { PanelHeader } from "../settings/PanelHeader";
+import { PanelHeader } from "@/components/ui/PanelHeader";
 
 const KEY = ["gift", "low-margin"] as const;
 

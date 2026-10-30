@@ -7,7 +7,7 @@ import { ordersApi } from "@/lib/orders-api";
 import { formatDateTime } from "@/lib/orders";
 import { QueryState } from "@/components/ui/QueryState";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { readableAuditDetails } from "@/lib/audit";
+import { readableAuditDetails } from "@/features/staff";
 
 const ACTION_LABEL: Record<string, string> = {
   ORDER_STATUS: "Статус",

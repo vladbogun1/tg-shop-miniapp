@@ -3,10 +3,10 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ApiError, isAuthenticated, onUnauthorized, authAdminTelegram, type AdminLoginResult } from "@/lib/api";
+import { authApi, Login, type AdminLoginResult } from "@/features/staff";
+import { ApiError, isAuthenticated, onUnauthorized } from "@/lib/api";
 import { getTelegramInitData } from "@/lib/telegram";
-import { Login } from "@/components/auth/Login";
-import { Shell } from "@/components/layout/Shell";
+import { Shell } from "./Shell";
 import { CenterSpinner } from "@/components/ui/Spinner";
 import { toast } from "@shop/ui/toast";
 
@@ -41,7 +41,7 @@ function SignedIn({ children }: { children: React.ReactNode }) {
       const initData = getTelegramInitData();
       if (initData) {
         try {
-          const res = await authAdminTelegram(initData);
+          const res = await authApi.telegram(initData);
           if (!cancelled) {
             if (res.status === "OK") setAuthed(true);
             else setPending(res);

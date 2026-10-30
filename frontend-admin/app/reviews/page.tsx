@@ -17,7 +17,7 @@ import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, MessageSquareText, X } from "lucide-react";
 import { useEffect, useState, type CSSProperties } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { useIsSuperAdmin } from "@/components/layout/Shell";
+import { useIsSuperAdmin } from "@/features/staff";
 import { OrderDrawer } from "@/components/orders/OrderDrawer";
 import { ReviewCard, type ReviewAction } from "@/components/reviews/ReviewCard";
 import { Button } from "@shop/ui/admin-button";

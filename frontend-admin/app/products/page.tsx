@@ -55,7 +55,7 @@ import { ProductModal, type ProductStepKey } from "@/components/products/Product
 import { WaitBadge } from "@/components/preorders/WaitBadge";
 import { demandOfProduct, useDemand } from "@/lib/preorders";
 
-import { useShopSetting } from "@/lib/settings";
+import { useShopSetting } from "@/features/settings";
 import { invalidateCards } from "@/lib/cards";
 
 /** Steps a deep link may open the product wizard on. */

@@ -2,8 +2,7 @@
  * Edit state of the settings form. Numbers are edited as text (so "" and "1." are representable
  * while typing) and parsed on save.
  */
-import type { SettingItem, SettingValue } from "@/lib/settings";
-import { formatDateTime as coreFormatDateTime } from "@shop/core/time";
+import type { SettingItem, SettingValue } from "../api";
 
 export interface DraftEntry {
   /** string for INT/STRING/TEXT, boolean for BOOL. */
@@ -25,24 +24,29 @@ export function initialDraft(items: SettingItem[]): Draft {
   return d;
 }
 
+function validateInt(item: SettingItem, raw: string | boolean): string | null {
+  const s = String(raw).trim();
+  if (!/^-?d+$/.test(s)) return "Нужно целое число";
+  const n = Number(s);
+  if (item.min != null && n < item.min) return `Не меньше ${item.min}`;
+  if (item.max != null && n > item.max) return `Не больше ${item.max}`;
+  return null;
+}
+
+function validateText(item: SettingItem, raw: string | boolean): string | null {
+  const s = String(raw);
+  if (item.type === "STRING" && /[\r\n]/.test(s)) return "Только одна строка";
+  if (item.maxLength != null && s.trim().length > item.maxLength) return `Не длиннее ${item.maxLength} символов`;
+  return null;
+}
+
 /** Client-side check mirroring the server's validation; null = fine. */
 export function validate(item: SettingItem, raw: string | boolean): string | null {
-  if (item.type === "INT") {
-    const s = String(raw).trim();
-    if (!/^-?\d+$/.test(s)) return "Нужно целое число";
-    const n = Number(s);
-    if (item.min != null && n < item.min) return `Не меньше ${item.min}`;
-    if (item.max != null && n > item.max) return `Не больше ${item.max}`;
-    return null;
-  }
+  if (item.type === "INT") return validateInt(item, raw);
   if (item.type === "SELECT") {
     return item.options?.some((o) => o.value === String(raw)) ? null : "Выберите значение из списка";
   }
-  if (item.type === "STRING" || item.type === "TEXT") {
-    const s = String(raw);
-    if (item.type === "STRING" && /[\r\n]/.test(s)) return "Только одна строка";
-    if (item.maxLength != null && s.trim().length > item.maxLength) return `Не длиннее ${item.maxLength} символов`;
-  }
+  if (item.type === "STRING" || item.type === "TEXT") return validateText(item, raw);
   return null;
 }
 
@@ -75,11 +79,4 @@ export function formatValue(item: SettingItem, value: SettingValue): string {
   if (item.type === "BOOL") return value ? "включено" : "выключено";
   if ((item.type === "TEXT" || item.type === "STRING") && String(value ?? "") === "") return "пусто";
   return item.unit ? `${value} ${item.unit}` : String(value);
-}
-
-export function formatDateTime(iso?: string | null): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return coreFormatDateTime(iso);
 }

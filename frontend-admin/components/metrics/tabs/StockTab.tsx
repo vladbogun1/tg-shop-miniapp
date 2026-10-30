@@ -1,6 +1,6 @@
 "use client";
 
-import { useShopSetting } from "@/lib/settings";
+import { useShopSetting } from "@/features/settings";
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Archive, EyeOff, PackageSearch, PackageX, Pencil, ShoppingCart, Snowflake, Trophy, Warehouse } from "lucide-react";

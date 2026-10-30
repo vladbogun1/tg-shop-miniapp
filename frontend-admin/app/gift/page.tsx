@@ -20,7 +20,7 @@ import { cn } from "@/lib/cn";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 import { productStock } from "@/lib/stock";
-import { SETTINGS_QUERY_KEY, settingsApi, type SettingItem, type SettingValue } from "@/lib/settings";
+import { initialDraft, isDirty, parse, settingsApi, settingsKeys, validate, type Draft, type SettingItem, type SettingValue } from "@/features/settings";
 import { toast } from "@shop/ui/toast";
 import { useUnsavedGuard } from "@/lib/use-unsaved-guard";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -30,8 +30,7 @@ import { Input } from "@/components/ui/Input";
 import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Toggle } from "@/components/ui/Toggle";
-import { initialDraft, isDirty, parse, validate, type Draft } from "../settings/draft";
-import { PanelHeader } from "../settings/PanelHeader";
+import { PanelHeader } from "@/components/ui/PanelHeader";
 import { ProductPickModal } from "@/components/ProductPickModal";
 import { CasePanel } from "./CasePanel";
 import { LowMarginPanel } from "./LowMarginPanel";
@@ -48,7 +47,7 @@ const K = {
 
 export default function GiftPage() {
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: SETTINGS_QUERY_KEY, queryFn: settingsApi.list });
+  const q = useQuery({ queryKey: settingsKeys.all(), queryFn: settingsApi.list });
   const items = useMemo(() => (q.data?.items ?? []).filter((it) => it.group === GIFT_GROUP), [q.data]);
   const byKey = useMemo(() => new Map(items.map((it) => [it.key, it])), [items]);
 
@@ -73,7 +72,7 @@ export default function GiftPage() {
     setSaving(true);
     try {
       const fresh = await settingsApi.save(values);
-      qc.setQueryData(SETTINGS_QUERY_KEY, fresh);
+      qc.setQueryData(settingsKeys.all(), fresh);
       qc.invalidateQueries({ queryKey: ["gift"] });
       toast.success(dirtyItems.length === 1 ? "Настройка сохранена" : `Сохранено настроек: ${dirtyItems.length}`);
     } catch (e) {

@@ -52,7 +52,7 @@ import { Drawer } from "@shop/ui/overlay";
 import { QueryState } from "@/components/ui/QueryState";
 import { useConfirm } from "@shop/ui/confirm";
 import { UserProfileDrawer } from "@/components/users/UserProfileDrawer";
-import { useIsSuperAdmin } from "@/components/layout/Shell";
+import { useIsSuperAdmin } from "@/features/staff";
 import { useBatchProductTools } from "@/components/preorders/BatchItemProduct";
 import { ReturnBadge } from "./ReturnBadge";
 import { ReturnReceivedModal } from "./ReturnReceivedModal";

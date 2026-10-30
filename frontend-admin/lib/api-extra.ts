@@ -8,7 +8,6 @@ import {
   apiGet,
   apiPost,
   apiPut,
-  type AuditEntry,
   type BroadcastAudience,
   type BroadcastStatus,
   type PaymentOption,
@@ -106,22 +105,6 @@ export interface BroadcastStart {
   textEn?: string;
 }
 
-// ---- audit ------------------------------------------------------------------------
-export interface AuditFilter {
-  action?: string;
-  entityType?: string;
-  entityId?: string;
-  adminId?: number;
-  /** yyyy-MM-dd, shop timezone, inclusive. */
-  from?: string;
-  to?: string;
-}
-export interface AuditFacets {
-  actions: string[];
-  entityTypes: string[];
-  admins: { adminId: number; adminName: string }[];
-}
-
 function qs(params: Record<string, string | number | undefined | null>): string {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
@@ -154,8 +137,4 @@ export const extApi = {
   broadcastTest: (body: { text: string; telegramUserId?: number; withButton: boolean; buttonText?: string }) =>
     apiPost<{ ok: boolean; detail: string }>("/api/admin/broadcast/test", body),
 
-  // audit
-  audit: (filter: AuditFilter, page = 0, size = 50) =>
-    apiGet<AuditEntry[]>(`/api/admin/audit${qs({ ...filter, page, size })}`),
-  auditFacets: () => apiGet<AuditFacets>("/api/admin/audit/facets"),
 };

@@ -14,7 +14,6 @@ import {
   apiPatch,
   apiPost,
   apiPut,
-  type AuditEntry,
   type DispatchOrder,
   type MessageDto,
   type OrderCardDto,
@@ -339,7 +338,7 @@ export const ordersApi = {
    * latest entries, so the result is filtered here as well.
    */
   orderAudit: async (id: string) => {
-    const rows = await apiGet<AuditEntry[]>(
+    const rows = await apiGet<Schemas["AuditEntryDto"][]>(
       `/api/admin/audit?entityType=ORDER&entityId=${encodeURIComponent(id)}&size=200`
     );
     // Older online refunds were logged as "order" (lower case) — keep them in the history.

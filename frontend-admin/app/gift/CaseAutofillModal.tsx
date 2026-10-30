@@ -15,7 +15,7 @@ import { Sparkles } from "lucide-react";
 import { CASE_TIER_METAL, type CaseTier } from "@shop/core/giftcase";
 import { adminApi, ApiError } from "@/lib/api";
 import { AUTOFILL_COST_SHARE, CASE_TIER_LABEL, giftApi, type AutofillResult, type GiftTierAdmin } from "@/lib/gift";
-import { settingsApi } from "@/lib/settings";
+import { settingsApi } from "@/features/settings";
 import { cn } from "@/lib/cn";
 import { money } from "@/lib/money";
 import { toast } from "@shop/ui/toast";

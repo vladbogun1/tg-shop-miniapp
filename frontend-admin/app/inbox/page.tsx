@@ -41,6 +41,7 @@ import { InboxRow } from "@/components/inbox/InboxRow";
 import { Button } from "@shop/ui/admin-button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { QueryState } from "@/components/ui/QueryState";
+import { siteApi, siteKeys } from "@/features/site";
 import { adminApi, ApiError } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import {
@@ -190,7 +191,7 @@ export default function InboxPage() {
   async function retrySite() {
     setSiteBusy(true);
     try {
-      const res = await adminApi.siteRevalidate();
+      const res = await siteApi.revalidate();
       if (res.ok) toast.success("Сайт обновлён");
       else toast.error(`Сайт снова не обновился: ${res.error ?? "ошибка"}`);
     } catch (e) {
@@ -198,7 +199,7 @@ export default function InboxPage() {
     } finally {
       setSiteBusy(false);
       refetch();
-      qc.invalidateQueries({ queryKey: ["site-revalidate-status"] });
+      qc.invalidateQueries({ queryKey: siteKeys.status() });
     }
   }
 
