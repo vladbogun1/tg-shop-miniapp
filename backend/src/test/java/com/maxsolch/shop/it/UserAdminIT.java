@@ -36,6 +36,7 @@ class UserAdminIT extends AbstractMysqlIT {
 
     @BeforeEach
     void data() {
+        jdbc.update("DELETE FROM orders WHERE tg_user_id BETWEEN ? AND ?", BASE, BASE + 99);
         jdbc.update("DELETE FROM users WHERE telegram_user_id BETWEEN ? AND ?", BASE, BASE + 99);
         String[] names = {"ivan_a", "Ivan", null, "petya", "ivanka", "zed"};
         for (int i = 0; i < names.length; i++) {
