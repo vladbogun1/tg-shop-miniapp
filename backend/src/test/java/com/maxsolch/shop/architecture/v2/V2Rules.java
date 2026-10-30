@@ -88,6 +88,13 @@ final class V2Rules {
             "K1", java.util.Map.of(
                     "payment.app.CustomerPaymentRefresh", "ARCHITECTURE.md section 6: 5-second poll throttle, a spare poll is harmless",
                     "platform.config.WebSocketConfig", "ARCHITECTURE.md section 6: a connection belongs to the process by nature"),
+            "M3", java.util.Map.ofEntries(
+                    java.util.Map.entry("gift.infra.GiftQueries", "report over orders, order_items, order_gift_cases: one statement counts across the tables, splitting it would send every order through the JVM"),
+                    java.util.Map.entry("gift.infra.GiftRegistryStore", "registry report: gift lines joined with their order and product price, read-only"),
+                    java.util.Map.entry("gift.infra.GiftReminderStore", "scan of expiring gift-case promo codes joined with order and bot_blocked; claim is one atomic update of the code"),
+                    java.util.Map.entry("review.infra.ReviewStore", "review scans and feed joined with order, product and promo rows, plus once-only claims written with 'update ... where flag is null' (atomic)"),
+                    java.util.Map.entry("staff.app.IncidentQueries", "the admin incident report: audit log, orders and money movements in one read"),
+                    java.util.Map.entry("staff.infra.AdminTeamQueries", "the admin team screen: one activity summary per admin over audit, chat, broadcasts, marks and push rows, read-only")),
             "E1", java.util.Map.of("payment.domain.MonobankGateway",
                     "MonobankException is a failure of the port, always caught in payment.app and turned into a DomainException; it never reaches HTTP"),
             "C1", java.util.Map.of(

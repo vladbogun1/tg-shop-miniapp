@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.catalog.app.CatalogNames;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.infra.OrderGuardStore;
@@ -37,10 +38,12 @@ public class OrderGuard {
 
     private final SettingsService settings;
     private final OrderGuardStore store;
+    private final CatalogNames catalog;
     private final Messages messages;
     private final Clock clock;
 
-    OrderGuard(SettingsService settings, OrderGuardStore store, Messages messages, Clock clock) {
+    OrderGuard(SettingsService settings, OrderGuardStore store, CatalogNames catalog, Messages messages, Clock clock) {
+        this.catalog = catalog;
         this.settings = settings;
         this.store = store;
         this.messages = messages;
@@ -115,7 +118,7 @@ public class OrderGuard {
         if (l.maxQtyPerProduct() > 0) {
             for (Map.Entry<String, Integer> e : perLine.entrySet()) {
                 if (e.getValue() > l.maxQtyPerProduct()) {
-                    throw new DomainException.BadRequest(OrderError.QTY_LIMIT, l.maxQtyPerProduct(), store.productTitle(productOf.get(e.getKey())));
+                    throw new DomainException.BadRequest(OrderError.QTY_LIMIT, l.maxQtyPerProduct(), catalog.titleOrId(productOf.get(e.getKey())));
                 }
             }
         }

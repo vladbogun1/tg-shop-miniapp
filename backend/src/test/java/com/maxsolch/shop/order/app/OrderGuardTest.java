@@ -41,6 +41,7 @@ class OrderGuardTest {
     SettingsService settings;
     @Mock
     OrderGuardStore store;
+    com.maxsolch.shop.catalog.app.CatalogNames catalog;
     @Mock
     Messages messages;
 
@@ -57,10 +58,11 @@ class OrderGuardTest {
         }
         lenient().when(settings.getInt(anyString())).thenAnswer(inv -> values.get(inv.<String>getArgument(0)));
         lenient().when(messages.current(anyString(), any(Object[].class))).thenAnswer(inv -> inv.getArgument(0));
-        lenient().when(store.productTitle(anyString())).thenReturn("Кепка");
+        catalog = org.mockito.Mockito.mock(com.maxsolch.shop.catalog.app.CatalogNames.class);
+        lenient().when(catalog.titleOrId(anyString())).thenReturn("Кепка");
         lenient().when(store.selfCancelsSince(anyLong(), any())).thenReturn(List.of());
         lenient().when(store.createdSince(anyLong(), any())).thenReturn(List.of());
-        guard = new OrderGuard(settings, store, messages, Clock.fixed(NOW, ZoneOffset.UTC));
+        guard = new OrderGuard(settings, store, catalog, messages, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     private static List<CreateOrderCommand.Line> lines(int... qty) {

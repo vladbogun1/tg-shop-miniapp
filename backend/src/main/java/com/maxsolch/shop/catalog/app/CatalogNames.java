@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,6 +27,17 @@ public class CatalogNames {
         this.productRepository = productRepository;
         this.variantRepository = variantRepository;
         this.translationService = translationService;
+    }
+
+    /** The Russian catalog title of a product for an error message; the id itself when there is no such product. */
+    @Transactional(readOnly = true)
+    public String titleOrId(String productId) {
+        try {
+            List<Object[]> rows = productRepository.titlesByIds(List.of(com.maxsolch.shop.platform.util.UuidUtil.toBytes(productId)));
+            return rows.isEmpty() ? productId : (String) rows.get(0)[1];
+        } catch (IllegalArgumentException e) {
+            return productId;
+        }
     }
 
     /**

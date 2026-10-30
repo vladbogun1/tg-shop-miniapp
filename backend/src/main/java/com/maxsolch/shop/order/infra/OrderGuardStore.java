@@ -1,7 +1,6 @@
 package com.maxsolch.shop.order.infra;
 
 import com.maxsolch.shop.order.app.OrderGuard;
-import com.maxsolch.shop.platform.util.UuidUtil;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -37,17 +36,6 @@ public class OrderGuardStore {
     public List<Instant> selfCancelsSince(long userId, Instant since) {
         return times("select rejected_at t from orders where user_id = ? and cancelled_by_customer = true "
                 + "and rejected_at >= ? order by rejected_at", userId, since);
-    }
-
-    /** Catalog title of a product for an error message; the id when unknown. */
-    public String productTitle(String productId) {
-        try {
-            List<String> rows = jdbc.queryForList("select title from products where id = ?", String.class,
-                    (Object) UuidUtil.toBytes(productId));
-            return rows.isEmpty() ? productId : rows.get(0);
-        } catch (IllegalArgumentException e) {
-            return productId;
-        }
     }
 
     private List<Instant> times(String sql, long userId, Instant since) {
