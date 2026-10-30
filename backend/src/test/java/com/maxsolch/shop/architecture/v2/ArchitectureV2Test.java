@@ -70,8 +70,8 @@ class ArchitectureV2Test {
 
         if (Boolean.getBoolean("architecture.v2.update")) {
             if (Files.exists(BASELINE)) {
-                // Moving classes between modules may shift a rule's count from one row to another (a legacy class
-                // becomes a class of 'order'), but the total per rule may not grow. A rule whose total has to grow
+                // Moving classes between modules may shift a rule's count from one row to another (a class
+                // moves into 'order'), but the total per rule may not grow. A rule whose total has to grow
                 // on purpose (it became measurable, e.g. M1/M2 once modules exist) is named in
                 // -Darchitecture.v2.allow-growth=M1,M2 and the reason goes into the commit message.
                 java.util.Set<String> allowed = java.util.Set.of(
@@ -156,9 +156,9 @@ class ArchitectureV2Test {
             sb.append(String.format(" %4d", t));
         }
         sb.append(String.format(" %6d%n", grand));
-        int legacy = classCount.getOrDefault(Placement.LEGACY, 0);
+        int outside = classCount.getOrDefault(Placement.OUTSIDE, 0);
         int all = classCount.values().stream().mapToInt(Integer::intValue).sum();
-        sb.append(String.format("migrated classes: %d of %d (legacy left: %d)%n", all - legacy, all, legacy));
+        sb.append(String.format("classes in the module layout: %d of %d (outside: %d)%n", all - outside, all, outside));
         sb.append("rules:\n");
         V2Rules.RULES.forEach((id, text) -> sb.append("  ").append(id).append("  ").append(text).append('\n'));
         return sb.toString();

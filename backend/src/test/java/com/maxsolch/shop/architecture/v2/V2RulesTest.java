@@ -48,10 +48,36 @@ class V2RulesTest {
     }
 
     @Test
-    void legacyClassesAreCountedUnderLegacy() {
-        assertThat(count("V1", "legacy")).isEqualTo(1);
-        assertThat(count("K1", "legacy")).isEqualTo(1);
-        assertThat(count("C1", "legacy")).isEqualTo(2);
+    void classesOutsideTheLayoutAreFoundAndStillChecked() {
+        assertThat(count("R1", "outside")).isEqualTo(1);
+        assertThat(count("V1", "outside")).isEqualTo(1);
+        assertThat(count("K1", "outside")).isEqualTo(1);
+        assertThat(count("C1", "outside")).isEqualTo(2);
+    }
+
+    @Test
+    void onlyTheConstructorMayInject() {
+        assertThat(count("W1", "order")).isEqualTo(1);
+    }
+
+    @Test
+    void concurrentCollectionsAreFoundByTheCreatedType() {
+        assertThat(count("K1", "order")).isEqualTo(1);
+    }
+
+    @Test
+    void errorsAreDomainExceptionsOnly() {
+        assertThat(count("E1", "order")).isEqualTo(2);
+    }
+
+    @Test
+    void wallClockIncludesMillisAndDateInEveryClass() {
+        assertThat(count("C1", "order")).isEqualTo(2);
+    }
+
+    @Test
+    void securityContextIsReadOnlyThroughCurrentActor() {
+        assertThat(count("A1", "order")).isEqualTo(1);
     }
 
     @Test

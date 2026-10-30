@@ -9,16 +9,16 @@ import java.util.Set;
 /**
  * Where a class lives in the target architecture (docs/ARCHITECTURE.md, section 2).
  *
- * <p>A class is "migrated" when it sits in {@code <root>.<module>.{api,app,domain,infra}} of a target module, or
- * anywhere in {@code <root>.platform}. Everything else (the old {@code service}, {@code web}, {@code domain},
- * {@code repository}, {@code tg}, ... and the flat packages of future modules such as {@code catalog}) belongs to the
- * pseudo-module {@code legacy}: it is the work that is left. For the layer rules a legacy class gets an
- * <i>implied</i> layer from its name, annotations and old package, so a service that returns a web DTO is
- * counted as "app uses api" before it is moved.
+ * <p>Every class sits in {@code <root>.<module>.{api,app,domain,infra}} of a target module or anywhere in
+ * {@code <root>.platform}; the only class of the root package is the entry point ({@link #BOOTSTRAP}). Anything else
+ * is {@link #OUTSIDE}: rule R1 reports it, and the layer rules count it as {@code app}.
  */
 final class Placement {
 
-    static final String LEGACY = "legacy";
+    /** Pseudo-module of a class that lies in no module layout (reported by R1). */
+    static final String OUTSIDE = "outside";
+    /** The entry point class in the root package. */
+    static final String BOOTSTRAP = "bootstrap";
     static final String PLATFORM = "platform";
 
     enum Layer { API, APP, DOMAIN, INFRA, PLATFORM }
@@ -43,7 +43,7 @@ final class Placement {
     /** module -> row in {@link #TIERS}. */
     static final Map<String, Integer> TIER_OF = tierMap();
 
-    /** All module names in the report order: target modules top to bottom, then platform, then legacy. */
+    /** All module names in the report order: target modules top to bottom, then platform, bootstrap and outside. */
     static final List<String> REPORT_ORDER = reportOrder();
 
     private final String root;
@@ -89,29 +89,10 @@ final class Placement {
         if (seg.length > 1 && TIER_OF.containsKey(seg[0]) && LAYERS.contains(seg[1])) {
             return new Place(seg[0], Layer.valueOf(seg[1].toUpperCase()), true);
         }
-        return new Place(LEGACY, impliedLayer(c, seg), false);
-    }
-
-    private static Layer impliedLayer(JavaClass c, String[] seg) {
-        String first = seg.length > 0 ? seg[0] : "";
-        String second = seg.length > 1 ? seg[1] : "";
-        String name = c.getSimpleName();
-        if (first.equals("web") || name.endsWith("Controller") || name.endsWith("ControllerAdvice")
-                || c.isAnnotatedWith("org.springframework.web.bind.annotation.RestController")
-                || c.isAnnotatedWith("org.springframework.stereotype.Controller")) {
-            return Layer.API;
+        if (seg.length == 0) {
+            return new Place(BOOTSTRAP, Layer.PLATFORM, true);
         }
-        if (first.equals("repository") || name.endsWith("Store") || name.endsWith("Queries")
-                || c.isAssignableTo("org.springframework.data.repository.Repository")) {
-            return Layer.INFRA;
-        }
-        if (first.equals("domain") || second.equals("domain")
-                || c.isAnnotatedWith("jakarta.persistence.Entity")
-                || c.isAnnotatedWith("jakarta.persistence.Embeddable")
-                || c.isAnnotatedWith("jakarta.persistence.MappedSuperclass")) {
-            return Layer.DOMAIN;
-        }
-        return Layer.APP;
+        return new Place(OUTSIDE, Layer.APP, false);
     }
 
     private static Map<String, Integer> tierMap() {
@@ -127,7 +108,8 @@ final class Placement {
     private static List<String> reportOrder() {
         java.util.ArrayList<String> all = new java.util.ArrayList<>();
         TIERS.forEach(all::addAll);
-        all.add(LEGACY);
+        all.add(BOOTSTRAP);
+        all.add(OUTSIDE);
         return List.copyOf(all);
     }
 }

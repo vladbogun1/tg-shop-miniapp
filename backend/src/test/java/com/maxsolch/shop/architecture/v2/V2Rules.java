@@ -6,6 +6,7 @@ import com.tngtech.archunit.core.domain.Dependency;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaCodeUnit;
+import com.tngtech.archunit.core.domain.JavaConstructorCall;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
 import com.tngtech.archunit.core.domain.JavaModifier;
@@ -29,6 +30,7 @@ final class V2Rules {
     static final java.util.Map<String, String> RULES = new java.util.LinkedHashMap<>();
 
     static {
+        RULES.put("R1", "every class lies in <module>.{api,app,domain,infra} or platform (the root package holds the entry point only)");
         RULES.put("L1", "api does not use infra (repositories, Jdbc) of any module");
         RULES.put("L2", "app and domain do not use api (controllers, DTOs)");
         RULES.put("L3", "domain knows no web, Jdbc, HTTP clients, Spring stereotypes, app or infra");
@@ -36,21 +38,21 @@ final class V2Rules {
         RULES.put("M1", "another module is called through its app only (not its api or infra)");
         RULES.put("M2", "no dependency against the module direction (lower modules do not know upper ones)");
         RULES.put("P1", "platform knows no business module");
-        RULES.put("E1", "business errors are DomainException with an ErrorCode (no old web-style exceptions)");
-        RULES.put("T1", "after commit only through domain events (no AfterCommit, TransactionSynchronizationManager)");
+        RULES.put("E1", "business errors are DomainException with an ErrorCode (no other RuntimeException subclass, no ResponseStatusException)");
+        RULES.put("T1", "after commit only through domain events (no TransactionSynchronizationManager)");
         RULES.put("T2", "@Transactional only on public methods of app (not api, domain, infra)");
-        RULES.put("A1", "current actor through CurrentActor (no static SecurityUtil)");
+        RULES.put("A1", "current actor through CurrentActor (SecurityContextHolder only in platform.web and platform.security)");
         RULES.put("A2", "controllers do not write the audit log");
         RULES.put("A3", "rights by annotations only (controllers do not call AdminAccess.require*)");
         RULES.put("N1", "Telegram and push only from notification and *Notifier");
-        RULES.put("K1", "no in-memory locks (synchronized, locks, ConcurrentHashMap fields): locks live in the database");
-        RULES.put("C1", "time through Clock and ShopZone (no Instant.now(), ZoneId.of, Clock.system* outside platform)");
+        RULES.put("K1", "no in-memory locks or concurrent collections (synchronized, locks, Concurrent*/CopyOnWrite* by declared or created type): locks live in the database");
+        RULES.put("C1", "time through Clock and ShopZone, everywhere (no Instant.now(), ZoneId.of, Clock.system*, System.currentTimeMillis/nanoTime, new Date(), static ShopZone.of/DEFAULT)");
         RULES.put("V1", "no @Value: settings through @ConfigurationProperties");
         RULES.put("V2", "@ConfigurationProperties classes are @Validated");
         RULES.put("CA", "cache only through Spring Cache (no direct Caffeine outside platform)");
         RULES.put("J1", "@Scheduled only in *Job/*Jobs and always with @SchedulerLock");
         RULES.put("H1", "external HTTP only through platform.http (no HttpClient.newBuilder, RestTemplate)");
-        RULES.put("W1", "dependencies by constructor only (no field/setter @Autowired, required=false, @Lazy)");
+        RULES.put("W1", "dependencies by constructor only (no field/setter @Autowired, @Inject, @Resource, @PersistenceContext, required=false, @Lazy)");
         RULES.put("S1", "JdbcTemplate only in infra, *Store and *Queries");
         RULES.put("O1", "order status changes only through Order methods (no setStatus from outside)");
     }
@@ -61,20 +63,33 @@ final class V2Rules {
     private static final String TRANSACTIONAL = "org.springframework.transaction.annotation.Transactional";
     private static final Set<String> JDBC = Set.of("org.springframework.jdbc.core.JdbcTemplate",
             "org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate");
-    private static final Set<String> OLD_EXCEPTIONS = Set.of("BadRequestException", "NotFoundException",
-            "ConflictException", "ForbiddenException", "UnauthorizedException", "TooManyRequestsException");
+    /** Field/method injection that is not a constructor, besides {@code @Autowired}/{@code @Lazy}. */
+    private static final Set<String> OTHER_INJECTION = Set.of("jakarta.persistence.PersistenceContext",
+            "jakarta.persistence.PersistenceUnit", "jakarta.annotation.Resource", "jakarta.inject.Inject",
+            "javax.inject.Inject");
 
     /**
-     * The one JdbcTemplate user outside infra: ShedLock's JDBC lock provider is built from a JdbcTemplate. It is wiring
-     * (a bean definition), not data access, and it has to live next to {@code @EnableSchedulerLock}.
+     * The whole list of classes exempt from a rule, in one place: rule -> class (relative to the root) -> why.
+     * Nothing else is exempt; the same list is described in docs/ARCHITECTURE-CHECKS.md.
      */
-    private final String jobsConfig;
+    private static final java.util.Map<String, java.util.Map<String, String>> ALLOWED = java.util.Map.of(
+            "S1", java.util.Map.of("platform.jobs.JobsConfig",
+                    "ShedLock's JDBC lock provider is built from a JdbcTemplate; it is wiring next to @EnableSchedulerLock"),
+            "K1", java.util.Map.of(
+                    "payment.app.CustomerPaymentRefresh", "ARCHITECTURE.md section 6: 5-second poll throttle, a spare poll is harmless",
+                    "platform.config.WebSocketConfig", "ARCHITECTURE.md section 6: a connection belongs to the process by nature"),
+            "E1", java.util.Map.of("payment.domain.MonobankGateway",
+                    "MonobankException is a failure of the port, always caught in payment.app and turned into a DomainException; it never reaches HTTP"),
+            "C1", java.util.Map.of(
+                    "platform.time.TimeConfig", "the one place that creates the system Clock and the ShopZone bean",
+                    "platform.time.ShopZone", "the one place that parses a zone id",
+                    "platform.jobs.DbLocks", "System.nanoTime is a monotonic deadline for waiting on a DB lock, not a date"));
+
     private final Placement placement;
     private final String root;
 
     V2Rules(String root) {
         this.root = root;
-        this.jobsConfig = root + ".platform.jobs.JobsConfig";
         this.placement = new Placement(root);
     }
 
@@ -86,11 +101,25 @@ final class V2Rules {
             }
             Place from = placement.place(c);
             String origin = Placement.outermost(c).getName();
-            layering(c, from, origin, out);
-            practices(c, from, origin, out);
-            members(c, from, origin, out);
+            List<Violation> own = new ArrayList<>();
+            placementRule(from, origin, own);
+            layering(c, from, origin, own);
+            practices(c, from, origin, own);
+            members(c, from, origin, own);
+            own.stream().filter(v -> !isAllowed(v.rule(), origin)).forEach(out::add);
         }
         return out.stream().distinct().toList();
+    }
+
+    private boolean isAllowed(String rule, String origin) {
+        String relative = origin.startsWith(root + ".") ? origin.substring(root.length() + 1) : origin;
+        return ALLOWED.getOrDefault(rule, java.util.Map.of()).containsKey(relative);
+    }
+
+    private void placementRule(Place from, String origin, List<Violation> out) {
+        if (from.module().equals(Placement.OUTSIDE)) {
+            out.add(new Violation("R1", from.module(), origin + " lies outside <module>.{api,app,domain,infra} and platform"));
+        }
     }
 
     // ---- layering and module boundaries -------------------------------------------------------------------
@@ -162,30 +191,29 @@ final class V2Rules {
             }
             String tn = Placement.outermost(t).getName();
             String detail = origin + " -> " + tn;
-            if (tn.startsWith(root + ".platform.error.") && OLD_EXCEPTIONS.contains(t.getSimpleName())
-                    && !pkg.equals(root + ".platform.error")) {
+            if (!inPlatform && tn.equals("org.springframework.web.server.ResponseStatusException")) {
                 out.add(new Violation("E1", from.module(), detail));
             }
-            boolean manualTx = tn.equals(root + ".platform.tx.AfterCommit")
-                    || tn.equals("org.springframework.transaction.support.TransactionSynchronizationManager")
+            boolean manualTx = tn.equals("org.springframework.transaction.support.TransactionSynchronizationManager")
                     || tn.equals("org.springframework.transaction.support.TransactionSynchronization");
             if (manualTx && !pkg.equals(root + ".platform.tx")) {
                 out.add(new Violation("T1", from.module(), detail));
             }
-            if (tn.equals(root + ".platform.web.SecurityUtil") && !pkg.equals(root + ".platform.web")) {
+            if (tn.equals("org.springframework.security.core.context.SecurityContextHolder")
+                    && !pkg.equals(root + ".platform.web") && !pkg.equals(root + ".platform.security")) {
                 out.add(new Violation("A1", from.module(), detail));
             }
             if (from.layer() == Layer.API && tn.equals(root + ".platform.audit.AdminAuditService")) {
                 out.add(new Violation("A2", from.module(), detail));
             }
-            if (isTelegram(tn, pkg, c, from)) {
+            if (isTelegram(tn, c, from)) {
                 out.add(new Violation("N1", from.module(), detail));
             }
             if (!inPlatform && tn.equals("com.github.benmanes.caffeine.cache.Caffeine")) {
                 out.add(new Violation("CA", from.module(), detail));
             }
             if (JDBC.contains(tn) && from.layer() != Layer.INFRA && !c.getSimpleName().endsWith("Store")
-                    && !c.getSimpleName().endsWith("Queries") && !origin.equals(jobsConfig)) {
+                    && !c.getSimpleName().endsWith("Queries")) {
                 out.add(new Violation("S1", from.module(), detail));
             }
         }
@@ -196,8 +224,12 @@ final class V2Rules {
             if (from.layer() == Layer.API && owner.equals(root + ".platform.security.AdminAccess") && name.startsWith("require")) {
                 out.add(new Violation("A3", from.module(), detail));
             }
-            if (!inPlatform && isWallClock(owner, name, call)) {
+            if (isWallClock(owner, name, call)) {
                 out.add(new Violation("C1", from.module(), detail));
+            }
+            if ((owner.equals("java.util.Collections") && name.startsWith("synchronized"))
+                    || (owner.equals("java.util.concurrent.ConcurrentHashMap") && name.equals("newKeySet"))) {
+                out.add(new Violation("K1", from.module(), detail));
             }
             if (!pkg.equals(root + ".platform.http") && owner.equals("java.net.http.HttpClient")
                     && (name.equals("newBuilder") || name.equals("newHttpClient"))) {
@@ -208,23 +240,34 @@ final class V2Rules {
                 out.add(new Violation("O1", from.module(), detail));
             }
         }
+        for (JavaConstructorCall call : c.getConstructorCallsFromSelf()) {
+            JavaClass owner = call.getTargetOwner();
+            String detail = origin + " -> new " + owner.getSimpleName();
+            if (Placement.outermost(owner).equals(Placement.outermost(c))) {
+                continue;
+            }
+            if (isConcurrentType(owner)) {
+                out.add(new Violation("K1", from.module(), detail));
+            }
+            boolean dateNow = owner.getName().equals("java.util.Date") && call.getTarget().getRawParameterTypes().isEmpty();
+            if (dateNow || owner.getName().equals(root + ".platform.time.ShopZone")) {
+                out.add(new Violation("C1", from.module(), detail));
+            }
+        }
         if (c.isAnnotatedWith("org.springframework.boot.context.properties.ConfigurationProperties")
                 && !c.isAnnotatedWith("org.springframework.validation.annotation.Validated")) {
             out.add(new Violation("V2", from.module(), origin + " is @ConfigurationProperties without @Validated"));
         }
     }
 
-    /** Telegram library, or the legacy tg/push packages, used from outside notification and *Notifier classes. */
-    private boolean isTelegram(String targetName, String originPkg, JavaClass c, Place from) {
-        boolean viaLibrary = targetName.startsWith("org.telegram.");
-        boolean viaLegacy = targetName.startsWith(root + ".tg.") || targetName.startsWith(root + ".push.");
-        boolean insideLegacyBlob = originPkg.equals(root + ".tg") || originPkg.equals(root + ".push");
+    /** The Telegram library used from outside notification and *Notifier classes. */
+    private static boolean isTelegram(String targetName, JavaClass c, Place from) {
         boolean allowed = from.module().equals("notification")
                 || Placement.outermost(c).getSimpleName().endsWith("Notifier");
-        return !allowed && (viaLibrary || (viaLegacy && !insideLegacyBlob));
+        return !allowed && targetName.startsWith("org.telegram.");
     }
 
-    private static boolean isWallClock(String owner, String name, JavaMethodCall call) {
+    private boolean isWallClock(String owner, String name, JavaMethodCall call) {
         boolean noClockArg = call.getTarget().getRawParameterTypes().stream()
                 .noneMatch(p -> p.getName().equals("java.time.Clock"));
         switch (owner) {
@@ -235,6 +278,10 @@ final class V2Rules {
                 return name.equals("of") || name.equals("systemDefault");
             case "java.time.Clock":
                 return name.equals("systemUTC") || name.equals("systemDefaultZone") || name.equals("system");
+            case "java.lang.System":
+                return name.equals("currentTimeMillis") || name.equals("nanoTime");
+            case "java.util.TimeZone":
+                return name.equals("getDefault") || name.equals("getTimeZone");
             default:
                 return false;
         }
@@ -261,9 +308,10 @@ final class V2Rules {
                 .filter(m -> m.isAnnotatedWith(TRANSACTIONAL) && !m.getModifiers().contains(JavaModifier.PUBLIC))
                 .forEach(m -> out.add(new Violation("T2", from.module(), origin + "." + m.getName() + " is not public")));
         // injection style
-        c.getFields().stream().filter(f -> f.isAnnotatedWith(AUTOWIRED) || f.isAnnotatedWith(LAZY))
+        c.getFields().stream().filter(f -> f.isAnnotatedWith(AUTOWIRED) || f.isAnnotatedWith(LAZY)
+                        || OTHER_INJECTION.stream().anyMatch(f::isAnnotatedWith))
                 .forEach(f -> out.add(new Violation("W1", from.module(), origin + " field " + f.getName())));
-        c.getMethods().stream().filter(m -> m.isAnnotatedWith(AUTOWIRED))
+        c.getMethods().stream().filter(m -> m.isAnnotatedWith(AUTOWIRED) || OTHER_INJECTION.stream().anyMatch(m::isAnnotatedWith))
                 .forEach(m -> out.add(new Violation("W1", from.module(), origin + " method " + m.getName())));
         for (JavaCodeUnit unit : codeUnits(c)) {
             boolean notRequired = unit.tryGetAnnotationOfType(AUTOWIRED)
@@ -277,13 +325,22 @@ final class V2Rules {
         // in-memory locks
         c.getMethods().stream().filter(m -> m.getModifiers().contains(JavaModifier.SYNCHRONIZED))
                 .forEach(m -> out.add(new Violation("K1", from.module(), origin + "." + m.getName() + " is synchronized")));
-        c.getFields().stream().filter(f -> f.getRawType().getName().equals("java.util.concurrent.ConcurrentHashMap")
-                        || f.getRawType().getName().startsWith("java.util.concurrent.locks."))
+        c.getFields().stream().filter(f -> isConcurrentType(f.getRawType()))
                 .forEach(f -> out.add(new Violation("K1", from.module(), origin + " field " + f.getName())));
+        // E1: a business error is a DomainException, not another RuntimeException
+        if (c.isAssignableTo("java.lang.RuntimeException") && !c.getName().equals("java.lang.RuntimeException")
+                && !c.isAssignableTo(root + ".platform.error.DomainException")) {
+            out.add(new Violation("E1", from.module(), origin + " extends RuntimeException but not DomainException"));
+        }
         // scheduled jobs
         for (JavaMethod m : c.getMethods()) {
             if (!m.isAnnotatedWith("org.springframework.scheduling.annotation.Scheduled")) {
                 continue;
+            }
+            String zone = m.getAnnotationOfType("org.springframework.scheduling.annotation.Scheduled")
+                    .get("zone").map(Object::toString).orElse("");
+            if (!zone.isEmpty() && !zone.startsWith("${")) {
+                out.add(new Violation("C1", from.module(), origin + "." + m.getName() + " has a hard-coded zone " + zone));
             }
             Predicate<String> jobName = n -> n.endsWith("Job") || n.endsWith("Jobs");
             boolean named = jobName.test(Placement.outermost(c).getSimpleName());
@@ -295,6 +352,16 @@ final class V2Rules {
                         + (rightLayer ? "" : " outside app")));
             }
         }
+    }
+
+    /** Locks and concurrent collections, whatever the field is declared as: by the type that is created or held. */
+    private static boolean isConcurrentType(JavaClass t) {
+        String n = t.getName();
+        String simple = t.getSimpleName();
+        if (n.startsWith("java.util.concurrent.locks.") || n.equals("java.util.concurrent.Semaphore")) {
+            return true;
+        }
+        return n.startsWith("java.util.concurrent.") && (simple.startsWith("Concurrent") || simple.startsWith("CopyOnWrite"));
     }
 
     private static List<JavaCodeUnit> codeUnits(JavaClass c) {

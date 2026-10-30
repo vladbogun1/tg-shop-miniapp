@@ -44,6 +44,16 @@
   (контроллеры не лезут в репозитории — L1/A1, циклы между модулями — M2, `setStatus` — O1). В классе **`legacy`** остался только `TgShopApplication` (точка входа в корневом пакете).
 - **Размер файла** — `architecture/ClassSizeTest`: ни один файл в `src/main/java` не длиннее 500 строк, без списка исключений.
   Растёт класс — выносить логику в отдельный по смыслу, а не поднимать лимит.
+- **Шаги 9а/9б: правила по сути, а не по имени.** W1 ловит и `@PersistenceContext`; K1 — замки и конкурентные коллекции (`Concurrent*`, `CopyOnWrite*`)
+  по объявленному и по созданному типу; E1 — любой наследник `RuntimeException`, кроме `DomainException`, и `ResponseStatusException` в app/domain;
+  R1 — класс вне `<модуль>.{api,app,domain,infra}` и `platform`; C1 — без исключения для `platform`: время только через `Clock`, пояс — только через
+  бин `ShopZone` (конструктор `new ShopZone(app.timezone)`, статических `of`/`DEFAULT` нет), `System.currentTimeMillis`/`nanoTime` запрещены.
+  Литерал `Europe/Kyiv` допустим только в `AppProperties.DEFAULT_TIMEZONE` (`ShopZoneLiteralTest`).
+- **Точечные исключения** (имя класса в `V2Rules.ALLOWED`, причина рядом): S1 — `platform.jobs.JobsConfig`; K1 — `payment.app.CustomerPaymentRefresh` и
+  `platform.config.WebSocketConfig` (ARCHITECTURE.md, раздел 6); E1 — `payment.domain.MonobankGateway` (`MonobankException` — сбой порта, всегда перехватывается
+  в `payment.app` и превращается в `DomainException`); C1 — `platform.time.TimeConfig` (создаёт системный `Clock` и `ShopZone`), `platform.time.ShopZone`
+  (единственное место разбора id пояса), `platform.jobs.DbLocks` (`System.nanoTime` — монотонный дедлайн ожидания замка БД, не дата).
+  Остаток для 9г: `ErrorCode.of` и фабрики `*Errors` остаются как есть.
 - **Что исключено из правил осознанно.** S1: `platform.jobs.JobsConfig` (создаёт `JdbcLockProvider` ShedLock — он и есть слой хранения замков).
   T1: `@OnCompleted` (AFTER_COMPLETION, срабатывает и при откате) — единственный способ сбросить снимок настроек и после отката.
   Что остаётся в памяти и почему — [ARCHITECTURE.md](ARCHITECTURE.md), раздел 6 «Что остаётся в памяти».
