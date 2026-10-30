@@ -2,5 +2,3 @@
 # Format: <rule> <module> <count>. Numbers only go DOWN: regenerate with
 #   mvn -B -ntp test -Dtest=ArchitectureV2Test -Darchitecture.v2.update=true
 # after fixing violations; a raised number means the code got worse and the change must be redone.
-K1 notification 1
-T2 staff 1

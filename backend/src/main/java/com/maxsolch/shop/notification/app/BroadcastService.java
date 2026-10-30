@@ -3,6 +3,7 @@ package com.maxsolch.shop.notification.app;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.notification.domain.Broadcast;
 import com.maxsolch.shop.platform.i18n.Messages;
+import com.maxsolch.shop.platform.jobs.DbLocks;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.notification.infra.BroadcastRepository;
 import com.maxsolch.shop.notification.domain.BroadcastAudiences;
@@ -23,6 +24,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,7 +40,7 @@ import static com.maxsolch.shop.platform.util.Texts.blankToNull;
 
 /**
  * Sends HTML-formatted Telegram broadcasts to a chosen audience. One broadcast runs at a time
- * on a single background thread; progress is exposed via {@link #status()} for the admin UI to poll.
+ * (a database lock, so a second backend instance respects it too) on a single background thread; progress is exposed via {@link #status()} for the admin UI to poll.
  * A send that hits "bot blocked / user deactivated" marks the user blocked (so the Users tab shows it).
  *
  * <p>R9: the audience can be narrowed to one language, each customer gets the version of the text
@@ -55,6 +57,10 @@ public class BroadcastService {
     record Recipient(long id, String lang) {
     }
 
+    /** The lock of the running broadcast: renewed while it makes progress, free {@value} minutes after a crash. */
+    static final String LOCK_NAME = "broadcast";
+    private static final Duration LOCK_TTL = Duration.ofMinutes(5);
+
     private static final Map<String, String> DEFAULT_BUTTON = Map.of(
             "uk", "🛍 Відкрити магазин",
             "ru", "🛍 Открыть магазин",
@@ -68,6 +74,7 @@ public class BroadcastService {
     private final Clock clock;
     private final AdminAuditService audit;
     private final CurrentActor actor;
+    private final DbLocks locks;
 
     private final ExecutorService exec = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "broadcast");
@@ -78,7 +85,8 @@ public class BroadcastService {
 
     public BroadcastService(TelegramGateway bot, AppProperties props, BroadcastAudiences audiences,
                             BroadcastRepository broadcastRepository, ActivityLog activity, Clock clock,
-                            AdminAuditService audit, CurrentActor actor) {
+                            AdminAuditService audit, CurrentActor actor, DbLocks locks) {
+        this.locks = locks;
         this.bot = bot;
         this.props = props;
         this.audiences = audiences;
@@ -165,13 +173,24 @@ public class BroadcastService {
     }
 
     /** Start a broadcast (async). Throws 409 if one is already running. Returns the history id too. */
-    public synchronized Started start(BroadcastRequest req, Long adminId, String adminName) {
+    public Started start(BroadcastRequest req, Long adminId, String adminName) {
         if (!enabled()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Бот не настроен");
         }
         if (status.get().running()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Рассылка уже идёт");
         }
+        DbLocks.Held lock = locks.tryLock(LOCK_NAME, LOCK_TTL)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Рассылка уже идёт"));
+        try {
+            return begin(req, adminId, adminName, lock);
+        } catch (RuntimeException e) {
+            lock.release();
+            throw e;
+        }
+    }
+
+    private Started begin(BroadcastRequest req, Long adminId, String adminName, DbLocks.Held lock) {
         String audience = req.audience() == null || req.audience().isBlank()
                 ? "all" : req.audience().trim().toLowerCase(Locale.ROOT);
         String lang = normLang(req.lang());
@@ -194,7 +213,7 @@ public class BroadcastService {
 
         BroadcastStatus start = new BroadcastStatus(true, recipients.size(), 0, 0, 0, saved.getStartedAt(), null);
         status.set(start);
-        exec.submit(() -> run(saved, recipients, req.withButton(), req.buttonText()));
+        exec.submit(() -> run(saved, recipients, req.withButton(), req.buttonText(), lock));
         return new Started(start, saved.getId(), recipients.size());
     }
 
@@ -222,7 +241,8 @@ public class BroadcastService {
         return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(btn))).build();
     }
 
-    private void run(Broadcast row, List<Recipient> recipients, boolean withButton, String buttonText) {
+    private void run(Broadcast row, List<Recipient> recipients, boolean withButton, String buttonText,
+                     DbLocks.Held lock) {
         int sent = 0, failed = 0, blocked = 0;
         Map<String, InlineKeyboardMarkup> buttons = new HashMap<>();
         try {
@@ -242,6 +262,7 @@ public class BroadcastService {
                         status.get().startedAt(), null));
                 if (++i % 50 == 0) {
                     persist(row, sent, failed, blocked, Broadcast.RUNNING, null);
+                    extend(lock);
                 }
                 sleep(45); // ~22 msg/s — well under Telegram's bulk limit
             }
@@ -252,6 +273,19 @@ public class BroadcastService {
             persist(row, sent, failed, blocked, Broadcast.DONE, end);
             log.info("Broadcast #{} finished: total={} sent={} failed={} blocked={}",
                     row.getId(), recipients.size(), sent, failed, blocked);
+            try {
+                lock.release();
+            } catch (RuntimeException e) {
+                log.warn("Could not release the broadcast lock (it expires by itself): {}", e.getMessage());
+            }
+        }
+    }
+
+    private static void extend(DbLocks.Held lock) {
+        try {
+            lock.extend(LOCK_TTL);
+        } catch (RuntimeException e) {
+            log.warn("Could not renew the broadcast lock: {}", e.getMessage());
         }
     }
 

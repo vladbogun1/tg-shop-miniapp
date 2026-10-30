@@ -52,7 +52,8 @@ class BroadcastJournalTest {
         AppProperties props = new AppProperties();
         props.getTelegram().setBotToken("123:test");
         service = new BroadcastService(bot, props, users, mock(BroadcastRepository.class), activity,
-                java.time.Clock.systemUTC(), mock(AdminAuditService.class), mock(CurrentActor.class));
+                java.time.Clock.systemUTC(), mock(AdminAuditService.class), mock(CurrentActor.class),
+                new com.maxsolch.shop.platform.jobs.DbLocks(new com.maxsolch.shop.platform.jobs.InMemoryLockProvider(), java.time.Clock.systemUTC()));
     }
 
     @Test
