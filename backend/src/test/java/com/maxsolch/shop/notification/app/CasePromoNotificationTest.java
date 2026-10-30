@@ -6,7 +6,7 @@ import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.order.app.OrderCustomerNotifier;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.customer.domain.User;
-import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
+import com.maxsolch.shop.order.app.CustomerRejectReason;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.customer.infra.UserRepository;

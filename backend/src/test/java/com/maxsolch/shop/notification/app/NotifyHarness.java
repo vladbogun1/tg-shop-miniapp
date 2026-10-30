@@ -14,7 +14,7 @@ import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderSource;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.customer.domain.User;
-import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
+import com.maxsolch.shop.order.app.CustomerRejectReason;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.customer.infra.UserRepository;

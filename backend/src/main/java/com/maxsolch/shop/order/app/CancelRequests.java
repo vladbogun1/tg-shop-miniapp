@@ -2,6 +2,7 @@ package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.domain.OrderError;
+import com.maxsolch.shop.order.domain.RejectReason;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.order.domain.CancelRequestStatus;
@@ -10,7 +11,6 @@ import com.maxsolch.shop.order.domain.OrderTransitions;
 import com.maxsolch.shop.order.domain.RejectCause;
 import com.maxsolch.shop.order.domain.RejectReasonCode;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
@@ -63,7 +63,7 @@ public class CancelRequests {
             r = r.substring(0, 500);
         }
         return ops.reject(order, new RejectCause(ops.now(),
-                r.isBlank() ? CustomerRejectReason.BY_CUSTOMER : CustomerRejectReason.BY_CUSTOMER + ": " + r,
+                RejectReason.BY_CUSTOMER.withExplanation(r),
                 RejectReasonCode.CHANGED_MIND.name(), true));
     }
 
@@ -147,8 +147,6 @@ public class CancelRequests {
 
     /** "Отменён по запросу покупателя: причина", without a dangling colon when the reason is empty. */
     private static String byRequestReason(String requestReason) {
-        return requestReason == null || requestReason.isBlank()
-                ? CustomerRejectReason.BY_REQUEST
-                : CustomerRejectReason.BY_REQUEST + ": " + requestReason;
+        return RejectReason.BY_REQUEST.withExplanation(requestReason);
     }
 }

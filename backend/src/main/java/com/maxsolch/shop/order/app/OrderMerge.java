@@ -1,6 +1,7 @@
 package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.order.domain.OrderError;
+import com.maxsolch.shop.order.domain.RejectReason;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.order.domain.GiftCaseRules;
@@ -36,9 +37,6 @@ import java.util.Objects;
  */
 @Service
 public class OrderMerge {
-
-    /** Written into {@code orders.reject_reason}; the customer reads it via CustomerRejectReason. */
-    public static final String MERGED_PREFIX = "Объединён с заказом #";
 
     private final OrderRepository orderRepository;
     private final OrderOps ops;
@@ -169,7 +167,7 @@ public class OrderMerge {
         target.absorbPaid(money, source, ops.now());
 
         // 4. The merged order is closed, keeping its lines and money history.
-        source.markMerged(ops.now(), MERGED_PREFIX + targetShort, target.getId());
+        source.markMerged(ops.now(), RejectReason.merged(targetShort), target.getId());
 
         Order savedTarget = orderRepository.save(target);
         Order savedSource = orderRepository.save(source);

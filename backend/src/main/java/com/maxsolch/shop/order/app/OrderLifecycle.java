@@ -2,6 +2,7 @@ package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.domain.OrderError;
+import com.maxsolch.shop.order.domain.RejectReason;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.order.domain.DeliveryMethod;
@@ -13,7 +14,6 @@ import com.maxsolch.shop.order.domain.RejectCause;
 import com.maxsolch.shop.order.domain.RejectReasonCode;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
@@ -188,7 +188,7 @@ public class OrderLifecycle {
         }
         stock.restoreAll(order);
         return ops.reject(order, new RejectCause(now,
-                CustomerRejectReason.UNPAID_PREFIX + Math.max(1, props.getPayment().getDueHours()) + " ч",
+                RejectReason.unpaid(Math.max(1, props.getPayment().getDueHours())),
                 RejectReasonCode.PAYMENT_TIMEOUT.name(), false));
     }
 }

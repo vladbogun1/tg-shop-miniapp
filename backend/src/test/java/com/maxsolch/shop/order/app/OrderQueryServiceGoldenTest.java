@@ -24,7 +24,7 @@ import com.maxsolch.shop.catalog.domain.ProductImage;
 import com.maxsolch.shop.inventory.domain.StockWriteoff;
 import com.maxsolch.shop.gift.app.GiftCaseService;
 import com.maxsolch.shop.gift.app.GiftDtos;
-import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
+import com.maxsolch.shop.order.app.CustomerRejectReason;
 import com.maxsolch.shop.payment.domain.MonobankGateway;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;

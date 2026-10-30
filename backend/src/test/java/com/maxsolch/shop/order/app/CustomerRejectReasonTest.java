@@ -1,5 +1,8 @@
-package com.maxsolch.shop.platform.i18n;
+package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.RejectReason;
+import com.maxsolch.shop.platform.i18n.ChatPreview;
+import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.customer.infra.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,7 +39,7 @@ class CustomerRejectReasonTest {
 
     @Test
     void cancelledByCustomerWithPreset() {
-        String stored = CustomerRejectReason.BY_CUSTOMER + ": Передумал(а)";
+        String stored = RejectReason.BY_CUSTOMER.prefix() + ": Передумал(а)";
         assertThat(reasons.localize(stored, UK)).isEqualTo("Скасовано вами: Передумав(ла)");
         assertThat(reasons.localize(stored, EN)).isEqualTo("Cancelled by you: Changed my mind");
         assertThat(reasons.localize(stored, RU)).isEqualTo("Отменён вами: Передумал(а)");
@@ -44,29 +47,29 @@ class CustomerRejectReasonTest {
 
     @Test
     void cancelledByCustomerOwnWordsAndBare() {
-        assertThat(reasons.localize(CustomerRejectReason.BY_CUSTOMER + ": дорого", EN))
+        assertThat(reasons.localize(RejectReason.BY_CUSTOMER.prefix() + ": дорого", EN))
                 .isEqualTo("Cancelled by you: дорого");
-        assertThat(reasons.localize(CustomerRejectReason.BY_CUSTOMER, UK)).isEqualTo("Скасовано вами");
+        assertThat(reasons.localize(RejectReason.BY_CUSTOMER.prefix(), UK)).isEqualTo("Скасовано вами");
     }
 
     @Test
     void cancelledOnRequest() {
-        assertThat(reasons.localize(CustomerRejectReason.BY_REQUEST + ": Нашёл(ла) дешевле", EN))
+        assertThat(reasons.localize(RejectReason.BY_REQUEST.prefix() + ": Нашёл(ла) дешевле", EN))
                 .isEqualTo("Cancelled at your request: Found it cheaper");
     }
 
     @Test
     void mergedIntoAnotherOrder() {
-        String stored = com.maxsolch.shop.order.app.OrderMerge.MERGED_PREFIX + "803d9cb6";
+        String stored = RejectReason.MERGED.prefix() + "803d9cb6";
         assertThat(reasons.localize(stored, UK)).isEqualTo("Обʼєднано із замовленням #803d9cb6");
         assertThat(reasons.localize(stored, EN)).isEqualTo("Merged into order #803d9cb6");
     }
 
     @Test
     void paymentTimeout() {
-        assertThat(reasons.localize(CustomerRejectReason.UNPAID_PREFIX + "24 ч", EN))
+        assertThat(reasons.localize(RejectReason.UNPAID.prefix() + "24 ч", EN))
                 .isEqualTo("The order was not paid within 24 h and was cancelled automatically");
-        assertThat(reasons.localize(CustomerRejectReason.UNPAID_PREFIX + "24 ч", UK)).contains("24 год");
+        assertThat(reasons.localize(RejectReason.UNPAID.prefix() + "24 ч", UK)).contains("24 год");
     }
 
     @Test

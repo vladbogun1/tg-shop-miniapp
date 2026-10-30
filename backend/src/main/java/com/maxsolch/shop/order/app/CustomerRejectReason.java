@@ -1,5 +1,7 @@
-package com.maxsolch.shop.platform.i18n;
+package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.RejectReason;
+import com.maxsolch.shop.platform.i18n.Messages;
 import org.springframework.stereotype.Component;
 
 import java.util.Locale;
@@ -15,9 +17,9 @@ import java.util.regex.Pattern;
  * than leaving it). But three reasons are written by the shop itself, and those were showing up in
  * Russian on a Ukrainian or English order page and in the bot:
  * <ul>
- *   <li>{@value #BY_CUSTOMER} [: preset or own words] — the customer cancelled an unpaid order;</li>
- *   <li>{@value #BY_REQUEST}: … — the admin approved the customer's cancellation request;</li>
- *   <li>{@value #UNPAID_PREFIX}N ч — the payment window ran out ({@code PAYMENT_TIMEOUT}).</li>
+ *   <li>{@link RejectReason#BY_CUSTOMER} [: preset or own words] — the customer cancelled an unpaid order;</li>
+ *   <li>{@link RejectReason#BY_REQUEST}: … — the admin approved the customer's cancellation request;</li>
+ *   <li>{@link RejectReason#UNPAID} N ч — the payment window ran out ({@code PAYMENT_TIMEOUT}).</li>
  * </ul>
  * Those are recognised by their prefix and rebuilt in the customer's language; the cancellation
  * presets the apps send (Russian, so the seller can read them) are translated back too.
@@ -25,18 +27,11 @@ import java.util.regex.Pattern;
 @Component
 public class CustomerRejectReason {
 
-    /** Written by {@code CancelRequests.cancelByCustomer}. */
-    public static final String BY_CUSTOMER = "Отменён покупателем";
-    /** Written by {@code CancelRequests.approveCancelRequest}. */
-    public static final String BY_REQUEST = "Отменён по запросу покупателя";
-    /** Written by {@code OrderLifecycle.expireUnpaid}: "Не оплачен в течение 24 ч". */
-    public static final String UNPAID_PREFIX = "Не оплачен в течение ";
-
     /** Written by {@code OrderMerge.merge}: "Объединён с заказом #1a2b3c4d". */
     private static final Pattern MERGED = Pattern.compile("^" + Pattern.quote(
-            com.maxsolch.shop.order.app.OrderMerge.MERGED_PREFIX) + "([0-9a-f]{8})$");
+            RejectReason.MERGED.prefix()) + "([0-9a-f]{8})$");
 
-    private static final Pattern UNPAID = Pattern.compile("^" + Pattern.quote(UNPAID_PREFIX) + "(\\d+) ч$");
+    private static final Pattern UNPAID = Pattern.compile("^" + Pattern.quote(RejectReason.UNPAID.prefix()) + "(\\d+) ч$");
 
     /**
      * The cancellation presets of the Mini App and the site (their {@code CANCEL_REASONS}), as sent
@@ -74,16 +69,18 @@ public class CustomerRejectReason {
         if (unpaid.matches()) {
             return messages.get(locale, "api.reject.unpaid", Integer.parseInt(unpaid.group(1)));
         }
-        if (s.equals(BY_CUSTOMER)) {
+        String byCustomer = RejectReason.BY_CUSTOMER.prefix();
+        String byRequest = RejectReason.BY_REQUEST.prefix();
+        if (s.equals(byCustomer)) {
             return messages.get(locale, "api.reject.byCustomer");
         }
-        if (s.startsWith(BY_CUSTOMER + ": ")) {
-            return messages.get(locale, "api.reject.byCustomerReason", reason(s.substring(BY_CUSTOMER.length() + 2), locale));
+        if (s.startsWith(byCustomer + ": ")) {
+            return messages.get(locale, "api.reject.byCustomerReason", reason(s.substring(byCustomer.length() + 2), locale));
         }
-        if (s.startsWith(BY_REQUEST + ": ")) {
-            return messages.get(locale, "api.reject.byRequest", reason(s.substring(BY_REQUEST.length() + 2), locale));
+        if (s.startsWith(byRequest + ": ")) {
+            return messages.get(locale, "api.reject.byRequest", reason(s.substring(byRequest.length() + 2), locale));
         }
-        if (s.equals(BY_REQUEST + ":") || s.equals(BY_REQUEST)) {
+        if (s.equals(byRequest + ":") || s.equals(byRequest)) {
             return messages.get(locale, "api.reject.byCustomer");
         }
         return stored;

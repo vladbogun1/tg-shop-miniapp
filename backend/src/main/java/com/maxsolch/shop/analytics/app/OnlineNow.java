@@ -16,6 +16,7 @@ public class OnlineNow implements OnlineVisitors {
 
     @Override
     public Counts within(int windowMinutes) {
-        return queries.within(windowMinutes);
+        var c = queries.within(windowMinutes);
+        return new Counts(c.miniapp(), c.web(), c.total());
     }
 }
