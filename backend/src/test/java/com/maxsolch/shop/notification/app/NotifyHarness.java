@@ -105,7 +105,7 @@ final class NotifyHarness {
             u.setLocale(LANGS[i]);
             Mockito.when(users.findById(LANG_IDS[i])).thenReturn(java.util.Optional.of(u));
         }
-        messages = new Messages((MessageSource) source, users);
+        messages = new Messages((MessageSource) source, new com.maxsolch.shop.customer.app.UserLanguages(users));
         Mockito.when(settings.getBool(any())).thenReturn(true);
         customer = new OrderCustomerNotifier(props, messages, settings, new CustomerRejectReason(messages),
                 new CustomerBot(bot, props, messages, activity));

@@ -42,7 +42,7 @@ class BotTextsTest {
         source.setBasename("i18n/messages");
         source.setDefaultEncoding("UTF-8");
         source.setFallbackToSystemLocale(false);
-        Messages messages = new Messages(source, mock(UserRepository.class));
+        Messages messages = new Messages(source, new com.maxsolch.shop.customer.app.UserLanguages(mock(UserRepository.class)));
         when(settings.system(anyString())).thenAnswer(inv -> Optional.ofNullable(store.get((String) inv.getArgument(0))));
         org.mockito.Mockito.doAnswer(inv -> {
             store.put(inv.getArgument(0), inv.getArgument(1));

@@ -1,14 +1,11 @@
 package com.maxsolch.shop.platform.journal;
 
-import com.maxsolch.shop.notification.infra.BroadcastRepository;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.notification.app.BroadcastHistoryDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.maxsolch.shop.platform.time.ShopZone;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -47,15 +44,13 @@ import static com.maxsolch.shop.platform.util.Texts.trimToNull;
 public class ActivityLogController {
 
     private final ActivityLogStore store;
-    private final BroadcastRepository broadcasts;
     private final ActivityLogRetention retention;
     private final ZoneId zone;
 
-    public ActivityLogController(ActivityLogStore store, BroadcastRepository broadcasts,
+    public ActivityLogController(ActivityLogStore store,
                                  ActivityLogRetention retention,
                                  ShopZone shopZone) {
         this.store = store;
-        this.broadcasts = broadcasts;
         this.retention = retention;
         this.zone = shopZone.zone();
     }
@@ -112,44 +107,6 @@ public class ActivityLogController {
             m.merge(((String) r[1]).toLowerCase(Locale.ROOT), (Long) r[2], Long::sum);
         }
         return out;
-    }
-
-    /** A broadcast with its per-recipient delivery breakdown from the journal. */
-    public record BroadcastSummary(BroadcastHistoryDto broadcast, String group, long delivered, long failed,
-                                   long skipped, Map<String, Long> reasons) {
-    }
-
-    @GetMapping("/broadcasts")
-    @Operation(summary = "Recent broadcasts with delivered / not delivered counts and the reasons")
-    public List<BroadcastSummary> broadcasts(@RequestParam(defaultValue = "20") int limit) {
-        List<BroadcastHistoryDto> recent = broadcasts.recent(PageRequest.of(0, Math.min(Math.max(1, limit), 100)))
-                .stream().map(BroadcastHistoryDto::of).toList();
-        List<String> groups = recent.stream().map(b -> ActivityLog.broadcastGroup(b.id())).toList();
-        Map<String, Map<String, Long>> breakdown = store.groupBreakdown(groups);
-        List<BroadcastSummary> out = new ArrayList<>(recent.size());
-        for (BroadcastHistoryDto b : recent) {
-            String g = ActivityLog.broadcastGroup(b.id());
-            out.add(summary(b, g, breakdown.getOrDefault(g, Map.of())));
-        }
-        return out;
-    }
-
-    /** {"OK": 10, "FAILED|BOT_BLOCKED": 3, "FAILED|RATE_LIMITED": 1} → counts + reasons. */
-    static BroadcastSummary summary(BroadcastHistoryDto b, String group, Map<String, Long> counts) {
-        long ok = 0, failed = 0, skipped = 0;
-        Map<String, Long> reasons = new LinkedHashMap<>();
-        for (Map.Entry<String, Long> e : counts.entrySet()) {
-            String[] parts = e.getKey().split("\\|", 2);
-            switch (parts[0]) {
-                case ActivityLog.OK -> ok += e.getValue();
-                case ActivityLog.FAILED -> failed += e.getValue();
-                default -> skipped += e.getValue();
-            }
-            if (!ActivityLog.OK.equals(parts[0])) {
-                reasons.merge(parts.length > 1 ? parts[1] : "ERROR", e.getValue(), Long::sum);
-            }
-        }
-        return new BroadcastSummary(b, group, ok, failed, skipped, reasons);
     }
 
     // ------------------------------------------------------------------ helpers

@@ -2,12 +2,10 @@ package com.maxsolch.shop.platform.security;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.customer.infra.WebSessionRepository;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.time.Instant;
+import java.time.Clock;
 
 /**
  * Makes "end this session" (site account page or the bot button) take effect immediately
@@ -18,14 +16,16 @@ import java.time.Instant;
 @Component
 public class WebSessionValidator {
 
-    private final WebSessionRepository repository;
+    private final WebSessionLookup sessions;
+    private final Clock clock;
     private final Cache<String, Boolean> cache = Caffeine.newBuilder()
             .maximumSize(10_000)
             .expireAfterWrite(Duration.ofSeconds(30))
             .build();
 
-    public WebSessionValidator(WebSessionRepository repository) {
-        this.repository = repository;
+    public WebSessionValidator(WebSessionLookup sessions, Clock clock) {
+        this.sessions = sessions;
+        this.clock = clock;
     }
 
     /** Non-web tokens pass untouched; web tokens need a live session. */
@@ -52,12 +52,6 @@ public class WebSessionValidator {
     }
 
     private Boolean lookup(String sid) {
-        try {
-            return repository.findById(UuidUtil.toBytes(sid))
-                    .map(s -> s.isActive(Instant.now()))
-                    .orElse(false);
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
+        return sessions.isLive(sid, clock.instant());
     }
 }

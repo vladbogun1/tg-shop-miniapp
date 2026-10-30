@@ -1,7 +1,5 @@
 package com.maxsolch.shop.platform.i18n;
 
-import com.maxsolch.shop.customer.domain.User;
-import com.maxsolch.shop.customer.infra.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -31,11 +29,11 @@ public class Messages {
     public static final Locale FALLBACK = Locale.forLanguageTag("uk");
 
     private final MessageSource messageSource;
-    private final UserRepository userRepository;
+    private final CustomerLanguages languages;
 
-    public Messages(MessageSource messageSource, UserRepository userRepository) {
+    public Messages(MessageSource messageSource, CustomerLanguages languages) {
         this.messageSource = messageSource;
-        this.userRepository = userRepository;
+        this.languages = languages;
     }
 
     /** The language to write to this Telegram user in. Never throws, never returns null. */
@@ -44,8 +42,8 @@ public class Messages {
             return FALLBACK;
         }
         try {
-            return userRepository.findById(telegramUserId)
-                    .map(this::localeOf)
+            return languages.of(telegramUserId)
+                    .map(l -> localeOf(l.locale(), l.languageCode()))
                     .orElse(FALLBACK);
         } catch (Exception e) {
             // A notification must never fail because of a lookup for its wording.
@@ -54,10 +52,10 @@ public class Messages {
         }
     }
 
-    public Locale localeOf(User user) {
-        Locale picked = normalize(user.getLocale());
-        return picked != null ? picked : (normalize(user.getLanguageCode()) != null
-                ? normalize(user.getLanguageCode())
+    public Locale localeOf(String locale, String languageCode) {
+        Locale picked = normalize(locale);
+        return picked != null ? picked : (normalize(languageCode) != null
+                ? normalize(languageCode)
                 : FALLBACK);
     }
 

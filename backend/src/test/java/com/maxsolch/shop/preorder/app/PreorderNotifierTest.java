@@ -56,7 +56,7 @@ class PreorderNotifierTest {
         source.setFallbackToSystemLocale(false);
         props.getTelegram().setBotToken("test-token");
         props.setWebappBaseUrl("https://app.example.test");
-        Messages msgs = new Messages((MessageSource) source, users);
+        Messages msgs = new Messages((MessageSource) source, new com.maxsolch.shop.customer.app.UserLanguages(users));
         notifier = new PreorderNotifier(queue,
                 new com.maxsolch.shop.notification.app.CustomerBot(bot, props, msgs, activity),
                 new com.maxsolch.shop.translation.app.BotTexts(msgs, mock(com.maxsolch.shop.platform.settings.SettingsService.class),

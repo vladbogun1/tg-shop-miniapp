@@ -24,7 +24,8 @@ import java.io.IOException;
  * browser id. Never fails the request.
  */
 @Component
-public class VisitorLocationFilter extends OncePerRequestFilter {
+public class VisitorLocationFilter extends OncePerRequestFilter
+        implements com.maxsolch.shop.platform.security.PostAuthenticationFilter {
 
     private final VisitorLocationService locations;
 

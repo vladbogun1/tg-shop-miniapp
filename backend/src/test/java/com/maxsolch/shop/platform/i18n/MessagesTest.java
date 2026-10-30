@@ -38,7 +38,7 @@ class MessagesTest {
         source.setBasename("i18n/messages");
         source.setDefaultEncoding("UTF-8");
         source.setFallbackToSystemLocale(false);
-        messages = new Messages((MessageSource) source, userRepository);
+        messages = new Messages((MessageSource) source, new com.maxsolch.shop.customer.app.UserLanguages(userRepository));
     }
 
     @Test
@@ -82,7 +82,7 @@ class MessagesTest {
         user.setLanguageCode("ru");
         user.setLocale("en");
 
-        assertThat(messages.localeOf(user)).isEqualTo(Locale.forLanguageTag("en"));
+        assertThat(messages.localeOf(user.getLocale(), user.getLanguageCode())).isEqualTo(Locale.forLanguageTag("en"));
     }
 
     @Test
@@ -90,7 +90,7 @@ class MessagesTest {
         User user = new User();
         user.setLanguageCode("ru");
 
-        assertThat(messages.localeOf(user)).isEqualTo(Locale.forLanguageTag("ru"));
+        assertThat(messages.localeOf(user.getLocale(), user.getLanguageCode())).isEqualTo(Locale.forLanguageTag("ru"));
     }
 
     @Test

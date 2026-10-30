@@ -28,14 +28,12 @@ import static org.mockito.Mockito.when;
 class ActivityLogApiTest {
 
     private ActivityLogStore store;
-    private BroadcastRepository broadcasts;
     private ActivityLogController controller;
 
     @BeforeEach
     void setUp() {
         store = mock(ActivityLogStore.class);
-        broadcasts = mock(BroadcastRepository.class);
-        controller = new ActivityLogController(store, broadcasts, new ActivityLogRetention(store, 90, 1095), com.maxsolch.shop.platform.time.ShopZone.of("Europe/Kyiv"));
+        controller = new ActivityLogController(store, new ActivityLogRetention(store, 90, 1095), com.maxsolch.shop.platform.time.ShopZone.of("Europe/Kyiv"));
     }
 
     private static ActivityLogStore.Filter filter(String order, String q) {
@@ -118,43 +116,6 @@ class ActivityLogApiTest {
     void badDateIsA400() {
         assertThatThrownBy(() -> controller.list(0, 50, null, null, null, null, null, null, null, null, null,
                 "07.10.2026", null)).isInstanceOf(BadRequestException.class);
-    }
-
-    @Test
-    void broadcastSummaryCountsDeliveredFailedAndReasons() {
-        Broadcast b = new Broadcast();
-        b.setId(12L);
-        b.setText("Акция");
-        b.setAudience("all");
-        b.setStatus(Broadcast.DONE);
-        b.setTotal(10);
-        b.setStartedAt(Instant.now());
-        when(broadcasts.recent(any())).thenReturn(List.of(b));
-        Map<String, Long> counts = new LinkedHashMap<>();
-        counts.put("OK", 6L);
-        counts.put("FAILED|BOT_BLOCKED", 3L);
-        counts.put("FAILED|RATE_LIMITED", 1L);
-        when(store.groupBreakdown(anyList())).thenReturn(Map.of("broadcast:12", counts));
-
-        List<ActivityLogController.BroadcastSummary> out = controller.broadcasts(20);
-
-        assertThat(out).hasSize(1);
-        ActivityLogController.BroadcastSummary s = out.get(0);
-        assertThat(s.group()).isEqualTo("broadcast:12");
-        assertThat(s.delivered()).isEqualTo(6);
-        assertThat(s.failed()).isEqualTo(4);
-        assertThat(s.reasons()).containsEntry("BOT_BLOCKED", 3L).containsEntry("RATE_LIMITED", 1L);
-        verify(store).groupBreakdown(List.of("broadcast:12"));
-    }
-
-    @Test
-    void broadcastsOlderThanTheJournalHaveNoBreakdown() {
-        Broadcast b = new Broadcast();
-        b.setId(1L);
-        ActivityLogController.BroadcastSummary s = ActivityLogController.summary(
-                BroadcastHistoryDto.of(b), "broadcast:1", Map.of());
-        assertThat(s.delivered()).isZero();
-        assertThat(s.reasons()).isEmpty();
     }
 
     @Test

@@ -30,7 +30,7 @@ class CustomerRejectReasonTest {
         source.setBasename("i18n/messages");
         source.setDefaultEncoding("UTF-8");
         source.setFallbackToSystemLocale(false);
-        messages = new Messages((MessageSource) source, mock(UserRepository.class));
+        messages = new Messages((MessageSource) source, new com.maxsolch.shop.customer.app.UserLanguages(mock(UserRepository.class)));
         reasons = new CustomerRejectReason(messages);
     }
 

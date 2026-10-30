@@ -15,9 +15,9 @@ J1 platform 2
 K1 notification 1
 L3 legacy 1
 M1 catalog 1
-M1 platform 5
+M1 platform 1
 N1 platform 3
-P1 platform 10
+P1 platform 2
 S1 finance 1
 S1 legacy 5
 S1 platform 3
