@@ -4,7 +4,7 @@ import com.maxsolch.shop.inbox.domain.InboxItemType;
 import com.maxsolch.shop.inbox.domain.InboxMark;
 import com.maxsolch.shop.inbox.infra.InboxStore;
 
-import com.maxsolch.shop.analytics.AnalyticsZone;
+import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.analytics.metrics.AdminMetricsService;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.ReorderRow;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
@@ -76,7 +76,7 @@ public class InboxService {
         this.site = site;
         this.settings = settings;
         this.audit = audit;
-        this.zone = AnalyticsZone.of(props);
+        this.zone = ShopZone.of(props.getTimezone()).zone();
         this.clock = clock;
         this.actor = actor;
         this.extraSources = extraSources == null ? List.of() : List.copyOf(extraSources);

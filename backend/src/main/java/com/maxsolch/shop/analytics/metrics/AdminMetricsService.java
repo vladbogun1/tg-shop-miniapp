@@ -3,7 +3,7 @@ package com.maxsolch.shop.analytics.metrics;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.analytics.AnalyticsReader;
-import com.maxsolch.shop.analytics.AnalyticsZone;
+import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.analytics.EventClassifier;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.ErrorRow;
 import com.maxsolch.shop.analytics.metrics.MetricsDtos.Reorder;
@@ -39,7 +39,7 @@ public class AdminMetricsService {
                                SettingsService settings) {
         this.loader = loader;
         this.analytics = analytics;
-        this.zone = AnalyticsZone.of(props);
+        this.zone = ShopZone.of(props.getTimezone()).zone();
         this.settings = settings;
     }
 

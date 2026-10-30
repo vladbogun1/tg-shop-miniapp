@@ -1,5 +1,6 @@
 package com.maxsolch.shop.analytics;
 
+import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.platform.config.AppProperties;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -30,7 +31,7 @@ public class AnalyticsReader {
 
     public AnalyticsReader(JdbcTemplate jdbc, AppProperties props, StaffVisitors staffVisitors) {
         this.jdbc = jdbc;
-        this.zone = AnalyticsZone.of(props);
+        this.zone = ShopZone.of(props.getTimezone()).zone();
         this.staffVisitors = staffVisitors;
     }
 

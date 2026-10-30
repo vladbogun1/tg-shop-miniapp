@@ -1,6 +1,6 @@
 package com.maxsolch.shop.order.app;
 
-import com.maxsolch.shop.analytics.AnalyticsZone;
+import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.notification.app.CustomerBot;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.domain.Order;
@@ -125,7 +125,7 @@ public class OrderCustomerNotifier {
                     + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
                     + messages.get(locale, "bot.giftCase.promoBody", discount, escHtml(code)) + "\n"
                     + (expiresAt == null ? "" : messages.get(locale, "bot.giftCase.promoUntil",
-                            expiresAt.atZone(AnalyticsZone.of(props)).format(DAY)) + "\n")
+                            expiresAt.atZone(ShopZone.of(props.getTimezone()).zone()).format(DAY)) + "\n")
                     + messages.get(locale, "bot.giftCase.promoHint");
             return new CustomerBot.Dm(text, cartButton(locale));
         });
@@ -146,7 +146,7 @@ public class OrderCustomerNotifier {
             String discount = percent > 0 ? "−" + percent + "%" : "−" + money(amountMinor) + " " + nz(order.getCurrency());
             String text = messages.get(locale, "bot.giftCase.promoExpiringTitle", discount) + "\n"
                     + messages.get(locale, "bot.giftCase.promoExpiringBody", "<code>" + escHtml(code) + "</code>",
-                            expiresAt.atZone(AnalyticsZone.of(props)).format(DAY)) + "\n"
+                            expiresAt.atZone(ShopZone.of(props.getTimezone()).zone()).format(DAY)) + "\n"
                     + messages.get(locale, "bot.giftCase.promoHint");
             return new CustomerBot.Dm(text, cartButton(locale));
         });

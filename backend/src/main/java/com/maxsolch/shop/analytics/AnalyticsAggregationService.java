@@ -1,7 +1,7 @@
 package com.maxsolch.shop.analytics;
 
+import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.platform.config.AppProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -48,11 +48,11 @@ public class AnalyticsAggregationService {
      */
     static final Instant STAFF_FILTER_SINCE = Instant.parse("2026-10-11T00:00:00Z");
 
-    public AnalyticsAggregationService(JdbcTemplate jdbc, TransactionTemplate tx, AppProperties props,
+    public AnalyticsAggregationService(JdbcTemplate jdbc, TransactionTemplate tx, ShopZone shopZone,
                                        StaffVisitors staffVisitors) {
         this.jdbc = jdbc;
         this.tx = tx;
-        this.zone = AnalyticsZone.of(props);
+        this.zone = shopZone.zone();
         this.staffVisitors = staffVisitors;
     }
 
