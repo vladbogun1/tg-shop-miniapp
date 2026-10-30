@@ -16,18 +16,19 @@ import { AUTH_DIR, STORAGE_FILE, TOKEN_FILE } from "./lib/api.js";
 import { resetAdmins } from "./lib/admins.js";
 import { freshCode } from "./lib/totp.js";
 
-async function seed(): Promise<void> {
+export async function seed(extraFiles: string[] = []): Promise<void> {
   const sql = fs.readFileSync(path.join(E2E_DIR, "fixtures", "seed.sql"), "utf8");
   const conn = await mysql.createConnection({ ...DB, multipleStatements: true, charset: "utf8mb4", timezone: "Z" });
   try {
     await conn.query(sql);
+    for (const f of extraFiles) await conn.query(fs.readFileSync(path.join(E2E_DIR, "fixtures", f), "utf8"));
     await resetAdmins(conn);
   } finally {
     await conn.end();
   }
 }
 
-async function login(): Promise<string> {
+export async function login(): Promise<string> {
   const ctx = await request.newContext({ baseURL: API_URL });
   try {
     const res = await ctx.post("/api/auth/admin/login", {

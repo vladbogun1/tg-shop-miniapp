@@ -48,10 +48,14 @@ safety-backups/
 
 # ── e2e админки (Playwright): сборка-копия, токен, отчёты ──────
 .e2e-admin/
+.e2e-miniapp/
+.e2e-site/
 e2e/.auth/
 e2e/logs/
 e2e/test-results/
 e2e/playwright-report/
+e2e/test-results-customer/
+e2e/playwright-report-customer/
 
 # Agent worktrees (Claude Code)
 .claude/worktrees/

@@ -12,12 +12,16 @@
  *   4. `playwright test` (starts backend + admin, seeds, runs; extra args are passed through);
  *   5. tears MySQL down again unless --keep (then re-runs can use `npx playwright test` directly).
  *
+ * Suites: admin (default) or customer (`--suite=customer` / E2E_SUITE=customer): the Mini App and the website
+ * (copies built into .e2e-miniapp / .e2e-site), the fake monobank and a gateway in front of the site, run by
+ * playwright.customer.config.ts against the same MySQL and jar (docs/ARCHITECTURE-FRONT.md, step 5.0).
+ *
  * Exit code = Playwright's.
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { ADMIN_BUILD_DIR, API_URL, BACKEND_JAR, DB, E2E_DIR, REPO_ROOT } from "../env.js";
+import { ADMIN_BUILD_DIR, API_URL, BACKEND_JAR, DB, E2E_DIR, MINIAPP_BUILD_DIR, REPO_ROOT, SITE_BUILD_DIR, SITE_URL } from "../env.js";
 
 const args = process.argv.slice(2);
 const flag = (name) => {
@@ -32,6 +36,14 @@ const externalDb = flag("--external-db") || process.env.E2E_EXTERNAL_DB === "1";
 const skipBackendBuild = flag("--skip-backend-build") || process.env.E2E_SKIP_BACKEND_BUILD === "1";
 const forceAdminBuild = flag("--rebuild-admin") || process.env.E2E_REBUILD_ADMIN === "1";
 const keep = flag("--keep") || process.env.E2E_KEEP === "1";
+
+const suiteArg = args.find((a) => a.startsWith("--suite="));
+if (suiteArg) args.splice(args.indexOf(suiteArg), 1);
+const suite = suiteArg ? suiteArg.slice("--suite=".length) : process.env.E2E_SUITE || "admin";
+if (suite !== "admin" && suite !== "customer") {
+  console.error(`unknown suite: ${suite} (admin | customer)`);
+  process.exit(2);
+}
 
 const isWin = process.platform === "win32";
 const COMPOSE = ["compose", "-f", path.join(E2E_DIR, "docker-compose.e2e.yml")];
@@ -93,36 +105,47 @@ try {
     console.log(`✔ backend jar is up to date: ${path.relative(REPO_ROOT, BACKEND_JAR)}`);
   }
 
-  // ---- 3. admin build ---------------------------------------------------------------------------
-  const adminSrc = path.join(REPO_ROOT, "frontend-admin");
-  const stampFile = path.join(ADMIN_BUILD_DIR, ".e2e-stamp.json");
-  const stamp = {
-    api: API_URL,
-    src: Math.max(newestMtime(adminSrc), newestMtime(path.join(REPO_ROOT, "packages"))),
+  // ---- 3. app builds ---------------------------------------------------------------------------
+  /** Copy `srcName` to `destDir` and `next build` it there, only when its sources or the API url changed. */
+  const buildCopy = (srcName, destDir, buildEnv) => {
+    const src = path.join(REPO_ROOT, srcName);
+    const stampFile = path.join(destDir, ".e2e-stamp.json");
+    const stamp = {
+      env: buildEnv,
+      src: Math.max(newestMtime(src), newestMtime(path.join(REPO_ROOT, "packages"))),
+    };
+    const prev = fs.existsSync(stampFile) ? JSON.parse(fs.readFileSync(stampFile, "utf8")) : null;
+    const built = fs.existsSync(path.join(destDir, ".next", "BUILD_ID"));
+    if (forceAdminBuild || !built || !prev || JSON.stringify(prev.env) !== JSON.stringify(stamp.env) || prev.src !== stamp.src) {
+      fs.rmSync(destDir, { recursive: true, force: true });
+      fs.cpSync(src, destDir, {
+        recursive: true,
+        filter: (p) => {
+          const rel = path.relative(src, p).split(path.sep)[0];
+          return rel !== "node_modules" && rel !== ".next";
+        },
+      });
+      must("node", [path.join(REPO_ROOT, "node_modules", "next", "dist", "bin", "next"), "build"], {
+        cwd: destDir,
+        shell: false,
+        env: { ...process.env, ...buildEnv, NEXT_TELEMETRY_DISABLED: "1" },
+      });
+      fs.writeFileSync(stampFile, JSON.stringify(stamp));
+    } else {
+      console.log(`✔ ${srcName} build is up to date: ${path.relative(REPO_ROOT, destDir)}`);
+    }
   };
-  const prev = fs.existsSync(stampFile) ? JSON.parse(fs.readFileSync(stampFile, "utf8")) : null;
-  const built = fs.existsSync(path.join(ADMIN_BUILD_DIR, ".next", "BUILD_ID"));
-  if (forceAdminBuild || !built || !prev || prev.api !== stamp.api || prev.src !== stamp.src) {
-    fs.rmSync(ADMIN_BUILD_DIR, { recursive: true, force: true });
-    fs.cpSync(adminSrc, ADMIN_BUILD_DIR, {
-      recursive: true,
-      filter: (src) => {
-        const rel = path.relative(adminSrc, src).split(path.sep)[0];
-        return rel !== "node_modules" && rel !== ".next";
-      },
-    });
-    must("node", [path.join(REPO_ROOT, "node_modules", "next", "dist", "bin", "next"), "build"], {
-      cwd: ADMIN_BUILD_DIR,
-      shell: false,
-      env: { ...process.env, NEXT_PUBLIC_API_BASE_URL: API_URL, NEXT_TELEMETRY_DISABLED: "1" },
-    });
-    fs.writeFileSync(stampFile, JSON.stringify(stamp));
+  if (suite === "admin") {
+    buildCopy("frontend-admin", ADMIN_BUILD_DIR, { NEXT_PUBLIC_API_BASE_URL: API_URL });
   } else {
-    console.log(`✔ admin build is up to date: ${path.relative(REPO_ROOT, ADMIN_BUILD_DIR)}`);
+    // The Mini App talks to the backend cross-origin (url baked in); the site is same-origin (gateway).
+    buildCopy("frontend", MINIAPP_BUILD_DIR, { NEXT_PUBLIC_API_BASE_URL: API_URL });
+    buildCopy("site", SITE_BUILD_DIR, { NEXT_PUBLIC_SITE_URL: SITE_URL });
   }
 
   // ---- 4. tests ---------------------------------------------------------------------------------
-  exitCode = run("npx", ["playwright", "test", ...args], { cwd: E2E_DIR });
+  const config = suite === "customer" ? ["-c", "playwright.customer.config.ts"] : [];
+  exitCode = run("npx", ["playwright", "test", ...config, ...args], { cwd: E2E_DIR });
 } finally {
   // ---- 5. cleanup -------------------------------------------------------------------------------
   if (!externalDb && !keep) run("docker", [...COMPOSE, "down", "-v"]);

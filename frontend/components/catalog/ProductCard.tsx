@@ -57,7 +57,7 @@ export function ProductCard({
   };
 
   return (
-    <div className="nb group relative flex h-full w-full flex-col overflow-hidden transition-[border-color,transform] duration-200 hover:border-[var(--line-strong)] md:hover:-translate-y-0.5">
+    <div data-testid="product-card" className="nb group relative flex h-full w-full flex-col overflow-hidden transition-[border-color,transform] duration-200 hover:border-[var(--line-strong)] md:hover:-translate-y-0.5">
       <button type="button" onClick={open} className="nb-press flex flex-col text-left">
         <div className="relative aspect-square w-full overflow-hidden bg-[var(--surface-2)]">
           <Image

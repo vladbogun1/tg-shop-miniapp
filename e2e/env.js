@@ -26,6 +26,19 @@ export const ADMIN_PORT = Number(env("E2E_ADMIN_PORT", "3105"));
 export const API_URL = `http://localhost:${BACKEND_PORT}`;
 export const ADMIN_URL = `http://localhost:${ADMIN_PORT}`;
 
+// ---- customer suite (npm run e2e -- --suite=customer; docs/ARCHITECTURE-FRONT.md, step 5.0) ----
+export const MINIAPP_PORT = Number(env("E2E_MINIAPP_PORT", "3106"));
+/** The website as the browser sees it: the gateway (lib/gateway.mjs) in front of the Next app, like prod's nginx. */
+export const SITE_PORT = Number(env("E2E_SITE_PORT", "3107"));
+export const SITE_APP_PORT = Number(env("E2E_SITE_APP_PORT", "3108"));
+export const FAKE_MONO_PORT = Number(env("E2E_FAKE_MONO_PORT", "18190"));
+export const MINIAPP_URL = `http://localhost:${MINIAPP_PORT}`;
+export const SITE_URL = `http://localhost:${SITE_PORT}`;
+export const FAKE_MONO_URL = `http://localhost:${FAKE_MONO_PORT}`;
+/** Copies of frontend / site that get built for the run (the real app dirs keep their own .next). */
+export const MINIAPP_BUILD_DIR = env("E2E_MINIAPP_DIR", path.join(REPO_ROOT, ".e2e-miniapp"));
+export const SITE_BUILD_DIR = env("E2E_SITE_DIR", path.join(REPO_ROOT, ".e2e-site"));
+
 /**
  * The bootstrap admin (tg id 1, created by AdminBootstrap from ADMIN_LOGIN / ADMIN_PASSWORD) — the
  * one every spec acts as. Its 2FA secret is written by the global setup (lib/admins.ts), so tests
@@ -80,7 +93,7 @@ export const BACKEND_JAR = env("E2E_BACKEND_JAR", path.join(REPO_ROOT, "backend"
 export const ADMIN_BUILD_DIR = env("E2E_ADMIN_DIR", path.join(REPO_ROOT, ".e2e-admin"));
 
 /** Environment of the backend under test: dev profile, test secrets, no Telegram bot, no S3/NP. */
-export function backendEnv() {
+export function backendEnv(opts = {}) {
   return {
     SPRING_PROFILES_ACTIVE: "dev",
     DB_HOST: DB.host,
@@ -109,5 +122,21 @@ export function backendEnv() {
     NOVAPOSHTA_API_KEY: "",
     NOVAPOSHTA_API_URL: "http://127.0.0.1:9/",
     APP_TIMEZONE: "Europe/Kyiv",
+    ...(opts.customer ? customerBackendEnv() : {}),
+  };
+}
+
+/**
+ * What the customer suite changes in the backend: the Mini App stub's unsigned Telegram data is accepted
+ * (dev profile only), and monobank points at the fake in lib/fake-mono.mjs — a token plus an API url on
+ * localhost, so «Оплатити» gets a payment page but no real invoice is ever created.
+ */
+function customerBackendEnv() {
+  return {
+    ALLOW_UNSIGNED_INIT_DATA: "true",
+    MONOBANK_TOKEN: "e2e-fake-monobank-token",
+    MONOBANK_API_URL: FAKE_MONO_URL,
+    WEBAPP_BASE_URL: MINIAPP_URL,
+    SITE_BASE_URL: SITE_URL,
   };
 }
