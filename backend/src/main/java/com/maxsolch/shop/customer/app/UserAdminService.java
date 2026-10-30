@@ -16,7 +16,6 @@ import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -55,16 +54,7 @@ public class UserAdminService {
     public UserAdminService(UserRepository userRepository, AppProperties props, Clock clock) {
         this.userRepository = userRepository;
         this.clock = clock;
-        this.day = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(businessZone(props.getTimezone()));
-    }
-
-    static ZoneId businessZone(String configured) {
-        try {
-            return configured == null || configured.isBlank()
-                    ? ShopZone.DEFAULT : ZoneId.of(configured.trim());
-        } catch (Exception e) {
-            return ShopZone.DEFAULT;
-        }
+        this.day = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ShopZone.of(props.getTimezone()).zone());
     }
 
     /**
