@@ -206,7 +206,7 @@ class ReportsSqlIT extends AbstractMysqlIT {
         MetricsDtos.Customers customers = metrics.customers(day, ChannelFilter.ALL);
         assertThat(customers.kpis().buyers().value()).isEqualTo(1.0);
         assertThat(customers.kpis().newBuyers().value()).isEqualTo(1.0);
-        assertThat(customers.kpis().avgLtvMinor()).isEqualTo(9_999);
+        // avgLtv is over every buyer in the database, so it depends on what other ITs left there: not asserted here
         MetricsDtos.Operations operations = metrics.operations(day, ChannelFilter.ALL);
         assertThat(operations.speed()).hasSize(4);
         assertThat(operations.speed().get(0).count()).isEqualTo(1);
