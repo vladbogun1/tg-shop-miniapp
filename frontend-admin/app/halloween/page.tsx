@@ -12,8 +12,7 @@ import { motion } from "framer-motion";
 import { Users as UsersIcon, Ghost, Trophy, ShoppingBag, Wallet, UserX } from "lucide-react";
 import { adminApi, type UserCardDto } from "@/lib/api";
 import { hwApi, type HwMember } from "@/lib/halloween-api";
-import { money } from "@/lib/money";
-import { CHART_COLORS } from "@/lib/metrics-format";
+import { CHART_COLORS, moneyShort } from "@/lib/metrics-format";
 import { useToast } from "@/lib/toast";
 import { staggerContainer } from "@/lib/motion";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -82,8 +81,8 @@ export default function HalloweenPage() {
               <StatCard label="Ловят тыквы" rawValue={s.pumpkinPeople} icon={Ghost} accent={CHART_COLORS.accent}
                 hint={`собрано ${s.pumpkinsCollected}`} />
               <StatCard label={`Собрали все ${data.rules.goal}`} rawValue={s.fullSets} icon={Trophy} accent="var(--warn)" />
-              <StatCard label="Купили в акцию" rawValue={s.orderPeople} icon={ShoppingBag} accent={CHART_COLORS.delivered} />
-              <StatCard label="Сумма за акцию" value={money(s.spendMinor)} icon={Wallet} accent={CHART_COLORS.delivered} />
+              <StatCard label="В розыгрыше покупок" rawValue={s.orderPeople} icon={ShoppingBag} accent={CHART_COLORS.delivered} />
+              <StatCard label="Сумма за акцию" value={moneyShort(s.spendMinor)} icon={Wallet} accent={CHART_COLORS.delivered} />
               <StatCard label="Заблокировали бота" rawValue={s.blocked} icon={UserX} accent={CHART_COLORS.rejected} />
             </motion.div>
           ) : (

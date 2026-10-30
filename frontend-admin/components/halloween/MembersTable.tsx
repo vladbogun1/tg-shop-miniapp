@@ -62,9 +62,8 @@ export function MembersTable({ data, actions }: { data: HwMembers; actions: Memb
               <Th label="Шанс 🎃" col="pumpkinTickets" {...sort} />
               <Th label="За акцию" col="spendMinor" {...sort} />
               <Th label="Шанс 🛒" col="orderTickets" {...sort} />
-              <Th label="Всего в магазине" col="lifetimeSpendMinor" {...sort} />
-              <th>Приглашение</th>
-              <th>Бот</th>
+              <Th label="Всего" col="lifetimeSpendMinor" {...sort} />
+              <th>Статус</th>
               <th />
             </tr>
           </thead>
@@ -85,8 +84,7 @@ export function MembersTable({ data, actions }: { data: HwMembers; actions: Memb
                 <td className="tabular whitespace-nowrap text-[var(--text-muted)]">
                   {money(m.lifetimeSpendMinor)}<div className="text-[11px] text-[var(--text-faint)]">{m.lifetimeOrders} зак.</div>
                 </td>
-                <td>{m.invite ? <Badge tone={INVITE[m.invite].tone} dot>{INVITE[m.invite].label}</Badge> : <span className="text-[var(--text-faint)]">—</span>}</td>
-                <td><BotBadge m={m} /></td>
+                <td><div className="flex flex-col items-start gap-1">{m.invite && <Badge tone={INVITE[m.invite].tone} dot>{INVITE[m.invite].label}</Badge>}<BotBadge m={m} /></div></td>
                 <td onClick={(e) => e.stopPropagation()}><ExcludeButton m={m} locked={data.locked} onClick={() => actions.onToggleExclude(m)} /></td>
               </tr>
             ))}
