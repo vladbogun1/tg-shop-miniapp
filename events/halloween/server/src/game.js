@@ -6,6 +6,7 @@ import { config } from "./config.js";
 import { ordersOf } from "./shop.js";
 import { pumpkinWeight, purchaseTickets } from "./pools.js";
 import { isOld, isJoined } from "./invites.js";
+import { gapMultiplier } from "./pace.js";
 
 export const PUMPKIN_KINDS = 4;
 
@@ -22,6 +23,7 @@ export function phase(now = Date.now()) {
 const q = {
   collectedTotal: db.prepare("SELECT COUNT(*) AS n FROM spawns WHERE tg_id = ? AND collected_at IS NOT NULL"),
   collectedDay: db.prepare("SELECT COUNT(*) AS n FROM spawns WHERE tg_id = ? AND day = ? AND collected_at IS NOT NULL"),
+  collectedBefore: db.prepare("SELECT COUNT(*) AS n FROM spawns WHERE tg_id = ? AND day < ? AND collected_at IS NOT NULL"),
   ipDay: db.prepare("SELECT COUNT(*) AS n FROM spawns WHERE ip = ? AND day = ? AND collected_at IS NOT NULL"),
   lastSpawn: db.prepare("SELECT issued_at FROM spawns WHERE tg_id = ? ORDER BY issued_at DESC LIMIT 1"),
   insertSpawn: db.prepare(
@@ -85,7 +87,7 @@ export function spawn(tgId, ip, app) {
   if (pumpkinsOf(tgId) >= config.goal) return { none: "full" };
   if (ip && Number(q.ipDay.get(ip, day).n) >= config.ipDailyCap) return { none: "daily-cap" };
   const last = q.lastSpawn.get(tgId);
-  const gap = config.spawnGapSec * 1000;
+  const gap = config.spawnGapSec * 1000 * gapMultiplier(Number(q.collectedBefore.get(tgId, day).n), config.dailyCap, config.slowMax);
   if (last && now - Number(last.issued_at) < gap) return { none: "wait", waitMs: gap - (now - Number(last.issued_at)) };
   const id = randomBytes(12).toString("base64url");
   const kind = randomInt(1, PUMPKIN_KINDS + 1);

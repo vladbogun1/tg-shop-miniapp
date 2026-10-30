@@ -56,6 +56,8 @@ export const config = {
   rounds: { pumpkins: num("HW_ROUNDS_PUMPKINS", 10), orders: num("HW_ROUNDS_ORDERS", 10) },
   /** Minimal pause between two pumpkins for one person (server side; the client waits longer). */
   spawnGapSec: num("HW_SPAWN_GAP_SEC", 35),
+  /** Pause multiplier for who is ahead: up to this many times longer after a full day on earlier days (pace.js). */
+  slowMax: num("HW_SLOW_MAX", 4),
   spawnTtlSec: num("HW_SPAWN_TTL_SEC", 9),
   /** A tap earlier than this after the pumpkin was issued is a script, not a finger. */
   minReactMs: num("HW_MIN_REACT_MS", 350),
