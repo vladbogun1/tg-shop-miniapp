@@ -59,7 +59,7 @@ export async function showInvites({ api, dialog, fail, esc }) {
     </div>
     <div class="row">${filterBtn("", "Усі", o.total)}${filterBtn("joined", "Беруть участь", o.joined)}${filterBtn("grey", "Сірі", o.grey)}${filterBtn("blocked", "Заблокували", o.blocked)}${filterBtn("not-sent", "Не розсилали", o.notSent)}</div>
     <input id="iq" placeholder="Пошук: імʼя, @username або id" autocomplete="off" style="width:100%;margin:6px 0" />
-    <table><tr><th>Імʼя</th><th>Telegram</th><th>Купив раніше</th><th>Статус</th><th>Коли</th></tr>${inv.rows.map(rowHtml).join("")}</table>`;
+    <div style="overflow-x:auto"><table><tr><th>Імʼя</th><th>Telegram</th><th>Купив раніше</th><th>Статус</th><th>Коли</th></tr>${inv.rows.map(rowHtml).join("")}</table></div>`;
   const el = dialog("Розсилка і старі покупці (не показувати на стрімі)", html);
   let f = "", q = "";
   const apply = () => el.querySelectorAll("tr[data-s]").forEach((tr) => (tr.hidden = (f && tr.dataset.s !== f) || (q && !tr.dataset.q.includes(q))));
