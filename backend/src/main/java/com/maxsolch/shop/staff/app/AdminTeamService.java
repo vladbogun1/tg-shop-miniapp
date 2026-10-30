@@ -9,6 +9,7 @@ import com.maxsolch.shop.staff.domain.Totp;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;
+import com.maxsolch.shop.staff.infra.AdminTeamQueries;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import com.maxsolch.shop.platform.security.AdminTokenValidator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,7 +60,7 @@ public class AdminTeamService {
      */
     public record AdminRow(long telegramUserId, String name, String username, String role, String status,
                            boolean active, boolean totpEnabled, boolean passwordSet, Instant createdAt,
-                           AdminTeamFacts.LastLogin lastLogin, int trustedDevices, Instant lockedUntil,
+                           AdminTeamQueries.LastLogin lastLogin, int trustedDevices, Instant lockedUntil,
                            InviteRow invite, String telegramLabel, boolean self, boolean finance) {
     }
 
@@ -74,7 +75,7 @@ public class AdminTeamService {
     private final AdminSessions sessions;
     private final TrustedDeviceService trustedDevices;
     private final AdminTokenValidator tokenValidator;
-    private final AdminTeamFacts facts;
+    private final AdminTeamQueries facts;
     private final AdminAuditService audit;
     private final AdminTeamMessenger messenger;
     private final Clock clock;
@@ -83,7 +84,7 @@ public class AdminTeamService {
     public AdminTeamService(AdminUserRepository repo, AdminInviteService invites, AdminInviteStore inviteStore,
                      AdminTotp totp, AdminLockout lockout, AdminSessions sessions,
                      TrustedDeviceService trustedDevices, AdminTokenValidator tokenValidator,
-                     AdminTeamFacts facts, AdminAuditService audit, @Lazy AdminTeamMessenger messenger, Clock clock) {
+                     AdminTeamQueries facts, AdminAuditService audit, @Lazy AdminTeamMessenger messenger, Clock clock) {
         this.repo = repo;
         this.invites = invites;
         this.inviteStore = inviteStore;
@@ -108,8 +109,8 @@ public class AdminTeamService {
         Set<Long> tgIds = new HashSet<>(byId.keySet());
         open.forEach(i -> tgIds.add(i.telegramUserId()));
         Map<Long, String> labels = facts.telegramLabels(tgIds);
-        Map<Long, AdminTeamFacts.LastLogin> logins = facts.lastLogins();
-        Map<Long, Integer> devices = facts.trustedDevices();
+        Map<Long, AdminTeamQueries.LastLogin> logins = facts.lastLogins();
+        Map<Long, Integer> devices = facts.trustedDevices(clock.instant());
 
         List<InviteRow> newInvites = new ArrayList<>();
         Map<Long, InviteRow> inviteOf = new java.util.HashMap<>();
@@ -354,7 +355,7 @@ public class AdminTeamService {
         notice(targetId, "✅ <b>Доступ к админке ChiSetup восстановлен</b> главным админом.");
     }
 
-    /** Only an admin without history in the shop's data ({@link AdminTeamFacts#history}); otherwise block. */
+    /** Only an admin without history in the shop's data ({@link AdminTeamQueries#history}); otherwise block. */
     public void delete(long callerId, long targetId, String code, ClientInfo client) {
         AdminUser target = find(targetId);
         guard(callerId, target, true);

@@ -121,6 +121,7 @@ public class IncidentService {
                 continue;
             }
             AdminIncident i = new AdminIncident();
+            i.setCreatedAt(clock.instant());
             i.setCode(f.code());
             i.setTitle(f.title());
             i.setOrderRef(f.orderRef());

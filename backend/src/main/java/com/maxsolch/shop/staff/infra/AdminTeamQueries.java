@@ -1,4 +1,4 @@
-package com.maxsolch.shop.staff.app;
+package com.maxsolch.shop.staff.infra;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -17,8 +17,8 @@ import java.util.Map;
  * Read-mostly SQL behind the «Админы» section: last sign-in, trusted devices per admin, Telegram
  * profile of an invitee, and what in the database still points at an admin (for «Удалить»).
  */
-@Component
-public class AdminTeamFacts {
+@org.springframework.stereotype.Repository
+public class AdminTeamQueries {
 
     /** The last finished sign-in (admin_login_log, stage 1). */
     public record LastLogin(Instant at, String city, String country, String method) {
@@ -27,7 +27,7 @@ public class AdminTeamFacts {
     private final JdbcTemplate jdbc;
     private final NamedParameterJdbcTemplate named;
 
-    public AdminTeamFacts(JdbcTemplate jdbc) {
+    public AdminTeamQueries(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
         this.named = new NamedParameterJdbcTemplate(jdbc);
     }
@@ -44,13 +44,13 @@ public class AdminTeamFacts {
     }
 
     /** Devices that would skip the code right now, per admin. */
-    public Map<Long, Integer> trustedDevices() {
+    public Map<Long, Integer> trustedDevices(Instant now) {
         Map<Long, Integer> out = new HashMap<>();
         jdbc.query("SELECT d.admin_id, COUNT(*) AS n FROM admin_trusted_devices d JOIN admin_users a "
                 + "ON a.telegram_user_id = d.admin_id AND a.token_version = d.token_version "
                 + "WHERE d.revoked_at IS NULL AND d.expires_at > ? GROUP BY d.admin_id", rs -> {
             out.put(rs.getLong("admin_id"), rs.getInt("n"));
-        }, Timestamp.from(Instant.now()));
+        }, Timestamp.from(now));
         return out;
     }
 

@@ -352,18 +352,4 @@ public class AdminInviteService {
             throw new IllegalStateException(e);
         }
     }
-
-    /** Used / revoked / expired invites are kept 90 days for the record. */
-    @SchedulerLock(name = "AdminInviteService.purge", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
-    @Scheduled(cron = "0 50 4 * * *")
-    public void purge() {
-        try {
-            int n = store.purge(clock.instant().minus(Duration.ofDays(90)));
-            if (n > 0) {
-                log.info("Admin invites: removed {} old rows", n);
-            }
-        } catch (Exception e) {
-            log.warn("Admin invite purge failed: {}", e.getMessage());
-        }
-    }
 }

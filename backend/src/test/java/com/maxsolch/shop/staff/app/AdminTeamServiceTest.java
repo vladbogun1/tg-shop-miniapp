@@ -1,6 +1,7 @@
 package com.maxsolch.shop.staff.app;
 
 import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.staff.infra.AdminTeamQueries;
 import com.maxsolch.shop.staff.domain.AdminInvite;
 import com.maxsolch.shop.staff.domain.SecretCipher;
 import com.maxsolch.shop.staff.domain.Totp;
@@ -47,7 +48,7 @@ class AdminTeamServiceTest {
     AdminInviteService invites;
     AdminSessions sessions;
     TrustedDeviceService trustedDevices;
-    AdminTeamFacts facts;
+    AdminTeamQueries facts;
     AdminAuditService audit;
     AdminTeamMessenger messenger;
     AdminTeamService team;
@@ -79,11 +80,11 @@ class AdminTeamServiceTest {
             return 1;
         });
         trustedDevices = mock(TrustedDeviceService.class);
-        facts = mock(AdminTeamFacts.class);
+        facts = mock(AdminTeamQueries.class);
         when(facts.history(anyLong())).thenReturn(List.of());
         when(facts.telegramLabels(any())).thenReturn(Map.of());
         when(facts.lastLogins()).thenReturn(Map.of());
-        when(facts.trustedDevices()).thenReturn(Map.of());
+        when(facts.trustedDevices(any())).thenReturn(Map.of());
         messenger = mock(AdminTeamMessenger.class);
         invites = new AdminInviteService(store, admins.repo, new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder(4),
                 totp, sessions, mock(AdminTokenValidator.class), mock(AdminAuthService.class), audit, messenger,

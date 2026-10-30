@@ -8,18 +8,15 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
-import org.springframework.jdbc.core.JdbcTemplate;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.scheduling.annotation.Scheduled;
+import com.maxsolch.shop.staff.infra.TrustedDeviceStore;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.sql.Timestamp;
 import java.time.Duration;
-import java.time.Instant;
+import java.time.Clock;
 import java.util.Base64;
 import java.util.HexFormat;
 
@@ -43,12 +40,14 @@ public class TrustedDeviceService {
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    private final JdbcTemplate jdbc;
+    private final TrustedDeviceStore store;
+    private final Clock clock;
     private final WebCookies webCookies;
     private final int days;
 
-    public TrustedDeviceService(JdbcTemplate jdbc, WebCookies webCookies, AppProperties props) {
-        this.jdbc = jdbc;
+    public TrustedDeviceService(TrustedDeviceStore store, WebCookies webCookies, AppProperties props, Clock clock) {
+        this.store = store;
+        this.clock = clock;
         this.webCookies = webCookies;
         this.days = Math.max(1, props.getSecurity().getAdminTrustedDeviceDays());
     }
@@ -62,11 +61,8 @@ public class TrustedDeviceService {
         byte[] raw = new byte[32];
         RANDOM.nextBytes(raw);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
-        jdbc.update("INSERT INTO admin_trusted_devices (admin_id, token_hash, token_version, device_label, user_agent, "
-                        + "ip, city, expires_at) VALUES (?,?,?,?,?,?,?,?)",
-                adminId, hash(token), tokenVersion, UserAgents.osAndBrowser(client.userAgent()),
-                client.userAgent(), client.ip(), city,
-                Timestamp.from(Instant.now().plus(Duration.ofDays(days))));
+        store.insert(adminId, hash(token), tokenVersion, UserAgents.osAndBrowser(client.userAgent()),
+                client.userAgent(), client.ip(), city, clock.instant().plus(Duration.ofDays(days)));
         return token;
     }
 
@@ -76,9 +72,7 @@ public class TrustedDeviceService {
             return false;
         }
         try {
-            int updated = jdbc.update("UPDATE admin_trusted_devices SET last_used_at = ? WHERE token_hash = ? "
-                            + "AND admin_id = ? AND token_version = ? AND revoked_at IS NULL AND expires_at > ?",
-                    Timestamp.from(Instant.now()), hash(token), adminId, tokenVersion, Timestamp.from(Instant.now()));
+            int updated = store.touchIfValid(adminId, tokenVersion, hash(token), clock.instant());
             return updated == 1;
         } catch (Exception e) {
             log.warn("Trusted device check failed: {}", e.getMessage());
@@ -88,16 +82,12 @@ public class TrustedDeviceService {
 
     /** Devices that would currently skip the code. */
     public int countActive(long adminId, int tokenVersion) {
-        Integer n = jdbc.queryForObject("SELECT COUNT(*) FROM admin_trusted_devices WHERE admin_id = ? "
-                        + "AND token_version = ? AND revoked_at IS NULL AND expires_at > ?",
-                Integer.class, adminId, tokenVersion, Timestamp.from(Instant.now()));
-        return n == null ? 0 : n;
+        return store.countActive(adminId, tokenVersion, clock.instant());
     }
 
     /** «Забыть все устройства»; returns how many were still active. */
     public int revokeAll(long adminId) {
-        return jdbc.update("UPDATE admin_trusted_devices SET revoked_at = ? WHERE admin_id = ? AND revoked_at IS NULL",
-                Timestamp.from(Instant.now()), adminId);
+        return store.revokeAll(adminId, clock.instant());
     }
 
     public static String readCookie(HttpServletRequest request) {
@@ -120,18 +110,6 @@ public class TrustedDeviceService {
                 .path(COOKIE_PATH)
                 .maxAge(maxAge)
                 .build();
-    }
-
-    /** Expired / revoked rows are kept a month for the record, then dropped. */
-    @SchedulerLock(name = "TrustedDeviceService.cleanup", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
-    @Scheduled(cron = "0 45 4 * * *")
-    public void cleanup() {
-        try {
-            Timestamp cutoff = Timestamp.from(Instant.now().minus(Duration.ofDays(30)));
-            jdbc.update("DELETE FROM admin_trusted_devices WHERE expires_at < ? OR revoked_at < ?", cutoff, cutoff);
-        } catch (Exception e) {
-            log.warn("Trusted device cleanup failed: {}", e.getMessage());
-        }
     }
 
     static String hash(String token) {

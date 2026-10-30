@@ -1,6 +1,5 @@
 package com.maxsolch.shop.staff.api;
 
-import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.staff.domain.AdminIncident;
 import com.maxsolch.shop.platform.security.RequiredSuperAdmin;
 import com.maxsolch.shop.staff.app.IncidentService;
@@ -26,11 +25,9 @@ import java.util.List;
 public class AdminIncidentController {
 
     private final IncidentService incidents;
-    private final AdminAuditService audit;
 
-    public AdminIncidentController(IncidentService incidents, AdminAuditService audit) {
+    public AdminIncidentController(IncidentService incidents) {
         this.incidents = incidents;
-        this.audit = audit;
     }
 
     public record IncidentDto(long id, String code, boolean auto, String title, String orderRef, String severity,
@@ -55,16 +52,12 @@ public class AdminIncidentController {
     @PostMapping("/{id}/resolve")
     @Operation(summary = "Close a case with what was done")
     public IncidentDto resolve(@PathVariable long id, @RequestBody ResolveRequest r) {
-        AdminIncident i = incidents.resolve(id, r.resolution(), audit.currentAdminName());
-        audit.record("INCIDENT_RESOLVE", "INCIDENT", String.valueOf(id), i.getTitle() + ": " + i.getResolution());
-        return IncidentDto.of(i);
+        return IncidentDto.of(incidents.resolveAsAdmin(id, r.resolution()));
     }
 
     @PostMapping("/{id}/reopen")
     @Operation(summary = "Open a closed case again")
     public IncidentDto reopen(@PathVariable long id) {
-        AdminIncident i = incidents.reopen(id);
-        audit.record("INCIDENT_REOPEN", "INCIDENT", String.valueOf(id), i.getTitle());
-        return IncidentDto.of(i);
+        return IncidentDto.of(incidents.reopenAsAdmin(id));
     }
 }
