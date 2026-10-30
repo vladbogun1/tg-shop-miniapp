@@ -3,7 +3,6 @@ package com.maxsolch.shop.order.app;
 import com.maxsolch.shop.inventory.app.Stock;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
-import com.maxsolch.shop.gift.app.GiftService;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderMoney;
@@ -33,17 +32,17 @@ class OrderOps {
     private final OrderRepository orderRepository;
     private final EntityManager entityManager;
     private final MoneyLedger moneyLedger;
-    private final GiftService giftService;
+    private final OrderGifts gifts;
     private final ApplicationEventPublisher events;
     private final Messages messages;
     private final Clock clock;
 
     OrderOps(OrderRepository orderRepository, EntityManager entityManager, MoneyLedger moneyLedger,
-             GiftService giftService, ApplicationEventPublisher events, Messages messages, Clock clock) {
+             OrderGifts gifts, ApplicationEventPublisher events, Messages messages, Clock clock) {
         this.orderRepository = orderRepository;
         this.entityManager = entityManager;
         this.moneyLedger = moneyLedger;
-        this.giftService = giftService;
+        this.gifts = gifts;
         this.events = events;
         this.messages = messages;
         this.clock = clock;
@@ -85,7 +84,7 @@ class OrderOps {
     Order afterTransition(Order order) {
         if (order.getStatus() == OrderStatus.REJECTED) {
             // An unused code from the case (a discount prize, a swap) goes with the order.
-            giftService.revokeCasePromo(order.getId());
+            gifts.revokeCasePromo(order.getId());
         }
         Order saved = orderRepository.save(order);
         events.publishEvent(new OrderEvents.StatusChanged(saved.getId()));

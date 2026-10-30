@@ -77,7 +77,7 @@ class OrderGiftCasesTest extends OrderScenarioTestBase {
                 com.maxsolch.shop.gift.domain.GiftCaseItem.Kind.PRODUCT, prizeUuid, 0, 0, "COMMON", 1_000_000)))));
         Order o = orderWithOneLine(OrderStatus.APPROVED, 10_000, 1);
 
-        Order granted = app.giftCases().grantGiftCase(o.getId(), tier, true);
+        Order granted = app.giftCases().grantGiftCase(o.getId(), tier.name(), true);
 
         assertThat(granted.getGiftCaseStatus()).isEqualTo(GiftCaseRules.GIFT_CASE_SEALED);
         assertThat(granted.getGiftTier()).isEqualTo("SILVER");
@@ -86,11 +86,11 @@ class OrderGiftCasesTest extends OrderScenarioTestBase {
         assertThat(prize.getStock()).isEqualTo(4);
         verify(gift).saveOrderCase(any());
         // a second case is refused
-        assertThatThrownBy(() -> app.giftCases().grantGiftCase(o.getId(), tier, false))
+        assertThatThrownBy(() -> app.giftCases().grantGiftCase(o.getId(), tier.name(), false))
                 .isInstanceOf(DomainException.BadRequest.class).hasMessage("У заказа уже есть кейс");
         // and so is a closed order
         Order shipped = orderWithOneLine(OrderStatus.SHIPPED, 10_000, 1);
-        assertThatThrownBy(() -> app.giftCases().grantGiftCase(shipped.getId(), tier, false))
+        assertThatThrownBy(() -> app.giftCases().grantGiftCase(shipped.getId(), tier.name(), false))
                 .isInstanceOf(DomainException.BadRequest.class);
     }
 }

@@ -1,7 +1,5 @@
 package com.maxsolch.shop.order.app;
 
-import com.maxsolch.shop.gift.domain.GiftCaseTier;
-import com.maxsolch.shop.gift.app.GiftService;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
@@ -139,13 +137,12 @@ public class AdminOrders {
 
     /** An unknown or blank {@code tierName} gives SILVER. */
     public Order grantGiftCase(String id, String tierName, boolean notifyCustomer) {
-        GiftCaseTier.Tier tier = GiftService.parseTier(tierName).orElse(GiftCaseTier.Tier.SILVER);
-        Order updated = giftCases.grantGiftCase(queries.load(id).getId(), tier, notifyCustomer);
+        Order updated = giftCases.grantGiftCase(queries.load(id).getId(), tierName, notifyCustomer);
         String prize = updated.getItems().stream()
                 .filter(i -> i.isAutoGift() && i.getCaseRarity() != null)
                 .map(i -> i.getTitleSnapshot() + " (" + i.getCaseRarity() + ")")
                 .findFirst().orElse("скидка");
-        audit.record("ORDER_GIFT_CASE", "ORDER", id, "выдан кейс " + tier + ", приз: " + prize);
+        audit.record("ORDER_GIFT_CASE", "ORDER", id, "выдан кейс " + updated.getGiftTier() + ", приз: " + prize);
         return updated;
     }
 

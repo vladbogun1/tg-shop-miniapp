@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.order.app.OrderGiftDtos;
 import com.maxsolch.shop.gift.domain.GiftCaseItem;
 import com.maxsolch.shop.gift.domain.GiftCaseTier;
 import com.maxsolch.shop.gift.infra.GiftCaseItemRepository;
@@ -93,14 +94,14 @@ class GiftCaseTestDrawTest {
 
         assertThat(res.drops()).hasSize(GiftService.TEST_DROPS_SHOWN);
         assertThat(res.won()).isEqualTo(res.drops().get(0));
-        assertThat(res.reel()).extracting(GiftDtos.CaseItemDto::key).containsExactlyInAnyOrder("p" + IN_STOCK, "d2", "d3");
+        assertThat(res.reel()).extracting(OrderGiftDtos.CaseItemDto::key).containsExactlyInAnyOrder("p" + IN_STOCK, "d2", "d3");
     }
 
     @Test
     void singleDrawGivesTheWinAndTheReel() {
         GiftDtos.TestDrawDto res = service.testDraw("SILVER", 1, new SplittableRandom(3));
         assertThat(res.drops()).hasSize(1);
-        assertThat(res.reel()).extracting(GiftDtos.CaseItemDto::key).contains(res.won().key());
+        assertThat(res.reel()).extracting(OrderGiftDtos.CaseItemDto::key).contains(res.won().key());
         assertThat(res.hits().stream().mapToInt(GiftDtos.TestHitDto::hits).sum()).isEqualTo(1);
     }
 

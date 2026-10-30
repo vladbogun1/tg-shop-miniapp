@@ -106,7 +106,8 @@ public final class OrderApp {
                                   Messages messages, EntityManager em, OrderStock stock, Stock shelf, MoneyLedger ledger,
                                   PaymentInvoiceRepository invoices, GiftService gift, GiftRegistryService registry,
                                   CaseLowMargin lowMargin) {
-        OrderOps ops = new OrderOps(orders, em, ledger, gift, events, messages, Clock.systemUTC());
+        OrderGifts gifts = new com.maxsolch.shop.gift.app.GiftForOrders(gift, registry, Clock.systemUTC());
+        OrderOps ops = new OrderOps(orders, em, ledger, gifts, events, messages, Clock.systemUTC());
         com.maxsolch.shop.payment.app.OnlinePaymentService paymentService =
                 mock(com.maxsolch.shop.payment.app.OnlinePaymentService.class);
         // The real rule (PROCESSING / HOLD invoice) over the stubbed repository, so archive tests keep their meaning.
@@ -124,12 +125,12 @@ public final class OrderApp {
         OrderLifecycle lifecycle = new OrderLifecycle(ops, orders, stock, events,
                 new AppProperties());
         OrderPromos orderPromos = new OrderPromos(ops, new com.maxsolch.shop.promo.app.PromoUses(promos), promoService, messages, lowMargin);
-        OrderEditing editing = new OrderEditing(ops, orders, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), stock, shelf, events, gift, orderPromos);
-        OrderGiftPrizes prizes = new OrderGiftPrizes(ops, registry, shelf);
-        OrderGiftCases giftCases = new OrderGiftCases(ops, orders, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), stock, events, messages, gift, orderPromos,
+        OrderEditing editing = new OrderEditing(ops, orders, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), stock, shelf, events, gifts, orderPromos);
+        OrderGiftPrizes prizes = new OrderGiftPrizes(gifts, shelf);
+        OrderGiftCases giftCases = new OrderGiftCases(ops, orders, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), stock, events, messages, gifts, orderPromos,
                 prizes);
         Checkout checkout = new Checkout(orders, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), new com.maxsolch.shop.payment.app.OrderPaymentOptionsAdapter(options), events, orderPromos, carts, messages,
-                stock, shelf, payments, gift, ops, prizes, new AppProperties());
+                stock, shelf, payments, gifts, ops, prizes, new AppProperties());
         return new OrderApp(ops, payments, archive, cancelRequests, lifecycle, editing, orderPromos, giftCases,
                 checkout);
     }

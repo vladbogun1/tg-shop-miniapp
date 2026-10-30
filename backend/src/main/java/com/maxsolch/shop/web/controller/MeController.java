@@ -1,5 +1,6 @@
 package com.maxsolch.shop.web.controller;
 
+import com.maxsolch.shop.order.app.OrderGiftDtos;
 import com.maxsolch.shop.analytics.ClientEventBatch;
 import com.maxsolch.shop.analytics.ClientEventService;
 import com.maxsolch.shop.platform.i18n.Messages;
@@ -240,16 +241,16 @@ public class MeController {
     @PostMapping("/orders/{id}/gift-case/size")
     @Operation(summary = "Pick the size of my case prize (a product with sizes) among those in stock while the order "
             + "is being put together; 400 GIFT_CASE_SIZE_UNAVAILABLE when that size is gone or it is too late")
-    public com.maxsolch.shop.gift.app.GiftDtos.SizeDto chooseGiftCaseSize(@PathVariable String id,
+    public com.maxsolch.shop.order.app.OrderGiftDtos.SizeDto chooseGiftCaseSize(@PathVariable String id,
                                                                       @RequestBody CaseSizeRequest req) {
         Order order = ownedOrder(id);
-        com.maxsolch.shop.gift.app.GiftDtos.SizeDto size = giftCaseService.chooseSize(order.getId(), req.variantId());
+        com.maxsolch.shop.order.app.OrderGiftDtos.SizeDto size = giftCaseService.chooseSize(order.getId(), req.variantId());
         journal(ActivityLog.fromRequest("GIFT_CASE_SIZE").order(order.getId())
                 .text("Покупатель выбрал размер приза кейса: " + size.name()));
         return size;
     }
 
-    private static String prizeText(com.maxsolch.shop.gift.app.GiftDtos.CaseItemDto won) {
+    private static String prizeText(com.maxsolch.shop.order.app.OrderGiftDtos.CaseItemDto won) {
         if ("DISCOUNT".equals(won.kind())) {
             return won.discountPercent() > 0 ? "скидка " + won.discountPercent() + " %"
                     : "скидка " + won.discountAmountMinor() / 100 + " ₴";

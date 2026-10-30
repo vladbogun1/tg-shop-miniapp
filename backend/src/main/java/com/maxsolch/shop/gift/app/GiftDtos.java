@@ -1,6 +1,10 @@
 package com.maxsolch.shop.gift.app;
 
 import com.maxsolch.shop.catalog.app.ProductDto;
+import com.maxsolch.shop.order.app.OrderGiftDtos.CaseItemDto;
+import com.maxsolch.shop.order.app.OrderGiftDtos.PromoDto;
+import com.maxsolch.shop.order.app.OrderGiftDtos.SizeDto;
+import com.maxsolch.shop.order.app.OrderGiftDtos.SwapDto;
 
 import java.time.Instant;
 import java.util.List;
@@ -43,60 +47,11 @@ public final class GiftDtos {
     }
 
     /**
-     * A prize of a case as the customer sees it.
-     *
-     * @param key                 stable key («p&lt;productId&gt;» / «d&lt;id&gt;»)
-     * @param kind                PRODUCT | DISCOUNT
-     * @param discountPercent     DISCOUNT: % off the next order (0 = see {@code discountAmountMinor})
-     * @param discountAmountMinor DISCOUNT: fixed amount off the next order
-     */
-    public record CaseItemDto(String key, String kind, String productId, String title, String imageUrl,
-                              long priceMinor, String rarity, int discountPercent, long discountAmountMinor) {
-    }
-
-    /**
      * Opening the case of an order (or reading it again once opened): the prize drawn at checkout,
      * the tier's prizes for the reel, the issued code (a discount prize) and the swap offer.
      */
     public record CaseOpenDto(String status, String tier, CaseItemDto won, List<CaseItemDto> reel,
                               PromoDto promo, SwapDto swap, SizeDto size) {
-    }
-
-    /**
-     * The size of a product prize with sizes (null for one without).
-     *
-     * @param pending    the customer has not chosen yet — {@code variantId} is only the one held for them
-     * @param changeable may be (re)chosen now (the order is still being put together)
-     * @param options    sizes to choose from: in stock or held now
-     */
-    public record SizeDto(boolean pending, boolean changeable, String variantId, String name,
-                          List<SizeOption> options) {
-    }
-
-    public record SizeOption(String variantId, String name) {
-    }
-
-    /** A personal code the case gave: {@code percent} or {@code amountMinor} off the next order. */
-    public record PromoDto(String code, int percent, long amountMinor, Instant expiresAt, boolean used) {
-    }
-
-    /**
-     * Swap of a product prize similar to what the customer bought.
-     *
-     * @param available   may be swapped now
-     * @param amountMinor what the swap gives (a fixed-amount code)
-     * @param swappedAt   done (the prize left the order)
-     */
-    public record SwapDto(boolean available, long amountMinor, Instant swappedAt) {
-    }
-
-    /**
-     * The gift of an order for its page: the tier, the guaranteed discount taken instead of a case,
-     * or the case (prize details only after opening).
-     */
-    /** @param lowMargin admin only (null for the customer): the case was drawn leaning to discounts */
-    public record OrderGiftDto(String tier, long guaranteedDiscountMinor, String caseStatus, boolean openable,
-                               CaseItemDto prize, PromoDto promo, SwapDto swap, SizeDto size, Boolean lowMargin) {
     }
 
     // ---- admin ----

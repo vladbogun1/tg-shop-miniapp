@@ -2,9 +2,6 @@ package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
-import com.maxsolch.shop.gift.domain.GiftCaseTier;
-import com.maxsolch.shop.gift.app.GiftService;
-import com.maxsolch.shop.gift.domain.OrderGiftCase;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;
@@ -23,7 +20,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.Optional;
 import java.util.TreeSet;
 
@@ -41,12 +38,12 @@ public class OrderGiftCases {
     private final OrderStock stock;
     private final ApplicationEventPublisher events;
     private final Messages messages;
-    private final GiftService giftService;
+    private final OrderGifts gifts;
     private final OrderPromos promos;
     private final OrderGiftPrizes prizes;
 
     OrderGiftCases(OrderOps ops, OrderRepository orderRepository, Products productRepository, OrderStock stock,
-                   ApplicationEventPublisher events, Messages messages, GiftService giftService, OrderPromos promos,
+                   ApplicationEventPublisher events, Messages messages, OrderGifts gifts, OrderPromos promos,
                    OrderGiftPrizes prizes) {
         this.ops = ops;
         this.orderRepository = orderRepository;
@@ -54,7 +51,7 @@ public class OrderGiftCases {
         this.stock = stock;
         this.events = events;
         this.messages = messages;
-        this.giftService = giftService;
+        this.gifts = gifts;
         this.promos = promos;
         this.prizes = prizes;
     }
@@ -171,35 +168,31 @@ public class OrderGiftCases {
      * order is paid.
      */
     @Transactional
-    public Order grantGiftCase(byte[] orderId, GiftCaseTier.Tier tier, boolean notifyCustomer) {
+    public Order grantGiftCase(byte[] orderId, String tierName, boolean notifyCustomer) {
         Order order = ops.lock(orderId);
         order.requireEditable();
         if (order.getGiftCaseStatus() != null) {
             throw OrderErrors.badRequest("У заказа уже есть кейс");
         }
-        GiftService.TierConfig cfg = giftService.tier(tier)
-                .orElseThrow(() -> OrderErrors.badRequest("В этом кейсе нет призов — добавьте их в разделе «Кейс»"));
+        OrderGifts.CasePlan plan = gifts.casePlan(tierName);
         // Prize rows locked in id order, like the checkout.
         Map<String, Optional<Product>> locked = new HashMap<>();
-        for (String id : new TreeSet<>(cfg.prizes().stream().map(GiftService.CaseEntry::productId)
-                .filter(Objects::nonNull).toList())) {
+        for (String id : new TreeSet<>(plan.productIds())) {
             locked.put(id, productRepository.findByIdForUpdate(ops.toBytes(id, "productId")));
         }
         boolean lowMargin = promos.hasLowMargin(order);
-        GiftService.CaseEntry prize = prizes.draw(cfg, locked, prizes.limitLeft(order), lowMargin)
+        OrderGifts.Decision.Prize prize = plan.draw(prizes.gate(locked), gifts.limitLeft(order), lowMargin)
                 .orElseThrow(() -> OrderErrors.badRequest(
                         "Ни одного приза этого кейса нет в наличии или в пределах месячного лимита подарков покупателя"));
         List<Product> toSave = new ArrayList<>();
-        OrderGiftCase rec = prizes.placeCasePrize(order, tier, prize, locked, toSave);
-        if (rec == null) {
+        Consumer<byte[]> record = prizes.placeCasePrize(order, prize, locked, toSave);
+        if (record == null) {
             throw OrderErrors.badRequest("Приз закончился — попробуйте ещё раз");
         }
-        rec.setLowMargin(lowMargin && cfg.lowMarginProductPercent() < 100);
         productRepository.saveAll(toSave);
         ops.recomputeTotals(order);
         Order saved = orderRepository.save(order);
-        rec.setOrderId(saved.getId());
-        giftService.saveOrderCase(rec);
+        record.accept(saved.getId());
         events.publishEvent(new OrderEvents.Edited(saved.getId(), OrderEvents.EditKind.GIFT_CASE, notifyCustomer,
                 null, null, 1));
         return saved;

@@ -4,8 +4,6 @@ import com.maxsolch.shop.inventory.app.Stock;
 import com.maxsolch.shop.promo.domain.PromoDiscount;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.cart.domain.CartRules;
-import com.maxsolch.shop.gift.app.GiftService;
-import com.maxsolch.shop.gift.domain.OrderGiftCase;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.DeliveryMethod;
 import com.maxsolch.shop.order.domain.Order;
@@ -33,6 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
  * Placing an order: availability and variants, promo, stock reservation, delivery and payment snapshots, the
@@ -57,7 +56,7 @@ public class Checkout {
     /** Money received on an order: a manual order may be created already paid. */
     private final OrderPayments payments;
     /** The gift for the order sum / the gift case. */
-    private final GiftService giftService;
+    private final OrderGifts gifts;
     private final OrderOps ops;
     /** Drawing and placing the gift of the order sum. */
     private final OrderGiftPrizes giftPrizes;
@@ -73,7 +72,7 @@ public class Checkout {
                         OrderStock stock,
                         Stock shelf,
                         OrderPayments payments,
-                        GiftService giftService,
+                        OrderGifts gifts,
                         OrderOps ops,
                         OrderGiftPrizes giftPrizes,
                         AppProperties props) {
@@ -87,7 +86,7 @@ public class Checkout {
         this.stock = stock;
         this.shelf = shelf;
         this.payments = payments;
-        this.giftService = giftService;
+        this.gifts = gifts;
         this.ops = ops;
         this.giftPrizes = giftPrizes;
         this.props = props;
@@ -156,8 +155,8 @@ public class Checkout {
         // The gift for the order sum is locked in the same id order, up front: taking its row after
         // the cart's could deadlock with an order that has the gift product in its cart.
         // An exchange replacement (CHOICE_NONE) earns no gift: the goods were paid for in the first order.
-        Optional<GiftService.GiftConfig> giftCfg = GiftService.CHOICE_NONE.equalsIgnoreCase(String.valueOf(cmd.giftChoice()))
-                ? Optional.empty() : giftService.giftConfig();
+        Optional<OrderGifts.ThresholdPlan> giftCfg = OrderGifts.CHOICE_NONE.equalsIgnoreCase(String.valueOf(cmd.giftChoice()))
+                ? Optional.empty() : gifts.thresholdPlan();
         Map<String, Optional<Product>> locked = new HashMap<>();
         java.util.SortedSet<String> lockIds = new java.util.TreeSet<>();
         lines.forEach(l -> lockIds.add(l.productId));
@@ -221,7 +220,7 @@ public class Checkout {
         // The gift for the order sum (docs/GIFT-CASE.md), against the total after the discount: the
         // tier's guaranteed discount (the customer's choice) or its case — the prize is drawn now.
         boolean lowMargin = lowMarginMinor > 0;
-        OrderGiftCase drawn = giftCfg.map(g -> giftPrizes.applyThresholdGift(order, g, cmd.giftChoice(), locked, toSave, lowMargin))
+        Consumer<byte[]> drawn = giftCfg.map(g -> giftPrizes.applyThresholdGift(order, g, cmd.giftChoice(), locked, toSave, lowMargin))
                 .orElse(null);
 
         order.settleIfFree(ops.now());
@@ -230,8 +229,7 @@ public class Checkout {
         Order saved = orderRepository.save(order);
         stock.onOrderPlaced(cmd.userId(), saved);
         if (drawn != null) {
-            drawn.setOrderId(saved.getId());
-            giftService.saveOrderCase(drawn);
+            drawn.accept(saved.getId());
         }
 
         // The ordered lines leave the customer's server cart in the same transaction, so every
@@ -281,7 +279,7 @@ public class Checkout {
                 original.getDeliveryMethod() == null ? null : original.getDeliveryMethod().name(),
                 original.getNpCityRef(), original.getNpCityName(), original.getNpWarehouseRef(),
                 original.getNpWarehouseName(), exchangePaymentOptionId(original), OrderSource.ADMIN,
-                GiftService.CHOICE_NONE), 0, OrderMoneyMovement.Channel.OTHER, adminName, null);
+                OrderGifts.CHOICE_NONE), 0, OrderMoneyMovement.Channel.OTHER, adminName, null);
     }
 
     /**

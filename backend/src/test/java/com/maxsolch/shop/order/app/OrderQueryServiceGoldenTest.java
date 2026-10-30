@@ -169,20 +169,16 @@ class OrderQueryServiceGoldenTest {
             }
             boolean customer = inv.getArgument(2);
             String lang = inv.getArgument(1);
-            return new GiftDtos.OrderGiftDto(o.getGiftTier(), o.getGiftDiscountMinor(), o.getGiftCaseStatus(),
+            return new OrderGiftDtos.OrderGiftDto(o.getGiftTier(), o.getGiftDiscountMinor(), o.getGiftCaseStatus(),
                     GiftCaseRules.giftCaseOpenable(o),
-                    customer ? null : new GiftDtos.CaseItemDto("k1", "PRODUCT", "p-" + lang, "Prize",
+                    customer ? null : new OrderGiftDtos.CaseItemDto("k1", "PRODUCT", "p-" + lang, "Prize",
                             "https://img/prize.jpg", 25000, "RARE", 0, 0),
-                    new GiftDtos.PromoDto("GIFT-AB12", 10, 0, Instant.parse("2026-12-01T00:00:00Z"), false),
-                    new GiftDtos.SwapDto(true, 15000, null),
-                    new GiftDtos.SizeDto(false, true, "v1", "M", List.of(new GiftDtos.SizeOption("v1", "M"))),
+                    new OrderGiftDtos.PromoDto("GIFT-AB12", 10, 0, Instant.parse("2026-12-01T00:00:00Z"), false),
+                    new OrderGiftDtos.SwapDto(true, 15000, null),
+                    new OrderGiftDtos.SizeDto(false, true, "v1", "M", List.of(new OrderGiftDtos.SizeOption("v1", "M"))),
                     customer ? null : Boolean.TRUE);
         });
 
-        @SuppressWarnings("unchecked")
-        org.springframework.beans.factory.ObjectProvider<com.maxsolch.shop.gift.app.GiftCaseService> giftProvider =
-                mock(org.springframework.beans.factory.ObjectProvider.class);
-        when(giftProvider.getIfAvailable()).thenReturn(gifts);
         service = new OrderQueryService(orders, messages, items,
                 new com.maxsolch.shop.payment.app.OrderPaymentsAdapter(
                         mock(com.maxsolch.shop.payment.app.OnlinePaymentService.class), invoiceRepo, mono,
@@ -190,7 +186,7 @@ class OrderQueryServiceGoldenTest {
                 new com.maxsolch.shop.catalog.app.Products(mock(com.maxsolch.shop.catalog.infra.ProductRepository.class), images), translation, catalogNames, users,
                 rejectReason,
                 new ReturnRecords(returnRepo, returnLineRepo, exchangeRepo, lookup),
-                movementRepo, new com.maxsolch.shop.inventory.app.StockWriteoffs(writeoffRepo, java.time.Clock.systemUTC()), giftProvider);
+                movementRepo, new com.maxsolch.shop.inventory.app.StockWriteoffs(writeoffRepo, java.time.Clock.systemUTC()), gifts);
 
         AtomicReference<ObjectMapper> ref = new AtomicReference<>();
         // The ObjectMapper of the application: Spring Boot's own JacksonAutoConfiguration (no custom config in config/).

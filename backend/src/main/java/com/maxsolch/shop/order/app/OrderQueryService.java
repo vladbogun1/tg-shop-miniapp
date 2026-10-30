@@ -49,8 +49,8 @@ public class OrderQueryService {
     private final CustomerRejectReason customerRejectReason;
     private final OrderReturnsView returnsView;
 
-    /** The gift block of the order page (docs/GIFT-CASE.md); resolved on first use, the gift module depends on the order one. */
-    private final org.springframework.beans.factory.ObjectProvider<com.maxsolch.shop.gift.app.GiftCaseService> giftCases;
+    /** The gift block of the order page (docs/GIFT-CASE.md). */
+    private final OrderGiftView gift;
     /** Money journal and write-offs shown to the admin. */
     private final com.maxsolch.shop.order.infra.OrderMoneyMovementRepository movementRepository;
     private final com.maxsolch.shop.inventory.app.StockWriteoffs writeoffRepository;
@@ -67,7 +67,7 @@ public class OrderQueryService {
                              OrderReturnsView returnsView,
                              com.maxsolch.shop.order.infra.OrderMoneyMovementRepository movementRepository,
                              com.maxsolch.shop.inventory.app.StockWriteoffs writeoffRepository,
-                             org.springframework.beans.factory.ObjectProvider<com.maxsolch.shop.gift.app.GiftCaseService> giftCases) {
+                             OrderGiftView gift) {
         this.orderRepository = orderRepository;
         this.messageRepository = messageRepository;
         this.orderItemRepository = orderItemRepository;
@@ -80,7 +80,7 @@ public class OrderQueryService {
         this.returnsView = returnsView;
         this.movementRepository = movementRepository;
         this.writeoffRepository = writeoffRepository;
-        this.giftCases = giftCases;
+        this.gift = gift;
     }
 
     /**
@@ -283,7 +283,7 @@ public class OrderQueryService {
                 .rejectReason(customerRejectReason.current(o.getRejectReason()))
                 .receivedMinor(OrderPaymentState.of(o).receivedMinor())
                 .exchanges(List.of())
-                .gift(gift() == null ? null : gift().orderGift(o, lang, true))
+                .gift(gift.orderGift(o, lang, true))
                 .admin(null)
                 .build();
     }
@@ -296,7 +296,7 @@ public class OrderQueryService {
                 // above the total — that overpayment is to be refunded); the customer, the capped.
                 .receivedMinor(Math.max(0, o.getReceivedMinor()))
                 .exchanges(returnsView.exchangesOf(o.getId()))
-                .gift(gift() == null ? null : gift().orderGift(o, ContentLocale.RU, false))
+                .gift(gift.orderGift(o, ContentLocale.RU, false))
                 .admin(adminExtras(o))
                 .build();
     }
@@ -370,10 +370,6 @@ public class OrderQueryService {
                 .giftDiscountMinor(o.getGiftDiscountMinor())
                 .exchangeOfId(o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()))
                 .uncollectedMinor(pay.uncollectedMinor());
-    }
-
-    private com.maxsolch.shop.gift.app.GiftCaseService gift() {
-        return giftCases.getIfAvailable();
     }
 
     private OrderDetailDto.AdminExtras adminExtras(Order o) {

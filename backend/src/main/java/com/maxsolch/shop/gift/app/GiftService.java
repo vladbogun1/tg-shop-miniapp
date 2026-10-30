@@ -11,7 +11,7 @@ import com.maxsolch.shop.gift.infra.OrderGiftCaseRepository;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.domain.PromoCode;
-import com.maxsolch.shop.gift.app.GiftDtos.CaseItemDto;
+import com.maxsolch.shop.order.app.OrderGiftDtos.CaseItemDto;
 import com.maxsolch.shop.gift.app.GiftDtos.GiftInfoDto;
 import com.maxsolch.shop.gift.app.GiftDtos.TestDrawDto;
 import com.maxsolch.shop.gift.app.GiftDtos.TestHitDto;

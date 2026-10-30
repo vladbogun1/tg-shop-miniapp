@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.order.app.OrderGiftDtos;
 import com.maxsolch.shop.gift.domain.GiftCaseItem;
 import com.maxsolch.shop.gift.domain.OrderGiftCase;
 
@@ -7,15 +8,16 @@ import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.promo.domain.PromoCode;
-import com.maxsolch.shop.gift.app.GiftDtos.CaseItemDto;
+import com.maxsolch.shop.order.app.OrderGiftDtos.CaseItemDto;
 import com.maxsolch.shop.gift.app.GiftDtos.CaseOpenDto;
-import com.maxsolch.shop.gift.app.GiftDtos.OrderGiftDto;
-import com.maxsolch.shop.gift.app.GiftDtos.PromoDto;
-import com.maxsolch.shop.gift.app.GiftDtos.SizeDto;
-import com.maxsolch.shop.gift.app.GiftDtos.SizeOption;
-import com.maxsolch.shop.gift.app.GiftDtos.SwapDto;
+import com.maxsolch.shop.order.app.OrderGiftDtos.OrderGiftDto;
+import com.maxsolch.shop.order.app.OrderGiftDtos.PromoDto;
+import com.maxsolch.shop.order.app.OrderGiftDtos.SizeDto;
+import com.maxsolch.shop.order.app.OrderGiftDtos.SizeOption;
+import com.maxsolch.shop.order.app.OrderGiftDtos.SwapDto;
 import com.maxsolch.shop.catalog.app.CatalogService;
 import com.maxsolch.shop.order.app.OrderGiftCases;
+import com.maxsolch.shop.order.app.OrderGiftView;
 import com.maxsolch.shop.platform.error.BadRequestException;
 import com.maxsolch.shop.catalog.app.ProductDto;
 import com.maxsolch.shop.order.app.OrderEvents;
@@ -35,7 +37,7 @@ import java.util.Optional;
  * product prize similar to what the customer bought may be swapped for a code.
  */
 @Service
-public class GiftCaseService {
+public class GiftCaseService implements OrderGiftView {
 
     private final OrderGiftCases giftCases;
     private final GiftService giftService;
@@ -95,6 +97,7 @@ public class GiftCaseService {
     }
 
     /** The gift block of an order page; {@code customer}: the prize stays hidden until the case is opened. */
+    @Override
     @Transactional(readOnly = true)
     public OrderGiftDto orderGift(Order order, String lang, boolean customer) {
         if (order.getGiftTier() == null && order.getGiftCaseStatus() == null) {

@@ -3,7 +3,6 @@ package com.maxsolch.shop.order.app;
 import com.maxsolch.shop.inventory.app.Stock;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
-import com.maxsolch.shop.gift.app.GiftService;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderItem;
@@ -32,18 +31,18 @@ public class OrderEditing {
     private final OrderStock stock;
     private final Stock shelf;
     private final ApplicationEventPublisher events;
-    private final GiftService giftService;
+    private final OrderGifts gifts;
     private final OrderPromos promos;
 
     OrderEditing(OrderOps ops, OrderRepository orderRepository, Products productRepository, OrderStock stock, Stock shelf,
-                 ApplicationEventPublisher events, GiftService giftService, OrderPromos promos) {
+                 ApplicationEventPublisher events, OrderGifts gifts, OrderPromos promos) {
         this.ops = ops;
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.stock = stock;
         this.shelf = shelf;
         this.events = events;
-        this.giftService = giftService;
+        this.gifts = gifts;
         this.promos = promos;
     }
 
@@ -129,7 +128,7 @@ public class OrderEditing {
             if (order.getGiftDiscountMinor() <= 0) {
                 order.setGiftTier(null);
             }
-            giftService.deleteOrderCase(order.getId());
+            gifts.deleteCase(order.getId());
         }
         ops.recomputeTotals(order);
         Order saved = orderRepository.save(order);

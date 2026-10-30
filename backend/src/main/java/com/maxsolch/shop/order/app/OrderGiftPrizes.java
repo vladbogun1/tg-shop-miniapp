@@ -3,122 +3,95 @@ package com.maxsolch.shop.order.app;
 import com.maxsolch.shop.inventory.app.Stock;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
-import com.maxsolch.shop.gift.domain.GiftCaseTier;
-import com.maxsolch.shop.gift.app.GiftRegistryService;
-import com.maxsolch.shop.gift.app.GiftService;
-import com.maxsolch.shop.gift.domain.OrderGiftCase;
+import com.maxsolch.shop.order.app.OrderGifts.Decision;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import org.springframework.stereotype.Component;
 
-import java.security.SecureRandom;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Predicate;
+import java.util.function.Consumer;
 
 /**
- * Drawing and placing the gift of an order (docs/GIFT-CASE.md): the guaranteed discount of the reached tier,
- * the case prize drawn among what can drop, or the single gift product. Used by the checkout and by the
- * admin who gives a case to an existing order. The products it touches are already row-locked by the caller.
+ * Placing the gift of an order (docs/GIFT-CASE.md): the gift module draws ({@link OrderGifts}), this puts the
+ * result into the order — the guaranteed discount of the reached tier, the case prize as a SEALED case with
+ * its line, or the single gift product. Used by the checkout and by the admin who gives a case to an existing
+ * order. The products it touches are already row-locked by the caller; it tells the gift what can be given.
  */
 @Component
 class OrderGiftPrizes {
 
-    private static final SecureRandom CASE_RANDOM = new SecureRandom();
-
-    private final OrderOps ops;
-    private final GiftRegistryService giftRegistry;
+    private final OrderGifts gifts;
     private final Stock stock;
 
-    OrderGiftPrizes(OrderOps ops, GiftRegistryService giftRegistry, Stock stock) {
-        this.ops = ops;
-        this.giftRegistry = giftRegistry;
+    OrderGiftPrizes(OrderGifts gifts, Stock stock) {
+        this.gifts = gifts;
         this.stock = stock;
     }
 
     /**
-     * The gift of a new order: walks the tiers its total reaches, dearest first. The customer took the
-     * guaranteed discount ({@code choice} DISCOUNT, the tier offers one): it comes off this order and
-     * there is no case. Otherwise a prize of the tier is drawn among those that can drop (a cheaper
-     * tier when none can). Without a case the single gift product is the fallback.
+     * The gift of a new order: the tiers its total reaches, dearest first. The customer took the guaranteed
+     * discount (the tier offers one): it comes off this order and there is no case. Otherwise a prize of the
+     * tier is drawn among those that can drop (a cheaper tier when none can). Without a case the single gift
+     * product is the fallback.
      *
-     * @return the prize record to save once the order has its id; null = no case
+     * @return writes the prize record once the order is saved and has its id (given it); null = no case
      */
-    OrderGiftCase applyThresholdGift(Order order, GiftService.GiftConfig g, String choice,
-                                     Map<String, Optional<Product>> locked, List<Product> toSave,
-                                     boolean lowMargin) {
-        long total = order.getTotalMinor();
-        List<GiftService.TierConfig> reached = g.reached(total);
-        if (!reached.isEmpty() && GiftService.CHOICE_DISCOUNT.equalsIgnoreCase(String.valueOf(choice))) {
-            GiftService.TierConfig top = reached.get(0);
-            long d = top.guaranteedDiscountMinor(total);
-            if (d > 0) {
-                order.setGiftTier(top.tier().name());
-                order.setGiftDiscountMinor(d);
-                order.setDiscountMinor(Math.min(order.getSubtotalMinor(), order.getDiscountMinor() + d));
+    Consumer<byte[]> applyThresholdGift(Order order, OrderGifts.ThresholdPlan plan, String choice,
+                                Map<String, Optional<Product>> locked, List<Product> toSave, boolean lowMargin) {
+        Decision d = plan.decide(order.getTotalMinor(), choice, gate(locked), () -> gifts.limitLeft(order), lowMargin);
+        switch (d) {
+            case Decision.Discount x -> {
+                order.setGiftTier(x.tier());
+                order.setGiftDiscountMinor(x.amountMinor());
+                order.setDiscountMinor(Math.min(order.getSubtotalMinor(), order.getDiscountMinor() + x.amountMinor()));
                 order.setTotalMinor(OrderMoney.totalMinor(order.getSubtotalMinor(), order.getDiscountMinor()));
                 return null;
             }
-        }
-        long left = limitLeft(order);
-        for (GiftService.TierConfig tier : reached) {
-            // An order with a low-margin product: product prizes drop rarer, discounts on the next order more often.
-            Optional<GiftService.CaseEntry> prize = draw(tier, locked, left, lowMargin);
-            if (prize.isPresent()) {
-                OrderGiftCase rec = placeCasePrize(order, tier.tier(), prize.get(), locked, toSave);
-                if (rec != null) {
-                    rec.setLowMargin(lowMargin && tier.lowMarginProductPercent() < 100);
-                    return rec;
-                }
+            case Decision.Prize p -> {
+                return placeCasePrize(order, p, locked, toSave);
+            }
+            case Decision.ProductGift g -> {
+                locked.getOrDefault(g.productId(), Optional.empty())
+                        .ifPresent(p -> addGiftLine(order, p, toSave, null));
+                return null;
+            }
+            case Decision.None n -> {
+                return null;
             }
         }
-        if (g.productId() != null && total >= g.thresholdMinor()) {
-            locked.getOrDefault(g.productId(), Optional.empty())
-                    .filter(p -> p.getPriceMinor() <= left)
-                    .ifPresent(p -> addGiftLine(order, p, toSave, null));
-        }
-        return null;
+    }
+
+    /** What the gift may hand out now: a product that is giftable and no dearer than the limit left (over it, it does not drop). */
+    OrderGifts.Gate gate(Map<String, Optional<Product>> locked) {
+        return (id, maxPriceMinor) -> locked.getOrDefault(id, Optional.empty())
+                .filter(OrderGiftPrizes::giftable).filter(p -> p.getPriceMinor() <= maxPriceMinor).isPresent();
     }
 
     /**
-     * What is left of the monthly gift limit of the order person (docs/GIFT-CASE.md, "Реестр подарков
-     * и месячный лимит"), kopecks; {@link Long#MAX_VALUE} without a limit.
+     * Seals the drawn prize into the order: a product goes in as a line at price 0, a discount waits for the opening.
+     *
+     * @return writes the prize record once the order is saved and has its id (given it); null when the product could not be placed
      */
-    long limitLeft(Order order) {
-        return giftRegistry.remainingMinor(GiftRegistryService.Person.of(order), ops.now());
-    }
-
-    /**
-     * Draws a prize of the tier among the ones that can drop: a product that is giftable and no dearer than
-     * {@code left} (over the limit it does not drop), or a discount (always can).
-     */
-    Optional<GiftService.CaseEntry> draw(GiftService.TierConfig tier, Map<String, Optional<Product>> locked, long left,
-                                         boolean lowMargin) {
-        Predicate<String> giftableIn = id -> id != null
-                && locked.getOrDefault(id, Optional.empty()).filter(OrderGiftPrizes::giftable).isPresent();
-        Predicate<String> within = giftableIn.and(id -> locked.get(id).map(p -> p.getPriceMinor() <= left).orElse(false));
-        return GiftService.draw(tier.prizes(), within, CASE_RANDOM, tier.productPercent(lowMargin));
-    }
-
-    /** Seals the drawn prize into the order: a product goes in as a line at price 0, a discount waits for the opening. */
-    OrderGiftCase placeCasePrize(Order order, GiftCaseTier.Tier tier, GiftService.CaseEntry prize,
-                                 Map<String, Optional<Product>> locked, List<Product> toSave) {
+    Consumer<byte[]> placeCasePrize(Order order, Decision.Prize prize, Map<String, Optional<Product>> locked,
+                            List<Product> toSave) {
         String title = null;
-        if (!prize.isDiscount()) {
+        if (prize.productId() != null) {
             Product p = locked.getOrDefault(prize.productId(), Optional.empty()).orElse(null);
             if (p == null || !addGiftLine(order, p, toSave, prize.rarity())) {
                 return null;
             }
             title = p.getTitle();
         }
-        order.setGiftTier(tier.name());
+        order.setGiftTier(prize.tier());
         order.setGiftCaseStatus(GiftCaseRules.GIFT_CASE_SEALED);
         order.setGiftCaseOpenedAt(null);
-        return GiftService.record(order.getId(), prize, title);
+        String productTitle = title;
+        return orderId -> prize.recorder().save(orderId, productTitle);
     }
 
     /**

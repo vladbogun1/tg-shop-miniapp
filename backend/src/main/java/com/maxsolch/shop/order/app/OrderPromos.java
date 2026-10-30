@@ -1,7 +1,6 @@
 package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.promo.app.CaseLowMargin;
-import com.maxsolch.shop.gift.app.GiftService;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.platform.i18n.Messages;

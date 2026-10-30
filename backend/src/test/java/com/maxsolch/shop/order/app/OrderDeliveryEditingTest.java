@@ -44,7 +44,7 @@ class OrderDeliveryEditingTest {
     @BeforeEach
     void setUp() {
         OrderOps ops = new OrderOps(orderRepository, entityManager, mock(MoneyLedger.class),
-                mock(com.maxsolch.shop.gift.app.GiftService.class), events, mock(com.maxsolch.shop.platform.i18n.Messages.class),
+                mock(OrderGifts.class), events, mock(com.maxsolch.shop.platform.i18n.Messages.class),
                 Clock.systemUTC());
         service = new OrderDeliveryEditing(ops, orderRepository, events);
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
