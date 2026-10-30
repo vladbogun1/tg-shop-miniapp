@@ -1,8 +1,6 @@
 package com.maxsolch.shop.customer.app;
 
 import com.maxsolch.shop.platform.error.DomainException;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import com.maxsolch.shop.platform.web.UserAgents;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.config.AppProperties;
@@ -18,6 +16,9 @@ import com.maxsolch.shop.platform.security.JwtService;
 import com.maxsolch.shop.platform.security.WebSessionValidator;
 import com.maxsolch.shop.customer.app.WebAuthDtos.WebSessionDto;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import com.maxsolch.shop.platform.cache.CacheConfig;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,7 +75,7 @@ public class WebAuthService {
     private static final int NONCE_BYTES = 32;
     private static final int SECRET_BYTES = 32;
     /** Concurrent refreshes (two tabs) inside this window are a race, not token theft. */
-    private static final Duration ROTATION_GRACE = Duration.ofSeconds(20);
+    static final Duration ROTATION_GRACE = Duration.ofSeconds(20);
 
     private final WebLoginTokenRepository tokenRepository;
     private final WebSessionRepository sessionRepository;
@@ -87,7 +88,7 @@ public class WebAuthService {
 
     private final SecureRandom random = new SecureRandom();
     /** Hashes of refresh tokens rotated away in the last {@link #ROTATION_GRACE} (ticks on {@link #clock}). */
-    private final Cache<String, String> recentlyRotated;
+    private final Cache recentlyRotated;
     private final Clock clock;
 
     public WebAuthService(WebLoginTokenRepository tokenRepository,
@@ -98,7 +99,8 @@ public class WebAuthService {
                           AppProperties props,
                           WebSessionValidator sessionValidator,
                           ApplicationEventPublisher events,
-                          Clock clock) {
+                          Clock clock,
+                          CacheManager caches) {
         this.tokenRepository = tokenRepository;
         this.sessionRepository = sessionRepository;
         this.userRepository = userRepository;
@@ -108,11 +110,7 @@ public class WebAuthService {
         this.sessionValidator = sessionValidator;
         this.events = events;
         this.clock = clock;
-        this.recentlyRotated = Caffeine.newBuilder()
-                .maximumSize(10_000)
-                .expireAfterWrite(ROTATION_GRACE)
-                .ticker(() -> java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(clock.millis()))
-                .build();
+        this.recentlyRotated = CacheConfig.require(caches, CustomerCaches.WEB_ROTATED_REFRESH);
     }
 
     // ================================================================== results / events
@@ -235,7 +233,7 @@ public class WebAuthService {
         }
         String presented = sha256(refreshToken);
         if (!constantTimeEquals(presented, s.getRefreshHash())) {
-            if (recentlyRotated.getIfPresent(presented) != null) {
+            if (recentlyRotated.get(presented) != null) {
                 throw new DomainException.Unauthorized(REFRESH_RACE, null);
             }
             log.warn("Refresh token reuse for web session {} (user {}) — revoking the session",

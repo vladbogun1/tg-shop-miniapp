@@ -13,7 +13,6 @@ import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import com.maxsolch.shop.platform.security.AdminTokenValidator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -100,7 +99,7 @@ public class AdminInviteService {
     public AdminInviteService(AdminInviteStore store, AdminUserRepository adminUserRepository,
                               PasswordEncoder passwordEncoder, AdminTotp totp, AdminSessions sessions,
                               AdminTokenValidator adminTokenValidator, AdminAuthService authService,
-                              AdminAuditService audit, @Lazy AdminTeamMessenger messenger,
+                              AdminAuditService audit, AdminTeamMessenger messenger,
                               PlatformTransactionManager txManager, AppProperties props, Clock clock) {
         this(store, adminUserRepository, passwordEncoder, totp, sessions, adminTokenValidator, authService, audit,
                 messenger, new TransactionTemplate(txManager), props.getAdminBaseUrl(), clock);

@@ -1,11 +1,12 @@
 package com.maxsolch.shop.customer.app;
 
 import com.maxsolch.shop.platform.web.GeoIpLookup;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import com.maxsolch.shop.platform.cache.CacheConfig;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.customer.infra.VisitorLocationStore;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -49,24 +50,23 @@ public class VisitorLocationService {
     private final VisitorLocationStore store;
     private final GeoIpLookup geo;
     private final Executor executor;
-    private final Cache<String, Boolean> recent;
+    private final Cache recent;
     private final boolean enabled;
 
     @Autowired
-    public VisitorLocationService(VisitorLocationStore store, GeoIpLookup geo, AppProperties props) {
-        this(store, geo, props.getGeoip().isEnabled(), props.getGeoip().getThrottle(), newWorker());
+    public VisitorLocationService(VisitorLocationStore store, GeoIpLookup geo, AppProperties props,
+                                  CacheManager caches) {
+        this(store, geo, props.getGeoip().isEnabled(),
+                CacheConfig.require(caches, CustomerCaches.VISITOR_LOCATION_RECENT), newWorker());
     }
 
-    VisitorLocationService(VisitorLocationStore store, GeoIpLookup geo, boolean enabled, Duration throttle,
+    VisitorLocationService(VisitorLocationStore store, GeoIpLookup geo, boolean enabled, Cache recent,
                            Executor executor) {
         this.store = store;
         this.geo = geo;
         this.enabled = enabled;
         this.executor = executor;
-        this.recent = Caffeine.newBuilder()
-                .expireAfterWrite(throttle)
-                .maximumSize(200_000)
-                .build();
+        this.recent = recent;
     }
 
     private static ExecutorService newWorker() {
@@ -104,7 +104,7 @@ public class VisitorLocationService {
             if (!enabled || ip == null || ip.isBlank() || "unknown".equals(ip)) {
                 return;
             }
-            if (recent.asMap().putIfAbsent(key, Boolean.TRUE) != null) {
+            if (recent.putIfAbsent(key, Boolean.TRUE) != null) {
                 return; // written recently
             }
             String addr = ip.length() > 45 ? ip.substring(0, 45) : ip;
@@ -129,7 +129,7 @@ public class VisitorLocationService {
             }
         } catch (Exception e) {
             // Let the next request try again instead of waiting out the throttle.
-            recent.invalidate(key);
+            recent.evict(key);
             log.debug("Visitor location write failed for {}: {}", key, e.toString());
         }
     }

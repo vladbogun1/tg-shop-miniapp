@@ -4,8 +4,9 @@ import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.error.ErrorCode;
 import com.maxsolch.shop.staff.domain.LoginMethod;
 import com.maxsolch.shop.staff.domain.Totp;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import com.maxsolch.shop.platform.cache.CacheConfig;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import com.maxsolch.shop.staff.app.AdminLoginLogService.Result;
 import com.maxsolch.shop.staff.app.AdminLoginLogService.SecondFactor;
 import com.maxsolch.shop.staff.app.PreAuthTokens.PreAuth;
@@ -20,7 +21,6 @@ import com.maxsolch.shop.platform.security.TelegramUser;
 import com.maxsolch.shop.platform.security.TgInitDataValidator;
 import com.maxsolch.shop.customer.app.AuthService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -91,15 +91,12 @@ public class AdminAuthService {
      * Failures per unknown login name: after {@value AdminLockout#MAX_FAILURES} the answer becomes the
      * same «locked» one a real account gets, so the lock does not reveal which logins exist.
      */
-    private final Cache<String, AtomicInteger> unknownLoginFailures = Caffeine.newBuilder()
-            .maximumSize(10_000)
-            .expireAfterWrite(AdminLockout.LOCK_DURATION)
-            .build();
+    private final Cache unknownLoginFailures;
 
     public AdminAuthService(AdminUserRepository adminUserRepository,
                             PasswordEncoder passwordEncoder,
                             TgInitDataValidator initDataValidator,
-                            @Lazy AuthService authService,
+                            AuthService authService,
                             JwtService jwtService,
                             PreAuthTokens preAuthTokens,
                             AdminTotp totp,
@@ -108,7 +105,8 @@ public class AdminAuthService {
                             AdminLoginLogService loginLog,
                             AdminAuditService audit,
                             AdminSecurityAlerts alerts,
-                            java.time.Clock clock) {
+                            java.time.Clock clock,
+                            CacheManager caches) {
         this.clock = clock;
         this.adminUserRepository = adminUserRepository;
         this.passwordEncoder = passwordEncoder;
@@ -122,6 +120,7 @@ public class AdminAuthService {
         this.loginLog = loginLog;
         this.audit = audit;
         this.alerts = alerts;
+        this.unknownLoginFailures = CacheConfig.require(caches, StaffCaches.ADMIN_UNKNOWN_LOGINS);
         this.dummyPasswordHash = passwordEncoder.encode("no-such-admin-" + UUID.randomUUID());
     }
 
@@ -130,7 +129,7 @@ public class AdminAuthService {
     public Outcome passwordLogin(String username, String password, String deviceCookie, ClientInfo client) {
         String login = username == null ? "" : username.trim();
         String unknownKey = login.toLowerCase(Locale.ROOT);
-        AtomicInteger unknownFailures = unknownLoginFailures.getIfPresent(unknownKey);
+        AtomicInteger unknownFailures = unknownLoginFailures.get(unknownKey, AtomicInteger.class);
         if (unknownFailures != null && unknownFailures.get() >= AdminLockout.MAX_FAILURES) {
             loginLog.record(null, login, LoginMethod.PASSWORD, Result.LOCKED, null, client);
             throw lockout.lockedError(clock.instant().plus(Duration.ofMinutes(15)));
@@ -146,7 +145,7 @@ public class AdminAuthService {
         if (admin == null || admin.getPasswordHash() == null || !matches) {
             audit.recordLogin(false, "пароль", admin == null ? null : admin.getTelegramUserId(), login, client.ip());
             if (admin == null) {
-                unknownLoginFailures.get(unknownKey, k -> new AtomicInteger()).incrementAndGet();
+                unknownLoginFailures.get(unknownKey, AtomicInteger::new).incrementAndGet();
                 loginLog.record(null, login, LoginMethod.PASSWORD, Result.UNKNOWN_LOGIN, null, client);
                 throw new DomainException.Unauthorized(BAD_CREDENTIALS, null);
             }

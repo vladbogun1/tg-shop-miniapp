@@ -33,7 +33,10 @@ class VisitorLocationServiceTest {
     /** Runs the background write inline so the test can see it. */
     private VisitorLocationService service(boolean enabled) {
         lenient().when(geo.lookup(anyString())).thenReturn(Optional.empty());
-        return new VisitorLocationService(new com.maxsolch.shop.customer.infra.VisitorLocationStore(jdbc), geo, enabled, Duration.ofMinutes(15), Runnable::run);
+        return new VisitorLocationService(new com.maxsolch.shop.customer.infra.VisitorLocationStore(jdbc), geo, enabled,
+                com.maxsolch.shop.platform.cache.CacheConfig.onClock(new com.maxsolch.shop.platform.cache.CacheSpec(
+                        "visitorLocationRecent", 200_000, Duration.ofMinutes(15)), java.time.Clock.systemUTC()),
+                Runnable::run);
     }
 
     @Test

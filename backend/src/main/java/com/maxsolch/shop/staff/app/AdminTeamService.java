@@ -13,7 +13,6 @@ import com.maxsolch.shop.staff.infra.AdminTeamQueries;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import com.maxsolch.shop.platform.security.AdminTokenValidator;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -84,7 +83,7 @@ public class AdminTeamService {
     public AdminTeamService(AdminUserRepository repo, AdminInviteService invites, AdminInviteStore inviteStore,
                      AdminTotp totp, AdminLockout lockout, AdminSessions sessions,
                      TrustedDeviceService trustedDevices, AdminTokenValidator tokenValidator,
-                     AdminTeamQueries facts, AdminAuditService audit, @Lazy AdminTeamMessenger messenger, Clock clock) {
+                     AdminTeamQueries facts, AdminAuditService audit, AdminTeamMessenger messenger, Clock clock) {
         this.repo = repo;
         this.invites = invites;
         this.inviteStore = inviteStore;

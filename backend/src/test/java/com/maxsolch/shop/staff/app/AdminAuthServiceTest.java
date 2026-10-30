@@ -116,11 +116,20 @@ class AdminAuthServiceTest {
         jwtService = new JwtService(props);
         AdminAuthKeys keys = new AdminAuthKeys(props);
         cipher = keys.cipher();
-        PreAuthTokens preAuth = new PreAuthTokens(keys.preAuthKey(), clock);
+        PreAuthTokens preAuth = new PreAuthTokens(keys.preAuthKey(), clock,
+                com.maxsolch.shop.platform.cache.CacheConfig.onClock(StaffCaches.PREAUTH_USED, clock));
         AdminTotp totp = new AdminTotp(cipher, repo, "ChiSetup Admin", clock);
         AdminLockout lockout = new AdminLockout(repo, audit, loginLog, alerts, ZoneId.of("Europe/Kyiv"), clock);
         service = new AdminAuthService(repo, encoder, mock(TgInitDataValidator.class), mock(AuthService.class),
-                jwtService, preAuth, totp, lockout, trustedDevices, loginLog, audit, alerts, java.time.Clock.systemUTC());
+                jwtService, preAuth, totp, lockout, trustedDevices, loginLog, audit, alerts, java.time.Clock.systemUTC(),
+                caches(clock));
+    }
+
+    private static org.springframework.cache.CacheManager caches(java.time.Clock clock) {
+        org.springframework.cache.support.SimpleCacheManager m = new org.springframework.cache.support.SimpleCacheManager();
+        m.setCaches(java.util.List.of(com.maxsolch.shop.platform.cache.CacheConfig.onClock(StaffCaches.UNKNOWN_LOGINS, clock)));
+        m.initializeCaches();
+        return m;
     }
 
     private void enable2fa() {

@@ -77,8 +77,12 @@ class WebAuthServiceTest {
     void setUp() {
         AppProperties props = new AppProperties();
         props.getTelegram().setBotUsername("@maxsolch_bot");
+        MutableClock clock = new MutableClock();
+        org.springframework.cache.support.SimpleCacheManager caches = new org.springframework.cache.support.SimpleCacheManager();
+        caches.setCaches(java.util.List.of(com.maxsolch.shop.platform.cache.CacheConfig.onClock(CustomerCaches.ROTATED_REFRESH, clock)));
+        caches.initializeCaches();
         service = new WebAuthService(tokenRepository, sessionRepository, userRepository, adminUserRepository,
-                jwtService, props, sessionValidator, events, new MutableClock());
+                jwtService, props, sessionValidator, events, clock, caches);
 
         lenient().when(tokenRepository.save(any())).thenAnswer(inv -> {
             WebLoginToken t = inv.getArgument(0);

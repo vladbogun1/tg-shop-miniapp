@@ -13,7 +13,6 @@ import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
@@ -69,7 +68,7 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
     });
 
     public AdminSecurityNotifier(TelegramGateway bot, SellerChannel seller, AppProperties props,
-                                 @Lazy AdminSessions sessions, AdminUserRepository adminUserRepository,
+                                 AdminSessions sessions, AdminUserRepository adminUserRepository,
                                  AdminAuditService audit) {
         this.bot = bot;
         this.seller = seller;

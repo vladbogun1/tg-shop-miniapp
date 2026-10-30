@@ -1,8 +1,9 @@
 package com.maxsolch.shop.staff.app;
 
 import com.maxsolch.shop.staff.domain.LoginMethod;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import com.maxsolch.shop.platform.cache.CacheConfig;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -43,19 +44,17 @@ public class PreAuthTokens implements com.maxsolch.shop.platform.security.PreAut
 
     private final SecretKey key;
     private final Clock clock;
-    private final Cache<String, Boolean> used = Caffeine.newBuilder()
-            .maximumSize(10_000)
-            .expireAfterWrite(Duration.ofMinutes(TTL_MINUTES + 1))
-            .build();
+    private final Cache used;
 
     @org.springframework.beans.factory.annotation.Autowired
-    public PreAuthTokens(AdminAuthKeys keys, Clock clock) {
-        this(keys.preAuthKey(), clock);
+    public PreAuthTokens(AdminAuthKeys keys, Clock clock, CacheManager caches) {
+        this(keys.preAuthKey(), clock, CacheConfig.require(caches, StaffCaches.ADMIN_PREAUTH_USED));
     }
 
-    PreAuthTokens(byte[] key, Clock clock) {
+    PreAuthTokens(byte[] key, Clock clock, Cache used) {
         this.key = Keys.hmacShaKeyFor(key);
         this.clock = clock;
+        this.used = used;
     }
 
     public String issue(long adminId, int tokenVersion, LoginMethod method, Stage stage) {
@@ -84,7 +83,7 @@ public class PreAuthTokens implements com.maxsolch.shop.platform.security.PreAut
             if (!TYPE.equals(c.get("typ", String.class)) || c.getId() == null) {
                 return Optional.empty();
             }
-            if (used.getIfPresent(c.getId()) != null) {
+            if (used.get(c.getId()) != null) {
                 return Optional.empty();
             }
             Integer tv = c.get("tv", Integer.class);
