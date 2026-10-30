@@ -6,11 +6,11 @@ import com.maxsolch.shop.order.domain.DeliveryMethod;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.support.domain.ReplyTemplate;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.order.infra.OrderRepository;
+import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.support.infra.ReplyTemplateRepository;
 import com.maxsolch.shop.translation.domain.ContentTranslation;
 import com.maxsolch.shop.translation.domain.ContentTranslationId;
-import com.maxsolch.shop.translation.infra.ContentTranslationRepository;
+import com.maxsolch.shop.translation.app.StoredTranslations;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.translation.domain.TranslationOrigin;
 import com.maxsolch.shop.translation.app.TranslationService;
@@ -41,16 +41,17 @@ class ReplyTemplateServiceTest {
     @Mock
     ReplyTemplateRepository repository;
     @Mock
-    OrderRepository orderRepository;
+    OrderLookup orderRepository;
     @Mock
     Messages messages;
     @Mock
-    ContentTranslationRepository translations;
+    StoredTranslations translations;
     @Mock
     TranslationService translationService;
 
     private ReplyTemplateService service() {
-        return new ReplyTemplateService(repository, orderRepository, messages, translations, translationService);
+        return new ReplyTemplateService(repository, orderRepository, messages, translations, translationService,
+                java.time.Clock.systemUTC());
     }
 
     private static ReplyTemplate template(String ru) {
@@ -119,7 +120,7 @@ class ReplyTemplateServiceTest {
         o.setDeliveryMethod(DeliveryMethod.NOVA_POSHTA);
         o.setNpCityName("Київ");
         o.setNpWarehouseName("Відділення №1");
-        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+        when(orderRepository.find(o.getId())).thenReturn(Optional.of(o));
         when(messages.localeOf(42L)).thenReturn(Locale.forLanguageTag("uk"));
         when(repository.findAllByOrderBySortAscIdAsc()).thenReturn(List.of(template("RU {name}")));
         when(translations.findByType(TranslationEntityType.REPLY_TEMPLATE)).thenReturn(List.of(
@@ -140,7 +141,7 @@ class ReplyTemplateServiceTest {
         o.setId(UuidUtil.randomBytes());
         o.setTgUserId(42L);
         o.setCustomerName("Іван");
-        when(orderRepository.findById(o.getId())).thenReturn(Optional.of(o));
+        when(orderRepository.find(o.getId())).thenReturn(Optional.of(o));
         when(messages.localeOf(42L)).thenReturn(Locale.forLanguageTag("uk"));
         when(repository.findAllByOrderBySortAscIdAsc()).thenReturn(List.of(template("Новый текст {name}")));
         when(translations.findByType(TranslationEntityType.REPLY_TEMPLATE))

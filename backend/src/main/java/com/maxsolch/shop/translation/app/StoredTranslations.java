@@ -8,6 +8,7 @@ import com.maxsolch.shop.translation.infra.ContentTranslationRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -30,6 +31,24 @@ public class StoredTranslations {
     public Optional<Stored> find(TranslationEntityType type, byte[] entityId, String field, String locale) {
         return repository.findById(new ContentTranslationId(type, entityId, field, locale))
                 .map(row -> new Stored(row.getText(), row.getOrigin(), row.getSourceHash()));
+    }
+
+    /** Every stored translation of one entity (all fields, all languages). */
+    public List<ContentTranslation> findForEntity(TranslationEntityType type, byte[] entityId) {
+        return repository.findForEntity(type, entityId);
+    }
+
+    /** Every stored translation of one entity type. */
+    public List<ContentTranslation> findByType(TranslationEntityType type) {
+        return repository.findByType(type);
+    }
+
+    public ContentTranslation save(ContentTranslation row) {
+        return repository.save(row);
+    }
+
+    public void delete(ContentTranslation row) {
+        repository.delete(row);
     }
 
     /** Creates or updates the translation; {@code updatedBy} is left alone. */

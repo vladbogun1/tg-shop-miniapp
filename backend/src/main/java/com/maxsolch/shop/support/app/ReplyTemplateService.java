@@ -8,22 +8,22 @@ import com.maxsolch.shop.order.domain.DeliveryMethod;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.support.domain.ReplyTemplate;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.order.infra.OrderRepository;
+import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.support.infra.ReplyTemplateRepository;
 import com.maxsolch.shop.translation.domain.ContentTranslation;
 import com.maxsolch.shop.translation.domain.ContentTranslationId;
-import com.maxsolch.shop.translation.infra.ContentTranslationRepository;
+import com.maxsolch.shop.translation.app.StoredTranslations;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.translation.domain.TranslationOrigin;
 import com.maxsolch.shop.translation.app.TranslationService;
-import com.maxsolch.shop.platform.error.NotFoundException;
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.support.app.ReplyTemplateDtos.RenderedTemplateDto;
 import com.maxsolch.shop.support.app.ReplyTemplateDtos.TemplateDto;
 import com.maxsolch.shop.support.app.ReplyTemplateDtos.TemplateUpsertRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -53,21 +53,24 @@ public class ReplyTemplateService {
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{([a-zA-Z]+)}");
 
     private final ReplyTemplateRepository repository;
-    private final OrderRepository orderRepository;
+    private final OrderLookup orders;
     private final Messages messages;
-    private final ContentTranslationRepository translationRepository;
+    private final StoredTranslations translationRepository;
     private final TranslationService translationService;
+    private final Clock clock;
 
     public ReplyTemplateService(ReplyTemplateRepository repository,
-                                OrderRepository orderRepository,
+                                OrderLookup orders,
                                 Messages messages,
-                                ContentTranslationRepository translationRepository,
-                                TranslationService translationService) {
+                                StoredTranslations translationRepository,
+                                TranslationService translationService,
+                                Clock clock) {
         this.repository = repository;
-        this.orderRepository = orderRepository;
+        this.orders = orders;
         this.messages = messages;
         this.translationRepository = translationRepository;
         this.translationService = translationService;
+        this.clock = clock;
     }
 
     // ----- CRUD -----
@@ -94,7 +97,7 @@ public class ReplyTemplateService {
 
     @Transactional
     public TemplateDto update(long id, TemplateUpsertRequest req) {
-        ReplyTemplate t = repository.findById(id).orElseThrow(() -> new NotFoundException("template not found"));
+        ReplyTemplate t = repository.findById(id).orElseThrow(() -> new DomainException.NotFound("template not found"));
         apply(t, req);
         t = repository.save(t);
         writeTranslations(t, req);
@@ -103,9 +106,9 @@ public class ReplyTemplateService {
 
     @Transactional
     public String delete(long id) {
-        ReplyTemplate t = repository.findById(id).orElseThrow(() -> new NotFoundException("template not found"));
+        ReplyTemplate t = repository.findById(id).orElseThrow(() -> new DomainException.NotFound("template not found"));
         repository.delete(t);
-        translationRepository.deleteForEntities(TranslationEntityType.REPLY_TEMPLATE,
+        translationService.deleteForEntities(TranslationEntityType.REPLY_TEMPLATE,
                 List.of(ReplyTemplate.translationId(t.getId())));
         translationService.invalidate();
         return t.getTitle();
@@ -151,7 +154,7 @@ public class ReplyTemplateService {
             row.setText(wanted);
             row.setSource(t.getBodyRu());
             row.setOrigin(TranslationOrigin.MANUAL);
-            row.setReviewedAt(Instant.now());
+            row.setReviewedAt(clock.instant());
             translationRepository.save(row);
             changed = true;
         }
@@ -191,8 +194,8 @@ public class ReplyTemplateService {
     /** Every template filled in for this order, in the customer's language. */
     @Transactional(readOnly = true)
     public List<RenderedTemplateDto> renderForOrder(byte[] orderId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new NotFoundException("order not found"));
+        Order order = orders.find(orderId)
+                .orElseThrow(() -> new DomainException.NotFound("order not found"));
         Locale locale = messages.localeOf(order.getTgUserId());
         Map<String, String> vars = variables(order, locale);
         Map<String, ContentTranslation> rows = translations();
