@@ -38,15 +38,16 @@ import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { CopyButton } from "./CopyButton";
 import { RefundModal } from "./RefundModal";
+import { nowMs } from "@shop/core/time";
 
 export const orderPaymentsKey = (orderId: string) => ["order-payments", orderId] as const;
 export const orderReceiptsKey = (orderId: string) => ["order-receipts", orderId] as const;
 
 /** Re-render once a minute so «осталось …» stays honest while the card is open. */
 function useNow(intervalMs = 60_000): number {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => nowMs());
   useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), intervalMs);
+    const t = window.setInterval(() => setNow(nowMs()), intervalMs);
     return () => window.clearInterval(t);
   }, [intervalMs]);
   return now;
@@ -293,7 +294,7 @@ const RECEIPT_STATUS: Record<ReceiptStatus, { label: string; tone: "warn" | "ok"
 
 /** Fiscal checks + bank receipts of the paid invoices (the bot also sends them to the customer). */
 function Receipts({ orderId, currency }: { orderId: string; currency: string }) {
-  const since = useRef(Date.now());
+  const since = useRef(nowMs());
   const q = useQuery({
     queryKey: orderReceiptsKey(orderId),
     queryFn: () => adminApi.getOrderReceipts(orderId),

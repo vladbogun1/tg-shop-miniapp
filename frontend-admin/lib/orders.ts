@@ -6,7 +6,8 @@
  * that the server accepts, and offered a "В новые" action the server always rejects).
  */
 export { codMinor, isNovaPoshtaTtn, ORDER_STATUS_COLOR as STATUS_VAR, REJECT_REASON_LABEL, STATUS_ACTION_LABEL, STATUS_COLUMN_LABEL as STATUS_LABEL, STATUS_ORDER, type RejectReasonCode } from "@shop/core/orders";
-export { formatDateTime, shortOrderId as shortId, timeAgo } from "@shop/core/format";
+export { formatDateTime, timeAgo } from "@shop/core/time";
+export { shortOrderId as shortId } from "@shop/core/format";
 
 import { allowedTargets as sharedAllowedTargets, canTransition as sharedCanTransition } from "@shop/core/orders";
 import { type DeliveryMethod, type OrderStatus } from "@shop/core/types";

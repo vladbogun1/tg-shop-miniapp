@@ -6,6 +6,7 @@
  * largest discount, and of equal ones the one that runs out first.
  */
 import type { Params } from "./i18n";
+import { nowMs } from "./time";
 import type { BonusCode } from "./types";
 
 /** From this many days left the offer says the code is about to run out. */
@@ -32,7 +33,7 @@ function endOf(b: BonusCode): number {
 }
 
 /** The code to offer, or null when there is nothing usable. */
-export function pickBonusOffer(bonuses: readonly BonusCode[] | null | undefined, now = Date.now()): BonusOffer | null {
+export function pickBonusOffer(bonuses: readonly BonusCode[] | null | undefined, now = nowMs()): BonusOffer | null {
   const usable = (bonuses ?? []).filter((b) => isUsable(b, now));
   if (usable.length === 0) return null;
   const best = [...usable].sort((a, b) => b.percent - a.percent || endOf(a) - endOf(b))[0];

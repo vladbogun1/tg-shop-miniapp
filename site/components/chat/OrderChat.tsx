@@ -9,7 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { ImagePlus, Send, WifiOff, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { dayKey } from "@shop/core/format";
+import { dayKey } from "@shop/core/time";
 import { type Message, type SendMessageRequest } from "@shop/core/types";
 import { noFadeFlash } from "@shop/ui/motion";
 import { Button } from "@/components/ui/Button";

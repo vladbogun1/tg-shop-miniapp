@@ -16,6 +16,7 @@ import { Image } from "@/lib/image";
 import { spring } from "@/lib/motion";
 import { etaWhen, holdUntilText, isLiveHold, preorderApi, preorderKeys, useMyPreorders, type MyPreorder } from "@/lib/preorders";
 import { haptic } from "@/lib/telegram";
+import { sessionStore } from "@shop/core/storage";
 
 export default function MyPreordersPage() {
   const { t } = useI18n();
@@ -99,7 +100,7 @@ function Row({ p, index }: { p: MyPreorder; index: number }) {
     haptic();
     // The catalog may already be mounted (cached) and read the URL before the push lands: hand the id over too.
     try {
-      sessionStorage.setItem("shop:open-product", p.productId);
+      sessionStore.setItem("shop:open-product", p.productId);
     } catch {
       /* private mode: the URL alone still works on a fresh load */
     }

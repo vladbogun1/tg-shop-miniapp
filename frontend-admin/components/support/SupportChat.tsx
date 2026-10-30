@@ -10,6 +10,7 @@
  *  - draft kept per thread for the session.
  * Answering a closed thread reopens it (server side) — the hint above the composer says so.
  */
+import { nowMs } from "@shop/core/time";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Paperclip, Send } from "lucide-react";
@@ -29,6 +30,7 @@ import { Bubble } from "@/components/orders/OrderChat";
 import { ChatDaySection, useChatDays } from "@/components/orders/ChatDays";
 import { Button } from "@/components/ui/Button";
 import { Lightbox } from "@/components/ui/Lightbox";
+import { sessionStore } from "@shop/core/storage";
 
 const messageTime = (m: SupportMessage) => m.createdAt;
 
@@ -38,7 +40,7 @@ const DRAFT_KEY = (id: string) => `tgshop_admin_support_draft:${id}`;
 function loadDraft(id: string): string {
   if (drafts.has(id)) return drafts.get(id) ?? "";
   try {
-    return sessionStorage.getItem(DRAFT_KEY(id)) ?? "";
+    return sessionStore.getItem(DRAFT_KEY(id)) ?? "";
   } catch {
     return "";
   }
@@ -47,15 +49,15 @@ function loadDraft(id: string): string {
 function saveDraft(id: string, text: string) {
   drafts.set(id, text);
   try {
-    if (text) sessionStorage.setItem(DRAFT_KEY(id), text);
-    else sessionStorage.removeItem(DRAFT_KEY(id));
+    if (text) sessionStore.setItem(DRAFT_KEY(id), text);
+    else sessionStore.removeItem(DRAFT_KEY(id));
   } catch {
     // storage unavailable — the in-memory copy still survives closing the drawer
   }
 }
 
 function markCustomerRead(prev: SupportMessage[] = []): SupportMessage[] {
-  const now = new Date().toISOString();
+  const now = new Date(nowMs()).toISOString();
   let changed = false;
   const next = prev.map((m) => {
     if (m.senderType === "CUSTOMER" && !m.readAt) {

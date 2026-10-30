@@ -6,6 +6,7 @@
  * for the month against the monthly limit (setting gift.monthlyLimitUah). GET /api/admin/gift/registry.
  * «Скачать CSV» — the same rows in Ukrainian for the accountant (Excel: «;», a comma in amounts).
  */
+import { formatMoment, nowMs } from "@shop/core/time";
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -32,7 +33,7 @@ function monthSpan(y: number, m: number): [string, string] {
 }
 
 export default function GiftRegistryPage() {
-  const now = new Date();
+  const now = new Date(nowMs());
   const [ym, setYm] = useState({ y: now.getFullYear(), m: now.getMonth() });
   const [custom, setCustom] = useState<{ from: string; to: string } | null>(null);
   const [from, to] = custom ? [custom.from, custom.to] : monthSpan(ym.y, ym.m);
@@ -272,7 +273,7 @@ const uah = (minor: number) => (minor / 100).toFixed(2).replace(".", ",");
 
 /** dd.mm.yyyy in Kyiv. */
 const ukDate = (isoTs: string | null) =>
-  isoTs ? new Date(isoTs).toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv", day: "2-digit", month: "2-digit", year: "numeric" }) : "";
+  isoTs ? formatMoment(isoTs, { day: "2-digit", month: "2-digit", year: "numeric" }, "uk-UA", "Europe/Kyiv") : "";
 
 function cell(v: string | number): string {
   const s = String(v);

@@ -47,6 +47,7 @@ import { Modal } from "@/components/ui/Modal";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { staggerContainer, riseItem, spring } from "@/lib/motion";
 import { useToast } from "@/lib/toast";
+import { localStore } from "@shop/core/storage";
 
 /** Telegram refuses longer messages (the backend checks the same). */
 const MAX_LEN = 4096;
@@ -82,7 +83,7 @@ interface Draft {
 
 function loadDraft(): Draft | null {
   try {
-    const raw = localStorage.getItem(DRAFT_KEY);
+    const raw = localStore.getItem(DRAFT_KEY);
     if (!raw) return null;
     const d = JSON.parse(raw) as Partial<Draft>;
     return {
@@ -99,8 +100,8 @@ function loadDraft(): Draft | null {
 
 function saveDraft(d: Draft | null) {
   try {
-    if (d) localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
-    else localStorage.removeItem(DRAFT_KEY);
+    if (d) localStore.setItem(DRAFT_KEY, JSON.stringify(d));
+    else localStore.removeItem(DRAFT_KEY);
   } catch {
     // private mode / blocked storage — the draft simply does not persist
   }

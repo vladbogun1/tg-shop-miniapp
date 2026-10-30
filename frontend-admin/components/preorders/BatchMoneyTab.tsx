@@ -40,6 +40,7 @@ import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Select } from "@/components/ui/Select";
 import { Toggle } from "@/components/ui/Toggle";
+import { now } from "@shop/core/time";
 
 interface LineDraft {
   price: string;
@@ -451,7 +452,7 @@ function Total({ label, value, sub, warn }: { label: string; value: string; sub?
 }
 
 function todayLocal(): string {
-  const d = new Date();
+  const d = now();
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }

@@ -13,6 +13,7 @@ import {
   type CardSchema,
 } from "./card-prompt";
 import { checkTranslation, wordDiff, type DiffPart } from "./translation-check";
+import { formatNumber } from "@shop/core/money";
 
 export { wordDiff, type DiffPart };
 
@@ -341,7 +342,7 @@ export function formatValue(attr: CardAttribute | undefined, v: unknown): string
   if (v === undefined || v === null) return "—";
   const unit = attr?.unit ? ` ${attr.unit}` : "";
   const label = (x: unknown) => attr?.options.find((o) => o.value === x)?.labelRu ?? String(x);
-  const nf = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 3 });
+  const nf = (n: number) => formatNumber(n, "ru-RU", { maximumFractionDigits: 3 });
   if (typeof v === "boolean") return v ? "да" : "нет";
   if (typeof v === "number") return nf(v) + unit;
   if (Array.isArray(v)) return v.length ? v.map(label).join(", ") : "—";

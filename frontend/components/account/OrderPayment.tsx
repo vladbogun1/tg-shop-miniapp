@@ -38,6 +38,7 @@ import { useI18n } from "@/i18n/context";
 import { ApiError, customerApi, type OrderDetail } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { money } from "@/lib/money";
+import { nowMs } from "@shop/core/time";
 import { spring } from "@/lib/motion";
 import { haptic, hapticSuccess, isAndroidTelegram, onAppResume, openExternalLink } from "@/lib/telegram";
 
@@ -59,11 +60,8 @@ function pendingPayment(o: OrderDetail): boolean {
 
 /** Re-renders every `ms` — for the "залишилось …" countdown. */
 function useNow(ms: number): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), ms);
-    return () => window.clearInterval(id);
-  }, [ms]);
+  const [now, setNow] = useState(nowMs);
+  useEffect(() => window.clearInterval.bind(window, window.setInterval(() => setNow(nowMs()), ms)), [ms]);
   return now;
 }
 
@@ -133,7 +131,7 @@ export function OrderPayment({
     if (!alive.current) return;
     setReturning(false);
     const o = fresh ?? orderRef.current;
-    if (!pendingPayment(o) || Date.now() >= watchUntil.current) {
+    if (!pendingPayment(o) || nowMs() >= watchUntil.current) {
       running.current = false;
       setWatching(false);
       if (o.paid && !needsTopUp(o)) celebrate();
@@ -145,7 +143,7 @@ export function OrderPayment({
   /** Starts (or extends) the refresh loop. Several resume events for one return are harmless. */
   const watch = useCallback(
     (fromReturn: boolean) => {
-      watchUntil.current = Date.now() + WATCH_MS;
+      watchUntil.current = nowMs() + WATCH_MS;
       if (fromReturn) setReturning(true);
       if (running.current) return;
       running.current = true;
@@ -231,7 +229,7 @@ export function OrderPayment({
     // A live page is already known: open it right inside the tap. Telegram ignores an openLink that
     // comes too long after the last tap, so the fewer awaits the better.
     const known = browserPage.current;
-    if (known && known.expiresAt - Date.now() > 60_000 && status === "created") {
+    if (known && known.expiresAt - nowMs() > 60_000 && status === "created") {
       opened.current = true;
       openPage(known.url, system);
       return;

@@ -11,6 +11,7 @@
  * so the lists poll while one is still on its way — see {@link receiptsPollMs}.
  */
 import type { OrderDetail } from "./types";
+import { nowMs } from "./time";
 
 export type ReceiptKind = "FISCAL_SALE" | "FISCAL_RETURN" | "BANK";
 /** PENDING — the PRRO is still issuing it; READY — downloadable; FAILED — the PRRO refused it. */
@@ -45,7 +46,7 @@ export function hasOnlinePayment(order: Pick<OrderDetail, "receivedMinor" | "pay
 }
 
 /** Still worth asking again: a fiscal check is being issued, or a fresh payment has none yet. */
-export function receiptsInProgress(list: Receipt[] | undefined, now = Date.now()): boolean {
+export function receiptsInProgress(list: Receipt[] | undefined, now = nowMs()): boolean {
   if (!list || list.length === 0) return false;
   if (list.some((r) => r.kind !== "BANK" && r.status === "PENDING")) return true;
   const hasFiscal = list.some((r) => r.kind !== "BANK");
@@ -59,7 +60,7 @@ export function receiptsInProgress(list: Receipt[] | undefined, now = Date.now()
  * react-query `refetchInterval` for a receipts list: {@link RECEIPTS_POLL_MS} while
  * {@link receiptsInProgress}, for at most {@link RECEIPTS_POLL_FOR_MS} since `since`.
  */
-export function receiptsPollMs(list: Receipt[] | undefined, since: number, now = Date.now()): number | false {
+export function receiptsPollMs(list: Receipt[] | undefined, since: number, now = nowMs()): number | false {
   return receiptsInProgress(list, now) && now - since < RECEIPTS_POLL_FOR_MS ? RECEIPTS_POLL_MS : false;
 }
 

@@ -20,6 +20,7 @@
  *
  * Nothing here is rendered on the site.
  */
+import { momentParts, nowMs } from "@shop/core/time";
 import { availabilityOf } from "@shop/core/availability";
 import { type CatalogCategory, type CatalogSchema, categoryBySlug, categoryPath, MARKDOWN_COLLECTION_SLUG, specRows } from "@shop/core/catalog";
 import { imgproxyUrl } from "@shop/core/image";
@@ -340,19 +341,7 @@ const NO_WARRANTY = new Set(["glaydy", "keykapy", "kabelya", "rukava"]);
 const WARRANTY_MONTHS = 6;
 
 function kyivTimestamp(d: Date): string {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Europe/Kyiv",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    })
-      .formatToParts(d)
-      .map((x) => [x.type, x.value])
-  );
+  const parts = momentParts(d, { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }, "en-CA", "Europe/Kyiv");
   return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
 }
 
@@ -360,7 +349,7 @@ function kyivTimestamp(d: Date): string {
  * Hotline compares offers of NEW goods by model, and a click on an unavailable offer is paid for
  * nothing — so the price list carries in-stock, non-markdown products only.
  */
-export function hotlineFeed(items: FeedItem[], now = new Date()): string {
+export function hotlineFeed(items: FeedItem[], now = new Date(nowMs())): string {
   const listed = items.filter((it) => it.inStock && !it.markdown);
   const categories = new Map<string, string>();
   for (const it of listed) categories.set(it.category.slug, it.categoryName);

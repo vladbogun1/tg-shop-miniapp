@@ -31,6 +31,7 @@ import { CopyButton } from "@/components/orders/CopyButton";
 import { OrderDrawer } from "@/components/orders/OrderDrawer";
 import { Lightbox } from "@/components/ui/Lightbox";
 import { Image, resolveImageFull } from "@/lib/image";
+import { nowMs } from "@shop/core/time";
 
 export default function DispatchPage() {
   const { push } = useToast();
@@ -161,7 +162,7 @@ function DispatchCard({ o, onOpen, onZoom }: { o: AdminDispatchOrder; onOpen: ()
   const isPickup = o.deliveryMethod === "PICKUP";
   const waitPay = awaitingPrepayment(o);
   const unpaid = approvedUnpaid(o);
-  const dueExpired = unpaid && !!o.paymentDueAt && Date.parse(o.paymentDueAt) <= Date.now();
+  const dueExpired = unpaid && !!o.paymentDueAt && Date.parse(o.paymentDueAt) <= nowMs();
 
   return (
     <div className="panel flex flex-col gap-4 p-4 sm:p-5">

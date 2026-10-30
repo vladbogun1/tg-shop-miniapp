@@ -5,7 +5,8 @@
  * customer-specific part: where the token is kept (in memory, re-obtained from Telegram initData
  * on every launch) and the typed endpoint list.
  */
-import { ApiError, createHttpClient, newIdempotencyKey, normalizeBaseUrl } from "@shop/core/http";
+import { ApiError } from "@shop/core/errors";
+import { createHttpClient, newIdempotencyKey, normalizeBaseUrl } from "@shop/core/http";
 import { type AuthResponse, type Conversation, type CreateOrderResult, type Message, type NpCity, type NpWarehouse, type OrderDetail, type OrderLimits, type OrderSummary, type PaymentOption, type PaymentStart, type Product, type PromoPreview, type SendMessageRequest } from "@shop/core/types";
 import { type CartLineInput, type ServerCart } from "@shop/core/cart";
 import { type CatalogSchema } from "@shop/core/catalog";

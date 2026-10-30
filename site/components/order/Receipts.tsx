@@ -19,6 +19,7 @@ import { buttonClass } from "@/components/ui/button-styles";
 import { useI18n } from "@/i18n/context";
 import { api } from "@/lib/api";
 import { useFmt } from "@/lib/use-fmt";
+import { nowMs } from "@shop/core/time";
 
 const CHIP: Record<ReceiptStatus, string> = {
   PENDING: "var(--warn)",
@@ -28,7 +29,7 @@ const CHIP: Record<ReceiptStatus, string> = {
 
 export function OrderReceipts({ order }: { order: OrderDetail }) {
   const enabled = hasOnlinePayment(order);
-  const since = useRef(Date.now());
+  const since = useRef(nowMs());
   const { data } = useQuery({
     queryKey: ["me", "orders", order.id, "receipts"],
     queryFn: () => api.receipts(order.id),

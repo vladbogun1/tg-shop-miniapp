@@ -6,10 +6,13 @@
  * the admin-only payloads, and the typed endpoint list.
  */
 import { markStaffBrowser } from "./staff-mark";
-import { ApiError, createHttpClient, normalizeBaseUrl } from "@shop/core/http";
+import { ApiError } from "@shop/core/errors";
+import { createHttpClient, normalizeBaseUrl } from "@shop/core/http";
 import { type AdminInvoice, type MonobankStatus, type DeliveryMethod, type Message, type OrderCard, type OrderDetail, type OrderStatus, type Product, type ProductImage, type ProductTag, type ProductVariant, type SendMessageRequest, type SenderType, type TimeRange } from "@shop/core/types";
 import { type Receipt } from "@shop/core/receipts";
 import { type CardStatus, type ProductCondition, type ProductSpecs, type SpecType, type SpecValue } from "@shop/core/catalog";
+import { localStore } from "@shop/core/storage";
+import { nowMs } from "@shop/core/time";
 
 export { ApiError };
 export type {
@@ -387,15 +390,15 @@ export function setAccessToken(token: string | null): void {
   accessToken = token;
   if (token) markStaffBrowser();
   if (typeof window !== "undefined") {
-    if (token) localStorage.setItem(TOKEN_KEY, token);
-    else localStorage.removeItem(TOKEN_KEY);
+    if (token) localStore.setItem(TOKEN_KEY, token);
+    else localStore.removeItem(TOKEN_KEY);
   }
 }
 
 export function getAccessToken(): string | null {
   if (accessToken) return accessToken;
   if (typeof window !== "undefined") {
-    accessToken = localStorage.getItem(TOKEN_KEY);
+    accessToken = localStore.getItem(TOKEN_KEY);
     // Admins already signed in before the staff mark existed get it on their next visit.
     if (accessToken) markStaffBrowser();
   }
@@ -471,12 +474,12 @@ function maybeRefresh(token: string): void {
   if (refreshing || typeof window === "undefined") return;
   const t = tokenTimes(token);
   if (!t) return;
-  const now = Date.now() / 1000;
+  const now = nowMs() / 1000;
   if (now >= t.exp) return; // already expired: the request will 401 and show the login screen
   const halfLife = t.iat + (t.exp - t.iat) / 2;
   if (t.hasId && now < halfLife) return;
-  if (Date.now() - lastRefreshAttempt < REFRESH_RETRY_MS) return;
-  lastRefreshAttempt = Date.now();
+  if (nowMs() - lastRefreshAttempt < REFRESH_RETRY_MS) return;
+  lastRefreshAttempt = nowMs();
   refreshing = true;
   // Plain fetch, not the client: a failed refresh must not log the admin out — the current token
   // is still valid, and the next call after a minute simply tries again.

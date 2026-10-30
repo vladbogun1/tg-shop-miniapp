@@ -1,3 +1,5 @@
+import { formatNumber } from "@shop/core/money";
+import { formatMoment } from "@shop/core/time";
 /**
  * Formatting helpers for the metrics dashboard (charts + cards).
  */
@@ -7,16 +9,14 @@ export function shortDate(iso: string): string {
   if (!iso) return "";
   const parts = iso.split("-");
   if (parts.length === 3) return `${parts[2]}.${parts[1]}`;
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+  return formatMoment(iso, { day: "2-digit", month: "2-digit" });
 }
 
 /** minor units -> "1 234 ₴" (rounded major). */
 export function moneyShort(minor: number | null | undefined, currency = "UAH"): string {
   const major = Math.round((minor ?? 0) / 100);
   const symbol = currency === "UAH" ? "₴" : currency;
-  return `${major.toLocaleString("ru-RU")} ${symbol}`;
+  return `${formatNumber(major, "ru-RU")} ${symbol}`;
 }
 
 /**

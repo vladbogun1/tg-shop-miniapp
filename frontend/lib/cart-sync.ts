@@ -20,6 +20,7 @@
 import { cartSignature, type CartLineInput, type ServerCart } from "@shop/core/cart";
 import { customerApi, getAccessToken, onAccessToken, putCartOnUnload } from "./api";
 import { lineKey, useCart, type CartLine } from "./cart";
+import { nowMs } from "@shop/core/time";
 
 const WRITE_DEBOUNCE_MS = 400;
 const REFRESH_GAP_MS = 2_000;
@@ -132,7 +133,7 @@ export async function flushCart(): Promise<void> {
 
 async function refresh(force = false): Promise<void> {
   if (!active || !getAccessToken()) return;
-  const now = Date.now();
+  const now = nowMs();
   if (!force && now - lastRefresh < REFRESH_GAP_MS) return;
   lastRefresh = now;
   await flushCart();
@@ -157,7 +158,7 @@ function start(): Promise<void> {
           : await customerApi.getCart();
         editedBeforeStart = false;
         active = true;
-        lastRefresh = Date.now();
+        lastRefresh = nowMs();
         setLines({ migrated: true });
         adopt(cart);
       } catch {

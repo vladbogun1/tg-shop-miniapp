@@ -20,7 +20,8 @@ const CYR = "А-Яа-яЁёЄєІіЇїҐґ";
 export const RATCHET_SELECTORS = [
   {
     id: "no-web-storage",
-    selector: "MemberExpression[object.name='window'][property.name=/^(local|session)Storage$/]",
+    hard: true,
+    selector: "MemberExpression[object.name='window'][property.name=/^(local|session)Storage$/], Identifier[name=/^(local|session)Storage$/]:not(MemberExpression[computed=false] > Identifier.property):not(Property > Identifier.key)",
     message: "localStorage/sessionStorage — только через core/storage (try/catch, префикс ключа).",
   },
   {
@@ -55,21 +56,25 @@ export const RATCHET_SELECTORS = [
   },
   {
     id: "time-new-date",
+    hard: true,
     selector: "NewExpression[callee.name='Date'][arguments.length=0]",
     message: "new Date() без аргумента — now() из core/time (подменяется в тестах).",
   },
   {
     id: "time-date-now",
+    hard: true,
     selector: "MemberExpression[object.name='Date'][property.name='now']",
     message: "Date.now — now() из core/time.",
   },
   {
     id: "time-to-locale",
+    hard: true,
     selector: "CallExpression[callee.property.name=/^toLocale(Date|Time)?String$/]",
     message: "toLocale* — форматтеры formatDate/Time/DateTime из core/time и core/format.",
   },
   {
     id: "time-intl-datetimeformat",
+    hard: true,
     selector: "MemberExpression[object.name='Intl'][property.name='DateTimeFormat']",
     message: "Intl.DateTimeFormat — форматтеры из core/time и core/format.",
   },
@@ -85,27 +90,29 @@ export const RATCHET_SELECTORS = [
  * Локальный плагин: `front/ratchet` — «no-restricted-syntax», у которого у каждого селектора свой id в
  * сообщении (core-правило не умеет mixed severity, а нам нужны и warn-счётчики, и error-запреты).
  */
+const ratchet = {
+  meta: { type: "suggestion", schema: [{ type: "array" }] },
+  create(context) {
+    const visitor = {};
+    for (const { id, selector, message } of context.options[0] ?? []) {
+      const handler = (node) => context.report({ node, message: `[${id}] ${message}` });
+      const prev = visitor[selector];
+      visitor[selector] = prev ? (n) => (prev(n), handler(n)) : handler;
+    }
+    return visitor;
+  },
+};
+
 const plugin = {
   rules: {
-    ratchet: {
-      meta: { type: "suggestion", schema: [{ type: "array" }] },
-      create(context) {
-        const visitor = {};
-        for (const { id, selector, message } of context.options[0] ?? []) {
-          const handler = (node) => context.report({ node, message: `[${id}] ${message}` });
-          const prev = visitor[selector];
-          visitor[selector] = prev ? (n) => (prev(n), handler(n)) : handler;
-        }
-        return visitor;
-      },
-    },
+    ratchet,
+    // То же, но под error: правила, по которым в коде уже ноль (время, веб-хранилище).
+    "ratchet-hard": ratchet,
   },
 };
 
 const GLOBALS = [
   { id: "no-fetch", name: "fetch", message: "Прямой fetch запрещён — HttpClient из core/http (пути только в features/*/api.ts)." },
-  { id: "no-web-storage", name: "localStorage", message: "localStorage — только через core/storage." },
-  { id: "no-web-storage", name: "sessionStorage", message: "sessionStorage — только через core/storage." },
   { id: "no-confirm-alert", name: "confirm", message: "confirm запрещён — useConfirm()." },
   { id: "no-confirm-alert", name: "alert", message: "alert запрещён — toast." },
 ];
@@ -173,7 +180,8 @@ export function frontRules({
 } = {}) {
   const active = RATCHET_SELECTORS.filter((s) => customer || !s.customerOnly);
   const ratchetRules = (excluded = new Set()) => ({
-    "front/ratchet": ["warn", active.filter((s) => !excluded.has(s.id))],
+    "front/ratchet": ["warn", active.filter((s) => !s.hard && !excluded.has(s.id))],
+    "front/ratchet-hard": ["error", active.filter((s) => s.hard && !excluded.has(s.id))],
     "no-restricted-globals": [
       "warn",
       ...GLOBALS.filter((g) => !excluded.has(g.id)).map(({ id, name, message }) => ({ name, message: `[${id}] ${message}` })),
@@ -202,7 +210,7 @@ export function frontRules({
   }
   configs.push({
     files: testFiles,
-    rules: { "front/ratchet": "off", "no-restricted-globals": "off", "max-lines-per-function": "off" },
+    rules: { "front/ratchet": "off", "front/ratchet-hard": "off", "no-restricted-globals": "off", "max-lines-per-function": "off" },
   });
   return configs;
 }

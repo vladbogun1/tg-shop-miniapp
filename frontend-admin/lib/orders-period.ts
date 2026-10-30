@@ -4,6 +4,7 @@
  * «Свой»). Its own key: «Покупатели» keeps the plain TimeRange in `tgshop_admin_range`.
  */
 import { useEffect, useState } from "react";
+import { localStore } from "@shop/core/storage";
 
 export type OrdersRange = "week" | "month" | "thismonth" | "prevmonth" | "thisyear" | "all" | "custom";
 
@@ -44,7 +45,7 @@ export function useOrdersPeriod(): [OrdersPeriod, (p: OrdersPeriod) => void] {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(KEY);
+      const raw = localStore.getItem(KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (isValid(parsed)) setValue(parsed);
@@ -57,7 +58,7 @@ export function useOrdersPeriod(): [OrdersPeriod, (p: OrdersPeriod) => void] {
   function update(p: OrdersPeriod) {
     setValue(p);
     try {
-      localStorage.setItem(KEY, JSON.stringify(p));
+      localStore.setItem(KEY, JSON.stringify(p));
     } catch {
       /* not worth surfacing */
     }

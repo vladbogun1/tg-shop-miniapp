@@ -28,7 +28,7 @@ import { Image } from "@/lib/image";
 import { spring } from "@/lib/motion";
 import { connectSupportChat, supportApi, type SupportMessage } from "@/lib/support";
 import { haptic } from "@/lib/telegram";
-import { dayKey } from "@shop/core/format";
+import { dayKey } from "@shop/core/time";
 import { supportAsChatMessage } from "@shop/core/support";
 
 /** Must match SupportService.DEFAULT_PAGE on the backend. */

@@ -6,22 +6,8 @@
  * 401 — are injected instead of forked.
  */
 
-export class ApiError extends Error {
-  readonly status: number;
-  /**
-   * Stable reason tag from the server, when it sent one (e.g. "PROMO_REJECTED"). Branching on this
-   * instead of on the message text is what lets those messages stay plain Russian and be reworded
-   * without silently breaking the apps.
-   */
-  readonly code?: string;
-
-  constructor(message: string, status: number, code?: string) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-    this.code = code;
-  }
-}
+import { nowMs } from "./time";
+import { ApiError, type ErrorParams } from "./errors";
 
 /**
  * Wording the client produces itself, when there is no response to read one from.
@@ -130,11 +116,11 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     if (res.status === 401 || res.status === 403) {
       const failure = await failureOf(res, texts.unauthorized());
       onUnauthorized?.(res.status, failure.code);
-      throw new ApiError(failure.message, res.status, failure.code);
+      throw new ApiError(failure.message, res.status, failure.code, failure.params);
     }
     if (!res.ok) {
       const failure = await failureOf(res, texts.http(res.status));
-      throw new ApiError(failure.message, res.status, failure.code);
+      throw new ApiError(failure.message, res.status, failure.code, failure.params);
     }
 
     if (res.status === 204) return undefined as T;
@@ -146,10 +132,10 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
   async function failureOf(
     res: Response,
     fallback: string
-  ): Promise<{ message: string; code?: string }> {
+  ): Promise<{ message: string; code?: string; params?: ErrorParams }> {
     try {
-      const data = (await res.json()) as { message?: string; error?: string; code?: string };
-      return { message: data.message || data.error || fallback, code: data.code };
+      const data = (await res.json()) as { message?: string; error?: string; code?: string; params?: ErrorParams };
+      return { message: data.message || data.error || fallback, code: data.code, params: data.params };
     } catch {
       return { message: fallback };
     }
@@ -199,5 +185,5 @@ export function newIdempotencyKey(): string {
   if (cryptoObj && typeof cryptoObj.randomUUID === "function") {
     return cryptoObj.randomUUID();
   }
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${nowMs().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }

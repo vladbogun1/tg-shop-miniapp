@@ -12,16 +12,19 @@ const config = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   { rules: { "@next/next/no-img-element": "off" } },
   ...architectureLimits(legacyLimits),
-  // Файлы, ради которых правила и существуют (станут core/http, core/money, core/format).
+  // Файлы, ради которых правила существуют (у каждого файла — ровно одна группа: списки не должны пересекаться).
   ...frontRules({
     allow: {
       "no-fetch": ["src/http.ts"],
       "money-div-mul-100": ["src/money.ts"],
       "to-fixed": ["src/money.ts"],
-      "time-new-date": ["src/format.ts"],
-      "time-date-now": ["src/format.ts"],
-      "time-to-locale": ["src/format.ts", "src/money.ts"],
-      "time-intl-datetimeformat": ["src/format.ts"],
+      "time-to-locale": ["src/money.ts"],
+      "time-new-date": ["src/time.ts"],
+      "time-date-now": ["src/time.ts"],
+      "time-intl-datetimeformat": ["src/time.ts"],
+      "no-web-storage": ["src/storage.ts"],
+      "stale-time-literal": ["src/query.ts"],
+      "refetch-interval-literal": ["src/query.ts"],
     },
   }),
 ];

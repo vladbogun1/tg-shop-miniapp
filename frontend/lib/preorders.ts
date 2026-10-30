@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { apiDel, apiGet, apiPost, type Product } from "@/lib/api";
 import { useAccessToken } from "@/lib/auth";
+import { formatMoment, nowMs } from "@shop/core/time";
 
 export interface PreorderEta {
   stage: "ordered" | "in_transit" | string;
@@ -156,7 +157,7 @@ export function useProductPreorder(productId: string) {
 // ---- pure helpers ----------------------------------------------------------------------------
 
 /** A hold that is still running. */
-export function isLiveHold(p: MyPreorder, now = Date.now()): boolean {
+export function isLiveHold(p: MyPreorder, now = nowMs()): boolean {
   return p.status === "HELD" && p.heldQty > 0 && !!p.holdUntil && new Date(p.holdUntil).getTime() > now;
 }
 
@@ -212,7 +213,7 @@ function parseDay(iso: string | null): Date | null {
 }
 
 function dayMonth(d: Date, tag: string): string {
-  return d.toLocaleDateString(tag, { day: "numeric", month: "short" }).replace(/\.$/, "");
+  return formatMoment(d, { day: "numeric", month: "short" }, tag).replace(/\.$/, "");
 }
 
 /** The date part: «10–20 лис» / «20 лис» / «~2 тиж.» / «найближчим часом»; null when the shop hides the term. */
@@ -244,6 +245,6 @@ export function etaCardLine(eta: PreorderEta, t: T, tag: string): string | null 
 /** «18:00» today, «18:00 (28 жов)» another day — for a hold deadline. */
 export function holdUntilText(iso: string, tag: string): string {
   const d = new Date(iso);
-  const time = d.toLocaleTimeString(tag, { hour: "2-digit", minute: "2-digit", hour12: false });
-  return d.toDateString() === new Date().toDateString() ? time : `${time} (${dayMonth(d, tag)})`;
+  const time = formatMoment(d, { hour: "2-digit", minute: "2-digit", hour12: false }, tag);
+  return d.toDateString() === new Date(nowMs()).toDateString() ? time : `${time} (${dayMonth(d, tag)})`;
 }

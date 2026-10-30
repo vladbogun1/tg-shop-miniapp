@@ -8,6 +8,7 @@
  */
 import { CASE_RARITY_ORDER, type CaseRarity, type CaseTier } from "@shop/core/giftcase";
 import type { CaseDraftItem, CaseItemAdmin, DraftItem, GiftTierAdmin } from "@/lib/gift";
+import { formatNumber } from "@shop/core/money";
 
 /** Sum of the weights = 100 % (weight units per 1 % — the server's GiftService.CASE_WEIGHT_PER_PERCENT). */
 export const WEIGHT_PER_PERCENT = 10_000;
@@ -239,8 +240,8 @@ export function sortRows(rows: Row[]): Row[] {
 
 /** «24,58» / «0,05»: up to `digits` decimals, Russian separator. */
 export function fmtPct(p: number, digits = 2): string {
-  if (p > 0 && p < 0.01) return p.toLocaleString("ru-RU", { maximumSignificantDigits: 2 });
-  return p.toLocaleString("ru-RU", { maximumFractionDigits: digits });
+  if (p > 0 && p < 0.01) return formatNumber(p, "ru-RU", { maximumSignificantDigits: 2 });
+  return formatNumber(p, "ru-RU", { maximumFractionDigits: digits });
 }
 
 /** «0,05» / «12.5» → number in 0…100 with at most 4 decimals; null otherwise. */

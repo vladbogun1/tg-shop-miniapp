@@ -7,6 +7,8 @@
  * (hundreds of products), so every storefront filters in memory over a full category list.
  */
 
+import { toMajor } from "./money";
+
 // ---- schema ---------------------------------------------------------------------
 
 export type SpecType = "number" | "enum" | "multi" | "bool" | "text";
@@ -366,7 +368,7 @@ function matches<P extends FilterableProduct>(p: P, f: CatalogFilter, ctx: Ctx, 
   if (skip !== "brand" && f.brands?.length && !(p.brandRef && f.brands.includes(p.brandRef.slug))) return false;
   if (skip !== "cond" && f.conditions?.length && !f.conditions.includes(p.condition ?? "NEW")) return false;
   if (skip !== "price") {
-    const uah = p.priceMinor / 100;
+    const uah = toMajor(p.priceMinor);
     if (f.priceMin != null && uah < f.priceMin) return false;
     if (f.priceMax != null && uah > f.priceMax) return false;
   }
@@ -463,7 +465,7 @@ export function buildFacets<P extends FilterableProduct>(
 /** Price bounds (UAH) of the selection ignoring the price filter itself. */
 export function priceBounds<P extends FilterableProduct>(schema: CatalogSchema, products: P[], filter: CatalogFilter): { min: number; max: number } | null {
   const ctx = resolve(schema, filter);
-  const prices = products.filter((p) => matches(p, filter, ctx, "price")).map((p) => p.priceMinor / 100);
+  const prices = products.filter((p) => matches(p, filter, ctx, "price")).map((p) => toMajor(p.priceMinor));
   return prices.length ? { min: Math.floor(Math.min(...prices)), max: Math.ceil(Math.max(...prices)) } : null;
 }
 

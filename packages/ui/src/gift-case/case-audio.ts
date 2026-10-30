@@ -1,3 +1,4 @@
+import { localStore } from "@shop/core/storage";
 /**
  * Sounds of the gift case, synthesized with Web Audio (no files to download): the reel's «tick»,
  * the whoosh + boom of opening, the thud of the stop and the reveal sting (a fanfare for the rare
@@ -47,7 +48,7 @@ export function unlockCaseAudio(): void {
 export function isCaseAudioMuted(): boolean {
   if (muted === null) {
     try {
-      muted = localStorage.getItem(MUTE_KEY) === "1";
+      muted = localStore.getItem(MUTE_KEY) === "1";
     } catch {
       muted = false;
     }
@@ -58,7 +59,7 @@ export function isCaseAudioMuted(): boolean {
 export function setCaseAudioMuted(value: boolean): void {
   muted = value;
   try {
-    localStorage.setItem(MUTE_KEY, value ? "1" : "0");
+    localStore.setItem(MUTE_KEY, value ? "1" : "0");
   } catch {
     /* storage unavailable — kept for this page only */
   }

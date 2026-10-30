@@ -89,6 +89,7 @@ import { giftProgress, guaranteedDiscountMinor, type GiftChoice, type GiftTierIn
 import { caseTierAsset, GiftChoicePicker, markGiftCaseAutoOpen } from "@shop/ui/gift-case";
 import { caseMoney, useCaseRules } from "@/components/case/OrderGiftCase";
 import { useGift } from "@/lib/gift";
+import { nowMs } from "@shop/core/time";
 
 const STEP_KEYS = [
   "checkout.step.contacts",
@@ -149,7 +150,7 @@ export default function CheckoutPage() {
       .then((whs) => {
         if (framingCity.current !== c.ref) return;
         const bounds = npCityBounds(whs);
-        if (bounds) setFocus({ key: Date.now(), bounds });
+        if (bounds) setFocus({ key: nowMs(), bounds });
       })
       .catch(() => {
         /* the map still works by hand */
@@ -167,7 +168,7 @@ export default function CheckoutPage() {
     }
     framingCity.current = null; // a pending city framing must not pull the map off this branch
     const p = npLatLng(w);
-    if (p) setFocus({ key: Date.now(), center: p });
+    if (p) setFocus({ key: nowMs(), center: p });
   }, []);
 
   function chooseDelivery(d: DeliveryMethod) {
@@ -222,7 +223,7 @@ export default function CheckoutPage() {
           setCity(found.city);
           setWarehouseFromLast(true);
           const p = npLatLng(found.warehouse);
-          if (p) setFocus({ key: Date.now(), center: p });
+          if (p) setFocus({ key: nowMs(), center: p });
         })
         .catch(() => {
           /* not critical: the customer picks again */

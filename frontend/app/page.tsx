@@ -48,6 +48,7 @@ import { customerApi, type Product } from "@/lib/api";
 import { EMPTY_FILTER, EMPTY_SCHEMA, productInStock, toEngineItems, useCatalogSchema, useStoredFilter } from "@/lib/catalog";
 import { spring } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
+import { sessionStore } from "@shop/core/storage";
 
 /** Cards that rise in on mount — a first screenful; the rest just appear. */
 const ANIMATED_CARDS = 6;
@@ -104,7 +105,7 @@ export default function CatalogPage() {
   const openFromUrl = useCallback(() => {
     let handed: string | null = null;
     try {
-      handed = sessionStorage.getItem("shop:open-product");
+      handed = sessionStore.getItem("shop:open-product");
     } catch {
       /* storage blocked */
     }
@@ -113,7 +114,7 @@ export default function CatalogPage() {
     const p = products.find((x) => x.id === id);
     if (p) setSelected(p);
     try {
-      sessionStorage.removeItem("shop:open-product");
+      sessionStore.removeItem("shop:open-product");
     } catch {
       /* storage blocked */
     }

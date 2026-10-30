@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { CatalogFilter, CatalogSchema, FilterableProduct, ProductCondition } from "@shop/core/catalog";
 import { useI18n } from "@/i18n/context";
 import { customerApi, type Product } from "@/lib/api";
+import { sessionStore } from "@shop/core/storage";
 
 /** Stand-in while the schema loads (or on an old backend): the engine still searches/sorts. */
 export const EMPTY_SCHEMA: CatalogSchema = { categories: [], brands: [], groups: [], attributes: [], conditions: [] };
@@ -67,7 +68,7 @@ export const EMPTY_FILTER: CatalogFilter = {
 
 function read(): CatalogFilter | null {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw = sessionStore.getItem(STORAGE_KEY);
     if (!raw) return null;
     const v = JSON.parse(raw) as CatalogFilter;
     return v && typeof v === "object" ? { ...EMPTY_FILTER, ...v, q: undefined } : null;
@@ -91,7 +92,7 @@ export function useStoredFilter(): [CatalogFilter, (next: CatalogFilter | ((f: C
     setFilterState((prev) => {
       const v = typeof next === "function" ? next(prev) : next;
       try {
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...v, q: undefined }));
+        sessionStore.setItem(STORAGE_KEY, JSON.stringify({ ...v, q: undefined }));
       } catch {
         /* private mode — the filter just does not survive */
       }

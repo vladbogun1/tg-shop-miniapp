@@ -12,6 +12,7 @@
  *  - Read receipts (✓/✓✓ by readAt), lightbox on images, paste-to-send.
  *  - Draft kept per order across tab switches; ⚡ reply templates in the customer's language.
  */
+import { nowMs } from "@shop/core/time";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -28,15 +29,14 @@ import { Lightbox } from "@/components/ui/Lightbox";
 import { cn } from "@/lib/cn";
 import { TemplatePicker } from "./ReplyTemplates";
 import { ChatDaySection, useChatDays } from "./ChatDays";
+import { sessionStore } from "@shop/core/storage";
+import { formatTime } from "@shop/core/time";
 
 const messageTime = (m: MessageDto) => m.createdAt;
 
 function timeOf(iso: string | null | undefined): string {
   if (!iso) return "";
-  const d = new Date(iso);
-  return isNaN(d.getTime())
-    ? ""
-    : d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  return formatTime(iso);
 }
 
 /** Exported for the support chat (components/support/SupportChat.tsx) — same bubbles. */
@@ -125,7 +125,7 @@ const DRAFT_KEY = (orderId: string) => `tgshop_admin_chat_draft:${orderId}`;
 function loadDraft(orderId: string): string {
   if (drafts.has(orderId)) return drafts.get(orderId) ?? "";
   try {
-    return sessionStorage.getItem(DRAFT_KEY(orderId)) ?? "";
+    return sessionStore.getItem(DRAFT_KEY(orderId)) ?? "";
   } catch {
     return "";
   }
@@ -134,15 +134,15 @@ function loadDraft(orderId: string): string {
 function saveDraft(orderId: string, text: string) {
   drafts.set(orderId, text);
   try {
-    if (text) sessionStorage.setItem(DRAFT_KEY(orderId), text);
-    else sessionStorage.removeItem(DRAFT_KEY(orderId));
+    if (text) sessionStore.setItem(DRAFT_KEY(orderId), text);
+    else sessionStore.removeItem(DRAFT_KEY(orderId));
   } catch {
     // storage unavailable (private mode) — the in-memory copy still survives tab switches
   }
 }
 
 function markCustomerRead(prev: MessageDto[] = []): MessageDto[] {
-  const now = new Date().toISOString();
+  const now = new Date(nowMs()).toISOString();
   let changed = false;
   const next = prev.map((m) => {
     if (m.senderType === "CUSTOMER" && !m.readAt) {

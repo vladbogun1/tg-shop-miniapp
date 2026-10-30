@@ -68,6 +68,7 @@ import { useToast } from "@/lib/toast";
 import { pendingCount, useTranslationStats } from "@/lib/translations";
 import { pendingCards, useCardStats } from "@/lib/cards";
 import { useReviewsPending } from "@/lib/reviews";
+import { localStore } from "@shop/core/storage";
 
 type BadgeKey = "inbox" | "support" | "reviews" | "translations" | "cards";
 interface NavItem {
@@ -538,7 +539,7 @@ function NavLinks({
   const [open, setOpen] = useState<Record<string, boolean>>(DEFAULT_OPEN);
   useEffect(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem(OPEN_KEY) ?? "null");
+      const saved = JSON.parse(localStore.getItem(OPEN_KEY) ?? "null");
       if (saved && typeof saved === "object")
         setOpen({ ...DEFAULT_OPEN, ...saved });
     } catch {
@@ -549,7 +550,7 @@ function NavLinks({
     setOpen((o) => {
       const next = { ...o, [id]: !o[id] };
       try {
-        localStorage.setItem(OPEN_KEY, JSON.stringify(next));
+        localStore.setItem(OPEN_KEY, JSON.stringify(next));
       } catch {
         /* private mode — not remembered */
       }
@@ -985,7 +986,7 @@ function useCollapsedSidebar(): [boolean, () => void] {
   const [collapsed, setCollapsed] = useState(false);
   useEffect(() => {
     try {
-      setCollapsed(window.localStorage.getItem(COLLAPSE_KEY) === "1");
+      setCollapsed(localStore.getItem(COLLAPSE_KEY) === "1");
     } catch {
       /* storage blocked — stay expanded */
     }
@@ -993,7 +994,7 @@ function useCollapsedSidebar(): [boolean, () => void] {
   function toggle() {
     setCollapsed((v) => {
       try {
-        window.localStorage.setItem(COLLAPSE_KEY, v ? "0" : "1");
+        localStore.setItem(COLLAPSE_KEY, v ? "0" : "1");
       } catch {
         /* ignore */
       }

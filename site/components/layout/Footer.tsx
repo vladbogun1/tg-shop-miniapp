@@ -7,6 +7,7 @@ import { Wordmark } from "@/components/layout/Logo";
 import { BOT_URL } from "@/lib/config";
 import { SupportGate } from "@/components/support/SupportGate";
 import { FooterSweeper } from "@/components/mascot/scenes";
+import { now } from "@shop/core/time";
 
 /**
  * Site footer (server component): shop links, customer info pages, Telegram, seller requisites.
@@ -15,7 +16,7 @@ import { FooterSweeper } from "@/components/mascot/scenes";
 export function Footer({ tree, locale }: { tree: MenuNode[]; locale: Locale }) {
   const t = makeT(locale);
   const href = (p: string) => localePath(locale, p);
-  const year = new Date().getFullYear();
+  const year = now().getFullYear();
   const linkCls = "text-[14px] font-medium text-[var(--muted)] transition-colors hover:text-[var(--accent-hi)]";
 
   return (

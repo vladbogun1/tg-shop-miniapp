@@ -19,6 +19,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Toggle } from "@/components/ui/Toggle";
+import { nowMs } from "@shop/core/time";
 
 type Mode = "promo" | "manual";
 type Kind = "amount" | "percent";
@@ -51,7 +52,7 @@ export function DiscountModal({
   // Offered: our shared codes, then this customer's own personal codes (e.g. their review bonus).
   // Other customers' personal codes and review bonuses would be refused anyway («чужой код»).
   const activePromos = useMemo(() => {
-    const now = Date.now();
+    const now = nowMs();
     const usable = promos.filter(
       (p) =>
         p.active &&

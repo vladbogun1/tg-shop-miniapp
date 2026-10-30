@@ -8,6 +8,7 @@
  * Several tabs: a `storage` event re-reads the list, so adding in one tab updates the badge in the
  * others.
  */
+import { asStateStorage, localStore } from "@shop/core/storage";
 import { useEffect } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -52,7 +53,7 @@ export const useCompare = create<CompareState>()(
     }),
     {
       name: COMPARE_STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => asStateStorage(localStore)),
       partialize: (s) => ({ entries: s.entries }),
       merge: (persisted, current) => ({ ...current, entries: parseCompareEntries((persisted as { entries?: unknown })?.entries) }),
     },

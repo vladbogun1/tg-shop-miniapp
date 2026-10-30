@@ -34,3 +34,8 @@ export function toMinor(major: number | string | null | undefined): number {
 export function toMajor(minor: number | null | undefined): number {
   return Math.round(minor ?? 0) / 100;
 }
+
+/** Число в локали (группировка, десятичный знак): `formatNumber(1234.5, "ru-RU")` → «1 234,5». Не деньги — для денег `money()`. */
+export function formatNumber(value: number, locale = "ru-RU", options?: Intl.NumberFormatOptions): string {
+  return new Intl.NumberFormat(locale, options).format(value);
+}

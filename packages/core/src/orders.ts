@@ -6,6 +6,7 @@
  * transition the server rejects outright.
  */
 import type { OrderStatus } from "./types";
+import { nowMs } from "./time";
 
 export const STATUS_ORDER: OrderStatus[] = [
   "NEW",
@@ -226,7 +227,7 @@ export const PAYMENT_FIRST_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export function paymentFirst(
   order: { status: OrderStatus; paidAt?: string | null },
-  now: number = Date.now(),
+  now: number = nowMs(),
 ): boolean {
   if (order.status === "NEW" || order.status === "APPROVED") return true;
   if (order.status === "REJECTED" || !order.paidAt) return false;

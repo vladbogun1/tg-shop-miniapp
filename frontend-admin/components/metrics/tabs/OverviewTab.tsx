@@ -12,6 +12,7 @@ import { ForecastChart, Heatmap, OrdersChart, RankBars, SalesChart } from "../ch
 import { dateTime, monthLabel, num, pct, uah, uahExact, uahShort } from "../format";
 import { PREV_LABEL } from "../period";
 import { Empty, KpiTile, Note, Panel, TableWrap } from "../ui";
+import { formatNumber } from "@shop/core/money";
 
 const SOURCE_LABEL: Record<string, string> = { MINIAPP: "Mini App", WEB: "Сайт", ADMIN: "Админка" };
 
@@ -157,7 +158,7 @@ function OverviewBody({
               format={uahShort}
               sub={(name) => {
                 const c = o.categories.find((x) => x.name === name)!;
-                return `${pct(c.sharePct)} выручки · ${num(c.units)} шт. · ${num(c.liveProducts)} товаров на витрине · ${c.unitsPerProduct.toLocaleString("ru-RU")} шт. на товар`;
+                return `${pct(c.sharePct)} выручки · ${num(c.units)} шт. · ${num(c.liveProducts)} товаров на витрине · ${formatNumber(c.unitsPerProduct, "ru-RU")} шт. на товар`;
               }}
             />
           )}

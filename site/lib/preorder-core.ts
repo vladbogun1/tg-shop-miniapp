@@ -4,6 +4,7 @@
  *
  * Isomorphic part: types, the index of open batches, ETA wording (server and client).
  */
+import { formatMoment, momentParts, nowMs } from "@shop/core/time";
 import { availabilityOf } from "@shop/core/availability";
 import { LOCALE_TAG, type Locale } from "@shop/core/i18n";
 import { type StorefrontProduct } from "@shop/core/site";
@@ -141,10 +142,7 @@ function day(iso: string): Date {
 
 function monthName(d: Date, tag: string, style: "short" | "long"): string {
   // With the day: uk/ru need the genitive («листопада», «ноября»); a bare month gives «листопад».
-  const part = new Intl.DateTimeFormat(tag, { day: "numeric", month: style, timeZone: "UTC" })
-    .formatToParts(d)
-    .find((p) => p.type === "month");
-  return (part?.value ?? "").replace(/\.$/, "");
+  return (momentParts(d, { day: "numeric", month: style }, tag, "UTC").month ?? "").replace(/\.$/, "");
 }
 
 /** «20 лис» / «20 листопада» (en-GB: «20 Nov» / «20 November»). */
@@ -197,7 +195,7 @@ export function groupTitle(eta: PreorderEta, t: TFunction, locale: Locale): stri
  * The date schema.org's `availabilityStarts` / Google's `availability_date` want (YYYY-MM-DD); null for a
  * hidden or «soon» (no number of weeks) term. An approximate term counts from `now`.
  */
-export function etaStartsOn(eta: PreorderEta, now: Date = new Date()): string | null {
+export function etaStartsOn(eta: PreorderEta, now: Date = new Date(nowMs())): string | null {
   if (eta.mode === "HIDDEN") return null;
   if (eta.mode === "APPROX") {
     if (!eta.approxWeeks || eta.approxWeeks <= 0) return null;
@@ -211,10 +209,10 @@ export function etaStartsOn(eta: PreorderEta, now: Date = new Date()): string | 
 export function holdUntilText(iso: string, locale: Locale): string {
   const d = new Date(iso);
   const tag = LOCALE_TAG[locale];
-  const time = new Intl.DateTimeFormat(tag, { hour: "2-digit", minute: "2-digit" }).format(d);
-  const now = new Date();
+  const time = formatMoment(d, { hour: "2-digit", minute: "2-digit" }, tag);
+  const now = new Date(nowMs());
   if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()) return time;
-  const dm = new Intl.DateTimeFormat(tag, { day: "numeric", month: "short" }).format(d).replace(/\.$/, "");
+  const dm = formatMoment(d, { day: "numeric", month: "short" }, tag).replace(/\.$/, "");
   return `${time} · ${dm}`;
 }
 

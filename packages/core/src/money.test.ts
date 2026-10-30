@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { money, toMajor, toMinor } from "./money";
+import { formatNumber, money, toMajor, toMinor } from "./money";
 
 const plain = (s: string) => s.replace(/\s/g, " ");
 
@@ -30,5 +30,13 @@ describe("toMinor / toMajor", () => {
   it("converts minor to major for editing", () => {
     expect(toMajor(1250)).toBe(12.5);
     expect(toMajor(undefined)).toBe(0);
+  });
+});
+
+describe("formatNumber", () => {
+  it("groups in the locale of the app", () => {
+    expect(formatNumber(1234.5, "en-US")).toBe("1,234.5");
+    expect(formatNumber(1234, "ru-RU").replace(/\s/g, " ")).toBe("1 234");
+    expect(formatNumber(0.1234, "en-US", { maximumFractionDigits: 2 })).toBe("0.12");
   });
 });

@@ -22,6 +22,7 @@ import {
 import { CaseStyles } from "./GiftCaseOpening";
 import { CaseSizePicker, type CaseSizeTexts } from "./case-size";
 import { CaseDiscountTile, CasePromoBox, CaseRulesLink, caseTierAsset, caseTierVars, rarityVars, type CasePromoTexts, type CaseRulesLinkProps } from "./case-tier";
+import { sessionStore } from "@shop/core/storage";
 
 const LockIcon = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -476,7 +477,7 @@ const AUTO_KEY = "gift-case-auto:";
 /** The checkout marks a freshly placed order so its page opens the case screen once by itself. */
 export function markGiftCaseAutoOpen(orderId: string): void {
   try {
-    sessionStorage.setItem(AUTO_KEY + orderId, "1");
+    sessionStore.setItem(AUTO_KEY + orderId, "1");
   } catch {
     /* storage unavailable: the order page still shows the case card */
   }
@@ -485,8 +486,8 @@ export function markGiftCaseAutoOpen(orderId: string): void {
 /** True once for an order marked by {@link markGiftCaseAutoOpen} (the mark is consumed). */
 export function takeGiftCaseAutoOpen(orderId: string): boolean {
   try {
-    if (sessionStorage.getItem(AUTO_KEY + orderId) !== "1") return false;
-    sessionStorage.removeItem(AUTO_KEY + orderId);
+    if (sessionStore.getItem(AUTO_KEY + orderId) !== "1") return false;
+    sessionStore.removeItem(AUTO_KEY + orderId);
     return true;
   } catch {
     return false;

@@ -24,6 +24,7 @@ import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 import { backdrop, overlayRise } from "@/lib/motion";
 import { haptic, useBackButton } from "@/lib/telegram";
+import { localStore } from "@shop/core/storage";
 
 const ONLY_DIFF_KEY = "compare.onlyDiff";
 const LABEL_W = 180;
@@ -88,7 +89,7 @@ function Body({
   const [onlyDiff, setOnlyDiff] = useState(false);
   useEffect(() => {
     try {
-      setOnlyDiff(localStorage.getItem(ONLY_DIFF_KEY) === "1");
+      setOnlyDiff(localStore.getItem(ONLY_DIFF_KEY) === "1");
     } catch {
       /* private mode */
     }
@@ -97,7 +98,7 @@ function Body({
     haptic();
     setOnlyDiff((v) => {
       try {
-        localStorage.setItem(ONLY_DIFF_KEY, v ? "0" : "1");
+        localStore.setItem(ONLY_DIFF_KEY, v ? "0" : "1");
       } catch {
         /* private mode */
       }

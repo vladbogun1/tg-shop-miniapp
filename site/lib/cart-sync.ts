@@ -25,6 +25,7 @@ import { api, isAuthFailure, putCartOnUnload } from "./api";
 import { lineKey, useCart, type CartLine } from "./cart";
 import { holdFloor } from "./preorder-core";
 import { SESSION_KEY, useSession } from "./session";
+import { nowMs } from "@shop/core/time";
 
 const WRITE_DEBOUNCE_MS = 400;
 /** `focus` and `visibilitychange` usually fire together; one re-read is enough. */
@@ -134,7 +135,7 @@ export async function flushCart(): Promise<void> {
 /** Re-reads the server cart unless there are local changes still on their way. */
 async function refresh(force = false): Promise<void> {
   if (!active) return;
-  const now = Date.now();
+  const now = nowMs();
   if (!force && now - lastRefresh < REFRESH_GAP_MS) return;
   lastRefresh = now;
   await flushCart();
@@ -159,7 +160,7 @@ function startServerMode(): Promise<void> {
             : await api.cart();
         adopt(cart);
         active = true;
-        lastRefresh = Date.now();
+        lastRefresh = nowMs();
       } catch (e) {
         handleError(e); // stays in local mode; the next session check tries again
       } finally {

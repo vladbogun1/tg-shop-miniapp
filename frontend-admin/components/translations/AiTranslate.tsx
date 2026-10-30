@@ -41,6 +41,7 @@ import {
   StateChip,
 } from "@/components/translations/shared";
 import { plural } from "@/components/translations/TranslationReview";
+import { formatNumber } from "@shop/core/money";
 
 type ReviewFilter = "all" | "ok" | "warn" | "error" | "ru";
 
@@ -322,7 +323,7 @@ export function AiTranslate({ ws, scope, onClose }: { ws: WorkSet; scope: string
             <Button variant="ghost" size="sm" onClick={() => setPreview(preview === 0 ? null : 0)} iconRight={<ChevronDown className={cn("h-4 w-4 transition-transform", preview === 0 && "rotate-180")} />}>
               Показать текст
             </Button>
-            <span className="text-[12px] text-[var(--text-faint)]">{parts[0].text.length.toLocaleString("ru")} симв.</span>
+            <span className="text-[12px] text-[var(--text-faint)]">{formatNumber(parts[0].text.length, "ru")} симв.</span>
           </div>
         ) : (
           <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
@@ -341,7 +342,7 @@ export function AiTranslate({ ws, scope, onClose }: { ws: WorkSet; scope: string
                   {copied.has(i) && <Badge tone="ok">скопирована</Badge>}
                 </div>
                 <div className="text-[12px] text-[var(--text-muted)]">
-                  {p.ids.length} строк · {p.chars.toLocaleString("ru")} симв. оригинала
+                  {p.ids.length} строк · {formatNumber(p.chars, "ru")} симв. оригинала
                 </div>
                 <div className="flex flex-wrap items-center gap-1">
                   <CopyButton variant={i === nextPart ? "accent" : "surface"} text={p.text} copied={copied.has(i)} onCopied={() => setCopied(new Set(copied).add(i))} label={`Скопировать часть ${i + 1}`} />

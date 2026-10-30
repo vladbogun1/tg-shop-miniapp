@@ -28,6 +28,7 @@ import { api, ApiError } from "@/lib/api";
 import { ORDER_PAY_ANCHOR } from "@/components/case/OrderGiftCase";
 import { useFmt } from "@/lib/use-fmt";
 import { PaymentModal, type PaymentModalClose } from "./PaymentModal";
+import { nowMs } from "@shop/core/time";
 
 // ---- starting a payment ------------------------------------------------------------------------
 
@@ -88,10 +89,10 @@ function countdown(ms: number): string {
 
 /** Current time, ticking every second while `active`. */
 function useNow(active: boolean): number {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => nowMs());
   useEffect(() => {
     if (!active) return;
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    const id = window.setInterval(() => setNow(nowMs()), 1000);
     return () => window.clearInterval(id);
   }, [active]);
   return now;
@@ -176,7 +177,7 @@ export function OrderPayment({
     if (!shouldCheck) return;
     let cancelled = false;
     let timer = 0;
-    const started = Date.now();
+    const started = nowMs();
     const tick = async () => {
       let d: OrderDetail | null = null;
       try {
@@ -186,7 +187,7 @@ export function OrderPayment({
       }
       if (cancelled) return;
       if (d) apply.current(d);
-      const elapsed = Date.now() - started;
+      const elapsed = nowMs() - started;
       const s = d?.payment.status;
       const settled =
         !!d &&

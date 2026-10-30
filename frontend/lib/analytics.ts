@@ -19,6 +19,8 @@
 import { describeError, reportable } from "@shop/core/client-error";
 import { describeTap } from "@shop/ui/tap";
 import { getAccessToken, getApiBase } from "@/lib/api";
+import { localStore, sessionStore } from "@shop/core/storage";
+import { now, nowMs } from "@shop/core/time";
 
 const BUFFER_KEY = "analytics-buffer";
 const SESSION_KEY = "analytics-session";
@@ -40,13 +42,13 @@ let flushing = false;
 
 function sessionId(): string {
   try {
-    const existing = sessionStorage.getItem(SESSION_KEY);
+    const existing = sessionStore.getItem(SESSION_KEY);
     if (existing) return existing;
     const fresh =
       typeof crypto !== "undefined" && "randomUUID" in crypto
         ? crypto.randomUUID()
-        : `s${Date.now()}${Math.random().toString(16).slice(2)}`;
-    sessionStorage.setItem(SESSION_KEY, fresh);
+        : `s${nowMs()}${Math.random().toString(16).slice(2)}`;
+    sessionStore.setItem(SESSION_KEY, fresh);
     return fresh;
   } catch {
     return "no-session";
@@ -55,7 +57,7 @@ function sessionId(): string {
 
 function persist() {
   try {
-    localStorage.setItem(BUFFER_KEY, JSON.stringify(buffer));
+    localStore.setItem(BUFFER_KEY, JSON.stringify(buffer));
   } catch {
     /* private mode / quota — the in-memory buffer still works */
   }
@@ -63,7 +65,7 @@ function persist() {
 
 function restore() {
   try {
-    const raw = localStorage.getItem(BUFFER_KEY);
+    const raw = localStore.getItem(BUFFER_KEY);
     if (raw) buffer = (JSON.parse(raw) as ClientEvent[]).slice(-MAX_BUFFERED);
   } catch {
     buffer = [];
@@ -78,7 +80,7 @@ export function track(event: string, target?: string, meta?: string) {
       target,
       path: typeof location === "undefined" ? undefined : location.pathname,
       meta,
-      clientTime: new Date().toISOString(),
+      clientTime: now().toISOString(),
     });
     if (buffer.length > MAX_BUFFERED) buffer = buffer.slice(-MAX_BUFFERED);
     persist();

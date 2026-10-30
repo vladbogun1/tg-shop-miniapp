@@ -3,6 +3,7 @@
  * while typing) and parsed on save.
  */
 import type { SettingItem, SettingValue } from "@/lib/settings";
+import { formatDateTime as coreFormatDateTime } from "@shop/core/time";
 
 export interface DraftEntry {
   /** string for INT/STRING/TEXT, boolean for BOOL. */
@@ -80,11 +81,5 @@ export function formatDateTime(iso?: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return coreFormatDateTime(iso);
 }

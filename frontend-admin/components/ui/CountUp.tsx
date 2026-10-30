@@ -2,6 +2,7 @@
 
 import { animate, useInView, useMotionValue, useTransform, motion } from "framer-motion";
 import { useEffect, useRef } from "react";
+import { formatNumber } from "@shop/core/money";
 
 /** Animated number that counts up when scrolled into view. */
 export function CountUp({
@@ -18,7 +19,7 @@ export function CountUp({
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, margin: "-40px" });
   const mv = useMotionValue(0);
-  const rounded = useTransform(mv, (v) => (format ? format(v) : Math.round(v).toLocaleString("ru-RU")));
+  const rounded = useTransform(mv, (v) => (format ? format(v) : formatNumber(Math.round(v), "ru-RU")));
 
   useEffect(() => {
     if (inView) {

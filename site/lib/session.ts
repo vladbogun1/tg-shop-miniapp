@@ -22,6 +22,7 @@ import { useCallback } from "react";
 import type { AuthUser } from "@shop/core/types";
 import { api, isAuthFailure } from "./api";
 import { flushCart } from "./cart-sync";
+import { localStore } from "@shop/core/storage";
 
 const USER_KEY = "site-user-v1";
 /** Set on sign-in even when `/complete` returned no user object (see {@link hasSessionHint}). */
@@ -31,10 +32,10 @@ const HINT_COOKIE = /(?:^|;\s*)signed_in=1(?:;|$)/;
 /** Remembers the greeting user — or, with null, forgets it and the local sign-in mark. */
 export function rememberUser(user: AuthUser | null | undefined): void {
   try {
-    if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+    if (user) localStore.setItem(USER_KEY, JSON.stringify(user));
     else {
-      localStorage.removeItem(USER_KEY);
-      localStorage.removeItem(SIGNED_IN_KEY);
+      localStore.removeItem(USER_KEY);
+      localStore.removeItem(SIGNED_IN_KEY);
     }
   } catch {
     /* private mode */
@@ -45,7 +46,7 @@ export function rememberUser(user: AuthUser | null | undefined): void {
 export function markSignedIn(user: AuthUser | null | undefined): void {
   rememberUser(user);
   try {
-    localStorage.setItem(SIGNED_IN_KEY, "1");
+    localStore.setItem(SIGNED_IN_KEY, "1");
   } catch {
     /* private mode — the backend's signed_in cookie still works */
   }
@@ -59,7 +60,7 @@ export function hasSessionHint(): boolean {
   if (typeof document === "undefined") return false;
   if (HINT_COOKIE.test(document.cookie)) return true;
   try {
-    return localStorage.getItem(SIGNED_IN_KEY) !== null || localStorage.getItem(USER_KEY) !== null;
+    return localStore.getItem(SIGNED_IN_KEY) !== null || localStore.getItem(USER_KEY) !== null;
   } catch {
     return false;
   }
@@ -67,7 +68,7 @@ export function hasSessionHint(): boolean {
 
 export function rememberedUser(): AuthUser | null {
   try {
-    const raw = localStorage.getItem(USER_KEY);
+    const raw = localStore.getItem(USER_KEY);
     return raw ? (JSON.parse(raw) as AuthUser) : null;
   } catch {
     return null;

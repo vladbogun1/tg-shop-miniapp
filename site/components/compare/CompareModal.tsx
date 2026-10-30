@@ -25,6 +25,7 @@ import { useFmt } from "@/lib/use-fmt";
 import { stockOf } from "@/lib/stock";
 import { toast } from "@/components/ui/Toast";
 import { CompareTable } from "./CompareTable";
+import { localStore } from "@shop/core/storage";
 
 const ONLY_DIFF_KEY = "compare.onlyDiff";
 
@@ -101,7 +102,7 @@ function Body({ onClose }: { onClose: () => void }) {
   const [onlyDiff, setOnlyDiff] = useState(false);
   useEffect(() => {
     try {
-      setOnlyDiff(localStorage.getItem(ONLY_DIFF_KEY) === "1");
+      setOnlyDiff(localStore.getItem(ONLY_DIFF_KEY) === "1");
     } catch {
       /* private mode */
     }
@@ -109,7 +110,7 @@ function Body({ onClose }: { onClose: () => void }) {
   const toggleDiff = () => {
     setOnlyDiff((v) => {
       try {
-        localStorage.setItem(ONLY_DIFF_KEY, v ? "0" : "1");
+        localStore.setItem(ONLY_DIFF_KEY, v ? "0" : "1");
       } catch {
         /* private mode */
       }

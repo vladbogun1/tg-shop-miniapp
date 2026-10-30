@@ -20,12 +20,13 @@ import { formatDate, formatTime, shortOrderId } from "@/lib/format";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { backdrop, sheetVariants, spring } from "@/lib/motion";
 import { haptic } from "@/lib/telegram";
+import { now } from "@shop/core/time";
 
 function whenLabel(iso?: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
-  const today = new Date();
+  const today = now();
   return d.toDateString() === today.toDateString() ? formatTime(iso) : formatDate(iso);
 }
 

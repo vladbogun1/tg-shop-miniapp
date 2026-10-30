@@ -35,6 +35,7 @@ import { AddOptionModal } from "@/components/cards/AddOptionModal";
 import { ReviewCard } from "@/components/cards/ReviewCard";
 import { AUTO_READY_OVERALL, autoReady, buildImportItem, defaultSel, mergeSel, RED_FIELD, type ProductSel } from "@/components/cards/selection";
 import { CardStatusChip, Check, ConfidencePill, Step, Thumb } from "@/components/cards/shared";
+import { formatNumber } from "@shop/core/money";
 
 type ReviewFilter = "all" | "ok" | "warn" | "error";
 
@@ -367,7 +368,7 @@ export function AiCards({
             >
               Показать текст
             </Button>
-            <span className="text-[12px] text-[var(--text-faint)]">{batches[0].text.length.toLocaleString("ru")} симв.</span>
+            <span className="text-[12px] text-[var(--text-faint)]">{formatNumber(batches[0].text.length, "ru")} симв.</span>
           </div>
         ) : (
           <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">

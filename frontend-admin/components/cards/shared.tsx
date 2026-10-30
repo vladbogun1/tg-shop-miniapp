@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { confidenceColor, type CardIssue } from "@/lib/card-check";
 import type { CardStatusCode } from "@/lib/card-prompt";
 import { Image } from "@/lib/image";
+import { formatMoment } from "@shop/core/time";
 
 export function Step({ n, title, children, aside }: { n: number; title: string; children: ReactNode; aside?: ReactNode }) {
   return (
@@ -131,5 +132,5 @@ export function fmtDate(iso: unknown): string | null {
   if (typeof iso !== "string" || !iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return formatMoment(d, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }

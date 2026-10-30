@@ -2,6 +2,7 @@
  * «Поставки» (предзаказы): типы, подписи и вызовы /api/admin/preorders/*.
  * Закупочная цена и курс приходят только главному админу (`moneyVisible`); цена закупки — в центах валюты.
  */
+import { nowMs } from "@shop/core/time";
 import { useQuery } from "@tanstack/react-query";
 import { apiDelete, apiGet, apiOrigin, apiPost, apiPut, getAccessToken, isAuthenticated } from "@/lib/api";
 
@@ -337,7 +338,7 @@ export function fmtDay(iso: string | null | undefined): string {
   if (!iso) return "";
   const [y, m, d] = iso.split("-").map(Number);
   if (!y || !m || !d) return iso;
-  const cur = new Date().getFullYear();
+  const cur = new Date(nowMs()).getFullYear();
   return `${d} ${MONTHS[m - 1]}${y !== cur ? ` ${y}` : ""}`;
 }
 
@@ -345,7 +346,7 @@ export function fmtDay(iso: string | null | undefined): string {
 export function weeksUntil(target: string | null | undefined): number {
   if (!target) return 0;
   const t = new Date(`${target}T00:00:00`);
-  const now = new Date();
+  const now = new Date(nowMs());
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const days = Math.round((t.getTime() - today.getTime()) / 86_400_000);
   return days <= 0 ? 0 : Math.ceil(days / 7);
@@ -353,7 +354,7 @@ export function weeksUntil(target: string | null | undefined): number {
 
 /** Local «YYYY-MM-DD» for today + N days. */
 export function isoInDays(days: number): string {
-  const d = new Date();
+  const d = new Date(nowMs());
   d.setDate(d.getDate() + days);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;

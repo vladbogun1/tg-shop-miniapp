@@ -25,6 +25,7 @@ import { ButtonLink } from "@/components/ui/ButtonLink";
 import { useI18n } from "@/i18n/context";
 import { api, ApiError } from "@/lib/api";
 import { markSignedIn, rememberUser, SESSION_KEY, useSession } from "@/lib/session";
+import { nowMs } from "@shop/core/time";
 
 type Phase =
   | { kind: "starting" }
@@ -103,7 +104,7 @@ export function LoginView() {
 
     const tick = async () => {
       if (cancelled) return;
-      if (Number.isFinite(deadline) && Date.now() > deadline + 1500) {
+      if (Number.isFinite(deadline) && nowMs() > deadline + 1500) {
         setPhase({ kind: "ended", reason: "EXPIRED" });
         return;
       }

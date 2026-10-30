@@ -6,6 +6,8 @@
  */
 import { apiGet, apiPost } from "@/lib/api";
 import { getRegistration } from "@/lib/pwa";
+import { localStore } from "@shop/core/storage";
+import { nowMs } from "@shop/core/time";
 
 export interface PushConfig {
   /** VAPID keys are set on the server. */
@@ -49,7 +51,7 @@ export function pushPermission(): PushPermission {
 
 function wanted(): boolean {
   try {
-    return localStorage.getItem(ENABLED_KEY) === "1";
+    return localStore.getItem(ENABLED_KEY) === "1";
   } catch {
     return false;
   }
@@ -57,8 +59,8 @@ function wanted(): boolean {
 
 function setWanted(on: boolean): void {
   try {
-    if (on) localStorage.setItem(ENABLED_KEY, "1");
-    else localStorage.removeItem(ENABLED_KEY);
+    if (on) localStore.setItem(ENABLED_KEY, "1");
+    else localStore.removeItem(ENABLED_KEY);
   } catch {
     /* private mode */
   }
@@ -168,9 +170,9 @@ export async function syncPush(): Promise<boolean> {
 const OFFER_LATER_KEY = "admin-push-offer-later";
 const OFFER_SNOOZE_MS = 30 * 24 * 60 * 60 * 1000;
 
-export function pushOfferSnoozed(now = Date.now()): boolean {
+export function pushOfferSnoozed(now = nowMs()): boolean {
   try {
-    const at = Number(localStorage.getItem(OFFER_LATER_KEY));
+    const at = Number(localStore.getItem(OFFER_LATER_KEY));
     return Number.isFinite(at) && at > 0 && now - at < OFFER_SNOOZE_MS;
   } catch {
     return false;
@@ -179,7 +181,7 @@ export function pushOfferSnoozed(now = Date.now()): boolean {
 
 export function snoozePushOffer(): void {
   try {
-    localStorage.setItem(OFFER_LATER_KEY, String(Date.now()));
+    localStore.setItem(OFFER_LATER_KEY, String(nowMs()));
   } catch {
     /* private mode */
   }

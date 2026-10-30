@@ -4,6 +4,8 @@
  */
 import { useEffect, useState } from "react";
 import type { Channel, PeriodParams, PeriodToken } from "./api";
+import { localStore } from "@shop/core/storage";
+import { dayInZone } from "@shop/core/time";
 
 const KEY = "tgshop_admin_metrics_period";
 const DEFAULT: PeriodParams = { period: "month", channel: "all" };
@@ -50,7 +52,7 @@ export function useMetricsPeriod(): [PeriodParams, (p: PeriodParams) => void] {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(KEY);
+      const raw = localStore.getItem(KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (isValid(parsed)) setValue(parsed);
@@ -63,7 +65,7 @@ export function useMetricsPeriod(): [PeriodParams, (p: PeriodParams) => void] {
   function update(p: PeriodParams) {
     setValue(p);
     try {
-      localStorage.setItem(KEY, JSON.stringify(p));
+      localStore.setItem(KEY, JSON.stringify(p));
     } catch {
       /* not worth surfacing */
     }
@@ -78,5 +80,5 @@ export function useMetricsPeriod(): [PeriodParams, (p: PeriodParams) => void] {
  * (an admin abroad after midnight would otherwise ask for a day the server has not started).
  */
 export function todayIso(): string {
-  return new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Kyiv" });
+  return dayInZone("Europe/Kyiv");
 }

@@ -4,7 +4,7 @@
  * The implementations live in `@shop/shared` so the admin cannot drift; this file only binds them
  * to the language currently on screen. Call sites keep the same signatures they always had.
  */
-import { dayLabel as sharedDayLabel, formatDate as sharedFormatDate, formatDayMonth as sharedFormatDayMonth, formatShortDateTime as sharedFormatDateTime, formatTime as sharedFormatTime, timeAgo as sharedTimeAgo } from "@shop/core/format";
+import { dayLabel as sharedDayLabel, formatDate as sharedFormatDate, formatDayMonth as sharedFormatDayMonth, formatShortDateTime as sharedFormatDateTime, formatTime as sharedFormatTime, timeAgo as sharedTimeAgo } from "@shop/core/time";
 import { type Dictionary, getActiveLocale, getActiveTag, type Locale } from "@shop/core/i18n";
 import { ru } from "@/i18n/ru";
 import { uk } from "@/i18n/uk";

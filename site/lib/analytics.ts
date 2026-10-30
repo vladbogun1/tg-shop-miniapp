@@ -16,6 +16,8 @@
 
 import { describeError, reportable } from "@shop/core/client-error";
 import { describeTap } from "@shop/ui/tap";
+import { localStore, sessionStore, type SafeStorage } from "@shop/core/storage";
+import { now, nowMs } from "@shop/core/time";
 
 const BUFFER_KEY = "mx-analytics-buffer";
 const ANON_KEY = "mx-aid";
@@ -42,15 +44,15 @@ function randomId(): string {
   } catch {
     /* fall through */
   }
-  return `v${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+  return `v${nowMs().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
 }
 
-function stored(storage: Storage | undefined, key: string): string {
+function stored(storage: SafeStorage, key: string): string {
   try {
-    const existing = storage?.getItem(key);
+    const existing = storage.getItem(key);
     if (existing) return existing;
     const fresh = randomId();
-    storage?.setItem(key, fresh);
+    storage.setItem(key, fresh);
     return fresh;
   } catch {
     return "anon-unavailable";
@@ -58,16 +60,16 @@ function stored(storage: Storage | undefined, key: string): string {
 }
 
 function anonId(): string {
-  return stored(typeof localStorage === "undefined" ? undefined : localStorage, ANON_KEY);
+  return stored(localStore, ANON_KEY);
 }
 
 function sessionId(): string {
-  return stored(typeof sessionStorage === "undefined" ? undefined : sessionStorage, SESSION_KEY);
+  return stored(sessionStore, SESSION_KEY);
 }
 
 function persist() {
   try {
-    localStorage.setItem(BUFFER_KEY, JSON.stringify(buffer));
+    localStore.setItem(BUFFER_KEY, JSON.stringify(buffer));
   } catch {
     /* private mode — the in-memory buffer still works */
   }
@@ -75,7 +77,7 @@ function persist() {
 
 function restore() {
   try {
-    const raw = localStorage.getItem(BUFFER_KEY);
+    const raw = localStore.getItem(BUFFER_KEY);
     if (raw) buffer = (JSON.parse(raw) as SiteEvent[]).slice(-MAX_BUFFERED);
   } catch {
     buffer = [];
@@ -89,7 +91,7 @@ function track(event: string, meta?: Record<string, unknown> | string, target?: 
       target,
       path: typeof location === "undefined" ? undefined : location.pathname,
       meta: meta === undefined ? undefined : typeof meta === "string" ? meta : JSON.stringify(meta),
-      clientTime: new Date().toISOString(),
+      clientTime: now().toISOString(),
     });
     if (buffer.length > MAX_BUFFERED) buffer = buffer.slice(-MAX_BUFFERED);
     persist();

@@ -21,6 +21,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Textarea } from "@/components/ui/Textarea";
 import { apiGet, apiPost, ApiError } from "@/lib/api";
 import { useToast } from "@/lib/toast";
+import { formatDateTime } from "@shop/core/time";
 
 interface Incident {
   id: number;
@@ -54,7 +55,7 @@ function isRoutine(i: Incident): boolean {
 
 function dt(iso: string | null): string {
   return iso
-    ? new Date(iso).toLocaleString("ru-RU", { timeZone: "Europe/Kyiv", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    ? formatDateTime(iso, "ru-RU", "Europe/Kyiv")
     : "—";
 }
 

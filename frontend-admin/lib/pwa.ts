@@ -8,6 +8,8 @@
  * feed it — `beforeinstallprompt`, a waiting worker — fire once, before any component may care.
  */
 import { useSyncExternalStore } from "react";
+import { localStore } from "@shop/core/storage";
+import { nowMs } from "@shop/core/time";
 
 /** Chrome's install prompt event (not in lib.dom). */
 interface BeforeInstallPromptEvent extends Event {
@@ -197,7 +199,7 @@ const HINT_KEY = "admin-install-hint-dismissed";
 
 export function installHintDismissed(): boolean {
   try {
-    return !!localStorage.getItem(HINT_KEY);
+    return !!localStore.getItem(HINT_KEY);
   } catch {
     return false;
   }
@@ -205,7 +207,7 @@ export function installHintDismissed(): boolean {
 
 export function dismissInstallHint(): void {
   try {
-    localStorage.setItem(HINT_KEY, String(Date.now()));
+    localStore.setItem(HINT_KEY, String(nowMs()));
   } catch {
     /* private mode */
   }

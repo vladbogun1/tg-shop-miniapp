@@ -11,6 +11,7 @@
  * every `comparable` characteristic that at least one of the products has, in schema order.
  */
 import { attributesFor, categoryPath, formatSpec, type CatalogCategory, type CatalogFields, type CatalogSchema, type SpecAttribute, type SpecGroup } from "./catalog";
+import { nowMs } from "./time";
 
 /** Columns in one group. Two fit a phone, four a laptop; more is just scrolling sideways. */
 export const COMPARE_MAX_PER_GROUP = 6;
@@ -37,7 +38,7 @@ export function compareGroupOf(schema: Pick<CatalogSchema, "categories">, catego
 export type CompareAddResult = "added" | "exists" | "group-full" | "total-full";
 
 /** Pure add: returns the new list and what happened (the UI turns the refusals into a toast). */
-export function compareAdd(entries: CompareEntry[], id: string, group: string, now = Date.now()): { entries: CompareEntry[]; result: CompareAddResult } {
+export function compareAdd(entries: CompareEntry[], id: string, group: string, now = nowMs()): { entries: CompareEntry[]; result: CompareAddResult } {
   if (entries.some((e) => e.id === id)) return { entries, result: "exists" };
   if (entries.length >= COMPARE_MAX_TOTAL) return { entries, result: "total-full" };
   if (entries.filter((e) => e.group === group).length >= COMPARE_MAX_PER_GROUP) return { entries, result: "group-full" };

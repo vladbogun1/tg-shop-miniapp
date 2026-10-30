@@ -14,6 +14,7 @@ import { useToast } from "@/lib/toast";
 import { metricsApi, type PeriodParams, type ReorderRow, type Stock } from "../api";
 import { num, uah, uahShort } from "../format";
 import { Empty, InlineBar, KpiTile, Note, Panel, StatusChip, TableWrap, useLimited } from "../ui";
+import { formatNumber } from "@shop/core/money";
 
 const COVER_OPTIONS = [14, 30, 60, 90] as const;
 
@@ -130,7 +131,7 @@ function StockBody({
                     <td className="r">
                       {num(r.sold30)} / {num(r.sold90)}
                     </td>
-                    <td className="r">≈ {(Math.round(r.velocityPerDay * 30 * 10) / 10).toLocaleString("ru-RU")}</td>
+                    <td className="r">≈ {formatNumber((Math.round(r.velocityPerDay * 30 * 10) / 10), "ru-RU")}</td>
                     <td>
                       <UrgencyChip row={r} />
                     </td>

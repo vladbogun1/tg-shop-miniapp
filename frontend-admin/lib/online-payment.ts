@@ -3,6 +3,7 @@
  * payment method names, the "pay within 24 h" countdown. Russian, admin only.
  */
 import type { AdminInvoice, OnlinePaymentStatus } from "@shop/core/types";
+import { nowMs } from "@shop/core/time";
 
 export type InvoiceTone = "neutral" | "accent" | "ok" | "warn" | "danger" | "info";
 
@@ -70,7 +71,7 @@ export function refundableMinor(inv: AdminInvoice): number {
 }
 
 /** "5 ч 20 мин", "40 мин", "1 дн 3 ч" until `iso`; null when it has passed. */
-export function timeLeft(iso: string, now = Date.now()): string | null {
+export function timeLeft(iso: string, now = nowMs()): string | null {
   const ms = new Date(iso).getTime() - now;
   if (isNaN(ms) || ms <= 0) return null;
   const min = Math.ceil(ms / 60_000);
@@ -86,7 +87,7 @@ export function timeLeft(iso: string, now = Date.now()): string | null {
 }
 
 /** The deadline has passed. */
-export function isOverdue(iso?: string | null, now = Date.now()): boolean {
+export function isOverdue(iso?: string | null, now = nowMs()): boolean {
   if (!iso) return false;
   const t = new Date(iso).getTime();
   return !isNaN(t) && t <= now;

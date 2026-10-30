@@ -41,6 +41,7 @@ import { OrderDrawer } from "@/components/orders/OrderDrawer";
 import { staggerContainer, riseItem } from "@/lib/motion";
 import { useToast } from "@/lib/toast";
 import type { OrderStatus } from "@/lib/api";
+import { nowMs } from "@shop/core/time";
 
 type Mode = "percent" | "amount";
 type StateFilter = "all" | "live" | "off";
@@ -118,7 +119,7 @@ export default function PromocodesPage() {
   };
 
   const needle = query.trim().toLowerCase();
-  const now = Date.now();
+  const now = nowMs();
   const shown = byTab[tab].filter((p) => {
     if (needle && !p.code.toLowerCase().includes(needle) && !String(p.ownerUserId ?? "").includes(needle)) return false;
     if (stateFilter === "live") return isLive(p, now);
@@ -545,8 +546,8 @@ function PromoRow({
               </Badge>
             )}
             {p.expiresAt && (
-              <Badge tone={new Date(p.expiresAt).getTime() < Date.now() ? "warn" : "neutral"}>
-                {new Date(p.expiresAt).getTime() < Date.now() ? "истёк" : "до"} {formatDateTime(p.expiresAt)}
+              <Badge tone={new Date(p.expiresAt).getTime() < nowMs() ? "warn" : "neutral"}>
+                {new Date(p.expiresAt).getTime() < nowMs() ? "истёк" : "до"} {formatDateTime(p.expiresAt)}
               </Badge>
             )}
           </div>

@@ -49,6 +49,7 @@ import type { MapFocus } from "./NpWarehouseMap";
 import { PromoField, usePromoPreview } from "./PromoField";
 import { GiftChoicePicker, markGiftCaseAutoOpen } from "@shop/ui/gift-case";
 import { useCaseMoney, useCaseRules } from "@/components/case/OrderGiftCase";
+import { nowMs } from "@shop/core/time";
 
 function MapLoading() {
   const { t } = useI18n();
@@ -176,7 +177,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
       .then((whs) => {
         if (framingCity.current !== c.ref) return;
         const bounds = npCityBounds(whs);
-        if (bounds) setFocus({ key: Date.now(), bounds });
+        if (bounds) setFocus({ key: nowMs(), bounds });
       })
       .catch(() => {
         /* the map still works by hand */
@@ -194,7 +195,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
     }
     framingCity.current = null; // a pending city framing must not pull the map off this branch
     const p = npLatLng(w);
-    if (p) setFocus({ key: Date.now(), center: p });
+    if (p) setFocus({ key: nowMs(), center: p });
   }, []);
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [comment, setComment] = useState("");
@@ -461,7 +462,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
                       onClick={() => {
                         setEditingWarehouse(true);
                         const p = npLatLng(warehouse);
-                        if (p) setFocus({ key: Date.now(), center: p });
+                        if (p) setFocus({ key: nowMs(), center: p });
                       }}
                     >
                       {t("checkout.changeWarehouse")}

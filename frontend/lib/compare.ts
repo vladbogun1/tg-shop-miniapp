@@ -6,6 +6,7 @@
  * holds whether the comparison screen is open and its own toast (the card, the product view and the
  * screen all add/remove, and the toast has a button that opens the screen).
  */
+import { asStateStorage, localStore } from "@shop/core/storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { COMPARE_MAX_PER_GROUP, COMPARE_MAX_TOTAL, COMPARE_STORAGE_KEY, compareAdd, parseCompareEntries, type CompareAddResult, type CompareEntry } from "@shop/core/compare";
@@ -62,7 +63,7 @@ export const useCompare = create<CompareState>()(
     }),
     {
       name: COMPARE_STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => asStateStorage(localStore)),
       partialize: (s) => ({ entries: s.entries }),
       merge: (persisted, current) => ({ ...current, entries: parseCompareEntries((persisted as { entries?: unknown })?.entries) }),
     },

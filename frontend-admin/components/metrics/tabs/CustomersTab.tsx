@@ -10,6 +10,7 @@ import { RankBars } from "../charts";
 import { bucketLabel, monthLabel, num, pct, uah, uahShort } from "../format";
 import { PREV_LABEL } from "../period";
 import { Empty, InlineBar, KpiTile, Panel, TableWrap } from "../ui";
+import { formatNumber } from "@shop/core/money";
 
 export function CustomersTab({ params }: { params: PeriodParams }) {
   const q = useQuery({
@@ -53,7 +54,7 @@ function CustomersBody({ c, params }: { c: Customers; params: PeriodParams }) {
         <Panel title="Сколько раз покупают" icon={Repeat} hint="Все покупатели за всё время">
           <RankBars rows={c.repeatDistribution.map((r) => ({ key: r.label, label: r.label, value: r.buyers }))} format={(v) => `${num(v)} чел.`} />
         </Panel>
-        <Panel title="Чеки" icon={ShoppingBasket} hint={`Распределение заказов периода по сумме · в среднем ${c.avgItemsPerOrder.toLocaleString("ru-RU")} шт. в заказе`}>
+        <Panel title="Чеки" icon={ShoppingBasket} hint={`Распределение заказов периода по сумме · в среднем ${formatNumber(c.avgItemsPerOrder, "ru-RU")} шт. в заказе`}>
           <RankBars
             rows={c.aovBuckets.map((b) => ({ key: b.label, label: b.label, value: b.orders }))}
             format={(v) => `${num(v)} зак.`}

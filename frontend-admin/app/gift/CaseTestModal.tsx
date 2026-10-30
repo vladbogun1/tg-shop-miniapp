@@ -28,6 +28,7 @@ import { useToast } from "@/lib/toast";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Toggle } from "@/components/ui/Toggle";
+import { formatNumber } from "@shop/core/money";
 
 const BULK = [10, 100, 1000] as const;
 
@@ -74,7 +75,7 @@ const caseImage = (src: string, size: number) => resolveImageSrc(src, size);
 
 /** «24,58» / «0,001»: up to 4 decimals, Russian separator. */
 function pct(p: number, digits = 4): string {
-  return p.toLocaleString("ru-RU", { maximumFractionDigits: digits });
+  return formatNumber(p, "ru-RU", { maximumFractionDigits: digits });
 }
 
 function prizeKey(it: CaseItemAdmin): string {
@@ -281,7 +282,7 @@ export function CaseTestModal({
               <span className="text-[12px] text-[var(--text-faint)]">Сразу много:</span>
               {BULK.map((n) => (
                 <Button key={n} size="sm" variant="surface" className="tabular" loading={busy === n} disabled={busy !== null} onClick={() => void run(n)}>
-                  ×{n.toLocaleString("ru-RU")}
+                  ×{formatNumber(n, "ru-RU")}
                 </Button>
               ))}
             </div>
@@ -299,7 +300,7 @@ export function CaseTestModal({
                   <div className="mb-1.5 text-[12px] text-[var(--text-faint)]">
                     {shown.count === 1
                       ? "Выпало:"
-                      : `Последний прогон ×${shown.count.toLocaleString("ru-RU")}${shown.count > shown.drops.length ? `, первые ${shown.drops.length}` : ""}:`}
+                      : `Последний прогон ×${formatNumber(shown.count, "ru-RU")}${shown.count > shown.drops.length ? `, первые ${shown.drops.length}` : ""}:`}
                   </div>
                   {shown.count === 1 && shown.drops[0] ? (
                     <DropCard item={shown.drops[0]} />
@@ -318,7 +319,7 @@ export function CaseTestModal({
 
         <div className="mt-4 flex min-w-0 items-center justify-between gap-2">
           <div className="min-w-0 font-display text-[14px] font-bold text-[var(--ink)]">
-            Статистика теста · <span className="tabular">{stats.n.toLocaleString("ru-RU")}</span> откр.
+            Статистика теста · <span className="tabular">{formatNumber(stats.n, "ru-RU")}</span> откр.
           </div>
           <Button
             size="sm"
@@ -463,7 +464,7 @@ function StatRow({
         <div className="shrink-0 text-right leading-tight">
           <div className={cn("tabular text-[13px] font-bold", row.odd ? "text-[var(--warn)]" : "text-[var(--ink)]")}>{pct(row.fact, 2)} %</div>
           <div className="tabular text-[11px] text-[var(--text-faint)]">
-            {row.hits.toLocaleString("ru-RU")} · шанс {pct(row.chance)} %
+            {formatNumber(row.hits, "ru-RU")} · шанс {pct(row.chance)} %
           </div>
         </div>
       </div>

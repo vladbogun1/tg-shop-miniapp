@@ -28,6 +28,7 @@ import { type Dictionary, FALLBACK_LOCALE, type Locale, LOCALE_TAG, normalizeLoc
 import { ru } from "./ru";
 import { uk } from "./uk";
 import { en } from "./en";
+import { localStore } from "@shop/core/storage";
 
 const STORAGE_KEY = "locale";
 
@@ -46,7 +47,7 @@ const I18nContext = createContext<I18n | null>(null);
 /** What the device remembers, or what Telegram says, or the fallback. Client-side only. */
 function resolveLocale(): Locale {
   try {
-    const stored = normalizeLocale(localStorage.getItem(STORAGE_KEY));
+    const stored = normalizeLocale(localStore.getItem(STORAGE_KEY));
     if (stored) return stored;
   } catch {
     /* private mode — fall through to Telegram */
@@ -96,7 +97,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     setActiveLocale(next);
     setLocaleState(next);
     try {
-      localStorage.setItem(STORAGE_KEY, next);
+      localStore.setItem(STORAGE_KEY, next);
     } catch {
       /* the choice still applies for this session */
     }

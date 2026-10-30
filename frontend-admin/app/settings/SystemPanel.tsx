@@ -8,6 +8,7 @@ import { QueryState } from "@/components/ui/QueryState";
 import { settingsApi } from "@/lib/settings";
 import { formatDateTime } from "./draft";
 import { PanelHeader } from "./PanelHeader";
+import { formatNumber } from "@shop/core/money";
 
 /** «Система» — read-only facts the owner otherwise only learns over ssh. */
 export function SystemPanel() {
@@ -46,7 +47,7 @@ export function SystemPanel() {
                 </span>
               )}
             </Row>
-            <Row label="Отделений в базе">{s.npWarehouses != null ? s.npWarehouses.toLocaleString("ru-RU") : "—"}</Row>
+            <Row label="Отделений в базе">{s.npWarehouses != null ? formatNumber(s.npWarehouses, "ru-RU") : "—"}</Row>
           </dl>
         )}
       </QueryState>

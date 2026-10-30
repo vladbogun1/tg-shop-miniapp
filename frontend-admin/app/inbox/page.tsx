@@ -58,6 +58,7 @@ import {
 } from "@/lib/inbox";
 import { useToast } from "@/lib/toast";
 import { useIsDesktop } from "@/lib/use-media";
+import { formatDayMonth, formatTime, now } from "@shop/core/time";
 
 const GROUP_ICON: Record<KnownInboxType, LucideIcon> = {
   PAYMENT: Wallet,
@@ -128,9 +129,9 @@ function withoutItem(inbox: Inbox, item: InboxItem, snoozed: boolean): Inbox {
 
 function untilLabel(iso: string): string {
   const d = new Date(iso);
-  const sameDay = d.toDateString() === new Date().toDateString();
-  const time = d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-  return sameDay ? `до ${time}` : `до ${d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" })} ${time}`;
+  const sameDay = d.toDateString() === now().toDateString();
+  const time = formatTime(iso);
+  return sameDay ? `до ${time}` : `до ${formatDayMonth(iso)} ${time}`;
 }
 
 export default function InboxPage() {

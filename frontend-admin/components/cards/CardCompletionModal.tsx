@@ -30,6 +30,7 @@ import { CopyButton } from "@/components/translations/shared";
 import { AddOptionModal } from "@/components/cards/AddOptionModal";
 import { ReviewCard } from "@/components/cards/ReviewCard";
 import { AUTO_READY_OVERALL, autoReady, buildImportItem, defaultSel, mergeSel, RED_FIELD, type ProductSel } from "@/components/cards/selection";
+import { formatNumber } from "@shop/core/money";
 
 export interface CardCompletionResult {
   saved: boolean;
@@ -303,7 +304,7 @@ export function CardCompletionModal({
                 >
                   Показать текст
                 </Button>
-                <span className="text-[12px] text-[var(--text-faint)]">{prompt.length.toLocaleString("ru")} симв.</span>
+                <span className="text-[12px] text-[var(--text-faint)]">{formatNumber(prompt.length, "ru")} симв.</span>
               </div>
               <AnimatePresence initial={false}>
                 {preview && (

@@ -25,6 +25,7 @@ import { formatDateTime } from "@/lib/format";
 import { money } from "@/lib/money";
 import { riseItem } from "@/lib/motion";
 import { downloadFile, haptic, openExternalLink } from "@/lib/telegram";
+import { nowMs } from "@shop/core/time";
 
 /** Signed links live ≥ 10 min; re-read the list before using one older than this. */
 const LINK_FRESH_MS = 8 * 60_000;
@@ -38,7 +39,7 @@ const CHIP: Record<ReceiptStatus, string> = {
 export function OrderReceipts({ order }: { order: OrderDetail }) {
   const { t } = useI18n();
   const enabled = hasOnlinePayment(order);
-  const since = useRef(Date.now());
+  const since = useRef(nowMs());
   const [busy, setBusy] = useState<string | null>(null);
   const { data, dataUpdatedAt, refetch } = useQuery({
     queryKey: ["me", "orders", order.id, "receipts"],
@@ -52,7 +53,7 @@ export function OrderReceipts({ order }: { order: OrderDetail }) {
   async function download(r: Receipt) {
     haptic();
     let url = r.downloadUrl;
-    if (Date.now() - dataUpdatedAt > LINK_FRESH_MS) {
+    if (nowMs() - dataUpdatedAt > LINK_FRESH_MS) {
       setBusy(r.key);
       try {
         const fresh = await refetch();

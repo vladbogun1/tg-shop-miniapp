@@ -4,6 +4,7 @@
  */
 import { useEffect, useState } from "react";
 import type { TimeRange } from "./api";
+import { localStore } from "@shop/core/storage";
 
 export const RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
   { value: "month", label: "Месяц" },
@@ -21,7 +22,7 @@ function isRange(v: unknown): v is TimeRange {
 
 export function getStoredRange(): TimeRange {
   if (typeof window === "undefined") return DEFAULT_RANGE;
-  const v = window.localStorage.getItem(STORAGE_KEY);
+  const v = localStore.getItem(STORAGE_KEY);
   return isRange(v) ? v : DEFAULT_RANGE;
 }
 
@@ -37,7 +38,7 @@ export function useTimeRange(): [TimeRange, (r: TimeRange) => void] {
   function update(r: TimeRange) {
     setRange(r);
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEY, r);
+      localStore.setItem(STORAGE_KEY, r);
     }
   }
 

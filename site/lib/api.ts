@@ -7,7 +7,8 @@
  * client tries `POST /api/auth/web/refresh` ONCE (the refresh cookie is scoped to /api/auth/web, so
  * only that call carries it) and repeats the request; a second failure means "guest".
  */
-import { ApiError, createHttpClient, newIdempotencyKey } from "@shop/core/http";
+import { ApiError } from "@shop/core/errors";
+import { createHttpClient, newIdempotencyKey } from "@shop/core/http";
 import { type AuthUser, type BonusCode, type CreateOrderResult, type Message, type MyReview, type NpCity, type NpWarehouse, type OrderDetail, type OrderLimits, type OrderSummary, type PaymentOption, type PaymentStart, type PendingReviewLine, type Product, type PromoPreview, type ReviewPage, type SendMessageRequest, type SubmitReviewRequest, type SubmitReviewResult } from "@shop/core/types";
 import { type CatalogSchema } from "@shop/core/catalog";
 import { type CartLineInput, type ServerCart } from "@shop/core/cart";
