@@ -20,8 +20,8 @@ public final class OrderGiftDtos {
      * @param discountPercent     DISCOUNT: % off the next order (0 = see {@code discountAmountMinor})
      * @param discountAmountMinor DISCOUNT: fixed amount off the next order
      */
-    public record CaseItemDto(String key, String kind, @Nullable String productId, @Nullable String title, @Nullable String imageUrl,
-                              long priceMinor, String rarity, int discountPercent, long discountAmountMinor) {
+    public record CaseItemDto(String key, @Schema(allowableValues = {"PRODUCT", "DISCOUNT"}) String kind, @Nullable String productId, @Nullable String title, @Nullable String imageUrl,
+                              long priceMinor, @Schema(implementation = com.maxsolch.shop.gift.domain.GiftCaseItem.Rarity.class) String rarity, int discountPercent, long discountAmountMinor) {
     }
 
     /**

@@ -21,6 +21,7 @@
  * 400 GIFT_CASE_UNPAID / GIFT_CASE_ALREADY_OPENED otherwise; no replays.
  */
 
+import type { Schemas } from "./api/schemas";
 import type { Product } from "./types";
 
 export type CaseRarity = "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD";
@@ -175,21 +176,7 @@ export interface GiftCaseOpen {
 export type GiftCaseStatus = "SEALED" | "OPENED";
 
 /** The gift of an order (OrderDetail.gift): the tier, the guaranteed discount or the case. */
-export interface OrderGift {
-  tier: CaseTier | null;
-  /** The customer took the guaranteed discount instead of the case (part of discountMinor). */
-  guaranteedDiscountMinor: number;
-  caseStatus: GiftCaseStatus | null;
-  openable: boolean;
-  /** The prize — for the customer only once opened. */
-  prize: CaseItem | null;
-  promo: CasePromo | null;
-  swap: CaseSwap | null;
-  /** The prize's size (a product with sizes); null otherwise. */
-  size?: CaseSize | null;
-  /** Admin only: drawn with the «упор на скидки» shares (the order had a low-margin product). */
-  lowMargin?: boolean | null;
-}
+export type OrderGift = Schemas["OrderGiftDto"];
 
 /** Error codes of POST …/gift-case/open the apps handle gracefully (close the screen, refetch). */
 export type GiftCaseOpenErrorCode = "GIFT_CASE_UNPAID" | "GIFT_CASE_ALREADY_OPENED";

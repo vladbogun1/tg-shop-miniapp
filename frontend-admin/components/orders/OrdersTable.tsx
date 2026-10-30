@@ -244,7 +244,7 @@ export function OrdersTable({ search, period, onOpen }: Props) {
                       </span>
                     </td>
                     <td className="whitespace-nowrap !text-[var(--text-muted)]">
-                      {DELIVERY_LABEL[o.deliveryMethod]}
+                      {o.deliveryMethod ? DELIVERY_LABEL[o.deliveryMethod] : undefined}
                     </td>
                     <td className="!text-[var(--text-muted)]">
                       {o.paymentOptionTitle || "—"}

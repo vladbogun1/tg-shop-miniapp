@@ -2,6 +2,7 @@
  * Order endpoints added in admin v2 (package B) — kept apart from lib/api.ts so parallel work on
  * that file does not collide. Same http client, same error type.
  */
+import type { Schemas } from "@shop/core/api/schemas";
 import type { CaseTier } from "@shop/core/giftcase";
 import type { NpCity, NpWarehouse } from "@shop/core/types";
 import type { ConfirmOptions } from "@shop/ui/confirm";
@@ -26,103 +27,20 @@ import type { BoardKey, MovementChannel, MovementKind, RejectReasonCode } from "
 
 export type { NpCity, NpWarehouse };
 
-/** Order detail + the v2 fields (reject code, returns, NP refs for the delivery editor). */
-export type AdminOrderDetail = Omit<OrderDetailDto, "items"> & {
-  rejectReasonCode?: RejectReasonCode | null;
-  refundedMinor?: number;
-  returnedAt?: string | null;
-  npCityRef?: string | null;
-  npWarehouseRef?: string | null;
-  items: (OrderDetailDto["items"][number] & {
-    returnedQty?: number;
-    /** Price of one unit after the proportional discount (0 for gifts) — V68. */
-    unitPaidMinor?: number;
-    /** Units on their way back to the shop (V68). */
-    returnPendingQty?: number;
-  })[];
-  /** Exchanges made on this order, oldest first. */
-  exchanges?: OrderExchange[];
-  /** Archive, money journal, write-offs, the parcel on its way back (V68). */
-  admin?: OrderAdminExtras | null;
-};
+/** Заказ у админа: `admin` заполнен (архив, журнал денег, списания, «едет назад», возвраты). */
+export type AdminOrderDetail = Schemas["OrderDetailDto"];
 
 /** One row of the order's money journal. */
-export interface OrderMovement {
-  id: number;
-  kind: MovementKind;
-  channel: MovementChannel;
-  amountMinor: number;
-  occurredAt: string;
-  adminName?: string | null;
-  note?: string | null;
-  invoiceExtId?: string | null;
-  /** BACKFILL = restored on 25.10 from the old data. */
-  source: "AUTO" | "ADMIN" | "BACKFILL";
-}
+export type OrderMovement = Schemas["MovementDto"];
 
-export interface OrderWriteoff {
-  id: number;
-  title: string;
-  quantity: number;
-  /** Of them: back on the shelf or back in the order (V70). */
-  undoneQty?: number;
-  undoneNote?: string | null;
-  reason: string;
-  unitValueMinor: number;
-  note?: string | null;
-  adminName?: string | null;
-  createdAt: string;
-}
+export type OrderWriteoff = Schemas["WriteoffDto"];
 
 export type ReturnStatus = "IN_TRANSIT" | "RECEIVED";
 
-export interface OrderAdminExtras {
-  archivedAt?: string | null;
-  archivedBy?: string | null;
-  archiveReason?: string | null;
-  returnStatus?: ReturnStatus | null;
-  returnReceivedAt?: string | null;
-  movements: OrderMovement[];
-  retainedMinor: number;
-  /** What can still go back to the card through monobank. */
-  monoRefundableMinor: number;
-  writeoffs: OrderWriteoff[];
-  /** This order is the replacement of an exchange on that order (V69). */
-  exchangeOfId?: string | null;
-  /** Replacement orders of exchanges made on this one, oldest first. */
-  exchangeOrderIds?: string[];
-  /** Returns and exchanges of this order (V70), oldest first. */
-  returns?: ReturnRecord[];
-  /** This order was merged into that one (V71). */
-  mergedIntoId?: string | null;
-  /** Orders merged into this one, oldest first. */
-  mergedFromIds?: string[];
-}
+export type OrderAdminExtras = Schemas["AdminExtras"];
 
 /** Another open order of the same customer for «Объединить» (V71) and the merged result. */
-export interface MergeCandidate {
-  id: string;
-  status: "NEW" | "APPROVED";
-  createdAt: string;
-  totalMinor: number;
-  receivedMinor: number;
-  prepaymentMinor: number;
-  paid: boolean;
-  paymentOptionTitle?: string | null;
-  npCityName?: string | null;
-  npWarehouseName?: string | null;
-  customerName?: string | null;
-  trackingNumber?: string | null;
-  giftCaseStatus?: string | null;
-  lines: string[];
-  /** Why it cannot be merged now; null = it can. */
-  blocker?: string | null;
-  /** What the merged order would be: total, received, still to pay online, cash on delivery. */
-  mergedTotalMinor: number;
-  mergedReceivedMinor: number;
-  mergedAmountDueMinor: number;
-  mergedCodMinor: number;
-}
+export type MergeCandidate = Schemas["MergeCandidateDto"];
 
 export interface MergeBody {
   sourceId: string;
@@ -133,111 +51,35 @@ export interface MergeBody {
 
 export type ReturnLineOutcome = "RESTOCK" | "DEFECT" | "KEPT" | "IN_TRANSIT";
 
-export interface ReturnRecordLine {
-  itemId: number;
-  title: string;
-  imageUrl?: string | null;
-  quantity: number;
-  outcome: ReturnLineOutcome;
-  restockedQty: number;
-  defectQty: number;
-  /** Still on the way back. */
-  pendingQty: number;
-}
+export type ReturnRecordLine = Schemas["ReturnRecordLineDto"];
 
 /** One return / exchange; only the newest active one is `cancellable`. */
-export interface ReturnRecord {
-  id: number;
-  kind: "RETURN" | "EXCHANGE";
-  createdAt: string;
-  adminName?: string | null;
-  note?: string | null;
-  lines: ReturnRecordLine[];
-  refundMinor: number;
-  refundChannel?: string | null;
-  monoRefundMinor: number;
-  /** Replacement order of an exchange. */
-  newOrderId?: string | null;
-  cancelledAt?: string | null;
-  cancelledBy?: string | null;
-  cancelNote?: string | null;
-  /** Money the customer still owes after a cancel. */
-  debtMinor: number;
-  debtPaidAt?: string | null;
-  cancellable: boolean;
-  /** Why the newest one can't be cancelled now. */
-  cancelBlocker?: string | null;
-}
+export type ReturnRecord = Schemas["ReturnRecordDto"];
 
 /** What happens to the refunded money when a return is cancelled. */
 export type CancelMoney = "RETURNED" | "DEBT" | "KEEP";
 
-/** Board / table card with the V68 fields. */
-export type AdminOrderCard = OrderCardDto & {
-  archived?: boolean;
-  returnStatus?: ReturnStatus | null;
-  /** Units on their way back right now (V68). */
-  returningUnits?: number;
-  /** Units already given back (received / restocked / written off). */
-  returnedUnits?: number;
-  /** What is in the order — the picture strip of the card. */
-  lines?: CardLine[];
-  /** Replacement of an exchange on that order (V69). */
-  exchangeOfId?: string | null;
-  /** Replacements created by exchanges on this order. */
-  exchangeOrderIds?: string[];
-};
+/** Board / table card. */
+export type AdminOrderCard = Schemas["OrderCardDto"];
 
 /** One line of a card's picture strip; `returning` = its units on the way back. */
-export interface CardLine {
-  imageUrl?: string | null;
-  title: string;
-  quantity: number;
-  returning: number;
-  /** Units of this line already given back. */
-  returned?: number;
-  gift: boolean;
-  /** What the units on their way back cost (price paid). */
-  returningMinor?: number;
-}
+export type CardLine = Schemas["CardLine"];
 
 /** One exchange (V51): what came back, what went out instead, ТТН and total before. */
-export interface OrderExchange {
-  createdAt: string;
-  previousStatus: OrderStatus;
-  previousTracking?: string | null;
-  returnedSummary: string;
-  givenSummary: string;
-  totalBeforeMinor: number;
-  totalAfterMinor: number;
-  note?: string | null;
-  adminName?: string | null;
-  /** The replacement order (V69); null for exchanges made before it. */
-  newOrderId?: string | null;
-}
+export type OrderExchange = Schemas["ExchangeDto"];
 
 /** POST …/cancel-request/approve — what happened to the money. */
-export interface CancelApproveResult {
-  order: AdminOrderDetail;
-  /** Sent to monobank for refund (booked when the bank confirms). */
-  refundRequestedMinor: number;
-  refundedInvoices: number;
-  /** Invoices monobank refused to refund — return those by hand. */
-  refundErrors: string[];
-  /** Money recorded by hand (not via monobank) — return it by hand too. */
-  manualRefundMinor: number;
-}
+export type CancelApproveResult = Schemas["ApproveResponse"];
 
-/** Board + true per-column money totals from the server. */
-export type AdminBoard = {
-  /** Cards per column: the five statuses + RETURNING («Едет назад», V68). */
+/** Board + true per-column money totals from the server (columns keyed by the five statuses + RETURNING). */
+export type AdminBoard = Omit<Schemas["OrderBoardDto"], "columns" | "counts" | "sums"> & {
   columns: Record<BoardKey, AdminOrderCard[]>;
   counts: Record<BoardKey, number>;
-  sums?: Record<OrderStatus, number>;
+  sums?: Record<string, number>;
 };
 
-/** Dispatch row; `status` is NEW for orders that can be shipped without approving first. */
-export type AdminDispatchOrder = DispatchOrder & { status?: "NEW" | "APPROVED" };
+/** Dispatch row. */
+export type AdminDispatchOrder = Schemas["DispatchOrderDto"];
 
 export interface StatusChangeBody {
   status: OrderStatus;

@@ -49,7 +49,7 @@ public record OrderDetailDto(
         /** uk | ru | en chosen by the customer in the shop (users.locale); null = never chose. */
         @Nullable String customerLocale,
         /** RejectReasonCode name, null = not specified. */
-        @Nullable String rejectReasonCode,
+        @Schema(implementation = com.maxsolch.shop.order.domain.RejectReasonCode.class) @Nullable String rejectReasonCode,
         /** Money given back to the customer (returns). */
         long refundedMinor,
         @Nullable Instant returnedAt,
@@ -86,7 +86,7 @@ public record OrderDetailDto(
                               @Nullable String archivedBy,
                               @Nullable String archiveReason,
                               /** IN_TRANSIT | RECEIVED | null — the refused parcel on its way back. */
-                              @Nullable String returnStatus,
+                              @Schema(allowableValues = {"IN_TRANSIT", "RECEIVED"}) @Nullable String returnStatus,
                               @Nullable Instant returnReceivedAt,
                               List<MovementDto> movements,
                               /** Sum of RETAINED rows: kept by the shop on purpose (delivery). */
@@ -109,7 +109,7 @@ public record OrderDetailDto(
     /** Another open order of the same customer for «Объединить» (V71) and the merged result. */
     @lombok.Builder
     public record MergeCandidateDto(String id,
-                                    String status,
+                                    @Schema(implementation = com.maxsolch.shop.order.domain.OrderStatus.class) String status,
                                     Instant createdAt,
                                     long totalMinor,
                                     long receivedMinor,

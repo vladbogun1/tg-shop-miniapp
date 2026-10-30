@@ -84,6 +84,18 @@ export function supportTopic(threadId: string): string {
  * unchanged (`orderId` carries the thread id).
  */
 export function supportAsChatMessage(m: SupportMessage): Message {
-  const { threadId, ...rest } = m;
-  return { ...rest, orderId: threadId };
+  return {
+    id: m.id,
+    orderId: m.threadId,
+    senderType: m.senderType,
+    senderName: m.senderName ?? null,
+    type: m.type,
+    text: m.text ?? null,
+    attachmentUrl: m.attachmentUrl ?? null,
+    fileName: m.fileName ?? null,
+    mimeType: m.mimeType ?? null,
+    replyToMessageId: m.replyToMessageId ?? null,
+    createdAt: m.createdAt,
+    readAt: m.readAt ?? null,
+  };
 }

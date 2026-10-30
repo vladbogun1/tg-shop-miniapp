@@ -202,7 +202,7 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
                     ? it.quantity > 1
                       ? t("order.giftMany", { n: it.quantity })
                       : t("order.gift")
-                    : `${it.quantity} × ${fmt.money(it.priceMinor, it.currency ?? order.currency)}`}
+                    : `${it.quantity} × ${fmt.money(it.priceMinor, order.currency)}`}
                 </p>
                 {back > 0 && (
                   <p className="text-[12px] font-semibold text-[var(--danger)]">
@@ -217,7 +217,7 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
                   back >= it.quantity ? "text-[var(--faint)] line-through" : "text-[var(--ink)]"
                 }`}
               >
-                {fmt.money(it.gift || it.autoGift ? 0 : it.priceMinor * it.quantity, it.currency ?? order.currency)}
+                {fmt.money(it.gift || it.autoGift ? 0 : it.priceMinor * it.quantity, order.currency)}
               </span>
             </li>
             );

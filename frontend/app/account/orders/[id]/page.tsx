@@ -305,7 +305,7 @@ function OrderBody({
                       ? it.quantity > 1
                         ? t("order.giftMany", { n: it.quantity })
                         : t("order.gift")
-                      : `${it.quantity} × ${money(it.priceMinor, it.currency ?? order.currency)}`}
+                      : `${it.quantity} × ${money(it.priceMinor, order.currency)}`}
                   </p>
                   {back > 0 && (
                     <p className="mt-0.5 text-[12px] font-semibold text-[var(--danger)]">
@@ -322,7 +322,7 @@ function OrderBody({
                 >
                   {it.gift || it.autoGift
                     ? "0 ₴"
-                    : money(it.priceMinor * it.quantity, it.currency ?? order.currency)}
+                    : money(it.priceMinor * it.quantity, order.currency)}
                 </span>
               </div>
               );

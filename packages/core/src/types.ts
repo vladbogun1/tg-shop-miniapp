@@ -13,11 +13,9 @@ export type SenderType = "CUSTOMER" | "ADMIN" | "SYSTEM";
 export type MessageType = "TEXT" | "PHOTO" | "FILE" | "SYSTEM";
 export type TimeRange = "month" | "halfyear" | "year" | "all";
 
-type Schemas = components["schemas"];
-
 // ---- catalog ----------------------------------------------------------------
 
-import type { components } from "./api/generated";
+import type { Schemas } from "./api/schemas";
 import type { CatalogFields } from "./catalog";
 import type { OrderGift } from "./giftcase";
 
@@ -291,7 +289,7 @@ export type OrderCard = Schemas["OrderCardDto"];
 // ---- chat -------------------------------------------------------------------
 
 /** Сообщение чата заказа. */
-export type Message = Schemas["MessageDto"];
+export type Message = Schemas["OrderMessageDto"];
 
 export interface SendMessageRequest {
   text?: string;

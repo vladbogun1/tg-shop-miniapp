@@ -389,6 +389,10 @@
             "type" : "string"
           },
           "returnStatus" : {
+            "enum" : [
+              "IN_TRANSIT",
+              "RECEIVED"
+            ],
             "nullable" : true,
             "type" : "string"
           },
@@ -3433,6 +3437,10 @@
             "type" : "string"
           },
           "kind" : {
+            "enum" : [
+              "PRODUCT",
+              "DISCOUNT"
+            ],
             "type" : "string"
           },
           "priceMinor" : {
@@ -3444,6 +3452,13 @@
             "type" : "string"
           },
           "rarity" : {
+            "enum" : [
+              "COMMON",
+              "RARE",
+              "EPIC",
+              "LEGENDARY",
+              "GOLD"
+            ],
             "type" : "string"
           },
           "title" : {
@@ -7214,6 +7229,13 @@
             "type" : "integer"
           },
           "status" : {
+            "enum" : [
+              "NEW",
+              "APPROVED",
+              "SHIPPED",
+              "DELIVERED",
+              "REJECTED"
+            ],
             "type" : "string"
           },
           "totalMinor" : {
@@ -8345,6 +8367,10 @@
             "type" : "integer"
           },
           "returnStatus" : {
+            "enum" : [
+              "IN_TRANSIT",
+              "RECEIVED"
+            ],
             "nullable" : true,
             "type" : "string"
           },
@@ -8621,6 +8647,18 @@
             "type" : "string"
           },
           "rejectReasonCode" : {
+            "enum" : [
+              "NO_RESPONSE",
+              "CHANGED_MIND",
+              "OUT_OF_STOCK",
+              "DUPLICATE",
+              "NOT_PAID",
+              "PAYMENT_TIMEOUT",
+              "REFUSED_AT_POST",
+              "RETURNED",
+              "MERGED",
+              "OTHER"
+            ],
             "nullable" : true,
             "type" : "string"
           },

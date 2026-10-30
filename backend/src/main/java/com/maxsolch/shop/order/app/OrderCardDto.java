@@ -31,7 +31,7 @@ public record OrderCardDto(
         /** In the archive (V68): shown only with the «Архив» filter / in a customer's profile. */
         boolean archived,
         /** IN_TRANSIT | RECEIVED | null — refused parcel on its way back (V68). */
-        @Nullable String returnStatus,
+        @Schema(allowableValues = {"IN_TRANSIT", "RECEIVED"}) @Nullable String returnStatus,
         /** Units on their way back right now (the «Едет назад» card shows only these). */
         int returningUnits,
         /** Units already given back (received / restocked / written off) — «Возврат 1 из 3» on the card. */

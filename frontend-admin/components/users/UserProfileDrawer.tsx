@@ -212,7 +212,7 @@ function OrderRow({
           <StatusBadge status={order.status} />
         </div>
         <div className="mt-0.5 truncate text-[12px] text-[var(--text-faint)]">
-          {order.itemsCount} тов. · {DELIVERY_LABEL[order.deliveryMethod]} ·{" "}
+          {order.itemsCount} тов. · {order.deliveryMethod ? DELIVERY_LABEL[order.deliveryMethod] : undefined} ·{" "}
           {formatDateTime(order.createdAt)}
         </div>
       </div>

@@ -258,7 +258,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
         <div className="flex flex-col gap-2">
           <Row icon={isNp ? <Truck className="h-4 w-4" /> : <Store className="h-4 w-4" />}>
             <span className="min-w-0">
-              <b className="font-semibold">{DELIVERY_LABEL[order.deliveryMethod]}</b>
+              <b className="font-semibold">{order.deliveryMethod ? DELIVERY_LABEL[order.deliveryMethod] : undefined}</b>
               {address && <span className="text-[var(--text-muted)]"> · {address}</span>}
             </span>
             {address && <CopyButton value={address} label="Скопировать адрес" className="ml-auto" />}

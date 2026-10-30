@@ -8,7 +8,7 @@ import legacyLimits from "./eslint.legacy-limits.mjs";
 const compat = new FlatCompat({ baseDirectory: dirname(fileURLToPath(import.meta.url)) });
 
 const config = [
-  { ignores: ["node_modules/**"] },
+  { ignores: ["node_modules/**", "src/api/generated.d.ts", "src/api/error-codes.d.ts"] },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   { rules: { "@next/next/no-img-element": "off" } },
   ...architectureLimits(legacyLimits),

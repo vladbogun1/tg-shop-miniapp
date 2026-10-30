@@ -126,7 +126,7 @@ export function OrderCard({ order, onClick, dragging, headerAction, returning }:
             {units}
           </span>
         )}
-        <span className="text-[var(--text-muted)]" title={DELIVERY_LABEL[order.deliveryMethod]}>
+        <span className="text-[var(--text-muted)]" title={order.deliveryMethod ? DELIVERY_LABEL[order.deliveryMethod] : undefined}>
           {order.deliveryMethod === "NOVA_POSHTA" ? <Truck className="h-3.5 w-3.5" /> : <Store className="h-3.5 w-3.5" />}
         </span>
         {order.unreadCount > 0 && (

@@ -4676,7 +4676,8 @@ export interface components {
             retainedMinor: number;
             /** Format: date-time */
             returnReceivedAt: string | null;
-            returnStatus: string | null;
+            /** @enum {string|null} */
+            returnStatus: "IN_TRANSIT" | "RECEIVED" | null;
             returns: components["schemas"]["ReturnRecordDto"][];
             writeoffs: components["schemas"]["WriteoffDto"][];
         };
@@ -5605,11 +5606,13 @@ export interface components {
             discountPercent: number;
             imageUrl: string | null;
             key: string;
-            kind: string;
+            /** @enum {string} */
+            kind: "PRODUCT" | "DISCOUNT";
             /** Format: int64 */
             priceMinor: number;
             productId: string | null;
-            rarity: string;
+            /** @enum {string} */
+            rarity: "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD";
             title: string | null;
         };
         CaseItemRequest: {
@@ -6758,7 +6761,8 @@ export interface components {
             prepaymentMinor: number;
             /** Format: int64 */
             receivedMinor: number;
-            status: string;
+            /** @enum {string} */
+            status: "NEW" | "APPROVED" | "SHIPPED" | "DELIVERED" | "REJECTED";
             /** Format: int64 */
             totalMinor: number;
             trackingNumber: string | null;
@@ -7109,7 +7113,8 @@ export interface components {
             paymentOptionTitle: string;
             /** Format: int64 */
             receivedMinor: number;
-            returnStatus: string | null;
+            /** @enum {string|null} */
+            returnStatus: "IN_TRANSIT" | "RECEIVED" | null;
             /** Format: int32 */
             returnedUnits: number;
             /** Format: int32 */
@@ -7189,7 +7194,8 @@ export interface components {
             /** Format: int64 */
             refundedMinor: number;
             rejectReason: string | null;
-            rejectReasonCode: string | null;
+            /** @enum {string|null} */
+            rejectReasonCode: "NO_RESPONSE" | "CHANGED_MIND" | "OUT_OF_STOCK" | "DUPLICATE" | "NOT_PAID" | "PAYMENT_TIMEOUT" | "REFUSED_AT_POST" | "RETURNED" | "MERGED" | "OTHER" | null;
             /** Format: date-time */
             rejectedAt: string | null;
             /** Format: date-time */

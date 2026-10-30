@@ -40,7 +40,7 @@ export interface StatusTargetOrder {
   currency?: string;
   /** Units that would go back to stock on REJECTED + restock. */
   restockUnits?: number;
-  deliveryMethod?: "NOVA_POSHTA" | "PICKUP";
+  deliveryMethod?: "NOVA_POSHTA" | "PICKUP" | null;
   /** Current status — a SHIPPED order that is rejected may be a parcel coming back. */
   fromStatus?: OrderStatus;
   /** Money received so far / the prepayment of the order (for the «предоплата удержана» hint). */
