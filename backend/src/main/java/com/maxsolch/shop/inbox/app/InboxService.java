@@ -5,8 +5,8 @@ import com.maxsolch.shop.inbox.domain.InboxMark;
 import com.maxsolch.shop.inbox.infra.InboxStore;
 
 import com.maxsolch.shop.platform.time.ShopZone;
-import com.maxsolch.shop.analytics.metrics.AdminMetricsService;
-import com.maxsolch.shop.analytics.metrics.MetricsDtos.ReorderRow;
+import com.maxsolch.shop.analytics.app.AdminMetricsService;
+import com.maxsolch.shop.analytics.app.MetricsDtos.ReorderRow;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.inbox.app.InboxDtos.DismissRequest;

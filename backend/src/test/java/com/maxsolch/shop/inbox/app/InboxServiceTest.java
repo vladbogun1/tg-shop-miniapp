@@ -4,7 +4,7 @@ import com.maxsolch.shop.inbox.domain.InboxItemType;
 import com.maxsolch.shop.inbox.domain.InboxMark;
 import com.maxsolch.shop.inbox.infra.InboxStore;
 
-import com.maxsolch.shop.analytics.metrics.AdminMetricsService;
+import com.maxsolch.shop.analytics.app.AdminMetricsService;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.inbox.app.InboxDtos.DismissRequest;

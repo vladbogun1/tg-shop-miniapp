@@ -5,7 +5,7 @@ import com.maxsolch.shop.inbox.domain.InboxOrderRow;
 import com.maxsolch.shop.inbox.domain.InboxItemType;
 import com.maxsolch.shop.inbox.domain.InboxMark;
 
-import com.maxsolch.shop.analytics.metrics.MetricsDtos.ReorderRow;
+import com.maxsolch.shop.analytics.app.MetricsDtos.ReorderRow;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.inbox.app.InboxDtos.Group;

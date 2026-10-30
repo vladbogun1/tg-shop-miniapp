@@ -1,7 +1,7 @@
 package com.maxsolch.shop.analytics.api;
 
-import com.maxsolch.shop.analytics.ClientEventBatch;
-import com.maxsolch.shop.analytics.ClientEventService;
+import com.maxsolch.shop.analytics.app.ClientEventBatch;
+import com.maxsolch.shop.analytics.app.ClientEventService;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

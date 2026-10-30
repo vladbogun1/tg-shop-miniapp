@@ -1,0 +1,184 @@
+package com.maxsolch.shop.analytics.app;
+
+import com.maxsolch.shop.analytics.domain.MetricsFacts;
+import com.maxsolch.shop.analytics.domain.MetricsPeriod;
+import com.maxsolch.shop.analytics.domain.ChannelFilter;
+
+import com.maxsolch.shop.platform.settings.SettingsRegistry;
+import com.maxsolch.shop.platform.settings.SettingsService;
+import com.maxsolch.shop.analytics.app.AnalyticsReader;
+import com.maxsolch.shop.platform.time.ShopZone;
+import com.maxsolch.shop.analytics.domain.EventClassifier;
+import com.maxsolch.shop.analytics.app.MetricsDtos.ErrorRow;
+import com.maxsolch.shop.analytics.app.MetricsDtos.Reorder;
+import com.maxsolch.shop.analytics.app.MetricsDtos.ReorderRow;
+import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.order.domain.OrderStatus;
+import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Entry point of the metrics page tabs and the board's "Today" strip: loads the facts once and hands
+ * them to the pure calculators.
+ */
+@Service
+public class AdminMetricsService {
+
+    /** Allowed reorder horizons; anything else falls back to 30 days. */
+    static final List<Integer> COVER_DAYS = List.of(14, 30, 60, 90);
+
+    private final MetricsFactsLoader loader;
+    private final AnalyticsReader analytics;
+    private final ZoneId zone;
+    private final SettingsService settings;
+
+    public AdminMetricsService(MetricsFactsLoader loader, AnalyticsReader analytics, AppProperties props,
+                               SettingsService settings) {
+        this.loader = loader;
+        this.analytics = analytics;
+        this.zone = ShopZone.of(props.getTimezone()).zone();
+        this.settings = settings;
+    }
+
+    public MetricsPeriod period(String token, String from, String to) {
+        return MetricsPeriod.parse(token, from, to, zone, Instant.now());
+    }
+
+    public MetricsDtos.Overview overview(MetricsPeriod period, ChannelFilter channel) {
+        MetricsFacts facts = loader.load();
+        AnalyticsReader.Window window = analytics.read(period.from(), period.to());
+        Map<String, Long> visitors = new HashMap<>();
+        // Conversion "buyers / visitors" is only honest when the journal covers the whole period:
+        // buyers come from orders (complete), visitors only from the days events were recorded.
+        boolean covered = window.dataSince() != null
+                && !window.dataSince().atStartOfDay(zone).toInstant().isAfter(period.from());
+        if (covered) {
+            EventClassifier.stagesByVisitor(window.visitors()).keySet()
+                    .forEach(k -> visitors.merge(k.substring(0, k.indexOf('|')), 1L, Long::sum));
+        }
+        return new OverviewCalculator(zone).compute(facts, period, channel, visitors);
+    }
+
+    public MetricsDtos.Stock stock(MetricsPeriod period, ChannelFilter channel, int deadDays, int coverDays) {
+        MetricsFacts facts = loader.load();
+        Map<String, ReorderCalculator.Interest> interest = interest30(facts.now());
+        int lowStockDays = settings.getInt(SettingsRegistry.METRICS_LOW_STOCK_DAYS);
+        Reorder reorder = new ReorderCalculator(lowStockDays).compute(facts, interest, normaliseCover(coverDays));
+        int dead = StockCalculator.DEAD_DAYS.contains(deadDays) ? deadDays
+                : settings.getInt(SettingsRegistry.METRICS_DEAD_STOCK_DAYS);
+        return new StockCalculator().compute(facts, period, channel, dead, lowStockDays, interest, reorder);
+    }
+
+    public MetricsDtos.Customers customers(MetricsPeriod period, ChannelFilter channel) {
+        return new CustomerCalculator(zone).compute(loader.load(), period, channel);
+    }
+
+    public MetricsDtos.Funnel funnel(MetricsPeriod period, ChannelFilter channel) {
+        AnalyticsReader.Window window = analytics.read(period.from(), period.to());
+        return new FunnelCalculator(zone).compute(loader.load(), period, channel, window.visitors(),
+                window.products(), window.dataSince());
+    }
+
+    public MetricsDtos.Operations operations(MetricsPeriod period, ChannelFilter channel) {
+        List<ErrorRow> errors = analytics.topErrors(Instant.now().minus(Duration.ofDays(7)), 10).stream()
+                .map(r -> new ErrorRow((String) r[0], (Long) r[1], (Long) r[2]))
+                .toList();
+        return new OperationsCalculator().compute(loader.load(), period, channel,
+                loader.hasOrderColumn("reject_reason_code"), errors);
+    }
+
+    public MetricsDtos.Forecast forecast(ChannelFilter channel) {
+        return new ForecastCalculator(zone).compute(loader.load(), channel);
+    }
+
+    public MetricsDtos.Today today() {
+        MetricsFacts facts = loader.load();
+        Instant now = facts.now();
+        LocalDate day = LocalDate.ofInstant(now, zone);
+        Instant todayStart = day.atStartOfDay(zone).toInstant();
+        Instant yStart = day.minusDays(1).atStartOfDay(zone).toInstant();
+        OverviewCalculator.Totals today = OverviewCalculator.totals(facts.orders(), ChannelFilter.ALL, todayStart, now);
+        OverviewCalculator.Totals yesterday = OverviewCalculator.totals(facts.orders(), ChannelFilter.ALL, yStart, todayStart);
+        OverviewCalculator.Totals ySameTime = OverviewCalculator.totals(facts.orders(), ChannelFilter.ALL, yStart,
+                yStart.plus(Duration.between(todayStart, now)));
+
+        long toApprove = 0;
+        long toShip = 0;
+        long awaiting = 0;
+        long unpaid = 0;
+        long cod = 0;
+        for (MetricsFacts.OrderFact o : facts.orders()) {
+            if (o.awaitingPaymentNew() || o.status() == OrderStatus.APPROVED && o.awaitingPayment()) {
+                unpaid++; // still waiting for the online payment: neither to approve nor to ship
+            } else if (o.status() == OrderStatus.NEW) {
+                toApprove++;
+            } else if (readyToShip(o)) {
+                toShip++;
+            } else if (o.status() == OrderStatus.SHIPPED && o.codMinor() > 0) {
+                cod += o.codMinor();
+            }
+            if (OverviewCalculator.awaitingConfirmation(o)) {
+                awaiting++;
+            }
+        }
+
+        List<ReorderRow> soon = runningOut(facts, interest30(now));
+        MetricsDtos.MonthForecast month = new ForecastCalculator(zone).compute(facts, ChannelFilter.ALL).month();
+        return new MetricsDtos.Today(toApprove, toShip, awaiting, unpaid,
+                today.sold(), today.orders(), yesterday.sold(), ySameTime.sold(),
+                today.received(), yesterday.received(), cod, soon.size(),
+                soon.size() > 3 ? soon.subList(0, 3) : soon, month);
+    }
+
+    /**
+     * «К отправке»: approved and not an online order still waiting for its payment (the full amount
+     * or the prepayment) — an approved but unpaid online order is not a sale and is not shipped yet.
+     */
+    static boolean readyToShip(MetricsFacts.OrderFact o) {
+        return o.status() == OrderStatus.APPROVED && !o.awaitingPayment();
+    }
+
+    /**
+     * "Заканчиваются": selling products/variants whose stock lasts at most {@code metrics.lowStockDays}
+     * at the current pace — the same rule as the Today strip and «Что дозаказать». For the admin
+     * inbox: interest (views / cart adds) only decorates rows and never selects them, so the event
+     * journal is not read here.
+     */
+    public List<ReorderRow> runningOut() {
+        return runningOut(loader.load(), Map.of());
+    }
+
+    private List<ReorderRow> runningOut(MetricsFacts facts, Map<String, ReorderCalculator.Interest> interest) {
+        int lowStockDays = settings.getInt(SettingsRegistry.METRICS_LOW_STOCK_DAYS);
+        Reorder reorder = new ReorderCalculator(lowStockDays).compute(facts, interest, 30);
+        return reorder.rows().stream()
+                .filter(r -> r.daysToZero() != null && r.daysToZero() <= lowStockDays)
+                .toList();
+    }
+
+    /** Views / unique viewers / adds to cart per product over the last 30 days, all channels. */
+    Map<String, ReorderCalculator.Interest> interest30(Instant now) {
+        AnalyticsReader.Window w = analytics.read(now.minus(Duration.ofDays(30)), now);
+        Map<String, long[]> acc = new HashMap<>();
+        for (EventClassifier.ProductDay p : w.products()) {
+            long[] a = acc.computeIfAbsent(p.productId(), k -> new long[3]);
+            a[0] += p.views();
+            a[1] += p.viewers();
+            a[2] += p.cartAdds();
+        }
+        Map<String, ReorderCalculator.Interest> out = new HashMap<>();
+        acc.forEach((k, a) -> out.put(k, new ReorderCalculator.Interest(a[0], a[1], a[2])));
+        return out;
+    }
+
+    static int normaliseCover(int days) {
+        return COVER_DAYS.contains(days) ? days : 30;
+    }
+}

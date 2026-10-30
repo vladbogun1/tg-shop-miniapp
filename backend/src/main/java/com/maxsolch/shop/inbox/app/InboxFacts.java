@@ -4,7 +4,7 @@ import com.maxsolch.shop.inbox.domain.InboxChatRow;
 import com.maxsolch.shop.inbox.domain.InboxOrderRow;
 import com.maxsolch.shop.inbox.infra.InboxStore;
 
-import com.maxsolch.shop.analytics.metrics.MetricsDtos.ReorderRow;
+import com.maxsolch.shop.analytics.app.MetricsDtos.ReorderRow;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 

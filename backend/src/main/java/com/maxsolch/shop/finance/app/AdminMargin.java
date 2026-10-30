@@ -1,6 +1,6 @@
 package com.maxsolch.shop.finance.app;
 
-import com.maxsolch.shop.analytics.metrics.AdminMetricsService;
+import com.maxsolch.shop.analytics.app.AdminMetricsService;
 import com.maxsolch.shop.platform.security.AdminAccess;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.procurement.app.CostingDtos.BatchSalesDto;
