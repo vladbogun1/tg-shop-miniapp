@@ -19,7 +19,7 @@
   и показывает первые нарушения. Число уменьшилось — тест проходит и пишет подсказку «baseline можно понизить».
 - Правила (id в колонках сводки): L1 api не лезет в infra; L2 app/domain не знают api; L3 domain без web/Jdbc/HTTP/стереотипов Spring;
   L4 infra знает только domain; M1 чужой модуль — только через его app; M2 нет зависимостей против направления модулей (раздел 2.2);
-  P1 platform не знает бизнес-модулей; E1 ошибки — `DomainException` с `ErrorCode`; T1 после коммита — только событие
+  P1 platform не знает бизнес-модулей; E1 ошибки — `DomainException` с `ErrorCode`; E2 причина ошибки — только константа enum (класс/лямбда, реализующие `ErrorCode`, вне `platform.error` запрещены; `ErrorCode.of("...")` удалён), текст — в бандлах, их полноту проверяет `ErrorCatalogTest`; T1 после коммита — только событие
   (`DomainEvents` + `@OnCommitted`); T2 `@Transactional` только на публичных методах app; A1 `CurrentActor` вместо `SecurityUtil`;
   A2 контроллеры не пишут аудит; A3 права аннотациями; N1 Telegram/push только из `notification` и `*Notifier`; K1 нет замков в памяти;
   C1 время через `Clock`/`ShopZone`; V1 нет `@Value`; V2 `@ConfigurationProperties` с `@Validated`; CA кэш только Spring Cache;

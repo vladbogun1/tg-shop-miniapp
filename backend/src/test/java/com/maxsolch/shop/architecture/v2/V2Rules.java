@@ -39,6 +39,7 @@ final class V2Rules {
         RULES.put("M2", "no dependency against the module direction (lower modules do not know upper ones)");
         RULES.put("P1", "platform knows no business module");
         RULES.put("E1", "business errors are DomainException with an ErrorCode (no other RuntimeException subclass, no ResponseStatusException)");
+        RULES.put("E2", "an error reason is an enum constant (no class or lambda implementing ErrorCode outside platform.error, no ErrorCode built from a string)");
         RULES.put("T1", "after commit only through domain events (no TransactionSynchronizationManager)");
         RULES.put("T2", "@Transactional only on public methods of app (not api, domain, infra)");
         RULES.put("A1", "current actor through CurrentActor (SecurityContextHolder only in platform.web and platform.security)");
@@ -222,6 +223,10 @@ final class V2Rules {
 
     // ---- "one way to do it" rules ---------------------------------------------------------------------------
 
+    private boolean inPlatformError(JavaClass c) {
+        return c.getPackageName().equals(root + ".platform.error");
+    }
+
     private void practices(JavaClass c, Place from, String origin, List<Violation> out) {
         boolean inPlatform = from.module().equals(Placement.PLATFORM);
         String pkg = c.getPackageName();
@@ -388,6 +393,11 @@ final class V2Rules {
         if (c.isAssignableTo("java.lang.RuntimeException") && !c.getName().equals("java.lang.RuntimeException")
                 && !c.isAssignableTo(root + ".platform.error.DomainException")) {
             out.add(new Violation("E1", from.module(), origin + " extends RuntimeException but not DomainException"));
+        }
+        // E2: reasons are enum constants whose text lives in the bundles; ErrorCode.of("...") no longer exists
+        if (!inPlatformError(c) && c.isAssignableTo(root + ".platform.error.ErrorCode") && !c.isEnum()
+                && !c.getName().equals(root + ".platform.error.ErrorCode")) {
+            out.add(new Violation("E2", from.module(), origin + " implements ErrorCode but is not an enum"));
         }
         // scheduled jobs
         for (JavaMethod m : c.getMethods()) {

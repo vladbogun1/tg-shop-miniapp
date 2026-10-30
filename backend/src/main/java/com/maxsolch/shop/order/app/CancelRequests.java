@@ -83,7 +83,9 @@ public class CancelRequests {
             throw new DomainException.BadRequest(OrderError.CANCEL_REASON_TOO_LONG, 500);
         }
         if (order.getCancelRequestStatus() != null) {
-            throw (CancelRequestStatus.DECLINED.name().equals(order.getCancelRequestStatus()) ? new DomainException.BadRequest(OrderError.CANCEL_REQUEST_DECLINED_BEFORE) : new DomainException.BadRequest(OrderError.CANCEL_REQUEST_EXISTS));
+            throw (CancelRequestStatus.DECLINED.name().equals(order.getCancelRequestStatus())
+                    ? new DomainException.BadRequest(OrderError.CANCEL_REQUEST_DECLINED_BEFORE)
+                    : new DomainException.BadRequest(OrderError.CANCEL_REQUEST_EXISTS));
         }
         if (!OrderTransitions.isOpen(order)) {
             throw new DomainException.BadRequest(OrderError.CANNOT_CANCEL);

@@ -77,6 +77,11 @@ class V2RulesTest {
     }
 
     @Test
+    void errorReasonsAreEnumConstantsOnly() {
+        assertThat(count("E2", "order")).isEqualTo(1);
+    }
+
+    @Test
     void wallClockIncludesMillisAndDateInEveryClass() {
         assertThat(count("C1", "order")).isEqualTo(2);
     }

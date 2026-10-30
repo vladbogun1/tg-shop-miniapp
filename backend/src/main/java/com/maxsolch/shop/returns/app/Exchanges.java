@@ -96,7 +96,9 @@ public class Exchanges {
                                 boolean notifyCustomer, String note, String adminName) {
         Order order = orders.lockForUpdate(orderId);
         if (order.getStatus() != OrderStatus.DELIVERED) {
-            throw (order.getStatus() == OrderStatus.SHIPPED ? new DomainException.BadRequest(ReturnsError.EXCHANGE_NOT_DELIVERED) : new DomainException.BadRequest(ReturnsError.EXCHANGE_NEEDS_DELIVERED));
+            throw (order.getStatus() == OrderStatus.SHIPPED
+                    ? new DomainException.BadRequest(ReturnsError.EXCHANGE_NOT_DELIVERED)
+                    : new DomainException.BadRequest(ReturnsError.EXCHANGE_NEEDS_DELIVERED));
         }
         OrderStatus to = target == null ? OrderStatus.NEW : target;
         if (!isTarget(to)) {

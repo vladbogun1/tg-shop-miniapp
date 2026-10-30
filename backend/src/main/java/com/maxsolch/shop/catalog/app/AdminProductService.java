@@ -293,7 +293,11 @@ public class AdminProductService {
     public static void checkPublishable(Product p, boolean force) {
         List<String> missing = missingForPublish(p);
         if (!missing.isEmpty()) {
-            throw (missing.size() > 1 ? new DomainException.Conflict(CatalogError.NOT_PUBLISHABLE_NO_PRICE_NO_CATEGORY).withDetails(Map.of("missing", missing)) : missing.contains("price") ? new DomainException.Conflict(CatalogError.NOT_PUBLISHABLE_NO_PRICE).withDetails(Map.of("missing", missing)) : new DomainException.Conflict(CatalogError.NOT_PUBLISHABLE_NO_CATEGORY).withDetails(Map.of("missing", missing)));
+            throw (missing.size() > 1
+                    ? new DomainException.Conflict(CatalogError.NOT_PUBLISHABLE_NO_PRICE_NO_CATEGORY).withDetails(Map.of("missing", missing))
+                    : missing.contains("price")
+                            ? new DomainException.Conflict(CatalogError.NOT_PUBLISHABLE_NO_PRICE).withDetails(Map.of("missing", missing))
+                            : new DomainException.Conflict(CatalogError.NOT_PUBLISHABLE_NO_CATEGORY).withDetails(Map.of("missing", missing)));
         }
         if (!force && (p.getCardStatus() == null || p.getCardStatus() == CardStatus.DRAFT)) {
             throw new DomainException.Conflict(CatalogError.CARD_NOT_READY);

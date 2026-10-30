@@ -95,7 +95,9 @@ public class Returns {
         }
         List<ReturnLine> safeLines = lines == null ? List.of() : lines;
         if ((s == OrderStatus.REJECTED || overpaidInWork) && safeLines.stream().anyMatch(l -> l.quantity() > 0)) {
-            throw (s == OrderStatus.REJECTED ? new DomainException.BadRequest(ReturnsError.REJECTED_MONEY_ONLY) : new DomainException.BadRequest(ReturnsError.NOT_SHIPPED_OVERPAYMENT_ONLY));
+            throw (s == OrderStatus.REJECTED
+                    ? new DomainException.BadRequest(ReturnsError.REJECTED_MONEY_ONLY)
+                    : new DomainException.BadRequest(ReturnsError.NOT_SHIPPED_OVERPAYMENT_ONLY));
         }
         if (overpaidInWork && refundMinor > OrderMoney.overpaidMinor(order)) {
             throw new DomainException.BadRequest(ReturnsError.PRE_SHIPMENT_OVERPAYMENT_LIMIT, MoneyFormat.uah( OrderMoney.overpaidMinor(order)));

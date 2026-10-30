@@ -317,7 +317,9 @@ public class Order extends OrderHousekeeping {
         }
         requireNoPendingCancelRequest();
         if (!allowUnpaid && OrderMoney.onlinePaymentMissing(this)) {
-            throw (prepaymentMinor > 0 ? new DomainException.BadRequest(OrderError.SHIP_PREPAYMENT_MISSING, String.valueOf(shortId()), MoneyFormat.uah(OrderMoney.amountDueMinor(this))) : new DomainException.BadRequest(OrderError.SHIP_ONLINE_PAYMENT_MISSING, String.valueOf(shortId()), MoneyFormat.uah(OrderMoney.amountDueMinor(this))));
+            throw (prepaymentMinor > 0
+                    ? new DomainException.BadRequest(OrderError.SHIP_PREPAYMENT_MISSING, String.valueOf(shortId()), MoneyFormat.uah(OrderMoney.amountDueMinor(this)))
+                    : new DomainException.BadRequest(OrderError.SHIP_ONLINE_PAYMENT_MISSING, String.valueOf(shortId()), MoneyFormat.uah(OrderMoney.amountDueMinor(this))));
         }
         status = OrderStatus.SHIPPED;
         shippedAt = now;

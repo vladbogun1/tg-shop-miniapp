@@ -34,7 +34,9 @@ public final class ReturnPlanRules {
         }
         long pickupValue = s == OrderStatus.SHIPPED ? PartialPickup.refusedValueMinor(order, lines, false) : 0;
         if ((s == OrderStatus.REJECTED || overpaidInWork) && !lines.isEmpty()) {
-            throw (s == OrderStatus.REJECTED ? new DomainException.BadRequest(ReturnsError.REJECTED_MONEY_ONLY_PARCEL) : new DomainException.BadRequest(ReturnsError.NOT_SHIPPED_OVERPAYMENT_ONLY));
+            throw (s == OrderStatus.REJECTED
+                    ? new DomainException.BadRequest(ReturnsError.REJECTED_MONEY_ONLY_PARCEL)
+                    : new DomainException.BadRequest(ReturnsError.NOT_SHIPPED_OVERPAYMENT_ONLY));
         }
         long manual = manualTotal(plan.activeRefunds());
         if (plan.retainMinor() < 0 || plan.monoRefundMinor() < 0) {
@@ -44,7 +46,9 @@ public final class ReturnPlanRules {
         long refundable = Math.max(0, OrderMoney.refundableMinor(order) - retained);
         long mono = monoSent ? 0 : plan.monoRefundMinor();
         if (manual + mono + plan.retainMinor() > refundable) {
-            throw (retained > 0 ? new DomainException.BadRequest(ReturnsError.REFUND_RETAIN_EXCEEDS_NET, MoneyFormat.uah(retained), MoneyFormat.uah(refundable)) : new DomainException.BadRequest(ReturnsError.REFUND_RETAIN_EXCEEDS, MoneyFormat.uah(refundable)));
+            throw (retained > 0
+                    ? new DomainException.BadRequest(ReturnsError.REFUND_RETAIN_EXCEEDS_NET, MoneyFormat.uah(retained), MoneyFormat.uah(refundable))
+                    : new DomainException.BadRequest(ReturnsError.REFUND_RETAIN_EXCEEDS, MoneyFormat.uah(refundable)));
         }
         if (overpaidInWork) {
             long over = OrderMoney.overpaidMinor(order);
@@ -58,7 +62,9 @@ public final class ReturnPlanRules {
             long over = Math.max(0, OrderMoney.netReceivedMinor(order)
                     - (OrderMoney.collectableMinor(order) - pickupValue));
             if (manual + mono > over) {
-                throw (over == 0 ? new DomainException.BadRequest(ReturnsError.PARCEL_AT_POST_NOTHING_TO_RETURN) : new DomainException.BadRequest(ReturnsError.PARCEL_AT_POST_OVERPAYMENT_ONLY, MoneyFormat.uah(over)));
+                throw (over == 0
+                        ? new DomainException.BadRequest(ReturnsError.PARCEL_AT_POST_NOTHING_TO_RETURN)
+                        : new DomainException.BadRequest(ReturnsError.PARCEL_AT_POST_OVERPAYMENT_ONLY, MoneyFormat.uah(over)));
             }
         }
         if (lines.isEmpty() && manual == 0 && plan.monoRefundMinor() == 0 && plan.retainMinor() == 0) {

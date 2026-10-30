@@ -22,6 +22,14 @@ public class BadPractices {
     public static class MyFailure extends RuntimeException {
     }
 
+    /** An error reason that is not an enum constant: E2. */
+    public static class AdHocError implements com.maxsolch.shopfixture.platform.error.ErrorCode {
+        @Override
+        public String code() {
+            return "AD_HOC";
+        }
+    }
+
     /** A setter of a guarded entity called from app: O2. */
     public void overwriteTotal(com.maxsolch.shopfixture.order.domain.Order order) {
         order.setTotalMinor(1);
