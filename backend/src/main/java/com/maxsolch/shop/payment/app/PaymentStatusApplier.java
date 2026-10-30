@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.Optional;
 
 import static com.maxsolch.shop.platform.util.Texts.cut;
@@ -75,7 +77,7 @@ public class PaymentStatusApplier {
             return false;
         }
         PaymentInvoice inv = found.get();
-        Instant modified = OnlinePaymentService.parseDate(st.modifiedDate());
+        Instant modified = parseDate(st.modifiedDate());
         if (modified != null && inv.getProviderModifiedAt() != null && modified.isBefore(inv.getProviderModifiedAt())) {
             log.info("monobank: stale {} for invoice {} ignored", st.status(), st.invoiceId());
             return true;
@@ -95,6 +97,18 @@ public class PaymentStatusApplier {
             inv.noteProviderModified(modified);
         }
         String before = inv.getStatus();
+        noteState(inv, st);
+        applyOutcome(inv, st, before);
+        bookRefund(inv, st);
+        if (inv.getRefundPendingUntil() != null && !hasPendingCancel(st)) {
+            inv.clearRefundPending();
+        }
+        invoices.save(inv);
+        return true;
+    }
+
+    /** The bank's state copied onto the invoice: status, failure, final amount, card. */
+    private static void noteState(PaymentInvoice inv, MonobankInvoiceStatus st) {
         // A later "created/processing" must never overwrite a final state of the same timestamp.
         inv.moveTo(st.status());
         inv.noteFailure(cut(st.failureReason(), 512), cut(st.errCode(), 16));
@@ -106,7 +120,10 @@ public class PaymentStatusApplier {
             inv.noteCard(cut(pi.maskedPan(), 32), cut(pi.paymentMethod(), 16), cut(pi.paymentSystem(), 16),
                     cut(pi.rrn(), 64), cut(pi.approvalCode(), 32), pi.fee());
         }
+    }
 
+    /** A success credited to the order exactly once; a new failure or expiry journalled. */
+    private void applyOutcome(PaymentInvoice inv, MonobankInvoiceStatus st, String before) {
         boolean paidState = PaymentInvoice.SUCCESS.equals(st.status()) || PaymentInvoice.REVERSED.equals(st.status());
         if (paidState && inv.getAppliedAt() == null) {
             inv.markApplied(clock.instant());
@@ -129,6 +146,10 @@ public class PaymentStatusApplier {
             journal(payment("INVOICE_EXPIRED", inv)
                     .text("Ссылка на оплату истекла неоплаченной").skipped("EXPIRED"));
         }
+    }
+
+    /** Refunds of a credited invoice booked from what the bank reports as gone back to the card. */
+    private void bookRefund(PaymentInvoice inv, MonobankInvoiceStatus st) {
         if (inv.getAppliedAt() != null) {
             long refundedNow = refundedFrom(st, inv);
             long delta = refundedNow - inv.getRefundedMinor();
@@ -141,11 +162,22 @@ public class PaymentStatusApplier {
                         .detail("refundMinor", delta).detail("refundedTotalMinor", refundedNow));
             }
         }
-        if (inv.getRefundPendingUntil() != null && !hasPendingCancel(st)) {
-            inv.clearRefundPending();
+    }
+
+    /** monobank's {@code modifiedDate}: an offset date-time or an instant; null when absent or unreadable. */
+    static Instant parseDate(String s) {
+        if (s == null || s.isBlank()) {
+            return null;
         }
-        invoices.save(inv);
-        return true;
+        try {
+            return OffsetDateTime.parse(s).toInstant();
+        } catch (DateTimeParseException e) {
+            try {
+                return Instant.parse(s);
+            } catch (DateTimeParseException e2) {
+                return null;
+            }
+        }
     }
 
     /** How much of this invoice has gone back to the card. */

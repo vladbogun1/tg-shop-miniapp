@@ -12,7 +12,6 @@ import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.app.OrderLookup;
@@ -27,12 +26,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
-import static com.maxsolch.shop.platform.util.Texts.cut;
 
 /**
  * Online payment of orders through monobank acquiring.
@@ -68,7 +65,7 @@ public class OnlinePaymentService {
     /** «Журнал → Бот и сайт». */
     private final ActivityLog activity;
     private final Clock clock;
-    private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
+    private final PaymentReturnUrls urls;
     private static final String START_LOCK = "payment-start:";
     private static final java.time.Duration START_LOCK_TTL = java.time.Duration.ofMinutes(2);
     private static final java.time.Duration START_LOCK_WAIT = java.time.Duration.ofSeconds(30);
@@ -83,6 +80,7 @@ public class OnlinePaymentService {
         this.invoices = invoices;
         this.orders = orders;
         this.props = props;
+        this.urls = new PaymentReturnUrls(props);
         this.messages = messages;
         this.tx = tx;
         this.applier = applier;
@@ -162,20 +160,9 @@ public class OnlinePaymentService {
             throw new DomainException.Conflict(PaymentError.PAYMENT_EXPIRED);
         }
 
-        List<PaymentInvoice> existing = invoices.findByOrderIdOrderByCreatedAtDesc(orderId);
-        for (PaymentInvoice inv : existing) {
-            if (PaymentInvoice.PROCESSING.equals(inv.getStatus()) || PaymentInvoice.HOLD.equals(inv.getStatus())) {
-                throw new DomainException.Conflict(PaymentError.PAYMENT_IN_PROGRESS);
-            }
-            if (inv.isPayable(now) && inv.getAmountMinor() == amount && display.equals(inv.getDisplayType())) {
-                return new StartedPayment(inv.getExternalId(), inv.getPageUrl(), inv.getAmountMinor(), inv.getExpiresAt());
-            }
-        }
-        // Outdated pages (other amount / about to expire) are closed so nobody pays twice.
-        for (PaymentInvoice inv : existing) {
-            if (PaymentInvoice.CREATED.equals(inv.getStatus())) {
-                removeQuietly(inv);
-            }
+        Optional<StartedPayment> live = reuseLiveInvoice(orderId, amount, display, now);
+        if (live.isPresent()) {
+            return live.get();
         }
 
         Instant expiresAt = now.plus(Duration.ofMinutes(Math.max(5, props.getPayment().getInvoiceTtlMinutes())));
@@ -185,32 +172,18 @@ public class OnlinePaymentService {
         }
         long validity = Math.max(60, Duration.between(now, expiresAt).toSeconds());
         String shortId = key.substring(0, 8);
-        List<MonobankGateway.BasketItem> basket = basket(order, amount, shortId, taxCodes());
-        MonobankGateway.CreatedInvoice created;
-        try {
-            created = mono.createInvoice(new MonobankGateway.CreateInvoice(
-                    amount,
-                    key,
-                    "Оплата замовлення #" + shortId + " — ChiSetup",
-                    basket,
-                    redirectUrl(order, returnTo, locale, embedded),
-                    webhookUrl(),
-                    validity,
-                    embedded));
-        } catch (MonobankGateway.MonobankException e) {
-            log.warn("monobank invoice/create failed for order {}: {}", key, e.getMessage());
-            journal(ActivityLog.Entry.of(ActivityLog.PAYMENT,
-                            "INVOICE_CREATE_FAILED").order(orderId)
-                    .text("monobank не создал счёт на " + MoneyFormat.amount(amount) + " грн")
-                    .detail("amountMinor", amount).detail("returnTo", returnTo)
-                    .failed("MONOBANK_ERROR", e.getMessage()));
-            throw new DomainException.Conflict(PaymentError.PAYMENT_FAILED);
-        }
-        if (created.invoiceId() == null || created.pageUrl() == null) {
-            throw new DomainException.Conflict(PaymentError.PAYMENT_FAILED);
-        }
+        List<MonobankGateway.BasketItem> basket = PaymentBasket.of(order, amount, shortId, taxCodes());
+        MonobankGateway.CreatedInvoice created = createInvoice(new MonobankGateway.CreateInvoice(
+                amount,
+                key,
+                "Оплата замовлення #" + shortId + " — ChiSetup",
+                basket,
+                urls.redirectUrl(order, returnTo, locale, embedded),
+                urls.webhookUrl(),
+                validity,
+                embedded), orderId, returnTo);
         PaymentInvoice inv = PaymentInvoice.open(orderId, created.invoiceId(), amount, created.pageUrl(), display,
-                toJson(basket), now.plusSeconds(validity));
+                PaymentBasket.toJson(basket), now.plusSeconds(validity));
         invoices.save(inv);
         log.info("monobank invoice {} for order {}: {} kop", created.invoiceId(), key, amount);
         journal(ActivityLog.Entry.of(ActivityLog.PAYMENT,
@@ -228,43 +201,48 @@ public class OnlinePaymentService {
     }
 
     /**
-     * The basket shown on the payment page. Itemised when the lines add up to exactly the amount
-     * (full payment, no discount); otherwise one line "оплата замовлення" — monobank (and a fiscal
-     * receipt) needs the lines to sum to the invoice amount.
+     * A live page of the order for the same amount and display, if there is one; otherwise the outdated pages (other
+     * amount / about to expire) are closed so nobody pays twice. A payment the bank is processing blocks a new one.
      */
-    static List<MonobankGateway.BasketItem> basket(Order order, long amount, String shortId) {
-        return basket(order, amount, shortId, List.of());
-    }
-
-    static List<MonobankGateway.BasketItem> basket(Order order, long amount, String shortId, List<Integer> tax) {
-        List<MonobankGateway.BasketItem> lines = new ArrayList<>();
-        long sum = 0;
-        for (OrderItem it : order.getItems()) {
-            if (it.getPriceMinorSnapshot() <= 0 || it.getQuantity() <= 0) {
-                continue; // gifts
+    private Optional<StartedPayment> reuseLiveInvoice(byte[] orderId, long amount, String display, Instant now) {
+        List<PaymentInvoice> existing = invoices.findByOrderIdOrderByCreatedAtDesc(orderId);
+        for (PaymentInvoice inv : existing) {
+            if (PaymentInvoice.PROCESSING.equals(inv.getStatus()) || PaymentInvoice.HOLD.equals(inv.getStatus())) {
+                throw new DomainException.Conflict(PaymentError.PAYMENT_IN_PROGRESS);
             }
-            String name = it.getTitleSnapshot()
-                    + (it.getVariantNameSnapshot() == null || it.getVariantNameSnapshot().isBlank()
-                    ? "" : " (" + it.getVariantNameSnapshot() + ")");
-            lines.add(new MonobankGateway.BasketItem(cut(name, 200), it.getQuantity(), it.getPriceMinorSnapshot(),
-                    UuidUtil.toString(it.getProductId()), tax));
-            sum += it.getPriceMinorSnapshot() * it.getQuantity();
+            if (inv.isPayable(now) && inv.getAmountMinor() == amount && display.equals(inv.getDisplayType())) {
+                return Optional.of(new StartedPayment(inv.getExternalId(), inv.getPageUrl(), inv.getAmountMinor(),
+                        inv.getExpiresAt()));
+            }
         }
-        if (sum == amount && !lines.isEmpty()) {
-            return lines;
+        for (PaymentInvoice inv : existing) {
+            if (PaymentInvoice.CREATED.equals(inv.getStatus())) {
+                removeQuietly(inv);
+            }
         }
-        String title = amount < order.getTotalMinor() && order.getPrepaymentMinor() > 0
-                ? "Передоплата за замовлення #" + shortId
-                : "Оплата замовлення #" + shortId;
-        return List.of(new MonobankGateway.BasketItem(title, 1, amount, "order-" + shortId, tax));
+        return Optional.empty();
     }
 
-    private static String toJson(List<MonobankGateway.BasketItem> basket) {
+    /** monobank asked for the invoice; a refusal is journalled and turns into PAYMENT_FAILED. */
+    private MonobankGateway.CreatedInvoice createInvoice(MonobankGateway.CreateInvoice request, byte[] orderId,
+                                                         ReturnTo returnTo) {
+        long amount = request.amount();
+        MonobankGateway.CreatedInvoice created;
         try {
-            return JSON.writeValueAsString(basket);
-        } catch (Exception e) {
-            return null;
+            created = mono.createInvoice(request);
+        } catch (MonobankGateway.MonobankException e) {
+            log.warn("monobank invoice/create failed for order {}: {}", request.reference(), e.getMessage());
+            journal(ActivityLog.Entry.of(ActivityLog.PAYMENT,
+                            "INVOICE_CREATE_FAILED").order(orderId)
+                    .text("monobank не создал счёт на " + MoneyFormat.amount(amount) + " грн")
+                    .detail("amountMinor", amount).detail("returnTo", returnTo)
+                    .failed("MONOBANK_ERROR", e.getMessage()));
+            throw new DomainException.Conflict(PaymentError.PAYMENT_FAILED);
         }
+        if (created.invoiceId() == null || created.pageUrl() == null) {
+            throw new DomainException.Conflict(PaymentError.PAYMENT_FAILED);
+        }
+        return created;
     }
 
     /**
@@ -274,8 +252,7 @@ public class OnlinePaymentService {
     List<MonobankGateway.BasketItem> refundItems(PaymentInvoice inv, long amount, boolean full) {
         if (full && inv.getBasketJson() != null) {
             try {
-                List<MonobankGateway.BasketItem> sold = JSON.readValue(inv.getBasketJson(),
-                        new com.fasterxml.jackson.core.type.TypeReference<List<MonobankGateway.BasketItem>>() { });
+                List<MonobankGateway.BasketItem> sold = PaymentBasket.read(inv.getBasketJson());
                 if (!sold.isEmpty()) {
                     return sold;
                 }
@@ -286,33 +263,6 @@ public class OnlinePaymentService {
         String shortId = UuidUtil.toString(inv.getOrderId()).substring(0, 8);
         return List.of(new MonobankGateway.BasketItem("Повернення за замовлення #" + shortId, 1, amount,
                 "order-" + shortId, taxCodes()));
-    }
-
-    /**
-     * Where monobank sends the browser after paying. Embedded (iframe): a tiny page that only tells
-     * the parent window "done" (postMessage) — the parent polls our API for the real status.
-     */
-    private String redirectUrl(Order order, ReturnTo returnTo, String locale, boolean embedded) {
-        String id = UuidUtil.toString(order.getId());
-        String lang = locale == null || locale.isBlank() ? "uk" : locale;
-        String prefix = "uk".equals(lang) ? "" : "/" + lang;
-        String embed = embedded ? "&embedded=1" : "";
-        if (returnTo == ReturnTo.MINIAPP) {
-            // Opened from the Mini App in a browser: a small page that sends them back to Telegram.
-            return trimSlash(props.getWebappBaseUrl()) + "/pay-return?order=" + id + "&lang=" + lang + embed;
-        }
-        if (embedded) {
-            return trimSlash(props.getSite().getBaseUrl()) + prefix + "/pay-return?order=" + id + embed;
-        }
-        return trimSlash(props.getSite().getBaseUrl()) + prefix + "/account/orders/" + id + "?payment=return";
-    }
-
-    private String webhookUrl() {
-        String configured = props.getPayment().getMonobank().getWebhookUrl();
-        if (configured != null && !configured.isBlank()) {
-            return configured;
-        }
-        return trimSlash(props.getSite().getBaseUrl()) + "/api/payments/mono/webhook";
     }
 
     // ------------------------------------------------------------------ status
@@ -428,29 +378,5 @@ public class OnlinePaymentService {
     public boolean hasPaymentInFlight(byte[] orderId) {
         return invoices.findByOrderIdOrderByCreatedAtDesc(orderId).stream()
                 .anyMatch(i -> PaymentInvoice.PROCESSING.equals(i.getStatus()) || PaymentInvoice.HOLD.equals(i.getStatus()));
-    }
-
-    // ------------------------------------------------------------------ helpers
-
-    static Instant parseDate(String s) {
-        if (s == null || s.isBlank()) {
-            return null;
-        }
-        try {
-            return OffsetDateTime.parse(s).toInstant();
-        } catch (DateTimeParseException e) {
-            try {
-                return Instant.parse(s);
-            } catch (DateTimeParseException e2) {
-                return null;
-            }
-        }
-    }
-
-    private static String trimSlash(String s) {
-        if (s == null) {
-            return "";
-        }
-        return s.endsWith("/") ? s.substring(0, s.length() - 1) : s;
     }
 }

@@ -122,7 +122,7 @@ class OnlinePaymentServiceTest {
         Order o = order();
         o.addLine(line("Подарок", null, 0, 1)); // gifts are not on the receipt
 
-        List<MonobankGateway.BasketItem> basket = OnlinePaymentService.basket(o, 1000_00, "abcd1234");
+        List<MonobankGateway.BasketItem> basket = PaymentBasket.of(o, 1000_00, "abcd1234");
 
         assertThat(basket).extracting(MonobankGateway.BasketItem::name).containsExactly("Свеча (Лаванда)", "Плед");
         assertThat(basket).extracting(MonobankGateway.BasketItem::qty).containsExactly(2L, 1L);
@@ -134,7 +134,7 @@ class OnlinePaymentServiceTest {
         Order o = order();
         OrderFixtures.set(o, "prepaymentMinor", 100_00);
 
-        List<MonobankGateway.BasketItem> basket = OnlinePaymentService.basket(o, 100_00, "abcd1234");
+        List<MonobankGateway.BasketItem> basket = PaymentBasket.of(o, 100_00, "abcd1234");
 
         assertThat(basket).singleElement().satisfies(b -> {
             assertThat(b.name()).isEqualTo("Передоплата за замовлення #abcd1234");
@@ -149,7 +149,7 @@ class OnlinePaymentServiceTest {
         OrderFixtures.set(o, "discountMinor", 50_00);
         OrderFixtures.set(o, "totalMinor", 950_00);
 
-        List<MonobankGateway.BasketItem> basket = OnlinePaymentService.basket(o, 950_00, "abcd1234");
+        List<MonobankGateway.BasketItem> basket = PaymentBasket.of(o, 950_00, "abcd1234");
 
         assertThat(basket).singleElement().satisfies(b -> {
             assertThat(b.name()).isEqualTo("Оплата замовлення #abcd1234");
