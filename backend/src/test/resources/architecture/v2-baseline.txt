@@ -1,4 +1,3 @@
 # ArchUnit v2 ratchet: violations of the target architecture per rule and module (docs/ARCHITECTURE-CHECKS.md).
-# Format: <rule> <module> <count>. Numbers only go DOWN: regenerate with
-#   mvn -B -ntp test -Dtest=ArchitectureV2Test -Darchitecture.v2.update=true
-# after fixing violations; a raised number means the code got worse and the change must be redone.
+# Format: <rule> <module> <count>. The backend migration is finished: the ratchet stands at ZERO, the file has no
+# entries and must stay that way - any violation fails the build. Fix the code; never add a line here.

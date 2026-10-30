@@ -7,10 +7,10 @@ spring:
     password: ${DB_PASSWORD:change_me}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
-    # true (Spring Boot default): keeps the JPA session open during DTO rendering so lazy
-    # collections (Order.items, product images/variants/tags) map without LazyInitializationException
-    # in list endpoints (my-orders, admin board).
-    open-in-view: true
+    # false: the JPA session lives only as long as a transaction of the app layer. Whatever a controller renders
+    # must be loaded (fetch join / read model) inside that transaction - a lazy collection read in the web layer
+    # fails with LazyInitializationException instead of silently opening a query per row.
+    open-in-view: false
     hibernate:
       ddl-auto: validate
     properties:

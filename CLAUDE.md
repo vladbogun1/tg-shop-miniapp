@@ -10,9 +10,9 @@
 
 ## Архитектура (общие правила кода — в `~/.claude/CLAUDE.md`, раздел «Как писать код»)
 
-Целевая структура бэкенда **утверждена** — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (модули, шаблон `api/app/domain/infra`,
-единые способы «как делаем», порядок переезда). Переезд идёт в ветке `arch/v2` по шагам; прогресс — сводка ArchUnit v2
-(`mvn test -Dtest=ArchitectureV2Test`), как читать — [docs/ARCHITECTURE-CHECKS.md](docs/ARCHITECTURE-CHECKS.md).
+Целевая структура бэкенда **утверждена, переезд завершён** — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (модули, шаблон `api/app/domain/infra`,
+единые способы «как делаем», что осталось в памяти процесса). Проверки — ArchUnit v2 (`mvn test -Dtest=ArchitectureV2Test`) и
+`ClassSizeTest`, как читать — [docs/ARCHITECTURE-CHECKS.md](docs/ARCHITECTURE-CHECKS.md).
 
 Кратко (полный список — в ARCHITECTURE.md, раздел 3):
 - Код по бизнес-модулям `com.maxsolch.shop.<модуль>.{api,app,domain,infra}` + `platform`; не в `service/`, `web/`, `repository/`.
@@ -24,4 +24,6 @@
 - Статус заказа — только методами `Order`; деньги — minor-единицы, формулы в `OrderMoney`.
 - Не дописывать в `NotificationService`, `AdminOrderController`:
   новая логика — отдельный класс в модуле. Контроллеры тонкие.
-- Число нарушений в `v2-baseline.txt` только уменьшается. Упала проверка — чинить код, не baseline.
+- Нарушений ноль, исключений нет: `v2-baseline.txt` пустой, файл ≤ 500 строк. Упала проверка — чинить код, а не записывать в baseline.
+- Замок, защищающий деньги/данные от двойного выполнения, — только в БД (`platform.jobs.DbLocks`, `@SchedulerLock`); `synchronized` и карты замков запрещены (K1).
+  `spring.jpa.open-in-view: false`: то, что рендерит контроллер, загружается внутри транзакции app (fetch join / read-модель).
