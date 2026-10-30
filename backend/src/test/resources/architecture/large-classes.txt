@@ -1,7 +1,6 @@
 # Classes that were over the 500-line limit when the size check was introduced (2026-10-29).
 # Format: <path under src/main/java> <lines at that time>. Such a file may grow by at most 5 % of that number.
 # Lower the number when a file shrinks; remove the line when it is under 500. See docs/ARCHITECTURE-CHECKS.md.
-com/maxsolch/shop/finance/app/MarginService.java 503
 com/maxsolch/shop/platform/journal/ActivityLog.java 522
 com/maxsolch/shop/order/app/OrderQueryService.java 585
 com/maxsolch/shop/customer/app/WebAuthService.java 569

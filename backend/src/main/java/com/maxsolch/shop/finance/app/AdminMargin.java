@@ -16,12 +16,15 @@ import org.springframework.stereotype.Service;
 public class AdminMargin {
 
     private final MarginService margin;
+    private final BatchMarginService batchMargin;
     private final AdminMetricsService metrics;
     private final AdminAccess access;
     private final CurrentActor actor;
 
-    public AdminMargin(MarginService margin, AdminMetricsService metrics, AdminAccess access, CurrentActor actor) {
+    public AdminMargin(MarginService margin, BatchMarginService batchMargin, AdminMetricsService metrics,
+                       AdminAccess access, CurrentActor actor) {
         this.margin = margin;
+        this.batchMargin = batchMargin;
         this.metrics = metrics;
         this.access = access;
         this.actor = actor;
@@ -29,7 +32,7 @@ public class AdminMargin {
 
     public BatchSalesDto batch(long batchId) {
         access.requireFinance(actor.userId());
-        return margin.batch(batchId);
+        return batchMargin.batch(batchId);
     }
 
     public OrderProfitDto order(String orderId) {

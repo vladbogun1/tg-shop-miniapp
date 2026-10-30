@@ -6,10 +6,8 @@ A1 platform 1
 C1 customer 1
 CA customer 2
 CA staff 2
-E1 finance 1
 K1 notification 1
 N1 platform 3
-S1 finance 1
 S1 platform 2
 T1 platform 4
 T2 staff 1
