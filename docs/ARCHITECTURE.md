@@ -188,3 +188,21 @@ API (URL и JSON), схема БД и поведение не меняются; 
 | Мемо чтения: названия для аналитики (10 мин), факты метрик (15 с), сотрудники в посетителях (5 мин), тексты бота от «Переводов» (1 ч, сброс при сохранении), публичный ключ monobank (сутки; при неверной подписи перечитывается не чаще раза в минуту) | `AnalyticsReadCaches`, `BotTextCaches`, `PaymentCaches` | источник правды — БД/API; потеря кэша = один лишний запрос | не требуется |
 | Флаги `running` в `PaymentJobs`, `ReceiptDeliveryJob`, `NovaPoshtaSyncService` | сами задачи | не дают ручному и плановому запуску наложиться внутри экземпляра; между экземплярами задачу держит `@SchedulerLock` | не требуется |
 | Сессии WebSocket админки | `WebSocketConfig` | соединение принадлежит процессу по природе | брокер сообщений |
+
+### Исключения из правил границ (шаг 9е)
+
+Список живёт в `V2Rules.ALLOWED`, причина рядом с классом. Исключение — только когда порт не упрощает, а прячет один и тот же запрос за двумя классами.
+
+| Правило | Класс | Почему |
+|---|---|---|
+| M3 | `gift.infra.GiftQueries` | отчёт по `orders`, `order_items`, `order_gift_cases`: один запрос считает по таблицам, разбиение гнало бы каждый заказ через JVM |
+| M3 | `gift.infra.GiftRegistryStore` | реестр подарков: строки подарков с заказом и ценой товара, только чтение |
+| M3 | `gift.infra.GiftReminderStore` | скан истекающих промокодов кейса с заказом и `bot_blocked`; `claim` — один атомарный `update` кода (пишет в чужую таблицу) |
+| M3 | `review.infra.ReviewStore` | сканы и лента отзывов с заказом, товаром и промокодом; разовые «захваты» `update ... where flag is null` (атомарно, пишут в чужие таблицы) |
+| M3 | `staff.infra.IncidentQueries` | отчёт инцидентов админов: журнал, заказы и движения денег одним чтением |
+| M3 | `staff.infra.AdminTeamQueries` | экран команды: сводка активности по каждому админу из аудита, чата, рассылок, меток и push, только чтение |
+| S1 | `platform.jobs.JobsConfig` | строит `JdbcLockProvider` ShedLock из `JdbcTemplate` рядом с `@EnableSchedulerLock` |
+| S1 | `platform.journal.ActivityLogStore`, `platform.security.AdminRevokedTokenStore` | у `platform` нет слоя infra: собственные таблицы `activity_log` и `admin_revoked_tokens` читает и пишет собственный store |
+| A3 | `catalog.app.AdminCatalog`, `translation.app.AdminTranslations` | `force=1` при удалении характеристики и пустой `entityId` при удалении языка — только главному админу; правило зависит от параметра, аннотация метода его не видит |
+
+Остаток, который не закрыт портом: записи в чужие таблицы остаются в `ReviewStore` (`claimBonus`, `claimReminder`, `recomputeRating`, `claimBonusExpiryReminder`) и `GiftReminderStore` (`claim`) — это атомарные однократные захваты.

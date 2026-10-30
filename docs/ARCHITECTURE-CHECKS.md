@@ -21,10 +21,10 @@
   L4 infra знает только domain; M1 чужой модуль — только через его app; M2 нет зависимостей против направления модулей (раздел 2.2);
   P1 platform не знает бизнес-модулей; E1 ошибки — `DomainException` с `ErrorCode`; E2 причина ошибки — только константа enum (класс/лямбда, реализующие `ErrorCode`, вне `platform.error` запрещены; `ErrorCode.of("...")` удалён), текст — в бандлах, их полноту проверяет `ErrorCatalogTest`; T1 после коммита — только событие
   (`DomainEvents` + `@OnCommitted`); T2 `@Transactional` только на публичных методах app; A1 `CurrentActor` вместо `SecurityUtil`;
-  A2 контроллеры не пишут аудит; A3 права аннотациями; N1 Telegram/push только из `notification` и `*Notifier`; K1 нет замков в памяти;
+  A2 контроллеры не пишут ни аудит, ни журнал активности (это сценарий в app); A3 права аннотациями (`AdminAccess.require*` не вызывают ни api, ни app); N1 Telegram/push только из `notification` и `*Notifier`; K1 нет замков в памяти;
   C1 время через `Clock`/`ShopZone`; V1 нет `@Value`; V2 `@ConfigurationProperties` с `@Validated`; CA кэш только Spring Cache;
   J1 `@Scheduled` только в `*Job(s)` и с `@SchedulerLock`; H1 внешний HTTP через `platform.http`; W1 зависимости только конструктором;
-  S1 `JdbcTemplate` только в infra/`*Store`/`*Queries`; O1 `setStatus` заказа не снаружи. Полный текст — в `V2Rules.RULES`.
+  S1 `JdbcTemplate`/`NamedParameterJdbcTemplate` и `EntityManager.createQuery/createNativeQuery/createNamedQuery` только в слое infra (по слою, не по имени класса); M3 SQL/JPQL модуля трогает только его таблицы и сущности; L5 app не знает `org.springframework.web.*` и `jakarta.servlet.*`; O1 `setStatus` заказа не снаружи. Полный текст — в `V2Rules.RULES`.
 - **Как читать сводку.** Каждый прогон печатает таблицу (и кладёт её в `backend/target/architecture-v2-summary.txt`): строки — модули
   (целевые сверху вниз, `platform`, `legacy`), колонки — правила, `.` = ноль, плюс «migrated classes: N of M». Это мерило прогресса:
   шаг миграции модуля считается сделанным, когда его строка пустая, а число классов `legacy` упало на столько, сколько перенесли.
@@ -59,7 +59,14 @@
 - **Шаг 9д: агрегаты без сеттеров.** O2 вызов `set*` у сущности из `V2Rules.GUARDED` (`Order`, `OrderItem`, `OrderItemLot`, `PaymentInvoice`,
   `OrderReturn`, `OrderReturnLine`) из другого пакета запрещён; O3 у такой сущности нет public `set*` (и `@Setter`). Проверено фикстурой
   (`shopfixture/order/domain/Order`, `BadPractices.overwriteTotal`). Тесты задают состояние через `OrderFixtures.set` (рефлексия), не сеттерами.
-- **Точечные исключения** (имя класса в `V2Rules.ALLOWED`, причина рядом): S1 — `platform.jobs.JobsConfig`; K1 — `payment.app.CustomerPaymentRefresh` и
+- **Шаг 9е: границы без дыр.** M2 теперь ищет и циклы внутри одного яруса (компоненты сильной связности графа модулей): цикл `customer`↔`staff` убран портом `customer.app.AdminCheck`.
+  M3 (`SqlOwnership`) читает исходники: строковые литералы SQL/JPQL модуля ищут `FROM/JOIN/UPDATE/INTO <таблица>` и сущности; владелец таблицы — `SqlOwnership.TABLE_OWNERS`, читать любые таблицы
+  могут только `analytics`, `finance`, `inbox`; таблица без владельца (`SqlOwnership.unownedTables` по миграциям) — ошибка. Остальное спрашивает владельца через порт: `OrderHistory`, `OnlineVisitors`
+  (customer), `JournalOrders`, `JournalPeople` (журнал), `TranslatableSource.orphanTypes()/orphans()` (переводы), названия товаров через `CatalogNames`. L5: `platform.web.UploadedFile` вместо `MultipartFile`,
+  cookie доверенного устройства и клиент запроса разбирает `staff.api`. Порты внешних систем: `media.domain.ObjectStore` (MinIO), `media.domain.Imgproxy`, `site.domain.SiteCache` (запрос к сайту) — адаптеры в `infra`.
+  Права по `@RequiresFinance` (`platform.security.FinanceGuard`), а не ручными проверками; запись журнала покупателя — в сценариях app (`CustomerOrderActions`, `CustomerGiftCase`, `CartPromo`, ...).
+  Проверено фикстурами (`shopfixture/review`, `customer`, `staff`; `V2RulesBoundariesTest`, `SqlOwnershipTest`) и IT на MySQL с «оракулом» (старый SQL внутри теста): `UserAdminIT`, `ActivityLogIT`, `TranslationOrphansIT`, `AdminAccessIT` (403/200 финансовых эндпоинтов).
+- **Точечные исключения** (имя класса в `V2Rules.ALLOWED`, причина рядом): S1 — `platform.jobs.JobsConfig`, `platform.journal.ActivityLogStore`, `platform.security.AdminRevokedTokenStore`; M3 — шесть классов отчётов и сканов (список и причины — ARCHITECTURE.md, раздел 6); A3 — `catalog.app.AdminCatalog`, `translation.app.AdminTranslations` (право зависит от параметра запроса); K1 — `payment.app.CustomerPaymentRefresh` и
   `platform.config.WebSocketConfig` (ARCHITECTURE.md, раздел 6); E1 — `payment.domain.MonobankGateway` (`MonobankException` — сбой порта, всегда перехватывается
   в `payment.app` и превращается в `DomainException`); C1 — `platform.time.TimeConfig` (создаёт системный `Clock` и `ShopZone`), `platform.time.ShopZone`
   (единственное место разбора id пояса), `platform.jobs.DbLocks` (`System.nanoTime` — монотонный дедлайн ожидания замка БД, не дата).
