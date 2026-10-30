@@ -1,5 +1,6 @@
 package com.maxsolch.shop.customer.api;
 
+import com.maxsolch.shop.customer.app.AdminCheck;
 import com.maxsolch.shop.customer.app.CustomerProfileService;
 import com.maxsolch.shop.customer.app.MeProfileDto;
 import com.maxsolch.shop.customer.domain.User;
@@ -8,7 +9,6 @@ import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.Role;
 import com.maxsolch.shop.platform.web.CurrentActor;
-import com.maxsolch.shop.staff.app.Admins;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,7 +37,7 @@ class MeControllerTest {
     @Mock
     UserRepository users;
     @Mock
-    Admins admins;
+    AdminCheck admins;
     @Mock
     ActivityLog activity;
 

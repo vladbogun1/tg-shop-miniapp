@@ -10,7 +10,6 @@ import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.customer.domain.WebLoginStatus;
 import com.maxsolch.shop.customer.domain.WebLoginToken;
 import com.maxsolch.shop.customer.domain.WebSession;
-import com.maxsolch.shop.staff.app.Admins;
 import com.maxsolch.shop.customer.infra.UserRepository;
 import com.maxsolch.shop.customer.infra.WebLoginTokenRepository;
 import com.maxsolch.shop.customer.infra.WebSessionRepository;
@@ -79,7 +78,7 @@ public class WebAuthService {
     private final WebLoginTokenRepository tokenRepository;
     private final WebSessionRepository sessionRepository;
     private final UserRepository userRepository;
-    private final Admins adminUserRepository;
+    private final AdminCheck adminCheck;
     private final JwtService jwtService;
     private final AppProperties props;
     private final WebSessionValidator sessionValidator;
@@ -93,7 +92,7 @@ public class WebAuthService {
     public WebAuthService(WebLoginTokenRepository tokenRepository,
                           WebSessionRepository sessionRepository,
                           UserRepository userRepository,
-                          Admins adminUserRepository,
+                          AdminCheck adminCheck,
                           JwtService jwtService,
                           AppProperties props,
                           WebSessionValidator sessionValidator,
@@ -103,7 +102,7 @@ public class WebAuthService {
         this.tokenRepository = tokenRepository;
         this.sessionRepository = sessionRepository;
         this.userRepository = userRepository;
-        this.adminUserRepository = adminUserRepository;
+        this.adminCheck = adminCheck;
         this.jwtService = jwtService;
         this.props = props;
         this.sessionValidator = sessionValidator;
@@ -341,7 +340,7 @@ public class WebAuthService {
 
     private AuthUserDto userDto(long telegramUserId) {
         User u = userRepository.findById(telegramUserId).orElse(null);
-        boolean admin = adminUserRepository.isActive(telegramUserId);
+        boolean admin = adminCheck.isActive(telegramUserId);
         return new AuthUserDto(telegramUserId,
                 u == null ? null : u.getUsername(),
                 u == null ? null : u.getFirstName(),

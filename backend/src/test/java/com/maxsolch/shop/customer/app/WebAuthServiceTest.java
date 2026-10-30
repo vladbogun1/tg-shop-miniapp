@@ -5,7 +5,6 @@ import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.customer.domain.WebLoginStatus;
 import com.maxsolch.shop.customer.domain.WebLoginToken;
 import com.maxsolch.shop.customer.domain.WebSession;
-import com.maxsolch.shop.staff.app.Admins;
 import com.maxsolch.shop.customer.infra.UserRepository;
 import com.maxsolch.shop.customer.infra.WebLoginTokenRepository;
 import com.maxsolch.shop.customer.infra.WebSessionRepository;
@@ -60,7 +59,7 @@ class WebAuthServiceTest {
     @Mock
     UserRepository userRepository;
     @Mock
-    Admins adminUserRepository;
+    AdminCheck adminUserRepository;
     @Mock
     JwtService jwtService;
     @Mock
