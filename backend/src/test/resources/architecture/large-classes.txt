@@ -2,10 +2,10 @@
 # Format: <path under src/main/java> <lines at that time>. Such a file may grow by at most 5 % of that number.
 # Lower the number when a file shrinks; remove the line when it is under 500. See docs/ARCHITECTURE-CHECKS.md.
 com/maxsolch/shop/finance/app/MarginService.java 503
-com/maxsolch/shop/gift/CaseAutofill.java 618
-com/maxsolch/shop/gift/GiftService.java 553
+com/maxsolch/shop/gift/app/CaseAutofill.java 618
+com/maxsolch/shop/gift/app/GiftService.java 553
 com/maxsolch/shop/platform/journal/ActivityLog.java 522
-com/maxsolch/shop/review/ReviewService.java 591
+com/maxsolch/shop/review/app/ReviewService.java 591
 com/maxsolch/shop/order/app/OrderQueryService.java 585
 com/maxsolch/shop/service/WebAuthService.java 569
-com/maxsolch/shop/support/SupportService.java 650
+com/maxsolch/shop/support/app/SupportService.java 650

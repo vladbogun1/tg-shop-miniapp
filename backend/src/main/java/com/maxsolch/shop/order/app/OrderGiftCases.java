@@ -2,9 +2,9 @@ package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
-import com.maxsolch.shop.gift.GiftCaseTier;
-import com.maxsolch.shop.gift.GiftService;
-import com.maxsolch.shop.gift.OrderGiftCase;
+import com.maxsolch.shop.gift.domain.GiftCaseTier;
+import com.maxsolch.shop.gift.app.GiftService;
+import com.maxsolch.shop.gift.domain.OrderGiftCase;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;

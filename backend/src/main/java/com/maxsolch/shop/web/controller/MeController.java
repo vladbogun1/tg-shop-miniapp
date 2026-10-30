@@ -75,10 +75,10 @@ public class MeController {
     private com.maxsolch.shop.platform.journal.ActivityLog activity;
 
     /** Opening the gift case (V57); a setter so the unit tests' constructor stays as it is. */
-    private com.maxsolch.shop.gift.GiftCaseService giftCaseService;
+    private com.maxsolch.shop.gift.app.GiftCaseService giftCaseService;
 
     @org.springframework.beans.factory.annotation.Autowired
-    void setGiftCaseService(com.maxsolch.shop.gift.GiftCaseService giftCaseService) {
+    void setGiftCaseService(com.maxsolch.shop.gift.app.GiftCaseService giftCaseService) {
         this.giftCaseService = giftCaseService;
     }
 
@@ -136,7 +136,7 @@ public class MeController {
                                         @RequestParam(required = false) String items) {
         // items: the cart's lines "id*qty,…" — a case code is counted without the low-margin products.
         PromoPreviewDto preview = promoService.reserve(code, subtotalMinor, SecurityUtil.currentUserId(),
-                com.maxsolch.shop.gift.CaseLowMargin.parseItems(items));
+                com.maxsolch.shop.gift.app.CaseLowMargin.parseItems(items));
         // Only accepted codes: the cart checks as the code is typed, so refusals are mostly half-typed words.
         if (preview != null && preview.valid()) {
             journal(ActivityLog.fromRequest("PROMO_APPLIED")
@@ -211,9 +211,9 @@ public class MeController {
     @PostMapping("/orders/{id}/gift-case/open")
     @Operation(summary = "Open the gift case of my order (once, paid orders only): the prize drawn at checkout, "
             + "the tier's prizes for the reel, the code of a discount prize and the swap offer")
-    public com.maxsolch.shop.gift.GiftDtos.CaseOpenDto openGiftCase(@PathVariable String id, Locale locale) {
+    public com.maxsolch.shop.gift.app.GiftDtos.CaseOpenDto openGiftCase(@PathVariable String id, Locale locale) {
         Order order = ownedOrder(id);
-        com.maxsolch.shop.gift.GiftDtos.CaseOpenDto opened =
+        com.maxsolch.shop.gift.app.GiftDtos.CaseOpenDto opened =
                 giftCaseService.open(order.getId(), ContentLocale.normalize(locale));
         journal(ActivityLog.fromRequest("GIFT_CASE_OPENED").order(order.getId())
                 .text("Покупатель открыл кейс (" + opened.tier() + "): " + prizeText(opened.won())
@@ -224,9 +224,9 @@ public class MeController {
     @PostMapping("/orders/{id}/gift-case/swap")
     @Operation(summary = "Swap the case prize (similar to what I bought) for a personal code on the next order; "
             + "the prize leaves the order. 400 GIFT_CASE_SWAP_UNAVAILABLE when it is not offered")
-    public com.maxsolch.shop.gift.GiftDtos.CaseOpenDto swapGiftCase(@PathVariable String id, Locale locale) {
+    public com.maxsolch.shop.gift.app.GiftDtos.CaseOpenDto swapGiftCase(@PathVariable String id, Locale locale) {
         Order order = ownedOrder(id);
-        com.maxsolch.shop.gift.GiftDtos.CaseOpenDto swapped =
+        com.maxsolch.shop.gift.app.GiftDtos.CaseOpenDto swapped =
                 giftCaseService.swap(order.getId(), ContentLocale.normalize(locale));
         journal(ActivityLog.fromRequest("GIFT_CASE_SWAPPED").order(order.getId())
                 .text("Покупатель заменил приз кейса «" + swapped.won().title() + "» на промокод −"
@@ -240,16 +240,16 @@ public class MeController {
     @PostMapping("/orders/{id}/gift-case/size")
     @Operation(summary = "Pick the size of my case prize (a product with sizes) among those in stock while the order "
             + "is being put together; 400 GIFT_CASE_SIZE_UNAVAILABLE when that size is gone or it is too late")
-    public com.maxsolch.shop.gift.GiftDtos.SizeDto chooseGiftCaseSize(@PathVariable String id,
+    public com.maxsolch.shop.gift.app.GiftDtos.SizeDto chooseGiftCaseSize(@PathVariable String id,
                                                                       @RequestBody CaseSizeRequest req) {
         Order order = ownedOrder(id);
-        com.maxsolch.shop.gift.GiftDtos.SizeDto size = giftCaseService.chooseSize(order.getId(), req.variantId());
+        com.maxsolch.shop.gift.app.GiftDtos.SizeDto size = giftCaseService.chooseSize(order.getId(), req.variantId());
         journal(ActivityLog.fromRequest("GIFT_CASE_SIZE").order(order.getId())
                 .text("Покупатель выбрал размер приза кейса: " + size.name()));
         return size;
     }
 
-    private static String prizeText(com.maxsolch.shop.gift.GiftDtos.CaseItemDto won) {
+    private static String prizeText(com.maxsolch.shop.gift.app.GiftDtos.CaseItemDto won) {
         if ("DISCOUNT".equals(won.kind())) {
             return won.discountPercent() > 0 ? "скидка " + won.discountPercent() + " %"
                     : "скидка " + won.discountAmountMinor() / 100 + " ₴";

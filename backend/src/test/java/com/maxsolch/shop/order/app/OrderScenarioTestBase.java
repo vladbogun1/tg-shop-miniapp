@@ -73,13 +73,13 @@ abstract class OrderScenarioTestBase {
     EntityManager entityManager;
 
     @Mock
-    com.maxsolch.shop.gift.GiftService gift;
+    com.maxsolch.shop.gift.app.GiftService gift;
 
     @Mock
-    com.maxsolch.shop.gift.GiftRegistryService giftRegistry;
+    com.maxsolch.shop.gift.app.GiftRegistryService giftRegistry;
 
     @Mock
-    com.maxsolch.shop.gift.CaseLowMargin caseLowMargin;
+    com.maxsolch.shop.gift.app.CaseLowMargin caseLowMargin;
 
     @Mock
     com.maxsolch.shop.payment.infra.PaymentInvoiceRepository paymentInvoices;
@@ -195,7 +195,7 @@ abstract class OrderScenarioTestBase {
         promo.setCode(code);
         promo.setDiscountPercent(percent);
         promo.setActive(true);
-        promo.setSource(com.maxsolch.shop.gift.GiftService.PROMO_SOURCE);
+        promo.setSource(com.maxsolch.shop.gift.app.GiftService.PROMO_SOURCE);
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate(code)).thenReturn(Optional.of(promo));
         return promo;
     }
@@ -287,13 +287,13 @@ abstract class OrderScenarioTestBase {
         when(productRepository.findByIdForUpdate(any())).thenAnswer(inv -> Optional.of(
                 java.util.Arrays.equals((byte[]) inv.getArgument(0), productId) ? bought : prize));
 
-        var tier = com.maxsolch.shop.gift.GiftCaseTier.Tier.SILVER;
-        when(gift.giftConfig()).thenReturn(Optional.of(new com.maxsolch.shop.gift.GiftService.GiftConfig(null, 0,
-                List.of(new com.maxsolch.shop.gift.GiftService.TierConfig(tier, 1_500_00, 0, 0, 0, List.of(
-                        new com.maxsolch.shop.gift.GiftService.CaseEntry(1, tier,
-                                com.maxsolch.shop.gift.GiftCaseItem.Kind.PRODUCT, prizeUuid, 0, 0, "COMMON", 1_000_000),
-                        new com.maxsolch.shop.gift.GiftService.CaseEntry(2, tier,
-                                com.maxsolch.shop.gift.GiftCaseItem.Kind.DISCOUNT, null, 5, 0, "RARE", 1)))))));
+        var tier = com.maxsolch.shop.gift.domain.GiftCaseTier.Tier.SILVER;
+        when(gift.giftConfig()).thenReturn(Optional.of(new com.maxsolch.shop.gift.app.GiftService.GiftConfig(null, 0,
+                List.of(new com.maxsolch.shop.gift.app.GiftService.TierConfig(tier, 1_500_00, 0, 0, 0, List.of(
+                        new com.maxsolch.shop.gift.app.GiftService.CaseEntry(1, tier,
+                                com.maxsolch.shop.gift.domain.GiftCaseItem.Kind.PRODUCT, prizeUuid, 0, 0, "COMMON", 1_000_000),
+                        new com.maxsolch.shop.gift.app.GiftService.CaseEntry(2, tier,
+                                com.maxsolch.shop.gift.domain.GiftCaseItem.Kind.DISCOUNT, null, 5, 0, "RARE", 1)))))));
         when(giftRegistry.remainingMinor(any(), any())).thenReturn(limitLeftMinor);
 
         return service.createOrder(cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 1)), null));

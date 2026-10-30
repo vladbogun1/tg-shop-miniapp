@@ -230,10 +230,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     }
 
     /** Support threads (/topic/support/{threadId}): the thread's customer or any admin — like order chat. */
-    private com.maxsolch.shop.support.SupportService supportService;
+    private com.maxsolch.shop.support.app.SupportService supportService;
 
     @org.springframework.beans.factory.annotation.Autowired
-    void setSupportService(@org.springframework.context.annotation.Lazy com.maxsolch.shop.support.SupportService s) {
+    void setSupportService(@org.springframework.context.annotation.Lazy com.maxsolch.shop.support.app.SupportService s) {
         this.supportService = s;
     }
 

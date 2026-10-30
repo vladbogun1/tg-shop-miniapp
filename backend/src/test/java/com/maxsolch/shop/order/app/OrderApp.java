@@ -1,10 +1,10 @@
 package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.cart.app.CartService;
-import com.maxsolch.shop.gift.CaseLowMargin;
+import com.maxsolch.shop.gift.app.CaseLowMargin;
 import com.maxsolch.shop.inventory.app.Stock;
-import com.maxsolch.shop.gift.GiftRegistryService;
-import com.maxsolch.shop.gift.GiftService;
+import com.maxsolch.shop.gift.app.GiftRegistryService;
+import com.maxsolch.shop.gift.app.GiftService;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.payment.infra.PaymentInvoiceRepository;

@@ -20,7 +20,7 @@ public enum TranslationEntityType {
     PAYMENT_OPTION(List.of(TranslationEntityType.TITLE, TranslationEntityType.DESCRIPTION)),
     /**
      * A chat reply template (⚡ in the order chat, V50). Its numeric id is stored in the low 8 bytes of
-     * {@code entity_id} — see {@link com.maxsolch.shop.domain.ReplyTemplate#translationId(long)}.
+     * {@code entity_id} — see {@link com.maxsolch.shop.support.domain.ReplyTemplate#translationId(long)}.
      */
     REPLY_TEMPLATE(List.of(TranslationEntityType.BODY)),
     /** Category of the catalog tree (V52, rows copied from TAG): name + the SEO of its page. */

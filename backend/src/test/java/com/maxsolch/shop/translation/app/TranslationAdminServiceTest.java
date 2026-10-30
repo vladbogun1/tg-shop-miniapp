@@ -10,8 +10,8 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.payment.domain.PaymentOption;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.Category;
-import com.maxsolch.shop.domain.ReplyTemplate;
-import com.maxsolch.shop.repository.ReplyTemplateRepository;
+import com.maxsolch.shop.support.domain.ReplyTemplate;
+import com.maxsolch.shop.support.infra.ReplyTemplateRepository;
 import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.catalog.infra.ProductVariantRepository;
@@ -93,7 +93,7 @@ class TranslationAdminServiceTest {
         botTexts = mock(com.maxsolch.shop.translation.app.BotTexts.class);
         List<TranslatableSource> sources = List.of(new com.maxsolch.shop.catalog.app.CatalogTranslatableSource(products, variants, tags),
                         new com.maxsolch.shop.payment.app.PaymentTranslatableSource(payments),
-                        new com.maxsolch.shop.service.ReplyTemplateTranslatableSource(templates),
+                        new com.maxsolch.shop.support.app.ReplyTemplateTranslatableSource(templates),
                         new BotTextSource(botTexts));
         TranslationRows store = new TranslationRows(repo, events, sources);
         report = new TranslationReport(store, botTexts);

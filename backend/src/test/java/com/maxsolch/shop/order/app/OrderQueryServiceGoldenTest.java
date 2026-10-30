@@ -20,8 +20,8 @@ import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductImage;
 import com.maxsolch.shop.inventory.domain.StockWriteoff;
-import com.maxsolch.shop.gift.GiftCaseService;
-import com.maxsolch.shop.gift.GiftDtos;
+import com.maxsolch.shop.gift.app.GiftCaseService;
+import com.maxsolch.shop.gift.app.GiftDtos;
 import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.payment.domain.MonobankGateway;
 import com.maxsolch.shop.payment.domain.PaymentInvoice;
@@ -180,7 +180,7 @@ class OrderQueryServiceGoldenTest {
         });
 
         @SuppressWarnings("unchecked")
-        org.springframework.beans.factory.ObjectProvider<com.maxsolch.shop.gift.GiftCaseService> giftProvider =
+        org.springframework.beans.factory.ObjectProvider<com.maxsolch.shop.gift.app.GiftCaseService> giftProvider =
                 mock(org.springframework.beans.factory.ObjectProvider.class);
         when(giftProvider.getIfAvailable()).thenReturn(gifts);
         service = new OrderQueryService(orders, messages, items,

@@ -1,7 +1,7 @@
 package com.maxsolch.shop.order.app;
 
-import com.maxsolch.shop.gift.GiftCaseTier;
-import com.maxsolch.shop.gift.GiftService;
+import com.maxsolch.shop.gift.domain.GiftCaseTier;
+import com.maxsolch.shop.gift.app.GiftService;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;

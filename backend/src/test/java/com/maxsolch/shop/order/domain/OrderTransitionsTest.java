@@ -17,7 +17,7 @@ import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.payment.domain.PaymentOption;
 import com.maxsolch.shop.catalog.domain.Product;
-import com.maxsolch.shop.gift.GiftService;
+import com.maxsolch.shop.gift.app.GiftService;
 import com.maxsolch.shop.returns.infra.OrderExchangeRepository;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.payment.infra.PaymentOptionRepository;

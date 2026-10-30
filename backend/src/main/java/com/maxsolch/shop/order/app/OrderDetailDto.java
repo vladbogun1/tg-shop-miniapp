@@ -68,7 +68,7 @@ public record OrderDetailDto(
         /** SEALED and the order is paid — the customer may open it now (once). */
         boolean giftCaseOpenable,
         /** Gift of the order (V57): tier, guaranteed discount or the case with its prize, code and swap; null = none. */
-        com.maxsolch.shop.gift.GiftDtos.OrderGiftDto gift,
+        com.maxsolch.shop.gift.app.GiftDtos.OrderGiftDto gift,
         /** Part of discountMinor taken as the case tier's guaranteed discount (V57). */
         long giftDiscountMinor,
         /** Replacement of an exchange on that order (V69): the difference is paid online or наложкой. */

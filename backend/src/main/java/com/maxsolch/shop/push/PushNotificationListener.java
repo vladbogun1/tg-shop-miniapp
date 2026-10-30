@@ -2,7 +2,7 @@ package com.maxsolch.shop.push;
 
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.inbox.InboxService;
+import com.maxsolch.shop.inbox.app.InboxService;
 import com.maxsolch.shop.media.app.MediaSigner;
 import com.maxsolch.shop.push.AdminPushService.PushMessage;
 import com.maxsolch.shop.order.app.OrderEvents;

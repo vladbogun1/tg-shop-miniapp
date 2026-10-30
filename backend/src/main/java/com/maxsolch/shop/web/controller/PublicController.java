@@ -37,6 +37,6 @@ public class PublicController {
                                         @RequestParam long subtotalMinor,
                                         @RequestParam(required = false) String items) {
         // items: the cart's lines "id*qty,…" — a case code is counted without the low-margin products.
-        return promoService.preview(code, subtotalMinor, null, com.maxsolch.shop.gift.CaseLowMargin.parseItems(items));
+        return promoService.preview(code, subtotalMinor, null, com.maxsolch.shop.gift.app.CaseLowMargin.parseItems(items));
     }
 }

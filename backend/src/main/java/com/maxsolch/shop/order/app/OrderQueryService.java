@@ -50,7 +50,7 @@ public class OrderQueryService {
     private final OrderReturnsView returnsView;
 
     /** The gift block of the order page (docs/GIFT-CASE.md); resolved on first use, the gift module depends on the order one. */
-    private final org.springframework.beans.factory.ObjectProvider<com.maxsolch.shop.gift.GiftCaseService> giftCases;
+    private final org.springframework.beans.factory.ObjectProvider<com.maxsolch.shop.gift.app.GiftCaseService> giftCases;
     /** Money journal and write-offs shown to the admin. */
     private final com.maxsolch.shop.order.infra.OrderMoneyMovementRepository movementRepository;
     private final com.maxsolch.shop.inventory.app.StockWriteoffs writeoffRepository;
@@ -67,7 +67,7 @@ public class OrderQueryService {
                              OrderReturnsView returnsView,
                              com.maxsolch.shop.order.infra.OrderMoneyMovementRepository movementRepository,
                              com.maxsolch.shop.inventory.app.StockWriteoffs writeoffRepository,
-                             org.springframework.beans.factory.ObjectProvider<com.maxsolch.shop.gift.GiftCaseService> giftCases) {
+                             org.springframework.beans.factory.ObjectProvider<com.maxsolch.shop.gift.app.GiftCaseService> giftCases) {
         this.orderRepository = orderRepository;
         this.messageRepository = messageRepository;
         this.orderItemRepository = orderItemRepository;
@@ -372,7 +372,7 @@ public class OrderQueryService {
                 .uncollectedMinor(pay.uncollectedMinor());
     }
 
-    private com.maxsolch.shop.gift.GiftCaseService gift() {
+    private com.maxsolch.shop.gift.app.GiftCaseService gift() {
         return giftCases.getIfAvailable();
     }
 

@@ -62,7 +62,7 @@ class OrderGiftCasesTest extends OrderScenarioTestBase {
 
     @Test
     void grantGiftCase_drawsAPrizeSealsItAndNeedsAnOpenOrderWithoutACase() {
-        var tier = com.maxsolch.shop.gift.GiftCaseTier.Tier.SILVER;
+        var tier = com.maxsolch.shop.gift.domain.GiftCaseTier.Tier.SILVER;
         String prizeUuid = UUID.randomUUID().toString();
         Product prize = new Product();
         prize.setId(UuidUtil.toBytes(prizeUuid));
@@ -72,9 +72,9 @@ class OrderGiftCasesTest extends OrderScenarioTestBase {
         prize.setActive(true);
         prize.setVariants(new ArrayList<>());
         when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(prize));
-        when(gift.tier(tier)).thenReturn(Optional.of(new com.maxsolch.shop.gift.GiftService.TierConfig(tier, 1_500_00,
-                0, 0, 0, List.of(new com.maxsolch.shop.gift.GiftService.CaseEntry(1, tier,
-                com.maxsolch.shop.gift.GiftCaseItem.Kind.PRODUCT, prizeUuid, 0, 0, "COMMON", 1_000_000)))));
+        when(gift.tier(tier)).thenReturn(Optional.of(new com.maxsolch.shop.gift.app.GiftService.TierConfig(tier, 1_500_00,
+                0, 0, 0, List.of(new com.maxsolch.shop.gift.app.GiftService.CaseEntry(1, tier,
+                com.maxsolch.shop.gift.domain.GiftCaseItem.Kind.PRODUCT, prizeUuid, 0, 0, "COMMON", 1_000_000)))));
         Order o = orderWithOneLine(OrderStatus.APPROVED, 10_000, 1);
 
         Order granted = app.giftCases().grantGiftCase(o.getId(), tier, true);
