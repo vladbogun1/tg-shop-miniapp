@@ -28,7 +28,7 @@ import com.maxsolch.shop.catalog.app.CatalogDtos.CardsStats;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
-import com.maxsolch.shop.staff.infra.AdminUserRepository;
+import com.maxsolch.shop.platform.security.AdminDirectory;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.ContentTranslation;
@@ -65,14 +65,14 @@ public class CardsService {
     private final ProductRepository productRepository;
     private final CatalogDirectory directory;
     private final StoredTranslations translations;
-    private final AdminUserRepository adminUserRepository;
+    private final AdminDirectory adminDirectory;
 
     public CardsService(ProductRepository productRepository, CatalogDirectory directory,
-                        StoredTranslations translations, AdminUserRepository adminUserRepository) {
+                        StoredTranslations translations, AdminDirectory adminDirectory) {
         this.productRepository = productRepository;
         this.directory = directory;
         this.translations = translations;
-        this.adminUserRepository = adminUserRepository;
+        this.adminDirectory = adminDirectory;
     }
 
     // ------------------------------------------------------------------ stats / export
@@ -199,9 +199,7 @@ public class CardsService {
         @SuppressWarnings("unchecked")
         Map<String, Object> last = meta.get("last") instanceof Map<?, ?> m ? (Map<String, Object>) m : null;
         Long reviewedBy = meta.get("reviewedBy") instanceof Number n ? n.longValue() : null;
-        String reviewedByName = reviewedBy == null ? null : adminUserRepository.findById(reviewedBy)
-                .map(a -> trimToNull(a.getName()) != null ? a.getName().trim() : trimToNull(a.getUsername()))
-                .orElse(null);
+        String reviewedByName = reviewedBy == null ? null : adminDirectory.displayName(reviewedBy).orElse(null);
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put(TranslationEntityType.TITLE, p.getTitle());
         sources.put(TranslationEntityType.DESCRIPTION, p.getDescription());

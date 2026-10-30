@@ -2,8 +2,6 @@ package com.maxsolch.shop.platform.config;
 
 import org.springframework.beans.factory.ObjectProvider;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.security.AdminTokenValidator;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.JwtService;
@@ -56,7 +54,6 @@ import java.util.Optional;
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final JwtService jwtService;
-    private final OrderRepository orderRepository;
     private final AdminTokenValidator adminTokenValidator;
     private final AllowedOrigins allowedOrigins;
     private final WebSessionValidator webSessionValidator;
@@ -65,15 +62,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     static final String ACCESS_COOKIE_ATTR = "site.accessJwt";
 
     public WebSocketConfig(JwtService jwtService,
-                           OrderRepository orderRepository,
                            AdminTokenValidator adminTokenValidator,
                            AllowedOrigins allowedOrigins,
-                           WebSessionValidator webSessionValidator) {
+                           WebSessionValidator webSessionValidator,
+                           ObjectProvider<StompTopicOwner> topicOwners) {
         this.jwtService = jwtService;
-        this.orderRepository = orderRepository;
         this.adminTokenValidator = adminTokenValidator;
         this.allowedOrigins = allowedOrigins;
         this.webSessionValidator = webSessionValidator;
+        this.topicOwners = topicOwners;
     }
 
     /** Copies the {@code access} cookie of the HTTP handshake into the WebSocket session attributes. */
@@ -231,12 +228,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     }
 
     /** Topics owned by a module (support threads): the owner or any admin may subscribe, like order chat. */
-    private ObjectProvider<StompTopicOwner> topicOwners;
-
-    @org.springframework.beans.factory.annotation.Autowired
-    void setTopicOwners(ObjectProvider<StompTopicOwner> owners) {
-        this.topicOwners = owners;
-    }
+    private final ObjectProvider<StompTopicOwner> topicOwners;
 
     private void authorizeOwnedTopic(StompHeaderAccessor accessor, StompTopicOwner topic, String destination) {
         if (!(accessor.getUser() instanceof StompPrincipal sp)) {
@@ -253,7 +245,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         int slash = rest.indexOf('/');
         String key = slash >= 0 ? rest.substring(0, slash) : rest;
         if (!topic.isOwner(key, principal.telegramUserId())) {
-            throw new IllegalArgumentException("forbidden: not your support thread");
+            throw new IllegalArgumentException(topic.forbiddenMessage());
         }
     }
 
@@ -266,37 +258,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     return;
                 }
             }
-        }
-        if (destination == null || !destination.startsWith("/topic/orders/")) {
-            return;
-        }
-        Principal user = accessor.getUser();
-        if (!(user instanceof StompPrincipal sp)) {
-            throw new IllegalArgumentException("unauthorized subscription");
-        }
-        AuthPrincipal principal = sp.principal();
-        // /topic/orders/{orderId}/chat
-        String rest = destination.substring("/topic/orders/".length());
-        int slash = rest.indexOf('/');
-        String orderId = slash >= 0 ? rest.substring(0, slash) : rest;
-
-        if (principal.role() == Role.ADMIN) {
-            // The token was checked on CONNECT only; a revoked one must not open new chats.
-            if (!adminSessionStillValid(principal)) {
-                throw new IllegalArgumentException("unauthorized: admin token revoked");
-            }
-            return;
-        }
-        byte[] id;
-        try {
-            id = UuidUtil.toBytes(orderId);
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("invalid order id");
-        }
-        Optional<Order> order = orderRepository.findById(id);
-        if (order.isEmpty() || order.get().getUserId() == null
-                || order.get().getUserId() != principal.telegramUserId()) {
-            throw new IllegalArgumentException("forbidden: not your order");
         }
     }
 

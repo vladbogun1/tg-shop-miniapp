@@ -1,8 +1,8 @@
 package com.maxsolch.shop.platform.config;
 
 /**
- * A module's STOMP topic whose subscribers must be its owner (a customer sees only their own thread). The module
- * implements it; {@link WebSocketConfig} asks it when a non-admin subscribes to {@code <prefix><key>[/...]}.
+ * A module's STOMP topic whose subscribers must be its owner (a customer sees only their own thread or order). The
+ * module implements it; {@link WebSocketConfig} asks it when a non-admin subscribes to {@code <prefix><key>[/...]}.
  */
 public interface StompTopicOwner {
 
@@ -11,4 +11,9 @@ public interface StompTopicOwner {
 
     /** Whether {@code userId} owns the entity the {@code key} (the path segment after the prefix) names. */
     boolean isOwner(String key, long userId);
+
+    /** What the subscriber is told when {@link #isOwner} says no. */
+    default String forbiddenMessage() {
+        return "forbidden: not your support thread";
+    }
 }

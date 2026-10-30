@@ -16,7 +16,7 @@ import com.maxsolch.shop.catalog.app.CatalogDtos.CardAcceptRequest;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.media.app.ImageStorageService;
-import com.maxsolch.shop.staff.infra.AdminUserRepository;
+import com.maxsolch.shop.platform.security.AdminDirectory;
 import com.maxsolch.shop.translation.domain.ContentTranslation;
 import com.maxsolch.shop.translation.domain.ContentTranslationId;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
@@ -42,7 +42,7 @@ class CardsServiceTest {
     Category mice;
     Category keyboards;
     Product mouse;
-    AdminUserRepository admins;
+    AdminDirectory admins;
 
     @BeforeEach
     void setUp() {
@@ -50,7 +50,7 @@ class CardsServiceTest {
         ImageStorageService storage = mock(ImageStorageService.class);
         BrandAdminService brands = new BrandAdminService(db.brandRepository, db.productRepository, db.directory,
                 storage, db.events(storage));
-        admins = mock(AdminUserRepository.class);
+        admins = mock(AdminDirectory.class);
         service = new CardsService(db.productRepository, db.directory, db.storedTranslations, admins);
         importer = new CardsImporter(db.productRepository, db.directory, brands, db.storedTranslations,
                 db.events(storage), java.time.Clock.systemUTC(), new CardMeta(java.time.Clock.systemUTC()));
@@ -323,10 +323,7 @@ class CardsServiceTest {
 
     @Test
     void reviewNamesTheReviewerAndShowsTheTexts() {
-        AdminUser admin = new AdminUser();
-        admin.setTelegramUserId(7L);
-        admin.setName("Влад");
-        when(admins.findById(7L)).thenReturn(Optional.of(admin));
+        when(admins.displayName(7L)).thenReturn(Optional.of("Влад"));
         importer.importCards(new CardsImportRequest(List.of(item(id(), null, null, Map.of("weight_g", 49),
                 "Новое описание", true, false, Map.of("uk", new CardTranslation(null, "Новий опис", null)))),
                 false), 7L);
