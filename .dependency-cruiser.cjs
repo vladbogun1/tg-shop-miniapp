@@ -68,6 +68,24 @@ module.exports = {
       to: { path: `^(${APPS})/components/` },
     },
     {
+      name: "no-legacy-ui-paths",
+      comment: "Тосты, модалки, подтверждения и примитивы — только из @shop/ui (шаг 2): старые пути приложений удалены.",
+      severity: "error",
+      from: { path: `^(${APPS})/` },
+      to: {
+        path: "(lib/toast|lib/overlay-stack|lib/use-back-close|components/ui/Toast|components/ui/Modal|components/ui/Drawer|components/ui/Lightbox|components/ui/ConfirmModal|components/ui/Button)[.]tsx?$",
+      },
+    },
+    {
+      name: "no-legacy-ui-primitives",
+      comment: "Input/QtyStepper/RadioCard/StatusChip/button-styles покупательских приложений — из @shop/ui/primitives.",
+      severity: "error",
+      from: { path: "^(frontend|site)/" },
+      to: {
+        path: "components/ui/(Input|QtyStepper|RadioCard|StatusChip|button-styles)[.]tsx?$",
+      },
+    },
+    {
       name: "ws-only-from-realtime",
       comment: "WebSocket/STOMP подключается только в shell/realtime.ts (сообщение → invalidate ключей).",
       severity: "error",

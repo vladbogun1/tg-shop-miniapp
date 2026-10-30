@@ -26,6 +26,7 @@ export const RATCHET_SELECTORS = [
   },
   {
     id: "no-confirm-alert",
+    hard: true,
     selector: "MemberExpression[object.name='window'][property.name=/^(confirm|alert)$/]",
     message: "window.confirm/alert запрещены — useConfirm() и toast из @shop/ui.",
   },

@@ -3,8 +3,6 @@
 no-fetch frontend 2
 no-fetch frontend-admin 6
 no-fetch site 2
-no-confirm-alert frontend-admin 2
-no-confirm-alert site 1
 query-key-literal frontend 37
 query-key-literal frontend-admin 148
 query-key-literal site 34
@@ -28,7 +26,7 @@ exhaustive-deps frontend-admin 15
 exhaustive-deps site 5
 exhaustive-deps ui 1
 max-lines frontend 7
-max-lines frontend-admin 36
+max-lines frontend-admin 35
 max-lines site 6
 max-lines core 1
 max-lines ui 2
@@ -37,7 +35,7 @@ max-lines-per-function frontend-admin 39
 max-lines-per-function site 5
 max-lines-per-function ui 1
 complexity frontend 26
-complexity frontend-admin 113
+complexity frontend-admin 112
 complexity site 32
 complexity core 7
 complexity ui 3

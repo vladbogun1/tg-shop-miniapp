@@ -1,24 +1,6 @@
 [
   {
     "type": "dependency",
-    "from": "frontend-admin/lib/orders-api.ts",
-    "to": "frontend-admin/components/ui/ConfirmModal.tsx",
-    "rule": {
-      "severity": "error",
-      "name": "lib-not-components"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "site/lib/compare.ts",
-    "to": "site/components/ui/Toast.tsx",
-    "rule": {
-      "severity": "error",
-      "name": "lib-not-components"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "packages/core/src/giftcase.ts",
     "to": "packages/core/src/types.ts",
     "rule": {
@@ -64,8 +46,8 @@
   },
   {
     "type": "dependency",
-    "from": "frontend/app/account/orders/[id]/chat/page.tsx",
-    "to": "frontend/lib/ws.ts",
+    "from": "frontend-admin/lib/support-api.ts",
+    "to": "packages/core/src/ws.ts",
     "rule": {
       "severity": "error",
       "name": "ws-only-from-realtime"
@@ -73,8 +55,8 @@
   },
   {
     "type": "dependency",
-    "from": "site/components/chat/OrderChat.tsx",
-    "to": "site/lib/ws.ts",
+    "from": "frontend/app/account/orders/[id]/chat/page.tsx",
+    "to": "frontend/lib/ws.ts",
     "rule": {
       "severity": "error",
       "name": "ws-only-from-realtime"
@@ -91,8 +73,8 @@
   },
   {
     "type": "dependency",
-    "from": "frontend-admin/lib/support-api.ts",
-    "to": "packages/core/src/ws.ts",
+    "from": "site/components/chat/OrderChat.tsx",
+    "to": "site/lib/ws.ts",
     "rule": {
       "severity": "error",
       "name": "ws-only-from-realtime"
