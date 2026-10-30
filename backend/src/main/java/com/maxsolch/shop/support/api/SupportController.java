@@ -1,5 +1,6 @@
 package com.maxsolch.shop.support.api;
 
+import com.maxsolch.shop.support.app.CustomerSupport;
 import com.maxsolch.shop.support.app.SupportService;
 
 import com.maxsolch.shop.support.app.SupportDtos.ConfigDto;
@@ -7,7 +8,7 @@ import com.maxsolch.shop.support.app.SupportDtos.CountDto;
 import com.maxsolch.shop.support.app.SupportDtos.CreateThreadRequest;
 import com.maxsolch.shop.support.app.SupportDtos.MessageDto;
 import com.maxsolch.shop.support.app.SupportDtos.ThreadDto;
-import com.maxsolch.shop.platform.web.SecurityUtil;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.order.app.SendMessageRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -36,13 +37,13 @@ import java.util.List;
 public class SupportController {
 
     private final SupportService support;
+    private final CustomerSupport customer;
+    private final CurrentActor actor;
 
-    /** «Журнал → Бот и сайт»: questions to support (not their text). */
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    private com.maxsolch.shop.platform.journal.ActivityLog activity;
-
-    public SupportController(SupportService support) {
+    public SupportController(SupportService support, CustomerSupport customer, CurrentActor actor) {
         this.support = support;
+        this.customer = customer;
+        this.actor = actor;
     }
 
     @GetMapping("/config")
@@ -54,32 +55,25 @@ public class SupportController {
     @GetMapping("/unread-count")
     @Operation(summary = "Unread shop answers across my threads")
     public CountDto unreadCount() {
-        return new CountDto(support.unreadForCustomer(SecurityUtil.currentUserId()));
+        return new CountDto(support.unreadForCustomer(actor.userId()));
     }
 
     @GetMapping("/threads")
     @Operation(summary = "My support threads, latest activity first")
     public List<ThreadDto> list() {
-        return support.listMine(SecurityUtil.currentUserId());
+        return support.listMine(actor.userId());
     }
 
     @PostMapping("/threads")
     @Operation(summary = "Ask a question (optionally about a product); an open thread about the same product is reused")
     public ThreadDto create(@RequestBody CreateThreadRequest req) {
-        String source = SecurityUtil.currentPrincipal().isWeb() ? SupportService.SOURCE_WEB : SupportService.SOURCE_MINIAPP;
-        ThreadDto thread = support.create(SecurityUtil.currentUserId(), source, req);
-        journal(com.maxsolch.shop.platform.journal.ActivityLog.fromRequest("SUPPORT_REQUEST")
-                .text(thread.productTitle() != null && !thread.productTitle().isBlank()
-                        ? "Вопрос в поддержку о товаре «" + thread.productTitle() + "»"
-                        : "Вопрос в поддержку")
-                .detail("thread", thread.id()));
-        return thread;
+        return customer.ask(req);
     }
 
     @GetMapping("/threads/{id}")
     @Operation(summary = "One of my threads")
     public ThreadDto get(@PathVariable String id) {
-        return support.getMine(SecurityUtil.currentUserId(), id);
+        return support.getMine(actor.userId(), id);
     }
 
     @GetMapping("/threads/{id}/messages")
@@ -87,34 +81,25 @@ public class SupportController {
     public List<MessageDto> messages(@PathVariable String id,
                                      @RequestParam(required = false) Long before,
                                      @RequestParam(required = false) Integer limit) {
-        return support.messagesMine(SecurityUtil.currentUserId(), id, before, limit);
+        return support.messagesMine(actor.userId(), id, before, limit);
     }
 
     @PostMapping("/threads/{id}/messages")
     @Operation(summary = "Write to my thread (reopens a closed one)")
     public MessageDto send(@PathVariable String id, @RequestBody SendMessageRequest req) {
-        MessageDto sent = support.sendAsCustomer(SecurityUtil.currentUserId(), id, req);
-        journal(com.maxsolch.shop.platform.journal.ActivityLog.fromRequest("SUPPORT_MESSAGE")
-                .text("Сообщение в поддержку").detail("thread", id));
-        return sent;
+        return customer.write(id, req);
     }
 
     @PostMapping("/threads/{id}/read")
     @Operation(summary = "Mark the shop's answers read")
     public ResponseEntity<Void> markRead(@PathVariable String id) {
-        support.markReadByCustomer(SecurityUtil.currentUserId(), id);
+        support.markReadByCustomer(actor.userId(), id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/threads/{id}/close")
     @Operation(summary = "Close my thread (question answered)")
     public ThreadDto close(@PathVariable String id) {
-        return support.closeByCustomer(SecurityUtil.currentUserId(), id);
-    }
-
-    private void journal(com.maxsolch.shop.platform.journal.ActivityLog.Entry entry) {
-        if (activity != null) {
-            activity.record(entry);
-        }
+        return support.closeByCustomer(actor.userId(), id);
     }
 }

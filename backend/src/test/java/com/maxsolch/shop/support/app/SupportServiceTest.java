@@ -20,20 +20,17 @@ import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.support.app.SupportDtos.CreateThreadRequest;
 import com.maxsolch.shop.support.app.SupportDtos.ThreadDto;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.ForbiddenException;
-import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.order.app.SendMessageRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -70,9 +67,7 @@ class SupportServiceTest {
     @Mock
     SettingsService settings;
     @Mock
-    SimpMessagingTemplate messagingTemplate;
-    @Mock
-    ApplicationEventPublisher events;
+    DomainEvents events;
     @Mock
     MediaSigner mediaSigner;
     @Mock
@@ -84,7 +79,8 @@ class SupportServiceTest {
     @BeforeEach
     void setUp() {
         service = new SupportService(threads, messageRepository, new com.maxsolch.shop.catalog.app.Products(productRepository, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), userRepository, settings,
-                messagingTemplate, events, mediaSigner, messages, Clock.fixed(NOW, ZoneOffset.UTC));
+                new SupportLimits(settings, threads, messageRepository, messages), new SupportMapper(mediaSigner, messages),
+                events, messages, Clock.fixed(NOW, ZoneOffset.UTC));
         when(settings.getBool(SettingsRegistry.SUPPORT_ENABLED)).thenReturn(true);
         when(settings.getInt(SettingsRegistry.SUPPORT_COOLDOWN_SEC)).thenReturn(10);
         when(settings.getInt(SettingsRegistry.SUPPORT_MAX_MESSAGES_PER_HOUR)).thenReturn(30);
@@ -126,7 +122,7 @@ class SupportServiceTest {
     }
 
     private static String code(Throwable e) {
-        return ((BadRequestException) e).getCode();
+        return ((DomainException.BadRequest) e).getCode();
     }
 
     // ------------------------------------------------------------------ limits
@@ -138,7 +134,7 @@ class SupportServiceTest {
         stubThread(t);
 
         assertThatThrownBy(() -> service.create(USER, "MINIAPP", ask(null, "Привіт")))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(DomainException.BadRequest.class)
                 .satisfies(e -> assertThat(code(e)).isEqualTo("SUPPORT_DISABLED"));
         assertThatThrownBy(() -> service.sendAsCustomer(USER, UuidUtil.toString(t.getId()), text("ще")))
                 .satisfies(e -> assertThat(code(e)).isEqualTo("SUPPORT_DISABLED"));
@@ -160,7 +156,7 @@ class SupportServiceTest {
     @Test
     void emptyMessage_isRejected() {
         assertThatThrownBy(() -> service.create(USER, "WEB", ask(null, "   ")))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test
@@ -243,11 +239,11 @@ class SupportServiceTest {
         assertThat(dto.awaitingSince()).isEqualTo(NOW);
         assertThat(dto.lastPreview()).isEqualTo("Скільки грамів?");
         ArgumentCaptor<Object> event = ArgumentCaptor.forClass(Object.class);
-        verify(events).publishEvent(event.capture());
-        SupportEvents.MessagePosted posted = (SupportEvents.MessagePosted) event.getValue();
+        verify(events, org.mockito.Mockito.times(2)).publish(event.capture());
+        SupportEvents.MessagePosted posted = (SupportEvents.MessagePosted) event.getAllValues().get(1);
         assertThat(posted.fromAdmin()).isFalse();
         assertThat(posted.newThread()).isTrue();
-        verify(messagingTemplate).convertAndSend(eq("/topic/support/" + dto.id()), any(Object.class));
+        assertThat(((SupportChatBroadcaster.ChatPosted) event.getAllValues().get(0)).message().threadId()).isEqualTo(dto.id());
     }
 
     @Test
@@ -257,14 +253,14 @@ class SupportServiceTest {
         p.setArchived(true);
         when(productRepository.findById(any())).thenReturn(Optional.of(p));
         assertThatThrownBy(() -> service.create(USER, "WEB", ask(UuidUtil.toString(p.getId()), "?")))
-                .isInstanceOf(NotFoundException.class);
+                .isInstanceOf(DomainException.NotFound.class);
     }
 
     @Test
     void foreignAttachment_isRejected() {
         String foreign = ImageStorageService.customerChatPrefix(7L) + "x.png";
         CreateThreadRequest req = new CreateThreadRequest(null, null, null, "PHOTO", foreign, "x.png", "image/png");
-        assertThatThrownBy(() -> service.create(USER, "WEB", req)).isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> service.create(USER, "WEB", req)).isInstanceOf(DomainException.BadRequest.class);
 
         String own = ImageStorageService.customerChatPrefix(USER) + "x.png";
         // The stored preview is the seller's Russian placeholder; the customer reads it in their language.
@@ -295,11 +291,11 @@ class SupportServiceTest {
         SupportThread t = thread(7L, SupportStatus.OPEN);
         stubThread(t);
         String id = UuidUtil.toString(t.getId());
-        assertThatThrownBy(() -> service.getMine(USER, id)).isInstanceOf(ForbiddenException.class);
-        assertThatThrownBy(() -> service.messagesMine(USER, id, null, null)).isInstanceOf(ForbiddenException.class);
-        assertThatThrownBy(() -> service.sendAsCustomer(USER, id, text("hi"))).isInstanceOf(ForbiddenException.class);
-        assertThatThrownBy(() -> service.markReadByCustomer(USER, id)).isInstanceOf(ForbiddenException.class);
-        assertThatThrownBy(() -> service.closeByCustomer(USER, id)).isInstanceOf(ForbiddenException.class);
+        assertThatThrownBy(() -> service.getMine(USER, id)).isInstanceOf(DomainException.Forbidden.class);
+        assertThatThrownBy(() -> service.messagesMine(USER, id, null, null)).isInstanceOf(DomainException.Forbidden.class);
+        assertThatThrownBy(() -> service.sendAsCustomer(USER, id, text("hi"))).isInstanceOf(DomainException.Forbidden.class);
+        assertThatThrownBy(() -> service.markReadByCustomer(USER, id)).isInstanceOf(DomainException.Forbidden.class);
+        assertThatThrownBy(() -> service.closeByCustomer(USER, id)).isInstanceOf(DomainException.Forbidden.class);
         verify(messageRepository, never()).saveAndFlush(any());
     }
 
@@ -314,7 +310,7 @@ class SupportServiceTest {
 
     @Test
     void badId_isNotFound() {
-        assertThatThrownBy(() -> service.getMine(USER, "nope")).isInstanceOf(NotFoundException.class);
+        assertThatThrownBy(() -> service.getMine(USER, "nope")).isInstanceOf(DomainException.NotFound.class);
     }
 
     // ------------------------------------------------------------------ admin
@@ -334,8 +330,8 @@ class SupportServiceTest {
         assertThat(t.getCustomerUnread()).isEqualTo(1);
         verify(messageRepository).markRead(any(), eq(SenderType.CUSTOMER), eq(NOW));
         ArgumentCaptor<Object> event = ArgumentCaptor.forClass(Object.class);
-        verify(events).publishEvent(event.capture());
-        assertThat(((SupportEvents.MessagePosted) event.getValue()).fromAdmin()).isTrue();
+        verify(events, org.mockito.Mockito.times(2)).publish(event.capture());
+        assertThat(((SupportEvents.MessagePosted) event.getAllValues().get(1)).fromAdmin()).isTrue();
     }
 
     @Test

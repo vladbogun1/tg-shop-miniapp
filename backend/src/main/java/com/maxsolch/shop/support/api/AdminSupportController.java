@@ -2,14 +2,13 @@ package com.maxsolch.shop.support.api;
 
 import com.maxsolch.shop.support.app.SupportService;
 
-import com.maxsolch.shop.platform.audit.AdminAuditService;
+import com.maxsolch.shop.support.app.AdminSupport;
 import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.media.app.UploadValidator;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.support.app.SupportDtos.CountDto;
 import com.maxsolch.shop.support.app.SupportDtos.MessageDto;
 import com.maxsolch.shop.support.app.SupportDtos.ThreadDto;
-import com.maxsolch.shop.platform.web.SecurityUtil;
 import com.maxsolch.shop.order.app.SendMessageRequest;
 import com.maxsolch.shop.media.app.UploadResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,14 +35,14 @@ import java.util.List;
 public class AdminSupportController {
 
     private final SupportService support;
-    private final AdminAuditService audit;
+    private final AdminSupport adminSupport;
     private final ImageStorageService imageStorageService;
     private final UploadValidator uploadValidator;
 
-    public AdminSupportController(SupportService support, AdminAuditService audit,
+    public AdminSupportController(SupportService support, AdminSupport adminSupport,
                                   ImageStorageService imageStorageService, UploadValidator uploadValidator) {
         this.support = support;
-        this.audit = audit;
+        this.adminSupport = adminSupport;
         this.imageStorageService = imageStorageService;
         this.uploadValidator = uploadValidator;
     }
@@ -79,7 +78,7 @@ public class AdminSupportController {
     @PostMapping("/threads/{id}/messages")
     @Operation(summary = "Answer — the customer gets a bot DM with a button to the thread")
     public MessageDto send(@PathVariable String id, @RequestBody SendMessageRequest req) {
-        return support.sendAsAdmin(id, SecurityUtil.currentUserId(), audit.currentAdminName(), req);
+        return adminSupport.send(id, req);
     }
 
     /** Admin attachment: pictures or a PDF under the private {@code chat/} prefix (signed links). */

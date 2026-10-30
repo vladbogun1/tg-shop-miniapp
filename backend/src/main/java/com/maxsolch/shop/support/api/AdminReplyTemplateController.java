@@ -1,10 +1,8 @@
 package com.maxsolch.shop.support.api;
 
-import com.maxsolch.shop.platform.audit.AdminAuditService;
-import com.maxsolch.shop.platform.util.UuidUtil;
+import com.maxsolch.shop.support.app.AdminReplyTemplates;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.support.app.ReplyTemplateService;
-import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.support.app.ReplyTemplateDtos.RenderedTemplateDto;
 import com.maxsolch.shop.support.app.ReplyTemplateDtos.TemplateDto;
 import com.maxsolch.shop.support.app.ReplyTemplateDtos.TemplateUpsertRequest;
@@ -31,11 +29,11 @@ import java.util.List;
 public class AdminReplyTemplateController {
 
     private final ReplyTemplateService service;
-    private final AdminAuditService audit;
+    private final AdminReplyTemplates admin;
 
-    public AdminReplyTemplateController(ReplyTemplateService service, AdminAuditService audit) {
+    public AdminReplyTemplateController(ReplyTemplateService service, AdminReplyTemplates admin) {
         this.service = service;
-        this.audit = audit;
+        this.admin = admin;
     }
 
     @GetMapping("/api/admin/reply-templates")
@@ -47,36 +45,25 @@ public class AdminReplyTemplateController {
     @PostMapping("/api/admin/reply-templates")
     @Operation(summary = "Create a template")
     public TemplateDto create(@Valid @RequestBody TemplateUpsertRequest req) {
-        TemplateDto dto = service.create(req);
-        audit.record("REPLY_TEMPLATE_CREATE", "REPLY_TEMPLATE", String.valueOf(dto.id()), "шаблон «" + dto.title() + "»");
-        return dto;
+        return admin.create(req);
     }
 
     @PutMapping("/api/admin/reply-templates/{id}")
     @Operation(summary = "Update a template")
     public TemplateDto update(@PathVariable long id, @Valid @RequestBody TemplateUpsertRequest req) {
-        TemplateDto dto = service.update(id, req);
-        audit.record("REPLY_TEMPLATE_UPDATE", "REPLY_TEMPLATE", String.valueOf(id), "шаблон «" + dto.title() + "»");
-        return dto;
+        return admin.update(id, req);
     }
 
     @DeleteMapping("/api/admin/reply-templates/{id}")
     @Operation(summary = "Delete a template")
     public ResponseEntity<Void> delete(@PathVariable long id) {
-        String title = service.delete(id);
-        audit.record("REPLY_TEMPLATE_DELETE", "REPLY_TEMPLATE", String.valueOf(id), "удалён шаблон «" + title + "»");
+        admin.delete(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/api/admin/orders/{orderId}/reply-templates")
     @Operation(summary = "Templates filled in for an order, in the customer's language")
     public List<RenderedTemplateDto> forOrder(@PathVariable String orderId) {
-        byte[] key;
-        try {
-            key = UuidUtil.toBytes(orderId);
-        } catch (IllegalArgumentException e) {
-            throw new NotFoundException("заказ не найден");
-        }
-        return service.renderForOrder(key);
+        return service.renderForOrder(orderId);
     }
 }

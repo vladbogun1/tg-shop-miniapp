@@ -11,32 +11,22 @@ import com.maxsolch.shop.order.domain.MessageType;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductImage;
 import com.maxsolch.shop.order.domain.SenderType;
-import com.maxsolch.shop.domain.User;
-import com.maxsolch.shop.platform.i18n.ChatPreview;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.media.app.ImageStorageService;
-import com.maxsolch.shop.media.app.MediaSigner;
 import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.repository.UserRepository;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.support.app.SupportDtos.ConfigDto;
 import com.maxsolch.shop.support.app.SupportDtos.CreateThreadRequest;
-import com.maxsolch.shop.support.app.SupportDtos.MessageDto;
 import com.maxsolch.shop.support.app.SupportDtos.ThreadDto;
-import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.platform.error.ForbiddenException;
-import com.maxsolch.shop.platform.error.NotFoundException;
 import com.maxsolch.shop.order.app.SendMessageRequest;
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.platform.tx.DomainEvents;
+import com.maxsolch.shop.support.app.SupportDtos.MessageDto;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -79,57 +69,36 @@ public class SupportService {
     private final Products productRepository;
     private final UserRepository userRepository;
     private final SettingsService settings;
-    private final SimpMessagingTemplate messagingTemplate;
-    private final ApplicationEventPublisher events;
-    private final MediaSigner mediaSigner;
+    private final SupportLimits limits;
+    private final SupportMapper mapper;
+    private final DomainEvents events;
     private final Messages messages;
     private final Clock clock;
 
-    @Autowired
     public SupportService(SupportThreadRepository threads,
                           SupportMessageRepository messageRepository,
                           Products productRepository,
                           UserRepository userRepository,
                           SettingsService settings,
-                          SimpMessagingTemplate messagingTemplate,
-                          ApplicationEventPublisher events,
-                          MediaSigner mediaSigner,
-                          Messages messages) {
-        this(threads, messageRepository, productRepository, userRepository, settings, messagingTemplate,
-                events, mediaSigner, messages, Clock.systemUTC());
-    }
-
-    SupportService(SupportThreadRepository threads,
-                   SupportMessageRepository messageRepository,
-                   Products productRepository,
-                   UserRepository userRepository,
-                   SettingsService settings,
-                   SimpMessagingTemplate messagingTemplate,
-                   ApplicationEventPublisher events,
-                   MediaSigner mediaSigner,
-                   Messages messages,
-                   Clock clock) {
+                          SupportLimits limits,
+                          SupportMapper mapper,
+                          DomainEvents events,
+                          Messages messages,
+                          Clock clock) {
         this.threads = threads;
         this.messageRepository = messageRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.settings = settings;
-        this.messagingTemplate = messagingTemplate;
+        this.limits = limits;
+        this.mapper = mapper;
         this.events = events;
-        this.mediaSigner = mediaSigner;
         this.messages = messages;
         this.clock = clock;
     }
 
-    // ------------------------------------------------------------------ config
-
     public ConfigDto config() {
-        return new ConfigDto(
-                settings.getBool(SettingsRegistry.SUPPORT_ENABLED),
-                settings.getInt(SettingsRegistry.SUPPORT_MAX_LENGTH),
-                settings.getInt(SettingsRegistry.SUPPORT_COOLDOWN_SEC),
-                settings.getInt(SettingsRegistry.SUPPORT_MAX_OPEN_THREADS),
-                settings.getInt(SettingsRegistry.SUPPORT_MAX_MESSAGES_PER_HOUR));
+        return limits.config();
     }
 
     // ------------------------------------------------------------------ customer
@@ -137,13 +106,13 @@ public class SupportService {
     @Transactional(readOnly = true)
     public List<ThreadDto> listMine(long userId) {
         return threads.findTop100ByUserIdOrderByLastMessageAtDesc(userId).stream()
-                .map(t -> toDto(t, false))
+                .map(t -> mapper.toDto(t, false))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public ThreadDto getMine(long userId, String threadId) {
-        return toDto(owned(userId, threadId), false);
+        return mapper.toDto(owned(userId, threadId), false);
     }
 
     @Transactional(readOnly = true)
@@ -166,14 +135,14 @@ public class SupportService {
     @Transactional
     public ThreadDto create(long userId, String source, CreateThreadRequest req) {
         if (req == null) {
-            throw new BadRequestException(messages.current("api.chat.needsContent"));
+            throw new DomainException.BadRequest(messages.current("api.chat.needsContent"));
         }
         SendMessageRequest first = new SendMessageRequest(req.text(), req.type(), req.attachmentUrl(),
                 req.fileName(), req.mimeType(), null);
         Instant now = clock.instant();
-        requireEnabled();
-        validateContent(userId, first);
-        checkRate(userId, now);
+        limits.requireEnabled();
+        limits.validateContent(userId, first);
+        limits.checkRate(userId, now);
 
         Product product = null;
         if (req.productId() != null && !req.productId().isBlank()) {
@@ -182,10 +151,10 @@ public class SupportService {
             if (existing.isPresent()) {
                 SupportThread t = threads.findForUpdate(existing.get().getId()).orElse(existing.get());
                 postCustomer(t, userId, first, now, false);
-                return toDto(t, false);
+                return mapper.toDto(t, false);
             }
         }
-        requireThreadSlot(userId);
+        limits.requireThreadSlot(userId);
 
         SupportThread t = new SupportThread();
         t.setId(UuidUtil.randomBytes());
@@ -208,19 +177,19 @@ public class SupportService {
         }
         threads.saveAndFlush(t);
         postCustomer(t, userId, first, now, true);
-        return toDto(t, false);
+        return mapper.toDto(t, false);
     }
 
     /** A customer message in their own thread; writing into a closed thread reopens it. */
     @Transactional
     public MessageDto sendAsCustomer(long userId, String threadId, SendMessageRequest req) {
         Instant now = clock.instant();
-        requireEnabled();
-        validateContent(userId, req);
+        limits.requireEnabled();
+        limits.validateContent(userId, req);
         SupportThread t = ownedForUpdate(userId, threadId);
-        checkRate(userId, now);
+        limits.checkRate(userId, now);
         if (t.getStatus() == SupportStatus.CLOSED) {
-            requireThreadSlot(userId);
+            limits.requireThreadSlot(userId);
         }
         return postCustomer(t, userId, req, now, false);
     }
@@ -239,7 +208,7 @@ public class SupportService {
     public ThreadDto closeByCustomer(long userId, String threadId) {
         SupportThread t = ownedForUpdate(userId, threadId);
         close(t, "CUSTOMER");
-        return toDto(t, false);
+        return mapper.toDto(t, false);
     }
 
     // ------------------------------------------------------------------ admin
@@ -261,13 +230,13 @@ public class SupportService {
                 : "%" + q.trim().toLowerCase(Locale.ROOT).replace("%", "").replace("_", "") + "%";
         int size = Math.min(Math.max(1, limit == null ? ADMIN_LIST_DEFAULT : limit), ADMIN_LIST_MAX);
         return threads.adminList(status, awaiting, like, PageRequest.of(0, size)).stream()
-                .map(t -> toDto(t, true))
+                .map(t -> mapper.toDto(t, true))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public ThreadDto adminGet(String threadId) {
-        return toDto(load(threadId), true);
+        return mapper.toDto(load(threadId), true);
     }
 
     @Transactional(readOnly = true)
@@ -280,25 +249,25 @@ public class SupportService {
     public MessageDto sendAsAdmin(String threadId, Long adminId, String adminName, SendMessageRequest req) {
         byte[] id = load(threadId).getId();
         Instant now = clock.instant();
-        requireContent(req);
+        limits.requireContent(req);
         // Answering means the customer's messages have been read.
         messageRepository.markRead(id, SenderType.CUSTOMER, now);
         SupportThread t = threads.findForUpdate(id)
-                .orElseThrow(() -> new NotFoundException(messages.current("api.support.notFound")));
+                .orElseThrow(() -> new DomainException.NotFound(messages.current("api.support.notFound")));
         SupportMessage m = persist(t.getId(), SenderType.ADMIN, adminId, adminName, req, now);
         if (t.getStatus() == SupportStatus.CLOSED) {
             reopen(t);
         }
         t.setLastMessageAt(now);
         t.setLastSender(SenderType.ADMIN);
-        t.setLastPreview(ellipsize(previewOf(m), PREVIEW_MAX));
+        t.setLastPreview(ellipsize(SupportMapper.previewOf(m), PREVIEW_MAX));
         t.setCustomerUnread(t.getCustomerUnread() + 1);
         t.setAdminUnread(0);
         t.setAwaitingSince(null);
         threads.save(t);
-        MessageDto dto = toDto(m);
-        afterCommit(t.getId(), dto);
-        events.publishEvent(new SupportEvents.MessagePosted(t.getId(), true, false, previewOf(m)));
+        MessageDto dto = mapper.toDto(m);
+        events.publish(new SupportChatBroadcaster.ChatPosted(t.getId(), dto));
+        events.publish(new SupportEvents.MessagePosted(t.getId(), true, false, SupportMapper.previewOf(m)));
         return dto;
     }
 
@@ -317,7 +286,7 @@ public class SupportService {
     public ThreadDto adminClose(String threadId) {
         SupportThread t = threads.findForUpdate(load(threadId).getId()).orElseThrow();
         close(t, "ADMIN");
-        return toDto(t, true);
+        return mapper.toDto(t, true);
     }
 
     @Transactional
@@ -327,7 +296,7 @@ public class SupportService {
             reopen(t);
             threads.save(t);
         }
-        return toDto(t, true);
+        return mapper.toDto(t, true);
     }
 
     /** Open threads waiting for a shop answer (admin nav badge). */
@@ -376,65 +345,6 @@ public class SupportService {
         return stale.size();
     }
 
-    // ------------------------------------------------------------------ limits
-
-    private void requireEnabled() {
-        if (!settings.getBool(SettingsRegistry.SUPPORT_ENABLED)) {
-            throw new BadRequestException(messages.current("api.support.disabled"), "SUPPORT_DISABLED");
-        }
-    }
-
-    /** Text or attachment present, text within {@code support.maxLength}, attachment is the customer's own. */
-    private void validateContent(long userId, SendMessageRequest req) {
-        requireContent(req);
-        int max = settings.getInt(SettingsRegistry.SUPPORT_MAX_LENGTH);
-        if (max > 0 && req.text() != null && req.text().strip().length() > max) {
-            throw new BadRequestException(messages.current("api.support.tooLong", max), "SUPPORT_TOO_LONG");
-        }
-        if (req.attachmentUrl() != null && !req.attachmentUrl().isBlank()
-                && !ImageStorageService.isCustomerAttachmentKey(req.attachmentUrl(), userId)) {
-            throw new BadRequestException(messages.current("api.chat.badAttachment"));
-        }
-    }
-
-    private void requireContent(SendMessageRequest req) {
-        if (req == null || ((req.text() == null || req.text().isBlank())
-                && (req.attachmentUrl() == null || req.attachmentUrl().isBlank()))) {
-            throw new BadRequestException(messages.current("api.chat.needsContent"));
-        }
-    }
-
-    /** {@code support.cooldownSec} between messages and {@code support.maxMessagesPerHour}. */
-    private void checkRate(long userId, Instant now) {
-        int cooldown = settings.getInt(SettingsRegistry.SUPPORT_COOLDOWN_SEC);
-        if (cooldown > 0) {
-            Instant last = messageRepository.lastSentAt(SenderType.CUSTOMER, userId);
-            if (last != null) {
-                long wait = cooldown - Duration.between(last, now).getSeconds();
-                if (wait > 0) {
-                    throw new BadRequestException(messages.current("api.support.cooldown", wait), "SUPPORT_COOLDOWN");
-                }
-            }
-        }
-        int perHour = settings.getInt(SettingsRegistry.SUPPORT_MAX_MESSAGES_PER_HOUR);
-        if (perHour > 0) {
-            long sent = messageRepository.countSentSince(SenderType.CUSTOMER, userId, now.minus(Duration.ofHours(1)));
-            if (sent >= perHour) {
-                throw new BadRequestException(messages.current("api.support.hourlyLimit", perHour),
-                        "SUPPORT_HOURLY_LIMIT");
-            }
-        }
-    }
-
-    /** {@code support.maxOpenThreads}: room for one more open thread. */
-    private void requireThreadSlot(long userId) {
-        int max = settings.getInt(SettingsRegistry.SUPPORT_MAX_OPEN_THREADS);
-        if (max > 0 && threads.countByUserIdAndStatus(userId, SupportStatus.OPEN) >= max) {
-            throw new BadRequestException(messages.current("api.support.tooManyThreads", max),
-                    "SUPPORT_TOO_MANY_THREADS");
-        }
-    }
-
     // ------------------------------------------------------------------ internals
 
     private MessageDto postCustomer(SupportThread t, long userId, SendMessageRequest req, Instant now,
@@ -446,15 +356,15 @@ public class SupportService {
         }
         t.setLastMessageAt(now);
         t.setLastSender(SenderType.CUSTOMER);
-        t.setLastPreview(ellipsize(previewOf(m), PREVIEW_MAX));
+        t.setLastPreview(ellipsize(SupportMapper.previewOf(m), PREVIEW_MAX));
         t.setAdminUnread(t.getAdminUnread() + 1);
         if (t.getAwaitingSince() == null) {
             t.setAwaitingSince(now);
         }
         threads.save(t);
-        MessageDto dto = toDto(m);
-        afterCommit(t.getId(), dto);
-        events.publishEvent(new SupportEvents.MessagePosted(t.getId(), false, newThread, previewOf(m)));
+        MessageDto dto = mapper.toDto(m);
+        events.publish(new SupportChatBroadcaster.ChatPosted(t.getId(), dto));
+        events.publish(new SupportEvents.MessagePosted(t.getId(), false, newThread, SupportMapper.previewOf(m)));
         return dto;
     }
 
@@ -503,23 +413,9 @@ public class SupportService {
         List<SupportMessage> page = messageRepository.findPage(threadId, before, PageRequest.of(0, size));
         List<MessageDto> out = new ArrayList<>(page.size());
         for (int i = page.size() - 1; i >= 0; i--) {
-            out.add(toDto(page.get(i)));
+            out.add(mapper.toDto(page.get(i)));
         }
         return out;
-    }
-
-    private void afterCommit(byte[] threadId, MessageDto dto) {
-        String destination = "/topic/support/" + UuidUtil.toString(threadId);
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    messagingTemplate.convertAndSend(destination, dto);
-                }
-            });
-        } else {
-            messagingTemplate.convertAndSend(destination, dto);
-        }
     }
 
     private SupportThread owned(long userId, String threadId) {
@@ -530,27 +426,27 @@ public class SupportService {
 
     private SupportThread ownedForUpdate(long userId, String threadId) {
         SupportThread t = threads.findForUpdate(parseId(threadId))
-                .orElseThrow(() -> new NotFoundException(messages.current("api.support.notFound")));
+                .orElseThrow(() -> new DomainException.NotFound(messages.current("api.support.notFound")));
         requireOwner(t, userId);
         return t;
     }
 
     private void requireOwner(SupportThread t, long userId) {
         if (t.getUserId() == null || t.getUserId() != userId) {
-            throw new ForbiddenException(messages.current("api.support.notYours"));
+            throw new DomainException.Forbidden(messages.current("api.support.notYours"));
         }
     }
 
     private SupportThread load(String threadId) {
         return threads.findById(parseId(threadId))
-                .orElseThrow(() -> new NotFoundException(messages.current("api.support.notFound")));
+                .orElseThrow(() -> new DomainException.NotFound(messages.current("api.support.notFound")));
     }
 
     private byte[] parseId(String threadId) {
         try {
             return UuidUtil.toBytes(threadId);
         } catch (RuntimeException e) {
-            throw new NotFoundException(messages.current("api.support.notFound"));
+            throw new DomainException.NotFound(messages.current("api.support.notFound"));
         }
     }
 
@@ -559,24 +455,15 @@ public class SupportService {
         try {
             id = UuidUtil.toBytes(productId);
         } catch (RuntimeException e) {
-            throw new NotFoundException(messages.current("api.support.productNotFound"));
+            throw new DomainException.NotFound(messages.current("api.support.productNotFound"));
         }
         return productRepository.findById(id)
                 .filter(p -> !p.isArchived())
-                .orElseThrow(() -> new NotFoundException(messages.current("api.support.productNotFound")));
+                .orElseThrow(() -> new DomainException.NotFound(messages.current("api.support.productNotFound")));
     }
 
     private String customerName(long userId) {
-        return userRepository.findById(userId).map(SupportService::displayName).orElse(null);
-    }
-
-    static String displayName(User u) {
-        String full = ((u.getFirstName() == null ? "" : u.getFirstName().trim()) + " "
-                + (u.getLastName() == null ? "" : u.getLastName().trim())).trim();
-        if (!full.isEmpty()) {
-            return ellipsize(full, 255);
-        }
-        return u.getUsername() == null || u.getUsername().isBlank() ? null : "@" + u.getUsername().trim();
+        return userRepository.findById(userId).map(SupportMapper::displayName).orElse(null);
     }
 
     private static String firstImage(Product p) {
@@ -599,58 +486,7 @@ public class SupportService {
             // SYSTEM cards are the server's own; nobody posts them through the API.
             return t == MessageType.SYSTEM ? MessageType.TEXT : t;
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException(messages.current("api.chat.unknownType", type));
+            throw new DomainException.BadRequest(messages.current("api.chat.unknownType", type));
         }
-    }
-
-    /** Short preview for lists and notifications. */
-    static String previewOf(SupportMessage m) {
-        if (m.getText() != null && !m.getText().isBlank()) {
-            return m.getText().replaceAll("\\s+", " ").trim();
-        }
-        return switch (m.getType()) {
-            case PHOTO -> ChatPreview.PHOTO;
-            case FILE -> m.getFileName() == null ? ChatPreview.FILE : "📎 " + m.getFileName();
-            default -> "";
-        };
-    }
-
-    ThreadDto toDto(SupportThread t, boolean admin) {
-        return new ThreadDto(
-                UuidUtil.toString(t.getId()),
-                t.getStatus().name(),
-                t.getSubject(),
-                t.getProductId() == null ? null : UuidUtil.toString(t.getProductId()),
-                t.getProductTitle(),
-                t.getProductSlug(),
-                t.getProductImageUrl(),
-                t.getSource(),
-                t.getLastMessageAt(),
-                t.getLastSender() == null ? null : t.getLastSender().name(),
-                admin ? t.getLastPreview() : ChatPreview.current(t.getLastPreview(), messages),
-                admin ? t.getAdminUnread() : t.getCustomerUnread(),
-                t.getAwaitingSince(),
-                t.getCreatedAt(),
-                t.getClosedAt(),
-                t.getClosedBy(),
-                t.getUserId(),
-                t.getCustomerName());
-    }
-
-    private MessageDto toDto(SupportMessage m) {
-        return new MessageDto(
-                m.getId(),
-                UuidUtil.toString(m.getThreadId()),
-                m.getSenderType().name(),
-                m.getSenderName(),
-                m.getType().name(),
-                m.getText(),
-                // Private bucket: the client gets a short-lived signed link, never the raw key.
-                mediaSigner.signedUrl(m.getAttachmentUrl()),
-                m.getFileName(),
-                m.getMimeType(),
-                m.getReplyToMessageId(),
-                m.getCreatedAt(),
-                m.getReadAt());
     }
 }

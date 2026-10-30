@@ -191,6 +191,17 @@ public class ReplyTemplateService {
 
     // ----- rendering -----
 
+    /** Same, for an order id as it comes from the URL; a malformed id is just an unknown order. */
+    public List<RenderedTemplateDto> renderForOrder(String orderId) {
+        byte[] key;
+        try {
+            key = UuidUtil.toBytes(orderId);
+        } catch (IllegalArgumentException e) {
+            throw new DomainException.NotFound("заказ не найден");
+        }
+        return renderForOrder(key);
+    }
+
     /** Every template filled in for this order, in the customer's language. */
     @Transactional(readOnly = true)
     public List<RenderedTemplateDto> renderForOrder(byte[] orderId) {

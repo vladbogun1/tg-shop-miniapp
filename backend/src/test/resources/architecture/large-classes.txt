@@ -8,4 +8,3 @@ com/maxsolch/shop/platform/journal/ActivityLog.java 522
 com/maxsolch/shop/review/app/ReviewService.java 591
 com/maxsolch/shop/order/app/OrderQueryService.java 585
 com/maxsolch/shop/service/WebAuthService.java 569
-com/maxsolch/shop/support/app/SupportService.java 650

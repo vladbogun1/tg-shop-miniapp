@@ -1,5 +1,6 @@
 package com.maxsolch.shop.platform.config;
 
+import org.springframework.beans.factory.ObjectProvider;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.infra.OrderRepository;
@@ -229,15 +230,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         }
     }
 
-    /** Support threads (/topic/support/{threadId}): the thread's customer or any admin — like order chat. */
-    private com.maxsolch.shop.support.app.SupportService supportService;
+    /** Topics owned by a module (support threads): the owner or any admin may subscribe, like order chat. */
+    private ObjectProvider<StompTopicOwner> topicOwners;
 
     @org.springframework.beans.factory.annotation.Autowired
-    void setSupportService(@org.springframework.context.annotation.Lazy com.maxsolch.shop.support.app.SupportService s) {
-        this.supportService = s;
+    void setTopicOwners(ObjectProvider<StompTopicOwner> owners) {
+        this.topicOwners = owners;
     }
 
-    private void authorizeSupportSubscription(StompHeaderAccessor accessor, String destination) {
+    private void authorizeOwnedTopic(StompHeaderAccessor accessor, StompTopicOwner topic, String destination) {
         if (!(accessor.getUser() instanceof StompPrincipal sp)) {
             throw new IllegalArgumentException("unauthorized subscription");
         }
@@ -248,19 +249,23 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             }
             return;
         }
-        String rest = destination.substring("/topic/support/".length());
+        String rest = destination.substring(topic.topicPrefix().length());
         int slash = rest.indexOf('/');
-        String threadId = slash >= 0 ? rest.substring(0, slash) : rest;
-        if (supportService == null || !supportService.isOwner(threadId, principal.telegramUserId())) {
+        String key = slash >= 0 ? rest.substring(0, slash) : rest;
+        if (!topic.isOwner(key, principal.telegramUserId())) {
             throw new IllegalArgumentException("forbidden: not your support thread");
         }
     }
 
     private void authorizeSubscription(StompHeaderAccessor accessor) {
         String destination = accessor.getDestination();
-        if (destination != null && destination.startsWith("/topic/support/")) {
-            authorizeSupportSubscription(accessor, destination);
-            return;
+        if (destination != null && topicOwners != null) {
+            for (StompTopicOwner topic : (Iterable<StompTopicOwner>) topicOwners.orderedStream()::iterator) {
+                if (destination.startsWith(topic.topicPrefix())) {
+                    authorizeOwnedTopic(accessor, topic, destination);
+                    return;
+                }
+            }
         }
         if (destination == null || !destination.startsWith("/topic/orders/")) {
             return;
