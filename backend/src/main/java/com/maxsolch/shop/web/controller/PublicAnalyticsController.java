@@ -4,7 +4,7 @@ import com.maxsolch.shop.analytics.ClientEventService;
 import com.maxsolch.shop.analytics.StaffVisitors;
 import com.maxsolch.shop.analytics.WebEventBatch;
 import com.maxsolch.shop.platform.web.ClientIp;
-import com.maxsolch.shop.geo.VisitorLocationService;
+import com.maxsolch.shop.customer.app.VisitorLocationService;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

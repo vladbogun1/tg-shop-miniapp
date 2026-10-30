@@ -1,7 +1,7 @@
 package com.maxsolch.shop.platform.security;
 
 import com.maxsolch.shop.platform.config.AllowedOrigins;
-import com.maxsolch.shop.geo.VisitorLocationFilter;
+import com.maxsolch.shop.customer.api.VisitorLocationFilter;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

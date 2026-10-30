@@ -1,13 +1,13 @@
 package com.maxsolch.shop.catalog.api;
 
-import com.maxsolch.shop.domain.AdminRole;
-import com.maxsolch.shop.domain.AdminUser;
+import com.maxsolch.shop.staff.domain.AdminRole;
+import com.maxsolch.shop.staff.domain.AdminUser;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.security.AdminAccess;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.platform.security.Role;
-import com.maxsolch.shop.repository.AdminUserRepository;
+import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;

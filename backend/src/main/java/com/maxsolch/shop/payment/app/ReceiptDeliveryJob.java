@@ -11,7 +11,7 @@ import org.springframework.cache.CacheManager;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.app.OrderLookup;
-import com.maxsolch.shop.repository.UserRepository;
+import com.maxsolch.shop.customer.infra.UserRepository;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import lombok.extern.slf4j.Slf4j;

@@ -1,7 +1,7 @@
 package com.maxsolch.shop.platform.security;
 
-import com.maxsolch.shop.domain.AdminUser;
-import com.maxsolch.shop.repository.AdminUserRepository;
+import com.maxsolch.shop.staff.domain.AdminUser;
+import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

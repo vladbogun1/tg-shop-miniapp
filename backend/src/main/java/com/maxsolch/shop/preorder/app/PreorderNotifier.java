@@ -6,7 +6,7 @@ import com.maxsolch.shop.translation.app.BotTexts;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.procurement.app.BatchDtos.EtaDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.MyPreorderDto;
-import com.maxsolch.shop.tg.CustomerBot;
+import com.maxsolch.shop.notification.app.CustomerBot;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;

@@ -13,7 +13,7 @@ import com.maxsolch.shop.catalog.domain.ProductImage;
 import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.catalog.app.Products;
-import com.maxsolch.shop.repository.UserRepository;
+import com.maxsolch.shop.customer.infra.UserRepository;
 import com.maxsolch.shop.platform.settings.SettingsRegistry;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.support.app.SupportDtos.ConfigDto;

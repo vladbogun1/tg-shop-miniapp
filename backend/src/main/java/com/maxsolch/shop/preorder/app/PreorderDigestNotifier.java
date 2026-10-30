@@ -1,7 +1,7 @@
 package com.maxsolch.shop.preorder.app;
 
 import com.maxsolch.shop.platform.journal.ActivityLog;
-import com.maxsolch.shop.tg.SellerChannel;
+import com.maxsolch.shop.notification.app.SellerChannel;
 import org.springframework.stereotype.Component;
 
 /**

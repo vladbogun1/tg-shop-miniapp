@@ -2,8 +2,8 @@ package com.maxsolch.shop.platform.security;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.maxsolch.shop.domain.AdminUser;
-import com.maxsolch.shop.repository.AdminUserRepository;
+import com.maxsolch.shop.staff.domain.AdminUser;
+import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;

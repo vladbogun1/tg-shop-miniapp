@@ -1,9 +1,9 @@
 package com.maxsolch.shop.platform.journal;
 
-import com.maxsolch.shop.repository.BroadcastRepository;
+import com.maxsolch.shop.notification.infra.BroadcastRepository;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.web.dto.BroadcastHistoryDto;
+import com.maxsolch.shop.notification.app.BroadcastHistoryDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;

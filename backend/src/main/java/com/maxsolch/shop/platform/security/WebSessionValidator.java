@@ -3,7 +3,7 @@ package com.maxsolch.shop.platform.security;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.repository.WebSessionRepository;
+import com.maxsolch.shop.customer.infra.WebSessionRepository;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;

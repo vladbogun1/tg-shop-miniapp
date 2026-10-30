@@ -41,7 +41,7 @@ class CookieAuthOriginTest {
     @Mock
     WebSessionValidator webSessionValidator;
     @Mock
-    com.maxsolch.shop.adminauth.PreAuthTokens preAuthTokens;
+    com.maxsolch.shop.staff.app.PreAuthTokens preAuthTokens;
     @Mock
     FilterChain chain;
 

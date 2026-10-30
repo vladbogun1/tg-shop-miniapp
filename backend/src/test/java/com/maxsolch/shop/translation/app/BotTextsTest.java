@@ -2,7 +2,7 @@ package com.maxsolch.shop.translation.app;
 
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.platform.i18n.Messages;
-import com.maxsolch.shop.repository.UserRepository;
+import com.maxsolch.shop.customer.infra.UserRepository;
 import com.maxsolch.shop.platform.settings.SettingsService;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.translation.domain.TranslationOrigin;

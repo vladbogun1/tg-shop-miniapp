@@ -8,7 +8,7 @@ import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.order.app.CreateOrderCommand;
-import com.maxsolch.shop.tg.NotificationService;
+import com.maxsolch.shop.notification.app.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -24,7 +24,7 @@ import com.maxsolch.shop.returns.infra.OrderReturnLineRepository;
 import com.maxsolch.shop.returns.infra.OrderReturnRepository;
 import com.maxsolch.shop.order.app.OrderStock;
 import com.maxsolch.shop.order.app.StockFixtures;
-import com.maxsolch.shop.tg.NotificationService;
+import com.maxsolch.shop.notification.app.NotificationService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;

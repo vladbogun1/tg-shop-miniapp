@@ -35,7 +35,7 @@ import com.maxsolch.shop.order.infra.OrderMoneyMovementRepository;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.catalog.infra.ProductImageRepository;
 import com.maxsolch.shop.inventory.infra.StockWriteoffRepository;
-import com.maxsolch.shop.repository.UserRepository;
+import com.maxsolch.shop.customer.infra.UserRepository;
 import com.maxsolch.shop.translation.app.TranslationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

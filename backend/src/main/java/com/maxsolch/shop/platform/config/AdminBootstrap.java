@@ -1,12 +1,12 @@
 package com.maxsolch.shop.platform.config;
 
-import com.maxsolch.shop.adminauth.AdminAuthKeys;
-import com.maxsolch.shop.adminauth.AdminTotp;
-import com.maxsolch.shop.adminauth.TrustedDeviceService;
+import com.maxsolch.shop.staff.app.AdminAuthKeys;
+import com.maxsolch.shop.staff.app.AdminTotp;
+import com.maxsolch.shop.staff.app.TrustedDeviceService;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
-import com.maxsolch.shop.domain.AdminRole;
-import com.maxsolch.shop.domain.AdminUser;
-import com.maxsolch.shop.repository.AdminUserRepository;
+import com.maxsolch.shop.staff.domain.AdminRole;
+import com.maxsolch.shop.staff.domain.AdminUser;
+import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import com.maxsolch.shop.platform.security.AdminTokenValidator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;

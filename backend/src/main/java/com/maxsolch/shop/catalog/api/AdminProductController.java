@@ -7,7 +7,6 @@ import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.catalog.app.AdminProductService;
 import com.maxsolch.shop.catalog.app.AdminProducts;
 import com.maxsolch.shop.catalog.app.AdminProductDto;
-import com.maxsolch.shop.web.dto.BooleanFlagRequest;
 import com.maxsolch.shop.catalog.app.ProductUpsertRequest;
 import com.maxsolch.shop.media.app.UploadResponse;
 import io.swagger.v3.oas.annotations.Operation;

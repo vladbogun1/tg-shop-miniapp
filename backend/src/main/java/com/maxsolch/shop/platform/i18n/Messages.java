@@ -1,7 +1,7 @@
 package com.maxsolch.shop.platform.i18n;
 
-import com.maxsolch.shop.domain.User;
-import com.maxsolch.shop.repository.UserRepository;
+import com.maxsolch.shop.customer.domain.User;
+import com.maxsolch.shop.customer.infra.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;

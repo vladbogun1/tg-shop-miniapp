@@ -1,13 +1,13 @@
 package com.maxsolch.shop.order.app;
 
-import com.maxsolch.shop.domain.User;
+import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderSource;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.repository.UserRepository;
+import com.maxsolch.shop.customer.infra.UserRepository;
 import org.springframework.stereotype.Service;
 
 import static com.maxsolch.shop.platform.util.Texts.trimToNull;

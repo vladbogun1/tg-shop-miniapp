@@ -1,6 +1,6 @@
 package com.maxsolch.shop.platform.security;
 
-import com.maxsolch.shop.adminauth.PreAuthTokens;
+import com.maxsolch.shop.staff.app.PreAuthTokens;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

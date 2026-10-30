@@ -2,7 +2,7 @@ package com.maxsolch.shop.payment.app;
 
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.payment.domain.ReceiptKind;
-import com.maxsolch.shop.tg.NotificationService;
+import com.maxsolch.shop.notification.app.NotificationService;
 import org.springframework.stereotype.Component;
 
 /**

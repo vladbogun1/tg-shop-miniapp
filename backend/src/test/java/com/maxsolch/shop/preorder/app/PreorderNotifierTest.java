@@ -2,13 +2,13 @@ package com.maxsolch.shop.preorder.app;
 
 import com.maxsolch.shop.preorder.domain.PreorderEvents;
 import com.maxsolch.shop.platform.config.AppProperties;
-import com.maxsolch.shop.domain.User;
+import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.procurement.app.BatchDtos.EtaDto;
 import com.maxsolch.shop.preorder.app.PreorderDtos.MyPreorderDto;
-import com.maxsolch.shop.repository.UserRepository;
-import com.maxsolch.shop.tg.ShopBot;
+import com.maxsolch.shop.customer.infra.UserRepository;
+import com.maxsolch.shop.notification.infra.ShopBot;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,7 +58,7 @@ class PreorderNotifierTest {
         props.setWebappBaseUrl("https://app.example.test");
         Messages msgs = new Messages((MessageSource) source, users);
         notifier = new PreorderNotifier(queue,
-                new com.maxsolch.shop.tg.CustomerBot(bot, props, msgs, activity),
+                new com.maxsolch.shop.notification.app.CustomerBot(bot, props, msgs, activity),
                 new com.maxsolch.shop.translation.app.BotTexts(msgs, mock(com.maxsolch.shop.platform.settings.SettingsService.class),
                         mock(com.maxsolch.shop.translation.app.TranslationService.class)));
         lenient().when(activity.bot(any(), any())).thenAnswer(inv -> ((ActivityLog.BotCall<?>) inv.getArgument(1)).call());

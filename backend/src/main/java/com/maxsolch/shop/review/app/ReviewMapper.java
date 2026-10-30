@@ -1,10 +1,10 @@
 package com.maxsolch.shop.review.app;
 
-import com.maxsolch.shop.domain.User;
+import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.order.app.OrderLines;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.repository.UserRepository;
+import com.maxsolch.shop.customer.infra.UserRepository;
 import com.maxsolch.shop.review.app.ReviewDtos.AdminReview;
 import com.maxsolch.shop.review.app.ReviewDtos.MyReview;
 import com.maxsolch.shop.review.domain.ProductReview;

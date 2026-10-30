@@ -4,4 +4,4 @@
 com/maxsolch/shop/finance/app/MarginService.java 503
 com/maxsolch/shop/platform/journal/ActivityLog.java 522
 com/maxsolch/shop/order/app/OrderQueryService.java 585
-com/maxsolch/shop/service/WebAuthService.java 569
+com/maxsolch/shop/customer/app/WebAuthService.java 569

@@ -1,7 +1,7 @@
 package com.maxsolch.shop.platform.i18n;
 
-import com.maxsolch.shop.domain.User;
-import com.maxsolch.shop.repository.UserRepository;
+import com.maxsolch.shop.customer.domain.User;
+import com.maxsolch.shop.customer.infra.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

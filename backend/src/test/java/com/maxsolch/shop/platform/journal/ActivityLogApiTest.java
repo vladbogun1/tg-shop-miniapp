@@ -1,10 +1,10 @@
 package com.maxsolch.shop.platform.journal;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
-import com.maxsolch.shop.domain.Broadcast;
-import com.maxsolch.shop.repository.BroadcastRepository;
+import com.maxsolch.shop.notification.domain.Broadcast;
+import com.maxsolch.shop.notification.infra.BroadcastRepository;
 import com.maxsolch.shop.platform.error.BadRequestException;
-import com.maxsolch.shop.web.dto.BroadcastHistoryDto;
+import com.maxsolch.shop.notification.app.BroadcastHistoryDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

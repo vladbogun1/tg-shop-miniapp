@@ -1,6 +1,6 @@
 package com.maxsolch.shop.support.app;
 
-import com.maxsolch.shop.domain.User;
+import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.media.app.MediaSigner;
 import com.maxsolch.shop.platform.i18n.ChatPreview;
 import com.maxsolch.shop.platform.i18n.Messages;

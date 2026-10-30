@@ -28,7 +28,7 @@ import com.maxsolch.shop.catalog.app.CatalogDtos.CardsStats;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
-import com.maxsolch.shop.repository.AdminUserRepository;
+import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.ContentTranslation;

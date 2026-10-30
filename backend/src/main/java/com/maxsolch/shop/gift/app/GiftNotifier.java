@@ -1,7 +1,7 @@
 package com.maxsolch.shop.gift.app;
 
 import com.maxsolch.shop.order.domain.Order;
-import com.maxsolch.shop.tg.NotificationService;
+import com.maxsolch.shop.notification.app.NotificationService;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;

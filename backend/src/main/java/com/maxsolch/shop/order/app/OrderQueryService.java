@@ -13,7 +13,7 @@ import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.order.infra.OrderItemRepository;
 import com.maxsolch.shop.order.infra.OrderMessageRepository;
 import com.maxsolch.shop.order.infra.OrderRepository;
-import com.maxsolch.shop.repository.UserRepository;
+import com.maxsolch.shop.customer.infra.UserRepository;
 import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;

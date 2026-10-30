@@ -1,7 +1,7 @@
 package com.maxsolch.shop.platform.audit;
 
-import com.maxsolch.shop.domain.AdminUser;
-import com.maxsolch.shop.repository.AdminUserRepository;
+import com.maxsolch.shop.staff.domain.AdminUser;
+import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.Role;
 import com.maxsolch.shop.platform.web.SecurityUtil;

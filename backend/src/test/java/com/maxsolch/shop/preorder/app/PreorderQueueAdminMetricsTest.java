@@ -7,7 +7,7 @@ import com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository;
 import com.maxsolch.shop.procurement.app.BatchCatalog;
 import com.maxsolch.shop.procurement.app.LineProducts;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
-import com.maxsolch.shop.repository.UserRepository;
+import com.maxsolch.shop.customer.infra.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
