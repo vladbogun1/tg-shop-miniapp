@@ -1,5 +1,6 @@
 package com.maxsolch.shop.platform.settings;
 
+import java.time.Clock;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.error.ErrorCode;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
@@ -50,10 +51,12 @@ public class SettingsService {
     private final AdminAuditService audit;
     private final CurrentActor actor;
     private final DomainEvents events;
+    private final Clock clock;
     private volatile Snapshot snapshot;
 
     public SettingsService(ShopSettingRepository repository, AdminAuditService audit, CurrentActor actor,
-                           DomainEvents events) {
+                           DomainEvents events, Clock clock) {
+        this.clock = clock;
         this.actor = actor;
         this.events = events;
         this.repository = repository;
@@ -132,7 +135,7 @@ public class SettingsService {
             row.setKey(k);
             row.setType(SYSTEM_TYPE);
             row.setValue(value);
-            row.setUpdatedAt(Instant.now());
+            row.setUpdatedAt(clock.instant());
             row.setUpdatedBy(null);
             row.setUpdatedByName(null);
             repository.save(row);
@@ -180,7 +183,7 @@ public class SettingsService {
                 .forEach(row -> current.put(row.getKey(), row));
         Long adminId = currentAdminId();
         String adminName = audit.currentAdminName();
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         List<String> diff = new ArrayList<>();
 
         for (Map.Entry<SettingDefinition, String> e : normalized.entrySet()) {
@@ -345,7 +348,7 @@ public class SettingsService {
 
     private Map<String, Stored> values() {
         Snapshot s = snapshot;
-        if (s == null || s.loadedAt().plus(MAX_AGE).isBefore(Instant.now())) {
+        if (s == null || s.loadedAt().plus(MAX_AGE).isBefore(clock.instant())) {
             s = load();
             snapshot = s;
         }
@@ -358,12 +361,12 @@ public class SettingsService {
             for (ShopSetting row : repository.findAll()) {
                 map.put(row.getKey(), new Stored(row.getValue(), row.getUpdatedAt(), row.getUpdatedByName()));
             }
-            return new Snapshot(Map.copyOf(map), Instant.now());
+            return new Snapshot(Map.copyOf(map), clock.instant());
         } catch (Exception e) {
             // Defaults everywhere is the pre-settings behaviour — far better than failing checkout.
             log.warn("Failed to load shop settings, using defaults: {}", e.getMessage());
             Snapshot stale = snapshot;
-            return new Snapshot(stale == null ? Map.of() : stale.values(), Instant.now());
+            return new Snapshot(stale == null ? Map.of() : stale.values(), clock.instant());
         }
     }
 

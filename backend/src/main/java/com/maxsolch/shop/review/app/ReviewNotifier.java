@@ -31,17 +31,18 @@ import static com.maxsolch.shop.platform.util.Texts.nullToEmpty;
 @Service
 public class ReviewNotifier {
 
-    private static final ZoneId KYIV = ShopZone.DEFAULT;
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private final CustomerBot customer;
     private final Messages messages;
     private final AdminPushService push;
+    private final ZoneId zone;
 
-    public ReviewNotifier(CustomerBot customer, Messages messages, AdminPushService push) {
+    public ReviewNotifier(CustomerBot customer, Messages messages, AdminPushService push, ShopZone shopZone) {
         this.customer = customer;
         this.messages = messages;
         this.push = push;
+        this.zone = shopZone.zone();
     }
 
     /** Is there a bot to write with at all? */
@@ -73,10 +74,10 @@ public class ReviewNotifier {
                         .detail("percent", percent).detail("maxDiscountMinor", maxMinor), locale -> {
             String text = messages.get(locale, "bot.review.bonus.title") + "\n"
                     + messages.get(locale, "bot.review.bonus.body", "<code>" + escHtml(code) + "</code>",
-                            discount(locale, percent, maxMinor), DATE.format(expiresAt.atZone(KYIV)));
+                            discount(locale, percent, maxMinor), DATE.format(expiresAt.atZone(zone)));
             // The code itself is the customer's personal discount — the journal keeps only its size.
             String journal = "Бонус за отзыв: персональный промокод −" + ReviewRules.discountRu(percent, maxMinor)
-                    + " до " + DATE.format(expiresAt.atZone(KYIV));
+                    + " до " + DATE.format(expiresAt.atZone(zone));
             return new CustomerBot.Dm(text, customer.miniAppButton(messages.get(locale, "bot.review.bonus.open"), null),
                     journal);
         });
@@ -113,7 +114,7 @@ public class ReviewNotifier {
     public boolean bonusExpiring(Long tgUserId, String code, int percent, long maxMinor, Instant expiresAt) {
         return customer.sendTo("Bonus expiry DM failed for " + tgUserId, tgUserId,
                 ActivityLog.Entry.bot("REVIEW_BONUS_EXPIRING").toCustomer(tgUserId).detail("percent", percent), locale -> {
-            String date = DATE.format(expiresAt.atZone(KYIV));
+            String date = DATE.format(expiresAt.atZone(zone));
             String text = messages.get(locale, "bot.review.bonusExpiring.title", discount(locale, percent, maxMinor)) + "\n"
                     + messages.get(locale, "bot.review.bonusExpiring.body", "<code>" + escHtml(code) + "</code>", date);
             // As with the bonus itself, the journal keeps the size and the date, not the code.

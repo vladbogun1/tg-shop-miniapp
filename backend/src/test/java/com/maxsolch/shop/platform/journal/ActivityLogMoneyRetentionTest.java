@@ -49,15 +49,15 @@ class ActivityLogMoneyRetentionTest {
     @Test
     void moneyWindowIsNeverShorterThanTheGeneralOne() {
         ActivityLogStore store = mock(ActivityLogStore.class);
-        ActivityLogRetentionJob r = new ActivityLogRetentionJob(store, 90, 30);
+        ActivityLogRetentionJob r = new ActivityLogRetentionJob(store, 90, 30, java.time.Clock.systemUTC());
         assertThat(r.moneyRetentionDays()).isEqualTo(90);
-        assertThat(new ActivityLogRetentionJob(store, 90, 1095).moneyRetentionDays()).isEqualTo(1095);
+        assertThat(new ActivityLogRetentionJob(store, 90, 1095, java.time.Clock.systemUTC()).moneyRetentionDays()).isEqualTo(1095);
     }
 
     @Test
     void purgeUsesBothWindows() {
         ActivityLogStore store = mock(ActivityLogStore.class);
-        new ActivityLogRetentionJob(store, 90, 1095).purge();
+        new ActivityLogRetentionJob(store, 90, 1095, java.time.Clock.systemUTC()).purge();
         verify(store).purgeBefore(org.mockito.ArgumentMatchers.argThat(
                 t -> Duration.between(t, Instant.now()).toDays() == 90));
         verify(store).purgeMoneyBefore(org.mockito.ArgumentMatchers.argThat(

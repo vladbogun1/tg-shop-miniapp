@@ -1,5 +1,6 @@
 package com.maxsolch.shop.platform.journal;
 
+import java.time.Clock;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,10 +47,13 @@ public class ActivityLogController {
     private final ActivityLogStore store;
     private final ActivityLogRetentionJob retention;
     private final ZoneId zone;
+    private final Clock clock;
 
     public ActivityLogController(ActivityLogStore store,
                                  ActivityLogRetentionJob retention,
-                                 ShopZone shopZone) {
+                                 ShopZone shopZone,
+                                 Clock clock) {
+        this.clock = clock;
         this.store = store;
         this.retention = retention;
         this.zone = shopZone.zone();
@@ -101,7 +105,7 @@ public class ActivityLogController {
     public Map<String, Map<String, Long>> stats(@RequestParam(defaultValue = "24") int hours) {
         int h = Math.min(Math.max(1, hours), 24 * 31);
         Map<String, Map<String, Long>> out = new LinkedHashMap<>();
-        for (Object[] r : store.countsSince(Instant.now().minus(Duration.ofHours(h)))) {
+        for (Object[] r : store.countsSince(clock.instant().minus(Duration.ofHours(h)))) {
             Map<String, Long> m = out.computeIfAbsent((String) r[0], k -> new LinkedHashMap<>());
             m.merge("total", (Long) r[2], Long::sum);
             m.merge(((String) r[1]).toLowerCase(Locale.ROOT), (Long) r[2], Long::sum);

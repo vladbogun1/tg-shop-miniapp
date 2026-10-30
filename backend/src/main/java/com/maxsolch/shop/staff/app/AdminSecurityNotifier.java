@@ -9,7 +9,6 @@ import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.staff.domain.AdminInvite;
 import com.maxsolch.shop.staff.domain.LoginMethod;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
-import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
@@ -67,7 +66,7 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
         return t;
     });
 
-    public AdminSecurityNotifier(TelegramGateway bot, SellerChannel seller, AppProperties props,
+    public AdminSecurityNotifier(TelegramGateway bot, SellerChannel seller, ShopZone shopZone,
                                  AdminSessions sessions, AdminUserRepository adminUserRepository,
                                  AdminAuditService audit) {
         this.bot = bot;
@@ -75,7 +74,7 @@ public class AdminSecurityNotifier implements AdminSecurityAlerts, AdminTeamMess
         this.sessions = sessions;
         this.adminUserRepository = adminUserRepository;
         this.audit = audit;
-        this.zone = ShopZone.of(props.getTimezone()).zone();
+        this.zone = shopZone.zone();
     }
 
     /** First line of an alert, for the journal (the rest carries IPs and places). */

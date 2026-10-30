@@ -72,7 +72,7 @@ class PreorderQueueServiceTest {
     @BeforeEach
     void setUp() {
         service = new PreorderQueueService(subs, batches, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), settings, events, messages, translations,
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                Clock.fixed(NOW, ZoneOffset.UTC), new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"));
         product = new Product();
         product.setId(UuidUtil.toBytes(UUID.randomUUID()));
         product.setTitle("Lamzu Maya");

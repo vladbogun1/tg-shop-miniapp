@@ -47,9 +47,11 @@ public class AdminCosting {
     private final ImageStorageService storage;
     private final UploadValidator uploads;
     private final Clock clock;
+    private final ShopZone shopZone;
 
     public AdminCosting(CostingService costing, NbuRates nbu, AdminAccess access, CurrentActor actor,
-                        AdminAuditService audit, ImageStorageService storage, UploadValidator uploads, Clock clock) {
+                        AdminAuditService audit, ImageStorageService storage, UploadValidator uploads, Clock clock,
+                        ShopZone shopZone) {
         this.costing = costing;
         this.nbu = nbu;
         this.access = access;
@@ -58,6 +60,7 @@ public class AdminCosting {
         this.storage = storage;
         this.uploads = uploads;
         this.clock = clock;
+        this.shopZone = shopZone;
     }
 
     /** May the caller see money (the main admin or «Финансы»). */
@@ -137,7 +140,7 @@ public class AdminCosting {
     /** The official NBU rate for a date (today in Kyiv when none): a hint, the admin may type his own. */
     public RateDto nbuRate(String currency, LocalDate date) {
         finance();
-        LocalDate d = date != null ? date : ShopZone.of(null).today(clock);
+        LocalDate d = date != null ? date : shopZone.today(clock);
         String c = currency.trim().toUpperCase(Locale.ROOT);
         return new RateDto(c, d, nbu.rate(c, d));
     }

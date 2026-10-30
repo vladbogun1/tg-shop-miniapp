@@ -17,6 +17,6 @@ public class TimeConfig {
 
     @Bean
     public ShopZone shopZone(AppProperties props) {
-        return ShopZone.of(props.getTimezone());
+        return new ShopZone(props.getTimezone());
     }
 }

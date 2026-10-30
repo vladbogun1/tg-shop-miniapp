@@ -6,7 +6,6 @@ import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderStatus;
-import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.platform.i18n.ChatPreview;
 import com.maxsolch.shop.platform.i18n.CustomerRejectReason;
 import com.maxsolch.shop.platform.i18n.Messages;
@@ -40,15 +39,15 @@ import static com.maxsolch.shop.platform.util.Texts.escHtml;
 @Component
 public class OrderCustomerNotifier {
 
-    private final AppProperties props;
+    private final ShopZone shopZone;
     private final Messages messages;
     private final SettingsService settings;
     private final CustomerRejectReason customerRejectReason;
     private final CustomerBot customerBot;
 
-    public OrderCustomerNotifier(AppProperties props, Messages messages, SettingsService settings,
+    public OrderCustomerNotifier(ShopZone shopZone, Messages messages, SettingsService settings,
                                  CustomerRejectReason customerRejectReason, CustomerBot customerBot) {
-        this.props = props;
+        this.shopZone = shopZone;
         this.messages = messages;
         this.settings = settings;
         this.customerRejectReason = customerRejectReason;
@@ -125,7 +124,7 @@ public class OrderCustomerNotifier {
                     + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
                     + messages.get(locale, "bot.giftCase.promoBody", discount, escHtml(code)) + "\n"
                     + (expiresAt == null ? "" : messages.get(locale, "bot.giftCase.promoUntil",
-                            expiresAt.atZone(ShopZone.of(props.getTimezone()).zone()).format(DAY)) + "\n")
+                            expiresAt.atZone(shopZone.zone()).format(DAY)) + "\n")
                     + messages.get(locale, "bot.giftCase.promoHint");
             return new CustomerBot.Dm(text, cartButton(locale));
         });
@@ -146,7 +145,7 @@ public class OrderCustomerNotifier {
             String discount = percent > 0 ? "−" + percent + "%" : "−" + money(amountMinor) + " " + nz(order.getCurrency());
             String text = messages.get(locale, "bot.giftCase.promoExpiringTitle", discount) + "\n"
                     + messages.get(locale, "bot.giftCase.promoExpiringBody", "<code>" + escHtml(code) + "</code>",
-                            expiresAt.atZone(ShopZone.of(props.getTimezone()).zone()).format(DAY)) + "\n"
+                            expiresAt.atZone(shopZone.zone()).format(DAY)) + "\n"
                     + messages.get(locale, "bot.giftCase.promoHint");
             return new CustomerBot.Dm(text, cartButton(locale));
         });

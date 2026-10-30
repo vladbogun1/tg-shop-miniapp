@@ -46,7 +46,7 @@ class ActivityLogTest {
 
     private ActivityLog newLog(java.util.concurrent.ExecutorService executor) {
         return new ActivityLog(new ActivityLogStore(jdbc), CLASSIFIER, mock(DomainEvents.class),
-                mock(CurrentActor.class), executor);
+                mock(CurrentActor.class), java.time.Clock.systemUTC(), executor);
     }
 
     static TelegramApiRequestException apiError(int code, String description, Integer retryAfter) throws Exception {

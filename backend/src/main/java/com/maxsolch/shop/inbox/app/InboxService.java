@@ -8,7 +8,6 @@ import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.analytics.app.AdminMetricsService;
 import com.maxsolch.shop.analytics.app.MetricsDtos.ReorderRow;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
-import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.inbox.app.InboxDtos.DismissRequest;
 import com.maxsolch.shop.inbox.app.InboxDtos.Inbox;
 import com.maxsolch.shop.inbox.app.InboxDtos.RestoreRequest;
@@ -69,14 +68,14 @@ public class InboxService {
     private final List<InboxExtraSource> extraSources;
 
     public InboxService(InboxStore store, AdminMetricsService metrics, SiteRevalidator site,
-                        SettingsService settings, AdminAuditService audit, AppProperties props,
+                        SettingsService settings, AdminAuditService audit, ShopZone shopZone,
                         Clock clock, CurrentActor actor, List<InboxExtraSource> extraSources) {
         this.store = store;
         this.metrics = metrics;
         this.site = site;
         this.settings = settings;
         this.audit = audit;
-        this.zone = ShopZone.of(props.getTimezone()).zone();
+        this.zone = shopZone.zone();
         this.clock = clock;
         this.actor = actor;
         this.extraSources = extraSources == null ? List.of() : List.copyOf(extraSources);

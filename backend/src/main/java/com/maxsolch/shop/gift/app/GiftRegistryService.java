@@ -44,19 +44,19 @@ import java.util.Optional;
 @Service
 public class GiftRegistryService {
 
-    private static final ZoneId ZONE = ShopZone.DEFAULT;
-
     /** How far back undelivered gifts are still looked at (an order older than this is long settled). */
     static final Duration LOOKBACK = Duration.ofDays(120);
 
     private final GiftRegistryStore store;
     private final Clock clock;
     private final SettingsService settings;
+    private final ZoneId zone;
 
-    public GiftRegistryService(GiftRegistryStore store, SettingsService settings, Clock clock) {
+    public GiftRegistryService(GiftRegistryStore store, SettingsService settings, Clock clock, ShopZone shopZone) {
         this.store = store;
         this.clock = clock;
         this.settings = settings;
+        this.zone = shopZone.zone();
     }
 
     /** The limit for the order with this id (text from the request); 400 for a bad id, 404 without the order. */
@@ -100,9 +100,9 @@ public class GiftRegistryService {
         if (limit <= 0) {
             return Long.MAX_VALUE;
         }
-        YearMonth month = YearMonth.from(now.atZone(ZONE));
-        Instant since = month.atDay(1).atStartOfDay(ZONE).toInstant().minus(LOOKBACK);
-        long used = usedMinor(person, store.lines(since), month);
+        YearMonth month = YearMonth.from(now.atZone(zone));
+        Instant since = month.atDay(1).atStartOfDay(zone).toInstant().minus(LOOKBACK);
+        long used = usedMinor(person, store.lines(since), month, zone);
         return Math.max(0, limit - used);
     }
 
@@ -116,22 +116,22 @@ public class GiftRegistryService {
         if (found.isEmpty()) {
             return Optional.empty();
         }
-        YearMonth month = YearMonth.from(now.atZone(ZONE));
-        Instant since = month.atDay(1).atStartOfDay(ZONE).toInstant().minus(LOOKBACK);
-        long used = usedMinor(found.get(), store.lines(since), month);
+        YearMonth month = YearMonth.from(now.atZone(zone));
+        Instant since = month.atDay(1).atStartOfDay(zone).toInstant().minus(LOOKBACK);
+        long used = usedMinor(found.get(), store.lines(since), month, zone);
         long limit = limitMinor();
         return Optional.of(new GiftDtos.GiftLimitDto(month.toString(), limit, used,
                 limit > 0 ? Math.max(0, limit - used) : -1));
     }
 
     /** The person's gifts (with everyone joined to them) delivered in {@code month} or not delivered yet. */
-    static long usedMinor(GiftPerson person, List<GiftLine> lines, YearMonth month) {
+    static long usedMinor(GiftPerson person, List<GiftLine> lines, YearMonth month, ZoneId zone) {
         List<GiftLine> all = new ArrayList<>(lines);
         int[] group = groups(all.stream().map(GiftLine::person).toList(), person);
         long used = 0;
         for (int i = 0; i < all.size(); i++) {
             GiftLine l = all.get(i);
-            if (group[i] == group[all.size()] && (l.deliveredAt() == null || l.month().equals(month))) {
+            if (group[i] == group[all.size()] && (l.deliveredAt() == null || l.month(zone).equals(month))) {
                 used += l.valueMinor();
             }
         }
@@ -150,16 +150,16 @@ public class GiftRegistryService {
         if (Duration.between(from.atStartOfDay(), to.atStartOfDay()).toDays() > 400) {
             throw new DomainException.BadRequest("Период — не больше года");
         }
-        Instant start = from.atStartOfDay(ZONE).toInstant();
-        Instant end = to.plusDays(1).atStartOfDay(ZONE).toInstant();
+        Instant start = from.atStartOfDay(zone).toInstant();
+        Instant end = to.plusDays(1).atStartOfDay(zone).toInstant();
         // Whole months around the span, so a month total also counts gifts outside the shown dates.
-        Instant since = YearMonth.from(from).atDay(1).atStartOfDay(ZONE).toInstant().minus(LOOKBACK);
+        Instant since = YearMonth.from(from).atDay(1).atStartOfDay(zone).toInstant().minus(LOOKBACK);
         List<GiftLine> lines = store.lines(since);
         int[] group = groups(lines.stream().map(GiftLine::person).toList(), null);
 
         Map<String, Long> monthTotal = new HashMap<>();
         for (int i = 0; i < lines.size(); i++) {
-            monthTotal.merge(group[i] + "|" + lines.get(i).month(), lines.get(i).valueMinor(), Long::sum);
+            monthTotal.merge(group[i] + "|" + lines.get(i).month(zone), lines.get(i).valueMinor(), Long::sum);
         }
         long limit = limitMinor();
         List<GiftRegistryRowDto> rows = new ArrayList<>();
@@ -172,11 +172,11 @@ public class GiftRegistryService {
             if (date.isBefore(start) || !date.isBefore(end)) {
                 continue;
             }
-            long total = monthTotal.get(group[i] + "|" + l.month());
+            long total = monthTotal.get(group[i] + "|" + l.month(zone));
             boolean overLimit = limit > 0 && total > limit;
             rows.add(new GiftRegistryRowDto(l.orderId(), l.createdAt(), l.deliveredAt(), l.status(),
                     l.customerName(), l.phone(), l.tgUsername(), "P" + group[i], l.title(), l.variant(),
-                    l.quantity(), l.unitMinor(), l.valueMinor(), l.source(), l.tier(), l.month().toString(), total,
+                    l.quantity(), l.unitMinor(), l.valueMinor(), l.source(), l.tier(), l.month(zone).toString(), total,
                     overLimit));
             sum += l.valueMinor();
             people.add(group[i]);

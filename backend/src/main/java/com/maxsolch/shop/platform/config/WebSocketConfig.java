@@ -57,6 +57,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final AdminTokenValidator adminTokenValidator;
     private final AllowedOrigins allowedOrigins;
     private final WebSessionValidator webSessionValidator;
+    private final java.time.Clock clock;
 
     /** Session attribute holding the handshake's {@code access} cookie (site auth). */
     static final String ACCESS_COOKIE_ATTR = "site.accessJwt";
@@ -65,7 +66,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                            AdminTokenValidator adminTokenValidator,
                            AllowedOrigins allowedOrigins,
                            WebSessionValidator webSessionValidator,
-                           ObjectProvider<StompTopicOwner> topicOwners) {
+                           ObjectProvider<StompTopicOwner> topicOwners,
+                           java.time.Clock clock) {
+        this.clock = clock;
         this.jwtService = jwtService;
         this.adminTokenValidator = adminTokenValidator;
         this.allowedOrigins = allowedOrigins;
@@ -130,7 +133,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
      * 30 s in {@link AdminTokenValidator}) and against the token's own expiry.
      */
     private boolean adminSessionStillValid(AuthPrincipal principal) {
-        if (principal.expiresAt() != null && Instant.now().isAfter(principal.expiresAt())) {
+        if (principal.expiresAt() != null && clock.instant().isAfter(principal.expiresAt())) {
             return false;
         }
         return adminTokenValidator.isValid(principal);

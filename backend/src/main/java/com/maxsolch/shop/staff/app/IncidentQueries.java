@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.staff.app.IncidentService.Found;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -15,9 +16,11 @@ import static com.maxsolch.shop.staff.app.IncidentService.RETURN_STUCK_DAYS;
 public class IncidentQueries {
 
     private final JdbcTemplate jdbc;
+    private final java.time.ZoneId zone;
 
-    public IncidentQueries(JdbcTemplate jdbc) {
+    public IncidentQueries(JdbcTemplate jdbc, ShopZone shopZone) {
         this.jdbc = jdbc;
+        this.zone = shopZone.zone();
     }
 
     public List<Found> detect() {
@@ -123,8 +126,8 @@ public class IncidentQueries {
         return com.maxsolch.shop.platform.util.MoneyFormat.uah(minor);
     }
 
-    private static String when(java.sql.Timestamp t) {
+    private String when(java.sql.Timestamp t) {
         return t == null ? "—" : java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
-                .withZone(com.maxsolch.shop.platform.time.ShopZone.DEFAULT).format(t.toInstant());
+                .withZone(zone).format(t.toInstant());
     }
 }

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.platform.security;
 
+import java.time.Clock;
 import com.maxsolch.shop.platform.config.AppProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
@@ -28,8 +29,10 @@ public class JwtService {
     private final SecretKey key;
     private final long ttlMinutes;
     private final long adminTtlMinutes;
+    private final Clock clock;
 
-    public JwtService(AppProperties props) {
+    public JwtService(AppProperties props, Clock clock) {
+        this.clock = clock;
         String secret = props.getSecurity().getJwtSecret();
         byte[] keyBytes = Base64.getDecoder().decode(secret);
         this.key = Keys.hmacShaKeyFor(keyBytes);
@@ -50,7 +53,7 @@ public class JwtService {
      * ADMIN tokens get the admin lifetime and a fresh {@code jti}.
      */
     public String issueToken(long telegramUserId, Role role, int tokenVersion) {
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         boolean admin = role == Role.ADMIN;
         Instant exp = now.plus(admin ? adminTtlMinutes : ttlMinutes, ChronoUnit.MINUTES);
         var builder = Jwts.builder()
@@ -70,7 +73,7 @@ public class JwtService {
      * same format as the Mini App token plus {@code chn=web} and {@code sid} (the web session).
      */
     public String issueWebToken(long telegramUserId, String sessionId, long ttlMinutes) {
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         return Jwts.builder()
                 .subject(String.valueOf(telegramUserId))
                 .claim("role", Role.CUSTOMER.name())

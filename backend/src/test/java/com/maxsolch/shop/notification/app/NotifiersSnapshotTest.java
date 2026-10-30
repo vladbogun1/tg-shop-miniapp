@@ -87,16 +87,16 @@ class NotifiersSnapshotTest {
             h.record("Push " + inv.getArgument(0));
             return null;
         }).when(push).notifyAdmins(any());
-        return new ReviewNotifier(customerBot(), h.messages, push);
+        return new ReviewNotifier(customerBot(), h.messages, push, new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"));
     }
 
     private PreorderNotifier preorder() {
         BotTexts texts = new BotTexts(h.messages, Mockito.mock(SettingsService.class), Mockito.mock(TranslationService.class));
-        return new PreorderNotifier(queue, customerBot(), texts);
+        return new PreorderNotifier(queue, customerBot(), texts, new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"));
     }
 
     private AdminSecurityNotifier adminSecurity() {
-        return new AdminSecurityNotifier(h.bot, sellerChannel(), h.props, sessions, adminUsers, audit);
+        return new AdminSecurityNotifier(h.bot, sellerChannel(), new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"), sessions, adminUsers, audit);
     }
 
     private CustomerBot customerBot() {

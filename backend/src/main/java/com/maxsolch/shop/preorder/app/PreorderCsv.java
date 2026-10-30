@@ -17,7 +17,7 @@ public final class PreorderCsv {
     private PreorderCsv() {
     }
 
-    public static String build(List<SubscriberDto> rows) {
+    public static String build(List<SubscriberDto> rows, java.time.ZoneId zone) {
         StringBuilder sb = new StringBuilder("\uFEFF").append(HEADER).append("\r\n");
         for (SubscriberDto s : rows) {
             sb.append(cell(s.name())).append(';')
@@ -25,7 +25,7 @@ public final class PreorderCsv {
                     .append(s.qty()).append(';')
                     .append(cell(s.status())).append(';')
                     .append(cell(s.source())).append(';')
-                    .append(s.createdAt() == null ? "" : s.createdAt().atZone(com.maxsolch.shop.platform.time.ShopZone.DEFAULT).format(TIME)).append(';')
+                    .append(s.createdAt() == null ? "" : s.createdAt().atZone(zone).format(TIME)).append(';')
                     .append(s.botBlocked() ? "true" : "false")
                     .append("\r\n");
         }

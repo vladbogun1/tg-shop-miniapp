@@ -16,8 +16,11 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "app")
 public class AppProperties {
 
+    /** The one place that names the default business zone (also the fallback for a blank or invalid setting). */
+    public static final String DEFAULT_TIMEZONE = "Europe/Kyiv";
+
     /** Business timezone for analytics day buckets / human-facing dates (default Europe/Kyiv). */
-    private String timezone = "Europe/Kyiv";
+    private String timezone = DEFAULT_TIMEZONE;
 
     private String imageBaseUrl;
     private String webappBaseUrl;

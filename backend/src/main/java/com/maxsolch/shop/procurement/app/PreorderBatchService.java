@@ -69,6 +69,7 @@ public class PreorderBatchService {
     private final LineProducts lineProducts;
     private final SettingsService settings;
     private final Clock clock;
+    private final ShopZone shopZone;
     /** FIFO stock lots: an arrival becomes a lot priced by the batch. */
     private final com.maxsolch.shop.inventory.app.LotLedger ledger;
     /** Public pages show «скоро в наличии» and ETAs: rebuilt once a change commits. */
@@ -79,7 +80,8 @@ public class PreorderBatchService {
                                 Products products, BatchQueue queue, LineProducts lineProducts,
                                 SettingsService settings,
                                 com.maxsolch.shop.inventory.app.LotLedger ledger,
-                                com.maxsolch.shop.site.app.SiteRevalidator siteRevalidator, Clock clock) {
+                                com.maxsolch.shop.site.app.SiteRevalidator siteRevalidator, Clock clock,
+                                ShopZone shopZone) {
         this.batches = batches;
         this.items = items;
         this.suppliers = suppliers;
@@ -90,6 +92,7 @@ public class PreorderBatchService {
         this.ledger = ledger;
         this.siteRevalidator = siteRevalidator;
         this.clock = clock;
+        this.shopZone = shopZone;
     }
 
     /** Public pages show «скоро в наличии» and ETAs: rebuild them once the change commits. */
@@ -312,7 +315,7 @@ public class PreorderBatchService {
         String title = req.title() == null ? "" : req.title().trim();
         if (title.isEmpty()) {
             title = b.getTitle() != null ? b.getTitle()
-                    : "Поставка от " + ShopZone.of(null).today(clock).format(TITLE_DATE);
+                    : "Поставка от " + shopZone.today(clock).format(TITLE_DATE);
         }
         b.setTitle(trimTo(title, 255));
         if (req.supplierId() != null && !suppliers.existsById(req.supplierId())) {
@@ -442,7 +445,7 @@ public class PreorderBatchService {
         }
         return new BatchDto(b.getId(), b.getTitle(), b.getSupplierId(), supplierNames().get(b.getSupplierId()),
                 b.getPrivateNote(), b.getPublicNote(), b.getStatus(), b.getEtaMode(), b.getEtaFrom(), b.getEtaTo(),
-                b.statusEnum().open() ? BatchCatalog.eta(b, ShopZone.of(null).today(clock)) : null, b.getHoldHours(), b.getDistribution(),
+                b.statusEnum().open() ? BatchCatalog.eta(b, shopZone.today(clock)) : null, b.getHoldHours(), b.getDistribution(),
                 b.isPreorderOpen(), b.getCurrency(), money ? b.getFxRate() : null, money, itemDtos,
                 b.getCreatedBy(), b.getCreatedAt(), b.getInTransitAt(), b.getArrivedAt(), b.getCancelledAt());
     }

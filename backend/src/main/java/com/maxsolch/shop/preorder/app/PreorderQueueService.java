@@ -58,7 +58,6 @@ public class PreorderQueueService {
     public static final String SOURCE_MINIAPP = "MINIAPP";
     public static final String SOURCE_WEB = "WEB";
 
-    private static final ShopZone SHOP_ZONE = ShopZone.of(null);
     static final Duration REMIND_BEFORE = Duration.ofHours(3);
     static final List<String> LIVE = List.of(Status.WAITING.name(), Status.HELD.name(), Status.NOTIFIED.name());
     /** Queue size when the anti-hoarding limit is off. */
@@ -72,10 +71,12 @@ public class PreorderQueueService {
     private final Messages messages;
     private final TranslationService translations;
     private final Clock clock;
+    private final ShopZone shopZone;
 
     public PreorderQueueService(PreorderSubscriptionRepository subs, BatchCatalog batches, Products products,
                                 SettingsService settings, ApplicationEventPublisher events, Messages messages,
-                                TranslationService translations, Clock clock) {
+                                TranslationService translations, Clock clock, ShopZone shopZone) {
+        this.shopZone = shopZone;
         this.subs = subs;
         this.batches = batches;
         this.products = products;
@@ -396,7 +397,7 @@ public class PreorderQueueService {
             PreorderBatchItem i = row.item();
             best.merge(Lines.key(i.getProductId(), i.getVariantId()), row.batch(), BatchEta::sooner);
         }
-        LocalDate today = SHOP_ZONE.today(clock);
+        LocalDate today = shopZone.today(clock);
         Map<String, EtaDto> out = new HashMap<>();
         best.forEach((k, b) -> out.put(k, BatchCatalog.eta(b, today)));
         return out;
@@ -409,7 +410,7 @@ public class PreorderQueueService {
                 best = best == null ? row.batch() : BatchEta.sooner(best, row.batch());
             }
         }
-        return best == null ? null : BatchCatalog.eta(best, SHOP_ZONE.today(clock));
+        return best == null ? null : BatchCatalog.eta(best, shopZone.today(clock));
     }
 
     MyPreorderDto toMine(PreorderSubscription s, Product p, EtaDto eta) {

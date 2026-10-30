@@ -33,7 +33,7 @@ class ActivityLogApiTest {
     @BeforeEach
     void setUp() {
         store = mock(ActivityLogStore.class);
-        controller = new ActivityLogController(store, new ActivityLogRetentionJob(store, 90, 1095), com.maxsolch.shop.platform.time.ShopZone.of("Europe/Kyiv"));
+        controller = new ActivityLogController(store, new ActivityLogRetentionJob(store, 90, 1095, java.time.Clock.systemUTC()), new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"), java.time.Clock.systemUTC());
     }
 
     private static ActivityLogStore.Filter filter(String order, String q) {
@@ -131,7 +131,7 @@ class ActivityLogApiTest {
 
     @Test
     void retentionNeverGoesBelowAWeek() {
-        ActivityLogRetentionJob r = new ActivityLogRetentionJob(store, 1, 1095);
+        ActivityLogRetentionJob r = new ActivityLogRetentionJob(store, 1, 1095, java.time.Clock.systemUTC());
         assertThat(r.retentionDays()).isEqualTo(7);
         r.purge();
         verify(store).purgeBefore(any());

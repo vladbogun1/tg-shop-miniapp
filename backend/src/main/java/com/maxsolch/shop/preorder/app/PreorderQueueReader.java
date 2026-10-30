@@ -46,8 +46,6 @@ import java.util.Map;
 @Service
 public class PreorderQueueReader {
 
-    private static final ShopZone SHOP_ZONE = ShopZone.of(null);
-
     private final PreorderSubscriptionRepository subs;
     private final BatchCatalog batches;
     private final Products products;
@@ -55,9 +53,11 @@ public class PreorderQueueReader {
     private final Messages messages;
     private final Clock clock;
     private final PreorderQueueService queue;
+    private final ShopZone shopZone;
 
     public PreorderQueueReader(PreorderSubscriptionRepository subs, BatchCatalog batches, Products products,
-                               SettingsService settings, Messages messages, Clock clock, PreorderQueueService queue) {
+                               SettingsService settings, Messages messages, Clock clock, PreorderQueueService queue,
+                               ShopZone shopZone) {
         this.subs = subs;
         this.batches = batches;
         this.products = products;
@@ -65,6 +65,7 @@ public class PreorderQueueReader {
         this.messages = messages;
         this.clock = clock;
         this.queue = queue;
+        this.shopZone = shopZone;
     }
 
     /** My queues, live first, then the latest history («Мої очікування»). */
@@ -95,7 +96,7 @@ public class PreorderQueueReader {
         byte[] productId = PreorderQueueService.bytes(productIdText);
         Product product = products.findById(productId)
                 .orElseThrow(() -> PreorderErrors.notFound(messages.current("api.preorder.notFound")));
-        LocalDate today = SHOP_ZONE.today(clock);
+        LocalDate today = shopZone.today(clock);
         // variant id (or "" for the product itself) → its soonest open batch
         Map<String, PreorderBatch> lines = new LinkedHashMap<>();
         for (BatchCatalog.PublicLine row : batches.publicLines(productId)) {
@@ -126,7 +127,7 @@ public class PreorderQueueReader {
     /** «Скоро в наявності»: open public batches, soonest first, with their lines. */
     @Transactional(readOnly = true)
     public List<ComingDto> coming() {
-        LocalDate today = SHOP_ZONE.today(clock);
+        LocalDate today = shopZone.today(clock);
         Map<Long, PreorderBatch> byBatch = new LinkedHashMap<>();
         Map<Long, List<ComingLineDto>> linesOf = new HashMap<>();
         for (BatchCatalog.PublicLine row : batches.publicLines()) {

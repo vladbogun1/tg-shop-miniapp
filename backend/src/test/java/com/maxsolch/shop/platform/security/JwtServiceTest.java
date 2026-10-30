@@ -28,7 +28,7 @@ class JwtServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new JwtService(props(120));
+        service = new JwtService(props(120), java.time.Clock.systemUTC());
     }
 
     @Test
@@ -68,7 +68,7 @@ class JwtServiceTest {
                 .encodeToString("ffffffffffffffffffffffffffffffff".getBytes());
         AppProperties other = new AppProperties();
         other.getSecurity().setJwtSecret(otherSecret);
-        JwtService otherService = new JwtService(other);
+        JwtService otherService = new JwtService(other, java.time.Clock.systemUTC());
 
         String foreignToken = otherService.issueToken(5L, Role.ADMIN);
 
@@ -78,7 +78,7 @@ class JwtServiceTest {
 
     @Test
     void parse_expiredToken_isRejected() {
-        JwtService shortLived = new JwtService(props(-1)); // already expired
+        JwtService shortLived = new JwtService(props(-1), java.time.Clock.systemUTC()); // already expired
         String token = shortLived.issueToken(1L, Role.ADMIN);
 
         assertThatThrownBy(() -> shortLived.parse(token))
@@ -89,7 +89,7 @@ class JwtServiceTest {
     void adminTokens_areShortLivedAndCarryAnId_customerTokensNot() {
         AppProperties p = props(43_200);
         p.getSecurity().setAdminTokenTtlMinutes(720);
-        JwtService svc = new JwtService(p);
+        JwtService svc = new JwtService(p, java.time.Clock.systemUTC());
 
         AuthPrincipal admin = svc.parse(svc.issueToken(1L, Role.ADMIN, 3));
         AuthPrincipal customer = svc.parse(svc.issueToken(2L, Role.CUSTOMER));

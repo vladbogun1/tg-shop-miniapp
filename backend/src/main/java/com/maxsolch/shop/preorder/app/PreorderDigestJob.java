@@ -42,19 +42,21 @@ public class PreorderDigestJob {
     private final AppProperties props;
     private final PreorderDigestNotifier notifier;
     private final Clock clock;
+    private final ShopZone shopZone;
 
     public PreorderDigestJob(PreorderSubscriptionRepository subs, LineProducts lineProducts, SettingsService settings,
-                             AppProperties props, PreorderDigestNotifier notifier, Clock clock) {
+                             AppProperties props, PreorderDigestNotifier notifier, Clock clock, ShopZone shopZone) {
         this.subs = subs;
         this.lineProducts = lineProducts;
         this.settings = settings;
         this.props = props;
         this.notifier = notifier;
         this.clock = clock;
+        this.shopZone = shopZone;
     }
 
     @SchedulerLock(name = "PreorderDigestJob.daily", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
-    @Scheduled(cron = "0 0 10 * * *", zone = "Europe/Kyiv")
+    @Scheduled(cron = "0 0 10 * * *", zone = "${app.timezone}")
     public void daily() {
         try {
             send();
@@ -70,7 +72,7 @@ public class PreorderDigestJob {
         if (token == null || token.isBlank() || chatId == null || chatId.isBlank() || "0".equals(chatId.trim())) {
             return false;
         }
-        LocalDate today = ShopZone.of(null).today(clock);
+        LocalDate today = shopZone.today(clock);
         if (settings.system(DAY_KEY).map(today.toString()::equals).orElse(false)) {
             return false;
         }

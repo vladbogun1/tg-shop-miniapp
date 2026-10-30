@@ -60,10 +60,11 @@ public class PreorderQueueAdmin {
     private final SettingsService settings;
     private final ApplicationEventPublisher events;
     private final Clock clock;
+    private final ShopZone shopZone;
 
     public PreorderQueueAdmin(PreorderSubscriptionRepository subs, BatchCatalog batches, LineProducts lineProducts,
                           Customers users, Products products, PreorderQueueService queue,
-                          SettingsService settings, ApplicationEventPublisher events, Clock clock) {
+                          SettingsService settings, ApplicationEventPublisher events, Clock clock, ShopZone shopZone) {
         this.subs = subs;
         this.batches = batches;
         this.lineProducts = lineProducts;
@@ -73,6 +74,7 @@ public class PreorderQueueAdmin {
         this.settings = settings;
         this.events = events;
         this.clock = clock;
+        this.shopZone = shopZone;
     }
 
     /** Everybody queued for the lines of a batch, live first, in line order. */
@@ -119,8 +121,8 @@ public class PreorderQueueAdmin {
         if (from == null || to == null || to.isBefore(from) || from.plusDays(400).isBefore(to)) {
             throw PreorderErrors.badRequest("Период: даты ГГГГ-ММ-ДД, «по» не раньше «с», не больше 400 дней", "BAD_PERIOD");
         }
-        Instant start = from.atStartOfDay(ShopZone.DEFAULT).toInstant();
-        Instant end = to.plusDays(1).atStartOfDay(ShopZone.DEFAULT).toInstant();
+        Instant start = from.atStartOfDay(shopZone.zone()).toInstant();
+        Instant end = to.plusDays(1).atStartOfDay(shopZone.zone()).toInstant();
         Object[] joined = subs.joinedBetween(start, end).stream().findFirst().orElse(new Object[]{0L, 0L});
         int given = (int) subs.holdUnitsGiven(start, end);
         int bought = (int) subs.closedAfterHold(Status.BOUGHT.name(), start, end);

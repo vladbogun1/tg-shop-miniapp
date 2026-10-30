@@ -40,7 +40,10 @@ public class ApiExceptionHandler {
 
     private final com.maxsolch.shop.platform.i18n.Messages messages;
 
-    public ApiExceptionHandler(com.maxsolch.shop.platform.i18n.Messages messages) {
+    private final java.time.Clock clock;
+
+    public ApiExceptionHandler(com.maxsolch.shop.platform.i18n.Messages messages, java.time.Clock clock) {
+        this.clock = clock;
         this.messages = messages;
     }
 
@@ -161,7 +164,7 @@ public class ApiExceptionHandler {
 
     private ResponseEntity<Map<String, Object>> error(HttpStatus status, String message, String code) {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("timestamp", Instant.now().toString());
+        body.put("timestamp", clock.instant().toString());
         body.put("status", status.value());
         body.put("error", status.getReasonPhrase());
         body.put("message", message == null ? "" : message);

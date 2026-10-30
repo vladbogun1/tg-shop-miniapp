@@ -108,7 +108,7 @@ Ousterhout, Fowler, Feathers, Nygard). Правила проверяет ArchUni
 | Права | только аннотации: `@RequiredAdmin`, `@RequiredSuperAdmin`, новая `@RequiresFinance` | ArchUnit: нет ручных `require*` в контроллерах |
 | Транзакции | `@Transactional` только на публичных методах `app`; в `api` — нет | ArchUnit |
 | Блокировки | только в БД (`SELECT … FOR UPDATE`); замки в памяти (`ConcurrentHashMap`, `synchronized`) уходят — иначе второй экземпляр бэкенда их не видит | ArchUnit |
-| Время | бин `Clock` + `ShopZone` (часовой пояс из конфига); `Instant.now()`/`ZoneId.of` вне `platform` запрещены | ArchUnit |
+| Время | бин `Clock` + `ShopZone` (часовой пояс из `app.timezone`, создаётся только конструктором в `TimeConfig`); `Instant.now()`, `System.currentTimeMillis`, `ZoneId.of` запрещены везде, в том числе в `platform` (точечно: `TimeConfig`, `ShopZone`, `DbLocks` — `nanoTime` как дедлайн) | ArchUnit C1 + `ShopZoneLiteralTest` |
 | Конфиг | `@ConfigurationProperties` с `@Validated` на модуль; `@Value` запрещён | ArchUnit |
 | Кэш | только Spring Cache (Caffeine) с именованными кэшами и TTL; самодельные мемо удаляются | ArchUnit |
 | Фоновые задачи | `app/*Jobs` + ShedLock (замок в БД, одна новая таблица) — задача не запустится дважды | ArchUnit: `@Scheduled` только в `*Jobs` с `@SchedulerLock` |

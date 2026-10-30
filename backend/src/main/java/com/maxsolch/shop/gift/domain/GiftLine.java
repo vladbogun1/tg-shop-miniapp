@@ -1,6 +1,5 @@
 package com.maxsolch.shop.gift.domain;
 
-import com.maxsolch.shop.platform.time.ShopZone;
 
 import java.time.Instant;
 import java.time.YearMonth;
@@ -23,7 +22,8 @@ public record GiftLine(String orderId, Instant createdAt, Instant deliveredAt, S
         return deliveredAt != null ? deliveredAt : createdAt;
     }
 
-    public YearMonth month() {
-        return YearMonth.from(date().atZone(ShopZone.DEFAULT));
+    /** The month of {@link #date()} in the shop's zone. */
+    public YearMonth month(java.time.ZoneId zone) {
+        return YearMonth.from(date().atZone(zone));
     }
 }

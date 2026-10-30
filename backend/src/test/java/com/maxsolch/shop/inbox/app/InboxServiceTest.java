@@ -62,7 +62,7 @@ class InboxServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new InboxService(store, metrics, site, settings, audit, new AppProperties(),
+        service = new InboxService(store, metrics, site, settings, audit, new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"),
                 java.time.Clock.systemUTC(), new com.maxsolch.shop.platform.web.CurrentActor(), java.util.List.of());
         lenient().when(audit.currentAdminName()).thenReturn("Max");
     }

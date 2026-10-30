@@ -1,5 +1,6 @@
 package com.maxsolch.shop.platform.journal;
 
+import java.time.Clock;
 import lombok.extern.slf4j.Slf4j;
 import com.maxsolch.shop.platform.config.AppProperties;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,14 +24,16 @@ public class ActivityLogRetentionJob {
     private final ActivityLogStore store;
     private final int retentionDays;
     private final int moneyRetentionDays;
+    private final Clock clock;
 
     @Autowired
-    public ActivityLogRetentionJob(ActivityLogStore store, AppProperties props) {
-        this(store, props.getJournal().getRetentionDays(), props.getJournal().getMoneyRetentionDays());
+    public ActivityLogRetentionJob(ActivityLogStore store, AppProperties props, Clock clock) {
+        this(store, props.getJournal().getRetentionDays(), props.getJournal().getMoneyRetentionDays(), clock);
     }
 
-    public ActivityLogRetentionJob(ActivityLogStore store, int retentionDays, int moneyRetentionDays) {
+    public ActivityLogRetentionJob(ActivityLogStore store, int retentionDays, int moneyRetentionDays, Clock clock) {
         this.store = store;
+        this.clock = clock;
         this.retentionDays = Math.max(7, retentionDays);
         // never shorter than the general window, or money rows would go first
         this.moneyRetentionDays = Math.max(this.retentionDays, moneyRetentionDays);
@@ -48,7 +51,7 @@ public class ActivityLogRetentionJob {
     @Scheduled(cron = "${app.journal.purge-cron:0 35 4 * * *}")
     public void purge() {
         try {
-            Instant now = Instant.now();
+            Instant now = clock.instant();
             int n = store.purgeBefore(now.minus(Duration.ofDays(retentionDays)));
             if (n > 0) {
                 log.info("Activity log: {} rows older than {} days removed", n, retentionDays);

@@ -3,7 +3,6 @@ package com.maxsolch.shop.analytics.app;
 import com.maxsolch.shop.analytics.domain.EventClassifier;
 import com.maxsolch.shop.analytics.infra.AnalyticsQueries;
 import com.maxsolch.shop.platform.time.ShopZone;
-import com.maxsolch.shop.platform.config.AppProperties;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -25,12 +24,15 @@ public class AnalyticsReader {
     private final AnalyticsQueries queries;
     private final ZoneId zone;
     private final StaffVisitors staffVisitors;
+    private final java.time.Clock clock;
     private volatile EventClassifier.TitleIndex titles;
     private volatile long titlesAt;
 
-    public AnalyticsReader(AnalyticsQueries queries, AppProperties props, StaffVisitors staffVisitors) {
+    public AnalyticsReader(AnalyticsQueries queries, ShopZone shopZone, StaffVisitors staffVisitors,
+                           java.time.Clock clock) {
+        this.clock = clock;
         this.queries = queries;
-        this.zone = ShopZone.of(props.getTimezone()).zone();
+        this.zone = shopZone.zone();
         this.staffVisitors = staffVisitors;
     }
 
@@ -93,7 +95,7 @@ public class AnalyticsReader {
     }
 
     private EventClassifier.TitleIndex titleIndex() {
-        long now = System.currentTimeMillis();
+        long now = clock.millis();
         EventClassifier.TitleIndex t = titles;
         if (t == null || now - titlesAt > TITLE_TTL_MILLIS) {
             t = queries.loadTitleIndex();

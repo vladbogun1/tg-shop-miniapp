@@ -42,7 +42,8 @@ class PreorderDigestJobTest {
     void setUp() {
         props.getTelegram().setBotToken("token");
         props.getTelegram().setNotifyChatId("-100500");
-        job = new PreorderDigestJob(subs, queue, settings, props, seller, Clock.fixed(NOW, ZoneOffset.UTC));
+        job = new PreorderDigestJob(subs, queue, settings, props, seller, Clock.fixed(NOW, ZoneOffset.UTC),
+                new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"));
         when(settings.system(PreorderDigestJob.DAY_KEY)).thenReturn(Optional.empty());
         when(subs.joinedBetween(any(), any())).thenReturn(List.<Object[]>of(new Object[]{7L, 5L}));
         when(subs.joinedByProduct(any(), any())).thenReturn(List.of(

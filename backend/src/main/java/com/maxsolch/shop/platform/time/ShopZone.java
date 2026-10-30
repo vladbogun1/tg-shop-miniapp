@@ -1,5 +1,7 @@
 package com.maxsolch.shop.platform.time;
 
+import com.maxsolch.shop.platform.config.AppProperties;
+
 import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.LocalDate;
@@ -10,28 +12,27 @@ import java.time.ZonedDateTime;
  * The shop's business timezone ({@code app.timezone}, default Europe/Kyiv): the zone for "today", day buckets,
  * human-facing dates and cron schedules. A bad or blank setting falls back to Europe/Kyiv instead of failing a request.
  *
- * <p>One bean, one meaning of "the shop's day". Outside {@code platform} do not write {@code ZoneId.of(...)} or
- * {@code Instant.now()}: inject {@link Clock} and this class.
+ * <p>One bean ({@link TimeConfig}), one meaning of "the shop's day": a class that needs it takes {@code ShopZone}
+ * (and {@link Clock}) in its constructor. Nobody else writes {@code ZoneId.of(...)}, {@code Instant.now()} or a zone
+ * name (rule C1).
  */
 public final class ShopZone {
 
-    public static final ZoneId DEFAULT = ZoneId.of("Europe/Kyiv");
-
     private final ZoneId zone;
 
-    private ShopZone(ZoneId zone) {
-        this.zone = zone;
+    /** From the configured id ({@code app.timezone}); blank or invalid values give the default zone. */
+    public ShopZone(String configured) {
+        this.zone = parse(configured);
     }
 
-    /** From the configured id; blank or invalid values give the default zone. */
-    public static ShopZone of(String configured) {
+    private static ZoneId parse(String configured) {
         if (configured == null || configured.isBlank()) {
-            return new ShopZone(DEFAULT);
+            return ZoneId.of(AppProperties.DEFAULT_TIMEZONE);
         }
         try {
-            return new ShopZone(ZoneId.of(configured.trim()));
+            return ZoneId.of(configured.trim());
         } catch (DateTimeException e) {
-            return new ShopZone(DEFAULT);
+            return ZoneId.of(AppProperties.DEFAULT_TIMEZONE);
         }
     }
 

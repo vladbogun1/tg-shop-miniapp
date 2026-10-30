@@ -48,7 +48,7 @@ class PreorderQueueAdminMetricsTest {
     @BeforeEach
     void setUp() {
         admin = new PreorderQueueAdmin(subs, batches, lineProducts, users, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), queue, settings, events,
-                Clock.fixed(Instant.parse("2026-10-27T10:00:00Z"), ZoneOffset.UTC));
+                Clock.fixed(Instant.parse("2026-10-27T10:00:00Z"), ZoneOffset.UTC), new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"));
     }
 
     @Test
@@ -62,8 +62,8 @@ class PreorderQueueAdminMetricsTest {
 
     @Test
     void metricsUseKyivDaysAndComputeTheConversion() {
-        Instant from = LocalDate.of(2026, 10, 1).atStartOfDay(ShopZone.DEFAULT).toInstant();
-        Instant to = LocalDate.of(2026, 10, 8).atStartOfDay(ShopZone.DEFAULT).toInstant();
+        Instant from = LocalDate.of(2026, 10, 1).atStartOfDay(java.time.ZoneId.of("Europe/Kyiv")).toInstant();
+        Instant to = LocalDate.of(2026, 10, 8).atStartOfDay(java.time.ZoneId.of("Europe/Kyiv")).toInstant();
         when(subs.joinedBetween(from, to)).thenReturn(List.<Object[]>of(new Object[]{12L, 9L}));
         when(subs.holdUnitsGiven(from, to)).thenReturn(8L);
         when(subs.closedAfterHold(eq("BOUGHT"), eq(from), eq(to))).thenReturn(3L);

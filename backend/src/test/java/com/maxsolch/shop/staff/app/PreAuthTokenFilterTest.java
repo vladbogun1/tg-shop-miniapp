@@ -48,7 +48,7 @@ class PreAuthTokenFilterTest {
         clock = new MutableClock(Instant.now());
         preAuth = new PreAuthTokens(keys.preAuthKey(), clock,
                 com.maxsolch.shop.platform.cache.CacheConfig.onClock(StaffCaches.PREAUTH_USED, clock));
-        jwtService = new JwtService(props);
+        jwtService = new JwtService(props, java.time.Clock.systemUTC());
         filter = new JwtAuthFilter(jwtService, mock(AdminTokenValidator.class), mock(WebSessionValidator.class),
                 mock(CookieOriginGuard.class), preAuth);
         chain = mock(FilterChain.class);

@@ -44,7 +44,7 @@ class SettingsServiceTest {
     @BeforeEach
     void setUp() {
         service = new SettingsService(repository, audit, new com.maxsolch.shop.platform.web.CurrentActor(),
-                org.mockito.Mockito.mock(com.maxsolch.shop.platform.tx.DomainEvents.class));
+                org.mockito.Mockito.mock(com.maxsolch.shop.platform.tx.DomainEvents.class), java.time.Clock.systemUTC());
         lenient().when(audit.currentAdminName()).thenReturn("Max");
     }
 

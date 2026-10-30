@@ -10,7 +10,7 @@ class PreorderCsvTest {
 
     @Test
     void emptyExportHasBomAndHeader() {
-        String csv = PreorderCsv.build(List.of());
+        String csv = PreorderCsv.build(List.of(), java.time.ZoneId.of("Europe/Kyiv"));
 
         assertThat(csv).startsWith("﻿name;username;qty;status;source;createdAt;botBlocked");
     }

@@ -17,7 +17,7 @@ public class AnalyticsJobs {
     }
 
     @SchedulerLock(name = "AnalyticsAggregationService.nightly", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
-    @Scheduled(cron = "${app.analytics.rollup-cron:0 30 3 * * *}", zone = "${app.timezone:Europe/Kyiv}")
+    @Scheduled(cron = "${app.analytics.rollup-cron:0 30 3 * * *}", zone = "${app.timezone}")
     public void nightlyRollup() {
         aggregation.nightly();
     }

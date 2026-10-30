@@ -107,7 +107,7 @@ final class NotifyHarness {
         }
         messages = new Messages((MessageSource) source, new com.maxsolch.shop.customer.app.UserLanguages(users));
         Mockito.when(settings.getBool(any())).thenReturn(true);
-        customer = new OrderCustomerNotifier(props, messages, settings, new CustomerRejectReason(messages),
+        customer = new OrderCustomerNotifier(new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"), messages, settings, new CustomerRejectReason(messages),
                 new CustomerBot(bot, props, messages, activity));
         seller = new OrderSellerNotifier(new SellerChannel(bot, props, activity));
         receipts = new ReceiptNotifier(messages, new CustomerBot(bot, props, messages, activity));

@@ -35,9 +35,11 @@ import java.util.List;
 public class AdminPreorderController {
 
     private final AdminPreorders preorders;
+    private final com.maxsolch.shop.platform.time.ShopZone shopZone;
 
-    public AdminPreorderController(AdminPreorders preorders) {
+    public AdminPreorderController(AdminPreorders preorders, com.maxsolch.shop.platform.time.ShopZone shopZone) {
         this.preorders = preorders;
+        this.shopZone = shopZone;
     }
 
     @GetMapping("/batches/{id}/subscribers")
@@ -91,10 +93,10 @@ public class AdminPreorderController {
         return preorders.release(req);
     }
 
-    private static ResponseEntity<byte[]> csv(List<SubscriberDto> rows, String filename) {
+    private ResponseEntity<byte[]> csv(List<SubscriberDto> rows, String filename) {
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("text/csv;charset=utf-8"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                .body(PreorderCsv.build(rows).getBytes(StandardCharsets.UTF_8));
+                .body(PreorderCsv.build(rows, shopZone.zone()).getBytes(StandardCharsets.UTF_8));
     }
 }

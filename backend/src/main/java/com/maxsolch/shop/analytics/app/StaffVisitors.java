@@ -40,7 +40,10 @@ public class StaffVisitors {
     private volatile Staff cached;
     private volatile long cachedAt;
 
-    public StaffVisitors(StaffQueries queries) {
+    private final java.time.Clock clock;
+
+    public StaffVisitors(StaffQueries queries, java.time.Clock clock) {
+        this.clock = clock;
         this.queries = queries;
     }
 
@@ -90,7 +93,7 @@ public class StaffVisitors {
 
     /** Current staff (cached for a few minutes; a new admin or browser shows up within that). */
     public Staff get() {
-        long now = System.currentTimeMillis();
+        long now = clock.millis();
         Staff s = cached;
         if (s == null || now - cachedAt > TTL_MILLIS) {
             s = load();

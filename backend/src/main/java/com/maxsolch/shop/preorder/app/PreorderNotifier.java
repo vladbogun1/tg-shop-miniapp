@@ -1,5 +1,6 @@
 package com.maxsolch.shop.preorder.app;
 
+import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.preorder.domain.PreorderEvents;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.translation.app.BotTexts;
@@ -38,11 +39,13 @@ public class PreorderNotifier {
     private final PreorderQueueReader queue;
     private final CustomerBot customer;
     private final BotTexts texts;
+    private final java.time.ZoneId zone;
 
-    public PreorderNotifier(PreorderQueueReader queue, CustomerBot customer, BotTexts texts) {
+    public PreorderNotifier(PreorderQueueReader queue, CustomerBot customer, BotTexts texts, ShopZone shopZone) {
         this.queue = queue;
         this.customer = customer;
         this.texts = texts;
+        this.zone = shopZone.zone();
     }
 
     @TransactionalEventListener(fallbackExecution = true)
@@ -176,8 +179,8 @@ public class PreorderNotifier {
         return d.format(DAY);
     }
 
-    private static String at(Instant t, DateTimeFormatter f) {
-        return t == null ? "" : t.atZone(com.maxsolch.shop.platform.time.ShopZone.DEFAULT).format(f);
+    private String at(Instant t, DateTimeFormatter f) {
+        return t == null ? "" : t.atZone(zone).format(f);
     }
 
     private InlineKeyboardMarkup buyButton(MyPreorderDto p, Locale l) {

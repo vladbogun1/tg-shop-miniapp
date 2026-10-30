@@ -1,5 +1,6 @@
 package com.maxsolch.shop.platform.security;
 
+import java.time.Clock;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -46,9 +47,11 @@ public class TgInitDataValidator {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final AppProperties props;
+    private final Clock clock;
 
-    public TgInitDataValidator(AppProperties props) {
+    public TgInitDataValidator(AppProperties props, Clock clock) {
         this.props = props;
+        this.clock = clock;
     }
 
     /**
@@ -132,7 +135,7 @@ public class TgInitDataValidator {
         } catch (NumberFormatException e) {
             throw invalid("initData auth_date is not a number");
         }
-        long now = Instant.now().getEpochSecond();
+        long now = clock.instant().getEpochSecond();
         if (now - authDate > ttl) {
             throw invalid("initData is expired");
         }

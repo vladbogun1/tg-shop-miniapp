@@ -32,7 +32,7 @@ public class MetricsFactsLoader {
 
     @Transactional(readOnly = true)
     public MetricsFacts load() {
-        long nowMs = System.currentTimeMillis();
+        long nowMs = clock.millis();
         MetricsFacts cached = memo;
         if (cached != null && nowMs - memoAt < MEMO_MILLIS) {
             return new MetricsFacts(cached.orders(), cached.items(), cached.products(), cached.users(),

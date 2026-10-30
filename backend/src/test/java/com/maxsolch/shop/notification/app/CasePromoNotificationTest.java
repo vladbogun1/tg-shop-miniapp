@@ -53,7 +53,7 @@ class CasePromoNotificationTest {
         props.getTelegram().setBotToken("test-token");
         props.setWebappBaseUrl("https://app.example.test");
         Messages messages = new Messages((MessageSource) source, new com.maxsolch.shop.customer.app.UserLanguages(users));
-        service = new OrderCustomerNotifier(props, messages, settings, rejectReason,
+        service = new OrderCustomerNotifier(new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"), messages, settings, rejectReason,
                 new CustomerBot(bot, props, messages, activity));
         lenient().when(activity.bot(any(), any())).thenAnswer(inv -> ((ActivityLog.BotCall<?, ?>) inv.getArgument(1)).call());
     }

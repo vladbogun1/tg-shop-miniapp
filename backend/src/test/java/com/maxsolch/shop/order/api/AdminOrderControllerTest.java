@@ -111,7 +111,7 @@ class AdminOrderControllerTest {
 
     AdminOrderController controller() {
         AdminOrderQueries adminQueries = new AdminOrderQueries(orders, queries, java.time.Clock.systemUTC(),
-                com.maxsolch.shop.platform.time.ShopZone.of(null));
+                new com.maxsolch.shop.platform.time.ShopZone(null));
         return new AdminOrderController(adminQueries,
                 new AdminOrderStatusService(adminQueries, lifecycle, payments, audit),
                 null, queries, null, null, null, null);

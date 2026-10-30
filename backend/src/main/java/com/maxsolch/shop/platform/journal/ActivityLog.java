@@ -1,5 +1,6 @@
 package com.maxsolch.shop.platform.journal;
 
+import java.time.Clock;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.Role;
@@ -68,16 +69,18 @@ public class ActivityLog {
     private final DomainEvents events;
     private final CurrentActor actor;
     private final ExecutorService executor;
+    private final Clock clock;
     private final AtomicLong dropped = new AtomicLong();
 
     @Autowired
     public ActivityLog(ActivityLogStore store, BotFailureClassifier classifier, DomainEvents events,
-                       CurrentActor actor) {
-        this(store, classifier, events, actor, newWorker());
+                       CurrentActor actor, Clock clock) {
+        this(store, classifier, events, actor, clock, newWorker());
     }
 
     ActivityLog(ActivityLogStore store, BotFailureClassifier classifier, DomainEvents events, CurrentActor actor,
-                ExecutorService executor) {
+                Clock clock, ExecutorService executor) {
+        this.clock = clock;
         this.store = store;
         this.classifier = classifier;
         this.events = events;
@@ -105,6 +108,7 @@ public class ActivityLog {
         if (e == null) {
             return;
         }
+        stamp(e);
         try {
             executor.execute(() -> write(e));
         } catch (RejectedExecutionException ex) {
@@ -126,6 +130,7 @@ public class ActivityLog {
         if (e == null) {
             return;
         }
+        stamp(e);
         try {
             events.publish(new EntryCommitted(e));
         } catch (RuntimeException ex) {
@@ -162,6 +167,13 @@ public class ActivityLog {
     @FunctionalInterface
     public interface BotCall<T, X extends Exception> {
         T call() throws X;
+    }
+
+    /** The moment of the event: set when the entry is handed over, not when its transaction commits. */
+    private void stamp(Entry e) {
+        if (e.at == null) {
+            e.at = clock.instant();
+        }
     }
 
     void write(Entry e) {
@@ -245,7 +257,8 @@ public class ActivityLog {
 
     /** One journal row, built fluently by the caller. */
     public static final class Entry {
-        final Instant at = Instant.now();
+        /** Set by {@link ActivityLog} when the entry is recorded. */
+        Instant at;
         final String source;
         final String type;
         String result = OK;

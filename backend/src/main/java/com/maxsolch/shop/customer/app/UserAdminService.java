@@ -2,7 +2,6 @@ package com.maxsolch.shop.customer.app;
 
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.platform.time.TimeRange;
-import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.customer.domain.UserCardDto;
 import com.maxsolch.shop.customer.infra.UserRepository;
 import jakarta.persistence.EntityManager;
@@ -48,11 +47,11 @@ public class UserAdminService {
     private final UserRepository userRepository;
     private final Clock clock;
 
-    public UserAdminService(EntityManager em, UserRepository userRepository, AppProperties props, Clock clock) {
+    public UserAdminService(EntityManager em, UserRepository userRepository, ShopZone shopZone, Clock clock) {
         this.em = em;
         this.userRepository = userRepository;
         this.clock = clock;
-        this.day = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ShopZone.of(props.getTimezone()).zone());
+        this.day = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(shopZone.zone());
     }
 
     /**

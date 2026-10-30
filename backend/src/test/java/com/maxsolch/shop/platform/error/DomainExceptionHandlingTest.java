@@ -25,7 +25,7 @@ class DomainExceptionHandlingTest {
     }
 
     private final Messages messages = mock(Messages.class);
-    private final ApiExceptionHandler handler = new ApiExceptionHandler(messages);
+    private final ApiExceptionHandler handler = new ApiExceptionHandler(messages, java.time.Clock.systemUTC());
 
     @Test
     void readyTextWithCodeKeepsLegacyShape() {

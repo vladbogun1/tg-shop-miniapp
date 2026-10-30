@@ -12,7 +12,6 @@ import com.maxsolch.shop.analytics.domain.EventClassifier;
 import com.maxsolch.shop.analytics.app.MetricsDtos.ErrorRow;
 import com.maxsolch.shop.analytics.app.MetricsDtos.Reorder;
 import com.maxsolch.shop.analytics.app.MetricsDtos.ReorderRow;
-import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import org.springframework.stereotype.Service;
 
@@ -41,12 +40,12 @@ public class AdminMetricsService {
     private final SettingsService settings;
     private final Clock clock;
 
-    public AdminMetricsService(MetricsFactsLoader loader, AnalyticsReader analytics, AppProperties props,
+    public AdminMetricsService(MetricsFactsLoader loader, AnalyticsReader analytics, ShopZone shopZone,
                                SettingsService settings, Clock clock) {
         this.clock = clock;
         this.loader = loader;
         this.analytics = analytics;
-        this.zone = ShopZone.of(props.getTimezone()).zone();
+        this.zone = shopZone.zone();
         this.settings = settings;
     }
 

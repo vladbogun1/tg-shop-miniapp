@@ -4,7 +4,6 @@ import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.staff.domain.LoginMethod;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
-import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,9 +40,9 @@ public class AdminLockout {
 
     @Autowired
     public AdminLockout(AdminCounters counters, AdminAuditService audit,
-                        AdminLoginLogService loginLog, AdminSecurityAlerts alerts, AppProperties props,
+                        AdminLoginLogService loginLog, AdminSecurityAlerts alerts, ShopZone shopZone,
                         Clock clock) {
-        this(counters, audit, loginLog, alerts, ShopZone.of(props.getTimezone()).zone(), clock);
+        this(counters, audit, loginLog, alerts, shopZone.zone(), clock);
     }
 
     AdminLockout(AdminCounters counters, AdminAuditService audit, AdminLoginLogService loginLog,

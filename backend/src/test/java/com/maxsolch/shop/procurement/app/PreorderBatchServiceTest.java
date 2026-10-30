@@ -70,7 +70,7 @@ class PreorderBatchServiceTest {
     @BeforeEach
     void setUp() {
         service = new PreorderBatchService(batches, items, suppliers, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), queue, lineProducts, settings,
-                ledger, revalidator, Clock.fixed(NOW, ZoneOffset.UTC));
+                ledger, revalidator, Clock.fixed(NOW, ZoneOffset.UTC), new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"));
         batch = new PreorderBatch();
         batch.setId(5L);
         batch.setTitle("Lamzu, ноябрь");

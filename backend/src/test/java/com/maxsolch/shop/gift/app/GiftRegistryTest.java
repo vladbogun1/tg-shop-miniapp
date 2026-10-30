@@ -12,6 +12,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class GiftRegistryTest {
 
+    private static final java.time.ZoneId KYIV = java.time.ZoneId.of("Europe/Kyiv");
+
     private static final YearMonth OCT = YearMonth.of(2026, 10);
 
     private static GiftLine line(GiftPerson p, String created, String delivered, long unit) {
@@ -49,7 +51,7 @@ class GiftRegistryTest {
                 line(me, "2026-09-20T10:00:00Z", "2026-09-25T10:00:00Z", 2000_00),          // last month
                 line(stranger, "2026-10-03T10:00:00Z", "2026-10-04T10:00:00Z", 2000_00));   // someone else
         GiftPerson checkout = new GiftPerson(null, 5L, GiftPerson.phoneKey("067 123 45 67"));
-        assertThat(GiftRegistryService.usedMinor(checkout, lines, OCT)).isEqualTo(1800_00);
+        assertThat(GiftRegistryService.usedMinor(checkout, lines, OCT, KYIV)).isEqualTo(1800_00);
     }
 
     @Test
@@ -57,9 +59,9 @@ class GiftRegistryTest {
         GiftPerson me = new GiftPerson(1L, null, null);
         // Ordered in September, delivered in October — an October gift.
         GiftLine l = line(me, "2026-09-29T10:00:00Z", "2026-10-01T10:00:00Z", 1000_00);
-        assertThat(l.month()).isEqualTo(OCT);
-        assertThat(GiftRegistryService.usedMinor(me, List.of(l), OCT)).isEqualTo(1000_00);
-        assertThat(GiftRegistryService.usedMinor(me, List.of(l), YearMonth.of(2026, 9))).isZero();
+        assertThat(l.month(KYIV)).isEqualTo(OCT);
+        assertThat(GiftRegistryService.usedMinor(me, List.of(l), OCT, KYIV)).isEqualTo(1000_00);
+        assertThat(GiftRegistryService.usedMinor(me, List.of(l), YearMonth.of(2026, 9), KYIV)).isZero();
     }
 
     @Test
@@ -67,6 +69,6 @@ class GiftRegistryTest {
         GiftPerson me = new GiftPerson(1L, null, null);
         // 31.10 23:30 UTC = 01.11 01:30 in Kyiv.
         GiftLine l = line(me, "2026-10-20T10:00:00Z", "2026-10-31T23:30:00Z", 100_00);
-        assertThat(l.month()).isEqualTo(YearMonth.of(2026, 11));
+        assertThat(l.month(KYIV)).isEqualTo(YearMonth.of(2026, 11));
     }
 }

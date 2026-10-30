@@ -112,7 +112,7 @@ class AdminAuthServiceTest {
 
         AppProperties props = new AppProperties();
         props.getSecurity().setJwtSecret(JWT_SECRET);
-        jwtService = new JwtService(props);
+        jwtService = new JwtService(props, java.time.Clock.systemUTC());
         AdminAuthKeys keys = new AdminAuthKeys(props);
         cipher = keys.cipher();
         PreAuthTokens preAuth = new PreAuthTokens(keys.preAuthKey(), clock,
