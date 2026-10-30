@@ -49,7 +49,8 @@ public class OrderDispatchView {
 
     @Transactional(readOnly = true)
     public DispatchOrderDto toDispatch(Order o) {
-        return toDispatch(o, thumbnails.of(o.getItems()));
+        Order attached = orderRepository.findById(o.getId()).orElse(o);
+        return toDispatch(attached, thumbnails.of(attached.getItems()));
     }
 
     private DispatchOrderDto toDispatch(Order o, Map<String, String> photos) {

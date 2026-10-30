@@ -252,7 +252,7 @@ public class OrderQueryService {
     /** Admin view: line titles are the Russian snapshots. */
     @Transactional(readOnly = true)
     public OrderDetailDto toDetail(Order o) {
-        return adminView(o);
+        return adminView(attached(o));
     }
 
     /**
@@ -263,7 +263,16 @@ public class OrderQueryService {
      */
     @Transactional(readOnly = true)
     public OrderDetailDto toDetail(Order o, String lang) {
-        return customerView(o, lang);
+        return customerView(attached(o), lang);
+    }
+
+    /**
+     * The order as part of this transaction. Callers hand over what an earlier transaction loaded or saved - that
+     * instance is detached and its lines (lazy) cannot be read any more; inside a running transaction this is the
+     * same managed instance and costs no query.
+     */
+    private Order attached(Order o) {
+        return orderRepository.findById(o.getId()).orElse(o);
     }
 
     private OrderDetailDto customerView(Order o, String lang) {
