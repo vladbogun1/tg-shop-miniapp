@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ClassSizeTest {
 
-    private static final int MAX_LINES = 500;
+    private static final int MAX_LINES = 400;
     private static final Path SOURCES = Path.of("src/main/java");
 
     @Test
