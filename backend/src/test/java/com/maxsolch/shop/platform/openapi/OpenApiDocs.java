@@ -26,7 +26,6 @@ import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.core.type.filter.AssignableTypeFilter;
 import org.springframework.test.web.servlet.MockMvc;
@@ -136,8 +135,10 @@ final class OpenApiDocs {
         return n;
     }
 
-    /** Registers every {@code @RestController} of the app; each constructor dependency becomes a Mockito mock. */
-    @Configuration(proxyBeanMethods = false)
+    /**
+     * Registers every {@code @RestController} of the app; each constructor dependency becomes a Mockito mock.
+     * Deliberately NOT a {@code @Configuration}: the integration tests scan the test classpath and would pick up the mocks.
+     */
     static class ControllersWithMockedServices implements BeanDefinitionRegistryPostProcessor {
 
         @Override
