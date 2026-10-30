@@ -1,5 +1,6 @@
 package com.maxsolch.shop.platform.security;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.config.AppProperties;
 import org.junit.jupiter.api.Test;
 
@@ -108,7 +109,7 @@ class TgInitDataValidatorTest {
         TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400));
 
         assertThatThrownBy(() -> validator.validate(initData))
-                .isInstanceOf(InitDataException.class)
+                .isInstanceOf(DomainException.Unauthorized.class)
                 .hasMessageContaining("hash mismatch");
     }
 
@@ -124,7 +125,7 @@ class TgInitDataValidatorTest {
         TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400));
 
         assertThatThrownBy(() -> validator.validate(initData))
-                .isInstanceOf(InitDataException.class)
+                .isInstanceOf(DomainException.Unauthorized.class)
                 .hasMessageContaining("hash mismatch");
     }
 
@@ -139,7 +140,7 @@ class TgInitDataValidatorTest {
         TgInitDataValidator validator = new TgInitDataValidator(props(false, 60));
 
         assertThatThrownBy(() -> validator.validate(initData))
-                .isInstanceOf(InitDataException.class)
+                .isInstanceOf(DomainException.Unauthorized.class)
                 .hasMessageContaining("expired");
     }
 
@@ -148,7 +149,7 @@ class TgInitDataValidatorTest {
         TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400));
 
         assertThatThrownBy(() -> validator.validate(""))
-                .isInstanceOf(InitDataException.class)
+                .isInstanceOf(DomainException.Unauthorized.class)
                 .hasMessageContaining("empty");
     }
 
@@ -160,7 +161,7 @@ class TgInitDataValidatorTest {
         TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400));
 
         assertThatThrownBy(() -> validator.validate(initData))
-                .isInstanceOf(InitDataException.class)
+                .isInstanceOf(DomainException.Unauthorized.class)
                 .hasMessageContaining("no hash");
     }
 
@@ -185,7 +186,7 @@ class TgInitDataValidatorTest {
         TgInitDataValidator validator = new TgInitDataValidator(props(true, 86400));
 
         assertThatThrownBy(() -> validator.validate(initData))
-                .isInstanceOf(InitDataException.class)
+                .isInstanceOf(DomainException.Unauthorized.class)
                 .hasMessageContaining("no user");
     }
 
@@ -203,7 +204,7 @@ class TgInitDataValidatorTest {
 
         assertThat(validator.validateForAdmin(initData).id()).isEqualTo(777L);
         assertThatThrownBy(() -> validator.validateForAdmin(initData))
-                .isInstanceOf(InitDataException.class)
+                .isInstanceOf(DomainException.Unauthorized.class)
                 .hasMessageContaining("already used");
         // The customer path is not single-use (every Mini App call re-sends the same initData).
         assertThat(validator.validate(initData).id()).isEqualTo(777L);
@@ -218,7 +219,7 @@ class TgInitDataValidatorTest {
 
         assertThat(validator.validate(tenMinutesOld).id()).isEqualTo(777L); // customer: a day
         assertThatThrownBy(() -> validator.validateForAdmin(tenMinutesOld))
-                .isInstanceOf(InitDataException.class)
+                .isInstanceOf(DomainException.Unauthorized.class)
                 .hasMessageContaining("expired");
     }
 
@@ -228,7 +229,7 @@ class TgInitDataValidatorTest {
         TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400));
 
         assertThatThrownBy(() -> validator.validate(initData))
-                .isInstanceOf(InitDataException.class)
+                .isInstanceOf(DomainException.Unauthorized.class)
                 .hasMessageContaining("future");
     }
 
@@ -238,7 +239,7 @@ class TgInitDataValidatorTest {
         TgInitDataValidator validator = new TgInitDataValidator(props(false, 86400));
 
         assertThatThrownBy(() -> validator.validate(initData))
-                .isInstanceOf(InitDataException.class)
+                .isInstanceOf(DomainException.Unauthorized.class)
                 .hasMessageContaining("repeated key");
     }
 
@@ -249,7 +250,7 @@ class TgInitDataValidatorTest {
         for (String bad : new String[]{"zz", "not-hex-" + "0".repeat(56), computeHash(params, BOT_TOKEN).toUpperCase() + "0"}) {
             String initData = toQuery(params, bad);
             assertThatThrownBy(() -> validator.validate(initData))
-                    .isInstanceOf(InitDataException.class)
+                    .isInstanceOf(DomainException.Unauthorized.class)
                     .hasMessageContaining("hash mismatch");
         }
     }

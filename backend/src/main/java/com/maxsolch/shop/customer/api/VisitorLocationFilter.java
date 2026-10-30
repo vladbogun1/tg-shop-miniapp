@@ -2,15 +2,13 @@ package com.maxsolch.shop.customer.api;
 
 import com.maxsolch.shop.customer.app.VisitorLocationService;
 import com.maxsolch.shop.platform.web.ClientIp;
-import com.maxsolch.shop.platform.security.AuthPrincipal;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.platform.security.Role;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.lang.NonNull;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -28,9 +26,11 @@ public class VisitorLocationFilter extends OncePerRequestFilter
         implements com.maxsolch.shop.platform.security.PostAuthenticationFilter {
 
     private final VisitorLocationService locations;
+    private final CurrentActor actor;
 
-    public VisitorLocationFilter(VisitorLocationService locations) {
+    public VisitorLocationFilter(VisitorLocationService locations, CurrentActor actor) {
         this.locations = locations;
+        this.actor = actor;
     }
 
     @Override
@@ -48,12 +48,10 @@ public class VisitorLocationFilter extends OncePerRequestFilter
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain chain) throws ServletException, IOException {
         try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.getPrincipal() instanceof AuthPrincipal p && p.role() == Role.CUSTOMER) {
-                locations.touchUser(p.telegramUserId(),
-                        p.isWeb() ? VisitorLocationService.WEB : VisitorLocationService.MINIAPP,
-                        ClientIp.of(request));
-            }
+            actor.principalIfPresent().filter(p -> p.role() == Role.CUSTOMER).ifPresent(p ->
+                    locations.touchUser(p.telegramUserId(),
+                            p.isWeb() ? VisitorLocationService.WEB : VisitorLocationService.MINIAPP,
+                            ClientIp.of(request)));
         } catch (RuntimeException ignored) {
             // the map is a nice-to-have; the request is not
         }

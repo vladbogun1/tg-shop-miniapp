@@ -20,7 +20,6 @@ import com.maxsolch.shop.customer.app.AuthService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -237,9 +236,9 @@ class AdminAuthServiceTest {
                     .isInstanceOf(DomainException.Unauthorized.class);
         }
         assertThatThrownBy(() -> service.passwordLogin("boss", "wrong", null, CLIENT))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("заблокирован до 12:27");
+                .isInstanceOf(DomainException.TooManyRequests.class).hasMessageContaining("заблокирован до 12:27");
         assertThatThrownBy(() -> service.passwordLogin("boss", "right-password", null, CLIENT))
-                .isInstanceOf(ResponseStatusException.class);
+                .isInstanceOf(DomainException.TooManyRequests.class);
         verify(alerts).accountLocked(eq(ID), any(), any(), eq("203.0.113.5"), any());
         verify(audit).recordFor(eq(ID), eq("ADMIN_LOCKED"), any(), any(), any());
 
@@ -258,11 +257,11 @@ class AdminAuthServiceTest {
         }
         Outcome o = service.passwordLogin("boss", "right-password", null, CLIENT);
         assertThatThrownBy(() -> service.verify(o.preAuthToken(), wrongCode(), false, CLIENT))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("заблокирован");
+                .isInstanceOf(DomainException.TooManyRequests.class).hasMessageContaining("заблокирован");
         // Locked: even the right code on a still-valid pre-auth token is refused.
         Outcome stale = o;
         assertThatThrownBy(() -> service.verify(stale.preAuthToken(), code(), false, CLIENT))
-                .isInstanceOf(ResponseStatusException.class);
+                .isInstanceOf(DomainException.TooManyRequests.class);
     }
 
     @Test
@@ -284,7 +283,7 @@ class AdminAuthServiceTest {
                     .isInstanceOf(DomainException.Unauthorized.class).hasMessage("Неверный логин или пароль");
         }
         assertThatThrownBy(() -> service.passwordLogin("ghost", "x", null, CLIENT))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("заблокирован");
+                .isInstanceOf(DomainException.TooManyRequests.class).hasMessageContaining("заблокирован");
         verify(repo, never()).incrementFailures(anyLong());
     }
 

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.notification.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.notification.domain.Broadcast;
 import com.maxsolch.shop.platform.i18n.Messages;
@@ -14,10 +15,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -175,13 +174,13 @@ public class BroadcastService {
     /** Start a broadcast (async). Throws 409 if one is already running. Returns the history id too. */
     public Started start(BroadcastRequest req, Long adminId, String adminName) {
         if (!enabled()) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Бот не настроен");
+            throw new DomainException.Unavailable("Бот не настроен");
         }
         if (status.get().running()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Рассылка уже идёт");
+            throw new DomainException.Conflict("Рассылка уже идёт", null, null);
         }
         DbLocks.Held lock = locks.tryLock(LOCK_NAME, LOCK_TTL)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Рассылка уже идёт"));
+                .orElseThrow(() -> new DomainException.Conflict("Рассылка уже идёт", null, null));
         try {
             return begin(req, adminId, adminName, lock);
         } catch (RuntimeException e) {

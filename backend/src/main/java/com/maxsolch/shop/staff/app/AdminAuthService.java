@@ -14,7 +14,6 @@ import com.maxsolch.shop.staff.app.PreAuthTokens.Stage;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
-import com.maxsolch.shop.platform.security.InitDataException;
 import com.maxsolch.shop.platform.security.JwtService;
 import com.maxsolch.shop.platform.security.Role;
 import com.maxsolch.shop.platform.security.TelegramUser;
@@ -163,7 +162,7 @@ public class AdminAuthService {
         TelegramUser tgUser;
         try {
             tgUser = initDataValidator.validateForAdmin(initData);
-        } catch (InitDataException e) {
+        } catch (DomainException.Unauthorized e) {
             loginLog.record(null, null, LoginMethod.TELEGRAM, Result.BAD_TELEGRAM, null, client);
             audit.recordLogin(false, "telegram", null, null, client.ip());
             throw e;
@@ -172,7 +171,7 @@ public class AdminAuthService {
         if (admin == null) {
             loginLog.record(null, "tg:" + tgUser.id(), LoginMethod.TELEGRAM, Result.NOT_ADMIN, null, client);
             audit.recordLogin(false, "telegram", null, "tg:" + tgUser.id(), client.ip());
-            throw new InitDataException("not an admin");
+            throw new DomainException.Unauthorized("not an admin", null);
         }
         if (lockout.isLocked(admin)) {
             loginLog.record(admin.getTelegramUserId(), null, LoginMethod.TELEGRAM, Result.LOCKED, null, client);

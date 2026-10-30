@@ -1,5 +1,6 @@
 package com.maxsolch.shop.notification.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.notification.domain.BroadcastAudiences;
 import com.maxsolch.shop.notification.domain.TelegramGateway;
 import com.maxsolch.shop.notification.infra.BroadcastRepository;
@@ -10,7 +11,6 @@ import com.maxsolch.shop.platform.jobs.InMemoryLockProvider;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.server.ResponseStatusException;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
@@ -69,8 +69,8 @@ class BroadcastLockTest {
         first.start(request(), 1L, "Max");
 
         assertThatThrownBy(() -> second.start(request(), 2L, "Anna"))
-                .isInstanceOfSatisfying(ResponseStatusException.class, e ->
-                        assertThat(e.getStatusCode().value()).isEqualTo(409));
+                .isInstanceOfSatisfying(DomainException.Conflict.class, e ->
+                        assertThat(e.kind().httpStatus()).isEqualTo(409));
 
         release.countDown();
         await().atMost(Duration.ofSeconds(10)).until(() -> !first.status().running());

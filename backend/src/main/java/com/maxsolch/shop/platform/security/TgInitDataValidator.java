@@ -5,6 +5,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.platform.config.AppProperties;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -53,7 +54,7 @@ public class TgInitDataValidator {
     /**
      * Validate and parse initData, returning the embedded Telegram user.
      *
-     * @throws InitDataException on any validation failure
+     * @throws DomainException.Unauthorized on any validation failure
      */
     public TelegramUser validate(String initData) {
         return validate(initData, props.getTelegram().getInitDataTtlSeconds(), false);
@@ -68,7 +69,7 @@ public class TgInitDataValidator {
     /**
      * ADMIN sign-in: short TTL (capped at an hour) and single use (see the class comment).
      *
-     * @throws InitDataException on any validation failure, including a replay
+     * @throws DomainException.Unauthorized on any validation failure, including a replay
      */
     public TelegramUser validateForAdmin(String initData) {
         long ttl = Math.min(props.getTelegram().getAdminInitDataTtlSeconds(), 3600);
@@ -77,7 +78,7 @@ public class TgInitDataValidator {
 
     private TelegramUser validate(String initData, long ttlSeconds, boolean singleUse) {
         if (!StringUtils.hasText(initData)) {
-            throw new InitDataException("initData is empty");
+            throw invalid("initData is empty");
         }
 
         Map<String, String> params = parseQuery(initData);
@@ -87,16 +88,16 @@ public class TgInitDataValidator {
 
         if (!allowUnsigned) {
             if (!StringUtils.hasText(hash)) {
-                throw new InitDataException("initData has no hash");
+                throw invalid("initData has no hash");
             }
             String botToken = props.getTelegram().getBotToken();
             if (!StringUtils.hasText(botToken)) {
-                throw new InitDataException("bot token is not configured");
+                throw invalid("bot token is not configured");
             }
             String dataCheckString = buildDataCheckString(params);
             byte[] computed = computeHash(dataCheckString, botToken);
             if (!MessageDigest.isEqual(computed, hexOrEmpty(hash))) {
-                throw new InitDataException("initData hash mismatch");
+                throw invalid("initData hash mismatch");
             }
         }
 
@@ -107,13 +108,13 @@ public class TgInitDataValidator {
             // signature, so junk cannot fill the cache.
             String key = StringUtils.hasText(hash) ? hash.toLowerCase(java.util.Locale.ROOT) : initData;
             if (usedForAdmin.asMap().putIfAbsent(key, Boolean.TRUE) != null) {
-                throw new InitDataException("initData was already used, reopen the panel from Telegram");
+                throw invalid("initData was already used, reopen the panel from Telegram");
             }
         }
 
         String userJson = params.get("user");
         if (!StringUtils.hasText(userJson)) {
-            throw new InitDataException("initData has no user");
+            throw invalid("initData has no user");
         }
         return parseUser(userJson);
     }
@@ -123,22 +124,22 @@ public class TgInitDataValidator {
             if (allowUnsigned) {
                 return;
             }
-            throw new InitDataException("initData has no auth_date");
+            throw invalid("initData has no auth_date");
         }
         long authDate;
         try {
             authDate = Long.parseLong(authDateRaw);
         } catch (NumberFormatException e) {
-            throw new InitDataException("initData auth_date is not a number");
+            throw invalid("initData auth_date is not a number");
         }
         long now = Instant.now().getEpochSecond();
         if (now - authDate > ttl) {
-            throw new InitDataException("initData is expired");
+            throw invalid("initData is expired");
         }
         // Telegram stamps auth_date itself; one from the future (beyond clock skew) would stretch
         // the TTL past what we allow.
         if (authDate - now > MAX_CLOCK_SKEW_SECONDS) {
-            throw new InitDataException("initData auth_date is in the future");
+            throw invalid("initData auth_date is in the future");
         }
     }
 
@@ -147,7 +148,7 @@ public class TgInitDataValidator {
             JsonNode node = objectMapper.readTree(userJson);
             long id = node.path("id").asLong();
             if (id == 0) {
-                throw new InitDataException("initData user has no id");
+                throw invalid("initData user has no id");
             }
             String username = textOrNull(node, "username");
             String firstName = textOrNull(node, "first_name");
@@ -156,10 +157,10 @@ public class TgInitDataValidator {
             boolean premium = node.path("is_premium").asBoolean(false);
             String photoUrl = textOrNull(node, "photo_url");
             return new TelegramUser(id, username, firstName, lastName, languageCode, premium, photoUrl);
-        } catch (InitDataException e) {
+        } catch (DomainException.Unauthorized e) {
             throw e;
         } catch (Exception e) {
-            throw new InitDataException("failed to parse initData user json", e);
+            throw invalid("failed to parse initData user json", e);
         }
     }
 
@@ -181,7 +182,7 @@ public class TgInitDataValidator {
             // A repeated key means the string was tampered with (Telegram never sends one): with
             // "last one wins" the checked data and the used data could differ.
             if (map.put(key, val) != null) {
-                throw new InitDataException("initData has a repeated key: " + key);
+                throw invalid("initData has a repeated key: " + key);
             }
         }
         return map;
@@ -220,7 +221,18 @@ public class TgInitDataValidator {
             mac.init(new SecretKeySpec(key, "HmacSHA256"));
             return mac.doFinal(message);
         } catch (Exception e) {
-            throw new InitDataException("HMAC computation failed", e);
+            throw invalid("HMAC computation failed", e);
         }
+    }
+
+    /** 401 with the reason as text (no code), as before. */
+    private static DomainException.Unauthorized invalid(String reason) {
+        return new DomainException.Unauthorized(reason, null);
+    }
+
+    private static DomainException.Unauthorized invalid(String reason, Throwable cause) {
+        DomainException.Unauthorized e = invalid(reason);
+        e.initCause(cause);
+        return e;
     }
 }

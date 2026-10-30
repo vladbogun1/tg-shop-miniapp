@@ -6,7 +6,6 @@ import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.customer.domain.UserCardDto;
 import com.maxsolch.shop.customer.infra.UserRepository;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -45,13 +44,12 @@ public class UserAdminService {
             "ordersCount", "ordersCount",
             "totalSpentMinor", "totalSpentMinor");
 
-    @PersistenceContext
-    private EntityManager em;
-
+    private final EntityManager em;
     private final UserRepository userRepository;
     private final Clock clock;
 
-    public UserAdminService(UserRepository userRepository, AppProperties props, Clock clock) {
+    public UserAdminService(EntityManager em, UserRepository userRepository, AppProperties props, Clock clock) {
+        this.em = em;
         this.userRepository = userRepository;
         this.clock = clock;
         this.day = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ShopZone.of(props.getTimezone()).zone());

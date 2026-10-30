@@ -6,9 +6,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
+
 /**
- * Who is acting right now. A bean instead of the static {@code SecurityUtil}, so use cases take it as a dependency
- * and tests substitute it. Audit and "acting admin" checks live in the use case (app layer) and read the actor here.
+ * Who is acting right now: the only reader of the security context outside the security filters (rule A1), a bean
+ * so that callers take it as a dependency and tests substitute it. Audit and "acting admin" checks live in the use case (app layer) and read the actor here.
  */
 @Component
 public class CurrentActor {
@@ -25,8 +27,13 @@ public class CurrentActor {
 
     /** True when somebody is authenticated (background jobs and public endpoints have no actor). */
     public boolean isPresent() {
+        return principalIfPresent().isPresent();
+    }
+
+    /** The authenticated principal, or empty for background jobs and public endpoints. */
+    public Optional<AuthPrincipal> principalIfPresent() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null && auth.getPrincipal() instanceof AuthPrincipal;
+        return auth != null && auth.getPrincipal() instanceof AuthPrincipal p ? Optional.of(p) : Optional.empty();
     }
 
     /** The lookup itself. */

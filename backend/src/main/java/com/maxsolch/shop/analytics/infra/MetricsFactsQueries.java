@@ -2,6 +2,9 @@ package com.maxsolch.shop.analytics.infra;
 
 import com.maxsolch.shop.analytics.domain.MetricsFacts;
 import com.maxsolch.shop.order.domain.OrderStatus;
+import com.maxsolch.shop.platform.cache.CacheConfig;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -13,7 +16,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Plain SQL that reads the rows the metrics are computed from (one query per table, no entities, no lazy
@@ -28,26 +30,37 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MetricsFactsQueries {
 
     private final JdbcTemplate jdbc;
-    private final Map<String, Boolean> columnCache = new ConcurrentHashMap<>();
+    private final Cache schemaFacts;
 
-    public MetricsFactsQueries(JdbcTemplate jdbc) {
+    public MetricsFactsQueries(JdbcTemplate jdbc, CacheManager caches) {
         this.jdbc = jdbc;
+        this.schemaFacts = CacheConfig.require(caches, AnalyticsCaches.SCHEMA_FACTS);
+    }
+
+    /** Read-through over the schema cache: a failed lookup is not remembered. */
+    private boolean schemaFact(String key, java.util.function.Supplier<Boolean> lookup) {
+        Boolean known = schemaFacts.get(key, Boolean.class);
+        if (known == null) {
+            known = lookup.get();
+            schemaFacts.put(key, known);
+        }
+        return known;
     }
 
     /** Whether {@code orders.<column>} exists (cached; columns only appear with a redeploy). */
     public boolean hasOrderColumn(String column) {
-        return columnCache.computeIfAbsent(column, c -> {
+        return schemaFact("column:" + column, () -> {
             Integer n = jdbc.queryForObject(
                     "select count(*) from information_schema.columns "
                             + "where table_schema = database() and table_name = 'orders' and column_name = ?",
-                    Integer.class, c);
+                    Integer.class, column);
             return n != null && n > 0;
         });
     }
 
     /** Whether {@code payment_invoices} exists (V39, online payments). */
     public boolean hasInvoices() {
-        return columnCache.computeIfAbsent("table:payment_invoices", c -> {
+        return schemaFact("table:payment_invoices", () -> {
             Integer n = jdbc.queryForObject(
                     "select count(*) from information_schema.tables "
                             + "where table_schema = database() and table_name = 'payment_invoices'",

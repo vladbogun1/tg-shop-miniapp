@@ -2,6 +2,7 @@ package com.maxsolch.shop.customer.api;
 
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.web.ClientIp;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import com.maxsolch.shop.platform.security.CookieOriginGuard;
 import com.maxsolch.shop.platform.security.WebCookies;
@@ -16,8 +17,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -41,11 +40,14 @@ public class WebAuthController {
     private final WebAuthService webAuthService;
     private final WebCookies cookies;
     private final CookieOriginGuard originGuard;
+    private final CurrentActor actor;
 
-    public WebAuthController(WebAuthService webAuthService, WebCookies cookies, CookieOriginGuard originGuard) {
+    public WebAuthController(WebAuthService webAuthService, WebCookies cookies, CookieOriginGuard originGuard,
+                             CurrentActor actor) {
         this.webAuthService = webAuthService;
         this.cookies = cookies;
         this.originGuard = originGuard;
+        this.actor = actor;
     }
 
     @PostMapping("/start")
@@ -116,11 +118,7 @@ public class WebAuthController {
         }
     }
 
-    private static String currentSessionId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof AuthPrincipal p && p.isWeb()) {
-            return p.sessionId();
-        }
-        return null;
+    private String currentSessionId() {
+        return actor.principalIfPresent().filter(AuthPrincipal::isWeb).map(AuthPrincipal::sessionId).orElse(null);
     }
 }

@@ -1,6 +1,5 @@
 package com.maxsolch.shop.platform.error;
 
-import com.maxsolch.shop.platform.security.InitDataException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -43,11 +42,6 @@ public class ApiExceptionHandler {
 
     public ApiExceptionHandler(com.maxsolch.shop.platform.i18n.Messages messages) {
         this.messages = messages;
-    }
-
-    @ExceptionHandler(InitDataException.class)
-    public ResponseEntity<Map<String, Object>> handleInitData(InitDataException ex) {
-        return error(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }
 
     /** Every business "no": the HTTP status comes from the exception kind, the text from the message or the i18n catalog. */
@@ -145,7 +139,7 @@ public class ApiExceptionHandler {
                 messages.current("api.error.saveFailed"));
     }
 
-    /** Services that throw ResponseStatusException directly (e.g. BroadcastService 409). */
+    /** Thrown by the framework itself (business code uses {@link DomainException}, rule E1). */
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, Object>> handleResponseStatus(ResponseStatusException ex) {
         HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());

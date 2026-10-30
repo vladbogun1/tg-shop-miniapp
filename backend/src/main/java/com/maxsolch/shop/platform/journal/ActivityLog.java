@@ -356,16 +356,12 @@ public class ActivityLog {
                 code = b.getCode();
             } else if (t instanceof com.maxsolch.shop.platform.error.DomainException.TooManyRequests m) {
                 code = m.getCode();
-            } else if (t instanceof org.springframework.web.server.ResponseStatusException r) {
-                code = "HTTP_" + r.getStatusCode().value();
             }
             if (code == null || code.isBlank()) {
                 code = t instanceof com.maxsolch.shop.platform.error.DomainException.BadRequest ? "BAD_REQUEST"
                         : t instanceof com.maxsolch.shop.platform.error.DomainException.Conflict ? "CONFLICT" : "ERROR";
             }
-            String message = t instanceof org.springframework.web.server.ResponseStatusException r
-                    ? r.getReason() : t.getMessage();
-            return failed(code, message);
+            return failed(code, t.getMessage());
         }
 
         public Entry detail(String key, Object value) {

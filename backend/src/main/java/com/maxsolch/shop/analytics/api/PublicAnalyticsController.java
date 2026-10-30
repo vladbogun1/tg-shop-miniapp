@@ -4,6 +4,7 @@ import com.maxsolch.shop.analytics.app.ClientEventService;
 import com.maxsolch.shop.analytics.app.StaffVisitors;
 import com.maxsolch.shop.analytics.app.WebEventBatch;
 import com.maxsolch.shop.platform.web.ClientIp;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.customer.app.VisitorLocationService;
 import com.maxsolch.shop.platform.security.AuthPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,8 +12,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,17 +29,19 @@ public class PublicAnalyticsController {
 
     private final ClientEventService clientEventService;
     private final VisitorLocationService visitorLocations;
+    private final CurrentActor actor;
 
     public PublicAnalyticsController(ClientEventService clientEventService,
-                                     VisitorLocationService visitorLocations) {
+                                     VisitorLocationService visitorLocations, CurrentActor actor) {
         this.clientEventService = clientEventService;
         this.visitorLocations = visitorLocations;
+        this.actor = actor;
     }
 
     @PostMapping("/analytics")
     @Operation(summary = "Submit a batch of website events (anonymous or signed-in)")
     public ResponseEntity<Void> analytics(@RequestBody WebEventBatch batch, HttpServletRequest request) {
-        Long customer = currentCustomerOrNull();
+        Long customer = actor.principalIfPresent().map(AuthPrincipal::telegramUserId).orElse(null);
         String userAgent = request.getHeader("User-Agent");
         // Crawlers that run JavaScript are not visitors: neither in the funnel nor on the users map.
         // A browser the admin panel marked as staff is not a customer either (StaffVisitors).
@@ -65,13 +66,5 @@ public class PublicAnalyticsController {
             }
         }
         return false;
-    }
-
-    private static Long currentCustomerOrNull() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof AuthPrincipal p) {
-            return p.telegramUserId();
-        }
-        return null;
     }
 }

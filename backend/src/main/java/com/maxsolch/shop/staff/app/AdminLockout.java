@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.staff.domain.LoginMethod;
 import com.maxsolch.shop.platform.audit.AdminAuditService;
@@ -7,9 +8,7 @@ import com.maxsolch.shop.platform.config.AppProperties;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -100,9 +99,9 @@ public class AdminLockout {
         counters.resetFailures(adminId);
     }
 
-    public ResponseStatusException lockedError(Instant until) {
-        return new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
-                "Слишком много неверных попыток — вход заблокирован до " + time(until) + ". Попробуйте позже.");
+    public DomainException.TooManyRequests lockedError(Instant until) {
+        return new DomainException.TooManyRequests(
+                "Слишком много неверных попыток — вход заблокирован до " + time(until) + ". Попробуйте позже.", null, 0);
     }
 
     String time(Instant at) {

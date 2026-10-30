@@ -2,12 +2,15 @@ package com.maxsolch.shop.procurement.infra;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.maxsolch.shop.platform.cache.CacheConfig;
 import com.maxsolch.shop.platform.http.HttpClientSettings;
 import com.maxsolch.shop.platform.http.HttpClients;
 import com.maxsolch.shop.platform.http.ResilientHttp;
 import com.maxsolch.shop.procurement.domain.NbuRates;
 import com.maxsolch.shop.procurement.domain.ProcurementErrors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -17,13 +20,12 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The official NBU rate for a date (public bank.gov.ua API, no key) over {@code platform.http}: 5 s to connect,
  * 8 s per request, no retries unless {@code app.http.clients.nbu.max-retries} says so (a GET, so safe to repeat).
- * Cached per currency and day in memory (a read-through cache, not a lock); any failure asks for a manual rate.
+ * Cached per currency and day in the shared Spring cache (a read-through cache, not a lock); any failure asks for a
+ * manual rate.
  */
 @Slf4j
 @Component
@@ -34,10 +36,11 @@ public class NbuRateClient implements NbuRates {
 
     private final ResilientHttp http;
     private final ObjectMapper json;
-    private final Map<String, BigDecimal> cache = new ConcurrentHashMap<>();
+    private final Cache cache;
 
-    public NbuRateClient(ObjectMapper json, HttpClients clients) {
+    public NbuRateClient(ObjectMapper json, HttpClients clients, CacheManager caches) {
         this.json = json;
+        this.cache = CacheConfig.require(caches, ProcurementCaches.NBU_RATES);
         this.http = clients.create(HttpClientSettings.defaults(CLIENT_NAME)
                 .withTimeouts(Duration.ofSeconds(5), Duration.ofSeconds(8)));
     }
@@ -48,7 +51,7 @@ public class NbuRateClient implements NbuRates {
             return BigDecimal.ONE;
         }
         String key = currency + "@" + date;
-        BigDecimal cached = cache.get(key);
+        BigDecimal cached = cache.get(key, BigDecimal.class);
         if (cached != null) {
             return cached;
         }

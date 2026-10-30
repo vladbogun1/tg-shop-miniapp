@@ -48,12 +48,8 @@ public class AdminAccess {
     }
 
     /** «Финансы»: purchase prices, batch expenses and margin — the main admin, or one he gave the right. */
-    public boolean canSeeFinance(Authentication authentication) {
-        if (authentication == null || !(authentication.getPrincipal() instanceof AuthPrincipal p)
-                || p.role() != Role.ADMIN) {
-            return false;
-        }
-        return canSeeFinance(p.telegramUserId());
+    public boolean canSeeFinance(AuthPrincipal principal) {
+        return principal.role() == Role.ADMIN && canSeeFinance(principal.telegramUserId());
     }
 
     /** The same by the admin's id, for a use case that reads the actor from {@code CurrentActor}. */
@@ -61,12 +57,6 @@ public class AdminAccess {
         return admins.findActive(adminId)
                 .map(a -> a.superAdmin() || a.finance())
                 .orElse(false);
-    }
-
-    public void requireFinance(Authentication authentication) {
-        if (!canSeeFinance(authentication)) {
-            throw financeForbidden();
-        }
     }
 
     public void requireFinance(long adminId) {

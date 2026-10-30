@@ -18,7 +18,7 @@ public abstract class DomainException extends RuntimeException {
 
     /** HTTP meaning of the error; the platform is the only place that turns it into a status code. */
     public enum Kind {
-        BAD_REQUEST(400), UNAUTHORIZED(401), FORBIDDEN(403), NOT_FOUND(404), CONFLICT(409), TOO_MANY_REQUESTS(429);
+        BAD_REQUEST(400), UNAUTHORIZED(401), FORBIDDEN(403), NOT_FOUND(404), CONFLICT(409), TOO_MANY_REQUESTS(429), UNAVAILABLE(503);
 
         private final int httpStatus;
 
@@ -153,6 +153,18 @@ public abstract class DomainException extends RuntimeException {
         /** Extra fields for the error body (e.g. {@code count}); never null. */
         public Map<String, Object> getDetails() {
             return details;
+        }
+    }
+
+    /** 503: something the request needs is switched off or not configured (a bot token, an integration). */
+    public static class Unavailable extends DomainException {
+        public Unavailable(ErrorCode code, Object... args) {
+            super(Kind.UNAVAILABLE, code, args);
+        }
+
+        /** Ready text without a code: the body is just {message}. */
+        public Unavailable(String message) {
+            super(Kind.UNAVAILABLE, message, null);
         }
     }
 

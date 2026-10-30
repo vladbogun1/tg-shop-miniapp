@@ -2,6 +2,7 @@ package com.maxsolch.shop.procurement.api;
 
 import com.maxsolch.shop.platform.security.AdminAccess;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
+import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.procurement.app.AdminBatches;
 import com.maxsolch.shop.procurement.app.BatchDtos.ArriveRequest;
 import com.maxsolch.shop.procurement.app.BatchDtos.ArriveResult;
@@ -15,7 +16,6 @@ import com.maxsolch.shop.procurement.app.BatchDtos.SupplierRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,10 +41,12 @@ public class AdminBatchController {
 
     private final AdminBatches batches;
     private final AdminAccess adminAccess;
+    private final CurrentActor actor;
 
-    public AdminBatchController(AdminBatches batches, AdminAccess adminAccess) {
+    public AdminBatchController(AdminBatches batches, AdminAccess adminAccess, CurrentActor actor) {
         this.batches = batches;
         this.adminAccess = adminAccess;
+        this.actor = actor;
     }
 
     @GetMapping("/batches")
@@ -102,6 +104,6 @@ public class AdminBatchController {
     }
 
     private boolean money() {
-        return adminAccess.canSeeFinance(SecurityContextHolder.getContext().getAuthentication());
+        return actor.principalIfPresent().map(adminAccess::canSeeFinance).orElse(false);
     }
 }
