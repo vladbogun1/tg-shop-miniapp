@@ -1,6 +1,7 @@
 package com.maxsolch.shop.procurement.api;
 
 import com.maxsolch.shop.platform.security.RequiredAdmin;
+import com.maxsolch.shop.platform.security.RequiresFinance;
 import com.maxsolch.shop.procurement.app.AdminCosting;
 import com.maxsolch.shop.procurement.app.AdminCosting.ExpenseDocument;
 import com.maxsolch.shop.procurement.app.CostingDtos.BatchMoneyDto;
@@ -62,42 +63,49 @@ public class AdminCostingController {
 
     // ----- batch money
 
+    @RequiresFinance
     @GetMapping("/batches/{id}")
     @Operation(summary = "Batch money: purchase, rate, expenses, cost per unit and margin")
     public BatchMoneyDto money(@PathVariable long id) {
         return costing.money(id);
     }
 
+    @RequiresFinance
     @PutMapping("/batches/{id}")
     @Operation(summary = "Save currency, rate, allocation, «Все расходы внесены» and line prices / weights")
     public BatchMoneyDto saveMoney(@PathVariable long id, @RequestBody MoneyRequest req) {
         return costing.saveMoney(id, req);
     }
 
+    @RequiresFinance
     @PostMapping("/batches/{id}/expenses")
     @Operation(summary = "Add an expense to the batch (or to one line)")
     public BatchMoneyDto addExpense(@PathVariable long id, @RequestBody ExpenseRequest req) {
         return costing.addExpense(id, req);
     }
 
+    @RequiresFinance
     @PutMapping("/expenses/{expenseId}")
     @Operation(summary = "Edit an expense")
     public BatchMoneyDto updateExpense(@PathVariable long expenseId, @RequestBody ExpenseRequest req) {
         return costing.updateExpense(expenseId, req);
     }
 
+    @RequiresFinance
     @DeleteMapping("/expenses/{expenseId}")
     @Operation(summary = "Delete an expense")
     public BatchMoneyDto deleteExpense(@PathVariable long expenseId) {
         return costing.deleteExpense(expenseId);
     }
 
+    @RequiresFinance
     @PostMapping(value = "/expenses/{expenseId}/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Attach a document to an expense: a photo or a PDF (invoice, declaration, statement)")
     public BatchMoneyDto addExpenseFile(@PathVariable long expenseId, @RequestParam("file") MultipartFile file) {
         return costing.addExpenseFile(expenseId, file);
     }
 
+    @RequiresFinance
     @GetMapping("/expense-files/{fileId}")
     @Operation(summary = "The bytes of an expense document (inline; «Финансы» only)")
     public ResponseEntity<InputStreamResource> expenseFile(@PathVariable long fileId) {
@@ -117,12 +125,14 @@ public class AdminCostingController {
                 .body(new InputStreamResource(doc.stream()));
     }
 
+    @RequiresFinance
     @DeleteMapping("/expense-files/{fileId}")
     @Operation(summary = "Remove an expense document")
     public BatchMoneyDto deleteExpenseFile(@PathVariable long fileId) {
         return costing.deleteExpenseFile(fileId);
     }
 
+    @RequiresFinance
     @GetMapping("/nbu-rate")
     @Operation(summary = "The official NBU rate for a date (a hint; the admin may type his own)")
     public RateDto nbuRate(@RequestParam String currency, @RequestParam(required = false) LocalDate date) {
@@ -131,24 +141,28 @@ public class AdminCostingController {
 
     // ----- product, opening cost, reconcile
 
+    @RequiresFinance
     @GetMapping("/products/{productId}")
     @Operation(summary = "Product lots (FIFO), the cost that sells next and the margin at the current price")
     public ProductCostDto product(@PathVariable String productId) {
         return costing.product(productId);
     }
 
+    @RequiresFinance
     @GetMapping("/opening")
     @Operation(summary = "Old stock without a known cost («Начальная себестоимость»)")
     public List<OpeningRowDto> opening() {
         return costing.opening();
     }
 
+    @RequiresFinance
     @PutMapping("/opening")
     @Operation(summary = "Type the cost of the old stock of one product (variant); null clears it")
     public List<OpeningRowDto> setOpening(@RequestBody OpeningRequest req) {
         return costing.setOpening(req);
     }
 
+    @RequiresFinance
     @PostMapping("/reconcile")
     @Operation(summary = "«Выровнять»: lots match the stock of every product again")
     public ReconcileDto reconcile() {

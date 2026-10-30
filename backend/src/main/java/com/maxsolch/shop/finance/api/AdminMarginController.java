@@ -2,6 +2,7 @@ package com.maxsolch.shop.finance.api;
 
 import com.maxsolch.shop.finance.app.AdminMargin;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
+import com.maxsolch.shop.platform.security.RequiresFinance;
 import com.maxsolch.shop.procurement.app.CostingDtos.BatchSalesDto;
 import com.maxsolch.shop.procurement.app.CostingDtos.MarginReportDto;
 import com.maxsolch.shop.procurement.app.CostingDtos.OrderProfitDto;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/admin/costing")
 @RequiredAdmin
+@RequiresFinance
 @Tag(name = "Admin Costing", description = "Batch money, FIFO cost of goods, margin")
 @SecurityRequirement(name = "bearer-jwt")
 public class AdminMarginController {
