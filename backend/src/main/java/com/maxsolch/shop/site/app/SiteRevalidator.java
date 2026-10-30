@@ -1,5 +1,6 @@
 package com.maxsolch.shop.site.app;
 
+import com.maxsolch.shop.site.domain.SiteRevalidationFailed;
 import com.maxsolch.shop.platform.jobs.Workers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.platform.config.AppProperties;
@@ -65,13 +66,6 @@ public class SiteRevalidator {
 
     /** Outcome of the most recent call, for {@code GET /api/admin/site/revalidate/status}. */
     public record Status(boolean enabled, Instant lastSuccessAt, Instant lastErrorAt, String lastError) {
-    }
-
-    /**
-     * Published when revalidation starts failing (the first failure after a success, or ever) —
-     * not on every retry of an ongoing outage. Consumed by the admin push notifications.
-     */
-    public record Failed(String error) {
     }
 
     private final AtomicReference<Instant> lastSuccessAt = new AtomicReference<>();
@@ -229,7 +223,7 @@ public class SiteRevalidator {
         lastError.set(error);
         if (newOutage && events != null) {
             try {
-                events.publish(new Failed(error));
+                events.publish(new SiteRevalidationFailed(error));
             } catch (RuntimeException e) {
                 log.debug("Site failure event not delivered: {}", e.toString());
             }

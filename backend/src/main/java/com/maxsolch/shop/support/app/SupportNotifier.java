@@ -1,5 +1,7 @@
 package com.maxsolch.shop.support.app;
 
+import com.maxsolch.shop.support.domain.SupportEvents;
+
 import com.maxsolch.shop.support.domain.SupportThread;
 import com.maxsolch.shop.support.infra.SupportThreadRepository;
 

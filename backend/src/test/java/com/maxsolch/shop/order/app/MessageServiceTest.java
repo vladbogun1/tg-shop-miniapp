@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.web.TopicBroadcaster;
+import com.maxsolch.shop.platform.web.TopicMessagePosted;
 import com.maxsolch.shop.media.app.MediaSigner;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMessage;
@@ -63,7 +65,7 @@ class MessageServiceTest {
         ArgumentCaptor<Object> published = ArgumentCaptor.forClass(Object.class);
         verify(events, org.mockito.Mockito.atLeastOnce()).publish(published.capture());
         assertThat(published.getAllValues()).anySatisfy(e -> assertThat(e)
-                .isEqualTo(new OrderChatBroadcaster.ChatPosted(orderId, dto)));
+                .isEqualTo(new TopicMessagePosted("/topic/orders/" + com.maxsolch.shop.platform.util.UuidUtil.toString(orderId) + "/chat", dto)));
     }
 
     @Test
@@ -72,7 +74,7 @@ class MessageServiceTest {
         MessageDto dto = service.postCustomerMessage(orderId, 7L, "Покупатель",
                 new SendMessageRequest("привет", "TEXT", null, null, null, null));
 
-        new OrderChatBroadcaster(template).on(new OrderChatBroadcaster.ChatPosted(orderId, dto));
+        new TopicBroadcaster(template).on(new TopicMessagePosted("/topic/orders/x/chat", dto));
 
         verify(template).convertAndSend(startsWith("/topic/orders/"), eq(dto));
     }

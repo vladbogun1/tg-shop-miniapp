@@ -1,5 +1,6 @@
 package com.maxsolch.shop.inbox.app;
 
+import com.maxsolch.shop.site.domain.SiteRevalidationFailed;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.inbox.app.InboxService;
@@ -7,7 +8,7 @@ import com.maxsolch.shop.media.app.MediaSigner;
 import com.maxsolch.shop.notification.app.AdminPushService;
 import com.maxsolch.shop.notification.app.AdminPushService.PushMessage;
 import com.maxsolch.shop.inbox.app.PushOrderQueries.OrderInfo;
-import com.maxsolch.shop.order.app.OrderEvents;
+import com.maxsolch.shop.order.domain.OrderEvents;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -73,7 +74,7 @@ public class AdminPushNotifier {
     }
 
     @OnCommitted
-    public void onChatMessage(OrderEvents.ChatMessage event) {
+    public void onChatMessage(OrderEvents.ChatMessagePosted event) {
         if (event.fromAdmin()) {
             return;
         }
@@ -84,7 +85,7 @@ public class AdminPushNotifier {
     }
 
     /** «💬 Иван П. · #467611ad» + what was written; a photo comes with its preview. */
-    PushMessage chatMessage(OrderInfo o, String customer, OrderEvents.ChatMessage event) {
+    PushMessage chatMessage(OrderInfo o, String customer, OrderEvents.ChatMessagePosted event) {
         String who = shortName(customer) + " · #" + o.shortId();
         String text = oneLine(event.text());
         String kind = event.kind() == null ? "TEXT" : event.kind();
@@ -118,7 +119,7 @@ public class AdminPushNotifier {
     }
 
     @OnCommitted
-    public void onSiteFailed(SiteRevalidator.Failed event) {
+    public void onSiteFailed(SiteRevalidationFailed event) {
         push.runAsync(() -> push.notifyAdmins(new PushMessage(
                 "Сайт не обновился",
                 "Изменения не попали на сайт — подробности во «Внимании»",

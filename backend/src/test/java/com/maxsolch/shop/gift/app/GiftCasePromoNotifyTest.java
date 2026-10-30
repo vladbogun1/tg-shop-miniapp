@@ -7,7 +7,7 @@ import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.catalog.app.CatalogService;
 import com.maxsolch.shop.gift.infra.GiftQueries;
-import com.maxsolch.shop.order.app.OrderEvents;
+import com.maxsolch.shop.order.domain.OrderEvents;
 import com.maxsolch.shop.order.app.OrderGiftCases;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -79,7 +79,7 @@ class GiftCasePromoNotifyTest {
 
         ArgumentCaptor<Object> event = ArgumentCaptor.forClass(Object.class);
         verify(events).publish(event.capture());
-        assertThat(event.getValue()).isInstanceOfSatisfying(OrderEvents.GiftCasePromo.class, e -> {
+        assertThat(event.getValue()).isInstanceOfSatisfying(OrderEvents.GiftCasePromoIssued.class, e -> {
             assertThat(e.code()).isEqualTo("CASE-ABC123");
             assertThat(e.percent()).isEqualTo(10);
             assertThat(e.expiresAt()).isEqualTo(Instant.parse("2026-11-18T10:00:00Z"));

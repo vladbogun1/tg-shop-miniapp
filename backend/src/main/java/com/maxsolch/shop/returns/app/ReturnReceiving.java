@@ -2,7 +2,7 @@ package com.maxsolch.shop.returns.app;
 
 import com.maxsolch.shop.inventory.domain.StockWriteoff;
 import com.maxsolch.shop.order.app.OrderChange;
-import com.maxsolch.shop.order.app.OrderEvents;
+import com.maxsolch.shop.order.domain.OrderEvents;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderErrors;

@@ -26,12 +26,10 @@ public class AnalyticsReader {
     private final AnalyticsQueries queries;
     private final ZoneId zone;
     private final StaffVisitors staffVisitors;
-    private final java.time.Clock clock;
     private final Cache titles;
 
     public AnalyticsReader(AnalyticsQueries queries, ShopZone shopZone, StaffVisitors staffVisitors,
-                           java.time.Clock clock, CacheManager caches) {
-        this.clock = clock;
+                           CacheManager caches) {
         this.titles = CacheConfig.require(caches, AnalyticsReadCaches.TITLE_INDEX.name());
         this.queries = queries;
         this.zone = shopZone.zone();

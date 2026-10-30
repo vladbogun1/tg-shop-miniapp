@@ -22,7 +22,7 @@ import com.maxsolch.shop.gift.infra.GiftQueries;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.error.ErrorCode;
 import com.maxsolch.shop.catalog.app.ProductDto;
-import com.maxsolch.shop.order.app.OrderEvents;
+import com.maxsolch.shop.order.domain.OrderEvents;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,7 +69,7 @@ public class GiftCaseService implements OrderGiftView {
             rec.setPromoCode(promo.getCode());
             rec = giftService.saveOrderCase(rec);
             // Issued just now, so it is told once: the bot DMs the code after the commit.
-            events.publish(new OrderEvents.GiftCasePromo(orderId, promo.getCode(),
+            events.publish(new OrderEvents.GiftCasePromoIssued(orderId, promo.getCode(),
                     promo.getDiscountPercent(), promo.getDiscountAmountMinor(), promo.getExpiresAt()));
         }
         return openDto(order, rec, lang);

@@ -1,5 +1,8 @@
 package com.maxsolch.shop.support.app;
 
+import com.maxsolch.shop.platform.web.TopicMessagePosted;
+import com.maxsolch.shop.support.domain.SupportEvents;
+
 import com.maxsolch.shop.support.domain.SupportMessage;
 import com.maxsolch.shop.support.domain.SupportStatus;
 import com.maxsolch.shop.support.domain.SupportThread;
@@ -266,7 +269,7 @@ public class SupportService {
         t.setAwaitingSince(null);
         threads.save(t);
         MessageDto dto = mapper.toDto(m);
-        events.publish(new SupportChatBroadcaster.ChatPosted(t.getId(), dto));
+        events.publish(new TopicMessagePosted("/topic/support/" + UuidUtil.toString(t.getId()), dto));
         events.publish(new SupportEvents.MessagePosted(t.getId(), true, false, SupportMapper.previewOf(m)));
         return dto;
     }
@@ -363,7 +366,7 @@ public class SupportService {
         }
         threads.save(t);
         MessageDto dto = mapper.toDto(m);
-        events.publish(new SupportChatBroadcaster.ChatPosted(t.getId(), dto));
+        events.publish(new TopicMessagePosted("/topic/support/" + UuidUtil.toString(t.getId()), dto));
         events.publish(new SupportEvents.MessagePosted(t.getId(), false, newThread, SupportMapper.previewOf(m)));
         return dto;
     }

@@ -4,7 +4,7 @@ import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.order.app.MoneyLedger;
 import com.maxsolch.shop.order.app.OrderApp;
 import com.maxsolch.shop.order.app.OrderChange;
-import com.maxsolch.shop.order.app.OrderEvents;
+import com.maxsolch.shop.order.domain.OrderEvents;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderMoney;

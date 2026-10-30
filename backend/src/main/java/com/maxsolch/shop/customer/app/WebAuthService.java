@@ -1,5 +1,6 @@
 package com.maxsolch.shop.customer.app;
 
+import com.maxsolch.shop.customer.domain.WebLoginCompleted;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.web.UserAgents;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -124,10 +125,6 @@ public class WebAuthService {
     public record Tokens(AuthUserDto user, String accessJwt, String refreshToken, String sessionId) {
     }
 
-    /** Published after a successful login so the bot can tell the user (and offer "end session"). */
-    public record WebLoginCompletedEvent(String sessionId, long telegramUserId, String deviceLabel) {
-    }
-
     // ================================================================== browser side
 
     @Transactional
@@ -183,7 +180,7 @@ public class WebAuthService {
         ensureUser(t.getTelegramUserId());
 
         Tokens tokens = openSession(t.getTelegramUserId(), userAgent, ip);
-        events.publish(new WebLoginCompletedEvent(tokens.sessionId(), t.getTelegramUserId(),
+        events.publish(new WebLoginCompleted(tokens.sessionId(), t.getTelegramUserId(),
                 UserAgents.describe(userAgent)));
         return tokens;
     }

@@ -1,11 +1,12 @@
 package com.maxsolch.shop.inbox.app;
 
+import com.maxsolch.shop.site.domain.SiteRevalidationFailed;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.inbox.app.InboxDtos.Inbox;
 import com.maxsolch.shop.notification.app.AdminPushService;
 import com.maxsolch.shop.media.app.MediaSigner;
 import com.maxsolch.shop.notification.app.AdminPushService.PushMessage;
-import com.maxsolch.shop.order.app.OrderEvents;
+import com.maxsolch.shop.order.domain.OrderEvents;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -85,7 +86,7 @@ class AdminPushNotifierTest {
 
     @Test
     void customerTextShowsWhoAndWhat() {
-        listener.onChatMessage(new OrderEvents.ChatMessage(UuidUtil.toBytes(ORDER), false, "а можно\n на НП 12?"));
+        listener.onChatMessage(new OrderEvents.ChatMessagePosted(UuidUtil.toBytes(ORDER), false, "а можно\n на НП 12?"));
         PushMessage m = sent();
         assertThat(m.title()).isEqualTo("💬 Иван П. · #9a6feb7d");
         assertThat(m.body()).isEqualTo("а можно на НП 12?");
@@ -98,7 +99,7 @@ class AdminPushNotifierTest {
 
     @Test
     void customerPhotoCarriesASmallSignedPreview() {
-        listener.onChatMessage(new OrderEvents.ChatMessage(UuidUtil.toBytes(ORDER), false, "📷 Фото",
+        listener.onChatMessage(new OrderEvents.ChatMessagePosted(UuidUtil.toBytes(ORDER), false, "📷 Фото",
                 "PHOTO", null, "chat/a.jpg", "a.jpg"));
         PushMessage m = sent();
         assertThat(m.title()).isEqualTo("📷 Иван П. · #9a6feb7d");
@@ -109,7 +110,7 @@ class AdminPushNotifierTest {
 
     @Test
     void customerFileShowsItsName() {
-        listener.onChatMessage(new OrderEvents.ChatMessage(UuidUtil.toBytes(ORDER), false, "оплата",
+        listener.onChatMessage(new OrderEvents.ChatMessagePosted(UuidUtil.toBytes(ORDER), false, "оплата",
                 "FILE", "оплата", "chat/b.pdf", "schet.pdf"));
         PushMessage m = sent();
         assertThat(m.title()).startsWith("📎 ");
@@ -128,14 +129,14 @@ class AdminPushNotifierTest {
 
     @Test
     void adminOwnMessageDoesNotNotify() {
-        listener.onChatMessage(new OrderEvents.ChatMessage(UuidUtil.toBytes(ORDER), true, "ответ"));
+        listener.onChatMessage(new OrderEvents.ChatMessagePosted(UuidUtil.toBytes(ORDER), true, "ответ"));
         verify(push, never()).runAsync(any());
         verify(push, never()).notifyAdmins(any());
     }
 
     @Test
     void siteFailureOpensInbox() {
-        listener.onSiteFailed(new SiteRevalidator.Failed("HTTP 500"));
+        listener.onSiteFailed(new SiteRevalidationFailed("HTTP 500"));
         assertThat(sent().url()).isEqualTo("/inbox");
     }
 

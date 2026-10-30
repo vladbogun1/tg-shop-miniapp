@@ -1,5 +1,8 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.platform.web.TopicMessagePosted;
+import com.maxsolch.shop.order.domain.OrderEvents;
+
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.MessageType;
 import com.maxsolch.shop.order.domain.Order;
@@ -99,11 +102,11 @@ public class MessageService {
     /**
      * Fans the message out once the transaction has committed: WebSocket subscribers first, then
      * the Telegram side (a DM to the customer for admin messages, a ping in the admins' topic for
-     * customer messages) via {@link OrderEvents.ChatMessage}.
+     * customer messages) via {@link OrderEvents.ChatMessagePosted}.
      */
     private void afterCommit(byte[] orderId, MessageDto dto, boolean fromAdmin, OrderMessage saved) {
-        events.publish(new OrderChatBroadcaster.ChatPosted(orderId, dto));
-        events.publish(new OrderEvents.ChatMessage(orderId, fromAdmin, previewOf(saved),
+        events.publish(new TopicMessagePosted("/topic/orders/" + UuidUtil.toString(orderId) + "/chat", dto));
+        events.publish(new OrderEvents.ChatMessagePosted(orderId, fromAdmin, previewOf(saved),
                 saved.getType().name(), saved.getText(), saved.getAttachmentUrl(), saved.getFileName()));
     }
 

@@ -40,10 +40,8 @@ public class StaffVisitors {
     private final StaffQueries queries;
     private final Cache cached;
 
-    private final java.time.Clock clock;
 
-    public StaffVisitors(StaffQueries queries, java.time.Clock clock, CacheManager caches) {
-        this.clock = clock;
+    public StaffVisitors(StaffQueries queries, CacheManager caches) {
         this.cached = CacheConfig.require(caches, AnalyticsReadCaches.STAFF.name());
         this.queries = queries;
     }

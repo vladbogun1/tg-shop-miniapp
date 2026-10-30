@@ -6,7 +6,7 @@ import com.maxsolch.shop.returns.app.Exchanges;
 import com.maxsolch.shop.returns.app.ReturnsApp;
 import com.maxsolch.shop.returns.domain.WizardLine;
 import com.maxsolch.shop.order.app.OrderChange;
-import com.maxsolch.shop.order.app.OrderEvents;
+import com.maxsolch.shop.order.domain.OrderEvents;
 import com.maxsolch.shop.order.app.OrderMerge;
 import com.maxsolch.shop.order.app.Checkout;
 import com.maxsolch.shop.order.app.CancelRequests;

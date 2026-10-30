@@ -1,4 +1,4 @@
-package com.maxsolch.shop.order.app;
+package com.maxsolch.shop.order.domain;
 
 /**
  * Domain events published by the order scenarios instead of calling Telegram inline.
@@ -43,7 +43,7 @@ public final class OrderEvents {
      * The customer opened a gift case and a discount dropped: its personal promo code was issued just
      * now (once — the case opens once). The bot sends the code itself, not only the shop page.
      */
-    public record GiftCasePromo(byte[] orderId, String code, int percent, long amountMinor,
+    public record GiftCasePromoIssued(byte[] orderId, String code, int percent, long amountMinor,
                                 java.time.Instant expiresAt) {
     }
 
@@ -109,10 +109,10 @@ public final class OrderEvents {
      * @param text          the message text or photo caption (null when there is none)
      * @param attachmentKey private object key of the photo or file (null for text)
      */
-    public record ChatMessage(byte[] orderId, boolean fromAdmin, String preview,
+    public record ChatMessagePosted(byte[] orderId, boolean fromAdmin, String preview,
                               String kind, String text, String attachmentKey, String fileName) {
 
-        public ChatMessage(byte[] orderId, boolean fromAdmin, String preview) {
+        public ChatMessagePosted(byte[] orderId, boolean fromAdmin, String preview) {
             this(orderId, fromAdmin, preview, "TEXT", preview, null, null);
         }
     }

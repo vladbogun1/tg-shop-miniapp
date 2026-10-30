@@ -9,7 +9,7 @@ import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.journal.ActivityLog;
 import com.maxsolch.shop.customer.app.WebLoginBotFlow.BotDecision;
 import com.maxsolch.shop.customer.app.WebLoginBotFlow.BotPrompt;
-import com.maxsolch.shop.customer.app.WebAuthService.WebLoginCompletedEvent;
+import com.maxsolch.shop.customer.domain.WebLoginCompleted;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -172,7 +172,7 @@ public class WebLoginNotifier implements BotCallbackHandler, BotLoginStarter {
 
     /** After the browser finished the login (only once the session row is committed). */
     @OnCommitted
-    public void onLoginCompleted(WebLoginCompletedEvent e) {
+    public void onLoginCompleted(WebLoginCompleted e) {
         activity.record(ActivityLog.Entry.of(ActivityLog.SITE, "LOGIN").customer(e.telegramUserId())
                 .text("Вход на сайт через бота: " + e.deviceLabel()));
         if (!enabled()) {

@@ -15,7 +15,7 @@ import com.maxsolch.shop.customer.app.WebLoginBotFlow.BotDecision;
 import com.maxsolch.shop.customer.app.WebLoginBotFlow.BotPrompt;
 import com.maxsolch.shop.customer.app.WebAuthService.StartResult;
 import com.maxsolch.shop.customer.app.WebAuthService.Tokens;
-import com.maxsolch.shop.customer.app.WebAuthService.WebLoginCompletedEvent;
+import com.maxsolch.shop.customer.domain.WebLoginCompleted;
 import com.maxsolch.shop.platform.error.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -151,7 +151,7 @@ class WebAuthServiceTest {
         assertThat(s.getUserId()).isEqualTo(USER);
         assertThat(s.getRefreshHash()).isEqualTo(WebAuthService.sha256(t.refreshToken()));
         assertThat(s.getExpiresAt()).isEqualTo(now.plus(Duration.ofDays(30)));
-        verify(events).publish(new WebLoginCompletedEvent(t.sessionId(), USER, "Chrome, Windows"));
+        verify(events).publish(new WebLoginCompleted(t.sessionId(), USER, "Chrome, Windows"));
     }
 
     // ================================================================== failures

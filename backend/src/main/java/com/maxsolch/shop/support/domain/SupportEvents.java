@@ -1,4 +1,4 @@
-package com.maxsolch.shop.support.app;
+package com.maxsolch.shop.support.domain;
 
 /** Support events, handled after the commit (Telegram, Web Push). */
 public final class SupportEvents {

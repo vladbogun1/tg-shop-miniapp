@@ -16,7 +16,7 @@ import com.maxsolch.shop.preorder.app.PreorderQueueReader;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import com.maxsolch.shop.review.app.ReviewNotifier;
 import com.maxsolch.shop.platform.settings.SettingsService;
-import com.maxsolch.shop.support.app.SupportEvents;
+import com.maxsolch.shop.support.domain.SupportEvents;
 import com.maxsolch.shop.support.app.SupportNotifier;
 import com.maxsolch.shop.support.domain.SupportThread;
 import com.maxsolch.shop.support.infra.SupportThreadRepository;

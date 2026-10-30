@@ -1,9 +1,9 @@
 ActivityLog.onCommitted(EntryCommitted) phase=AFTER_COMMIT fallback=true
 AdminPushNotifier.onCancelRequested(CancelRequested) phase=AFTER_COMMIT fallback=true
-AdminPushNotifier.onChatMessage(ChatMessage) phase=AFTER_COMMIT fallback=true
+AdminPushNotifier.onChatMessage(ChatMessagePosted) phase=AFTER_COMMIT fallback=true
 AdminPushNotifier.onCreated(Created) phase=AFTER_COMMIT fallback=true
 AdminPushNotifier.onPaymentReceived(PaymentReceived) phase=AFTER_COMMIT fallback=true
-AdminPushNotifier.onSiteFailed(Failed) phase=AFTER_COMMIT fallback=true
+AdminPushNotifier.onSiteFailed(SiteRevalidationFailed) phase=AFTER_COMMIT fallback=true
 AnalyticsAggregationService.onStartup(ApplicationReadyEvent) immediately
 BotTexts.onTranslationsChanged(TranslationsChanged) phase=AFTER_COMMIT fallback=true
 BroadcastService.closeInterrupted(ApplicationReadyEvent) immediately tx=REQUIRED
@@ -13,14 +13,13 @@ CatalogTranslationListener.onTranslationsChanged(TranslationsChanged) phase=AFTE
 HoldsCacheFlush.on(HoldsChanged) phase=AFTER_COMMIT fallback=true
 ImageStorageService.ensureBucket(ApplicationReadyEvent) immediately
 NovaPoshtaSyncService.onStartup(ApplicationReadyEvent) immediately
-OrderChatBroadcaster.on(ChatPosted) phase=AFTER_COMMIT fallback=true
 OrderNotificationListener.onCancelRequestResolved(CancelRequestResolved) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
 OrderNotificationListener.onCancelRequested(CancelRequested) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
-OrderNotificationListener.onChatMessage(ChatMessage) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+OrderNotificationListener.onChatMessage(ChatMessagePosted) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
 OrderNotificationListener.onCreated(Created) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
 OrderNotificationListener.onEdited(Edited) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
 OrderNotificationListener.onExchanged(Exchanged) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
-OrderNotificationListener.onGiftCasePromo(GiftCasePromo) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
+OrderNotificationListener.onGiftCasePromo(GiftCasePromoIssued) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
 OrderNotificationListener.onMerged(Merged) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
 OrderNotificationListener.onPaymentReceived(PaymentReceived) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
 OrderNotificationListener.onReturned(Returned) phase=AFTER_COMMIT fallback=true tx=REQUIRES_NEW
@@ -38,10 +37,10 @@ ReviewNotifier.on(BonusIssued) phase=AFTER_COMMIT fallback=true
 ReviewNotifier.on(PendingForModeration) phase=AFTER_COMMIT fallback=true
 SettingsService.onTransactionCompleted(SettingsSaved) phase=AFTER_COMPLETION fallback=false
 SiteRevalidator.onRequested(SiteRevalidationRequested) phase=AFTER_COMMIT fallback=true
-SupportChatBroadcaster.on(ChatPosted) phase=AFTER_COMMIT fallback=true
 SupportNotifier.onMessage(MessagePosted) phase=AFTER_COMMIT fallback=true
 TelegramBotConfig.registerBot(ApplicationReadyEvent) immediately
+TopicBroadcaster.on(TopicMessagePosted) phase=AFTER_COMMIT fallback=true
 TranslationAdminService.backfillSourceTexts(ApplicationReadyEvent) immediately tx=REQUIRED
 TranslationService.onTranslationsChanged(TranslationsChanged) phase=AFTER_COMMIT fallback=true
-WebLoginNotifier.onLoginCompleted(WebLoginCompletedEvent) phase=AFTER_COMMIT fallback=true
+WebLoginNotifier.onLoginCompleted(WebLoginCompleted) phase=AFTER_COMMIT fallback=true
 WebSocketConfig.onSessionDisconnect(SessionDisconnectEvent) immediately

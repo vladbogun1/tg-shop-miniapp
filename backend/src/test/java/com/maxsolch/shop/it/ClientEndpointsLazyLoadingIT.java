@@ -29,7 +29,7 @@ import com.maxsolch.shop.order.app.Checkout;
 import com.maxsolch.shop.order.app.CreateOrderCommand;
 import com.maxsolch.shop.order.app.MessageService;
 import com.maxsolch.shop.order.app.OrderEditing;
-import com.maxsolch.shop.order.app.OrderEvents;
+import com.maxsolch.shop.order.domain.OrderEvents;
 import com.maxsolch.shop.order.app.OrderLifecycle;
 import com.maxsolch.shop.order.app.OrderPayments;
 import com.maxsolch.shop.order.app.SendMessageRequest;
@@ -524,8 +524,8 @@ class ClientEndpointsLazyLoadingIT {
                 events.publish(new OrderEvents.Exchanged(oid, true, "товар"));
                 events.publish(new OrderEvents.CancelRequested(oid));
                 events.publish(new OrderEvents.CancelRequestResolved(oid, true));
-                events.publish(new OrderEvents.ChatMessage(oid, true, "привіт", "TEXT", "привіт", null, null));
-                events.publish(new OrderEvents.ChatMessage(oid, false, "привіт", "TEXT", "привіт", null, null));
+                events.publish(new OrderEvents.ChatMessagePosted(oid, true, "привіт", "TEXT", "привіт", null, null));
+                events.publish(new OrderEvents.ChatMessagePosted(oid, false, "привіт", "TEXT", "привіт", null, null));
                 for (OrderEvents.EditKind kind : OrderEvents.EditKind.values()) {
                     events.publish(new OrderEvents.Edited(oid, kind, true, "Товар", "Розмір", 1));
                 }

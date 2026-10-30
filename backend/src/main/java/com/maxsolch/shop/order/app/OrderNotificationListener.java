@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderEvents;
+
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.infra.OrderRepository;
@@ -103,7 +105,7 @@ public class OrderNotificationListener {
 
     @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void onGiftCasePromo(OrderEvents.GiftCasePromo event) {
+    public void onGiftCasePromo(OrderEvents.GiftCasePromoIssued event) {
         withOrder(event.orderId(), order -> customer.notifyCustomerCasePromo(
                 order, event.code(), event.percent(), event.amountMinor(), event.expiresAt()));
     }
@@ -163,7 +165,7 @@ public class OrderNotificationListener {
 
     @OnCommitted
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void onChatMessage(OrderEvents.ChatMessage event) {
+    public void onChatMessage(OrderEvents.ChatMessagePosted event) {
         withOrder(event.orderId(), order -> {
             if (event.fromAdmin()) {
                 customer.onAdminChatMessage(order, event.preview());

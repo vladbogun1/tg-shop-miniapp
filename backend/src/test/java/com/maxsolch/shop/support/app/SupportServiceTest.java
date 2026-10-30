@@ -1,5 +1,8 @@
 package com.maxsolch.shop.support.app;
 
+import com.maxsolch.shop.platform.web.TopicMessagePosted;
+import com.maxsolch.shop.support.domain.SupportEvents;
+
 import com.maxsolch.shop.inbox.app.SupportInboxSource;
 import com.maxsolch.shop.support.domain.SupportMessage;
 import com.maxsolch.shop.support.domain.SupportStatus;
@@ -243,7 +246,9 @@ class SupportServiceTest {
         SupportEvents.MessagePosted posted = (SupportEvents.MessagePosted) event.getAllValues().get(1);
         assertThat(posted.fromAdmin()).isFalse();
         assertThat(posted.newThread()).isTrue();
-        assertThat(((SupportChatBroadcaster.ChatPosted) event.getAllValues().get(0)).message().threadId()).isEqualTo(dto.id());
+        assertThat(((TopicMessagePosted) event.getAllValues().get(0)).payload()).isEqualTo(dto);
+        assertThat(((TopicMessagePosted) event.getAllValues().get(0)).destination())
+                .isEqualTo("/topic/support/" + dto.id());
     }
 
     @Test
