@@ -46,7 +46,7 @@ final class V2Rules {
         RULES.put("T2", "@Transactional only on public methods of app (not api, domain, infra)");
         RULES.put("A1", "current actor through CurrentActor (SecurityContextHolder only in platform.web and platform.security)");
         RULES.put("A2", "controllers do not write the audit log or the activity journal (a scenario in app does)");
-        RULES.put("A3", "rights by annotations only (controllers do not call AdminAccess.require*)");
+        RULES.put("A3", "rights by annotations only (neither api nor app calls AdminAccess.require*; a rule that depends on a request parameter is the exception)");
         RULES.put("N1", "Telegram and push only from notification and *Notifier");
         RULES.put("T3", "events are published through platform.tx.DomainEvents only (no ApplicationEventPublisher)");
         RULES.put("T4", "listeners are @OnCommitted/@OnCompleted (no @TransactionalEventListener; @EventListener only for Spring's own events)");
@@ -97,6 +97,9 @@ final class V2Rules {
                     java.util.Map.entry("review.infra.ReviewStore", "review scans and feed joined with order, product and promo rows, plus once-only claims written with 'update ... where flag is null' (atomic)"),
                     java.util.Map.entry("staff.infra.IncidentQueries", "the admin incident report: audit log, orders and money movements in one read"),
                     java.util.Map.entry("staff.infra.AdminTeamQueries", "the admin team screen: one activity summary per admin over audit, chat, broadcasts, marks and push rows, read-only")),
+            "A3", java.util.Map.of(
+                    "catalog.app.AdminCatalog", "force=1 on deleting a characteristic is for the main admin: the rule reads a request parameter, a method annotation cannot see it",
+                    "translation.app.AdminTranslations", "deleting a whole language (blank entityId) is for the main admin: the rule reads a request parameter"),
             "E1", java.util.Map.of("payment.domain.MonobankGateway",
                     "MonobankException is a failure of the port, always caught in payment.app and turned into a DomainException; it never reaches HTTP"),
             "C1", java.util.Map.of(
@@ -360,7 +363,8 @@ final class V2Rules {
                     && (name.equals("createNativeQuery") || name.equals("createQuery") || name.equals("createNamedQuery"))) {
                 out.add(new Violation("S1", from.module(), detail));
             }
-            if (from.layer() == Layer.API && owner.equals(root + ".platform.security.AdminAccess") && name.startsWith("require")) {
+            if ((from.layer() == Layer.API || from.layer() == Layer.APP) && owner.equals(root + ".platform.security.AdminAccess")
+                    && name.startsWith("require")) {
                 out.add(new Violation("A3", from.module(), detail));
             }
             if (isWallClock(owner, name, call)) {
