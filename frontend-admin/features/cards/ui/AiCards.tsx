@@ -13,15 +13,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, ClipboardPaste, PartyPopper, Save, Search, Wand2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError } from "@/lib/api";
-import { buildCardReview, editText, parseCardAnswer, type Proposal, type ProductReview } from "../model/check";
-import {
-  buildCardPrompt,
-  categoryPathName,
-  splitIntoBatches,
-  type CardItem,
-  type CardSchema,
-} from "../model/prompt";
-import { cardsApi, type CardImportItem, type CardImportResult } from "../api";
+import { buildCardReview, editText, parseCardAnswer, type Proposal, type ProductReview } from "../model";
+import { splitIntoBatches, type CardItem } from "../model/item";
+import { buildCardPrompt } from "../model/prompt";
+import { categoryPathName, type CardSchema } from "../model/schema";
+import { cardsApi, type CardImportResult } from "../api";
+import type { CardImportItem } from "../model/wire";
 import { invalidateCards } from "../queries";
 import { cn } from "@/lib/cn";
 import { toast } from "@shop/ui/toast";

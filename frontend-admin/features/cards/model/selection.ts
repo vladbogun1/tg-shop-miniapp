@@ -2,8 +2,9 @@
  * What the admin chose to apply from a reviewed product (step 3 / the completion modal) and the
  * import item built from it. Shared by «Оформление с ИИ» and CardCompletionModal.
  */
-import { finalRu, TEXT_FIELDS, type ProductReview, type TextReview } from "./check";
-import type { CardImportItem, CardTextTranslations } from "../api";
+import { TEXT_FIELDS, type ProductReview, type TextReview } from "./types";
+import { finalRu } from "./text";
+import type { CardImportItem, CardTextTranslations } from "./wire";
 
 export interface ProductSel {
   on: boolean;

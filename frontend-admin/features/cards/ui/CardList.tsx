@@ -8,7 +8,8 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronRight, EyeOff } from "lucide-react";
 import type { CSSProperties } from "react";
-import { categoryPathName, type CardItem, type CardSchema } from "../model/prompt";
+import type { CardItem } from "../model/item";
+import { categoryPathName, type CardSchema } from "../model/schema";
 import { fieldsWord, metaOf, missingCount, missingLabels, tabOf } from "../model/view";
 import { cn } from "@/lib/cn";
 import { Check, ConfidencePill, fmtDate, Thumb } from "./shared";

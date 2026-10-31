@@ -9,7 +9,8 @@
 import { Sparkles, X } from "lucide-react";
 import type { CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import type { CardItem, CardSchema } from "../model/prompt";
+import type { CardItem } from "../model/item";
+import type { CardSchema } from "../model/schema";
 import { cn } from "@/lib/cn";
 import { useOverlayLayer } from "@shop/ui/overlay";
 import { AiCards } from "./AiCards";

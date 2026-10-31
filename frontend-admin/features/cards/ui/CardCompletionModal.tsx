@@ -15,10 +15,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, ClipboardPaste, Rocket, Save, TriangleAlert, Wand2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError } from "@/lib/api";
-import { buildCardReview, editText, parseCardAnswer, type Proposal, type ProductReview } from "../model/check";
-import { assignCardIds, buildCardPrompt } from "../model/prompt";
+import { buildCardReview, editText, parseCardAnswer, type Proposal, type ProductReview } from "../model";
+import { assignCardIds } from "../model/item";
+import { buildCardPrompt } from "../model/prompt";
 import { cardsApi, type CardImportItemResult } from "../api";
-import { CARDS_EXPORT_KEY, invalidateCards, useCatalogSchema } from "../queries";
+import { cardsKeys } from "../keys";
+import { invalidateCards, useCardSchema } from "../queries";
 import { cn } from "@/lib/cn";
 import { toast } from "@shop/ui/toast";
 import { Button } from "@shop/ui/admin-button";
@@ -77,9 +79,9 @@ export function CardCompletionModal({
   reason?: "created" | "manual";
 }) {
   const qc = useQueryClient();
-  const schemaQ = useCatalogSchema();
+  const schemaQ = useCardSchema();
   const itemQ = useQuery({
-    queryKey: [...CARDS_EXPORT_KEY, "one", productId],
+    queryKey: cardsKeys.exportOne(productId),
     queryFn: async () => (await cardsApi.export("all", [productId])).find((i) => i.id === productId) ?? null,
     enabled: open && !!productId,
     staleTime: 0,

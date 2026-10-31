@@ -6,8 +6,9 @@
  * The storefront filter applies to every tab. By default («в работе») old hidden products are left out:
  * ~180 retired products are DRAFT forever and would bury the real work (and the nav badge).
  */
-import { attributesForCategory, type CardItem, type CardSchema } from "./prompt";
-import type { CardMeta } from "../api";
+import type { CardItem } from "./item";
+import { attributesForCategory, type CardSchema } from "./schema";
+import type { CardMeta } from "./meta";
 
 export type CardTab = "draft" | "review" | "ready";
 export type Vitrine = "work" | "all" | "live" | "hidden";

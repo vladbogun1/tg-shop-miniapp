@@ -15,9 +15,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCheck, ClipboardCheck, PartyPopper, RefreshCw, Search, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { assignCardIds } from "@/features/cards/model/prompt";
+import { assignCardIds } from "@/features/cards/model/item";
 import { cardsApi } from "@/features/cards/api";
-import { invalidateCards, useCardItems, useCatalogSchema } from "@/features/cards/queries";
+import { invalidateCards, useCardItems, useCardSchema } from "@/features/cards/queries";
 import {
   BULK_ACCEPT_MIN,
   bulkAcceptable,
@@ -60,7 +60,7 @@ export default function CardsPage() {
   const qc = useQueryClient();
   const confirm = useConfirm();
   const itemsQ = useCardItems();
-  const schemaQ = useCatalogSchema();
+  const schemaQ = useCardSchema();
   const items = useMemo(() => itemsQ.data ?? [], [itemsQ.data]);
   const schema = schemaQ.data;
   // Ids over ALL products: the same product keeps its "p…" id whatever is selected.

@@ -1,23 +1,23 @@
 "use client";
 
 /**
- * Shared queries of the «Карточки» screen: the nav badge (cards waiting: drafts + filled by the AI
- * but not reviewed yet) uses the stats cache entry; the page counts its tabs from the items.
+ * Запросы и записи «Карточек». Статистика — общий запрос: бейдж меню (карточки в ожидании: черновики + заполненные ИИ,
+ * ещё не проверенные) читает её же, а экран считает вкладки из выгрузки.
  */
+import { QUERY_PRESETS } from "@shop/core/query";
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { isAuthenticated } from "@/lib/api";
-import { cardsApi, type CardStats } from "./api";
 import { invalidateTranslations } from "@/features/translation";
-
-export const CARDS_STATS_KEY = ["admin", "cards", "stats"] as const;
-export const CARDS_EXPORT_KEY = ["admin", "cards", "export"] as const;
-export const CATALOG_SCHEMA_KEY = ["admin", "catalog", "schema"] as const;
+import { catalogKeys } from "@/features/catalog";
+import { cardsApi, type CardStats } from "./api";
+import { cardsKeys } from "./keys";
 
 export function useCardStats() {
   return useQuery({
-    queryKey: CARDS_STATS_KEY,
-    queryFn: () => cardsApi.stats(),
-    refetchInterval: 120_000,
+    queryKey: cardsKeys.stats(),
+    queryFn: cardsApi.stats,
+    // 2 минуты, как было.
+    refetchInterval: QUERY_PRESETS.live.refetchInterval * 4,
     refetchOnWindowFocus: true,
     retry: false,
     enabled: isAuthenticated(),
@@ -26,11 +26,12 @@ export function useCardStats() {
 
 /** Every product with its card data (the catalog is small — filtered on the client). */
 export function useCardItems() {
-  return useQuery({ queryKey: CARDS_EXPORT_KEY, queryFn: () => cardsApi.export("all"), staleTime: 30_000 });
+  return useQuery({ queryKey: cardsKeys.export(), queryFn: () => cardsApi.export("all"), staleTime: QUERY_PRESETS.list.staleTime });
 }
 
-export function useCatalogSchema() {
-  return useQuery({ queryKey: CATALOG_SCHEMA_KEY, queryFn: () => cardsApi.schema(), staleTime: 5 * 60_000 });
+/** Схема каталога в виде «Карточек» (5 минут, как было). */
+export function useCardSchema() {
+  return useQuery({ queryKey: cardsKeys.schema(), queryFn: cardsApi.schema, staleTime: QUERY_PRESETS.list.staleTime * 10 });
 }
 
 /** Badge: «Оформить» (drafts on the storefront + new hidden) + «Проверить» (every AI_FILLED) of «Карточки». */
@@ -43,12 +44,12 @@ export function pendingCards(stats: CardStats | undefined): number {
  * «Переводы» (accepting a card with uk/en, renaming a product or category adds/stales texts there).
  */
 export function invalidateCards(qc: QueryClient, schemaToo = false): void {
-  qc.invalidateQueries({ queryKey: CARDS_STATS_KEY });
-  qc.invalidateQueries({ queryKey: CARDS_EXPORT_KEY });
-  qc.invalidateQueries({ queryKey: ["products"] });
+  qc.invalidateQueries({ queryKey: cardsKeys.stats() });
+  qc.invalidateQueries({ queryKey: cardsKeys.export() });
+  qc.invalidateQueries({ queryKey: catalogKeys.productsRoot() });
   invalidateTranslations(qc);
   if (schemaToo) {
-    qc.invalidateQueries({ queryKey: CATALOG_SCHEMA_KEY });
-    qc.invalidateQueries({ queryKey: ["admin", "catalog"] });
+    qc.invalidateQueries({ queryKey: cardsKeys.schema() });
+    qc.invalidateQueries({ queryKey: catalogKeys.catalogRoot() });
   }
 }

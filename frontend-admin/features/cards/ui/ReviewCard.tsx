@@ -2,8 +2,8 @@
 
 /** Step 3 of «Оформление с ИИ»: one product — what changes, field by field, with checkboxes. */
 import { ArrowRight, ExternalLink, Lightbulb, MessageSquareText, Plus } from "lucide-react";
-import { formatValue, type FieldReview, type Proposal, type ProductReview, type TextField, type TextLang } from "../model/check";
-import { categoryPathName, type CardSchema } from "../model/prompt";
+import { formatValue, type FieldReview, type Proposal, type ProductReview, type TextField, type TextLang } from "../model";
+import { categoryPathName, type CardSchema } from "../model/schema";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@shop/ui/admin-button";

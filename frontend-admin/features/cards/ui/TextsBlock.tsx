@@ -8,11 +8,11 @@
  */
 import { Languages, PencilLine } from "lucide-react";
 import { useMemo, useState } from "react";
-import { TEXT_LABEL, wordDiff, type CardIssue, type ProductReview, type TextField, type TextLang, type TextReview } from "../model/check";
+import { TEXT_LABEL, type CardIssue, type ProductReview, type TextField, type TextLang, type TextReview } from "../model";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { Diff, InlineText, SourceText } from "@/features/translation";
+import { Diff, InlineText, SourceText, wordDiff } from "@/features/translation";
 import { ruAccepted, translationSendable, type ProductSel } from "../model/selection";
 import { CardIssues, Check } from "./shared";
 

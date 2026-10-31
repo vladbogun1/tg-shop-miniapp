@@ -33,9 +33,12 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties, type Rea
 import { createPortal } from "react-dom";
 import { ApiError, type CardMeta as ApiCardMeta, type ProductSpecs } from "@/lib/api";
 import { attributesForCategory as adminAttributesFor, SpecsForm, useCatalogSchemaQuery } from "@/features/catalog";
-import { formatValue, sameValue, TEXT_LABEL, wordDiff, type TextField } from "../model/check";
-import { attributesForCategory, categoryPathName, type CardAttribute, type CardItem, type CardSchema } from "../model/prompt";
-import { cardsApi, type CardAcceptBody, type CardChange, type CardReviewData, type CardTextTranslations } from "../api";
+import { formatValue, sameValue, TEXT_LABEL, type TextField } from "../model";
+import type { CardItem } from "../model/item";
+import { attributesForCategory, categoryPathName, type CardAttribute, type CardSchema } from "../model/schema";
+import { cardsApi } from "../api";
+import type { CardAcceptBody, CardChange, CardReviewData, CardTextTranslations } from "../model";
+import { cardsKeys } from "../keys";
 import { invalidateCards } from "../queries";
 import { fieldsWord, metaOf, missingLabels, tabOf } from "../model/view";
 import { cn } from "@/lib/cn";
@@ -48,7 +51,7 @@ import { Button } from "@shop/ui/admin-button";
 import { useConfirm } from "@shop/ui/confirm";
 
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Diff, InlineText, SourceText } from "@/features/translation";
+import { Diff, InlineText, SourceText, wordDiff } from "@/features/translation";
 import { CardStatusChip, CONFIDENCE_HINT, ConfidenceDot, ConfidencePill, fmtDate, Thumb } from "./shared";
 
 type Lang = "ru" | "uk" | "en";
@@ -210,7 +213,7 @@ function PanelBody({
 }) {
   const qc = useQueryClient();
   const reviewQ = useQuery({
-    queryKey: ["admin", "cards", "review", item.id],
+    queryKey: cardsKeys.review(item.id),
     queryFn: () => cardsApi.review(item.id),
     staleTime: 0,
   });
@@ -267,7 +270,7 @@ function PanelBody({
         `«${cur.title}» — в «Готово»${dirty ? " с правками" : ""}${dropped ? ` · сервер отбросил ${dropped} ${fieldsWord(dropped)}` : ""}`
       );
       invalidateCards(qc);
-      qc.invalidateQueries({ queryKey: ["admin", "cards", "review", cur.id] });
+      qc.invalidateQueries({ queryKey: cardsKeys.review(cur.id) });
       onDone();
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
