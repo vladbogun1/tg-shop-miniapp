@@ -3,10 +3,9 @@
  * admin, so the art is picked by fuzzy slug/name matching and anything unknown gets the mouse.
  */
 
-export const CATEGORY_KINDS = ["mouse", "glides", "mousepad", "glass", "mechanical", "magnetic", "keycaps", "headset", "cable", "sleeve", "blower", "chair", "desk", "sale"] as const;
-export type CategoryKind = (typeof CATEGORY_KINDS)[number];
+import { CATEGORY_KIND_RULES, CATEGORY_KINDS, type CategoryKind } from "./category-kind.data";
 
-import { CATEGORY_KIND_RULES } from "./category-kind.data";
+export { CATEGORY_KINDS, type CategoryKind };
 
 export function categoryKind(slug: string, name = ""): CategoryKind {
   const hay = `${slug} ${name}`.toLowerCase();
