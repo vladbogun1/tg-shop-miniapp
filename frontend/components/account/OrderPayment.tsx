@@ -27,6 +27,7 @@
  * Nothing opens by itself: straight from checkout (`?created=1`) the block reads
  * «Замовлення #… створено» with «Оплатити» and «Скасувати замовлення» (`created` / `onCancel`).
  */
+import type { LooseT } from "@shop/core/i18n";
 import { motion } from "framer-motion";
 import { Ban, CheckCircle2, CreditCard, ExternalLink, Loader2, RefreshCw, ShieldCheck, WifiOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -449,7 +450,7 @@ function Card({ tone, children }: { tone: "ok" | "warn" | "accent"; children: Re
   );
 }
 
-type T = (key: string, params?: Record<string, string | number>) => string;
+type T = LooseT;
 
 /** "Картка •• 1902", "Apple Pay · •• 1902", "monobank" — or null when the money came otherwise. */
 function methodLabel(order: OrderDetail, t: T): string | null {

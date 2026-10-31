@@ -1,217 +1,54 @@
 "use client";
 
 /**
- * Client-side interaction journal.
- *
- * Until now the only trace a customer left was the order (or the absence of one), so "it lagged
- * and I couldn't get out of the chat" had nothing behind it to look at. Every tap, screen view and
- * client-side error is recorded HERE, in the browser, and shipped to the backend in batches — a
- * write per tap would put the shop's database on the critical path of the UI, which is precisely
- * what it must not be.
- *
- * Guarantees this keeps:
- *   - nothing it does can break a screen: every path is wrapped, failures are dropped;
- *   - the buffer survives a reload (localStorage) but is capped, so it cannot grow without bound;
- *   - a flush is attempted when the app is hidden or closed — that is the moment worth capturing.
- *
- * It records what was tapped and where, never what was typed: field values never enter the buffer.
+ * Журнал действий Mini App. Движок и формы событий — в `@shop/customer/analytics`; здесь только
+ * политика Mini App: слать в `/api/me/analytics` с токеном покупателя (до токена события копятся),
+ * хранить до 200 событий, к ошибкам добавлять платформу и версию Telegram.
  */
-import { describeError, reportable } from "@shop/core/client-error";
-import { describeTap } from "@shop/ui/tap";
+import { createAnalytics } from "@shop/customer/analytics/engine";
+import {
+  addToCartEvent,
+  checkoutStartEvent,
+  giftCaseOpenEvent,
+  orderCreatedEvent,
+  productViewEvent,
+} from "@shop/customer/analytics/events";
 import { getAccessToken, getApiBase } from "@/lib/api";
-import { localStore, sessionStore } from "@shop/core/storage";
-import { now, nowMs } from "@shop/core/time";
+import { nowMs } from "@shop/core/time";
 
-const BUFFER_KEY = "analytics-buffer";
-const SESSION_KEY = "analytics-session";
-const FLUSH_INTERVAL_MS = 15_000;
-/** Matches the server's per-batch cap; beyond it the oldest events are dropped. */
-const MAX_BUFFERED = 200;
-
-export interface ClientEvent {
-  event: string;
-  target?: string;
-  path?: string;
-  meta?: string;
-  clientTime: string;
-}
-
-let buffer: ClientEvent[] = [];
-let started = false;
-let flushing = false;
-
-function sessionId(): string {
-  try {
-    const existing = sessionStore.getItem(SESSION_KEY);
-    if (existing) return existing;
-    const fresh =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `s${nowMs()}${Math.random().toString(16).slice(2)}`;
-    sessionStore.setItem(SESSION_KEY, fresh);
-    return fresh;
-  } catch {
-    return "no-session";
-  }
-}
-
-function persist() {
-  try {
-    localStore.setItem(BUFFER_KEY, JSON.stringify(buffer));
-  } catch {
-    /* private mode / quota — the in-memory buffer still works */
-  }
-}
-
-function restore() {
-  try {
-    const raw = localStore.getItem(BUFFER_KEY);
-    if (raw) buffer = (JSON.parse(raw) as ClientEvent[]).slice(-MAX_BUFFERED);
-  } catch {
-    buffer = [];
-  }
-}
-
-/** Records one event. Cheap and synchronous: it only appends to the local buffer. */
-export function track(event: string, target?: string, meta?: string) {
-  try {
-    buffer.push({
-      event,
-      target,
-      path: typeof location === "undefined" ? undefined : location.pathname,
-      meta,
-      clientTime: now().toISOString(),
-    });
-    if (buffer.length > MAX_BUFFERED) buffer = buffer.slice(-MAX_BUFFERED);
-    persist();
-  } catch {
-    /* never let instrumentation break a screen */
-  }
-}
-
-// ---- structured events -------------------------------------------------------
-// The click journal only knows the label of what was tapped ("button:В корзину"), so the funnel had
-// to guess the product from card texts. These carry ids in `meta` (JSON) and are what the admin's
-// funnel and "viewed but not bought" read. Contract shared with the backend (StructuredEvents) and
-// the website (site/lib/analytics.ts).
-
-/** A product card was opened. */
-export function trackProductView(productId: string) {
-  track("product_view", undefined, JSON.stringify({ productId }));
-}
-
-/** A line was added to the cart (first add from zero, not every "+"). */
-export function trackAddToCart(productId: string, variantId: string | null, qty: number) {
-  track("add_to_cart", undefined, JSON.stringify({ productId, variantId, qty }));
-}
-
-/** The gift case of an order was opened (the prize shown); `rarity` of the prize. */
-export function trackGiftCaseOpen(orderId: string, rarity: string) {
-  track("gift_case_open", undefined, JSON.stringify({ orderId, rarity }));
-}
-
-/** The checkout screen was opened with something in the cart. */
-export function trackCheckoutStart() {
-  track("checkout_start");
-}
-
-/** The order went through. Flushed right away: the app is often closed straight after. */
-export function trackOrderCreated(orderId: string) {
-  track("order_created", undefined, JSON.stringify({ orderId }));
-  void flush(true);
-}
-
-/**
- * Sends what is buffered. `keepalive` is used when the app is going away — a normal fetch is
- * cancelled on unload, which is exactly when the most interesting events are sitting in the buffer.
- */
-export async function flush(keepalive = false): Promise<void> {
-  if (flushing || buffer.length === 0) return;
-  const token = getAccessToken();
-  if (!token) return; // nothing to attribute the events to yet
-
-  const batch = buffer;
-  buffer = [];
-  persist();
-  flushing = true;
-  try {
-    const res = await fetch(`${getApiBase()}/api/me/analytics`, {
-      method: "POST",
-      keepalive,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ sessionId: sessionId(), events: batch }),
-    });
-    // 4xx means the server will never take this batch (bad shape, rate limit): dropping it is
-    // correct. A 5xx or a network error is transient, so the events go back into the buffer.
-    if (!res.ok && res.status >= 500) throw new Error(String(res.status));
-  } catch {
-    buffer = [...batch, ...buffer].slice(-MAX_BUFFERED);
-    persist();
-  } finally {
-    flushing = false;
-  }
-}
-
-/** Telegram client the Mini App runs in (ios / android / tdesktop… and the Bot API version). */
+/** Telegram-клиент, в котором открыт Mini App (ios / android / tdesktop… и версия Bot API). */
 function telegramRuntime(): Record<string, unknown> {
   try {
-    const wa = (window as { Telegram?: { WebApp?: { platform?: string; version?: string } } })
-      .Telegram?.WebApp;
+    const wa = (window as { Telegram?: { WebApp?: { platform?: string; version?: string } } }).Telegram?.WebApp;
     return { tg: wa?.platform, tgv: wa?.version };
   } catch {
     return {};
   }
 }
 
-/** Installs the listeners once. Safe to call from every mount. */
-export function startAnalytics(): () => void {
-  if (started || typeof window === "undefined") return () => {};
-  started = true;
-  restore();
+const analytics = createAnalytics({
+  keys: { buffer: "analytics-buffer", session: "analytics-session" },
+  // Потолок пачки на бэкенде; сверх него старые события отбрасываются.
+  maxBuffered: 200,
+  request: () => {
+    const token = getAccessToken();
+    if (!token) return null; // некому приписать события
+    return { url: `${getApiBase()}/api/me/analytics`, headers: { Authorization: `Bearer ${token}` } };
+  },
+  fallbackId: () => `s${nowMs()}${Math.random().toString(16).slice(2)}`,
+  unavailableId: "no-session",
+  errorRuntime: telegramRuntime,
+});
 
-  // Label of what the tap was meant for + what was really under the finger (shared/src/tap.ts).
-  const onClick = (e: MouseEvent) => {
-    try {
-      const tap = describeTap(e);
-      if (tap) track("click", tap.label, tap.meta);
-    } catch {
-      /* never let instrumentation break a screen */
-    }
-  };
-  // Message + where it broke + which Telegram client: on prod every row used to read just
-  // "Script error." with nothing to tell Android from iOS (shared/src/client-error.ts).
-  const onFailure = (e: ErrorEvent | PromiseRejectionEvent) => {
-    try {
-      const err = describeError(e, telegramRuntime());
-      if (!reportable(err)) return;
-      track("error", err.message, err.meta);
-    } catch {
-      /* never let instrumentation break a screen */
-    }
-  };
-  const onError = (e: ErrorEvent) => onFailure(e);
-  const onRejection = (e: PromiseRejectionEvent) => onFailure(e);
-  const onHide = () => {
-    if (document.visibilityState === "hidden") void flush(true);
-  };
+export const { track, flush } = analytics;
+export const startAnalytics = analytics.start;
 
-  document.addEventListener("click", onClick, { capture: true, passive: true });
-  window.addEventListener("error", onError);
-  window.addEventListener("unhandledrejection", onRejection);
-  document.addEventListener("visibilitychange", onHide);
-  window.addEventListener("pagehide", () => void flush(true));
-
-  const timer = setInterval(() => void flush(), FLUSH_INTERVAL_MS);
-
-  return () => {
-    clearInterval(timer);
-    document.removeEventListener("click", onClick, { capture: true });
-    window.removeEventListener("error", onError);
-    window.removeEventListener("unhandledrejection", onRejection);
-    document.removeEventListener("visibilitychange", onHide);
-    started = false;
-  };
+export const trackProductView = (productId: string) => track(...productViewEvent(productId));
+export const trackAddToCart = (productId: string, variantId: string | null, qty: number) =>
+  track(...addToCartEvent(productId, variantId, qty));
+export const trackGiftCaseOpen = (orderId: string, rarity: string) => track(...giftCaseOpenEvent(orderId, rarity));
+export const trackCheckoutStart = () => track(...checkoutStartEvent());
+export function trackOrderCreated(orderId: string) {
+  track(...orderCreatedEvent(orderId));
+  void flush(true);
 }

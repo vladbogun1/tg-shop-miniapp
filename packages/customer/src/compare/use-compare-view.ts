@@ -5,6 +5,7 @@
  * строки таблицы, переключатель «только различия» (запоминается в localStorage). Вёрстку и загрузку каталога даёт
  * приложение (Mini App берёт запрос `["products"]`, сайт — лёгкие карточки на языке экрана).
  */
+import type { LooseT } from "@shop/core/i18n";
 import { useEffect, useMemo, useState } from "react";
 import { formatRating } from "@shop/core/money";
 import { compareGroups, compareSections, onlyDifferences, type CompareBasics, type CompareGroup, type CompareSection, type ComparableProduct } from "@shop/core/compare";
@@ -15,7 +16,7 @@ import type { CompareStore } from "./store";
 
 const ONLY_DIFF_KEY = "compare.onlyDiff";
 
-export type CompareT = (key: string, params?: Record<string, string | number>) => string;
+export type CompareT = LooseT;
 
 /** Поля карточки, которые читают базовые строки; витринный Product и StorefrontProduct их имеют. */
 export type CompareViewProduct = ComparableProduct & {

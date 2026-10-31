@@ -12,6 +12,7 @@
  * grouped by schema.groups. Without a category only a hint stands in for the spec facets.
  * No backdrop blur, no per-chip motion: the sheet slides, its contents just render.
  */
+import type { LooseT } from "@shop/core/i18n";
 import { AnimatePresence, motion } from "framer-motion";
 import { SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -417,7 +418,7 @@ function Toggle({ label, on, onChange }: { label: string; on: boolean; onChange:
 export function activeFilterChips(
   schema: CatalogSchema,
   f: CatalogFilter,
-  t: (k: string, p?: Record<string, string | number>) => string,
+  t: LooseT,
   tag: string,
 ): { id: string; label: string; remove: (f: CatalogFilter) => CatalogFilter }[] {
   const nf = new Intl.NumberFormat(tag, { maximumFractionDigits: 2 });

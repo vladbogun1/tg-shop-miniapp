@@ -10,6 +10,7 @@
  * (`giftCaseOpenable`) and exactly once — no replays; after opening the order shows the prize line
  * with its rarity chip. Before payment the card is locked and points to the payment block.
  */
+import type { LooseT } from "@shop/core/i18n";
 import { useMemo } from "react";
 import { caseRulesUrl, type CaseRarity, type CaseTier } from "@shop/core/giftcase";
 import { type OrderDetail } from "@shop/core/types";
@@ -96,7 +97,7 @@ function useCasePrizes(_enabled: boolean, tier: CaseTier | null) {
   return (tier && gift.tiers.find((x) => x.tier === tier)?.prizes) || [];
 }
 
-const refusedNotifier = (t: (key: string) => string) => (code: CaseRefusal) =>
+const refusedNotifier = (t: LooseT) => (code: CaseRefusal) =>
   toast.success(t(code === "GIFT_CASE_UNPAID" ? "case.lockedText" : "case.alreadyOpened"), { duration: 3200 });
 
 /** Everything the order page needs: `card` (top of the page while SEALED) and `overlay` (render once). */

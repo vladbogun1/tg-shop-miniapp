@@ -8,6 +8,7 @@
  * by bestseller (soldCount). A sort menu sits next to search. Tag row supports
  * mouse drag + wheel horizontal scroll on desktop.
  */
+import type { MessageKey } from "@/i18n/ru";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -57,7 +58,7 @@ const ANIMATED_CARDS = 6;
 
 type SortKey = "popular" | "price_asc" | "price_desc" | "name";
 
-const SORTS: { key: SortKey; labelKey: string; Icon: typeof Flame }[] = [
+const SORTS: { key: SortKey; labelKey: MessageKey; Icon: typeof Flame }[] = [
   { key: "popular", labelKey: "catalog.sort.popular", Icon: Flame },
   { key: "price_asc", labelKey: "catalog.sort.priceAsc", Icon: ArrowUpNarrowWide },
   { key: "price_desc", labelKey: "catalog.sort.priceDesc", Icon: ArrowDownNarrowWide },

@@ -28,6 +28,7 @@
  *   - `invalidateSize` whenever the frame changes size (dynamic import, the mode switch, the step
  *     sliding in) — Leaflet measured too early otherwise and centred on the wrong point.
  */
+import type { MessageKey } from "@/i18n/ru";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
@@ -53,7 +54,7 @@ const CAT_COLOR: Record<string, string> = {
   OTHER: "#FF6600",
 };
 
-function catLabelKey(c?: NpCategory): string {
+function catLabelKey(c?: NpCategory): MessageKey {
   return c === "POSTOMAT"
     ? "np.type.postomat"
     : c === "POINT"

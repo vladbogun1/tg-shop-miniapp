@@ -2,10 +2,11 @@
  * Надписи кейса из словаря приложения: названия редкостей и уровней, тексты промокода и выбора размера, тексты экрана
  * открытия и панели заказа. Ключи `case.*` в обоих приложениях одни и те же; `t` — функция словаря приложения.
  */
+import type { LooseT } from "@shop/core/i18n";
 import { CASE_TIER_ORDER, type CaseRarity, type CaseTier } from "@shop/core/giftcase";
 import type { CasePromoTexts, CaseSizeTexts, GiftCaseTexts, GiftOrderPanelTexts } from "@shop/ui/gift-case";
 
-export type CaseT = (key: string, params?: Record<string, string | number>) => string;
+export type CaseT = LooseT;
 
 const RARITIES: CaseRarity[] = ["COMMON", "RARE", "EPIC", "LEGENDARY", "GOLD"];
 

@@ -7,6 +7,7 @@
  * Reminder of the model: the catalog `stock` is already net of reservations (other people's AND my
  * own), so a held unit shows up as stock 0 — `heldQty` below is what the customer may still buy.
  */
+import type { LooseT } from "@shop/core/i18n";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { buildPreorderIndex } from "@shop/customer/preorder/coming";
@@ -150,7 +151,7 @@ export function preorderTier(s: PreorderCardState | null): 0 | 1 | 2 {
 
 // ---- eta text --------------------------------------------------------------------------------
 
-type T = (key: string, params?: Record<string, string | number>) => string;
+type T = LooseT;
 
 function parseDay(iso: string | null): Date | null {
   if (!iso) return null;

@@ -141,7 +141,7 @@ export function useOrderGiftCase(order: OrderDetail) {
     [t]
   );
   return useSharedOrderGiftCase(order, {
-    t: t as CaseT,
+    t,
     api: api.gift,
     shortId: shortOrderId,
     usePrizes,

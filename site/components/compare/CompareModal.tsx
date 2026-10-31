@@ -90,7 +90,7 @@ function Body({ onClose }: { onClose: () => void }) {
     products: products.data?.items,
     schema: schema.data,
     locale,
-    t: t as CompareT,
+    t,
     money,
     inStock: inStockOf,
   });

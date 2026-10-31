@@ -19,6 +19,8 @@
  * A compact StepProgress at the top and a FIXED bottom bar driving
  * "Назад / Далее / Оформить и оплатить" above the TabBar.
  */
+import type { LooseT } from "@shop/core/i18n";
+import type { MessageKey } from "@/i18n/ru";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -92,7 +94,7 @@ import { caseMoney, useCaseRules } from "@/components/case/OrderGiftCase";
 import { useGift } from "@/lib/gift";
 import { nowMs } from "@shop/core/time";
 
-const STEP_KEYS = [
+const STEP_KEYS: MessageKey[] = [
   "checkout.step.contacts",
   "checkout.step.delivery",
   "checkout.step.payment",
@@ -601,7 +603,7 @@ function ContactsStep({
 // ---------------------------------------------------------------------------
 // Step 2 — Delivery (2 tabs; Nova Poshta: city → branch fields, or the map)
 // ---------------------------------------------------------------------------
-function npLabel(w: NpWarehouse, t: (key: string, params?: Record<string, string | number>) => string): string {
+function npLabel(w: NpWarehouse, t: LooseT): string {
   const cat = t(
     w.category === "POSTOMAT"
       ? "np.type.postomat"

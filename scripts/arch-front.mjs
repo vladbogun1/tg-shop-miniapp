@@ -9,7 +9,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
-const steps = ["check-invariants.mjs", "check-arch-front.mjs", "check-front-ratchet.mjs", "check-api-types.mjs"];
+const steps = ["check-invariants.mjs", "check-arch-front.mjs", "check-front-ratchet.mjs", "check-api-types.mjs", "check-i18n.mjs"];
 const failed = [];
 for (const step of steps) {
   console.log(`\n=== ${step} ===`);

@@ -25,10 +25,12 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { getAccessToken, onAccessToken, customerApi } from "@/lib/api";
 import { type Dictionary, FALLBACK_LOCALE, type Locale, LOCALE_TAG, normalizeLocale, type Params, setActiveLocale, translate } from "@shop/core/i18n";
-import { ru } from "./ru";
+import { ru, type MessageKey } from "./ru";
 import { uk } from "./uk";
 import { en } from "./en";
 import { localStore } from "@shop/core/storage";
+
+export type TFunction = (key: MessageKey, params?: Params) => string;
 
 const STORAGE_KEY = "locale";
 
@@ -38,7 +40,7 @@ export interface I18n {
   locale: Locale;
   /** BCP-47 tag for Intl (dates, numbers). */
   tag: string;
-  t: (key: string, params?: Params) => string;
+  t: TFunction;
   setLocale: (locale: Locale) => void;
 }
 
@@ -112,7 +114,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     return {
       locale,
       tag: LOCALE_TAG[locale],
-      t: (key: string, params?: Params) => translate(dict, locale, key, params),
+      t: (key, params) => translate(dict, locale, key, params),
       setLocale,
     };
   }, [locale, setLocale]);
@@ -140,6 +142,6 @@ export function useI18n(): I18n {
 }
 
 /** Shorthand for the common case of only needing the lookup function. */
-export function useT(): (key: string, params?: Params) => string {
+export function useT(): TFunction {
   return useI18n().t;
 }

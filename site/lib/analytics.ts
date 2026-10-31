@@ -1,205 +1,44 @@
 "use client";
 
 /**
- * Website event journal — the same structured events as the Mini App (frontend/lib/analytics.ts),
- * sent to POST /api/public/analytics with channel WEB on the server side.
- *
- * Most site visitors never sign in, so a visitor is identified by a random id kept in localStorage
- * (`anonId`): it ties "opened a product" before login to "placed an order" after it. When the
- * `access` cookie is there, the backend also records the Telegram id. Sent: page views, product
- * views, adds to cart, checkout start, order created, and clicks — the label of what was tapped plus
- * the element actually under the finger (same as the Mini App, shared/src/tap.ts). No field values,
- * nothing personal.
- *
- * Nothing here may break a page: every path is wrapped, failures are dropped.
+ * Журнал событий сайта. Движок и формы событий — в `@shop/customer/analytics` (те же, что в Mini App);
+ * здесь политика сайта: слать в `/api/public/analytics` с cookie `access` (если вошёл), посетителя
+ * различать по случайному `anonId` в localStorage (связывает «открыл товар» до входа с «заказал» после),
+ * хранить до 50 событий — потолок пачки открытого веба на бэкенде.
  */
+import { createAnalytics } from "@shop/customer/analytics/engine";
+import {
+  addToCartEvent,
+  checkoutStartEvent,
+  compareEvent,
+  giftCaseOpenEvent,
+  orderCreatedEvent,
+  pageViewEvent,
+  productViewEvent,
+} from "@shop/customer/analytics/events";
+import { nowMs } from "@shop/core/time";
 
-import { describeError, reportable } from "@shop/core/client-error";
-import { describeTap } from "@shop/ui/tap";
-import { localStore, sessionStore, type SafeStorage } from "@shop/core/storage";
-import { now, nowMs } from "@shop/core/time";
+const analytics = createAnalytics({
+  keys: { buffer: "mx-analytics-buffer", session: "mx-sid", anon: "mx-aid" },
+  maxBuffered: 50,
+  request: () => ({ url: "/api/public/analytics", headers: {}, credentials: "include" }),
+  fallbackId: () => `v${nowMs().toString(36)}${Math.random().toString(36).slice(2, 12)}`,
+  unavailableId: "anon-unavailable",
+});
 
-const BUFFER_KEY = "mx-analytics-buffer";
-const ANON_KEY = "mx-aid";
-const SESSION_KEY = "mx-sid";
-const FLUSH_INTERVAL_MS = 15_000;
-/** Matches the backend's per-batch cap for the open web. */
-const MAX_BUFFERED = 50;
+const { track } = analytics;
+export const { flush } = analytics;
+export const startAnalytics = analytics.start;
 
-interface SiteEvent {
-  event: string;
-  target?: string;
-  path?: string;
-  meta?: string;
-  clientTime: string;
-}
-
-let buffer: SiteEvent[] = [];
-let started = false;
-let flushing = false;
-
-function randomId(): string {
-  try {
-    if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
-  } catch {
-    /* fall through */
-  }
-  return `v${nowMs().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
-}
-
-function stored(storage: SafeStorage, key: string): string {
-  try {
-    const existing = storage.getItem(key);
-    if (existing) return existing;
-    const fresh = randomId();
-    storage.setItem(key, fresh);
-    return fresh;
-  } catch {
-    return "anon-unavailable";
-  }
-}
-
-function anonId(): string {
-  return stored(localStore, ANON_KEY);
-}
-
-function sessionId(): string {
-  return stored(sessionStore, SESSION_KEY);
-}
-
-function persist() {
-  try {
-    localStore.setItem(BUFFER_KEY, JSON.stringify(buffer));
-  } catch {
-    /* private mode — the in-memory buffer still works */
-  }
-}
-
-function restore() {
-  try {
-    const raw = localStore.getItem(BUFFER_KEY);
-    if (raw) buffer = (JSON.parse(raw) as SiteEvent[]).slice(-MAX_BUFFERED);
-  } catch {
-    buffer = [];
-  }
-}
-
-function track(event: string, meta?: Record<string, unknown> | string, target?: string) {
-  try {
-    buffer.push({
-      event,
-      target,
-      path: typeof location === "undefined" ? undefined : location.pathname,
-      meta: meta === undefined ? undefined : typeof meta === "string" ? meta : JSON.stringify(meta),
-      clientTime: now().toISOString(),
-    });
-    if (buffer.length > MAX_BUFFERED) buffer = buffer.slice(-MAX_BUFFERED);
-    persist();
-  } catch {
-    /* never let instrumentation break a page */
-  }
-}
-
-/** A page was shown (route change). */
-export function trackPageView() {
-  track("view");
-}
-
-export function trackProductView(productId: string) {
-  track("product_view", { productId });
-}
-
-export function trackAddToCart(productId: string, variantId: string | null, qty: number) {
-  track("add_to_cart", { productId, variantId, qty });
-}
-
-/** Comparison: compare_add (productId) / compare_open (how many products are in the list). */
-export function trackCompare(event: "compare_add" | "compare_open", productId?: string, count?: number) {
-  track(event, { productId, count });
-}
-
-// ---- gift case (docs/GIFT-CASE.md) ----
-
-/** The gift case of an order was opened (the prize shown); `rarity` of the prize. */
-export function trackGiftCaseOpen(orderId: string, rarity: string) {
-  track("gift_case_open", { orderId, rarity });
-}
-
-// ---- /gift case ----
-
-export function trackCheckoutStart() {
-  track("checkout_start");
-}
-
+export const trackPageView = () => track(...pageViewEvent());
+export const trackProductView = (productId: string) => track(...productViewEvent(productId));
+export const trackAddToCart = (productId: string, variantId: string | null, qty: number) =>
+  track(...addToCartEvent(productId, variantId, qty));
+export const trackCompare = (event: "compare_add" | "compare_open", productId?: string, count?: number) =>
+  track(...compareEvent(event, productId, count));
+export const trackGiftCaseOpen = (orderId: string, rarity: string) => track(...giftCaseOpenEvent(orderId, rarity));
+export const trackCheckoutStart = () => track(...checkoutStartEvent());
 export function trackOrderCreated(orderId: string) {
-  track("order_created", { orderId });
+  track(...orderCreatedEvent(orderId));
   void flush(true);
-}
-
-/** Sends the buffer; a 5xx/network failure puts the events back, a 4xx drops them. */
-export async function flush(keepalive = false): Promise<void> {
-  if (flushing || buffer.length === 0) return;
-  const batch = buffer;
-  buffer = [];
-  persist();
-  flushing = true;
-  try {
-    const res = await fetch("/api/public/analytics", {
-      method: "POST",
-      keepalive,
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ anonId: anonId(), sessionId: sessionId(), events: batch }),
-    });
-    if (!res.ok && res.status >= 500) throw new Error(String(res.status));
-  } catch {
-    buffer = [...batch, ...buffer].slice(-MAX_BUFFERED);
-    persist();
-  } finally {
-    flushing = false;
-  }
-}
-
-/** Installs the flush timer and the "page is going away" flush once. */
-export function startAnalytics(): () => void {
-  if (started || typeof window === "undefined") return () => {};
-  started = true;
-  restore();
-  const onHide = () => {
-    if (document.visibilityState === "hidden") void flush(true);
-  };
-  const onPageHide = () => void flush(true);
-  const onClick = (e: MouseEvent) => {
-    try {
-      const tap = describeTap(e);
-      if (tap) track("click", tap.meta, tap.label);
-    } catch {
-      /* never let instrumentation break a page */
-    }
-  };
-  // The site had no error journal at all — only the Mini App did.
-  const onFailure = (e: ErrorEvent | PromiseRejectionEvent) => {
-    try {
-      const err = describeError(e);
-      if (!reportable(err)) return;
-      track("error", err.meta, err.message);
-    } catch {
-      /* never let instrumentation break a page */
-    }
-  };
-  document.addEventListener("click", onClick, { capture: true, passive: true });
-  document.addEventListener("visibilitychange", onHide);
-  window.addEventListener("pagehide", onPageHide);
-  window.addEventListener("error", onFailure);
-  window.addEventListener("unhandledrejection", onFailure);
-  const timer = setInterval(() => void flush(), FLUSH_INTERVAL_MS);
-  return () => {
-    clearInterval(timer);
-    document.removeEventListener("click", onClick, { capture: true });
-    document.removeEventListener("visibilitychange", onHide);
-    window.removeEventListener("pagehide", onPageHide);
-    window.removeEventListener("error", onFailure);
-    window.removeEventListener("unhandledrejection", onFailure);
-    started = false;
-  };
 }

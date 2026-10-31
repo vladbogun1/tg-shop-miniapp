@@ -5,6 +5,7 @@
  * plus the Mini App's own toast: the card, the product view and the screen all add/remove, and the toast has a button
  * that opens the screen.
  */
+import type { LooseT } from "@shop/core/i18n";
 import { create } from "zustand";
 import { createCompareStore } from "@shop/customer/compare/store";
 import { toggleCompareIn } from "@shop/customer/compare/toggle";
@@ -46,7 +47,7 @@ export function useInCompare(id: string): boolean {
 }
 
 /** Add/remove from a button + the toast that tells what happened. True = in the list afterwards. */
-export function toggleCompare(id: string, group: string, t: (key: string, params?: Record<string, string | number>) => string): boolean {
+export function toggleCompare(id: string, group: string, t: LooseT): boolean {
   const { showToast } = useCompareToast.getState();
   return toggleCompareIn(
     useCompare,

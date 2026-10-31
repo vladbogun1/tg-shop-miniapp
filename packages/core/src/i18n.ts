@@ -118,6 +118,14 @@ function isPlural(phrase: Phrase): phrase is PluralPhrase {
 }
 
 /**
+ * `t` as helper code that is shared between apps sees it: any string key. Declared as a method type
+ * on purpose — method parameters are checked bivariantly, so an app's strictly typed
+ * `(key: MessageKey) => string` is accepted without a cast. Literal keys passed through such a helper
+ * are not covered by the compiler; `scripts/check-i18n.mjs` checks them against both apps' dictionaries.
+ */
+export type LooseT = { bivarianceHack(key: string, params?: Params): string }["bivarianceHack"];
+
+/**
  * Resolves one key against a dictionary.
  *
  * A missing key returns the key itself rather than an empty string: a visible "cart.total" in the

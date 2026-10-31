@@ -11,7 +11,8 @@ const config = [
   { ignores: ["node_modules/**"] },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   ...architectureLimits({}),
-  ...frontRules({}),
+  // Журнал событий шлёт пачки через fetch с keepalive на закрытии вкладки — клиент core/http для этого не годится.
+  ...frontRules({ allow: { "no-fetch": ["src/analytics/engine.ts"] } }),
 ];
 
 export default config;

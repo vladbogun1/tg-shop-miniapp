@@ -12,6 +12,7 @@
  * (`searchWarehouses` from @shop/shared) and filtered by type (Усі / Відділення / Поштомати).
  * A branch picked on the map shows up here too.
  */
+import type { MessageKey } from "@/i18n/ru";
 import { Box, MapPin, Store } from "lucide-react";
 import { useCitySearch, useWarehouseSearch, type NpTypeFilter } from "@shop/customer/delivery/np-search";
 import { type NpCity, type NpWarehouse } from "@shop/core/types";
@@ -62,7 +63,7 @@ export function CitySearch({
   );
 }
 
-const CATS: { key: NpTypeFilter; labelKey: string }[] = [
+const CATS: { key: NpTypeFilter; labelKey: MessageKey }[] = [
   { key: "all", labelKey: "np.cat.all" },
   { key: "branch", labelKey: "np.cat.branch" },
   { key: "postomat", labelKey: "np.cat.postomat" },
