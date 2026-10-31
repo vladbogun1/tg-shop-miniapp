@@ -1,7 +1,7 @@
 import { CreditCard, Wallet } from "lucide-react";
 import { type PaymentOption } from "@shop/core/types";
 import { RadioCard } from "@shop/ui/primitives";
-import { PaymentTrust } from "@/components/order/Payment";
+import { PaymentTrust } from "@/features/payment";
 import { useI18n } from "@/i18n/context";
 import { useFmt } from "@/lib/use-fmt";
 import { Section } from "./parts";

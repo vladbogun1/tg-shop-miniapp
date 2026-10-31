@@ -5,7 +5,6 @@ const legacy = {
   "complexity": [
     "app/[locale]/catalog/[category]/page.tsx",
     "app/[locale]/product/[slug]/page.tsx",
-    "components/account/OrderDetailView.tsx",
     "components/auth/LoginView.tsx",
     "components/case/CartGiftProgress.tsx",
     "components/case/OrderGiftCase.tsx",
@@ -16,7 +15,6 @@ const legacy = {
     "components/chat/MessageBubble.tsx",
     "components/compare/CompareModal.tsx",
     "components/layout/SearchBox.tsx",
-    "components/order/Payment.tsx",
     "components/preorder/PreorderPanel.tsx",
     "components/preorder/Waitlist.tsx",
     "components/product/BuyBox.tsx",
@@ -28,10 +26,8 @@ const legacy = {
     "lib/image.tsx",
   ],
   "max-lines": [
-    "components/account/OrderDetailView.tsx",
     "components/catalog/CatalogFilters.tsx",
     "components/layout/Header.tsx",
-    "components/order/Payment.tsx",
     "components/support/SupportChat.tsx",
   ],
   "max-depth": [],

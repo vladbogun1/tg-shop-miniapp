@@ -11,7 +11,7 @@ import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { usePageRestore } from "@/components/order/Payment";
+import { usePageRestore } from "@/features/payment";
 import { useI18n } from "@/i18n/context";
 import { trackCheckoutStart } from "@/lib/analytics";
 import { useCart } from "@/features/cart";

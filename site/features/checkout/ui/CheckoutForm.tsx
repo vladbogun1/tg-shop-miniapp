@@ -17,7 +17,7 @@ import { buildCreateOrderRequest, isValidCustomerName } from "@shop/customer/che
 import { useCreateOrder } from "@shop/customer/checkout/use-create-order";
 import { useNpSelection } from "@shop/customer/delivery/np-selection";
 import { markGiftCaseAutoOpen } from "@shop/ui/gift-case";
-import { orderCreatedHref } from "@/components/order/Payment";
+import { orderCreatedHref } from "@/features/payment";
 import { useI18n } from "@/i18n/context";
 import { trackOrderCreated } from "@/lib/analytics";
 import { api } from "@/lib/api";

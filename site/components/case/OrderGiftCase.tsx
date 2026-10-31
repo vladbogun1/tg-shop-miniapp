@@ -32,7 +32,7 @@ import { useFmt } from "@/lib/use-fmt";
 
 const RARITIES: CaseRarity[] = ["COMMON", "RARE", "EPIC", "LEGENDARY", "GOLD"];
 
-/** The payment block of the order page (components/order/Payment.tsx) — the locked card's CTA scrolls there. */
+/** The payment block of the order page (features/payment) — the locked card's CTA scrolls there. */
 export const ORDER_PAY_ANCHOR = "order-pay";
 
 export function useCaseRarityNames(): Record<CaseRarity, string> {
