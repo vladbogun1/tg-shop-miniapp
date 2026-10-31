@@ -31,8 +31,8 @@ import { LangMenu } from "./LangMenu";
 import { LangSwitch } from "./LangSwitch";
 import { Logo } from "./Logo";
 import { SearchBox } from "./SearchBox";
-import { SupportGate } from "@/features/support";
-import { useSupportUnread } from "@/features/support";
+import { SupportGate } from "@/features/support/ui/SupportGate";
+import { useSupportUnread } from "@/features/support/queries";
 import "./header.css";
 
 export function Header({ tree, hasComing = false }: { tree: MenuNode[]; /** Open pre-order batches exist: «Скоро в наявності» is in the menus. */ hasComing?: boolean }) {

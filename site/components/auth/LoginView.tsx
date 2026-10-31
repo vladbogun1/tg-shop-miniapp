@@ -24,7 +24,7 @@ import { Button } from "@shop/ui/primitives";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { useI18n } from "@/i18n/context";
 import { api, ApiError } from "@/lib/api";
-import { markSignedIn, rememberUser, SESSION_KEY, useSession } from "../session";
+import { markSignedIn, rememberUser, SESSION_KEY, useSession } from "@/features/auth";
 import { nowMs } from "@shop/core/time";
 
 type Phase =

@@ -5,7 +5,7 @@ const legacy = {
   "complexity": [
     "app/[locale]/catalog/[category]/page.tsx",
     "app/[locale]/product/[slug]/page.tsx",
-    "features/auth/ui/LoginView.tsx",
+    "components/auth/LoginView.tsx",
     "components/case/CartGiftProgress.tsx",
     "components/case/OrderGiftCase.tsx",
     "components/case/ProductGiftBanner.tsx",
