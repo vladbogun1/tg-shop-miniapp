@@ -223,7 +223,7 @@ export function faceTex(k) {
 }
 
 const FACTION = { pumpkins: 0xc0662a, orders: 0x5f9a4a, both: 0x7c5cc4 };
-const CLOTH = [0x1d1d24, 0x221f1c, 0x1b2125, 0x241c22];
+const CLOTH = [0x2a2438, 0x33261c, 0x1f3026, 0x38203a];
 export function factionOf(p) {
   const v = p.via || [];
   return v.includes("pumpkins") && v.includes("orders") ? "both" : v.includes("orders") ? "orders" : "pumpkins";
@@ -242,16 +242,16 @@ export class Fighter {
     const fc = FACTION[factionOf(p)];
     const M = (o) => new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0, ...o });
     this.mats = {
-      cloth: M({ color: CLOTH[(h >>> 3) % 4], flatShading: true, map: tex("cloth"), bumpMap: tex("cloth"), bumpScale: 1.5 }),
-      dark: M({ color: 0x141418, roughness: 0.9 }),
+      cloth: M({ color: CLOTH[(h >>> 3) % 4], emissive: 0x2a1c3c, emissiveIntensity: 0.9, flatShading: true, map: tex("cloth"), bumpMap: tex("cloth"), bumpScale: 1.5 }),
+      dark: M({ color: 0x241c2c, roughness: 0.9, emissive: 0x1a1226, emissiveIntensity: 0.8 }),
       scarf: M({ color: fc, roughness: 0.9, emissive: fc, emissiveIntensity: 0.08, flatShading: true }),
       head: M({ color: 0xc0601e, roughness: 0.62, map: tex("pumpkin"), emissive: 0xffb050, emissiveIntensity: 2.4, emissiveMap: faceTex(h % 12) }),
       stem: M({ color: 0x3d3a22 }),
-      metal: M({ color: 0x9aa0aa, roughness: 0.35, metalness: 0.8 }),
+      metal: M({ color: 0x9aa0aa, roughness: 0.35, metalness: 0.8, emissive: 0x3a2a60, emissiveIntensity: 0.7 }),
       wood: M({ color: 0x3b2a1c, roughness: 0.9 }),
       orb: new THREE.MeshBasicMaterial({ color: new THREE.Color(fc).multiplyScalar(2.2), toneMapped: false }),
       leather: M({ color: 0x3a2618, roughness: 0.7, flatShading: true }),
-      cape: M({ color: new THREE.Color(fc).multiplyScalar(0.45), roughness: 0.9, side: THREE.DoubleSide, map: tex("cloth"), flatShading: true }),
+      cape: M({ color: new THREE.Color(fc).multiplyScalar(0.45), emissive: new THREE.Color(fc).multiplyScalar(0.3), emissiveIntensity: 1, roughness: 0.9, side: THREE.DoubleSide, map: tex("cloth"), flatShading: true }),
       gold: M({ color: 0xd9a63a, roughness: 0.3, metalness: 0.9, emissive: 0x6a4a10, emissiveIntensity: 0.6 }),
     };
     const mk = (geo, mat, parent, cast = true) => { const m = new THREE.Mesh(geo, mat); m.castShadow = cast; parent.add(m); return m; };

@@ -3,7 +3,6 @@
 import * as THREE from "./vendor/three.module.min.js";
 import { EffectComposer } from "./vendor/postprocessing/EffectComposer.js";
 import { RenderPass } from "./vendor/postprocessing/RenderPass.js";
-import { UnrealBloomPass } from "./vendor/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "./vendor/postprocessing/OutputPass.js";
 import { ShaderPass } from "./vendor/postprocessing/ShaderPass.js";
 import { buildWorld, heightAt, isLand, ARENA_R, POIS } from "./world.js";
@@ -13,6 +12,7 @@ import { Crowd } from "./crowd.js";
 import { makeRoll } from "./director.js";
 import { sfx, stormLevel, stopAll } from "./audio.js";
 import { disposeTex } from "./tex.js";
+import * as px from "../pixel-kit.js";
 
 export const meta = { id: "wild-3-royale3d", title: "Гарбузовий рояль 3D", author: "agent" };
 
@@ -26,19 +26,29 @@ function mulberry(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const initial = (n) => (String(n || "").trim()[0] || "?").toUpperCase();
 
+// Pixel post: the scene is drawn small (LW×LH) into a nearest-filtered target and blitted up with nearest filtering:
+// crisp art pixels, original saturated colours, only a light posterize (no dither, no palette snap, no bloom).
+const LW = 640, LH = 360;
 const FINAL_SHADER = {
-  uniforms: { tDiffuse: { value: null }, uVig: { value: 0.6 }, uBlur: { value: 0 }, uSat: { value: 1 }, uWarm: { value: 0 } },
+  uniforms: { tDiffuse: { value: null }, uVig: { value: 0.6 }, uBlur: { value: 0 }, uSat: { value: 1 }, uWarm: { value: 0 }, uExp: { value: 1.15 } },
   vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
-  fragmentShader: `uniform sampler2D tDiffuse; uniform float uVig, uBlur, uSat, uWarm; varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uVig, uBlur, uSat, uWarm, uExp; varying vec2 vUv;
     void main(){
       vec2 d = vUv - 0.5; vec3 c;
-      if (uBlur > 0.002) { c = vec3(0.0); for (int i = 0; i < 10; i++) { float k = 1.0 - uBlur * 0.1 * float(i) / 9.0; c += texture2D(tDiffuse, 0.5 + d * k).rgb; } c *= 0.1; }
+      if (uBlur > 0.002) { c = vec3(0.0); for (int i = 0; i < 6; i++) { float k = 1.0 - uBlur * 0.1 * float(i) / 5.0; c += texture2D(tDiffuse, 0.5 + d * k).rgb; } c /= 6.0; }
       else c = texture2D(tDiffuse, vUv).rgb;
-      float l = dot(c, vec3(0.299, 0.587, 0.114)); c = mix(vec3(l), c, uSat);
+      float l = dot(c, vec3(0.299, 0.587, 0.114)); c = mix(vec3(l), c, uSat * 1.18);
       c *= mix(vec3(1.0), vec3(1.08, 0.98, 0.86), uWarm);
+      c *= uExp; c = pow(max(c, vec3(0.0)), vec3(1.18));
       float v = smoothstep(0.95, 0.3, length(d * vec2(1.25, 1.0))); c *= mix(1.0, v, uVig);
+      c = floor(c * 15.0 + 0.5) / 15.0; // light posterize
       gl_FragColor = vec4(c, 1.0);
     }`,
+};
+const BLIT_SHADER = {
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
+  fragmentShader: "uniform sampler2D tDiffuse; varying vec2 vUv; void main(){ gl_FragColor = vec4(texture2D(tDiffuse, vUv).rgb, 1.0); }",
 };
 
 export function mount(root, ctx) {
@@ -48,6 +58,8 @@ export function mount(root, ctx) {
   const RM = !!ctx.reducedMotion;
 
   root.classList.add("r3-root");
+  root.style.setProperty("--r3-font", px.fontFamily());
+  px.ensureFont().then(() => { root.style.setProperty("--r3-font", px.fontFamily()); });
   root.innerHTML = `
     <div class="r3-stage">
       <canvas class="r3-c"></canvas>
@@ -85,33 +97,37 @@ export function mount(root, ctx) {
   try { renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" }); }
   catch (e) { root.querySelector(".r3-idle").textContent = "WebGL недоступний"; console.error(e); return { setParticipants() {}, async roll() {}, reset() {}, destroy() { root.innerHTML = ""; link.remove(); } }; }
   renderer.setPixelRatio(1);
-  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.4;
+  renderer.toneMapping = THREE.NoToneMapping; // the palette pass does the grading
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
   const scene = new THREE.Scene();
-  const BG0 = new THREE.Color(0x0b0a10), BG1 = new THREE.Color(0x1d1a2a), FOG0 = new THREE.Color(0x100c16);
+  const BG0 = new THREE.Color(0x07040c), BG1 = new THREE.Color(0x120a1c), FOG0 = new THREE.Color(0x0a0610);
   scene.background = BG0.clone();
-  scene.fog = new THREE.FogExp2(0x100c16, 0.0065);
+  scene.fog = new THREE.FogExp2(0x0a0610, 0.0042);
   const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 2000);
   camera.position.set(0, 60, 120);
   const world = buildWorld(scene);
+  // violet rim light from behind the subject (opposite the camera) so dark fighters keep an outline
+  const rim = new THREE.DirectionalLight(0x9a5cff, 1.7); scene.add(rim, rim.target);
   const fx = new FX(scene);
   const crowd = new Crowd(scene, fx);
   const AY = heightAt(0, 0) + 0.25;
   const ground = (x, z) => (Math.hypot(x, z) < ARENA_R + 0.2 ? AY : heightAt(x, z));
 
-  const rt = new THREE.WebGLRenderTarget(W, H, { type: THREE.HalfFloatType, samples: 4 });
+  // the whole 3D scene lives in a small nearest-filtered target, no MSAA: hard art pixels
+  const rt = new THREE.WebGLRenderTarget(LW, LH, { type: THREE.HalfFloatType, samples: 0, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
   const composer = new EffectComposer(renderer, rt);
   composer.setPixelRatio(1);
+  composer.renderTarget1.texture.minFilter = composer.renderTarget1.texture.magFilter = THREE.NearestFilter;
+  composer.renderTarget2.texture.minFilter = composer.renderTarget2.texture.magFilter = THREE.NearestFilter;
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(W / 2, H / 2), 0.5, 0.45, 0.92);
-  composer.addPass(bloom);
   composer.addPass(new OutputPass());
   const finalPass = new ShaderPass(FINAL_SHADER);
   composer.addPass(finalPass);
+  composer.addPass(new ShaderPass(BLIT_SHADER)); // goes to the screen at full size, nearest
 
   // ---------- layout & quality ----------
   let fit = 1, qual = 0; // qual: 0 best … 3 lowest
-  const QS = [1, 0.85, 0.72, 0.6];
+  const QS = [1, 1, 1, 1]; // the 3D cost is the small target; "quality" only drops shadows
   function layout() {
     const w = root.clientWidth || innerWidth, h = root.clientHeight || innerHeight;
     fit = Math.min(w / W, h / H);
@@ -119,7 +135,7 @@ export function mount(root, ctx) {
     const q = Math.min(1, fit * (devicePixelRatio || 1)) * QS[qual];
     const cw = Math.max(320, Math.round(W * q)), ch = Math.max(180, Math.round(H * q));
     renderer.setSize(cw, ch, false);
-    composer.setSize(cw, ch);
+    composer.setSize(LW, LH);
     camera.userData.bufH = ch;
   }
   const onResize = () => layout();
@@ -129,7 +145,6 @@ export function mount(root, ctx) {
     if (qual >= 3) return;
     qual++;
     if (qual >= 2) { renderer.shadowMap.enabled = false; world.moonL.castShadow = false; scene.traverse((o) => { if (o.material) o.material.needsUpdate = true; }); }
-    if (qual >= 3) bloom.enabled = false;
     layout();
   }
 
@@ -218,12 +233,15 @@ export function mount(root, ctx) {
     while (el.feed.children.length > 6) el.feed.lastChild.remove();
     d._t = now;
   }
-  function flash(color) { if (RM) return; el.flash.style.background = color || "#fff"; el.flash.style.opacity = 0.3; flashT = now; }
+  function flash(color) { if (RM) return; el.flash.style.background = color || "#fff"; el.flash.style.opacity = 0.2; flashT = now; }
   function shakeBy(a) { if (!RM) shake = Math.min(1.2, shake + a); }
   function avatarInto(box, p) {
     box.innerHTML = "";
-    if (ctx.privacy?.avatars && p.avatar) { const im = new Image(); im.alt = ""; im.src = p.avatar; im.onerror = () => { box.textContent = initial(p.name); }; box.append(im); }
-    else box.textContent = initial(p.name);
+    box.textContent = initial(p.name);
+    if (ctx.privacy?.avatars && p.avatar) {
+      const im = new Image(); im.src = p.avatar;
+      im.onload = () => { const c = px.canvas(20, 20), g = c.getContext("2d"); g.imageSmoothingQuality = "high"; const k = Math.max(20 / im.naturalWidth, 20 / im.naturalHeight); try { g.drawImage(im, (20 - im.naturalWidth * k) / 2, (20 - im.naturalHeight * k) / 2, im.naturalWidth * k, im.naturalHeight * k); box.textContent = ""; box.append(c); } catch {} };
+    }
   }
   const hud = {
     hp() {},
@@ -253,9 +271,9 @@ export function mount(root, ctx) {
       return pv.z < 1 && Math.abs(pv.x) < 1.2 && Math.abs(pv.y) < 1.2;
     },
     ko(att, vic, onCam) {
-      if (att) feed(`<span class="k">${esc(att.p.name)}</span><span class="ic">⚔</span><span class="v">${esc(vic.p.name)}</span>`, "hero");
+      if (att) feed(`<span class="k">${esc(att.p.name)}</span><span class="ic"></span><span class="v">${esc(vic.p.name)}</span>`, "hero");
       else feed(`<span class="v">${esc(vic.p.name)}</span><span class="m">шторм</span>`, "zone");
-      if (onCam) { el.ko.classList.remove("on"); void el.ko.offsetWidth; el.ko.classList.add("on"); koT = now; flash("#ffd9b0"); }
+      if (onCam) { el.ko.classList.remove("on"); void el.ko.offsetWidth; el.ko.classList.add("on"); koT = now; flash("#ff6600"); }
     },
     clearCrowd(x, z, r) {
       for (const d of crowd.list) {
@@ -458,8 +476,8 @@ export function mount(root, ctx) {
       scheduleCrowd();
       phase = "roll"; rollResolve = resolve;
       el.win.classList.remove("on"); root.classList.remove("idle");
-      el.al.textContent = "ЖИВИХ"; el.zk.textContent = "РАУНД"; el.zv.textContent = `${info.round}/${info.totalRounds}`;
-      el.seed.textContent = `Квитки: ${info.totalTickets || 0} · seed ${String(info.seedHash || "").slice(0, 8)}`;
+      el.al.textContent = "ЖИВИХ"; el.zk.textContent = "РАУНД"; 
+      
       el.feed.innerHTML = ""; hud.vs(null); hud.letterbox(false);
       ctx.sound?.("drum"); sfx("drop", 1, 1);
     });
@@ -501,7 +519,7 @@ export function mount(root, ctx) {
         if (d.dieKind === 1) feed(`<span class="v">${esc(d.p.name)}</span><span class="m">шторм</span>`, "zone");
         else {
           const k = crowd.list[Math.floor(rollRnd() * crowd.list.length)];
-          if (k && k.alive && k !== d) feed(`<span class="k">${esc(k.p.name)}</span><span class="ic">⚔</span><span class="v">${esc(d.p.name)}</span>`, "");
+          if (k && k.alive && k !== d) feed(`<span class="k">${esc(k.p.name)}</span><span class="ic"></span><span class="v">${esc(d.p.name)}</span>`, "");
           else feed(`<span class="v">${esc(d.p.name)}</span><span class="m">вибув</span>`, "zone");
         }
       }
@@ -512,16 +530,15 @@ export function mount(root, ctx) {
     phase = "win";
     const w = winner;
     hud.vs(null);
-    el.kicker.textContent = `ПЕРЕМОЖЕЦЬ · РАУНД ${info.round}/${info.totalRounds}`;
+    el.kicker.textContent = "ПЕРЕМОЖЕЦЬ";
     el.name.textContent = w.name;
-    el.name.style.fontSize = Math.min(124, Math.floor((W - 260) / (Math.max(6, String(w.name).length) * 0.6))) + "px";
-    const chance = info.totalTickets ? (w.tickets / info.totalTickets) * 100 : 0;
-    el.sub.innerHTML = `${w.handle ? esc(w.handle) + " · " : ""}Квитки: <b>${w.tickets}</b> · шанс ${chance < 10 ? chance.toFixed(1) : Math.round(chance)}%`;
+    el.name.style.fontSize = Math.min(128, Math.floor((W - 300) / (Math.max(6, String(w.name).length) * 0.74)) & ~3) + "px";
+    el.sub.innerHTML = `${w.handle ? esc(w.handle) + " · " : ""}<b>${w.tickets}</b> ${px.ticketsWord(w.tickets)}`;
     avatarInto(el.emb, w);
-    el.pw.classList.toggle("on", !!prize); if (prize) el.pwb.textContent = prize.name;
+    el.pw.classList.toggle("on", !!prize); if (prize) el.pwb.textContent = px.prizeLabel(prize.name);
     el.win.classList.add("on");
     hud.letterbox(false);
-    ctx.sound?.("win"); ctx.sound?.("boom"); flash("#ffe6c4"); shakeBy(0.4);
+    ctx.sound?.("win"); ctx.sound?.("boom"); flash("#ffb15c"); shakeBy(0.4);
     for (let i = 0; i < 80; i++) { const f = heroes.find((q) => q.id === w.id); if (!f) break; const a = Math.random() * 6.283; fx.add.spawn(f.pos.x, f.pos.y + 2.4, f.pos.z, Math.cos(a) * 3, 4 + Math.random() * 4, Math.sin(a) * 3, 1.6 + Math.random(), 0.12, ...[[2.4, 1.0, 0.2], [0.6, 2.2, 0.4], [1.3, 0.6, 2.4]][i % 3], 1.2, 5, 2); }
     setTimeout(() => { const r = rollResolve; rollResolve = null; r?.(); }, 700);
   }
@@ -531,7 +548,7 @@ export function mount(root, ctx) {
     const r = rollResolve; rollResolve = null; r?.();
     el.win.classList.remove("on"); hud.vs(null); hud.letterbox(false); el.banner.classList.remove("on"); el.loc.classList.remove("on");
     el.feed.innerHTML = ""; el.seed.textContent = ""; root.classList.add("idle");
-    el.al.textContent = "УЧАСНИКІВ"; el.zk.textContent = "РАУНД"; el.zv.textContent = info ? `${Math.min(info.round + 1, info.totalRounds)}/${info.totalRounds}` : "—";
+    el.al.textContent = "УЧАСНИКІВ"; el.zk.textContent = "РАУНД"; 
     fx.clear(); stormLevel(0); world.setStorm(160, 0);
     buildHeroes(chooseHeroIds(people));
     crowd.revive();
@@ -601,9 +618,9 @@ export function mount(root, ctx) {
     if (shot && shot.kind === "poi") blur = moveCam(dt, desiredPoi(shot, now - shotStart));
     else blur = updateCamera(dt);
     const focus = camFocus();
-    world.key.intensity = phase === "idle" ? 0 : 26;
+    world.key.intensity = phase === "idle" ? 0 : 20;
     world.update(now, dt, focus, camera);
-    { const up = clamp((camera.position.y - 14) / 36, 0, 1); renderer.toneMappingExposure = 1.4 + 0.5 * up; scene.fog.density = 0.0065 * (1 - 0.65 * up); scene.background.copy(BG0).lerp(BG1, up); scene.fog.color.copy(FOG0).lerp(BG1, up); }
+    { const up = clamp((camera.position.y - 14) / 36, 0, 1); finalPass.uniforms.uExp.value = 1.15 + 0.2 * up; scene.fog.density = 0.0042 * (1 - 0.65 * up); scene.background.copy(BG0).lerp(BG1, up); scene.fog.color.copy(FOG0).lerp(BG1, up); }
     fx.update(sdt, camera);
     // post
     const slow = phase === "roll" && rate < 0.6;
@@ -612,13 +629,14 @@ export function mount(root, ctx) {
     u.uSat.value += ((slow ? 0.72 : 1) - u.uSat.value) * Math.min(1, dt * 6);
     u.uWarm.value += ((slow ? 0.8 : 0) - u.uWarm.value) * Math.min(1, dt * 6);
     u.uVig.value += ((slow || lbOn ? 1.0 : 0.6) - u.uVig.value) * Math.min(1, dt * 4);
+    { const dx = cam.look.x - camera.position.x, dz = cam.look.z - camera.position.z, l = Math.hypot(dx, dz) || 1; rim.position.set(cam.look.x + (dx / l) * 30, cam.look.y + 14, cam.look.z + (dz / l) * 30); rim.target.position.copy(cam.look); rim.target.updateMatrixWorld(); }
     composer.render();
     // HUD
     labels();
     if (el.banner.classList.contains("on") && now > bannerT) el.banner.classList.remove("on");
     if (koT && now - koT > 1.3) { el.ko.classList.remove("on"); koT = 0; }
-    if (flashT) { const k = 1 - (now - flashT) / 0.35; el.flash.style.opacity = Math.max(0, k * 0.3); if (k <= 0) flashT = 0; }
-    for (const s of vsSide) if (s.f) { s.hpShown += (s.f.hp - s.hpShown) * Math.min(1, dt * 10); s.hp.style.width = (s.hpShown * 100).toFixed(1) + "%"; s.hp.classList.toggle("low", s.hpShown < 0.3); }
+    if (flashT) { const k = 1 - (now - flashT) / 0.35; el.flash.style.opacity = Math.max(0, Math.round(k * 2) / 10); if (k <= 0) flashT = 0; }
+    for (const s of vsSide) if (s.f) { s.hpShown += (s.f.hp - s.hpShown) * Math.min(1, dt * 10); s.hp.style.width = (Math.ceil(s.hpShown * 20) * 5) + "%"; s.hp.classList.toggle("low", s.hpShown < 0.3); }
     for (const k of el.feed.children) if (now - k._t > 6) k.classList.add("old");
   }
   function moveCam(dt, fov) {
@@ -684,14 +702,14 @@ export function mount(root, ctx) {
       const sx = ((c.x + 1) / 2) * W, sy = ((1 - c.y) / 2) * H;
       const k = c.f ? clamp(22 / Math.max(6, c.d), idle ? 0.6 : 0.55, 1.15) : clamp(34 / Math.max(8, c.d), 0.62, 1.05);
       const name = nick(c.f ? c.f.p : c.q.p);
-      const w = (Math.min(name.length, 18) * (c.f ? 13 : 11) + 14) * k, h = (c.f && !idle ? 36 : 26) * k;
+      const w = (Math.min(name.length, 18) * (c.f ? 14 : 12) + 14) * k, h = (c.f && !idle ? 36 : 26) * k;
       if (!fits(sx - w / 2, sy - h, w, h)) continue;
       if (world.occluded(camera.position, c.w)) { placed.pop(); continue; }
       shown++;
       const tf = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px) translate(-50%, -100%) scale(${k.toFixed(3)})`;
       if (c.f) {
         const lb = c.f.label; lb.style.display = ""; lb.style.transform = tf;
-        c.f.lhp.style.width = (c.f.hp * 100).toFixed(0) + "%"; lb.classList.toggle("hurt", c.f.hp < 0.35);
+        c.f.lhp.style.width = (Math.ceil(c.f.hp * 8) * 12.5) + "%"; lb.classList.toggle("hurt", c.f.hp < 0.35);
       } else {
         const e = tag(ti++);
         if (e._n !== name) { e._n = name; e._b.textContent = name; e.className = "r3-lbl r3-cl" + (c.q.tier > 0 ? " t" + c.q.tier : ""); }

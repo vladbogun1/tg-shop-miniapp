@@ -1,7 +1,10 @@
-// Graveyard visual: everything that is baked once into offscreen canvases (stones, pumpkins,
-// glows, fog, sky, gate, trees). Pure canvas 2D, no assets required.
-export const SW = 320, SH = 440, GY = 402; // stone bitmap size and the line the stone stands on
+// Graveyard visual, 16-bit pixel-art edition: every sprite is rasterised once, pixel by pixel, into small
+// bitmaps (1 art pixel = UNIT0 design px at level 0, twice as much per next level). Shading is 3-4 hard tones
+// plus ordered (Bayer) dithering, outlines are 1 art pixel of ink. No gradients, no blur, no smoothing.
+// The renderer blits them nearest-neighbour into a 480x270 layer (see index.js).
+export const SW = 320, SH = 440, GY = 402; // stone bitmap size (design px) and the line the stone stands on
 export const TIER_H = [235, 282, 326, 356];
+export const UNIT0 = 2.5, LEVELS = 4; // level k has unit UNIT0 * 2^k
 
 export const cv = (w, h) => { const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; };
 export function rng(seed) {
@@ -14,354 +17,412 @@ export function hash(str) {
   return h >>> 0;
 }
 
+// ---------------------------------------------------------------- tiny raster toolkit
+const BAY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
+export const bay = (i, j) => BAY[((j & 3) << 2) | (i & 3)];
+const hx = (s) => { const n = parseInt(s.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255, 255]; };
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const nz = (i, j, s) => { let h = Math.imul(((i * 374761393) ^ (j * 668265263) ^ (s * 2147483647)) | 0, 1274126177); h ^= h >>> 13; h = Math.imul(h, 1103515245); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+/** Fill a w×h bitmap from fn(i,j) → [r,g,b,a?] | null. */
+function raster(w, h, fn) {
+  const c = cv(w, h), g = c.getContext("2d"), im = g.createImageData(w, h), d = im.data;
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const col = fn(i, j); if (!col) continue;
+    const o = (j * w + i) * 4; d[o] = col[0]; d[o + 1] = col[1]; d[o + 2] = col[2]; d[o + 3] = col[3] === undefined ? 255 : col[3];
+  }
+  g.putImageData(im, 0, 0);
+  return c;
+}
+/** A continuous tone value → integer tone with ordered dithering between steps. */
+// hard bands (no ordered dithering: crisp pixels)
+const tone = (t, i, j, n = 3) => Math.min(n, Math.floor(clamp(t, 0, n) + 0.5));
+const inEll = (x, y, cx, cy, rx, ry) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
+function inPoly(p, x, y) {
+  let c = false;
+  for (let i = 0, j = p.length - 1; i < p.length; j = i++) if ((p[i][1] > y) !== (p[j][1] > y) && x < ((p[j][0] - p[i][0]) * (y - p[i][1])) / (p[j][1] - p[i][1]) + p[i][0]) c = !c;
+  return c;
+}
+function segDist(x, y, x0, y0, x1, y1) {
+  const dx = x1 - x0, dy = y1 - y0, l = dx * dx + dy * dy, t = l ? clamp(((x - x0) * dx + (y - y0) * dy) / l, 0, 1) : 0;
+  return Math.hypot(x - (x0 + dx * t), y - (y0 + dy * t));
+}
+/** 1-art-pixel Bresenham line of fillRects on a bitmap context. */
+function line(g, x0, y0, x1, y1) {
+  x0 |= 0; y0 |= 0; x1 |= 0; y1 |= 0;
+  const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let err = dx + dy;
+  for (let n = 0; n < 4000; n++) {
+    g.fillRect(x0, y0, 1, 1);
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err; if (e2 >= dy) { err += dy; x0 += sx; } if (e2 <= dx) { err += dx; y0 += sy; }
+  }
+}
+
+const OUT = hx("#1a0f24"), INK = hx("#0e0e10");
+const STONE = ["#b4b0cc", "#8b86a8", "#625d84", "#433e62"].map(hx);
+const STONE_LIT = ["#ffe6b0", "#eab677", "#b6743f", "#74442b"].map(hx);
+
 // ---------------------------------------------------------------- stones
-function shape(tier, v) {
-  const H = TIER_H[tier - 1], top = GY - H;
-  const main = new Path2D();
-  const extra = [];
-  if (tier === 1) {
-    if (v === 0) { main.moveTo(40, GY); main.lineTo(40, top + 120); main.arc(160, top + 120, 120, Math.PI, 0); main.lineTo(280, GY); main.closePath(); }
-    else { main.moveTo(40, GY); main.lineTo(40, top + 50); main.lineTo(90, top); main.lineTo(230, top); main.lineTo(280, top + 50); main.lineTo(280, GY); main.closePath(); }
-  } else if (tier === 2) {
-    main.moveTo(40, GY);
-    if (v === 0) {
-      main.lineTo(40, top + 130); main.bezierCurveTo(40, top + 30, 110, top, 160, top);
-      main.bezierCurveTo(210, top, 280, top + 30, 280, top + 130);
-    } else {
-      main.lineTo(40, top + 92); main.bezierCurveTo(40, top + 40, 118, top + 58, 160, top);
-      main.bezierCurveTo(202, top + 58, 280, top + 40, 280, top + 92);
+function makeBody(tier, v) {
+  const H = TIER_H[tier - 1], top = GY - H, ry3 = tier === 3 ? 160 : 150;
+  const spikes = [];
+  if (tier === 3 && v === 1) for (const s of [-1, 1]) { const cx = 160 + s * 128; spikes.push([[cx - 14, GY - 150], [cx, top + 78], [cx + 14, GY - 150]]); }
+  return (x, y) => {
+    if (y > GY) return false;
+    if (x >= 40 && x <= 280) {
+      const dx = Math.abs(x - 160);
+      if (tier === 1) { if (v === 0) { if (y >= top + 120 || (y >= top && inEll(x, y, 160, top + 120, 120, 120))) return true; } else if (y >= top && dx <= 120 - Math.max(0, top + 50 - y)) return true; }
+      else if (tier === 2) { if (v === 0) { if (y >= top + 130 || (y >= top && inEll(x, y, 160, top + 130, 120, 130))) return true; } else if (y >= top + 92 * Math.pow(dx / 120, 0.8)) return true; }
+      else if (y >= top + ry3 || (y >= top && inEll(x, y, 160, top + ry3, 120, ry3))) return true;
     }
-    main.lineTo(280, GY); main.closePath();
-  } else {
-    main.moveTo(40, GY); main.lineTo(40, top + (tier === 3 ? 160 : 150));
-    main.bezierCurveTo(40, top + 92, 98, top + 50, 160, top);
-    main.bezierCurveTo(222, top + 50, 280, top + 92, 280, top + (tier === 3 ? 160 : 150));
-    main.lineTo(280, GY); main.closePath();
-    if (tier === 3 && v === 1) {
-      for (const sx of [-1, 1]) { const p = new Path2D(); const cx = 160 + sx * 128; p.moveTo(cx - 14, GY - 150); p.lineTo(cx, top + 78); p.lineTo(cx + 14, GY - 150); p.closePath(); extra.push(p); }
-    }
+    for (const p of spikes) if (inPoly(p, x, y)) return true;
     if (tier === 4) {
-      const pl = new Path2D(); pl.rect(26, GY - 42, 268, 42); extra.push(pl);
-      const f1 = new Path2D(); f1.rect(153, top - 38, 14, 54); extra.push(f1);
-      const f2 = new Path2D(); f2.rect(139, top - 24, 42, 12); extra.push(f2);
+      if (x >= 26 && x <= 294 && y >= GY - 42) return true;
+      if (x >= 153 && x <= 167 && y >= top - 38 && y <= top + 16) return true;
+      if (x >= 139 && x <= 181 && y >= top - 24 && y <= top - 12) return true;
     }
-  }
-  return { main, extra, H, top };
+    return false;
+  };
 }
-
-const PAL = ["#6f789f", "#454b69", "#232739"];
-const PAL_LIT = ["#dcb383", "#9d6c45", "#4d3022"];
-
-function engrave(g, lit, draw) {
-  g.save(); g.lineCap = "round"; g.lineJoin = "round"; g.lineWidth = 3;
-  g.strokeStyle = g.fillStyle = lit ? "rgba(255,236,190,.4)" : "rgba(190,205,255,.24)";
-  g.translate(0, 1.8); draw(g); g.restore();
-  g.save(); g.lineCap = "round"; g.lineJoin = "round"; g.lineWidth = 3;
-  g.strokeStyle = g.fillStyle = lit ? "rgba(45,22,8,.75)" : "rgba(5,7,15,.68)";
-  draw(g); g.restore();
-}
-
-function skull(g, x, y, s) {
-  g.beginPath(); g.ellipse(x, y - 3 * s, 20 * s, 18 * s, 0, 0, Math.PI * 2); g.stroke();
-  g.beginPath(); g.moveTo(x - 11 * s, y + 12 * s); g.lineTo(x - 11 * s, y + 24 * s); g.lineTo(x + 11 * s, y + 24 * s); g.lineTo(x + 11 * s, y + 12 * s); g.stroke();
-  g.beginPath(); g.ellipse(x - 8 * s, y - 3 * s, 5 * s, 6 * s, 0, 0, Math.PI * 2); g.fill();
-  g.beginPath(); g.ellipse(x + 8 * s, y - 3 * s, 5 * s, 6 * s, 0, 0, Math.PI * 2); g.fill();
-  g.beginPath(); g.moveTo(x, y + 4 * s); g.lineTo(x - 3 * s, y + 10 * s); g.lineTo(x + 3 * s, y + 10 * s); g.closePath(); g.fill();
-  g.beginPath(); for (let i = -1; i <= 1; i++) { g.moveTo(x + i * 5 * s, y + 14 * s); g.lineTo(x + i * 5 * s, y + 24 * s); } g.stroke();
-}
-
-function emblem(g, tier, v, lit, y) {
-  engrave(g, lit, (g) => {
-    if (tier === 1) {
-      g.beginPath(); g.moveTo(160, y - 22); g.lineTo(160, y + 24); g.moveTo(143, y - 8); g.lineTo(177, y - 8); g.stroke();
-    } else if (tier === 2) {
-      if (v === 0) {
-        g.beginPath(); g.ellipse(160, y + 4, 26, 20, 0, 0, Math.PI * 2); g.stroke();
-        g.beginPath(); g.ellipse(160, y + 4, 11, 20, 0, 0, Math.PI * 2); g.stroke();
-        g.beginPath(); g.moveTo(160, y - 16); g.lineTo(164, y - 27); g.stroke();
-      } else {
-        g.beginPath(); g.arc(160, y, 20, 0.5, Math.PI * 2 - 0.5); g.arc(168, y, 15, Math.PI * 2 - 0.9, 0.9, true); g.stroke();
-        g.beginPath(); g.arc(188, y - 16, 3, 0, 7); g.fill();
-      }
-    } else if (tier === 3) skull(g, 160, y, 1.15);
-    else {
-      skull(g, 160, y + 4, 1.05);
-      g.beginPath();
-      for (const s of [-1, 1]) { g.moveTo(160 + s * 26, y); g.quadraticCurveTo(160 + s * 62, y - 36, 160 + s * 88, y - 4); g.quadraticCurveTo(160 + s * 70, y + 4, 160 + s * 60, y + 18); g.moveTo(160 + s * 40, y + 6); g.quadraticCurveTo(160 + s * 62, y - 6, 160 + s * 76, y + 4); }
-      g.stroke();
+/** 0 none, 1 engraved dark, 2 bone, 3 ink, 4 wing */
+function makeEmblem(tier, v, y0) {
+  return (x, y) => {
+    if (tier === 1) { if (Math.abs(x - 160) <= 7 && y >= y0 - 24 && y <= y0 + 26) return 1; if (Math.abs(y - (y0 - 8)) <= 7 && Math.abs(x - 160) <= 20) return 1; return 0; }
+    if (tier === 2) {
+      if (v === 0) { const e = ((x - 160) / 26) ** 2 + ((y - y0 - 4) / 20) ** 2; if (e <= 1 && (e >= 0.5 || Math.abs(x - 160) <= 4)) return 1; if (Math.abs(x - 163) <= 3 && y >= y0 - 28 && y < y0 - 14) return 1; return 0; }
+      const a = inEll(x, y, 160, y0, 22, 22), b = inEll(x, y, 170, y0 - 2, 17, 17);
+      if (a && !b) return 1; if ((x - 190) ** 2 + (y - y0 + 16) ** 2 <= 25) return 1; return 0;
     }
+    const s = tier === 3 ? 1.15 : 1.05, cy = tier === 3 ? y0 : y0 + 4;
+    if (inEll(x, y, 160 - 8 * s, cy - 3 * s, 5.5 * s, 6.5 * s) || inEll(x, y, 160 + 8 * s, cy - 3 * s, 5.5 * s, 6.5 * s)) return 3;
+    if (inPoly([[160, cy + 4 * s], [160 - 3.5 * s, cy + 10 * s], [160 + 3.5 * s, cy + 10 * s]], x, y)) return 3;
+    for (let i = -1; i <= 1; i++) if (Math.abs(x - (160 + i * 5 * s)) <= 1.3 * s && y >= cy + 14 * s && y <= cy + 24 * s) return 3;
+    if (inEll(x, y, 160, cy - 3 * s, 21 * s, 19 * s) || (Math.abs(x - 160) <= 11 * s && y >= cy + 12 * s && y <= cy + 24 * s)) return 2;
+    if (tier === 4) for (const sd of [-1, 1]) if (inPoly([[160 + sd * 26, cy - 4], [160 + sd * 62, cy - 34], [160 + sd * 90, cy - 6], [160 + sd * 62, cy + 14]], x, y)) return 4;
+    return 0;
+  };
+}
+
+function bakeStoneLevel(tier, v, lit, k) {
+  const unit = UNIT0 * 2 ** k, w = Math.ceil(SW / unit), h = Math.ceil(SH / unit);
+  const H = TIER_H[tier - 1], top = GY - H, body = makeBody(tier, v), emb = makeEmblem(tier, v, GY - H * 0.67);
+  const pal = lit ? STONE_LIT : STONE, seed = tier * 131 + v * 17 + 9, R = rng(seed);
+  const sc = (x, y) => body(160 + (x - 160) / 0.84, GY + (y - GY) / 0.9);
+  const cracks = [];
+  if (tier <= 2) { let x = 70 + R() * 180, y = top + 30 + R() * 40; for (let i = 0; i < 6; i++) { const nx = x + (R() - 0.5) * 22, ny = y + 12 + R() * 14; cracks.push([x, y, nx, ny]); x = nx; y = ny; } }
+  const moss = []; for (let i = 0; i < 4; i++) moss.push([55 + R() * 210, GY - 6 - R() * 46, 22 + R() * 30, 9 + R() * 12]);
+  const mossC = lit ? [hx("#9aa850"), hx("#6a7a34")] : [hx("#5fae2a"), hx("#2f7a1c")];
+  const embC = lit ? [null, hx("#7a3c18"), hx("#fff0c0"), INK, hx("#8a4c20")] : [null, hx("#2c2748"), hx("#ece6d4"), INK, hx("#3a3460")];
+  const hiC = lit ? hx("#ffe0a0") : hx("#c4c8ff");
+  const moundC = lit ? ["#5a4030", "#3a2a22", "#241812"].map(hx) : ["#3d3350", "#2b2433", "#1c1626"].map(hx);
+  const barY = GY - H * 0.38 + 34;
+  const bar = (x, y) => Math.abs(y - barY) <= 3 && x >= 112 && x <= 208;
+  const c = raster(w, h, (i, j) => {
+    const x = (i + 0.5) * unit, y = (j + 0.5) * unit;
+    if (body(x, y)) {
+      if (!body(x - unit, y) || !body(x + unit, y) || !body(x, y - unit) || !body(x, y + unit)) return tier === 4 ? INK : OUT;
+      for (const m of moss) { const e = ((x - m[0]) / m[2]) ** 2 + ((y - m[1]) / m[3]) ** 2; if (e <= 1 && e < 0.6) return mossC[nz(i, j, 5) > 0.55 ? 0 : 1]; }
+      if (k <= 2) for (const s of cracks) if (segDist(x, y, s[0], s[1], s[2], s[3]) <= unit * 0.62) return OUT;
+      if (tier >= 2 && k <= 1 && y < GY - 16 && sc(x, y) && (!sc(x - unit, y) || !sc(x + unit, y) || !sc(x, y - unit) || !sc(x, y + unit))) return pal[3];
+      const e = emb(x, y);
+      if (e && k <= 2) return embC[e];
+      if (k <= 2 && ((emb(x, y - unit) === 1 || emb(x, y - unit) === 4) || (bar(x, y - unit) && !bar(x, y)))) return hiC;
+      if (k <= 2 && bar(x, y)) return embC[1];
+      const u = (x - 40) / 240, vv = (y - top) / H;
+      let t = clamp(u * 1.9 - 0.15 + vv * 0.8, 0, 2.9);
+      if (!body(x, y - 7) || !body(x - 6, y)) t -= 0.9;
+      if (!body(x + 6, y) && body(x, y + 7)) t += 0.5;
+      if (k <= 1) { const n = nz(i, j, seed); if (n < 0.07) t += 0.9; else if (n > 0.95) t -= 0.8; }
+      return pal[tone(t, i, j)];
+    }
+    if (tier === 4) { // hard orange rim around the big stone instead of a glow
+      if (body(x - unit, y) || body(x + unit, y) || body(x, y - unit) || body(x, y + unit)) return hx("#ff6600");
+    }
+    // candles on the plinth
+    if (tier === 4) for (const cx of [48, 272]) {
+      if (Math.abs(x - cx) <= 6 && y >= GY - 66 && y <= GY - 40) return hx("#efe4c8");
+      if (inEll(x, y, cx, GY - 76, 5, 10)) return Math.abs(x - cx) <= 2 && y > GY - 80 ? hx("#fff6c8") : hx("#ffdc7a");
+    }
+    const e = ((x - 160) / 142) ** 2 + ((y - GY - 4) / 27) ** 2;
+    if (e <= 1) return moundC[tone(e * 2.4, i, j, 2)];
+    return null;
   });
-}
-
-function mound(g, lit, R) {
-  const gr = g.createRadialGradient(160, GY - 8, 8, 160, GY + 4, 150);
-  gr.addColorStop(0, lit ? "#3a2a22" : "#2b2433"); gr.addColorStop(1, lit ? "#150e0c" : "#0f0c15");
-  g.fillStyle = gr; g.beginPath(); g.ellipse(160, GY + 4, 142, 27, 0, 0, Math.PI * 2); g.fill();
-  g.lineCap = "round";
-  const cols = ["#1e3a24", "#2d4d2c", "#183021", "#3a5a30"];
-  for (let i = 0; i < 90; i++) {
-    const a = R() * Math.PI * 2, rr = Math.sqrt(R());
-    const x = 160 + Math.cos(a) * 132 * rr, y = GY + 3 + Math.sin(a) * 22 * rr;
-    const h = 7 + R() * 15, bend = (R() - 0.5) * 9;
-    g.strokeStyle = cols[(R() * cols.length) | 0]; g.lineWidth = 1.6 + R() * 1.2;
-    g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + bend * 0.4, y - h * 0.6, x + bend, y - h); g.stroke();
+  const g = c.getContext("2d"), R2 = rng(seed + 1);
+  const greens = lit ? ["#7a8a3a", "#98a848", "#566a28", "#b4b860"] : ["#2d6a1c", "#3d8a24", "#1f5c10", "#5fae2a"];
+  for (let n = 0; n < 80; n++) {
+    const a = R2() * Math.PI * 2, rr = Math.sqrt(R2()), x = 160 + Math.cos(a) * 132 * rr, y = GY + 3 + Math.sin(a) * 22 * rr, hh = 7 + R2() * 15, col = greens[(R2() * 4) | 0];
+    const hp = Math.max(1, Math.round(hh / unit)), i = Math.floor(x / unit), j = Math.floor(y / unit);
+    g.fillStyle = col; g.fillRect(i, j - hp + 1, 1, hp);
   }
-  for (let i = 0; i < 6; i++) { g.fillStyle = ["#a2461a", "#7a3515", "#c2651f"][i % 3]; g.beginPath(); g.ellipse(70 + R() * 180, GY + 4 + R() * 14, 4 + R() * 3, 2, R() * 3, 0, 7); g.fill(); }
-}
-
-function bakeStone(tier, v, lit) {
-  const c = cv(SW, SH), g = c.getContext("2d");
-  const R = rng(tier * 131 + v * 17 + 9);
-  const { main, extra, H, top } = shape(tier, v);
-  const pal = lit ? PAL_LIT : PAL;
-  if (tier === 4) { g.save(); g.shadowColor = lit ? "rgba(255,170,70,.9)" : "rgba(255,102,0,.55)"; g.shadowBlur = 22; g.fillStyle = "#222"; g.fill(main); g.restore(); }
-  const body = g.createLinearGradient(40, 0, 290, 0);
-  body.addColorStop(0, pal[0]); body.addColorStop(0.5, pal[1]); body.addColorStop(1, pal[2]);
-  g.fillStyle = body; g.fill(main); for (const e of extra) g.fill(e);
-  g.save(); g.clip(main);
-  const vg = g.createLinearGradient(0, top, 0, GY);
-  vg.addColorStop(0, "rgba(210,225,255,.2)"); vg.addColorStop(0.45, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(6,8,14,.62)");
-  g.fillStyle = vg; g.fillRect(0, top - 10, SW, H + 20);
-  for (let i = 0; i < 320; i++) {
-    g.fillStyle = R() < 0.55 ? `rgba(8,10,20,${0.05 + R() * 0.12})` : `rgba(210,220,255,${0.03 + R() * 0.09})`;
-    const s = 1 + R() * 2.6; g.fillRect(34 + R() * 250, top + R() * H, s, s);
-  }
-  for (let i = 0; i < 8; i++) { g.strokeStyle = `rgba(6,8,16,${0.07 + R() * 0.09})`; g.lineWidth = 2 + R() * 4; const x = 50 + R() * 220; g.beginPath(); g.moveTo(x, top + 20 + R() * 60); g.lineTo(x + (R() - 0.5) * 12, GY); g.stroke(); }
-  for (let i = 0; i < 4; i++) { g.fillStyle = `rgba(${lit ? "120,150,70" : "50,92,56"},${0.22 + R() * 0.22})`; g.beginPath(); g.ellipse(55 + R() * 210, GY - 6 - R() * 46, 22 + R() * 30, 9 + R() * 12, 0, 0, 7); g.fill(); }
-  if (tier <= 2) { // a crack
-    g.strokeStyle = "rgba(4,6,12,.55)"; g.lineWidth = 2; g.beginPath();
-    let x = 70 + R() * 180, y = top + 30 + R() * 40; g.moveTo(x, y);
-    for (let i = 0; i < 6; i++) { x += (R() - 0.5) * 22; y += 12 + R() * 14; g.lineTo(x, y); }
-    g.stroke();
-  }
-  if (lit) { const rg = g.createRadialGradient(160, GY - H * 0.45, 10, 160, GY - H * 0.45, 190); rg.addColorStop(0, "rgba(255,185,100,.3)"); rg.addColorStop(1, "rgba(255,120,30,0)"); g.fillStyle = rg; g.fillRect(0, 0, SW, SH); }
-  if (tier >= 2) { // inset frame
-    g.save(); g.beginPath(); g.rect(0, 0, SW, GY - 16); g.clip();
-    g.translate(160, GY); g.scale(0.84, 0.9); g.translate(-160, -GY);
-    g.lineWidth = 3.5; g.translate(0, 1.6); g.strokeStyle = lit ? "rgba(255,236,190,.28)" : "rgba(190,205,255,.18)"; g.stroke(main);
-    g.translate(0, -1.6); g.strokeStyle = lit ? "rgba(45,22,8,.6)" : "rgba(5,7,15,.55)"; g.stroke(main); g.restore();
-  }
-  g.restore();
-  emblem(g, tier, v, lit, GY - H * 0.67);
-  engrave(g, lit, (g) => { g.beginPath(); g.moveTo(112, GY - H * 0.38 + 34); g.lineTo(208, GY - H * 0.38 + 34); g.stroke(); });
-  if (tier === 4) { // candles on the plinth
-    for (const x of [48, 272]) {
-      g.fillStyle = "#e9dfc8"; g.fillRect(x - 6, GY - 66, 12, 26);
-      g.fillStyle = "#ffdc7a"; g.beginPath(); g.ellipse(x, GY - 76, 5, 10, 0, 0, 7); g.fill();
-      g.fillStyle = "#fff6c8"; g.beginPath(); g.ellipse(x, GY - 74, 2.2, 5, 0, 0, 7); g.fill();
-    }
-  }
-  const eg = g.createLinearGradient(40, 0, 280, 0);
-  eg.addColorStop(0, lit ? "rgba(255,225,170,.8)" : "rgba(190,210,255,.5)"); eg.addColorStop(0.35, "rgba(190,210,255,0)");
-  g.strokeStyle = eg; g.lineWidth = 3; g.stroke(main);
-  mound(g, lit, R);
+  for (let n = 0; n < 6; n++) { g.fillStyle = ["#c2651f", "#a2461a", "#7a3515"][n % 3]; g.fillRect(Math.floor((70 + R2() * 180) / unit), Math.floor((GY + 4 + R2() * 14) / unit), Math.max(1, Math.round(8 / unit)), 1); }
   return c;
 }
 
-function bakeBroken() {
-  const c = cv(SW, SH), g = c.getContext("2d"); const R = rng(77);
-  mound(g, false, R);
-  const gl = g.createRadialGradient(160, GY - 6, 4, 160, GY - 6, 70);
-  gl.addColorStop(0, "rgba(124,255,79,.85)"); gl.addColorStop(1, "rgba(124,255,79,0)");
-  g.fillStyle = gl; g.fillRect(70, GY - 80, 180, 100);
-  g.fillStyle = "#06070b"; g.beginPath(); g.ellipse(160, GY - 2, 36, 9, 0, 0, 7); g.fill();
-  const body = g.createLinearGradient(40, 0, 290, 0); body.addColorStop(0, "#4a5072"); body.addColorStop(1, "#1c2032");
-  g.fillStyle = body;
-  g.beginPath(); g.moveTo(44, GY); g.lineTo(44, GY - 152); g.lineTo(66, GY - 170); g.lineTo(88, GY - 140); g.lineTo(112, GY - 178); g.lineTo(130, GY - 118); g.lineTo(146, GY - 134); g.lineTo(140, GY); g.closePath(); g.fill();
-  g.beginPath(); g.moveTo(184, GY); g.lineTo(196, GY - 82); g.lineTo(226, GY - 112); g.lineTo(252, GY - 92); g.lineTo(284, GY - 40); g.lineTo(284, GY); g.closePath(); g.fill();
-  g.strokeStyle = "rgba(190,210,255,.35)"; g.lineWidth = 2.5; g.beginPath(); g.moveTo(44, GY - 150); g.lineTo(44, GY); g.stroke();
-  g.fillStyle = "rgba(124,255,79,.25)"; g.beginPath(); g.ellipse(160, GY - 8, 60, 14, 0, 0, 7); g.fill();
+const BROKEN_L = [[44, GY], [44, GY - 152], [66, GY - 170], [88, GY - 140], [112, GY - 178], [130, GY - 118], [146, GY - 134], [140, GY]];
+const BROKEN_R = [[184, GY], [196, GY - 82], [226, GY - 112], [252, GY - 92], [284, GY - 40], [284, GY]];
+function bakeBrokenLevel(k) {
+  const unit = UNIT0 * 2 ** k, w = Math.ceil(SW / unit), h = Math.ceil(SH / unit), pal = STONE.map((c) => [c[0] * 0.8, c[1] * 0.8, c[2] * 0.85, 255]);
+  const body = (x, y) => inPoly(BROKEN_L, x, y) || inPoly(BROKEN_R, x, y);
+  const slime = ["#7cff4f", "#4cb040", "#24703a", "#16402c"].map(hx), moundC = ["#3d3350", "#2b2433", "#1c1626"].map(hx);
+  const c = raster(w, h, (i, j) => {
+    const x = (i + 0.5) * unit, y = (j + 0.5) * unit;
+    if (body(x, y)) {
+      if (!body(x - unit, y) || !body(x + unit, y) || !body(x, y - unit) || !body(x, y + unit)) return OUT;
+      return pal[tone(((x - 44) / 240) * 2.4 + (!body(x, y - 7) ? -0.8 : 0.3) + ((GY - y) / 180) * -0.5, i, j)];
+    }
+    const pool = ((x - 160) / 74) ** 2 + ((y - GY + 8) / 17) ** 2;
+    if (inEll(x, y, 160, GY - 2, 36, 9)) return hx("#05060a");
+    if (pool <= 1) return slime[3 - tone((1 - pool) * 3.2, i, j, 3)];
+    const e = ((x - 160) / 142) ** 2 + ((y - GY - 4) / 27) ** 2;
+    if (e <= 1) return moundC[tone(e * 2.4, i, j, 2)];
+    return null;
+  });
+  const g = c.getContext("2d"), R2 = rng(77);
+  const greens = ["#2d6a1c", "#3d8a24", "#1f5c10", "#5fae2a"];
+  for (let n = 0; n < 70; n++) {
+    const a = R2() * Math.PI * 2, rr = Math.sqrt(R2()), x = 160 + Math.cos(a) * 132 * rr, y = GY + 3 + Math.sin(a) * 22 * rr, hh = 7 + R2() * 15;
+    g.fillStyle = greens[(R2() * 4) | 0]; const hp = Math.max(1, Math.round(hh / unit)); g.fillRect(Math.floor(x / unit), Math.floor(y / unit) - hp + 1, 1, hp);
+  }
   return c;
 }
 
 export function bakeStones() {
-  const out = { s: {}, broken: bakeBroken(), meta: {} };
+  const out = { s: {}, broken: [], meta: {} };
+  for (let k = 0; k < LEVELS; k++) out.broken.push(bakeBrokenLevel(k));
   for (let t = 1; t <= 4; t++) {
     out.meta[t] = { nameY: GY - TIER_H[t - 1] * 0.38, emblemY: GY - TIER_H[t - 1] * 0.67 };
-    for (let v = 0; v < 2; v++) out.s[`${t}${v}`] = [bakeStone(t, v, false), bakeStone(t, v, true)];
+    for (let v = 0; v < 2; v++) out.s[`${t}${v}`] = [0, 1].map((lit) => Array.from({ length: LEVELS }, (_, k) => bakeStoneLevel(t, v, !!lit, k)));
   }
   return out;
 }
 
-// ---------------------------------------------------------------- small sprites
-export function bakePumpkin() {
-  const c = cv(120, 104), g = c.getContext("2d");
-  const lobe = (x, y, rx, ry) => {
-    const gr = g.createRadialGradient(x - rx * 0.3, y - ry * 0.4, 2, x, y, Math.max(rx, ry));
-    gr.addColorStop(0, "#ffb347"); gr.addColorStop(0.55, "#ff6600"); gr.addColorStop(1, "#a83a00");
-    g.fillStyle = gr; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 7); g.fill();
+/** Left and right halves of an unlit stone (level 0), split along the winner's crack line. */
+const CRACK_N = [[0, 0], [-0.07, 0.14], [0.05, 0.27], [-0.09, 0.42], [0.06, 0.58], [-0.05, 0.74], [0.02, 0.88], [0, 1]];
+export function bakeHalves(src, tier) {
+  const unit = UNIT0, w = src.width, h = src.height, TH = TIER_H[tier - 1];
+  const sd = src.getContext("2d").getImageData(0, 0, w, h).data;
+  const crackX = (y) => {
+    const dv = (y - (GY - TH)) / TH;
+    if (dv <= 0) return 160 + CRACK_N[0][0] * 240;
+    if (dv >= 1) return 160 + CRACK_N[CRACK_N.length - 1][0] * 240;
+    const f = dv * (CRACK_N.length - 1), i = Math.floor(f);
+    return 160 + (CRACK_N[i][0] + (CRACK_N[i + 1][0] - CRACK_N[i][0]) * (f - i)) * 240;
   };
-  lobe(34, 64, 26, 30); lobe(86, 64, 26, 30); lobe(60, 62, 36, 34);
-  g.strokeStyle = "rgba(110,36,0,.55)"; g.lineWidth = 2;
-  for (const dx of [-14, 14]) { g.beginPath(); g.ellipse(60 + dx, 62, 12, 33, 0, 0, 7); g.stroke(); }
-  g.fillStyle = "#4b3a1a"; g.beginPath(); g.moveTo(54, 30); g.lineTo(58, 14); g.lineTo(68, 12); g.lineTo(66, 30); g.closePath(); g.fill();
-  g.strokeStyle = "#7cff4f"; g.lineWidth = 3; g.beginPath(); g.moveTo(66, 20); g.quadraticCurveTo(84, 8, 90, 20); g.stroke();
-  g.save(); g.shadowColor = "#ffb000"; g.shadowBlur = 10; g.fillStyle = "#ffeb8a";
-  g.beginPath(); g.moveTo(40, 58); g.lineTo(54, 58); g.lineTo(47, 46); g.closePath(); g.fill();
-  g.beginPath(); g.moveTo(66, 58); g.lineTo(80, 58); g.lineTo(73, 46); g.closePath(); g.fill();
-  g.beginPath(); g.moveTo(36, 72); g.lineTo(46, 80); g.lineTo(53, 73); g.lineTo(60, 82); g.lineTo(67, 73); g.lineTo(74, 80); g.lineTo(84, 72); g.lineTo(78, 88); g.lineTo(60, 92); g.lineTo(42, 88); g.closePath(); g.fill();
-  g.restore();
-  return c;
+  const mk = (side) => raster(w, h, (i, j) => {
+    const x = (i + 0.5) * unit, y = (j + 0.5) * unit, cx = crackX(y), o = (j * w + i) * 4;
+    if (side < 0 ? x >= cx : x < cx) return null;
+    if (!sd[o + 3]) return null;
+    return [sd[o], sd[o + 1], sd[o + 2], 255];
+  });
+  return { L: mk(-1), R: mk(1) };
 }
 
-export function bakeGlow(r, gr, b, soft = 1) {
-  const c = cv(128, 128), g = c.getContext("2d");
-  const rg = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-  rg.addColorStop(0, `rgba(${r},${gr},${b},1)`); rg.addColorStop(0.25 * soft, `rgba(${r},${gr},${b},.55)`);
-  rg.addColorStop(0.6, `rgba(${r},${gr},${b},.16)`); rg.addColorStop(1, `rgba(${r},${gr},${b},0)`);
-  g.fillStyle = rg; g.fillRect(0, 0, 128, 128);
-  return c;
-}
-
-export function bakeFog(seed, tint) {
-  const w = 1024, h = 256, c = cv(w, h), g = c.getContext("2d"), R = rng(seed);
-  for (let i = 0; i < 46; i++) {
-    const x = R() * w, y = h * (0.3 + R() * 0.5), r = 50 + R() * 110, a = 0.05 + R() * 0.11;
-    for (const ox of [-w, 0, w]) {
-      const rg = g.createRadialGradient(x + ox, y, 0, x + ox, y, r);
-      rg.addColorStop(0, `rgba(${tint},${a})`); rg.addColorStop(1, `rgba(${tint},0)`);
-      g.fillStyle = rg; g.fillRect(x + ox - r, y - r, r * 2, r * 2);
+// ---------------------------------------------------------------- pumpkin (3 sizes: 40, 20, 10 art px wide)
+const PUMP_ORANGE = ["#ffb347", "#ff6600", "#c24a00", "#7a2c00"].map(hx);
+function bakePumpkinLevel(wpx) {
+  const unit = 120 / wpx, w = wpx, h = Math.ceil(104 / unit);
+  const lobes = [[34, 64, 26, 30], [86, 64, 26, 30], [60, 62, 36, 34]];
+  const body = (x, y) => lobes.some((l) => inEll(x, y, l[0], l[1], l[2], l[3]));
+  const eyes = [[[40, 58], [54, 58], [47, 46]], [[66, 58], [80, 58], [73, 46]]];
+  const mouth = [[36, 72], [46, 80], [53, 73], [60, 82], [67, 73], [74, 80], [84, 72], [78, 88], [60, 92], [42, 88]];
+  const stem = [[54, 30], [58, 14], [68, 12], [66, 30]];
+  const carved = (x, y) => eyes.some((p) => inPoly(p, x, y)) || inPoly(mouth, x, y);
+  return raster(w, h, (i, j) => {
+    const x = (i + 0.5) * unit, y = (j + 0.5) * unit;
+    if (inPoly(stem, x, y)) return hx("#5a4520");
+    if (segDist(x, y, 66, 22, 80, 10) <= unit * 0.8 || segDist(x, y, 80, 10, 90, 20) <= unit * 0.8) return hx("#7cff4f");
+    if (body(x, y)) {
+      if (!body(x - unit, y) || !body(x + unit, y) || !body(x, y - unit) || !body(x, y + unit)) return INK;
+      if (carved(x, y)) return hx(y > 60 && wpx >= 20 && ((j + (i >> 1)) & 1) ? "#ffd070" : "#ffeb8a");
+      let t = ((x - 20) / 80) * 1.3 + ((y - 30) / 64) * 1.1 - 0.4;
+      if (Math.abs(x - 46) < unit * 0.7 || Math.abs(x - 74) < unit * 0.7) t += 0.9;
+      return PUMP_ORANGE[tone(t, i, j)];
     }
-  }
-  const mask = g.createLinearGradient(0, 0, 0, h); // fade top and bottom edges
-  mask.addColorStop(0, "rgba(0,0,0,1)"); mask.addColorStop(0.28, "rgba(0,0,0,0)"); mask.addColorStop(0.72, "rgba(0,0,0,0)"); mask.addColorStop(1, "rgba(0,0,0,1)");
-  g.globalCompositeOperation = "destination-out"; g.fillStyle = mask; g.fillRect(0, 0, w, h);
-  return c;
+    return null;
+  });
+}
+export const bakePumpkin = () => [40, 20, 10].map(bakePumpkinLevel);
+
+// ---------------------------------------------------------------- fog tile, haze, vignette, ground, far silhouette
+/** A 256×64 art-px fog tile: hard 3-step puffs with dithered edges. tint = "r,g,b". */
+export function bakeFog(seed, tint) {
+  const w = 256, h = 64, R = rng(seed), [r, g2, b] = tint.split(",").map(Number), blobs = [];
+  for (let n = 0; n < 15; n++) blobs.push([R() * w, h * (0.34 + R() * 0.32), 14 + R() * 30, 5 + R() * 7]);
+  const A = [0, 48, 92, 140];
+  return raster(w, h, (i, j) => {
+    let d = 0;
+    for (const bl of blobs) for (const ox of [-w, 0, w]) { const e = 1 - Math.hypot((i - bl[0] - ox) / bl[2], (j - bl[1]) / bl[3]); if (e > 0) d = Math.max(d, e); }
+    const lv = tone(d * 3.2, i, j);
+    return lv ? [r, g2, b, A[lv]] : null;
+  });
 }
 
-// ---------------------------------------------------------------- background
-export function bakeSky(W, H, hy) {
-  const c = cv(W, H), g = c.getContext("2d"), R = rng(5);
-  const gr = g.createLinearGradient(0, 0, 0, hy + 30);
-  gr.addColorStop(0, "#04030a"); gr.addColorStop(0.5, "#0d0820"); gr.addColorStop(0.85, "#241238"); gr.addColorStop(1, "#4a1d36");
-  g.fillStyle = gr; g.fillRect(0, 0, W, H);
-  const ground = g.createLinearGradient(0, hy, 0, H);
-  ground.addColorStop(0, "#1a1328"); ground.addColorStop(0.35, "#0f0c17"); ground.addColorStop(1, "#07060a");
-  g.fillStyle = ground; g.fillRect(0, hy, W, H - hy);
-  for (const [x, col, rx] of [[W * 0.5, "rgba(255,102,0,.16)", W * 0.55], [W * 0.15, "rgba(138,63,252,.2)", W * 0.4], [W * 0.88, "rgba(138,63,252,.14)", W * 0.35]]) {
-    g.save(); g.translate(x, hy + 4); g.scale(1, 0.22); const rg = g.createRadialGradient(0, 0, 0, 0, 0, rx); rg.addColorStop(0, col); rg.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = rg; g.fillRect(-rx, -rx, rx * 2, rx * 2); g.restore();
-  }
-  for (let i = 0; i < 190; i++) {
-    const x = R() * W, y = R() * hy * 0.92, a = 0.25 + R() * 0.6, s = R() < 0.1 ? 1.8 : R() < 0.4 ? 1.2 : 0.8;
-    g.fillStyle = `rgba(${R() < 0.2 ? "255,214,170" : "205,220,255"},${a * (1 - y / hy * 0.55)})`; g.fillRect(x, y, s, s);
-  }
-  for (let i = 0; i < 2600; i++) { g.fillStyle = `rgba(255,255,255,${R() * 0.018})`; g.fillRect(R() * W, R() * H, 1, 1); } // dither
-  return c;
+/** Dithered light mist along the horizon: violet everywhere, green in the middle (like bg-night). */
+export function bakeHaze(wA) {
+  const h = 40;
+  const A = [0, 46, 80, 118];
+  return raster(wA, h, (i, j) => {
+    const p = 1 - Math.abs(j - 22) / 22; if (p <= 0) return null;
+    const n = 0.65 + 0.35 * Math.sin(i * 0.09) * Math.sin(i * 0.031 + 1);
+    const lv = tone(p * n * 3.3, i, j); if (!lv) return null;
+    return [138, 63, 252, A[lv]]; // one colour over the full width: no rectangle edges
+  });
 }
 
-export function bakeMoon() {
-  const S = 640, c = cv(S, S), g = c.getContext("2d"), m = S / 2, R = rng(11);
-  let rg = g.createRadialGradient(m, m, 60, m, m, m);
-  rg.addColorStop(0, "rgba(190,205,255,.34)"); rg.addColorStop(0.35, "rgba(150,160,240,.12)"); rg.addColorStop(1, "rgba(120,120,220,0)");
-  g.fillStyle = rg; g.fillRect(0, 0, S, S);
-  const d = g.createRadialGradient(m - 22, m - 24, 8, m, m, 92);
-  d.addColorStop(0, "#fffdf3"); d.addColorStop(0.7, "#e4e8f6"); d.addColorStop(1, "#aab4d4");
-  g.fillStyle = d; g.beginPath(); g.arc(m, m, 88, 0, 7); g.fill();
-  g.save(); g.beginPath(); g.arc(m, m, 88, 0, 7); g.clip();
-  for (let i = 0; i < 16; i++) { g.fillStyle = `rgba(110,125,170,${0.1 + R() * 0.16})`; g.beginPath(); g.ellipse(m + (R() - 0.5) * 150, m + (R() - 0.5) * 150, 6 + R() * 18, 5 + R() * 14, 0, 0, 7); g.fill(); }
-  const sh = g.createRadialGradient(m + 40, m + 30, 30, m + 40, m + 30, 130); sh.addColorStop(0, "rgba(40,50,100,0)"); sh.addColorStop(1, "rgba(30,40,90,.45)"); g.fillStyle = sh; g.fillRect(0, 0, S, S);
-  g.restore();
-  return c;
+/** Dark corners in 3 dithered steps. Layer-sized. */
+export function bakeVignette(wA, hA) {
+  const A = [0, 50, 100, 150];
+  return raster(wA, hA, (i, j) => {
+    const dx = (i / wA - 0.5) * 2, dy = (j / hA - 0.52) * 2, d = Math.hypot(dx * 0.82, dy);
+    const lv = tone(clamp((d - 0.62) / 0.5, 0, 1) * 3, i, j); return lv ? [3, 1, 8, A[lv]] : null;
+  });
 }
 
-let BW = 1e9;
-function branch(g, x, y, ang, len, w, depth, R) {
-  if (depth <= 0 || w < 0.5) return;
+/** A dithered dark pool for the finale: transparent centre (inner radius ~55 art px), solid outside. 200×120. */
+export function bakeDark() {
+  const w = 200, h = 120, A = [0, 60, 112, 160];
+  return raster(w, h, (i, j) => {
+    const d = Math.hypot((i - 100) * 0.62, (j - 60) * 1.0 * 0.62 * 1.6);
+    const lv = tone(clamp((d - 34) / 30, 0, 1) * 3, i, j); return lv ? [3, 1, 10, A[lv]] : null;
+  });
+}
+
+/** The ground below the horizon, wA×hA art px: 5 stepped plum bands, dither between, green mist at the back. */
+export function bakeGround(wA, hA) {
+  const ramp = ["#3b2654", "#2c1a3c", "#211230", "#170d24", "#0e0a16"].map(hx), moss = hx("#1f5c10"), rust = hx("#5a2200"), vio = hx("#4a2a70");
+  return raster(wA, hA, (i, j) => {
+    const t = j / hA;
+    const base = ramp[tone(Math.pow(t, 0.7) * 4.2, i, j, 4)];
+    const n = nz(i, j, 11);
+    if (j < 3) return hx("#2c6a30");
+    if (n < 0.012) return moss; if (n > 0.994) return rust; if (n > 0.985 && t < 0.5) return vio;
+    return base;
+  });
+}
+
+function branch(g, x, y, ang, len, depth, R, maxX) {
+  if (depth <= 0 || len < 2) return;
   const x2 = x + Math.cos(ang) * len, y2 = y + Math.sin(ang) * len;
-  if (x2 > BW || x2 < -60 || y2 < -30) return;
-  g.lineWidth = w; g.beginPath(); g.moveTo(x, y);
-  g.quadraticCurveTo((x + x2) / 2 + (R() - 0.5) * len * 0.5, (y + y2) / 2 + (R() - 0.5) * len * 0.5, x2, y2); g.stroke();
-  const n = depth > 2 ? 2 + (R() < 0.35 ? 1 : 0) : 2;
-  for (let i = 0; i < n; i++) branch(g, x2, y2, ang + (R() - 0.5) * 1.55 - (i === 0 ? 0.1 : 0), len * (0.66 + R() * 0.14), w * 0.66, depth - 1, R);
+  line(g, x, y, x2, y2);
+  const n = 2 + (R() < 0.3 ? 1 : 0);
+  for (let i = 0; i < n; i++) branch(g, x2, y2, ang + (R() - 0.5) * 1.6 - (i === 0 ? 0.1 : 0), len * (0.68 + R() * 0.14), depth - 1, R, maxX);
 }
-
-/** Far ridge with dead trees and a chapel with a lit window; baseline = bottom edge. */
-export function bakeFar(W) {
-  BW = 1e9;
-  const w = Math.round(W * 1.5), h = 330, c = cv(w, h), g = c.getContext("2d"), R = rng(21);
+/** Far ridge with dead trees and a chapel with lit windows, wA art px wide, 62 tall; the bottom edge is the horizon. */
+export function bakeFar(wA) {
+  const h = 62, c = cv(wA, h), g = c.getContext("2d"), R = rng(21);
   const ridge = (col, amp, base, ph) => {
-    g.fillStyle = col; g.beginPath(); g.moveTo(0, h);
-    for (let x = 0; x <= w; x += 10) g.lineTo(x, base - amp * (0.55 * Math.sin(x * 0.004 + ph) + 0.3 * Math.sin(x * 0.011 + ph * 2) + 0.15 * Math.sin(x * 0.03)));
-    g.lineTo(w, h); g.closePath(); g.fill();
+    g.fillStyle = col;
+    for (let i = 0; i < wA; i++) { const y = Math.round(base - amp * (0.55 * Math.sin(i * 0.016 + ph) + 0.3 * Math.sin(i * 0.044 + ph * 2) + 0.15 * Math.sin(i * 0.12))); g.fillRect(i, y, 1, h - y); }
   };
-  ridge("#171024", 70, h - 90, 1);
-  g.strokeStyle = "#171024"; g.lineCap = "round";
-  for (let i = 0; i < 9; i++) { const x = (i + R() * 0.8) * (w / 9); branch(g, x, h - 90, -Math.PI / 2 + (R() - 0.5) * 0.3, 40 + R() * 40, 5 + R() * 3, 6, R); }
-  // chapel
-  const cx = w * 0.7, by = h - 100;
-  g.fillStyle = "#120c1c"; g.fillRect(cx - 40, by - 46, 80, 50); g.beginPath(); g.moveTo(cx - 48, by - 46); g.lineTo(cx, by - 86); g.lineTo(cx + 48, by - 46); g.fill();
-  g.fillRect(cx + 40, by - 100, 22, 104); g.beginPath(); g.moveTo(cx + 36, by - 100); g.lineTo(cx + 51, by - 140); g.lineTo(cx + 66, by - 100); g.fill();
-  g.fillStyle = "#ffae42"; g.shadowColor = "#ff8a00"; g.shadowBlur = 14; g.fillRect(cx - 8, by - 32, 10, 18); g.fillRect(cx + 46, by - 82, 6, 12); g.shadowBlur = 0;
-  ridge("#0d0916", 50, h - 40, 3);
-  for (let i = 0; i < 12; i++) { const x = R() * w; g.strokeStyle = "#0d0916"; branch(g, x, h - 44, -Math.PI / 2 + (R() - 0.5) * 0.4, 26 + R() * 30, 3.5 + R() * 2, 5, R); }
-  const f = g.createLinearGradient(0, h - 130, 0, h); f.addColorStop(0, "rgba(70,40,90,0)"); f.addColorStop(1, "rgba(70,40,90,.5)");
-  g.fillStyle = f; g.fillRect(0, h - 130, w, 130);
+  ridge("#1d1230", 16, h - 18, 1);
+  g.fillStyle = "#1d1230"; for (let n = 0; n < 9; n++) { const x = (n + R() * 0.8) * (wA / 9); branch(g, x, h - 18, -Math.PI / 2 + (R() - 0.5) * 0.3, 8 + R() * 7, 5, R, wA); }
+  const cx = Math.round(wA * 0.7), by = h - 20;
+  g.fillStyle = "#150d22"; g.fillRect(cx - 10, by - 12, 20, 14);
+  for (let r = 0; r < 10; r++) g.fillRect(cx - 12 + r, by - 12 - r, 24 - r * 2, 1);
+  g.fillRect(cx + 10, by - 25, 6, 27); for (let r = 0; r < 8; r++) g.fillRect(cx + 9 + r, by - 25 - r, 8 - r * 2 + 1 > 0 ? Math.max(1, 8 - r * 2) : 1, 1);
+  g.fillStyle = "#ffae42"; g.fillRect(cx - 2, by - 8, 3, 5); g.fillRect(cx + 12, by - 20, 2, 3);
+  ridge("#120a1e", 11, h - 9, 3);
+  g.fillStyle = "#120a1e"; for (let n = 0; n < 12; n++) { const x = R() * wA; branch(g, x, h - 10, -Math.PI / 2 + (R() - 0.5) * 0.4, 5 + R() * 6, 4, R, wA); }
   return c;
 }
 
-/** The cemetery gate with the ChiSetup sign. 520x360 logical, baked at 2x, baseline = bottom. */
-export function bakeGate() {
-  const K = 2, c = cv(520 * K, 360 * K), g = c.getContext("2d"), R = rng(33);
-  g.scale(K, K);
-  const stone = (x, y, w, h) => {
-    const gr = g.createLinearGradient(x, 0, x + w, 0); gr.addColorStop(0, "#4b5272"); gr.addColorStop(0.5, "#2d3148"); gr.addColorStop(1, "#171a2a");
-    g.fillStyle = gr; g.fillRect(x, y, w, h);
-    g.strokeStyle = "rgba(0,0,0,.35)"; g.lineWidth = 1.2;
-    for (let yy = y + 22, r = 0; yy < y + h; yy += 22, r++) { g.beginPath(); g.moveTo(x, yy); g.lineTo(x + w, yy); g.stroke(); for (let xx = x + (r % 2 ? 14 : 36); xx < x + w; xx += 44) { g.beginPath(); g.moveTo(xx, yy - 22); g.lineTo(xx, yy); g.stroke(); } }
-  };
-  // iron leaves
-  g.strokeStyle = "#0b0a12"; g.lineWidth = 5;
-  for (let x = 84; x <= 436; x += 20) { g.beginPath(); g.moveTo(x, 360); g.lineTo(x, 150 + Math.abs(x - 260) * 0.12); g.stroke(); g.fillStyle = "#0b0a12"; const y0 = 150 + Math.abs(x - 260) * 0.12; g.beginPath(); g.moveTo(x - 6, y0 + 2); g.lineTo(x, y0 - 18); g.lineTo(x + 6, y0 + 2); g.fill(); }
-  g.lineWidth = 7; for (const y of [210, 320]) { g.beginPath(); g.moveTo(70, y); g.lineTo(450, y); g.stroke(); }
-  g.lineWidth = 6; g.beginPath(); g.moveTo(70, 160); g.bezierCurveTo(100, 40, 200, 48, 260, 42); g.bezierCurveTo(320, 48, 420, 40, 450, 160); g.stroke();
-  g.lineWidth = 3; for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(260 + s * (60 + i * 54), 92 + i * 4, 16, 0, Math.PI * 1.6); g.stroke(); }
-  stone(0, 100, 72, 260); stone(448, 100, 72, 260);
-  for (const x of [-6, 442]) { const gr = g.createLinearGradient(x, 0, x + 84, 0); gr.addColorStop(0, "#5a6285"); gr.addColorStop(1, "#1d2133"); g.fillStyle = gr; g.fillRect(x, 84, 84, 22); }
-  for (const x of [36, 484]) { // pumpkin lanterns on pillars
-    const rg = g.createRadialGradient(x, 64, 2, x, 64, 56); rg.addColorStop(0, "rgba(255,160,40,.9)"); rg.addColorStop(1, "rgba(255,102,0,0)"); g.fillStyle = rg; g.fillRect(x - 56, 8, 112, 112);
-    g.fillStyle = "#ff7a12"; g.beginPath(); g.ellipse(x, 66, 26, 22, 0, 0, 7); g.fill(); g.fillStyle = "#ffeb8a";
-    g.beginPath(); g.moveTo(x - 14, 60); g.lineTo(x - 5, 60); g.lineTo(x - 10, 51); g.fill(); g.beginPath(); g.moveTo(x + 5, 60); g.lineTo(x + 14, 60); g.lineTo(x + 10, 51); g.fill();
-    g.beginPath(); g.moveTo(x - 14, 72); g.lineTo(x - 6, 78); g.lineTo(x, 72); g.lineTo(x + 6, 78); g.lineTo(x + 14, 72); g.lineTo(x + 10, 80); g.lineTo(x - 10, 80); g.fill();
-    g.fillStyle = "#4b3a1a"; g.fillRect(x - 3, 40, 6, 8);
+/** The cemetery gate with the ChiSetup sign: 130×90 art px. `fam` is the pixel font family. */
+export function bakeGate(fam, pumpkin10) {
+  const w = 130, h = 90, c = cv(w, h), g = c.getContext("2d"), R = rng(33);
+  const F = (x, y, ww, hh, col) => { g.fillStyle = col; g.fillRect(x, y, ww, hh); };
+  const archY = (x) => Math.round(38 - 28 * Math.pow(Math.sin(Math.PI * clamp((x - 16) / 98, 0, 1)), 0.8));
+  // iron bars + spikes
+  for (let x = 21; x <= 109; x += 5) { const y0 = archY(x) + 3; F(x, y0, 1, h - y0, "#0b0a12"); F(x, y0 - 3, 1, 3, "#0b0a12"); F(x - 1, y0 - 1, 3, 1, "#0b0a12"); }
+  for (let x = 16; x <= 114; x++) F(x, archY(x), 1, 2, "#0b0a12");
+  F(18, 52, 94, 2, "#0b0a12"); F(18, 80, 94, 2, "#0b0a12");
+  // pillars
+  for (const px0 of [0, 112]) {
+    F(px0, 25, 18, 65, "#463f66");
+    F(px0 + 12, 25, 6, 65, "#2b2644"); F(px0 + 16, 25, 2, 65, "#1c1830"); F(px0, 25, 2, 65, "#6a6392");
+    for (let y = 30; y < 90; y += 6) { F(px0, y, 18, 1, "#1c1830"); for (let x = px0 + ((y / 6) & 1 ? 4 : 10); x < px0 + 18; x += 12) F(x, y - 6, 1, 6, "#1c1830"); }
+    F(px0 - 2, 20, 22, 5, "#5d5682"); F(px0 - 2, 24, 22, 1, "#1c1830"); F(px0 - 2, 20, 22, 1, "#8a83b4");
+    F(px0 - 1, 25, 1, 1, "#0e0e10");
   }
-  // sign on chains
-  g.strokeStyle = "#1b1b26"; g.lineWidth = 3; g.setLineDash([5, 3]); for (const x of [190, 330]) { g.beginPath(); g.moveTo(x, 42 + (Math.abs(x - 260) > 0 ? 6 : 0)); g.lineTo(x, 86); g.stroke(); } g.setLineDash([]);
-  const pg = g.createLinearGradient(0, 84, 0, 146); pg.addColorStop(0, "#4a2d19"); pg.addColorStop(1, "#2a190d");
-  g.fillStyle = pg; g.beginPath(); g.roundRect(150, 84, 220, 62, 8); g.fill();
-  g.strokeStyle = "#ff6600"; g.lineWidth = 2.5; g.beginPath(); g.roundRect(155, 89, 210, 52, 5); g.stroke();
-  g.fillStyle = "#c9b27a"; for (const [x, y] of [[160, 94], [360, 94], [160, 136], [360, 136]]) { g.beginPath(); g.arc(x, y, 2.2, 0, 7); g.fill(); }
-  g.save(); g.font = '800 40px "Exo 2", sans-serif'; g.textAlign = "center"; g.textBaseline = "middle";
-  g.shadowColor = "#ff6600"; g.shadowBlur = 16; g.fillStyle = "#ffd9b0"; g.fillText("Chi", 216, 117); g.fillStyle = "#ff6600"; g.fillText("Setup", 307, 117);
-  g.shadowBlur = 0; g.restore();
-  // cobweb corner
-  g.strokeStyle = "rgba(220,225,255,.28)"; g.lineWidth = 1; g.beginPath();
-  for (let i = 0; i < 6; i++) { const a = (i / 5) * Math.PI / 2; g.moveTo(72, 108); g.lineTo(72 + Math.cos(a) * 60, 108 + Math.sin(a) * 60); }
-  for (let r = 14; r <= 56; r += 14) g.arc(72, 108, r, 0, Math.PI / 2); g.stroke();
+  for (const px0 of [3, 117]) g.drawImage(pumpkin10, px0, 11, 10, Math.round(10 * 104 / 120));
+  // sign
+  F(46, 8, 1, 14, "#1b1b26"); F(83, 8, 1, 14, "#1b1b26");
+  F(36, 20, 58, 18, "#0e0e10"); F(37, 21, 56, 16, "#ff6600"); F(38, 22, 54, 14, "#4a2d19"); F(38, 22, 54, 1, "#7b5230"); F(38, 29, 54, 1, "#3a230f");
+  for (const [x, y] of [[39, 23], [90, 23], [39, 34], [90, 34]]) F(x, y, 1, 1, "#e0c890");
+  g.font = `700 9px ${fam}`; g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillStyle = "#0e0e10"; g.fillText("Chi", 55, 30.5); g.fillText("Setup", 77, 30.5);
+  g.fillStyle = "#ffe2c0"; g.fillText("Chi", 54, 29.5); g.fillStyle = "#ff6600"; g.fillText("Setup", 76, 29.5);
+  g.fillStyle = "#c8cde8"; for (let i = 0; i < 5; i++) { F(18 + i * 2 + (i & 1), 27 + i, 1, 1, "#9aa0c8"); }
   return c;
 }
 
-export function bakeTree(seed, flip) {
-  const w = 760, h = 1080, c = cv(w, h), g = c.getContext("2d"), R = rng(seed); BW = w - 14;
-  g.fillStyle = g.strokeStyle = "#050409"; g.lineCap = "round"; g.lineJoin = "round";
-  // trunk
-  g.beginPath(); g.moveTo(-40, h); g.bezierCurveTo(40, h - 300, -20, h - 600, 70, h - 820);
-  g.lineTo(130, h - 800); g.bezierCurveTo(60, h - 560, 120, h - 300, 120, h); g.closePath(); g.fill();
-  const tips = [[100, h - 800, -1.3], [90, h - 700, -0.3], [75, h - 620, -2.1], [110, h - 520, -0.1]];
-  for (const [x, y, a] of tips) branch(g, x, y, a + (R() - 0.5) * 0.3, 150 + R() * 70, 22 + R() * 6, 7, R);
-  g.strokeStyle = "rgba(50,40,70,.9)"; g.lineWidth = 2; // moonlit rim
-  g.beginPath(); g.moveTo(-40, h); g.bezierCurveTo(40, h - 300, -20, h - 600, 70, h - 820); g.stroke();
-  g.strokeStyle = "#050409"; g.lineWidth = 2; // hanging vines
-  for (let i = 0; i < 5; i++) { const x = 140 + R() * 300, y = 60 + R() * 300, l = 80 + R() * 160; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + (R() - 0.5) * 30, y + l / 2, x + (R() - 0.5) * 20, y + l); g.stroke(); }
-  if (flip) { const f = cv(w, h), fg = f.getContext("2d"); fg.translate(w, 0); fg.scale(-1, 1); fg.drawImage(c, 0, 0); return f; }
-  return c;
+// ---------------------------------------------------------------- small sprites
+const BAT_A = ["oo.........oo", "ooo..o.o..ooo", ".ooooooooooo.", "..ooooooooo..", "....o...o...."];
+const BAT_B = ["....o...o....", "..ooooooooo..", ".ooooooooooo.", "ooo.ooooo.ooo", "o...........o"];
+export function bakeBats() {
+  return [BAT_A, BAT_B].map((rows) => raster(13, 5, (i, j) => (rows[j][i] === "o" ? hx("#140c20") : null)));
 }
 
-export function bakeLantern() {
-  const c = cv(40, 64), g = c.getContext("2d");
-  g.strokeStyle = "#0b0a10"; g.lineWidth = 2.5; g.beginPath(); g.moveTo(20, 0); g.lineTo(20, 10); g.stroke();
-  g.fillStyle = "#0b0a10"; g.fillRect(8, 8, 24, 6); g.fillRect(8, 52, 24, 6);
-  g.fillStyle = "#ffb44a"; g.fillRect(11, 14, 18, 38);
-  g.fillStyle = "#fff0b8"; g.fillRect(16, 20, 8, 26);
-  g.strokeStyle = "#0b0a10"; g.lineWidth = 2.5; g.strokeRect(11, 14, 18, 38); g.beginPath(); g.moveTo(20, 14); g.lineTo(20, 52); g.stroke();
+/** The zombie fist that holds the sign: 24×16 art px. */
+export function bakeHand() {
+  const skin = hx("#9bb98a"), hi = hx("#c4dcae"), sh = hx("#6a8c5e"), dk = hx("#42603c");
+  const body = (i, j) => (i >= 3 && i <= 20 && j >= 1 && j <= 10 && !((i === 3 || i === 20) && (j === 1 || j === 10))) || (i >= 20 && i <= 23 && j >= 4 && j <= 8) || (i >= 6 && i <= 17 && j >= 11 && j <= 15);
+  return raster(24, 16, (i, j) => {
+    if (!body(i, j)) return null;
+    if (!body(i - 1, j) || !body(i + 1, j) || !body(i, j - 1) || !body(i, j + 1)) return hx("#1c2a1a");
+    if (j >= 11) return i < 8 ? skin : i > 14 ? dk : sh;
+    if (j <= 6 && (i === 8 || i === 13 || i === 17)) return dk;
+    if (j === 2) return hi;
+    if (j >= 8) return sh;
+    return skin;
+  });
+}
+
+// ---------------------------------------------------------------- the ghost (mascot under a sheet, with a lantern)
+export const GHOST = { x0: -80, y0: -92, w: 160, h: 184 };
+const HEADS = { a: null, b: null };
+function prepHead(img, an) {
+  if (!img || !img.naturalWidth) return null;
+  const c = cv(img.naturalWidth, img.naturalHeight), g = c.getContext("2d"); g.drawImage(img, 0, 0);
+  return { d: g.getImageData(0, 0, c.width, c.height).data, w: c.width, h: c.height, an };
+}
+export function setHeads(a, b) { HEADS.a = prepHead(a, [39, 17]); HEADS.b = prepHead(b, [32, 17]); }
+const GH = ["#f6f8ff", "#d6e0ff", "#a8b4ec", "#7a82c8"].map(hx);
+const ghostCache = new Map();
+export function ghostSprite(frame, lean2, blink, level) {
+  const key = `${frame}|${lean2}|${blink ? 1 : 0}|${level}`;
+  let c = ghostCache.get(key); if (c) return c;
+  const unit = UNIT0 * 2 ** level, W = Math.ceil(GHOST.w / unit), H = Math.ceil(GHOST.h / unit), { x0, y0 } = GHOST;
+  const lean = lean2 / 2, tail = -lean * 26, ph = (frame * Math.PI) / 2, swing = Math.sin((frame * Math.PI) / 2) * 5, head = blink ? HEADS.b : HEADS.a, su = 1.8;
+  const sheet = (x, y) => {
+    if (y < -30) return inEll(x, y, 0, -30, 37, 42);
+    const s = clamp((y + 30) / 88, 0, 1), w = 36 + 24 * Math.pow(s, 1.2), shf = tail * Math.pow(s, 1.3);
+    if (Math.abs(x - shf) > w) return false;
+    return y <= 58 || y <= 58 + 15 * Math.abs(Math.sin((Math.PI * (x - shf)) / 20 + ph));
+  };
+  const arms = (x, y) => segDist(x, y, -34, -2, -62, 22) <= 7 || segDist(x, y, 34, -2, 64, -22 + swing) <= 7;
+  const solid = (x, y) => sheet(x, y) || arms(x, y) || inEll(x, y, 0, -28, 34, 33);
+  const flame = frame & 1 ? hx("#ffffe0") : hx("#fff0b8");
+  c = raster(W, H, (i, j) => {
+    const x = x0 + (i + 0.5) * unit, y = y0 + (j + 0.5) * unit;
+    // lantern hanging from the left hand
+    if (Math.abs(x + 66) <= 2.5 && y >= 20 && y < 32) return INK;
+    if (x >= -77 && x <= -55 && y >= 30 && y < 37) return INK;
+    if (x >= -77 && x <= -55 && y >= 64 && y < 71) return INK;
+    if (x >= -73 && x <= -59 && y >= 37 && y < 64) { if (Math.abs(x + 66) <= 1.4) return INK; if (Math.abs(x + 66) <= 4.5 && y > 41 && y < 60) return flame; return hx("#ffb44a"); }
+    if (!solid(x, y)) return null;
+    if (!solid(x - unit, y) || !solid(x + unit, y) || !solid(x, y - unit) || !solid(x, y + unit)) return OUT;
+    if (inEll(x, y, 0, -28, 27, 26)) {
+      if (head) {
+        const sx = Math.floor(x / su + head.an[0]), sy = Math.floor((y + 28) / su + head.an[1]);
+        if (sx >= 0 && sy >= 0 && sx < head.w && sy < head.h) { const o = (sy * head.w + sx) * 4; if (head.d[o + 3] > 128) return [head.d[o], head.d[o + 1], head.d[o + 2], 255]; }
+      }
+      return hx("#08060f");
+    }
+    if (inEll(x, y, 0, -28, 34, 33)) return x + y > 12 ? GH[1] : GH[0];
+    if (!sheet(x, y)) return x > 0 ? GH[1] : GH[0];
+    const s = clamp((y + 30) / 88, 0, 1), w = 36 + 24 * Math.pow(s, 1.2), shf = tail * Math.pow(s, 1.3), u = (x - shf + w) / (2 * w);
+    return GH[tone(u * 2.5 - 0.25 + s * 0.35, i, j)];
+  });
+  ghostCache.set(key, c);
   return c;
 }

@@ -29,8 +29,8 @@ function paint(f) {
 function wrap(x, fn) { for (const dx of [-N, 0, N]) for (const dy of [-N, 0, N]) { x.save(); x.translate(dx, dy); fn(); x.restore(); } }
 function done(cv) {
   const t = new THREE.CanvasTexture(cv);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
-  t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 1;
+  t.generateMipmaps = true; t.minFilter = THREE.NearestMipmapNearestFilter; t.magFilter = THREE.NearestFilter;
   return t;
 }
 const gray = (g, tint = [1, 1, 1]) => [g * tint[0], g * tint[1], g * tint[2]];

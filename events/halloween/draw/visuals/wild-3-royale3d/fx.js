@@ -135,7 +135,7 @@ export class FX {
         1.4 + Math.random() * 1.2, 0.35 + Math.random() * 0.35, color[0], color[1], color[2], 0.3, -0.4, 1);
     }
   }
-  puff(x, y, z, n = 14, size = 0.9, spd = 2.5, col = [0.32, 0.3, 0.3]) {
+  puff(x, y, z, n = 14, size = 0.9, spd = 2.5, col = [0.16, 0.08, 0.24]) {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * 6.283, k = spd * (0.4 + Math.random() * 0.8);
       this.dust.spawn(x, y + Math.random() * 0.3, z, Math.cos(a) * k, Math.random() * 1.2, Math.sin(a) * k, 0.7 + Math.random() * 0.7, size * (0.6 + Math.random() * 0.8), col[0], col[1], col[2], 2.2, -0.3);

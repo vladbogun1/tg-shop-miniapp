@@ -1,13 +1,14 @@
 // «Гарбузовий Рояль»: участники це гарбузові бійці й маркери на піксельній карті острова, зона шторму
 // стискається навколо заздалегідь заданого переможця, поки учасники б'ються між собою, а фінал це дуель трьох
 // на арені. Візуал лише показує: переможець обраний сервером до анімації і не може програти жоден бій.
+import * as px from "../pixel-kit.js";
 export const meta = { id: "wild-1-royale", title: "Гарбузовий Рояль", author: "agent" };
 
 const W = 1920, H = 1080;
 // Хронологія ролу (секунди). Зона: [початок стискання, кінець]. F = початок фіналу.
 const T = { LAND: 3.4, S: [[5.2, 10.2], [11.9, 16.7], [18.4, 22.4]], F: 22.4 };
 const ZR = [1250, 560, 270, 118];
-const COLORS = ["#ff6600", "#74b858", "#8a5fd0", "#d8452e", "#e0b84a"]; // pumpkins, orders, both, storm, gold
+const COLORS = ["#ff6600", "#7cff4f", "#8a3ffc", "#d8452e", "#ffd36b"]; // pumpkins, orders, both, storm, gold (palette of the scenes)
 const CSS_URL = new URL("./style.css", import.meta.url).href;
 const A = (n) => new URL(`./assets/${n}`, import.meta.url).href;
 const SPR = (n) => new URL(`../../assets/sprites/${n}.png`, import.meta.url).href;
@@ -39,18 +40,15 @@ export function mount(root, ctx) {
   document.head.append(link);
 
   root.classList.add("wr-root");
+  root.style.setProperty("--pxf", px.fontFamily());
   root.innerHTML = `
     <div class="wr-stage">
       <canvas class="wr-c"></canvas>
       <div class="wr-hud">
         <div class="wr-counter"><div class="wr-alive"><small class="wr-al">УЧАСНИКІВ</small><b class="wr-n">0</b></div><div class="wr-zone"><small class="wr-zk">РАУНД</small><span class="wr-zv">1/5</span></div></div>
-        <div class="wr-title"><i class="wr-sq"></i>ГАРБУЗОВИЙ РОЯЛЬ <i>·</i> ChiSetup Halloween</div>
         <div class="wr-prize"><canvas class="wr-chest" width="64" height="64"></canvas><div><small>РОЗІГРУЄМО</small><b class="wr-pn"></b><span class="wr-pi"></span></div></div>
         <div class="wr-feed"></div>
         <div class="wr-banner"></div>
-        <div class="wr-bottom"><span class="wr-st"></span><span class="wr-lg"><canvas width="28" height="32"></canvas>гарбузи</span><span class="wr-lg"><canvas width="28" height="32"></canvas>замовлення</span><span class="wr-lg"><canvas width="28" height="32"></canvas>обидва</span><span class="wr-lg"><canvas width="28" height="32"></canvas>вже виграли</span></div>
-        <div class="wr-bubble"></div>
-        <div class="wr-cam"><b>MAX CAM</b><img alt="" src="${SPR("hero_blink")}"></div>
         <div class="wr-flash"></div>
         <div class="wr-win"><div class="wr-kicker"></div><div class="wr-emblemwrap"><div class="wr-emblem"></div></div><div class="wr-name"></div><div class="wr-sub"></div><div class="wr-prizewin"><canvas class="wr-chest" width="64" height="64"></canvas><span>ВИГРАВ: <b></b></span></div><img class="wr-hero" alt="" src="${SPR("hero_wave")}"></div>
       </div>
@@ -59,7 +57,7 @@ export function mount(root, ctx) {
   const stage = $(".wr-stage"), canvas = $(".wr-c"), g = canvas.getContext("2d");
   const el = {
     n: $(".wr-n"), al: $(".wr-al"), zk: $(".wr-zk"), zv: $(".wr-zv"), zone: $(".wr-zone"), feed: $(".wr-feed"), banner: $(".wr-banner"),
-    st: $(".wr-st"), bubble: $(".wr-bubble"), flash: $(".wr-flash"), win: $(".wr-win"), kicker: $(".wr-kicker"), emblem: $(".wr-emblem"),
+    flash: $(".wr-flash"), win: $(".wr-win"), kicker: $(".wr-kicker"), emblem: $(".wr-emblem"),
     name: $(".wr-name"), sub: $(".wr-sub"), prize: $(".wr-prize"), pn: $(".wr-pn"), pi: $(".wr-pi"), prizewin: $(".wr-prizewin"), pwn: $(".wr-prizewin b"),
   };
 
@@ -104,37 +102,42 @@ export function mount(root, ctx) {
     return landMask.a[((y / H * landMask.h) | 0) * landMask.w + ((x / W * landMask.w) | 0)] === 1;
   };
 
-  const stamps = COLORS.map((c) => {
-    const s = document.createElement("canvas"); s.width = s.height = 48;
-    const x = s.getContext("2d"), [r, gg, b] = hex(c);
-    const gr = x.createRadialGradient(24, 24, 0, 24, 24, 24);
-    gr.addColorStop(0, `rgba(${r},${gg},${b},0.42)`); gr.addColorStop(0.3, `rgba(${r},${gg},${b},0.18)`);
-    gr.addColorStop(0.62, `rgba(${r},${gg},${b},0.05)`); gr.addColorStop(1, `rgba(${r},${gg},${b},0)`);
-    x.fillStyle = gr; x.fillRect(0, 0, 48, 48);
-    return s;
-  });
-  const flameStamp = (() => {
-    const s = document.createElement("canvas"); s.width = s.height = 64; const x = s.getContext("2d");
-    const gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
-    gr.addColorStop(0, "rgba(255,200,90,0.9)"); gr.addColorStop(0.35, "rgba(255,110,20,0.38)"); gr.addColorStop(1, "rgba(255,80,0,0)");
-    x.fillStyle = gr; x.fillRect(0, 0, 64, 64); return s;
-  })();
-  const fogLayers = [0, 1].map((k) => {
-    const s = document.createElement("canvas"); s.width = W / 2; s.height = H / 2; const x = s.getContext("2d");
-    const r = rng(900 + k * 17);
-    for (let i = 0; i < 22; i++) {
-      const bx = r() * s.width, by = r() * s.height, rad = 70 + r() * 120;
-      for (const ox of [-s.width, 0, s.width]) for (const oy of [-s.height, 0, s.height]) {
-        const gr = x.createRadialGradient(bx + ox, by + oy, 0, bx + ox, by + oy, rad);
-        gr.addColorStop(0, "rgba(160,175,195,0.04)"); gr.addColorStop(1, "rgba(160,175,195,0)");
-        x.fillStyle = gr; x.fillRect(bx + ox - rad, by + oy - rad, rad * 2, rad * 2);
+  // soft radial glows are gone: px.glow() draws dithered light pools. Fog = ordered-dither blobs on the 4 px grid.
+  const pglow = (x, y, size, color) => px.glow(g, x, y, size, color, 1);
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
+  const fogLayers = [["#7cff4f", 11], ["#8a3ffc", 23]].map(([col, seed]) => {
+    const w = 480, h = 270, field = new Float32Array(w * h), r = rng(seed * 77);
+    for (let i = 0; i < 16; i++) {
+      const bx = (r() * w) | 0, by = (r() * h) | 0, rad = 26 + ((r() * 40) | 0);
+      for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) {
+        const d = Math.hypot(dx, dy) / rad; if (d >= 1) continue;
+        field[((by + dy + h) % h) * w + ((bx + dx + w) % w)] += (1 - d) * (1 - d) * 1.2;
       }
     }
-    return s;
+    const c = px.canvas(w, h), x = c.getContext("2d"), im = x.createImageData(w, h), [cr, cg2, cb] = hex(col);
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const v = Math.min(2, field[j * w + i] * 1.5), st = Math.floor(v), lv = Math.min(2, st);
+      if (!lv) continue;
+      const o = (j * w + i) * 4; im.data[o] = cr; im.data[o + 1] = cg2; im.data[o + 2] = cb; im.data[o + 3] = lv * 127;
+    }
+    x.putImageData(im, 0, 0);
+    return c;
   });
-  let stormPat = null;
+  // vignettes as 3 hard dithered steps (pre-rendered at 480x270, blitted nearest)
+  const makeVig = (col, maxA) => {
+    const w = 480, h = 270, c = px.canvas(w, h), x = c.getContext("2d"), im = x.createImageData(w, h), [cr, cg2, cb] = hex(col);
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const d = Math.hypot((i + 0.5 - w / 2) / (w / 2), (j + 0.5 - h / 2) / (h / 2)) / 1.414, f = clamp((d - 0.42) / 0.58, 0, 1) * 3, st = Math.floor(f);
+      const lv = Math.min(3, st); if (!lv) continue;
+      const o = (j * w + i) * 4; im.data[o] = cr; im.data[o + 1] = cg2; im.data[o + 2] = cb; im.data[o + 3] = Math.round(255 * maxA * lv / 3);
+    }
+    x.putImageData(im, 0, 0); return c;
+  };
+  const vigInk = makeVig("#0e0e10", 0.6), vigRed = makeVig("#d8452e", 0.34);
+  // storm / radar are drawn into one 480x270 layer (hard pixels), then blitted
+  const SL = px.lowres(), lg = SL.g;
   const corpse = document.createElement("canvas"); corpse.width = W; corpse.height = H;
-  const cg = corpse.getContext("2d");
+  const cg = corpse.getContext("2d"); cg.imageSmoothingEnabled = false;
   const avatars = new Map();
   function avatarOf(url) {
     if (!url || !ctx.privacy?.avatars) return null;
@@ -151,55 +154,75 @@ export function mount(root, ctx) {
     c.save(); c.translate(x, y); if (rot) c.rotate(rot); if (flip) c.scale(-1, 1);
     c.drawImage(IM.atlas, sx, sy, w, h, -ax * w * sc, -ay * h * sc, w * sc, h * sc); c.restore();
   }
+  // small art: downsample the atlas sprite to a few art pixels, then blit it up nearest-neighbour
+  function pixIcon(cv, name, n) {
+    const a = AT && AT[name]; if (!a || !IM.atlas) return;
+    const t = px.canvas(n, n), tg = t.getContext("2d"); tg.imageSmoothingEnabled = true; tg.imageSmoothingQuality = "high";
+    const k = Math.min(n / a[2], n / a[3]), w = a[2] * k, h = a[3] * k;
+    tg.drawImage(IM.atlas, a[0], a[1], a[2], a[3], (n - w) / 2, (n - h) / 2, w, h);
+    const x = cv.getContext("2d"); x.clearRect(0, 0, cv.width, cv.height); x.imageSmoothingEnabled = false; x.drawImage(t, 0, 0, cv.width, cv.height);
+  }
   function legends() {
-    root.querySelectorAll(".wr-lg canvas").forEach((cv, i) => { const x = cv.getContext("2d"); x.clearRect(0, 0, 28, 32); aspr(x, "tok" + [0, 1, 2, 3][i], 14, 17, 0.3); });
+    root.querySelectorAll(".wr-lg canvas").forEach((cv, i) => {
+      const t = px.canvas(8, 8), tg = t.getContext("2d"), a = AT && AT["tok" + i]; if (!a || !IM.atlas) return;
+      tg.imageSmoothingEnabled = true; tg.drawImage(IM.atlas, a[0], a[1], a[2], a[3], 0.5, 0, 7, 8);
+      const x = cv.getContext("2d"); x.clearRect(0, 0, 28, 32); x.imageSmoothingEnabled = false; x.drawImage(t, 0, 0, 32, 32);
+    });
   }
-  function chests() {
-    root.querySelectorAll(".wr-chest").forEach((cv) => { const x = cv.getContext("2d"); x.clearRect(0, 0, 64, 64); aspr(x, "chest", 32, 32, 0.42); });
-  }
+  function chests() { root.querySelectorAll(".wr-chest").forEach((cv) => pixIcon(cv, "chest", 16)); }
 
   // ----- baked map -----
+  // terrain.webp is 480x270 (one art pixel = 4 px); landmarks and props go through a 480x270 layer so everything
+  // lands on the same grid, alpha is hardened (no soft fringes).
   function bakeMap() {
     const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
     const c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
-    if (IM.terrain) c.drawImage(IM.terrain, 0, 0, W, H); else { c.fillStyle = "#14101e"; c.fillRect(0, 0, W, H); }
-    // faint tactical grid
-    c.lineWidth = 1; c.strokeStyle = "rgba(255,255,255,0.045)";
-    for (let i = 1; i < 16; i++) { c.beginPath(); c.moveTo(i * 120 + 0.5, 0); c.lineTo(i * 120 + 0.5, H); c.stroke(); }
-    for (let j = 1; j < 9; j++) { c.beginPath(); c.moveTo(0, j * 120 + 0.5); c.lineTo(W, j * 120 + 0.5); c.stroke(); }
-    c.fillStyle = "rgba(255,255,255,0.22)"; c.font = '700 14px "Exo 2", sans-serif'; c.textAlign = "left"; c.textBaseline = "top";
-    for (let i = 0; i < 16; i++) c.fillText(String.fromCharCode(65 + i), i * 120 + 6, 5);
-    for (let j = 0; j < 9; j++) c.fillText(String(j + 1), 6, j * 120 + 6);
-    // objects sorted by y (props + landmarks)
+    if (IM.terrain) c.drawImage(IM.terrain, 0, 0, W, H); else { c.fillStyle = "#1a0f24"; c.fillRect(0, 0, W, H); }
+    // tactical grid: pixel ticks at the crossings + pixel-font coordinates
+    c.fillStyle = "rgba(244,241,234,0.16)";
+    for (let i = 1; i < 16; i++) for (let j = 1; j < 9; j++) { c.fillRect(i * 120 - 4, j * 120, 12, 4); c.fillRect(i * 120, j * 120 - 4, 4, 12); }
+    c.fillStyle = "rgba(244,241,234,0.3)"; c.font = px.font(14, 700); c.textAlign = "left"; c.textBaseline = "top";
+    for (let i = 0; i < 16; i++) c.fillText(String.fromCharCode(65 + i), i * 120 + 8, 8);
+    for (let j = 0; j < 9; j++) c.fillText(String(j + 1), 8, j * 120 + 8);
+    // objects sorted by y (props + landmarks) into the low-res layer
+    const L = px.lowres(), lc = L.begin(); lc.imageSmoothingEnabled = true; lc.imageSmoothingQuality = "high";
     const objs = [];
-    for (const p of PROPS) objs.push({ y: p[2], f: () => aspr(c, "prop" + p[0], p[1], p[2], p[3]) });
-    for (const [x, y] of TORCHES) objs.push({ y, f: () => aspr(c, "prop4", x, y, 0.8) });
-    for (const p of POIS) objs.push({ y: p.y + p.h / 2, f: () => { const im = IM["lm-" + p.k]; if (im) { c.fillStyle = "rgba(0,0,0,0.28)"; c.beginPath(); c.ellipse(p.x, p.y + p.h * 0.36, p.w * 0.46, p.h * 0.17, 0, 0, 6.283); c.fill(); c.drawImage(im, p.x - p.w / 2, p.y - p.h / 2, p.w, p.h); } } });
+    for (const p of PROPS) objs.push({ y: p[2], f: () => aspr(lc, "prop" + p[0], px.snap(p[1]), px.snap(p[2]), p[3]) });
+    for (const [x, y] of TORCHES) objs.push({ y, f: () => aspr(lc, "prop4", px.snap(x), px.snap(y), 0.8) });
+    for (const p of POIS) objs.push({ y: p.y + p.h / 2, f: () => {
+      const im = IM["lm-" + p.k]; if (!im) return;
+      const sy = px.snap(p.y + p.h * 0.36);
+      lc.fillStyle = "rgba(14,14,16,0.4)";
+      for (const [k, dy] of [[0.55, -8], [0.82, -4], [0.92, 0], [0.82, 4], [0.55, 8]]) { const ww = px.snap(p.w * 0.46 * 2 * k, 8); lc.fillRect(px.snap(p.x) - ww / 2, sy + dy, ww, 4); }
+      lc.drawImage(im, px.snap(p.x - p.w / 2), px.snap(p.y - p.h / 2), p.w, p.h);
+    } });
     objs.sort((a, b) => a.y - b.y).forEach((o) => o.f());
-    // name plates
-    c.textAlign = "center"; c.textBaseline = "middle"; c.font = '800 19px "Exo 2", sans-serif';
+    const lx = L.canvas.getContext("2d"), id = lx.getImageData(0, 0, L.canvas.width, L.canvas.height), dd = id.data;
+    for (let i = 3; i < dd.length; i += 4) dd[i] = dd[i] >= 110 ? 255 : 0;
+    lx.putImageData(id, 0, 0);
+    L.blit(c);
+    // name plates: pixel frames, pixel font
     for (const p of POIS) {
-      const t = p.n.toUpperCase(), tw = c.measureText(t).width + 26, x = p.x, y = Math.min(H - 150, p.y + p.h / 2 + 4), h = 30;
-      c.fillStyle = "rgba(14,14,16,0.82)"; c.fillRect(x - tw / 2, y - h / 2, tw, h);
-      c.fillStyle = "#ff6600"; c.fillRect(x - tw / 2, y + h / 2 - 3, tw, 3); c.fillRect(x - tw / 2 - 3, y - h / 2 + 3, 3, h - 6); c.fillRect(x + tw / 2, y - h / 2 + 3, 3, h - 6);
-      c.fillStyle = "#fff1de"; c.fillText(t, x, y);
+      const t = p.n.toUpperCase(), tw = px.snap(Math.ceil(px.measure(c, t, 19, 700, 1)) + 28), h = 32, x = px.snap(p.x - tw / 2), y = px.snap(Math.min(H - 150, p.y + p.h / 2 + 4) - h / 2);
+      px.box(c, x, y, tw, h, { fill: px.PAL.plum, frame: "#ff6600", shadow: false });
+      c.font = px.font(19, 700); c.textAlign = "center"; c.textBaseline = "middle"; if ("letterSpacing" in c) c.letterSpacing = "1px";
+      c.fillStyle = px.PAL.ink; c.fillText(t, px.snap(p.x) + 2, y + h / 2 + 3); c.fillStyle = "#fff1de"; c.fillText(t, px.snap(p.x), y + h / 2 + 1);
+      if ("letterSpacing" in c) c.letterSpacing = "0px";
     }
     map = cv; mapDirty = false;
   }
-  document.fonts?.load('800 19px "Exo 2"').then(() => { mapDirty = true; }).catch(() => {});
+  px.ensureFont().then(() => { mapDirty = true; labelCache.clear(); }).catch(() => {});
 
   // ----- ambient life -----
-  let shore = [], bubbles = [], bats = [];
+  let shore = [], bats = [];
   function initAmbient() {
     if (!AT) return;
     const r = rng(4242); shore = [];
     if (landMask) for (let k = 0; k < 9000 && shore.length < 170; k++) {
       const x = r() * W, y = r() * H; if (isLand(x, y)) continue;
       let near = false; for (let a = 0; a < 6 && !near; a++) { const q = a * 1.047; if (isLand(x + Math.cos(q) * 36, y + Math.sin(q) * 36)) near = true; }
-      if (near || r() < 0.06) shore.push({ x, y, ph: r() * 6.28, sp: 0.6 + r() * 1.5, s: r() < 0.3 ? 4 : 3 });
+      if (near || r() < 0.06) shore.push({ x, y, ph: r() * 6.28, sp: 0.6 + r() * 1.5, s: 4 });
     }
-    const sw = POIS[3]; bubbles = [];
-    for (let i = 0; i < 0; i++) bubbles.push({ x: sw.x - 20 + (r() - 0.5) * 300, y: sw.y - 10 + (r() - 0.5) * 120, ph: r() * 3, per: 2 + r() * 2.2 });
     bats = [];
     for (let i = 0; i < 3; i++) { const p = POIS[[2, 1, 5][i]]; bats.push({ cx: p.x, cy: p.y - 40, rx: 150 + r() * 120, ry: 50 + r() * 50, sp: (0.4 + r() * 0.5) * (r() < 0.5 ? -1 : 1), ph: r() * 6.28, fp: r() * 3 }); }
   }
@@ -236,7 +259,7 @@ export function mount(root, ctx) {
     q.clear = () => { q.items = []; q.cur = null; q.until = 0; node.classList.remove(activeCls); };
     return q;
   }
-  const bq = makeQueue(el.banner, "on", 2.7), sq = makeQueue(el.bubble, "on", 2.8);
+  const bq = makeQueue(el.banner, "on", 2.7), sq = { clear() {}, tick() {}, push() {} }; // no host bubble any more
   const banner = (t, cls, hold, prio, urgent) => bq.push(t, cls, hold, prio, urgent);
   const say = (t, hold, prio) => sq.push(t, "", hold, prio);
   function flash(cls = "") {
@@ -250,7 +273,7 @@ export function mount(root, ctx) {
     const row = document.createElement("div");
     row.className = "wr-kf " + cls;
     const mk = (c, t) => { const s = document.createElement("span"); s.className = c; s.textContent = t; row.append(s); return s; };
-    if (icon) mk("ic", icon);
+    if (icon) mk("ic ic-" + (icon === "\u2715" ? "x" : "v"), "");
     if (a) mk("k", a);
     if (mid) mk("m", mid);
     mk("v", b);
@@ -262,7 +285,7 @@ export function mount(root, ctx) {
   // ----- prize -----
   function setPrize(p) {
     prize = p && p.name ? p : null;
-    el.prize.classList.toggle("on", !!prize);
+    el.prize.style.display = ""; el.prize.classList.toggle("on", !!prize);
     if (prize) { el.pn.textContent = prize.name; el.pi.textContent = (prize.items || []).slice(0, 4).join(" · "); el.pi.style.display = prize.items?.length ? "" : "none"; }
   }
 
@@ -315,27 +338,31 @@ export function mount(root, ctx) {
   }
   function hudIdle() {
     el.al.textContent = "УЧАСНИКІВ"; el.n.textContent = N; hudAlive = N;
-    el.zk.textContent = "ЕФІР"; el.zv.textContent = "РОЗІГРАШ";
-    const tix = dots.reduce((s, d) => s + (d.won ? 0 : d.p.tickets || 0), 0);
-    el.st.textContent = `Учасники: ${N} · Квитки: ${tix}`;
+    el.zone.style.display = "none";
   }
 
   // ----- names plates (cached canvases) -----
   const labelCache = new Map();
+  const scratch = document.createElement("canvas").getContext("2d");
+  const STAR = ["..#..", "..#..", "#####", ".###.", "##.##"]; // 5x5 pixel star
   function labelOf(d, hot) {
     const av = avatarOf(d.p.avatar);
     const key = d.id + (hot ? "h" : "n") + (av ? "a" : "") + (d.won ? "w" : "");
     let l = labelCache.get(key);
     if (l) return l;
-    const fs = hot ? 22 : 15, text = (d.won ? "★ " : "") + d.p.name, pad = 7, aw = av ? fs + 4 : 0;
-    const m = document.createElement("canvas").getContext("2d"); m.font = `800 ${fs}px "Exo 2", sans-serif`;
-    const tw = Math.ceil(m.measureText(text).width), w = tw + pad * 2 + aw, h = fs + 10, k = 2;
-    const cv = document.createElement("canvas"); cv.width = w * k; cv.height = h * k; const c = cv.getContext("2d"); c.scale(k, k);
-    c.fillStyle = hot ? "rgba(14,14,16,0.9)" : "rgba(14,14,16,0.72)"; c.fillRect(2, 0, w - 4, h); c.fillRect(0, 2, w, h - 4);
-    c.fillStyle = d.won ? "#ffd24a" : hot ? "#ff6600" : COLORS[d.col || 0]; c.fillRect(2, h - 2, w - 4, 2);
-    if (av) { c.save(); c.beginPath(); c.arc(pad + fs / 2 + 1, h / 2 - 1, fs / 2 + 1, 0, 6.283); c.clip(); try { c.drawImage(av, pad - 1, h / 2 - fs / 2 - 2, fs + 2, fs + 2); } catch (e) { /* ignore */ } c.restore(); }
-    c.font = `800 ${fs}px "Exo 2", sans-serif`; c.textBaseline = "middle"; c.fillStyle = d.won ? "#ffe9a8" : hot ? "#fff" : "#ffe9d6"; c.fillText(text, pad + aw, h / 2 - 1);
-    l = { cv, w, h }; labelCache.set(key, l);
+    const fs = hot ? 22 : 15, p = 2, pad = 8, star = d.won ? 14 : 0, aw = av ? Math.round(fs * 0.8 / p) * p + 8 : 0, m = 2 * p;
+    scratch.font = px.font(fs, 700);
+    const tw = Math.ceil(scratch.measureText(d.p.name).width), w = tw + pad * 2 + aw + star, h = fs + 14;
+    const cv = px.canvas(w + m * 2, h + m * 2), c = cv.getContext("2d"); c.imageSmoothingEnabled = false;
+    const frame = d.won ? "#ffd36b" : hot ? "#ff6600" : COLORS[d.col || 0];
+    px.box(c, m, m, w, h, { fill: hot ? "#1a0f24" : "#1a0f24e8", frame: hot ? frame : frame, p, shadow: false, bevel: false });
+    let x = m + pad;
+    if (star) { c.fillStyle = "#ffd36b"; STAR.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === "#") c.fillRect(x + i * p, m + h / 2 - 5 + j * p, p, p); })); x += star; }
+    if (av) { const sz = aw - 8; px.photo(c, av, x, m + (h - sz) / 2, sz, p); px.ring(c, x, m + (h - sz) / 2, sz, sz, frame, 1); x += aw; }
+    c.font = px.font(fs, 700); c.textBaseline = "middle"; c.textAlign = "left";
+    c.fillStyle = "#0e0e10"; c.fillText(d.p.name, x + 2, m + h / 2 + 2);
+    c.fillStyle = d.won ? "#ffe9a8" : hot ? "#ffffff" : "#f4e8da"; c.fillText(d.p.name, x, m + h / 2);
+    l = { cv, w: cv.width, h: cv.height }; labelCache.set(key, l);
     if (labelCache.size > 500) labelCache.delete(labelCache.keys().next().value);
     return l;
   }
@@ -355,10 +382,14 @@ export function mount(root, ctx) {
   }
   function fx(kind, x, y, sc = 1, flip = false, rot = 0, fps = 14) { if (fxs.length < 320) fxs.push({ kind, x, y, sc, flip, rot, t: 0, fps }); }
   function mark(d) {
-    if (d.fighter) { cg.globalAlpha = 0.55; aspr(cg, "prop9", d.x, d.y + 4, 0.34); cg.globalAlpha = 1; }
-    else { cg.fillStyle = "rgba(0,0,0,0.35)"; cg.fillRect(Math.round(d.x - 2), Math.round(d.y - 1), 4, 3); }
+    const x = px.snap(d.x), y = px.snap(d.y + 4);
+    if (d.fighter) {
+      cg.globalAlpha = 0.8; cg.fillStyle = "#0e0e10"; cg.fillRect(x - 12, y - 24, 24, 24); cg.fillRect(x - 8, y - 28, 16, 4);
+      cg.fillStyle = "#3d2456"; cg.fillRect(x - 8, y - 24, 16, 20); cg.fillRect(x - 4, y - 28 + 0, 8, 4);
+      cg.fillStyle = "#5a3a7a"; cg.fillRect(x - 8, y - 24, 4, 20); cg.fillStyle = "#0e0e10"; cg.fillRect(x - 4, y - 16, 8, 4); cg.fillRect(x - 4, y - 12, 4, 4); cg.globalAlpha = 1;
+    } else { cg.fillStyle = "rgba(14,14,16,0.55)"; cg.fillRect(x - 4, y - 4, 8, 4); }
   }
-  const sizeOf = (d) => [54, 61, 70, 80][d.tier] * fmult;
+  const sizeOf = (d) => px.snap([54, 61, 70, 80][d.tier] * fmult, 8);
   const tokSize = (d) => [17, 21, 27, 33][d.tier] * mult;
   function killDot(v, by, cause) {
     if (!v.alive || v.role === 1) return;
@@ -496,9 +527,8 @@ export function mount(root, ctx) {
       st = 0; phase = "roll"; lastStage = -1; lastFight = 0; tokQuota = 0;
       bq.clear(); sq.clear();
       el.win.classList.remove("on"); el.al.textContent = "ЖИВИХ"; el.n.textContent = N; hudAlive = N;
-      el.zk.textContent = `РАУНД ${info.round}/${info.totalRounds}`; el.zv.textContent = "ВИСАДКА";
-      el.st.textContent = `Квитки: ${info.totalTickets} · seed ${String(info.seedHash || "").slice(0, 8)}`;
-      banner("ВИСАДКА", "green", 2.8, 2); say("ПОЇХАЛИ!!!", 2.8, 2);
+      el.zone.style.display = ""; el.zk.textContent = "ЗОНА"; el.zv.textContent = "ВИСАДКА";
+        banner("ВИСАДКА", "green", 2.8, 2); say("ПОЇХАЛИ!!!", 2.8, 2);
       ctx.sound?.("drum"); ctx.sound?.("whoosh"); flash();
     });
   }
@@ -507,21 +537,25 @@ export function mount(root, ctx) {
     phase = "win";
     const w = winnerDot.p;
     bq.clear(); sq.clear();
-    el.kicker.textContent = `ПЕРЕМОЖЕЦЬ · РАУНД ${info.round}/${info.totalRounds}`;
+    el.kicker.textContent = "ПЕРЕМОЖЕЦЬ";
     el.name.textContent = w.name;
-    el.name.style.fontSize = Math.min(128, Math.floor((W - 160) / (Math.max(6, w.name.length) * 0.62))) + "px";
-    const chance = info.totalTickets ? ((w.tickets / info.totalTickets) * 100) : 0;
-    el.sub.innerHTML = `${w.handle ? w.handle + " · " : ""}Квитки: <b>${w.tickets}</b> · шанс ${chance < 10 ? chance.toFixed(1) : Math.round(chance)}%`;
+    el.prize.classList.remove("on"); el.prize.style.display = "none";
+    el.name.style.fontSize = px.fit(scratch, w.name, 128, 1300, 700) + "px";
+    el.sub.innerHTML = `${w.handle ? w.handle + " · " : ""}<b>${w.tickets}</b> ${px.ticketsWord(w.tickets)}`;
     el.emblem.innerHTML = "";
     const av = ctx.privacy?.avatars && w.avatar;
-    if (av) { const im = new Image(); im.src = w.avatar; im.onerror = () => { el.emblem.textContent = initial(w.name); }; el.emblem.append(im); }
+    if (av) {
+      const im = new Image(), cv = px.canvas(300, 300); el.emblem.append(cv);
+      im.onload = () => { const x = cv.getContext("2d"); x.imageSmoothingEnabled = false; if (!px.photo(x, im, 0, 0, 300, 12)) el.emblem.textContent = initial(w.name); };
+      im.onerror = () => { el.emblem.textContent = initial(w.name); }; im.src = w.avatar;
+    }
     else el.emblem.textContent = initial(w.name);
-    el.prizewin.classList.toggle("on", !!prize); if (prize) el.pwn.textContent = prize.name;
+    el.prizewin.classList.toggle("on", !!prize); if (prize) el.pwn.textContent = px.prizeLabel(prize.name);
     el.win.classList.add("on");
     el.al.textContent = "ЖИВИХ"; el.n.textContent = 1; hudAlive = 1;
-    el.zk.textContent = "ПЕРЕМОГА"; el.zv.textContent = "#1"; el.zone.classList.remove("hot");
-    if (!ctx.reducedMotion) for (let i = 0; i < 50; i++) confetti.push({ x: Math.random() * W, y: -Math.random() * H * 0.8, vy: 120 + Math.random() * 260, vx: (Math.random() - 0.5) * 120, c: COLORS[(Math.random() * 3) | 0], s: 4 + ((Math.random() * 3) | 0) * 2, rot: Math.random() * 6 });
-    ctx.sound?.("win"); ctx.sound?.("boom"); say("ГГ!!! ВІТАЮ!!!", 4.5, 2);
+    el.zone.style.display = "none"; el.zone.classList.remove("hot");
+    if (!ctx.reducedMotion) for (let i = 0; i < 50; i++) confetti.push({ x: Math.random() * W, y: -Math.random() * H * 0.8, vy: 120 + Math.random() * 260, vx: (Math.random() - 0.5) * 120, c: [COLORS[0], COLORS[1], COLORS[2], COLORS[4], "#f4f1ea"][(Math.random() * 5) | 0], s: Math.random() < 0.7 ? 4 : 8, rot: Math.random() * 6 });
+    ctx.sound?.("win"); ctx.sound?.("boom"); 
     flash("white"); shake = ctx.reducedMotion ? 0 : 16;
     setTimeout(() => { const r = rollResolve; rollResolve = null; r?.(); }, 700);
   }
@@ -643,9 +677,9 @@ export function mount(root, ctx) {
 
   // ----- camera -----
   // Final arena: the island fades away, the arena alone sits in the middle of the screen (0 → 1).
-  const AR_FROM = T.F - 1.8, AR_LEN = 1.6;
+  const AR_FROM = T.F - 1.8, AR_LEN = 1.6, ARW = 350; // arena.webp is 175 px wide: exactly x2
   function arenaU() { return phase === "win" ? 1 : phase === "roll" ? smooth(clamp((st - AR_FROM) / AR_LEN, 0, 1)) : 0; }
-  function arenaScale() { const ah = IM.arena ? 360 * IM.arena.height / IM.arena.width : 300; return Math.min(1180 / 360, (H * 0.74) / ah); }
+  function arenaScale() { const ah = IM.arena ? ARW * IM.arena.height / IM.arena.width : 300; return Math.min(1180 / ARW, (H * 0.74) / ah); }
   function camTarget(z) {
     if (phase === "win") return { x: winnerDot.x, y: winnerDot.y, s: 2.6 };
     if (phase !== "roll") return { x: W / 2, y: H / 2, s: 1 };
@@ -667,16 +701,65 @@ export function mount(root, ctx) {
     let row = d.col; if (phase === "win" && d === winnerDot) row = 3;
     let fr = 0;
     if (d.shoot > 0) fr = 3; else if (d.mv > 0 || chute) fr = chute ? 0 : 1 + (((now * 8 + d.ph) | 0) & 1);
-    const bob = chute ? 0 : Math.abs(Math.sin(now * 7 + d.ph)) * (d.mv > 0 ? 3 : 0);
+    const bob = chute ? 0 : (d.mv > 0 && Math.abs(Math.sin(now * 7 + d.ph)) > 0.6 ? 4 : 0);
     g.globalAlpha = a;
-    // ground shadow
-    g.fillStyle = "rgba(0,0,0,0.35)"; g.beginPath(); g.ellipse(x, d.y + 2, s * 0.26, s * 0.08, 0, 0, 6.283); g.fill();
-    const sw = d.hurt > 0 ? (Math.random() - 0.5) * 3 : 0;
-    g.save(); g.translate(x + sw, y - bob); if (d.face < 0) g.scale(-1, 1);
-    g.drawImage(IM.fighters, fr * 192, row * 192, 192, 192, -s * 0.46, -s * 0.97, s, s);
-    if (d.hurt > 0 && ((now * 30) | 0) % 2 === 0) { g.globalCompositeOperation = "lighter"; g.globalAlpha = 0.4; g.drawImage(IM.fighters, fr * 192, row * 192, 192, 192, -s * 0.46, -s * 0.97, s, s); g.globalCompositeOperation = "source-over"; }
+    // hard pixel ground shadow
+    { const w = px.snap(s * 0.52, 8), cx = px.snap(x), sy = px.snap(d.y + 2); g.fillStyle = "rgba(14,14,16,0.5)"; g.fillRect(cx - w * 0.3, sy - 4, w * 0.6, 4); g.fillRect(cx - w / 2, sy, w, 4); g.fillRect(cx - w * 0.3, sy + 4, w * 0.6, 4); }
+    const sw = d.hurt > 0 ? (((now * 30) | 0) % 2 ? 4 : -4) : 0;
+    g.save(); g.translate(Math.round(x + sw), Math.round(y - bob)); if (d.face < 0) g.scale(-1, 1);
+    g.drawImage(IM.fighters, fr * 64, row * 64, 64, 64, -Math.round(s * 0.46), -Math.round(s * 0.97), s, s);
+    if (d.hurt > 0 && ((now * 30) | 0) % 2 === 0) { g.globalCompositeOperation = "lighter"; g.globalAlpha = 0.4; g.drawImage(IM.fighters, fr * 64, row * 64, 64, 64, -Math.round(s * 0.46), -Math.round(s * 0.97), s, s); g.globalCompositeOperation = "source-over"; }
     g.restore(); g.globalAlpha = 1;
     if (chute) aspr(g, "chute", x, y - s * 0.55, s / 130);
+  }
+  // pixel circle of the low-res layer: calls fn(x, y) for every pixel of the ring (midpoint algorithm)
+  function ringPx(cx, cy, r, fn) {
+    let x = r, y = 0, e = 1 - r;
+    while (x >= y) {
+      for (const [a, b] of [[x, y], [y, x], [-y, x], [-x, y], [-x, -y], [-y, -x], [y, -x], [x, -y]]) { const px_ = cx + a, py_ = cy + b; if (px_ >= 0 && px_ < 480 && py_ >= 0 && py_ < 270) fn(px_, py_); }
+      y++; if (e < 0) e += 2 * y + 1; else { x--; e += 2 * (y - x) + 1; }
+    }
+  }
+  // the storm: hard-edged span fills + dither + pixel wall, all on the 480x270 grid
+  function drawStorm(z, ka, cx, cy, sx, sy) {
+    const k = cam.s / 4, ox = (-cx * cam.s + W / 2 + sx) / 4, oy = (-cy * cam.s + H / 2 + sy) / 4;
+    const zx = Math.round(z.x * k + ox), zy = Math.round(z.y * k + oy), zr = Math.max(1, Math.round(z.r * k));
+    lg.setTransform(1, 0, 0, 1, 0, 0); lg.clearRect(0, 0, 480, 270); lg.imageSmoothingEnabled = false;
+    const spans = (style, alpha) => {
+      lg.globalAlpha = alpha; lg.fillStyle = style;
+      for (let y = 0; y < 270; y++) {
+        const dy = y + 0.5 - zy;
+        if (Math.abs(dy) >= zr) { lg.fillRect(0, y, 480, 1); continue; }
+        const half = Math.floor(Math.sqrt(zr * zr - dy * dy));
+        if (zx - half > 0) lg.fillRect(0, y, zx - half, 1);
+        if (zx + half < 480) lg.fillRect(zx + half, y, 480 - zx - half, 1);
+      }
+    };
+    spans("#1a0f24", 0.7);
+    lg.globalAlpha = 1;
+    // wall: 2 art pixels thick, stepped flicker of orange / amber / red; hot while shrinking
+    const t = Math.floor(now * 8), hot = z.shrink;
+    const cols = hot ? ["#ff6600", "#d8452e", "#ffb15c", "#d8452e"] : ["#c8641e", "#7a2c00", "#ff6600", "#7a2c00"];
+    const buckets = [[], [], [], []];
+    ringPx(zx, zy, zr, (x, y) => buckets[(((x + y) >> 1) + t) & 3].push(x, y));
+    ringPx(zx, zy, zr + 1, (x, y) => { if (((x ^ y) & 1) === 0) buckets[((x >> 1) + t) & 3].push(x, y); });
+    buckets.forEach((b, i) => { lg.fillStyle = cols[i]; for (let j = 0; j < b.length; j += 2) lg.fillRect(b[j], b[j + 1], 1, 1); });
+    if (z.next) {
+      const nx = Math.round(z.next.x * k + ox), ny = Math.round(z.next.y * k + oy), nr = Math.max(1, Math.round(z.next.r * k));
+      let i = 0; lg.fillStyle = "#f4f1ea";
+      ringPx(nx, ny, nr, (x, y) => { i++; if ((((i >> 2) + Math.floor(now * 4)) & 1) === 0) lg.fillRect(x, y, 1, 1); });
+    }
+    g.save(); g.setTransform(bk, 0, 0, bk, 0, 0); g.imageSmoothingEnabled = false; g.globalAlpha = ka; g.drawImage(SL.canvas, 0, 0, W, H); g.restore();
+  }
+  function drawRadar() {
+    lg.setTransform(1, 0, 0, 1, 0, 0); lg.clearRect(0, 0, 480, 270); lg.imageSmoothingEnabled = false;
+    [[0, "#ff6600", 0.55], [-0.05, "#ffb15c", 0.22], [-0.1, "#ffb15c", 0.12], [-0.15, "#ffb15c", 0.06]].forEach(([da, col, al]) => {
+      const a = radarA + da, n = 330; lg.fillStyle = col; lg.globalAlpha = al;
+      let lx = -1, ly = -1;
+      for (let i = 0; i < n; i++) { const x = Math.round(240 + Math.cos(a) * i), y = Math.round(135 + Math.sin(a) * i); if (x === lx && y === ly) continue; lx = x; ly = y; if ((i & 7) < 5) lg.fillRect(x, y, 1, 1); }
+    });
+    lg.globalAlpha = 1;
+    g.save(); g.setTransform(bk, 0, 0, bk, 0, 0); g.imageSmoothingEnabled = false; g.drawImage(SL.canvas, 0, 0, W, H); g.restore();
   }
   function frame(t) {
     if (!alive) return;
@@ -720,44 +803,31 @@ export function mount(root, ctx) {
     const sx = shake ? (Math.random() - 0.5) * shake : 0, sy = shake ? (Math.random() - 0.5) * shake : 0;
     const S = bk * cam.s;
     g.setTransform(S, 0, 0, S, (-cx * cam.s + W / 2 + sx) * bk, (-cy * cam.s + H / 2 + sy) * bk);
-    g.imageSmoothingEnabled = cam.s < 1.05;
+    g.imageSmoothingEnabled = false;
     if (ka > 0.01) {
     g.globalAlpha = ka;
     if (map) { g.drawImage(map, 0, 0); g.drawImage(corpse, 0, 0); } else { g.fillStyle = "#14101e"; g.fillRect(0, 0, W, H); }
     g.globalAlpha = 1;
 
-    // water glints, swamp bubbles, torch flames, manor glow
-    for (const s of shore) { const a = 0.5 + 0.5 * Math.sin(now * s.sp + s.ph); if (a < 0.55) continue; g.fillStyle = `rgba(150,170,195,${(a - 0.5) * 0.8 * ka})`; g.fillRect(s.x, s.y, s.s, s.s); g.fillRect(s.x - s.s, s.y + 1, s.s * 3, 1); }
+    // water glints, torch flames, manor glow (dithered pools, not soft gradients)
+    for (const s of shore) { const a = 0.5 + 0.5 * Math.sin(now * s.sp + s.ph); if (a < 0.6) continue; g.fillStyle = `rgba(150,130,255,${0.55 * ka})`; g.fillRect(px.snap(s.x), px.snap(s.y), 4, 4); if (a > 0.85) g.fillRect(px.snap(s.x) - 4, px.snap(s.y), 12, 4); }
     g.globalCompositeOperation = "lighter";
-    for (const b of bubbles) { const u = ((now + b.ph) % b.per) / b.per; g.strokeStyle = `rgba(150,255,110,${0.5 * (1 - u)})`; g.lineWidth = 1.5; g.beginPath(); g.arc(b.x, b.y - u * 14, 1 + u * 5, 0, 6.283); g.stroke(); }
-    for (let i = 0; i < TORCHES.length; i++) { const [x, y] = TORCHES[i], f = 0.8 + 0.2 * Math.sin(now * 11 + i * 2.1) + 0.1 * Math.sin(now * 23 + i); g.globalAlpha = 0.55 * f * ka; g.drawImage(flameStamp, x - 40 * f, y - 98 - 40 * f, 80 * f, 80 * f); }
-    { const m = POIS[2]; g.globalAlpha = (0.05 + 0.02 * Math.sin(now * 2.3)) * ka; g.drawImage(flameStamp, m.x - 160, m.y - 30, 320, 240); }
+    for (let i = 0; i < TORCHES.length; i++) { const [x, y] = TORCHES[i], f = 0.8 + 0.2 * Math.sin(now * 11 + i * 2.1) + 0.1 * Math.sin(now * 23 + i); g.globalAlpha = 0.8 * ka; pglow(x, y - 98, 96 * f, "#ff9a2a"); }
+    { const m = POIS[2]; g.globalAlpha = (0.28 + 0.1 * Math.sin(now * 2.3)) * ka; pglow(m.x, m.y + 90, 300, "#ff8a3d"); }
     g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
-    // fog (under characters)
-    g.globalAlpha = ka;
-    for (let i = 0; i < 2; i++) { const ox = ((now * (6 + i * 5) * (i ? -1 : 1)) % W + W) % W; g.drawImage(fogLayers[i], ox, 0, W, H); g.drawImage(fogLayers[i], ox - W, 0, W, H); }
+    // fog (under characters): two dithered layers drifting in whole art pixels
+    // (fog layers removed: flat translucent blobs read as blotches; the terrain carries the green mood)
     g.globalAlpha = 1;
     }
 
     // radar
-    if (idle) {
-      if (g.createConicGradient) {
-        const cgr = g.createConicGradient(radarA - 0.5, W / 2, H / 2);
-        cgr.addColorStop(0, "rgba(200,210,225,0)"); cgr.addColorStop(0.08, "rgba(200,210,225,0.05)"); cgr.addColorStop(0.0805, "rgba(200,210,225,0)");
-        g.fillStyle = cgr; g.beginPath(); g.arc(W / 2, H / 2, 1300, 0, 6.283); g.fill();
-      }
-      g.strokeStyle = "rgba(255,102,0,0.22)"; g.lineWidth = 2; g.beginPath(); g.moveTo(W / 2, H / 2); g.lineTo(W / 2 + Math.cos(radarA) * 1300, H / 2 + Math.sin(radarA) * 1300); g.stroke();
-    }
+    if (idle) drawRadar();
 
     // final arena
-    if (AR > 0 && zones[3]) {
-      const az = zones[3], gr = g.createRadialGradient(az.x, az.y, 20, az.x, az.y, 330);
-      gr.addColorStop(0, `rgba(255,102,0,${0.16 * AR})`); gr.addColorStop(0.55, `rgba(120,70,40,${0.07 * AR})`); gr.addColorStop(1, "rgba(0,0,0,0)");
-      g.fillStyle = gr; g.fillRect(az.x - 340, az.y - 340, 680, 680);
-    }
+    if (AR > 0 && zones[3]) { g.globalCompositeOperation = "lighter"; g.globalAlpha = 0.5 * AR; pglow(zones[3].x, zones[3].y, 720, "#ff6600"); g.globalAlpha = 1; g.globalCompositeOperation = "source-over"; }
     if (phase !== "idle" && zones[3] && IM.arena && (st > T.S[2][0] - 0.5 || phase === "win")) {
-      const u = phase === "win" ? 1 : clamp((st - (T.S[2][0] - 0.5)) / 2.2, 0, 1), az = zones[3], aw = 360 * u, ah = aw * (IM.arena.height / IM.arena.width);
-      g.globalAlpha = u; g.drawImage(IM.arena, az.x - aw / 2, az.y - ah * 0.52, aw, ah); g.globalAlpha = 1;
+      const u = phase === "win" ? 1 : Math.ceil(clamp((st - (T.S[2][0] - 0.5)) / 2.2, 0, 1) * 6) / 6, az = zones[3], aw = ARW * u, ah = aw * (IM.arena.height / IM.arena.width);
+      g.globalAlpha = u; g.drawImage(IM.arena, px.snap(az.x - aw / 2), px.snap(az.y - ah * 0.52), aw, ah); g.globalAlpha = 1;
     }
 
     // tokens (many)
@@ -770,11 +840,11 @@ export function mount(root, ctx) {
       const age = now - d.spawn; let yo = 0, a = 1, sc = 1;
       if (d.spawn && age < d.dur) { const u = age / d.dur, e = 1 - (1 - u) * (1 - u); yo = -(1 - e) * 240; sc = 1 + (1 - e) * 0.9; a = Math.min(1, u * 3); }
       const sz = tokSize(d) * sc, name = d.won ? "tok3" : "tok" + d.col, outside = d.out > 0.05;
-      if (showGlow || d.tier >= 2) { g.globalCompositeOperation = "lighter"; g.globalAlpha = (d.won ? 0.5 : 0.6) * a; const gs = sz * (d.tier >= 2 ? 2.2 : 1.8); g.drawImage(stamps[outside ? 3 : d.won ? 4 : d.col], d.x - gs / 2, d.y + yo - gs / 2, gs, gs); g.globalCompositeOperation = "source-over"; }
+      if (showGlow || d.tier >= 2) { g.globalCompositeOperation = "lighter"; g.globalAlpha = (d.won ? 0.5 : 0.6) * a; const gs = sz * (d.tier >= 2 ? 2.2 : 1.8); pglow(d.x, d.y + yo, gs, COLORS[outside ? 3 : d.won ? 4 : d.col]); g.globalCompositeOperation = "source-over"; }
       g.globalAlpha = (d.won ? 0.9 : a) * ka;
       const at = AT && AT[name];
       if (at) { const k2 = sz / at[3]; g.drawImage(IM.atlas, at[0], at[1], at[2], at[3], d.x - at[2] * k2 / 2, d.y + yo - sz / 2 - sz * 0.06, at[2] * k2, sz); }
-      else { g.fillStyle = COLORS[d.col]; g.fillRect(d.x - 3, d.y - 3, 6, 6); }
+      else { g.fillStyle = COLORS[d.col]; g.fillRect(px.snap(d.x) - 4, px.snap(d.y) - 4, 8, 8); }
       if (idle && !d.won && (!d.lbl || d.lbl < now)) {
         let df = radarA - Math.atan2(d.y - H / 2, d.x - W / 2); df = ((df % 6.283) + 6.283) % 6.283;
         if (df < 0.07 && Math.random() < pct) d.lbl = now + 2.6;
@@ -792,43 +862,13 @@ export function mount(root, ctx) {
       else if (d.air) { d.air = false; fx("hit", d.x, d.y, 0.45, false, 0, 20); burst(d.x, d.y, "#8a7a5a", 5, 60, 2); }
 
       const outside = d.out > 0.05;
-      g.globalCompositeOperation = "lighter"; g.globalAlpha = (d.tier >= 2 ? 0.55 : 0.3) * a; const gs = sizeOf(d) * 1.3; g.drawImage(stamps[outside ? 3 : d.role === 1 && phase === "win" ? 4 : d.col], d.x - gs / 2, d.y - gs * 0.35 + yo, gs, gs * 0.7); g.globalCompositeOperation = "source-over";
+      g.globalCompositeOperation = "lighter"; g.globalAlpha = (d.tier >= 2 ? 0.55 : 0.3) * a; const gs = sizeOf(d) * 1.3; pglow(d.x, d.y + yo - gs * 0.1, gs * 0.9, COLORS[outside ? 3 : d.role === 1 && phase === "win" ? 4 : d.col]); g.globalCompositeOperation = "source-over";
       drawFighter(d, a, yo, chute);
     }
     g.globalAlpha = 1;
 
     // storm
-    if (z && ka > 0.01) {
-      if (!stormPat && IM.storm) stormPat = g.createPattern(IM.storm, "repeat");
-      g.save();
-      g.beginPath(); g.rect(-3000, -3000, 8000, 8000); g.arc(z.x, z.y, z.r, 0, 6.283); g.clip("evenodd");
-      g.fillStyle = `rgba(6,8,14,${0.5 * ka})`; g.fillRect(-3000, -3000, 8000, 8000);
-      if (stormPat) {
-        for (let i = 0; i < 2; i++) {
-          stormPat.setTransform?.(new DOMMatrix().translate(now * (i ? -26 : 34), now * (i ? 18 : -12)).scale(i ? 0.55 : 0.8));
-          g.globalAlpha = (i ? 0.16 : 0.3) * ka; g.globalCompositeOperation = "source-over"; g.fillStyle = stormPat; g.fillRect(-3000, -3000, 8000, 8000);
-        }
-        g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
-      }
-      g.restore();
-      // storm wall: bright textured band along the edge
-      if (stormPat) {
-        g.save(); g.beginPath(); g.arc(z.x, z.y, z.r + 26, 0, 6.283); g.arc(z.x, z.y, z.r - 4, 0, 6.283); g.clip("evenodd");
-        stormPat.setTransform?.(new DOMMatrix().translate(now * 60, -now * 30).scale(0.5)); g.globalCompositeOperation = "lighter"; g.globalAlpha = (z.shrink ? 0.5 : 0.32) * ka; g.fillStyle = stormPat; g.fillRect(z.x - z.r - 40, z.y - z.r - 40, z.r * 2 + 80, z.r * 2 + 80); g.restore();
-      }
-      g.globalAlpha = ka; g.lineWidth = 3 / cam.s + 1; g.strokeStyle = z.shrink ? "#d8452e" : "#c8641e"; g.shadowColor = z.shrink ? "#d8452e" : "#ff6600"; g.shadowBlur = 5;
-      g.beginPath(); g.arc(z.x, z.y, z.r, 0, 6.283); g.stroke(); g.shadowBlur = 0; g.globalAlpha = 1;
-      if (false) { // lightning bolts on the wall
-        const a0 = Math.random() * 6.283; g.strokeStyle = "rgba(230,210,255,0.95)"; g.lineWidth = 2.5 / cam.s + 0.8; g.beginPath();
-        let a = a0, rr = z.r + 36; g.moveTo(z.x + Math.cos(a) * rr, z.y + Math.sin(a) * rr);
-        for (let i = 0; i < 7; i++) { a += (Math.random() - 0.5) * 0.04; rr -= 8 + Math.random() * 14; g.lineTo(z.x + Math.cos(a) * rr, z.y + Math.sin(a) * rr); }
-        g.stroke();
-      }
-      if (z.next) {
-        g.lineWidth = 3 / cam.s + 0.5; g.strokeStyle = "rgba(255,255,255,0.4)"; g.setLineDash([14 / cam.s + 4, 10 / cam.s + 4]); g.lineDashOffset = -now * 18;
-        g.beginPath(); g.arc(z.next.x, z.next.y, z.next.r, 0, 6.283); g.stroke(); g.setLineDash([]);
-      }
-    }
+    if (z && ka > 0.01) drawStorm(z, ka, cx, cy, sx, sy);
 
     // bats
     if (AT) for (const b of bats) { const a = now * b.sp + b.ph, x = b.cx + Math.cos(a) * b.rx, y = b.cy + Math.sin(a) * b.ry, fr = ((now * 9 + b.fp) | 0) % 6; g.globalAlpha = 0.95 * ka; aspr(g, "bat" + fr, x, y, 0.8, Math.cos(a) * b.sp > 0); }
@@ -839,7 +879,7 @@ export function mount(root, ctx) {
       // keep tracers the same size on screen: the arena close-up zooms ~3x and they turned into rockets
       const bz = Math.min(1, 1.25 / cam.s), gw = 18 * bz;
       aspr(g, b.kind, b.x, b.y, (b.big ? 0.8 : 0.55) * bz, false, b.ang);
-      g.globalCompositeOperation = "lighter"; g.globalAlpha = 0.35; g.drawImage(flameStamp, b.x - gw / 2, b.y - gw / 2, gw, gw); g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
+      g.globalCompositeOperation = "lighter"; g.globalAlpha = 0.6; pglow(b.x, b.y, gw * 1.5, "#ffb15c"); g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
     }
     for (let i = fxs.length - 1; i >= 0; i--) {
       const f = fxs[i]; f.t += dt; const n = f.kind === "poof" ? 6 : f.kind === "hit" ? 6 : 6, idx = Math.floor(f.t * (f.kind === "poof" ? 8 : f.fps));
@@ -853,7 +893,7 @@ export function mount(root, ctx) {
       const p = particles[i]; p.life -= dt;
       if (p.life <= 0) { particles[i] = particles[particles.length - 1]; particles.pop(); continue; }
       p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.95; p.vy = p.vy * 0.95 + 60 * dt;
-      g.globalAlpha = Math.min(1, p.life * 2.5); g.fillStyle = p.col; g.fillRect(Math.round(p.x), Math.round(p.y), Math.ceil(p.sz), Math.ceil(p.sz));
+      g.globalAlpha = p.life > 0.2 ? 1 : 0.5; g.fillStyle = p.col; { const z4 = p.sz > 4.2 ? 8 : 4; g.fillRect(px.snap(p.x), px.snap(p.y), z4, z4); }
     }
     g.globalAlpha = 1;
 
@@ -869,8 +909,9 @@ export function mount(root, ctx) {
       const s = cam.s, yy = d.y - sizeOf(d) * 1.0 - 4 / s;
       if (st >= T.F - 0.8) {
         const w = 74 / s, h = 8 / s, x0 = d.x - w / 2, y0 = yy + 4 / s;
-        g.fillStyle = "#000000cc"; g.fillRect(x0 - 2 / s, y0 - 2 / s, w + 4 / s, h + 4 / s);
-        g.fillStyle = d.hp < 0.3 ? "#d8452e" : "#e8e4dc"; g.fillRect(x0, y0, w * d.hp, h);
+        g.fillStyle = "#0e0e10"; g.fillRect(x0 - 4 / s, y0 - 4 / s, w + 8 / s, h + 8 / s);
+        g.fillStyle = "#3d2456"; g.fillRect(x0, y0, w, h);
+        g.fillStyle = d.hp < 0.3 ? "#d8452e" : "#7cff4f"; g.fillRect(x0, y0, Math.round(w * d.hp / (6 / s)) * (6 / s), h);
       }
       drawLabel(d, d.x, yy - 6 / s - 8 / s, s, true);
     }
@@ -889,19 +930,13 @@ export function mount(root, ctx) {
 
     // screen-space overlays
     g.setTransform(bk, 0, 0, bk, 0, 0);
-    if (phase === "roll" && z && z.shrink && !ctx.reducedMotion) {
-      const gr = g.createRadialGradient(W / 2, H / 2, 420, W / 2, H / 2, 1150);
-      gr.addColorStop(0, "rgba(216,69,46,0)"); gr.addColorStop(1, `rgba(216,69,46,${0.07 + 0.03 * Math.sin(now * 8)})`);
-      g.fillStyle = gr; g.fillRect(0, 0, W, H);
-    } else {
-      const gr = g.createRadialGradient(W / 2, H / 2, 460, W / 2, H / 2, 1200);
-      gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(1, "rgba(0,0,0,0.55)");
-      g.fillStyle = gr; g.fillRect(0, 0, W, H);
-    }
+    g.imageSmoothingEnabled = false;
+    g.drawImage(vigInk, 0, 0, W, H);
+    if (phase === "roll" && z && z.shrink && !ctx.reducedMotion) { g.globalAlpha = 0.5 + 0.25 * (Math.floor(now * 4) % 3); g.drawImage(vigRed, 0, 0, W, H); g.globalAlpha = 1; }
     for (let i = confetti.length - 1; i >= 0; i--) {
       const c = confetti[i]; c.y += c.vy * dt; c.x += c.vx * dt + Math.sin(now * 3 + c.rot) * 0.6; c.rot += dt * 3;
       if (c.y > H + 20) { if (phase === "win") { c.y = -20; } else { confetti.splice(i, 1); continue; } }
-      g.fillStyle = c.c; g.fillRect(Math.round(c.x), Math.round(c.y), c.s, c.s);
+      g.fillStyle = c.c; g.fillRect(px.snap(c.x), px.snap(c.y), c.s, c.s);
     }
     if (idle) hudAlive = N;
     el.zone.classList.toggle("hot", phase === "roll" && !!z && z.shrink);
@@ -910,7 +945,6 @@ export function mount(root, ctx) {
 
   const onVis = () => { last = performance.now(); };
   document.addEventListener("visibilitychange", onVis);
-  setTimeout(() => { if (phase === "idle") say("Шукай себе на карті, чат!", 4.5, 1); }, 1200);
   void bornAt; void assetsP;
 
   return {

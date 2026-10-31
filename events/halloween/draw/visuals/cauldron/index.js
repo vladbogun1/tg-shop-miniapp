@@ -1,22 +1,29 @@
-// «Котёл ведьмы» — визуал розыгрыша. Один canvas 2D, дизайн-сетка 1920×1080 (вписывается в любой размер).
+// «Котёл ведьмы» — визуал розыгрыша в 16-битном пиксель-арте. Один canvas 2D, дизайн-сетка 1920×1080.
 // До ролла души-огоньки кружат вокруг котла, в ролл их засасывает воронка, котёл трясётся, «пшик»,
-// и из котла вылетает душа победителя, которую задал хост. Всё в этом файле, без внешних библиотек.
+// и из котла вылетает душа победителя, которую задал хост. Картинки: сцена bg-night, спрайты котла и качка
+// (draw/assets). Свечение — дизерные «лужи», кромки жёсткие, текст — пиксельным шрифтом из pixel-kit.
+
+import * as px from "../pixel-kit.js";
 
 export const meta = { id: "cauldron", title: "Котёл ведьмы", author: "agent" };
 
 // ---------------------------------------------------------------- константы и утилиты
 const W = 1920, H = 1080;
-const PX = 960, PY = 770;            // центр обода котла (он же «устье», куда падают души)
-const CY = 560;                      // центр орбит
-const WX = 960, WY = 350;            // где раскрывается портрет победителя
+const P = px.PX;                     // один арт-пиксель = 4 px
+const PX = 960, PY = 560;            // центр зеркала зелья (он же «устье», куда падают души)
+const CY = 420;                      // центр орбит
+const WX = 960, WY = 300;            // где раскрывается портрет победителя
 const TAU = Math.PI * 2;
-const SPR = (n) => new URL(`../../assets/sprites/${n}.png`, import.meta.url).href;
+// спрайт котла (384×384, масштаб 2): зеркало зелья в нём — эллипс с центром (192,108)
+const POT_S = 2, POT_CX = 192, POT_CY = 108;
+const POT_X = PX - POT_CX * POT_S, POT_Y = PY - POT_CY * POT_S;
+const LIQ = { rx: 224, ry: 44 };     // размеры зеркала зелья на экране
 
 const COLS = {
-  orange: { rgb: [255, 122, 26], css: "#ff6600", disc: ["#ffb866", "#8a2f00"] },
-  green: { rgb: [124, 255, 79], css: "#7cff4f", disc: ["#c4ffa8", "#1d6a0a"] },
-  violet: { rgb: [170, 105, 255], css: "#8a3ffc", disc: ["#d3b1ff", "#3d1280"] },
-  pale: { rgb: [225, 255, 230], css: "#e6ffe9", disc: ["#ffffff", "#7a8a7a"] },
+  orange: { css: "#ff6600", light: "#ffb15c", dark: "#7a2c00" },
+  green: { css: "#7cff4f", light: "#d6ffbd", dark: "#1f5c10" },
+  violet: { css: "#8a3ffc", light: "#cfaeff", dark: "#3a1478" },
+  pale: { css: "#f4f1ea", light: "#ffffff", dark: "#6b6760" },
 };
 const COLNAMES = Object.keys(COLS);
 
@@ -24,8 +31,10 @@ const clamp = (x, a = 0, b = 1) => (x < a ? a : x > b ? b : x);
 const lerp = (a, b, t) => a + (b - a) * t;
 const smooth = (t) => { t = clamp(t); return t * t * (3 - 2 * t); };
 const easeOut = (t) => 1 - Math.pow(1 - clamp(t), 3);
-const easeBack = (t) => { t = clamp(t); const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
 const frac = (x) => x - Math.floor(x);
+const snap = px.snap;
+/** Alpha in a few hard steps (pixel art does not fade smoothly). */
+const steps = (a, n = 4) => Math.round(clamp(a) * n) / n;
 
 function hash(str) {
   let h = 2166136261;
@@ -40,96 +49,96 @@ function mulberry(a) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-function mk(w, h) {
-  const c = document.createElement("canvas");
-  c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h));
-  return c;
-}
-const rgba = (rgb, a) => `rgba(${rgb[0] | 0},${rgb[1] | 0},${rgb[2] | 0},${a})`;
-const mixRgb = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
 
-function glowSprite(rgb, size = 64) {
-  const c = mk(size, size), g = c.getContext("2d"), h = size / 2;
-  const gr = g.createRadialGradient(h, h, 0, h, h, h);
-  gr.addColorStop(0, "rgba(255,255,255,1)");
-  gr.addColorStop(0.12, rgba(mixRgb(rgb, [255, 255, 255], 0.45), 0.95));
-  gr.addColorStop(0.35, rgba(rgb, 0.42));
-  gr.addColorStop(0.7, rgba(rgb, 0.1));
-  gr.addColorStop(1, rgba(rgb, 0));
-  g.fillStyle = gr; g.fillRect(0, 0, size, size);
+// ---- дизерные «лужи» света на сетке 4 px (в отличие от px.glow — любой размер и эллипс)
+const poolCache = new Map();
+function poolSprite(color, nw, nh) {
+  const key = color + "|" + nw + "|" + nh;
+  let c = poolCache.get(key);
+  if (c) return c;
+  if (poolCache.size > 160) poolCache.clear();
+  c = px.canvas(nw, nh);
+  const x = c.getContext("2d"), im = x.createImageData(nw, nh), rgb = parseInt(color.slice(1), 16);
+  for (let j = 0; j < nh; j++) for (let i = 0; i < nw; i++) {
+    const d = Math.hypot((i + 0.5 - nw / 2) / (nw / 2), (j + 0.5 - nh / 2) / (nh / 2));
+    const lv = Math.min(3, Math.floor(Math.max(0, 1 - d) * 3.4)); // жёсткие кольца без дизера
+    if (!lv) continue;
+    const k = (j * nw + i) * 4;
+    im.data[k] = rgb >> 16; im.data[k + 1] = (rgb >> 8) & 255; im.data[k + 2] = rgb & 255;
+    im.data[k + 3] = Math.round(255 * [0.07, 0.13, 0.24][lv - 1]);
+  }
+  x.putImageData(im, 0, 0);
+  poolCache.set(key, c);
   return c;
 }
-function blobSprite(size = 128) {
-  const c = mk(size, size), g = c.getContext("2d"), h = size / 2;
-  const gr = g.createRadialGradient(h, h, 0, h, h, h);
-  gr.addColorStop(0, "rgba(255,255,255,0.55)");
-  gr.addColorStop(0.5, "rgba(255,255,255,0.2)");
-  gr.addColorStop(1, "rgba(255,255,255,0)");
-  g.fillStyle = gr; g.fillRect(0, 0, size, size);
-  return c;
+/** A dithered light pool w×h centred at x,y. */
+function halo(g, x, y, w, h, color, alpha = 1) {
+  if (alpha <= 0.02 || w < 8) return;
+  const nw = Math.max(2, Math.round(w / 16) * 4), nh = Math.max(2, Math.round((h ?? w) / 16) * 4);
+  const a = g.globalAlpha;
+  g.globalAlpha = a * Math.min(1, alpha);
+  g.drawImage(poolSprite(color, nw, nh), snap(x - nw * P / 2), snap(y - nh * P / 2), nw * P, nh * P);
+  g.globalAlpha = a;
 }
-function ell(g, x, y, rx, ry) { g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, TAU); }
+const sq = (g, x, y, s, color) => { s = Math.max(P, snap(s)); g.fillStyle = color; g.fillRect(snap(x) - s / 2, snap(y) - s / 2, s, s); };
+
+/** Pixel avatar: a square photo (chunky) or a colour tile with the initial, in a pixel ring. */
+function avatar(g, x, y, a, name, colName, img, p, ringOn = true) {
+  const cs = COLS[colName];
+  x = Math.round(x); y = Math.round(y);
+  if (!px.photo(g, img, x, y, a, p)) {
+    g.fillStyle = cs.dark; g.fillRect(x, y, a, a);
+    g.fillStyle = cs.css; g.fillRect(x, y, a, Math.round(a / 2 / P) * P);
+    g.fillStyle = cs.dark; g.fillRect(x, y + Math.round(a * 0.75 / P) * P, a, P);
+    const ch0 = (Array.from(name.trim())[0] || "?").toUpperCase();
+    px.text(g, ch0, x + a / 2, y + a / 2 + P, { size: Math.round(a * 0.72), align: "center", color: PALbone, drop: null, depth: Math.max(P, snap(a / 14)) });
+  }
+  if (ringOn) px.ring(g, x, y, a, a, cs.css, P);
+}
+const PALbone = px.PAL.bone;
 
 // ---------------------------------------------------------------- mount
 export function mount(root, host) {
-  const Q = 1.5; // суперсэмплинг кэшей текста/бейджей
-
   const canvas = document.createElement("canvas");
-  canvas.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block;background:#0e0e10";
+  canvas.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block;background:#0e0e10;image-rendering:pixelated";
   root.append(canvas);
   const g = canvas.getContext("2d", { alpha: false });
 
   let destroyed = false, raf = 0, last = performance.now(), T = 0;
-  let cw = 0, ch = 0, fit = 1, ox = 0, oy = 0, res = 1;
+  let cw = 0, ch = 0, fit = 1, ox = 0, oy = 0;
   const reduced = !!host.reducedMotion;
   const avatarsOn = host.privacy?.avatars !== false;
   const snd = (n) => { try { host.sound?.(n); } catch { /* sound is optional */ } };
 
-  // ---- спрайты
-  const glow = {}; for (const k of COLNAMES) glow[k] = glowSprite(COLS[k].rgb, 64);
-  const blob = blobSprite(128);
-  const blobTint = {
-    smoke: tintBlob([170, 230, 180]), violet: tintBlob([150, 110, 220]), warm: tintBlob([255, 150, 70]),
-  };
-  function tintBlob(rgb) {
-    const c = mk(128, 128), x = c.getContext("2d");
-    x.drawImage(blob, 0, 0); x.globalCompositeOperation = "source-in"; x.fillStyle = rgba(rgb, 1); x.fillRect(0, 0, 128, 128);
-    return c;
-  }
-  const hero = { wave: new Image(), blink: new Image() };
-  hero.wave.src = SPR("hero_wave"); hero.blink.src = SPR("hero_blink");
+  // ---- картинки
+  const bgImg = px.loadImage(px.sceneUrl("bg-night"));
+  const potImg = px.loadImage(px.spriteUrl("cauldron"));
+  const heroImg = px.loadImage(px.spriteUrl("host"));
+  const rays = px.lowres();
 
-  // ---- тексты
+  // ---- тексты (кэш битмапов пиксельным шрифтом)
   const spriteCache = new Map();
-  const tctx = mk(8, 8).getContext("2d");
-  function textSprite(text, o) {
-    const key = text + "|" + o.font + "|" + o.fill + "|" + (o.glow || "") + "|" + (o.bg || "") + "|" + (o.ls || "") + "|" + (o.sw || "");
+  const tctx = px.canvas(8, 8).getContext("2d");
+  function textSprite(str, o) {
+    const key = str + "|" + o.size + "|" + (o.color || "") + "|" + (o.drop || "") + "|" + (o.bg ? 1 : 0) + "|" + (o.ls || 0) + "|" + (o.weight || 700);
     let sp = spriteCache.get(key);
     if (sp) return sp;
     if (spriteCache.size > 400) spriteCache.clear();
-    tctx.font = o.font; tctx.letterSpacing = o.ls || "0px";
-    const tw = Math.ceil(tctx.measureText(text).width);
-    const size = o.size, pad = o.pad ?? 26, bx = o.bg ? 14 : 0, by = o.bg ? 5 : 0;
-    const w = tw + 2 * pad + 2 * bx, h = Math.ceil(size * 1.35) + 2 * pad + 2 * by;
-    const c = mk(w * Q, h * Q), x = c.getContext("2d");
-    x.scale(Q, Q);
-    x.font = o.font; x.letterSpacing = o.ls || "0px"; x.textBaseline = "middle"; x.textAlign = "left"; x.lineJoin = "round";
-    const cx = pad + bx, cy = h / 2 + size * 0.04;
-    if (o.bg) {
-      x.fillStyle = o.bg; x.beginPath();
-      x.roundRect(pad, h / 2 - size * 0.68 - by + 0, tw + 2 * bx, size * 1.36 + 2 * by - 0, (size * 1.36 + 2 * by) / 2); x.fill();
-    }
-    if (o.glow) { x.shadowColor = o.glow; x.shadowBlur = o.blur ?? 20; x.fillStyle = o.fill; x.fillText(text, cx, cy); x.fillText(text, cx, cy); x.shadowBlur = 0; }
-    if (o.sw) { x.lineWidth = o.sw; x.strokeStyle = o.stroke || "rgba(0,0,0,.8)"; x.strokeText(text, cx, cy); }
-    x.fillStyle = o.fill; x.fillText(text, cx, cy);
+    const size = o.size, depth = o.depth ?? Math.max(P, snap(size / 16)), pad = o.pad ?? 12;
+    const tw = Math.ceil(px.measure(tctx, str, size, o.weight ?? 700, o.ls ?? 0));
+    const extra = depth * (o.drop ? 3 : 1) + 8;
+    const w = tw + 2 * pad + extra, h = Math.ceil(size * 1.4) + 2 * pad;
+    const c = px.canvas(w, h), x = c.getContext("2d");
+    if (o.bg) { x.fillStyle = "rgba(14,14,16,.72)"; x.fillRect(pad - 8, pad - 2, tw + 16 + depth, h - 2 * pad + 4); }
+    px.text(x, str, pad, h / 2, { size, weight: o.weight ?? 700, color: o.color, drop: o.drop, depth, ls: o.ls ?? 0 });
     sp = { c, w, h, tw };
     spriteCache.set(key, sp);
     return sp;
   }
-  function drawSprite(sp, cx, cy, sc = 1, a = 1) {
-    if (a <= 0.003) return;
+  function drawSprite(sp, cx, cy, a = 1) {
+    if (a <= 0.01) return;
     g.globalAlpha = a;
-    g.drawImage(sp.c, cx - (sp.w * sc) / 2, cy - (sp.h * sc) / 2, sp.w * sc, sp.h * sc);
+    g.drawImage(sp.c, Math.round(cx - sp.w / 2), Math.round(cy - sp.h / 2));
     g.globalAlpha = 1;
   }
 
@@ -148,168 +157,6 @@ export function mount(root, host) {
     if (onload) e.cbs.push(onload);
     return null;
   }
-  function drawDisc(x, cx, cy, r, name, colName, img) {
-    const cs = COLS[colName];
-    const gr = x.createRadialGradient(cx - r * 0.3, cy - r * 0.35, r * 0.1, cx, cy, r);
-    gr.addColorStop(0, cs.disc[0]); gr.addColorStop(1, cs.disc[1]);
-    x.beginPath(); x.arc(cx, cy, r, 0, TAU); x.fillStyle = gr; x.fill();
-    if (img) {
-      x.save(); x.beginPath(); x.arc(cx, cy, r, 0, TAU); x.clip();
-      const s = Math.max((2 * r) / img.naturalWidth, (2 * r) / img.naturalHeight);
-      x.drawImage(img, cx - (img.naturalWidth * s) / 2, cy - (img.naturalHeight * s) / 2, img.naturalWidth * s, img.naturalHeight * s);
-      x.restore();
-    } else {
-      const ch0 = (Array.from(name.trim())[0] || "?").toUpperCase();
-      x.font = `800 ${Math.round(r * 1.1)}px "Exo 2", sans-serif`; x.textAlign = "center"; x.textBaseline = "middle";
-      x.shadowColor = "rgba(0,0,0,.55)"; x.shadowBlur = r * 0.2; x.fillStyle = "#fff";
-      x.fillText(ch0, cx, cy + r * 0.06); x.shadowBlur = 0;
-      // блик
-      x.beginPath(); x.ellipse(cx - r * 0.32, cy - r * 0.5, r * 0.4, r * 0.18, -0.5, 0, TAU); x.fillStyle = "rgba(255,255,255,.22)"; x.fill();
-    }
-  }
-
-  // ---------------------------------------------------------------- статика: фон и котёл
-  let bgC = null, potBackC = null, potFrontC = null, faceC = null, rayC = null;
-  const POT = { x0: PX - 400, y0: PY - 150, w: 800, h: 480 };
-
-  function buildStatic() {
-    res = Math.max(1, fit);
-    // фон
-    bgC = mk(W * res, H * res);
-    let x = bgC.getContext("2d"); x.scale(res, res);
-    const rnd = mulberry(7);
-    x.fillStyle = "#0e0e10"; x.fillRect(0, 0, W, H);
-    let gr = x.createRadialGradient(PX, 900, 0, PX, 900, 1000);
-    gr.addColorStop(0, "rgba(70,22,120,.42)"); gr.addColorStop(0.5, "rgba(40,14,70,.2)"); gr.addColorStop(1, "rgba(14,14,16,0)");
-    x.fillStyle = gr; x.fillRect(0, 0, W, H);
-    gr = x.createRadialGradient(PX, 540, 0, PX, 540, 760);
-    gr.addColorStop(0, "rgba(20,70,28,.22)"); gr.addColorStop(1, "rgba(14,14,16,0)");
-    x.fillStyle = gr; x.fillRect(0, 0, W, H);
-    // звёзды
-    for (let i = 0; i < 150; i++) {
-      const sx = rnd() * W, sy = rnd() * 640, sr = 0.5 + rnd() * 1.3;
-      x.fillStyle = `rgba(220,230,255,${0.12 + rnd() * 0.5})`; x.beginPath(); x.arc(sx, sy, sr, 0, TAU); x.fill();
-    }
-    // луна
-    const mx = 1570, my = 270;
-    gr = x.createRadialGradient(mx, my, 40, mx, my, 420);
-    gr.addColorStop(0, "rgba(200,215,255,.22)"); gr.addColorStop(1, "rgba(200,215,255,0)");
-    x.fillStyle = gr; x.fillRect(mx - 430, my - 430, 860, 860);
-    gr = x.createRadialGradient(mx - 20, my - 20, 5, mx, my, 70);
-    gr.addColorStop(0, "#fffbe8"); gr.addColorStop(1, "#c9c7b0");
-    x.fillStyle = gr; x.beginPath(); x.arc(mx, my, 66, 0, TAU); x.fill();
-    x.fillStyle = "rgba(120,120,100,.22)";
-    for (const [dx, dy, r] of [[-22, -12, 13], [20, 14, 17], [-6, 30, 8], [28, -26, 8], [-30, 18, 6]]) { x.beginPath(); x.arc(mx + dx, my + dy, r, 0, TAU); x.fill(); }
-    // силуэты: холмы, надгробия, мёртвые деревья
-    x.fillStyle = "#08080b";
-    x.beginPath(); x.moveTo(0, H); x.lineTo(0, 950);
-    for (let i = 0; i <= 24; i++) x.lineTo((i / 24) * W, 960 + Math.sin(i * 0.9) * 18 + Math.sin(i * 2.3) * 8);
-    x.lineTo(W, H); x.closePath(); x.fill();
-    const stones = [[110, 0], [230, 1], [380, 0], [1500, 1], [1660, 0], [1810, 1], [60, 1], [1740, 0]];
-    for (const [sx, k] of stones) {
-      const sy = 975 + (k ? 6 : 0), sw = 46 + (k ? 8 : 0), sh = 80 - k * 18;
-      x.beginPath(); x.moveTo(sx - sw / 2, sy + 20); x.lineTo(sx - sw / 2, sy - sh + sw / 2);
-      x.arc(sx, sy - sh + sw / 2, sw / 2, Math.PI, 0); x.lineTo(sx + sw / 2, sy + 20); x.closePath(); x.fill();
-      if (!k) { x.fillStyle = "#12121a"; x.fillRect(sx - 2, sy - sh + 14, 4, 26); x.fillRect(sx - 11, sy - sh + 22, 22, 4); x.fillStyle = "#08080b"; }
-    }
-    const tree = (bx, by, len, ang, depth) => {
-      if (depth === 0 || len < 8) return;
-      const ex = bx + Math.cos(ang) * len, ey = by + Math.sin(ang) * len;
-      x.strokeStyle = "#07070a"; x.lineWidth = Math.max(1.5, depth * 2.2); x.lineCap = "round";
-      x.beginPath(); x.moveTo(bx, by); x.lineTo(ex, ey); x.stroke();
-      tree(ex, ey, len * (0.72 + rnd() * 0.1), ang - 0.2 - rnd() * 0.5, depth - 1);
-      tree(ex, ey, len * (0.7 + rnd() * 0.1), ang + 0.2 + rnd() * 0.5, depth - 1);
-    };
-    tree(60, 1000, 130, -Math.PI / 2 - 0.1, 7); tree(1860, 1000, 150, -Math.PI / 2 + 0.12, 7);
-    // виньетка
-    gr = x.createRadialGradient(W / 2, H / 2, 380, W / 2, H / 2, 1180);
-    gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(1, "rgba(0,0,0,.62)");
-    x.fillStyle = gr; x.fillRect(0, 0, W, H);
-
-    // котёл: задняя часть (ручки, ножки, обод, нутро)
-    potBackC = mk(POT.w * res, POT.h * res); x = potBackC.getContext("2d"); x.scale(res, res); x.translate(-POT.x0, -POT.y0);
-    // ручки
-    x.lineWidth = 15; x.strokeStyle = "#1b1a21";
-    for (const sx of [-1, 1]) { ell(x, PX + sx * 322, PY + 62, 34, 46); x.stroke(); }
-    x.lineWidth = 3; x.strokeStyle = "rgba(255,255,255,.12)";
-    for (const sx of [-1, 1]) { x.beginPath(); x.ellipse(PX + sx * 322, PY + 62, 40, 52, 0, Math.PI * 1.1, Math.PI * 1.7); x.stroke(); }
-    // ножки
-    x.fillStyle = "#0c0c10";
-    for (const lx of [-175, 0, 175]) {
-      x.beginPath(); x.moveTo(PX + lx - 38, PY + 250); x.lineTo(PX + lx + 38, PY + 250); x.lineTo(PX + lx + 26, PY + 308); x.lineTo(PX + lx - 26, PY + 308); x.closePath(); x.fill();
-    }
-    // обод
-    gr = x.createLinearGradient(0, PY - 62, 0, PY + 62);
-    gr.addColorStop(0, "#555261"); gr.addColorStop(0.5, "#24232b"); gr.addColorStop(1, "#121116");
-    ell(x, PX, PY, 272, 63); x.fillStyle = gr; x.fill();
-    x.beginPath(); x.ellipse(PX, PY, 272, 63, 0, Math.PI, TAU); x.strokeStyle = "rgba(255,255,255,.25)"; x.lineWidth = 3; x.stroke();
-    // нутро
-    gr = x.createLinearGradient(0, PY - 50, 0, PY + 50);
-    gr.addColorStop(0, "#020203"); gr.addColorStop(1, "#0a0d0a");
-    ell(x, PX, PY, 246, 51); x.fillStyle = gr; x.fill();
-
-    // котёл: передняя часть (корпус, передняя половина обода)
-    potFrontC = mk(POT.w * res, POT.h * res); x = potFrontC.getContext("2d"); x.scale(res, res); x.translate(-POT.x0, -POT.y0);
-    const body = () => {
-      x.beginPath(); x.moveTo(PX - 270, PY);
-      x.bezierCurveTo(PX - 350, PY + 90, PX - 335, PY + 232, PX - 150, PY + 282);
-      x.quadraticCurveTo(PX, PY + 300, PX + 150, PY + 282);
-      x.bezierCurveTo(PX + 335, PY + 232, PX + 350, PY + 90, PX + 270, PY);
-      x.ellipse(PX, PY, 270, 62, 0, 0, Math.PI, false); x.closePath();
-    };
-    body();
-    gr = x.createLinearGradient(PX - 340, 0, PX + 340, 0);
-    gr.addColorStop(0, "#06060a"); gr.addColorStop(0.16, "#1b1a22"); gr.addColorStop(0.34, "#3a3843"); gr.addColorStop(0.5, "#1f1e26");
-    gr.addColorStop(0.72, "#121217"); gr.addColorStop(1, "#040406");
-    x.fillStyle = gr; x.fill();
-    x.save(); body(); x.clip();
-    gr = x.createLinearGradient(0, PY, 0, PY + 300);
-    gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(1, "rgba(0,0,0,.62)");
-    x.fillStyle = gr; x.fillRect(PX - 360, PY, 720, 310);
-    // железные пояса и заклёпки
-    for (const by of [PY + 78, PY + 222]) {
-      x.strokeStyle = "rgba(0,0,0,.55)"; x.lineWidth = 9;
-      x.beginPath(); x.ellipse(PX, by - 70, 340, 70, 0, 0.05, Math.PI - 0.05); x.stroke();
-      x.strokeStyle = "rgba(255,255,255,.09)"; x.lineWidth = 2;
-      x.beginPath(); x.ellipse(PX, by - 74, 340, 70, 0, 0.05, Math.PI - 0.05); x.stroke();
-    }
-    x.fillStyle = "rgba(255,255,255,.12)";
-    for (let i = -7; i <= 7; i++) {
-      const a = Math.PI / 2 + i * 0.12, rx = 300, ry = 62;
-      x.beginPath(); x.arc(PX + Math.cos(a) * rx * 1.03, PY + 8 + Math.sin(a) * ry, 3.4, 0, TAU); x.fill();
-    }
-    x.restore();
-    // передняя половина обода
-    gr = x.createLinearGradient(0, PY, 0, PY + 64);
-    gr.addColorStop(0, "#35333d"); gr.addColorStop(1, "#0f0f13");
-    x.beginPath(); x.ellipse(PX, PY, 272, 63, 0, 0, Math.PI, false); x.ellipse(PX, PY, 246, 51, 0, Math.PI, 0, true); x.closePath();
-    x.fillStyle = gr; x.fill();
-    x.beginPath(); x.ellipse(PX, PY, 246, 51, 0, 0, Math.PI, false); x.strokeStyle = "rgba(124,255,79,.28)"; x.lineWidth = 2.5; x.stroke();
-    x.beginPath(); x.ellipse(PX, PY, 272, 63, 0, 0.15, Math.PI - 0.15, false); x.strokeStyle = "rgba(255,255,255,.12)"; x.lineWidth = 2; x.stroke();
-
-    // резное лицо тыквы (светится изнутри)
-    faceC = mk(320 * Q, 190 * Q); x = faceC.getContext("2d"); x.scale(Q, Q);
-    const face = (blur, col) => {
-      x.shadowColor = "#ff6600"; x.shadowBlur = blur; x.fillStyle = col;
-      x.beginPath(); x.moveTo(62, 30); x.lineTo(112, 30); x.lineTo(90, 78); x.closePath(); x.fill();
-      x.beginPath(); x.moveTo(208, 30); x.lineTo(258, 30); x.lineTo(230, 78); x.closePath(); x.fill();
-      x.beginPath(); x.moveTo(160, 84); x.lineTo(146, 108); x.lineTo(174, 108); x.closePath(); x.fill();
-      x.beginPath(); x.moveTo(52, 118); x.lineTo(84, 126); x.lineTo(104, 156); x.lineTo(130, 128); x.lineTo(160, 160); x.lineTo(190, 128);
-      x.lineTo(216, 156); x.lineTo(236, 126); x.lineTo(268, 118); x.lineTo(250, 144); x.lineTo(222, 176); x.lineTo(190, 150);
-      x.lineTo(160, 178); x.lineTo(130, 150); x.lineTo(98, 176); x.lineTo(70, 144); x.closePath(); x.fill();
-    };
-    face(34, "rgba(255,102,0,.9)"); face(10, "#ffb35a");
-
-    // лучи для победителя
-    rayC = mk(1200, 1200); x = rayC.getContext("2d"); x.translate(600, 600);
-    for (let i = 0; i < 16; i++) {
-      x.save(); x.rotate((i / 16) * TAU);
-      const lg = x.createLinearGradient(0, 0, 600, 0);
-      lg.addColorStop(0, "rgba(255,200,120,.5)"); lg.addColorStop(1, "rgba(255,120,30,0)");
-      x.fillStyle = lg; x.beginPath(); x.moveTo(0, 0); x.lineTo(600, -34 - (i % 2) * 18); x.lineTo(600, 34 + (i % 2) * 18); x.closePath(); x.fill();
-      x.restore();
-    }
-  }
 
   function resize() {
     const r = root.getBoundingClientRect();
@@ -319,14 +166,13 @@ export function mount(root, host) {
     fit = Math.min(nw / W, nh / H);
     if (nw !== cw || nh !== ch) { cw = nw; ch = nh; canvas.width = nw; canvas.height = nh; }
     ox = (nw - W * fit) / 2; oy = (nh - H * fit) / 2;
-    buildStatic();
   }
 
   // ---------------------------------------------------------------- души
   const souls = [];
   const byId = new Map();
   let phase = "idle";          // idle | roll | win
-  let speedMul = 1, boil = 0.35, boilTarget = 0.35, gulp = 0, shakeAmp = 0, flash = 0, faceI = 0.3;
+  let speedMul = 1, boil = 0.35, boilTarget = 0.35, gulp = 0, shakeAmp = 0, flash = 0;
   let lastWinnerId = null, total = 0, totalTickets = 0;
   let initialDone = false;
   const lanes = [
@@ -350,7 +196,7 @@ export function mount(root, host) {
     const r = s.labeled ? (17 + 7 * Math.min(Math.sqrt(tk), 4)) * sz.boost : (2.4 + 1.3 * Math.sqrt(tk)) * sz.dust;
     if (col !== s.col || r !== s.r || p.name !== s.nm || p.avatar !== s.av) { s.badge = null; s.label = null; }
     s.col = col; s.tk = tk; s.r = r; s.nm = p.name; s.av = p.avatar;
-    s.glowK = s.labeled ? 3.8 : 5.4;
+    s.glowK = s.labeled ? 3.4 : 5.4;
   }
   function makeSoul(p) {
     const rnd = mulberry(hash(p.id));
@@ -405,32 +251,29 @@ export function mount(root, host) {
     }
     for (const s of souls) configureSoul(s);
   }
+  /** Значок души: квадратная пиксельная аватарка в цветной рамке (кэш битмапа 1:1). */
   function ensureBadge(s) {
     if (s.badge) return;
-    const d = Math.ceil((s.r + 7) * 2), c = mk(d * Q, d * Q), x = c.getContext("2d");
-    x.scale(Q, Q);
-    const cx = d / 2, cy = d / 2;
+    const a = Math.max(24, snap(s.r * 2)), d = a + 4 * P;
+    const c = px.canvas(d, d), x = c.getContext("2d");
     const img = getImg(s.p.avatar, () => { s.badge = null; });
-    x.beginPath(); x.arc(cx, cy, s.r + 3, 0, TAU); x.fillStyle = "rgba(8,8,12,.85)"; x.fill();
-    drawDisc(x, cx, cy, s.r, s.p.name, s.col, img);
-    x.beginPath(); x.arc(cx, cy, s.r + 1.5, 0, TAU); x.strokeStyle = COLS[s.col].css; x.lineWidth = 3; x.stroke();
+    avatar(x, 2 * P, 2 * P, a, s.p.name, s.col, img, a < 80 ? 2 : P);
     s.badge = { c, d };
   }
   function ensureLabel(s) {
     if (s.label) return;
-    const fs = Math.round(20 * Math.min(1.5, sizing().boost * 0.95));
-    s.label = textSprite(s.p.name, { font: `600 ${fs}px "Exo 2", sans-serif`, fill: "#f6f3ec", bg: "rgba(10,10,14,.62)", size: fs, pad: 6 });
+    const fs = Math.round(22 * Math.min(1.4, sizing().boost * 0.9));
+    s.label = textSprite(s.p.name, { size: fs, color: px.PAL.bone, bg: true, pad: 8, depth: P });
   }
 
   function setParticipants(list) {
     const pool = (list || []).filter((p) => !p.won);
     const ids = new Set();
-    let added = 0;
     for (const p of pool) {
       ids.add(p.id);
       let s = byId.get(p.id);
       if (!s) {
-        s = makeSoul(p); byId.set(p.id, s); souls.push(s); added++;
+        s = makeSoul(p); byId.set(p.id, s); souls.push(s);
         if (phase === "idle") { s.mode = "out"; s.k = 1; s.wait = s.rnd() * (initialDone ? 0.6 : 1.8); s.dur = 1.3; }
         else { s.mode = "in"; s.k = 1; }
       } else { s.p = p; }
@@ -486,12 +329,13 @@ export function mount(root, host) {
   const sparks = [], puffs = [], bubbles = [];
   function spark(x, y, vx, vy, life, size, col, o = {}) {
     if (sparks.length > 900) return;
-    sparks.push({ x, y, vx, vy, life, max: life, size, col, g: o.g ?? 0, drag: o.drag ?? 0, rect: o.rect || 0, rot: Math.random() * TAU, vr: (Math.random() - 0.5) * 12 });
+    sparks.push({ x, y, vx, vy, life, max: life, size, col, g: o.g ?? 0, drag: o.drag ?? 0, rect: o.rect || 0 });
   }
   function puff(x, y, vx, vy, r, life, kind = "smoke", a = 0.2) {
     if (puffs.length > 160) return;
     puffs.push({ x, y, vx, vy, r, gr: r * 0.9, life, max: life, kind, a });
   }
+  const PUFF_COL = { smoke: "#a9f0b8", violet: "#8a3ffc", warm: "#ff8a2a" };
   function burst(x, y, n, speed, cols, up = 0.4) {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * TAU, v = speed * (0.3 + Math.random() * 0.9);
@@ -545,7 +389,6 @@ export function mount(root, host) {
     else if (rt < T_EJECT) { const p = (rt - T_SH3) / (T_EJECT - T_SH3); bt = 0.6 + 0.4 * p; sh = 14 + 30 * smooth(p) * smooth(p); }
     else bt = rt < T_REVEAL ? 1 : 0.6;
     boilTarget = bt; shakeAmp = sh * rm;
-    faceI = clamp(0.25 + bt * 0.9);
     speedMul = rt < T_SUCK ? 1 + 1.4 * smooth(rt / T_SUCK) : 2.4;
 
     at("whoosh0", 0.05, () => snd("whoosh"));
@@ -595,17 +438,16 @@ export function mount(root, host) {
   let shakeKick = 0;
 
   function buildWinnerSprites(w, info) {
-    const head = textSprite("ПЕРЕМОЖЕЦЬ", { font: '800 70px "Exo 2", sans-serif', fill: "#7cff4f", glow: "#3fd11b", blur: 26, size: 70, ls: "6px", sw: 8, stroke: "rgba(8,20,6,.9)", pad: 34 });
-    const rnd = textSprite(`Раунд ${info.round} з ${info.totalRounds}`, { font: '700 44px "Exo 2", sans-serif', fill: "#ff8a2a", glow: "#ff6600", blur: 18, size: 44, ls: "3px", sw: 6, stroke: "rgba(30,10,0,.9)", pad: 28 });
-    let fs = 118;
-    tctx.font = `800 ${fs}px "Exo 2", sans-serif`;
-    while (tctx.measureText(w.name).width > 1300 && fs > 48) { fs -= 4; tctx.font = `800 ${fs}px "Exo 2", sans-serif`; }
-    const name = textSprite(w.name, { font: `800 ${fs}px "Exo 2", sans-serif`, fill: "#ffffff", glow: "#ff6600", blur: 34, size: fs, sw: 12, stroke: "rgba(20,6,0,.92)", pad: 44 });
+    const head = textSprite("ПЕРЕМОЖЕЦЬ", { size: 72, color: px.PAL.slime, drop: px.PAL.moss, ls: 6, depth: 6, pad: 16 });
+    const pn = info?.prize?.name ? px.prizeLabel(info.prize.name) : "";
+    const prize = pn ? textSprite(pn, { size: px.fit(tctx, pn, 40, 1500), color: px.PAL.amber, depth: 4, pad: 12 }) : null;
+    const fs = px.fit(tctx, w.name, 150, 1560);
+    const name = textSprite(w.name, { size: fs, color: px.PAL.bone, drop: px.PAL.rust, depth: 8, pad: 20 });
     const sub = [];
     if (w.handle) sub.push(w.handle);
     sub.push(`Квитки: ${w.tickets}`);
-    const subS = textSprite(sub.join("   ·   "), { font: '600 42px "Exo 2", sans-serif', fill: "#d9ffc9", glow: "#3fd11b", blur: 12, size: 42, sw: 6, stroke: "rgba(4,14,2,.9)", pad: 24 });
-    return { head, rnd, name, subS, col: colorFor(w) };
+    const subS = textSprite(sub.join("  ·  "), { size: 44, color: px.PAL.slime, depth: 4, pad: 14 });
+    return { head, prize, name, subS, col: colorFor(w) };
   }
 
   function roll(winner, info) {
@@ -627,7 +469,7 @@ export function mount(root, host) {
       if (s) removeSoul(souls.indexOf(s));
       lastWinnerId = null;
     }
-    phase = "idle"; speedMul = 1; boilTarget = 0.35; shakeAmp = 0; faceI = 0.3;
+    phase = "idle"; speedMul = 1; boilTarget = 0.35; shakeAmp = 0;
     souls.forEach((s) => { if (s.mode === "in" || s.mode === "suck") { s.mode = "out"; s.wait = s.rnd() * 0.7; s.dur = 1.0 + s.rnd() * 0.3; } });
     rebuildLabels();
     total = souls.length; totalTickets = souls.reduce((a, s) => a + s.tk, 0);
@@ -637,227 +479,178 @@ export function mount(root, host) {
   // ---------------------------------------------------------------- рисование
   const passList = [[], [], []];
   const embers = Array.from({ length: 110 }, (_, i) => ({ ph: Math.random(), a0: Math.random() * TAU, rate: 0.045 + Math.random() * 0.05, col: COLNAMES[i % 3], sz: 3 + Math.random() * 4, dir: Math.random() < 0.5 ? 1 : -1 }));
-  const flies = Array.from({ length: 48 }, () => ({ x: Math.random() * W, y: 160 + Math.random() * 760, ph: Math.random() * TAU, sp: 0.2 + Math.random() * 0.5, col: COLNAMES[(Math.random() * 3) | 0] }));
+  const flies = Array.from({ length: 40 }, () => ({ x: Math.random() * W, y: 160 + Math.random() * 760, ph: Math.random() * TAU, sp: 0.2 + Math.random() * 0.5, col: COLNAMES[(Math.random() * 3) | 0] }));
   const bats = Array.from({ length: 3 }, (_, i) => ({ x: -200 - i * 700, y: 150 + i * 90, v: 95 + i * 25, ph: i * 2 }));
-  const mists = Array.from({ length: 6 }, (_, i) => ({ x: i * 380, y: 930 + (i % 3) * 30, r: 360, v: 14 + i * 3 }));
+  const BAT_UP = ["..#.........#..", ".###.......###.", "#####.#.#.#####", "##.###########.##", "#...#######...#", "......###......"];
+  const BAT_DN = ["......#.#......", "##...#####...##", "####.#####.####", ".#############.", "..###.###.###..", "...#...#...#..."];
 
-  function drawSoulsPass(pass) {
+  function drawSoulsPass(pass, clipY) {
     const list = passList[pass];
-    // пыль: аддитивно
-    g.globalCompositeOperation = "lighter";
+    if (clipY != null) { g.save(); g.beginPath(); g.rect(0, 0, W, clipY); g.clip(); }
+    const many = souls.length > 400;
+    // пыль: жёсткие квадраты-угольки
     for (const s of list) {
       if (s.labeled) continue;
       const a = s.alpha * (0.72 + 0.28 * Math.sin(T * 2.6 + s.ph));
-      if (a <= 0.01) continue;
-      const sz = s.r * s.glowK * s.sc;
-      g.globalAlpha = Math.min(1, a);
-      g.drawImage(glow[s.col], s.x - sz / 2, s.y - sz / 2, sz, sz);
+      if (a <= 0.02) continue;
+      const cs = COLS[s.col], size = Math.max(P, snap(s.r * 1.7 * s.sc));
+      g.globalAlpha = steps(Math.min(1, a * 1.1), 5) || 0.2;
+      if (!many && size >= 8) halo(g, s.x, s.y, size * 3.6, size * 3.6, cs.css, 0.8);
+      g.fillStyle = cs.css; g.fillRect(snap(s.x) - size / 2, snap(s.y) - size / 2, size, size);
+      if (size >= 8) { g.fillStyle = cs.light; g.fillRect(snap(s.x) - size / 2 + P, snap(s.y) - size / 2 + P, size - 2 * P, size - 2 * P); }
       if (s.trail && s.k > 0 && s.k < 1 && s.mode !== "orbit" && s.wait <= 0) {
         // хвост воронки
-        const tx = s.x - Math.sin(s.ang) * 26 * (1 - s.e) * 0 - (s.x - PX) * 0.13, ty = s.y - (s.y - PY) * 0.1 - 6;
-        g.globalAlpha = a * 0.5; g.drawImage(glow[s.col], tx - sz / 3, ty - sz / 3, sz * 0.66, sz * 0.66);
+        g.globalAlpha = steps(a * 0.6, 4) || 0.25;
+        sq(g, s.x - (s.x - PX) * 0.13, s.y - (s.y - PY) * 0.1 - 6, size * 0.7, cs.css);
       }
     }
     g.globalAlpha = 1;
     // именные души
     for (const s of list) {
       if (!s.labeled) continue;
-      const a = s.alpha; if (a <= 0.01) continue;
+      const a = s.alpha; if (a <= 0.02) continue;
       const pulse = 0.85 + 0.15 * Math.sin(T * 2.2 + s.ph);
       const gs = s.r * s.glowK * s.sc * pulse;
-      g.globalCompositeOperation = "lighter";
       g.globalAlpha = Math.min(1, a * 0.95);
-      g.drawImage(glow[s.col], s.x - gs / 2, s.y - gs / 2, gs, gs);
-      g.globalCompositeOperation = "source-over";
+      halo(g, s.x, s.y, gs, gs, COLS[s.col].css, 0.9);
       ensureBadge(s);
-      const d = s.badge.d * s.sc;
-      g.globalAlpha = Math.min(1, a * 1.15);
-      g.drawImage(s.badge.c, s.x - d / 2, s.y - d / 2, d, d);
+      const d = Math.max(P * 6, snap(s.badge.d * s.sc));
+      g.globalAlpha = steps(Math.min(1, a * 1.15), 5) || 0.2;
+      g.drawImage(s.badge.c, snap(s.x - d / 2), snap(s.y - d / 2), d, d);
       if (s.e < 0.35) {
         ensureLabel(s);
-        const la = a * (1 - s.e / 0.35) * (0.5 + 0.5 * (s.z + 1) / 2);
-        drawSprite(s.label, s.x, s.y + (s.r + 20) * s.sc, s.sc * 0.98, la);
+        const la = steps(a * (1 - s.e / 0.35) * (0.5 + 0.5 * (s.z + 1) / 2), 4);
+        drawSprite(s.label, s.x, s.y + d / 2 + s.label.h / 2 - 4, la);
       }
     }
-    g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
+    g.globalAlpha = 1;
+    if (clipY != null) g.restore();
   }
 
-  function drawLiquid(bl) {
-    const cx = PX, cy = PY + 3, rx = 240, ry = 48;
-    g.save();
-    ell(g, cx, cy, rx, ry); g.clip();
-    const c1 = mixRgb([22, 60, 34], [124, 255, 79], bl), c0 = mixRgb([10, 36, 20], [60, 190, 50], bl);
-    const gr = g.createRadialGradient(cx, cy - 8, 6, cx, cy, rx);
-    gr.addColorStop(0, rgba(mixRgb(c1, [255, 255, 255], 0.25 * bl), 1)); gr.addColorStop(0.55, rgba(c1, 1)); gr.addColorStop(1, rgba(c0, 1));
-    g.fillStyle = gr; g.fillRect(cx - rx, cy - ry, rx * 2, ry * 2);
-    // завихрения
-    g.save(); g.translate(cx, cy); g.scale(1, ry / rx); g.rotate(T * (0.35 + bl * 1.3));
-    g.lineWidth = 9; g.lineCap = "round";
-    for (let i = 0; i < 3; i++) {
-      g.strokeStyle = `rgba(215,255,195,${0.1 + 0.12 * bl})`;
-      g.beginPath(); g.arc(0, 0, rx * (0.35 + i * 0.22), i * 2.1, i * 2.1 + 1.7); g.stroke();
-    }
-    g.restore();
-    // пузыри
-    for (const b of bubbles) {
-      const p = b.age / b.life;
-      if (p < 1) {
-        const r = b.r * (0.5 + p * 0.5), bx = cx + b.u * rx * 0.9, by = cy + b.v * ry * 0.8 - p * 4;
-        g.fillStyle = `rgba(190,255,160,${0.22 * (1 - p * 0.3)})`; g.strokeStyle = `rgba(235,255,225,${0.8 * (1 - p * 0.4)})`; g.lineWidth = 2;
-        ell(g, bx, by, r, r * 0.46); g.fill(); g.stroke();
-        g.fillStyle = "rgba(255,255,255,.7)"; ell(g, bx - r * 0.35, by - r * 0.12, r * 0.2, r * 0.1); g.fill();
-      } else {
-        const q = (b.age - b.life) / 0.25, r = b.r * (1 + q * 1.6);
-        g.strokeStyle = `rgba(235,255,225,${0.7 * (1 - q)})`; g.lineWidth = 2.5;
-        ell(g, cx + b.u * rx * 0.9, cy + b.v * ry * 0.8, r, r * 0.4); g.stroke();
-      }
-    }
-    // блик поверхности
-    const sg = g.createLinearGradient(0, cy - ry, 0, cy + ry);
-    sg.addColorStop(0, "rgba(255,255,255,.14)"); sg.addColorStop(0.5, "rgba(255,255,255,0)"); sg.addColorStop(1, "rgba(0,0,0,.35)");
-    g.fillStyle = sg; g.fillRect(cx - rx, cy - ry, rx * 2, ry * 2);
-    g.restore();
-    // сияние кромки
-    g.globalCompositeOperation = "lighter";
-    g.strokeStyle = `rgba(124,255,79,${0.18 + 0.4 * bl})`; g.lineWidth = 9; ell(g, cx, cy, rx + 2, ry + 1); g.stroke();
-    g.strokeStyle = `rgba(210,255,190,${0.25 + 0.4 * bl})`; g.lineWidth = 2.5; ell(g, cx, cy, rx + 1, ry); g.stroke();
-    g.globalCompositeOperation = "source-over";
-  }
-
-  function drawHat(x0, y0, s) {
-    // пиксельная ведьмина шляпа в сетке спрайта волны (1 пиксель = s px)
-    const px = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x0 + x * s), Math.round(y0 + y * s), Math.ceil(w * s), Math.ceil(h * s)); };
-    const body = "#35186b", light = "#6a35c4", dark = "#1f0e45";
-    for (let y = -17; y <= 3; y++) {
-      const t = (y + 17) / 20;                        // 0 у кончика → 1 у основания
-      let half = 2 + t * 12;
-      let cxs = 38 + (y < -9 ? (-9 - y) * 0.55 : 0);   // кончик загнут вправо
-      if (y < -12) cxs += (-12 - y) * 0.7;
-      const xa = Math.round(cxs - half), xb = Math.round(cxs + half);
-      px(xa, y, xb - xa, 1, body);
-      px(xa, y, 2, 1, light); px(xb - 3, y, 3, 1, dark);
-    }
-    px(26, 0, 25, 3, "#ff6600"); px(26, 0, 25, 1, "#ff9a3d"); px(26, 2, 25, 1, "#b84400");
-    px(36, -0.5, 5, 4, "#ffd54a"); px(37.5, 0.8, 2, 1.4, "#35186b");
-    // поля
-    px(15, 3, 46, 3, dark); px(17, 3, 42, 1, light); px(19, 5, 38, 2, "#150a30");
-  }
-
-  function drawHero() {
-    const s = 5, ready = hero.blink.complete && hero.blink.naturalWidth;
-    if (!ready) return;
-    const waving = phase === "win" ? true : frac(T / 9) > 0.86;
-    const sway = Math.sin(T * (1.6 + boil * 3)) * (1.5 + boil * 3);
-    const x0 = 1566, y0 = 812 + sway;
+  function drawMascot() {
+    if (!px.ready(heroImg)) return;
+    const jump = phase === "win" ? -((Math.floor(T * 5) % 2) * 2) * P : 0;
+    const bob = (Math.floor(T * (1.6 + boil * 2.6)) % 2) * P;
+    const x0 = 24, y0 = 575 + bob + jump;   // слева: рука показывает на котёл
     g.imageSmoothingEnabled = false;
-    if (waving && hero.wave.naturalWidth) g.drawImage(hero.wave, x0, y0, hero.wave.naturalWidth * s, hero.wave.naturalHeight * s);
-    else g.drawImage(hero.blink, x0 + 7 * s, y0, hero.blink.naturalWidth * s, hero.blink.naturalHeight * s);
-    drawHat(x0, y0, s);
-    g.imageSmoothingEnabled = true;
+    g.drawImage(heroImg, x0, y0, 512, 512);
   }
 
   function drawBat(b) {
-    const fl = Math.sin(T * 13 + b.ph), y = b.y + Math.sin(T * 1.7 + b.ph) * 26;
-    g.save(); g.translate(b.x, y); g.scale(1.5, 1.5);
-    g.fillStyle = "#150c28";
-    g.beginPath(); g.ellipse(0, 0, 7, 5, 0, 0, TAU); g.fill();
-    for (const sx of [-1, 1]) {
-      g.beginPath(); g.moveTo(sx * 4, -2);
-      g.quadraticCurveTo(sx * 18, -14 - fl * 10, sx * 34, -2 - fl * 12);
-      g.quadraticCurveTo(sx * 26, 2, sx * 24, 8); g.quadraticCurveTo(sx * 16, 2, sx * 12, 8); g.quadraticCurveTo(sx * 8, 3, sx * 4, 5); g.closePath(); g.fill();
-    }
-    g.beginPath(); g.moveTo(-4, -4); g.lineTo(-3, -10); g.lineTo(0, -5); g.lineTo(3, -10); g.lineTo(4, -4); g.fill();
-    g.restore();
+    const m = Math.floor(T * 7 + b.ph) % 2 ? BAT_UP : BAT_DN, y = snap(b.y + Math.sin(T * 1.7 + b.ph) * 26);
+    g.fillStyle = "#3a1d5c";
+    for (let j = 0; j < m.length; j++) for (let i = 0; i < m[j].length; i++) if (m[j][i] === "#") g.fillRect(snap(b.x) + (i - 7) * P, y + j * P, P, P);
   }
 
-  function drawPortrait(cx, cy, R, w, col, open, a) {
-    // ореол и кольцо
-    g.globalCompositeOperation = "lighter";
-    const gs = R * 5.2;
-    g.globalAlpha = a * 0.95; g.drawImage(glow[col === "violet" ? "violet" : "orange"], cx - gs / 2, cy - gs / 2, gs, gs);
-    g.globalAlpha = a * 0.5; g.drawImage(glow.green, cx - gs * 0.36, cy - gs * 0.36, gs * 0.72, gs * 0.72);
-    g.globalCompositeOperation = "source-over"; g.globalAlpha = a;
-    const rr = R * open;
-    g.beginPath(); g.arc(cx, cy, rr + 12, 0, TAU); g.fillStyle = "rgba(8,8,12,.9)"; g.fill();
-    const img = getImg(w.avatar);
-    drawDisc(g, cx, cy, rr, w.name, col, img);
-    const rg = g.createLinearGradient(cx - rr, cy - rr, cx + rr, cy + rr);
-    rg.addColorStop(0, "#7cff4f"); rg.addColorStop(0.5, "#ff6600"); rg.addColorStop(1, "#8a3ffc");
-    g.beginPath(); g.arc(cx, cy, rr + 6, 0, TAU); g.strokeStyle = rg; g.lineWidth = 12; g.stroke();
+  function drawPotLiquid(bl) {
+    const cx = PX, cy = PY;
+    // стоячее мерцание зелья: жёсткие светлые «пятна» по зеркалу
+    g.save();
+    g.beginPath(); g.rect(cx - LIQ.rx, cy - LIQ.ry, LIQ.rx * 2, LIQ.ry * 2); g.clip();
+    const ph = Math.floor(T * (2 + bl * 6));
+    g.fillStyle = COLS.green.light;
+    for (let i = 0; i < 7; i++) {
+      const a = (ph * 0.9 + i * 2.1) % TAU, u = Math.cos(a) * (0.25 + 0.5 * frac(i * 0.37)), v = Math.sin(a) * 0.5;
+      g.globalAlpha = 0.15 + 0.4 * bl;
+      g.fillRect(snap(cx + u * LIQ.rx), snap(cy + v * LIQ.ry), 3 * P, P);
+    }
+    g.globalAlpha = 1;
+    // пузыри: пиксельные кольца
+    for (const b of bubbles) {
+      const p = b.age / b.life;
+      const bx = cx + b.u * LIQ.rx * 0.82, by = cy + b.v * LIQ.ry * 0.62;
+      if (p < 1) {
+        const r = Math.max(2 * P, snap(b.r * (0.5 + p * 0.5) * 0.7));
+        px.circle(g, bx, by - p * 4, r, COLS.pale.css, 1);
+        g.fillStyle = "#ffffff"; g.fillRect(snap(bx) - r + P, snap(by) - r + P, P, P);
+      } else {
+        const q = (b.age - b.life) / 0.25;
+        if (q < 0.7) { g.globalAlpha = 0.6; px.circle(g, bx, by, snap(b.r * (0.7 + q * 1.4)), COLS.green.light, 1); g.globalAlpha = 1; }
+      }
+    }
+    g.restore();
+    // кромка зеркала: ступенчатый ободок
+    g.globalAlpha = steps(0.25 + 0.5 * bl, 4);
+    g.fillStyle = COLS.green.css;
+    for (let i = 0; i < 40; i++) { const a = (i / 40) * TAU; g.fillRect(snap(cx + Math.cos(a) * (LIQ.rx + 4)), snap(cy + Math.sin(a) * (LIQ.ry + 2)), P, P); }
     g.globalAlpha = 1;
   }
 
-  function drawWinner(wn, now) {
-    const rt = T - wn.t0 + (T_REVEAL);   // время относительно начала ролла
+  /** Портрет победителя: рамка box() и пиксельная аватарка. */
+  function drawPortrait(cx, cy, size, w, col, a) {
+    const A = Math.max(16, snap(size, 2 * P)), fr = A + 4 * P;
+    g.globalAlpha = a;
+    px.box(g, cx - fr / 2, cy - fr / 2, fr, fr, { frame: COLS[col].css, fill: px.PAL.plum, bevel: false });
+    avatar(g, cx - A / 2, cy - A / 2, A, w.name, col, getImg(w.avatar), 8, false);
+    g.globalAlpha = 1;
+  }
+
+  function drawWinner(wn) {
     const age = T - wn.t0;
     const fadeA = wn.fade ? 1 - clamp((T - wn.fade) / 0.45) : 1;
     if (fadeA <= 0) { win = null; return; }
     const w = wn.w;
-    // лучи
-    g.globalCompositeOperation = "lighter";
-    const rayA = smooth(age / 0.8) * fadeA * (reduced ? 0.5 : 0.85);
-    g.save(); g.translate(WX, WY); g.rotate(T * 0.12); g.globalAlpha = rayA * 0.4;
-    g.drawImage(rayC, -760, -760, 1520, 1520); g.restore();
-    g.globalCompositeOperation = "source-over"; g.globalAlpha = 1;
-    // кольца-ударные волны
-    for (const [d0, c] of [[0, "255,138,42"], [0.18, "124,255,79"]]) {
+    // лучи: на lowres-слое, края — жёсткие пиксели
+    const rg = rays.begin();
+    rg.translate(WX, WY); rg.rotate(Math.floor(T * 6) / 6 * 0.2);
+    for (let i = 0; i < 12; i++) {
+      rg.save(); rg.rotate((i / 12) * TAU);
+      rg.fillStyle = i % 2 ? "rgba(255,177,92,.55)" : "rgba(255,102,0,.55)";
+      rg.beginPath(); rg.moveTo(0, 0); rg.lineTo(1500, -80 - (i % 2) * 40); rg.lineTo(1500, 80 + (i % 2) * 40); rg.closePath(); rg.fill();
+      rg.restore();
+    }
+    g.globalAlpha = steps(smooth(age / 0.8) * fadeA * (reduced ? 0.12 : 0.2), 8);
+    rays.blit(g);
+    g.globalAlpha = 1;
+    // кольца-ударные волны (пиксельные окружности)
+    for (const [d0, c] of [[0, px.PAL.amber], [0.18, px.PAL.slime]]) {
       const q = (age - d0) / 1.1;
-      if (q > 0 && q < 1) {
-        g.strokeStyle = `rgba(${c},${0.7 * (1 - q) * fadeA})`; g.lineWidth = 10 * (1 - q) + 2;
-        g.beginPath(); g.arc(WX, WY, 150 + 800 * easeOut(q), 0, TAU); g.stroke();
-      }
+      if (q > 0 && q < 1) { g.globalAlpha = steps((1 - q) * fadeA, 3) || 0.3; px.circle(g, WX, WY, 150 + 800 * easeOut(q), c, q < 0.5 ? 3 : 2); g.globalAlpha = 1; }
     }
     // «души-спутники»
-    g.globalCompositeOperation = "lighter";
     for (let i = 0; i < 16; i++) {
       const a = T * (0.5 + (i % 3) * 0.1) + (i / 16) * TAU, r = 215 + (i % 2) * 38 + Math.sin(T * 1.2 + i) * 8;
-      const x = WX + Math.cos(a) * r, y = WY + Math.sin(a) * r * 0.82, sz = (28 + (i % 4) * 7) * smooth(age / 1.2);
-      g.globalAlpha = 0.85 * fadeA; g.drawImage(glow[COLNAMES[i % 3]], x - sz, y - sz, sz * 2, sz * 2);
-    }
-    g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
-    // портрет
-    const R = 140 * lerp(0.55, 1, easeBack(age / 1.0)) * (1 + 0.012 * Math.sin(T * 2.4));
-    drawPortrait(WX, WY, R / 1, w, wn.col, smooth(age / 0.45), smooth(age / 0.25) * fadeA);
-    // тексты
-    const hA = smooth((age - 0.1) / 0.5) * fadeA, hy = 120 - (1 - easeOut((age - 0.1) / 0.6)) * 40;
-    const total = wn.head.tw + 30 + wn.rnd.tw;
-    drawSprite(wn.head, WX - total / 2 + wn.head.tw / 2, hy, 1, hA);
-    drawSprite(wn.rnd, WX + total / 2 - wn.rnd.tw / 2, hy + 14, 1, hA);
-    const nA = smooth((age - 0.3) / 0.5) * fadeA, nS = lerp(0.8, 1, easeBack((age - 0.3) / 0.7));
-    drawSprite(wn.name, WX, 590, nS, nA);
-    drawSprite(wn.subS, WX, 674, 1, smooth((age - 0.7) / 0.5) * fadeA);
-  }
-
-  let hudCount = -1;
-  function drawHud() {
-    const a = phase === "roll" ? 0.5 : phase === "win" ? 0 : 1, la = phase === "win" ? 0.5 : 1;
-    if (a > 0) {
-    const t1 = textSprite("CHISETUP · HALLOWEEN", { font: '700 22px "Exo 2", sans-serif', fill: "#ff6600", size: 22, ls: "7px", pad: 12 });
-    drawSprite(t1, 56 + t1.w / 2, 62, 1, a);
-    const t2 = textSprite(`Учасники  ${total}   ·   Квитки  ${totalTickets}`, { font: '700 34px "Exo 2", sans-serif', fill: "#f4f1ea", size: 34, pad: 12, sw: 4, stroke: "rgba(0,0,0,.6)" });
-    drawSprite(t2, 56 + t2.w / 2, 108, 1, a);
-    }
-    // легенда
-    const items = [["orange", "Гарбузи"], ["green", "Замовлення"], ["violet", "Обидва"]];
-    let lx = 66;
-    g.globalAlpha = 0.9 * la;
-    for (const [c, tx] of items) {
-      g.globalCompositeOperation = "lighter"; g.drawImage(glow[c], lx - 16, 1022 - 16, 32, 32); g.globalCompositeOperation = "source-over";
-      const s = textSprite(tx, { font: '600 20px "Exo 2", sans-serif', fill: "#c9c4ba", size: 20, pad: 8 });
-      drawSprite(s, lx + 12 + s.w / 2 - 6, 1022, 1, 0.9 * la);
-      lx += s.w + 40;
+      const x = WX + Math.cos(a) * r * 1.25, y = WY + Math.sin(a) * r * 0.82, sz = (8 + (i % 3) * 4) * smooth(age / 1.2);
+      const cs = COLS[COLNAMES[i % 3]];
+      g.globalAlpha = fadeA; halo(g, x, y, sz * 5, sz * 5, cs.css, 0.7);
+      sq(g, x, y, sz, cs.css); if (sz >= 12) sq(g, x, y, sz - 8, cs.light);
     }
     g.globalAlpha = 1;
+    // портрет в рамке
+    const open = smooth(age / 0.45), pulse = Math.floor(T * 2) % 2 ? P : 0;
+    drawPortrait(WX, WY, 256 * lerp(0.4, 1, open), w, wn.col, steps(smooth(age / 0.25) * fadeA, 4) || 0.25);
+    // тексты
+    const hA = steps(smooth((age - 0.1) / 0.5) * fadeA, 4), hy = snap(110 - (1 - easeOut((age - 0.1) / 0.6)) * 40);
+    drawSprite(wn.head, WX, hy, hA);
+    // табличка с именем: открывается от центра, имя крупно
+    const PH = wn.prize ? 300 : 250, q = smooth((age - 0.3) / 0.5), ph = snap(PH * q), pw = snap(Math.max(780, Math.min(1760, wn.name.tw + 160)), 8);
+    if (ph >= 16) {
+      g.globalAlpha = fadeA;
+      px.box(g, WX - pw / 2, (wn.prize ? 620 : 595) - ph / 2, pw, ph, { frame: pulse ? px.PAL.orange : px.PAL.amber, fill: px.PAL.plum });
+      g.globalAlpha = 1;
+      if (q > 0.85) {
+        drawSprite(wn.name, WX, wn.prize ? 575 : 570, fadeA);
+        const la = steps(smooth((age - 0.8) / 0.4) * fadeA, 4);
+        drawSprite(wn.subS, WX, wn.prize ? 654 : 656, la);
+        if (wn.prize) drawSprite(wn.prize, WX, 712, la);
+      }
+    }
+  }
+
+  function drawHud() {
+    if (phase !== "idle") return;
+    const t = textSprite(`Учасників ${total} · Квитків ${totalTickets}`, { size: 28, color: px.PAL.bone, depth: P, pad: 8 });
+    const bw = snap(t.tw + 32, P);
+    px.box(g, 48, 40, bw, 56, { frame: px.PAL.orange, fill: px.PAL.plum });
+    drawSprite(t, 48 + 16 + t.w / 2 - 8, 68, 1);
   }
 
   function caption(rt) {
     for (const [t0, t1, tx] of CAPTIONS) {
       if (rt >= t0 && rt < t1) {
-        const a = smooth((rt - t0) / 0.3) * (1 - smooth((rt - (t1 - 0.25)) / 0.25));
-        const rnd = textSprite(`Раунд ${rs.info.round} з ${rs.info.totalRounds}`, { font: '700 32px "Exo 2", sans-serif', fill: "#ff8a2a", glow: "#ff6600", blur: 10, size: 32, ls: "3px", pad: 18 });
-        drawSprite(rnd, WX, 62, 1, 0.9);
-        const s = textSprite(tx, { font: '700 54px "Exo 2", sans-serif', fill: "#f4f1ea", glow: "#7cff4f", blur: 22, size: 54, sw: 7, stroke: "rgba(0,0,0,.7)", pad: 30 });
-        drawSprite(s, WX, 134, 1 + (1 - a) * 0.06, Math.max(0.0, a));
+        const a = steps(smooth((rt - t0) / 0.3) * (1 - smooth((rt - (t1 - 0.25)) / 0.25)), 4);
+        const s = textSprite(tx, { size: 60, color: px.PAL.bone, drop: px.PAL.moss, depth: 6, pad: 16 });
+        drawSprite(s, WX, snap(90 + (1 - a) * 12), a);
         return;
       }
     }
@@ -889,10 +682,10 @@ export function mount(root, host) {
 
     // пузыри на зелье
     const bl = clamp(boil + gulp * 0.35);
-    if (Math.random() < dt * (2 + 26 * bl)) bubbles.push({ u: (Math.random() - 0.5) * 2, v: (Math.random() - 0.5) * 2, r: 5 + Math.random() * 12 + bl * 6, age: 0, life: 0.5 + Math.random() * 0.8 });
+    if (Math.random() < dt * (2 + 26 * bl)) bubbles.push({ u: (Math.random() - 0.5) * 2, v: (Math.random() - 0.5) * 2, r: 7 + Math.random() * 14 + bl * 6, age: 0, life: 0.5 + Math.random() * 0.8 });
     for (let i = bubbles.length - 1; i >= 0; i--) {
       const b = bubbles[i]; b.age += dt;
-      if (!b.popped && b.age >= b.life) { b.popped = true; if (bl > 0.5 && Math.random() < 0.4) spark(PX + b.u * 210, PY + b.v * 36, (Math.random() - 0.5) * 60, -90 - Math.random() * 80, 0.5, 2 + Math.random() * 2, "green", { g: 400 }); }
+      if (!b.popped && b.age >= b.life) { b.popped = true; if (bl > 0.5 && Math.random() < 0.4) spark(PX + b.u * 200, PY + b.v * 30, (Math.random() - 0.5) * 60, -90 - Math.random() * 80, 0.5, 2 + Math.random() * 2, "green", { g: 400 }); }
       if (b.age > b.life + 0.25) bubbles.splice(i, 1);
     }
     // пар
@@ -903,75 +696,67 @@ export function mount(root, host) {
     }
     for (let i = sparks.length - 1; i >= 0; i--) {
       const s = sparks[i]; s.life -= dt; if (s.life <= 0) { sparks.splice(i, 1); continue; }
-      s.vy += s.g * dt; const dr = 1 - Math.min(1, s.drag * dt); s.vx *= dr; s.vy *= dr; s.x += s.vx * dt; s.y += s.vy * dt; s.rot += s.vr * dt;
+      s.vy += s.g * dt; const dr = 1 - Math.min(1, s.drag * dt); s.vx *= dr; s.vy *= dr; s.x += s.vx * dt; s.y += s.vy * dt;
     }
     if (phase === "win" && Math.random() < dt * (reduced ? 6 : 22) && sparks.length < 500) {
       spark(Math.random() * W, -10, (Math.random() - 0.5) * 60, 110 + Math.random() * 180, 6, 5 + Math.random() * 4, COLNAMES[(Math.random() * 3) | 0], { rect: 1 });
     }
     for (const b of bats) { b.x += b.v * dt; if (b.x > W + 200) { b.x = -300; b.y = 150 + Math.random() * 280; } }
-    for (const m of mists) { m.x += m.v * dt; if (m.x > W + 400) m.x = -400; }
   }
 
   function render() {
     g.setTransform(1, 0, 0, 1, 0, 0);
+    g.imageSmoothingEnabled = false;
     g.fillStyle = "#0e0e10"; g.fillRect(0, 0, cw, ch);
     g.setTransform(fit, 0, 0, fit, ox, oy);
     g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
-    g.drawImage(bgC, 0, 0, W, H);
+    if (px.ready(bgImg)) g.drawImage(bgImg, 0, 0, W, H);
+    else { g.fillStyle = px.PAL.plum; g.fillRect(0, 0, W, H); }
 
     const bl = clamp(boil + gulp * 0.35);
-    // туман у земли
-    g.globalCompositeOperation = "lighter";
-    for (const m of mists) { g.globalAlpha = 0.10; g.drawImage(blobTint.violet, m.x - m.r, m.y - m.r * 0.45, m.r * 2, m.r * 0.9); }
-    g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
+    // светляки: мигающие квадраты
     for (const f of flies) {
       const x = f.x + Math.sin(T * f.sp + f.ph) * 40, y = f.y + Math.cos(T * f.sp * 0.8 + f.ph) * 30;
-      g.globalCompositeOperation = "lighter"; g.globalAlpha = 0.18 + 0.14 * Math.sin(T * 2 + f.ph); g.drawImage(glow[f.col], x - 7, y - 7, 14, 14);
+      if (Math.floor(T * 2 + f.ph * 3) % 3 === 0) continue;
+      g.globalAlpha = 0.7; sq(g, x, y, P, COLS[f.col].light);
     }
-    g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
+    g.globalAlpha = 1;
     for (const b of bats) drawBat(b);
 
     drawSoulsPass(0);
-    drawHero();
+    drawMascot();
 
-    // котёл
+    // котёл: тряска шагами по сетке
     const amp = shakeAmp + shakeKick;
-    const sx = amp ? (Math.random() - 0.5) * 2 * amp * 0.6 : 0, sy = amp ? (Math.random() - 0.5) * amp * 0.35 : 0, rot = amp ? (Math.random() - 0.5) * amp * 0.0012 : 0;
-    g.save(); g.translate(PX, PY + 200); g.rotate(rot); g.translate(-PX + sx, -(PY + 200) + sy);
-    g.drawImage(potBackC, POT.x0, POT.y0, POT.w, POT.h);
-    drawLiquid(bl);
-    drawSoulsPass(1);
-    g.drawImage(potFrontC, POT.x0, POT.y0, POT.w, POT.h);
-    // зелёный отсвет на корпусе и светящееся лицо
-    g.globalCompositeOperation = "lighter";
-    const fl = faceI * (0.65 + 0.35 * Math.sin(T * 7 + Math.sin(T * 2.3) * 2));
-    g.globalAlpha = clamp(0.2 + fl * 0.8 + gulp * 0.2);
-    g.drawImage(faceC, PX - 140, PY + 72, 280, 166);
-    g.globalAlpha = 0.1 + 0.25 * bl;
-    g.drawImage(glow.green, PX - 330, PY - 90, 660, 260);
-    g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
+    const sx = amp ? snap((Math.random() - 0.5) * 2 * amp * 0.6) : 0, sy = amp ? snap((Math.random() - 0.5) * amp * 0.4) : 0;
+    // отсвет огня на земле
+    halo(g, PX, 1010, 900, 240, px.PAL.orange, 0.5 + 0.3 * bl);
+    g.save(); g.translate(sx, sy);
+    if (px.ready(potImg)) g.drawImage(potImg, POT_X, POT_Y, 384 * POT_S, 384 * POT_S);
+    drawPotLiquid(bl);
+    drawSoulsPass(1, PY + 4);
     g.restore();
+    // зелёная лужа света над котлом: растёт от кипения
+    halo(g, PX, PY - 40, 1100, 460, px.PAL.slime, 0.35 + 0.55 * bl);
 
-    // вихрь искр из котла
-    g.globalCompositeOperation = "lighter";
+    // вихрь углей из котла
     const eInt = 0.25 + 0.75 * bl;
     for (const m of embers) {
       const h = frac(T * m.rate * (1 + bl * 1.5) + m.ph);
       const R = 30 + 250 * Math.pow(h, 0.85), a = m.a0 + m.dir * T * (1.4 - h * 0.6);
-      const x = PX + Math.cos(a) * R, y = PY - 30 - 600 * h + Math.sin(a) * R * 0.2;
+      const x = PX + Math.cos(a) * R, y = PY - 30 - 520 * h + Math.sin(a) * R * 0.2;
       const al = Math.sin(Math.PI * h) * eInt * (phase === "win" ? 0.7 : 0.9);
-      const sz = m.sz * (1.7 - h) * 3.4;
-      g.globalAlpha = al; g.drawImage(glow[m.col], x - sz / 2, y - sz / 2, sz, sz);
+      if (al < 0.08) continue;
+      g.globalAlpha = steps(al, 3) || 0.33;
+      sq(g, x, y, m.sz * (1.7 - h) * 1.6, COLS[m.col].css);
     }
     g.globalAlpha = 1;
 
-    // пар
+    // пар: дизерные облачка
     for (const p of puffs) {
       const q = p.life / p.max, a = p.a * Math.sin(Math.PI * Math.min(1, (1 - q) * 1.15)) * (0.35 + 0.65 * q);
-      g.globalAlpha = Math.max(0, a); g.drawImage(blobTint[p.kind] || blobTint.smoke, p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
+      halo(g, p.x, p.y, p.r * 2.2, p.r * 2.2, PUFF_COL[p.kind] || PUFF_COL.smoke, Math.min(1, a * 3));
     }
-    g.globalAlpha = 1;
-    g.globalCompositeOperation = "source-over";
 
     drawSoulsPass(2);
 
@@ -980,52 +765,50 @@ export function mount(root, host) {
       const rt = T - rs.t0;
       if (rt >= T_F1 - 0.05 && rt < T_F1 + 0.55) {
         const q = (rt - T_F1 + 0.05) / 0.6, y = PY - 12 - Math.sin(q * Math.PI) * 120, a = 1 - q * q;
-        g.globalCompositeOperation = "lighter"; const sz = 60 * (1 - q * 0.4);
-        g.globalAlpha = a; g.drawImage(glow.pale, PX - sz / 2, y - sz / 2, sz, sz); g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
+        g.globalAlpha = steps(a, 3) || 0.33;
+        halo(g, PX, y, 120, 120, COLS.pale.css, 0.9); sq(g, PX, y, 24 * (1 - q * 0.4), COLS.pale.light);
+        g.globalAlpha = 1;
       }
       if (rt >= T_F2 && rt < T_F2_END) {
         const q = (rt - T_F2) / (T_F2_END - T_F2);
         const rise = q < 0.5 ? easeOut(q / 0.5) : q < 0.75 ? 1 : 1 - smooth((q - 0.75) / 0.25);
         const y = PY - 12 - rise * 230, x = PX + Math.sin(T * 26) * 5 * (q > 0.5 && q < 0.75 ? 1 : 0.2);
-        const flick = q > 0.5 ? 0.45 + 0.55 * Math.abs(Math.sin(T * 30)) : 1;
+        const flick = q > 0.5 ? (Math.floor(T * 14) % 2 ? 1 : 0.45) : 1;
         const sz = 150 * (0.6 + 0.4 * rise);
-        g.globalCompositeOperation = "lighter"; g.globalAlpha = flick;
-        g.drawImage(glow.pale, x - sz / 2, y - sz / 2, sz, sz);
-        g.globalAlpha = 0.5 * flick; g.drawImage(glow.green, x - sz, y - sz, sz * 2, sz * 2);
-        g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
+        g.globalAlpha = flick;
+        halo(g, x, y, sz * 2.2, sz * 2.2, COLS.green.css, 0.8);
+        halo(g, x, y, sz, sz, COLS.pale.css, 0.9);
+        sq(g, x, y, sz * 0.28, COLS.pale.light);
+        g.globalAlpha = 1;
         if (Math.random() < 0.5) spark(x, y, (Math.random() - 0.5) * 80, 30 + Math.random() * 60, 0.5, 3, "green", { g: 300 });
       }
       // душа победителя: вылет из котла
       if (rt >= T_EJECT && rt < T_REVEAL) {
         const u = (rt - T_EJECT) / (T_REVEAL - T_EJECT), e = easeOut(u), [wx, wy] = winnerPath(e);
-        const col = colorFor(rs.winner), r = lerp(16, 112, e * e), sz = r * 5.5;
-        g.globalCompositeOperation = "lighter"; g.globalAlpha = 1;
-        g.drawImage(glow[col], wx - sz / 2, wy - sz / 2, sz, sz);
-        g.drawImage(glow.pale, wx - sz / 4, wy - sz / 4, sz / 2, sz / 2);
-        g.globalCompositeOperation = "source-over";
+        const col = colorFor(rs.winner), r = lerp(16, 112, e * e), sz = r * 3.6;
+        halo(g, wx, wy, sz * 1.6, sz * 1.6, COLS[col].css, 0.95);
+        halo(g, wx, wy, sz * 0.7, sz * 0.7, COLS.pale.css, 0.9);
         const da = smooth((u - 0.55) / 0.45);
-        if (da > 0.01) { g.globalAlpha = da; drawDisc(g, wx, wy, r, rs.winner.name, col, getImg(rs.winner.avatar)); g.globalAlpha = 1; }
+        if (da > 0.01) {
+          const A = Math.max(16, snap(r * 1.8));
+          g.globalAlpha = steps(da, 3) || 0.33;
+          avatar(g, wx - A / 2, wy - A / 2, A, rs.winner.name, col, getImg(rs.winner.avatar), 8);
+          g.globalAlpha = 1;
+        } else sq(g, wx, wy, r * 0.5, COLS.pale.light);
       }
     }
 
     if (win) drawWinner(win);
 
-    // искры и конфетти
+    // искры и конфетти: квадраты, под конец мигают и уходят
     for (const s of sparks) {
-      const a = Math.min(1, (s.life / s.max) * 1.6);
-      if (s.rect) {
-        g.globalAlpha = a; g.save(); g.translate(s.x, s.y); g.rotate(s.rot); g.fillStyle = COLS[s.col].css; g.fillRect(-s.size, -s.size * 0.4, s.size * 2, s.size * 0.8); g.restore();
-      } else {
-        g.globalCompositeOperation = "lighter"; g.globalAlpha = a; const sz = s.size * 4; g.drawImage(glow[s.col], s.x - sz / 2, s.y - sz / 2, sz, sz);
-      }
+      const q = s.life / s.max;
+      if (q < 0.12 || (q < 0.3 && Math.floor(T * 20 + s.x) % 2)) continue;
+      sq(g, s.x, s.y, s.rect ? s.size * 1.4 : s.size * 1.2, COLS[s.col].css);
     }
-    g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
 
-    // общий свет от котла + вспышка
-    g.globalCompositeOperation = "lighter";
-    g.globalAlpha = 0.07 + 0.2 * bl; g.drawImage(glow.green, PX - 760, PY - 560, 1520, 900);
-    if (flash > 0) { g.globalAlpha = flash; g.drawImage(glow.pale, PX - 1200, WY - 800, 2400, 1600); }
-    g.globalAlpha = 1; g.globalCompositeOperation = "source-over";
+    // вспышка: полная заливка жёсткими ступенями
+    if (flash > 0.04) { g.globalAlpha = steps(flash, 4) * 0.8; g.fillStyle = px.PAL.bone; g.fillRect(0, 0, W, H); g.globalAlpha = 1; }
 
     if (rs) caption(T - rs.t0);
     drawHud();
@@ -1047,11 +830,7 @@ export function mount(root, host) {
   ro.observe(root);
   raf = requestAnimationFrame(frame);
   root.dataset.visual = "cauldron";
-  if (document.fonts?.load) {
-    Promise.all([document.fonts.load('800 40px "Exo 2"', "Аа Aa"), document.fonts.load('600 20px "Exo 2"', "Аа Aa")]).then(() => {
-      spriteCache.clear(); souls.forEach((s) => { s.badge = null; s.label = null; });
-    }).catch(() => {});
-  }
+  px.ensureFont().then(() => { spriteCache.clear(); souls.forEach((s) => { s.badge = null; s.label = null; }); });
 
   return {
     setParticipants,

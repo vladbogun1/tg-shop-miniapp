@@ -101,16 +101,16 @@ export function buildWorld(scene) {
     vertexShader: "varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
     fragmentShader: `uniform vec3 uMoon; varying vec3 vD;
       void main(){ float y = clamp(vD.y, -0.2, 1.0);
-        vec3 c = mix(vec3(0.075,0.06,0.10), vec3(0.018,0.02,0.035), smoothstep(0.0, 0.55, y));
-        c += vec3(0.10,0.06,0.02) * smoothstep(0.25, 0.0, abs(y - 0.02)) * 0.6;
-        float m = max(0.0, dot(vD, uMoon)); c += vec3(0.12,0.13,0.18) * pow(m, 24.0) + vec3(0.05,0.05,0.08) * pow(m, 4.0);
+        vec3 c = mix(vec3(0.085,0.04,0.12), vec3(0.012,0.008,0.02), smoothstep(0.0, 0.5, y));
+        c += vec3(0.02,0.07,0.015) * smoothstep(0.12, 0.0, abs(y - 0.0));
+        float m = max(0.0, dot(vD, uMoon)); c += vec3(0.16,0.08,0.02) * pow(m, 24.0) + vec3(0.07,0.03,0.09) * pow(m, 4.0);
         gl_FragColor = vec4(c, 1.0); }`,
   }));
   sky.renderOrder = -10; root.add(sky);
   const moonDir = new THREE.Vector3(-0.45, 0.42, -0.79).normalize();
-  const moon = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: 0xdcd8cc, fog: false, depthWrite: false, toneMapped: false, transparent: true }));
+  const moon = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: 0xff5a10, fog: false, depthWrite: false, toneMapped: false, transparent: true }));
   moon.position.copy(moonDir).multiplyScalar(800); moon.scale.setScalar(120); root.add(moon);
-  const moonCore = new THREE.Mesh(new THREE.CircleGeometry(15, 32), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.55, 1.4), fog: false, toneMapped: false }));
+  const moonCore = new THREE.Mesh(new THREE.CircleGeometry(15, 32), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.9, 0.24, 0.03), fog: false, toneMapped: false }));
   moonCore.position.copy(moonDir).multiplyScalar(790); moonCore.lookAt(0, 0, 0); root.add(moonCore);
   {
     const n = 1400, pos = new Float32Array(n * 3);
@@ -123,8 +123,8 @@ export function buildWorld(scene) {
   }
 
   // ---------- light ----------
-  const hemi = new THREE.HemisphereLight(0x5a6890, 0x1a1210, 1.1); root.add(hemi);
-  const moonL = new THREE.DirectionalLight(0xb9c6ff, 1.5);
+  const hemi = new THREE.HemisphereLight(0x6a4aa8, 0x20102a, 0.9); root.add(hemi);
+  const moonL = new THREE.DirectionalLight(0xb48cff, 1.4);
   moonL.position.copy(moonDir).multiplyScalar(60); moonL.castShadow = true;
   moonL.shadow.mapSize.set(2048, 2048);
   const sc = moonL.shadow.camera; sc.left = -28; sc.right = 28; sc.top = 28; sc.bottom = -28; sc.near = 1; sc.far = 160;
@@ -137,7 +137,7 @@ export function buildWorld(scene) {
   const S = 300, SEG = 170;
   const gg = new THREE.PlaneGeometry(S, S, SEG, SEG); gg.rotateX(-Math.PI / 2);
   const gp = gg.attributes.position, col = new Float32Array(gp.count * 3), c = new THREE.Color();
-  const C = { grass: new THREE.Color(0x1f2a20), grass2: new THREE.Color(0x2b3324), dirt: new THREE.Color(0x3b3026), sand: new THREE.Color(0x4a4334), rock: new THREE.Color(0x3a3a40),
+  const C = { grass: new THREE.Color(0x1c3a1c), grass2: new THREE.Color(0x2c4a22), dirt: new THREE.Color(0x3b3026), sand: new THREE.Color(0x4a3a30), rock: new THREE.Color(0x3a3248),
     soil: new THREE.Color(0x33251a), yard: new THREE.Color(0x232428), swamp: new THREE.Color(0x18221c), stone: new THREE.Color(0x3e3c40), under: new THREE.Color(0x14181c) };
   for (let i = 0; i < gp.count; i++) {
     const x = gp.getX(i), z = gp.getZ(i), y = rawHeight(x, z);
@@ -176,10 +176,10 @@ export function buildWorld(scene) {
   gmat.userData.storm = true; triplanar(gmat, tex("ground"), 0.2, 0.45);
   const ground = new THREE.Mesh(gg, gmat);
   ground.receiveShadow = true; root.add(ground);
-  const water = new THREE.Mesh(new THREE.CircleGeometry(1200, 64), new THREE.MeshStandardMaterial({ color: 0x080b12, roughness: 0.18, metalness: 0.7 }));
+  const water = new THREE.Mesh(new THREE.CircleGeometry(1200, 64), new THREE.MeshStandardMaterial({ color: 0x0c0818, roughness: 0.18, metalness: 0.7 }));
   water.rotation.x = -Math.PI / 2; water.position.y = 0.0; root.add(water);
   // moonlight path on the water
-  const glint = new THREE.Mesh(new THREE.PlaneGeometry(40, 420), new THREE.MeshBasicMaterial({ map: glow, color: 0x2a3040, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.6 }));
+  const glint = new THREE.Mesh(new THREE.PlaneGeometry(40, 420), new THREE.MeshBasicMaterial({ map: glow, color: 0x5a2408, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.6 }));
   glint.rotation.x = -Math.PI / 2; glint.position.set(moonDir.x * 330, 0.05, moonDir.z * 330); glint.rotation.z = -Math.atan2(moonDir.x, -moonDir.z); root.add(glint);
 
   // ---------- materials ----------
@@ -369,10 +369,10 @@ export function buildWorld(scene) {
   {
     for (let i = 0; i < 46; i++) {
       const a = R() * 6.283, r = 10 + R() * 85, x = Math.cos(a) * r, z = Math.sin(a) * r;
-      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: 0x6a6f86, transparent: true, opacity: 0.07, depthWrite: false })); s.userData.op = 0.07; s.scale.set(26 + R() * 18, 7 + R() * 4, 1); s.position.set(x, rawHeight(x, z) + 1.4, z); root.add(s);
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: 0x2a1838, transparent: true, opacity: 0.07, depthWrite: false })); s.userData.op = 0.07; s.scale.set(26 + R() * 18, 7 + R() * 4, 1); s.position.set(x, rawHeight(x, z) + 1.4, z); root.add(s);
       fogs.push({ s, x, z, ph: R() * 6 });
     }
-    for (let i = 0; i < 10; i++) { const p = P.swamp, x = p.x + (R() - 0.5) * 16, z = p.z + (R() - 0.5) * 14; const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: 0x4aa060, transparent: true, opacity: 0.09, depthWrite: false })); s.userData.op = 0.09; s.scale.set(14, 4, 1); s.position.set(x, p.h + 1, z); root.add(s); fogs.push({ s, x, z, ph: R() * 6 }); }
+    for (let i = 0; i < 10; i++) { const p = P.swamp, x = p.x + (R() - 0.5) * 16, z = p.z + (R() - 0.5) * 14; const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: 0x3fb030, transparent: true, opacity: 0.09, depthWrite: false })); s.userData.op = 0.09; s.scale.set(14, 4, 1); s.position.set(x, p.h + 1, z); root.add(s); fogs.push({ s, x, z, ph: R() * 6 }); }
   }
 
   // ---------- storm ----------
@@ -403,7 +403,7 @@ export function buildWorld(scene) {
     // from high up the island would sink into the night: lift the moon and sky fill with altitude
     if (camera) {
       const up = clamp((camera.position.y - 14) / 36, 0, 1);
-      hemi.intensity = 1.1 + 3.2 * up; moonL.intensity = 1.5 + 2.4 * up;
+      hemi.intensity = 0.7 + 1.8 * up; moonL.intensity = 1.2 + 1.6 * up;
     }
     if (focus) {
       moonL.position.set(focus.x + moonDir.x * 60, focus.y + moonDir.y * 60, focus.z + moonDir.z * 60);
