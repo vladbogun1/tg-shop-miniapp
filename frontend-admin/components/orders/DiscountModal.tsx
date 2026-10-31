@@ -8,10 +8,9 @@
  * customers' review bonuses (they used to bury the shop's own codes).
  */
 import { Fragment, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Percent, Tag, X } from "lucide-react";
 import { adminApi, ApiError, type OrderDetailDto } from "@/lib/api";
-import { extApi, promoOrigin } from "@/lib/api-extra";
+import { promoOrigin, usePromocodes } from "@/features/promo";
 import { money } from "@/lib/money";
 import { toast } from "@shop/ui/toast";
 import { cn } from "@/lib/cn";
@@ -42,11 +41,7 @@ export function DiscountModal({
   const [notify, setNotify] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const { data: promos = [] } = useQuery({
-    queryKey: ["promocodes"],
-    queryFn: () => extApi.promocodes(),
-    enabled: open,
-  });
+  const { data: promos = [] } = usePromocodes(open);
   // Exhausted / expired codes would only fail on the server ("лимит исчерпан") — don't offer them.
   // Offered: our shared codes, then this customer's own personal codes (e.g. their review bonus).
   // Other customers' personal codes and review bonuses would be refused anyway («чужой код»).
