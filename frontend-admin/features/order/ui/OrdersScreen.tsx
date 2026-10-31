@@ -10,10 +10,10 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { useDebounced } from "@/lib/use-debounced";
 import { useIsDesktop } from "@/lib/use-media";
 import { orderKeys } from "../keys";
-import { isClosedColumn, parseBoardLink } from "../model/board";
+import { CLOSED_PAGE, isClosedColumn, parseBoardLink } from "../model/board";
 import type { BoardKey } from "../model/status";
 import type { OrdersView } from "../model/view";
-import { useRefreshOrders } from "../queries/board";
+import { useBoardQuery, useRefreshOrders } from "../queries/board";
 import { BoardView } from "./board/BoardView";
 import type { OpenAction } from "./board/use-board-moves";
 import { OrderDrawer } from "./drawer/OrderDrawer";
@@ -50,6 +50,9 @@ export function OrdersScreen() {
 
   // Debounced so typing does not fire a board load per keystroke.
   const debouncedSearch = useDebounced(search);
+  // The board query stays mounted under the table too — it polls and keeps «Обновить» spinning, as before.
+  const [closedLimit, setClosedLimit] = useState(CLOSED_PAGE);
+  const boardQ = useBoardQuery(debouncedSearch, period, closedLimit);
 
   function openOrder(id: string, action?: OpenAction) {
     setOpenAction(action);
@@ -99,6 +102,9 @@ export function OrdersScreen() {
       ) : (
         <BoardView
           search={debouncedSearch}
+          boardQ={boardQ}
+          closedLimit={closedLimit}
+          onClosedLimit={setClosedLimit}
           period={period}
           mobileTab={mobileTab}
           onMobileTab={setMobileTab}

@@ -12,7 +12,7 @@
  *  - «Едет назад» (V68) is a column, not a status: parcels on their way back. A SHIPPED card dropped
  *    on it = reject with «Посылка едет назад»; a DELIVERED one opens the return wizard.
  */
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { X } from "lucide-react";
 import { Button } from "@shop/ui/admin-button";
 import { QueryState } from "@/components/ui/QueryState";
@@ -23,7 +23,7 @@ import type { AdminBoard } from "../../api";
 import { CLOSED_MAX, CLOSED_PAGE, isClosedColumn, onlyPaidNew } from "../../model/board";
 import type { OrdersPeriod } from "../../model/period";
 import type { BoardKey } from "../../model/status";
-import { boardKey, useBoardQuery } from "../../queries/board";
+import { boardKey, type BoardQuery } from "../../queries/board";
 import { StatusMoveModal } from "./StatusMoveModal";
 import { DesktopBoard } from "./DesktopBoard";
 import { MobileBoard } from "./MobileBoard";
@@ -32,6 +32,10 @@ import { useBoardMoves, type OpenAction } from "./use-board-moves";
 interface Props {
   /** Already debounced. */
   search: string;
+  /** The board query lives in the screen: it keeps polling while the table is shown. */
+  boardQ: BoardQuery;
+  closedLimit: number;
+  onClosedLimit: (n: number) => void;
   period: OrdersPeriod;
   mobileTab: BoardKey;
   onMobileTab: (s: BoardKey) => void;
@@ -52,12 +56,10 @@ function PaidNewNotice({ onClear }: { onClear: () => void }) {
   );
 }
 
-export function BoardView({ search, period, mobileTab, onMobileTab, paidNewOnly, onClearPaidNew, onOpen }: Props) {
+export function BoardView({ search, boardQ, closedLimit, onClosedLimit, period, mobileTab, onMobileTab, paidNewOnly, onClearPaidNew, onOpen }: Props) {
   const isDesktop = useIsDesktop();
-  const [closedLimit, setClosedLimit] = useState(CLOSED_PAGE);
 
   const queryKey = boardKey(search, period, closedLimit);
-  const boardQ = useBoardQuery(search, period, closedLimit);
 
   const rawBoard = boardQ.data;
   // "Оплачены, ждут подтверждения": paid online, still NEW — the admin has to approve them.
@@ -66,7 +68,7 @@ export function BoardView({ search, period, mobileTab, onMobileTab, paidNewOnly,
   const moves = useBoardMoves({ board, queryKey, onOpen });
 
   // The backend caps a closed column at CLOSED_MAX cards; past it «Показать ещё» would do nothing.
-  const showMore = closedLimit < CLOSED_MAX ? () => setClosedLimit((n) => Math.min(CLOSED_MAX, n + CLOSED_PAGE)) : undefined;
+  const showMore = closedLimit < CLOSED_MAX ? () => onClosedLimit(Math.min(CLOSED_MAX, closedLimit + CLOSED_PAGE)) : undefined;
   const loadingMore = boardQ.isFetching && !boardQ.isLoading;
 
   return (

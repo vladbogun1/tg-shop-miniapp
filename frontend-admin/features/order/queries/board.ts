@@ -19,6 +19,8 @@ export function boardKey(search: string, period: OrdersPeriod, closedLimit: numb
  * Доска: самый тяжёлый запрос админки. Опрос раз в 30 с — только страховка для изменений извне
  * (другой админ, бот): свои правки инвалидируют доску сразу.
  */
+export type BoardQuery = ReturnType<typeof useBoardQuery>;
+
 export function useBoardQuery(search: string, period: OrdersPeriod, closedLimit: number) {
   return useQuery({
     queryKey: boardKey(search, period, closedLimit),
