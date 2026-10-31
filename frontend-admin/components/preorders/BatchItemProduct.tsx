@@ -14,7 +14,7 @@ import { invalidateCards } from "@/features/cards";
 import { money } from "@/lib/money";
 import { Image, resolveImageSrc } from "@/lib/image";
 import { PREORDERS_KEY } from "@/lib/preorders";
-import { siteProductUrl } from "@/lib/support-api";
+import { siteProductUrl } from "@/features/support";
 import { toast } from "@shop/ui/toast";
 import { CardStatusBadge } from "@/features/catalog";
 import { CardCompletionModal } from "@/features/cards";

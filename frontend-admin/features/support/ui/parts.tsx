@@ -4,17 +4,12 @@ import { Globe, Hourglass, MessageCircleQuestion, Package, Send } from "lucide-r
 import { Badge } from "@/components/ui/Badge";
 import { Image } from "@/lib/image";
 import { cn } from "@/lib/cn";
-import { sourceLabel, type SupportThread } from "@/lib/support-api";
-
-const CLOSED_BY: Record<string, string> = {
-  CUSTOMER: "клиентом",
-  ADMIN: "админом",
-  AUTO: "автоматически",
-};
+import { closedLabel, sourceLabel } from "../model/thread";
+import type { SupportThread } from "../model/types";
 
 /** «Открыт» / «Закрыт (кем)» + «Ждёт ответа». */
 export function ThreadStatusBadges({ thread, className }: { thread: SupportThread; className?: string }) {
-  const closedBy = thread.closedBy ? CLOSED_BY[thread.closedBy] : null;
+  const closed = closedLabel(thread);
   return (
     <span className={cn("inline-flex flex-wrap items-center gap-1.5", className)}>
       {thread.status === "OPEN" ? (
@@ -23,7 +18,7 @@ export function ThreadStatusBadges({ thread, className }: { thread: SupportThrea
         </Badge>
       ) : (
         <Badge tone="neutral" dot>
-          {closedBy ? `Закрыт ${closedBy}` : "Закрыт"}
+          {closed}
         </Badge>
       )}
       {thread.status === "OPEN" && thread.awaitingSince && (
@@ -59,12 +54,4 @@ export function ProductThumb({ thread, className = "h-10 w-10" }: { thread: Supp
     );
   }
   return <Image src={thread.productImageUrl} alt={thread.productTitle ?? "Товар"} size={160} className={frame} />;
-}
-
-export function threadTopic(thread: SupportThread): string {
-  return thread.productTitle || thread.subject || "Общий вопрос";
-}
-
-export function customerOf(thread: SupportThread): string {
-  return thread.customerName?.trim() || (thread.userId ? `#${thread.userId}` : "Клиент");
 }
