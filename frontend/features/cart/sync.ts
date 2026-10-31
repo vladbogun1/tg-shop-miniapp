@@ -18,7 +18,7 @@ import { createCartSync, type CartSyncPolicy } from "@shop/customer/cart/sync";
 import { lineKey, type CartLine } from "@shop/customer/cart/lines";
 import { customerApi, onAccessToken, getAccessToken } from "@/lib/api";
 import { useCart } from "@/features/cart/store";
-import { telegramPlatform } from "@/lib/platform";
+import { telegramPlatform } from "@/platform/telegram/platform";
 
 type State = ReturnType<typeof useCart.getState>;
 
