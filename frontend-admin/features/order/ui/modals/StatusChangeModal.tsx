@@ -11,7 +11,7 @@
  * to pre-fill order B), and it is cleared only after the server accepted the change — a failed
  * request keeps what was typed. Without an order the confirm button is disabled and says why.
  */
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import type { OrderStatus } from "@/lib/api";
 import { BACK_REASONS, buildStatusPayload, cleanTtn, isStatusInvalid, ttnLooksWrong } from "../../model/status-change";
 import type { RejectReasonCode } from "../../model/status";
@@ -91,7 +91,7 @@ export function StatusChangeModal({ open, target, order, onClose, onConfirm, loa
 
   // A fresh form for every open, target and order.
   const orderId = order?.id ?? null;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
     reset({ ttn: "", reason: "" });
     setCode(null);

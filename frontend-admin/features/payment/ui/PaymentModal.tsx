@@ -14,7 +14,7 @@
  *  - "Полная оплата" needs a second, explicit confirmation of the amount;
  *  - "Снять оплату" asks first.
  */
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { money } from "@/lib/money";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { Button } from "@shop/ui/admin-button";
@@ -50,7 +50,7 @@ export function PaymentModal({
   const hasPrepay = !!order && order.prepaymentMinor > 0;
   const nothingYet = !!order && order.receivedMinor <= 0;
   const pickup = order?.deliveryMethod === "PICKUP";
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
     reset({ mode: hasPrepay && nothingYet ? "prepayment" : null, custom: "", channel: pickup ? "CASH" : "NP_COD", note: "" });
     setConfirmFull(false);

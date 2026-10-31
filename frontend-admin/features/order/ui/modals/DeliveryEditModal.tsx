@@ -5,7 +5,7 @@
  * the phone or the branch meant rejecting the order and asking the customer to order again.
  * City and branch are picked from the Nova Poshta directory, so the refs stay valid.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import { useForm } from "@shop/ui/form";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { Button } from "@shop/ui/admin-button";
@@ -87,7 +87,7 @@ export function DeliveryEditModal({
   const [wh, setWh] = useState<Place | null>(null);
 
   const orderId = order?.id ?? null;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open || !order) return;
     reset({ name: order.customerName ?? "", phone: order.phone ?? "" });
     setCity(placeOf(order.npCityRef, order.npCityName));

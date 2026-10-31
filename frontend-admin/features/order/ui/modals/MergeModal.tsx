@@ -9,7 +9,7 @@
  * The lines, the discount and what was already paid move into the order that stays; the other one is
  * closed as «Объединён» and keeps its history (orders are never deleted).
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useForm } from "@shop/ui/form";
 import { shortId } from "../../model/status";
 import { defaultKeepThis, mergeView, mustStay } from "../../model/merge";
@@ -45,7 +45,7 @@ export function MergeModal({
   const q = useMergeCandidatesQuery(orderId, open && !!orderId);
   const candidates = useMemo(() => q.data ?? [], [q.data]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
     setPickedId(null);
     setKeepThis(true);

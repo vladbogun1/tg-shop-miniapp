@@ -1,7 +1,7 @@
 "use client";
 
 /** Правка шаблона ответа: название и текст на ru / uk / en (русский обязателен). */
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { Button } from "@shop/ui/admin-button";
@@ -43,7 +43,7 @@ export function TemplateEditor({
   const [lang, setLang] = useState<TemplateLang>("ru");
 
   const id = template?.id ?? null;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
     reset(draftOf(template));
     setLang("ru");

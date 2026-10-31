@@ -6,7 +6,7 @@
  * Step 2: an explicit confirmation — the refund cannot be taken back.
  * The refund settles asynchronously; the block shows «возврат в обработке» until monobank confirms.
  */
-import { useEffect, useState, type ReactNode } from "react";
+import { useLayoutEffect, useState, type ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
 import { money } from "@/lib/money";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
@@ -50,7 +50,7 @@ export function RefundModal({
   const [confirming, setConfirming] = useState(false);
 
   const invoiceId = invoice?.invoiceId ?? null;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
     reset({ mode: "full", partial: "" });
     setConfirming(false);

@@ -1,7 +1,7 @@
 "use client";
 
 /** «В архив» — the main admin archives a closed order; the reason is required (≥ 3 characters). */
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import { useForm } from "@shop/ui/form";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { Button } from "@shop/ui/admin-button";
@@ -21,7 +21,7 @@ export function ArchiveModal({
   loading?: boolean;
 }) {
   const { reset, register, watch } = useForm<{ reason: string }>({ defaultValues: { reason: "" } });
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (open) reset({ reason: "" });
   }, [open, reset]);
   const clean = watch("reason").trim();

@@ -1,7 +1,7 @@
 "use client";
 
 /** Fix the ТТН of an order that is already shipped (PATCH /orders/{id}/tracking). */
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import { useForm } from "@shop/ui/form";
 import { isNovaPoshtaTtn } from "../../model/status";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
@@ -24,7 +24,7 @@ export function TrackingModal({
   loading?: boolean;
 }) {
   const { reset, register, watch } = useForm<{ ttn: string }>({ defaultValues: { ttn: "" } });
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (open) reset({ ttn: current ?? "" });
   }, [open, orderId, current, reset]);
 
