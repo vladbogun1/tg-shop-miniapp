@@ -8,7 +8,7 @@ stale-time-literal frontend 10
 stale-time-literal site 14
 refetch-interval-literal frontend 3
 refetch-interval-literal site 1
-money-div-mul-100 frontend 5
+money-div-mul-100 frontend 4
 money-div-mul-100 site 8
 money-div-mul-100 core 3
 to-fixed frontend 1
@@ -18,11 +18,3 @@ cyrillic-literal site 120
 exhaustive-deps frontend 1
 exhaustive-deps site 2
 exhaustive-deps ui 1
-max-lines ui 1
-max-lines-per-function site 2
-max-lines-per-function ui 1
-complexity frontend 9
-complexity site 23
-complexity core 7
-complexity ui 2
-max-depth core 1

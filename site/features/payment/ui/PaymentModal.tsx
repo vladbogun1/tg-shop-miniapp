@@ -105,7 +105,7 @@ function useDialogFocus(panelRef: { current: HTMLDivElement | null }) {
     const before = document.activeElement as HTMLElement | null;
     panelRef.current?.querySelector<HTMLElement>("[data-autofocus]")?.focus();
     return () => before?.focus?.();
-  }, []);
+  }, [panelRef]);
 
   // Basic focus trap: Tab cycles inside the dialog (the iframe is one stop).
   useEffect(() => {
@@ -131,7 +131,7 @@ function useDialogFocus(panelRef: { current: HTMLDivElement | null }) {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, []);
+  }, [panelRef]);
 }
 
 /** Messages from the monobank form and from our own /pay-return page inside it. */
@@ -189,7 +189,7 @@ function usePaymentPolling(orderId: string, cb: { current: Callbacks }, close: (
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [orderId, close]);
+  }, [orderId, close, cb]);
 }
 
 function PaymentDialog({

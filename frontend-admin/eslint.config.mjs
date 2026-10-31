@@ -3,7 +3,6 @@ import { fileURLToPath } from "node:url";
 import { FlatCompat } from "@eslint/eslintrc";
 import { architectureLimits } from "../packages/core/eslint/architecture-limits.mjs";
 import { frontRules } from "../packages/core/eslint/front-rules.mjs";
-import legacyLimits from "./eslint.legacy-limits.mjs";
 
 const ALLOW_RAW = ["next.config.ts", "public/sw.js", "lib/session.ts", "features/procurement/api.ts"];
 
@@ -22,8 +21,8 @@ const config = [
       "@next/next/no-img-element": "off",
     },
   },
-  // Size/complexity limits: error for new code, warning for files in eslint.legacy-limits.mjs.
-  ...architectureLimits(legacyLimits),
+  // Size/complexity limits: error everywhere (no exceptions list).
+  ...architectureLimits(),
   // Единые способы и совместимость браузеров: счётные правила — warn (храповик), запреты — error.
   ...frontRules({
     customer: false,

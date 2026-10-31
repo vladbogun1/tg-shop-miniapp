@@ -3,7 +3,6 @@ import { fileURLToPath } from "node:url";
 import { FlatCompat } from "@eslint/eslintrc";
 import { architectureLimits } from "./eslint/architecture-limits.mjs";
 import { frontRules } from "./eslint/front-rules.mjs";
-import legacyLimits from "./eslint.legacy-limits.mjs";
 
 const compat = new FlatCompat({ baseDirectory: dirname(fileURLToPath(import.meta.url)) });
 
@@ -11,7 +10,7 @@ const config = [
   { ignores: ["node_modules/**", "src/api/generated.d.ts", "src/api/error-codes.d.ts"] },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   { rules: { "@next/next/no-img-element": "off" } },
-  ...architectureLimits(legacyLimits),
+  ...architectureLimits(),
   // Файлы, ради которых правила существуют (у каждого файла — ровно одна группа: списки не должны пересекаться).
   ...frontRules({
     allow: {

@@ -1,24 +1,6 @@
 [
   {
     "type": "dependency",
-    "from": "packages/core/src/giftcase.ts",
-    "to": "packages/core/src/types.ts",
-    "rule": {
-      "severity": "error",
-      "name": "no-circular"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "packages/core/src/types.ts",
-    "to": "packages/core/src/giftcase.ts",
-    "rule": {
-      "severity": "error",
-      "name": "no-circular"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "frontend/features/order/ui/OrderChatScreen.tsx",
     "to": "frontend/lib/ws.ts",
     "rule": {

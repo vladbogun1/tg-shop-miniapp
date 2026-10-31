@@ -17,7 +17,6 @@ export type TimeRange = "month" | "halfyear" | "year" | "all";
 
 import type { Schemas } from "./api/schemas";
 import type { CatalogFields } from "./catalog";
-import type { OrderGift } from "./giftcase";
 
 export interface ProductImage {
   /** Auto-increment id from the database. */

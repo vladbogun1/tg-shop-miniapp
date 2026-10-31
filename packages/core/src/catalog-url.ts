@@ -1,9 +1,22 @@
 /**
  * Filter <-> URL (de)serialization, split out of catalog.ts; re-exported from there, so the public
- * `@shop/core/catalog` API is unchanged. Imports only types from catalog.ts (no runtime cycle).
+ * `@shop/core/catalog` API is unchanged. Owns the filter types (catalog.ts re-exports them), so there is no import cycle.
  */
 
-import type { CatalogFilter, ProductCondition } from "./catalog";
+export type ProductCondition = "NEW" | "MARKDOWN" | "USED";
+
+export interface CatalogFilter {
+  /** Category slug (includes the subtree) or MARKDOWN_COLLECTION_SLUG; null = all. */
+  category?: string | null;
+  brands?: string[];
+  conditions?: ProductCondition[];
+  priceMin?: number | null;
+  priceMax?: number | null;
+  inStock?: boolean;
+  q?: string;
+  attrs?: Record<string, string[]>;
+}
+
 
 export function parseRange(s: string | undefined): { min: number | null; max: number | null } | null {
   if (!s || !s.includes("..")) return null;

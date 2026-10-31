@@ -8,15 +8,15 @@
  */
 
 import type { Schemas } from "./api/schemas";
-import { parseRange } from "./catalog-url";
+import { parseRange, type CatalogFilter, type ProductCondition } from "./catalog-url";
 import { toMajor } from "./money";
 
+export type { CatalogFilter, ProductCondition } from "./catalog-url";
 export { filterForCategory, filterFromParams, filterToParams, parseRange, toggleFacet } from "./catalog-url";
 
 // ---- schema ---------------------------------------------------------------------
 
 export type SpecType = "number" | "enum" | "multi" | "bool" | "text";
-export type ProductCondition = "NEW" | "MARKDOWN" | "USED";
 export type CardStatus = "DRAFT" | "AI_FILLED" | "READY";
 
 /** Reserved slug of the virtual "Уценка" collection (products with condition != NEW). */
@@ -188,17 +188,6 @@ export function specSummary(schema: CatalogSchema, categoryId: string | null | u
  * Attribute filters: enum/multi → option values; number with buckets → bucket ids; number without
  * buckets → one "min..max" (either side may be empty); bool → "1".
  */
-export interface CatalogFilter {
-  /** Category slug (includes the subtree) or MARKDOWN_COLLECTION_SLUG; null = all. */
-  category?: string | null;
-  brands?: string[];
-  conditions?: ProductCondition[];
-  priceMin?: number | null;
-  priceMax?: number | null;
-  inStock?: boolean;
-  q?: string;
-  attrs?: Record<string, string[]>;
-}
 
 /**
  * Catalog fields as the storefront DTO carries them (OpenAPI: absence = null, specs = `{[key]: unknown}`). Wider than
