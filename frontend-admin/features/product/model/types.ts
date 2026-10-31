@@ -6,7 +6,7 @@
 import type { Schemas } from "@shop/core/api/schemas";
 import type { CardStatus, ProductCondition, ProductSpecs } from "@shop/core/catalog";
 import type { Product } from "@shop/core/types";
-import type { CardMeta } from "@/lib/api";
+import type { CardMeta } from "@/features/catalog";
 
 export type AdminProductDto = Schemas["AdminProductDto"];
 

@@ -1,5 +1,5 @@
 import type { Schemas } from "@shop/core/api/schemas";
-import { apiGet } from "@/lib/api";
+import { apiGet } from "@/lib/http";
 import type {
   GeoOnline,
   GeoOverview,

@@ -1,6 +1,6 @@
 "use client";
 
-import type { OrderStatus } from "@/lib/api";
+import type { OrderStatus } from "@shop/core/types";
 import type { ShopForm } from "@shop/ui/form";
 import { money } from "@/lib/money";
 import { cn } from "@/lib/cn";

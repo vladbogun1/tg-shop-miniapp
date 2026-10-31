@@ -1,7 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import type { OrderSortBy, SortDir } from "@/lib/api";
+import type { OrderSortBy } from "../../model/table";
+import type { SortDir } from "@/lib/sort";
 
 interface Props {
   col: OrderSortBy;

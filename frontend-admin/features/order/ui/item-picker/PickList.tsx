@@ -1,7 +1,7 @@
 "use client";
 
 import { Search } from "lucide-react";
-import type { Product } from "@/lib/api";
+import type { Product } from "@shop/core/types";
 import { cn } from "@/lib/cn";
 import { Image } from "@/lib/image";
 import { Input } from "@/components/ui/Input";

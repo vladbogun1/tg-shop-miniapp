@@ -4,7 +4,7 @@ import { Button } from "@shop/ui/admin-button";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/Spinner";
-import { ApiError } from "@/lib/api";
+import { ApiError } from "@shop/core/errors";
 import type { TwoFactorSetup } from "../../api";
 import { useConfirmSetup, useStartSetup } from "../../queries";
 import { CodeInput } from "./CodeInput";

@@ -1,5 +1,5 @@
 import type { Schemas } from "@shop/core/api/schemas";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/http";
 
 export type RevalidateResult = Schemas["RevalidateResult"];
 /** Итог последнего обновления сайта: `enabled=false` — SITE_REVALIDATE_URL не задан. */

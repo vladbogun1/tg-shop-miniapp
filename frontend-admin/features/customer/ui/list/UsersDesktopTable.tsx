@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Crown } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
-import type { SortDir } from "@/lib/api";
+import type { SortDir } from "@/lib/sort";
 import { staggerContainer, riseItem } from "@/lib/motion";
 import { money } from "@/lib/money";
 import { formatDateTime, timeAgo } from "@shop/core/time";

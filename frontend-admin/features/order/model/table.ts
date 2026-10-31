@@ -1,6 +1,9 @@
 /** Таблица заказов: фильтр статуса и порядок сортировки. Без React. */
-import type { OrderSortBy, OrderStatus, SortDir } from "@/lib/api";
+import type { OrderStatus } from "@shop/core/types";
+import type { SortDir } from "@/lib/sort";
 import { STATUS_LABEL, STATUS_ORDER } from "./status";
+
+export type OrderSortBy = "createdAt" | "totalMinor" | "customerName" | "status";
 
 export const TABLE_SIZE = 20;
 

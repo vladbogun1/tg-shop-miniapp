@@ -1,5 +1,5 @@
 /** Выбор позиции для добавления в заказ. Без React. */
-import type { Product, ProductVariant } from "@/lib/api";
+import type { Product, ProductVariant } from "@shop/core/types";
 
 export function filterPickable(products: Product[], q: string): Product[] {
   const s = q.trim().toLowerCase();

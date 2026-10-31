@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { LogoMark } from "@/components/brand/Logo";
 import { Toggle } from "@/components/ui/Toggle";
-import { ApiError } from "@/lib/api";
+import { ApiError } from "@shop/core/errors";
 
 const TRUST_LABEL = "Доверять этому устройству 30 дней";
 

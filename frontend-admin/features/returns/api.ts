@@ -2,7 +2,7 @@
  * Эндпоинты возвратов, обмена и возврата на склад. Единственное место с этими путями.
  * Ответ на запись заказа — карточка заказа целиком (`OrderDetailDto`).
  */
-import { apiPost } from "@/lib/api";
+import { apiPost } from "@/lib/http";
 import type { MovementChannel } from "@/features/payment";
 import type { ReturnLineOutcome, ReturnOrder } from "./model/types";
 

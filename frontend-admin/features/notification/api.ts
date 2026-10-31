@@ -1,6 +1,6 @@
 import type { Schemas } from "@shop/core/api/schemas";
 import { customerApi, type UserCardDto } from "@/features/customer";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/http";
 import type { BroadcastAudience, BroadcastHistoryItem, BroadcastStartBody, BroadcastTestBody, ShopLang } from "./model/types";
 
 export type BroadcastStatus = Schemas["BroadcastStatus"];

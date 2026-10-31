@@ -10,7 +10,8 @@
  */
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
-import type { CardMeta, ProductSpecs, SpecValue } from "@/lib/api";
+import type { CardMeta } from "../model/card-meta";
+import type { ProductSpecs, SpecValue } from "@shop/core/catalog";
 import { cn } from "@/lib/cn";
 import { groupAttributes, isSpecEmpty } from "../model/attributes";
 import { parseNum } from "../model/attribute-draft";

@@ -2,7 +2,7 @@
  * Writes of the «Переводы» screen: «Принять» of one text and the bulk accept. Thin wrappers over
  * /import and /accept that report what did not go through in the admin's words.
  */
-import { ApiError } from "@/lib/api";
+import { ApiError } from "@shop/core/errors";
 import { translationApi } from "./api";
 import { planAccept } from "./model/queue";
 import { mergeResults, type AiSendPlan, type SendSummary } from "./model/send";

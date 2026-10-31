@@ -4,7 +4,7 @@ import { Button } from "@shop/ui/admin-button";
 import { Modal } from "@shop/ui/overlay";
 import { toast } from "@shop/ui/toast";
 import { useState } from "react";
-import { ApiError } from "@/lib/api";
+import { ApiError } from "@shop/core/errors";
 import { useCodeAction, type CodeAsk, type LinkToShow } from "../queries";
 import { CodeInput } from "./auth/CodeInput";
 

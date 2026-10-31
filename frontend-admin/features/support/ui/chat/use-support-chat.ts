@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ApiError } from "@/lib/api";
+import { ApiError } from "@shop/core/errors";
 import { toast } from "@shop/ui/toast";
 import { canLoadOlder, mergeMessages, SUPPORT_CHAT_PAGE } from "../../model/chat";
 import type { SupportMessage } from "../../model/types";
@@ -11,7 +11,7 @@ import {
   useSupportChatCache,
   useSupportMessages,
 } from "../../queries";
-import { subscribeSupportChat } from "../../realtime";
+import { subscribeSupportThread } from "@/shell/realtime";
 
 /**
  * State of one thread's chat: the latest page (cache), older pages on demand, realtime messages,
@@ -30,7 +30,7 @@ export function useSupportChat(threadId: string) {
 
   useEffect(() => {
     markRead();
-    const off = subscribeSupportChat(threadId, (msg) => {
+    const off = subscribeSupportThread<SupportMessage>(threadId, (msg) => {
       cache.append(msg);
       if (msg.senderType === "CUSTOMER" && document.visibilityState === "visible") markRead();
     });

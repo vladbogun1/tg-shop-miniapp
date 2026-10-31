@@ -24,7 +24,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ActionSheet, type SheetAction } from "@/components/ui/ActionSheet";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@shop/ui/admin-button";
-import type { OrderStatus } from "@/lib/api";
+import type { OrderStatus } from "@shop/core/types";
 import { cn } from "@/lib/cn";
 import {
   formatWait,

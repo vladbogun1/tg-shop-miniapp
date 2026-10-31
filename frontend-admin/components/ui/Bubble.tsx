@@ -6,7 +6,7 @@ import { FileText, Check, CheckCheck } from "lucide-react";
 import { formatTime } from "@shop/core/time";
 import { resolveImageSrc, resolveImageFull } from "@/lib/image";
 import { cn } from "@/lib/cn";
-import type { MessageDto } from "@/lib/api";
+import type { Message } from "@shop/core/types";
 
 function timeOf(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -18,7 +18,7 @@ export function Bubble({
   m,
   onOpenImage,
 }: {
-  m: MessageDto;
+  m: Message;
   onOpenImage: (src: string) => void;
 }) {
   if (m.senderType === "SYSTEM") {

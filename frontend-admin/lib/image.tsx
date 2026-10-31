@@ -9,7 +9,7 @@
  */
 import { useState } from "react";
 import { resolveImageSrc as resolve } from "@shop/core/image";
-import { apiOrigin } from "@/lib/api";
+import { apiOrigin } from "@/lib/origin";
 
 const IMAGE_BASE =
   process.env.NEXT_PUBLIC_IMAGE_BASE_URL?.replace(/\/$/, "") ?? "http://localhost:8082/img";

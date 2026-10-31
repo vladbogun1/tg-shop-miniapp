@@ -1,6 +1,6 @@
 import type { TimeRange } from "@shop/core/types";
 import type { UserSortBy } from "./model/types";
-import type { SortDir } from "@/lib/api";
+import type { SortDir } from "@/lib/sort";
 
 /** Ключи кэша фичи. */
 export const customerKeys = {

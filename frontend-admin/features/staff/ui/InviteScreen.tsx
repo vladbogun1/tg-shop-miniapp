@@ -12,7 +12,7 @@ import { motion } from "framer-motion";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { CenterSpinner } from "@/components/ui/Spinner";
-import { ApiError } from "@/lib/api";
+import { ApiError } from "@shop/core/errors";
 import type { InviteInfo } from "../api";
 import { useInviteInfo } from "../queries";
 import { CredentialsForm } from "./invite/CredentialsForm";

@@ -4,7 +4,7 @@ import { useApiMutation } from "@shop/ui/mutation";
 import { toast } from "@shop/ui/toast";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { ApiError } from "@/lib/api";
+import { ApiError } from "@shop/core/errors";
 import { broadcastApi } from "./api";
 import { notificationKeys } from "./keys";
 import type { BroadcastStartBody, BroadcastTestBody, ShopLang } from "./model/types";

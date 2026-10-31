@@ -6,7 +6,7 @@
  */
 import { QUERY_PRESETS } from "@shop/core/query";
 import { useQuery, type QueryClient } from "@tanstack/react-query";
-import { isAuthenticated } from "@/lib/api";
+import { isAuthenticated } from "@/lib/session";
 import { invalidateTranslations } from "@/features/translation";
 import { catalogKeys } from "@/features/catalog";
 import { cardsApi, type CardStats } from "./api";

@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowDown, ArrowUp } from "lucide-react";
-import type { SortDir } from "@/lib/api";
+import type { SortDir } from "@/lib/sort";
 import { userLang } from "../../model/user";
 import type { UserCardDto, UserSortBy } from "../../model/types";
 

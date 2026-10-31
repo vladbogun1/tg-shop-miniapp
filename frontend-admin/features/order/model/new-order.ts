@@ -1,6 +1,6 @@
 /** Ручной заказ (продажа вне сайта): строки, правила готовности формы, тело запроса. Без React. */
 import type { MovementChannel } from "@/features/payment";
-import type { Product, ProductVariant } from "@/lib/api";
+import type { Product, ProductVariant } from "@shop/core/types";
 import { toMinor } from "@/lib/money";
 import type { AdminCreateOrderBody } from "../api";
 

@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Trash2, UploadCloud } from "lucide-react";
 import { brandLogoSrc } from "@shop/core/image";
-import { ApiError } from "@/lib/api";
+import { ApiError } from "@shop/core/errors";
 import type { BrandLogoMode } from "../model/types";
 import { uploadBrandLogo } from "../queries";
 import { cn } from "@/lib/cn";

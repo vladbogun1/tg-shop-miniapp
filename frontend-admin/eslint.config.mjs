@@ -23,7 +23,15 @@ const config = [
   // Size/complexity limits: error for new code, warning for files in eslint.legacy-limits.mjs.
   ...architectureLimits(legacyLimits),
   // Единые способы и совместимость браузеров: счётные правила — warn (храповик), запреты — error.
-  ...frontRules({ customer: false, compat: false, allow: { "time-date-now": ["next.config.ts", "public/sw.js"] } }),
+  ...frontRules({
+    customer: false,
+    compat: false,
+    allow: {
+      "time-date-now": ["next.config.ts", "public/sw.js"],
+      // Сервис-воркер (нет HttpClient), выход/обновление токена (keepalive, ошибка не разлогинивает), скачивание файлов с токеном (blob).
+      "no-fetch": ["public/sw.js", "lib/session.ts", "features/procurement/api.ts"],
+    },
+  }),
 ];
 
 export default config;

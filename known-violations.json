@@ -37,24 +37,6 @@
   },
   {
     "type": "dependency",
-    "from": "frontend-admin/features/order/queries/chat.ts",
-    "to": "frontend-admin/lib/ws.ts",
-    "rule": {
-      "severity": "error",
-      "name": "ws-only-from-realtime"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "frontend-admin/features/support/realtime.ts",
-    "to": "packages/core/src/ws.ts",
-    "rule": {
-      "severity": "error",
-      "name": "ws-only-from-realtime"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "frontend/app/account/orders/[id]/chat/page.tsx",
     "to": "frontend/lib/ws.ts",
     "rule": {

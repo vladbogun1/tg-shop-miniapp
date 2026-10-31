@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { ChevronDown, Pencil, Percent, Ticket, Trash2, Wallet } from "lucide-react";
 import { useState } from "react";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
-import type { OrderStatus } from "@/lib/api";
+import type { OrderStatus } from "@shop/core/types";
 import { riseItem } from "@/lib/motion";
 import { money } from "@/lib/money";
 import { formatDateTime } from "@shop/core/time";

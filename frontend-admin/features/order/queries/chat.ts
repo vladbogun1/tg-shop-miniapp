@@ -6,7 +6,7 @@ import { useApiMutation } from "@shop/ui/mutation";
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { closeChatNotifications } from "@/features/notification";
-import { subscribeOrderChat } from "@/lib/ws";
+import { subscribeOrderChat } from "@/shell/realtime";
 import { orderApi, type OrderMessage } from "../api";
 import { orderKeys } from "../keys";
 import { appendMessage, markCustomerRead } from "../model/chat";

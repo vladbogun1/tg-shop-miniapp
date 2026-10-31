@@ -4,7 +4,7 @@
 import { QUERY_PRESETS } from "@shop/core/query";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ProductSpecs } from "@/lib/api";
+import type { ProductSpecs } from "@shop/core/catalog";
 import { isTopLayer } from "@shop/ui/overlay";
 import { toast } from "@shop/ui/toast";
 import { useApiMutation } from "@shop/ui/mutation";

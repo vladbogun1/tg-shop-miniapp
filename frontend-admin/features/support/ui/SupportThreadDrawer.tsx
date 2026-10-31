@@ -10,7 +10,7 @@ import { useState } from "react";
 import { UserProfileDrawer, customerApi, type UserCardDto } from "@/features/customer";
 import { Drawer, useBackToClose } from "@shop/ui/overlay";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { ApiError } from "@/lib/api";
+import { ApiError } from "@shop/core/errors";
 import { toast } from "@shop/ui/toast";
 import { customerOf } from "../model/thread";
 import type { SupportThread } from "../model/types";

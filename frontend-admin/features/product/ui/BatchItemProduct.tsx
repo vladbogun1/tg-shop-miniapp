@@ -8,7 +8,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Eye, EyeOff, ImageOff, Pencil } from "lucide-react";
-import { ApiError } from "@/lib/api";
+import { ApiError } from "@shop/core/errors";
 import { productApi } from "../api";
 import type { AdminProduct } from "../model/types";
 import { usePublishGate } from "./PublishGate";

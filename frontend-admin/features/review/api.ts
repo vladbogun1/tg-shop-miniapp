@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost } from "@/lib/api";
+import { apiDelete, apiGet, apiPost } from "@/lib/http";
 import { REVIEWS_PAGE_SIZE } from "./model/filters";
 import type { AdminReview, AdminReviewPage, ReviewListParams } from "./model/types";
 

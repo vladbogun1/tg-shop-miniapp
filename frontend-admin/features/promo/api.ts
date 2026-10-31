@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
+import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/http";
 import type { ManualDiscountOrder, PromoBody, PromoCode, PromoOrder } from "./model/types";
 
 export const promoApi = {

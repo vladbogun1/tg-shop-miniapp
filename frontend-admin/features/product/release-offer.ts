@@ -2,7 +2,7 @@ import { QUERY_PRESETS } from "@shop/core/query";
 import { toast } from "@shop/ui/toast";
 import type { QueryClient } from "@tanstack/react-query";
 import { plural } from "@/features/catalog";
-import { ApiError } from "@/lib/api";
+import { ApiError } from "@shop/core/errors";
 import { peopleOfRows, preordersApi, releaseSummary, sumReleases, type Demand } from "@/features/procurement";
 import { productKeys } from "./keys";
 

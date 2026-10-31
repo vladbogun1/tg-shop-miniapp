@@ -1,5 +1,5 @@
 import type { Schemas } from "@shop/core/api/schemas";
-import { apiGet, apiPut } from "@/lib/api";
+import { apiGet, apiPut } from "@/lib/http";
 
 export type SettingType = "INT" | "BOOL" | "STRING" | "TEXT" | "SELECT";
 export type SettingValue = number | boolean | string;

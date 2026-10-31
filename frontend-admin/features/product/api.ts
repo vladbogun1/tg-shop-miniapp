@@ -4,7 +4,7 @@
  */
 import type { Schemas } from "@shop/core/api/schemas";
 import type { CardStatus } from "@shop/core/catalog";
-import { apiGet, apiPatch, apiPost, uploadFile } from "@/lib/api";
+import { apiGet, apiPatch, apiPost, uploadFile } from "@/lib/http";
 import { fromAdminProductDto } from "./model/from-dto";
 import type { AdminProduct, AdminProductDto, AdminProductSaved, ProductWriteRequest } from "./model/types";
 

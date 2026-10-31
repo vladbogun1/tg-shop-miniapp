@@ -2,7 +2,9 @@
  * API «Поставок» (/api/admin/preorders/*) и «Денег закупки» (/api/admin/costing/*). Закупочная цена и курс
  * приходят только главному админу и админам с правом «Финансы»; без права эндпоинты отвечают 403.
  */
-import { apiDelete, apiGet, apiOrigin, apiPost, apiPut, getAccessToken, uploadFile } from "@/lib/api";
+import { apiDelete, apiGet, apiPost, apiPut, uploadFile } from "@/lib/http";
+import { apiOrigin } from "@/lib/origin";
+import { getAccessToken } from "@/lib/session";
 import type {
   ArriveBody,
   ArriveResult,

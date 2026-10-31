@@ -1,4 +1,4 @@
-import type { SortDir } from "@/lib/api";
+import type { SortDir } from "@/lib/sort";
 import type { UserSortBy } from "./types";
 
 export const USERS_PAGE_SIZE = 30;

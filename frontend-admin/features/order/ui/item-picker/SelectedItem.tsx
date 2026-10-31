@@ -1,6 +1,6 @@
 "use client";
 
-import type { Product, ProductVariant } from "@/lib/api";
+import type { Product, ProductVariant } from "@shop/core/types";
 import { cn } from "@/lib/cn";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";

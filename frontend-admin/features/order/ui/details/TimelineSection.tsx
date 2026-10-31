@@ -2,7 +2,7 @@
 
 /** «Таймлайн»: причина отказа, ход статусов, возврат и обмены. */
 import { Ban, Repeat } from "lucide-react";
-import type { OrderStatus } from "@/lib/api";
+import type { OrderStatus } from "@shop/core/types";
 import { formatDateTime } from "@shop/core/time";
 import { money } from "@/lib/money";
 import type { AdminOrderDetail } from "../../api";

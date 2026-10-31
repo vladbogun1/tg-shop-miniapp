@@ -3,7 +3,7 @@
  * Ответы — типы из OpenAPI; экспорт приводится к `TrExportItem` (перечисления вместо `string`).
  */
 import type { Schemas } from "@shop/core/api/schemas";
-import { apiDelete, apiGet, apiPut } from "@/lib/api";
+import { apiDelete, apiGet, apiPut } from "@/lib/http";
 import type { TrAcceptItem, TrEntityType, TrExportItem, TrImportItem, TrLocale, TrOrigin, TrStatus } from "./model/types";
 
 export type TrImportResult = Schemas["ImportResult"];

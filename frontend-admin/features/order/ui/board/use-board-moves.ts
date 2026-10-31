@@ -3,7 +3,7 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 import { toast } from "@shop/ui/toast";
 import { useState } from "react";
-import type { OrderStatus } from "@/lib/api";
+import type { OrderStatus } from "@shop/core/types";
 import type { AdminBoard, AdminOrderCard } from "../../api";
 import { findCard, moveVerdict, sendBackPlan } from "../../model/board";
 import { RETURNING, type BoardKey } from "../../model/status";

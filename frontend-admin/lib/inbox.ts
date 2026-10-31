@@ -4,7 +4,8 @@
  * always show one number.
  */
 import { useQuery, type QueryClient } from "@tanstack/react-query";
-import { apiGet, apiPost, isAuthenticated } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/http";
+import { isAuthenticated } from "@/lib/session";
 
 /** Kinds the UI knows (icon, colour, main action). The server may add more — see `knownType`. */
 export const INBOX_TYPES = [

@@ -19,6 +19,7 @@ export {
 } from "./queries";
 
 export * from "./model/types";
+export type { CardChange, CardLast, CardMeta } from "./model/card-meta";
 export * from "./model/labels";
 export * from "./model/tree";
 export * from "./model/attributes";

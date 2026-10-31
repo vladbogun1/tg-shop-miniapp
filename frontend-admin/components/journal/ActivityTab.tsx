@@ -45,7 +45,7 @@ import {
   type ActivityRow,
   type BroadcastSummary,
 } from "@/lib/activity";
-import { ApiError } from "@/lib/api";
+import { ApiError } from "@shop/core/errors";
 import { UserProfileDrawer, customerApi, type UserCardDto } from "@/features/customer";
 import { formatDateTime } from "@shop/core/time";
 import { cn } from "@/lib/cn";

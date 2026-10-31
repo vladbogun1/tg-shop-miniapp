@@ -3,7 +3,7 @@
 import { QUERY_PRESETS } from "@shop/core/query";
 import type { TimeRange } from "@shop/core/types";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import type { SortDir } from "@/lib/api";
+import type { SortDir } from "@/lib/sort";
 import { customerApi, geoApi } from "./api";
 import { customerKeys } from "./keys";
 import { USERS_PAGE_SIZE } from "./model/table";

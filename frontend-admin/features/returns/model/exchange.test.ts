@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Product, ProductVariant } from "@/lib/api";
+import type { Product, ProductVariant } from "@shop/core/types";
 import {
   addToLines,
   backValueOf,

@@ -2,7 +2,7 @@
  * Расчёты обмена (POST /orders/{id}/exchange): сколько осталось на складе под замену, сколько покупатель
  * заплатил за возвращаемое (зачёт), доплата или остаток к возврату. Сервер пересчитывает всё сам — это подсказка.
  */
-import type { Product, ProductVariant } from "@/lib/api";
+import type { Product, ProductVariant } from "@shop/core/types";
 import type { ExchangeBody, ExchangeOutcome } from "../api";
 import type { ReturnOrder } from "./types";
 

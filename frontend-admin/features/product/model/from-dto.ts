@@ -1,5 +1,5 @@
 import type { ProductSpecs } from "@shop/core/catalog";
-import type { CardMeta } from "@/lib/api";
+import type { CardMeta } from "@/features/catalog";
 import type { AdminProductDto, AdminProductSaved } from "./types";
 
 /**

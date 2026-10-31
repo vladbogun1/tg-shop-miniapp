@@ -1,5 +1,5 @@
 /** «Смена статуса»: чистые правила окна — что нужно для перехода и какое тело уходит на сервер. */
-import type { OrderStatus } from "@/lib/api";
+import type { OrderStatus } from "@shop/core/types";
 import type { StatusChangeBody } from "../api";
 import { isNovaPoshtaTtn, REJECT_REASON_LABEL, type RejectReasonCode } from "./status";
 

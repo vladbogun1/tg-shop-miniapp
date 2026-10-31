@@ -5,7 +5,7 @@
  * Порядок характеристик/групп/опций — `sort` и на проводе, и на экране (у категорий и брендов — `sortOrder`).
  */
 import type { Schemas } from "@shop/core/api/schemas";
-import { apiDelete, apiGet, apiPatch, apiPost, apiPut, uploadFile } from "@/lib/api";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut, uploadFile } from "@/lib/http";
 import { asSpecType } from "./model/attributes";
 import { parseCatalogSchema } from "./model/schema-import";
 import type {

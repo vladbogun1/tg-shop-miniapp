@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Product } from "@/lib/api";
+import type { Product } from "@shop/core/types";
 import {
   addOrderLine,
   buildCreateBody,

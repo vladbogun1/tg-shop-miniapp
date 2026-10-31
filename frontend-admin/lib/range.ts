@@ -3,7 +3,7 @@
  * Persists the chosen range in localStorage so it survives navigation.
  */
 import { useEffect, useState } from "react";
-import type { TimeRange } from "./api";
+import type { TimeRange } from "@shop/core/types";
 import { localStore } from "@shop/core/storage";
 
 export const RANGE_OPTIONS: { value: TimeRange; label: string }[] = [

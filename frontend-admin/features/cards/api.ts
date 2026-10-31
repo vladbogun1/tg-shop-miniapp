@@ -5,7 +5,7 @@
  * его форма описана в `model/meta.ts`.
  */
 import type { Schemas } from "@shop/core/api/schemas";
-import { apiGet, apiPatch, apiPut } from "@/lib/api";
+import { apiGet, apiPatch, apiPut } from "@/lib/http";
 import type { CardItem, CardStatusCode } from "./model/item";
 import type { CardLast, CardReviewData } from "./model/meta";
 import { normalizeSchema, type CardSchema } from "./model/schema";

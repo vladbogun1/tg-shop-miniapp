@@ -4,7 +4,8 @@
  * `/api/auth/admin/**`; ответы — типы из OpenAPI.
  */
 import type { Schemas } from "@shop/core/api/schemas";
-import { apiDelete, apiGet, apiPatch, apiPost, apiPut, logoutEverywhere, setAccessToken } from "@/lib/api";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@/lib/http";
+import { dropSession, setAccessToken } from "@/lib/session";
 import type { AdminRoleCode } from "./model/roles";
 
 export type AdminAccount = Schemas["Profile"];
@@ -70,7 +71,10 @@ export const authApi = {
   confirmSetup: async (preAuthToken: string, code: string, trustDevice: boolean) =>
     signedIn(await apiPost<AdminLoginResult>("/api/auth/admin/2fa/confirm", { preAuthToken, code, trustDevice })),
   /** «Выйти на всех устройствах»: every token of this admin dies, the session is dropped locally. */
-  logoutEverywhere,
+  logoutEverywhere: async (): Promise<void> => {
+    await apiPost<void>("/api/admin/logout-all");
+    dropSession();
+  },
 };
 
 // ---- «Мой аккаунт» ----------------------------------------------------------

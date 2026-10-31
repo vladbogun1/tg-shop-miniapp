@@ -4,7 +4,7 @@ import { LogOut, MonitorX, PanelLeftClose, PanelLeftOpen, UserRound } from "luci
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoMark, Wordmark } from "@/components/brand/Logo";
-import { logout } from "@/lib/api";
+import { logout } from "@/lib/session";
 import { cn } from "@/lib/cn";
 import { useLogoutEverywhere } from "@/features/staff";
 import { NavLinks } from "./NavLinks";

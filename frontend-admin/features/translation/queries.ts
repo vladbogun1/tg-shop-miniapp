@@ -8,7 +8,7 @@ import { QUERY_PRESETS } from "@shop/core/query";
 import { useApiMutation } from "@shop/ui/mutation";
 import { toast } from "@shop/ui/toast";
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { isAuthenticated } from "@/lib/api";
+import { isAuthenticated } from "@/lib/session";
 import { acceptAll, acceptText, resetText, sendAiTranslations, type AcceptOutcome } from "./actions";
 import { translationApi } from "./api";
 import { translationKeys } from "./keys";

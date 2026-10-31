@@ -4,7 +4,8 @@
  */
 import type { Receipt } from "@shop/core/receipts";
 import type { PaymentOption } from "@shop/core/types";
-import { apiGet, apiOrigin, apiPatch, apiPost, apiPut } from "@/lib/api";
+import { apiGet, apiPatch, apiPost, apiPut } from "@/lib/http";
+import { apiOrigin } from "@/lib/origin";
 import type { MovementChannel } from "./model/movements";
 import type { AdminInvoice, MonobankStatus, PaymentOptionFull, PaymentOrder } from "./model/types";
 

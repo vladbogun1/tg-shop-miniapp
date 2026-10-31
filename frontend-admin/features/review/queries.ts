@@ -2,7 +2,7 @@
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useApiMutation } from "@shop/ui/mutation";
-import { isAuthenticated } from "@/lib/api";
+import { isAuthenticated } from "@/lib/session";
 import { INBOX_QUERY_KEY } from "@/lib/inbox";
 import { reviewsApi } from "./api";
 import { reviewKeys } from "./keys";

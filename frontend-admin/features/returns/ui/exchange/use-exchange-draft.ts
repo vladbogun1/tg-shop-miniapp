@@ -1,6 +1,6 @@
 "use client";
 
-import type { Product, ProductVariant } from "@/lib/api";
+import type { Product, ProductVariant } from "@shop/core/types";
 import { useEffect, useMemo, useState } from "react";
 import type { ExchangeBody } from "../../api";
 import {

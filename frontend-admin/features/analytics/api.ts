@@ -2,7 +2,7 @@
  * API метрик: /api/admin/metrics/*, метрики предзаказов, отчёт по марже и «Скрыть» из таблицы
  * «Не продаётся». Деньги — копейки; границы периодов — календарные дни Киева (считает бэкенд).
  */
-import { apiGet, apiPatch } from "@/lib/api";
+import { apiGet, apiPatch } from "@/lib/http";
 import type {
   Channel,
   Customers,

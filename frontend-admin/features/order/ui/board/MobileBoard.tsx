@@ -8,7 +8,7 @@
  */
 import { useState } from "react";
 import { ArrowRightLeft, Inbox, PackageCheck } from "lucide-react";
-import type { OrderStatus } from "@/lib/api";
+import type { OrderStatus } from "@shop/core/types";
 import type { AdminBoard } from "../../api";
 import { money } from "@/lib/money";
 import { BOARD_LABEL, BOARD_ORDER, RETURNING, STATUS_VAR, STATUS_ACTION_LABEL, allowedTargets, returningMinor, type BoardKey } from "../../model/status";

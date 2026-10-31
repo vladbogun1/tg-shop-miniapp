@@ -12,7 +12,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MapPin, Package, Phone, Send, Truck, Hash, RefreshCw, AlertTriangle, User } from "lucide-react";
-import { adminApi, ApiError } from "@/lib/api";
+import { ApiError } from "@shop/core/errors";
 import { changeStatusConfirmingUnpaid, isNovaPoshtaTtn, orderApi, OrderDrawer, type AdminDispatchOrder } from "@/features/order";
 import { formatDateTime } from "@shop/core/time";
 import { useConfirm } from "@shop/ui/confirm";
@@ -51,7 +51,7 @@ export default function DispatchPage() {
   async function broadcast() {
     setBroadcasting(true);
     try {
-      const { posted } = await adminApi.dispatchBroadcast();
+      const { posted } = await orderApi.dispatchBroadcast();
       toast.success(posted > 0 ? `Добавлено в Telegram: ${posted}` : "Все карточки уже в Telegram");
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "Ошибка отправки");

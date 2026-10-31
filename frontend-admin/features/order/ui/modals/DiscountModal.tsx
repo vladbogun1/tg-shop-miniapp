@@ -9,7 +9,7 @@
  */
 import { Fragment, useMemo, useState } from "react";
 import { Percent, Tag, X } from "lucide-react";
-import type { OrderDetailDto } from "@/lib/api";
+import type { AdminOrderDetail } from "../../api";
 import { promoOrigin, usePromocodes } from "@/features/promo";
 import { money } from "@/lib/money";
 import { cn } from "@/lib/cn";
@@ -39,7 +39,7 @@ export function DiscountModal({
   onDone,
 }: {
   open: boolean;
-  order: OrderDetailDto | null;
+  order: AdminOrderDetail | null;
   onClose: () => void;
   onDone: () => void;
 }) {

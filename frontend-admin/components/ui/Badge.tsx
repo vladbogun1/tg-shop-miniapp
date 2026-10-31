@@ -2,7 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import type { OrderStatus } from "@/lib/api";
+import type { OrderStatus } from "@shop/core/types";
 import { ORDER_STATUS_COLOR as STATUS_VAR, STATUS_COLUMN_LABEL as STATUS_LABEL } from "@shop/core/orders";
 
 type Tone = "neutral" | "accent" | "ok" | "warn" | "danger" | "info";

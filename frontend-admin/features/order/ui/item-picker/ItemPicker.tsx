@@ -9,7 +9,7 @@ import { useMemo, useState } from "react";
 import { Gift, Plus } from "lucide-react";
 import { Modal } from "@shop/ui/overlay";
 import { Button } from "@shop/ui/admin-button";
-import type { Product, ProductVariant } from "@/lib/api";
+import type { Product, ProductVariant } from "@shop/core/types";
 import { Toggle } from "@/components/ui/Toggle";
 import { availableStock, canAddItem, filterPickable } from "../../model/item-picker";
 import { useAddOrderItem, useGiftLimitQuery, useProductPickQuery } from "../../queries/items";

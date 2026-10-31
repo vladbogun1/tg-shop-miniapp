@@ -7,7 +7,9 @@ import type { Schemas } from "@shop/core/api/schemas";
 import type { CaseTier } from "@shop/core/giftcase";
 import type { NpCity, NpWarehouse, SendMessageRequest } from "@shop/core/types";
 import type { ConfirmOptions } from "@shop/ui/confirm";
-import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, uploadFile, type OrderStatus } from "@/lib/api";
+import { ApiError } from "@shop/core/errors";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut, uploadFile } from "@/lib/http";
+import type { OrderStatus } from "@shop/core/types";
 import { periodQuery, type OrdersPeriod } from "./model/period";
 import type { MovementChannel } from "@/features/payment";
 import type { BoardKey, RejectReasonCode } from "./model/status";
@@ -193,6 +195,11 @@ export const orderApi = {
   /** Отклонить запрос отмены; комментарий (обязателен) уходит покупателю. */
   declineCancelRequest: (id: string, comment: string) =>
     apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/cancel-request/decline`, { comment }),
+
+  /** Отправить список «Отправки» в тему продавца в Telegram. */
+  dispatchBroadcast: () => apiPost<{ posted: number }>("/api/admin/orders/dispatch/broadcast"),
+  /** «Прочитать всё» в «Внимании»: все сообщения покупателей прочитаны. */
+  markAllRead: () => apiPost<{ marked: number }>("/api/admin/orders/read-all"),
 
   dispatch: (includeNew = true) =>
     apiGet<AdminDispatchOrder[]>(`/api/admin/orders/dispatch${includeNew ? "?includeNew=true" : ""}`),

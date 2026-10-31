@@ -4,8 +4,8 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { orderApi } from "../api";
 import { orderKeys } from "../keys";
 import type { OrdersPeriod } from "../model/period";
-import { TABLE_SIZE, type StatusFilter } from "../model/table";
-import type { OrderSortBy, SortDir } from "@/lib/api";
+import { TABLE_SIZE, type OrderSortBy, type StatusFilter } from "../model/table";
+import type { SortDir } from "@/lib/sort";
 
 export interface TableParams {
   search: string;

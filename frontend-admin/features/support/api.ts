@@ -10,7 +10,8 @@
  *  POST /api/admin/support/threads/{id}/attachments (multipart) → { key }
  *  POST /api/admin/support/threads/{id}/read | close | reopen
  */
-import { apiGet, apiPost, uploadFile, type SendMessageRequest } from "@/lib/api";
+import { apiGet, apiPost, uploadFile } from "@/lib/http";
+import type { SendMessageRequest } from "@shop/core/types";
 import { SUPPORT_CHAT_PAGE } from "./model/chat";
 import type { SupportMessage, SupportThread, SupportThreadsQuery } from "./model/types";
 

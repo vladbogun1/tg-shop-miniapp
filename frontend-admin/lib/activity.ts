@@ -3,7 +3,7 @@
  * customers did on the website / in the Mini App, payments and background jobs.
  * API: GET /api/admin/activity (+ /facets, /stats, /broadcasts). Unknown codes fall back to the raw code.
  */
-import { apiGet } from "./api";
+import { apiGet } from "./http";
 import { money } from "./money";
 import type { BroadcastHistoryItem } from "@/features/notification";
 

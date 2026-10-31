@@ -36,13 +36,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { OrderDrawer } from "@/features/order";
+import { OrderDrawer, orderApi } from "@/features/order";
 import { InboxRow } from "@/components/inbox/InboxRow";
 import { Button } from "@shop/ui/admin-button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { QueryState } from "@/components/ui/QueryState";
 import { siteApi, siteKeys } from "@/features/site";
-import { adminApi, ApiError } from "@/lib/api";
+import { ApiError } from "@shop/core/errors";
 import { cn } from "@/lib/cn";
 import {
   INBOX_QUERY_KEY,
@@ -206,7 +206,7 @@ export default function InboxPage() {
   async function readAllChats() {
     setReadAllBusy(true);
     try {
-      const res = await adminApi.markAllRead();
+      const res = await orderApi.markAllRead();
       toast.success(`Отмечено прочитанными: ${res?.marked ?? 0}`);
       qc.invalidateQueries({ queryKey: ["board"] });
     } catch (e) {

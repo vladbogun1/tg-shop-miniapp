@@ -1,5 +1,5 @@
 import type { Schemas } from "@shop/core/api/schemas";
-import type { SortDir } from "@/lib/api";
+import type { SortDir } from "@/lib/sort";
 
 /**
  * Карточка покупателя. Генерация считает все строки обязательными, а бэкенд шлёт `null` у имени, username,

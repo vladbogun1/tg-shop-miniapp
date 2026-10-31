@@ -9,7 +9,7 @@ import { useMemo, useState } from "react";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { Button } from "@shop/ui/admin-button";
 import { usePaymentOptionsQuery } from "@/features/payment";
-import type { Product, ProductVariant } from "@/lib/api";
+import type { Product, ProductVariant } from "@shop/core/types";
 import { money } from "@/lib/money";
 import {
   addOrderLine,

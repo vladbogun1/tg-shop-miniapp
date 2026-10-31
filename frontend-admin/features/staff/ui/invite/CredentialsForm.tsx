@@ -6,7 +6,7 @@ import { toast } from "@shop/ui/toast";
 import { ArrowRight, KeyRound, Lock, ShieldCheck, User, UserPlus } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Input } from "@/components/ui/Input";
-import { ApiError } from "@/lib/api";
+import { ApiError } from "@shop/core/errors";
 import { formatDateTime } from "@shop/core/time";
 import type { InviteInfo } from "../../api";
 import { useAcceptInvite } from "../../queries";

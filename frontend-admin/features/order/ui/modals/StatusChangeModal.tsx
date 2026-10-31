@@ -12,7 +12,7 @@
  * request keeps what was typed. Without an order the confirm button is disabled and says why.
  */
 import { useLayoutEffect, useState } from "react";
-import type { OrderStatus } from "@/lib/api";
+import type { OrderStatus } from "@shop/core/types";
 import { BACK_REASONS, buildStatusPayload, cleanTtn, isStatusInvalid, ttnLooksWrong } from "../../model/status-change";
 import type { RejectReasonCode } from "../../model/status";
 import type { StatusChangeBody } from "../../api";

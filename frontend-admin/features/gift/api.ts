@@ -5,7 +5,7 @@
  * guaranteed discount, swap), their prizes and the stats have their own endpoints under /api/admin/gift.
  */
 import type { CaseRarity, CaseTier } from "@shop/core/giftcase";
-import { apiGet, apiPatch, apiPost, apiPut } from "@/lib/api";
+import { apiGet, apiPatch, apiPost, apiPut } from "@/lib/http";
 import type {
   AutofillRequest,
   AutofillResult,

@@ -3,8 +3,8 @@
 import { ChevronDown, PencilLine, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
-import type { CardMeta as ApiCardMeta, ProductSpecs } from "@/lib/api";
-import { attributesForCategory as adminAttributesFor, SpecsForm, useCatalogSchemaQuery } from "@/features/catalog";
+import type { ProductSpecs } from "@shop/core/catalog";
+import { attributesForCategory as adminAttributesFor, type CardMeta, SpecsForm, useCatalogSchemaQuery } from "@/features/catalog";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button } from "@shop/ui/admin-button";
@@ -32,7 +32,7 @@ function SpecsEditor({ item, draft, onDraft }: { item: CardItem; draft: ProductS
         groups={schemaQ.data?.groups ?? []}
         specs={draft}
         onChange={onDraft}
-        meta={item.cardMeta as ApiCardMeta | null}
+        meta={item.cardMeta as CardMeta | null}
         resetKey={`${item.id}-${item.categoryId}`}
         highlightMissing
       />

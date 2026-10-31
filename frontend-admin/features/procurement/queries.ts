@@ -6,7 +6,7 @@ import { toast } from "@shop/ui/toast";
 import { useApiMutation } from "@shop/ui/mutation";
 import { useQuery } from "@tanstack/react-query";
 import { catalogKeys } from "@/features/catalog";
-import { isAuthenticated } from "@/lib/api";
+import { isAuthenticated } from "@/lib/session";
 import { costingApi, preordersApi } from "./api";
 import { procurementKeys } from "./keys";
 import { releaseSummary, sumReleases } from "./model/demand";

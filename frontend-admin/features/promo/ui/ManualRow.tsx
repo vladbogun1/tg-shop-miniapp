@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { UserRound } from "lucide-react";
 import { StatusBadge } from "@/components/ui/Badge";
-import type { OrderStatus } from "@/lib/api";
+import type { OrderStatus } from "@shop/core/types";
 import { riseItem } from "@/lib/motion";
 import { money } from "@/lib/money";
 import { formatDateTime } from "@shop/core/time";
