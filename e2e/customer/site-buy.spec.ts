@@ -39,7 +39,7 @@ test("покупка: каталог → товар → кошик → офор�
   await test.step("оформлення: контакти, НП, оплата, промокод", async () => {
     await fillCheckoutContactsAndBranch(page);
     await page.getByRole("radio", { name: /Полная оплата онлайн/ }).click();
-    await page.getByRole("textbox", { name: "Введіть промокод" }).fill("E2ESMOKE10");
+    await page.getByRole("textbox", { name: "Промокод" }).fill("E2ESMOKE10");
     await expect(page.getByText(/Знижка 34,90 ₴ із 349 ₴/)).toBeVisible();
     await page.getByRole("button", { name: "Оформити замовлення" }).click();
   });
