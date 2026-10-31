@@ -43,7 +43,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Toggle } from "@/components/ui/Toggle";
-import { AiWizardLayer } from "@/features/cards/ui/AiWizardLayer";
+import { AiWizardLayer } from "@/features/cards/ui/wizard/AiWizardLayer";
 import { CardCompletionModal } from "@/features/cards";
 import { CardList } from "@/features/cards/ui/CardList";
 import { ReviewPanel } from "@/features/cards/ui/review/ReviewPanel";
