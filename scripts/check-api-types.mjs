@@ -38,6 +38,14 @@ const GENERATED_ONLY = new Set([
   "AdminProductDto", "SpecIssue",
   // cards
   "CardStats", "CardImportResult", "CardImportItemResult", "CardExportStatus",
+  // analytics + inventory (шаг 4e)
+  "Overview", "Stock", "Customers", "Funnel", "Operations", "Today", "Returns", "Forecast", "MonthForecast", "ForecastPoint",
+  "Kpi", "SeriesPoint", "SchemeRow", "OnlinePayments", "ReorderRow", "DemandRow", "Reorder", "DeadStockRow", "CountRow",
+  "Violation", "PeriodInfo", "PreorderMetrics", "MarginReport", "MarginRow", "WriteoffLine", "WriteoffReasonTotal", "WriteoffReport",
+  // procurement (шаг 4e)
+  "Batch", "BatchSummary", "BatchItem", "Supplier", "Demand", "Subscriber", "ArriveResult", "ArriveLineResult", "ReleaseResult",
+  "BatchMoney", "BatchMoneyLine", "Expense", "ExpenseFile", "BatchSales", "BatchSalesLine", "Lot", "ProductCost", "OpeningRow",
+  "Reconcile", "OrderProfit", "OrderLineCost",
 ]);
 
 /** В orders-api.ts ручные интерфейсы — только тела запросов и этот список (не ответы заказа). */
