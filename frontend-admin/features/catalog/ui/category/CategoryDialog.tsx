@@ -26,6 +26,50 @@ import { CategorySpecsTab } from "./CategorySpecsTab";
 
 export type CategoryTab = "main" | "seo" | "specs";
 
+function dialogTitle(category: AdminCategory | null, parentId: string): string {
+  if (category) return `Категория · ${category.name}`;
+  return parentId ? "Новая подкатегория" : "Новая категория";
+}
+
+interface FooterProps {
+  tab: CategoryTab;
+  category: AdminCategory | null;
+  dirty: boolean;
+  saving: boolean;
+  canSave: boolean;
+  onClose: () => void;
+  onSave: () => void;
+}
+
+function footerHint(tab: CategoryTab, category: AdminCategory | null): string {
+  if (tab === "specs") return "Характеристики сохраняются сразу";
+  return category ? `/catalog/${category.slug}` : "";
+}
+
+function CategoryFooter({ tab, category, dirty, saving, canSave, onClose, onSave }: FooterProps) {
+  return (
+    <div className="flex w-full flex-wrap items-center justify-between gap-2">
+      <span className="min-w-0 truncate text-[12px] text-[var(--text-faint)]">{footerHint(tab, category)}</span>
+      <div className="flex gap-2">
+        <Button variant="ghost" onClick={onClose} disabled={saving}>
+          {category && !dirty ? "Закрыть" : "Отмена"}
+        </Button>
+        {tab !== "specs" && (
+          <Button
+            variant="accent"
+            loading={saving}
+            disabled={!canSave || (!!category && !dirty)}
+            icon={<Check className="h-4 w-4" />}
+            onClick={onSave}
+          >
+            {category ? "Сохранить" : "Создать"}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function CategoryDialog({
   open,
   category,
@@ -90,29 +134,17 @@ export function CategoryDialog({
       fixedHeight
       closeOnBackdrop={false}
       dirty={dirty}
-      title={category ? `Категория · ${category.name}` : f.parentId ? "Новая подкатегория" : "Новая категория"}
+      title={dialogTitle(category, f.parentId)}
       footer={
-        <div className="flex w-full flex-wrap items-center justify-between gap-2">
-          <span className="min-w-0 truncate text-[12px] text-[var(--text-faint)]">
-            {tab === "specs" ? "Характеристики сохраняются сразу" : category ? `/catalog/${category.slug}` : ""}
-          </span>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={onClose} disabled={saving}>
-              {category && !dirty ? "Закрыть" : "Отмена"}
-            </Button>
-            {tab !== "specs" && (
-              <Button
-                variant="accent"
-                loading={saving}
-                disabled={!f.name.trim() || (!!category && !dirty)}
-                icon={<Check className="h-4 w-4" />}
-                onClick={save}
-              >
-                {category ? "Сохранить" : "Создать"}
-              </Button>
-            )}
-          </div>
-        </div>
+        <CategoryFooter
+          tab={tab}
+          category={category}
+          dirty={dirty}
+          saving={saving}
+          canSave={!!f.name.trim()}
+          onClose={onClose}
+          onSave={save}
+        />
       }
     >
       <Tabs<CategoryTab>

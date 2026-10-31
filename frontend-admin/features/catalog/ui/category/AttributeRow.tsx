@@ -25,6 +25,32 @@ interface Props {
   onRemove: () => void;
 }
 
+/** Стрелки порядка, «Изменить», «Удалить» своей характеристики (пока идёт запрос — спиннер). */
+function OwnControls({ busy, idx, ownInGroup, onEdit, onMove, onRemove }: Pick<Props, "busy" | "idx" | "ownInGroup" | "onEdit" | "onMove" | "onRemove">) {
+  return (
+    <span className="flex shrink-0 items-center gap-0.5">
+      {busy ? (
+        <Spinner className="mx-2 h-4 w-4" />
+      ) : (
+        <>
+          <RowBtn label="Выше" disabled={idx <= 0} onClick={() => onMove(-1)}>
+            <ArrowUp className="h-3.5 w-3.5" />
+          </RowBtn>
+          <RowBtn label="Ниже" disabled={idx < 0 || idx >= ownInGroup - 1} onClick={() => onMove(1)}>
+            <ArrowDown className="h-3.5 w-3.5" />
+          </RowBtn>
+          <RowBtn label="Изменить" onClick={onEdit}>
+            <Pencil className="h-3.5 w-3.5" />
+          </RowBtn>
+          <RowBtn label="Удалить" danger onClick={() => onRemove()}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </RowBtn>
+        </>
+      )}
+    </span>
+  );
+}
+
 /** Строка характеристики в списке категории. */
 export function AttributeRow({ a, mine, from, idx, ownInGroup, busy, onEdit, onMove, onRemove }: Props) {
   return (
@@ -67,29 +93,7 @@ export function AttributeRow({ a, mine, from, idx, ownInGroup, busy, onEdit, onM
         {a.highlight && <Badge tone="accent" className="px-1.5">карточка</Badge>}
       </span>
       {mine ? (
-        <span className="flex shrink-0 items-center gap-0.5">
-          {busy ? (
-            <Spinner className="mx-2 h-4 w-4" />
-          ) : (
-            <>
-              <RowBtn label="Выше" disabled={idx <= 0} onClick={() => onMove(-1)}>
-                <ArrowUp className="h-3.5 w-3.5" />
-              </RowBtn>
-              <RowBtn label="Ниже" disabled={idx < 0 || idx >= ownInGroup - 1} onClick={() => onMove(1)}>
-                <ArrowDown className="h-3.5 w-3.5" />
-              </RowBtn>
-              <RowBtn
-                label="Изменить"
-                onClick={onEdit}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </RowBtn>
-              <RowBtn label="Удалить" danger onClick={() => onRemove()}>
-                <Trash2 className="h-3.5 w-3.5" />
-              </RowBtn>
-            </>
-          )}
-        </span>
+        <OwnControls busy={busy} idx={idx} ownInGroup={ownInGroup} onEdit={onEdit} onMove={onMove} onRemove={onRemove} />
       ) : (
         <Lock className="h-3.5 w-3.5 shrink-0 text-[var(--text-faint)]" aria-label="Унаследована — меняется в своей категории" />
       )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import {
   ArrowDown,
   ArrowUp,
@@ -14,79 +14,40 @@ import {
   SlidersHorizontal,
   Trash2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 import type { AdminCategory } from "../../model/types";
 import { plural, productsWord } from "../../model/words";
+import type { CategoryTab } from "../category/CategoryDialog";
+import { Act, MenuItem, RowMenu } from "./row-parts";
 
-export function CategoryRow({
-  c,
-  depth,
-  childCount,
-  attrCount,
-  expanded,
-  onToggle,
-  first,
-  last,
-  busy,
-  reorderDisabled,
-  onUp,
-  onDown,
-  onEdit,
-  onAddChild,
-  onMove,
-  onDelete,
-}: {
-  c: AdminCategory;
-  depth: 0 | 1;
-  childCount: number;
-  attrCount?: number;
-  expanded?: boolean;
-  onToggle?: () => void;
-  first: boolean;
-  last: boolean;
-  busy: boolean;
-  reorderDisabled: boolean;
-  onUp: () => void;
-  onDown: () => void;
-  onEdit: (tab?: "main" | "seo" | "specs") => void;
-  onAddChild?: () => void;
-  onMove?: () => void;
-  onDelete: () => void;
-  index?: number;
-}) {
-  const [menu, setMenu] = useState(false);
+function RowToggle({ expanded, onToggle }: { expanded?: boolean; onToggle?: () => void }) {
+  if (!onToggle) {
+    return (
+      <span className="grid h-8 w-8 shrink-0 place-items-center text-[var(--text-faint)] pointer-coarse:w-10" aria-hidden>
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--line-strong)]" />
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={expanded ? "Свернуть подкатегории" : "Развернуть подкатегории"}
+      aria-expanded={expanded}
+      className="focusable grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] hover:bg-[var(--surface-3)] hover:text-[var(--text)] pointer-coarse:h-10 pointer-coarse:w-10"
+    >
+      <ChevronRight className={cn("h-4 w-4 transition-transform duration-200", expanded && "rotate-90")} />
+    </button>
+  );
+}
+
+/** Название, бейджи «скрыта из меню» / SEO и адрес страницы. */
+function RowTitle({ c, depth, onEdit }: { c: AdminCategory; depth: 0 | 1; onEdit: (tab?: CategoryTab) => void }) {
   const hidden = !c.showInMenu;
   const hasSeo = !!(c.seoTitle || c.seoDescription || c.h1 || c.introText);
   return (
-    <div
-      className={cn(
-        "group relative flex items-center gap-2 py-2.5 pr-2 transition-colors hover:bg-[var(--surface-hover)] sm:gap-3 sm:pr-3",
-        depth === 0 ? "pl-2 sm:pl-3" : "pl-11 sm:pl-12",
-        busy && "opacity-60"
-      )}
-    >
-      {depth === 1 && (
-        <CornerDownRight aria-hidden className="absolute left-[21px] top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-faint)]" />
-      )}
-      {depth === 0 &&
-        (onToggle ? (
-          <button
-            type="button"
-            onClick={onToggle}
-            aria-label={expanded ? "Свернуть подкатегории" : "Развернуть подкатегории"}
-            aria-expanded={expanded}
-            className="focusable grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] hover:bg-[var(--surface-3)] hover:text-[var(--text)] pointer-coarse:h-10 pointer-coarse:w-10"
-          >
-            <ChevronRight className={cn("h-4 w-4 transition-transform duration-200", expanded && "rotate-90")} />
-          </button>
-        ) : (
-          <span className="grid h-8 w-8 shrink-0 place-items-center text-[var(--text-faint)] pointer-coarse:w-10" aria-hidden>
-            <span className="h-1.5 w-1.5 rounded-full bg-[var(--line-strong)]" />
-          </span>
-        ))}
-
       <button
         type="button"
         onClick={() => onEdit()}
@@ -112,7 +73,13 @@ export function CategoryRow({
           {c.artKind && <span className="hidden sm:inline">· плитка {c.artKind}</span>}
         </span>
       </button>
+  );
+}
 
+/** Счётчики справа: товары на витрине, подкатегории, число характеристик. */
+function RowStats({ c, childCount, attrCount, onEdit }: { c: AdminCategory; childCount: number; attrCount?: number; onEdit: (tab?: CategoryTab) => void }) {
+  return (
+    <>
       <div className="hidden shrink-0 flex-col items-end text-right md:flex">
         <span className="tabular text-[13px] font-semibold text-[var(--text)]" title="Активных товаров в категории и подкатегориях">
           {c.productCount} на витрине
@@ -134,6 +101,27 @@ export function CategoryRow({
       </button>
       <span className="tabular shrink-0 text-[12px] font-semibold text-[var(--text-muted)] md:hidden" title="На витрине">{c.productCount}</span>
 
+    </>
+  );
+}
+
+interface ActionsProps {
+  first: boolean;
+  last: boolean;
+  busy: boolean;
+  reorderDisabled: boolean;
+  onUp: () => void;
+  onDown: () => void;
+  onEdit: (tab?: CategoryTab) => void;
+  onAddChild?: () => void;
+  onMove?: () => void;
+  onDelete: () => void;
+}
+
+/** ↑ ↓ и меню «Действия». */
+function RowActions({ first, last, busy, reorderDisabled, onUp, onDown, onEdit, onAddChild, onMove, onDelete }: ActionsProps) {
+  const [menu, setMenu] = useState(false);
+  return (
       <div className="flex shrink-0 items-center gap-0.5">
         <Act label="Выше" disabled={first || reorderDisabled || busy} onClick={onUp}>
           <ArrowUp className="h-4 w-4" />
@@ -172,90 +160,72 @@ export function CategoryRow({
           </AnimatePresence>
         </div>
       </div>
-    </div>
   );
 }
 
-function Act({
-  label,
-  onClick,
-  disabled,
+export function CategoryRow({
+  c,
+  depth,
+  childCount,
+  attrCount,
   expanded,
-  children,
+  onToggle,
+  first,
+  last,
+  busy,
+  reorderDisabled,
+  onUp,
+  onDown,
+  onEdit,
+  onAddChild,
+  onMove,
+  onDelete,
 }: {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
+  c: AdminCategory;
+  depth: 0 | 1;
+  childCount: number;
+  attrCount?: number;
   expanded?: boolean;
-  children: React.ReactNode;
+  onToggle?: () => void;
+  first: boolean;
+  last: boolean;
+  busy: boolean;
+  reorderDisabled: boolean;
+  onUp: () => void;
+  onDown: () => void;
+  onEdit: (tab?: "main" | "seo" | "specs") => void;
+  onAddChild?: () => void;
+  onMove?: () => void;
+  onDelete: () => void;
+  index?: number;
 }) {
   return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      aria-expanded={expanded}
-      disabled={disabled}
-      onClick={onClick}
-      className="focusable grid h-8 w-8 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] transition-colors enabled:hover:bg-[var(--surface-3)] enabled:hover:text-[var(--text)] disabled:opacity-25 pointer-coarse:h-10 pointer-coarse:w-10"
-    >
-      {children}
-    </button>
-  );
-}
-
-function RowMenu({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
-  useEffect(() => {
-    const close = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest("[data-row-menu]")) onClose();
-    };
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    const t = setTimeout(() => document.addEventListener("mousedown", close));
-    document.addEventListener("keydown", esc);
-    return () => {
-      clearTimeout(t);
-      document.removeEventListener("mousedown", close);
-      document.removeEventListener("keydown", esc);
-    };
-  }, [onClose]);
-  return (
-    <motion.div
-      data-row-menu
-      role="menu"
-      initial={{ opacity: 0, y: -4, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -4, scale: 0.98 }}
-      transition={{ duration: 0.12 }}
-      className="elevated absolute right-0 top-9 z-30 w-56 p-1"
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-function MenuItem({
-  icon: Icon,
-  onClick,
-  danger,
-  children,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  onClick: () => void;
-  danger?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      onClick={onClick}
+    <div
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-[var(--r-sm)] px-3 py-2 text-left text-[13.5px] font-medium transition-colors hover:bg-[var(--surface-hover)] focus-visible:bg-[var(--surface-hover)] focus-visible:outline-none",
-        danger ? "text-[var(--danger-ink)]" : "text-[var(--text)]"
+        "group relative flex items-center gap-2 py-2.5 pr-2 transition-colors hover:bg-[var(--surface-hover)] sm:gap-3 sm:pr-3",
+        depth === 0 ? "pl-2 sm:pl-3" : "pl-11 sm:pl-12",
+        busy && "opacity-60"
       )}
     >
-      <Icon className="h-4 w-4 shrink-0 opacity-80" />
-      {children}
-    </button>
+      {depth === 1 && (
+        <CornerDownRight aria-hidden className="absolute left-[21px] top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-faint)]" />
+      )}
+      {depth === 0 && <RowToggle expanded={expanded} onToggle={onToggle} />}
+
+      <RowTitle c={c} depth={depth} onEdit={onEdit} />
+      <RowStats c={c} childCount={childCount} attrCount={attrCount} onEdit={onEdit} />
+      <RowActions
+        first={first}
+        last={last}
+        busy={busy}
+        reorderDisabled={reorderDisabled}
+        onUp={onUp}
+        onDown={onDown}
+        onEdit={onEdit}
+        onAddChild={onAddChild}
+        onMove={onMove}
+        onDelete={onDelete}
+      />
+    </div>
   );
 }

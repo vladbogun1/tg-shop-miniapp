@@ -32,6 +32,55 @@ import { BucketsEditor } from "./BucketsEditor";
 import { OptionsEditor } from "./OptionsEditor";
 import { useOptionEditing } from "./use-option-editing";
 
+function defaultGroupKey(sorted: AdminSpecGroup[]): string {
+  return sorted.find((g) => g.key === "main")?.key ?? sorted[0]?.key ?? "main";
+}
+
+function scopeLabel(attribute: AdminSpecAttribute | null, categoryId: string | null, categoryName: string): string {
+  return categoryId || attribute?.categoryId ? `Категория «${categoryName}»` : "Глобальная — во всех категориях";
+}
+
+const hasMissingLabels = (d: Draft) => !d.labelRu.trim() || !d.labelUk.trim() || !d.labelEn.trim();
+
+interface FooterProps {
+  scope: string;
+  isNew: boolean;
+  saving: boolean;
+  canSave: boolean;
+  onClose: () => void;
+  onSave: () => void;
+}
+
+function AttributeFooter({ scope, isNew, saving, canSave, onClose, onSave }: FooterProps) {
+  return (
+    <div className="flex w-full flex-wrap items-center justify-between gap-2">
+      <span className="text-[12px] text-[var(--text-faint)]">{scope}</span>
+      <div className="flex gap-2">
+        <Button variant="ghost" onClick={onClose} disabled={saving}>
+          Отмена
+        </Button>
+        <Button variant="accent" loading={saving} disabled={!canSave} icon={<Check className="h-4 w-4" />} onClick={onSave}>
+          {isNew ? "Добавить" : "Сохранить"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function AttributeNotes({ labelsMissing, d, used }: { labelsMissing: boolean; d: Draft; used: number }) {
+  const anyLabel = !!(d.labelRu || d.labelUk || d.labelEn);
+  return (
+    <>
+      {labelsMissing && anyLabel && <p className="text-[12px] text-[var(--text-faint)]">Нужны подписи на трёх языках.</p>}
+      {used > 0 && (
+        <p className="text-[12px] text-[var(--text-faint)]">
+          Заполнена в {productsWord(used)}. Удаление характеристики вычистит её из {plural(used, "этого товара", "этих товаров", "этих товаров")}.
+        </p>
+      )}
+    </>
+  );
+}
+
 export function AttributeDialog({
   open,
   attribute,
@@ -57,7 +106,7 @@ export function AttributeDialog({
 }) {
   const saveAttribute = useSaveAttribute();
   const sortedGroups = useMemo(() => [...groups].sort((a, b) => a.sortOrder - b.sortOrder), [groups]);
-  const defaultGroup = sortedGroups.find((g) => g.key === "main")?.key ?? sortedGroups[0]?.key ?? "main";
+  const defaultGroup = defaultGroupKey(sortedGroups);
   // The draft is rebuilt when the dialog opens or the attribute changes — not when the groups list loads.
   const defaultGroupRef = useRef(defaultGroup);
   defaultGroupRef.current = defaultGroup;
@@ -74,8 +123,7 @@ export function AttributeDialog({
 
   const used = attribute?.usedCount ?? 0;
   const opt = useOptionEditing(open, attribute, d, setD, used);
-  const keyLocked = !!attribute && used > 0;
-  const typeLocked = !!attribute && used > 0;
+  const locked = !!attribute && used > 0;
   const dirty = open && JSON.stringify(d) !== initial;
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((p) => ({ ...p, [k]: v }));
@@ -88,7 +136,7 @@ export function AttributeDialog({
   const keyError = keyErrorOf(d, attribute, takenKeys);
   const optionErrors = useMemo(() => optionErrorsOf(d), [d]);
   const bucketErrors = useMemo(() => bucketErrorsOf(d), [d]);
-  const labelsMissing = !d.labelRu.trim() || !d.labelUk.trim() || !d.labelEn.trim();
+  const labelsMissing = hasMissingLabels(d);
   const canSave = !labelsMissing && !keyError && optionErrors.length === 0 && bucketErrors.length === 0;
 
   async function save() {
@@ -115,25 +163,14 @@ export function AttributeDialog({
       dirty={dirty}
       title={attribute ? `Характеристика · ${attribute.labelRu}` : "Новая характеристика"}
       footer={
-        <div className="flex w-full flex-wrap items-center justify-between gap-2">
-          <span className="text-[12px] text-[var(--text-faint)]">
-            {categoryId || attribute?.categoryId ? `Категория «${categoryName}»` : "Глобальная — во всех категориях"}
-          </span>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={onClose} disabled={saving}>
-              Отмена
-            </Button>
-            <Button
-              variant="accent"
-              loading={saving}
-              disabled={!canSave}
-              icon={<Check className="h-4 w-4" />}
-              onClick={save}
-            >
-              {attribute ? "Сохранить" : "Добавить"}
-            </Button>
-          </div>
-        </div>
+        <AttributeFooter
+          scope={scopeLabel(attribute, categoryId, categoryName)}
+          isNew={!attribute}
+          saving={saving}
+          canSave={canSave}
+          onClose={onClose}
+          onSave={save}
+        />
       }
     >
       <div className="flex flex-col gap-5">
@@ -142,8 +179,8 @@ export function AttributeDialog({
           attribute={attribute}
           sortedGroups={sortedGroups}
           used={used}
-          keyLocked={keyLocked}
-          typeLocked={typeLocked}
+          keyLocked={locked}
+          typeLocked={locked}
           keyError={keyError}
           set={set}
           setD={setD}
@@ -162,14 +199,7 @@ export function AttributeDialog({
           placeholder="Как заполнять: «без учёта кабеля; „57 ± 3 г“ → 57»"
           hint="Попадает в промпт «Карточек». На витрине не показывается."
         />
-        {labelsMissing && (d.labelRu || d.labelUk || d.labelEn) && (
-          <p className="text-[12px] text-[var(--text-faint)]">Нужны подписи на трёх языках.</p>
-        )}
-        {attribute && used > 0 && (
-          <p className="text-[12px] text-[var(--text-faint)]">
-            Заполнена в {productsWord(used)}. Удаление характеристики вычистит её из {plural(used, "этого товара", "этих товаров", "этих товаров")}.
-          </p>
-        )}
+        <AttributeNotes labelsMissing={labelsMissing} d={d} used={attribute ? used : 0} />
       </div>
     </Modal>
   );
