@@ -23,9 +23,9 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BASELINE = path.join(ROOT, "scripts/frontend-baseline.txt");
-export const APPS = ["frontend", "frontend-admin", "site", "core", "ui"];
+export const APPS = ["frontend", "frontend-admin", "site", "core", "ui", "customer"];
 /** Папка пакета по имени в сводке. */
-const DIRS = { core: "packages/core", ui: "packages/ui" };
+const DIRS = { core: "packages/core", ui: "packages/ui", customer: "packages/customer" };
 
 /** Порядок колонок сводки. Остальные ruleId ESLint не отслеживаются. */
 export const RULES = [

@@ -19,7 +19,7 @@ import extractTsConfig from "dependency-cruiser/config-utl/extract-ts-config";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const KNOWN = path.join(ROOT, "known-violations.json");
-const APPS = ["frontend", "frontend-admin", "site", "packages/core", "packages/ui"];
+const APPS = ["frontend", "frontend-admin", "site", "packages/core", "packages/ui", "packages/customer"];
 
 /** Один запуск на приложение (у каждого свой tsconfig с алиасом `@/*`); пакеты packages/* — отдельными запусками. */
 async function collect() {

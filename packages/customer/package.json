@@ -3,12 +3,22 @@
   "version": "1.0.0",
   "private": true,
   "sideEffects": false,
-  "description": "Customer features shared by the Mini App and the website (cart, catalog, checkout, order, chat, review, compare, gift, ...). Empty until step 5 of docs/ARCHITECTURE-FRONT.md",
+  "description": "Покупательские фичи, одинаковые в Mini App и на сайте: Platform, cart (store, sync, api), catalog (модель витрины). Явные подпути: @shop/customer/cart/store, @shop/customer/catalog/model/stock",
   "exports": {
     "./*": "./src/*.ts"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "zustand": ">=5"
   },
   "dependencies": {
     "@shop/core": "*",
     "@shop/ui": "*"
+  },
+  "scripts": {
+    "lint": "eslint . --quiet",
+    "lint:warn": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
   }
 }
