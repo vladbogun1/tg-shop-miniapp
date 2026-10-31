@@ -3,6 +3,7 @@
 import { useApiMutation } from "@shop/ui/mutation";
 import { toast } from "@shop/ui/toast";
 import { useCallback, useEffect, useState } from "react";
+import { isIosBelow } from "@/lib/ios-version";
 import { iosVersion, isIos, swEnabled, usePwa } from "@/lib/pwa";
 import { currentSubscription, disablePush, enablePush, pushApi, pushPermission, pushSupported, type PushPermission } from "@/features/notification";
 import { settingsKeys } from "../../keys";
@@ -67,7 +68,7 @@ export function useDevicePush() {
     permission,
     subscribed,
     ios,
-    iosTooOld: ios && iosV !== null && iosV < 16.4,
+    iosTooOld: ios && iosV !== null && isIosBelow(iosV, 16, 4),
     iosNeedsInstall,
     serverOn,
     canToggle: supported && serverOn && !iosNeedsInstall && permission !== "denied",

@@ -10,7 +10,7 @@
 import { useSyncExternalStore } from "react";
 import { localStore } from "@shop/core/storage";
 import { nowMs } from "@shop/core/time";
-import { parseIosVersion } from "./ios-version";
+import { parseIosVersion, type IosVersion } from "./ios-version";
 
 /** Chrome's install prompt event (not in lib.dom). */
 interface BeforeInstallPromptEvent extends Event {
@@ -76,7 +76,7 @@ export function isIosSafari(): boolean {
 }
 
 /** iOS major.minor, or null elsewhere (Web Push needs 16.4+ and the installed app). */
-export function iosVersion(): number | null {
+export function iosVersion(): IosVersion | null {
   if (!isIos()) return null;
   return parseIosVersion(navigator.userAgent);
 }

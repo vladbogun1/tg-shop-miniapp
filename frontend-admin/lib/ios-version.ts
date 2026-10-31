@@ -1,10 +1,12 @@
-/**
- * iOS version from a User-Agent: `OS 16_4` -> 16.04 (minor is a hundredth, not a decimal digit).
- * The caller compares it with a threshold; the encoding is kept as is so the check does not change.
- */
-const MINOR_SCALE = 100;
+/** iOS version from a User-Agent: `OS 16_4` -> [16, 4]; null when the UA has no iOS version. */
+export type IosVersion = readonly [major: number, minor: number];
 
-export function parseIosVersion(userAgent: string): number | null {
+export function parseIosVersion(userAgent: string): IosVersion | null {
   const m = userAgent.match(/OS (\d+)[_.](\d+)/);
-  return m ? Number(m[1]) + Number(m[2]) / MINOR_SCALE : null;
+  return m ? [Number(m[1]), Number(m[2])] : null;
+}
+
+/** `v` is older than major.minor; compared as a tuple (16.10 is newer than 16.4). */
+export function isIosBelow(v: IosVersion, major: number, minor: number): boolean {
+  return v[0] < major || (v[0] === major && v[1] < minor);
 }
