@@ -9,7 +9,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Users as UsersIcon, Ghost, Trophy, ShoppingBag, Wallet, UserX } from "lucide-react";
+import { Users as UsersIcon, Ghost, Trophy, ShoppingBag, Wallet, UserX, UserPlus } from "lucide-react";
 import { adminApi, type UserCardDto } from "@/lib/api";
 import { hwApi, type HwMember } from "@/lib/halloween-api";
 import { CHART_COLORS, moneyShort } from "@/lib/metrics-format";
@@ -25,6 +25,8 @@ import { OrderDrawer } from "@/components/orders/OrderDrawer";
 import { BroadcastPanel } from "@/components/halloween/BroadcastPanel";
 import { MembersTable } from "@/components/halloween/MembersTable";
 import { displayName } from "@/components/halloween/member-view";
+import { ManualSpendModal } from "@/components/halloween/ManualSpendModal";
+import { Button } from "@/components/ui/Button";
 
 export default function HalloweenPage() {
   const qc = useQueryClient();
@@ -32,6 +34,8 @@ export default function HalloweenPage() {
   const [confirm, confirmNode] = useConfirm();
   const [profileUser, setProfileUser] = useState<UserCardDto | null>(null);
   const [openOrderId, setOpenOrderId] = useState<string | null>(null);
+  /** «Добавить вручную»: "new", a member to edit, or closed. */
+  const [manual, setManual] = useState<HwMember | "new" | null>(null);
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["hw-members"],
     queryFn: hwApi.members,
@@ -69,7 +73,8 @@ export default function HalloweenPage() {
   const s = data?.summary;
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <PageHeader title="Участники акции 🎃" subtitle="Хеллоуин 2026: тыквы, покупки, билеты и рассылка" />
+      <PageHeader title="Участники акции 🎃" subtitle="Хеллоуин 2026: тыквы, покупки, билеты и рассылка"
+        actions={<Button variant="surface" icon={<UserPlus className="h-4 w-4" />} disabled={!data || data.locked.orders} onClick={() => setManual("new")}>Добавить вручную</Button>} />
 
       {isError ? (
         <QueryState isLoading={false} isError error={error} refetch={refetch}>{null}</QueryState>
@@ -94,7 +99,7 @@ export default function HalloweenPage() {
           <BroadcastPanel members={data} />
 
           {isLoading || !data ? <Skeleton className="h-[480px]" /> : (
-            <MembersTable data={data} actions={{ onOpen: (m) => void open(m), onToggleExclude: (m) => void toggleExclude(m) }} />
+            <MembersTable data={data} actions={{ onOpen: (m) => void open(m), onToggleExclude: (m) => void toggleExclude(m), onEditManual: setManual }} />
           )}
         </>
       )}
@@ -103,6 +108,10 @@ export default function HalloweenPage() {
       {/* After the profile drawer, so it stacks above it. */}
       <OrderDrawer orderId={openOrderId} onClose={() => setOpenOrderId(null)} />
       {confirmNode}
+      {manual && data && (
+        <ManualSpendModal member={manual === "new" ? null : manual} minSpendMinor={data.rules.oldMinSpendMinor} onClose={() => setManual(null)}
+          onSaved={() => { setManual(null); void qc.invalidateQueries({ queryKey: ["hw-members"] }); }} />
+      )}
     </div>
   );
 }

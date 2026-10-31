@@ -5,8 +5,9 @@ import { db } from "./db.js";
 import { config } from "./config.js";
 import { liveEntries } from "./pools.js";
 import { getLock, publicId } from "./draw.js";
-import { ordersOf, profiles } from "./shop.js";
-import { overview } from "./invites.js";
+import { ordersOf, profiles, findUser, freshFacts } from "./shop.js";
+import { overview, joinByAdmin, unjoinAdmin } from "./invites.js";
+import { setManual, removeManual } from "./manual-spend.js";
 
 const fullName = (p) => [p?.first_name, p?.last_name].filter(Boolean).join(" ") || null;
 
@@ -58,4 +59,36 @@ export async function invites() {
     })
     .sort((a, b) => order[a.state] - order[b.state] || b.oldSpendMinor - a.oldSpendMinor);
   return { ...o, rows, oldMinSpendMinor: config.oldMinSpendMinor, oldTickets: config.oldTickets };
+}
+
+const fail = (message, status = 400) => Object.assign(new Error(message), { status });
+const uah = (minor) => Math.round(minor / 100).toLocaleString("ru-RU");
+
+/**
+ * «Добавить вручную»: a customer whose purchases are older than the shop database. The typed money adds
+ * to their spend before the event; reaching the earlier-customer threshold puts them in the purchase draw
+ * (joined by the admin, no invite needed). Only before the purchase list is frozen.
+ */
+export async function addManual({ who, spendUah, note }, by) {
+  if (getLock("orders")) throw fail("Список розыгрыша покупок уже зафиксирован", 409);
+  const u = await findUser(who);
+  if (!u) throw fail("Такого пользователя нет в базе магазина: нужен Telegram id или @ник того, кто заходил в магазин", 404);
+  const spendMinor = Math.round(Number(spendUah) * 100);
+  if (!(spendMinor > 0) || spendMinor > 100_000_000) throw fail("Сумма должна быть от 1 ₴");
+  const shopMinor = (await freshFacts()).before.get(u.tg_id) || 0;
+  const total = shopMinor + spendMinor;
+  if (total < config.oldMinSpendMinor)
+    throw fail(`Вместе с заказами в базе получается ${uah(total)} ₴, а для розыгрыша нужно от ${uah(config.oldMinSpendMinor)} ₴`);
+  setManual(u.tg_id, spendMinor, note, by);
+  joinByAdmin(u.tg_id);
+  await freshFacts();
+  return { tgId: u.tg_id, name: fullName(u), username: u.username || null, shopMinor, manualMinor: spendMinor, oldSpendMinor: total };
+}
+
+/** Undo of addManual. */
+export async function dropManual(tgId) {
+  if (getLock("orders")) throw fail("Список розыгрыша покупок уже зафиксирован", 409);
+  if (!removeManual(tgId)) throw fail("У этого человека нет ручной суммы", 404);
+  unjoinAdmin(tgId);
+  await freshFacts();
 }

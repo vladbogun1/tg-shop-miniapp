@@ -8,6 +8,7 @@ import { getLock } from "./draw.js";
 import { shopFacts, profiles, spendAll } from "./shop.js";
 import { overview, sendsOf } from "./invites.js";
 import { buildRows, summarize } from "./member-rows.js";
+import { manualSpend } from "./manual-spend.js";
 
 const pumpkinStats = db.prepare(
   `SELECT tg_id, COUNT(*) AS n, COUNT(DISTINCT day) AS days, MIN(collected_at) AS first, MAX(collected_at) AS last
@@ -31,6 +32,7 @@ export async function list() {
     restSends: sendsOf("rest"),
     excluded: new Map(db.prepare("SELECT tg_id, note FROM excluded").all().map((x) => [String(x.tg_id), x.note || ""])),
     staff: new Set([...facts.staff, ...config.excludeIds]),
+    manual: manualSpend(),
   });
   const ids = rows.map((r) => r.tgId);
   const [prof, life] = await Promise.all([profiles(ids), spendAll(ids)]);

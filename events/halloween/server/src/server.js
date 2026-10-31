@@ -212,6 +212,12 @@ async function adminApi(req, res, path, query) {
       await botStatus.syncAll();
       return send(res, 200, { left: botStatus.unsynced() });
     }
+    // A customer from before the shop database: their old spend typed by hand (admin-people.addManual).
+    if (path === "manual" && req.method === "POST") return send(res, 200, await adminPeople.addManual(b, who.tgId));
+    if (path === "manual/remove" && req.method === "POST") {
+      await adminPeople.dropManual(String(b.tgId || ""));
+      return send(res, 200, { ok: true });
+    }
     if (path === "people" && req.method === "GET") return send(res, 200, await adminPeople.people(pool));
     if (path === "include" && req.method === "POST") {
       adminPeople.include(pool, b.tgId);

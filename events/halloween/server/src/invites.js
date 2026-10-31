@@ -44,6 +44,7 @@ const q = {
   joined: db.prepare("SELECT tg_id, at, via FROM joined"),
   isJoined: db.prepare("SELECT at FROM joined WHERE tg_id = ?"),
   join: db.prepare("INSERT OR IGNORE INTO joined (tg_id, at, via) VALUES (?, ?, ?)"),
+  unjoinAdmin: db.prepare("DELETE FROM joined WHERE tg_id = ? AND via = 'admin'"),
   sends: db.prepare("SELECT tg_id, status, at FROM sends WHERE campaign = ?"),
 };
 
@@ -72,6 +73,16 @@ export async function join(tgId, via, { locked }) {
   if (Date.now() > config.endsAt.getTime() || locked) return { ok: false, reason: "closed" };
   q.join.run(String(tgId), Date.now(), via);
   return { ok: true };
+}
+
+/** Added by hand in the admin (manual-spend.js): in without pressing anything. */
+export function joinByAdmin(tgId) {
+  q.join.run(String(tgId), Date.now(), "admin");
+}
+
+/** Undo of joinByAdmin; someone who pressed the button themselves stays in. */
+export function unjoinAdmin(tgId) {
+  q.unjoinAdmin.run(String(tgId));
 }
 
 export function sendsOf(campaign) {

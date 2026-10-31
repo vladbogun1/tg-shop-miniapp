@@ -33,6 +33,8 @@ export interface HwMember {
   lifetimeSpendMinor: number;
   old: boolean;
   oldSpendMinor: number;
+  /** Spend before the shop database, typed by hand (already inside oldSpendMinor). */
+  manualSpendMinor: number;
   invite: InviteState | null;
   joinedAt: number | null;
   broadcast: SendStatus | null;
@@ -89,5 +91,9 @@ export const hwApi = {
     apiPost<HwJob>(`${P}/broadcast/start`, { campaign, confirm }),
   /** Excluded from both draws; the pool only says which list to check the person against. */
   exclude: (pool: HwPool, tgId: string, note: string) => apiPost<{ ok: true }>(`${P}/exclude?pool=${pool}`, { tgId, note }),
+  /** A customer whose purchases are older than the shop database: `who` = Telegram id or @username. */
+  addManual: (who: string, spendUah: number, note: string) =>
+    apiPost<{ tgId: string; name: string | null; username: string | null; shopMinor: number; manualMinor: number; oldSpendMinor: number }>(`${P}/manual`, { who, spendUah, note }),
+  removeManual: (tgId: string) => apiPost<{ ok: true }>(`${P}/manual/remove`, { tgId }),
   include: (pool: HwPool, tgId: string) => apiPost<{ ok: true }>(`${P}/include?pool=${pool}`, { tgId }),
 };

@@ -3,6 +3,7 @@
 // on users (markBot below), so «заблокував бота» from the broadcast reaches the shop's own user list.
 import mysql from "mysql2/promise";
 import { config } from "./config.js";
+import { manualSpend, earlierCustomers } from "./manual-spend.js";
 
 const enabled = Boolean(config.mysql.user && config.mysql.database);
 const pool = enabled
@@ -17,7 +18,7 @@ let cache = { at: 0, data: null };
  * what stays with the shop: total minus refunds and parcels nobody picked up.
  */
 async function fetchAll() {
-  if (!pool) return { orders: new Map(), staff: new Set(), old: new Map() };
+  if (!pool) return { orders: new Map(), staff: new Set(), old: earlierCustomers(new Map(), manualSpend(), config.oldMinSpendMinor), before: new Map() };
   const [orders] = await pool.query(
     `SELECT CAST(user_id AS CHAR) AS tg_id, COUNT(*) AS n,
             SUM(GREATEST(total_minor - refunded_minor - uncollected_minor, 0)) AS spend
@@ -30,19 +31,21 @@ async function fetchAll() {
     [config.ordersFrom, config.ordersTo],
   );
   const [staff] = await pool.query(`SELECT CAST(telegram_user_id AS CHAR) AS tg_id FROM admin_users`);
-  // Earlier customers: the same "counts" rule, everything before the event.
-  const [old] = await pool.query(
+  // Earlier customers: the same "counts" rule, everything before the event, plus money typed by hand
+  // for purchases older than the database (manual-spend.js).
+  const [before] = await pool.query(
     `SELECT CAST(user_id AS CHAR) AS tg_id, SUM(GREATEST(total_minor - refunded_minor - uncollected_minor, 0)) AS spend
        FROM orders
       WHERE user_id IS NOT NULL AND created_at < ?
         AND status <> 'REJECTED'
         AND (paid = 1 OR status IN ('APPROVED','SHIPPED','DELIVERED'))
-      GROUP BY user_id
-     HAVING spend >= ?`,
-    [config.oldBefore, config.oldMinSpendMinor],
+      GROUP BY user_id`,
+    [config.oldBefore],
   );
+  const shopBefore = new Map(before.map((r) => [String(r.tg_id), Number(r.spend)]));
   return {
-    old: new Map(old.map((r) => [String(r.tg_id), Number(r.spend)])),
+    old: earlierCustomers(shopBefore, manualSpend(), config.oldMinSpendMinor),
+    before: shopBefore,
     orders: new Map(orders.map((r) => [String(r.tg_id), { n: Number(r.n), spendMinor: Number(r.spend) }])),
     staff: new Set(staff.map((r) => String(r.tg_id))),
   };
@@ -56,7 +59,7 @@ export async function shopFacts() {
   } catch (e) {
     console.error("[shop] facts failed:", e.message);
     // Keep what we had, ask again in ~15 s instead of on every request.
-    cache = { at: Date.now() - 45_000, data: cache.data || { orders: new Map(), staff: new Set(), old: new Map() } };
+    cache = { at: Date.now() - 45_000, data: cache.data || { orders: new Map(), staff: new Set(), old: new Map(), before: new Map() } };
   }
   return cache.data;
 }
@@ -91,6 +94,16 @@ export async function profiles(ids) {
     for (const r of rows) out.set(String(r.tg_id), r);
   }
   return out;
+}
+
+/** A shop user by Telegram id or @username (the admin types either); null when there is none. */
+export async function findUser(raw) {
+  const v = String(raw || "").trim().replace(/^@/, "");
+  if (!pool || !v) return null;
+  const [rows] = /^\d+$/.test(v)
+    ? await pool.query(`SELECT CAST(telegram_user_id AS CHAR) AS tg_id, username, first_name, last_name FROM users WHERE telegram_user_id = ?`, [v])
+    : await pool.query(`SELECT CAST(telegram_user_id AS CHAR) AS tg_id, username, first_name, last_name FROM users WHERE username = ?`, [v]);
+  return rows[0] || null;
 }
 
 /** All-time orders and money per person (the same "counts" rule as the draw), for the admin participants page. */

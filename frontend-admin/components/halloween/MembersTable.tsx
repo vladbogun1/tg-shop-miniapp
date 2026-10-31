@@ -23,6 +23,7 @@ const PAGE = 50;
 export interface MemberActions {
   onOpen: (m: HwMember) => void;
   onToggleExclude: (m: HwMember) => void;
+  onEditManual: (m: HwMember) => void;
 }
 
 export function MembersTable({ data, actions }: { data: HwMembers; actions: MemberActions }) {
@@ -83,6 +84,7 @@ export function MembersTable({ data, actions }: { data: HwMembers; actions: Memb
                 <td className="tabular whitespace-nowrap"><Chance tickets={m.orderTickets} chance={m.orderChance} /></td>
                 <td className="tabular whitespace-nowrap text-[var(--text-muted)]">
                   {money(m.lifetimeSpendMinor)}<div className="text-[11px] text-[var(--text-faint)]">{m.lifetimeOrders} зак.</div>
+                  <ManualNote m={m} onClick={() => actions.onEditManual(m)} />
                 </td>
                 <td><div className="flex flex-col items-start gap-1">{m.invite && <Badge tone={INVITE[m.invite].tone} dot>{INVITE[m.invite].label}</Badge>}<BotBadge m={m} /></div></td>
                 <td onClick={(e) => e.stopPropagation()}><ExcludeButton m={m} locked={data.locked} onClick={() => actions.onToggleExclude(m)} /></td>
@@ -121,6 +123,7 @@ function MemberCard({ m, data, actions }: { m: HwMember; data: HwMembers; action
         <Cell label="За акцию" value={m.spendMinor ? money(m.spendMinor) : "—"} sub={m.orderTickets ? `${m.orderTickets} бил. · ${pct(m.orderChance)}` : "—"} />
         <Cell label="Всего" value={money(m.lifetimeSpendMinor)} sub={`${m.lifetimeOrders} зак.`} />
       </div>
+      <ManualNote m={m} onClick={() => actions.onEditManual(m)} />
       <div className="flex flex-wrap items-center justify-between gap-2">
         {m.invite ? <Badge tone={INVITE[m.invite].tone} dot>{INVITE[m.invite].label}</Badge> : <span />}
         <ExcludeButton m={m} locked={data.locked} onClick={() => actions.onToggleExclude(m)} />
@@ -144,6 +147,17 @@ function Who({ m }: { m: HwMember }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/** «+N до базы»: money typed by hand for purchases older than the shop database; opens the editor. */
+function ManualNote({ m, onClick }: { m: HwMember; onClick: () => void }) {
+  if (!m.manualSpendMinor) return null;
+  return (
+    <button type="button" onClick={(e) => { e.stopPropagation(); onClick(); }}
+      className="text-left text-[11px] font-semibold text-[var(--accent)] underline-offset-2 hover:underline">
+      +{money(m.manualSpendMinor)} до базы
+    </button>
   );
 }
 

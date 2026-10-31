@@ -10,7 +10,7 @@ import { db } from "./db.js";
 import { config } from "./config.js";
 import { shopFacts, profiles, allCustomerIds } from "./shop.js";
 import { excludedIds } from "./pools.js";
-import { joinLink, sendsOf } from "./invites.js";
+import { joinLink, sendsOf, isJoined } from "./invites.js";
 import { TEXTS, BUTTONS } from "./broadcast-texts.js";
 import * as botStatus from "./bot-status.js";
 
@@ -151,7 +151,8 @@ export async function audience(campaign) {
   const done = sendsOf(campaign);
   const ids = campaign === "old" ? [...facts.old.keys()] : (await allCustomerIds()).filter((id) => !facts.old.has(id));
   const only = config.notifyOnly.length ? new Set(config.notifyOnly) : null;
-  return ids.filter((id) => !skip.has(id) && !done.has(id) && (!only || only.has(id)));
+  // Someone already in (added by hand in the admin) needs no invite.
+  return ids.filter((id) => !skip.has(id) && !done.has(id) && (!only || only.has(id)) && !(campaign === "old" && isJoined(id)));
 }
 
 let job = null; // { campaign, total, done, ok, blocked, error, startedAt, finishedAt }

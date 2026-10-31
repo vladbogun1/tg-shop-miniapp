@@ -13,6 +13,7 @@
  * @param {Map<string,{status:string,at:number}>} i.restSends  the «everyone else» broadcast
  * @param {Map<string,string>} i.excluded  tgId → note
  * @param {Set<string>} i.staff
+ * @param {Map<string,number>} [i.manual]  spend before the shop database, typed by hand
  */
 export function buildRows(i) {
   const ids = new Set([...i.pumpkins.keys(), ...i.orders.keys(), ...i.old.keys()]);
@@ -37,6 +38,7 @@ export function buildRows(i) {
       orderChance: oTotal ? ot / oTotal : 0,
       old: i.old.has(tgId),
       oldSpendMinor: i.old.get(tgId) || 0,
+      manualSpendMinor: i.manual?.get(tgId) || 0,
       invite: inv?.state || null,
       joinedAt: inv?.joinedAt || null,
       // the broadcast this person got: the invite (earlier customers) or the «everyone else» one
