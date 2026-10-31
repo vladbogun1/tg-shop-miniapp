@@ -1,16 +1,16 @@
 "use client";
 
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { AlertTriangle, Bug, CreditCard, Timer, Truck, XCircle } from "lucide-react";
 import { QueryState } from "@/components/ui/QueryState";
 import { REJECT_REASON_LABEL, type RejectReasonCode } from "@shop/core/orders";
 import { DELIVERY_LABEL } from "@/features/order";
 import { staggerContainer } from "@/lib/motion";
-import { metricsApi, type Operations, type PeriodParams, type Violation } from "../api";
 import { RankBars } from "../charts";
-import { dateTime, duration, num, pct, shortId, uah } from "../format";
-import { Empty, Note, Panel, StatusChip, TableWrap } from "../ui";
+import { dateTime, duration, num, pct, shortId, uah } from "../../model/format";
+import type { Operations, PeriodParams, Violation } from "../../model/types";
+import { useOperations } from "../../queries";
+import { Empty, Note, Panel, StatusChip, TableWrap } from "../kit";
 
 /**
  * The server's label, unless it only echoed the code back (a reason it has no label for yet, e.g.
@@ -22,11 +22,7 @@ function reasonLabel(key: string, label: string): string {
 }
 
 export function OperationsTab({ params }: { params: PeriodParams }) {
-  const q = useQuery({
-    queryKey: ["metrics2", "operations", params],
-    queryFn: () => metricsApi.operations(params),
-    placeholderData: keepPreviousData,
-  });
+  const q = useOperations(params);
   return (
     <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Считаем…">
       {q.data && <OperationsBody o={q.data} />}

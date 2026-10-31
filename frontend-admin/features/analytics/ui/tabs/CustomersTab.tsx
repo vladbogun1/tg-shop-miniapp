@@ -1,23 +1,19 @@
 "use client";
 
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { BadgePercent, Crown, Repeat, ShoppingBasket, UserPlus, Users } from "lucide-react";
 import { QueryState } from "@/components/ui/QueryState";
 import { staggerContainer } from "@/lib/motion";
-import { metricsApi, type Customers, type PeriodParams } from "../api";
 import { RankBars } from "../charts";
-import { bucketLabel, monthLabel, num, pct, uah, uahShort } from "../format";
-import { PREV_LABEL } from "../period";
-import { Empty, InlineBar, KpiTile, Panel, TableWrap } from "../ui";
+import { bucketLabel, monthLabel, num, pct, uah, uahShort } from "../../model/format";
+import { PREV_LABEL } from "../../model/period";
+import type { Customers, PeriodParams } from "../../model/types";
+import { useCustomers } from "../../queries";
+import { Empty, InlineBar, KpiTile, Panel, TableWrap } from "../kit";
 import { formatNumber } from "@shop/core/money";
 
 export function CustomersTab({ params }: { params: PeriodParams }) {
-  const q = useQuery({
-    queryKey: ["metrics2", "customers", params],
-    queryFn: () => metricsApi.customers(params),
-    placeholderData: keepPreviousData,
-  });
+  const q = useCustomers(params);
   return (
     <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Считаем покупателей…">
       {q.data && <CustomersBody c={q.data} params={params} />}

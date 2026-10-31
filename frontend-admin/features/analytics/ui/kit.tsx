@@ -10,8 +10,8 @@ import { useState, type ReactNode } from "react";
 import { Line, LineChart, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/cn";
 import { riseItem } from "@/lib/motion";
-import type { Kpi } from "./api";
-import { pct } from "./format";
+import type { Kpi } from "../model/types";
+import { pct } from "../model/format";
 
 export function Panel({
   title,

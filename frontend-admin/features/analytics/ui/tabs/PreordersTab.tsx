@@ -5,55 +5,18 @@
  * бронь сгорела, конверсия и сколько штук приехало. Период — тот же, что на других вкладках
  * (календарные дни по Киеву); сервер принимает from/to, поэтому токен периода переводим в даты здесь.
  */
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { staggerContainer } from "@/lib/motion";
-import { PREORDERS_KEY, preordersApi, type PreorderMetrics } from "@/lib/preorders";
 import { QueryState } from "@/components/ui/QueryState";
-import type { PeriodParams } from "../api";
-import { num, pct } from "../format";
-import { KpiTile, Note } from "../ui";
-import { todayIso } from "../period";
-
-function shift(iso: string, days: number): string {
-  const d = new Date(`${iso}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-/** Токен периода → [from, to] (yyyy-MM-dd, Киев). */
-export function periodRange(p: PeriodParams): { from: string; to: string } {
-  const today = todayIso();
-  const [y, m] = today.split("-").map(Number);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  switch (p.period) {
-    case "today":
-      return { from: today, to: today };
-    case "7d":
-      return { from: shift(today, -6), to: today };
-    case "90d":
-      return { from: shift(today, -89), to: today };
-    case "month":
-      return { from: `${y}-${pad(m)}-01`, to: today };
-    case "prevmonth": {
-      const first = `${y}-${pad(m)}-01`;
-      return { from: shift(first, -1).slice(0, 8) + "01", to: shift(first, -1) };
-    }
-    case "year":
-      return { from: `${y}-01-01`, to: today };
-    default:
-      return { from: p.from ?? today, to: p.to ?? today };
-  }
-}
+import { periodRange } from "../../model/period";
+import type { PeriodParams, PreorderMetrics } from "../../model/types";
+import { usePreorderMetrics } from "../../queries";
+import { num, pct } from "../../model/format";
+import { KpiTile, Note } from "../kit";
 
 export function PreordersTab({ params }: { params: PeriodParams }) {
   const { from, to } = periodRange(params);
-  const q = useQuery({
-    queryKey: [...PREORDERS_KEY, "metrics", from, to],
-    queryFn: () => preordersApi.metrics(from, to),
-    placeholderData: keepPreviousData,
-    retry: false,
-  });
+  const q = usePreorderMetrics(from, to);
   return (
     <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Считаем предзаказы…">
       {q.data && <Body m={q.data} />}

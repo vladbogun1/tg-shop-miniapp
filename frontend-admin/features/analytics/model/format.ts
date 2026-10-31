@@ -1,4 +1,4 @@
-import { formatNumber } from "@shop/core/money";
+import { formatNumber, toMajor } from "@shop/core/money";
 import { formatMoment } from "@shop/core/time";
 /**
  * Formatting for the metrics page: money in UAH from kopecks, counts, hours, dates. Bucket and
@@ -10,19 +10,19 @@ const nf = new Intl.NumberFormat("ru-RU");
 
 /** 12345600 kopecks -> "123 456 ₴". */
 export function uah(minor: number | null | undefined): string {
-  return `${nf.format(Math.round((minor ?? 0) / 100))} ₴`;
+  return `${nf.format(Math.round(toMajor(minor)))} ₴`;
 }
 
 /** Exact, with kopecks when there are any: "1 234,50 ₴" (bank fees, small refunds). */
 export function uahExact(minor: number | null | undefined): string {
-  const v = (minor ?? 0) / 100;
+  const v = toMajor(minor);
   const digits = Math.round(minor ?? 0) % 100 === 0 ? 0 : 2;
   return `${formatNumber(v, "ru-RU", { minimumFractionDigits: digits, maximumFractionDigits: digits })} ₴`;
 }
 
 /** Compact for axes and tiles: "123 тыс ₴", "1,2 млн ₴". */
 export function uahShort(minor: number | null | undefined): string {
-  const v = (minor ?? 0) / 100;
+  const v = toMajor(minor);
   const a = Math.abs(v);
   if (a >= 1_000_000) return `${formatNumber((v / 1_000_000), "ru-RU", { maximumFractionDigits: 1 })} млн ₴`;
   if (a >= 10_000) return `${formatNumber(Math.round(v / 1000), "ru-RU")} тыс ₴`;

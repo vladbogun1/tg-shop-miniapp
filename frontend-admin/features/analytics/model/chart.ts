@@ -1,4 +1,4 @@
-import { formatNumber } from "@shop/core/money";
+import { formatNumber, toMajor } from "@shop/core/money";
 import { formatMoment } from "@shop/core/time";
 /**
  * Formatting helpers for the metrics dashboard (charts + cards).
@@ -14,14 +14,14 @@ export function shortDate(iso: string): string {
 
 /** minor units -> "1 234 ₴" (rounded major). */
 export function moneyShort(minor: number | null | undefined, currency: string | null = "UAH"): string {
-  const major = Math.round((minor ?? 0) / 100);
+  const major = Math.round(toMajor(minor));
   const symbol = currency === "UAH" || currency == null ? "₴" : currency;
   return `${formatNumber(major, "ru-RU")} ${symbol}`;
 }
 
 /**
  * Chart palette for JS-only places (recharts props that can't read CSS vars, e.g. <Cell fill>,
- * gradient <stop>s). Literal mirror of the --mx-* tokens in components/metrics/metrics.css and
+ * gradient <stop>s). Literal mirror of the --mx-* tokens in features/analytics/ui/metrics.css and
  * the --st-* tokens in app/globals.css — ChiSetup dark (DESIGN-V3 §8): orange is the series
  * that matters, steel / greys are context, status hues only for statuses.
  */

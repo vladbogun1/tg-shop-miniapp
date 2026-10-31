@@ -10,21 +10,16 @@
  */
 import { cn } from "@/lib/cn";
 import { useShopSetting } from "@/features/settings";
-import { useQuery } from "@tanstack/react-query";
 import { ArrowDownRight, ArrowUpRight, CircleDollarSign, Hourglass, PackageCheck, Send, TrendingUp, Wallet } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import "./metrics.css";
-import { metricsApi, type Today } from "./api";
-import { num, uahShort } from "./format";
+import { num, uahShort } from "../model/format";
+import type { Today } from "../model/types";
+import { useTodayMetrics } from "../queries";
 
 export function TodayStrip() {
-  const q = useQuery({
-    queryKey: ["metrics2", "today"],
-    queryFn: () => metricsApi.today(),
-    refetchInterval: 60_000,
-    staleTime: 30_000,
-  });
+  const q = useTodayMetrics();
   if (q.isError) {
     return (
       <div className="mb-4 text-[12px] text-[var(--text-faint)]">

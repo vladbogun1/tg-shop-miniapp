@@ -1,14 +1,8 @@
-/**
- * The metrics page's own period + channel, remembered per browser. It used to share
- * `tgshop_admin_range` with the orders board, so picking "Год" here changed the kanban filter.
- */
-import { useEffect, useState } from "react";
-import type { Channel, PeriodParams, PeriodToken } from "./api";
-import { localStore } from "@shop/core/storage";
+/** Периоды и каналы страницы метрик: варианты выбора, подписи сравнения, проверка сохранённого значения. */
 import { dayInZone } from "@shop/core/time";
+import type { Channel, PeriodParams, PeriodToken } from "./types";
 
-const KEY = "tgshop_admin_metrics_period";
-const DEFAULT: PeriodParams = { period: "month", channel: "all" };
+export const DEFAULT_PERIOD: PeriodParams = { period: "month", channel: "all" };
 
 export const PERIOD_OPTIONS: { value: PeriodToken; label: string }[] = [
   { value: "today", label: "Сегодня" },
@@ -37,7 +31,7 @@ export const PREV_LABEL: Record<PeriodToken, string> = {
   custom: "к такому же отрезку до",
 };
 
-function isValid(v: unknown): v is PeriodParams {
+export function isValid(v: unknown): v is PeriodParams {
   if (!v || typeof v !== "object") return false;
   const p = v as PeriodParams;
   return (
@@ -47,33 +41,6 @@ function isValid(v: unknown): v is PeriodParams {
   );
 }
 
-export function useMetricsPeriod(): [PeriodParams, (p: PeriodParams) => void] {
-  const [value, setValue] = useState<PeriodParams>(DEFAULT);
-
-  useEffect(() => {
-    try {
-      const raw = localStore.getItem(KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (isValid(parsed)) setValue(parsed);
-      }
-    } catch {
-      /* private mode / bad JSON: keep the default */
-    }
-  }, []);
-
-  function update(p: PeriodParams) {
-    setValue(p);
-    try {
-      localStore.setItem(KEY, JSON.stringify(p));
-    } catch {
-      /* not worth surfacing */
-    }
-  }
-
-  return [value, update];
-}
-
 /**
  * yyyy-MM-dd of today in Kyiv (for the custom range inputs). Deliberately NOT the browser's zone:
  * the backend cuts periods into Europe/Kyiv calendar days, so «today» here must be its «today»
@@ -81,4 +48,35 @@ export function useMetricsPeriod(): [PeriodParams, (p: PeriodParams) => void] {
  */
 export function todayIso(): string {
   return dayInZone("Europe/Kyiv");
+}
+
+function shift(iso: string, days: number): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Токен периода → [from, to] (yyyy-MM-dd, Киев). */
+export function periodRange(p: PeriodParams): { from: string; to: string } {
+  const today = todayIso();
+  const [y, m] = today.split("-").map(Number);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  switch (p.period) {
+    case "today":
+      return { from: today, to: today };
+    case "7d":
+      return { from: shift(today, -6), to: today };
+    case "90d":
+      return { from: shift(today, -89), to: today };
+    case "month":
+      return { from: `${y}-${pad(m)}-01`, to: today };
+    case "prevmonth": {
+      const first = `${y}-${pad(m)}-01`;
+      return { from: shift(first, -1).slice(0, 8) + "01", to: shift(first, -1) };
+    }
+    case "year":
+      return { from: `${y}-01-01`, to: today };
+    default:
+      return { from: p.from ?? today, to: p.to ?? today };
+  }
 }

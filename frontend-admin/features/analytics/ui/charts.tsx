@@ -19,8 +19,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { ForecastPoint, SeriesPoint } from "./api";
-import { bucketLabel, num, pct, uah, uahShort } from "./format";
+import type { ForecastPoint, SeriesPoint } from "../model/types";
+import { bucketLabel, num, pct, uah, uahShort } from "../model/format";
 
 const axis = {
   tick: { fill: "var(--mx-axis)", fontSize: 11, fontFamily: "var(--font-body), system-ui, sans-serif" },

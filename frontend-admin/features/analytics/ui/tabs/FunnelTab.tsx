@@ -1,24 +1,20 @@
 "use client";
 
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Filter, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { QueryState } from "@/components/ui/QueryState";
 import { staggerContainer } from "@/lib/motion";
-import { metricsApi, type Funnel, type PeriodParams } from "../api";
 import { FunnelBars } from "../charts";
-import { num, pct } from "../format";
-import { Empty, Note, Panel, StatusChip, TableWrap } from "../ui";
-import { editHref } from "./StockTab";
+import { num, pct } from "../../model/format";
+import type { Funnel, PeriodParams } from "../../model/types";
+import { useFunnel } from "../../queries";
+import { Empty, Note, Panel, StatusChip, TableWrap } from "../kit";
+import { editHref } from "./stock/shared";
 
 export function FunnelTab({ params }: { params: PeriodParams }) {
   // "Все" is the sum of both channels: the backend keeps each channel's visitors apart.
-  const q = useQuery({
-    queryKey: ["metrics2", "funnel", params],
-    queryFn: () => metricsApi.funnel(params),
-    placeholderData: keepPreviousData,
-  });
+  const q = useFunnel(params);
   return (
     <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Строим воронку…">
       {q.data && <FunnelBody f={q.data} channel={params.channel} />}

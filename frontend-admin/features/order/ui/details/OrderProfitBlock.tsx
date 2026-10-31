@@ -9,7 +9,7 @@ import { useOrderProfitQuery } from "../../queries/details";
 import { lineTitle } from "@/lib/preorders";
 import { money } from "@/lib/money";
 import { cn } from "@/lib/cn";
-import { pct } from "@/components/metrics/format";
+import { pct } from "@/features/analytics";
 import { Badge } from "@/components/ui/Badge";
 
 export function OrderProfitBlock({ orderId }: { orderId: string }) {

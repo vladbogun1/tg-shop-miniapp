@@ -4,36 +4,21 @@
  * «Метрики → Маржа» (только с правом «Финансы»): выручка, себестоимость, комиссии, прибыль, стоимость склада
  * и разрезы по товарам / брендам / категориям / поставкам. Суммы — по продажам с известной себестоимостью.
  */
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Percent, Warehouse } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { COSTING_KEY, costingApi, type MarginReport, type MarginRow } from "@/lib/costing";
 import { staggerContainer } from "@/lib/motion";
 import { cn } from "@/lib/cn";
-import type { PeriodParams } from "../api";
-import { num, pct, uah, uahExact } from "../format";
-import { Empty, KpiTile, Note, Panel, TableWrap, useLimited } from "../ui";
-
-function reportQs(p: PeriodParams): string {
-  const q = new URLSearchParams({ period: p.period });
-  if (p.period === "custom" && p.from && p.to) {
-    q.set("from", p.from);
-    q.set("to", p.to);
-  }
-  return q.toString();
-}
+import type { MarginReport, MarginRow, PeriodParams } from "../../model/types";
+import { useMarginReport } from "../../queries";
+import { num, pct, uah, uahExact } from "../../model/format";
+import { Empty, KpiTile, Note, Panel, TableWrap, useLimited } from "../kit";
 
 export function MarginTab({ params }: { params: PeriodParams }) {
-  const q = useQuery({
-    queryKey: [...COSTING_KEY, "report", params.period, params.from, params.to],
-    queryFn: () => costingApi.report(reportQs(params)),
-    placeholderData: keepPreviousData,
-    retry: false,
-  });
+  const q = useMarginReport(params);
   return (
     <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Считаем маржу…">
       {q.data && <MarginBody r={q.data} />}

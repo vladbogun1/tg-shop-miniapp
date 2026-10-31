@@ -6,7 +6,7 @@
  * away with them. On a phone the presets scroll sideways inside themselves.
  */
 import { useState, type ReactNode } from "react";
-import { todayIso } from "@/components/metrics/period";
+import { todayIso } from "@/features/analytics";
 import { Button } from "@shop/ui/admin-button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { ORDERS_PERIOD_OPTIONS, type OrdersPeriod, type OrdersRange } from "../model/period";

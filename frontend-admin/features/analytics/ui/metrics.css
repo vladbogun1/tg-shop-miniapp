@@ -1,7 +1,7 @@
 /* ============================================================================
    Chart tokens of the metrics page — ChiSetup dark (DESIGN-V3 §8 «Графики»).
    Recharts reads these via fill/stroke="var(--mx-…)"; JS-only places use the literal mirror in
-   lib/metrics-format.ts (CHART_COLORS / SERIES_PALETTE) — keep both in sync.
+   features/analytics/model/chart.ts (CHART_COLORS / SERIES_PALETTE) — keep both in sync.
 
    Monochrome + one orange, like the brand: the series that matters is orange, context series are
    steel / light grey. Checked with the dataviz validator on --surface #1A1A1A: s1↔s2 CVD ΔE 19.4,
