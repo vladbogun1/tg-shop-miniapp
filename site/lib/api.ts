@@ -13,6 +13,7 @@ import { type AuthUser, type BonusCode, type CreateOrderResult, type Message, ty
 import { type CatalogSchema } from "@shop/core/catalog";
 import { type CartLineInput, type ServerCart } from "@shop/core/cart";
 import { createCartApi } from "@shop/customer/cart/api";
+import { createCheckoutApi } from "@shop/customer/checkout/api";
 import { type CaseSize, type GiftCaseOpen, type GiftResponse } from "@shop/core/giftcase";
 import { getActiveLocale, getActiveTag } from "@shop/core/i18n";
 import { type PublicCategory, type PublicProductPage, type StorefrontProduct, type WebLoginStart, type WebLoginStatus, type WebSession } from "@shop/core/site";
@@ -98,38 +99,6 @@ export function putCartOnUnload(lines: CartLineInput[]): void {
 
 // ---- payloads ----------------------------------------------------------------
 
-export interface CreateOrderItem {
-  productId: string;
-  variantId?: string;
-  quantity: number;
-}
-
-export interface CreateOrderRequest {
-  items: CreateOrderItem[];
-  customerName: string;
-  phone: string;
-  comment?: string;
-  promoCode?: string;
-  deliveryMethod: "NOVA_POSHTA" | "PICKUP";
-  npCityRef?: string;
-  npCityName?: string;
-  npWarehouseRef?: string;
-  npWarehouseName?: string;
-  paymentOptionId: string;
-  /** Gift for the order sum: CASE (default) or the tier's guaranteed DISCOUNT on this order. */
-  giftChoice?: "CASE" | "DISCOUNT";
-}
-
-export interface NpBboxParams {
-  minLat: number;
-  maxLat: number;
-  minLng: number;
-  maxLng: number;
-  category?: "all" | "postomat" | "branch" | "point";
-  q?: string;
-  limit?: number;
-}
-
 export interface CatalogQuery {
   category?: string;
   q?: string;
@@ -154,11 +123,6 @@ export function catalogSearchParams(q: CatalogQuery): URLSearchParams {
 
 // ---- endpoints -------------------------------------------------------------------
 
-/** `&items=id*qty,…` for the promo check, nothing when the cart is unknown. */
-function itemsParam(items: string): string {
-  return items ? `&items=${encodeURIComponent(items)}` : "";
-}
-
 export const api = {
   // public catalog
   categories: () => http.get<PublicCategory[]>("/api/public/categories"),
@@ -169,34 +133,8 @@ export const api = {
   catalogSchema: () => http.get<CatalogSchema>("/api/public/catalog/schema"),
   /** Mini App endpoint, unchanged — used to re-validate cart lines by id. */
   productById: (id: string) => http.get<StorefrontProduct | Product>(`/api/products/${id}`),
-  paymentOptions: () => http.get<PaymentOption[]>("/api/payment-options"),
   /** The gift for the order sum / the gift case (null gift = off). The clients count the progress themselves. */
   gift: () => http.get<GiftResponse>("/api/public/gift"),
-  /** Anti-bot order limits (0 = no limit): cart steppers clamp to maxQtyPerProduct. */
-  orderLimits: () => http.get<OrderLimits>("/api/public/order-limits"),
-  /** `items` — the cart lines (`promoItems`): a code from the gift case skips low-margin products. */
-  previewPromo: (code: string, subtotalMinor: number, items = "") =>
-    http.get<PromoPreview>(
-      `/api/promo-codes/preview?code=${encodeURIComponent(code)}&subtotalMinor=${subtotalMinor}${itemsParam(items)}`
-    ),
-  npCities: (q: string) => http.get<NpCity[]>(`/api/np/cities?q=${encodeURIComponent(q)}`),
-  npWarehousesBbox: (p: NpBboxParams) => {
-    const sp = new URLSearchParams({
-      minLat: String(p.minLat),
-      maxLat: String(p.maxLat),
-      minLng: String(p.minLng),
-      maxLng: String(p.maxLng),
-      category: p.category ?? "all",
-      limit: String(p.limit ?? 1200),
-    });
-    if (p.q) sp.set("q", p.q);
-    return http.get<NpWarehouse[]>(`/api/np/warehouses/bbox?${sp.toString()}`);
-  },
-  npWarehouses: (cityRef: string, q = "") =>
-    http.get<NpWarehouse[]>(
-      `/api/np/warehouses?cityRef=${encodeURIComponent(cityRef)}&q=${encodeURIComponent(q)}`
-    ),
-
   // web login
   loginStart: () => http.post<WebLoginStart>("/api/auth/web/start"),
   loginStatus: (loginId: string) =>
@@ -216,20 +154,10 @@ export const api = {
   revokeAllSessions: () => authed(() => http.del<void>("/api/me/sessions")),
   setLocale: (locale: string) =>
     authed(() => http.post<void>(`/api/me/locale?locale=${encodeURIComponent(locale)}`)),
-  reservePromo: (code: string, subtotalMinor: number, items = "") =>
-    authed(() =>
-      http.post<PromoPreview>(
-        `/api/me/promo/reserve?code=${encodeURIComponent(code)}&subtotalMinor=${subtotalMinor}${itemsParam(items)}`
-      )
-    ),
-  releasePromo: (code: string) =>
-    authed(() => http.del<void>(`/api/me/promo/reserve?code=${encodeURIComponent(code)}`)),
   // server-side cart (shared with the Mini App; see lib/cart-sync.ts)
   cart: createCartApi(http, authed),
-  createOrder: (body: CreateOrderRequest, idempotencyKey: string) =>
-    authed(() =>
-      http.post<CreateOrderResult>("/api/orders", body, { "Idempotency-Key": idempotencyKey })
-    ),
+  /** Оформление: промокод, Нова пошта, лимиты, варианты оплаты, создание заказа (@shop/customer/checkout). */
+  checkout: createCheckoutApi(http, authed),
   orders: () => authed(() => http.get<OrderSummary[]>("/api/me/orders")),
   order: (id: string) => authed(() => http.get<OrderDetail>(`/api/me/orders/${id}`)),
   messages: (id: string, before?: number) =>
@@ -290,6 +218,7 @@ export const api = {
   myBonuses: () => authed(() => http.get<BonusCode[]>("/api/me/bonuses")),
 };
 
+export type { CreateOrderItem, CreateOrderRequest, NpBboxParams } from "@shop/customer/checkout/api";
 export type {
   AuthUser,
   CartLineInput,

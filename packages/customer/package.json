@@ -2,13 +2,20 @@
   "name": "@shop/customer",
   "version": "1.0.0",
   "private": true,
-  "sideEffects": false,
+  "sideEffects": [
+    "./src/delivery/map/parts.tsx"
+  ],
   "description": "Покупательские фичи, одинаковые в Mini App и на сайте: Platform, cart (store, sync, api), catalog (модель витрины). Явные подпути: @shop/customer/cart/store, @shop/customer/catalog/model/stock",
   "exports": {
+    "./delivery/map/parts": "./src/delivery/map/parts.tsx",
     "./*": "./src/*.ts"
   },
   "peerDependencies": {
+    "@tanstack/react-query": ">=5",
+    "leaflet": ">=1.9",
+    "leaflet.markercluster": ">=1.5",
     "react": ">=19",
+    "react-leaflet": ">=5",
     "zustand": ">=5"
   },
   "dependencies": {

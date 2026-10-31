@@ -25,15 +25,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type DeliveryMethod, type NpCity, type NpWarehouse, type OrderDetail } from "@shop/core/types";
 import { formatPhone, isValidPhone, phoneE164 } from "@shop/core/phone";
 import { giftProgress, guaranteedDiscountMinor, type GiftChoice } from "@shop/core/giftcase";
-import { isOrderLimitCode, type OrderLimitCode, visiblePaymentOptions } from "@shop/core/orders";
-import { npCityBounds, npLatLng, resolveNpWarehouse } from "@shop/core/np-geo";
+import { type OrderLimitCode, visiblePaymentOptions } from "@shop/core/orders";
+import { resolveNpWarehouse } from "@shop/core/np-geo";
+import { buildCreateOrderRequest, classifyOrderFailure, isValidCustomerName } from "@shop/customer/checkout/order-request";
+import { useCreateOrder } from "@shop/customer/checkout/use-create-order";
+import { useNpSelection } from "@shop/customer/delivery/np-selection";
 import { CheckoutGiftLine } from "@/components/case/CheckoutGiftLine";
 import { orderCreatedHref, PaymentTrust, usePageRestore } from "@/components/order/Payment";
 import { Button, Input, RadioCard } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import type { MessageKey } from "@/i18n";
 import { trackCheckoutStart, trackOrderCreated } from "@/lib/analytics";
-import { api, ApiError, newIdempotencyKey, type CreateOrderRequest } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useGift } from "@/lib/gift";
 import { useCart, useCartSubtotal } from "@/lib/cart";
 import { useCartValidation } from "@/lib/cart-validation";
@@ -42,12 +45,10 @@ import { useHydrated } from "@/lib/hooks";
 import { Image } from "@/lib/image";
 import { useSession } from "@/lib/session";
 import { useFmt } from "@/lib/use-fmt";
-import { CitySearch, WarehouseSearch, npWarehousesQuery } from "./CitySearch";
-import type { MapFocus } from "./NpWarehouseMap";
+import { CitySearch, WarehouseSearch } from "./CitySearch";
 import { PromoField, usePromoPreview } from "./PromoField";
 import { GiftChoicePicker, markGiftCaseAutoOpen } from "@shop/ui/gift-case";
 import { useCaseMoney, useCaseRules } from "@/components/case/OrderGiftCase";
-import { nowMs } from "@shop/core/time";
 
 function MapLoading() {
   const { t } = useI18n();
@@ -148,59 +149,21 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [delivery, setDelivery] = useState<DeliveryMethod>("NOVA_POSHTA");
-  const [warehouse, setWarehouse] = useState<NpWarehouse | null>(null);
-  const [warehouseFromLast, setWarehouseFromLast] = useState(false);
   const [editingWarehouse, setEditingWarehouse] = useState(false);
-  const [focus, setFocus] = useState<MapFocus | null>(null);
-  const [city, setCity] = useState<NpCity | null>(null);
   const queryClient = useQueryClient();
-  // The city whose branches are being fetched to frame the map: a late answer for a city the
-  // customer has already moved on from must not move the map.
-  const framingCity = useRef<string | null>(null);
+  // City, branch, map focus, "branch from the last order" — @shop/customer/delivery/np-selection.
+  const np = useNpSelection(api.checkout);
+  const { city, warehouse, focus, warehouseFromLast, chooseCity, chooseWarehouse } = np;
   /** The customer has touched the city / branch fields or the map — the last-order prefill backs off. */
-  const touchedNp = useRef(false);
-
-  /** A city picked in the field (or dropped by typing over it). A different city drops the branch. */
-  function chooseCity(c: NpCity | null) {
-    touchedNp.current = true;
-    if (c?.ref !== city?.ref) {
-      setWarehouse(null);
-      setWarehouseFromLast(false);
-    }
-    setCity(c);
-    framingCity.current = c?.ref ?? null;
-    if (!c) return;
-    queryClient
-      .fetchQuery(npWarehousesQuery(c.ref))
-      .then((whs) => {
-        if (framingCity.current !== c.ref) return;
-        const bounds = npCityBounds(whs);
-        if (bounds) setFocus({ key: nowMs(), bounds });
-      })
-      .catch(() => {
-        /* the map still works by hand */
-      });
-  }
-
-  /** A branch picked in the field or on the map: select it, sync the city, fly to it. */
-  const chooseWarehouse = useCallback((w: NpWarehouse | null) => {
-    touchedNp.current = true;
-    setWarehouseFromLast(false);
-    setWarehouse(w);
-    if (!w) return;
-    if (w.cityRef) {
-      setCity((c) => (c?.ref === w.cityRef ? c : { ref: w.cityRef!, name: w.cityName ?? "" }));
-    }
-    framingCity.current = null; // a pending city framing must not pull the map off this branch
-    const p = npLatLng(w);
-    if (p) setFocus({ key: nowMs(), center: p });
-  }, []);
+  const touchedNp = np.touched;
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [touched, setTouched] = useState(false);
   const [prefilled, setPrefilled] = useState(false);
 
-  const idempotencyKey = useRef(newIdempotencyKey());
+  // One idempotency key per checkout attempt (useApiMutation, idempotent); a quantity change still in its
+  // debounce reaches the server cart BEFORE the order (flushCart runs first, inside the mutation).
+  const placeOrder = useCreateOrder(api.checkout, flushCart);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   /** The last refusal was an anti-bot limit (TOO_MANY_UNPAID → link to my orders). */
@@ -241,24 +204,23 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
       (async () => {
         try {
           const found = await resolveNpWarehouse(o.npCityName!, o.npWarehouseName!, {
-            cities: (q) => api.npCities(q),
-            warehouses: (ref) => api.npWarehouses(ref, ""),
+            cities: (q) => api.checkout.npCities(q),
+            warehouses: (ref) => api.checkout.npWarehouses(ref, ""),
           });
           // ...unless the customer has already started picking by hand.
           if (found && !touchedNp.current) {
-            setWarehouse(found.warehouse);
-            setCity(found.city);
-            setWarehouseFromLast(true);
+            np.applyLast(found, false);
           }
         } catch {
           /* not critical: the customer picks on the map */
         }
       })();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per loaded order; `np` methods are not stable
   }, [lastOrder.data]);
 
   // ---- payment --------------------------------------------------------------------------------
-  const paymentQuery = useQuery({ queryKey: ["payment-options", locale], queryFn: () => api.paymentOptions() });
+  const paymentQuery = useQuery({ queryKey: ["payment-options", locale], queryFn: () => api.checkout.paymentOptions() });
 
   const promo = usePromoPreview(promoCode, subtotal);
   const promoValid = promo.data?.valid === true;
@@ -298,7 +260,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
     chosen?.requiresPrepayment && chosen.prepaymentMinor ? Math.min(chosen.prepaymentMinor, total) : total;
 
   // ---- validation -----------------------------------------------------------------------------
-  const nameOk = name.trim().length >= 2;
+  const nameOk = isValidCustomerName(name);
   const phoneOk = isValidPhone(phone);
   const deliveryOk = delivery === "PICKUP" || !!warehouse;
   const paymentOk = !!chosen;
@@ -318,45 +280,39 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
     if (submitting) return;
     setSubmitting(true);
     const orderable = lines.filter((l) => l.stock > 0);
-    const body: CreateOrderRequest = {
-      items: orderable.map((l) => ({ productId: l.productId, variantId: l.variantId ?? undefined, quantity: l.quantity })),
-      customerName: name.trim(),
-      phone: phoneE164(phone),
-      comment: comment.trim() || undefined,
+    const body = buildCreateOrderRequest({
+      lines: orderable,
+      name,
+      phone,
+      comment,
       // ONLY a code the server has just confirmed (see docs/archive/UI-FIXES.md §6).
       promoCode: promoValid ? promoCode.trim() : undefined,
-      deliveryMethod: delivery,
-      npCityRef: delivery === "NOVA_POSHTA" ? warehouse?.cityRef ?? undefined : undefined,
-      npCityName: delivery === "NOVA_POSHTA" ? warehouse?.cityName ?? undefined : undefined,
-      npWarehouseRef: delivery === "NOVA_POSHTA" ? warehouse?.ref : undefined,
-      npWarehouseName: delivery === "NOVA_POSHTA" ? warehouse?.description : undefined,
+      delivery,
+      warehouse,
       paymentOptionId: chosen!.id,
       giftChoice: giftTier ? (giftDiscount > 0 ? "DISCOUNT" : "CASE") : undefined,
-    };
+    });
     try {
-      // A quantity change still in its debounce must reach the server cart BEFORE the order removes
-      // the ordered lines from it — otherwise the late write would put them back.
-      await flushCart();
-      const created = await api.createOrder(body, idempotencyKey.current);
+      const created = await placeOrder.mutateAsync(body);
       trackOrderCreated(created.orderId);
       if (giftTier && giftDiscount === 0) markGiftCaseAutoOpen(created.orderId);
       cartAfterOrder(orderable.map((l) => l.key));
-      idempotencyKey.current = newIdempotencyKey();
       onPlaced(created.orderId);
       const orderPage = href(`/account/orders/${created.orderId}`);
       // Something to pay: the order page shows the "order created" step — amount, 24 h countdown,
       // «Оплатити» (the monobank form opens over the page) and «Скасувати». Nothing opens by itself.
       router.push(created.amountDueMinor > 0 ? orderCreatedHref(orderPage) : orderPage);
     } catch (e) {
-      if (e instanceof ApiError && e.code === "PROMO_REJECTED") {
+      const failure = classifyOrderFailure(e);
+      if (failure.kind === "promoRejected") {
         setPromoCode("");
-        setSubmitError(t("checkout.promoDropped", { message: e.message }));
-      } else if (e instanceof ApiError && isOrderLimitCode(e.code)) {
+        setSubmitError(t("checkout.promoDropped", { message: failure.message }));
+      } else if (failure.kind === "limit") {
         // Anti-bot limits: the server's message says what to do (pay/cancel, wait, fewer items).
-        setSubmitError(e.message);
-        setLimitCode(e.code);
+        setSubmitError(failure.message);
+        setLimitCode(failure.code);
       } else {
-        setSubmitError(e instanceof ApiError ? e.message : t("checkout.failed"));
+        setSubmitError(failure.message ?? t("checkout.failed"));
       }
       setSubmitting(false);
     }
@@ -459,8 +415,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
                       size="sm"
                       onClick={() => {
                         setEditingWarehouse(true);
-                        const p = npLatLng(warehouse);
-                        if (p) setFocus({ key: nowMs(), center: p });
+                        np.focusWarehouse(warehouse);
                       }}
                     >
                       {t("checkout.changeWarehouse")}

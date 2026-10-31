@@ -10,37 +10,14 @@
  * cached and shared with the map framing), searched locally by number and address. Picking one
  * selects it; a branch picked on the map shows up here too.
  */
-import { useQuery } from "@tanstack/react-query";
 import { Box, MapPin, Store } from "lucide-react";
-import { useState } from "react";
 import type { NpCity, NpWarehouse } from "@shop/core/types";
 import { useT } from "@/i18n/context";
 import { api } from "@/lib/api";
-import { useDebounced } from "@/lib/hooks";
-import { searchWarehouses } from "@shop/core/np-geo";
+
+const np = api.checkout;
+import { useCitySearch, useWarehouseSearch } from "@shop/customer/delivery/np-search";
 import { NpCombobox } from "./NpCombobox";
-
-/** One cache entry per city: the branch field and the map framing read the same list. */
-export const npWarehousesQuery = (cityRef: string) => ({
-  queryKey: ["np-warehouses", cityRef] as const,
-  staleTime: 10 * 60_000,
-  queryFn: () => api.npWarehouses(cityRef, ""),
-});
-
-/**
- * Text that follows `external` whenever it changes to something (a pick here, on the map, or from
- * the last order), and is free to edit in between. Going back to "" is the user typing over a pick —
- * that must not wipe what they typed. (A city change remounts the branch field instead.)
- */
-function useSyncedText(external: string): [string, (v: string) => void] {
-  const [text, setText] = useState(external);
-  const [seen, setSeen] = useState(external);
-  if (seen !== external) {
-    setSeen(external);
-    if (external) setText(external);
-  }
-  return [text, setText];
-}
 
 export function CitySearch({
   city,
@@ -50,16 +27,7 @@ export function CitySearch({
   onCity: (city: NpCity | null) => void;
 }) {
   const t = useT();
-  const [q, setQ] = useSyncedText(city?.name ?? "");
-  const term = useDebounced(q.trim(), 250);
-  const searching = term.length >= 2 && term !== city?.name;
-  const { data = [], isFetching } = useQuery({
-    queryKey: ["np-cities", term],
-    enabled: searching,
-    staleTime: 5 * 60_000,
-    queryFn: () => api.npCities(term),
-  });
-  const items = searching ? data.slice(0, 8) : [];
+  const { q, setQ, items, searching, isFetching } = useCitySearch(np, city);
 
   return (
     <NpCombobox<NpCity>
@@ -102,11 +70,7 @@ export function WarehouseSearch({
   label: (w: NpWarehouse) => string;
 }) {
   const t = useT();
-  const [q, setQ] = useSyncedText(warehouse?.description ?? "");
-  const { data = [], isFetching } = useQuery(npWarehousesQuery(city.ref));
-  // While a picked branch is shown in the field, the list offers the whole city again.
-  const typed = warehouse && q === warehouse.description ? "" : q;
-  const items = searchWarehouses(data, typed);
+  const { q, setQ, items, isFetching } = useWarehouseSearch(np, city, warehouse, false);
 
   return (
     <NpCombobox<NpWarehouse>

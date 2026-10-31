@@ -25,6 +25,7 @@ import { needsTopUp } from "@shop/core/orders";
 import { noFadeFlash } from "@shop/ui/motion";
 import { type OrderDetail } from "@shop/core/types";
 import { shortOrderId } from "@shop/core/format";
+import { POLL_EVERY_MS } from "@shop/customer/payment/model";
 import { useI18n } from "@/i18n/context";
 import { api, ApiError } from "@/lib/api";
 import { useEscape, useHydrated, useScrollLock } from "@/lib/hooks";
@@ -32,8 +33,6 @@ import { useFmt } from "@/lib/use-fmt";
 
 /** Why the modal closed: paid; payment may have happened (check for a while); just dismissed. */
 export type PaymentModalClose = "paid" | "check" | "dismiss";
-
-const POLL_EVERY_MS = 3_000;
 
 /** monobank's own hosts (the form lives on pay.mbnk.biz). Lenient on subdomains, strict on https. */
 function isMonobankOrigin(origin: string, pageUrl: string): boolean {

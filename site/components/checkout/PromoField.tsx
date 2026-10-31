@@ -17,19 +17,16 @@
  * that is PromoService), so the discount promised here does not disappear between the cart and the
  * order. Clearing the field gives the hold back instead of sitting on it until it expires.
  */
-import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Check, Loader2, Ticket, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 import { bonusKind } from "@shop/core/bonuses";
 import { useT } from "@/i18n/context";
 import { BonusOffer, useMyBonuses } from "./BonusOffer";
-import { api, isAuthFailure, type PromoPreview } from "@/lib/api";
+import { usePromoPreview as useSharedPromoPreview } from "@shop/customer/checkout/promo";
+import { api, type PromoPreview } from "@/lib/api";
 import { useCartPromoItems } from "@/lib/cart";
 import { useFmt } from "@/lib/use-fmt";
 
-/** Long enough that a code is not checked on every keystroke, short enough to feel immediate. */
-const DEBOUNCE_MS = 450;
 
 export function PromoField({
   code,
@@ -58,7 +55,7 @@ export function PromoField({
 
   function clear() {
     // Hand the hold back right away; another customer may be waiting for the last use.
-    if (trimmed) api.releasePromo(trimmed).catch(() => {});
+    if (trimmed) api.checkout.releasePromo(trimmed).catch(() => {});
     onChange("");
   }
 
@@ -162,53 +159,9 @@ function PromoHint({
 }
 
 /**
- * Debounced check of the typed code against the current subtotal.
- *
- * Tries the authenticated endpoint first so a limited code is actually held; falls back to the
- * public preview when the Telegram sign-in has not finished yet (or the customer is browsing in a
- * plain browser), where the answer is still correct, just not reserved.
+ * Debounced check of the typed code against the current subtotal (logic: @shop/customer/checkout/promo).
+ * Tries the authenticated endpoint first so a limited code is actually held; falls back to the public preview.
  */
 export function usePromoPreview(code: string, subtotal: number) {
-  const items = useCartPromoItems();
-  const trimmed = code.trim();
-  const [debounced, setDebounced] = useState(trimmed);
-  const lastReserved = useRef<string | null>(null);
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(trimmed), DEBOUNCE_MS);
-    return () => clearTimeout(t);
-  }, [trimmed]);
-
-  // Replacing one code with another must not leave the previous one held.
-  useEffect(() => {
-    const previous = lastReserved.current;
-    if (previous && previous !== debounced) {
-      api.releasePromo(previous).catch(() => {});
-    }
-    lastReserved.current = debounced || null;
-  }, [debounced]);
-
-  const query = useQuery({
-    queryKey: ["promo", debounced, subtotal, items],
-    enabled: debounced.length > 0 && subtotal > 0,
-    // A hold is refreshed on every check, so a stale cached answer would quietly let it run out.
-    staleTime: 30_000,
-    queryFn: async () => {
-      try {
-        return await api.reservePromo(debounced, subtotal, items);
-      } catch (e) {
-        if (isAuthFailure(e)) {
-          return api.previewPromo(debounced, subtotal, items);
-        }
-        throw e;
-      }
-    },
-  });
-
-  return {
-    data: query.data ?? null,
-    // While the debounce is still running the old answer must not be presented as the new one.
-    loading: trimmed.length > 0 && (trimmed !== debounced || query.isFetching),
-    discount: query.data?.valid ? query.data.discountMinor : 0,
-  };
+  return useSharedPromoPreview(api.checkout, code, subtotal, useCartPromoItems());
 }

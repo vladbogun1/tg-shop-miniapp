@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { codMinor, needsTopUp, paymentState } from "@shop/core/orders";
 import { shortOrderId } from "@shop/core/format";
+import { IN_FLIGHT, POLL_EVERY_MS, POLL_FOR_MS } from "@shop/customer/payment/model";
 import { type OnlinePayment, type OrderDetail } from "@shop/core/types";
 import { Button } from "@shop/ui/primitives";
 import { ButtonLink } from "@/components/ui/ButtonLink";
@@ -98,10 +99,7 @@ function useNow(active: boolean): number {
   return now;
 }
 
-const IN_FLIGHT = new Set(["processing", "hold"]);
 const FINAL = new Set(["success", "failure", "expired", "reversed"]);
-const POLL_EVERY_MS = 3_000;
-const POLL_FOR_MS = 60_000;
 /** Back from monobank but the invoice is still just "created": the customer left without paying. */
 const GIVE_UP_UNPAID_MS = 15_000;
 
@@ -160,7 +158,7 @@ export function OrderPayment({
     wasPaid.current = order.paid;
   }, [order.paid]);
 
-  const inFlight = IN_FLIGHT.has(p.status);
+  const inFlight = IN_FLIGHT.includes(p.status);
   // While the form is open the modal polls on its own.
   const shouldCheck = (!order.paid || needsTopUp(order)) && order.status !== "REJECTED" && (returning || inFlight) && !stalled && !payUrl;
 

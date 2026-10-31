@@ -32,7 +32,7 @@ import { Ban, CheckCircle2, CreditCard, ExternalLink, Loader2, RefreshCw, Shield
 import { useCallback, useEffect, useRef, useState } from "react";
 import { codMinor, needsTopUp, paymentState } from "@shop/core/orders";
 import { shortOrderId } from "@shop/core/format";
-import { type OnlinePaymentStatus } from "@shop/core/types";
+import { awaitingOnline, IN_FLIGHT, PENDING, pendingPayment, POLL_EVERY_MS, POLL_FOR_MS } from "@shop/customer/payment/model";
 import { Button } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import { ApiError, customerApi, type OrderDetail } from "@/lib/api";
@@ -41,22 +41,6 @@ import { money } from "@/lib/money";
 import { nowMs } from "@shop/core/time";
 import { spring } from "@/lib/motion";
 import { haptic, hapticSuccess, isAndroidTelegram, onAppResume, openExternalLink } from "@/lib/telegram";
-
-/** An invoice that may still turn into money. */
-const PENDING: OnlinePaymentStatus[] = ["created", "processing", "hold"];
-/** The bank has the card details and is deciding — no new attempt makes sense now. */
-export const IN_FLIGHT: OnlinePaymentStatus[] = ["processing", "hold"];
-
-const POLL_MS = 3_000;
-const WATCH_MS = 60_000;
-
-function awaitingOnline(o: OrderDetail): boolean {
-  return (paymentState(o) === "AWAITING" || needsTopUp(o)) && o.payment.enabled;
-}
-
-function pendingPayment(o: OrderDetail): boolean {
-  return awaitingOnline(o) && PENDING.includes(o.payment.status);
-}
 
 /** Re-renders every `ms` — for the "залишилось …" countdown. */
 function useNow(ms: number): number {
@@ -137,13 +121,13 @@ export function OrderPayment({
       if (o.paid && !needsTopUp(o)) celebrate();
       return;
     }
-    timer.current = window.setTimeout(() => void poll(), POLL_MS);
+    timer.current = window.setTimeout(() => void poll(), POLL_EVERY_MS);
   }, [celebrate]);
 
   /** Starts (or extends) the refresh loop. Several resume events for one return are harmless. */
   const watch = useCallback(
     (fromReturn: boolean) => {
-      watchUntil.current = nowMs() + WATCH_MS;
+      watchUntil.current = nowMs() + POLL_FOR_MS;
       if (fromReturn) setReturning(true);
       if (running.current) return;
       running.current = true;

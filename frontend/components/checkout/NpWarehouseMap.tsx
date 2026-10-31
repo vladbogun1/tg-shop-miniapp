@@ -12,7 +12,7 @@
  * system — pill chips, a 1px/12px frame, a graphite sheet — and every pin and cluster is orange
  * (the glyph still tells the category apart). OSM tiles stay light on purpose: inverting them
  * with a filter wrecks the street labels. ALL map logic — Leaflet, markercluster,
- * bbox fetching (customerApi.getNpWarehousesBbox), category filtering,
+ * bbox fetching (@shop/customer/delivery/map: useWarehouseMapData), category filtering,
  * pin-by-category, the detail sheet and "Выбрать" confirm — is unchanged. iOS
  * scroll handling preserved (scrollWheelZoom + isolated frame). Leaflet tiles
  * stay as-is.
@@ -32,30 +32,18 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import L from "leaflet";
-import "leaflet.markercluster";
 import { AnimatePresence, motion } from "framer-motion";
 import { Box, Store, MapPin, X, Check } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer } from "react-leaflet";
 import { useT } from "@/i18n/context";
-import { withSaneCoords, type NpCategoryFilter } from "@shop/core/np-geo";
+import { BoundsWatcher, ClusterLayer, FocusController, SizeWatcher } from "@shop/customer/delivery/map/parts";
+import { CAT_TABS, UA_CENTER, UA_ZOOM, useWarehouseMapData, type MapFocus } from "@shop/customer/delivery/map/model";
 import { customerApi, type NpWarehouse, type NpCategory } from "@/lib/api";
 import { sheetVariants } from "@/lib/motion";
 
-const UA_CENTER: [number, number] = [49.0, 31.3];
-const UA_ZOOM = 6;
-/** Zoom a single picked branch is shown at (clustering is off from here on). */
-const BRANCH_ZOOM = 17;
-
-type Cat = NpCategoryFilter;
-
-const CAT_TABS: { key: Cat; labelKey: string }[] = [
-  { key: "all", labelKey: "np.cat.all" },
-  { key: "branch", labelKey: "np.cat.branch" },
-  { key: "postomat", labelKey: "np.cat.postomat" },
-  { key: "point", labelKey: "np.cat.point" },
-];
+export type { MapFocus };
 
 /** One brand colour for every category — the white glyph inside the pin carries the type. */
 const CAT_COLOR: Record<string, string> = {
@@ -105,119 +93,6 @@ function pinIcon(category: string | undefined, active: boolean): L.DivIcon {
   });
 }
 
-/** Cluster layer driven by the warehouse list (leaflet.markercluster). */
-function ClusterLayer({
-  items,
-  activeRef,
-  onPick,
-}: {
-  items: NpWarehouse[];
-  activeRef: string | null;
-  onPick: (w: NpWarehouse) => void;
-}) {
-  const map = useMap();
-  const groupRef = useRef<L.MarkerClusterGroup | null>(null);
-
-  useEffect(() => {
-    const group = L.markerClusterGroup({
-      chunkedLoading: true,
-      maxClusterRadius: 55,
-      showCoverageOnHover: false,
-      // A picked branch is shown at BRANCH_ZOOM — it must be its own pin there, not a cluster.
-      disableClusteringAtZoom: BRANCH_ZOOM,
-    });
-    groupRef.current = group;
-    map.addLayer(group);
-    return () => {
-      map.removeLayer(group);
-      groupRef.current = null;
-    };
-  }, [map]);
-
-  useEffect(() => {
-    const group = groupRef.current;
-    if (!group) return;
-    group.clearLayers();
-    const markers = items
-      .filter((w) => typeof w.lat === "number" && typeof w.lng === "number")
-      .map((w) => {
-        const m = L.marker([w.lat as number, w.lng as number], {
-          icon: pinIcon(w.category, activeRef === w.ref),
-        });
-        m.on("click", () => onPick(w));
-        return m;
-      });
-    group.addLayers(markers);
-  }, [items, activeRef, onPick]);
-
-  return null;
-}
-
-export interface MapFocus {
-  /** Changes on every request so the same place can be focused twice. */
-  key: number;
-  center?: [number, number];
-  /** Defaults to BRANCH_ZOOM (or closer, if the map already is). */
-  zoom?: number;
-  bounds?: [[number, number], [number, number]];
-}
-
-/**
- * Moves the map when the parent asks. The first focus (the one the map opens with) is applied
- * without animation, so the map does not first show the whole country and then fly.
- */
-function FocusController({ focus }: { focus: MapFocus | null }) {
-  const map = useMap();
-  const first = useRef(true);
-  useEffect(() => {
-    if (!focus) return;
-    const instant = first.current;
-    first.current = false;
-    // The frame may have been measured while it was still settling: fly with a stale size and
-    // Leaflet centres on the wrong point.
-    map.invalidateSize({ animate: false });
-    if (focus.bounds) {
-      if (instant) map.fitBounds(focus.bounds, { padding: [24, 24], maxZoom: 14, animate: false });
-      else map.flyToBounds(focus.bounds, { padding: [24, 24], maxZoom: 14, duration: 0.8 });
-    } else if (focus.center) {
-      const zoom = focus.zoom ?? Math.max(map.getZoom(), BRANCH_ZOOM);
-      if (instant) map.setView(focus.center, zoom, { animate: false });
-      else map.flyTo(focus.center, zoom, { duration: 0.8 });
-    }
-  }, [focus, map]);
-  return null;
-}
-
-/** Re-measures the map whenever its frame changes size (mode switch, dynamic import, step slide-in). */
-function SizeWatcher() {
-  const map = useMap();
-  useEffect(() => {
-    const el = map.getContainer();
-    if (typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => map.invalidateSize({ animate: false }));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [map]);
-  return null;
-}
-
-/** Reports the viewport bounds on move/zoom + once on mount. */
-function BoundsWatcher({
-  onChange,
-}: {
-  onChange: (b: L.LatLngBounds) => void;
-}) {
-  const map = useMapEvents({
-    moveend: () => onChange(map.getBounds()),
-    zoomend: () => onChange(map.getBounds()),
-  });
-  useEffect(() => {
-    onChange(map.getBounds());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  return null;
-}
-
 export default function NpWarehouseMap({
   onSelect,
   focus = null,
@@ -231,65 +106,11 @@ export default function NpWarehouseMap({
   selected?: NpWarehouse | null;
 }) {
   const t = useT();
-  const [category, setCategory] = useState<Cat>("all");
-  const [items, setItems] = useState<NpWarehouse[]>([]);
+  const { category, setCategory, fetchBox, pins } = useWarehouseMapData(customerApi.checkout, selected);
   const [active, setActive] = useState<NpWarehouse | null>(null);
-  const boundsRef = useRef<L.LatLngBounds | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // document.body only exists once mounted; the detail sheet is portalled into it (see below).
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  // Only the newest bbox response may land (see the header).
-  const seq = useRef(0);
-
-  const fetchBox = useCallback(
-    (b: L.LatLngBounds) => {
-      boundsRef.current = b;
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => {
-        const sw = b.getSouthWest();
-        const ne = b.getNorthEast();
-        const mine = ++seq.current;
-        customerApi
-          .getNpWarehousesBbox({
-            minLat: sw.lat,
-            maxLat: ne.lat,
-            minLng: sw.lng,
-            maxLng: ne.lng,
-            category,
-            limit: 1500,
-          })
-          .then((list) => {
-            if (mine === seq.current) setItems(list);
-          })
-          .catch(() => {
-            if (mine === seq.current) setItems([]);
-          });
-      }, 350);
-    },
-    [category],
-  );
-
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current);
-    },
-    [],
-  );
-
-  // Repaired coordinates, plus the picked branch even before (or without) its viewport response,
-  // so it is highlighted the moment the map arrives.
-  const pins = useMemo(() => {
-    const list = items.map(withSaneCoords);
-    if (selected && !list.some((w) => w.ref === selected.ref)) list.push(withSaneCoords(selected));
-    return list;
-  }, [items, selected]);
-
-  // Re-fetch the current viewport when the category filter changes.
-  useEffect(() => {
-    if (boundsRef.current) fetchBox(boundsRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category]);
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -332,11 +153,12 @@ export default function NpWarehouseMap({
             />
             <SizeWatcher />
             <BoundsWatcher onChange={fetchBox} />
-            <FocusController focus={focus} />
+            <FocusController focus={focus} instantFirst />
             <ClusterLayer
               items={pins}
               activeRef={active?.ref ?? selected?.ref ?? null}
               onPick={setActive}
+              pinIcon={pinIcon}
             />
           </MapContainer>
 

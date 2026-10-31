@@ -10,6 +10,7 @@ import { createHttpClient, newIdempotencyKey, normalizeBaseUrl } from "@shop/cor
 import { type AuthResponse, type Conversation, type CreateOrderResult, type Message, type NpCity, type NpWarehouse, type OrderDetail, type OrderLimits, type OrderSummary, type PaymentOption, type PaymentStart, type PromoPreview, type SendMessageRequest } from "@shop/core/types";
 import { type CartLineInput, type ServerCart } from "@shop/core/cart";
 import { createCartApi } from "@shop/customer/cart/api";
+import { createCheckoutApi } from "@shop/customer/checkout/api";
 import { type CatalogSchema } from "@shop/core/catalog";
 import { type CaseSize, type GiftCaseOpen, type GiftResponse } from "@shop/core/giftcase";
 import { getActiveLocale, getActiveTag } from "@shop/core/i18n";
@@ -38,6 +39,7 @@ export type {
   SendMessageRequest,
   ServerCart,
 };
+export type { CreateOrderItem, CreateOrderRequest, NpBboxParams } from "@shop/customer/checkout/api";
 export type { DeliveryMethod, NpCategory, OrderStatus } from "@shop/core/types";
 export type { Product, ProductImage, ProductTag, ProductVariant } from "@shop/customer/catalog/model/product";
 
@@ -151,28 +153,6 @@ export function putCartOnUnload(lines: CartLineInput[]): void {
 
 // ---- request payloads -------------------------------------------------------
 
-export interface CreateOrderItem {
-  productId: string;
-  variantId?: string;
-  quantity: number;
-}
-
-export interface CreateOrderRequest {
-  items: CreateOrderItem[];
-  customerName: string;
-  phone: string;
-  comment?: string;
-  promoCode?: string;
-  deliveryMethod: "NOVA_POSHTA" | "PICKUP";
-  npCityRef?: string;
-  npCityName?: string;
-  npWarehouseRef?: string;
-  npWarehouseName?: string;
-  paymentOptionId: string;
-  /** Gift for the order sum: CASE (default) or the tier's guaranteed DISCOUNT on this order. */
-  giftChoice?: "CASE" | "DISCOUNT";
-}
-
 /** GET /api/app-info — public, no sign-in needed (the payment return page uses it). */
 export interface AppInfo {
   botUsername?: string | null;
@@ -180,22 +160,7 @@ export interface AppInfo {
   imageBaseUrl?: string | null;
 }
 
-export interface NpBboxParams {
-  minLat: number;
-  maxLat: number;
-  minLng: number;
-  maxLng: number;
-  category?: "all" | "postomat" | "branch" | "point";
-  q?: string;
-  limit?: number;
-}
-
 // ---- typed endpoints --------------------------------------------------------
-
-/** `&items=id*qty,…` for the promo check, nothing when the cart is unknown. */
-function itemsParam(items: string): string {
-  return items ? `&items=${encodeURIComponent(items)}` : "";
-}
 
 export const customerApi = {
   // Public
@@ -203,49 +168,10 @@ export const customerApi = {
   getProduct: (id: string) => http.get<Product>(`/api/products/${id}`),
   /** Catalog v2: category tree, brands, spec attributes — localized by the language header. */
   getCatalogSchema: () => http.get<CatalogSchema>("/api/catalog/schema"),
-  getPaymentOptions: () => http.get<PaymentOption[]>("/api/payment-options"),
-  getAppInfo: () => http.get<AppInfo>("/api/app-info"),
-  /** Anti-bot order limits (0 = no limit): quantity steppers clamp to maxQtyPerProduct. */
-  getOrderLimits: () => http.get<OrderLimits>("/api/public/order-limits"),
   /** Gift for the order sum / gift case (lib/gift.ts); `gift: null` = off. */
   getGift: () => http.get<GiftResponse>("/api/public/gift"),
-  /** What a promo code is worth for this cart — read-only, does not consume a use. */
-  /** `items` — the cart lines (`promoItems`): a code from the gift case skips low-margin products. */
-  previewPromo: (code: string, subtotalMinor: number, items = "") =>
-    http.get<PromoPreview>(
-      `/api/promo-codes/preview?code=${encodeURIComponent(code)}&subtotalMinor=${subtotalMinor}${itemsParam(items)}`
-    ),
-  getNpCities: (q: string) => http.get<NpCity[]>(`/api/np/cities?q=${encodeURIComponent(q)}`),
-  getNpWarehouses: (cityRef: string, q: string) =>
-    http.get<NpWarehouse[]>(
-      `/api/np/warehouses?cityRef=${encodeURIComponent(cityRef)}&q=${encodeURIComponent(q)}`
-    ),
-  getNpWarehousesBbox: (p: NpBboxParams) => {
-    const sp = new URLSearchParams({
-      minLat: String(p.minLat),
-      maxLat: String(p.maxLat),
-      minLng: String(p.minLng),
-      maxLng: String(p.maxLng),
-      category: p.category ?? "all",
-      limit: String(p.limit ?? 1200),
-    });
-    if (p.q) sp.set("q", p.q);
-    return http.get<NpWarehouse[]>(`/api/np/warehouses/bbox?${sp.toString()}`);
-  },
 
   // Customer (auth required)
-  /**
-   * Validates the code AND holds a limited one for this customer for half an hour, so the discount
-   * the cart shows is still there at the last step. Falls back to the public preview when the
-   * Telegram sign-in has not finished yet.
-   */
-  reservePromo: (code: string, subtotalMinor: number, items = "") =>
-    http.post<PromoPreview>(
-      `/api/me/promo/reserve?code=${encodeURIComponent(code)}&subtotalMinor=${subtotalMinor}${itemsParam(items)}`
-    ),
-  /** Gives a held code back when the customer clears or replaces it. */
-  releasePromo: (code: string) =>
-    http.del<void>(`/api/me/promo/reserve?code=${encodeURIComponent(code)}`),
   /**
    * Remembers which language this customer reads, so the bot writes to them in it. The app itself
    * does not need the answer — it already knows — so a failure here is deliberately ignored.
@@ -255,14 +181,10 @@ export const customerApi = {
   unreadCount: () => http.get<{ count: number }>("/api/me/unread-count"),
   /** Server cart shared with the website (same Telegram account) — see lib/cart-sync. */
   cart: createCartApi(http),
+  /** Оформление: промокод, Нова пошта, лимиты, варианты оплаты, создание заказа (@shop/customer/checkout). */
+  checkout: createCheckoutApi(http),
+  getAppInfo: () => http.get<AppInfo>("/api/app-info"),
   conversations: () => http.get<Conversation[]>("/api/me/conversations"),
-  /**
-   * Places an order. The idempotency key makes a retry (lost response, double tap) return the
-   * order already created instead of placing a second one with a second stock deduction.
-   * Next step: {@link startPayment} for the returned orderId.
-   */
-  createOrder: (body: CreateOrderRequest, idempotencyKey: string) =>
-    http.post<CreateOrderResult>("/api/orders", body, { "Idempotency-Key": idempotencyKey }),
   getOrders: () => http.get<OrderSummary[]>("/api/me/orders"),
   getOrder: (id: string) => http.get<OrderDetail>(`/api/me/orders/${id}`),
   /**

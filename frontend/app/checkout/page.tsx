@@ -39,14 +39,17 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatPhone, isValidPhone, phoneE164 } from "@shop/core/phone";
-import { isOrderLimitCode, type OrderLimitCode, visiblePaymentOptions } from "@shop/core/orders";
+import { type OrderLimitCode, visiblePaymentOptions } from "@shop/core/orders";
 import { type NpCity, type OrderDetail } from "@shop/core/types";
-import { npCityBounds, npLatLng, resolveNpWarehouse } from "@shop/core/np-geo";
+import { resolveNpWarehouse } from "@shop/core/np-geo";
+import { buildCreateOrderRequest, classifyOrderFailure, isValidCustomerName } from "@shop/customer/checkout/order-request";
+import { useCreateOrder } from "@shop/customer/checkout/use-create-order";
+import { useNpSelection } from "@shop/customer/delivery/np-selection";
 import { trackCheckoutStart, trackOrderCreated } from "@/lib/analytics";
 import { useI18n, useT } from "@/i18n/context";
 import { usePromoPreview } from "@/components/cart/PromoField";
 import { StepProgress } from "@/components/checkout/StepProgress";
-import { CitySearch, WarehouseSearch, npWarehousesQuery } from "@/components/checkout/NpSearch";
+import { CitySearch, WarehouseSearch } from "@/components/checkout/NpSearch";
 import type { MapFocus } from "@/components/checkout/NpWarehouseMap";
 import { useKeyboardOpen } from "@/lib/viewport";
 import { useAccessToken } from "@/lib/auth";
@@ -117,57 +120,15 @@ export default function CheckoutPage() {
   // map; both modes edit the same city / branch, so a pick in one shows in the other. Lives here,
   // not in DeliveryStep, so it survives going to the next step and back.
   const [delivery, setDelivery] = useState<DeliveryMethod>("NOVA_POSHTA");
-  const [warehouse, setWarehouse] = useState<NpWarehouse | null>(null);
-  const [city, setCity] = useState<NpCity | null>(null);
   const [npMode, setNpMode] = useState<NpMode>("text");
-  const [focus, setFocus] = useState<MapFocus | null>(null);
-  /** The branch came from the last order — shown as a compact card until "Обрати інше". */
-  const [warehouseFromLast, setWarehouseFromLast] = useState(false);
   const [comment, setComment] = useState("");
   const [prefilled, setPrefilled] = useState(false);
   const queryClient = useQueryClient();
-  // The city whose branches are being fetched to frame the map: a late answer for a city the
-  // customer has already moved on from must not move the map.
-  const framingCity = useRef<string | null>(null);
+  // City, branch, map focus, "branch from the last order" — @shop/customer/delivery/np-selection.
+  const np = useNpSelection(customerApi.checkout);
+  const { city, warehouse, focus, warehouseFromLast, chooseCity, chooseWarehouse } = np;
   /** The customer has touched the delivery choice — the last-order prefill backs off. */
-  const touchedNp = useRef(false);
-
-  /** A city picked in the field (or dropped by typing over it). A different city drops the branch. */
-  function chooseCity(c: NpCity | null) {
-    touchedNp.current = true;
-    if (c?.ref !== city?.ref) {
-      setWarehouse(null);
-      setWarehouseFromLast(false);
-    }
-    setCity(c);
-    framingCity.current = c?.ref ?? null;
-    if (!c) return;
-    // Frame the map on the city now, so it opens there when the customer switches to it.
-    queryClient
-      .fetchQuery(npWarehousesQuery(c.ref))
-      .then((whs) => {
-        if (framingCity.current !== c.ref) return;
-        const bounds = npCityBounds(whs);
-        if (bounds) setFocus({ key: nowMs(), bounds });
-      })
-      .catch(() => {
-        /* the map still works by hand */
-      });
-  }
-
-  /** A branch picked in the field or on the map: select it, sync the city, aim the map at it. */
-  const chooseWarehouse = useCallback((w: NpWarehouse | null) => {
-    touchedNp.current = true;
-    setWarehouseFromLast(false);
-    setWarehouse(w);
-    if (!w) return;
-    if (w.cityRef) {
-      setCity((c) => (c?.ref === w.cityRef ? c : { ref: w.cityRef!, name: w.cityName ?? "" }));
-    }
-    framingCity.current = null; // a pending city framing must not pull the map off this branch
-    const p = npLatLng(w);
-    if (p) setFocus({ key: nowMs(), center: p });
-  }, []);
+  const touchedNp = np.touched;
 
   function chooseDelivery(d: DeliveryMethod) {
     touchedNp.current = true;
@@ -211,32 +172,31 @@ export default function CheckoutPage() {
     }
     if (o.npCityName && o.npWarehouseName) {
       resolveNpWarehouse(o.npCityName, o.npWarehouseName, {
-        cities: (q) => customerApi.getNpCities(q),
-        warehouses: (ref) => queryClient.fetchQuery(npWarehousesQuery(ref)),
+        cities: (q) => customerApi.checkout.npCities(q),
+        warehouses: np.fetchWarehouses,
       })
         .then((found) => {
           // ...unless the customer has already started picking by hand.
           if (!found || touchedNp.current) return;
-          setWarehouse(found.warehouse);
-          setCity(found.city);
-          setWarehouseFromLast(true);
-          const p = npLatLng(found.warehouse);
-          if (p) setFocus({ key: nowMs(), center: p });
+          np.applyLast(found, true);
         })
         .catch(() => {
           /* not critical: the customer picks again */
         });
     }
-  }, [lastOrder.data, queryClient]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per loaded order; `np` methods are not stable
+  }, [lastOrder.data]);
 
   // step 3 — payment
   const [paymentId, setPaymentId] = useState<string | null>(null);
 
   // submit
-  // One key per checkout attempt: if the response is lost and the user taps again, the server
-  // returns the order it already created instead of placing a second one (and deducting stock
-  // twice). Regenerated only after a successful order.
-  const idempotencyKey = useRef(newIdempotencyKey());
+  // One idempotency key per checkout attempt (useApiMutation, idempotent): if the response is lost and the
+  // user taps again, the server returns the order it already created instead of placing a second one
+  // (and deducting stock twice). Regenerated after a successful order. A quantity change still in its
+  // debounce must reach the server cart BEFORE the order removes the ordered lines from it — otherwise
+  // the late write would put them back (flushCart runs first, inside the mutation).
+  const placeOrder = useCreateOrder(customerApi.checkout, flushCart);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   /** The last refusal was an anti-bot limit (TOO_MANY_UNPAID → link to my orders). */
@@ -246,7 +206,7 @@ export default function CheckoutPage() {
 
   const paymentQuery = useQuery({
     queryKey: ["payment-options"],
-    queryFn: () => customerApi.getPaymentOptions(),
+    queryFn: () => customerApi.checkout.paymentOptions(),
   });
 
   // Same check the cart runs, so the two screens cannot disagree about the price — and it keeps
@@ -285,7 +245,7 @@ export default function CheckoutPage() {
       : total;
 
   // ---- validation ----------------------------------------------------------
-  const nameOk = name.trim().length >= 2;
+  const nameOk = isValidCustomerName(name);
   const phoneOk = isValidPhone(phone);
   const step1Ok = nameOk && phoneOk;
   const step2Ok =
@@ -310,41 +270,29 @@ export default function CheckoutPage() {
     setSubmitError(null);
     setLimitCode(null);
     setSubmitting(true);
-    const body: CreateOrderRequest = {
-      items: lines.map((l) => ({
-        productId: l.productId,
-        variantId: l.variantId ?? undefined,
-        quantity: l.quantity,
-      })),
-      customerName: name.trim(),
-      phone: phoneE164(phone),
-      comment: comment.trim() || undefined,
+    const body = buildCreateOrderRequest({
+      lines,
+      name,
+      phone,
+      comment,
       // ONLY a code the server has just confirmed. A code it already rejected must never be sent:
       // the order came back 400 "invalid promo code", and since the field lives in the cart there
       // was no way to remove it from here — the customer was stuck on the last step for good.
       // The total shown on the button is the undiscounted one in that case, so dropping the code
       // charges exactly what was displayed.
       promoCode: promoValid ? promoCode.trim() : undefined,
-      deliveryMethod: delivery,
-      npCityRef: delivery === "NOVA_POSHTA" ? warehouse?.cityRef ?? undefined : undefined,
-      npCityName: delivery === "NOVA_POSHTA" ? warehouse?.cityName ?? undefined : undefined,
-      npWarehouseRef: delivery === "NOVA_POSHTA" ? warehouse?.ref : undefined,
-      npWarehouseName:
-        delivery === "NOVA_POSHTA" ? warehouse?.description : undefined,
+      delivery,
+      warehouse,
       paymentOptionId: chosenPayment!.id,
       giftChoice: giftTier ? (giftDiscount > 0 ? "DISCOUNT" : "CASE") : undefined,
-    };
+    });
     try {
-      // A quantity change still in its debounce must reach the server cart BEFORE the order removes
-      // the ordered lines from it — otherwise the late write would put them back.
-      await flushCart();
-      const created = await customerApi.createOrder(body, idempotencyKey.current);
+      const created = await placeOrder.mutateAsync(body);
       const orderId = created.orderId;
       trackOrderCreated(orderId);
       if (giftTier && giftDiscount === 0) markGiftCaseAutoOpen(orderId);
       haptic();
       cartAfterOrder(lines.map((l) => l.key));
-      idempotencyKey.current = newIdempotencyKey();
       setPlacedId(orderId);
       void queryClient.invalidateQueries({ queryKey: ["me"] });
       // The "order created" step: the order page shows the amount, the 24 h countdown,
@@ -357,16 +305,15 @@ export default function CheckoutPage() {
       // The cart validated the code, so a rejection here means somebody took the last use in the
       // meantime. Drop it and let them place the order again at the price without it, instead of
       // leaving them on a step where the code cannot be edited.
-      if (e instanceof ApiError && e.code === "PROMO_REJECTED") {
+      const failure = classifyOrderFailure(e);
+      if (failure.kind === "promoRejected") {
         setPromoCode("");
-        setSubmitError(t("checkout.promoDropped", { message: e.message }));
+        setSubmitError(t("checkout.promoDropped", { message: failure.message }));
       } else {
         // Anti-bot limits (TOO_MANY_UNPAID, ORDER_COOLDOWN, ORDER_DAILY_LIMIT, QTY_LIMIT,
         // CANCEL_LIMIT) come with a localized message that says what to do.
-        setSubmitError(
-          e instanceof ApiError ? e.message : t("checkout.failed")
-        );
-        setLimitCode(e instanceof ApiError && isOrderLimitCode(e.code) ? e.code : null);
+        setSubmitError(failure.message ?? t("checkout.failed"));
+        setLimitCode(failure.kind === "limit" ? failure.code : null);
       }
     } finally {
       setSubmitting(false);
@@ -473,7 +420,7 @@ export default function CheckoutPage() {
               fromLast={warehouseFromLast}
               onChangeLast={() => {
                 touchedNp.current = true;
-                setWarehouseFromLast(false);
+                np.setWarehouseFromLast(false);
               }}
               mode={npMode}
               setMode={setNpMode}
