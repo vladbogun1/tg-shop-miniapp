@@ -66,10 +66,38 @@ function normLabels(x: Loose) {
   };
 }
 
+function normBuckets(buckets: unknown): AdminSpecAttribute["buckets"] {
+  if (!Array.isArray(buckets)) return null;
+  return buckets.map((b) => {
+    const x = (b ?? {}) as Loose;
+    return { min: numOrNull(x.min), max: numOrNull(x.max), ...normLabels(x) };
+  });
+}
+
+function normOption(op: unknown, i: number): AdminSpecAttribute["options"][number] {
+  const x = (op ?? {}) as Loose;
+  return {
+      id: strOrNull(x.id) ?? undefined,
+      value: str(x.value),
+      ...normLabels(x),
+      aliases: aliasList(x.aliases),
+      sortOrder: num(pick(x, "sortOrder", "sort"), i * 10),
+      usedCount: typeof x.usedCount === "number" ? x.usedCount : undefined,
+  };
+}
+
+function normUnits(o: Loose) {
+  const unit = (o.unit && typeof o.unit === "object" ? o.unit : {}) as Loose;
+  return {
+    unitRu: strOrNull(pick(o, "unitRu") ?? unit.ru ?? (typeof o.unit === "string" ? o.unit : undefined)),
+    unitUk: strOrNull(pick(o, "unitUk") ?? unit.uk),
+    unitEn: strOrNull(pick(o, "unitEn") ?? unit.en),
+  };
+}
+
 function normAttribute(raw: unknown): AdminSpecAttribute {
   const o = (raw ?? {}) as Loose;
   const t = str(o.type).toLowerCase() as SpecType;
-  const unit = (o.unit && typeof o.unit === "object" ? o.unit : {}) as Loose;
   const facet = (o.facet && typeof o.facet === "object" ? o.facet : {}) as Loose;
   const buckets = o.buckets ?? facet.buckets;
   const used = pick(o, "usedCount", "productCount");
@@ -79,9 +107,7 @@ function normAttribute(raw: unknown): AdminSpecAttribute {
     key: str(o.key),
     ...normLabels(o),
     type: SPEC_TYPES.includes(t) ? t : "text",
-    unitRu: strOrNull(pick(o, "unitRu") ?? unit.ru ?? (typeof o.unit === "string" ? o.unit : undefined)),
-    unitUk: strOrNull(pick(o, "unitUk") ?? unit.uk),
-    unitEn: strOrNull(pick(o, "unitEn") ?? unit.en),
+    ...normUnits(o),
     range: pick(o, "range", "isRange") === true,
     group: str(pick(o, "group", "groupKey")) || "main",
     filterable: o.filterable === true,
@@ -89,24 +115,9 @@ function normAttribute(raw: unknown): AdminSpecAttribute {
     required: pick(o, "required", "requiredForReady", "required_for_ready") === true,
     highlight: o.highlight === true,
     sortOrder: num(pick(o, "sortOrder", "sort")),
-    buckets: Array.isArray(buckets)
-      ? buckets.map((b) => {
-          const x = (b ?? {}) as Loose;
-          return { min: numOrNull(x.min), max: numOrNull(x.max), ...normLabels(x) };
-        })
-      : null,
+    buckets: normBuckets(buckets),
     hint: strOrNull(pick(o, "hint", "hintRu", "hint_ru")),
-    options: (Array.isArray(o.options) ? o.options : []).map((op, i) => {
-      const x = (op ?? {}) as Loose;
-      return {
-        id: strOrNull(x.id) ?? undefined,
-        value: str(x.value),
-        ...normLabels(x),
-        aliases: aliasList(x.aliases),
-        sortOrder: num(pick(x, "sortOrder", "sort"), i * 10),
-        usedCount: typeof x.usedCount === "number" ? x.usedCount : undefined,
-      };
-    }),
+    options: (Array.isArray(o.options) ? o.options : []).map(normOption),
     inherited: o.inherited === true,
     usedCount: typeof used === "number" ? used : undefined,
   };

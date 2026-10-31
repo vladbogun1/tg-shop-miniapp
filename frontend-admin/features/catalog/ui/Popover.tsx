@@ -12,6 +12,19 @@ import { createPortal } from "react-dom";
 import { useOverlayLayer } from "@shop/ui/overlay";
 import { cn } from "@/lib/cn";
 
+/** Where the panel goes: below the anchor, or above when there is no room; clamped into the viewport. */
+function placement(rect: DOMRect | null, maxHeight: number, minWidth: number) {
+  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
+  const below = rect ? vh - rect.bottom - 12 : 0;
+  const above = rect ? rect.top - 12 : 0;
+  const up = rect ? below < Math.min(maxHeight, 220) && above > below : false;
+  const height = Math.max(160, Math.min(maxHeight, up ? above : below));
+  const width = rect ? Math.min(Math.max(rect.width, minWidth), vw - 16) : minWidth;
+  const left = rect ? Math.max(8, Math.min(rect.left, vw - width - 8)) : 0;
+  return { vh, up, height, width, left };
+}
+
 export function Popover({
   open,
   anchorRef,
@@ -61,14 +74,7 @@ export function Popover({
   }, [open, onClose, anchorRef, panelRef]);
 
   if (typeof document === "undefined") return null;
-  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
-  const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
-  const below = rect ? vh - rect.bottom - 12 : 0;
-  const above = rect ? rect.top - 12 : 0;
-  const up = rect ? below < Math.min(maxHeight, 220) && above > below : false;
-  const height = Math.max(160, Math.min(maxHeight, up ? above : below));
-  const width = rect ? Math.min(Math.max(rect.width, minWidth), vw - 16) : minWidth;
-  const left = rect ? Math.max(8, Math.min(rect.left, vw - width - 8)) : 0;
+  const { vh, up, height, width, left } = placement(rect, maxHeight, minWidth);
 
   return createPortal(
     <AnimatePresence>

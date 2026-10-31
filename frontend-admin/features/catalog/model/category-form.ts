@@ -26,17 +26,29 @@ export interface Form {
 }
 
 
+const NEW_CATEGORY: Pick<AdminCategory, "name" | "slug" | "showInMenu" | "artKind" | "seoTitle" | "seoDescription" | "h1" | "introText"> = {
+  name: "",
+  slug: "",
+  showInMenu: true,
+  artKind: null,
+  seoTitle: null,
+  seoDescription: null,
+  h1: null,
+  introText: null,
+};
+
 export function toForm(c: AdminCategory | null, parentId: string | null): Form {
+  const src = c ?? NEW_CATEGORY;
   return {
-    name: c?.name ?? "",
-    slug: c?.slug ?? "",
+    name: src.name,
+    slug: src.slug,
     parentId: (c ? c.parentId : parentId) ?? "",
-    showInMenu: c?.showInMenu ?? true,
-    artKind: c?.artKind ?? "",
-    seoTitle: c?.seoTitle ?? "",
-    seoDescription: c?.seoDescription ?? "",
-    h1: c?.h1 ?? "",
-    introText: c?.introText ?? "",
+    showInMenu: src.showInMenu,
+    artKind: src.artKind ?? "",
+    seoTitle: src.seoTitle ?? "",
+    seoDescription: src.seoDescription ?? "",
+    h1: src.h1 ?? "",
+    introText: src.introText ?? "",
   };
 }
 

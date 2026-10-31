@@ -72,46 +72,71 @@ export function autoBucketLabel(min: number | null, max: number | null, unit: st
   return "";
 }
 
+/** Поля новой характеристики: что видит редактор, пока ничего не введено. */
+const NEW_ATTRIBUTE = {
+  labelRu: "",
+  labelUk: "",
+  labelEn: "",
+  key: "",
+  type: "enum" as SpecType,
+  unitRu: null as string | null | undefined,
+  unitUk: null as string | null | undefined,
+  unitEn: null as string | null | undefined,
+  range: false,
+  filterable: true,
+  comparable: true,
+  required: false,
+  highlight: false,
+  hint: null as string | null | undefined,
+  options: [] as AdminSpecAttribute["options"],
+  buckets: null as AdminSpecAttribute["buckets"],
+};
+
+const toOptRow = (o: AdminSpecAttribute["options"][number]): OptRow => ({
+  uid: uid(),
+  value: o.value,
+  labelRu: o.labelRu,
+  labelUk: o.labelUk,
+  labelEn: o.labelEn,
+  aliases: o.aliases,
+  original: o.value,
+  usedCount: o.usedCount,
+  valueTouched: true,
+});
+
+const toBucketRow = (b: NonNullable<AdminSpecAttribute["buckets"]>[number]): BucketRow => ({
+  uid: uid(),
+  min: b.min === null ? "" : String(b.min),
+  max: b.max === null ? "" : String(b.max),
+  labelRu: b.labelRu,
+  labelUk: b.labelUk,
+  labelEn: b.labelEn,
+});
+
 export function toDraft(a: AdminSpecAttribute | null, defaultGroup: string): Draft {
+  const src = a ?? NEW_ATTRIBUTE;
   return {
-    labelRu: a?.labelRu ?? "",
-    labelUk: a?.labelUk ?? "",
-    labelEn: a?.labelEn ?? "",
-    key: a?.key ?? "",
+    labelRu: src.labelRu,
+    labelUk: src.labelUk,
+    labelEn: src.labelEn,
+    key: src.key,
     keyTouched: !!a,
-    type: a?.type ?? "enum",
-    unitRu: a?.unitRu ?? "",
-    unitUk: a?.unitUk ?? "",
-    unitEn: a?.unitEn ?? "",
-    range: a?.range ?? false,
-    group: a?.group ?? defaultGroup,
-    filterable: a?.filterable ?? true,
-    comparable: a?.comparable ?? true,
-    required: a?.required ?? false,
-    highlight: a?.highlight ?? false,
-    hint: a?.hint ?? "",
-    options: (a?.options ?? [])
+    type: src.type,
+    unitRu: src.unitRu ?? "",
+    unitUk: src.unitUk ?? "",
+    unitEn: src.unitEn ?? "",
+    range: src.range,
+    group: a ? a.group : defaultGroup,
+    filterable: src.filterable,
+    comparable: src.comparable,
+    required: src.required,
+    highlight: src.highlight,
+    hint: src.hint ?? "",
+    options: src.options
       .slice()
       .sort((x, y) => x.sortOrder - y.sortOrder)
-      .map((o) => ({
-        uid: uid(),
-        value: o.value,
-        labelRu: o.labelRu,
-        labelUk: o.labelUk,
-        labelEn: o.labelEn,
-        aliases: o.aliases,
-        original: o.value,
-        usedCount: o.usedCount,
-        valueTouched: true,
-      })),
-    buckets: (a?.buckets ?? []).map((b) => ({
-      uid: uid(),
-      min: b.min === null ? "" : String(b.min),
-      max: b.max === null ? "" : String(b.max),
-      labelRu: b.labelRu,
-      labelUk: b.labelUk,
-      labelEn: b.labelEn,
-    })),
+      .map(toOptRow),
+    buckets: (src.buckets ?? []).map(toBucketRow),
   };
 }
 
@@ -154,13 +179,40 @@ export function bucketErrorsOf(d: Draft): string[] {
   return errs;
 }
 
+function buildBuckets(d: Draft): SpecAttributeWriteRequest["buckets"] {
+  if (d.type !== "number" || d.buckets.length === 0) return null;
+  return d.buckets.map((b) => {
+    const min = parseNum(b.min);
+    const max = parseNum(b.max);
+    return {
+      min,
+      max,
+      labelRu: b.labelRu.trim() || autoBucketLabel(min, max, d.unitRu, "ru"),
+      labelUk: b.labelUk.trim() || autoBucketLabel(min, max, d.unitUk || d.unitRu, "uk"),
+      labelEn: b.labelEn.trim() || autoBucketLabel(min, max, d.unitEn, "en"),
+    };
+  });
+}
+
+function buildOptions(d: Draft): SpecAttributeWriteRequest["options"] {
+  if (!isChoiceType(d.type)) return [];
+  return d.options.map((o, i) => ({
+    value: o.value,
+    labelRu: o.labelRu.trim(),
+    labelUk: o.labelUk.trim() || o.labelRu.trim(),
+    labelEn: o.labelEn.trim() || o.labelRu.trim(),
+    aliases: o.aliases,
+    sortOrder: (i + 1) * 10,
+  }));
+}
+
 /** Тело запроса из черновика (порядок остаётся прежним; опции нумеруются по 10). */
 export function buildAttributeBody(
   d: Draft,
   attribute: AdminSpecAttribute | null,
   categoryId: string | null
 ): SpecAttributeWriteRequest {
-  const isChoice = isChoiceType(d.type);
+  const isNumber = d.type === "number";
   return {
     categoryId: attribute ? attribute.categoryId : categoryId,
     key: d.key,
@@ -168,10 +220,10 @@ export function buildAttributeBody(
     labelUk: d.labelUk.trim(),
     labelEn: d.labelEn.trim(),
     type: d.type,
-    unitRu: d.type === "number" ? d.unitRu.trim() || null : null,
-    unitUk: d.type === "number" ? d.unitUk.trim() || null : null,
-    unitEn: d.type === "number" ? d.unitEn.trim() || null : null,
-    range: d.type === "number" && d.range,
+    unitRu: isNumber ? d.unitRu.trim() || null : null,
+    unitUk: isNumber ? d.unitUk.trim() || null : null,
+    unitEn: isNumber ? d.unitEn.trim() || null : null,
+    range: isNumber && d.range,
     group: d.group,
     filterable: d.type === "text" ? false : d.filterable,
     comparable: d.comparable,
@@ -179,29 +231,7 @@ export function buildAttributeBody(
     highlight: d.highlight,
     sortOrder: attribute?.sortOrder ?? 0,
     hint: d.hint.trim() || null,
-    buckets:
-      d.type === "number" && d.buckets.length
-        ? d.buckets.map((b) => {
-            const min = parseNum(b.min);
-            const max = parseNum(b.max);
-            return {
-              min,
-              max,
-              labelRu: b.labelRu.trim() || autoBucketLabel(min, max, d.unitRu, "ru"),
-              labelUk: b.labelUk.trim() || autoBucketLabel(min, max, d.unitUk || d.unitRu, "uk"),
-              labelEn: b.labelEn.trim() || autoBucketLabel(min, max, d.unitEn, "en"),
-            };
-          })
-        : null,
-    options: isChoice
-      ? d.options.map((o, i) => ({
-          value: o.value,
-          labelRu: o.labelRu.trim(),
-          labelUk: o.labelUk.trim() || o.labelRu.trim(),
-          labelEn: o.labelEn.trim() || o.labelRu.trim(),
-          aliases: o.aliases,
-          sortOrder: (i + 1) * 10,
-        }))
-      : [],
+    buckets: buildBuckets(d),
+    options: buildOptions(d),
   };
 }

@@ -56,18 +56,22 @@ export function productMissingRequired(
   return missingRequiredKeys(attributesForCategory(attrs, cats, p.categoryId), p.specs);
 }
 
+function formatNumberSpec(v: SpecValue | undefined, unit: string): string | null {
+  const nf = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 3 });
+  if (typeof v === "number") return nf.format(v) + unit;
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    return v.min === v.max ? nf.format(v.min) + unit : `${nf.format(v.min)}–${nf.format(v.max)}${unit}`;
+  }
+  return null;
+}
+
 /** Short human text of a value («51 г», «50–30 000 DPI», «Да», «PAW3950, PAW3395»). */
 export function formatAdminSpec(a: AdminSpecAttribute, v: SpecValue | undefined): string | null {
   if (isSpecEmpty(v)) return null;
   const unit = a.unitRu ? ` ${a.unitRu}` : "";
-  const nf = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 3 });
   switch (a.type) {
     case "number":
-      if (typeof v === "number") return nf.format(v) + unit;
-      if (v && typeof v === "object" && !Array.isArray(v)) {
-        return v.min === v.max ? nf.format(v.min) + unit : `${nf.format(v.min)}–${nf.format(v.max)}${unit}`;
-      }
-      return null;
+      return formatNumberSpec(v, unit);
     case "enum":
       return a.options.find((o) => o.value === v)?.labelRu ?? String(v);
     case "multi":

@@ -7,8 +7,9 @@
  */
 import { Check, Plus, Search, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import type { AdminBrand } from "../model/types";
 import { cn } from "@/lib/cn";
+import { hasBrandNamed, rankBrands, type BrandHit } from "../model/brand-search";
+import type { AdminBrand } from "../model/types";
 import { Popover } from "./Popover";
 
 export interface BrandValue {
@@ -16,7 +17,96 @@ export interface BrandValue {
   name: string;
 }
 
-const norm = (s: string) => s.toLocaleLowerCase("ru").replace(/ё/g, "е").replace(/[\s_-]+/g, " ").trim();
+function SelectedBrand({ value, onClear }: { value: BrandValue; onClear: () => void }) {
+  return (
+    <div className="flex h-10 items-center justify-between gap-2 rounded-[var(--r-md)] border border-[rgba(255,102,0,.45)] bg-[var(--accent-soft)] px-3 pointer-coarse:h-11">
+      <span className="flex min-w-0 items-center gap-2">
+        <span className="truncate text-[14px] font-semibold text-[var(--accent-hi)]">{value.name}</span>
+        {!value.id && (
+          <span className="chip-tint shrink-0 !py-0 text-[10px]" style={{ ["--chip" as string]: "var(--info)" }}>
+            новый
+          </span>
+        )}
+      </span>
+      <button
+        type="button"
+        aria-label="Убрать бренд"
+        onClick={onClear}
+        className="focusable hit grid h-7 w-7 shrink-0 place-items-center rounded-[var(--r-sm)] text-[var(--accent-hi)] hover:bg-[var(--accent-soft-2)]"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+interface OptionsProps {
+  listId: string;
+  results: BrandHit[];
+  selectedId: string | null;
+  active: number;
+  canCreate: boolean;
+  query: string;
+  total: number;
+  emptyDirectory: boolean;
+  onActive: (i: number) => void;
+  onChoose: (i: number) => void;
+}
+
+function BrandOptions({ listId, results, selectedId, active, canCreate, query, total, emptyDirectory, onActive, onChoose }: OptionsProps) {
+  return (
+    <div id={listId} role="listbox" className="thin-scroll min-h-0 flex-1 overflow-auto p-1">
+      {results.map(({ b, alias }, i) => (
+        <button
+          key={b.id}
+          id={`${listId}-${i}`}
+          data-idx={i}
+          type="button"
+          role="option"
+          aria-selected={selectedId === b.id}
+          onMouseEnter={() => onActive(i)}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onChoose(i)}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-[var(--r-sm)] px-3 py-2 text-left text-[14px] transition-colors",
+            i === active ? "bg-[var(--surface-hover)]" : ""
+          )}
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[var(--text)]">{b.name}</span>
+            {alias && <span className="block truncate text-[11.5px] text-[var(--text-faint)]">алиас: {alias}</span>}
+          </span>
+          <span className="tabular shrink-0 text-[12px] text-[var(--text-faint)]">{b.productCount}</span>
+          {selectedId === b.id && <Check className="h-4 w-4 shrink-0 text-[var(--accent-hi)]" />}
+        </button>
+      ))}
+      {canCreate && (
+        <button
+          id={`${listId}-${results.length}`}
+          data-idx={results.length}
+          type="button"
+          role="option"
+          aria-selected={false}
+          onMouseEnter={() => onActive(results.length)}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onChoose(results.length)}
+          className={cn(
+            "mt-0.5 flex w-full items-center gap-2 rounded-[var(--r-sm)] border-t border-[var(--line)] px-3 py-2.5 text-left text-[14px] font-semibold text-[var(--accent-hi)] transition-colors",
+            active === results.length ? "bg-[var(--accent-soft)]" : ""
+          )}
+        >
+          <Plus className="h-4 w-4 shrink-0" />
+          <span className="truncate">Создать „{query.trim()}“</span>
+        </button>
+      )}
+      {total === 0 && (
+        <div className="px-3 py-4 text-center text-[13px] text-[var(--text-faint)]">
+          {emptyDirectory ? "Справочник брендов пуст — введите название" : "Ничего не найдено"}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function BrandCombobox({
   brands,
@@ -45,28 +135,8 @@ export function BrandCombobox({
   const panelRef = useRef<HTMLDivElement>(null);
   const listId = useId();
 
-  const results = useMemo(() => {
-    const nq = norm(q);
-    const scored = brands
-      .filter((b) => !exclude?.includes(b.id))
-      .map((b) => {
-        const name = norm(b.name);
-        const alias = b.aliases.find((a) => norm(a).includes(nq));
-        let score = -1;
-        if (!nq) score = 1;
-        else if (name === nq) score = 4;
-        else if (name.startsWith(nq)) score = 3;
-        else if (name.includes(nq)) score = 2;
-        else if (alias) score = 1;
-        return { b, score, alias: nq && !name.includes(nq) ? alias : undefined };
-      })
-      .filter((x) => x.score > 0)
-      .sort((a, b) => b.score - a.score || b.b.productCount - a.b.productCount || a.b.name.localeCompare(b.b.name));
-    return scored.slice(0, 50);
-  }, [brands, q, exclude]);
-
-  const exact = brands.some((b) => norm(b.name) === norm(q) || b.aliases.some((a) => norm(a) === norm(q)));
-  const canCreate = allowCreate && q.trim().length > 0 && !exact;
+  const results = useMemo(() => rankBrands(brands, q, exclude), [brands, q, exclude]);
+  const canCreate = allowCreate && q.trim().length > 0 && !hasBrandNamed(brands, q);
   const total = results.length + (canCreate ? 1 : 0);
 
   useEffect(() => setActive(0), [q]);
@@ -111,27 +181,13 @@ export function BrandCombobox({
         {label}
       </span>
       {selected ? (
-        <div className="flex h-10 items-center justify-between gap-2 rounded-[var(--r-md)] border border-[rgba(255,102,0,.45)] bg-[var(--accent-soft)] px-3 pointer-coarse:h-11">
-          <span className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-[14px] font-semibold text-[var(--accent-hi)]">{selected.name}</span>
-            {!selected.id && (
-              <span className="chip-tint shrink-0 !py-0 text-[10px]" style={{ ["--chip" as string]: "var(--info)" }}>
-                новый
-              </span>
-            )}
-          </span>
-          <button
-            type="button"
-            aria-label="Убрать бренд"
-            onClick={() => {
-              onChange({ id: null, name: "" });
-              setTimeout(() => inputRef.current?.focus(), 0);
-            }}
-            className="focusable hit grid h-7 w-7 shrink-0 place-items-center rounded-[var(--r-sm)] text-[var(--accent-hi)] hover:bg-[var(--accent-soft-2)]"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+        <SelectedBrand
+          value={selected}
+          onClear={() => {
+            onChange({ id: null, name: "" });
+            setTimeout(() => inputRef.current?.focus(), 0);
+          }}
+        />
       ) : (
         <div
           ref={boxRef}
@@ -164,56 +220,18 @@ export function BrandCombobox({
       {hint && <span className="text-[12px] text-[var(--text-faint)]">{hint}</span>}
 
       <Popover open={open && !selected} anchorRef={boxRef} panelRef={panelRef} onClose={() => setOpen(false)} maxHeight={300}>
-        <div id={listId} role="listbox" className="thin-scroll min-h-0 flex-1 overflow-auto p-1">
-          {results.map(({ b, alias }, i) => (
-            <button
-              key={b.id}
-              id={`${listId}-${i}`}
-              data-idx={i}
-              type="button"
-              role="option"
-              aria-selected={value.id === b.id}
-              onMouseEnter={() => setActive(i)}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => choose(i)}
-              className={cn(
-                "flex w-full items-center gap-2 rounded-[var(--r-sm)] px-3 py-2 text-left text-[14px] transition-colors",
-                i === active ? "bg-[var(--surface-hover)]" : ""
-              )}
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[var(--text)]">{b.name}</span>
-                {alias && <span className="block truncate text-[11.5px] text-[var(--text-faint)]">алиас: {alias}</span>}
-              </span>
-              <span className="tabular shrink-0 text-[12px] text-[var(--text-faint)]">{b.productCount}</span>
-              {value.id === b.id && <Check className="h-4 w-4 shrink-0 text-[var(--accent-hi)]" />}
-            </button>
-          ))}
-          {canCreate && (
-            <button
-              id={`${listId}-${results.length}`}
-              data-idx={results.length}
-              type="button"
-              role="option"
-              aria-selected={false}
-              onMouseEnter={() => setActive(results.length)}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => choose(results.length)}
-              className={cn(
-                "mt-0.5 flex w-full items-center gap-2 rounded-[var(--r-sm)] border-t border-[var(--line)] px-3 py-2.5 text-left text-[14px] font-semibold text-[var(--accent-hi)] transition-colors",
-                active === results.length ? "bg-[var(--accent-soft)]" : ""
-              )}
-            >
-              <Plus className="h-4 w-4 shrink-0" />
-              <span className="truncate">Создать „{q.trim()}“</span>
-            </button>
-          )}
-          {total === 0 && (
-            <div className="px-3 py-4 text-center text-[13px] text-[var(--text-faint)]">
-              {brands.length === 0 ? "Справочник брендов пуст — введите название" : "Ничего не найдено"}
-            </div>
-          )}
-        </div>
+        <BrandOptions
+          listId={listId}
+          results={results}
+          selectedId={value.id}
+          active={active}
+          canCreate={canCreate}
+          query={q}
+          total={total}
+          emptyDirectory={brands.length === 0}
+          onActive={setActive}
+          onChoose={choose}
+        />
       </Popover>
     </div>
   );
