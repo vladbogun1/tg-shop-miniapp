@@ -12,7 +12,7 @@ import { Button } from "@shop/ui/admin-button";
 import { useForm } from "@shop/ui/form";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { Plus } from "lucide-react";
-import { useCallback, useEffect, useState, type ComponentType } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, type ComponentType } from "react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
@@ -81,9 +81,14 @@ export function BatchFormModal({
     [form],
   );
 
-  // Заполняем форму при каждом открытии.
-  useEffect(() => {
-    if (!open) return;
+  // Заполняем форму при каждом открытии и при смене поставки в открытом окне. Эффект срабатывает только на смену
+  // ключа сессии: фоновое обновление batch/seed/defHold значений формы не перетирает.
+  const sessionKey = open ? String(batch?.id ?? "new") : null;
+  const appliedKey = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    if (appliedKey.current === sessionKey) return;
+    appliedKey.current = sessionKey;
+    if (sessionKey == null) return;
     setError(null);
     setDirty(false);
     const values = initialValues(batch, seed, defHold);
@@ -93,8 +98,7 @@ export function BatchFormModal({
       if (extra.length > 0) setDirty(true);
     }
     form.reset(values);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, batch?.id]);
+  }, [sessionKey, batch, seed, defHold, form]);
 
   function addLine(p: PickedProduct, variantId: string | null, variantName: string | null) {
     if (v.lines.some((l) => l.productId === p.id && l.variantId === variantId)) return;

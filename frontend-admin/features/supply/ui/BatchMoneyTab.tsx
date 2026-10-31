@@ -8,7 +8,7 @@
 import { Button } from "@shop/ui/admin-button";
 import { useForm } from "@shop/ui/form";
 import { AlertTriangle, CloudDownload, Save } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { QueryState } from "@/components/ui/QueryState";
@@ -42,12 +42,15 @@ function MoneyBody({ data, updatedAt }: { data: BatchMoney; updatedAt: number })
   const [dirty, setDirty] = useState(false);
   const [expense, setExpense] = useState<{ edit: Expense | null } | null>(null);
 
-  // Свежий ответ сервера (первая загрузка, сохранение, правка расхода) сбрасывает форму.
+  // Свежий ответ сервера (сохранение, правка расхода, любое обновление запроса) сбрасывает форму; первый рендер
+  // уже взял значения из data. Срабатывает только на смену метки updatedAt, не на смену ссылки data.
+  const seenAt = useRef(updatedAt);
   useEffect(() => {
+    if (seenAt.current === updatedAt) return;
+    seenAt.current = updatedAt;
     form.reset(moneyFormValues(data));
     setDirty(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [updatedAt]);
+  }, [updatedAt, data, form]);
 
   const set = useCallback(
     <K extends keyof MoneyFormValues>(key: K, value: MoneyFormValues[K]) => {
