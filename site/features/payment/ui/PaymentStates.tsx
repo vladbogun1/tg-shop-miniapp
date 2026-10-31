@@ -6,7 +6,7 @@ import { codMinor } from "@shop/core/orders";
 import { shortOrderId } from "@shop/core/format";
 import { type OrderDetail } from "@shop/core/types";
 import { Button } from "@shop/ui/primitives";
-import { ORDER_PAY_ANCHOR } from "@/features/gift/view";
+import { ORDER_PAY_ANCHOR } from "@/features/gift/view/OrderGiftCase";
 import { useI18n } from "@/i18n/context";
 import { useFmt } from "@/lib/use-fmt";
 import { countdown, paymentMethodLabel } from "../model/helpers";

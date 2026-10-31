@@ -7,7 +7,7 @@ import { useCart, useCartCount } from "@/features/cart";
 import { useCompare, useCompareCount } from "@/features/compare";
 import { useHydrated } from "@/lib/hooks";
 import { displayName, initials, rememberedUser, useSession } from "@/features/auth";
-import { useSupportUnread } from "@/features/support/view";
+import { useSupportUnread } from "@/features/support/view/queries";
 
 export function CompareButton() {
   const { t } = useI18n();

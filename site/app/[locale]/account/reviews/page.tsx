@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AccountReviews } from "@/features/reviews/view";
+import { AccountReviews } from "@/features/reviews/view/AccountReviews";
 import { makeT } from "@/i18n";
 import { localeOf, type LocaleParams } from "@/lib/route";
 

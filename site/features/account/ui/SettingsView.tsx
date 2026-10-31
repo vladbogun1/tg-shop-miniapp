@@ -9,7 +9,7 @@ import { LogOut, Monitor, Smartphone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { WebSession } from "@shop/core/site";
-import { LangSwitch } from "@/features/layout/view";
+import { LangSwitch } from "@/features/layout/view/LangSwitch";
 import { Button } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import { api } from "@/lib/api";

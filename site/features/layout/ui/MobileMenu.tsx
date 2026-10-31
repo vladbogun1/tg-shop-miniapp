@@ -7,11 +7,11 @@ import { createPortal } from "react-dom";
 import { noFadeFlash } from "@shop/ui/motion";
 import { type MenuNode } from "@/features/catalog";
 import { useI18n } from "@/i18n/context";
-import { CompareOpenButton } from "@/features/compare/view";
+import { CompareOpenButton } from "@/features/compare/view/CompareToggle";
 import { useEscape, useHydrated, useScrollLock } from "@/lib/hooks";
 import { LangSwitch } from "./LangSwitch";
 import { Logo } from "./Logo";
-import { SupportGate } from "@/features/support/view";
+import { SupportGate } from "@/features/support/view/SupportGate";
 
 export function MobileMenu({
   open,

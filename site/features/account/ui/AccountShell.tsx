@@ -13,7 +13,7 @@ import { stripLocale } from "@/i18n";
 import { useI18n } from "@/i18n/context";
 import { displayName, rememberedUser, useLogout, useSession } from "@/features/auth";
 import { LifeBuoy } from "lucide-react";
-import { useSupportConfig, useSupportUnread } from "@/features/support/view";
+import { useSupportConfig, useSupportUnread } from "@/features/support/view/queries";
 import { useMyPreorders } from "@/features/preorder";
 
 export function AccountShell({ children }: { children: React.ReactNode }) {

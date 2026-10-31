@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Waitlist } from "@/features/preorder/view";
+import { Waitlist } from "@/features/preorder/view/Waitlist";
 import { makeT } from "@/i18n";
 import { localeOf, type LocaleParams } from "@/lib/route";
 

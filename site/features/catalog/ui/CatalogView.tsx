@@ -3,7 +3,7 @@ import { type Locale } from "@shop/core/i18n";
 import { ChevronLeft, ChevronRight, PackageSearch, Truck, X } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Breadcrumbs, type Crumb } from "@/features/layout/view";
+import { Breadcrumbs, type Crumb } from "@/features/layout/view/Breadcrumbs";
 import { localePath, makeT } from "@/i18n";
 import { type CardContext, toCardProducts } from "@/features/catalog";
 import { type Listing, type MenuNode } from "@/features/catalog";
@@ -13,7 +13,7 @@ import { CatalogNavProvider, CatalogSortSelect, FoundCount, PendingRegion, RESUL
 import { FilterSidebar, FiltersDrawer } from "./FiltersDrawer";
 import { PAGE_SIZE } from "@/lib/config";
 import { ProductGrid } from "./ProductCard";
-import { CompareOpenButton } from "@/features/compare/view";
+import { CompareOpenButton } from "@/features/compare/view/CompareToggle";
 
 export type { CatalogState };
 

@@ -23,7 +23,7 @@ import { localePath } from "@/i18n";
 import { useI18n } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
-import { formatRating } from "@/features/reviews/view";
+import { formatRating } from "@/features/reviews/view/Stars";
 import "@/components/mascot/mascot.css";
 import "./reviews-ribbon.css";
 

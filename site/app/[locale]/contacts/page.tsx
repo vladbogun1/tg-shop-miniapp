@@ -1,7 +1,7 @@
 import { AtSign, Clock, MapPin, MessageCircle, Send, User } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Breadcrumbs } from "@/features/layout/view";
+import { Breadcrumbs } from "@/features/layout/view/Breadcrumbs";
 import { localePath, makeT } from "@/i18n";
 import { BOT_URL, OWNER_TELEGRAM, SELLER } from "@/lib/config";
 import { localeOf, type LocaleParams } from "@/lib/route";

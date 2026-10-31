@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Info } from "lucide-react";
-import { Breadcrumbs } from "@/features/layout/view";
+import { Breadcrumbs } from "@/features/layout/view/Breadcrumbs";
 import { makeT } from "@/i18n";
 import { FALLBACK_LOCALE, type Locale } from "@shop/core/i18n";
 import { makeFmt, SHOP_TIME_ZONE } from "@/lib/format";

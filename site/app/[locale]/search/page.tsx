@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CatalogView } from "@/features/catalog/view";
+import { CatalogView } from "@/features/catalog/view/CatalogView";
 import { alternates, makeT } from "@/i18n";
 import { parseCatalogState, type SearchParams } from "@/features/catalog";
 import { cardContext, computeListing, menuTree } from "@/features/catalog";

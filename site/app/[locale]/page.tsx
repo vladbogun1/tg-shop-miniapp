@@ -1,12 +1,12 @@
 import { ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ProductGrid } from "@/features/catalog/view";
-import { BrandsMarquee } from "@/features/home/view";
-import { ReviewsRibbon } from "@/features/home/view";
-import { JsonLd } from "@/features/layout/view";
-import { CategoryTile } from "@/features/home/view";
-import { HeroBanner } from "@/features/home/view";
+import { ProductGrid } from "@/features/catalog/view/ProductCard";
+import { BrandsMarquee } from "@/features/home/view/BrandsMarquee";
+import { ReviewsRibbon } from "@/features/home/view/ReviewsRibbon";
+import { JsonLd } from "@/features/layout/view/Breadcrumbs";
+import { CategoryTile } from "@/features/home/view/CategoryTile";
+import { HeroBanner } from "@/features/home/view/HeroBanner";
 import { CoinPop } from "@/components/mascot/scenes";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { localePath, makeT, type MessageKey } from "@/i18n";

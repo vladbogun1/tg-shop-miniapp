@@ -16,7 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { customerCancelMode, paymentState } from "@shop/core/orders";
 import { shortOrderId } from "@shop/core/format";
 import { type OrderDetail } from "@shop/core/types";
-import { OrderChat } from "@/features/chat/view";
+import { OrderChat } from "@/features/chat/view/OrderChat";
 import { isPaymentTimeout, OrderPayment } from "@/features/payment";
 import { OrderReceipts } from "./Receipts";
 import { Button, StatusChip } from "@shop/ui/primitives";
@@ -30,8 +30,8 @@ import { StatusTimeline } from "./StatusTimeline";
 import { Cancellation } from "./Cancellation";
 import { OrderItemsCard } from "./OrderItemsCard";
 import { OrderTiles } from "./OrderTiles";
-import { OrderReviewCta } from "@/features/reviews/view";
-import { useOrderGiftCase } from "@/features/gift/view";
+import { OrderReviewCta } from "@/features/reviews/view/OrderReviewCta";
+import { useOrderGiftCase } from "@/features/gift/view/OrderGiftCase";
 
 export function OrderDetailView({ id }: { id: string }) {
   const { t, href, locale } = useI18n();

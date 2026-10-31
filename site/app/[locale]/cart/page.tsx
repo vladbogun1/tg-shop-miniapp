@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CartPageBody } from "@/features/cart/view";
+import { CartPageBody } from "@/features/cart/view/CartPageBody";
 import { alternates, makeT } from "@/i18n";
 import { localeOf, type LocaleParams } from "@/lib/route";
 

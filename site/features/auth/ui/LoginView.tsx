@@ -19,7 +19,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { WebLoginStart, WebLoginStatus } from "@shop/core/site";
-import { LogoFull } from "@/features/layout/view";
+import { LogoFull } from "@/features/layout/view/Logo";
 import { Button } from "@shop/ui/primitives";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { useI18n } from "@/i18n/context";

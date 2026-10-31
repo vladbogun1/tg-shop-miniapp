@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { buttonClass } from "@shop/ui/button-styles";
 import { useI18n } from "@/i18n/context";
-import { CartGiftProgress } from "@/features/gift/view";
+import { CartGiftProgress } from "@/features/gift/view/CartGiftProgress";
 import { useCart, useCartCount, useCartSubtotal } from "@/features/cart";
 import { useCartValidation } from "@/features/cart";
 import { useHydrated } from "@/lib/hooks";

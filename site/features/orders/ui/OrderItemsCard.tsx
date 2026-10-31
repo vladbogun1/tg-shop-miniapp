@@ -2,7 +2,7 @@
 
 import { payableMinor } from "@shop/core/orders";
 import { type OrderDetail } from "@shop/core/types";
-import { CasePrizeNote } from "@/features/gift/view";
+import { CasePrizeNote } from "@/features/gift/view/OrderGiftCase";
 import { useI18n } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";

@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useThread } from "@shop/customer/chat/use-thread";
 import { type Message, type SendMessageRequest } from "@shop/core/types";
 import { noFadeFlash } from "@shop/ui/motion";
-import { MessageBubble } from "@/features/chat/view";
+import { MessageBubble } from "@/features/chat/view/MessageBubble";
 import { Button } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import { useEscape } from "@/lib/hooks";

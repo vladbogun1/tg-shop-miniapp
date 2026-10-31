@@ -15,10 +15,10 @@ import { stockOf } from "@shop/customer/catalog/model/stock";
 import { useCart } from "@/features/cart";
 import { discountPercent } from "@/lib/format";
 import { Image } from "@/lib/image";
-import { PreorderBadge } from "@/features/preorder/view";
+import { PreorderBadge } from "@/features/preorder/view/PreorderPanel";
 import { cardEtaLine, isLive, useMyPreorders } from "@/features/preorder";
-import { RatingMini } from "@/features/reviews/view";
-import { CompareToggle } from "@/features/compare/view";
+import { RatingMini } from "@/features/reviews/view/RatingLink";
+import { CompareToggle } from "@/features/compare/view/CompareToggle";
 import { useFmt } from "@/lib/use-fmt";
 
 export function ProductCard({ product, priority = false }: { product: CardProduct; priority?: boolean }) {
