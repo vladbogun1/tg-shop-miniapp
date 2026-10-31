@@ -64,7 +64,7 @@ export function Chips({
   missing?: boolean;
 }) {
   const [all, setAll] = useState(false);
-  const opts = [...attr.options].sort((a, b) => a.sortOrder - b.sortOrder);
+  const opts = [...attr.options].sort((a, b) => a.sort - b.sort);
   const LIMIT = 14;
   const shown = all || opts.length <= LIMIT ? opts : opts.filter((o, i) => i < LIMIT || selected.includes(o.value));
   return (
@@ -123,7 +123,7 @@ export function OptionPicker({
   const opts = useMemo(() => {
     const nq = q.toLowerCase().trim();
     return [...attr.options]
-      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .sort((a, b) => a.sort - b.sort)
       .filter((o) => !nq || o.labelRu.toLowerCase().includes(nq) || o.value.includes(nq) || o.aliases.some((x) => x.toLowerCase().includes(nq)));
   }, [attr.options, q]);
   const current = attr.options.find((o) => o.value === value);

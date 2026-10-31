@@ -39,7 +39,7 @@ export function CategorySpecsTab({
     const list = attrsQ.data ?? [];
     // Inherited first (global, then parent), then own — each by sort.
     const rank = (a: AdminSpecAttribute) => (a.categoryId === null ? 0 : a.categoryId === category?.id ? 2 : 1);
-    return [...list].sort((a, b) => rank(a) - rank(b) || a.sortOrder - b.sortOrder);
+    return [...list].sort((a, b) => rank(a) - rank(b) || a.sort - b.sort);
   }, [attrsQ.data, category]);
   const isOwn = (a: AdminSpecAttribute) => !a.inherited && a.categoryId === category?.id;
   const own = attrs.filter(isOwn);

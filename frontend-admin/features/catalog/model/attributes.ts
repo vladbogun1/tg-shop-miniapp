@@ -14,7 +14,7 @@ export function attributesForCategory(
   path.forEach((id, i) => rank.set(id, i + 1));
   return attrs
     .filter((a) => rank.has(a.categoryId ?? null))
-    .sort((a, b) => rank.get(a.categoryId ?? null)! - rank.get(b.categoryId ?? null)! || a.sortOrder - b.sortOrder);
+    .sort((a, b) => rank.get(a.categoryId ?? null)! - rank.get(b.categoryId ?? null)! || a.sort - b.sort);
 }
 
 /** Attributes grouped in group order; unknown groups at the end under their key. */
@@ -22,7 +22,7 @@ export function groupAttributes<T extends { group: string }>(
   attrs: T[],
   groups: AdminSpecGroup[]
 ): { key: string; label: string; items: T[] }[] {
-  const order = [...groups].sort((a, b) => a.sortOrder - b.sortOrder);
+  const order = [...groups].sort((a, b) => a.sort - b.sort);
   const out: { key: string; label: string; items: T[] }[] = [];
   for (const g of order) {
     const items = attrs.filter((a) => a.group === g.key);

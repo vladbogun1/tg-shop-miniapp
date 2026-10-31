@@ -227,10 +227,10 @@ export function useSwapAttributes() {
   return useCatalogMutation({
     mutationFn: (v: { a: AdminSpecAttribute; other: AdminSpecAttribute; dir: -1 | 1 }) => {
       // Swap sort values (distinct ones if they were equal).
-      const sa = v.a.sortOrder === v.other.sortOrder ? v.other.sortOrder + v.dir : v.other.sortOrder;
+      const sa = v.a.sort === v.other.sort ? v.other.sort + v.dir : v.other.sort;
       return Promise.all([
-        specApi.updateAttribute(v.a.id, { sortOrder: sa }),
-        specApi.updateAttribute(v.other.id, { sortOrder: v.a.sortOrder }),
+        specApi.updateAttribute(v.a.id, { sort: sa }),
+        specApi.updateAttribute(v.other.id, { sort: v.a.sort }),
       ]);
     },
     errorFallback: "Не удалось переставить",

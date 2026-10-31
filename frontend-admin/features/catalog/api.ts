@@ -2,8 +2,7 @@
  * Справочник каталога в админке: категории, бренды, характеристики и их группы, схема каталога.
  * Единственное место путей `/api/admin/{categories,brands,spec-attributes,spec-groups,catalog/schema}`.
  * Ответы — типы из OpenAPI (`Schemas[...]`), приведённые к виду экрана (`model/types.ts`).
- * Порядок характеристик/групп/опций на проводе называется `sort`, на экране `sortOrder`: преобразование
- * только здесь (`fromAttributeDto`, `fromGroupDto`, `toAttributeBody`, `toGroupBody`).
+ * Порядок характеристик/групп/опций — `sort` и на проводе, и на экране (у категорий и брендов — `sortOrder`).
  */
 import type { Schemas } from "@shop/core/api/schemas";
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut, uploadFile } from "@/lib/api";
@@ -78,7 +77,7 @@ export function fromAttributeDto(d: AttributeDto): AdminSpecAttribute {
     comparable: d.comparable,
     required: d.required,
     highlight: d.highlight,
-    sortOrder: d.sort,
+    sort: d.sort,
     buckets: d.buckets
       ? d.buckets.map(({ min, max, labelRu, labelUk, labelEn }) => ({ min, max, labelRu, labelUk, labelEn }))
       : null,
@@ -89,7 +88,7 @@ export function fromAttributeDto(d: AttributeDto): AdminSpecAttribute {
       labelUk: o.labelUk,
       labelEn: o.labelEn,
       aliases: o.aliases,
-      sortOrder: o.sort,
+      sort: o.sort,
       usedCount: o.usedCount,
     })),
     inherited: d.inherited,
@@ -98,17 +97,16 @@ export function fromAttributeDto(d: AttributeDto): AdminSpecAttribute {
 }
 
 export function fromGroupDto(d: GroupDto, i = 0): AdminSpecGroup {
-  return { key: d.key, labelRu: d.labelRu, labelUk: d.labelUk, labelEn: d.labelEn, sortOrder: d.sort ?? i * 10 };
+  return { key: d.key, labelRu: d.labelRu, labelUk: d.labelUk, labelEn: d.labelEn, sort: d.sort ?? i * 10 };
 }
 
 // ---- вид экрана → тело запроса ----------------------------------------------------------
 
-/** Тело характеристики: бэкенд зовёт порядок `sort` (и у характеристики, и у опций). */
+/** Тело характеристики: без служебных полей опций (id, usedCount). */
 export function toAttributeBody(a: Partial<SpecAttributeWriteRequest>) {
-  const { sortOrder, options, ...rest } = a;
+  const { options, ...rest } = a;
   return {
     ...rest,
-    ...(sortOrder !== undefined ? { sort: sortOrder } : {}),
     ...(options !== undefined
       ? {
           options: options.map((o) => ({
@@ -117,15 +115,15 @@ export function toAttributeBody(a: Partial<SpecAttributeWriteRequest>) {
             labelUk: o.labelUk,
             labelEn: o.labelEn,
             aliases: o.aliases,
-            sort: o.sortOrder,
+            sort: o.sort,
           })),
         }
       : {}),
   };
 }
 
-export function toGroupBody({ sortOrder, ...g }: AdminSpecGroup) {
-  return { ...g, sort: sortOrder };
+export function toGroupBody(g: AdminSpecGroup) {
+  return g;
 }
 
 // ---- категории ---------------------------------------------------------------------------

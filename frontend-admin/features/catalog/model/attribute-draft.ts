@@ -134,7 +134,7 @@ export function toDraft(a: AdminSpecAttribute | null, defaultGroup: string): Dra
     hint: src.hint ?? "",
     options: src.options
       .slice()
-      .sort((x, y) => x.sortOrder - y.sortOrder)
+      .sort((x, y) => x.sort - y.sort)
       .map(toOptRow),
     buckets: (src.buckets ?? []).map(toBucketRow),
   };
@@ -202,7 +202,7 @@ function buildOptions(d: Draft): SpecAttributeWriteRequest["options"] {
     labelUk: o.labelUk.trim() || o.labelRu.trim(),
     labelEn: o.labelEn.trim() || o.labelRu.trim(),
     aliases: o.aliases,
-    sortOrder: (i + 1) * 10,
+    sort: (i + 1) * 10,
   }));
 }
 
@@ -229,7 +229,7 @@ export function buildAttributeBody(
     comparable: d.comparable,
     required: d.required,
     highlight: d.highlight,
-    sortOrder: attribute?.sortOrder ?? 0,
+    sort: attribute?.sort ?? 0,
     hint: d.hint.trim() || null,
     buckets: buildBuckets(d),
     options: buildOptions(d),

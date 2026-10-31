@@ -105,7 +105,7 @@ export function AttributeDialog({
   onClose: () => void;
 }) {
   const saveAttribute = useSaveAttribute();
-  const sortedGroups = useMemo(() => [...groups].sort((a, b) => a.sortOrder - b.sortOrder), [groups]);
+  const sortedGroups = useMemo(() => [...groups].sort((a, b) => a.sort - b.sort), [groups]);
   const defaultGroup = defaultGroupKey(sortedGroups);
   // The draft is rebuilt when the dialog opens or the attribute changes — not when the groups list loads.
   const defaultGroupRef = useRef(defaultGroup);

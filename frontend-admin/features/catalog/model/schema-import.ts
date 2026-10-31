@@ -81,7 +81,7 @@ function normOption(op: unknown, i: number): AdminSpecAttribute["options"][numbe
       value: str(x.value),
       ...normLabels(x),
       aliases: aliasList(x.aliases),
-      sortOrder: num(pick(x, "sortOrder", "sort"), i * 10),
+      sort: num(pick(x, "sort", "sortOrder"), i * 10),
       usedCount: typeof x.usedCount === "number" ? x.usedCount : undefined,
   };
 }
@@ -114,7 +114,7 @@ function normAttribute(raw: unknown): AdminSpecAttribute {
     comparable: o.comparable === true,
     required: pick(o, "required", "requiredForReady", "required_for_ready") === true,
     highlight: o.highlight === true,
-    sortOrder: num(pick(o, "sortOrder", "sort")),
+    sort: num(pick(o, "sort", "sortOrder")),
     buckets: normBuckets(buckets),
     hint: strOrNull(pick(o, "hint", "hintRu", "hint_ru")),
     options: (Array.isArray(o.options) ? o.options : []).map(normOption),
@@ -125,7 +125,7 @@ function normAttribute(raw: unknown): AdminSpecAttribute {
 
 function normGroup(raw: unknown, i = 0): AdminSpecGroup {
   const o = (raw ?? {}) as Loose;
-  return { key: str(o.key), ...normLabels(o), sortOrder: num(pick(o, "sortOrder", "sort"), i * 10) };
+  return { key: str(o.key), ...normLabels(o), sort: num(pick(o, "sort", "sortOrder"), i * 10) };
 }
 
 

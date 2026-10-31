@@ -15,14 +15,14 @@ export const attr = (key: string, extra: Partial<AdminSpecAttribute> = {}): Admi
     type: "text",
     group: "main",
     required: false,
-    sortOrder: 0,
+    sort: 0,
     options: [],
     buckets: null,
     ...extra,
   }) as AdminSpecAttribute;
 
-export const group = (key: string, sortOrder: number, labelRu = key): AdminSpecGroup =>
-  ({ key, labelRu, labelUk: labelRu, labelEn: labelRu, sortOrder }) as AdminSpecGroup;
+export const group = (key: string, sort: number, labelRu = key): AdminSpecGroup =>
+  ({ key, labelRu, labelUk: labelRu, labelEn: labelRu, sort }) as AdminSpecGroup;
 
 export const brand = (id: string, name: string, extra: Partial<AdminBrand> = {}): AdminBrand =>
   ({ id, name, slug: id, aliases: [], productCount: 0, logoMode: "MONO", ...extra }) as AdminBrand;

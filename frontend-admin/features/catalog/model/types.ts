@@ -1,7 +1,6 @@
 /**
  * Вид справочника каталога в админке: ответы API (`Schemas[...]`) плюс те отличия, которые удобны экрану.
- * Порядок характеристик, групп и опций в OpenAPI называется `sort`, а экран зовёт его `sortOrder`
- * (преобразование только в api.ts — `fromAttributeDto` / `toAttributeBody`).
+ * Порядок характеристик, групп и опций называется `sort` — как на проводе (OpenAPI). У категорий и брендов — `sortOrder`.
  */
 import type { SpecType } from "@shop/core/catalog";
 import type { Schemas } from "@shop/core/api/schemas";
@@ -15,7 +14,7 @@ export type AdminBrand = Omit<Schemas["AdminBrandDto"], "logoMode"> & { logoMode
 
 export type AdminSpecOption = Omit<Schemas["AdminOptionDto"], "sort" | "usedCount"> & {
   id?: string;
-  sortOrder: number;
+  sort: number;
   /** Товары, у которых в характеристиках эта опция (когда бэкенд сообщает). */
   usedCount?: number;
 };
@@ -32,14 +31,14 @@ export type AdminSpecAttribute = Omit<
   unitUk?: string | null;
   unitEn?: string | null;
   hint?: string | null;
-  sortOrder: number;
+  sort: number;
   buckets: AdminSpecBucket[] | null;
   options: AdminSpecOption[];
   /** Товары, у которых есть такой ключ. */
   usedCount?: number;
 };
 
-export type AdminSpecGroup = Omit<Schemas["AdminSpecGroupDto"], "sort"> & { sortOrder: number };
+export type AdminSpecGroup = Omit<Schemas["AdminSpecGroupDto"], "sort"> & { sort: number };
 
 /** Вся схема на всех языках (редактор, мастер, подсказка ИИ). */
 export interface AdminCatalogSchema {

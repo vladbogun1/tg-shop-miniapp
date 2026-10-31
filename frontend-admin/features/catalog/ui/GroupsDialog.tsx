@@ -46,7 +46,7 @@ export function GroupsDialog({
   useEffect(() => {
     if (!open) return;
     const r = [...groups]
-      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .sort((a, b) => a.sort - b.sort)
       .map((g) => ({ ...g, uid: `g${++seq}`, isNew: false, keyTouched: true }));
     setRows(r);
     setInitial(JSON.stringify(r));
@@ -81,7 +81,7 @@ export function GroupsDialog({
         labelRu: r.labelRu.trim(),
         labelUk: r.labelUk.trim() || r.labelRu.trim(),
         labelEn: r.labelEn.trim() || r.labelRu.trim(),
-        sortOrder: (i + 1) * 10,
+        sort: (i + 1) * 10,
       })),
       { onSuccess: onClose }
     );
@@ -172,7 +172,7 @@ export function GroupsDialog({
       <button
         type="button"
         onClick={() =>
-          setRows((p) => [...p, { key: "", labelRu: "", labelUk: "", labelEn: "", sortOrder: 0, uid: `g${++seq}`, isNew: true, keyTouched: false }])
+          setRows((p) => [...p, { key: "", labelRu: "", labelUk: "", labelEn: "", sort: 0, uid: `g${++seq}`, isNew: true, keyTouched: false }])
         }
         className="focusable font-display mt-3 flex items-center gap-1 rounded-[var(--r-sm)] text-[11.5px] font-bold uppercase tracking-[0.06em] text-[var(--accent-hi)] hover:underline"
       >

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { attr } from "./fixtures";
 import { isNumberBad, isRangeBad, isWideField, rawFromSpecs } from "./spec-input";
 
-const opt = (value: string) => ({ value, labelRu: value, labelUk: value, labelEn: value, aliases: [], sortOrder: 0 });
+const opt = (value: string) => ({ value, labelRu: value, labelUk: value, labelEn: value, aliases: [], sort: 0 });
 const many = (n: number) => Array.from({ length: n }, (_, i) => opt(`o${i}`));
 
 describe("rawFromSpecs", () => {

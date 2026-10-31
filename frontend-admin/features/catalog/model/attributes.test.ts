@@ -4,11 +4,11 @@ import { attr, cat, group } from "./fixtures";
 
 const cats = [cat("mice"), cat("wired", "mice"), cat("pads")];
 const attrs = [
-  attr("weight", { categoryId: "mice", sortOrder: 20 }),
-  attr("brand_note", { categoryId: null, sortOrder: 5 }),
-  attr("cable", { categoryId: "wired", sortOrder: 1 }),
-  attr("size", { categoryId: "pads", sortOrder: 1 }),
-  attr("dpi", { categoryId: "mice", sortOrder: 10 }),
+  attr("weight", { categoryId: "mice", sort: 20 }),
+  attr("brand_note", { categoryId: null, sort: 5 }),
+  attr("cable", { categoryId: "wired", sort: 1 }),
+  attr("size", { categoryId: "pads", sort: 1 }),
+  attr("dpi", { categoryId: "mice", sort: 10 }),
 ];
 
 describe("attributesForCategory", () => {
@@ -61,7 +61,7 @@ describe("missingRequiredKeys", () => {
 });
 
 describe("formatAdminSpec", () => {
-  const opts = [{ value: "paw", labelRu: "PAW3950", labelUk: "", labelEn: "", aliases: [], sortOrder: 0 }];
+  const opts = [{ value: "paw", labelRu: "PAW3950", labelUk: "", labelEn: "", aliases: [], sort: 0 }];
 
   it("число с единицей и диапазон", () => {
     expect(formatAdminSpec(attr("w", { type: "number", unitRu: "г" }), 51)).toBe("51 г");
