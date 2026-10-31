@@ -14,7 +14,6 @@ const legacy = {
     "components/catalog/CatalogView.tsx",
     "components/catalog/ProductCard.tsx",
     "components/chat/MessageBubble.tsx",
-    "components/checkout/CheckoutView.tsx",
     "components/compare/CompareModal.tsx",
     "components/layout/SearchBox.tsx",
     "components/order/Payment.tsx",
@@ -31,7 +30,6 @@ const legacy = {
   "max-lines": [
     "components/account/OrderDetailView.tsx",
     "components/catalog/CatalogFilters.tsx",
-    "components/checkout/CheckoutView.tsx",
     "components/layout/Header.tsx",
     "components/order/Payment.tsx",
     "components/support/SupportChat.tsx",

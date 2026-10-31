@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CheckoutView } from "@/components/checkout/CheckoutView";
+import { CheckoutView } from "@/features/checkout";
 import { alternates, makeT } from "@/i18n";
 import { localeOf, type LocaleParams } from "@/lib/route";
 
