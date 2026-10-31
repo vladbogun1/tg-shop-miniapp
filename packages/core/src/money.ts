@@ -39,3 +39,8 @@ export function toMajor(minor: number | null | undefined): number {
 export function formatNumber(value: number, locale = "ru-RU", options?: Intl.NumberFormatOptions): string {
   return new Intl.NumberFormat(locale, options).format(value);
 }
+
+/** Средняя оценка с одним знаком после точки («4.5»); единственное место с toFixed для оценок. */
+export function formatRating(avg: number): string {
+  return avg.toFixed(1);
+}

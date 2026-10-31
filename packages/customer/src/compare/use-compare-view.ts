@@ -6,6 +6,7 @@
  * приложение (Mini App берёт запрос `["products"]`, сайт — лёгкие карточки на языке экрана).
  */
 import { useEffect, useMemo, useState } from "react";
+import { formatRating } from "@shop/core/money";
 import { compareGroups, compareSections, onlyDifferences, type CompareBasics, type CompareGroup, type CompareSection, type ComparableProduct } from "@shop/core/compare";
 import type { CatalogSchema } from "@shop/core/catalog";
 import { localStore } from "@shop/core/storage";
@@ -95,7 +96,7 @@ export function useCompareView<P extends CompareViewProduct>(o: CompareViewOptio
         {
           key: "rating",
           label: t("compare.row.rating"),
-          value: (p) => ((p.ratingCount ?? 0) > 0 && p.ratingAvg ? `★ ${p.ratingAvg.toFixed(1)} · ${p.ratingCount}` : null),
+          value: (p) => ((p.ratingCount ?? 0) > 0 && p.ratingAvg ? `★ ${formatRating(p.ratingAvg)} · ${p.ratingCount}` : null),
           rank: (p) => ((p.ratingCount ?? 0) > 0 ? (p.ratingAvg ?? null) : null),
           higherIsBetter: true,
         },

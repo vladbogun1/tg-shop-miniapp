@@ -26,6 +26,7 @@ import {
   type GiftCaseHaptics,
 } from "@shop/ui/gift-case";
 import type { GiftApi } from "./api";
+import { giftKeys } from "./keys";
 import { caseTierNames, casePromoTexts, caseRarityNames, caseSizeTexts, giftCaseTexts, giftOrderPanelTexts, type CaseT } from "./texts";
 
 export type CaseRefusal = "GIFT_CASE_UNPAID" | "GIFT_CASE_ALREADY_OPENED";
@@ -85,7 +86,7 @@ export function useOrderGiftCase(order: OrderDetail, p: OrderGiftCasePorts): { c
   const texts = useMemo(() => giftCaseTexts(t, shortId(order.id), parts), [t, shortId, order.id, parts]);
   const panelTexts = useMemo(() => giftOrderPanelTexts(t, parts), [t, parts]);
 
-  const refreshOrders = useCallback(() => void qc.invalidateQueries({ queryKey: ["me", "orders"] }), [qc]);
+  const refreshOrders = useCallback(() => void qc.invalidateQueries({ queryKey: giftKeys.orders() }), [qc]);
   const { api } = p;
   const openCase = useCallback(() => api.openCase(order.id), [api, order.id]);
   const swapCase = useCallback(async () => {
@@ -217,10 +218,11 @@ function SealedCase({ order, p, tierLabel, openable, onOpen }: SealedCaseProps) 
 function useAutoOpen(orderId: string, openable: boolean, wantsAutoOpen: (orderId: string) => boolean, setOpen: (open: boolean) => void) {
   // Straight from the checkout (or back from the bank): show the case screen once by itself — but only when it can
   // be opened. An unpaid order keeps the wish until it gets paid on this page.
+  const wants = useRef(wantsAutoOpen);
+  wants.current = wantsAutoOpen;
   const autoWanted = useRef(false);
   useEffect(() => {
-    autoWanted.current = autoWanted.current || wantsAutoOpen(orderId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per order
+    autoWanted.current = autoWanted.current || wants.current(orderId);
   }, [orderId]);
   // Paid while the page is open (the payment form, the check after coming back): open it then.
   const wasOpenable = useRef<boolean | null>(null);
@@ -237,5 +239,5 @@ function useAutoOpen(orderId: string, openable: boolean, wantsAutoOpen: (orderId
       before === false ? 900 : 0,
     );
     return () => window.clearTimeout(id);
-  }, [openable, orderId]);
+  }, [openable, orderId, setOpen]);
 }
