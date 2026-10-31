@@ -318,6 +318,7 @@ Next 15 + React 19 + Tailwind 4 + framer-motion + react-query + zustand; `output
 - 5c: `order` (страница заказа, `StatusTimeline`, доплата, чек) + `chat` + `support`.
 - 5d: `review` + `compare` + `gift` (`OrderGiftCase` 350/326, `CartGiftProgress`, `ProductGiftBanner`; `shared/src/ui/GiftCaseOpening.tsx` 793 разбирается) + `preorder`.
 - 5e: i18n: общий словарь (338 общих ключей, 291 с одинаковым текстом → одна копия), `t(MessageKey)` в Mini App, `check-i18n.mjs` в CI, `analytics.ts` (214/202 → одна реализация).
+  *Сделано (шаг 5e):* общих имён 338, из них одинаковый текст на всех языках у 258 → `packages/customer/src/i18n/shared-{ru,uk,en}.ts` (приложения подмешивают спредом); 80 ключей с разным текстом остались у приложений ([I18N-APP-DIFFERENCES.md](I18N-APP-DIFFERENCES.md)); `t(key: MessageKey)` в Mini App, в пакетах — `LooseT` (`@shop/core/i18n`), литералы ключей в пакетах сверяет `scripts/check-i18n.mjs` (входит в `arch:front`); аналитика — `@shop/customer/analytics` (движок + политика приложения).
 
 Ожидание (не обещание): из ~4,8 тыс. + 4,8 тыс. дублированных строк в `@shop/customer` останется около половины — вёрстка, которая действительно разная, остаётся в приложениях.
 
