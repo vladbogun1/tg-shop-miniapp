@@ -11,7 +11,7 @@ import { UserProfileDrawer, type UserCardDto } from "@/features/customer";
 import { Drawer, useBackToClose } from "@shop/ui/overlay";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ApiError } from "@/lib/api";
-import { ordersApi } from "@/lib/orders-api";
+import { orderApi } from "@/features/order";
 import { toast } from "@shop/ui/toast";
 import { customerOf } from "../model/thread";
 import type { SupportThread } from "../model/types";
@@ -41,7 +41,7 @@ export function SupportThreadDrawer({
     if (!thread?.userId) return;
     const tgId = thread.userId;
     try {
-      const found = await ordersApi.findUser(tgId);
+      const found = await orderApi.findUser(tgId);
       setProfile(
         found ?? {
           telegramUserId: tgId,

@@ -36,7 +36,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { OrderDrawer } from "@/components/orders/OrderDrawer";
+import { OrderDrawer } from "@/features/order";
 import { InboxRow } from "@/components/inbox/InboxRow";
 import { Button } from "@shop/ui/admin-button";
 import { EmptyState } from "@/components/ui/EmptyState";

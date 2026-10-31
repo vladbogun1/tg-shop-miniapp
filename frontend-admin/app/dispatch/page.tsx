@@ -13,8 +13,8 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MapPin, Package, Phone, Send, Truck, Hash, RefreshCw, AlertTriangle, User } from "lucide-react";
 import { adminApi, ApiError } from "@/lib/api";
-import { changeStatusConfirmingUnpaid, ordersApi, type AdminDispatchOrder } from "@/lib/orders-api";
-import { formatDateTime, isNovaPoshtaTtn } from "@/lib/orders";
+import { changeStatusConfirmingUnpaid, isNovaPoshtaTtn, orderApi, OrderDrawer, type AdminDispatchOrder } from "@/features/order";
+import { formatDateTime } from "@shop/core/time";
 import { useConfirm } from "@shop/ui/confirm";
 import { refreshInbox } from "@/lib/inbox";
 import { money } from "@/lib/money";
@@ -24,11 +24,10 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
-import { PaymentBadge } from "@/components/orders/PaymentBadge";
+import { PaymentBadge } from "@/features/payment";
 import { QueryState } from "@/components/ui/QueryState";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { CopyButton } from "@/components/orders/CopyButton";
-import { OrderDrawer } from "@/components/orders/OrderDrawer";
+import { CopyButton } from "@/components/ui/CopyButton";
 import { Lightbox } from "@shop/ui/overlay";
 import { Image, resolveImageFull } from "@/lib/image";
 import { nowMs } from "@shop/core/time";
@@ -41,7 +40,7 @@ export default function DispatchPage() {
 
   const q = useQuery({
     queryKey: ["dispatch"],
-    queryFn: () => ordersApi.dispatch(true),
+    queryFn: () => orderApi.dispatch(true),
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
   });

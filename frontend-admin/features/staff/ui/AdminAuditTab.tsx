@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
 import { QueryState } from "@/components/ui/QueryState";
 import { Select } from "@/components/ui/Select";
-import { formatDateTime } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
 import { useDebounced } from "@/lib/use-debounced";
 import type { AuditFilter } from "../api";
 import { auditActionLabel, auditEntityLabel, readableAuditDetails } from "../model/audit-labels";

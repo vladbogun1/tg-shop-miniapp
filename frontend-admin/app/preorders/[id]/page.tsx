@@ -10,7 +10,7 @@ import { ArrowLeft, PackageCheck, Pencil, Plane, Landmark, Ban } from "lucide-re
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ApiError } from "@/lib/api";
-import { formatDateTime } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
 import { money } from "@/lib/money";
 import { Image } from "@/lib/image";
 import {

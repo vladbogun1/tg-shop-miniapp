@@ -9,8 +9,7 @@ import { markStaffBrowser } from "./staff-mark";
 import type { Schemas } from "@shop/core/api/schemas";
 import { ApiError } from "@shop/core/errors";
 import { createHttpClient, normalizeBaseUrl } from "@shop/core/http";
-import { type AdminInvoice, type MonobankStatus, type DeliveryMethod, type Message, type OrderCard, type OrderDetail, type OrderStatus, type Product, type ProductImage, type ProductTag, type ProductVariant, type SendMessageRequest, type SenderType, type TimeRange } from "@shop/core/types";
-import { type Receipt } from "@shop/core/receipts";
+import { type AdminInvoice, type DeliveryMethod, type Message, type OrderCard, type OrderDetail, type OrderStatus, type Product, type ProductImage, type ProductTag, type ProductVariant, type SendMessageRequest, type SenderType, type TimeRange } from "@shop/core/types";
 import { type CardStatus, type ProductCondition, type ProductSpecs, type SpecType, type SpecValue } from "@shop/core/catalog";
 import { localStore } from "@shop/core/storage";
 import { nowMs } from "@shop/core/time";
@@ -18,10 +17,8 @@ import { nowMs } from "@shop/core/time";
 export { ApiError };
 export type {
   AdminInvoice,
-  Receipt,
   DeliveryMethod,
   Message,
-  MonobankStatus,
   OrderStatus,
   Product,
   ProductImage,
@@ -61,12 +58,6 @@ export type MessageDto = Message;
 const API_BASE = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, "http://localhost:8080");
 
 export const apiOrigin = API_BASE;
-
-/** A signed, server-relative receipt link (`/api/receipts/file?…`) → absolute, on the API origin. */
-export function receiptHref(path: string | null | undefined): string | null {
-  if (!path) return null;
-  return /^https?:\/\//.test(path) ? path : `${API_BASE}${path.startsWith("/") ? "" : "/"}${path}`;
-}
 
 // ---- token store (localStorage) --------------------------------------------
 const TOKEN_KEY = "tgshop_admin_jwt";
@@ -298,36 +289,9 @@ export const adminApi = {
     id: string,
     body: { status: OrderStatus; trackingNumber?: string; rejectReason?: string; restock?: boolean }
   ) => apiPatch<OrderDetailDto>(`/api/admin/orders/${id}/status`, body),
-  /**
-   * PATCH /api/admin/orders/{id}/paid { receivedMinor } -> updated OrderDetailDto. 0 clears payment.
-   * A manual correction (cash on delivery, a mistake); online payments are credited by monobank.
-   */
-  setPaid: (id: string, receivedMinor: number) =>
-    apiPatch<OrderDetailDto>(`/api/admin/orders/${id}/paid`, { receivedMinor }),
-
   // ---- online payment (monobank) ----
   /** GET /api/admin/orders/{id}/payments -> the order's invoices, newest first. */
   getOrderPayments: (id: string) => apiGet<AdminInvoice[]>(`/api/admin/orders/${id}/payments`),
-  /** POST /api/admin/orders/{id}/payments/refresh -> asks monobank for the current state. */
-  refreshOrderPayments: (id: string) =>
-    apiPost<AdminInvoice[]>(`/api/admin/orders/${id}/payments/refresh`),
-  /**
-   * POST /api/admin/orders/{id}/payments/{invoiceId}/refund -> money back to the card.
-   * `amountMinor` omitted = everything left on that invoice. Settles asynchronously
-   * (`refundPending` until monobank confirms).
-   */
-  refundOrderPayment: (id: string, invoiceId: string, amountMinor?: number) =>
-    apiPost<AdminInvoice[]>(
-      `/api/admin/orders/${id}/payments/${encodeURIComponent(invoiceId)}/refund`,
-      amountMinor === undefined ? {} : { amountMinor }
-    ),
-  /**
-   * GET /api/admin/orders/{id}/receipts -> fiscal checks (sale / return) + the bank receipt of every
-   * paid invoice; `downloadUrl` is a signed, server-relative link valid ~10 min (see {@link receiptHref}).
-   */
-  getOrderReceipts: (id: string) => apiGet<Receipt[]>(`/api/admin/orders/${id}/receipts`),
-  /** GET /api/admin/payments/monobank/status -> token configured, merchant, last webhook. */
-  getMonobankStatus: () => apiGet<MonobankStatus>("/api/admin/payments/monobank/status"),
   /** Add a product line to the order (paid, or gift when gift=true). */
   addOrderItem: (
     id: string,
@@ -375,6 +339,4 @@ export const adminApi = {
 
   // ---- payment settings ----
   paymentOptions: () => apiGet<PaymentOption[]>("/api/admin/payment-options"),
-  putPaymentOptions: (list: PaymentOption[]) =>
-    apiPut<PaymentOption[]>("/api/admin/payment-options", list),
 };

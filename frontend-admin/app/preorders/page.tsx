@@ -11,7 +11,7 @@ import { Factory, Plus, Truck, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { productApi } from "@/features/product";
-import { formatDateTime } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
 import { money } from "@/lib/money";
 import { Image } from "@/lib/image";
 import {

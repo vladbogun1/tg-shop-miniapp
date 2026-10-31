@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import type { SortDir } from "@/lib/api";
 import { staggerContainer, riseItem } from "@/lib/motion";
 import { money } from "@/lib/money";
-import { formatDateTime, timeAgo } from "@/lib/orders";
+import { formatDateTime, timeAgo } from "@shop/core/time";
 import type { UserCardDto, UserSortBy } from "../../model/types";
 import { displayName, initials } from "../../model/user";
 import { LangCell, SortableTh } from "./parts";

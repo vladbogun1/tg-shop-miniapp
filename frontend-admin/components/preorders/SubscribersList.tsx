@@ -4,7 +4,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BellOff, X } from "lucide-react";
 import { ApiError } from "@/lib/api";
-import { formatDateTime } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
 import { PREORDERS_KEY, SUB_STATUS_LABEL, SUB_STATUS_TONE, isLiveSub, lineTitle, preordersApi, sourceLabel, type Subscriber } from "@/lib/preorders";
 import { toast } from "@shop/ui/toast";
 import { Badge } from "@/components/ui/Badge";

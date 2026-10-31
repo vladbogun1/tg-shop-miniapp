@@ -6,7 +6,7 @@ import { toast } from "@shop/ui/toast";
 import { KeyRound, Lock } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { PanelHeader } from "@/components/ui/PanelHeader";
-import { formatDateTime } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
 import type { AdminAccount } from "../../api";
 import { useChangePassword } from "../../queries";
 import { CodeInput } from "../auth/CodeInput";

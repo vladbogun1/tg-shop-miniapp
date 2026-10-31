@@ -4,7 +4,7 @@ import { UsersRound } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Toggle } from "@/components/ui/Toggle";
 import { cn } from "@/lib/cn";
-import { formatDateTime } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
 import type { TeamAdmin } from "../api";
 import type { TeamRow } from "../model/team-rows";
 import { InviteBadge, InviteWho, LastLogin, StatusBadges, TwoFa, Who } from "./AdminCells";

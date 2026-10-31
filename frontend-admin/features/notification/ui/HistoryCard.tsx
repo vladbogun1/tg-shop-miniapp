@@ -6,7 +6,7 @@ import { History } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { LANG_LABEL } from "@/lib/shop-lang";
 import { riseItem } from "@/lib/motion";
-import { formatDateTime } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
 import { AUDIENCE_LABEL, plainText } from "../model/compose";
 import type { BroadcastHistoryItem } from "../model/types";
 

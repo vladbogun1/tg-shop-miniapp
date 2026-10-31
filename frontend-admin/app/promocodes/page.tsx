@@ -1,6 +1,6 @@
 "use client";
 
-import { OrderDrawer } from "@/components/orders/OrderDrawer";
+import { OrderDrawer } from "@/features/order";
 import { PromocodesScreen } from "@/features/promo";
 
 export default function PromocodesPage() {

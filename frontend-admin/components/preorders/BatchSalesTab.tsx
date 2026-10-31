@@ -10,7 +10,7 @@ import { COSTING_KEY, costingApi, type BatchSales } from "@/lib/costing";
 import { lineTitle } from "@/lib/preorders";
 import { money } from "@/lib/money";
 import { cn } from "@/lib/cn";
-import { formatDateTime } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
 import { pct } from "@/components/metrics/format";
 import { Badge } from "@/components/ui/Badge";
 import { QueryState } from "@/components/ui/QueryState";

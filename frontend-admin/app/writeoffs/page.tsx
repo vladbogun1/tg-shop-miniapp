@@ -12,13 +12,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PackageMinus } from "lucide-react";
 import { writeoffsApi, WRITEOFF_LABEL, WRITEOFF_RANGES, type WriteoffLine, type WriteoffRange, type WriteoffReport } from "@/lib/writeoffs";
 import { money } from "@/lib/money";
-import { formatDateTime } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { RestoreWriteoffModal } from "@/components/orders/RestoreWriteoffModal";
+import { RestoreWriteoffModal } from "@/features/returns";
 
 export default function WriteoffsPage() {
   const [range, setRange] = useState<WriteoffRange>("month");

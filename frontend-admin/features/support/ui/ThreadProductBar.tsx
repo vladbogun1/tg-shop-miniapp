@@ -3,7 +3,7 @@
 import { ExternalLink, Lock, PencilLine, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@shop/ui/admin-button";
-import { formatDateTime } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
 import { siteProductUrl, threadTopic } from "../model/thread";
 import type { SupportThread } from "../model/types";
 import { ProductThumb } from "./parts";

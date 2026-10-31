@@ -7,7 +7,7 @@
  */
 import { Check, Copy, ExternalLink } from "lucide-react";
 import { useState } from "react";
-import { copyText } from "@/components/orders/CopyButton";
+import { copyText } from "@/components/ui/CopyButton";
 import { QrCode } from "./QrCode";
 import type { TwoFactorSetup } from "../../api";
 import { toast } from "@shop/ui/toast";

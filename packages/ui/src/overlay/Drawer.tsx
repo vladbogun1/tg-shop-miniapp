@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, type MutableRefObject, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../cn";
 import { backdropVariants, drawerVariants } from "./variants";
@@ -24,6 +24,7 @@ export function Drawer({
   header,
   backClose,
   closeNavigates = false,
+  closeRef,
 }: {
   open: boolean;
   onClose: () => void;
@@ -36,9 +37,14 @@ export function Drawer({
   backClose?: string;
   /** `onClose` itself navigates away (deep link): the history entry is only cleared, not popped. */
   closeNavigates?: boolean;
+  /** Gets the same close as the × (pops the history entry): for a close the caller triggers itself, e.g. after archiving. */
+  closeRef?: MutableRefObject<(() => void) | null>;
 }) {
   const close = useBackToClose(open && !!backClose, onClose, { marker: backClose, navigatesAway: closeNavigates });
   useOverlayLayer(open, close);
+  useEffect(() => {
+    if (closeRef) closeRef.current = close;
+  });
 
   if (typeof document === "undefined") return null;
 

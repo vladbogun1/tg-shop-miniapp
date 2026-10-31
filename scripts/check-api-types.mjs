@@ -25,6 +25,8 @@ const GENERATED_ONLY = new Set([
   "MergeCandidate", "ReturnRecord", "ReturnRecordLine", "AdminOrderCard", "CardLine", "OrderExchange",
   "CancelApproveResult", "AdminDispatchOrder", "OrderGift", "OrderCardDto", "OrderDetailDto", "MessageDto",
   "DispatchItem", "DispatchOrder",
+  // payment
+  "MonobankStatus", "PaymentOptionFull",
   // catalog (витрина)
   "SpecOption", "FacetBucket", "SpecAttribute", "SpecGroup", "CatalogCategory", "CatalogBrand", "CatalogSchema",
   "ProductBrandRef", "StorefrontProduct", "StorefrontTag",

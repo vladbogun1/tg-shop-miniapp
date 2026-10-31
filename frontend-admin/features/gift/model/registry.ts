@@ -1,6 +1,6 @@
 /** Реестр подарков: границы месяца и CSV для бухгалтера (по-украински, под Excel: «;», запятая в суммах). */
 import { formatMoment } from "@shop/core/time";
-import { shortId } from "@/lib/orders";
+import { shortOrderId as shortId } from "@shop/core/format";
 import type { GiftRegistry } from "./types";
 
 const pad = (n: number) => String(n).padStart(2, "0");

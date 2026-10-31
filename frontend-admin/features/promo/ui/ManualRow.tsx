@@ -6,7 +6,8 @@ import { StatusBadge } from "@/components/ui/Badge";
 import type { OrderStatus } from "@/lib/api";
 import { riseItem } from "@/lib/motion";
 import { money } from "@/lib/money";
-import { formatDateTime, shortId } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
+import { shortOrderId as shortId } from "@shop/core/format";
 import type { ManualDiscountOrder } from "../model/types";
 
 /** An order with a manual amount/percent discount — opens the order. */

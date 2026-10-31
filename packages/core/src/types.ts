@@ -262,15 +262,6 @@ export interface AdminInvoice {
   updatedAt: string;
 }
 
-/** GET /api/admin/payments/monobank/status */
-export interface MonobankStatus {
-  enabled: boolean;
-  merchantName?: string | null;
-  error?: string | null;
-  lastWebhookAt?: string | null;
-  lastWebhookSignatureOk?: boolean | null;
-}
-
 /** Заказ в списке покупателя (GET /api/me/orders). */
 export type OrderSummary = Schemas["OrderSummaryDto"];
 

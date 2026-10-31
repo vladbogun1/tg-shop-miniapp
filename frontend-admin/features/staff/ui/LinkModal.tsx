@@ -5,9 +5,9 @@ import { Modal } from "@shop/ui/overlay";
 import { toast } from "@shop/ui/toast";
 import { Check, Copy, TriangleAlert } from "lucide-react";
 import { useState } from "react";
-import { copyText } from "@/components/orders/CopyButton";
+import { copyText } from "@/components/ui/CopyButton";
 import { Input } from "@/components/ui/Input";
-import { formatDateTime } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
 import { inviteUrl } from "../model/roles";
 import type { LinkToShow } from "../queries";
 

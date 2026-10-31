@@ -37,7 +37,7 @@
   },
   {
     "type": "dependency",
-    "from": "frontend-admin/components/orders/OrderChat.tsx",
+    "from": "frontend-admin/features/order/queries/chat.ts",
     "to": "frontend-admin/lib/ws.ts",
     "rule": {
       "severity": "error",

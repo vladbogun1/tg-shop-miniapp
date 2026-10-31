@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
-import { timeAgo } from "@/lib/orders";
+import { timeAgo } from "@shop/core/time";
 import { customerOf, isWaiting, threadTopic } from "../model/thread";
 import type { SupportThread } from "../model/types";
 import { ProductThumb, ThreadSourceBadge, ThreadStatusBadges } from "./parts";

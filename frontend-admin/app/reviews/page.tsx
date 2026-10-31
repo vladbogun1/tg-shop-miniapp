@@ -1,6 +1,6 @@
 "use client";
 
-import { OrderDrawer } from "@/components/orders/OrderDrawer";
+import { OrderDrawer } from "@/features/order";
 import { ReviewsScreen } from "@/features/review";
 
 export default function ReviewsPage() {

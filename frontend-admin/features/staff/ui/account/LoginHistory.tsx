@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/Badge";
-import { formatDateTime } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
 import type { AdminLoginEntry } from "../../api";
 import { loginMethodLabel, loginResult, SECOND_FACTOR } from "../../model/login-log";
 

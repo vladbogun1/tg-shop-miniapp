@@ -7,7 +7,7 @@ import { ArrowRight, KeyRound, Lock, ShieldCheck, User, UserPlus } from "lucide-
 import { useState, type ReactNode } from "react";
 import { Input } from "@/components/ui/Input";
 import { ApiError } from "@/lib/api";
-import { formatDateTime } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
 import type { InviteInfo } from "../../api";
 import { useAcceptInvite } from "../../queries";
 import { StepHeader } from "../auth/parts";

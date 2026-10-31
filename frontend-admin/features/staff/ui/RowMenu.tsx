@@ -4,7 +4,7 @@ import Link from "next/link";
 import { MoreHorizontal } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { ActionSheet, type SheetAction } from "@/components/orders/ActionSheet";
+import { ActionSheet, type SheetAction } from "@/components/ui/ActionSheet";
 import { cn } from "@/lib/cn";
 import { useIsDesktop } from "@/lib/use-media";
 import { adminName, inviteName } from "../model/roles";

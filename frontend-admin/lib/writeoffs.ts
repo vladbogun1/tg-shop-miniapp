@@ -47,11 +47,6 @@ export interface WriteoffLine {
   undoneNote: string | null;
 }
 
-/** POST /api/admin/stock-writeoffs/{id}/restore — written off by mistake, back on the shelf. */
-export function restoreWriteoff(id: number, quantity: number, note: string) {
-  return apiPost<{ summary: string }>(`/api/admin/stock-writeoffs/${id}/restore`, { quantity, note });
-}
-
 export interface WriteoffReasonTotal {
   reason: string;
   units: number;

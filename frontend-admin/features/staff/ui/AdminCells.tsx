@@ -3,7 +3,7 @@
 import { ShieldCheck, ShieldOff } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
-import { formatDateTime } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
 import type { TeamAdmin, TeamInvite } from "../api";
 import { adminName, inviteName } from "../model/roles";
 

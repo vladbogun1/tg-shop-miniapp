@@ -5,7 +5,7 @@ import { Crown } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { staggerContainer, riseItem } from "@/lib/motion";
 import { money } from "@/lib/money";
-import { formatDateTime } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
 import type { UserCardDto } from "../../model/types";
 import { displayName, initials } from "../../model/user";
 import { LangCell } from "./parts";

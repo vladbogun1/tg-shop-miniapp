@@ -5,7 +5,7 @@ import { CheckCircle2, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react"
 import { useState } from "react";
 import { PanelHeader } from "@/components/ui/PanelHeader";
 import { cn } from "@/lib/cn";
-import { formatDateTime } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
 import type { AdminAccount, TwoFactorSetup } from "../../api";
 import { useConfirmTotpReset, useStartTotpReset } from "../../queries";
 import { CodeInput } from "../auth/CodeInput";

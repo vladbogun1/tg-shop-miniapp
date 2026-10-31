@@ -5,7 +5,7 @@ import { MapPin, X, Smartphone, Monitor, ChevronRight } from "lucide-react";
 import { sheetVariants } from "@shop/ui/overlay";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { timeAgo } from "@/lib/orders";
+import { timeAgo } from "@shop/core/time";
 import { placeName } from "../../model/geo";
 import type { GeoPoint, GeoPointDetails, UserCardDto } from "../../model/types";
 import { displayName } from "../../model/user";

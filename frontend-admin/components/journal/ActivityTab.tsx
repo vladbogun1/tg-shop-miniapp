@@ -47,8 +47,8 @@ import {
 } from "@/lib/activity";
 import { ApiError } from "@/lib/api";
 import { UserProfileDrawer, type UserCardDto } from "@/features/customer";
-import { ordersApi } from "@/lib/orders-api";
-import { formatDateTime } from "@/lib/orders";
+import { orderApi } from "@/features/order";
+import { formatDateTime } from "@shop/core/time";
 import { cn } from "@/lib/cn";
 import { toast } from "@shop/ui/toast";
 import { useDebounced } from "@/lib/use-debounced";
@@ -59,7 +59,7 @@ import { Input } from "@/components/ui/Input";
 import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Select } from "@/components/ui/Select";
-import { OrderDrawer } from "@/components/orders/OrderDrawer";
+import { OrderDrawer } from "@/features/order";
 
 const PAGE = 50;
 
@@ -103,7 +103,7 @@ export function ActivityTab() {
     if (!r.tgUserId) return;
     const tgId = r.tgUserId;
     try {
-      const found = await ordersApi.findUser(tgId);
+      const found = await orderApi.findUser(tgId);
       setProfile(
         found ?? {
           telegramUserId: tgId,

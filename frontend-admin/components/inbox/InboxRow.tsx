@@ -21,7 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { ActionSheet, type SheetAction } from "@/components/orders/ActionSheet";
+import { ActionSheet, type SheetAction } from "@/components/ui/ActionSheet";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@shop/ui/admin-button";
 import type { OrderStatus } from "@/lib/api";

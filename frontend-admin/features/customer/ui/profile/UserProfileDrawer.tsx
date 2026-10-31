@@ -24,12 +24,9 @@ import { displayName, initials, languageLine, telegramHref } from "../../model/u
 import type { UserCardDto } from "../../model/types";
 import { useUserOrders } from "../../queries";
 import { money } from "@/lib/money";
-import {
-  formatDateTime,
-  timeAgo,
-  shortId,
-  DELIVERY_LABEL,
-} from "@/lib/orders";
+import { formatDateTime, timeAgo } from "@shop/core/time";
+import { shortOrderId as shortId } from "@shop/core/format";
+import { DELIVERY_LABEL } from "@/lib/delivery";
 import { Drawer } from "@shop/ui/overlay";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";

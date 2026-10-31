@@ -10,7 +10,7 @@ import { Star } from "lucide-react";
 import { useState, type CSSProperties } from "react";
 import { cn } from "@/lib/cn";
 import { riseItem } from "@/lib/motion";
-import { formatDateTime } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
 import { REVIEW_STATUS_LABEL } from "../model/filters";
 import type { AdminReview, ReviewAction, ReviewStatus } from "../model/types";
 import { ReviewActions } from "./ReviewActions";
