@@ -57,7 +57,7 @@ export function BotTexts({ items, draft, onChange, onReset }: GroupProps) {
           onReset={() => onReset(item)}
         />
       )}
-      <GroupFields items={others} draft={draft} onChange={onChange} onReset={onReset} />
+      {others.length > 0 && <GroupFields items={others} draft={draft} onChange={onChange} onReset={onReset} />}
     </div>
   );
 }
