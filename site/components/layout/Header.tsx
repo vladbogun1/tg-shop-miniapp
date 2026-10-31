@@ -31,7 +31,7 @@ import { LangMenu } from "./LangMenu";
 import { LangSwitch } from "./LangSwitch";
 import { Logo } from "./Logo";
 import { SearchBox } from "./SearchBox";
-import { SupportGate } from "@/components/support/SupportGate";
+import { SupportGate } from "@/features/support";
 import { useSupportUnread } from "@/features/support";
 import "./header.css";
 

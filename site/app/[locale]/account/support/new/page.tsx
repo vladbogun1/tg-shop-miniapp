@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { NewSupportView } from "@/components/support/NewSupportView";
+import { NewSupportView } from "@/features/support";
 import { makeT } from "@/i18n";
 import { localeOf, type LocaleParams } from "@/lib/route";
 

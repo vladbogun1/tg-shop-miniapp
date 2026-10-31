@@ -11,7 +11,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { StorefrontProduct } from "@shop/core/site";
 import { useI18n } from "@/i18n/context";
 import { api } from "@/lib/api";
-import { useSupportConfig } from "@/features/support";
+import { useSupportConfig } from "../queries";
 import { SupportDisabled, SupportTopicCard } from "./parts";
 import { SupportQuestionForm } from "./SupportQuestionForm";
 

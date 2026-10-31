@@ -5,7 +5,7 @@ import type { MenuNode } from "@/features/catalog";
 import { localePath, makeT } from "@/i18n";
 import { Wordmark } from "@/components/layout/Logo";
 import { BOT_URL } from "@/lib/config";
-import { SupportGate } from "@/components/support/SupportGate";
+import { SupportGate } from "@/features/support";
 import { FooterSweeper } from "@/components/mascot/scenes";
 import { now } from "@shop/core/time";
 

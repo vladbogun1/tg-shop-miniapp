@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SupportList } from "@/components/support/SupportList";
+import { SupportList } from "@/features/support";
 import { makeT } from "@/i18n";
 import { localeOf, type LocaleParams } from "@/lib/route";
 

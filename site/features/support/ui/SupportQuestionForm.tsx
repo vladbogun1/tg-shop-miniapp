@@ -12,7 +12,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { CreateSupportThreadRequest, SupportThread } from "@shop/core/support";
 import { Button, Input } from "@shop/ui/primitives";
 import { useT } from "@/i18n/context";
-import { SUPPORT_DEFAULTS, SUPPORT_KEYS, supportApi, supportErrorText, useSupportConfig } from "@/features/support";
+import { SUPPORT_DEFAULTS, SUPPORT_KEYS, supportApi, supportErrorText, useSupportConfig } from "../queries";
 
 const SUBJECT_MAX = 200;
 

@@ -15,7 +15,7 @@ import { useI18n } from "@/i18n/context";
 import { useEscape, useHydrated, useScrollLock } from "@/lib/hooks";
 import { noFadeFlash } from "@shop/ui/motion";
 import { useSession } from "@/features/auth";
-import { useSupportConfig } from "@/features/support";
+import { useSupportConfig } from "../queries";
 import { SupportQuestionForm } from "./SupportQuestionForm";
 
 export function AskProductButton({ productId, productTitle }: { productId: string; productTitle: string }) {

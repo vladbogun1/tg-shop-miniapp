@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SupportThreadView } from "@/components/support/SupportChat";
+import { SupportThreadView } from "@/features/support";
 import { makeT } from "@/i18n";
 import { localeOf } from "@/lib/route";
 

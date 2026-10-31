@@ -10,7 +10,7 @@ import { ProductGrid } from "@/components/catalog/ProductCard";
 import { Breadcrumbs, breadcrumbJsonLd, JsonLd, type Crumb } from "@/components/layout/Breadcrumbs";
 import { TrackProductView } from "@/components/Analytics";
 import { BuyBox } from "@/components/product/BuyBox";
-import { AskProductButton } from "@/components/support/AskProductButton";
+import { AskProductButton } from "@/features/support";
 import { Gallery } from "@/components/product/Gallery";
 import { localePath, makeT, type MessageKey } from "@/i18n";
 import { toCardProducts } from "@/features/catalog";

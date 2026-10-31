@@ -19,16 +19,15 @@ const legacy = {
     "components/preorder/Waitlist.tsx",
     "components/product/BuyBox.tsx",
     "components/reviews/ProductReviews.tsx",
-    "components/support/NewSupportView.tsx",
-    "components/support/SupportQuestionForm.tsx",
     "features/cart/validation.ts",
     "features/catalog/model/params.ts",
+    "features/support/ui/NewSupportView.tsx",
+    "features/support/ui/SupportQuestionForm.tsx",
     "lib/image.tsx",
   ],
   "max-lines": [
     "components/catalog/CatalogFilters.tsx",
     "components/layout/Header.tsx",
-    "components/support/SupportChat.tsx",
   ],
   "max-depth": [],
 };
