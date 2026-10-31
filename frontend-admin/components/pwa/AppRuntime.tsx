@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useInbox } from "@/lib/inbox";
 import { startPwa } from "@/lib/pwa";
-import { setAppBadge } from "@/lib/push";
+import { setAppBadge } from "@/features/notification";
 
 export function PwaBoot() {
   useEffect(() => {

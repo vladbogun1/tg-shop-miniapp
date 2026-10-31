@@ -19,7 +19,7 @@ import { motion } from "framer-motion";
 import { Paperclip, Send, FileText, Check, CheckCheck, Zap } from "lucide-react";
 import { adminApi, ApiError, type MessageDto } from "@/lib/api";
 import { CHAT_PAGE, ordersApi } from "@/lib/orders-api";
-import { closeChatNotifications } from "@/lib/push";
+import { closeChatNotifications } from "@/features/notification";
 import { useCoarsePointer } from "@/lib/use-media";
 import { subscribeOrderChat } from "@/lib/ws";
 import { resolveImageSrc, resolveImageFull } from "@/lib/image";
@@ -39,7 +39,7 @@ function timeOf(iso: string | null | undefined): string {
   return formatTime(iso);
 }
 
-/** Exported for the support chat (components/support/SupportChat.tsx) — same bubbles. */
+/** Exported for the support chat (features/support/ui/chat/SupportChat.tsx) — same bubbles. */
 export function Bubble({
   m,
   onOpenImage,

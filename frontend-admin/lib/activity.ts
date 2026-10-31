@@ -5,7 +5,7 @@
  */
 import { apiGet } from "./api";
 import { money } from "./money";
-import type { BroadcastHistoryItem } from "./api-extra";
+import type { BroadcastHistoryItem } from "@/features/notification";
 
 export type ActivitySource = "BOT" | "SITE" | "MINIAPP" | "PAYMENT" | "SYSTEM";
 export type ActivityResult = "OK" | "FAILED" | "SKIPPED";

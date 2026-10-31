@@ -4,7 +4,7 @@ import { useApiMutation } from "@shop/ui/mutation";
 import { toast } from "@shop/ui/toast";
 import { useCallback, useEffect, useState } from "react";
 import { iosVersion, isIos, swEnabled, usePwa } from "@/lib/pwa";
-import { currentSubscription, disablePush, enablePush, pushApi, pushPermission, pushSupported, type PushPermission } from "@/lib/push";
+import { currentSubscription, disablePush, enablePush, pushApi, pushPermission, pushSupported, type PushPermission } from "@/features/notification";
 import { settingsKeys } from "../../keys";
 import { usePushConfig } from "../../queries";
 

@@ -3,7 +3,7 @@
 import { QUERY_PRESETS } from "@shop/core/query";
 import { useApiMutation } from "@shop/ui/mutation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { pushApi } from "@/lib/push";
+import { pushApi } from "@/features/notification";
 import { settingsApi, type SettingValue } from "./api";
 import { settingsKeys } from "./keys";
 

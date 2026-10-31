@@ -4,31 +4,10 @@
  * Web Push on this device: permission, the browser subscription, and its registration on the
  * backend (/api/admin/push/*). The service worker (public/sw.js) shows the notifications.
  */
-import { apiGet, apiPost } from "@/lib/api";
 import { getRegistration } from "@/lib/pwa";
 import { localStore } from "@shop/core/storage";
 import { nowMs } from "@shop/core/time";
-
-export interface PushConfig {
-  /** VAPID keys are set on the server. */
-  enabled: boolean;
-  publicKey: string | null;
-  /** Devices of this admin subscribed right now. */
-  devices: number;
-}
-
-export interface PushTestResult {
-  sent: number;
-  removed: number;
-  failed: number;
-}
-
-export const pushApi = {
-  config: () => apiGet<PushConfig>("/api/admin/push/config"),
-  subscribe: (sub: PushSubscriptionJSON) => apiPost<void>("/api/admin/push/subscribe", sub),
-  unsubscribe: (endpoint: string) => apiPost<void>("/api/admin/push/unsubscribe", { endpoint }),
-  test: (endpoint: string | null) => apiPost<PushTestResult>("/api/admin/push/test", { endpoint }),
-};
+import { pushApi } from "./api";
 
 /** Remembered so the subscription is silently renewed on the next launch if the browser drops it. */
 const ENABLED_KEY = "admin-push-enabled";

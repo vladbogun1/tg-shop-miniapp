@@ -5,7 +5,7 @@ import { BellOff, BellRing, Send, Smartphone, TriangleAlert } from "lucide-react
 import { Toggle } from "@/components/ui/Toggle";
 import { cn } from "@/lib/cn";
 import { swEnabled } from "@/lib/pwa";
-import { badgeSupported, pushSupported, type PushPermission } from "@/lib/push";
+import { badgeSupported, pushSupported, type PushPermission } from "@/features/notification";
 import { Note, Row } from "./parts";
 import type { DevicePush } from "./use-device-push";
 

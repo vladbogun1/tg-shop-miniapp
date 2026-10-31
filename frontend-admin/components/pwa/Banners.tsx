@@ -33,7 +33,7 @@ import {
   pushSupported,
   snoozePushOffer,
   syncPush,
-} from "@/lib/push";
+} from "@/features/notification";
 import { toast } from "@shop/ui/toast";
 
 export function UpdateBanner() {
