@@ -190,24 +190,24 @@ export const customerApi = {
   gift: createGiftApi(http),
   getAppInfo: () => http.get<AppInfo>("/api/app-info"),
   conversations: () => http.get<Conversation[]>("/api/me/conversations"),
-  getOrders: () => orders.list(),
-  getOrder: (id: string) => orders.get(id),
+  getOrders: orders.list,
+  getOrder: orders.get,
   /** A page of chat history, oldest-first; without `before` the newest page. */
-  getMessages: (id: string, before?: number) => orders.messages(id, before),
-  sendMessage: (id: string, body: SendMessageRequest) => orders.sendMessage(id, body),
+  getMessages: orders.messages,
+  sendMessage: orders.sendMessage,
   /**
    * A monobank payment page for what is due now (see OrderApi.startPayment). After paying, monobank sends
    * the browser to the Mini App's /pay-return page. `display: "IFRAME"` is no longer used by the Mini App
    * (it pays in the browser).
    */
-  startPayment: (id: string, locale: string, display?: "IFRAME") => orders.startPayment(id, locale, display),
+  startPayment: orders.startPayment,
   /** Asks monobank for the status right now (server-throttled to once per 5 s) → the order. */
-  refreshPayment: (id: string) => orders.refreshPayment(id),
+  refreshPayment: orders.refreshPayment,
   /** Fiscal checks + bank receipt of the paid invoices; `downloadUrl` is signed and server-relative. */
-  getReceipts: (id: string) => orders.receipts(id),
-  cancelOrder: (id: string, reason?: string) => orders.cancel(id, reason),
+  getReceipts: orders.receipts,
+  cancelOrder: orders.cancel,
   /** Paid order: ask the shop to cancel it (reason required, ≤ 500). 400 + code on refusal. */
-  requestCancel: (id: string, reason: string) => orders.requestCancel(id, reason),
-  markRead: (id: string) => orders.markRead(id),
-  uploadAttachment: (file: File) => orders.uploadAttachment(file),
+  requestCancel: orders.requestCancel,
+  markRead: orders.markRead,
+  uploadAttachment: orders.uploadAttachment,
 };

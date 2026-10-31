@@ -49,25 +49,24 @@ export function createOrderApi(
   policy: OrderApiPolicy,
 ): OrderApi {
   const base = (id: string) => `/api/me/orders/${id}`;
+  const get = <T>(path: string) => authed(() => http.get<T>(path));
+  const post = <T>(path: string, body?: unknown) => authed(() => http.post<T>(path, body));
   return {
-    list: () => authed(() => http.get<OrderSummary[]>("/api/me/orders")),
-    get: (id) => authed(() => http.get<OrderDetail>(base(id))),
-    messages: (id, before) =>
-      authed(() => http.get<Message[]>(`${base(id)}/messages${before ? `?before=${before}` : ""}`)),
-    sendMessage: (id, body) => authed(() => http.post<Message>(`${base(id)}/messages`, body)),
-    markRead: (id) => authed(() => http.post<void>(`${base(id)}/messages/read`)),
+    list: () => get<OrderSummary[]>("/api/me/orders"),
+    get: (id) => get<OrderDetail>(base(id)),
+    messages: (id, before) => get<Message[]>(`${base(id)}/messages${before ? `?before=${before}` : ""}`),
+    sendMessage: (id, body) => post<Message>(`${base(id)}/messages`, body),
+    markRead: (id) => post<void>(`${base(id)}/messages/read`),
     uploadAttachment: (file) => authed(() => http.upload<{ url: string }>("/api/me/uploads", file)),
     startPayment: (id, locale, display) =>
-      authed(() =>
-        http.post<PaymentStart>(
-          `${base(id)}/payment`,
-          display === "IFRAME" ? { returnTo: policy.returnTo, locale, display } : { returnTo: policy.returnTo, locale },
-        ),
+      post<PaymentStart>(
+        `${base(id)}/payment`,
+        display === "IFRAME" ? { returnTo: policy.returnTo, locale, display } : { returnTo: policy.returnTo, locale },
       ),
-    refreshPayment: (id) => authed(() => http.post<OrderDetail>(`${base(id)}/payment/refresh`)),
-    receipts: (id) => authed(() => http.get<Receipt[]>(`${base(id)}/receipts`)),
-    cancel: (id, reason) => authed(() => http.post<OrderDetail>(`${base(id)}/cancel`, { reason })),
-    requestCancel: (id, reason) => authed(() => http.post<OrderDetail>(`${base(id)}/cancel-request`, { reason })),
+    refreshPayment: (id) => post<OrderDetail>(`${base(id)}/payment/refresh`),
+    receipts: (id) => get<Receipt[]>(`${base(id)}/receipts`),
+    cancel: (id, reason) => post<OrderDetail>(`${base(id)}/cancel`, { reason }),
+    requestCancel: (id, reason) => post<OrderDetail>(`${base(id)}/cancel-request`, { reason }),
   };
 }
 
