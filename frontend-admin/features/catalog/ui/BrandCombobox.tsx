@@ -7,7 +7,7 @@
  */
 import { Check, Plus, Search, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import type { AdminBrand } from "@/lib/api";
+import type { AdminBrand } from "../model/types";
 import { cn } from "@/lib/cn";
 import { Popover } from "./Popover";
 

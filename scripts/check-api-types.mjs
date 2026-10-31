@@ -28,6 +28,8 @@ const GENERATED_ONLY = new Set([
   // catalog (витрина)
   "SpecOption", "FacetBucket", "SpecAttribute", "SpecGroup", "CatalogCategory", "CatalogBrand", "CatalogSchema",
   "ProductBrandRef", "StorefrontProduct", "StorefrontTag",
+  // catalog-admin
+  "AdminCategory", "AdminBrand", "AdminSpecOption", "AdminSpecBucket", "AdminSpecAttribute", "AdminSpecGroup",
   // translation
   "TrRejected", "TrImportResult", "TrCounts", "TrTextCounts", "TrStats", "TrAcceptResult", "TrSourceFixResult",
 ]);

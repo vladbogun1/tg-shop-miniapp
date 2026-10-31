@@ -13,7 +13,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
 import { CASE_TIER_METAL, type CaseTier } from "@shop/core/giftcase";
-import { adminApi, ApiError } from "@/lib/api";
+import { QUERY_PRESETS } from "@shop/core/query";
+import { ApiError } from "@/lib/api";
+import { useCategoriesQuery } from "@/features/catalog";
 import { AUTOFILL_COST_SHARE, CASE_TIER_LABEL, giftApi, type AutofillResult, type GiftTierAdmin } from "@/lib/gift";
 import { settingsApi } from "@/features/settings";
 import { cn } from "@/lib/cn";
@@ -51,7 +53,7 @@ export function CaseAutofillModal({
   rows: Row[];
   onResult: (res: AutofillResult) => void;
 }) {
-  const cats = useQuery({ queryKey: ["categories"], queryFn: adminApi.categories, enabled: open, staleTime: 5 * 60_000 });
+  const cats = useCategoriesQuery({ enabled: open, staleTime: QUERY_PRESETS.static.staleTime });
   // Its own key: the page's settings query backs a form whose draft must not reset when these change.
   const settings = useQuery({ queryKey: ["gift", "autofill-settings"], queryFn: settingsApi.list, enabled: open, staleTime: 60_000 });
   const roots = useMemo(

@@ -11,8 +11,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronDown, Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { AdminSpecAttribute, AdminSpecGroup, CardMeta, ProductSpecs, SpecValue } from "@/lib/api";
-import { groupAttributes, isSpecEmpty } from "@/lib/catalog-admin";
+import type { CardMeta, ProductSpecs, SpecValue } from "@/lib/api";
+import { groupAttributes, isSpecEmpty } from "../model/attributes";
+import type { AdminSpecAttribute, AdminSpecGroup } from "../model/types";
 import { cn } from "@/lib/cn";
 import { ConfidenceDot } from "./CardBits";
 import { Popover } from "./Popover";

@@ -9,7 +9,8 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BadgePercent, Plus, X } from "lucide-react";
-import { adminApi, ApiError } from "@/lib/api";
+import { ApiError } from "@/lib/api";
+import { CATALOG_STALE_MS, useBrandsQuery } from "@/features/catalog";
 import { giftApi, type LowMargin } from "@/lib/gift";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
@@ -24,7 +25,7 @@ const KEY = ["gift", "low-margin"] as const;
 export function LowMarginPanel() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: KEY, queryFn: giftApi.lowMargin });
-  const brandsQ = useQuery({ queryKey: ["brands"], queryFn: () => adminApi.brands(), staleTime: 60_000 });
+  const brandsQ = useBrandsQuery({ staleTime: CATALOG_STALE_MS });
   const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const data = q.data;

@@ -11,8 +11,8 @@
  */
 import { Check, ChevronDown, CornerDownRight, FolderTree, Search } from "lucide-react";
 import { useId, useMemo, useRef, useState, useEffect } from "react";
-import type { AdminCategory } from "@/lib/api";
-import { buildTree, pathLabel } from "@/lib/catalog-admin";
+import { buildTree, pathLabel } from "../model/tree";
+import type { AdminCategory } from "../model/types";
 import { cn } from "@/lib/cn";
 import { Popover } from "./Popover";
 

@@ -9,7 +9,7 @@ import { useState } from "react";
 import { ApiError } from "@/lib/api";
 import type { Proposal } from "@/lib/card-check";
 import { cardsApi } from "@/lib/cards-api";
-import { slugify } from "@/lib/slug";
+import { slugify } from "@/features/catalog";
 import { toast } from "@shop/ui/toast";
 import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";

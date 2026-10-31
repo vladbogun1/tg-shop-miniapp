@@ -8,10 +8,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowDown, ArrowUp, Check, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { adminApi, ApiError, type AdminSpecGroup } from "@/lib/api";
-import { isValidKey, keyFromLabel } from "@/lib/catalog-admin";
+import { useSaveGroups } from "../queries";
+import type { AdminSpecGroup } from "../model/types";
+import { isValidKey, keyFromLabel } from "../model/identifiers";
 import { cn } from "@/lib/cn";
-import { toast } from "@shop/ui/toast";
 import { Button } from "@shop/ui/admin-button";
 import { Modal } from "@shop/ui/overlay";
 
@@ -31,18 +31,17 @@ export function GroupsDialog({
   groups,
   usedKeys,
   onClose,
-  onSaved,
 }: {
   open: boolean;
   groups: AdminSpecGroup[];
   /** Group keys that attributes reference. */
   usedKeys: Set<string>;
   onClose: () => void;
-  onSaved: (g: AdminSpecGroup[]) => void;
 }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [initial, setInitial] = useState("");
-  const [saving, setSaving] = useState(false);
+  const saveGroups = useSaveGroups();
+  const saving = saveGroups.isPending;
 
   useEffect(() => {
     if (!open) return;
@@ -75,26 +74,17 @@ export function GroupsDialog({
       return n;
     });
 
-  async function save() {
-    setSaving(true);
-    try {
-      const saved = await adminApi.putSpecGroups(
-        rows.map((r, i) => ({
-          key: r.key,
-          labelRu: r.labelRu.trim(),
-          labelUk: r.labelUk.trim() || r.labelRu.trim(),
-          labelEn: r.labelEn.trim() || r.labelRu.trim(),
-          sortOrder: (i + 1) * 10,
-        }))
-      );
-      toast.success("Группы сохранены");
-      onSaved(saved);
-      onClose();
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
-    } finally {
-      setSaving(false);
-    }
+  function save() {
+    saveGroups.mutate(
+      rows.map((r, i) => ({
+        key: r.key,
+        labelRu: r.labelRu.trim(),
+        labelUk: r.labelUk.trim() || r.labelRu.trim(),
+        labelEn: r.labelEn.trim() || r.labelRu.trim(),
+        sortOrder: (i + 1) * 10,
+      })),
+      { onSuccess: onClose }
+    );
   }
 
   return (

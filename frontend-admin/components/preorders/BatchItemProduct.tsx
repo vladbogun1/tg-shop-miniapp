@@ -15,7 +15,7 @@ import { Image, resolveImageSrc } from "@/lib/image";
 import { PREORDERS_KEY } from "@/lib/preorders";
 import { siteProductUrl } from "@/lib/support-api";
 import { toast } from "@shop/ui/toast";
-import { CardStatusBadge } from "@/components/catalog/CardBits";
+import { CardStatusBadge } from "@/features/catalog";
 import { usePublishGate } from "@/components/catalog/PublishGate";
 import { CardCompletionModal } from "@/components/cards/CardCompletionModal";
 import { ProductModal } from "@/components/products/ProductModal";

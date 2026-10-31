@@ -12,7 +12,9 @@
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Trash2, UploadCloud } from "lucide-react";
 import { brandLogoSrc } from "@shop/core/image";
-import { adminApi, ApiError, type BrandLogoMode } from "@/lib/api";
+import { ApiError } from "@/lib/api";
+import type { BrandLogoMode } from "../model/types";
+import { uploadBrandLogo } from "../queries";
 import { cn } from "@/lib/cn";
 import { toast } from "@shop/ui/toast";
 import { Button } from "@shop/ui/admin-button";
@@ -77,7 +79,7 @@ export function BrandLogoField({
   mode,
   onChange,
   onModeChange,
-  upload = adminApi.uploadBrandLogo,
+  upload = uploadBrandLogo,
 }: {
   name: string;
   /** S3 key / URL; "" = no logo. */

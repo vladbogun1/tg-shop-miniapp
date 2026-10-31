@@ -51,7 +51,11 @@ import {
 import { guessProductBrand } from "@shop/core/product-brand";
 import {
   attributesForCategory,
+  BrandCombobox,
+  CardStatusBadge,
   CARD_STATUS_LABEL,
+  CATALOG_STALE_MS,
+  CategoryTreeSelect,
   CONDITION_LABEL,
   CONDITION_OPTIONS,
   formatAdminSpec,
@@ -60,8 +64,13 @@ import {
   missingRequiredKeys,
   pathLabel,
   plural,
-} from "@/lib/catalog-admin";
-import { slugify } from "@/lib/slug";
+  slugify,
+  SpecsForm,
+  useBrandsQuery,
+  useCatalogSchemaQuery,
+  useCategoriesQuery,
+  type BrandValue,
+} from "@/features/catalog";
 import { invalidateCards } from "@/lib/cards";
 import { money, toMajor, toMinor } from "@/lib/money";
 import { Image } from "@/lib/image";
@@ -76,10 +85,6 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Spinner } from "@/components/ui/Spinner";
 import { PhotoUploader } from "@/components/products/PhotoUploader";
 import { useStockReason, type StockReason } from "@/components/products/StockReasonDialog";
-import { CategoryTreeSelect } from "@/components/catalog/CategoryTreeSelect";
-import { BrandCombobox, type BrandValue } from "@/components/catalog/BrandCombobox";
-import { SpecsForm } from "@/components/catalog/SpecsForm";
-import { CardStatusBadge } from "@/components/catalog/CardBits";
 import { usePublishGate } from "@/components/catalog/PublishGate";
 import { translationApi } from "@/features/translation";
 
@@ -202,9 +207,9 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
   const dirty = open && JSON.stringify(f) !== initialSnapshot;
 
   // ---- catalog data ----
-  const catsQ = useQuery({ queryKey: ["categories"], queryFn: adminApi.categories, enabled: open, staleTime: 60_000 });
-  const brandsQ = useQuery({ queryKey: ["brands"], queryFn: adminApi.brands, enabled: open, staleTime: 60_000 });
-  const schemaQ = useQuery({ queryKey: ["catalog-schema"], queryFn: adminApi.catalogSchema, enabled: open, staleTime: 60_000 });
+  const catsQ = useCategoriesQuery({ enabled: open, staleTime: CATALOG_STALE_MS });
+  const brandsQ = useBrandsQuery({ enabled: open, staleTime: CATALOG_STALE_MS });
+  const schemaQ = useCatalogSchemaQuery({ enabled: open });
   const costInfo = useProductCost(product?.id, open);
   const categories = useMemo(() => catsQ.data ?? schemaQ.data?.categories ?? [], [catsQ.data, schemaQ.data]);
   const brands = brandsQ.data ?? [];

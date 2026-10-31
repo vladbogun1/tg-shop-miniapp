@@ -32,9 +32,18 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { adminApi, ApiError, type AdminProduct, type CardStatus, type ProductCondition } from "@/lib/api";
-import { productMissingRequired, subtreeOf, CONDITION_OPTIONS } from "@/lib/catalog-admin";
-import { CategoryTreeSelect } from "@/components/catalog/CategoryTreeSelect";
-import { CardStatusBadge, ConditionBadge } from "@/components/catalog/CardBits";
+import {
+  CardStatusBadge,
+  CATALOG_STALE_MS,
+  CategoryTreeSelect,
+  CONDITION_OPTIONS,
+  ConditionBadge,
+  productMissingRequired,
+  subtreeOf,
+  useBrandsQuery,
+  useCatalogSchemaQuery,
+  useCategoriesQuery,
+} from "@/features/catalog";
 import { usePublishGate } from "@/components/catalog/PublishGate";
 import { CardCompletionModal } from "@/components/cards/CardCompletionModal";
 import { money } from "@/lib/money";
@@ -136,9 +145,9 @@ export default function ProductsPage() {
     for (const p of products) m.set(p.id, demandOfProduct(demandQ.data, p.id)?.people ?? 0);
     return m;
   }, [products, demandQ.data]);
-  const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: adminApi.categories, staleTime: 60_000 });
-  const { data: brands = [] } = useQuery({ queryKey: ["brands"], queryFn: adminApi.brands, staleTime: 60_000 });
-  const { data: schema } = useQuery({ queryKey: ["catalog-schema"], queryFn: adminApi.catalogSchema, staleTime: 60_000 });
+  const { data: categories = [] } = useCategoriesQuery({ staleTime: CATALOG_STALE_MS });
+  const { data: brands = [] } = useBrandsQuery({ staleTime: CATALOG_STALE_MS });
+  const { data: schema } = useCatalogSchemaQuery();
   const [guardPublish, gateUi] = usePublishGate((id) => setCompletion({ id, reason: "manual" }));
 
   /** Missing required characteristics per product (backend value when given, else from the schema). */
