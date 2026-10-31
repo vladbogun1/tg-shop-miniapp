@@ -32,3 +32,14 @@
 
 - Перед пушем: `npm run lint && npm run typecheck && npm run test && npm run arch:front && npm run build`, затем `node scripts/check-browser-compat.mjs site frontend` и `npm run check:bundle`.
 - Храповик: `scripts/frontend-baseline.txt`, `known-violations.json`, `scripts/bundle-baseline.txt` — числа только падают; упало — чинить код, не поднимать baseline ([docs/ARCHITECTURE-CHECKS.md](docs/ARCHITECTURE-CHECKS.md)).
+
+## Фронты: куда класть код (архитектура v2, [docs/ARCHITECTURE-FRONT.md](docs/ARCHITECTURE-FRONT.md))
+
+- `packages/core` — чистая логика без React (деньги, время, форматы, корзина, каталог, ошибки, HTTP, OpenAPI-типы); `packages/ui` — общие UI-примитивы (toast, модалки, кейс подарка);
+  `packages/customer` — то, что одинаково у Mini App и сайта (заказ, чат, поддержка, оформление, **общий словарь** `src/i18n/shared-{ru,uk,en}.ts`, аналитика).
+- Приложение (`frontend/`, `frontend-admin/`, `site/`): `features/<фича>/{ui,model,queries,api}` + `index.ts`; из другой фичи — только через `index.ts` или `view/<Модуль>.ts`.
+  `app/` — тонкие страницы (импортируют вход своего экрана, не общий barrel: barrel раздувает бандл). Mini App: `shell/` (TabBar, Providers), `platform/telegram/*`.
+  Сайт: серверный код — `features/*/server` с `import "server-only"`; клиентский код его не импортирует.
+- Один способ: деньги — `core/money`, время — `core/time` (`now()`), запросы — `HttpClient` из `core/http`, хранилище — `core/storage`, ошибки — `ApiError`, `useApiMutation`/`useConfirm`/`toast` из `ui`,
+  тексты — `t(MessageKey)` (общий ключ — в shared-словарь, не в приложение). Типы ответов — из `packages/core/src/api/generated.d.ts` (`npm run gen:api`).
+- Лимиты — **error без исключений**: complexity ≤ 15, файл ≤ 400 строк, функция ≤ 200, глубина ≤ 4. Новый файл-исключение не заводим.

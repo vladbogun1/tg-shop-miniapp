@@ -300,7 +300,7 @@ Next 15 + React 19 + Tailwind 4 + framer-motion + react-query + zustand; `output
 | **5. `@shop/customer` (6 веток)** | см. ниже | L×6 | нет |
 | **6. Mini App** | `features/` по фичам, разбор god-экранов: `checkout/page.tsx` 1 207 → экран ≤ 60 строк + `features/checkout`; `orders/[id]/page.tsx` 872; `page.tsx` 692; `FilterSheet` 469; `CompareSheet` 525; `telegram.ts` 572 → `platform/telegram/*`; `TabBar`; `t(key: MessageKey)` | L | нет |
 | **7. Сайт** | то же + граница RSC: `features/*/server.ts` (то, что сегодня в `server-api.ts`, `feeds.ts`, `seo.ts`), `CatalogFilters` 943, `CheckoutView` 771, `site/lib` 30 файлов → фичи; ISR/теги/rewrites не трогаем | L | нет |
-| **8. Финиш** | `eslint.legacy-limits.mjs` ×3 удалены, baseline пуст, все правила — error; `check-dto-drift` удалён; `knip`-отчёт; документы (`ARCHITECTURE-FRONT.md`, обновить `ARCHITECTURE-CHECKS.md`, `CLAUDE.md` репо, скиллы `shop-ui-qa`, `shop-i18n-keys`, `shop-admin-api`); статус в память | M | нет |
+| **8. Финиш** ✅ | `eslint.legacy-limits.mjs` ×5 удалены (лимиты — error везде), `check-dto-drift` удалён (ещё в шаге 3), `knip`-отчёт и удаление явно мёртвого, `toPercent` → `@shop/core`, сироты i18n = 0, документы и скиллы; отдельный коммит с изменением поведения (push на iOS 16.4–16.9) | M | **Да, одно:** push в админке на iOS 16.4–16.9 больше не считается «слишком старым» |
 
 **Шаг 4. Админка** (порядок — от простого и покрытого e2e к большому; после каждой ветки — `npm run e2e` целиком + ручной обход на десктопе и телефоне):
 - 4a: каркас `features/`, `shell/` (разрезать `Shell.tsx` 1 125: навигация-конфиг / сайдбар / нижний tab-bar / бейджи), `staff` (`admins/page.tsx` 1 083, 2FA, приглашения, `account`, `audit`, `incidents`), `settings`, `site`. e2e: 01, 13, 15, 17–19, 33, 36.
@@ -384,7 +384,26 @@ SEO и оплату — их безопаснее выкатывать круп�
 
 ---
 
-## 5. Что дальше
+## 5. Итог (шаг 8, 31.10.2026)
 
-Документ ждёт ответов на В1–В5 (по умолчанию — рекомендации). После утверждения: шаг 0 стартует с ветки `arch/front-step-0-measure` от `arch/v2`, и первым результатом будет сводная
-таблица «приложение × правило» с реальными числами нарушений — они и станут baseline. Кода до утверждения не пишем; в репозитории — `docs/ARCHITECTURE-FRONT.md`.
+Шаги 0–8 выполнены в `arch/v2` (прод не затронут).
+
+| Шаг | Что стало |
+|---|---|
+| 0 | depcruise + храповик ESLint + инварианты + бандл-бюджет + vitest |
+| 1–2 | `packages/core` (деньги, время, хранилище, ошибки, запросы), `packages/ui` (toast, модалки, `useApiMutation`, примитивы) |
+| 3 | Типы DTO из OpenAPI (`packages/core/src/api/generated.d.ts`, `npm run gen:api`), `check-golden-schema` вместо `check-dto-drift` |
+| 4 | Админка по `features/` + `shell/`; ручные DTO и `lib/api*.ts` удалены |
+| 5 | `packages/customer`: корзина, заказ, чекаут, чат, поддержка, подарок/кейс, общий словарь i18n (257 ключей), аналитика |
+| 6 | Mini App: `frontend/features/*`, `frontend/shell`, `frontend/platform/telegram/*` |
+| 7 | Сайт: `site/features/*` (`ui`, `model`, `server` с `server-only`), страницы `app/` тонкие |
+| 8 | Лимиты — error везде, мёртвый код убран, документы |
+
+Что в конце (числа на HEAD шага 8):
+- `eslint.legacy-limits.mjs`: 171 запись (на старте) → **0 файлов**; `complexity` / `max-lines` / `max-depth` / `max-lines-per-function` в baseline — **0**.
+- `known-violations.json` (depcruise): 6 → **4**, все — `ws-only-from-realtime`: чат заказа и поддержка подключают WebSocket из своих экранов (Mini App: `OrderChatScreen`, `support/api.ts`; сайт: `OrderChat`, `support/queries.ts`). Перенос подписок в `shell/realtime.ts` меняет момент подключения — оставлено.
+- `scripts/frontend-baseline.txt` — **не пуст**: остались счётные правила, по которым нужны отдельные решения/правки данных: `cyrillic-literal` (сайт 120 — SEO-словари и данные, Mini App 6), `query-key-literal` (23), `stale-time-literal` (24), `refetch-interval-literal` (4), `money-div-mul-100` (15), `to-fixed` (4), `no-fetch` (2), `exhaustive-deps` (4), остаток `max-lines`/`max-lines-per-function` в `ui`, если есть. Числа только падают.
+- `scripts/i18n-orphans-baseline.json` удалён: сирота — ошибка `check-i18n`.
+- `knip` (разовый отчёт, не в CI): удалены `site/components/ui/Toast.tsx` (+ зависимость `zustand`), пустой barrel `frontend/features/checkout/index.ts`, `frontend-admin/features/order/queries/index.ts`. Остальное (≈160 неиспользуемых экспортов/типов, `server-only` и `eslint-config-next` как «непрописанные/лишние» зависимости) — публичные входы фич и ложные срабатывания.
+- `toPercent`: четыре копии в админке → `@shop/core/percent`.
+- Баги, найденные по дороге (не чинились): отказ `loadEarlier` в чате заказа Mini App; Enter в промокоде сайта отправляет заказ до применения скидки; «Надіслати відгук» активна до заполнения.

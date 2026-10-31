@@ -77,11 +77,9 @@
 
 ## Фронты (`site/`, `frontend/`, `frontend-admin/`, часть `npm run lint`)
 
-Общие лимиты — `shared/eslint/architecture-limits.mjs`: `complexity` 15, `max-lines` 400 (без пустых строк
-и комментариев), `max-depth` 4. Для всех файлов это **error**. Файлы, которые уже нарушали правило, перечислены
-**по правилам** в `eslint.legacy-limits.mjs` каждого фронта и получают **warn** только по своему правилу —
-долг видно в выводе линтера, но сборку он не валит. Словари `i18n/{en,ru,uk}.ts` — данные, для них `max-lines`
-выключен насовсем.
+Общие лимиты — `packages/core/eslint/architecture-limits.mjs`: `complexity` 15, `max-lines` 400 (без пустых строк
+и комментариев), `max-depth` 4; плюс счётчик `max-lines-per-function` 200. Это **error для всех файлов**, списка исключений больше нет
+(`eslint.legacy-limits.mjs` удалены в шаге 8). Словари `i18n/{en,ru,uk}.ts` — данные, для них `max-lines` выключен.
 
 `next build` тоже запускает ESLint, поэтому ошибка лимита в новом файле уронит и Docker-сборку — так и задумано.
 
@@ -120,16 +118,16 @@
    одной строкой (например, сгенерированный код или временный перенос, который закончится в следующем коммите).
    Причину — в сообщении коммита. Исключение «чтобы CI позеленел» — это ровно тот костыль, ради которого
    проверки заведены: каждый такой пункт делает следующий легче и через месяц список снова никого не держит.
-3. Как добавить исключение во фронтах, если оно действительно нужно: путь файла в нужный массив `eslint.legacy-limits.mjs`
-   (путь от корня фронта, скобки в `app/[locale]/…` экранирует helper). В бэкенде исключений нет: ни baseline, ни список размеров.
+3. Во фронтах исключений нет: сложная функция режется на подкомпоненты/хелперы (разметка и порядок хуков не меняются), большой файл — на модули по смыслу.
+   В бэкенде тоже: ни baseline, ни списка размеров.
 4. Новое правило бэкенда: добавить в `V2Rules` и фикстуру `shopfixture` (`V2RulesTest`); в коде оно должно сразу давать ноль.
 
 ## Фронты: храповик шага 0 (`npm run arch:front`, `npm run check:bundle`)
 
 План — [ARCHITECTURE-FRONT.md](ARCHITECTURE-FRONT.md) (2.5, 2.7). Принцип тот же, что у бэкенда: **число нарушений только падает**, ноль = правило становится error.
-Корневые `npm run lint | typecheck | test | arch:front | build` обходят **все** workspaces (`shared`, `frontend`, `frontend-admin`, `site`; `typecheck` ещё и `e2e`).
+Корневые `npm run lint | typecheck | test | arch:front | build` обходят **все** workspaces (`packages/{core,ui,customer}`, `frontend`, `frontend-admin`, `site`; `typecheck` ещё и `e2e`).
 
-- **ESLint-храповик.** Счётные правила (warn) — `shared/eslint/front-rules.mjs`: `no-fetch`, `no-web-storage`, `no-confirm-alert`, `query-key-literal`,
+- **ESLint-храповик.** Счётные правила (warn) — `packages/core/eslint/front-rules.mjs`: `no-fetch`, `no-web-storage`, `no-confirm-alert`, `query-key-literal`,
   `stale-time-literal`, `refetch-interval-literal`, `money-div-mul-100`, `to-fixed`, `time-new-date`, `time-date-now`, `time-to-locale`, `time-intl-datetimeformat`,
   `cyrillic-literal` (только Mini App и сайт; словари `i18n/**` не считаются), плюс `react-hooks/exhaustive-deps`, `max-lines`, `max-lines-per-function` (200), `complexity`, `max-depth`.
   `scripts/check-front-ratchet.mjs` запускает ESLint с `--no-inline-config` (то есть `eslint-disable` не прячет долг), печатает сводку «правило × приложение» и сравнивает
@@ -143,3 +141,15 @@
 - **Инварианты** `scripts/check-invariants.mjs`: `CHUNK_RECOVERY_SCRIPT` первым в `<head>` обоих layout, `no-cache` для HTML в `infra/gateway.conf` и `gateway-site.conf`, нет lookbehind.
 - **Бандл** `scripts/check-bundle.mjs` (после `npm run build`): First Load JS (gzip) каждого маршрута Mini App и сайта против `scripts/bundle-baseline.txt`, рост > 3 % — падение.
 - **Тесты:** `vitest` в каждом workspace (`*.test.ts` рядом с кодом), `npm run test`.
+
+### Как читать вывод фронтовых проверок (итог шага 8)
+
+- `npm run arch:front` = invariants → depcruise → ESLint-храповик → api-types → i18n. Падение одной не скрывает остальные; в конце «arch:front OK/УПАЛ».
+- **Храповик** (`check-front-ratchet.mjs`): таблица «правило × приложение». «Рост» — чинить код. «Упало» — `--update`. По размеру и сложности baseline пуст — любое нарушение сразу error в `npm run lint`.
+  Остаток baseline — счётные правила (ключи запросов, кириллица, `to-fixed`…), их числа только падают.
+- **depcruise** (`check-arch-front.mjs`): в `known-violations.json` 4 записи `ws-only-from-realtime`; новое нарушение — падение. Правила: циклы, чужое приложение, `core` без React, `features-via-index`
+  (из другой фичи — только `index.ts` или `view/<Модуль>.ts`), `client-not-server-features` (клиент не импортирует `features/*/server`), WebSocket только из realtime.
+- **i18n** (`check-i18n.mjs`): полнота ключей по языкам, плейсхолдеры, литералы/шаблонные ключи в пакетах, сироты (= ошибка, файла-исключений нет).
+- **Бандл** (`check:bundle`, после `npm run build`): рост First Load JS маршрута > 3 % — падение. Ловушка: barrel фичи, импортированный страницей или общим кодом, тянет в маршрут весь экран —
+  берите вход экрана (`screen.ts`, `chat.ts`, `view/<Модуль>.ts`), а не общий `index.ts`.
+- Совместимость: `node scripts/check-browser-compat.mjs site frontend` после сборки (iOS 15.4+/Chrome 92+, без lookbehind).
