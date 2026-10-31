@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { spring } from "@/lib/motion";
+import { progressPercent } from "../model/progress";
 
 interface Props {
   running: boolean;
@@ -13,7 +14,7 @@ interface Props {
 
 export function BroadcastProgress({ running, total, sent, failed, blocked }: Props) {
   const done = sent + failed + blocked;
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const pct = progressPercent(done, total);
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}

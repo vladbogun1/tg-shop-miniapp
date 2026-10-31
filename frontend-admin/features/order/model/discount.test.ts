@@ -15,6 +15,28 @@ describe("ввод", () => {
   });
 });
 
+describe("сохранение поведения при замене /100 и *100", () => {
+  it("minorFromInput: 0, 0.5, 12.345, 1e-7, отрицательные, не-числа", () => {
+    expect(minorFromInput(0)).toBe(0);
+    expect(minorFromInput(0.5)).toBe(50);
+    expect(minorFromInput(12.345)).toBe(1235);
+    expect(minorFromInput(1e-7)).toBe(0);
+    expect(minorFromInput(-0.005)).toBe(-0);
+    expect(minorFromInput(-12.345)).toBe(-1234);
+    expect(minorFromInput(Number.POSITIVE_INFINITY)).toBe(Number.POSITIVE_INFINITY);
+    expect(minorFromInput(Number.NEGATIVE_INFINITY)).toBe(Number.NEGATIVE_INFINITY);
+    expect(minorFromInput(Number.NaN)).toBeNaN();
+  });
+  it("процент от суммы округляется вниз", () => {
+    expect(manualDiscountMinor("percent", 0, 0, 999)).toBe(0);
+    expect(manualDiscountMinor("percent", 0, 0.5, 1999)).toBe(9);
+    expect(manualDiscountMinor("percent", 0, 12.345, 100000)).toBe(12345);
+    expect(manualDiscountMinor("percent", 0, 100, 777)).toBe(777);
+    expect(promoDiscountMinor(promo({ discountPercent: 33 }), 1001)).toBe(330);
+    expect(promoDiscountMinor(promo({ discountPercent: 7 }), 0)).toBe(0);
+  });
+});
+
 describe("скидка", () => {
   it("промокод суммой не выше суммы товаров", () => {
     expect(promoDiscountMinor(promo({ discountAmountMinor: 5000 }), 3000)).toBe(3000);

@@ -1,4 +1,5 @@
 /** Скидка на заказ: какие промокоды предлагаем и что получится в итоге (то же, что считает сервер). */
+import { toMinor } from "@/lib/money";
 import { promoOrigin, type PromoCode as PromoCodeFull } from "@/features/promo";
 
 export type DiscountMode = "promo" | "manual";
@@ -28,7 +29,15 @@ export function parseNumberInput(val: string): number {
 
 /** Копейки из введённой суммы (без отсечения «Infinity»: как было). */
 export function minorFromInput(num: number): number {
-  return Math.round(num * 100);
+  return Number.isFinite(num) ? toMinor(num) : num;
+}
+
+/** Целое число процентов = «100 %». */
+const FULL_PERCENT = 100;
+
+/** Доля `percent` % от суммы в копейках, округление вниз (как считает сервер). Не деньги → деньги: на входе проценты. */
+export function percentOfMinor(minor: number, percent: number): number {
+  return Math.floor((minor * percent) / FULL_PERCENT);
 }
 
 /** The backend takes a whole percent — preview exactly what will be saved (7,5 → 8). */
@@ -40,14 +49,14 @@ export function promoDiscountMinor(p: PromoCodeFull, subtotal: number): number {
   return (p.discountAmountMinor ?? 0) > 0
     ? Math.min(p.discountAmountMinor!, subtotal)
     : Math.min(
-        Math.floor((subtotal * (p.discountPercent ?? 0)) / 100),
+        percentOfMinor(subtotal, p.discountPercent ?? 0),
         (p.maxDiscountMinor ?? 0) > 0 ? p.maxDiscountMinor! : Number.POSITIVE_INFINITY
       );
 }
 
 export function manualDiscountMinor(kind: DiscountKind, num: number, pct: number, subtotal: number): number {
   if (kind === "amount") return Math.min(minorFromInput(num), subtotal);
-  return Math.floor((subtotal * pct) / 100);
+  return percentOfMinor(subtotal, pct);
 }
 
 export function canApplyDiscount(mode: DiscountMode, kind: DiscountKind, promoCode: string, num: number, pct: number): boolean {

@@ -31,6 +31,7 @@ export function useAccountQuery() {
 
 /** 60 с, как было до выноса в фичу. */
 const SUPER_ADMIN_STALE_MS = QUERY_PRESETS.list.staleTime * 2;
+const AUDIT_FACETS_STALE_MS = QUERY_PRESETS.list.staleTime * 2;
 
 /**
  * Is the signed-in admin the main one (SUPER_ADMIN)? Same query as «Мой аккаунт». Hides «Админы»
@@ -298,7 +299,7 @@ export function useAuditFacets() {
   return useQuery({
     queryKey: staffKeys.auditFacets(),
     queryFn: () => auditApi.facets(),
-    staleTime: QUERY_PRESETS.list.staleTime * 2,
+    staleTime: AUDIT_FACETS_STALE_MS,
   });
 }
 

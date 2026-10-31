@@ -29,8 +29,11 @@ export function useSystemQuery() {
   return useQuery({ queryKey: settingsKeys.system(), queryFn: settingsApi.system });
 }
 
+/** Публичный конфиг push меняется редко — держим свежим вдвое дольше обычного списка. */
+const PUSH_CONFIG_STALE_MS = QUERY_PRESETS.list.staleTime * 2;
+
 export function usePushConfig() {
-  return useQuery({ queryKey: settingsKeys.pushConfig(), queryFn: pushApi.config, staleTime: QUERY_PRESETS.list.staleTime * 2 });
+  return useQuery({ queryKey: settingsKeys.pushConfig(), queryFn: pushApi.config, staleTime: PUSH_CONFIG_STALE_MS });
 }
 
 /** Сохранение изменённых настроек одним запросом; ответ сервера заменяет кэш. */

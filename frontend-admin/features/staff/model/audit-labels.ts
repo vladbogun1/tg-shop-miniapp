@@ -2,7 +2,7 @@
  * Wording of the admin action log (admin_audit_log) — shared by the «Журнал» page and the
  * per-entity history blocks (order / product cards). Unknown codes fall back to the raw code.
  */
-import { money } from "@/lib/money";
+import { money, toMinor } from "@/lib/money";
 
 export const AUDIT_ACTION_LABEL: Record<string, string> = {
   ADMIN_LOGIN_OK: "Вход в админку",
@@ -182,7 +182,7 @@ export function readableAuditDetails(details: string | null | undefined): string
     .replace(/(-?\d+) \(мин\. ед\.\)/g, (_, n: string) => uah(n))
     .replace(/цена (\d+) → (\d+)/g, (_, a: string, b: string) => `цена ${uah(a)} → ${uah(b)}`)
     .replace(/, price (\d+), stock (\d+)/g, (_, p: string, s: string) => `, цена ${uah(p)}, сток ${s}`)
-    .replace(/(\d+(?:\.\d+)?) UAH/g, (_, n: string) => money(Math.round(Number(n) * 100)))
+    .replace(/(\d+(?:\.\d+)?) UAH/g, (_, n: string) => money(toMinor(n)))
     .replace(/(статус → )([A-Z]+)/g, (m, pre: string, code: string) =>
       AUDIT_STATUS_LABEL[code] ? pre + AUDIT_STATUS_LABEL[code] : m,
     );

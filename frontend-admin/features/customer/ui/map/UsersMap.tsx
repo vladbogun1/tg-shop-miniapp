@@ -14,6 +14,7 @@ import "leaflet.markercluster";
 import { useEffect, useRef } from "react";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import { pointKey } from "../../model/geo";
+import { countLabel } from "../../model/map-label";
 import type { GeoPoint } from "../../model/types";
 
 const WORLD_CENTER: [number, number] = [30, 15];
@@ -26,16 +27,12 @@ function dotSize(n: number): number {
   return Math.round(Math.min(48, 14 + Math.log2(Math.max(1, n)) * 3.2));
 }
 
-function label(n: number): string {
-  return n >= 10_000 ? `${Math.round(n / 1000)}k` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
-}
-
 function pointIcon(n: number, active: boolean): L.DivIcon {
   const size = dotSize(n) + (active ? 6 : 0);
   return L.divIcon({
     className: "um-dot-wrap",
     html: `<div class="um-dot${active ? " um-dot--active" : ""}" style="width:${size}px;height:${size}px">${
-      n > 1 && size >= 20 ? `<span>${label(n)}</span>` : ""
+      n > 1 && size >= 20 ? `<span>${countLabel(n)}</span>` : ""
     }</div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
@@ -49,7 +46,7 @@ function clusterIcon(cluster: L.MarkerCluster): L.DivIcon {
   const size = dotSize(sum) + 10;
   return L.divIcon({
     className: "um-dot-wrap",
-    html: `<div class="um-cluster" style="width:${size}px;height:${size}px"><span>${label(sum)}</span></div>`,
+    html: `<div class="um-cluster" style="width:${size}px;height:${size}px"><span>${countLabel(sum)}</span></div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });
