@@ -9,6 +9,7 @@ import { API_URL } from "./env.js";
 import fs from "node:fs";
 import { AUTH_DIR } from "./lib/api.js";
 import { login, seed } from "./global-setup.js";
+import { PRODUCT } from "./lib/seed.js";
 
 /** Gift for the order sum: gift cases on (tiers and prizes are in customer-seed.sql). */
 const SETTINGS = { "gift.enabled": true, "gift.caseEnabled": true };
@@ -21,6 +22,11 @@ export default async function globalSetup(): Promise<void> {
   try {
     const res = await ctx.put("/api/admin/settings", { data: { values: SETTINGS } });
     if (!res.ok()) throw new Error(`settings: ${res.status()} ${await res.text()}`);
+    // The backend caches the public catalog (@Cacheable «products»): a request that came before the seed (a
+    // readiness probe, a warm-up) would keep an empty list for the whole run. Switching a product «on» again
+    // changes nothing, but evicts the catalog caches (AdminProductService.setActive).
+    const evict = await ctx.patch(`/api/admin/products/${PRODUCT.cap}/active`, { data: { active: true } });
+    if (!evict.ok()) throw new Error(`catalog cache evict: ${evict.status()} ${await evict.text()}`);
   } finally {
     await ctx.dispose();
   }
