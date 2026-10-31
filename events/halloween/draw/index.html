@@ -13,11 +13,19 @@
   <div id="rail" aria-label="Переможці"></div>
   <ul id="hints" aria-hidden="true"><li><kbd>R</kbd> крутити</li><li><kbd>H</kbd> панель</li><li><kbd>F</kbd> весь екран</li><li><kbd>M</kbd> звук</li></ul>
   <div id="panel">
+    <div id="live" class="row">
+      <span id="live-scene" class="warn">○ сцена OBS не підключена</span>
+      <button id="openStage" title="Відкрити сцену в окремому вікні">Відкрити сцену</button>
+      <button id="copyStage" title="Вставити в OBS: Джерело → Браузер">Посилання для OBS</button>
+      <button id="blackout">Затемнити сцену</button>
+      <b id="live-now"></b>
+    </div>
     <div class="row">
       <strong class="brand">🎃 ChiSetup · Halloween</strong>
       <select id="pool" aria-label="Розіграш" class="pool-pick"><option value="pumpkins">🎃 Розіграш за гарбузи</option><option value="orders">🛍 Розіграш за покупки</option></select>
       <select id="visual" aria-label="Візуал"></select>
       <span id="stats"></span>
+      <button id="toRemote" title="Пульт на ноутбуці чи телефоні + окрема сцена для OBS без кнопок">Пульт + сцена OBS</button>
     </div>
     <div class="row">
       <label class="prize-pick">Приз раунду <b id="prizeRound">1</b> <select id="prizeSel" aria-label="Приз раунду"></select></label>
@@ -41,6 +49,7 @@
       <span id="seed" class="muted"></span>
     </div>
     <div id="msg" class="muted"></div>
+    <div id="rrail" aria-label="Переможці"></div>
   </div>
   <dialog id="dlg">
     <form method="dialog" class="dlg-head"><strong id="dlg-title"></strong><button aria-label="Закрити">✕</button></form>

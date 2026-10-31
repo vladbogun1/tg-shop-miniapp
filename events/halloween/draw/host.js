@@ -5,6 +5,7 @@ import { makeSound, prizeOf as packOf, renderRail as drawRail, visualCtx, mountV
 import { mockParticipants, mockDraw } from "./mock.js";
 import { showPeople, spendCell } from "./admin-tools.js";
 import { showInvites } from "./invites-tool.js";
+import { startRemote } from "./remote.js";
 
 const qs = new URLSearchParams(location.search);
 const MOCK = qs.has("mock") ? Number(qs.get("mock")) || 120 : 0;
@@ -17,6 +18,9 @@ const API = "/hw/api/admin";
 const TEST = !MOCK && qs.get("test") === "1";
 const P = TEST ? "/test" : "";
 const TOKEN_KEY = "tgshop_admin_jwt"; // the admin panel's token, same origin
+// Remote (?remote=1): the panel alone, on a laptop or a phone; the picture is the OBS scene (stage.html).
+const REMOTE = !MOCK && qs.get("remote") === "1";
+let remote = null;
 
 const $ = (id) => document.getElementById(id);
 const stage = $("stage");
@@ -73,7 +77,20 @@ function markWon() {
 }
 
 function renderRail() {
-  drawRail($("rail"), { rounds: ROUNDS, winners: state.winners, participants: state.participants, prizes: state.prizes });
+  drawRail($(REMOTE ? "rrail" : "rail"), { rounds: ROUNDS, winners: state.winners, participants: state.participants, prizes: state.prizes });
+}
+
+/** Remote: is the OBS scene connected, and what it shows right now. */
+function renderLive(s) {
+  const on = Boolean(s?.stages);
+  $("live-scene").textContent = !s ? "⚠ немає звʼязку з сервером" : on ? "● сцена OBS підключена" + (s.stages > 1 ? ` (${s.stages})` : "") : "○ сцена OBS не підключена";
+  $("live-scene").className = on ? "ok" : "warn";
+  const r = s?.roll;
+  const mine = r && r.pool === POOL && r.test === TEST;
+  const who = mine && r.revealedAt && state.participants.find((p) => p.id === r.winnerId);
+  $("live-now").textContent = !mine ? "" : r.revealedAt ? `Раунд ${r.round}: на екрані ${who ? who.name : "переможець"}` : `Раунд ${r.round} крутиться на сцені…`;
+  $("blackout").textContent = s?.blackout ? "Показати сцену" : "Затемнити сцену";
+  $("blackout").classList.toggle("on", Boolean(s?.blackout));
 }
 
 const nextRound = () => Math.min(state.winners.length + 1, ROUNDS);
@@ -114,6 +131,10 @@ function visibleList() {
 }
 
 async function mountVisual(id) {
+  if (REMOTE) {
+    await remote.set({ visual: id, avatars: prefs.avatars });
+    return renderPrize();
+  }
   state.visual = await mountInto(stage, id, visualCtx(sound, prefs), state.visual);
   state.visual.setParticipants(visibleList());
   renderPrize();
@@ -127,6 +148,7 @@ async function roll(reroll = false) {
   renderStats();
   $("msg").textContent = "";
   try {
+    const since = remote?.lastRollId() ?? 0;
     const res = await draw(reroll);
     const winnerId = res.winner.id ?? res.winner;
     if (!MOCK) {
@@ -141,11 +163,16 @@ async function roll(reroll = false) {
       markWon();
     }
     const winner = state.participants.find((p) => p.id === winnerId) ?? res.winner;
-    state.visual.reset?.();
-    state.visual.setParticipants(visibleList());
+    state.visual?.reset?.();
+    state.visual?.setParticipants(visibleList());
     renderRail();
     const shown = prefs.avatars ? winner : { ...winner, avatar: null };
-    await state.visual.roll(shown, { round: res.round, totalRounds: ROUNDS, totalTickets: res.totalTickets, seedHash: state.seedHash, prize: prizeOf(res.round) });
+    if (REMOTE) {
+      $("msg").textContent = remote.state()?.stages ? "" : "Сцена OBS не підключена: переможця вибрано, але на екрані його не показано";
+      await remote.waitReveal(res.round, res.attempt ?? 1, since);
+    } else {
+      await state.visual.roll(shown, { round: res.round, totalRounds: ROUNDS, totalTickets: res.totalTickets, seedHash: state.seedHash, prize: prizeOf(res.round) });
+    }
     state.winners.push({ round: res.round, participantId: winner.id });
     winner.won = true;
     markWon();
@@ -191,7 +218,7 @@ function setupControls() {
   };
   $("roll").onclick = () => roll(false);
   $("reroll").onclick = () =>
-    TEST || confirm("Перекрутити останній раунд? Попередній переможець цього раунду вибуває і в розіграші більше не бере участі.") && roll(true);
+    (TEST || confirm("Перекрутити останній раунд? Попередній переможець цього раунду вибуває і в розіграші більше не бере участі.")) && roll(true);
   $("lock").onclick = lockList;
   $("contacts").onclick = () => showContacts().catch(fail);
   $("people").onclick = () =>
@@ -199,8 +226,14 @@ function setupControls() {
   $("invites").onclick = () =>
     (MOCK || TEST ? Promise.reject(new Error("У тестовому режимі розсилка вимкнена")) : showInvites({ api, dialog, fail, esc })).catch(fail);
   $("proof").onclick = () => downloadProof().catch(fail);
-  $("avatars").onchange = (e) => { prefs.avatars = e.target.checked; mountVisual(sel.value); };
-  $("sound").onchange = (e) => { prefs.sound = e.target.checked; };
+  $("avatars").onchange = (e) => { prefs.avatars = e.target.checked; mountVisual(sel.value).catch(fail); };
+  $("sound").onchange = (e) => { prefs.sound = e.target.checked; remote?.set({ sound: prefs.sound }).catch(fail); };
+  document.body.classList.toggle("remote", REMOTE);
+  $("toRemote").hidden = REMOTE || Boolean(MOCK);
+  $("toRemote").onclick = () => { qs.set("remote", "1"); location.search = "?" + qs; };
+  $("blackout").onclick = () => remote?.set({ blackout: !remote.state()?.blackout }).catch(fail);
+  $("copyStage").onclick = () => navigator.clipboard.writeText(remote.stageUrl).then(() => ($("copyStage").textContent = "Скопійовано ✓"), fail);
+  $("openStage").onclick = () => open(remote.stageUrl, "hw-stage");
   $("hide").onclick = () => $("panel").classList.add("hidden");
   $("fs").onclick = toggleFullscreen;
   document.body.classList.toggle("no-hints", qs.get("hints") === "0");
@@ -210,6 +243,7 @@ function setupControls() {
   addEventListener("keydown", (e) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || $("dlg").open) return;
     if (e.code === "KeyR") roll(false);
+    if (REMOTE) return;
     if (e.code === "KeyH") $("panel").classList.toggle("hidden");
     if (e.code === "KeyF") toggleFullscreen();
     if (e.code === "KeyM") { prefs.sound = !prefs.sound; $("sound").checked = prefs.sound; }
@@ -380,6 +414,7 @@ async function downloadProof() {
 (async () => {
   const id = setupControls();
   try {
+    if (REMOTE) remote = await startRemote({ api, settings: { pool: POOL, test: TEST, visual: id, avatars: prefs.avatars, sound: prefs.sound }, render: renderLive });
     await load();
     markWon();
     renderRail();

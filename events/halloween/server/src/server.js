@@ -2,6 +2,7 @@
 //   /hw/api/*        customer API (pumpkins, progress)
 //   /hw/api/admin/*  draw screen (admin JWT, re-checked with the shop backend)
 //   /hw/spawner.js, /hw/sprites/*  the widget the site and the Mini App load
+//   /hw/api/stage/*  the OBS scene (draw/stage.html): scene key, read-only, SSE (show.js)
 //   /hw/draw/*       the stream draw screen (the admin gateway only)
 import { createServer } from "node:http";
 import { ipOf } from "./clientip.js";
@@ -22,6 +23,7 @@ import * as invites from "./invites.js";
 import * as broadcast from "./broadcast.js";
 import * as botStatus from "./bot-status.js";
 import * as members from "./members.js";
+import * as show from "./show.js";
 import { shopFacts } from "./shop.js";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
@@ -131,6 +133,13 @@ async function adminApi(req, res, path, query) {
   try {
     // Two separate draws; every draw-specific call names its pool (?pool=pumpkins|orders).
     const pool = poolOf(query.get("pool"));
+    // Whatever changes the list, the winners or the prizes: the OBS scenes reload (show.js).
+    if (req.method === "POST" && /^(lock|test\/lock|test\/reset|prizes|exclude|include|manual)/.test(path)) {
+      res.on("finish", () => res.statusCode === 200 && show.changed());
+    }
+    // The remote (?remote=1) drives the scene: its settings and the scene key for the OBS link.
+    if (path === "show" && req.method === "GET") return send(res, 200, { ...show.snapshot(), key: show.key() });
+    if (path === "show" && req.method === "POST") return send(res, 200, show.set(b));
     // Rehearsal (?test=1 on the screen): random customers, nothing real is touched.
     if (path === "test/participants" && req.method === "GET") return send(res, 200, await rehearsal.screen(pool));
     if (path === "test/reset" && req.method === "POST") {
@@ -138,7 +147,11 @@ async function adminApi(req, res, path, query) {
       return send(res, 200, await rehearsal.screen(pool));
     }
     if (path === "test/lock" && req.method === "POST") return send(res, 200, { seedHash: (await rehearsal.lock(pool)).commitment });
-    if ((path === "test/draw" || path === "test/reroll") && req.method === "POST") return send(res, 200, await rehearsal.drawRound(pool, path === "test/reroll"));
+    if ((path === "test/draw" || path === "test/reroll") && req.method === "POST") {
+      const r = await rehearsal.drawRound(pool, path === "test/reroll");
+      show.rolled(pool, true, r);
+      return send(res, 200, r);
+    }
     if (path === "participants" && req.method === "GET") return send(res, 200, await draw.screen(pool));
     if (path === "lock" && req.method === "POST") {
       const l = await draw.lock(pool, who.tgId);
@@ -146,7 +159,9 @@ async function adminApi(req, res, path, query) {
     }
     if ((path === "draw" || path === "reroll") && req.method === "POST") {
       const r = await draw.drawRound(pool, who.tgId, path === "reroll", b.round);
-      return send(res, 200, { round: r.round, attempt: r.attempt, winner: draw.publicId(r.winnerTgId), totalTickets: r.totalTickets });
+      const out = { round: r.round, attempt: r.attempt, winner: draw.publicId(r.winnerTgId), totalTickets: r.totalTickets };
+      show.rolled(pool, false, out);
+      return send(res, 200, out);
     }
     if (path === "winners" && req.method === "GET") {
       const sent = prizes.contacted();
@@ -239,10 +254,28 @@ async function adminApi(req, res, path, query) {
   return send(res, 404, { error: "not found" });
 }
 
+// The OBS scene: no admin token in OBS, so the scene key (?k=) opens what the stream shows anyway.
+async function stageApi(req, res, path, query) {
+  if (!show.keyOk(query.get("k"))) return send(res, 403, { error: "bad scene key" });
+  if (path === "events" && req.method === "GET") return show.subscribe(req, res, query.get("as"));
+  if (path === "screen" && req.method === "GET") {
+    const { pool, test } = show.snapshot();
+    const data = test ? await rehearsal.screen(pool) : await draw.screen(pool);
+    const pz = prizes.state(pool); // no message template: it is not the scene's business
+    return send(res, 200, { ...data, prizes: { prizes: pz.prizes, rounds: pz.rounds } });
+  }
+  if (path === "revealed" && req.method === "POST") {
+    show.revealed((await body(req)).id);
+    return send(res, 200, { ok: true });
+  }
+  return send(res, 404, { error: "not found" });
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, "http://x"), path = url.pathname;
   try {
     if (path === "/hw/healthz") return send(res, 200, { ok: true, phase: game.phase() });
+    if (path.startsWith("/hw/api/stage/")) return await stageApi(req, res, path.slice("/hw/api/stage/".length), url.searchParams);
     if (path.startsWith("/hw/api/admin/")) return await adminApi(req, res, path.slice("/hw/api/admin/".length), url.searchParams);
     if (path.startsWith("/hw/api/")) return await customerApi(req, res, path.slice("/hw/api/".length));
     if (req.method !== "GET" && req.method !== "HEAD") return send(res, 405, { error: "method" });
