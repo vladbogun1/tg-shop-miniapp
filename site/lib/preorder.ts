@@ -12,6 +12,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { createHttpClient } from "@shop/core/http";
+import { createPreorderApi } from "@shop/customer/preorder/api";
+import { preorderKeys } from "@shop/customer/preorder/keys";
 import { getActiveLocale, getActiveTag } from "@shop/core/i18n";
 import { makeT } from "@/i18n";
 import { ApiError, isAuthFailure, refreshSession } from "./api";
@@ -45,15 +47,7 @@ async function authed<T>(call: () => Promise<T>): Promise<T> {
   }
 }
 
-export const preorderApi = {
-  /** Guest view (no «mine»); the same as the server render reads. */
-  forProductPublic: (productId: string) => http.get<ProductPreorder>(`/api/public/products/${productId}/preorder`),
-  forProduct: (productId: string) => authed(() => http.get<ProductPreorder>(`/api/me/preorders/product/${productId}`)),
-  mine: () => authed(() => http.get<MyPreorder[]>("/api/me/preorders")),
-  subscribe: (productId: string, variantId: string | null, qty: number) =>
-    authed(() => http.post<MyPreorder>("/api/me/preorders", { productId, variantId, qty })),
-  leave: (id: number) => authed(() => http.del<void>(`/api/me/preorders/${id}`)),
-};
+export const preorderApi = createPreorderApi(http, authed);
 
 export { ApiError };
 

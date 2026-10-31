@@ -8,97 +8,24 @@ import { formatMoment, momentParts, nowMs } from "@shop/core/time";
 import { availabilityOf } from "@shop/core/availability";
 import { LOCALE_TAG, type Locale } from "@shop/core/i18n";
 import { type StorefrontProduct } from "@shop/core/site";
+import type { PreorderIndex } from "@shop/customer/preorder/coming";
+import type { PreorderEta } from "@shop/customer/preorder/types";
 import type { TFunction } from "@/i18n";
 
-// ---------------------------------------------------------------- shapes (backend PreorderDtos)
+// ---------------------------------------------------------------- shapes and the index (@shop/customer/preorder)
 
-export type EtaMode = "DATE" | "RANGE" | "APPROX" | "HIDDEN";
-
-export interface PreorderEta {
-  /** `ordered` | `in_transit` — the 3-step timeline (Замовлено → В дорозі → На складі). */
-  stage: "ordered" | "in_transit";
-  mode: EtaMode;
-  from: string | null;
-  to: string | null;
-  /** Only for APPROX; 0 = «найближчим часом». */
-  approxWeeks: number | null;
-  note: string | null;
-}
-
-export interface ComingBatch {
-  eta: PreorderEta;
-  lines: { productId: string; variantId: string | null }[];
-}
-
-export type PreorderStatus = "WAITING" | "HELD" | "NOTIFIED" | "BOUGHT" | "EXPIRED" | "CANCELLED";
-
-export interface MyPreorder {
-  id: number;
-  productId: string;
-  variantId: string | null;
-  productTitle: string;
-  productSlug: string;
-  imageUrl: string | null;
-  variantName: string | null;
-  qty: number;
-  status: PreorderStatus;
-  position: number | null;
-  heldQty: number;
-  holdUntil: string | null;
-  createdAt: string;
-  eta: PreorderEta | null;
-}
-
-export interface ProductPreorder {
-  productId: string;
-  lines: { variantId: string | null; eta: PreorderEta }[];
-  /** null below the «show from» threshold. */
-  waitingCount: number | null;
-  /** The customer may queue for out-of-stock goods even without a batch. */
-  anyProduct: boolean;
-  mine: MyPreorder[];
-  /** How long a unit is held once it arrives, hours (absent on an older backend). */
-  holdHours?: number;
-}
-
-/** Used when the backend does not send `holdHours`. */
-export const DEFAULT_HOLD_HOURS = 24;
-
-export const LIVE_STATUSES: PreorderStatus[] = ["WAITING", "HELD", "NOTIFIED"];
-
-export function isLive(s: PreorderStatus): boolean {
-  return LIVE_STATUSES.includes(s);
-}
-
-// ---------------------------------------------------------------- index of open batches (server)
-
-/** Soonest open batch per product / per variant. Batches arrive soonest first, so the first one wins. */
-export interface PreorderIndex {
-  /** Any line of the product, whatever the variant (for a tile: «the product is on its way»). */
-  any: Map<string, PreorderEta>;
-  /** A line of exactly this variant (`productId::variantId`). */
-  variants: Map<string, PreorderEta>;
-  /** A line of the product itself (a product without variants). */
-  products: Map<string, PreorderEta>;
-  size: number;
-}
-
-export function buildPreorderIndex(batches: ComingBatch[]): PreorderIndex {
-  const idx: PreorderIndex = { any: new Map(), variants: new Map(), products: new Map(), size: 0 };
-  for (const b of batches) {
-    for (const l of b.lines) {
-      if (!idx.any.has(l.productId)) idx.any.set(l.productId, b.eta);
-      if (l.variantId) {
-        const k = `${l.productId}::${l.variantId}`;
-        if (!idx.variants.has(k)) idx.variants.set(k, b.eta);
-      } else if (!idx.products.has(l.productId)) {
-        idx.products.set(l.productId, b.eta);
-      }
-    }
-  }
-  idx.size = idx.any.size;
-  return idx;
-}
+export { buildPreorderIndex, type PreorderIndex } from "@shop/customer/preorder/coming";
+export {
+  DEFAULT_HOLD_HOURS,
+  LIVE_STATUSES,
+  isLive,
+  type ComingBatch,
+  type EtaMode,
+  type MyPreorder,
+  type PreorderEta,
+  type PreorderStatus,
+  type ProductPreorder,
+} from "@shop/customer/preorder/types";
 
 /**
  * The ETA to show on a tile when the product is sold out (total stock 0) and a batch brings it;

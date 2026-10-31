@@ -9,72 +9,39 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { buildPreorderIndex } from "@shop/customer/preorder/coming";
+import { createPreorderApi } from "@shop/customer/preorder/api";
+import { preorderKeys as preorderKeysShared } from "@shop/customer/preorder/keys";
+import {
+  DEFAULT_HOLD_HOURS,
+  heldFor as heldForAt,
+  isQueued,
+  isLiveHold as isLiveHoldAt,
+  type ComingBatch,
+  type MyPreorder,
+  type PreorderEta,
+} from "@shop/customer/preorder/types";
 import { apiDel, apiGet, apiPost, type Product } from "@/lib/api";
 import { useAccessToken } from "@/lib/auth";
 import { formatMoment, nowMs } from "@shop/core/time";
 
-export interface PreorderEta {
-  stage: "ordered" | "in_transit" | string;
-  mode: "DATE" | "RANGE" | "APPROX" | "HIDDEN" | string;
-  from: string | null;
-  to: string | null;
-  approxWeeks: number | null;
-  note: string | null;
-}
+export { DEFAULT_HOLD_HOURS, queuedFor, type ComingBatch, type MyPreorder, type PreorderEta, type PreorderStatus, type ProductPreorder } from "@shop/customer/preorder/types";
 
-export type PreorderStatus = "WAITING" | "HELD" | "NOTIFIED" | "BOUGHT" | "EXPIRED" | "CANCELLED";
-
-export interface MyPreorder {
-  id: number;
-  productId: string;
-  variantId: string | null;
-  productTitle: string;
-  productSlug: string | null;
-  imageUrl: string | null;
-  variantName: string | null;
-  qty: number;
-  status: PreorderStatus;
-  position: number | null;
-  heldQty: number;
-  holdUntil: string | null;
-  createdAt: string;
-  eta: PreorderEta | null;
-}
-
-/** How long a hold lasts when the backend does not say (older backend). */
-export const DEFAULT_HOLD_HOURS = 24;
-
-export interface ComingBatch {
-  eta: PreorderEta;
-  /** Hold length of the batch, hours (absent on an older backend). */
-  holdHours?: number;
-  lines: { productId: string; variantId: string | null }[];
-}
-
-export interface ProductPreorder {
-  productId: string;
-  lines: { variantId: string | null; eta: PreorderEta }[];
-  waitingCount: number | null;
-  anyProduct: boolean;
-  mine: MyPreorder[];
-  /** Hold length, hours (absent on an older backend). */
-  holdHours?: number;
-}
+const api = createPreorderApi({ get: apiGet, post: apiPost, del: apiDel });
 
 export const preorderApi = {
-  coming: () => apiGet<ComingBatch[]>("/api/public/preorders"),
-  forProduct: (id: string, signedIn: boolean) =>
-    apiGet<ProductPreorder>(signedIn ? `/api/me/preorders/product/${id}` : `/api/public/products/${id}/preorder`),
-  mine: () => apiGet<MyPreorder[]>("/api/me/preorders"),
-  subscribe: (productId: string, variantId: string | null, qty: number) =>
-    apiPost<MyPreorder>("/api/me/preorders", { productId, variantId: variantId ?? undefined, qty }),
-  leave: (id: number) => apiDel<void>(`/api/me/preorders/${id}`),
+  coming: () => api.coming(),
+  forProduct: (id: string, signedIn: boolean) => (signedIn ? api.forProduct(id) : api.forProductPublic(id)),
+  mine: () => api.mine(),
+  // the Mini App leaves an empty variant out of the body
+  subscribe: (productId: string, variantId: string | null, qty: number) => api.subscribe(productId, variantId ?? undefined, qty),
+  leave: (id: number) => api.leave(id),
 };
 
 export const preorderKeys = {
-  coming: ["preorders", "coming"] as const,
-  mine: ["me", "preorders"] as const,
-  product: (id: string, signedIn: boolean) => ["preorders", "product", id, signedIn] as const,
+  coming: preorderKeysShared.coming,
+  mine: preorderKeysShared.mineInApp,
+  product: (id: string, signedIn: boolean) => preorderKeysShared.product(id, signedIn),
 };
 
 /** Quantity cap of the queue sheet when the anti-bot limit is off. */
@@ -104,26 +71,12 @@ export function useComing(): Coming {
     retry: 1,
   });
   return useMemo(() => {
-    const exact = new Map<string, PreorderEta>();
-    const byProduct = new Map<string, PreorderEta>();
-    const holds = new Map<string, number>();
-    const order: string[] = [];
-    for (const b of q.data ?? []) {
-      for (const l of b.lines) {
-        const k = lineKeyOf(l.productId, l.variantId);
-        if (!exact.has(k)) exact.set(k, b.eta);
-        if (!byProduct.has(l.productId)) {
-          byProduct.set(l.productId, b.eta);
-          if (b.holdHours && b.holdHours > 0) holds.set(l.productId, b.holdHours);
-          order.push(l.productId);
-        }
-      }
-    }
+    const idx = buildPreorderIndex(q.data ?? []);
     return {
-      etaOf: (productId: string, variantId: string | null) => exact.get(lineKeyOf(productId, variantId)),
-      productEta: (productId: string) => byProduct.get(productId),
-      holdHoursOf: (productId: string) => holds.get(productId) ?? DEFAULT_HOLD_HOURS,
-      productIds: order,
+      etaOf: (productId: string, variantId: string | null) => (variantId ? idx.variants.get(`${productId}::${variantId}`) : idx.products.get(productId)),
+      productEta: (productId: string) => idx.any.get(productId),
+      holdHoursOf: (productId: string) => idx.holdHours.get(productId) ?? DEFAULT_HOLD_HOURS,
+      productIds: idx.order,
     };
   }, [q.data]);
 }
@@ -158,18 +111,11 @@ export function useProductPreorder(productId: string) {
 
 /** A hold that is still running. */
 export function isLiveHold(p: MyPreorder, now = nowMs()): boolean {
-  return p.status === "HELD" && p.heldQty > 0 && !!p.holdUntil && new Date(p.holdUntil).getTime() > now;
+  return isLiveHoldAt(p, now);
 }
 
 export function heldFor(list: MyPreorder[], productId: string, variantId: string | null): MyPreorder | undefined {
-  return list.find((p) => p.productId === productId && (p.variantId ?? null) === variantId && isLiveHold(p));
-}
-
-/** My queue place for this line (waiting, or notified of an arrival I did not buy yet). */
-export function queuedFor(list: MyPreorder[], productId: string, variantId: string | null): MyPreorder | undefined {
-  return list.find(
-    (p) => p.productId === productId && (p.variantId ?? null) === variantId && (p.status === "WAITING" || p.status === "NOTIFIED"),
-  );
+  return heldForAt(list, productId, variantId, nowMs());
 }
 
 export function useHeldCount(): number {
@@ -191,7 +137,7 @@ export function preorderCardState(p: Product, inStock: boolean, coming: Coming, 
   if (inStock) return null;
   const held = mine.find((m) => m.productId === p.id && isLiveHold(m));
   if (held) return { kind: "held", heldQty: held.heldQty, holdUntil: held.holdUntil! };
-  const queued = mine.some((m) => m.productId === p.id && (m.status === "WAITING" || m.status === "NOTIFIED"));
+  const queued = mine.some((m) => m.productId === p.id && isQueued(m));
   const eta = coming.productEta(p.id);
   return eta ? { kind: "preorder", eta, queued } : { kind: "out", queued };
 }
