@@ -244,85 +244,12 @@ export type OrderSortBy = "createdAt" | "totalMinor" | "customerName" | "status"
 export type SortDir = "asc" | "desc";
 
 
-export interface PromoCode {
-  id: string;
-  code: string;
-  discountPercent?: number | null;
-  discountAmountMinor?: number | null;
-  /** Ceiling of the discount in kopecks (V63): «5 %, но не больше 100 ₴»; 0 = без потолка. */
-  maxDiscountMinor?: number | null;
-  maxUses?: number | null;
-  /** How many orders used the code (backend `usesCount`). */
-  usesCount?: number | null;
-  active: boolean;
-}
-
 export interface PaymentOption {
   id?: string;
   title: string;
   description?: string;
   requiresPrepayment: boolean;
   prepaymentMinor?: number | null;
-}
-
-// ---- users -----------------------------------------------------------------
-export interface UserCardDto {
-  telegramUserId: number;
-  username?: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  languageCode?: string | null;
-  premium: boolean;
-  botBlocked: boolean;
-  ordersCount: number;
-  totalSpentMinor: number;
-  createdAt?: string | null;
-  lastSeenAt?: string | null;
-}
-
-export type UserSortBy =
-  | "createdAt"
-  | "lastSeenAt"
-  | "username"
-  | "telegramUserId"
-  | "ordersCount"
-  | "totalSpentMinor";
-
-export interface UserMetricsDto {
-  range: TimeRange;
-  currency: string;
-  totalUsers: number;
-  newUsersInRange: number;
-  activeUsers: number;
-  inactiveUsers: number;
-  blockedUsers: number;
-  premiumUsers: number;
-  newUsersByDay: { date: string; count: number }[];
-  languages: { language: string; count: number }[];
-  topCustomers: {
-    telegramUserId: number;
-    name: string;
-    ordersCount: number;
-    totalSpentMinor: number;
-  }[];
-}
-
-// ---- broadcasts ------------------------------------------------------------
-export type BroadcastAudience = "all" | "active" | "inactive" | "premium";
-
-export interface BroadcastStatus {
-  running: boolean;
-  total: number;
-  sent: number;
-  failed: number;
-  blocked: number;
-  startedAt?: string | null;
-  finishedAt?: string | null;
-}
-
-export interface BroadcastResult {
-  ok: boolean;
-  detail: string;
 }
 
 // ============================================================================
@@ -445,57 +372,6 @@ export const adminApi = {
   /** Chat attachment (image or PDF) -> { key }: stored privately under chat/, not with product photos. */
   uploadChatAttachment: (id: string, file: File) =>
     uploadFile(`/api/admin/orders/${id}/attachments`, file),
-
-  // ---- promocodes ----
-  promocodes: () => apiGet<PromoCode[]>("/api/admin/promocodes"),
-  createPromo: (body: Partial<PromoCode>) =>
-    apiPost<PromoCode>("/api/admin/promocodes", body),
-  updatePromo: (id: string, body: Partial<PromoCode>) =>
-    apiPatch<PromoCode>(`/api/admin/promocodes/${id}`, body),
-  deletePromo: (id: string) => apiDelete<void>(`/api/admin/promocodes/${id}`),
-
-  // ---- users ----
-  /** GET /api/admin/users -> PLAIN UserCardDto[] (not paged). */
-  users: (params: {
-    q?: string;
-    blockedOnly?: boolean;
-    page?: number;
-    size?: number;
-    sortBy?: UserSortBy;
-    sortDir?: SortDir;
-  }) => {
-    const sp = new URLSearchParams();
-    if (params.q) sp.set("q", params.q);
-    if (params.blockedOnly) sp.set("blockedOnly", "true");
-    sp.set("page", String(params.page ?? 0));
-    sp.set("size", String(params.size ?? 30));
-    if (params.sortBy) sp.set("sortBy", params.sortBy);
-    if (params.sortDir) sp.set("sortDir", params.sortDir);
-    return apiGet<UserCardDto[]>(`/api/admin/users?${sp.toString()}`);
-  },
-  /** GET /api/admin/users/metrics?range= -> UserMetricsDto. */
-  userMetrics: (range: TimeRange = "month") =>
-    apiGet<UserMetricsDto>(`/api/admin/users/metrics?range=${range}`),
-  /** GET /api/admin/orders/by-user/{tgId} -> all orders of that user (newest first). */
-  userOrders: (telegramUserId: number) =>
-    apiGet<OrderCardDto[]>(`/api/admin/orders/by-user/${telegramUserId}`),
-
-  // ---- broadcasts ----
-  broadcastAudiences: () =>
-    apiGet<Record<BroadcastAudience, number>>("/api/admin/broadcast/audiences"),
-  broadcastStatus: () => apiGet<BroadcastStatus>("/api/admin/broadcast/status"),
-  broadcast: (body: {
-    text: string;
-    audience: BroadcastAudience;
-    withButton?: boolean;
-    buttonText?: string;
-  }) => apiPost<BroadcastStatus>("/api/admin/broadcast", body),
-  broadcastTest: (body: {
-    text: string;
-    telegramUserId: number;
-    withButton?: boolean;
-    buttonText?: string;
-  }) => apiPost<BroadcastResult>("/api/admin/broadcast/test", body),
 
   // ---- payment settings ----
   paymentOptions: () => apiGet<PaymentOption[]>("/api/admin/payment-options"),

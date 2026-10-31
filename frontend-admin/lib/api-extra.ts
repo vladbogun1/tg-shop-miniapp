@@ -1,118 +1,13 @@
 /**
- * Admin v2 endpoints of the catalog / payment / users / broadcasts / promo / audit screens.
+ * Admin v2 endpoints of the payment screen.
  *
  * Kept next to `api.ts` (same http client) instead of inside it so the parallel admin-v2 packages
  * do not all edit one file. Types here extend the older DTOs with the fields the backend now sends.
  */
-import {
-  apiGet,
-  apiPost,
-  apiPut,
-  type BroadcastAudience,
-  type BroadcastStatus,
-  type PaymentOption,
-  type PromoCode,
-  type UserCardDto,
-} from "./api";
-
-export type ShopLang = "uk" | "ru" | "en";
-
-/** Language names for the admin UI. */
-export const LANG_LABEL: Record<ShopLang, string> = { uk: "Украинский", ru: "Русский", en: "Английский" };
-export const LANG_SHORT: Record<string, string> = { uk: "UA", ru: "RU", en: "EN" };
+import { apiGet, apiPut, type PaymentOption } from "./api";
 
 // ---- payment ----------------------------------------------------------------
 export type PaymentOptionFull = PaymentOption & { sortOrder?: number; active?: boolean };
-
-// ---- users --------------------------------------------------------------------
-/** + `locale`: the language chosen in the shop (users.locale), not Telegram's. */
-export type UserCard = UserCardDto & { locale?: string | null };
-
-// ---- promo --------------------------------------------------------------------
-export type PromoCodeFull = PromoCode & {
-  /** Backend name of the counter (the older type reads `usedCount`). */
-  usesCount?: number | null;
-  /** Live 30-min holds of customers with the code in the cart. */
-  reservedCount?: number | null;
-  /** Personal code: only this customer (users.id) may use it (V44 review bonus). */
-  ownerUserId?: number | null;
-  expiresAt?: string | null;
-  source?: "REVIEW_BONUS" | null;
-  /** Backend `PromoOrigin` (absent on an older backend — use `promoOrigin()`). */
-  origin?: PromoOrigin | null;
-};
-
-/**
- * Where a code came from: OURS — a shared code made on the «Промокоды» page; PERSONAL — a code for
- * one customer; REVIEW — the automatic bonus for a review. Same rule as backend `PromoOrigin`.
- */
-export type PromoOrigin = "OURS" | "PERSONAL" | "REVIEW";
-export function promoOrigin(p: PromoCodeFull): PromoOrigin {
-  if (p.origin) return p.origin;
-  if (p.source === "REVIEW_BONUS") return "REVIEW";
-  return p.ownerUserId != null || p.source ? "PERSONAL" : "OURS";
-}
-
-/** An order with an admin's manual amount/percent discount («Ручная скидка» — not a promo code). */
-export interface ManualDiscountOrder {
-  id: string;
-  status: string;
-  customerName?: string | null;
-  tgUserId?: number | null;
-  /** «Ручная скидка» or «Ручная скидка 10%». */
-  label: string;
-  totalMinor: number;
-  discountMinor: number;
-  createdAt: string;
-}
-export interface PromoOrder {
-  id: string;
-  status: string;
-  customerName?: string | null;
-  totalMinor: number;
-  discountMinor: number;
-  createdAt: string;
-}
-
-// ---- broadcasts -------------------------------------------------------------------
-export interface BroadcastHistoryItem {
-  id: number;
-  adminName?: string | null;
-  text: string;
-  textUk?: string | null;
-  textRu?: string | null;
-  textEn?: string | null;
-  audience: BroadcastAudience;
-  lang?: ShopLang | null;
-  withButton: boolean;
-  status: "RUNNING" | "DONE" | "INTERRUPTED";
-  total: number;
-  sent: number;
-  failed: number;
-  blocked: number;
-  startedAt: string;
-  finishedAt?: string | null;
-}
-
-export interface BroadcastStart {
-  text: string;
-  audience: BroadcastAudience;
-  withButton: boolean;
-  buttonText?: string;
-  lang?: ShopLang | "";
-  textUk?: string;
-  textRu?: string;
-  textEn?: string;
-}
-
-function qs(params: Record<string, string | number | undefined | null>): string {
-  const sp = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== null && v !== "") sp.set(k, String(v));
-  }
-  const s = sp.toString();
-  return s ? `?${s}` : "";
-}
 
 export const extApi = {
   // payment
@@ -121,20 +16,4 @@ export const extApi = {
     apiGet<PaymentOptionFull[]>("/api/admin/payment-options?includeInactive=true"),
   putPaymentOptions: (list: PaymentOptionFull[]) =>
     apiPut<PaymentOptionFull[]>("/api/admin/payment-options", list),
-
-  // promo
-  promocodes: () => apiGet<PromoCodeFull[]>("/api/admin/promocodes"),
-  promoOrders: (id: string) => apiGet<PromoOrder[]>(`/api/admin/promocodes/${id}/orders`),
-  manualDiscounts: () => apiGet<ManualDiscountOrder[]>("/api/admin/promocodes/manual-discounts"),
-
-  // broadcasts
-  broadcastAudiences: (lang?: ShopLang | "") =>
-    apiGet<Record<BroadcastAudience, number>>(`/api/admin/broadcast/audiences${qs({ lang })}`),
-  broadcastHistory: (limit = 20) =>
-    apiGet<BroadcastHistoryItem[]>(`/api/admin/broadcast/history?limit=${limit}`),
-  broadcast: (body: BroadcastStart) => apiPost<BroadcastStatus>("/api/admin/broadcast", body),
-  /** telegramUserId omitted = to the admin who sends it («себе»). */
-  broadcastTest: (body: { text: string; telegramUserId?: number; withButton: boolean; buttonText?: string }) =>
-    apiPost<{ ok: boolean; detail: string }>("/api/admin/broadcast/test", body),
-
 };

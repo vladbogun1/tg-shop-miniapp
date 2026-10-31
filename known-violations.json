@@ -46,7 +46,7 @@
   },
   {
     "type": "dependency",
-    "from": "frontend-admin/lib/support-api.ts",
+    "from": "frontend-admin/features/support/realtime.ts",
     "to": "packages/core/src/ws.ts",
     "rule": {
       "severity": "error",
