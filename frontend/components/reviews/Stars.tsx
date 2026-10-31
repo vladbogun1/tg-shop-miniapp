@@ -6,7 +6,7 @@
  */
 import { Star } from "lucide-react";
 import { useT } from "@/i18n/context";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 
 /** Read-only stars; `value` may be fractional (4.3 fills 30% of the fifth star). */
 export function Stars({

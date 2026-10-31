@@ -6,7 +6,7 @@ import { awaitingOnline, PENDING, pendingPayment, POLL_EVERY_MS, POLL_FOR_MS } f
 import { useI18n } from "@/i18n/context";
 import { ApiError, customerApi, type OrderDetail } from "@/lib/api";
 import { nowMs } from "@shop/core/time";
-import { hapticSuccess, haptic, isAndroidTelegram, onAppResume, openExternalLink } from "@/lib/telegram";
+import { hapticSuccess, haptic, isAndroidTelegram, onAppResume, openExternalLink } from "@/platform/telegram";
 
 /** Re-renders every `ms` — for the "залишилось …" countdown. */
 function useNow(ms: number): number {

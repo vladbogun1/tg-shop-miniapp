@@ -6,7 +6,7 @@ import Link from "next/link";
 import { PRE_COLOR } from "@/components/preorder/colors";
 import { useT } from "@/i18n/context";
 import { useHeldCount } from "@/lib/preorders";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 
 export function AccountPreordersLink() {
   const t = useT();

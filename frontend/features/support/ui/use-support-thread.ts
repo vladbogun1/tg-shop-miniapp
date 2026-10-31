@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { customerApi, getAccessToken, onAccessToken, type SendMessageRequest } from "@/lib/api";
 import { dayLabel } from "@/lib/format";
 import { connectSupportChat, supportApi, type SupportMessage } from "@/lib/support";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { hasUnreadFromShop } from "@shop/customer/chat/model";
 import { useThread } from "@shop/customer/chat/use-thread";
 import { SUPPORT_KEYS } from "@shop/customer/support/model";

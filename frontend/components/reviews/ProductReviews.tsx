@@ -11,7 +11,7 @@ import { Button } from "@shop/ui/primitives";
 import { useT } from "@/i18n/context";
 import { formatDate } from "@/lib/format";
 import { reviewKeys, reviewsApi, type PublicReview, type ReviewSummary } from "@/lib/reviews";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { formatRating, Stars } from "./Stars";
 
 export function ProductReviews({ productId }: { productId: string }) {

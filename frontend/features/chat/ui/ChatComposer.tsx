@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "@/i18n/context";
 import { customerApi, type SendMessageRequest } from "@/lib/api";
 import { spring } from "@/lib/motion";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { isSendDisabled, isTooLong, showCounter } from "../model/composer";
 
 /** What the reply strip needs from the message being replied to (order and support messages both fit). */

@@ -12,7 +12,7 @@ import { useT } from "@/i18n/context";
 import { useAccessToken } from "@/lib/auth";
 import { spring } from "@/lib/motion";
 import { supportApi } from "@/lib/support";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 
 export function SupportEntry() {
   const t = useT();

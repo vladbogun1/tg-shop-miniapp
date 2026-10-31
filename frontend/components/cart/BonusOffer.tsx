@@ -18,7 +18,7 @@ import { useAccessToken } from "@/lib/auth";
 import { formatDayMonth } from "@/lib/format";
 import { money } from "@/lib/money";
 import { reviewKeys, reviewsApi } from "@/lib/reviews";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 
 /** My review bonuses; empty until signed in, and a failed load just means no offer. */
 export function useMyBonuses(): BonusCode[] {

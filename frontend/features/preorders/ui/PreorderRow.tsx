@@ -9,7 +9,7 @@ import { useI18n } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { spring } from "@/lib/motion";
 import { preorderApi, preorderKeys, type MyPreorder } from "@/lib/preorders";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { preorderScreenKeys } from "../keys";
 import { rowStatus, statusLine, type RowStatus } from "../model/status";
 

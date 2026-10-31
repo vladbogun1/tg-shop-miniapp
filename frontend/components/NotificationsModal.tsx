@@ -19,7 +19,7 @@ import { useAccessToken } from "@/lib/auth";
 import { formatDate, formatTime, shortOrderId } from "@/lib/format";
 import { StatusChip } from "@shop/ui/primitives";
 import { backdrop, sheetVariants, spring } from "@/lib/motion";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { now } from "@shop/core/time";
 
 function whenLabel(iso?: string | null): string {

@@ -11,7 +11,7 @@ import type { OrderSummary } from "@/lib/api";
 import { formatDate, shortOrderId } from "@/lib/format";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 
 /** "Case is waiting" / "waiting for payment" badge of a sealed gift case. */
 function CaseBadge({ order }: { order: OrderSummary }) {

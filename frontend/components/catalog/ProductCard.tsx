@@ -17,7 +17,7 @@ import { useI18n } from "@/i18n/context";
 import { etaCardLine, type PreorderCardState } from "@/lib/preorders";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import type { Product } from "@/lib/api";
 
 export function ProductCard({

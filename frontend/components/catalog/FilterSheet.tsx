@@ -22,7 +22,7 @@ import { useI18n } from "@/i18n/context";
 import { EMPTY_FILTER } from "@shop/customer/catalog/model/filter";
 import { type EngineItem } from "@/lib/catalog";
 import { backdrop, sheetVariants } from "@/lib/motion";
-import { haptic, useBackButton } from "@/lib/telegram";
+import { haptic, useBackButton } from "@/platform/telegram";
 
 export function FilterSheet({
   open,

@@ -5,7 +5,7 @@ import type { GiftChoice, GiftTierInfo } from "@shop/core/giftcase";
 import { caseMoney, useCaseRules } from "@/components/case/OrderGiftCase";
 import { useT } from "@/i18n/context";
 import type { DeliveryMethod, NpWarehouse, PaymentOption } from "@/lib/api";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { ConfirmSummary } from "./ConfirmSummary";
 import { PaymentTrust } from "./PaymentStep";
 

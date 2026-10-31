@@ -11,7 +11,7 @@ import type { Product } from "@/lib/api";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 import { etaCardLine, type Coming } from "@/lib/preorders";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 
 export function PreorderRibbon({
   products,

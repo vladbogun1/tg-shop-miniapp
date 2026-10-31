@@ -22,7 +22,7 @@ import { customerApi, type PromoPreview } from "@/lib/api";
 import { formatTime } from "@/lib/format";
 import { useCartPromoItems } from "@/lib/cart";
 import { money } from "@/lib/money";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 
 
 export function PromoField({

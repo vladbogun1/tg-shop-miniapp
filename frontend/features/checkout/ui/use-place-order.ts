@@ -11,7 +11,7 @@ import { trackOrderCreated } from "@/lib/analytics";
 import { useI18n } from "@/i18n/context";
 import { customerApi, type DeliveryMethod, type NpWarehouse, type PaymentOption } from "@/lib/api";
 import { cartAfterOrder, flushCart } from "@/lib/cart-sync";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { useInvalidateMe } from "../queries";
 
 type OrderLines = (Parameters<typeof buildCreateOrderRequest>[0]["lines"][number] & { key: string })[];

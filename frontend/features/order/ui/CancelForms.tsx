@@ -5,7 +5,7 @@ import { useState } from "react";
 import { CANCEL_REASON_MAX } from "@shop/core/orders";
 import { useT } from "@/i18n/context";
 import { ApiError, customerApi } from "@/lib/api";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { CANCEL_REASONS, type CancelReasonId } from "../model/cancel-reasons";
 
 /** Cancel an unpaid order (NEW/APPROVED) — the reason is optional. */

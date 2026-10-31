@@ -18,7 +18,7 @@ import { timeAgo } from "@/lib/format";
 import { Image } from "@/lib/image";
 import { spring } from "@/lib/motion";
 import { supportApi, type SupportThread } from "@/lib/support";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { supportKeys } from "../keys";
 
 const CONFIG_STALE_MS = 60_000;

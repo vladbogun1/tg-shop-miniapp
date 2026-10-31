@@ -30,7 +30,7 @@ import { useCatalogSchema } from "@/lib/catalog";
 import { money } from "@/lib/money";
 import { heldFor, queuedFor, useComing, useMyPreorders, useProductPreorder } from "@/lib/preorders";
 import { useAccessToken } from "@/lib/auth";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { overlayRise, backdrop } from "@/lib/motion";
 import type { Product, ProductVariant } from "@/lib/api";
 

@@ -23,7 +23,7 @@ import { shortOrderId } from "@/lib/format";
 import { spring } from "@/lib/motion";
 import { useT } from "@/i18n/context";
 import { useAccessToken } from "@/lib/auth";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { OrderBody } from "./OrderBody";
 
 export function OrderScreen() {

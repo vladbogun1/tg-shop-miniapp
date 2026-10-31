@@ -24,7 +24,7 @@ import { customerApi, mediaUrl, type OrderDetail } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { money } from "@/lib/money";
 import { riseItem } from "@/lib/motion";
-import { downloadFile, haptic, openExternalLink } from "@/lib/telegram";
+import { downloadFile, haptic, openExternalLink } from "@/platform/telegram";
 import { nowMs } from "@shop/core/time";
 
 /** Signed links live ≥ 10 min; re-read the list before using one older than this. */

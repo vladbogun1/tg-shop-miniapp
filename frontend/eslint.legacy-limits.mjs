@@ -24,7 +24,6 @@ const legacy = {
     "components/checkout/NpCombobox.tsx",
     "components/preorder/PreorderBlock.tsx",
     "lib/image.tsx",
-    "lib/telegram.ts",
   ],
   "max-lines": [
     "app/account/orders/[id]/chat/page.tsx",

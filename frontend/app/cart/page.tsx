@@ -28,7 +28,7 @@ import { maxQty } from "@shop/core/orders";
 import { useOrderLimits } from "@/lib/order-limits";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { useKeyboardOpen } from "@/lib/viewport";
 
 export default function CartPage() {

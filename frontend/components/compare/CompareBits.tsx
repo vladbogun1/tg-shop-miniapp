@@ -11,7 +11,7 @@ import { AlertTriangle, Check, CheckCircle2, ChevronRight, Scale } from "lucide-
 import { useEffect, useState } from "react";
 import { useT } from "@/i18n/context";
 import { toggleCompare, useCompare, useCompareToast, useInCompare } from "@/lib/compare";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 
 /** Hydration guard: the list lives in localStorage, the first render must match the server's. */
 function useMounted() {

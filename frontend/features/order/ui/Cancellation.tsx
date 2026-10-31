@@ -5,7 +5,7 @@ import type { customerCancelMode } from "@shop/core/orders";
 import { useT } from "@/i18n/context";
 import type { OrderDetail } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { CancelOrder, RequestCancel } from "./CancelForms";
 
 type CancelMode = ReturnType<typeof customerCancelMode>;

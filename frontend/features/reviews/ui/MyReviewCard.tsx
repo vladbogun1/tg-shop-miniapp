@@ -12,7 +12,7 @@ import { formatDate } from "@/lib/format";
 import { Image } from "@/lib/image";
 import { spring } from "@/lib/motion";
 import type { MyReview, ReviewStatus } from "@/lib/reviews";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 
 const STATUS_COLOR: Record<ReviewStatus, string> = {
   PENDING: "var(--warn)",

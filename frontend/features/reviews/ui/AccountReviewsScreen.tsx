@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@shop/ui/primitives";
 import { useT } from "@/i18n/context";
 import { spring } from "@/lib/motion";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { ReviewsSections } from "./ReviewsSections";
 import { useAccountReviews } from "./use-account-reviews";
 

@@ -14,7 +14,7 @@ import { useState } from "react";
 import { useT } from "@/i18n/context";
 import { customerApi } from "@/lib/api";
 import { useAccessToken } from "@/lib/auth";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { NotificationsModal } from "@/components/NotificationsModal";
 
 export function NotificationsBell() {

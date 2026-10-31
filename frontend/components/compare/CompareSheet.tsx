@@ -25,7 +25,7 @@ import { useCompare } from "@/lib/compare";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 import { backdrop, overlayRise } from "@/lib/motion";
-import { haptic, useBackButton } from "@/lib/telegram";
+import { haptic, useBackButton } from "@/platform/telegram";
 
 const LABEL_W = 180;
 const PHONE_MAX = 640;

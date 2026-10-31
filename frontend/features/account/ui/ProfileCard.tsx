@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useT } from "@/i18n/context";
 import { spring } from "@/lib/motion";
-import { useTelegram } from "@/lib/telegram";
+import { useTelegram } from "@/platform/telegram";
 import { deriveInitials, displayNameOf } from "../model/profile";
 
 /** Avatar tile, name, @username and the orders counter. */

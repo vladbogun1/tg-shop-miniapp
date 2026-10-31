@@ -28,7 +28,7 @@ import {
   parseOrderDeepLink, parseOrderViewDeepLink, parseProductDeepLink,
   useHideMainButton,
   useTelegram,
-} from "@/lib/telegram";
+} from "@/platform/telegram";
 
 /** Give up after this many attempts so a genuinely broken backend stops being retried forever. */
 const MAX_AUTH_ATTEMPTS = 4;

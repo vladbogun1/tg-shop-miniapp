@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useT } from "@/i18n/context";
 import { useAccessToken } from "@/lib/auth";
 import { reviewKeys, reviewsApi } from "@/lib/reviews";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 
 export function AccountReviewsLink() {
   const t = useT();

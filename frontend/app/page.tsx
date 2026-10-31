@@ -50,7 +50,7 @@ import { EMPTY_FILTER, EMPTY_SCHEMA } from "@shop/customer/catalog/model/filter"
 import { productInStock } from "@shop/customer/catalog/model/stock";
 import { toEngineItems, useCatalogSchema, useStoredFilter } from "@/lib/catalog";
 import { spring } from "@/lib/motion";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { sessionStore } from "@shop/core/storage";
 
 /** Cards that rise in on mount — a first screenful; the rest just appear. */

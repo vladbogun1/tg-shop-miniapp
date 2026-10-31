@@ -25,7 +25,7 @@ import { useGift } from "@/lib/gift";
 import { formatDate, shortOrderId } from "@/lib/format";
 import { money } from "@/lib/money";
 import { resolveImageSrc } from "@/lib/image";
-import { haptic, hapticImpact, hapticSelection, hapticSuccess, openExternalLink, useBackButton } from "@/lib/telegram";
+import { haptic, hapticImpact, hapticSelection, hapticSuccess, openExternalLink, useBackButton } from "@/platform/telegram";
 
 /** The payment block of the order page — the locked card's CTA scrolls there. */
 export const ORDER_PAY_ANCHOR = "order-pay";

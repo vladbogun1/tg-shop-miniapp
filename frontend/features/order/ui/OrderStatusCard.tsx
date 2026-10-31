@@ -10,7 +10,7 @@ import { useT } from "@/i18n/context";
 import type { OrderDetail } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { riseItem } from "@/lib/motion";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 
 /** Status + timeline, the reject reason, the tracking number and the creation time. */
 export function OrderStatusCard({

@@ -13,7 +13,7 @@ import { trackAddToCart } from "@/lib/analytics";
 import { lineKey, useCart } from "@/lib/cart";
 import { maxQty } from "@shop/core/orders";
 import { useOrderLimits } from "@/lib/order-limits";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import type { Product, ProductVariant } from "@/lib/api";
 
 export function AddToCartControl({

@@ -14,7 +14,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useT } from "@/i18n/context";
 import { Image } from "@/lib/image";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import type { ProductImage } from "@/lib/api";
 
 export function Gallery({

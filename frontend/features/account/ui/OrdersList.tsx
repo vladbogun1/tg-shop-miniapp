@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@shop/ui/primitives";
 import { useT } from "@/i18n/context";
 import type { OrderSummary } from "@/lib/api";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { EmptyState } from "./EmptyState";
 import { OrderCard } from "./OrderCard";
 

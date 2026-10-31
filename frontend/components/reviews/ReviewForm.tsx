@@ -28,7 +28,7 @@ import {
   type PendingReviewLine,
   type SubmitReviewResult,
 } from "@/lib/reviews";
-import { haptic, hapticSuccess } from "@/lib/telegram";
+import { haptic, hapticSuccess } from "@/platform/telegram";
 import { StarInput } from "./Stars";
 
 /** The Mini App: «Send» stays disabled until stars + enough text are in; the text is clamped while typing. */

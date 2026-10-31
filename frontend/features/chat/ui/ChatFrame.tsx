@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { useT } from "@/i18n/context";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 
 /** Own fixed full-screen layout (the TabBar hides on /chat), safe-area aware. */
 export function ChatFrame({ children }: { children: ReactNode }) {

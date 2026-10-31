@@ -14,7 +14,7 @@ import { hasOnlinePayment } from "@shop/core/receipts";
 import { useT } from "@/i18n/context";
 import type { OrderDetail } from "@/lib/api";
 import { riseItem, staggerContainer } from "@/lib/motion";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { Cancellation } from "./Cancellation";
 import { OrderInfoCard } from "./OrderInfoCard";
 import { OrderItemsCard } from "./OrderItemsCard";

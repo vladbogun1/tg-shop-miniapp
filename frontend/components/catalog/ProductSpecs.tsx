@@ -9,7 +9,7 @@ import { useState } from "react";
 import { categoryPath, specRows, type CatalogSchema } from "@shop/core/catalog";
 import { useI18n } from "@/i18n/context";
 import type { Product } from "@/lib/api";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 
 /** Rows visible before "Все характеристики". */
 const FIRST_ROWS = 6;

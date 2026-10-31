@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { useT } from "@/i18n/context";
 import { useAccessToken } from "@/lib/auth";
 import { supportApi } from "@/lib/support";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 
 export function AskAboutProduct({ productId, onNavigate }: { productId: string; onNavigate?: () => void }) {
   const t = useT();

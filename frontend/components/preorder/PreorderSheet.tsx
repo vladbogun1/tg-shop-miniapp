@@ -15,7 +15,7 @@ import { ApiError, type Product, type ProductVariant } from "@/lib/api";
 import { useOrderLimits } from "@/lib/order-limits";
 import { DEFAULT_HOLD_HOURS, preorderApi, preorderKeys, QUEUE_MAX_QTY, type MyPreorder } from "@/lib/preorders";
 import { Sheet } from "@shop/ui/overlay";
-import { haptic, useBackButton } from "@/lib/telegram";
+import { haptic, useBackButton } from "@/platform/telegram";
 
 export function PreorderSheet({
   product,

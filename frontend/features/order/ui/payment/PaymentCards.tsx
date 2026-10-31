@@ -10,7 +10,7 @@ import type { OrderDetail } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { money } from "@/lib/money";
 import { spring } from "@/lib/motion";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { leftText, methodLabel } from "../../model/payment-labels";
 
 const TONE_CLASS = {

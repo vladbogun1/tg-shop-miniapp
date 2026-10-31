@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import { useMyPreorders } from "@/lib/preorders";
-import { haptic } from "@/lib/telegram";
+import { haptic } from "@/platform/telegram";
 import { PreorderRow } from "./PreorderRow";
 
 function Notice({
