@@ -9,7 +9,7 @@
  * every filled field has «очистить» (no key = unknown).
  */
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { CardMeta } from "../model/card-meta";
 import type { ProductSpecs, SpecValue } from "@shop/core/catalog";
 import { cn } from "@/lib/cn";
@@ -221,10 +221,12 @@ export function SpecsForm({
   highlightMissing?: boolean;
 }) {
   const [raw, setRaw] = useState<Record<string, string>>(() => rawFromSpecs(attrs, specs));
-  useEffect(() => {
+  // The number texts are re-read from the specs only when resetKey changes (state adjusted during render).
+  const [seenKey, setSeenKey] = useState(resetKey);
+  if (seenKey !== resetKey) {
+    setSeenKey(resetKey);
     setRaw(rawFromSpecs(attrs, specs));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resetKey]);
+  }
 
   const grouped = useMemo(() => groupAttributes(attrs, groups), [attrs, groups]);
 

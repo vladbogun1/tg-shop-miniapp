@@ -126,6 +126,20 @@ function TreeSelectTrigger({ btnRef, id, open, labelledBy, text, filled, invalid
   );
 }
 
+/** Курсор списка; при открытии встаёт на текущее значение (состояние правится во время рендера, только по фронту «открылось»). */
+function useCursor(open: boolean, selectable: { id: string }[], value: string) {
+  const [active, setActive] = useState(0);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (open) {
+      const i = selectable.findIndex((r) => r.id === value);
+      setActive(i >= 0 ? i : 0);
+    }
+  }
+  return [active, setActive] as const;
+}
+
 export function CategoryTreeSelect({
   categories,
   value,
@@ -155,7 +169,6 @@ export function CategoryTreeSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
-  const [active, setActive] = useState(0);
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -166,16 +179,10 @@ export function CategoryTreeSelect({
 
   const selectable = useMemo(() => rows.filter((r) => r.selectable), [rows]);
 
-  // Opening puts the cursor on the current value.
-  useEffect(() => {
-    if (!open) return;
-    const i = selectable.findIndex((r) => r.id === value);
-    setActive(i >= 0 ? i : 0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  const [active, setActive] = useCursor(open, selectable, value);
   useEffect(() => {
     setActive(0);
-  }, [q]);
+  }, [q, setActive]);
 
   useEffect(() => {
     if (!open) return;
