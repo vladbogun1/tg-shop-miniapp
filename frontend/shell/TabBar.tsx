@@ -25,9 +25,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useT } from "@/i18n/context";
-import { useCartCount } from "@/features/cart";
-import { useCompare, useCompareCount } from "@/features/compare";
-import { useHeldCount } from "@/features/preorders";
+import { useCartCount } from "@/features/cart/store";
+import { useCompare, useCompareCount } from "@/features/compare/store";
+import { useHeldCount } from "@/features/preorders/state";
 import { useKeyboardOpen } from "@/lib/viewport";
 
 const TABS = [

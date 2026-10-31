@@ -1,4 +1,2 @@
-// Entry points are split per route (chat.ts, list.ts): a route imports only its own screen.
-export { SupportChatScreen } from "./chat";
-export { SupportListScreen } from "./list";
+// Screens are separate route entries (chat.ts, list.ts): index.ts must stay light, other features import it.
 export { supportApi, parseSupportDeepLink } from "./api";

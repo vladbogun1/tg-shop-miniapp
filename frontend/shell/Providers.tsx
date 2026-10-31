@@ -21,8 +21,8 @@ import { UiLookProvider } from "@shop/ui/look";
 import { I18nProvider } from "@/i18n/context";
 import { startAnalytics, track } from "@/lib/analytics";
 import { authWithTelegram } from "@/lib/api";
-import { startCartSync } from "@/features/cart";
-import { parseSupportDeepLink } from "@/features/support";
+import { startCartSync } from "@/features/cart/sync";
+import { parseSupportDeepLink } from "@/features/support/api";
 import {
   getStartParam,
   parseOrderDeepLink, parseOrderViewDeepLink, parseProductDeepLink,

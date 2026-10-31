@@ -1,6 +1,6 @@
 "use client";
 
-import { MyPreordersScreen } from "@/features/preorders";
+import { MyPreordersScreen } from "@/features/preorders/screen";
 
 export default function MyPreordersPage() {
   return <MyPreordersScreen />;

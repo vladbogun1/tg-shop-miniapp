@@ -1,4 +1,4 @@
-export { MyPreordersScreen } from "./ui/MyPreordersScreen";
+// Экраны маршрутов — в screen.ts (маршрут не тянет barrel); здесь только то, что нужно другим фичам.
 export { PreorderSheet } from "./ui/PreorderSheet";
 export { PreorderRibbon } from "./ui/PreorderRibbon";
 export { preorderCardState, preorderTier, queuedFor, useComing, useMyPreorders, etaCardLine, type PreorderCardState, heldFor, useProductPreorder, useHeldCount } from "./state";
