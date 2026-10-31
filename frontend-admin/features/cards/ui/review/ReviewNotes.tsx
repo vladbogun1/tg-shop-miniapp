@@ -5,16 +5,9 @@ import type { CardItem } from "../../model/item";
 import type { CardMeta, CardReviewData } from "../../model";
 import { fieldsWord, missingLabels } from "../../model/view";
 import type { CardSchema } from "../../model/schema";
-import { fmtDate } from "../shared";
+import { fmtDate, host } from "../shared";
 import { Section } from "./parts";
 
-function host(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
 
 /** Предупреждение о пустых обязательных характеристиках. */
 export function MissingNotice({ cur, schema }: { cur: CardItem; schema: CardSchema | undefined }) {

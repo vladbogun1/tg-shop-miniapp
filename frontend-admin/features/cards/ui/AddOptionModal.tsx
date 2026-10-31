@@ -6,14 +6,13 @@
  * same answer against the refreshed schema.
  */
 import { useState } from "react";
-import { ApiError } from "@/lib/api";
-import type { Proposal } from "../model";
+import { optionsWithNew, type Proposal } from "../model";
 import { cardsApi } from "../api";
 import { slugify } from "@/features/catalog";
-import { toast } from "@shop/ui/toast";
 import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
+import { useApiMutation } from "@shop/ui/mutation";
 
 function optionSlug(label: string): string {
   return slugify(label).replace(/-+/g, "_").replace(/^_+|_+$/g, "").slice(0, 64);
@@ -27,43 +26,23 @@ export function AddOptionModal({ proposal, onClose, onAdded }: { proposal: Propo
   const [value, setValue] = useState(optionSlug(proposal.value));
   const [valueTouched, setValueTouched] = useState(false);
   const [aliases, setAliases] = useState(proposal.value);
-  const [saving, setSaving] = useState(false);
 
   const slug = valueTouched ? value : optionSlug(labelEn || labelRu);
   const taken = attr.options.find((o) => o.value === slug);
   const error = !slug ? "Пустой код" : !/^[a-z0-9_]+$/.test(slug) ? "Только a–z, 0–9 и _" : taken ? `Уже есть: ${taken.labelRu}` : undefined;
 
-  async function save() {
+  const saveOption = useApiMutation({
+    mutationFn: () =>
+      cardsApi.updateAttributeOptions(attr.id!, optionsWithNew(attr, { value: slug, labelRu, labelUk, labelEn, aliases })),
+    errorFallback: "Не удалось сохранить опцию",
+    success: `Опция «${labelRu.trim()}» добавлена в «${attr.labelRu}» — ответ проверен заново`,
+    onSuccess: onAdded,
+  });
+  const saving = saveOption.isPending;
+
+  function save() {
     if (error || !attr.id) return;
-    setSaving(true);
-    try {
-      await cardsApi.updateAttributeOptions(attr.id, [
-        ...attr.options.map((o) => ({
-          value: o.value,
-          labelRu: o.labelRu,
-          labelUk: o.labelUk ?? o.labelRu,
-          labelEn: o.labelEn ?? o.labelRu,
-          aliases: o.aliases.join("\n"),
-        })),
-        {
-          value: slug,
-          labelRu: labelRu.trim(),
-          labelUk: (labelUk || labelRu).trim(),
-          labelEn: (labelEn || labelRu).trim(),
-          aliases: aliases
-            .split(/\n|,/)
-            .map((a) => a.trim())
-            .filter(Boolean)
-            .join("\n"),
-        },
-      ]);
-      toast.success(`Опция «${labelRu.trim()}» добавлена в «${attr.labelRu}» — ответ проверен заново`);
-      onAdded();
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить опцию");
-    } finally {
-      setSaving(false);
-    }
+    saveOption.mutate();
   }
 
   return (

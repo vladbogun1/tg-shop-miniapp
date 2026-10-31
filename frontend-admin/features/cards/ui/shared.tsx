@@ -134,3 +134,12 @@ export function fmtDate(iso: unknown): string | null {
   if (Number.isNaN(d.getTime())) return null;
   return formatMoment(d, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
+
+/** Домен ссылки без «www.» (для подписи источника); не ссылка — как есть. */
+export function host(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
