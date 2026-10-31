@@ -28,7 +28,7 @@
   },
   {
     "type": "dependency",
-    "from": "frontend/lib/support.ts",
+    "from": "frontend/features/support/api.ts",
     "to": "packages/core/src/ws.ts",
     "rule": {
       "severity": "error",

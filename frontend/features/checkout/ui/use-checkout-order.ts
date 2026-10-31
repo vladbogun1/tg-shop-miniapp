@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { giftProgress, guaranteedDiscountMinor, type GiftChoice } from "@shop/core/giftcase";
 import { visiblePaymentOptions } from "@shop/core/orders";
-import { usePromoPreview } from "@/components/cart/PromoField";
-import { useGift } from "@/lib/gift";
+import { usePromoPreview } from "@/features/cart";
+import { useGift } from "@/features/gift";
 import { dueNowOf, resolvePayment } from "../model/totals";
 import { usePaymentOptionsQuery } from "../queries";
 

@@ -1,10 +1,10 @@
 "use client";
 
 import { Gift } from "lucide-react";
-import { BonusCodeCard } from "@/components/reviews/ReviewForm";
-import { PendingReviewList } from "@/components/reviews/PendingReviewList";
+import { BonusCodeCard } from "@/features/reviews/ui/ReviewForm";
+import { PendingReviewList } from "@/features/reviews/ui/PendingReviewList";
 import { useT } from "@/i18n/context";
-import type { MyReview } from "@/lib/reviews";
+import type { MyReview } from "@/features/reviews/api";
 import type { BonusCode } from "@shop/core/types";
 import { MyReviewCard } from "./MyReviewCard";
 

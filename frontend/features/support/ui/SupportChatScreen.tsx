@@ -16,7 +16,7 @@
  */
 import { LifeBuoy } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { MessageBubble } from "@/components/chat/MessageBubble";
+import { MessageBubble } from "@/features/chat";
 import { useT } from "@/i18n/context";
 import { ApiError } from "@/lib/api";
 import { supportAsChatMessage } from "@shop/core/support";

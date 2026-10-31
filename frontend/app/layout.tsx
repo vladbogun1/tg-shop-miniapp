@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { CHUNK_RECOVERY_SCRIPT } from "@shop/core/chunk-recovery";
-import { Preloader } from "@/components/Preloader";
-import { PreloaderReady } from "@/components/PreloaderReady";
-import { Providers } from "@/components/Providers";
-import { TabBar } from "@/components/TabBar";
+import { Preloader } from "@/shell/Preloader";
+import { PreloaderReady } from "@/shell/PreloaderReady";
+import { Providers } from "@/shell/Providers";
+import { TabBar } from "@/shell/TabBar";
 // Fonts are bundled from npm (@fontsource-variable), not fetched from Google at build time:
 // a flaky fonts.googleapis.com used to break `next build`. Only the subsets in use are downloaded.
 import "@fontsource-variable/inter/wght.css";

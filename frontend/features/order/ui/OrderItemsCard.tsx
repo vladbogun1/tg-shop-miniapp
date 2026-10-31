@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Package } from "lucide-react";
 import { payableMinor } from "@shop/core/orders";
-import { CasePrizeNote } from "@/components/case/OrderGiftCase";
+import { CasePrizeNote } from "@/features/gift";
 import { useT } from "@/i18n/context";
 import type { OrderDetail } from "@/lib/api";
 import { Image } from "@/lib/image";

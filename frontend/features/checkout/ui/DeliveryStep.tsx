@@ -4,8 +4,8 @@ import { Store, Truck, MapPin } from "lucide-react";
 import dynamic from "next/dynamic";
 import type { NpCity } from "@shop/core/types";
 import { Button } from "@shop/ui/primitives";
-import { CitySearch, WarehouseSearch } from "@/components/checkout/NpSearch";
-import type { MapFocus } from "@/components/checkout/NpWarehouseMap";
+import { CitySearch, WarehouseSearch } from "@/features/checkout/ui/NpSearch";
+import type { MapFocus } from "@/features/checkout/ui/NpWarehouseMap";
 import { useT } from "@/i18n/context";
 import type { DeliveryMethod, NpWarehouse } from "@/lib/api";
 import { type NpMode, npLabel } from "../model/np-label";
@@ -24,7 +24,7 @@ function MapLoading() {
   );
 }
 
-const NpWarehouseMap = dynamic(() => import("@/components/checkout/NpWarehouseMap"), {
+const NpWarehouseMap = dynamic(() => import("@/features/checkout/ui/NpWarehouseMap"), {
   ssr: false,
   loading: MapLoading,
 });

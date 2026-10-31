@@ -2,7 +2,7 @@
 
 import { GiftChoicePicker } from "@shop/ui/gift-case";
 import type { GiftChoice, GiftTierInfo } from "@shop/core/giftcase";
-import { caseMoney, useCaseRules } from "@/components/case/OrderGiftCase";
+import { caseMoney, useCaseRules } from "@/features/gift";
 import { useT } from "@/i18n/context";
 import type { DeliveryMethod, NpWarehouse, PaymentOption } from "@/lib/api";
 import { haptic } from "@/platform/telegram";

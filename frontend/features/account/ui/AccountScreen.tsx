@@ -2,12 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { orderKeys } from "@shop/customer/order/keys";
-import { Logo } from "@/components/Logo";
-import { NotificationsBell } from "@/components/NotificationsBell";
-import { SupportEntry } from "@/components/account/SupportEntry";
-import { LanguageSegments } from "@/components/LanguageToggle";
-import { AccountPreordersLink } from "@/components/preorder/AccountPreordersLink";
-import { AccountReviewsLink } from "@/components/reviews/AccountReviewsLink";
+import { Logo } from "@/shell/Logo";
+import { NotificationsBell } from "@/features/notifications";
+import { SupportEntry } from "@/features/account/ui/SupportEntry";
+import { LanguageSegments } from "@/shell/LanguageToggle";
+import { AccountPreordersLink } from "@/features/preorders";
+import { AccountReviewsLink } from "@/features/reviews";
 import { useT } from "@/i18n/context";
 import { customerApi } from "@/lib/api";
 import { useAccessToken } from "@/lib/auth";

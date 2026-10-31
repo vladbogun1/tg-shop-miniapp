@@ -10,7 +10,7 @@ import type { GiftTierInfo } from "@shop/core/giftcase";
 import { trackOrderCreated } from "@/lib/analytics";
 import { useI18n } from "@/i18n/context";
 import { customerApi, type DeliveryMethod, type NpWarehouse, type PaymentOption } from "@/lib/api";
-import { cartAfterOrder, flushCart } from "@/lib/cart-sync";
+import { cartAfterOrder, flushCart } from "@/features/cart";
 import { haptic } from "@/platform/telegram";
 import { useInvalidateMe } from "../queries";
 

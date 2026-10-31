@@ -17,7 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { MessageCircle } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { MessageBubble } from "@/components/chat/MessageBubble";
+import { MessageBubble } from "@/features/chat";
 import { StatusChip } from "@shop/ui/primitives";
 import { customerApi, type Message, type SendMessageRequest } from "@/lib/api";
 import { useT } from "@/i18n/context";

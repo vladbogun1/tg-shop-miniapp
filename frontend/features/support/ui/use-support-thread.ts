@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { customerApi, getAccessToken, onAccessToken, type SendMessageRequest } from "@/lib/api";
 import { dayLabel } from "@/lib/format";
-import { connectSupportChat, supportApi, type SupportMessage } from "@/lib/support";
+import { connectSupportChat, supportApi, type SupportMessage } from "@/features/support/api";
 import { haptic } from "@/platform/telegram";
 import { hasUnreadFromShop } from "@shop/customer/chat/model";
 import { useThread } from "@shop/customer/chat/use-thread";

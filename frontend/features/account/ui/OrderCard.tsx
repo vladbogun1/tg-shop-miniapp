@@ -5,7 +5,7 @@ import { ChevronRight, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { payableMinor, paymentState } from "@shop/core/orders";
 import { StatusChip } from "@shop/ui/primitives";
-import { PaymentBadge } from "@/components/account/PaymentBadge";
+import { PaymentBadge } from "@/features/account/ui/PaymentBadge";
 import { useT } from "@/i18n/context";
 import type { OrderSummary } from "@/lib/api";
 import { formatDate, shortOrderId } from "@/lib/format";

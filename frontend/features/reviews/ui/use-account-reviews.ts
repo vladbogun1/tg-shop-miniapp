@@ -5,7 +5,7 @@ import { useState } from "react";
 import { isCaseBonus } from "@shop/core/bonuses";
 import { type BonusCode } from "@shop/core/types";
 import { useAccessToken } from "@/lib/auth";
-import { reviewKeys, reviewsApi } from "@/lib/reviews";
+import { reviewKeys, reviewsApi } from "@/features/reviews/api";
 import { reviewsScreenState } from "../model/state";
 
 /** The three lists of the reviews screen and the flags derived from them. */

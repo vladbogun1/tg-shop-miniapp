@@ -9,7 +9,7 @@
  */
 import { TriangleAlert } from "lucide-react";
 import { useEffect } from "react";
-import { Logo } from "@/components/Logo";
+import { Logo } from "@/shell/Logo";
 import { useT } from "@/i18n/context";
 
 export default function Error({

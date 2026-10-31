@@ -3,15 +3,15 @@
 import { motion } from "framer-motion";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
-import { ReviewForm } from "@/components/reviews/ReviewForm";
-import { ShopReply } from "@/components/reviews/ProductReviews";
-import { Stars } from "@/components/reviews/Stars";
+import { ReviewForm } from "@/features/reviews/ui/ReviewForm";
+import { ShopReply } from "@/features/reviews/ui/ProductReviews";
+import { Stars } from "@/features/reviews/ui/Stars";
 import { Button } from "@shop/ui/primitives";
 import { useT } from "@/i18n/context";
 import { formatDate } from "@/lib/format";
 import { Image } from "@/lib/image";
 import { spring } from "@/lib/motion";
-import type { MyReview, ReviewStatus } from "@/lib/reviews";
+import type { MyReview, ReviewStatus } from "@/features/reviews/api";
 import { haptic } from "@/platform/telegram";
 
 const STATUS_COLOR: Record<ReviewStatus, string> = {

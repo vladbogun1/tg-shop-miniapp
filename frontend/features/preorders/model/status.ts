@@ -1,6 +1,6 @@
 import type { LooseT } from "@shop/core/i18n";
-import { PRE_COLOR } from "@/components/preorder/colors";
-import { etaWhen, holdUntilText, isLiveHold, type MyPreorder } from "@/lib/preorders";
+import { PRE_COLOR } from "@/features/preorders/ui/colors";
+import { etaWhen, holdUntilText, isLiveHold, type MyPreorder } from "@/features/preorders/state";
 
 export type RowStatus = MyPreorder["status"] | "EXPIRED";
 

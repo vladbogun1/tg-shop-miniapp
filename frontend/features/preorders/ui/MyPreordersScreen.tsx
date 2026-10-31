@@ -4,7 +4,7 @@ import { ArrowLeft, Truck, WifiOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
-import { useMyPreorders } from "@/lib/preorders";
+import { useMyPreorders } from "@/features/preorders/state";
 import { haptic } from "@/platform/telegram";
 import { PreorderRow } from "./PreorderRow";
 

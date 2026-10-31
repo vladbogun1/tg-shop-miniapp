@@ -17,7 +17,7 @@ import { useAccessToken } from "@/lib/auth";
 import { timeAgo } from "@/lib/format";
 import { Image } from "@/lib/image";
 import { spring } from "@/lib/motion";
-import { supportApi, type SupportThread } from "@/lib/support";
+import { supportApi, type SupportThread } from "@/features/support/api";
 import { haptic } from "@/platform/telegram";
 import { supportKeys } from "../keys";
 
