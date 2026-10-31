@@ -37,7 +37,8 @@ export function useDevicePush() {
       return on;
     },
     success: (on) => (on ? "Уведомления включены на этом устройстве" : "Уведомления на этом устройстве выключены"),
-    errorFallback: "Не удалось изменить уведомления",
+    toastOnError: false,
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Не удалось изменить уведомления"),
     invalidate: [settingsKeys.pushConfig()],
   });
   const testM = useApiMutation({

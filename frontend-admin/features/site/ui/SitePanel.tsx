@@ -60,23 +60,10 @@ function RevalidateStatusView({
     );
   }
   if (!status) return null;
-  if (!status.enabled) {
+  if (status.configured === false || status.enabled === false) {
     return <span className="text-[var(--text-faint)]">Обновление сайта не настроено на сервере (SITE_REVALIDATE_URL).</span>;
   }
-  // Новее из «последний успех / последняя ошибка» — текущее состояние.
-  const okAt = status.lastSuccessAt ? Date.parse(status.lastSuccessAt) : 0;
-  const errAt = status.lastErrorAt ? Date.parse(status.lastErrorAt) : 0;
-  let at: string | null = null;
-  let ok: boolean | null = null;
-  let err: string | null = null;
-  if (errAt > okAt) {
-    at = formatIsoOrNull(status.lastErrorAt);
-    ok = false;
-    err = status.lastError || "Ошибка без описания";
-  } else if (okAt > 0) {
-    at = formatIsoOrNull(status.lastSuccessAt);
-    ok = true;
-  }
+  const { at, ok, err } = currentState(status);
   if (!at) return <span className="text-[var(--text-faint)]">Сайт ещё не обновлялся с момента запуска сервера.</span>;
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
@@ -89,4 +76,24 @@ function RevalidateStatusView({
       {err && <p className="break-words text-[12px] text-[var(--danger-ink)]">{err}</p>}
     </div>
   );
+}
+
+interface Current {
+  at: string | null | undefined;
+  ok: boolean | null | undefined;
+  err: string | null | undefined;
+}
+
+/** Форма бэкенда: новее из «последний успех / последняя ошибка» — текущее состояние; иначе старая форма. */
+function currentState(status: RevalidateStatus): Current {
+  const keys = Object.keys(status);
+  if (keys.includes("lastSuccessAt") || keys.includes("lastErrorAt")) {
+    const okAt = status.lastSuccessAt ? Date.parse(status.lastSuccessAt) : 0;
+    const errAt = status.lastErrorAt ? Date.parse(status.lastErrorAt) : 0;
+    if (errAt > okAt) return { at: formatIsoOrNull(status.lastErrorAt), ok: false, err: status.lastError || "Ошибка без описания" };
+    if (okAt > 0) return { at: formatIsoOrNull(status.lastSuccessAt), ok: true, err: null };
+    return { at: null, ok: null, err: null };
+  }
+  const ok = status.ok ?? status.success;
+  return { at: formatIsoOrNull(status.lastAt ?? status.lastRunAt), ok, err: status.error ?? (ok === false ? status.message : null) };
 }

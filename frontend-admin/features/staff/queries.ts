@@ -29,6 +29,9 @@ export function useAccountQuery() {
   return useQuery({ queryKey: staffKeys.account(), queryFn: accountApi.get });
 }
 
+/** 60 с, как было до выноса в фичу. */
+const SUPER_ADMIN_STALE_MS = QUERY_PRESETS.list.staleTime * 2;
+
 /**
  * Is the signed-in admin the main one (SUPER_ADMIN)? Same query as «Мой аккаунт». Hides «Админы»
  * for everyone else — the backend answers 403 there anyway.
@@ -37,7 +40,7 @@ export function useIsSuperAdmin(): boolean | undefined {
   const { data } = useQuery({
     queryKey: staffKeys.account(),
     queryFn: accountApi.get,
-    staleTime: QUERY_PRESETS.static.staleTime,
+    staleTime: SUPER_ADMIN_STALE_MS,
   });
   return data?.superAdmin;
 }
