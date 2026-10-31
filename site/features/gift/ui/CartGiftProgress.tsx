@@ -9,6 +9,7 @@
  * the discount (what the server counts against the threshold).
  */
 import { Gift } from "lucide-react";
+import { toPercent } from "@shop/core/percent";
 import { giftView } from "@shop/customer/gift/model";
 import { type Product } from "@shop/core/types";
 import { GiftCaseArt, GiftCasePrizeDisclosure, GiftCasePrizeRows, GiftCaseTierLadder } from "@shop/ui/gift-case";
@@ -141,7 +142,7 @@ export function CartGiftProgress({
   const view = giftView(gift);
   if (!gift || !view) return null;
   const { isCase, shownTier, done } = view;
-  const pct = Math.max(done ? 0 : 4, Math.min(100, gift.share * 100));
+  const pct = Math.max(done ? 0 : 4, Math.min(100, toPercent(gift.share)));
   const ladder = isCase && gift.tiers.length > 1;
   return (
     <div className={`${className ?? ""} rounded-[var(--r-card)] border p-2.5 ${boxTone(done, isCase)}`}>

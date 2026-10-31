@@ -6,6 +6,8 @@
  * through the suggestions, Escape closes them.
  */
 import { useQuery } from "@tanstack/react-query";
+import { catalogKeys } from "@shop/customer/catalog/keys";
+import { STALE_TIME } from "@shop/core/query";
 import { Loader2, Search, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -108,9 +110,9 @@ export function SearchBox({ compact = false }: { compact?: boolean }) {
 
   const { data, isFetching } = useQuery({
     // Locale in the key: titles come back translated (Accept-Language).
-    queryKey: ["suggest", term, locale],
+    queryKey: catalogKeys.suggest(term, locale),
     enabled: term.length >= 2,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.minute,
     queryFn: () => api.products({ q: term, size: 6 }),
   });
   const items = term.length >= 2 ? data?.items ?? [] : [];

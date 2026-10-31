@@ -134,23 +134,7 @@ export async function authWithTelegram(
 export function putCartOnUnload(lines: CartLineInput[]): void {
   const token = getAccessToken();
   if (!token) return;
-  try {
-    void fetch(`${API_BASE}/api/me/cart`, {
-      method: "PUT",
-      keepalive: true,
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        Authorization: `Bearer ${token}`,
-        "Accept-Language": getActiveTag(),
-      },
-      body: JSON.stringify({ lines }),
-    }).catch(() => {
-      /* the next launch re-reads the server cart */
-    });
-  } catch {
-    /* fetch unavailable */
-  }
+  http.putOnUnload("/api/me/cart", { lines });
 }
 
 // ---- request payloads -------------------------------------------------------

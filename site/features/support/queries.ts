@@ -10,6 +10,7 @@
  * the server already localized by Accept-Language — {@link supportErrorText} shows it as is.
  */
 import { useQuery } from "@tanstack/react-query";
+import { POLL_INTERVAL, STALE_TIME } from "@shop/core/query";
 import { createHttpClient } from "@shop/core/http";
 import { type CreateSupportThreadRequest, supportAsChatMessage, type SupportConfig, type SupportMessage, type SupportThread, supportTopic } from "@shop/core/support";
 import { getActiveLocale, getActiveTag } from "@shop/core/i18n";
@@ -54,7 +55,7 @@ export function useSupportConfig() {
   const q = useQuery({
     queryKey: SUPPORT_KEYS.config,
     queryFn: () => supportApi.publicConfig(),
-    staleTime: 5 * 60_000,
+    staleTime: STALE_TIME.static,
     retry: 1,
   });
   return { config: q.data, enabled: q.data?.enabled === true, isLoading: q.isPending };
@@ -68,8 +69,8 @@ export function useSupportUnread(): number {
     queryKey: SUPPORT_KEYS.unread,
     queryFn: () => supportApi.unreadCount(),
     enabled: status === "authed" && enabled,
-    staleTime: 30_000,
-    refetchInterval: 60_000,
+    staleTime: STALE_TIME.list,
+    refetchInterval: POLL_INTERVAL.slow,
     retry: false,
   });
   return status === "authed" && enabled ? q.data?.count ?? 0 : 0;

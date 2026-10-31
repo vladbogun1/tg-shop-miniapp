@@ -8,6 +8,7 @@
  * rarest prize teaser and an expandable «Що може бути в кейсі» of the tier (no chances).
  */
 import { motion } from "framer-motion";
+import { toPercent } from "@shop/core/percent";
 import { Gift } from "lucide-react";
 import { CASE_TIER_ORDER, giftProgress, type CaseTier } from "@shop/core/giftcase";
 import { giftView } from "@shop/customer/gift/model";
@@ -74,7 +75,7 @@ function ProgressBar({ share }: { share: number }) {
       <motion.div
         className="h-full rounded-full bg-[var(--accent)]"
         initial={false}
-        animate={{ width: `${Math.round(share * 100)}%` }}
+        animate={{ width: `${Math.round(toPercent(share))}%` }}
         transition={spring}
       />
     </div>

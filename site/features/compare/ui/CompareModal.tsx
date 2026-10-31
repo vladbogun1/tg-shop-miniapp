@@ -10,6 +10,8 @@
  * it, so prices and stock are always current and products that left the catalog drop out.
  */
 import { useQuery } from "@tanstack/react-query";
+import { catalogKeys } from "@shop/customer/catalog/keys";
+import { STALE_TIME } from "@shop/core/query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link2, Loader2, Scale, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -184,8 +186,8 @@ function Body({ onClose }: { onClose: () => void }) {
   const remove = useCompare((s) => s.remove);
   const removeGroup = useCompare((s) => s.removeGroup);
 
-  const products = useQuery({ queryKey: ["compare-cards", locale], queryFn: () => api.allCards(), staleTime: 60_000 });
-  const schema = useQuery({ queryKey: ["catalog-schema", locale], queryFn: () => api.catalogSchema(), staleTime: 5 * 60_000 });
+  const products = useQuery({ queryKey: catalogKeys.compareCards(locale), queryFn: () => api.allCards(), staleTime: STALE_TIME.minute });
+  const schema = useQuery({ queryKey: catalogKeys.schemaOnSite(locale), queryFn: () => api.catalogSchema(), staleTime: STALE_TIME.static });
 
   useEffect(() => {
     trackCompare("compare_open", undefined, useCompare.getState().entries.length);
@@ -368,8 +370,8 @@ function useSharedLink() {
     window.history.replaceState(window.history.state, "", url.toString());
   }, []);
 
-  const products = useQuery({ queryKey: ["compare-cards", locale], queryFn: () => api.allCards(), staleTime: 60_000, enabled: !!slugs });
-  const schema = useQuery({ queryKey: ["catalog-schema", locale], queryFn: () => api.catalogSchema(), staleTime: 5 * 60_000, enabled: !!slugs });
+  const products = useQuery({ queryKey: catalogKeys.compareCards(locale), queryFn: () => api.allCards(), staleTime: STALE_TIME.minute, enabled: !!slugs });
+  const schema = useQuery({ queryKey: catalogKeys.schemaOnSite(locale), queryFn: () => api.catalogSchema(), staleTime: STALE_TIME.static, enabled: !!slugs });
 
   useEffect(() => {
     if (!slugs || !products.data || !schema.data) return;

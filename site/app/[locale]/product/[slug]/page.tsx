@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { availabilityOf, type Availability } from "@shop/core/availability";
 import { type Locale } from "@shop/core/i18n";
+import { priceDecimal } from "@shop/core/money";
 import { type CatalogSchema, categoryPath, MARKDOWN_COLLECTION_SLUG, type ProductCondition, specRows } from "@shop/core/catalog";
 import { compareGroupOf } from "@shop/core/compare";
 import { imgproxyUrl } from "@shop/core/image";
@@ -170,7 +171,7 @@ function productLdOf({ product, locale, t, catPath, specs, images, markdown, ava
       "@type": "Offer",
       url: productUrl,
       priceCurrency: product.currency ?? "UAH",
-      price: (product.priceMinor / 100).toFixed(2),
+      price: priceDecimal(product.priceMinor),
       availability: SCHEMA_AVAILABILITY[avail],
       ...(preStarts ? { availabilityStarts: preStarts } : {}),
       // As in the Google feed: markdown/used goods are sold with stated defects, not refurbished.

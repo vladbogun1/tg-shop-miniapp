@@ -6,6 +6,8 @@
  * support is switched off.
  */
 import { useQuery } from "@tanstack/react-query";
+import { SUPPORT_KEYS as supportKeys } from "@shop/customer/support/model";
+import { STALE_TIME } from "@shop/core/query";
 import { LifeBuoy } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useT } from "@/i18n/context";
@@ -18,10 +20,10 @@ export function AskAboutProduct({ productId, onNavigate }: { productId: string; 
   const router = useRouter();
   const token = useAccessToken();
   const { data: config } = useQuery({
-    queryKey: ["me", "support", "config"],
+    queryKey: supportKeys.configInApp,
     queryFn: () => supportApi.config(),
     enabled: !!token,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.minute,
   });
   if (!token || (config && !config.enabled)) return null;
 

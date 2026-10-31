@@ -69,6 +69,11 @@ export interface HttpClient {
   put<T>(path: string, body?: unknown): Promise<T>;
   del<T>(path: string): Promise<T>;
   upload<T>(path: string, file: File): Promise<T>;
+  /**
+   * Last-chance PUT while the page is hidden or closed: `keepalive` lets the request outlive the page.
+   * Fire and forget — no 401 handling, no retry (there is no page left to react), errors are swallowed.
+   */
+  putOnUnload(path: string, body: unknown): void;
   /** Turns a server-relative path (e.g. a signed /api/media link) into an absolute URL. */
   absolute(path: string | null | undefined): string | null;
 }
@@ -176,6 +181,21 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
       form.append("file", file);
       // Content-Type is intentionally not set: the browser adds the multipart boundary.
       return request<T>(path, { method: "POST", body: form });
+    },
+    putOnUnload: (path, body) => {
+      try {
+        void fetch(`${baseUrl}${path}`, {
+          method: "PUT",
+          keepalive: true,
+          body: JSON.stringify(body),
+          headers: buildHeaders({ headers: { "Content-Type": "application/json" } }),
+          ...(credentials ? { credentials } : {}),
+        }).catch(() => {
+          /* the next launch re-reads the server state */
+        });
+      } catch {
+        /* fetch unavailable */
+      }
     },
     absolute: (path) => {
       if (!path) return null;

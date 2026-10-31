@@ -14,3 +14,9 @@ export const checkoutKeys = {
   npWarehouses: (cityRef: string) => ["np-warehouses", cityRef] as const,
   npCities: (term: string) => ["np-cities", term] as const,
 };
+
+/** Сайт: проверка корзины и способы оплаты (зависят от языка экрана). */
+export const siteCheckoutKeys = {
+  cartValidate: (ids: readonly string[], locale: string) => ["cart-validate", ids, locale] as const,
+  paymentOptions: (locale: string) => ["payment-options", locale] as const,
+};

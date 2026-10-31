@@ -18,6 +18,8 @@
  * from `/complete` is remembered in localStorage purely for the greeting.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { meKeys } from "@shop/customer/account/keys";
+import { STALE_TIME } from "@shop/core/query";
 import { useCallback } from "react";
 import type { AuthUser } from "@shop/core/types";
 import { api, isAuthFailure } from "@/lib/api";
@@ -118,7 +120,7 @@ export function useSession() {
         throw e;
       }
     },
-    staleTime: 60_000,
+    staleTime: STALE_TIME.minute,
     retry: false,
   });
   const status: SessionStatus = query.isPending
@@ -153,7 +155,7 @@ export function useLogout() {
       /* cookies may already be gone — the local cleanup below still applies */
     }
     rememberUser(null);
-    qc.removeQueries({ queryKey: ["me"] });
+    qc.removeQueries({ queryKey: meKeys.root });
     qc.setQueryData(SESSION_KEY, { authed: false, unread: 0 });
   }, [qc]);
 }

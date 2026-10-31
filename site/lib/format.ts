@@ -7,6 +7,7 @@
  */
 import { dayLabel as sharedDayLabel, formatDate as sharedFormatDate, formatDayMonth as sharedFormatDayMonth, formatDateTime as sharedFormatDateTime, formatTime as sharedFormatTime } from "@shop/core/time";
 import { type Locale, LOCALE_TAG } from "@shop/core/i18n";
+import { toPercent } from "@shop/core/percent";
 import { money as sharedMoney } from "@shop/core/money";
 import { makeT } from "@/i18n";
 
@@ -53,5 +54,5 @@ export function makeFmt(locale: Locale, timeZone?: string): Fmt {
 /** Percentage off for an old/new price pair, or 0 when there is no real discount. */
 export function discountPercent(priceMinor: number, compareAtMinor?: number | null): number {
   if (!compareAtMinor || compareAtMinor <= priceMinor) return 0;
-  return Math.round(((compareAtMinor - priceMinor) / compareAtMinor) * 100);
+  return Math.round(toPercent((compareAtMinor - priceMinor) / compareAtMinor));
 }

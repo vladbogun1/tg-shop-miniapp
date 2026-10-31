@@ -80,23 +80,7 @@ async function authed<T>(call: () => Promise<T>): Promise<T> {
  * refresh-and-retry here — there is no page left to retry from.
  */
 export function putCartOnUnload(lines: CartLineInput[]): void {
-  try {
-    void fetch("/api/me/cart", {
-      method: "PUT",
-      keepalive: true,
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        "Accept-Language": getActiveTag(),
-      },
-      body: JSON.stringify({ lines }),
-    }).catch(() => {
-      /* nothing to do: the next visit re-reads the server cart */
-    });
-  } catch {
-    /* fetch unavailable */
-  }
+  http.putOnUnload("/api/me/cart", { lines });
 }
 
 // ---- payloads ----------------------------------------------------------------

@@ -4,6 +4,8 @@
  */
 export const preorderKeys = {
   coming: ["preorders", "coming"] as const,
+  /** Префикс состояний всех товаров — для invalidateQueries. */
+  productAll: ["preorders", "product"] as const,
   /** Mini App: «мои места». */
   mineInApp: ["me", "preorders"] as const,
   /** Сайт: «мои места». */

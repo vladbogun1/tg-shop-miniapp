@@ -22,6 +22,8 @@
  */
 
 import type { Schemas } from "./api/schemas";
+import { MINOR_PER_MAJOR } from "./money";
+import { PERCENT_BASE } from "./percent";
 import type { Product } from "./types";
 
 export type CaseRarity = "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD";
@@ -123,7 +125,7 @@ function productProgress(info: GiftInfo, total: number): GiftProgress {
 /** The tier's guaranteed discount for an order total — whole hryvnias, within the cap (the server's rule). */
 export function guaranteedDiscountMinor(tier: GiftTierInfo | null | undefined, totalMinor: number): number {
   if (!tier || tier.guaranteedPercent <= 0 || totalMinor <= 0) return 0;
-  let d = Math.floor((totalMinor * Math.min(100, tier.guaranteedPercent)) / 100 / 100) * 100;
+  let d = Math.floor((totalMinor * Math.min(100, tier.guaranteedPercent)) / PERCENT_BASE / MINOR_PER_MAJOR) * MINOR_PER_MAJOR;
   if (tier.guaranteedMaxMinor > 0) d = Math.min(d, tier.guaranteedMaxMinor);
   return Math.max(0, Math.min(d, totalMinor));
 }

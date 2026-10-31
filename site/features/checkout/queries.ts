@@ -2,7 +2,10 @@
 
 /** Checkout hooks: prefill from the last order, and the payment option the customer can pick. */
 import { useQuery } from "@tanstack/react-query";
+import { siteCheckoutKeys } from "@shop/customer/checkout/keys";
+import { meKeys } from "@shop/customer/account/keys";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLatest } from "@shop/ui/use-latest";
 import { type DeliveryMethod, type OrderDetail } from "@shop/core/types";
 import { visiblePaymentOptions } from "@shop/core/orders";
 import { giftProgress, guaranteedDiscountMinor, type GiftChoice } from "@shop/core/giftcase";
@@ -23,7 +26,7 @@ interface PrefillTargets {
 /** Fills contacts and delivery from the customer's latest order, once, and never over their input. */
 export function useLastOrderPrefill(np: ReturnType<typeof useNpSelection>, target: PrefillTargets) {
   const lastOrder = useQuery({
-    queryKey: ["me", "last-order"],
+    queryKey: meKeys.lastOrder,
     staleTime: Infinity,
     queryFn: async (): Promise<OrderDetail | null> => {
       const list = await api.orders();
@@ -35,22 +38,24 @@ export function useLastOrderPrefill(np: ReturnType<typeof useNpSelection>, targe
   const touchedNp = np.touched;
 
   const prefillDone = useRef(false);
+  const latest = useLatest({ np, target });
   useEffect(() => {
     const o = lastOrder.data;
+    const { np: live, target: out } = latest.current;
     if (!o || prefillDone.current) return;
     prefillDone.current = true;
     let used = false;
     if (o.customerName) {
-      target.setName((v) => v || o.customerName);
+      out.setName((v) => v || o.customerName);
       used = true;
     }
     if (o.phone) {
-      target.setPhone((v) => v || o.phone);
+      out.setPhone((v) => v || o.phone);
       used = true;
     }
-    if (used) target.setPrefilled(true);
+    if (used) out.setPrefilled(true);
     if (o.deliveryMethod === "PICKUP") {
-      target.setDelivery("PICKUP");
+      out.setDelivery("PICKUP");
       return;
     }
     // The order keeps only names; find the branch again so it can be submitted with its refs.
@@ -63,15 +68,14 @@ export function useLastOrderPrefill(np: ReturnType<typeof useNpSelection>, targe
           });
           // ...unless the customer has already started picking by hand.
           if (found && !touchedNp.current) {
-            np.applyLast(found, false);
+            live.applyLast(found, false);
           }
         } catch {
           /* not critical: the customer picks on the map */
         }
       })();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per loaded order; `np` methods are not stable
-  }, [lastOrder.data]);
+  }, [lastOrder.data, latest, touchedNp]);
 }
 
 /**
@@ -84,7 +88,7 @@ export function useLastOrderPrefill(np: ReturnType<typeof useNpSelection>, targe
  */
 export function usePaymentChoice(total: number) {
   const { locale } = useI18n();
-  const query = useQuery({ queryKey: ["payment-options", locale], queryFn: () => api.checkout.paymentOptions() });
+  const query = useQuery({ queryKey: siteCheckoutKeys.paymentOptions(locale), queryFn: () => api.checkout.paymentOptions() });
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const options = useMemo(() => visiblePaymentOptions(query.data ?? [], total), [query.data, total]);
   const chosen =

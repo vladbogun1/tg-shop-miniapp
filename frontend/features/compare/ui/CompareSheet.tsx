@@ -11,6 +11,7 @@
  * A wide Telegram Desktop window gets the desktop table (sticky label column).
  */
 import { useQuery } from "@tanstack/react-query";
+import { catalogKeys } from "@shop/customer/catalog/keys";
 import { AnimatePresence, motion } from "framer-motion";
 import { Scale, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -53,7 +54,7 @@ function Body({
   const entries = useCompare((s) => s.entries);
   const remove = useCompare((s) => s.remove);
   const removeGroup = useCompare((s) => s.removeGroup);
-  const productsQ = useQuery({ queryKey: ["products"], queryFn: () => customerApi.getProducts() });
+  const productsQ = useQuery({ queryKey: catalogKeys.products, queryFn: () => customerApi.getProducts() });
 
   useEffect(() => {
     const prev = document.body.style.overflow;

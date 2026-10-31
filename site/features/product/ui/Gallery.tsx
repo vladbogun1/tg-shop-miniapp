@@ -5,6 +5,7 @@
  * lightbox on click (← → to browse, Esc to close). Adapted from the Mini App's carousel.
  */
 import { AnimatePresence, motion, type PanInfo } from "framer-motion";
+import { toPercent } from "@shop/core/percent";
 import { ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useT } from "@/i18n/context";
@@ -60,7 +61,7 @@ export function Gallery({ images, alt }: { images: string[]; alt: string }) {
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.15}
           onDragEnd={onDragEnd}
-          animate={{ x: `-${slide * 100}%` }}
+          animate={{ x: `-${toPercent(slide)}%` }}
           transition={{ type: "spring", stiffness: 320, damping: 34 }}
         >
           {slides.map((url, i) => (

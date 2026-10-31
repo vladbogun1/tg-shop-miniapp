@@ -14,6 +14,7 @@
  * Everything degrades gracefully outside Telegram / with the backend offline.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { STALE_TIME } from "@shop/core/query";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Toaster } from "@shop/ui/toast";
@@ -38,7 +39,7 @@ function makeClient() {
     defaultOptions: {
       queries: {
         retry: 1,
-        staleTime: 30_000,
+        staleTime: STALE_TIME.list,
         refetchOnWindowFocus: false,
       },
     },

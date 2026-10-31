@@ -12,7 +12,7 @@ import type { Metadata } from "next";
 import { type Locale, LOCALE_TAG, LOCALES } from "@shop/core/i18n";
 import { alternates, localePath } from "@/i18n";
 import { SITE_URL } from "@/lib/config";
-import { formatNumber } from "@shop/core/money";
+import { formatNumber, MINOR_PER_MAJOR } from "@shop/core/money";
 
 export const SITE_NAME = "ChiSetup";
 
@@ -99,7 +99,7 @@ export function clip(text: string, max: number): string {
 export function metaPrice(minor: number, locale: Locale): string {
   // Kopecks only when there are any ("0,95 ₴") — rounding a price misleads.
   const opts = minor % 100 === 0 ? { maximumFractionDigits: 0 } : { minimumFractionDigits: 2, maximumFractionDigits: 2 };
-  const n = formatNumber((minor / 100), LOCALE_TAG[locale], opts).replace(/ | /g, " ");
+  const n = formatNumber(minor / MINOR_PER_MAJOR, LOCALE_TAG[locale], opts).replace(/ | /g, " ");
   return locale === "en" ? `${n} UAH` : `${n} ₴`;
 }
 

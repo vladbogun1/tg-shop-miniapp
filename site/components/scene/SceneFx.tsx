@@ -10,6 +10,7 @@
  * prefers-reduced-motion. Each spark is a pre-rendered glow sprite — no shadowBlur per particle.
  */
 import { useEffect, useRef } from "react";
+import { toPercent } from "@shop/core/percent";
 import "./scene-fx.css";
 
 /** Overall tempo of the sparks (1 = the variant as first shown; the owner asked for 20 % slower). */
@@ -146,7 +147,7 @@ function embers(ctx: CanvasRenderingContext2D, env: Env): Step {
       r: 0.6 + depth * 2.2,
       age: fresh ? Math.random() * 8 : 0,
       life: 7 + Math.random() * 9,
-      seed: Math.random() * 100,
+      seed: toPercent(Math.random()),
       depth,
     };
   };

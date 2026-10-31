@@ -25,6 +25,7 @@ import { availabilityOf } from "@shop/core/availability";
 import { type CatalogCategory, type CatalogSchema, categoryBySlug, categoryPath, MARKDOWN_COLLECTION_SLUG, specRows } from "@shop/core/catalog";
 import { imgproxyUrl } from "@shop/core/image";
 import { type Locale } from "@shop/core/i18n";
+import { decimal2, priceDecimal } from "@shop/core/money";
 import { type StorefrontProduct } from "@shop/core/site";
 import { localePath, makeT } from "@/i18n";
 import { IMAGE_BASE, SITE_URL } from "@/lib/config";
@@ -215,7 +216,7 @@ export function feedItems(products: StorefrontProduct[], schema: CatalogSchema, 
   return items;
 }
 
-const price = (minor: number) => (minor / 100).toFixed(2);
+const price = (minor: number) => priceDecimal(minor);
 
 // ---------------------------------------------------------------- Google Merchant Center
 
@@ -257,7 +258,7 @@ function googleShipping(): string {
     "<g:shipping>" +
     el("g:country", "UA") +
     el("g:service", "Нова Пошта") +
-    el("g:price", `${value.toFixed(2)} UAH`) +
+    el("g:price", `${decimal2(value)} UAH`) +
     el("g:min_handling_time", 1) +
     el("g:max_handling_time", 2) +
     el("g:min_transit_time", 1) +

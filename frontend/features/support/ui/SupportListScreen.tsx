@@ -7,6 +7,7 @@
  * /account/support/new/chat (a general question).
  */
 import { useQuery } from "@tanstack/react-query";
+import { STALE_TIME, POLL_INTERVAL } from "@shop/core/query";
 import { motion } from "framer-motion";
 import { ArrowLeft, ChevronRight, LifeBuoy, MessageCircle, Plus, WifiOff } from "lucide-react";
 import Link from "next/link";
@@ -21,7 +22,6 @@ import { supportApi, type SupportThread } from "@/features/support/api";
 import { haptic } from "@/platform/telegram";
 import { supportKeys } from "../keys";
 
-const CONFIG_STALE_MS = 60_000;
 
 export function SupportListScreen() {
   const t = useT();
@@ -31,13 +31,13 @@ export function SupportListScreen() {
     queryKey: supportKeys.threads,
     queryFn: () => supportApi.threads(),
     enabled: !!token,
-    refetchInterval: 30_000,
+    refetchInterval: POLL_INTERVAL.live,
   });
   const { data: config } = useQuery({
     queryKey: supportKeys.config,
     queryFn: () => supportApi.config(),
     enabled: !!token,
-    staleTime: CONFIG_STALE_MS,
+    staleTime: STALE_TIME.minute,
   });
   const loading = isLoading || !token;
   const threads = data ?? [];

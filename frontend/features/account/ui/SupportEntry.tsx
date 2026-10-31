@@ -5,6 +5,8 @@
  * order), with the number of unread shop answers. Hidden while support is switched off.
  */
 import { useQuery } from "@tanstack/react-query";
+import { SUPPORT_KEYS as supportKeys } from "@shop/customer/support/model";
+import { STALE_TIME, POLL_INTERVAL } from "@shop/core/query";
 import { motion } from "framer-motion";
 import { ChevronRight, LifeBuoy } from "lucide-react";
 import Link from "next/link";
@@ -18,16 +20,16 @@ export function SupportEntry() {
   const t = useT();
   const token = useAccessToken();
   const { data: config } = useQuery({
-    queryKey: ["me", "support", "config"],
+    queryKey: supportKeys.configInApp,
     queryFn: () => supportApi.config(),
     enabled: !!token,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.minute,
   });
   const { data: unread } = useQuery({
-    queryKey: ["me", "support", "unread"],
+    queryKey: supportKeys.unread,
     queryFn: () => supportApi.unreadCount(),
     enabled: !!token,
-    refetchInterval: 60_000,
+    refetchInterval: POLL_INTERVAL.slow,
   });
   const count = unread?.count ?? 0;
   // Keep the row for someone with unread answers even if support was switched off meanwhile.

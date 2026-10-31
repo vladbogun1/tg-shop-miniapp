@@ -5,6 +5,7 @@
  * with "end this one" / "sign out everywhere", plus sign out.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { meKeys } from "@shop/customer/account/keys";
 import { LogOut, Monitor, Smartphone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -64,7 +65,7 @@ function Sessions() {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["me", "sessions"],
+    queryKey: meKeys.sessions,
     queryFn: () => api.sessions(),
   });
   const sessions = (data ?? []).slice().sort((a, b) => Number(b.current) - Number(a.current));
@@ -79,7 +80,7 @@ function Sessions() {
         router.replace(href("/"));
         return;
       }
-      await qc.invalidateQueries({ queryKey: ["me", "sessions"] });
+      await qc.invalidateQueries({ queryKey: meKeys.sessions });
     } finally {
       setBusy(null);
     }
@@ -91,7 +92,7 @@ function Sessions() {
       await api.revokeAllSessions();
     } finally {
       rememberUser(null);
-      qc.removeQueries({ queryKey: ["me"] });
+      qc.removeQueries({ queryKey: meKeys.root });
       qc.setQueryData(SESSION_KEY, { authed: false, unread: 0 });
       router.replace(href("/"));
     }

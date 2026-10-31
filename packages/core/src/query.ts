@@ -14,10 +14,26 @@ export interface QueryPreset {
   refetchInterval?: number;
 }
 
+/** Свежесть данных в мс: значения, которые реально используются запросами (одно место вместо литералов). */
+export const STALE_TIME = {
+  quick: 15_000,
+  list: 30_000,
+  minute: 60_000,
+  static: 5 * 60_000,
+} as const;
+
+/** Периоды опроса в мс: окно чата, бейдж, живое, медленное. */
+export const POLL_INTERVAL = {
+  chat: 15_000,
+  badge: 20_000,
+  live: 30_000,
+  slow: 60_000,
+} as const;
+
 export const QUERY_PRESETS = {
-  live: { staleTime: 0, refetchInterval: 30_000 },
-  list: { staleTime: 30_000 },
-  static: { staleTime: 5 * 60_000 },
+  live: { staleTime: 0, refetchInterval: POLL_INTERVAL.live },
+  list: { staleTime: STALE_TIME.list },
+  static: { staleTime: STALE_TIME.static },
 } as const satisfies Record<string, QueryPreset>;
 
 /** Один клиент на приложение; приложение может задать свой `staleTime` по умолчанию (админка — 15 с). */

@@ -6,6 +6,8 @@
  * reply) and "Show more" pagination. Public endpoint — works before the Telegram sign-in finishes.
  */
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { toPercent } from "@shop/core/percent";
+import { STALE_TIME } from "@shop/core/query";
 import { MessageSquareText, Store } from "lucide-react";
 import { Button } from "@shop/ui/primitives";
 import { useT } from "@/i18n/context";
@@ -21,7 +23,7 @@ export function ProductReviews({ productId }: { productId: string }) {
     queryFn: ({ pageParam }) => reviewsApi.productReviews(productId, pageParam),
     initialPageParam: 0,
     getNextPageParam: (last) => (last.page + 1 < last.totalPages ? last.page + 1 : undefined),
-    staleTime: 60_000,
+    staleTime: STALE_TIME.minute,
   });
 
   const first = q.data?.pages[0];
@@ -113,7 +115,7 @@ function SummaryCard({ summary }: { summary: ReviewSummary }) {
               <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--surface-3)]" aria-hidden>
                 <span
                   className="block h-full rounded-full bg-[var(--accent)]"
-                  style={{ width: `${(n / max) * 100}%` }}
+                  style={{ width: `${toPercent(n / max)}%` }}
                 />
               </span>
               <span className="w-6 text-right text-[11px] tabular-nums text-[var(--faint)]" aria-hidden>

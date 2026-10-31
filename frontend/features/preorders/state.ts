@@ -9,6 +9,7 @@
  */
 import type { LooseT } from "@shop/core/i18n";
 import { useQuery } from "@tanstack/react-query";
+import { STALE_TIME } from "@shop/core/query";
 import { useMemo } from "react";
 import { buildPreorderIndex } from "@shop/customer/preorder/coming";
 import { createPreorderApi } from "@shop/customer/preorder/api";
@@ -41,6 +42,7 @@ export const preorderApi = {
 
 export const preorderKeys = {
   coming: preorderKeysShared.coming,
+  productAll: preorderKeysShared.productAll,
   mine: preorderKeysShared.mineInApp,
   product: (id: string, signedIn: boolean) => preorderKeysShared.product(id, signedIn),
 };
@@ -68,7 +70,7 @@ export function useComing(): Coming {
   const q = useQuery({
     queryKey: preorderKeys.coming,
     queryFn: preorderApi.coming,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.minute,
     retry: 1,
   });
   return useMemo(() => {
@@ -89,7 +91,7 @@ export function useMyPreorders() {
     queryKey: preorderKeys.mine,
     queryFn: preorderApi.mine,
     enabled: !!token,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.list,
     retry: 1,
   });
   const list = useMemo(() => q.data ?? [], [q.data]);
@@ -103,7 +105,7 @@ export function useProductPreorder(productId: string) {
   return useQuery({
     queryKey: preorderKeys.product(productId, signedIn),
     queryFn: () => preorderApi.forProduct(productId, signedIn),
-    staleTime: 30_000,
+    staleTime: STALE_TIME.list,
     retry: 1,
   });
 }

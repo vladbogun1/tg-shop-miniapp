@@ -6,6 +6,8 @@
  * filter/facet implementation; nothing here re-implements matching).
  */
 import { useQuery } from "@tanstack/react-query";
+import { catalogKeys } from "@shop/customer/catalog/keys";
+import { STALE_TIME } from "@shop/core/query";
 import { useCallback, useEffect, useState } from "react";
 import type { CatalogFilter, FilterableProduct, ProductCondition } from "@shop/core/catalog";
 import { EMPTY_FILTER } from "@shop/customer/catalog/model/filter";
@@ -17,9 +19,9 @@ import { sessionStore } from "@shop/core/storage";
 export function useCatalogSchema() {
   const { locale } = useI18n();
   return useQuery({
-    queryKey: ["catalogSchema", locale],
+    queryKey: catalogKeys.schemaInApp(locale),
     queryFn: () => customerApi.getCatalogSchema(),
-    staleTime: 5 * 60_000,
+    staleTime: STALE_TIME.static,
   });
 }
 

@@ -6,6 +6,7 @@
  * (["catalogSchema", locale]); filtering/facets go through the shared engine (filterProducts).
  */
 import { useQuery } from "@tanstack/react-query";
+import { catalogKeys } from "@shop/customer/catalog/keys";
 import { useEffect, useMemo, useState } from "react";
 import { activeFilterCount, categoryBySlug, categoryPath, childCategories, filterForCategory, filterProducts, MARKDOWN_COLLECTION_SLUG, specSummary } from "@shop/core/catalog";
 import type { CatalogSchema } from "@shop/core/catalog";
@@ -55,7 +56,7 @@ export function useHome() {
   const schema = schemaQuery.data ?? EMPTY_SCHEMA;
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
-    queryKey: ["products"],
+    queryKey: catalogKeys.products,
     queryFn: () => customerApi.getProducts(),
   });
 

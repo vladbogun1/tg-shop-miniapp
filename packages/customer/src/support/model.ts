@@ -6,6 +6,8 @@ import type { SupportConfig } from "@shop/core/support";
 
 export const SUPPORT_KEYS = {
   config: ["support", "config"] as const,
+  /** Mini App: публичный конфиг лежит под «моим» префиксом. */
+  configInApp: ["me", "support", "config"] as const,
   all: ["me", "support"] as const,
   unread: ["me", "support", "unread"] as const,
   threads: ["me", "support", "threads"] as const,

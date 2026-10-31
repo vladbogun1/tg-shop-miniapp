@@ -6,7 +6,9 @@
  * pages from the public endpoint. Without reviews: a short empty state with the review bonus hint.
  */
 import { Loader2, MessageSquareText, Store } from "lucide-react";
-import { useEffect, useState } from "react";
+import { toPercent } from "@shop/core/percent";
+import { useEffect, useRef, useState } from "react";
+import { useLatest } from "@shop/ui/use-latest";
 import type { PublicReview, ReviewPage, ReviewSummary } from "@shop/core/types";
 import { REVIEWS_PAGE_SIZE } from "@shop/customer/review/api";
 import { useI18n } from "@/i18n/context";
@@ -108,10 +110,11 @@ export function ProductReviews({ slug, initial }: { slug: string; initial: Revie
   }
 
   // The server fetch failed (backend hiccup) — try once from the browser.
+  const needsFallback = useRef(!initial);
+  const loadRef = useLatest(load);
   useEffect(() => {
-    if (!initial) void load(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (needsFallback.current) void loadRef.current(0);
+  }, [needsFallback, loadRef]);
 
   const count = summary?.count ?? 0;
   const hasMore = page + 1 < totalPages;
@@ -168,7 +171,7 @@ function Summary({ summary }: { summary: ReviewSummary }) {
                 <span className="text-[var(--accent)]">★</span>
               </span>
               <span aria-hidden className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--surface-3)]">
-                <span className="block h-full rounded-full bg-[var(--accent)]" style={{ width: `${(n / max) * 100}%` }} />
+                <span className="block h-full rounded-full bg-[var(--accent)]" style={{ width: `${toPercent(n / max)}%` }} />
               </span>
               <span aria-hidden className="w-7 shrink-0 text-right tabular-nums">{n}</span>
             </li>

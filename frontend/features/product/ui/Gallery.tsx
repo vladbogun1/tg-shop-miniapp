@@ -10,6 +10,7 @@
  * - Uses the custom imgproxy <Image>; handles the no-image case (placeholder).
  */
 import { motion, type PanInfo } from "framer-motion";
+import { toPercent } from "@shop/core/percent";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useT } from "@/i18n/context";
@@ -60,7 +61,7 @@ export function Gallery({
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.15}
           onDragEnd={onDragEnd}
-          animate={{ x: `-${slide * 100}%` }}
+          animate={{ x: `-${toPercent(slide)}%` }}
           transition={{ type: "spring", stiffness: 320, damping: 34 }}
         >
           {slides.map((url, i) => (

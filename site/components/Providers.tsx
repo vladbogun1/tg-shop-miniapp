@@ -6,6 +6,7 @@
  * the bot then writes to them in it (same as the Mini App's POST /api/me/locale).
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { STALE_TIME } from "@shop/core/query";
 import { useEffect, useState } from "react";
 import { Analytics } from "@/components/Analytics";
 import { CartDrawer } from "@/features/cart/view/CartDrawer";
@@ -24,7 +25,7 @@ import { useSession } from "@/features/auth";
 function makeClient() {
   return new QueryClient({
     defaultOptions: {
-      queries: { retry: 1, staleTime: 30_000, refetchOnWindowFocus: false },
+      queries: { retry: 1, staleTime: STALE_TIME.list, refetchOnWindowFocus: false },
     },
   });
 }

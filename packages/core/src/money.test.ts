@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatNumber, money, toMajor, toMinor } from "./money";
+import { decimal2, formatNumber, money, priceDecimal, toMajor, toMinor } from "./money";
 
 const plain = (s: string) => s.replace(/\s/g, " ");
 
@@ -38,5 +38,15 @@ describe("formatNumber", () => {
     expect(formatNumber(1234.5, "en-US")).toBe("1,234.5");
     expect(formatNumber(1234, "ru-RU").replace(/\s/g, " ")).toBe("1 234");
     expect(formatNumber(0.1234, "en-US", { maximumFractionDigits: 2 })).toBe("0.12");
+  });
+});
+
+describe("priceDecimal / decimal2 — машинная запись суммы", () => {
+  it("совпадает со старым `(minor / 100).toFixed(2)` на граничных значениях", () => {
+    for (const minor of [0, 1, 5, 99, 100, 101, 995, 1005, 123_456_789, 2_147_483_647]) {
+      expect(priceDecimal(minor)).toBe((minor / 100).toFixed(2));
+    }
+    expect(priceDecimal(65_000)).toBe("650.00");
+    expect(decimal2(5)).toBe("5.00");
   });
 });

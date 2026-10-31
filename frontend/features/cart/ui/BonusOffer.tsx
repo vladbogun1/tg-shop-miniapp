@@ -8,6 +8,7 @@
  * bigger order); one tap puts it into the field, where it is checked and held like any other code.
  */
 import { useQuery } from "@tanstack/react-query";
+import { STALE_TIME } from "@shop/core/query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Gift } from "lucide-react";
 import { BONUS_EXPIRING_DAYS, isCaseBonus, pickBonusOffer, reviewBonusText } from "@shop/core/bonuses";
@@ -27,7 +28,7 @@ export function useMyBonuses(): BonusCode[] {
     queryKey: reviewKeys.bonuses,
     queryFn: () => reviewsApi.bonuses(),
     enabled: !!token,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.minute,
   });
   return q.data ?? [];
 }

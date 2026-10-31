@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useLatest } from "@shop/ui/use-latest";
 import { resolveNpWarehouse } from "@shop/core/np-geo";
 import { useNpSelection } from "@shop/customer/delivery/np-selection";
 import { customerApi, type DeliveryMethod } from "@/lib/api";
@@ -36,8 +37,10 @@ export function useCheckoutForm() {
   const token = useAccessToken();
   const lastOrder = useLastOrderQuery(!!token);
   const prefillDone = useRef(false);
+  const npRef = useLatest(np);
   useEffect(() => {
     const o = lastOrder.data;
+    const live = npRef.current;
     if (!o || prefillDone.current) return;
     prefillDone.current = true;
     let used = false;
@@ -58,19 +61,18 @@ export function useCheckoutForm() {
     if (o.npCityName && o.npWarehouseName) {
       resolveNpWarehouse(o.npCityName, o.npWarehouseName, {
         cities: (q) => customerApi.checkout.npCities(q),
-        warehouses: np.fetchWarehouses,
+        warehouses: live.fetchWarehouses,
       })
         .then((found) => {
           // ...unless the customer has already started picking by hand.
           if (!found || touchedNp.current) return;
-          np.applyLast(found, true);
+          live.applyLast(found, true);
         })
         .catch(() => {
           /* not critical: the customer picks again */
         });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per loaded order; `np` methods are not stable
-  }, [lastOrder.data]);
+  }, [lastOrder.data, npRef, touchedNp]);
 
   return { name, setName, phone, setPhone, delivery, chooseDelivery, npMode, setNpMode, comment, setComment, prefilled, np };
 }

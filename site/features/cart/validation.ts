@@ -8,6 +8,8 @@
  * sees WHY it cannot be ordered instead of it silently vanishing.
  */
 import { useQuery } from "@tanstack/react-query";
+import { siteCheckoutKeys } from "@shop/customer/checkout/keys";
+import { STALE_TIME } from "@shop/core/query";
 import { useEffect, useMemo } from "react";
 import type { Product } from "@shop/core/types";
 import { useI18n } from "@/i18n/context";
@@ -59,9 +61,9 @@ export function useCartValidation(enabled = true) {
   );
 
   const query = useQuery({
-    queryKey: ["cart-validate", ids, locale],
+    queryKey: siteCheckoutKeys.cartValidate(ids, locale),
     enabled: enabled && ids.length > 0,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.list,
     queryFn: async () => {
       const entries = await Promise.all(
         ids.map(async (id) => {

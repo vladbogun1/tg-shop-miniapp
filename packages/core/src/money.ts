@@ -23,6 +23,19 @@ export function money(
   return `${text} ${symbol}`;
 }
 
+/** Копеек в гривне (для вычислений над копейками, где toMinor/toMajor с округлением не подходят). */
+export const MINOR_PER_MAJOR = 100;
+
+/** Машинная запись суммы для фидов и JSON-LD: «650.00» (точка, два знака, без локали). */
+export function priceDecimal(minor: number): string {
+  return decimal2(minor / MINOR_PER_MAJOR);
+}
+
+/** Число с двумя знаками после точки для машинных форматов («5.00»). */
+export function decimal2(value: number): string {
+  return value.toFixed(2);
+}
+
 /** Major units typed into a form (UAH) → minor units for the API. */
 export function toMinor(major: number | string | null | undefined): number {
   const n = typeof major === "string" ? parseFloat(major.replace(",", ".")) : major ?? 0;

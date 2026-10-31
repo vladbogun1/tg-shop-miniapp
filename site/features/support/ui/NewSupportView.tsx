@@ -5,6 +5,8 @@
  * (this is also where a guest lands after signing in from the product page's «Ask» button).
  */
 import { useQuery } from "@tanstack/react-query";
+import { catalogKeys } from "@shop/customer/catalog/keys";
+import { STALE_TIME } from "@shop/core/query";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -42,10 +44,10 @@ export function NewSupportView() {
   const { config } = useSupportConfig();
 
   const product = useQuery({
-    queryKey: ["product", "byId", productId],
+    queryKey: catalogKeys.productById(productId),
     queryFn: () => api.productById(productId as string),
     enabled: !!productId,
-    staleTime: 5 * 60_000,
+    staleTime: STALE_TIME.static,
     retry: false,
   });
 

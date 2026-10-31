@@ -10,6 +10,7 @@
  * the server against «stock minus holds of OTHER people»).
  */
 import { useQuery } from "@tanstack/react-query";
+import { STALE_TIME } from "@shop/core/query";
 import { createHttpClient } from "@shop/core/http";
 import { createPreorderApi } from "@shop/customer/preorder/api";
 import { preorderKeys } from "@shop/customer/preorder/keys";
@@ -64,7 +65,7 @@ export function useMyPreorders(enabled = true) {
   const q = useQuery({
     queryKey: MY_PREORDERS_KEY,
     enabled: on,
-    staleTime: 30_000,
+    staleTime: STALE_TIME.list,
     queryFn: () => preorderApi.mine(),
   });
   return { ...q, data: on ? q.data ?? [] : [], authed: status === "authed", sessionStatus: status };
@@ -76,7 +77,7 @@ export function useProductPreorder(initial: ProductPreorder | null, productId: s
   const q = useQuery({
     queryKey: productPreorderKey(productId),
     enabled: status === "authed",
-    staleTime: 15_000,
+    staleTime: STALE_TIME.quick,
     queryFn: () => preorderApi.forProduct(productId),
   });
   const data = status === "authed" && q.data ? q.data : initial;

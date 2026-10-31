@@ -3,6 +3,7 @@
 /** Прокрутка барабана кейса: анимация ленты к призу, тики и haptic при пересечении метки, «линии скорости». */
 import { animate, type AnimationPlaybackControls, type MotionValue } from "framer-motion";
 import { useEffect, useRef, type MutableRefObject, type RefObject } from "react";
+import { useLatest } from "../use-latest";
 import { caseReelOffset, type GiftCaseOpen } from "@shop/core/giftcase";
 import { caseStopSound, caseTick } from "./case-audio";
 import { SPIN_EASE, SPIN_SECONDS, type Stage } from "./case-opening-bits";
@@ -95,7 +96,9 @@ interface ReelSpinArgs {
 /** Drives the reel once the strip for this run is on screen (one animation per `run`). */
 export function useReelSpin({ stage, result, run, vpEl, tile, x, anim, speedRef, alive, hapticsRef, onStopped }: ReelSpinArgs) {
   const spunRun = useRef(0);
+  const live = useLatest({ stage, result, tile, x, anim, speedRef, alive, hapticsRef, onStopped });
   useEffect(() => {
+    const { stage, result, tile, x, anim, speedRef, alive, hapticsRef, onStopped } = live.current;
     if (stage !== "spin" || !result || run === 0 || spunRun.current === run) return;
     if (!vpEl) return;
     spunRun.current = run;
@@ -105,6 +108,5 @@ export function useReelSpin({ stage, result, run, vpEl, tile, x, anim, speedRef,
       cancel();
       spunRun.current = 0;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- one run per `run`
-  }, [run, vpEl]);
+  }, [run, vpEl, live]);
 }

@@ -7,6 +7,7 @@
  * POST /api/me/preorders again = change of quantity; 400 + code IN_STOCK means it is on sale after all.
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { catalogKeys } from "@shop/customer/catalog/keys";
 import { Bell } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, QtyStepper } from "@shop/ui/primitives";
@@ -100,7 +101,7 @@ function Body({
 
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: preorderKeys.mine });
-    void qc.invalidateQueries({ queryKey: ["preorders", "product"] });
+    void qc.invalidateQueries({ queryKey: preorderKeys.productAll });
   };
 
   const join = useMutation({
@@ -113,7 +114,7 @@ function Body({
     onError: (e) => {
       if (e instanceof ApiError && e.code === "IN_STOCK") {
         setError(t("preorder.err.inStock"));
-        void qc.invalidateQueries({ queryKey: ["products"] });
+        void qc.invalidateQueries({ queryKey: catalogKeys.products });
       } else {
         setError(e instanceof ApiError && e.message ? e.message : t("preorder.err.generic"));
       }

@@ -9,6 +9,8 @@
  * via variant-label propagation (see docs/archive/NEO-frontend.md framer-motion caveat).
  */
 import { useQuery } from "@tanstack/react-query";
+import { meKeys } from "@shop/customer/account/keys";
+import { POLL_INTERVAL } from "@shop/core/query";
 import { AnimatePresence, motion } from "framer-motion";
 import { MessageCircle, X } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -35,10 +37,10 @@ export function NotificationsModal({ open, onClose }: { open: boolean; onClose: 
   const router = useRouter();
   const token = useAccessToken();
   const { data, isLoading } = useQuery({
-    queryKey: ["me", "conversations"],
+    queryKey: meKeys.conversations,
     queryFn: () => customerApi.conversations(),
     enabled: open && !!token,
-    refetchInterval: open ? 15_000 : false,
+    refetchInterval: open ? POLL_INTERVAL.chat : false,
   });
   const rows = data ?? [];
 

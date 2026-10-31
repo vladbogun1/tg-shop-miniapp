@@ -5,6 +5,8 @@
  * Stars are the one place the brand orange is used for a "value", so the empty ones stay neutral.
  */
 import { Star } from "lucide-react";
+import { formatRating as coreFormatRating } from "@shop/core/money";
+import { toPercent } from "@shop/core/percent";
 import { useT } from "@/i18n/context";
 import { haptic } from "@/platform/telegram";
 
@@ -36,7 +38,7 @@ export function Stars({
               strokeWidth={2}
             />
             {fill > 0 && (
-              <span className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
+              <span className="absolute inset-0 overflow-hidden" style={{ width: `${toPercent(fill)}%` }}>
                 <Star
                   className="fill-[var(--accent)] text-[var(--accent)]"
                   style={{ width: size, height: size }}
@@ -96,7 +98,7 @@ export function StarInput({
 /** "4.8" — one decimal, locale-independent dot is fine for a rating. */
 export function formatRating(v: number | null | undefined): string {
   if (v == null || Number.isNaN(v)) return "0";
-  return (Math.round(v * 10) / 10).toFixed(1);
+  return coreFormatRating(Math.round(v * 10) / 10);
 }
 
 /** Compact "★ 4.8 (12)" for catalog cards and next to the product title. */

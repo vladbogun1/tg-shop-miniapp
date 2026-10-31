@@ -2,6 +2,7 @@
 
 /** Account screen entry «Відгуки» → /account/reviews, with a badge of lines waiting for a review. */
 import { useQuery } from "@tanstack/react-query";
+import { STALE_TIME } from "@shop/core/query";
 import { ChevronRight, MessageSquareText } from "lucide-react";
 import Link from "next/link";
 import { useT } from "@/i18n/context";
@@ -16,7 +17,7 @@ export function AccountReviewsLink() {
     queryKey: reviewKeys.pending(),
     queryFn: () => reviewsApi.pending(),
     enabled: !!token,
-    staleTime: 60_000,
+    staleTime: STALE_TIME.minute,
   });
   const waiting = data?.length ?? 0;
 
