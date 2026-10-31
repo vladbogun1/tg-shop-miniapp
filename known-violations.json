@@ -37,7 +37,7 @@
   },
   {
     "type": "dependency",
-    "from": "site/components/chat/OrderChat.tsx",
+    "from": "site/features/chat/ui/OrderChat.tsx",
     "to": "site/lib/ws.ts",
     "rule": {
       "severity": "error",

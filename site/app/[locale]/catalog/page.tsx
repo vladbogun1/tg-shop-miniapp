@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CatalogView } from "@/components/catalog/CatalogView";
+import { CatalogView } from "@/features/catalog/view";
 import { makeT } from "@/i18n";
 import { catalogPageMeta } from "@/features/catalog/server";
 import { parseCatalogState, type SearchParams } from "@/features/catalog";

@@ -1,6 +1,6 @@
 import { Check } from "lucide-react";
 import type { Metadata } from "next";
-import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import { Breadcrumbs } from "@/features/layout/view";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { localePath, makeT } from "@/i18n";
 import { localeOf, type LocaleParams } from "@/lib/route";

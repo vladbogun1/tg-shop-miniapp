@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { LoginView } from "@/components/auth/LoginView";
+import { LoginView } from "@/features/auth/view";
 import { alternates, makeT } from "@/i18n";
 import { localeOf, type LocaleParams } from "@/lib/route";
 

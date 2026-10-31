@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
-import { Footer } from "@/components/layout/Footer";
-import { Header } from "@/components/layout/Header";
+import { Footer } from "@/features/layout/view";
+import { Header } from "@/features/layout/view";
 import { Preloader } from "@/components/Preloader";
 import { PreloaderReady } from "@/components/PreloaderReady";
 import { Providers } from "@/components/Providers";

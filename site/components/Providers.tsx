@@ -8,8 +8,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Analytics } from "@/components/Analytics";
-import { CartDrawer } from "@/components/cart/CartDrawer";
-import { CompareModal } from "@/components/compare/CompareModal";
+import { CartDrawer } from "@/features/cart/view";
+import { CompareModal } from "@/features/compare/view";
 import { CustomerConfirmHost } from "@shop/ui/confirm/customer";
 import { UiLookProvider } from "@shop/ui/look";
 import { Toaster } from "@shop/ui/toast";

@@ -94,11 +94,11 @@ module.exports = {
     },
     {
       name: "features-via-index",
-      comment: "Фича зависит от другой фичи только через её index.ts.",
+      comment: "Фича зависит от другой фичи только через её index.ts или view.ts (UI-вход: экраны/компоненты; index — хуки, модель, типы).",
       severity: "error",
       from: { path: "^((?:frontend|frontend-admin|site)/features/([^/]+))/" },
       to: {
-        path: "^(?:frontend|frontend-admin|site)/features/([^/]+)/(?!index[.]tsx?$)",
+        path: "^(?:frontend|frontend-admin|site)/features/([^/]+)/(?!(?:index|view)[.]tsx?$)",
         pathNot: "^(?:frontend|frontend-admin|site)/features/$2/|^(?:frontend|frontend-admin|site)/features/[^/]+/server([.]ts|/)",
       },
     },

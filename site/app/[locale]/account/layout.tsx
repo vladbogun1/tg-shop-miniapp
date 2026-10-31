@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AccountShell } from "@/components/account/AccountShell";
+import { AccountShell } from "@/features/account/view";
 import { makeT } from "@/i18n";
 import { localeOf, type LocaleParams } from "@/lib/route";
 

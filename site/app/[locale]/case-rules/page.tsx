@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { CaseRulesLive } from "@/components/info/CaseRulesLive";
-import { LegalView } from "@/components/info/LegalView";
+import { CaseRulesLive } from "@/features/legal/view";
+import { LegalView } from "@/features/legal/view";
 import { makeT } from "@/i18n";
 import { legalPageMeta, loadLegal } from "@/features/legal/server";
 import { localeOf, type LocaleParams } from "@/lib/route";

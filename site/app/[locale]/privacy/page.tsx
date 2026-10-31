@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { LegalView } from "@/components/info/LegalView";
+import { LegalView } from "@/features/legal/view";
 import { makeT } from "@/i18n";
 import { legalPageMeta, loadLegal } from "@/features/legal/server";
 import { localeOf, type LocaleParams } from "@/lib/route";
