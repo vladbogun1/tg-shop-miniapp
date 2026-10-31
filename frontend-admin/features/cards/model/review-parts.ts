@@ -166,19 +166,23 @@ export function addAiProposals(raw: unknown, attrs: CardAttribute[], proposals: 
 
 // ---- texts -----------------------------------------------------------------
 
-/** Название, описание и причина уценки в ru·uk·en — только то, что ответ действительно меняет или переводит. */
-export function reviewTexts(e: Entry, item: CardItem, validSpecs: Record<string, unknown>): Partial<Record<TextField, TextReview>> {
-  const texts: Partial<Record<TextField, TextReview>> = {};
-  const current: Record<TextField, string> = {
+/** Текущие тексты товара в базе (описание — с \n вместо \r\n). */
+function currentTexts(item: CardItem): Record<TextField, string> {
+  return {
     title: (item.title ?? "").trim(),
     description: (item.description ?? "").replace(/\r\n?/g, "\n").trim(),
     conditionNote: (item.conditionNote ?? "").trim(),
   };
+}
+
+/** Название, описание и причина уценки в ru·uk·en — только то, что ответ действительно меняет или переводит. */
+export function reviewTexts(e: Entry, item: CardItem, validSpecs: Record<string, unknown>): Partial<Record<TextField, TextReview>> {
+  const texts: Partial<Record<TextField, TextReview>> = {};
+  const current = currentTexts(item);
   const rawTexts: Record<TextField, unknown> = { title: e.title, description: e.description, conditionNote: e.conditionNote ?? e.condition_note };
   for (const field of TEXT_FIELDS) {
     const lt = langTexts(rawTexts[field]);
-    if (!lt) continue;
-    if (field === "conditionNote" && !current.conditionNote) continue; // nothing to translate
+    if (!lt || (field === "conditionNote" && !current.conditionNote)) continue; // nothing to translate
     const draft: TextReview = {
       field,
       from: current[field],
@@ -191,8 +195,7 @@ export function reviewTexts(e: Entry, item: CardItem, validSpecs: Record<string,
       level: "ok",
     };
     const checked = checkText(draft, item, validSpecs);
-    if (!checked.changed && !checked.uk && !checked.en) continue;
-    texts[field] = checked;
+    if (checked.changed || checked.uk || checked.en) texts[field] = checked;
   }
   return texts;
 }

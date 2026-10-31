@@ -84,29 +84,34 @@ export function finalRu(t: TextReview): string {
   return t.field === "conditionNote" ? t.from : t.ru;
 }
 
+/** Замечания к русскому тексту (`changed` — отличается от того, что в базе). */
+function checkRussian(t: TextReview, item: CardItem, specs: Record<string, unknown>, changed: boolean): CardIssue[] {
+  if (t.field === "title") {
+    if (!t.ru.trim()) return [{ level: "error", text: "пустое название" }];
+    if (t.ru.length > 255) return [{ level: "error", text: "длиннее 255 символов" }];
+    return changed ? [{ level: "warn", text: "переименование" }] : [];
+  }
+  if (t.field === "description") return changed ? checkDescription(item, t.ru, specs).issues : [];
+  if (t.aiRu.trim() && t.aiRu.trim() !== t.from.trim()) {
+    return [{ level: "info", text: "ИИ поправил русский текст причины — он не меняется, сохранится только перевод" }];
+  }
+  return [];
+}
+
+/** Замечания к переводу на один язык. */
+function checkLang(t: TextReview, lang: "uk" | "en"): CardIssue[] {
+  const source = finalRu(t);
+  const text = t[lang];
+  if (!text.trim()) return source.trim() ? [{ level: "warn", text: "нет перевода — не сохранится" }] : [];
+  const issues: CardIssue[] = checkTranslation(source, lang, text).map((i) => ({ level: i.level, text: i.text }));
+  const translatedFrom = t.field === "conditionNote" ? t.aiRu || t.from : t.aiRu;
+  if (translatedFrom.trim() !== source.trim()) issues.push({ level: "warn", text: "перевод сделан до вашей правки русского — проверьте" });
+  return issues;
+}
+
 /** (Re)validates one text after the answer or an inline edit. */
 export function checkText(t: TextReview, item: CardItem, specs: Record<string, unknown>): TextReview {
-  const issues: Record<TextLang, CardIssue[]> = { ru: [], uk: [], en: [] };
   const changed = t.field !== "conditionNote" && t.ru.trim() !== t.from.trim();
-  if (t.field === "title") {
-    if (!t.ru.trim()) issues.ru.push({ level: "error", text: "пустое название" });
-    else if (t.ru.length > 255) issues.ru.push({ level: "error", text: "длиннее 255 символов" });
-    else if (changed) issues.ru.push({ level: "warn", text: "переименование" });
-  } else if (t.field === "description") {
-    if (changed) issues.ru.push(...checkDescription(item, t.ru, specs).issues);
-  } else if (t.aiRu.trim() && t.aiRu.trim() !== t.from.trim()) {
-    issues.ru.push({ level: "info", text: "ИИ поправил русский текст причины — он не меняется, сохранится только перевод" });
-  }
-  const source = finalRu(t);
-  const translatedFrom = t.field === "conditionNote" ? t.aiRu || t.from : t.aiRu;
-  for (const l of ["uk", "en"] as const) {
-    const text = t[l];
-    if (!text.trim()) {
-      if (source.trim()) issues[l].push({ level: "warn", text: "нет перевода — не сохранится" });
-      continue;
-    }
-    issues[l].push(...checkTranslation(source, l, text).map((i) => ({ level: i.level, text: i.text })));
-    if (translatedFrom.trim() !== source.trim()) issues[l].push({ level: "warn", text: "перевод сделан до вашей правки русского — проверьте" });
-  }
+  const issues: Record<TextLang, CardIssue[]> = { ru: checkRussian(t, item, specs, changed), uk: checkLang(t, "uk"), en: checkLang(t, "en") };
   return { ...t, changed, issues, level: levelOf([...issues.ru, ...issues.uk, ...issues.en]) };
 }

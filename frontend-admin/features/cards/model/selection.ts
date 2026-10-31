@@ -76,13 +76,8 @@ export function translationSendable(t: TextReview, lang: "uk" | "en", s: Product
   return s.translations && !!t[lang].trim() && !!finalRu(t).trim() && ruAccepted(t, s) && !t.issues[lang].some((i) => i.level === "error");
 }
 
-/** null = nothing to send for this product. */
-export function buildImportItem(
-  r: ProductReview,
-  s: ProductSel | undefined,
-  opts: { markReady: boolean; model?: string; publish?: boolean }
-): CardImportItem | null {
-  if (!s?.on || r.level === "error") return null;
+/** Выбранные характеристики со значениями, уверенностью и ссылками-источниками. */
+function chosenSpecs(r: ProductReview, s: ProductSel) {
   const specs: Record<string, unknown> = {};
   const confidence: Record<string, number> = {};
   const fieldSources: Record<string, string> = {};
@@ -92,17 +87,11 @@ export function buildImportItem(
     if (f.confidence != null) confidence[f.key] = f.confidence;
     if (f.src) fieldSources[f.key] = f.src;
   }
-  const item: CardImportItem = { productId: r.item.id, specs, confidence, markReady: opts.markReady };
-  if (Object.keys(fieldSources).length) item.fieldSources = fieldSources;
-  if (opts.publish !== undefined) item.publish = opts.publish;
-  if (r.overall != null) item.overall = r.overall;
-  if (s.category && r.category?.valid) item.categorySlug = r.category.to;
-  if (s.brand && r.brand?.valid) item.brand = r.brand.to;
-  const title = r.texts.title;
-  if (title?.changed && s.title && ruOk(title)) item.title = title.ru.trim();
-  const desc = r.texts.description;
-  if (desc?.changed && s.description && ruOk(desc)) item.description = desc.ru.trim();
+  return { specs, confidence, fieldSources };
+}
 
+/** uk/en финального русского текста — только то, что можно отправить (см. `translationSendable`). */
+function chosenTranslations(r: ProductReview, s: ProductSel): Partial<Record<"uk" | "en", CardTextTranslations>> {
   const translations: Partial<Record<"uk" | "en", CardTextTranslations>> = {};
   for (const lang of ["uk", "en"] as const) {
     const out: CardTextTranslations = {};
@@ -112,12 +101,54 @@ export function buildImportItem(
     }
     if (Object.keys(out).length) translations[lang] = out;
   }
-  if (Object.keys(translations).length) item.translations = translations;
+  return translations;
+}
 
-  if (r.sources.length) item.sources = r.sources;
-  if (r.notes) item.notes = r.notes;
-  const m = r.model ?? opts.model?.trim();
-  if (m) item.model = m;
+/** Новое русское название/описание — только принятое и без ошибок. */
+function acceptedRussian(r: ProductReview, s: ProductSel): Pick<CardImportItem, "title" | "description"> {
+  const out: Pick<CardImportItem, "title" | "description"> = {};
+  const title = r.texts.title;
+  if (title?.changed && s.title && ruOk(title)) out.title = title.ru.trim();
+  const desc = r.texts.description;
+  if (desc?.changed && s.description && ruOk(desc)) out.description = desc.ru.trim();
+  return out;
+}
+
+/** Общая уверенность и принятые смена категории/бренда. */
+function acceptedMeta(r: ProductReview, s: ProductSel): Partial<CardImportItem> {
+  const out: Partial<CardImportItem> = {};
+  if (r.overall != null) out.overall = r.overall;
+  if (s.category && r.category?.valid) out.categorySlug = r.category.to;
+  if (s.brand && r.brand?.valid) out.brand = r.brand.to;
+  return out;
+}
+
+/** Источники, заметки и модель ИИ (из ответа, иначе из настроек окна). */
+function provenance(r: ProductReview, model: string | undefined): Partial<CardImportItem> {
+  const out: Partial<CardImportItem> = {};
+  if (r.sources.length) out.sources = r.sources;
+  if (r.notes) out.notes = r.notes;
+  const m = r.model ?? model?.trim();
+  if (m) out.model = m;
+  return out;
+}
+
+/** null = nothing to send for this product. */
+export function buildImportItem(
+  r: ProductReview,
+  s: ProductSel | undefined,
+  opts: { markReady: boolean; model?: string; publish?: boolean }
+): CardImportItem | null {
+  if (!s?.on || r.level === "error") return null;
+  const { specs, confidence, fieldSources } = chosenSpecs(r, s);
+  const item: CardImportItem = { productId: r.item.id, specs, confidence, markReady: opts.markReady };
+  if (Object.keys(fieldSources).length) item.fieldSources = fieldSources;
+  if (opts.publish !== undefined) item.publish = opts.publish;
+  Object.assign(item, acceptedMeta(r, s), acceptedRussian(r, s));
+
+  const translations = chosenTranslations(r, s);
+  if (Object.keys(translations).length) item.translations = translations;
+  Object.assign(item, provenance(r, opts.model));
   const any =
     Object.keys(specs).length || item.categorySlug || item.brand || item.title || item.description || item.translations || opts.markReady || opts.publish;
   return any ? item : null;

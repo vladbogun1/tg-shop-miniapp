@@ -6,10 +6,9 @@
  * `check.ts` parses and validates it against the schema. If you change the answer format
  * here, change the parser there too.
  *
- * PURE module: no React, no DOM, no "@/" imports — the batch pipeline runs it from node:
+ * Pure module: no React, no DOM (imports only `@/features/translation` — GLOSSARY, which is also pure logic). Run from node:
  *   npx tsx -e "import('./frontend-admin/features/cards/model/prompt.ts').then(m => …)"
  * (see `buildCardPrompt` / `splitIntoBatches` / `normalizeSchema` / `assignCardIds`).
- * Imports only @/features/translation (GLOSSARY) — also pure.
  *
  * Answer format:
  *   ```json
