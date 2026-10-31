@@ -7,6 +7,7 @@
  * the board's "Today" strip can link straight to the stock tab.
  */
 import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import "./metrics.css";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -32,7 +33,16 @@ const TABS = [
 ] as const;
 type Tab = (typeof TABS)[number]["value"];
 
+/** Экран метрик; Suspense нужен из-за useSearchParams (вкладка и период живут в адресе). */
 export function MetricsScreen() {
+  return (
+    <Suspense>
+      <MetricsBody />
+    </Suspense>
+  );
+}
+
+function MetricsBody() {
   const router = useRouter();
   const sp = useSearchParams();
   const raw = sp.get("tab");
