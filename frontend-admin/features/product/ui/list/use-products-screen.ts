@@ -13,7 +13,7 @@ import {
   useCatalogSchemaQuery,
   useCategoriesQuery,
 } from "@/features/catalog";
-import { demandOfProduct, useDemand } from "@/lib/preorders";
+import { demandOfProduct, useDemand } from "@/features/procurement";
 import {
   countByStatus,
   filterProducts,

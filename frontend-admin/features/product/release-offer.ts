@@ -3,8 +3,15 @@ import { toast } from "@shop/ui/toast";
 import type { QueryClient } from "@tanstack/react-query";
 import { plural } from "@/features/catalog";
 import { ApiError } from "@/lib/api";
-import { peopleOfRows, preordersApi, releaseDemand, releaseSummary, type Demand } from "@/lib/preorders";
+import { peopleOfRows, preordersApi, releaseSummary, sumReleases, type Demand } from "@/features/procurement";
 import { productKeys } from "./keys";
+
+/** Раздать брони по строкам: одна строка — один запрос, строго по очереди. */
+async function releaseRows(rows: Demand[]) {
+  const results = [];
+  for (const r of rows) results.push(await preordersApi.release(r.productId, r.variantId ?? null));
+  return sumReleases(results);
+}
 
 /**
  * Остаток подняли вручную, а люди ждут: предложить (но не делать сам) раздать брони.
@@ -25,7 +32,7 @@ export async function offerRelease(qc: QueryClient, productId: string, raised: (
     action: {
       label: "Раздать брони",
       onClick: () => {
-        releaseDemand(rows)
+        releaseRows(rows)
           .then((res) => {
             (res.heldPeople > 0 ? toast.success : toast.info)(releaseSummary(res));
             qc.invalidateQueries({ queryKey: productKeys.preordersRoot() });

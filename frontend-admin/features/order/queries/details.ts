@@ -4,7 +4,7 @@
 import { ApiError } from "@shop/core/errors";
 import { useApiMutation } from "@shop/ui/mutation";
 import { useQuery } from "@tanstack/react-query";
-import { COSTING_KEY, costingApi } from "@/lib/costing";
+import { costingApi, procurementKeys } from "@/features/procurement";
 import { paymentApi, paymentKeys } from "@/features/payment";
 import { orderApi, type AdminOrderDetail, type CancelApproveResult } from "../api";
 import { orderKeys } from "../keys";
@@ -19,7 +19,7 @@ export function useOrderAuditQuery(orderId: string) {
 /** Прибыль заказа; `enabled` — только при праве «Финансы» (иначе запрос не уходит). */
 export function useOrderProfitQuery(orderId: string, enabled: boolean) {
   return useQuery({
-    queryKey: [...COSTING_KEY, "order", orderId],
+    queryKey: procurementKeys.order(orderId),
     queryFn: () => costingApi.order(orderId),
     enabled: enabled && !!orderId,
     retry: false,

@@ -4,9 +4,8 @@
  * «Прибыль» в карточке заказа: выручка − себестоимость − комиссия эквайринга, по строкам.
  * Рендерится только при праве «Финансы» (иначе null, запрос не уходит).
  */
-import { useFinanceAccess } from "@/lib/costing";
 import { useOrderProfitQuery } from "../../queries/details";
-import { lineTitle } from "@/lib/preorders";
+import { lineTitle, useFinanceAccess } from "@/features/procurement";
 import { money } from "@/lib/money";
 import { cn } from "@/lib/cn";
 import { pct } from "@/features/analytics";

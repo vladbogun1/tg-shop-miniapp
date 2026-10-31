@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Drawer } from "@shop/ui/overlay";
-import { useBatchProductTools } from "@/components/preorders/BatchItemProduct";
+import { useBatchProductTools } from "@/features/product";
 import { useIsSuperAdmin } from "@/features/staff";
 import { useIsDesktop } from "@/lib/use-media";
 import { unreadFromCustomer } from "../../model/chat";

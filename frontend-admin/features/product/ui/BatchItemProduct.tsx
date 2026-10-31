@@ -9,11 +9,14 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Eye, EyeOff, ImageOff, Pencil } from "lucide-react";
 import { ApiError } from "@/lib/api";
-import { ProductModal, productApi, usePublishGate, type AdminProduct } from "@/features/product";
+import { productApi } from "../api";
+import type { AdminProduct } from "../model/types";
+import { usePublishGate } from "./PublishGate";
+import { ProductModal } from "./modal/ProductModal";
+import { productKeys } from "../keys";
 import { invalidateCards } from "@/features/cards";
 import { money } from "@/lib/money";
 import { Image, resolveImageSrc } from "@/lib/image";
-import { PREORDERS_KEY } from "@/lib/preorders";
 import { siteProductUrl } from "@/features/support";
 import { toast } from "@shop/ui/toast";
 import { CardStatusBadge } from "@/features/catalog";
@@ -24,8 +27,14 @@ import { Drawer } from "@shop/ui/overlay";
 import { Lightbox } from "@shop/ui/overlay";
 
 /** Товары поставки по id — из того же списка, что и экран «Товары» (кэш общий). */
-export function useBatchProducts(ids: string[]): { byId: Map<string, AdminProduct>; loading: boolean } {
-  const q = useQuery({ queryKey: ["products", false], queryFn: () => productApi.list() });
+export function useBatchProducts(ids: string[]): {
+  byId: Map<string, AdminProduct>;
+  loading: boolean;
+} {
+  const q = useQuery({
+    queryKey: productKeys.list(false),
+    queryFn: () => productApi.list(),
+  });
   const key = ids.join(",");
   const byId = useMemo(() => {
     const want = new Set(key.split(","));
@@ -74,16 +83,14 @@ export function useBatchProductTools({ zClass }: { zClass?: string } = {}) {
 
   function refresh() {
     invalidateCards(qc);
-    qc.invalidateQueries({ queryKey: ["translations"] });
-    qc.invalidateQueries({ queryKey: PREORDERS_KEY });
+    qc.invalidateQueries({ queryKey: productKeys.translatedRoot() });
+    qc.invalidateQueries({ queryKey: productKeys.preordersRoot() });
   }
 
   async function setActive(p: AdminProduct, active: boolean) {
     setBusy(p.id);
     try {
-      const ok = active
-        ? await guardPublish(p, (force) => productApi.setActive(p.id, true, force))
-        : (await productApi.setActive(p.id, false), true);
+      const ok = active ? await guardPublish(p, (force) => productApi.setActive(p.id, true, force)) : (await productApi.setActive(p.id, false), true);
       if (!ok) return;
       refresh();
       setPreview((cur) => (cur && cur.id === p.id ? { ...cur, active } : cur));
@@ -131,7 +138,13 @@ export function useBatchProductTools({ zClass }: { zClass?: string } = {}) {
     </>
   );
 
-  return { openPreview: setPreview, openEditor: setEditing, setActive, busy, ui };
+  return {
+    openPreview: setPreview,
+    openEditor: setEditing,
+    setActive,
+    busy,
+    ui,
+  };
 }
 
 function QuickView({
@@ -151,49 +164,14 @@ function QuickView({
 }) {
   const [zoom, setZoom] = useState<string | null>(null);
   const images = p?.images?.filter((i) => i.url) ?? [];
-  const stock = p?.variants?.length ? p.variants.reduce((n, v) => n + (v.stock ?? 0), 0) : p?.stock ?? 0;
   return (
     <>
       <Drawer open={!!p} onClose={onClose} title={p?.title} zClass={zClass}>
         {p && (
           <div className="flex min-w-0 flex-col gap-4 px-4 pb-[calc(16px+var(--safe-bottom,0px))] pt-4 sm:px-5">
             <ProductStateChips p={p} loading={false} />
-            {images.length ? (
-              // Phone: a swipeable strip, so price, stock and the buttons stay on the first screen.
-              // From sm up: the first photo big, the rest in a row under it.
-              <div className="thin-scroll -mx-4 flex snap-x gap-2 overflow-x-auto px-4 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
-                {images.map((img, n) => (
-                  <button
-                    key={img.id ?? n}
-                    type="button"
-                    onClick={() => setZoom(resolveImageSrc(img.url!, 1600))}
-                    className={
-                      "w-40 shrink-0 snap-start overflow-hidden rounded-[var(--r-md)] border border-[var(--line)] sm:w-auto " +
-                      (n === 0 ? "sm:col-span-3" : "")
-                    }
-                    aria-label="Увеличить фото"
-                  >
-                    <Image src={img.url} alt={p.title} size={n === 0 ? 900 : 300} className="aspect-square w-full" />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="card-2 flex items-center gap-2 p-4 text-[13px] text-[var(--text-muted)]">
-                <ImageOff className="h-4 w-4" /> Фото ещё нет
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-3 text-[13px]">
-              <Field label="Цена">{money(p.priceMinor)}</Field>
-              <Field label="На складе">{stock}</Field>
-              {!!p.variants?.length && (
-                <Field label="Варианты" wide>
-                  {p.variants.map((v) => `${v.name} — ${v.stock}`).join(" · ")}
-                </Field>
-              )}
-            </div>
-            {p.description && (
-              <p className="line-clamp-6 whitespace-pre-wrap break-words text-[13px] text-[var(--text-muted)]">{p.description}</p>
-            )}
+            <QuickGallery title={p.title} images={images} onZoom={setZoom} />
+            <QuickFacts p={p} />
             {/* phone: the actions stick to the bottom edge however long the description is */}
             <div className="sticky bottom-0 -mx-4 -mb-[calc(16px+var(--safe-bottom,0px))] flex flex-wrap gap-2 border-t border-[var(--line)] bg-[var(--surface)] px-4 pb-[calc(12px+var(--safe-bottom,0px))] pt-3 sm:static sm:m-0 sm:border-0 sm:bg-transparent sm:p-0">
               <Button variant="accent" icon={<Pencil className="h-4 w-4" />} onClick={() => onEdit(p)}>
@@ -219,6 +197,52 @@ function QuickView({
         )}
       </Drawer>
       <Lightbox src={zoom} onClose={() => setZoom(null)} />
+    </>
+  );
+}
+
+type GalleryImage = NonNullable<AdminProduct["images"]>[number];
+
+function QuickGallery({ title, images, onZoom }: { title: string; images: GalleryImage[]; onZoom: (src: string) => void }) {
+  return images.length ? (
+    // Phone: a swipeable strip, so price, stock and the buttons stay on the first screen.
+    // From sm up: the first photo big, the rest in a row under it.
+    <div className="thin-scroll -mx-4 flex snap-x gap-2 overflow-x-auto px-4 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
+      {images.map((img, n) => (
+        <button
+          key={img.id ?? n}
+          type="button"
+          onClick={() => onZoom(resolveImageSrc(img.url!, 1600))}
+          className={
+            "w-40 shrink-0 snap-start overflow-hidden rounded-[var(--r-md)] border border-[var(--line)] sm:w-auto " + (n === 0 ? "sm:col-span-3" : "")
+          }
+          aria-label="Увеличить фото"
+        >
+          <Image src={img.url} alt={title} size={n === 0 ? 900 : 300} className="aspect-square w-full" />
+        </button>
+      ))}
+    </div>
+  ) : (
+    <div className="card-2 flex items-center gap-2 p-4 text-[13px] text-[var(--text-muted)]">
+      <ImageOff className="h-4 w-4" /> Фото ещё нет
+    </div>
+  );
+}
+
+function QuickFacts({ p }: { p: AdminProduct }) {
+  const stock = p.variants?.length ? p.variants.reduce((n, v) => n + (v.stock ?? 0), 0) : (p.stock ?? 0);
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3 text-[13px]">
+        <Field label="Цена">{money(p.priceMinor)}</Field>
+        <Field label="На складе">{stock}</Field>
+        {!!p.variants?.length && (
+          <Field label="Варианты" wide>
+            {p.variants.map((v) => `${v.name} — ${v.stock}`).join(" · ")}
+          </Field>
+        )}
+      </div>
+      {p.description && <p className="line-clamp-6 whitespace-pre-wrap break-words text-[13px] text-[var(--text-muted)]">{p.description}</p>}
     </>
   );
 }

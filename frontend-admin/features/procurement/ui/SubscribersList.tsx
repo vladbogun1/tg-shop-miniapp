@@ -4,7 +4,7 @@
 import { useConfirm } from "@shop/ui/confirm";
 import { BellOff, X } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
-import { formatDateTime } from "@/lib/orders";
+import { formatDateTime } from "@shop/core/time";
 import { SUB_STATUS_LABEL, SUB_STATUS_TONE, isLiveSub, lineTitle, sourceLabel } from "../model/batch";
 import type { Subscriber } from "../model/types";
 import { useRemoveSubscriber } from "../queries";

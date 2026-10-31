@@ -15,7 +15,7 @@ export interface SeedLine {
 export interface PickedProduct {
   id: string;
   title: string;
-  images?: { url: string }[] | null;
+  images?: { url?: string | null }[] | null;
   variants?: { id?: string | null; name: string; stock: number }[] | null;
 }
 
@@ -116,13 +116,20 @@ export function approxDate(weeks: string): string {
 
 const parseFx = (s: string) => Number(s.replace(",", "."));
 
+/** Ошибка срока поставки или null. */
+function etaError(v: BatchFormValues): string | null {
+  if (v.etaMode === "DATE" && !v.etaFrom) return "Укажите дату";
+  if (v.etaMode === "RANGE" && (!v.etaFrom || !v.etaTo || v.etaTo < v.etaFrom)) return "Диапазон: «с» не позже «по»";
+  if (v.etaMode === "APPROX" && !(Number(v.weeks) >= 0)) return "Укажите, через сколько недель";
+  return null;
+}
+
 /** Текст первой ошибки или null. */
 export function validateBatchForm(v: BatchFormValues, itemsLocked: boolean, money: boolean): string | null {
   if (!itemsLocked && v.lines.length === 0) return "Добавьте хотя бы одну позицию";
   if (!itemsLocked && v.lines.some((l) => !(Number(l.qty) >= 1))) return "Сколько заказано — от 1 у каждой позиции";
-  if (v.etaMode === "DATE" && !v.etaFrom) return "Укажите дату";
-  if (v.etaMode === "RANGE" && (!v.etaFrom || !v.etaTo || v.etaTo < v.etaFrom)) return "Диапазон: «с» не позже «по»";
-  if (v.etaMode === "APPROX" && !(Number(v.weeks) >= 0)) return "Укажите, через сколько недель";
+  const eta = etaError(v);
+  if (eta) return eta;
   if (money && v.fxRate.trim() && !(parseFx(v.fxRate) > 0)) return "Курс должен быть больше нуля";
   return null;
 }

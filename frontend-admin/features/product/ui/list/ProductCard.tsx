@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Archive, ArchiveRestore, Pencil, Wand2 } from "lucide-react";
 import { Button } from "@shop/ui/admin-button";
-import { WaitBadge } from "@/components/preorders/WaitBadge";
+import { WaitBadge } from "@/features/procurement";
 import { Badge } from "@/components/ui/Badge";
 import { Toggle } from "@/components/ui/Toggle";
 import { Image } from "@/lib/image";

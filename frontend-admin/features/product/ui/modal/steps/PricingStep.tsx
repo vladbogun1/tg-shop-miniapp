@@ -1,7 +1,7 @@
 "use client";
 
-import { FactoryOrderLine } from "@/components/preorders/FactoryOrder";
-import { WaitLine } from "@/components/preorders/WaitBadge";
+import { FactoryOrderLine, WaitLine } from "@/features/procurement";
+import { ProductPickModal } from "@/components/ProductPickModal";
 import { Input } from "@/components/ui/Input";
 import { ProductCostBlock } from "../ProductCostBlock";
 import { Variants } from "../Variants";
@@ -39,7 +39,7 @@ export function PricingStep({ x }: { x: ProductCtx }) {
       />
       <Variants variants={f.variants} onChange={(v) => set("variants", v)} />
       {product?.id && <WaitLine productId={product.id} title={product.title} />}
-      {product?.id && effectiveStock === 0 && <FactoryOrderLine product={product} />}
+      {product?.id && effectiveStock === 0 && <FactoryOrderLine product={product} ProductPicker={ProductPickModal} />}
       {product?.id && <ProductCostBlock productId={product.id} />}
     </div>
   );

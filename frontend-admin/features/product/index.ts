@@ -14,3 +14,4 @@ export {
   useSetProductArchived,
 } from "./queries";
 export type { AdminProduct, AdminProductSaved, ProductWriteRequest, SpecIssue } from "./model/types";
+export { ProductStateChips, useBatchProductTools, useBatchProducts } from "./ui/BatchItemProduct";

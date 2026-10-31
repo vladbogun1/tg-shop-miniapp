@@ -1,4 +1,4 @@
-import { PREORDERS_KEY } from "@/lib/preorders";
+import { procurementKeys } from "@/features/procurement";
 import { catalogKeys } from "@/features/catalog";
 
 /**
@@ -13,6 +13,6 @@ export const productKeys = {
   translatedRoot: () => ["translations"] as const,
   translatedUkEn: () => ["translations", "translated-uk-en"] as const,
   /** «Чего ждут» из предзаказов — для предложения раздать брони после поднятия остатка. */
-  demand: () => [...PREORDERS_KEY, "demand"] as const,
-  preordersRoot: () => PREORDERS_KEY,
+  demand: () => procurementKeys.demand(),
+  preordersRoot: () => procurementKeys.preordersRoot(),
 };

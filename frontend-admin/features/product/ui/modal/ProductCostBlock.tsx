@@ -7,17 +7,17 @@
 import { QUERY_PRESETS } from "@shop/core/query";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { COSTING_KEY, LOT_KIND_LABEL, costingApi, useFinanceAccess, type Lot, type ProductCost } from "@/lib/costing";
+import { LOT_KIND_LABEL, costingApi, procurementKeys, useFinanceAccess, type Lot, type ProductCost } from "@/features/procurement";
 import { money } from "@/lib/money";
 import { cn } from "@/lib/cn";
-import { pct } from "@/components/metrics/format";
+import { pct } from "@/features/analytics";
 import { Badge } from "@/components/ui/Badge";
 
 /** Себестоимость товара; undefined — нет права «Финансы», не загружено или не нужно (новый товар). */
 export function useProductCost(productId: string | null | undefined, enabled = true): ProductCost | undefined {
   const finance = useFinanceAccess();
   const q = useQuery({
-    queryKey: [...COSTING_KEY, "product", productId],
+    queryKey: procurementKeys.product(productId as string),
     queryFn: () => costingApi.product(productId as string),
     enabled: finance && enabled && !!productId,
     staleTime: QUERY_PRESETS.list.staleTime,

@@ -16,7 +16,8 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { CHART_COLORS, ChartTooltip, SERIES_PALETTE, moneyShort, shortDate } from "@/features/analytics";
+import { ChartTooltip } from "@/components/charts/ChartTooltip";
+import { CHART_COLORS, SERIES_PALETTE, moneyShort, shortDate } from "@/components/charts/chart";
 import { riseItem } from "@/lib/motion";
 
 const axisProps = {

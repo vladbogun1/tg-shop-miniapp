@@ -115,13 +115,13 @@ export type Expense = Omit<Schemas["ExpenseDto"], ExpenseNullable | "kind" | "fi
 type MoneyLineNullable =
   | "variantId" | "variantName" | "imageUrl" | "qtyArrived" | "unitPriceFx" | "weightG" | "manualExtraMinor"
   | "purchaseUnitMinor" | "purchaseLineMinor" | "costUnitMinor" | "marginUnitMinor" | "marginPct";
-export type MoneyLine = { [K in MoneyLineNullable]: Schemas["MoneyLineDto"][K] | null } & Omit<Schemas["MoneyLineDto"], MoneyLineNullable>;
+export type BatchMoneyLine = Omit<Schemas["MoneyLineDto"], MoneyLineNullable> & { [K in MoneyLineNullable]: Schemas["MoneyLineDto"][K] | null };
 
 export type BatchMoney = Omit<Schemas["BatchMoneyDto"], "fxRate" | "expensesPct" | "allocation" | "lines" | "expenses"> & {
   fxRate: number | null;
   expensesPct: number | null;
   allocation: Allocation;
-  lines: MoneyLine[];
+  lines: BatchMoneyLine[];
   expenses: Expense[];
 };
 

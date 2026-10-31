@@ -14,3 +14,4 @@ export type WriteoffLine = Omit<Schemas["InventoryStockWriteoffReportServiceLine
 export type WriteoffReasonTotal = Schemas["ReasonTotal"];
 
 export type WriteoffReport = Omit<Schemas["Report"], "lines"> & { lines: WriteoffLine[] };
+

@@ -6,7 +6,7 @@ import { Crown, Sparkles, UserCheck, UserMinus, UserX, Users as UsersIcon } from
 import { QueryState } from "@/components/ui/QueryState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
-import { CHART_COLORS } from "@/features/analytics";
+import { CHART_COLORS } from "@/components/charts/chart";
 import { staggerContainer } from "@/lib/motion";
 import { languageSlices, topCustomerBars } from "../../model/metrics";
 import type { UserCardDto, UserMetricsDto } from "../../model/types";

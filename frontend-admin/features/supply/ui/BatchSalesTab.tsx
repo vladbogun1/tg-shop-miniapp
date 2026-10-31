@@ -5,18 +5,17 @@
  * «Продано» — только в оплаченных заказах (как в «Метриках»); ждущие онлайн-оплаты — отдельно, «в брони».
  * Только с правом «Финансы».
  */
-import { useQuery } from "@tanstack/react-query";
-import { COSTING_KEY, costingApi, type BatchSales } from "@/lib/costing";
-import { lineTitle } from "@/lib/preorders";
-import { money } from "@/lib/money";
-import { cn } from "@/lib/cn";
-import { formatDateTime } from "@shop/core/time";
-import { pct } from "@/components/metrics/format";
 import { Badge } from "@/components/ui/Badge";
 import { QueryState } from "@/components/ui/QueryState";
+import { pct } from "@/features/analytics";
+import { lineTitle, type BatchSales } from "@/features/procurement";
+import { cn } from "@/lib/cn";
+import { money } from "@/lib/money";
+import { formatDateTime } from "@shop/core/time";
+import { useBatchSales } from "../queries";
 
 export function BatchSalesTab({ batchId }: { batchId: number }) {
-  const q = useQuery({ queryKey: [...COSTING_KEY, "sales", batchId], queryFn: () => costingApi.sales(batchId), retry: false });
+  const q = useBatchSales(batchId);
   return (
     <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Считаем продажи поставки">
       {q.data && <SalesBody s={q.data} />}
@@ -28,7 +27,14 @@ function Tile({ label, value, sub, tone }: { label: string; value: string; sub?:
   return (
     <div className="card min-w-0 p-3">
       <div className="text-[11px] text-[var(--text-faint)]">{label}</div>
-      <div className={cn("tabular font-display text-[18px] font-bold", tone === "ok" ? "text-[var(--ok)]" : tone === "bad" ? "text-[#F87171]" : "text-[var(--ink)]")}>{value}</div>
+      <div
+        className={cn(
+          "tabular font-display text-[18px] font-bold",
+          tone === "ok" ? "text-[var(--ok)]" : tone === "bad" ? "text-[#F87171]" : "text-[var(--ink)]",
+        )}
+      >
+        {value}
+      </div>
       {sub && <div className="text-[11px] leading-snug text-[var(--text-faint)]">{sub}</div>}
     </div>
   );
@@ -40,7 +46,9 @@ function SalesBody({ s }: { s: BatchSales }) {
     <div className="flex min-w-0 flex-col gap-4">
       {s.preliminary && (
         <div className="flex items-center gap-2">
-          <Badge tone="warn" dot>себестоимость предварительная</Badge>
+          <Badge tone="warn" dot>
+            себестоимость предварительная
+          </Badge>
           <span className="text-[12.5px] text-[var(--text-muted)]">не все расходы внесены — прибыль может измениться</span>
         </div>
       )}
@@ -68,7 +76,11 @@ function SalesBody({ s }: { s: BatchSales }) {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <Tile label="Стоимость остатка" value={money(s.leftValueMinor)} sub="по себестоимости" />
-        <Tile label="Дней до распродажи" value={s.daysToSellOut != null ? String(s.daysToSellOut) : "—"} sub={s.soldOutAt ? `распродана ${formatDateTime(s.soldOutAt)}` : "ещё не распродана"} />
+        <Tile
+          label="Дней до распродажи"
+          value={s.daysToSellOut != null ? String(s.daysToSellOut) : "—"}
+          sub={s.soldOutAt ? `распродана ${formatDateTime(s.soldOutAt)}` : "ещё не распродана"}
+        />
       </div>
 
       <div className="card thin-scroll overflow-x-auto p-0">
@@ -104,8 +116,8 @@ function SalesBody({ s }: { s: BatchSales }) {
         </table>
       </div>
       <p className="text-[12px] text-[var(--text-faint)]">
-        Продано — как в «Метриках»: наложенный платёж сразу, онлайн-оплата и предоплата — после оплаты. «В брони» —
-        заказы, которые ещё ждут онлайн-оплаты: со склада уже ушло, но в выручку и прибыль не входит.
+        Продано — как в «Метриках»: наложенный платёж сразу, онлайн-оплата и предоплата — после оплаты. «В брони» — заказы, которые ещё ждут
+        онлайн-оплаты: со склада уже ушло, но в выручку и прибыль не входит.
       </p>
     </div>
   );
