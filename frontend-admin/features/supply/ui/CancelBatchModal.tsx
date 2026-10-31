@@ -1,14 +1,15 @@
 "use client";
 
 import { Button } from "@shop/ui/admin-button";
+import { useForm } from "@shop/ui/form";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
-import { useState } from "react";
 import { Toggle } from "@/components/ui/Toggle";
 import type { Batch } from "@/features/procurement";
 import { useCancelBatch } from "../queries";
 
 export function CancelBatchModal({ open, onClose, batch, waiting }: { open: boolean; onClose: () => void; batch: Batch; waiting: number }) {
-  const [closeQueue, setCloseQueue] = useState(false);
+  const form = useForm<{ closeQueue: boolean }>({ defaultValues: { closeQueue: false } });
+  const closeQueue = form.watch("closeQueue");
   const cancel = useCancelBatch(batch.id, onClose);
   return (
     <Modal
@@ -29,7 +30,7 @@ export function CancelBatchModal({ open, onClose, batch, waiting }: { open: bool
         <p>
           «{batch.title}» перестанет быть открытой. Ждущих сейчас: {waiting} чел. Если очередь оставить, люди продолжат ждать товар без срока.
         </p>
-        <Toggle checked={closeQueue} onChange={setCloseQueue} label="Закрыть очередь (ждущие выйдут из неё)" />
+        <Toggle checked={closeQueue} onChange={(x) => form.setValue("closeQueue", x)} label="Закрыть очередь (ждущие выйдут из неё)" />
       </div>
     </Modal>
   );

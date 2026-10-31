@@ -11,6 +11,7 @@ import { errorMessage } from "@shop/core/errors";
 import { QUERY_PRESETS } from "@shop/core/query";
 import { toast } from "@shop/ui/toast";
 import { Button } from "@shop/ui/admin-button";
+import { useForm } from "@shop/ui/form";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { Select } from "@/components/ui/Select";
 import { preordersApi } from "../api";
@@ -29,7 +30,9 @@ export function FactoryOrderLine({ product, ProductPicker }: { product: PickedPr
   const demandQ = useDemand();
   const [busy, setBusy] = useState(false);
   const [choice, setChoice] = useState<BatchSummary[] | null>(null);
-  const [pick, setPick] = useState(NEW);
+  const target = useForm<{ pick: string }>({ defaultValues: { pick: NEW } });
+  const pick = target.watch("pick");
+  const setPick = (v: string) => target.setValue("pick", v);
   const [form, setForm] = useState<{ batch: Batch | null } | null>(null);
 
   const units = demandRowsOfProduct(demandQ.data, product.id).reduce((n, d) => n + d.units, 0);
