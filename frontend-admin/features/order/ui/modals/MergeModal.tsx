@@ -14,6 +14,7 @@ import { useForm } from "@shop/ui/form";
 import { shortId } from "../../model/status";
 import { defaultKeepThis, mergeView, mustStay } from "../../model/merge";
 import type { AdminOrderDetail, MergeBody, MergeCandidate } from "../../api";
+import { useLatestRef } from "../use-latest-ref";
 import { useMergeCandidatesQuery } from "../../queries/modals";
 import { Modal } from "@shop/ui/overlay";
 import { Textarea } from "@/components/ui/Textarea";
@@ -45,6 +46,8 @@ export function MergeModal({
   const q = useMergeCandidatesQuery(orderId, open && !!orderId);
   const candidates = useMemo(() => q.data ?? [], [q.data]);
 
+  // Latest pickedId / pick: the auto-pick below reacts to open / candidates only (as before).
+  const autoPick = useLatestRef({ pickedId, pick });
   useLayoutEffect(() => {
     if (!open) return;
     setPickedId(null);
@@ -56,11 +59,11 @@ export function MergeModal({
 
   // One mergeable order: pick it right away.
   useEffect(() => {
-    if (!open || pickedId) return;
+    const { pickedId: picked, pick: pickCandidate } = autoPick.current;
+    if (!open || picked) return;
     const ok = candidates.filter((c) => !c.blocker);
-    if (ok.length === 1) pick(ok[0]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, candidates]);
+    if (ok.length === 1) pickCandidate(ok[0]);
+  }, [open, candidates, autoPick]);
 
   const other = candidates.find((c) => c.id === pickedId) ?? null;
 

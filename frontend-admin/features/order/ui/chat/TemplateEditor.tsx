@@ -8,6 +8,7 @@ import { Button } from "@shop/ui/admin-button";
 import { useForm } from "@shop/ui/form";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { useLatestRef } from "../use-latest-ref";
 import type { ReplyTemplate, ReplyTemplateWrite } from "../../api";
 import {
   EMPTY_DRAFT,
@@ -43,13 +44,13 @@ export function TemplateEditor({
   const [lang, setLang] = useState<TemplateLang>("ru");
 
   const id = template?.id ?? null;
+  // Reset only when the editor opens or a different template is opened — not when the same one refetches.
+  const templateRef = useLatestRef(template);
   useLayoutEffect(() => {
     if (!open) return;
-    reset(draftOf(template));
+    reset(draftOf(templateRef.current));
     setLang("ru");
-    // Reset only when a different template is opened.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, id, reset]);
+  }, [open, id, reset, templateRef]);
 
   const value = draft[lang];
   const stale = (l: "uk" | "en") => isTranslationStale(template, l, draft);

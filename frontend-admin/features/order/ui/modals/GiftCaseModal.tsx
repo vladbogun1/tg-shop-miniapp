@@ -15,6 +15,11 @@ import { cn } from "@/lib/cn";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { Button } from "@shop/ui/admin-button";
 
+/** У уровня есть что выдать (пока список не загружен — считаем, что есть). */
+function tierIsLive(tiers: { tier: CaseTier; livePrizes?: number | null }[] | undefined, t: CaseTier): boolean {
+  return (tiers?.find((x) => x.tier === t)?.livePrizes ?? 1) > 0;
+}
+
 export function GiftCaseModal({
   open,
   loading,
@@ -28,18 +33,21 @@ export function GiftCaseModal({
 }) {
   const form = useForm<{ notify: boolean; tier: CaseTier }>({ defaultValues: { notify: true, tier: "SILVER" } });
   const { notify, tier } = form.watch();
-  const { setValue } = form;
+  const { setValue, getValues } = form;
   const tiersQ = useGiftTiersQuery(open);
-  const live = (t: CaseTier) => (tiersQ.data?.find((x) => x.tier === t)?.livePrizes ?? 1) > 0;
+  const tiers = tiersQ.data;
+  const live = (t: CaseTier) => tierIsLive(tiers, t);
   useEffect(() => {
     if (open) setValue("notify", true);
   }, [open, setValue]);
   // Default: silver, or the first tier that has something to drop.
   useEffect(() => {
-    if (!open || !tiersQ.data) return;
-    if (!live(tier)) form.setValue("tier", (["SILVER", "BRONZE", "GOLD"] as CaseTier[]).find(live) ?? tier);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, tiersQ.data]);
+    if (!open || !tiers) return;
+    const current = getValues("tier");
+    if (!tierIsLive(tiers, current)) {
+      setValue("tier", (["SILVER", "BRONZE", "GOLD"] as CaseTier[]).find((t) => tierIsLive(tiers, t)) ?? current);
+    }
+  }, [open, tiers, getValues, setValue]);
 
   return (
     <Modal

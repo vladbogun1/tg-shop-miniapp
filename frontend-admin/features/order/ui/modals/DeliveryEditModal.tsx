@@ -11,6 +11,7 @@ import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
 import { Autocomplete } from "@/components/ui/Autocomplete";
+import { useLatestRef } from "../use-latest-ref";
 import { orderApi, type AdminOrderDetail, type DeliveryPatch, type NpCity, type NpWarehouse } from "../../api";
 import { MIN_PHONE_DIGITS, buildDeliveryPatch, isDeliveryInvalid, phoneDigits, placeOf, type Place } from "../../model/delivery-edit";
 
@@ -87,14 +88,15 @@ export function DeliveryEditModal({
   const [wh, setWh] = useState<Place | null>(null);
 
   const orderId = order?.id ?? null;
+  // Only on (re)open — not when the same order refetches while the form is being edited.
+  const orderRef = useLatestRef(order);
   useLayoutEffect(() => {
-    if (!open || !order) return;
-    reset({ name: order.customerName ?? "", phone: order.phone ?? "" });
-    setCity(placeOf(order.npCityRef, order.npCityName));
-    setWh(placeOf(order.npWarehouseRef, order.npWarehouseName));
-    // Only on (re)open — not when the same order refetches while the form is being edited.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, orderId, reset]);
+    const current = orderRef.current;
+    if (!open || !current) return;
+    reset({ name: current.customerName ?? "", phone: current.phone ?? "" });
+    setCity(placeOf(current.npCityRef, current.npCityName));
+    setWh(placeOf(current.npWarehouseRef, current.npWarehouseName));
+  }, [open, orderId, reset, orderRef]);
 
   if (!order) return null;
   const isNp = order.deliveryMethod === "NOVA_POSHTA";
