@@ -184,25 +184,45 @@ async function shownGroup(tag) {
   }
 }
 
+/** A link or a picture of a push is followed only when it is a path of this site. */
+function localPath(value) {
+  return typeof value === "string" && value.startsWith("/") ? value : undefined;
+}
+
+/**
+ * Continues the chat-group notification that is still on screen: the run's latest lines, the count, the picture.
+ * `text` (title and body of the grouped notification) is set only from the second message on.
+ */
+async function continueGroup(group, tag, image) {
+  const prev = await shownGroup(tag);
+  const count = (prev ? prev.count : 0) + 1;
+  const lines = [...(prev ? prev.lines : []), group.line].slice(-GROUP_LINES);
+  // The latest photo of the run stays as the picture.
+  const picture = image || (prev && prev.image) || undefined;
+  const extra = { lines, count, image: picture, at: Date.now() };
+  const text =
+    count > 1
+      ? { title: `${group.title} · ${count} ${messagesWord(count)}`, body: lines.map((l) => "— " + l).join("\n") }
+      : null;
+  return { extra, image: picture, text };
+}
+
 async function showPush(data) {
   let title = data.title || "ChiSetup Admin";
   let body = data.body || "";
-  const url = typeof data.url === "string" && data.url.startsWith("/") ? data.url : "/inbox";
+  const url = localPath(data.url) || "/inbox";
   const tag = data.tag || undefined;
-  let image = typeof data.image === "string" && data.image.startsWith("/") ? data.image : undefined;
+  let image = localPath(data.image);
   const extra = { url };
 
   const group = data.group && typeof data.group.line === "string" ? data.group : null;
   if (group) {
-    const prev = await shownGroup(tag);
-    const count = (prev ? prev.count : 0) + 1;
-    const lines = [...(prev ? prev.lines : []), group.line].slice(-GROUP_LINES);
-    // The latest photo of the run stays as the picture.
-    image = image || (prev && prev.image) || undefined;
-    Object.assign(extra, { lines, count, image, at: Date.now() });
-    if (count > 1) {
-      title = `${group.title} · ${count} ${messagesWord(count)}`;
-      body = lines.map((l) => "— " + l).join("\n");
+    const next = await continueGroup(group, tag, image);
+    image = next.image;
+    Object.assign(extra, next.extra);
+    if (next.text) {
+      title = next.text.title;
+      body = next.text.body;
     }
   }
 
