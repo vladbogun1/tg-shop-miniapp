@@ -33,11 +33,11 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties, type Rea
 import { createPortal } from "react-dom";
 import { ApiError, type CardMeta as ApiCardMeta, type ProductSpecs } from "@/lib/api";
 import { attributesForCategory as adminAttributesFor, SpecsForm, useCatalogSchemaQuery } from "@/features/catalog";
-import { formatValue, sameValue, TEXT_LABEL, wordDiff, type TextField } from "@/lib/card-check";
-import { attributesForCategory, categoryPathName, type CardAttribute, type CardItem, type CardSchema } from "@/lib/card-prompt";
-import { cardsApi, type CardAcceptBody, type CardChange, type CardReviewData, type CardTextTranslations } from "@/lib/cards-api";
-import { invalidateCards } from "@/lib/cards";
-import { fieldsWord, metaOf, missingLabels, tabOf } from "@/lib/cards-view";
+import { formatValue, sameValue, TEXT_LABEL, wordDiff, type TextField } from "../model/check";
+import { attributesForCategory, categoryPathName, type CardAttribute, type CardItem, type CardSchema } from "../model/prompt";
+import { cardsApi, type CardAcceptBody, type CardChange, type CardReviewData, type CardTextTranslations } from "../api";
+import { invalidateCards } from "../queries";
+import { fieldsWord, metaOf, missingLabels, tabOf } from "../model/view";
 import { cn } from "@/lib/cn";
 import { backdropVariants, drawerVariants, sheetVariants } from "@shop/ui/overlay";
 import { isTopLayer, useOverlayLayer } from "@shop/ui/overlay";
@@ -48,8 +48,8 @@ import { Button } from "@shop/ui/admin-button";
 import { useConfirm } from "@shop/ui/confirm";
 
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Diff, InlineText, SourceText } from "@/components/translations/shared";
-import { CardStatusChip, CONFIDENCE_HINT, ConfidenceDot, ConfidencePill, fmtDate, Thumb } from "@/components/cards/shared";
+import { Diff, InlineText, SourceText } from "@/features/translation";
+import { CardStatusChip, CONFIDENCE_HINT, ConfidenceDot, ConfidencePill, fmtDate, Thumb } from "./shared";
 
 type Lang = "ru" | "uk" | "en";
 const LANG_LABEL: Record<Lang, string> = { ru: "RU", uk: "UA", en: "EN" };

@@ -71,7 +71,7 @@ import {
   useCategoriesQuery,
   type BrandValue,
 } from "@/features/catalog";
-import { invalidateCards } from "@/lib/cards";
+import { invalidateCards } from "@/features/cards";
 import { money, toMajor, toMinor } from "@/lib/money";
 import { Image } from "@/lib/image";
 import { cn } from "@/lib/cn";

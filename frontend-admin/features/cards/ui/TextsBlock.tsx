@@ -8,13 +8,13 @@
  */
 import { Languages, PencilLine } from "lucide-react";
 import { useMemo, useState } from "react";
-import { TEXT_LABEL, wordDiff, type CardIssue, type ProductReview, type TextField, type TextLang, type TextReview } from "@/lib/card-check";
+import { TEXT_LABEL, wordDiff, type CardIssue, type ProductReview, type TextField, type TextLang, type TextReview } from "../model/check";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { Diff, InlineText, SourceText } from "@/components/translations/shared";
-import { ruAccepted, translationSendable, type ProductSel } from "@/components/cards/selection";
-import { CardIssues, Check } from "@/components/cards/shared";
+import { Diff, InlineText, SourceText } from "@/features/translation";
+import { ruAccepted, translationSendable, type ProductSel } from "../model/selection";
+import { CardIssues, Check } from "./shared";
 
 const LANG_LABEL: Record<TextLang, string> = { ru: "RU", uk: "UA", en: "EN" };
 

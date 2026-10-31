@@ -15,9 +15,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCheck, ClipboardCheck, PartyPopper, RefreshCw, Search, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { assignCardIds } from "@/lib/card-prompt";
-import { cardsApi } from "@/lib/cards-api";
-import { invalidateCards, useCardItems, useCatalogSchema } from "@/lib/cards";
+import { assignCardIds } from "@/features/cards/model/prompt";
+import { cardsApi } from "@/features/cards/api";
+import { invalidateCards, useCardItems, useCatalogSchema } from "@/features/cards/queries";
 import {
   BULK_ACCEPT_MIN,
   bulkAcceptable,
@@ -31,7 +31,7 @@ import {
   tabOf,
   type CardTab,
   type Vitrine,
-} from "@/lib/cards-view";
+} from "@/features/cards/model/view";
 import { cn } from "@/lib/cn";
 import { toast } from "@shop/ui/toast";
 import { useMediaQuery } from "@shop/ui/use-media";
@@ -43,10 +43,10 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Toggle } from "@/components/ui/Toggle";
-import { AiWizardLayer } from "@/components/cards/AiWizardLayer";
-import { CardCompletionModal } from "@/components/cards/CardCompletionModal";
-import { CardList } from "@/components/cards/CardList";
-import { ReviewPanel } from "@/components/cards/ReviewPanel";
+import { AiWizardLayer } from "@/features/cards/ui/AiWizardLayer";
+import { CardCompletionModal } from "@/features/cards/ui/CardCompletionModal";
+import { CardList } from "@/features/cards/ui/CardList";
+import { ReviewPanel } from "@/features/cards/ui/ReviewPanel";
 
 const PAGE = 100;
 

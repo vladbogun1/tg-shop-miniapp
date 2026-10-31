@@ -4,8 +4,8 @@
  * slightly differently), so the screen only sees the normalized types.
  */
 import { apiGet, apiPatch, apiPut } from "@/lib/api";
-import type { TextField } from "@/lib/card-check";
-import { normalizeSchema, type CardItem, type CardSchema, type CardStatusCode } from "@/lib/card-prompt";
+import type { TextField } from "./model/check";
+import { normalizeSchema, type CardItem, type CardSchema, type CardStatusCode } from "./model/prompt";
 
 export interface CardStats {
   /** All DRAFT cards (hidden + on the storefront) — the «Оформить» tab. */

@@ -2,15 +2,15 @@
 
 /** Step 3 of «Оформление с ИИ»: one product — what changes, field by field, with checkboxes. */
 import { ArrowRight, ExternalLink, Lightbulb, MessageSquareText, Plus } from "lucide-react";
-import { formatValue, type FieldReview, type Proposal, type ProductReview, type TextField, type TextLang } from "@/lib/card-check";
-import { categoryPathName, type CardSchema } from "@/lib/card-prompt";
+import { formatValue, type FieldReview, type Proposal, type ProductReview, type TextField, type TextLang } from "../model/check";
+import { categoryPathName, type CardSchema } from "../model/prompt";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@shop/ui/admin-button";
-import { ProductLink } from "@/components/translations/shared";
-import { TextsBlock } from "@/components/cards/TextsBlock";
-import type { ProductSel } from "@/components/cards/selection";
-import { CardIssues, CardStatusChip, Check, ConfidenceDot, ConfidencePill, Thumb } from "@/components/cards/shared";
+import { ProductLink } from "@/features/translation";
+import { TextsBlock } from "./TextsBlock";
+import type { ProductSel } from "../model/selection";
+import { CardIssues, CardStatusChip, Check, ConfidenceDot, ConfidencePill, Thumb } from "./shared";
 
 const LEVEL_TONE = { ok: "ok", warn: "warn", error: "danger" } as const;
 const LEVEL_LABEL = { ok: "без замечаний", warn: "есть замечания", error: "ошибка" } as const;

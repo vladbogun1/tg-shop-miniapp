@@ -9,7 +9,7 @@
  * PURE module: no React, no DOM, no "@/" imports — the batch pipeline runs it from node:
  *   npx tsx -e "import('./frontend-admin/lib/card-prompt.ts').then(m => …)"
  * (see `buildCardPrompt` / `splitIntoBatches` / `normalizeSchema` / `assignCardIds`).
- * Imports only ./translation-prompt (GLOSSARY) — also pure.
+ * Imports only @/features/translation (GLOSSARY) — also pure.
  *
  * Answer format:
  *   ```json
@@ -21,7 +21,7 @@
  *   can still be pasted later.
  */
 
-import { GLOSSARY } from "./translation-prompt";
+import { GLOSSARY } from "@/features/translation";
 
 // ============================================================================
 // Schema (normalized: the same shape whatever the backend / schema file sends)

@@ -11,8 +11,8 @@ import {
   type CardAttribute,
   type CardItem,
   type CardSchema,
-} from "./card-prompt";
-import { checkTranslation, wordDiff, type DiffPart } from "./translation-check";
+} from "./prompt";
+import { checkTranslation, wordDiff, type DiffPart } from "@/features/translation";
 import { formatNumber } from "@shop/core/money";
 
 export { wordDiff, type DiffPart };

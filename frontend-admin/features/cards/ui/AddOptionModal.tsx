@@ -7,8 +7,8 @@
  */
 import { useState } from "react";
 import { ApiError } from "@/lib/api";
-import type { Proposal } from "@/lib/card-check";
-import { cardsApi } from "@/lib/cards-api";
+import type { Proposal } from "../model/check";
+import { cardsApi } from "../api";
 import { slugify } from "@/features/catalog";
 import { toast } from "@shop/ui/toast";
 import { Button } from "@shop/ui/admin-button";

@@ -13,16 +13,16 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, ClipboardPaste, PartyPopper, Save, Search, Wand2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError } from "@/lib/api";
-import { buildCardReview, editText, parseCardAnswer, type Proposal, type ProductReview } from "@/lib/card-check";
+import { buildCardReview, editText, parseCardAnswer, type Proposal, type ProductReview } from "../model/check";
 import {
   buildCardPrompt,
   categoryPathName,
   splitIntoBatches,
   type CardItem,
   type CardSchema,
-} from "@/lib/card-prompt";
-import { cardsApi, type CardImportItem, type CardImportResult } from "@/lib/cards-api";
-import { invalidateCards } from "@/lib/cards";
+} from "../model/prompt";
+import { cardsApi, type CardImportItem, type CardImportResult } from "../api";
+import { invalidateCards } from "../queries";
 import { cn } from "@/lib/cn";
 import { toast } from "@shop/ui/toast";
 import { Badge } from "@/components/ui/Badge";
@@ -30,11 +30,11 @@ import { Button } from "@shop/ui/admin-button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Toggle } from "@/components/ui/Toggle";
-import { CopyButton } from "@/components/translations/shared";
-import { AddOptionModal } from "@/components/cards/AddOptionModal";
-import { ReviewCard } from "@/components/cards/ReviewCard";
-import { AUTO_READY_OVERALL, autoReady, buildImportItem, defaultSel, mergeSel, RED_FIELD, type ProductSel } from "@/components/cards/selection";
-import { CardStatusChip, Check, ConfidencePill, Step, Thumb } from "@/components/cards/shared";
+import { CopyButton } from "@/features/translation";
+import { AddOptionModal } from "./AddOptionModal";
+import { ReviewCard } from "./ReviewCard";
+import { AUTO_READY_OVERALL, autoReady, buildImportItem, defaultSel, mergeSel, RED_FIELD, type ProductSel } from "../model/selection";
+import { CardStatusChip, Check, ConfidencePill, Step, Thumb } from "./shared";
 import { formatNumber } from "@shop/core/money";
 
 type ReviewFilter = "all" | "ok" | "warn" | "error";

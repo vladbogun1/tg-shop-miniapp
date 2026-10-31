@@ -1,7 +1,7 @@
 import { useInbox } from "@/lib/inbox";
 import { useSupportUnread } from "@/lib/support-api";
 import { pendingCount, useTranslationStats } from "@/features/translation";
-import { pendingCards, useCardStats } from "@/lib/cards";
+import { pendingCards, useCardStats } from "@/features/cards";
 import { useReviewsPending } from "@/lib/reviews";
 import type { BadgeKey } from "./nav-config";
 

@@ -3,8 +3,8 @@
 /** Small pieces shared by the «Карточки» screen. */
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { confidenceColor, type CardIssue } from "@/lib/card-check";
-import type { CardStatusCode } from "@/lib/card-prompt";
+import { confidenceColor, type CardIssue } from "../model/check";
+import type { CardStatusCode } from "../model/prompt";
 import { Image } from "@/lib/image";
 import { formatMoment } from "@shop/core/time";
 

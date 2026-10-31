@@ -6,8 +6,8 @@
  */
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { isAuthenticated } from "@/lib/api";
-import { cardsApi, type CardStats } from "@/lib/cards-api";
-import { invalidateTranslations } from "@/lib/translations";
+import { cardsApi, type CardStats } from "./api";
+import { invalidateTranslations } from "@/features/translation";
 
 export const CARDS_STATS_KEY = ["admin", "cards", "stats"] as const;
 export const CARDS_EXPORT_KEY = ["admin", "cards", "export"] as const;

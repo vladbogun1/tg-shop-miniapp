@@ -8,10 +8,10 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronRight, EyeOff } from "lucide-react";
 import type { CSSProperties } from "react";
-import { categoryPathName, type CardItem, type CardSchema } from "@/lib/card-prompt";
-import { fieldsWord, metaOf, missingCount, missingLabels, tabOf } from "@/lib/cards-view";
+import { categoryPathName, type CardItem, type CardSchema } from "../model/prompt";
+import { fieldsWord, metaOf, missingCount, missingLabels, tabOf } from "../model/view";
 import { cn } from "@/lib/cn";
-import { Check, ConfidencePill, fmtDate, Thumb } from "@/components/cards/shared";
+import { Check, ConfidencePill, fmtDate, Thumb } from "./shared";
 
 export function CardList({
   items,

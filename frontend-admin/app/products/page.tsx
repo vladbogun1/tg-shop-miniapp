@@ -45,7 +45,7 @@ import {
   useCategoriesQuery,
 } from "@/features/catalog";
 import { usePublishGate } from "@/components/catalog/PublishGate";
-import { CardCompletionModal } from "@/components/cards/CardCompletionModal";
+import { CardCompletionModal } from "@/features/cards";
 import { money } from "@/lib/money";
 import { Image } from "@/lib/image";
 import { cn } from "@/lib/cn";
@@ -65,7 +65,7 @@ import { WaitBadge } from "@/components/preorders/WaitBadge";
 import { demandOfProduct, useDemand } from "@/lib/preorders";
 
 import { useShopSetting } from "@/features/settings";
-import { invalidateCards } from "@/lib/cards";
+import { invalidateCards } from "@/features/cards";
 
 /** Steps a deep link may open the product wizard on. */
 const STEP_KEYS = new Set<string>(["basics", "photos", "pricing", "category", "specs", "site", "review"]);
