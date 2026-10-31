@@ -1,5 +1,6 @@
 "use client";
 
+import { QUERY_PRESETS } from "@shop/core/query";
 import type { CardStatus } from "@shop/core/catalog";
 import { useApiMutation } from "@shop/ui/mutation";
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
@@ -48,7 +49,7 @@ export function useTranslatedTexts(enabled: boolean) {
       return [...uk, ...en];
     },
     enabled,
-    staleTime: 60_000,
+    staleTime: QUERY_PRESETS.list.staleTime * 2,
   });
 }
 

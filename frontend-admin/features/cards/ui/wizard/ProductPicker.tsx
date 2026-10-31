@@ -2,7 +2,6 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { Search } from "lucide-react";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@shop/ui/admin-button";
 import { categoryPathName, type CardSchema } from "../../model/schema";
 import { CardStatusChip, Check, ConfidencePill, Thumb } from "../shared";

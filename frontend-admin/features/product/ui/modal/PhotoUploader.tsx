@@ -32,9 +32,7 @@ import {
   rectSortingStrategy,
   SortableContext,
   sortableKeyboardCoordinates,
-  useSortable,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { Image } from "@/lib/image";
 import { cn } from "@/lib/cn";
 import { UploadCloud } from "lucide-react";

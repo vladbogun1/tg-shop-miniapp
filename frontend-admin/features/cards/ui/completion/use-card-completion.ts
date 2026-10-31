@@ -1,6 +1,7 @@
 "use client";
 
 /** Состояние и действия окна «Оформить с ИИ» для одного товара (экран — `CardCompletionModal`). */
+import { QUERY_PRESETS } from "@shop/core/query";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "@shop/ui/toast";
@@ -34,7 +35,7 @@ function useCompletionData(productId: string, open: boolean) {
     queryKey: cardsKeys.exportOne(productId),
     queryFn: async () => (await cardsApi.export("all", [productId])).find((i) => i.id === productId) ?? null,
     enabled: open && !!productId,
-    staleTime: 0,
+    staleTime: QUERY_PRESETS.live.staleTime,
   });
   const item = itemQ.data ?? null;
   const schema = schemaQ.data;

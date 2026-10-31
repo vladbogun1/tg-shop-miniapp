@@ -4,6 +4,7 @@
  * Карточка товара → «Себестоимость»: по какой цене уйдёт следующая штука (FIFO), маржа при текущей цене,
  * партии с остатком и сверка с остатком на складе. Рендерится только при праве «Финансы».
  */
+import { QUERY_PRESETS } from "@shop/core/query";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { COSTING_KEY, LOT_KIND_LABEL, costingApi, useFinanceAccess, type Lot, type ProductCost } from "@/lib/costing";
@@ -19,7 +20,7 @@ export function useProductCost(productId: string | null | undefined, enabled = t
     queryKey: [...COSTING_KEY, "product", productId],
     queryFn: () => costingApi.product(productId as string),
     enabled: finance && enabled && !!productId,
-    staleTime: 30_000,
+    staleTime: QUERY_PRESETS.list.staleTime,
     retry: false,
   });
   return finance ? q.data : undefined;

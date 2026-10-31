@@ -1,3 +1,4 @@
+import { QUERY_PRESETS } from "@shop/core/query";
 import { toast } from "@shop/ui/toast";
 import type { QueryClient } from "@tanstack/react-query";
 import { plural } from "@/features/catalog";
@@ -13,7 +14,7 @@ export async function offerRelease(qc: QueryClient, productId: string, raised: (
   if (raised.length === 0) return;
   let demand: Demand[];
   try {
-    demand = await qc.fetchQuery({ queryKey: productKeys.demand(), queryFn: preordersApi.demand, staleTime: 0 });
+    demand = await qc.fetchQuery({ queryKey: productKeys.demand(), queryFn: preordersApi.demand, staleTime: QUERY_PRESETS.live.staleTime });
   } catch {
     return;
   }

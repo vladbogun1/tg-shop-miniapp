@@ -1,6 +1,7 @@
 "use client";
 
 /** Состояние панели проверки одной карточки: данные, правки (характеристики и тексты), «Принять», «Сохранить правки», «Вернуть на проверку», горячие клавиши. */
+import { QUERY_PRESETS } from "@shop/core/query";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ProductSpecs } from "@/lib/api";
@@ -38,7 +39,7 @@ export function panelKeyAction(key: string): "next" | "prev" | "accept" | null {
 
 export function useReviewPanel({ layer, item, onPrev, onNext, onDone, onDirty }: Args) {
   const qc = useQueryClient();
-  const reviewQ = useQuery({ queryKey: cardsKeys.review(item.id), queryFn: () => cardsApi.review(item.id), staleTime: 0 });
+  const reviewQ = useQuery({ queryKey: cardsKeys.review(item.id), queryFn: () => cardsApi.review(item.id), staleTime: QUERY_PRESETS.live.staleTime });
   const data = reviewQ.data;
   const cur = data?.item ?? item;
   const tab = tabOf(cur);
