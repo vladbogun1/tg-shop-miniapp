@@ -16,7 +16,7 @@ import { type BonusCode } from "@shop/core/types";
 import { reviewKeys } from "@shop/customer/review/keys";
 import { useT } from "@/i18n/context";
 import { api } from "@/lib/api";
-import { useSession } from "@/lib/session";
+import { useSession } from "@/features/auth";
 import { useFmt } from "@/lib/use-fmt";
 
 /** My review bonuses; empty until signed in, and a failed load just means no offer. */

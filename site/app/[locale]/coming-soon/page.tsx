@@ -5,12 +5,15 @@ import type { StorefrontProduct } from "@shop/core/site";
 import { ProductGrid } from "@/components/catalog/ProductCard";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { alternates, localePath, makeT } from "@/i18n";
-import { toCardProducts } from "@/lib/card";
-import { cardContext, loadSchema } from "@/lib/catalog";
-import { buildPreorderIndex, groupTitle, type PreorderEta } from "@/lib/preorder-core";
+import { toCardProducts } from "@/features/catalog";
+import { cardContext } from "@/features/catalog";
+import { loadSchema } from "@/features/catalog/server";
+import { buildPreorderIndex, groupTitle, type PreorderEta } from "@/features/preorder";
 import { localeOf, type LocaleParams } from "@/lib/route";
-import { pageMeta } from "@/lib/seo";
-import { getComingBatches, getListingProducts, safe } from "@/lib/server-api";
+import { pageMeta } from "@/features/seo/server";
+import { getComingBatches } from "@/features/preorder/server";
+import { getListingProducts } from "@/features/catalog/server";
+import { safe } from "@/lib/server-http";
 import { stockOf } from "@shop/customer/catalog/model/stock";
 
 /**

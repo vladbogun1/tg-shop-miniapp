@@ -9,15 +9,7 @@ import { Button } from "@shop/ui/primitives";
 import { toast } from "@shop/ui/toast";
 import { useI18n } from "@/i18n/context";
 import { Image } from "@/lib/image";
-import {
-  cardEtaLine,
-  holdUntilText,
-  isLive,
-  type MyPreorder,
-  MY_PREORDERS_KEY,
-  preorderApi,
-  useMyPreorders,
-} from "@/lib/preorder";
+import { cardEtaLine, holdUntilText, isLive, type MyPreorder, MY_PREORDERS_KEY, preorderApi, useMyPreorders } from "@/features/preorder";
 
 export function Waitlist() {
   const { t } = useI18n();

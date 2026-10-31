@@ -10,9 +10,11 @@ import { makeT } from "@/i18n";
 import { CHUNK_RECOVERY_SCRIPT } from "@shop/core/chunk-recovery";
 import { isLocale, LOCALE_TAG, type Locale } from "@shop/core/i18n";
 import { SITE_URL } from "@/lib/config";
-import { pageMeta } from "@/lib/seo";
-import { getCategories, getPreorderIndex, safe } from "@/lib/server-api";
-import { menuTree } from "@/lib/category-tree";
+import { pageMeta } from "@/features/seo/server";
+import { getCategories } from "@/features/catalog/server";
+import { getPreorderIndex } from "@/features/preorder/server";
+import { safe } from "@/lib/server-http";
+import { menuTree } from "@/features/catalog";
 // Fonts are bundled from npm (@fontsource-variable), not fetched from Google at build time:
 // a flaky fonts.googleapis.com used to break `next build`. Only the subsets in use are downloaded.
 import "@fontsource-variable/inter/wght.css";

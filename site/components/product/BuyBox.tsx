@@ -20,11 +20,11 @@ import { PreorderPanel } from "@/components/preorder/PreorderPanel";
 import { useI18n } from "@/i18n/context";
 import { trackAddToCart } from "@/lib/analytics";
 import { stockOf } from "@shop/customer/catalog/model/stock";
-import { lineKey, useCart } from "@/lib/cart";
-import { useOrderLimits } from "@/lib/order-limits";
+import { lineKey, useCart } from "@/features/cart";
+import { useOrderLimits } from "@/features/cart";
 import { discountPercent } from "@/lib/format";
 import { useHydrated } from "@/lib/hooks";
-import { holdUntilText, isLive, type MyPreorder, type PreorderEta, type ProductPreorder, useProductPreorder } from "@/lib/preorder";
+import { holdUntilText, isLive, type MyPreorder, type PreorderEta, type ProductPreorder, useProductPreorder } from "@/features/preorder";
 import { useFmt } from "@/lib/use-fmt";
 
 export function BuyBox({

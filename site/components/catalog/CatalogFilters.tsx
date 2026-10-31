@@ -25,8 +25,8 @@ import { type CatalogSort } from "@shop/core/site";
 import { noFadeFlash } from "@shop/ui/motion";
 import { useI18n } from "@/i18n/context";
 import type { MessageKey } from "@/i18n";
-import type { CatalogEngine } from "@/lib/catalog";
-import { type CatalogState, catalogHref, hasFilters, SORTS } from "@/lib/catalog-params";
+import type { CatalogEngine } from "@/features/catalog";
+import { type CatalogState, catalogHref, hasFilters, SORTS } from "@/features/catalog";
 import { useDebounced, useEscape, useHydrated, useScrollLock } from "@/lib/hooks";
 
 // ---------------------------------------------------------------- scroll helpers

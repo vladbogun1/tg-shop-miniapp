@@ -11,11 +11,15 @@ import { CoinPop } from "@/components/mascot/scenes";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { localePath, makeT, type MessageKey } from "@/i18n";
 import { localeOf, type LocaleParams } from "@/lib/route";
-import { getCategories, getPreorderIndex, getProducts, getReviewFeed, safe } from "@/lib/server-api";
-import { pageMeta, storeJsonLd } from "@/lib/seo";
-import { toCardProducts } from "@/lib/card";
-import { cardContext, loadSchema } from "@/lib/catalog";
-import { menuTree } from "@/lib/category-tree";
+import { getCategories, getProducts } from "@/features/catalog/server";
+import { getPreorderIndex } from "@/features/preorder/server";
+import { getReviewFeed } from "@/features/reviews/server";
+import { safe } from "@/lib/server-http";
+import { pageMeta, storeJsonLd } from "@/features/seo/server";
+import { toCardProducts } from "@/features/catalog";
+import { cardContext } from "@/features/catalog";
+import { loadSchema } from "@/features/catalog/server";
+import { menuTree } from "@/features/catalog";
 
 // Literal on purpose: Next reads segment config statically (must match REVALIDATE_SECONDS).
 export const revalidate = 60;

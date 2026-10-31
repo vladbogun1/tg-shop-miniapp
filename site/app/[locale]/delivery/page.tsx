@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LegalView } from "@/components/info/LegalView";
 import { makeT } from "@/i18n";
-import { legalPageMeta, loadLegal } from "@/lib/legal";
+import { legalPageMeta, loadLegal } from "@/features/legal/server";
 import { localeOf, type LocaleParams } from "@/lib/route";
 
 export async function generateMetadata({ params }: { params: LocaleParams }): Promise<Metadata> {

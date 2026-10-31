@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { CaseRulesLive } from "@/components/info/CaseRulesLive";
 import { LegalView } from "@/components/info/LegalView";
 import { makeT } from "@/i18n";
-import { legalPageMeta, loadLegal } from "@/lib/legal";
+import { legalPageMeta, loadLegal } from "@/features/legal/server";
 import { localeOf, type LocaleParams } from "@/lib/route";
-import { getGift } from "@/lib/server-api";
+import { getGift } from "@/features/gift/server";
 
 /**
  * Rules of the «Кейси з подарунками» promotion (docs/GIFT-CASE.md «Юридическое»): the owner's text

@@ -4,7 +4,7 @@ import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { localePath, makeT } from "@/i18n";
 import { localeOf, type LocaleParams } from "@/lib/route";
-import { clip, pageMeta } from "@/lib/seo";
+import { clip, pageMeta } from "@/features/seo/server";
 
 export async function generateMetadata({ params }: { params: LocaleParams }): Promise<Metadata> {
   const locale = await localeOf(params);

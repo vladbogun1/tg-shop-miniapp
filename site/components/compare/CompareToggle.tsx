@@ -8,7 +8,7 @@
  */
 import { Check, Scale } from "lucide-react";
 import { useI18n } from "@/i18n/context";
-import { toggleCompare, useCompare, useInCompare } from "@/lib/compare";
+import { toggleCompare, useCompare, useInCompare } from "@/features/compare";
 import { useHydrated } from "@/lib/hooks";
 
 export function CompareToggle({ productId, group, variant = "icon" }: { productId: string; group: string; variant?: "icon" | "full" }) {

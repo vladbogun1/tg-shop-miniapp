@@ -99,8 +99,15 @@ module.exports = {
       from: { path: "^((?:frontend|frontend-admin|site)/features/([^/]+))/" },
       to: {
         path: "^(?:frontend|frontend-admin|site)/features/([^/]+)/(?!index[.]tsx?$)",
-        pathNot: "^(?:frontend|frontend-admin|site)/features/$2/",
+        pathNot: "^(?:frontend|frontend-admin|site)/features/$2/|^(?:frontend|frontend-admin|site)/features/[^/]+/server([.]ts|/)",
       },
+    },
+    {
+      name: "client-not-server-features",
+      comment: "Серверный код фич (features/*/server) в браузер не попадает: его импортируют только app/ и другой server-код (docs/ARCHITECTURE-FRONT.md, 3.1).",
+      severity: "error",
+      from: { path: "^(frontend|frontend-admin|site)/", pathNot: "^[^/]+/app/|^[^/]+/features/[^/]+/server([.]ts|/)|[.]test[.]tsx?$" },
+      to: { path: "^(frontend|frontend-admin|site)/features/[^/]+/server([.]ts|/)" },
     },
     {
       name: "app-not-feature-internals",

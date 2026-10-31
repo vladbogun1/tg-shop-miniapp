@@ -20,7 +20,7 @@ import { type StorefrontProduct } from "@shop/core/site";
 import { useI18n } from "@/i18n/context";
 import { api } from "@/lib/api";
 import { trackCompare } from "@/lib/analytics";
-import { useCompare } from "@/lib/compare";
+import { useCompare } from "@/features/compare";
 import { copyText, useEscape, useScrollLock } from "@/lib/hooks";
 import { useFmt } from "@/lib/use-fmt";
 import { stockOf } from "@shop/customer/catalog/model/stock";

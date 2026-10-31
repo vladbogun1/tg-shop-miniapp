@@ -16,10 +16,10 @@ import { Toaster } from "@shop/ui/toast";
 import { I18nProvider, useT } from "@/i18n/context";
 import type { Locale } from "@shop/core/i18n";
 import { api } from "@/lib/api";
-import { CartSync } from "@/lib/cart-sync";
-import { CompareTabSync } from "@/lib/compare";
-import { PreorderHoldsSync } from "@/lib/preorder";
-import { useSession } from "@/lib/session";
+import { CartSync } from "@/features/cart";
+import { CompareTabSync } from "@/features/compare";
+import { PreorderHoldsSync } from "@/features/cart";
+import { useSession } from "@/features/auth";
 
 function makeClient() {
   return new QueryClient({

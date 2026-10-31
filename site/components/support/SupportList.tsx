@@ -9,7 +9,7 @@ import { Button } from "@shop/ui/primitives";
 import { buttonClass } from "@shop/ui/button-styles";
 import { useI18n } from "@/i18n/context";
 import { Image } from "@/lib/image";
-import { SUPPORT_KEYS, supportApi, useSupportConfig } from "@/lib/support";
+import { SUPPORT_KEYS, supportApi, useSupportConfig } from "@/features/support";
 import { useFmt } from "@/lib/use-fmt";
 import { SupportDisabled, SupportStatusChip, threadTitle } from "./parts";
 

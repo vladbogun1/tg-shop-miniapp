@@ -13,24 +13,21 @@ import { BuyBox } from "@/components/product/BuyBox";
 import { AskProductButton } from "@/components/support/AskProductButton";
 import { Gallery } from "@/components/product/Gallery";
 import { localePath, makeT, type MessageKey } from "@/i18n";
-import { toCardProducts } from "@/lib/card";
-import { cardContext, loadSchema, yesNo } from "@/lib/catalog";
+import { toCardProducts } from "@/features/catalog";
+import { cardContext, yesNo } from "@/features/catalog";
+import { loadSchema } from "@/features/catalog/server";
 import { IMAGE_BASE, SITE_URL } from "@/lib/config";
 import { localeOf } from "@/lib/route";
-import { getPreorderIndex, getProductBySlug, getProductPreorder, getProductReviews, getProducts, safe } from "@/lib/server-api";
-import { etaStartsOn } from "@/lib/preorder-core";
+import { getPreorderIndex, getProductPreorder } from "@/features/preorder/server";
+import { getProductBySlug } from "@/features/product/server";
+import { getProductReviews } from "@/features/reviews/server";
+import { getProducts } from "@/features/catalog/server";
+import { safe } from "@/lib/server-http";
+import { etaStartsOn } from "@/features/preorder";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
-import { reviewsLd } from "@/lib/reviews-ld";
-import {
-  ORG_ID,
-  pageMeta,
-  productBrandName,
-  productDescription,
-  productSku,
-  productTitle,
-  returnPolicyLd,
-  shippingLd,
-} from "@/lib/seo";
+import { reviewsLd } from "@/features/reviews/server";
+import { ORG_ID, pageMeta, returnPolicyLd, shippingLd } from "@/features/seo/server";
+import { productBrandName, productDescription, productSku, productTitle } from "@/features/product/server";
 
 // Literal on purpose: Next reads segment config statically (must match REVALIDATE_SECONDS).
 export const revalidate = 60;

@@ -6,13 +6,17 @@ import { type Locale } from "@shop/core/i18n";
 import { CatalogView } from "@/components/catalog/CatalogView";
 import { breadcrumbJsonLd, JsonLd } from "@/components/layout/Breadcrumbs";
 import { makeT } from "@/i18n";
-import { parseCatalogState, type SearchParams } from "@/lib/catalog-params";
-import { cardContext, computeListing, loadSchema, menuTree, rootOf } from "@/lib/catalog";
+import { parseCatalogState, type SearchParams } from "@/features/catalog";
+import { cardContext, computeListing, menuTree, rootOf } from "@/features/catalog";
+import { loadSchema } from "@/features/catalog/server";
 import { SITE_URL } from "@/lib/config";
 import { localeOf } from "@/lib/route";
 import { CategoryIntro, SHOW_CATEGORY_INTRO } from "@/components/catalog/CategoryIntro";
-import { catalogPageMeta, categoryTitle, categoryWords, metaPrice } from "@/lib/seo";
-import { getCategories, getCategory, getListingProducts, getPreorderIndex, NotFoundError, safe } from "@/lib/server-api";
+import { catalogPageMeta, categoryTitle, categoryWords } from "@/features/catalog/server";
+import { metaPrice } from "@/features/seo/server";
+import { getCategories, getCategory, getListingProducts } from "@/features/catalog/server";
+import { getPreorderIndex } from "@/features/preorder/server";
+import { NotFoundError, safe } from "@/lib/server-http";
 
 /**
  * Filters/sort/page live in the query string, so the page renders per request; the catalog DATA is

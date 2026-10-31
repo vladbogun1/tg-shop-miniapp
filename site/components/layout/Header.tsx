@@ -19,20 +19,20 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { noFadeFlash } from "@shop/ui/motion";
 import { artKindOf } from "@/components/mascot/category-kind";
-import { type MenuNode, rootOf } from "@/lib/category-tree";
+import { type MenuNode, rootOf } from "@/features/catalog";
 import { stripLocale } from "@/i18n";
 import { useI18n } from "@/i18n/context";
-import { useCart, useCartCount } from "@/lib/cart";
-import { useCompare, useCompareCount } from "@/lib/compare";
+import { useCart, useCartCount } from "@/features/cart";
+import { useCompare, useCompareCount } from "@/features/compare";
 import { CompareOpenButton } from "@/components/compare/CompareToggle";
 import { useEscape, useHydrated, useScrollLock } from "@/lib/hooks";
-import { displayName, initials, rememberedUser, useSession } from "@/lib/session";
+import { displayName, initials, rememberedUser, useSession } from "@/features/auth";
 import { LangMenu } from "./LangMenu";
 import { LangSwitch } from "./LangSwitch";
 import { Logo } from "./Logo";
 import { SearchBox } from "./SearchBox";
 import { SupportGate } from "@/components/support/SupportGate";
-import { useSupportUnread } from "@/lib/support";
+import { useSupportUnread } from "@/features/support";
 import "./header.css";
 
 export function Header({ tree, hasComing = false }: { tree: MenuNode[]; /** Open pre-order batches exist: «Скоро в наявності» is in the menus. */ hasComing?: boolean }) {

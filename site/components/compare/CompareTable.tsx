@@ -20,7 +20,7 @@ import type { StorefrontProduct } from "@shop/core/site";
 import { useI18n } from "@/i18n/context";
 import { trackAddToCart } from "@/lib/analytics";
 import { stockOf } from "@shop/customer/catalog/model/stock";
-import { useCart } from "@/lib/cart";
+import { useCart } from "@/features/cart";
 import { Image } from "@/lib/image";
 import { discountPercent } from "@/lib/format";
 import { useFmt } from "@/lib/use-fmt";

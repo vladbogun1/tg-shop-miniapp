@@ -19,24 +19,6 @@
   },
   {
     "type": "dependency",
-    "from": "site/lib/cart-sync.ts",
-    "to": "site/lib/session.ts",
-    "rule": {
-      "severity": "error",
-      "name": "no-circular"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "site/lib/session.ts",
-    "to": "site/lib/cart-sync.ts",
-    "rule": {
-      "severity": "error",
-      "name": "no-circular"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "frontend/features/order/ui/OrderChatScreen.tsx",
     "to": "frontend/lib/ws.ts",
     "rule": {
@@ -64,8 +46,8 @@
   },
   {
     "type": "dependency",
-    "from": "site/lib/support.ts",
-    "to": "packages/core/src/ws.ts",
+    "from": "site/features/support/queries.ts",
+    "to": "site/lib/ws.ts",
     "rule": {
       "severity": "error",
       "name": "ws-only-from-realtime"

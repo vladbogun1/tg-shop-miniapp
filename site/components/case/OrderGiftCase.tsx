@@ -26,7 +26,7 @@ import type { MessageKey } from "@/i18n";
 import { useI18n } from "@/i18n/context";
 import { trackGiftCaseOpen } from "@/lib/analytics";
 import { api } from "@/lib/api";
-import { useGift } from "@/lib/gift";
+import { useGift } from "@/features/gift";
 import { resolveImageSrc } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
 

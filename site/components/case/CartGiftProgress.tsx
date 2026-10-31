@@ -14,7 +14,7 @@ import { type Product } from "@shop/core/types";
 import { GiftCaseArt, GiftCasePrizeDisclosure, GiftCasePrizeRows, GiftCaseTierLadder } from "@shop/ui/gift-case";
 import { CaseRulesInline, useCaseMoney, useCaseRarityNames, useCaseTierNames } from "@/components/case/OrderGiftCase";
 import { useI18n } from "@/i18n/context";
-import { useGiftProgress } from "@/lib/gift";
+import { useGiftProgress } from "@/features/gift";
 import { Image, resolveImageSrc } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
 

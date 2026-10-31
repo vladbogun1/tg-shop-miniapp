@@ -24,9 +24,9 @@ const config = [
   // Translation dictionaries are data, their length says nothing about complexity.
   ...architectureLimits(legacyLimits, ["i18n/{en,ru,uk}.ts"]),
   // Единые способы и совместимость браузеров: счётные правила — warn (храповик), запреты — error.
-  ...frontRules({ customer: true, allow: { "no-fetch": ["lib/server-api.ts"] },
+  ...frontRules({ customer: true, allow: { "no-fetch": ["lib/server-http.ts"] },
     // XML-фиды отдаёт сервер, в браузер этот файл не попадает (lookbehind в нём безопасен).
-    serverOnly: ["lib/feeds.ts"],
+    serverOnly: ["features/feeds/server/feeds.ts"],
   }),
 ];
 

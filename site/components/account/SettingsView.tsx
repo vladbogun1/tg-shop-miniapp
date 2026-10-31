@@ -13,7 +13,7 @@ import { LangSwitch } from "@/components/layout/LangSwitch";
 import { Button } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import { api } from "@/lib/api";
-import { rememberUser, SESSION_KEY, useLogout } from "@/lib/session";
+import { rememberUser, SESSION_KEY, useLogout } from "@/features/auth";
 import { useFmt } from "@/lib/use-fmt";
 
 /**

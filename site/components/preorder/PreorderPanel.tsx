@@ -21,18 +21,9 @@ import { toast } from "@shop/ui/toast";
 import { useI18n } from "@/i18n/context";
 import { BOT_URL } from "@/lib/config";
 import { useEscape, useHydrated, useScrollLock } from "@/lib/hooks";
-import { useOrderLimits } from "@/lib/order-limits";
-import {
-  DEFAULT_HOLD_HOURS,
-  expectedLine,
-  type MyPreorder,
-  MY_PREORDERS_KEY,
-  preorderApi,
-  type PreorderEta,
-  preorderErrorCode,
-  productPreorderKey,
-} from "@/lib/preorder";
-import { useSession } from "@/lib/session";
+import { useOrderLimits } from "@/features/cart";
+import { DEFAULT_HOLD_HOURS, expectedLine, type MyPreorder, MY_PREORDERS_KEY, preorderApi, type PreorderEta, preorderErrorCode, productPreorderKey } from "@/features/preorder";
+import { useSession } from "@/features/auth";
 
 /** Violet «on its way» chip used by the tile and the product page. */
 export function PreorderBadge({ className = "", label }: { className?: string; label: string }) {

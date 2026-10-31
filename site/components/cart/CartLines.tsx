@@ -6,9 +6,9 @@ import Link from "next/link";
 import { QtyStepper } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import { CartSweeper } from "@/components/mascot/scenes";
-import { useCart, type CartLine } from "@/lib/cart";
+import { useCart, type CartLine } from "@/features/cart";
 import { maxQty } from "@shop/core/orders";
-import { useOrderLimits } from "@/lib/order-limits";
+import { useOrderLimits } from "@/features/cart";
 import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
 

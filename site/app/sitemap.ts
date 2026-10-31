@@ -2,8 +2,11 @@ import type { MetadataRoute } from "next";
 import { localePath } from "@/i18n";
 import { LOCALES } from "@shop/core/i18n";
 import { SITE_URL } from "@/lib/config";
-import { untranslatedLegalPaths } from "@/lib/legal";
-import { getCategories, getComingBatches, getSitemap, safe } from "@/lib/server-api";
+import { untranslatedLegalPaths } from "@/features/legal/server";
+import { getCategories } from "@/features/catalog/server";
+import { getComingBatches } from "@/features/preorder/server";
+import { getSitemap } from "@/features/seo/server";
+import { safe } from "@/lib/server-http";
 
 /** Built per request from /api/public/sitemap (the build has no backend); data cached for 60 s. */
 export const dynamic = "force-dynamic";

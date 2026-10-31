@@ -42,7 +42,7 @@ for (const conf of ["infra/gateway.conf", "infra/gateway-site.conf"]) {
 }
 
 // 3. lookbehind в исходниках фронтов (комментарии и строки-пояснения пропускаем)
-const SERVER_ONLY = new Set(["site/lib/feeds.ts"]); // XML-фиды рендерит сервер, в браузер файл не попадает
+const SERVER_ONLY = new Set(["site/features/feeds/server/feeds.ts"]); // XML-фиды рендерит сервер, в браузер файл не попадает
 const LOOKBEHIND = /\(\?<[=!]/;
 function* walk(dir) {
   for (const entry of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {

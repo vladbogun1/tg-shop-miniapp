@@ -1,0 +1,149 @@
+/**
+ * Catalog v2 on the site (docs/CATALOG-SPECS.md §5): the server-side listing — filter, facets, sort and
+ * pagination over the `all=1` product list with the ONE shared engine (@shop/core/catalog). Pure, no I/O.
+ */
+import { attributesFor, buildFacets, type CatalogFilter, type CatalogSchema, categoryBySlug, type Facet, filterProducts, type FilterableProduct, MARKDOWN_COLLECTION_SLUG, priceBounds } from "@shop/core/catalog";
+import { type CatalogSort, type PublicCategory, type StorefrontProduct } from "@shop/core/site";
+import { type Locale } from "@shop/core/i18n";
+import { makeT } from "@/i18n";
+import { PAGE_SIZE } from "@/lib/config";
+import { availabilityRank, type PreorderIndex } from "@/features/preorder";
+import { stockOf } from "@shop/customer/catalog/model/stock";
+import type { CardContext } from "./card";
+
+
+/** UI words of yes/no for bool specs, in the page language. */
+export function yesNo(locale: Locale): [string, string] {
+  const t = makeT(locale);
+  return [t("catalog.yes"), t("catalog.no")];
+}
+
+
+// ---------------------------------------------------------------- listing
+
+export interface Listing {
+  /** Pages from..page («Показати ще» appends), ready for the cards (see lib/card). */
+  items: StorefrontProduct[];
+  total: number;
+  pages: number;
+  page: number;
+  /** First page of the shown run; = page without «Показати ще». */
+  from: number;
+  facets: Facet[];
+  price: { min: number; max: number } | null;
+  /** What the filter panel needs to recount a draft selection in the browser (see CatalogEngine). */
+  engine: CatalogEngine;
+}
+
+/**
+ * The listing's product pool cut down to the fields the shared engine reads, plus the slice of the
+ * schema it touches. The filter panel keeps a draft selection and recounts «Показати N» and every
+ * facet with `filterProducts` / `buildFacets` on the client — the catalog is ~220 products, so a few
+ * KB of JSON beats a server round trip per click (and gives the same numbers by construction).
+ */
+export interface CatalogEngine {
+  schema: CatalogSchema;
+  products: FilterableProduct[];
+  /** The scope the page forces (category slug / markdown collection), never changed by the panel. */
+  category: string | null;
+  labels: { brand: string; condition: string };
+}
+
+/** `filter.category` with an unknown slug dropped (old backend — the product list is already scoped). */
+function engineCategory(schema: CatalogSchema, category: string | null | undefined): string | null {
+  if (category && category !== MARKDOWN_COLLECTION_SLUG && !categoryBySlug(schema, category)) return null;
+  return category ?? null;
+}
+
+function catalogEngine(schema: CatalogSchema, products: StorefrontProduct[], category: string | null, labels: CatalogEngine["labels"]): CatalogEngine {
+  const cat = category && category !== MARKDOWN_COLLECTION_SLUG ? categoryBySlug(schema, category) : null;
+  const attributes = attributesFor(schema, cat?.id ?? null)
+    .filter((a) => a.filterable && a.type !== "text")
+    .map((a) => ({ ...a, hint: null }));
+  const keys = attributes.map((a) => a.key);
+  const brandSlugs = new Set(products.map((p) => p.brandRef?.slug).filter(Boolean));
+  return {
+    schema: {
+      categories: schema.categories.map((c) => ({ ...c, name: "", artKind: null })),
+      brands: schema.brands.filter((b) => brandSlugs.has(b.slug)),
+      groups: [],
+      attributes,
+      conditions: schema.conditions,
+    },
+    products: products.map((p) => {
+      const specs: Record<string, unknown> = {};
+      for (const k of keys) if (p.specs?.[k] !== undefined) specs[k] = p.specs[k];
+      return {
+        id: p.id,
+        title: "",
+        priceMinor: p.priceMinor,
+        stock: stockOf(p, null),
+        categoryId: p.categoryId ?? null,
+        brandRef: p.brandRef ? { id: p.brandRef.id, slug: p.brandRef.slug, name: "" } : null,
+        condition: p.condition ?? "NEW",
+        specs,
+      };
+    }),
+    category,
+    labels,
+  };
+}
+
+/** Same order as the backend (PublicCatalogService.comparator): out of stock sinks, then the sort. */
+function sortProducts(items: StorefrontProduct[], sort: CatalogSort, locale: Locale, pre?: PreorderIndex | null): StorefrontProduct[] {
+  // in stock → pre-order (on its way) → out of stock
+  const sunk = (p: StorefrontProduct) => availabilityRank(p, pre);
+  const created = (p: StorefrontProduct) => Date.parse(p.createdAt ?? "") || 0;
+  const order: (a: StorefrontProduct, b: StorefrontProduct) => number =
+    sort === "price_asc"
+      ? (a, b) => a.priceMinor - b.priceMinor || created(b) - created(a)
+      : sort === "price_desc"
+        ? (a, b) => b.priceMinor - a.priceMinor || created(b) - created(a)
+        : sort === "new"
+          ? (a, b) => created(b) - created(a)
+          : sort === "name"
+            ? (a, b) => a.title.localeCompare(b.title, locale, { sensitivity: "base" })
+            : () => 0; // default: the backend's best-sellers order, kept by the stable sort
+  return items.slice().sort((a, b) => sunk(a) - sunk(b) || order(a, b));
+}
+
+/**
+ * Filters, counts facets, sorts and slices one page. `filter.category` scopes the engine (subtree /
+ * markdown collection); `filter.q` is left to the backend (it searches more than the title), so the
+ * caller passes it separately in the URL state only.
+ */
+export function computeListing(
+  schema: CatalogSchema,
+  products: StorefrontProduct[],
+  filter: CatalogFilter,
+  sort: CatalogSort,
+  page: number,
+  locale: Locale,
+  from?: number,
+  pre?: PreorderIndex | null
+): Listing {
+  const t = makeT(locale);
+  const engineFilter: CatalogFilter = { ...filter, q: undefined, category: engineCategory(schema, filter.category) };
+  const labels = { brand: t("catalog.brand"), condition: t("catalog.condition") };
+  const matched = filterProducts(schema, products, engineFilter);
+  const facets = buildFacets(schema, products, engineFilter, labels);
+  const sorted = sortProducts(matched, sort, locale, pre);
+  const pages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const cur = Math.min(Math.max(1, page), pages);
+  const first = Math.min(Math.max(1, from ?? cur), cur);
+  return {
+    items: sorted.slice((first - 1) * PAGE_SIZE, cur * PAGE_SIZE),
+    total: sorted.length,
+    pages,
+    page: cur,
+    from: first,
+    facets,
+    price: priceBounds(schema, products, engineFilter),
+    engine: catalogEngine(schema, products, engineFilter.category ?? null, labels),
+  };
+}
+
+/** What the product tiles need to print their spec line. */
+export function cardContext(schema: CatalogSchema | null, locale: Locale, pre?: PreorderIndex | null): CardContext {
+  return { schema, locale, yesNo: yesNo(locale), pre };
+}

@@ -27,3 +27,24 @@ export function connectOrderChat(
     onStatus,
   });
 }
+
+/**
+ * Realtime for one support thread: the same cookie-mode STOMP client, subscribed to
+ * `/topic/support/{threadId}`. `toMessage` turns a raw frame into the chat-bubble shape.
+ */
+export function connectSupportThread(
+  threadId: string,
+  topic: string,
+  onMessage: (raw: unknown) => void,
+  onStatus?: (connected: boolean) => void
+): ChatConnection {
+  return connect({
+    baseUrl: process.env.NEXT_PUBLIC_WS_ORIGIN ?? "",
+    orderId: threadId,
+    topic,
+    getToken: () => null,
+    cookieAuth: true,
+    onMessage,
+    onStatus,
+  });
+}

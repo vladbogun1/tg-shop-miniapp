@@ -4,7 +4,7 @@ import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { makeT } from "@/i18n";
 import { FALLBACK_LOCALE, type Locale } from "@shop/core/i18n";
 import { makeFmt, SHOP_TIME_ZONE } from "@/lib/format";
-import type { LegalDoc } from "@/lib/legal";
+import type { LegalDoc } from "@/features/legal";
 
 /** Where a page's live block goes in its markdown (`<!-- live -->` on a line of its own). */
 const LIVE_MARKER = /<!--\s*live\s*-->/;

@@ -24,15 +24,7 @@ import { useI18n } from "@/i18n/context";
 import { ApiError, refreshSession } from "@/lib/api";
 import { useEscape } from "@/lib/hooks";
 import { Image } from "@/lib/image";
-import {
-  connectSupportChat,
-  SUPPORT_DEFAULTS,
-  SUPPORT_KEYS,
-  supportApi,
-  supportErrorText,
-  toChatMessage,
-  useSupportConfig,
-} from "@/lib/support";
+import { connectSupportChat, SUPPORT_DEFAULTS, SUPPORT_KEYS, supportApi, supportErrorText, toChatMessage, useSupportConfig } from "@/features/support";
 import { useFmt } from "@/lib/use-fmt";
 import { SupportStatusChip, SupportTopicCard, threadTitle } from "./parts";
 

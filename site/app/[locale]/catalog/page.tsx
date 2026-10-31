@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { CatalogView } from "@/components/catalog/CatalogView";
 import { makeT } from "@/i18n";
-import { catalogPageMeta } from "@/lib/seo";
-import { parseCatalogState, type SearchParams } from "@/lib/catalog-params";
-import { cardContext, computeListing, loadSchema, menuTree } from "@/lib/catalog";
+import { catalogPageMeta } from "@/features/catalog/server";
+import { parseCatalogState, type SearchParams } from "@/features/catalog";
+import { cardContext, computeListing, menuTree } from "@/features/catalog";
+import { loadSchema } from "@/features/catalog/server";
 import { localeOf, type LocaleParams } from "@/lib/route";
-import { getCategories, getListingProducts, getPreorderIndex, safe } from "@/lib/server-api";
+import { getCategories, getListingProducts } from "@/features/catalog/server";
+import { getPreorderIndex } from "@/features/preorder/server";
+import { safe } from "@/lib/server-http";
 
 /**
  * Filters/sort/page live in the query string, so the page renders per request; the catalog DATA is

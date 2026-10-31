@@ -24,7 +24,7 @@ import { useT } from "@/i18n/context";
 import { BonusOffer, useMyBonuses } from "./BonusOffer";
 import { usePromoPreview as useSharedPromoPreview } from "@shop/customer/checkout/promo";
 import { api, type PromoPreview } from "@/lib/api";
-import { useCartPromoItems } from "@/lib/cart";
+import { useCartPromoItems } from "@/features/cart";
 import { useFmt } from "@/lib/use-fmt";
 
 

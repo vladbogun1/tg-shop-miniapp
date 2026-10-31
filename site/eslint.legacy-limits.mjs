@@ -24,8 +24,8 @@ const legacy = {
     "components/reviews/ProductReviews.tsx",
     "components/support/NewSupportView.tsx",
     "components/support/SupportQuestionForm.tsx",
-    "lib/cart-validation.ts",
-    "lib/catalog-params.ts",
+    "features/cart/validation.ts",
+    "features/catalog/model/params.ts",
     "lib/image.tsx",
   ],
   "max-lines": [

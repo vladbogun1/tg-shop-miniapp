@@ -5,7 +5,7 @@ import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { localePath, makeT } from "@/i18n";
 import { BOT_URL, OWNER_TELEGRAM, SELLER } from "@/lib/config";
 import { localeOf, type LocaleParams } from "@/lib/route";
-import { pageMeta } from "@/lib/seo";
+import { pageMeta } from "@/features/seo/server";
 
 export async function generateMetadata({ params }: { params: LocaleParams }): Promise<Metadata> {
   const locale = await localeOf(params);

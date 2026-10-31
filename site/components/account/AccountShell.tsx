@@ -11,10 +11,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { stripLocale } from "@/i18n";
 import { useI18n } from "@/i18n/context";
-import { displayName, rememberedUser, useLogout, useSession } from "@/lib/session";
+import { displayName, rememberedUser, useLogout, useSession } from "@/features/auth";
 import { LifeBuoy } from "lucide-react";
-import { useSupportConfig, useSupportUnread } from "@/lib/support";
-import { useMyPreorders } from "@/lib/preorder";
+import { useSupportConfig, useSupportUnread } from "@/features/support";
+import { useMyPreorders } from "@/features/preorder";
 
 export function AccountShell({ children }: { children: React.ReactNode }) {
   const { t, href } = useI18n();
