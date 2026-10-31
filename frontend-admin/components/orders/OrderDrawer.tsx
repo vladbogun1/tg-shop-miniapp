@@ -27,6 +27,7 @@ import {
   Merge,
 } from "lucide-react";
 import { adminApi, ApiError, type OrderStatus, type UserCardDto } from "@/lib/api";
+import { productApi } from "@/features/product";
 import {
   changeStatusConfirmingUnpaid,
   ordersApi,
@@ -137,7 +138,7 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
   async function openProduct(productId: string) {
     try {
       // the same list (and cache) as «Товары»; an archived product is not in it
-      const all = await qc.fetchQuery({ queryKey: ["products", false], queryFn: () => adminApi.products(), staleTime: 60_000 });
+      const all = await qc.fetchQuery({ queryKey: ["products", false], queryFn: () => productApi.list(), staleTime: 60_000 });
       const p = all.find((x) => x.id === productId);
       if (p) productTools.openPreview(p);
       else toast.error("Товар в архиве — его карточки больше нет");

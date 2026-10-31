@@ -32,6 +32,8 @@ const GENERATED_ONLY = new Set([
   "AdminCategory", "AdminBrand", "AdminSpecOption", "AdminSpecBucket", "AdminSpecAttribute", "AdminSpecGroup",
   // translation
   "TrRejected", "TrImportResult", "TrCounts", "TrTextCounts", "TrStats", "TrAcceptResult", "TrSourceFixResult",
+  // product (AdminProduct — вид экрана над AdminProductDto, см. features/product/model/from-dto.ts)
+  "AdminProductDto", "SpecIssue",
 ]);
 
 /** В orders-api.ts ручные интерфейсы — только тела запросов и этот список (не ответы заказа). */

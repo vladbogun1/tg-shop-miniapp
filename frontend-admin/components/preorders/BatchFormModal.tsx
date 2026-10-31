@@ -7,7 +7,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
-import { ApiError, type AdminProduct } from "@/lib/api";
+import { ApiError } from "@/lib/api";
+import type { AdminProduct } from "@/features/product/model/types";
 import {
   CURRENCIES,
   DISTRIBUTIONS,

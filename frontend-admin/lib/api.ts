@@ -45,29 +45,6 @@ export type OrderCardDto = Schemas["OrderCardDto"];
 /** `customerLocale`: uk/ru/en chosen by the customer in the shop (users.locale) — answer in it. */
 export type OrderDetailDto = Schemas["OrderDetailDto"];
 
-/**
- * Product as the admin API returns it: the shared shape plus the public-site fields
- * (URL slug, struck-through "old" price, SEO overrides) and the catalog v2 card fields
- * (docs/CATALOG-SPECS.md §3.3). Kept here so the Mini App's shared types stay untouched.
- */
-export type AdminProduct = Product & {
-  slug?: string;
-  compareAtMinor?: number | null;
-  seoTitle?: string | null;
-  seoDescription?: string | null;
-  /** Article number (unique when set); null = the site uses the id. */
-  sku?: string | null;
-  /** Card workflow (not shown on the storefront): DRAFT → AI_FILLED → READY. */
-  cardStatus?: CardStatus;
-  /** Overall AI confidence of the last import, 0..100. */
-  cardConfidence?: number | null;
-  cardMeta?: CardMeta | null;
-  /** Required attribute keys without a value, when the backend computes it (else computed client-side). */
-  missingRequired?: string[] | null;
-  /** V53: created via the short admin form and not yet published/archived («Незавершён»). */
-  unfinished?: boolean;
-};
-
 /** products.card_meta — per-field AI confidence and sources of the last «Карточки» import. */
 export interface CardMeta {
   fields?: Record<string, { c?: number | null; src?: string | null }>;
@@ -78,14 +55,6 @@ export interface CardMeta {
   reviewedAt?: string | null;
   reviewedBy?: string | null;
 }
-
-/** What the validator dropped on save (unknown key, option not in the list, bad number…). */
-export interface SpecIssue {
-  key: string;
-  reason: string;
-}
-
-export type AdminProductSaved = AdminProduct & { specIssues?: SpecIssue[] | null };
 
 export type MessageDto = Message;
 
@@ -274,47 +243,6 @@ export type DispatchOrder = Schemas["DispatchOrderDto"];
 export type OrderSortBy = "createdAt" | "totalMinor" | "customerName" | "status";
 export type SortDir = "asc" | "desc";
 
-export interface ProductWriteRequest {
-  title: string;
-  description?: string;
-  priceMinor: number;
-  currency: string;
-  /** Omitted = keep the stored stock (the admin did not touch it; orders may have moved it). */
-  stock?: number;
-  /** Stock the form was opened with; a changed `stock` over a moved value -> 409 STOCK_CONFLICT. */
-  expectedStock?: number;
-  /** Required when `stock` or a variant stock goes DOWN: DEFECT | INVENTORY | MISSORT | SOLD_OFFLINE | OTHER (else 400 STOCK_REASON_REQUIRED). */
-  stockReason?: string;
-  /** Free text of the write-off; required for OTHER. */
-  stockNote?: string;
-  active: boolean;
-  imageKeys: string[];
-  /** Leaf category; required for new products. null = keep, "" = none. */
-  categoryId?: string | null;
-  /** Existing brand; "" clears, null keeps. Omitted with brandName = find or create by name/alias. */
-  brandId?: string | null;
-  brandName?: string;
-  condition?: ProductCondition;
-  /** "" clears. */
-  conditionNote?: string;
-  /** The whole specs object (keys missing = unknown). */
-  specs?: ProductSpecs;
-  cardStatus?: CardStatus;
-  /**
-   * Existing variants MUST carry their id: without it the server can only match by name, and a
-   * rename would delete the row and create a new one — which used to invalidate customers'
-   * saved carts and the variant reference on past orders.
-   */
-  variants: { id?: string; name: string; stock?: number; expectedStock?: number }[];
-  /** Public site. Blank slug = generate from the title; omitted fields keep their value. */
-  slug?: string;
-  /** "Старая цена" (minor units); 0 clears it. */
-  compareAtMinor?: number;
-  seoTitle?: string;
-  seoDescription?: string;
-  /** Unique among products; "" clears; omitted keeps. A taken one -> 400. */
-  sku?: string;
-}
 
 export interface PromoCode {
   id: string;
@@ -517,27 +445,6 @@ export const adminApi = {
   /** Chat attachment (image or PDF) -> { key }: stored privately under chat/, not with product photos. */
   uploadChatAttachment: (id: string, file: File) =>
     uploadFile(`/api/admin/orders/${id}/attachments`, file),
-
-  // ---- products ----
-  products: () => apiGet<AdminProduct[]>("/api/admin/products"),
-  productsArchived: () => apiGet<AdminProduct[]>("/api/admin/products/archived"),
-  createProduct: (body: ProductWriteRequest) =>
-    apiPost<AdminProductSaved>("/api/admin/products", body),
-  /** `force`: publish (active=true) a card that is not completed yet (409 CARD_NOT_READY otherwise). */
-  updateProduct: (id: string, body: ProductWriteRequest, force = false) =>
-    apiPatch<AdminProductSaved>(`/api/admin/products/${id}${force ? "?force=1" : ""}`, body),
-  /** «Отметить проверенной» / «Вернуть в черновик». */
-  setCardStatus: (id: string, status: CardStatus) =>
-    apiPatch<AdminProduct>(`/api/admin/products/${id}/card-status`, { status }),
-  /**
-   * Turning a DRAFT card on → 409 CARD_NOT_READY (unless `force`); no price / category →
-   * 409 PRODUCT_NOT_PUBLISHABLE.
-   */
-  setProductActive: (id: string, active: boolean, force = false) =>
-    apiPatch<AdminProduct>(`/api/admin/products/${id}/active${force ? "?force=1" : ""}`, { active }),
-  setProductArchived: (id: string, archived: boolean) =>
-    apiPatch<AdminProduct>(`/api/admin/products/${id}/archived`, { archived }),
-  upload: (file: File) => uploadFile("/api/admin/uploads", file),
 
   // ---- promocodes ----
   promocodes: () => apiGet<PromoCode[]>("/api/admin/promocodes"),

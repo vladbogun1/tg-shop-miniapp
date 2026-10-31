@@ -8,7 +8,8 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Eye, EyeOff, ImageOff, Pencil } from "lucide-react";
-import { adminApi, ApiError, type AdminProduct } from "@/lib/api";
+import { ApiError } from "@/lib/api";
+import { ProductModal, productApi, usePublishGate, type AdminProduct } from "@/features/product";
 import { invalidateCards } from "@/features/cards";
 import { money } from "@/lib/money";
 import { Image, resolveImageSrc } from "@/lib/image";
@@ -16,9 +17,7 @@ import { PREORDERS_KEY } from "@/lib/preorders";
 import { siteProductUrl } from "@/lib/support-api";
 import { toast } from "@shop/ui/toast";
 import { CardStatusBadge } from "@/features/catalog";
-import { usePublishGate } from "@/components/catalog/PublishGate";
 import { CardCompletionModal } from "@/features/cards";
-import { ProductModal } from "@/components/products/ProductModal";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@shop/ui/admin-button";
 import { Drawer } from "@shop/ui/overlay";
@@ -26,7 +25,7 @@ import { Lightbox } from "@shop/ui/overlay";
 
 /** Товары поставки по id — из того же списка, что и экран «Товары» (кэш общий). */
 export function useBatchProducts(ids: string[]): { byId: Map<string, AdminProduct>; loading: boolean } {
-  const q = useQuery({ queryKey: ["products", false], queryFn: () => adminApi.products() });
+  const q = useQuery({ queryKey: ["products", false], queryFn: () => productApi.list() });
   const key = ids.join(",");
   const byId = useMemo(() => {
     const want = new Set(key.split(","));
@@ -83,8 +82,8 @@ export function useBatchProductTools({ zClass }: { zClass?: string } = {}) {
     setBusy(p.id);
     try {
       const ok = active
-        ? await guardPublish(p, (force) => adminApi.setProductActive(p.id, true, force))
-        : (await adminApi.setProductActive(p.id, false), true);
+        ? await guardPublish(p, (force) => productApi.setActive(p.id, true, force))
+        : (await productApi.setActive(p.id, false), true);
       if (!ok) return;
       refresh();
       setPreview((cur) => (cur && cur.id === p.id ? { ...cur, active } : cur));

@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Factory, Plus, Truck, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { adminApi } from "@/lib/api";
+import { productApi } from "@/features/product";
 import { formatDateTime } from "@/lib/orders";
 import { money } from "@/lib/money";
 import { Image } from "@/lib/image";
@@ -55,7 +55,7 @@ function PreordersScreen() {
   const [supplierModal, setSupplierModal] = useState(false);
 
   const demandQ = useDemand();
-  const productsQ = useQuery({ queryKey: ["products"], queryFn: () => adminApi.products(), staleTime: 60_000 });
+  const productsQ = useQuery({ queryKey: ["products"], queryFn: () => productApi.list(), staleTime: 60_000 });
 
   // Глубокая ссылка «?newProduct=id»: открыть форму с этим товаром, один раз.
   const newProduct = params.get("newProduct");

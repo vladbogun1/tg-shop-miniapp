@@ -14,7 +14,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Trash2 } from "lucide-react";
-import { adminApi, type Product, type ProductVariant } from "@/lib/api";
+import { productApi } from "@/features/product";
+import type { Product, ProductVariant } from "@/lib/api";
 import { money } from "@/lib/money";
 import { cn } from "@/lib/cn";
 import type { AdminOrderDetail, ExchangeBody, ExchangeOutcome } from "@/lib/orders-api";
@@ -72,7 +73,7 @@ export function ExchangeModal({
 
   const { data: products = [] } = useQuery({
     queryKey: ["products"],
-    queryFn: () => adminApi.products(),
+    queryFn: () => productApi.list(),
     enabled: open,
   });
 

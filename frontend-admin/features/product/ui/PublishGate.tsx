@@ -7,7 +7,7 @@
  *  - 409 PRODUCT_NOT_PUBLISHABLE → what is missing (price / category), nothing to force.
  *
  *   const [guard, gateUi] = usePublishGate((id) => openCompletion(id));
- *   const ok = await guard(product, (force) => adminApi.setProductActive(id, true, force));
+ *   const ok = await guard(product, (force) => productApi.setActive(id, true, force));
  */
 import { AlertTriangle, Rocket, Wand2 } from "lucide-react";
 import { useCallback, useRef, useState, type ReactNode } from "react";

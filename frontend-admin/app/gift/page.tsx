@@ -13,7 +13,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { AlertTriangle, BarChart3, FileSpreadsheet, Gift, Save, Undo2 } from "lucide-react";
-import { adminApi, ApiError } from "@/lib/api";
+import { ApiError } from "@/lib/api";
+import { productApi } from "@/features/product";
 import { CASE_TIER_LABEL, GIFT_GROUP, giftApi } from "@/lib/gift";
 import { CASE_TIER_METAL } from "@shop/core/giftcase";
 import { cn } from "@/lib/cn";
@@ -235,7 +236,7 @@ function GiftSection({
   onChange: (key: string, raw: string | boolean) => void;
 }) {
   const [picking, setPicking] = useState(false);
-  const productsQ = useQuery({ queryKey: ["products"], queryFn: () => adminApi.products(), staleTime: 60_000 });
+  const productsQ = useQuery({ queryKey: ["products"], queryFn: () => productApi.list(), staleTime: 60_000 });
   const product = productId ? productsQ.data?.find((p) => p.id === productId) ?? null : null;
   const stock = product ? productStock(product) : 0;
   const variants = product?.variants ?? [];

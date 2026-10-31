@@ -9,6 +9,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Minus, Plus, Search, Trash2 } from "lucide-react";
 import { adminApi, ApiError, type Product, type ProductVariant } from "@/lib/api";
+import { productApi } from "@/features/product";
 import { ordersApi } from "@/lib/orders-api";
 import type { MovementChannel } from "@/lib/orders";
 import { money, toMinor } from "@/lib/money";
@@ -80,7 +81,7 @@ export function NewOrderModal({
 
   const { data: products = [] } = useQuery({
     queryKey: ["products"],
-    queryFn: () => adminApi.products(),
+    queryFn: () => productApi.list(),
     enabled: open,
   });
   const { data: payments = [] } = useQuery({

@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Lock, Package, Trash2 } from "lucide-react";
 import { CASE_RARITY_COLOR, CASE_RARITY_ORDER, type CaseRarity, type CaseTier } from "@shop/core/giftcase";
 import { CASE_RARITY_LABEL, giftApi, type DraftItem } from "@/lib/gift";
-import type { AdminProduct } from "@/lib/api";
+import type { AdminProduct } from "@/features/product";
 import { cn } from "@/lib/cn";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";

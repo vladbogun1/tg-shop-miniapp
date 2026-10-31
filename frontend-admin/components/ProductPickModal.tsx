@@ -7,7 +7,8 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
-import { adminApi, type AdminProduct } from "@/lib/api";
+import { productApi } from "@/features/product/api";
+import type { AdminProduct } from "@/features/product/model/types";
 import { productStock } from "@/lib/stock";
 import { cn } from "@/lib/cn";
 import { Image } from "@/lib/image";
@@ -31,7 +32,7 @@ export function ProductPickModal({
   const [q, setQ] = useState("");
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
-    queryFn: () => adminApi.products(),
+    queryFn: () => productApi.list(),
     enabled: open,
     staleTime: 60_000,
   });

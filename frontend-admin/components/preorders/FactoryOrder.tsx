@@ -7,7 +7,8 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Factory } from "lucide-react";
-import { ApiError, type AdminProduct } from "@/lib/api";
+import { ApiError } from "@/lib/api";
+import type { AdminProduct } from "@/features/product/model/types";
 import { PREORDERS_KEY, demandRowsOfProduct, etaText, preordersApi, useDemand, type Batch, type BatchSummary } from "@/lib/preorders";
 import { toast } from "@shop/ui/toast";
 import { Button } from "@shop/ui/admin-button";
