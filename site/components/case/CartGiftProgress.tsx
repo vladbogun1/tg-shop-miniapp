@@ -9,7 +9,7 @@
  * the discount (what the server counts against the threshold).
  */
 import { Gift } from "lucide-react";
-import { rarestCasePrize } from "@shop/core/giftcase";
+import { giftView } from "@shop/customer/gift/model";
 import { type Product } from "@shop/core/types";
 import { GiftCaseArt, GiftCasePrizeDisclosure, GiftCasePrizeRows, GiftCaseTierLadder } from "@shop/ui/gift-case";
 import { CaseRulesInline, useCaseMoney, useCaseRarityNames, useCaseTierNames } from "@/components/case/OrderGiftCase";
@@ -41,14 +41,11 @@ export function CartGiftProgress({
   const short = useCaseTierNames("tierShort");
   const acc = useCaseTierNames("tierAcc");
   const gift = useGiftProgress(totalMinor);
-  if (!gift) return null;
-  const isCase = gift.kind === "CASE";
-  const shownTier = isCase ? (gift.tier ?? gift.next ?? gift.tiers[0] ?? null) : null;
-  if (isCase && !shownTier?.prizes.length) return null;
-  const done = gift.reached;
+  const view = giftView(gift);
+  if (!gift || !view) return null;
+  const { isCase, shownTier, done, rarest } = view;
   const pct = Math.max(done ? 0 : 4, Math.min(100, gift.share * 100));
   const thumb = compact ? "h-10 w-10" : "h-12 w-12";
-  const rarest = shownTier ? rarestCasePrize(shownTier.prizes) : null;
   const ladder = isCase && gift.tiers.length > 1;
   const text = isCase
     ? done && gift.tier

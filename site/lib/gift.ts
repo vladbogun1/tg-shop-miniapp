@@ -6,8 +6,9 @@
  * cart (page + drawer) and the checkout; the clients count «add N more» themselves with
  * `giftProgress` from the product price / the cart total after the discount.
  */
-import { useQuery } from "@tanstack/react-query";
 import { giftProgress, type GiftInfo, type GiftProgress } from "@shop/core/giftcase";
+import { showableGift } from "@shop/customer/gift/model";
+import { useGiftInfo } from "@shop/customer/gift/use-gift";
 import { useI18n } from "@/i18n/context";
 import { api } from "./api";
 import { useHydrated } from "./hooks";
@@ -16,17 +17,8 @@ import { useHydrated } from "./hooks";
 export function useGift(enabled = true): GiftInfo | null {
   const { locale } = useI18n();
   const hydrated = useHydrated();
-  const { data } = useQuery({
-    queryKey: ["gift", locale],
-    queryFn: () => api.gift(),
-    enabled: hydrated && enabled,
-    staleTime: 5 * 60_000,
-    retry: 1,
-  });
-  const g = data?.gift;
-  if (!g) return null;
   // Nothing to show: a case without prizes in stock / a product gift without the product.
-  return g.kind === "CASE" ? (g.tiers?.some((t) => t.prizes.length) ? g : null) : g.product ? g : null;
+  return showableGift(useGiftInfo(api.gift, locale, hydrated && enabled));
 }
 
 /** Progress of `totalMinor` to the gift; null without a (showable) gift. */

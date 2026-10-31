@@ -8,6 +8,7 @@
   "description": "Покупательские фичи, одинаковые в Mini App и на сайте: Platform, cart (store, sync, api), catalog (модель витрины). Явные подпути: @shop/customer/cart/store, @shop/customer/catalog/model/stock",
   "exports": {
     "./delivery/map/parts": "./src/delivery/map/parts.tsx",
+    "./gift/use-order-gift-case": "./src/gift/use-order-gift-case.tsx",
     "./*": "./src/*.ts"
   },
   "peerDependencies": {

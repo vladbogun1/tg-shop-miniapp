@@ -11,8 +11,8 @@ import { type AuthResponse, type Conversation, type CreateOrderResult, type Mess
 import { type CartLineInput, type ServerCart } from "@shop/core/cart";
 import { createCartApi } from "@shop/customer/cart/api";
 import { createCheckoutApi } from "@shop/customer/checkout/api";
+import { createGiftApi } from "@shop/customer/gift/api";
 import { type CatalogSchema } from "@shop/core/catalog";
-import { type CaseSize, type GiftCaseOpen, type GiftResponse } from "@shop/core/giftcase";
 import { getActiveLocale, getActiveTag } from "@shop/core/i18n";
 import { type Receipt } from "@shop/core/receipts";
 import { en } from "@/i18n/en";
@@ -168,8 +168,6 @@ export const customerApi = {
   getProduct: (id: string) => http.get<Product>(`/api/products/${id}`),
   /** Catalog v2: category tree, brands, spec attributes — localized by the language header. */
   getCatalogSchema: () => http.get<CatalogSchema>("/api/catalog/schema"),
-  /** Gift for the order sum / gift case (lib/gift.ts); `gift: null` = off. */
-  getGift: () => http.get<GiftResponse>("/api/public/gift"),
 
   // Customer (auth required)
   /**
@@ -183,6 +181,8 @@ export const customerApi = {
   cart: createCartApi(http),
   /** Оформление: промокод, Нова пошта, лимиты, варианты оплаты, создание заказа (@shop/customer/checkout). */
   checkout: createCheckoutApi(http),
+  /** Подарок за сумму и кейс: публичный подарок, открытие/замена/размер (@shop/customer/gift). */
+  gift: createGiftApi(http),
   getAppInfo: () => http.get<AppInfo>("/api/app-info"),
   conversations: () => http.get<Conversation[]>("/api/me/conversations"),
   getOrders: () => http.get<OrderSummary[]>("/api/me/orders"),
@@ -216,12 +216,6 @@ export const customerApi = {
   refreshPayment: (id: string) => http.post<OrderDetail>(`/api/me/orders/${id}/payment/refresh`),
   /** Fiscal checks + bank receipt of the paid invoices; `downloadUrl` is signed and server-relative. */
   getReceipts: (id: string) => http.get<Receipt[]>(`/api/me/orders/${id}/receipts`),
-  /** Opens (reveals) the gift case of the order; again = the same prize (for «Подивитися ще раз»). */
-  openGiftCase: (id: string) => http.post<GiftCaseOpen>(`/api/me/orders/${id}/gift-case/open`),
-  swapGiftCase: (id: string) => http.post<GiftCaseOpen>(`/api/me/orders/${id}/gift-case/swap`),
-  /** Picks the size of the case prize (a product with sizes) among those in stock. */
-  chooseGiftCaseSize: (id: string, variantId: string) =>
-    http.post<CaseSize>(`/api/me/orders/${id}/gift-case/size`, { variantId }),
   cancelOrder: (id: string, reason?: string) =>
     http.post<OrderDetail>(`/api/me/orders/${id}/cancel`, { reason }),
   /** Paid order: ask the shop to cancel it (reason required, ≤ 500). 400 + code on refusal. */

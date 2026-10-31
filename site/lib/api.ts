@@ -14,8 +14,8 @@ import { type CatalogSchema } from "@shop/core/catalog";
 import { type CartLineInput, type ServerCart } from "@shop/core/cart";
 import { createCartApi } from "@shop/customer/cart/api";
 import { createCheckoutApi } from "@shop/customer/checkout/api";
+import { createGiftApi } from "@shop/customer/gift/api";
 import { createReviewApi } from "@shop/customer/review/api";
-import { type CaseSize, type GiftCaseOpen, type GiftResponse } from "@shop/core/giftcase";
 import { getActiveLocale, getActiveTag } from "@shop/core/i18n";
 import { type PublicCategory, type PublicProductPage, type StorefrontProduct, type WebLoginStart, type WebLoginStatus, type WebSession } from "@shop/core/site";
 import { type Receipt } from "@shop/core/receipts";
@@ -134,8 +134,6 @@ export const api = {
   catalogSchema: () => http.get<CatalogSchema>("/api/public/catalog/schema"),
   /** Mini App endpoint, unchanged — used to re-validate cart lines by id. */
   productById: (id: string) => http.get<StorefrontProduct | Product>(`/api/products/${id}`),
-  /** The gift for the order sum / the gift case (null gift = off). The clients count the progress themselves. */
-  gift: () => http.get<GiftResponse>("/api/public/gift"),
   // web login
   loginStart: () => http.post<WebLoginStart>("/api/auth/web/start"),
   loginStatus: (loginId: string) =>
@@ -159,6 +157,8 @@ export const api = {
   cart: createCartApi(http, authed),
   /** Оформление: промокод, Нова пошта, лимиты, варианты оплаты, создание заказа (@shop/customer/checkout). */
   checkout: createCheckoutApi(http, authed),
+  /** Подарок за сумму и кейс: публичный подарок, открытие/замена/размер (@shop/customer/gift). */
+  gift: createGiftApi(http, authed),
   orders: () => authed(() => http.get<OrderSummary[]>("/api/me/orders")),
   order: (id: string) => authed(() => http.get<OrderDetail>(`/api/me/orders/${id}`)),
   messages: (id: string, before?: number) =>
@@ -186,12 +186,6 @@ export const api = {
     authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/payment/refresh`)),
   /** Fiscal checks + bank receipt of the paid invoices; `downloadUrl` is signed and same-origin. */
   receipts: (id: string) => authed(() => http.get<Receipt[]>(`/api/me/orders/${id}/receipts`)),
-  /** Opens (reveals) the gift case of the order; again = the same prize (for «Подивитися ще раз»). */
-  openGiftCase: (id: string) => authed(() => http.post<GiftCaseOpen>(`/api/me/orders/${id}/gift-case/open`)),
-  swapGiftCase: (id: string) => authed(() => http.post<GiftCaseOpen>(`/api/me/orders/${id}/gift-case/swap`)),
-  /** Picks the size of the case prize (a product with sizes) among those in stock. */
-  chooseGiftCaseSize: (id: string, variantId: string) =>
-    authed(() => http.post<CaseSize>(`/api/me/orders/${id}/gift-case/size`, { variantId })),
   cancelOrder: (id: string, reason?: string) =>
     authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/cancel`, { reason })),
   /** Paid order: ask the shop to cancel it (reason required, ≤ 500). 400 + code on refusal. */

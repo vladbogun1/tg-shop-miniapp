@@ -2,26 +2,20 @@
 
 /**
  * The gift case in the Mini App's order page: the case card (top of the page while SEALED) and the
- * opening screen (@shop/shared/case-ui, the same as the website) with Telegram haptics and the
- * native back button.
+ * opening screen with Telegram haptics and the native back button. The logic is the shared
+ * `useOrderGiftCase` of `@shop/customer/gift`; this file is the Mini App's platform (haptics, back button,
+ * `startapp` hand-over from the checkout, toasts, analytics) and its names for the case texts.
  *
  * Owner's rules (the server enforces them): the case opens only once the order is paid
  * (`giftCaseOpenable`) and exactly once — no replays; after opening the order shows the prize line
  * with its rarity chip. Before payment the card is locked and points to the payment block.
- *
- * Three tiers (bronze/silver/gold): the order's tier (`order.gift.tier`) skins the card and the screen;
- * the prize list for «Що може бути в кейсі» is that tier's from the public gift (GET /api/public/gift, no
- * chances); after opening, the server's own list (`reel`) drives the reel. After the case the order
- * page shows `panel`: the guaranteed discount the customer chose, the code of a discount prize, or the
- * swap of a product prize similar to what they bought (POST …/gift-case/swap), and the size of a prize
- * with sizes (POST …/gift-case/size).
  */
-import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CASE_TIER_ORDER, caseRulesUrl, type CaseRarity, type CaseTier, type GiftCaseOpen } from "@shop/core/giftcase";
-import { paymentState } from "@shop/core/orders";
+import { useMemo } from "react";
+import { caseRulesUrl, type CaseRarity, type CaseTier } from "@shop/core/giftcase";
 import { type OrderDetail } from "@shop/core/types";
-import { GiftCaseOpening, GiftCaseOrderPanel, hasGiftCaseOrderPanel, GiftCaseRarityChip, GiftCaseSealedCard, takeGiftCaseAutoOpen, unlockCaseAudio, type GiftCaseHaptics, type CasePromoTexts, type CaseRulesLinkProps, type CaseSizeTexts, type GiftCaseTexts, type GiftOrderPanelTexts } from "@shop/ui/gift-case";
+import { useOrderGiftCase as useSharedOrderGiftCase, type CaseRefusal, type OrderGiftCasePorts } from "@shop/customer/gift/use-order-gift-case";
+import { casePromoTexts, caseRarityNames, caseSizeTexts, caseTierNames } from "@shop/customer/gift/texts";
+import { GiftCaseRarityChip, takeGiftCaseAutoOpen, type CasePromoTexts, type CaseRulesLinkProps, type CaseSizeTexts } from "@shop/ui/gift-case";
 import { toast } from "@shop/ui/toast";
 import { useI18n, useT } from "@/i18n/context";
 import { trackGiftCaseOpen } from "@/lib/analytics";
@@ -32,34 +26,23 @@ import { money } from "@/lib/money";
 import { resolveImageSrc } from "@/lib/image";
 import { haptic, hapticImpact, hapticSelection, hapticSuccess, openExternalLink, useBackButton } from "@/lib/telegram";
 
-const RARITIES: CaseRarity[] = ["COMMON", "RARE", "EPIC", "LEGENDARY", "GOLD"];
-
 /** The payment block of the order page — the locked card's CTA scrolls there. */
 export const ORDER_PAY_ANCHOR = "order-pay";
 
 export function useCaseRarityNames(): Record<CaseRarity, string> {
   const t = useT();
-  return useMemo(() => Object.fromEntries(RARITIES.map((r) => [r, t(`case.rarity.${r}`)])) as Record<CaseRarity, string>, [t]);
+  return useMemo(() => caseRarityNames(t), [t]);
 }
 
 export function useCaseTierNames(): Record<CaseTier, string> {
   const t = useT();
-  return useMemo(() => Object.fromEntries(CASE_TIER_ORDER.map((r) => [r, t(`case.tier.${r}`)])) as Record<CaseTier, string>, [t]);
+  return useMemo(() => caseTierNames(t), [t]);
 }
 
 /** «Знижка −10% на наступне замовлення» etc. — the texts the case pieces share. */
 export function useCasePromoTexts(): CasePromoTexts {
   const t = useT();
-  return useMemo(
-    () => ({
-      label: t("case.promo.label"),
-      copy: t("case.promo.copy"),
-      copied: t("case.promo.copied"),
-      validUntil: t("case.promo.validUntil"),
-      used: t("case.promo.used"),
-    }),
-    [t]
-  );
+  return useMemo(() => casePromoTexts(t), [t]);
 }
 
 /** «Правила акції» — the rules page on the website, opened over the Mini App (docs/GIFT-CASE.md «Юридическое»). */
@@ -92,230 +75,54 @@ export function CaseRulesInline() {
 /** «Оберіть розмір» etc. — the size picker of a prize with sizes. */
 export function useCaseSizeTexts(): CaseSizeTexts {
   const t = useT();
-  return useMemo(
-    () => ({
-      choose: t("case.size.choose"),
-      label: t("case.size.label"),
-      chosen: t("case.size.chosen"),
-      error: t("case.size.error"),
-    }),
-    [t]
-  );
+  return useMemo(() => caseSizeTexts(t), [t]);
 }
 
 export const caseImage = (src: string, size: number) => resolveImageSrc(src, size);
 export const caseMoney = (minor: number) => money(minor);
 
-const HAPTICS: GiftCaseHaptics = {
+const FEEDBACK: NonNullable<OrderGiftCasePorts["feedback"]> = {
   tick: hapticSelection,
   stop: () => hapticImpact("heavy"),
   success: hapticSuccess,
+  tap: haptic,
+  selection: hapticSelection,
 };
 
 /** Prizes of the tier (the public gift, lib/gift.ts; none while it is off / not loaded). */
-function useCasePrizes(tier: CaseTier | null | undefined) {
+function useCasePrizes(_enabled: boolean, tier: CaseTier | null) {
   const gift = useGift();
   if (gift?.kind !== "CASE") return [];
   return (tier && gift.tiers.find((x) => x.tier === tier)?.prizes) || [];
 }
 
+const refusedNotifier = (t: (key: string) => string) => (code: CaseRefusal) =>
+  toast.success(t(code === "GIFT_CASE_UNPAID" ? "case.lockedText" : "case.alreadyOpened"), { duration: 3200 });
+
 /** Everything the order page needs: `card` (top of the page while SEALED) and `overlay` (render once). */
 export function useOrderGiftCase(order: OrderDetail, created: boolean) {
   const t = useT();
-  const qc = useQueryClient();
-  const rarity = useCaseRarityNames();
-  const tierName = useCaseTierNames();
-  const promoTexts = useCasePromoTexts();
-  const sizeTexts = useCaseSizeTexts();
-  const tier = order.gift?.tier ?? null;
-  const sealed = order.giftCaseStatus === "SEALED" && order.status !== "REJECTED";
-  const openable = sealed && order.giftCaseOpenable === true;
-  const [open, setOpen] = useState(false);
-  const prizes = useCasePrizes(tier);
-
-  // Straight from the checkout: show the case screen once by itself — but only when it can be
-  // opened. An unpaid order keeps the wish until it gets paid on this page.
-  const autoWanted = useRef(false);
-  useEffect(() => {
-    autoWanted.current = autoWanted.current || takeGiftCaseAutoOpen(order.id) || created;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per order
-  }, [order.id]);
-  // Paid while the page is open (the payment form, the check after coming back): open it then.
-  const wasOpenable = useRef<boolean | null>(null);
-  useEffect(() => {
-    const before = wasOpenable.current;
-    wasOpenable.current = openable;
-    if (!openable || !(autoWanted.current || before === false)) return;
-    const id = window.setTimeout(() => {
-      autoWanted.current = false;
-      setOpen(true);
-    }, before === false ? 900 : 0);
-    return () => window.clearTimeout(id);
-  }, [openable, order.id]);
-
-  // Telegram's back button (and Android's hardware back) closes the screen — but not mid-spin.
-  const closable = useRef(true);
-  const close = useCallback(() => setOpen(false), []);
-  useBackButton(open, () => {
-    if (closable.current) close();
-  });
-  const onClosableChange = useCallback((c: boolean) => {
-    closable.current = c;
-  }, []);
-
   const rules = useCaseRules();
-  const texts: GiftCaseTexts = useMemo(
-    () => ({
-      title: t("case.title", { id: shortOrderId(order.id) }),
-      eyebrow: t("case.eyebrow"),
-      canDrop: t("case.canDrop"),
-      open: t("case.open"),
-      opening: t("case.opening"),
-      rarity,
-      youGot: t("case.youGot"),
-      addedFree: t("case.addedFree"),
-      take: t("case.take"),
-      close: t("case.close"),
-      soundOn: t("case.soundOn"),
-      soundOff: t("case.soundOff"),
-      error: t("case.error"),
-      retry: t("case.retry"),
-      tierName,
-      discountTitle: t("case.discountTitle"),
-      discountNext: t("case.discountNext"),
-      promo: promoTexts,
-      swapHint: t("case.swapHint"),
-      swapAction: t("case.swapAction"),
-      swapped: t("case.swapped"),
-      swapError: t("case.swapError"),
-      size: sizeTexts,
-    }),
-    [t, order.id, rarity, tierName, promoTexts, sizeTexts]
-  );
-  const panelTexts: GiftOrderPanelTexts = useMemo(
-    () => ({
-      tierName,
-      rarity,
-      prizeTitle: t("case.order.prizeTitle"),
-      discountPrize: t("case.order.discountPrize"),
-      promo: promoTexts,
-      swapTitle: t("case.order.swapTitle"),
-      swapHint: t("case.swapHint"),
-      swapAction: t("case.swapAction"),
-      swapped: t("case.swapped"),
-      swapError: t("case.swapError"),
-      guaranteedTitle: t("case.order.discountTitle"),
-      guaranteedText: t("case.order.discountText"),
-      size: sizeTexts,
-    }),
-    [t, tierName, rarity, promoTexts, sizeTexts]
-  );
-
-  const openCase = useCallback(() => customerApi.openGiftCase(order.id), [order.id]);
-  const swapCase = useCallback(async () => {
-    const res = await customerApi.swapGiftCase(order.id);
-    hapticSuccess();
-    void qc.invalidateQueries({ queryKey: ["me", "orders"] });
-    return res;
-  }, [order.id, qc]);
-  const chooseSize = useCallback(
-    async (variantId: string) => {
-      hapticSelection();
-      const res = await customerApi.chooseGiftCaseSize(order.id, variantId);
-      hapticSuccess();
-      void qc.invalidateQueries({ queryKey: ["me", "orders"] });
-      return res;
-    },
-    [order.id, qc]
-  );
-  const onRevealed = useCallback(
-    (res: GiftCaseOpen) => {
-      trackGiftCaseOpen(order.id, res.won.rarity);
-      void qc.invalidateQueries({ queryKey: ["me", "orders"] });
-    },
-    [order.id, qc]
-  );
-  const onOpenRefused = useCallback(
-    (code: "GIFT_CASE_UNPAID" | "GIFT_CASE_ALREADY_OPENED") => {
-      setOpen(false);
-      toast.success(t(code === "GIFT_CASE_UNPAID" ? "case.lockedText" : "case.alreadyOpened"), { duration: 3200 });
-      void qc.invalidateQueries({ queryKey: ["me", "orders"] });
-    },
-    [qc, t]
-  );
-
-  const start = () => {
-    haptic();
-    unlockCaseAudio();
-    setOpen(true);
+  const notify = useMemo(() => refusedNotifier(t), [t]);
+  const ports: OrderGiftCasePorts = {
+    t,
+    api: customerApi.gift,
+    shortId: shortOrderId,
+    usePrizes: useCasePrizes,
+    useBackButton,
+    money: caseMoney,
+    formatDate,
+    resolveImage: caseImage,
+    rules,
+    // Straight from the checkout: show the case screen once by itself.
+    wantsAutoOpen: (orderId) => takeGiftCaseAutoOpen(orderId) || created,
+    notifyRefused: notify,
+    trackRevealed: trackGiftCaseOpen,
+    payAnchor: ORDER_PAY_ANCHOR,
+    feedback: FEEDBACK,
   };
-
-  // Unpaid: the CTA leads to the payment block when there is something to pay online.
-  const canPay = order.payment.enabled && paymentState(order) === "AWAITING" && order.amountDueMinor > 0;
-  const toPayment = () => {
-    haptic();
-    document.getElementById(ORDER_PAY_ANCHOR)?.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
-
-  const card = !sealed ? null : openable ? (
-    <GiftCaseSealedCard
-      tier={tier}
-      tierLabel={tier ? tierName[tier] : undefined}
-      title={t("case.sealedTitle")}
-      text={t("case.sealedText")}
-      action={t("case.openShort")}
-      onOpen={start}
-    />
-  ) : (
-    <GiftCaseSealedCard
-      locked
-      tier={tier}
-      tierLabel={tier ? tierName[tier] : undefined}
-      lockLabel={t("case.locked")}
-      title={t("case.sealedTitle")}
-      text={t("case.lockedText")}
-      action={canPay ? t("case.payCta") : undefined}
-      onOpen={canPay ? toPayment : undefined}
-    />
-  );
-
-  const overlay = (
-    <>
-      <GiftCaseOpening
-        open={open}
-        onClose={close}
-        openCase={openCase}
-        onOpenRefused={onOpenRefused}
-        prizes={prizes}
-        tier={tier}
-        onSwap={swapCase}
-        onSize={chooseSize}
-        texts={texts}
-        money={caseMoney}
-        formatDate={formatDate}
-        resolveImage={caseImage}
-        haptics={HAPTICS}
-        onRevealed={onRevealed}
-        onClosableChange={onClosableChange}
-        rules={rules}
-      />
-    </>
-  );
-
-  // After the case (or instead of it): the guaranteed discount, the prize code, the swap offer.
-  const panel =
-    !sealed && order.gift && order.status !== "REJECTED" && hasGiftCaseOrderPanel(order.gift) ? (
-      <GiftCaseOrderPanel
-        gift={order.gift}
-        texts={panelTexts}
-        money={caseMoney}
-        formatDate={formatDate}
-        onSwap={order.gift.swap?.available ? swapCase : undefined}
-        onSize={chooseSize}
-      />
-    ) : null;
-
-  return { card: card ?? panel, overlay };
+  const { card, overlay } = useSharedOrderGiftCase(order, ports);
+  return { card, overlay };
 }
 
 /** «Епічний · з кейса» under the prize line of an opened case (no replay — a case opens once). */

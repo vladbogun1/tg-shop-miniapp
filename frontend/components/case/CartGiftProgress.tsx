@@ -9,7 +9,8 @@
  */
 import { motion } from "framer-motion";
 import { Gift } from "lucide-react";
-import { CASE_TIER_ORDER, giftProgress, rarestCasePrize, type CaseTier } from "@shop/core/giftcase";
+import { CASE_TIER_ORDER, giftProgress, type CaseTier } from "@shop/core/giftcase";
+import { giftView } from "@shop/customer/gift/model";
 import { GiftCaseArt, GiftCasePrizeDisclosure, GiftCasePrizeRows, GiftCaseTierLadder } from "@shop/ui/gift-case";
 import { caseImage, caseMoney, CaseRulesInline, useCaseRarityNames } from "@/components/case/OrderGiftCase";
 import { useT } from "@/i18n/context";
@@ -28,12 +29,9 @@ export function CartGiftProgress({ totalMinor, currency }: { totalMinor: number;
   const rarity = useCaseRarityNames();
   const short = useCaseTierShort();
   const gift = giftProgress(useGift(), totalMinor);
-  if (!gift) return null;
-  const isCase = gift.kind === "CASE";
-  const shownTier = isCase ? (gift.tier ?? gift.next ?? gift.tiers[0] ?? null) : null;
-  if (isCase ? !shownTier?.prizes.length : !gift.product) return null;
-  const done = gift.reached;
-  const rarest = shownTier ? rarestCasePrize(shownTier.prizes) : null;
+  const view = giftView(gift);
+  if (!gift || !view) return null;
+  const { isCase, shownTier, done, rarest } = view;
   const acc = (tier: CaseTier) => t(`case.tierAcc.${tier}`);
   return (
     <div className={`nb mt-4 p-3 ${isCase && done ? "border-[color-mix(in_srgb,var(--accent)_50%,transparent)]" : ""}`}>
