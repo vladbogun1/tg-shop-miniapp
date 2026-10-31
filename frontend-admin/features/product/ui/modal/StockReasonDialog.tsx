@@ -9,6 +9,7 @@
  *   body = { ...body, stockReason: r.reason, stockNote: r.note };
  */
 import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useForm } from "@shop/ui/form";
 import { Modal } from "@shop/ui/overlay";
 import { Button } from "@shop/ui/admin-button";
 import { Textarea } from "@/components/ui/Textarea";
@@ -20,6 +21,13 @@ export interface StockReason {
   note?: string;
 }
 
+interface ReasonValues {
+  reason: WriteoffReason | null;
+  note: string;
+}
+
+const EMPTY_REASON: ReasonValues = { reason: null, note: "" };
+
 function StockReasonModal({
   open,
   units,
@@ -29,21 +37,19 @@ function StockReasonModal({
   units: number;
   onResult: (r: StockReason | null) => void;
 }) {
-  const [reason, setReason] = useState<WriteoffReason | null>(null);
-  const [note, setNote] = useState("");
+  const form = useForm<ReasonValues>({ defaultValues: EMPTY_REASON });
+  const { reason, note } = form.watch() as ReasonValues;
   const needsNote = reason === "OTHER";
   const canSubmit = reason !== null && (!needsNote || note.trim().length > 0);
 
   const submit = () => {
     if (!reason || !canSubmit) return;
     onResult({ reason, note: note.trim() || undefined });
-    setReason(null);
-    setNote("");
+    form.reset(EMPTY_REASON);
   };
   const cancel = () => {
     onResult(null);
-    setReason(null);
-    setNote("");
+    form.reset(EMPTY_REASON);
   };
 
   return (
@@ -84,7 +90,7 @@ function StockReasonModal({
                 name="stock-reason"
                 value={r.value}
                 checked={on}
-                onChange={() => setReason(r.value)}
+                onChange={() => form.setValue("reason", r.value)}
                 className="h-4 w-4 accent-[var(--accent)]"
               />
               {r.label}
@@ -99,7 +105,7 @@ function StockReasonModal({
             rows={2}
             maxLength={500}
             value={note}
-            onChange={(e) => setNote(e.target.value)}
+            onChange={(e) => form.setValue("note", e.target.value)}
           />
         </div>
       )}

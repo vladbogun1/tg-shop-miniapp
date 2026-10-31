@@ -6,8 +6,9 @@
  * ones greyed out, own ones editable and sortable; saved one by one, right away).
  */
 import { Check } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { Button } from "@shop/ui/admin-button";
+import { useForm } from "@shop/ui/form";
 import { Modal } from "@shop/ui/overlay";
 import { Tabs } from "@/components/ui/Tabs";
 import {
@@ -88,22 +89,21 @@ export function CategoryDialog({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<CategoryTab>("main");
-  const [f, setF] = useState<Form>(() => toForm(category, presetParentId));
-  const [initial, setInitial] = useState("");
+  const form = useForm<Form>({ defaultValues: toForm(category, presetParentId) });
+  const f = form.watch() as Form;
+  const set = <K extends keyof Form>(k: K, v: Form[K]) => form.setValue(k, v as never, { shouldDirty: true });
+  const { reset } = form;
   const saveCategory = useSaveCategory();
   const saving = saveCategory.isPending;
   const attrsQ = useSpecAttributesQuery(category?.id, open && !!category);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
-    const fresh = toForm(category, presetParentId);
-    setF(fresh);
-    setInitial(JSON.stringify(fresh));
+    reset(toForm(category, presetParentId));
     setTab(category ? initialTab : "main");
-  }, [open, category, presetParentId, initialTab]);
+  }, [open, category, presetParentId, initialTab, reset]);
 
-  const dirty = open && JSON.stringify(f) !== initial;
-  const set = <K extends keyof Form>(k: K, v: Form[K]) => setF((p) => ({ ...p, [k]: v }));
+  const dirty = open && form.formState.isDirty;
 
   const hasChildren = !!category && !isLeaf(categories, category.id);
   const seoSourceChanged =
@@ -119,7 +119,7 @@ export function CategoryDialog({
       { id: category?.id, body: category ? body : { ...body, sortOrder: nextSortOrder(categories, f.parentId) } },
       {
         onSuccess: () => {
-          setInitial(JSON.stringify(f));
+          reset(f);
           if (!category) onClose();
         },
       }

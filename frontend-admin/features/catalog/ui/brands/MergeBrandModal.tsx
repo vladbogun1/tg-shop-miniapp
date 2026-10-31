@@ -1,8 +1,9 @@
 "use client";
 
 import { GitMerge } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useLayoutEffect } from "react";
 import { Button } from "@shop/ui/admin-button";
+import { useForm } from "@shop/ui/form";
 import { Modal } from "@shop/ui/overlay";
 import type { AdminBrand } from "../../model/types";
 import { productsWord } from "../../model/words";
@@ -10,6 +11,10 @@ import { useMergeBrand } from "../../queries";
 import { BrandCombobox, type BrandValue } from "../BrandCombobox";
 
 const NO_TARGET: BrandValue = { id: null, name: "" };
+
+interface MergeValues {
+  target: BrandValue;
+}
 
 /** «Объединить с…»: товары и алиасы переходят к выбранному бренду, этот удаляется. */
 export function MergeBrandModal({
@@ -21,10 +26,12 @@ export function MergeBrandModal({
   brands: AdminBrand[];
   onClose: () => void;
 }) {
-  const [target, setTarget] = useState<BrandValue>(NO_TARGET);
+  const form = useForm<MergeValues>({ defaultValues: { target: NO_TARGET } });
+  const target = form.watch("target");
+  const { reset } = form;
   const mergeBrand = useMergeBrand();
   const busy = mergeBrand.isPending;
-  useEffect(() => setTarget(NO_TARGET), [merging]);
+  useLayoutEffect(() => reset({ target: NO_TARGET }), [merging, reset]);
 
   function merge() {
     if (!merging || !target.id) return;
@@ -53,7 +60,7 @@ export function MergeBrandModal({
           label="С каким брендом"
           brands={brands}
           value={target}
-          onChange={setTarget}
+          onChange={(t) => form.setValue("target", t)}
           allowCreate={false}
           exclude={merging ? [merging.id] : []}
         />

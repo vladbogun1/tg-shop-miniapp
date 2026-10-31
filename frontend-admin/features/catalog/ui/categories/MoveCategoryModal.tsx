@@ -1,8 +1,9 @@
 "use client";
 
 import { FolderInput } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useLayoutEffect, useMemo } from "react";
 import { Button } from "@shop/ui/admin-button";
+import { useForm } from "@shop/ui/form";
 import { Modal } from "@shop/ui/overlay";
 import { Select } from "@/components/ui/Select";
 import { moveOptions } from "../../model/tree-view";
@@ -20,9 +21,11 @@ export function MoveCategoryModal({
   onClose: () => void;
   onMove: (moving: AdminCategory, parentId: string | null) => void;
 }) {
-  const [moveTarget, setMoveTarget] = useState("");
+  const form = useForm<{ target: string }>({ defaultValues: { target: "" } });
+  const moveTarget = form.watch("target");
+  const { reset } = form;
   const options = useMemo(() => moveOptions(categories, moving), [categories, moving]);
-  useEffect(() => setMoveTarget(""), [moving]);
+  useLayoutEffect(() => reset({ target: "" }), [moving, reset]);
   return (
     <Modal
       open={!!moving}
@@ -51,7 +54,7 @@ export function MoveCategoryModal({
         </p>
       ) : (
         <div className="flex flex-col gap-2">
-          <Select label="Куда" value={moveTarget} onChange={setMoveTarget} options={options} placeholder="Выберите родителя…" />
+          <Select label="Куда" value={moveTarget} onChange={(v) => form.setValue("target", v)} options={options} placeholder="Выберите родителя…" />
           <p className="text-[12px] leading-relaxed text-[var(--text-faint)]">
             Товары и адрес /catalog/{moving?.slug} не меняются. Характеристики нового родителя добавятся к её собственным.
             Корневые категории, в которых лежат товары, родителем стать не могут.

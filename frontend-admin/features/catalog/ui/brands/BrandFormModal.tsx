@@ -1,9 +1,10 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useLayoutEffect } from "react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@shop/ui/admin-button";
+import { useForm } from "@shop/ui/form";
 import { Modal } from "@shop/ui/overlay";
 import { buildBrandBody, findDuplicate, toBrandForm, type BrandForm } from "../../model/brands";
 import { normText } from "../../model/search";
@@ -27,24 +28,23 @@ export function BrandFormModal({
   brands: AdminBrand[];
   onClose: () => void;
 }) {
-  const [form, setForm] = useState<BrandForm>(() => toBrandForm(editing));
-  const [initial, setInitial] = useState("");
+  const form = useForm<BrandForm>({ defaultValues: toBrandForm(editing) });
+  const v = form.watch() as BrandForm;
+  const set = <K extends keyof BrandForm>(k: K, val: BrandForm[K]) => form.setValue(k, val as never, { shouldDirty: true });
   const saveBrand = useSaveBrand();
   const saving = saveBrand.isPending;
 
-  useEffect(() => {
-    if (!open) return;
-    const f = toBrandForm(editing);
-    setForm(f);
-    setInitial(JSON.stringify(f));
-  }, [open, editing]);
+  const { reset } = form;
+  useLayoutEffect(() => {
+    if (open) reset(toBrandForm(editing));
+  }, [open, editing, reset]);
 
-  const dupName = findDuplicate(brands, editing?.id, form.name);
-  const slugPreview = slugify(form.slug.trim() || form.name);
+  const dupName = findDuplicate(brands, editing?.id, v.name);
+  const slugPreview = slugify(v.slug.trim() || v.name);
 
   function save() {
-    if (!form.name.trim()) return;
-    saveBrand.mutate({ id: editing?.id, body: buildBrandBody(form) }, { onSuccess: onClose });
+    if (!v.name.trim()) return;
+    saveBrand.mutate({ id: editing?.id, body: buildBrandBody(v) }, { onSuccess: onClose });
   }
 
   return (
@@ -52,14 +52,14 @@ export function BrandFormModal({
       open={open}
       onClose={onClose}
       closeOnBackdrop={false}
-      dirty={open && JSON.stringify(form) !== initial}
+      dirty={open && form.formState.isDirty}
       title={editing ? `Бренд · ${editing.name}` : "Новый бренд"}
       footer={
         <>
           <Button variant="ghost" onClick={onClose} disabled={saving}>
             Отмена
           </Button>
-          <Button variant="accent" loading={saving} disabled={!form.name.trim()} icon={<Check className="h-4 w-4" />} onClick={save}>
+          <Button variant="accent" loading={saving} disabled={!v.name.trim()} icon={<Check className="h-4 w-4" />} onClick={save}>
             {editing ? "Сохранить" : "Создать"}
           </Button>
         </>
@@ -69,26 +69,26 @@ export function BrandFormModal({
         <Input
           label="Название"
           autoFocus
-          value={form.name}
+          value={v.name}
           maxLength={128}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          onChange={(e) => set("name", e.target.value)}
           placeholder="Например, Attack Shark"
-          error={dupName ? `Уже есть: «${dupName.name}»${normText(dupName.name) !== normText(form.name) ? " (алиас)" : ""}` : undefined}
+          error={dupName ? `Уже есть: «${dupName.name}»${normText(dupName.name) !== normText(v.name) ? " (алиас)" : ""}` : undefined}
         />
         <Input
           label="Slug"
-          value={form.slug}
+          value={v.slug}
           className="font-mono"
-          onChange={(e) => setForm({ ...form, slug: e.target.value })}
-          placeholder={slugify(form.name) || "из названия"}
+          onChange={(e) => set("slug", e.target.value)}
+          placeholder={slugify(v.name) || "из названия"}
           hint={`В адресах фильтров: /catalog?brand=${slugPreview || "…"}`}
         />
         <Input
           label="Сайт производителя"
-          value={form.website}
+          value={v.website}
           maxLength={255}
           inputMode="url"
-          onChange={(e) => setForm({ ...form, website: e.target.value })}
+          onChange={(e) => set("website", e.target.value)}
           placeholder="https://…"
           hint="Источник для ИИ при оформлении карточек."
         />
@@ -96,8 +96,8 @@ export function BrandFormModal({
           <span className="field-label">Алиасы</span>
           <TagInput
             ariaLabel="Алиасы бренда"
-            value={form.aliases}
-            onChange={(v) => setForm({ ...form, aliases: v })}
+            value={v.aliases}
+            onChange={(a) => set("aliases", a)}
             placeholder="AttackShark, Attack-Shark, атак шарк…"
           />
           <span className="text-[12px] text-[var(--text-faint)]">
@@ -105,11 +105,11 @@ export function BrandFormModal({
           </span>
         </div>
         <BrandLogoField
-          name={form.name}
-          value={form.logoUrl}
-          mode={form.logoMode}
-          onChange={(v) => setForm((f) => ({ ...f, logoUrl: v }))}
-          onModeChange={(m) => setForm((f) => ({ ...f, logoMode: m }))}
+          name={v.name}
+          value={v.logoUrl}
+          mode={v.logoMode}
+          onChange={(url) => set("logoUrl", url)}
+          onModeChange={(m) => set("logoMode", m)}
         />
         {editing && (
           <p className="text-[12px] text-[var(--text-faint)]">

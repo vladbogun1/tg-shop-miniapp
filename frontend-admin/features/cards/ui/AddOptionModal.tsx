@@ -11,6 +11,7 @@ import { cardsApi } from "../api";
 import { slugify } from "@/features/catalog";
 import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
+import { useForm } from "@shop/ui/form";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { useApiMutation } from "@shop/ui/mutation";
 
@@ -18,14 +19,22 @@ function optionSlug(label: string): string {
   return slugify(label).replace(/-+/g, "_").replace(/^_+|_+$/g, "").slice(0, 64);
 }
 
+interface OptionValues {
+  labelRu: string;
+  labelUk: string;
+  labelEn: string;
+  value: string;
+  aliases: string;
+}
+
 export function AddOptionModal({ proposal, onClose, onAdded }: { proposal: Proposal; onClose: () => void; onAdded: () => void }) {
   const attr = proposal.attr!;
-  const [labelRu, setLabelRu] = useState(proposal.value);
-  const [labelUk, setLabelUk] = useState(proposal.value);
-  const [labelEn, setLabelEn] = useState(proposal.value);
-  const [value, setValue] = useState(optionSlug(proposal.value));
+  const form = useForm<OptionValues>({
+    defaultValues: { labelRu: proposal.value, labelUk: proposal.value, labelEn: proposal.value, value: optionSlug(proposal.value), aliases: proposal.value },
+  });
+  const { labelRu, labelUk, labelEn, value, aliases } = form.watch() as OptionValues;
+  const set = (k: keyof OptionValues, v: string) => form.setValue(k, v);
   const [valueTouched, setValueTouched] = useState(false);
-  const [aliases, setAliases] = useState(proposal.value);
 
   const slug = valueTouched ? value : optionSlug(labelEn || labelRu);
   const taken = attr.options.find((o) => o.value === slug);
@@ -67,9 +76,9 @@ export function AddOptionModal({ proposal, onClose, onAdded }: { proposal: Propo
           {proposal.why ? ` (${proposal.why})` : ""}. Сейчас в списке {attr.options.length} опций. Проверьте подписи — они видны покупателям
           в фильтрах сайта и Mini App.
         </p>
-        <Input label="Подпись (рус.)" value={labelRu} onChange={(e) => setLabelRu(e.target.value)} />
-        <Input label="Підпис (укр.)" value={labelUk} onChange={(e) => setLabelUk(e.target.value)} />
-        <Input label="Label (EN)" value={labelEn} onChange={(e) => setLabelEn(e.target.value)} />
+        <Input label="Подпись (рус.)" value={labelRu} onChange={(e) => set("labelRu", e.target.value)} />
+        <Input label="Підпис (укр.)" value={labelUk} onChange={(e) => set("labelUk", e.target.value)} />
+        <Input label="Label (EN)" value={labelEn} onChange={(e) => set("labelEn", e.target.value)} />
         <Input
           label="Код (value)"
           value={slug}
@@ -77,10 +86,10 @@ export function AddOptionModal({ proposal, onClose, onAdded }: { proposal: Propo
           hint="Хранится в характеристиках товаров и в адресах фильтров — потом не меняется"
           onChange={(e) => {
             setValueTouched(true);
-            setValue(e.target.value.toLowerCase());
+            set("value", e.target.value.toLowerCase());
           }}
         />
-        <Input label="Алиасы (через запятую)" value={aliases} onChange={(e) => setAliases(e.target.value)} hint="Как значение пишут в источниках — для автоподбора" />
+        <Input label="Алиасы (через запятую)" value={aliases} onChange={(e) => set("aliases", e.target.value)} hint="Как значение пишут в источниках — для автоподбора" />
       </div>
     </Modal>
   );
