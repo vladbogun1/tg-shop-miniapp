@@ -1,5 +1,6 @@
 /** Чистая логика «Карточек»: схема, товары, запрос к ИИ, разбор и проверка ответа, выбор полей, сводки для списка. */
 export * from "./check-value";
+export * from "./completion";
 export * from "./item";
 export * from "./level";
 export * from "./meta";

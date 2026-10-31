@@ -44,7 +44,7 @@ import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Toggle } from "@/components/ui/Toggle";
 import { AiWizardLayer } from "@/features/cards/ui/AiWizardLayer";
-import { CardCompletionModal } from "@/features/cards/ui/CardCompletionModal";
+import { CardCompletionModal } from "@/features/cards";
 import { CardList } from "@/features/cards/ui/CardList";
 import { ReviewPanel } from "@/features/cards/ui/ReviewPanel";
 
