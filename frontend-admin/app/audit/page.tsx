@@ -1,6 +1,6 @@
 "use client";
 
-import { ActivityTab } from "@/components/journal/ActivityTab";
+import { ActivityTab } from "@/features/activity";
 import { AuditScreen } from "@/features/staff";
 
 export default function Page() {
