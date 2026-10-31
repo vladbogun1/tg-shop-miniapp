@@ -14,6 +14,7 @@
  * follows the shared `customerCancelMode` (unpaid → at once, paid → a request, shipped → chat).
  * All data fields, routes and query keys are preserved.
  */
+import { orderKeys } from "@shop/customer/order/keys";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -63,7 +64,7 @@ export default function OrderDetailPage() {
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
-    queryKey: ["me", "orders", id],
+    queryKey: orderKeys.detail(id),
     queryFn: () => customerApi.getOrder(id),
     // Wait for the Telegram sign-in to produce a token: firing this on mount raced the
     // initData exchange and the 403 that came back was shown as "не удалось загрузить".
@@ -131,7 +132,7 @@ export default function OrderDetailPage() {
           order={data}
           id={id}
           onRefetch={() => void refetch()}
-          onOrder={(o) => queryClient.setQueryData(["me", "orders", id], o)}
+          onOrder={(o) => queryClient.setQueryData(orderKeys.detail(id), o)}
         />
       )}
     </div>

@@ -12,9 +12,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ImagePlus, Lock, Send, WifiOff, X } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useConfirm } from "@shop/ui/confirm";
-import { dayKey } from "@shop/core/time";
+import { useThread } from "@shop/customer/chat/use-thread";
 import { type Message, type SendMessageRequest } from "@shop/core/types";
 import { noFadeFlash } from "@shop/ui/motion";
 import { type SupportThread } from "@shop/core/support";
@@ -28,7 +28,6 @@ import {
   connectSupportChat,
   SUPPORT_DEFAULTS,
   SUPPORT_KEYS,
-  SUPPORT_PAGE_SIZE,
   supportApi,
   supportErrorText,
   toChatMessage,
@@ -164,13 +163,9 @@ function SupportChat({
   const qc = useQueryClient();
   const { config } = useSupportConfig();
   const maxLength = config?.maxLength ?? SUPPORT_DEFAULTS.maxLength;
-  const [messages, setMessages] = useState<Message[]>([]);
   const [connected, setConnected] = useState(false);
   const [lightbox, setLightbox] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingEarlier, setLoadingEarlier] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const seenIds = useRef<Set<number>>(new Set());
   /** Highest shop message id already reported as read. */
   const readUpTo = useRef(0);
   const closeLightbox = useCallback(() => setLightbox(null), []);
@@ -186,20 +181,18 @@ function SupportChat({
     queryFn: async () => (await supportApi.messages(threadId)).map(toChatMessage),
   });
 
-  useEffect(() => {
-    if (!data) return;
-    seenIds.current = new Set(data.map((m) => m.id));
-    setMessages(data);
-    setHasMore(data.length >= SUPPORT_PAGE_SIZE);
-  }, [data]);
-
-  const appendMessage = useCallback((m: Message) => {
-    if (seenIds.current.has(m.id)) return;
-    seenIds.current.add(m.id);
-    setMessages((prev) => [...prev, m]);
+  const dayLabel = useCallback((iso: string) => fmt.dayLabel(iso), [fmt]);
+  const { messages, appendMessage, hasMore, loadingEarlier, loadEarlier, byId, days } = useThread<Message>({
+    history: data,
+    fetchOlder: async (before) => (await supportApi.messages(threadId, before)).map(toChatMessage),
+    scrollRef,
+    dayLabel,
     // An admin answer or a system line (closed/reopened) can change the thread card.
-    if (m.senderType !== "CUSTOMER") changed.current();
-  }, []);
+    onAppend: (m) => {
+      if (m.senderType !== "CUSTOMER") changed.current();
+    },
+    swallowLoadErrors: true,
+  });
 
   // Realtime once the history is in (that request also refreshed an expired access cookie).
   const historyReady = !!data;
@@ -233,58 +226,6 @@ function SupportChat({
         .catch(() => {});
     }
   }, [threadId, messages, historyReady, qc]);
-
-  useEffect(() => {
-    if (loadingEarlier) return;
-    const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on new messages
-  }, [messages.length]);
-
-  async function loadEarlier() {
-    const oldest = messages[0];
-    if (!oldest || loadingEarlier) return;
-    setLoadingEarlier(true);
-    try {
-      const older = (await supportApi.messages(threadId, oldest.id)).map(toChatMessage);
-      if (older.length === 0) {
-        setHasMore(false);
-        return;
-      }
-      const fresh = older.filter((m) => !seenIds.current.has(m.id));
-      fresh.forEach((m) => seenIds.current.add(m.id));
-      const el = scrollRef.current;
-      const before = el?.scrollHeight ?? 0;
-      setMessages((prev) => [...fresh, ...prev]);
-      requestAnimationFrame(() => {
-        if (el) el.scrollTop += el.scrollHeight - before;
-      });
-      setHasMore(older.length >= SUPPORT_PAGE_SIZE);
-    } catch {
-      /* the button stays; the customer can try again */
-    } finally {
-      setLoadingEarlier(false);
-    }
-  }
-
-  const byId = useMemo(() => {
-    const map = new Map<number, Message>();
-    messages.forEach((m) => map.set(m.id, m));
-    return map;
-  }, [messages]);
-
-  // Grouped by the viewer's calendar day (browser time zone), Telegram-style: each day is a
-  // section whose date chip sticks to the top of the chat while that day scrolls by.
-  const days = useMemo(() => {
-    const out: { key: string; label: string; msgs: Message[] }[] = [];
-    for (const m of messages) {
-      const key = dayKey(m.createdAt);
-      const last = out[out.length - 1];
-      if (last && last.key === key) last.msgs.push(m);
-      else out.push({ key, label: fmt.dayLabel(m.createdAt), msgs: [m] });
-    }
-    return out;
-  }, [messages, fmt]);
 
   async function handleSend(req: SendMessageRequest) {
     const sent = await supportApi.send(threadId, req);

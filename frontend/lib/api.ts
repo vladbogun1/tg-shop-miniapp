@@ -12,6 +12,7 @@ import { type CartLineInput, type ServerCart } from "@shop/core/cart";
 import { createCartApi } from "@shop/customer/cart/api";
 import { createCheckoutApi } from "@shop/customer/checkout/api";
 import { createGiftApi } from "@shop/customer/gift/api";
+import { createOrderApi, noAuthRetry } from "@shop/customer/order/api";
 import { type CatalogSchema } from "@shop/core/catalog";
 import { getActiveLocale, getActiveTag } from "@shop/core/i18n";
 import { type Receipt } from "@shop/core/receipts";
@@ -104,6 +105,7 @@ const http = createHttpClient({
 export const apiGet = http.get;
 export const apiPost = http.post;
 export const apiDel = http.del;
+export const apiUpload = http.upload;
 
 /** Makes a server-relative signed media link absolute. */
 export function mediaUrl(path: string | null | undefined): string | null {
@@ -162,6 +164,9 @@ export interface AppInfo {
 
 // ---- typed endpoints --------------------------------------------------------
 
+/** Заказы, оплата, чеки, чат заказа (@shop/customer/order). Токен в памяти — «обновить сессию и повторить» не нужно. */
+const orders = createOrderApi(http, noAuthRetry, { returnTo: "MINIAPP" });
+
 export const customerApi = {
   // Public
   getProducts: () => http.get<Product[]>("/api/products"),
@@ -185,42 +190,24 @@ export const customerApi = {
   gift: createGiftApi(http),
   getAppInfo: () => http.get<AppInfo>("/api/app-info"),
   conversations: () => http.get<Conversation[]>("/api/me/conversations"),
-  getOrders: () => http.get<OrderSummary[]>("/api/me/orders"),
-  getOrder: (id: string) => http.get<OrderDetail>(`/api/me/orders/${id}`),
+  getOrders: () => orders.list(),
+  getOrder: (id: string) => orders.get(id),
+  /** A page of chat history, oldest-first; without `before` the newest page. */
+  getMessages: (id: string, before?: number) => orders.messages(id, before),
+  sendMessage: (id: string, body: SendMessageRequest) => orders.sendMessage(id, body),
   /**
-   * A page of chat history, oldest-first. Without `before` it returns the newest page —
-   * the whole thread used to be fetched on every open.
+   * A monobank payment page for what is due now (see OrderApi.startPayment). After paying, monobank sends
+   * the browser to the Mini App's /pay-return page. `display: "IFRAME"` is no longer used by the Mini App
+   * (it pays in the browser).
    */
-  getMessages: (id: string, before?: number) =>
-    http.get<Message[]>(
-      `/api/me/orders/${id}/messages${before ? `?before=${before}` : ""}`
-    ),
-  sendMessage: (id: string, body: SendMessageRequest) =>
-    http.post<Message>(`/api/me/orders/${id}/messages`, body),
-  /**
-   * A monobank payment page for what is due now (the whole order or the prepayment). Reuses a live
-   * page, so calling it again just returns the same link. 409 with `code` PAYMENT_UNAVAILABLE |
-   * NOT_PAYABLE | PAYMENT_EXPIRED | PAYMENT_IN_PROGRESS | PAYMENT_FAILED when it cannot be paid.
-   * After paying, monobank sends the browser to the Mini App's /pay-return page.
-   * `display: "IFRAME"` — a page laid out for an iframe (no longer used by the Mini App, which pays in the browser);
-   * its return is /pay-return?…&embedded=1 inside that frame. The two kinds are separate invoices:
-   * asking for the other one closes the live page of the first.
-   */
-  startPayment: (id: string, locale: string, display?: "IFRAME") =>
-    http.post<PaymentStart>(`/api/me/orders/${id}/payment`, {
-      returnTo: "MINIAPP",
-      locale,
-      ...(display ? { display } : {}),
-    }),
+  startPayment: (id: string, locale: string, display?: "IFRAME") => orders.startPayment(id, locale, display),
   /** Asks monobank for the status right now (server-throttled to once per 5 s) → the order. */
-  refreshPayment: (id: string) => http.post<OrderDetail>(`/api/me/orders/${id}/payment/refresh`),
+  refreshPayment: (id: string) => orders.refreshPayment(id),
   /** Fiscal checks + bank receipt of the paid invoices; `downloadUrl` is signed and server-relative. */
-  getReceipts: (id: string) => http.get<Receipt[]>(`/api/me/orders/${id}/receipts`),
-  cancelOrder: (id: string, reason?: string) =>
-    http.post<OrderDetail>(`/api/me/orders/${id}/cancel`, { reason }),
+  getReceipts: (id: string) => orders.receipts(id),
+  cancelOrder: (id: string, reason?: string) => orders.cancel(id, reason),
   /** Paid order: ask the shop to cancel it (reason required, ≤ 500). 400 + code on refusal. */
-  requestCancel: (id: string, reason: string) =>
-    http.post<OrderDetail>(`/api/me/orders/${id}/cancel-request`, { reason }),
-  markRead: (id: string) => http.post<void>(`/api/me/orders/${id}/messages/read`),
-  uploadAttachment: (file: File) => http.upload<{ url: string }>("/api/me/uploads", file),
+  requestCancel: (id: string, reason: string) => orders.requestCancel(id, reason),
+  markRead: (id: string) => orders.markRead(id),
+  uploadAttachment: (file: File) => orders.uploadAttachment(file),
 };

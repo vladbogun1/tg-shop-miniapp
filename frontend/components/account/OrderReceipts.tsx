@@ -13,11 +13,11 @@
  * is re-read first, so the link is never stale. The bot also sends each fiscal check as a PDF.
  * Renders nothing until there is something to show (it is a child of the page's stagger list).
  */
-import { useQuery } from "@tanstack/react-query";
+import { useReceipts } from "@shop/customer/order/receipts";
 import { motion } from "framer-motion";
 import { Download, ExternalLink, ReceiptText } from "lucide-react";
-import { useRef, useState } from "react";
-import { hasOnlinePayment, receiptFileName, receiptsPollMs, type Receipt, type ReceiptStatus } from "@shop/core/receipts";
+import { useState } from "react";
+import { receiptFileName, type Receipt, type ReceiptStatus } from "@shop/core/receipts";
 import { Button } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import { customerApi, mediaUrl, type OrderDetail } from "@/lib/api";
@@ -38,16 +38,8 @@ const CHIP: Record<ReceiptStatus, string> = {
 
 export function OrderReceipts({ order }: { order: OrderDetail }) {
   const { t } = useI18n();
-  const enabled = hasOnlinePayment(order);
-  const since = useRef(nowMs());
   const [busy, setBusy] = useState<string | null>(null);
-  const { data, dataUpdatedAt, refetch } = useQuery({
-    queryKey: ["me", "orders", order.id, "receipts"],
-    queryFn: () => customerApi.getReceipts(order.id),
-    enabled,
-    staleTime: 30_000,
-    refetchInterval: (q) => receiptsPollMs(q.state.data, since.current),
-  });
+  const { enabled, data, dataUpdatedAt, refetch } = useReceipts(order, customerApi.getReceipts);
   if (!enabled || !data || data.length === 0) return null;
 
   async function download(r: Receipt) {

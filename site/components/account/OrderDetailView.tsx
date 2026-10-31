@@ -7,6 +7,7 @@
  * approves with a refund or declines; shipped: the returns page — shared `customerCancelMode`) and
  * the order chat at the bottom. `?created=1` (from the checkout) shows the "order created" step. Data and rules are the Mini App's (frontend/app/account/orders/[id]).
  */
+import { orderKeys } from "@shop/customer/order/keys";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Ban, Check, CheckCircle2, Clock, CreditCard, MapPin, MessageCircle, RotateCcw, Store, Truck, WifiOff, XCircle } from "lucide-react";
 import Link from "next/link";
@@ -34,7 +35,7 @@ export function OrderDetailView({ id }: { id: string }) {
   const { t, href, locale } = useI18n();
   const { data, isLoading, isError, error, refetch } = useQuery({
     // Line titles are translated per language — keep one entry per locale.
-    queryKey: ["me", "orders", id, locale],
+    queryKey: orderKeys.detail(id, locale),
     queryFn: () => api.order(id),
   });
 
@@ -85,7 +86,7 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
   const giftCase = useOrderGiftCase(order);
   const refresh = () => {
     onChange();
-    void qc.invalidateQueries({ queryKey: ["me", "orders"] });
+    void qc.invalidateQueries({ queryKey: orderKeys.list() });
   };
 
   // `?created=1` — just placed: the payment block becomes the "order created" step. Read once and

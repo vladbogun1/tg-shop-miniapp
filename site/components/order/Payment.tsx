@@ -12,6 +12,7 @@
  * POST .../payment/refresh every 3 s for up to a minute. Unpaid orders are cancelled by the server
  * after `paymentDueAt` (PAYMENT_TIMEOUT). A paid order stays NEW until an admin confirms it.
  */
+import { orderKeys } from "@shop/customer/order/keys";
 import { useQueryClient } from "@tanstack/react-query";
 import { Ban, CheckCircle2, Clock, CreditCard, Loader2, ShieldCheck, Truck, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -166,8 +167,8 @@ export function OrderPayment({
   const apply = useRef<(d: OrderDetail) => void>(() => {});
   useEffect(() => {
     apply.current = (d) => {
-      qc.setQueryData(["me", "orders", order.id, locale], d);
-      void qc.invalidateQueries({ queryKey: ["me", "orders"], exact: true });
+      qc.setQueryData(orderKeys.detail(order.id, locale), d);
+      void qc.invalidateQueries({ queryKey: orderKeys.list(), exact: true });
     };
   });
 

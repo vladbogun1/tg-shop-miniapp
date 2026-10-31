@@ -5,26 +5,11 @@
  * the Mini App's vertical timeline: horizontal on wide screens, vertical on phones.
  */
 import { Check, X } from "lucide-react";
-import { ORDER_STATUS_COLOR, ORDER_TIMELINE } from "@shop/core/orders";
-import { type OrderDetail, type OrderStatus } from "@shop/core/types";
+import { type OrderDetail } from "@shop/core/types";
+import { timelineSteps } from "@shop/customer/order/timeline";
 import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/context";
 import { useFmt } from "@/lib/use-fmt";
-
-function stampOf(order: OrderDetail, s: OrderStatus): string | null | undefined {
-  switch (s) {
-    case "NEW":
-      return order.createdAt;
-    case "APPROVED":
-      return order.approvedAt;
-    case "SHIPPED":
-      return order.shippedAt;
-    case "DELIVERED":
-      return order.deliveredAt;
-    default:
-      return null;
-  }
-}
 
 export function StatusTimeline({ order }: { order: OrderDetail }) {
   const t = useT();
@@ -45,14 +30,9 @@ export function StatusTimeline({ order }: { order: OrderDetail }) {
       </div>
     );
   }
-  const currentIdx = ORDER_TIMELINE.indexOf(order.status);
   return (
     <ol className="flex flex-col gap-0 md:flex-row md:gap-2">
-      {ORDER_TIMELINE.map((s, i) => {
-        const done = i <= currentIdx;
-        const isCurrent = i === currentIdx;
-        const color = ORDER_STATUS_COLOR[s];
-        const stamp = stampOf(order, s);
+      {(timelineSteps(order) ?? []).map(({ status: s, index: i, done, current: isCurrent, last, linkDone, color, stamp }) => {
         return (
           <li key={s} className="flex flex-1 gap-3 md:flex-col md:gap-2">
             <div className="flex flex-col items-center md:flex-row">
@@ -67,11 +47,11 @@ export function StatusTimeline({ order }: { order: OrderDetail }) {
               >
                 {done ? <Check className="h-4 w-4" strokeWidth={2.5} /> : i + 1}
               </span>
-              {i < ORDER_TIMELINE.length - 1 && (
+              {!last && (
                 <span
                   aria-hidden
                   className="my-1 min-h-[20px] w-[2px] flex-1 rounded-full md:mx-2 md:my-0 md:h-[2px] md:min-h-0 md:w-auto"
-                  style={{ background: i < currentIdx ? color : "var(--line-strong)", opacity: i < currentIdx ? 0.8 : 1 }}
+                  style={{ background: linkDone ? color : "var(--line-strong)", opacity: linkDone ? 0.8 : 1 }}
                 />
               )}
             </div>

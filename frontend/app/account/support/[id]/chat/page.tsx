@@ -19,7 +19,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, CheckCheck, ImagePlus, LifeBuoy, Send, WifiOff, X } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { useT } from "@/i18n/context";
 import { ApiError, customerApi, getAccessToken, onAccessToken, type SendMessageRequest } from "@/lib/api";
@@ -28,11 +28,12 @@ import { Image } from "@/lib/image";
 import { spring } from "@/lib/motion";
 import { connectSupportChat, supportApi, type SupportMessage } from "@/lib/support";
 import { haptic } from "@/lib/telegram";
-import { dayKey } from "@shop/core/time";
+import { hasUnreadFromShop } from "@shop/customer/chat/model";
+import { useThread } from "@shop/customer/chat/use-thread";
+import { SUPPORT_KEYS } from "@shop/customer/support/model";
 import { supportAsChatMessage } from "@shop/core/support";
 
 /** Must match SupportService.DEFAULT_PAGE on the backend. */
-const PAGE_SIZE = 50;
 
 export default function SupportChatPage() {
   // useSearchParams needs a Suspense boundary, or the whole route bails out of static rendering.
@@ -60,14 +61,10 @@ function SupportChat() {
   const isDraft = id === "new";
   const draftProductId = isDraft ? search.get("product") : null;
 
-  const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [connected, setConnected] = useState(false);
   const [replyTo, setReplyTo] = useState<SupportMessage | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingEarlier, setLoadingEarlier] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const seenIds = useRef<Set<number>>(new Set());
   const [token, setToken] = useState<string | null>(() => getAccessToken());
   useEffect(() => onAccessToken(setToken), []);
 
@@ -91,23 +88,17 @@ function SupportChat() {
   });
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["me", "support", "thread", id, "messages"],
+    queryKey: SUPPORT_KEYS.messages(id),
     queryFn: () => supportApi.messages(id),
     enabled: !!token && !isDraft,
   });
 
-  useEffect(() => {
-    if (!data) return;
-    seenIds.current = new Set(data.map((m) => m.id));
-    setMessages(data);
-    setHasMore(data.length >= PAGE_SIZE);
-  }, [data]);
-
-  const appendMessage = useCallback((m: SupportMessage) => {
-    if (seenIds.current.has(m.id)) return;
-    seenIds.current.add(m.id);
-    setMessages((prev) => [...prev, m]);
-  }, []);
+  const { messages, appendMessage, hasMore, loadingEarlier, loadEarlier, byId, days } = useThread<SupportMessage>({
+    history: data,
+    fetchOlder: (before) => supportApi.messages(id, before),
+    scrollRef,
+    dayLabel,
+  });
 
   useEffect(() => {
     if (isDraft || !id || !token) return;
@@ -118,62 +109,13 @@ function SupportChat() {
   // Mark the shop's answers read (on load and whenever a new one arrives).
   useEffect(() => {
     if (isDraft || messages.length === 0) return;
-    if (messages.some((m) => m.senderType === "ADMIN" && !m.readAt)) {
+    if (hasUnreadFromShop(messages)) {
       supportApi
         .markRead(id)
         .then(() => queryClient.invalidateQueries({ queryKey: ["me", "support", "threads"] }))
         .catch(() => {});
     }
   }, [id, isDraft, messages, queryClient]);
-
-  useEffect(() => {
-    if (loadingEarlier) return;
-    const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally only on new messages
-  }, [messages.length]);
-
-  async function loadEarlier() {
-    const oldest = messages[0];
-    if (!oldest || loadingEarlier) return;
-    setLoadingEarlier(true);
-    try {
-      const older = await supportApi.messages(id, oldest.id);
-      if (older.length === 0) {
-        setHasMore(false);
-        return;
-      }
-      const fresh = older.filter((m) => !seenIds.current.has(m.id));
-      fresh.forEach((m) => seenIds.current.add(m.id));
-      const el = scrollRef.current;
-      const before = el?.scrollHeight ?? 0;
-      setMessages((prev) => [...fresh, ...prev]);
-      requestAnimationFrame(() => {
-        if (el) el.scrollTop += el.scrollHeight - before;
-      });
-      setHasMore(older.length >= PAGE_SIZE);
-    } finally {
-      setLoadingEarlier(false);
-    }
-  }
-
-  const byId = useMemo(() => {
-    const map = new Map<number, SupportMessage>();
-    messages.forEach((m) => map.set(m.id, m));
-    return map;
-  }, [messages]);
-
-  // Grouped by the viewer's calendar day; each day's date chip sticks while it scrolls by.
-  const days = useMemo(() => {
-    const out: { key: string; label: string; msgs: SupportMessage[] }[] = [];
-    for (const m of messages) {
-      const key = dayKey(m.createdAt);
-      const last = out[out.length - 1];
-      if (last && last.key === key) last.msgs.push(m);
-      else out.push({ key, label: dayLabel(m.createdAt), msgs: [m] });
-    }
-    return out;
-  }, [messages]);
 
   async function handleSend(req: SendMessageRequest) {
     if (isDraft) {

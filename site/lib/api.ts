@@ -16,6 +16,7 @@ import { createCartApi } from "@shop/customer/cart/api";
 import { createCheckoutApi } from "@shop/customer/checkout/api";
 import { createGiftApi } from "@shop/customer/gift/api";
 import { createReviewApi } from "@shop/customer/review/api";
+import { createOrderApi } from "@shop/customer/order/api";
 import { getActiveLocale, getActiveTag } from "@shop/core/i18n";
 import { type PublicCategory, type PublicProductPage, type StorefrontProduct, type WebLoginStart, type WebLoginStatus, type WebSession } from "@shop/core/site";
 import { type Receipt } from "@shop/core/receipts";
@@ -124,6 +125,9 @@ export function catalogSearchParams(q: CatalogQuery): URLSearchParams {
 
 // ---- endpoints -------------------------------------------------------------------
 
+/** Заказы, оплата, чеки, чат заказа (@shop/customer/order); закрытые вызовы — с «обнови сессию и повтори». */
+const orders = createOrderApi(http, authed, { returnTo: "SITE" });
+
 export const api = {
   // public catalog
   categories: () => http.get<PublicCategory[]>("/api/public/categories"),
@@ -159,41 +163,25 @@ export const api = {
   checkout: createCheckoutApi(http, authed),
   /** Подарок за сумму и кейс: публичный подарок, открытие/замена/размер (@shop/customer/gift). */
   gift: createGiftApi(http, authed),
-  orders: () => authed(() => http.get<OrderSummary[]>("/api/me/orders")),
-  order: (id: string) => authed(() => http.get<OrderDetail>(`/api/me/orders/${id}`)),
-  messages: (id: string, before?: number) =>
-    authed(() =>
-      http.get<Message[]>(`/api/me/orders/${id}/messages${before ? `?before=${before}` : ""}`)
-    ),
-  sendMessage: (id: string, body: SendMessageRequest) =>
-    authed(() => http.post<Message>(`/api/me/orders/${id}/messages`, body)),
+  orders: () => orders.list(),
+  order: (id: string) => orders.get(id),
+  messages: (id: string, before?: number) => orders.messages(id, before),
+  sendMessage: (id: string, body: SendMessageRequest) => orders.sendMessage(id, body),
   /**
-   * Opens a monobank invoice for what is due now. `IFRAME`: `pageUrl` is shown inside our payment
-   * modal and monobank ends on /pay-return (which tells the modal "done"); `PAGE` (default): a normal
-   * page — the new-tab fallback — that sends the customer back to the order page with
-   * `?payment=return`. One open invoice per order: starting the other kind closes the previous one.
-   * 409 + `code`: PAYMENT_UNAVAILABLE | NOT_PAYABLE | PAYMENT_EXPIRED | PAYMENT_IN_PROGRESS | PAYMENT_FAILED.
+   * Opens a monobank invoice for what is due now (see OrderApi.startPayment). `IFRAME`: `pageUrl` is shown inside
+   * our payment modal and monobank ends on /pay-return; `PAGE` (default): a normal page — the new-tab fallback —
+   * that sends the customer back to the order page with `?payment=return`.
    */
-  startPayment: (id: string, locale: string, display: "IFRAME" | "PAGE" = "PAGE") =>
-    authed(() =>
-      http.post<PaymentStart>(
-        `/api/me/orders/${id}/payment`,
-        display === "IFRAME" ? { returnTo: "SITE", locale, display } : { returnTo: "SITE", locale }
-      )
-    ),
+  startPayment: (id: string, locale: string, display: "IFRAME" | "PAGE" = "PAGE") => orders.startPayment(id, locale, display),
   /** Asks monobank for the invoice status right now (server-side throttled to 1 per 5 s). */
-  refreshPayment: (id: string) =>
-    authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/payment/refresh`)),
+  refreshPayment: (id: string) => orders.refreshPayment(id),
   /** Fiscal checks + bank receipt of the paid invoices; `downloadUrl` is signed and same-origin. */
-  receipts: (id: string) => authed(() => http.get<Receipt[]>(`/api/me/orders/${id}/receipts`)),
-  cancelOrder: (id: string, reason?: string) =>
-    authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/cancel`, { reason })),
+  receipts: (id: string) => orders.receipts(id),
+  cancelOrder: (id: string, reason?: string) => orders.cancel(id, reason),
   /** Paid order: ask the shop to cancel it (reason required, ≤ 500). 400 + code on refusal. */
-  requestCancel: (id: string, reason: string) =>
-    authed(() => http.post<OrderDetail>(`/api/me/orders/${id}/cancel-request`, { reason })),
-  markRead: (id: string) => authed(() => http.post<void>(`/api/me/orders/${id}/messages/read`)),
-  uploadAttachment: (file: File) =>
-    authed(() => http.upload<{ url: string }>("/api/me/uploads", file)),
+  requestCancel: (id: string, reason: string) => orders.requestCancel(id, reason),
+  markRead: (id: string) => orders.markRead(id),
+  uploadAttachment: (file: File) => orders.uploadAttachment(file),
 
   /** Отзывы и бонус-коды (V44): лента, ожидающие строки, мои отзывы, отправка (@shop/customer/review). */
   reviews: createReviewApi(http, authed),

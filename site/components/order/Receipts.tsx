@@ -10,16 +10,14 @@
  * `downloadUrl` is a short-lived signed same-origin URL that answers with `Content-Disposition:
  * attachment`; links are re-signed on every refetch, and the list is refetched on focus.
  */
-import { useQuery } from "@tanstack/react-query";
+import { useReceipts } from "@shop/customer/order/receipts";
 import { Download, ExternalLink, ReceiptText } from "lucide-react";
-import { useRef } from "react";
-import { hasOnlinePayment, receiptsPollMs, type Receipt, type ReceiptStatus } from "@shop/core/receipts";
+import { type Receipt, type ReceiptStatus } from "@shop/core/receipts";
 import { type OrderDetail } from "@shop/core/types";
 import { buttonClass } from "@shop/ui/button-styles";
 import { useI18n } from "@/i18n/context";
 import { api } from "@/lib/api";
 import { useFmt } from "@/lib/use-fmt";
-import { nowMs } from "@shop/core/time";
 
 const CHIP: Record<ReceiptStatus, string> = {
   PENDING: "var(--warn)",
@@ -28,15 +26,7 @@ const CHIP: Record<ReceiptStatus, string> = {
 };
 
 export function OrderReceipts({ order }: { order: OrderDetail }) {
-  const enabled = hasOnlinePayment(order);
-  const since = useRef(nowMs());
-  const { data } = useQuery({
-    queryKey: ["me", "orders", order.id, "receipts"],
-    queryFn: () => api.receipts(order.id),
-    enabled,
-    staleTime: 30_000,
-    refetchInterval: (q) => receiptsPollMs(q.state.data, since.current),
-  });
+  const { enabled, data } = useReceipts(order, api.receipts);
   if (!enabled || !data || data.length === 0) return null;
   return <ReceiptList list={data} currency={order.currency} />;
 }

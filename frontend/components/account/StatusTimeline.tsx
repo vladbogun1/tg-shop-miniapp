@@ -10,10 +10,7 @@
 import { motion } from "framer-motion";
 import { Check, X } from "lucide-react";
 import type { OrderStatus } from "@/lib/api";
-import {
-  ORDER_STATUS_COLOR,
-  ORDER_TIMELINE,
-} from "@/lib/format";
+import { timelineSteps } from "@shop/customer/order/timeline";
 import { useT } from "@/i18n/context";
 
 export function StatusTimeline({ status }: { status: OrderStatus }) {
@@ -42,15 +39,9 @@ export function StatusTimeline({ status }: { status: OrderStatus }) {
     );
   }
 
-  const currentIdx = ORDER_TIMELINE.indexOf(status);
-
   return (
     <ol className="flex flex-col">
-      {ORDER_TIMELINE.map((s, i) => {
-        const done = i <= currentIdx;
-        const isCurrent = i === currentIdx;
-        const isLast = i === ORDER_TIMELINE.length - 1;
-        const stepColor = ORDER_STATUS_COLOR[s];
+      {(timelineSteps({ status }) ?? []).map(({ status: s, index: i, done, current: isCurrent, last: isLast, linkDone, color: stepColor }) => {
 
         return (
           <li key={s} className="flex gap-3">
@@ -78,8 +69,8 @@ export function StatusTimeline({ status }: { status: OrderStatus }) {
                   className="my-1 w-[2px] flex-1 rounded-full"
                   style={{
                     minHeight: 22,
-                    background: i < currentIdx ? stepColor : "var(--line-strong)",
-                    opacity: i < currentIdx ? 0.7 : 1,
+                    background: linkDone ? stepColor : "var(--line-strong)",
+                    opacity: linkDone ? 0.7 : 1,
                   }}
                 />
               )}

@@ -8,8 +8,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { ImagePlus, Send, WifiOff, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { dayKey } from "@shop/core/time";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { hasUnreadFromShop } from "@shop/customer/chat/model";
+import { useThread } from "@shop/customer/chat/use-thread";
+import { orderKeys } from "@shop/customer/order/keys";
 import { type Message, type SendMessageRequest } from "@shop/core/types";
 import { noFadeFlash } from "@shop/ui/motion";
 import { Button } from "@shop/ui/primitives";
@@ -21,39 +23,27 @@ import { useFmt } from "@/lib/use-fmt";
 import { connectOrderChat } from "@/lib/ws";
 import { MessageBubble } from "./MessageBubble";
 
-/** Must match MessageService.DEFAULT_PAGE on the backend. */
-const PAGE_SIZE = 50;
-
 export function OrderChat({ orderId }: { orderId: string }) {
   const t = useT();
   const fmt = useFmt();
-  const [messages, setMessages] = useState<Message[]>([]);
   const [connected, setConnected] = useState(false);
   const [lightbox, setLightbox] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingEarlier, setLoadingEarlier] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const seenIds = useRef<Set<number>>(new Set());
   const closeLightbox = useCallback(() => setLightbox(null), []);
   useEscape(!!lightbox, closeLightbox);
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["me", "orders", orderId, "messages"],
+    queryKey: orderKeys.messages(orderId),
     queryFn: () => api.messages(orderId),
   });
 
-  useEffect(() => {
-    if (!data) return;
-    seenIds.current = new Set(data.map((m) => m.id));
-    setMessages(data);
-    setHasMore(data.length >= PAGE_SIZE);
-  }, [data]);
-
-  const appendMessage = useCallback((m: Message) => {
-    if (seenIds.current.has(m.id)) return;
-    seenIds.current.add(m.id);
-    setMessages((prev) => [...prev, m]);
-  }, []);
+  const dayLabel = useCallback((iso: string) => fmt.dayLabel(iso), [fmt]);
+  const { messages, appendMessage, hasMore, loadingEarlier, loadEarlier, byId, days } = useThread<Message>({
+    history: data,
+    fetchOlder: (before) => api.messages(orderId, before),
+    scrollRef,
+    dayLabel,
+  });
 
   // Realtime. Starts after the history loaded (that request also refreshed the session cookie if
   // it had expired, so the handshake carries a valid one). A dropped socket refreshes the session
@@ -74,60 +64,10 @@ export function OrderChat({ orderId }: { orderId: string }) {
   }, [orderId, historyReady, appendMessage]);
 
   useEffect(() => {
-    if (messages.some((m) => m.senderType === "ADMIN" && !m.readAt)) {
+    if (hasUnreadFromShop(messages)) {
       api.markRead(orderId).catch(() => {});
     }
   }, [orderId, messages]);
-
-  useEffect(() => {
-    if (loadingEarlier) return;
-    const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on new messages
-  }, [messages.length]);
-
-  async function loadEarlier() {
-    const oldest = messages[0];
-    if (!oldest || loadingEarlier) return;
-    setLoadingEarlier(true);
-    try {
-      const older = await api.messages(orderId, oldest.id);
-      if (older.length === 0) {
-        setHasMore(false);
-        return;
-      }
-      const fresh = older.filter((m) => !seenIds.current.has(m.id));
-      fresh.forEach((m) => seenIds.current.add(m.id));
-      const el = scrollRef.current;
-      const before = el?.scrollHeight ?? 0;
-      setMessages((prev) => [...fresh, ...prev]);
-      requestAnimationFrame(() => {
-        if (el) el.scrollTop += el.scrollHeight - before;
-      });
-      setHasMore(older.length >= PAGE_SIZE);
-    } finally {
-      setLoadingEarlier(false);
-    }
-  }
-
-  const byId = useMemo(() => {
-    const map = new Map<number, Message>();
-    messages.forEach((m) => map.set(m.id, m));
-    return map;
-  }, [messages]);
-
-  // Grouped by the viewer's calendar day (browser time zone), Telegram-style: each day is a
-  // section whose date chip sticks to the top of the chat while that day scrolls by.
-  const days = useMemo(() => {
-    const out: { key: string; label: string; msgs: Message[] }[] = [];
-    for (const m of messages) {
-      const key = dayKey(m.createdAt);
-      const last = out[out.length - 1];
-      if (last && last.key === key) last.msgs.push(m);
-      else out.push({ key, label: fmt.dayLabel(m.createdAt), msgs: [m] });
-    }
-    return out;
-  }, [messages, fmt]);
 
   async function handleSend(req: SendMessageRequest) {
     const sent = await api.sendMessage(orderId, req);

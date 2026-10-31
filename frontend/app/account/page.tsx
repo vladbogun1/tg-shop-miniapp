@@ -9,6 +9,7 @@
  * unchanged. Order cards animate in DIRECTLY (initial/animate + delay i*0.05),
  * not via variant propagation (see docs/archive/NEO-frontend.md framer-motion caveat).
  */
+import { orderKeys } from "@shop/customer/order/keys";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -40,7 +41,7 @@ export default function AccountPage() {
   const tg = useTelegram();
   const token = useAccessToken();
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
-    queryKey: ["me", "orders"],
+    queryKey: orderKeys.list(),
     queryFn: () => customerApi.getOrders(),
     // Wait for the Telegram sign-in to produce a token: firing this on mount raced the
     // initData exchange and the 403 that came back was shown as "не удалось загрузить".

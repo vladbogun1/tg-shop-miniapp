@@ -1,6 +1,7 @@
 "use client";
 
 /** Orders list — status chips, payment state, totals, unread chat badge. */
+import { orderKeys } from "@shop/customer/order/keys";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, MessageCircle, PackageOpen } from "lucide-react";
 import Link from "next/link";
@@ -16,7 +17,7 @@ import { PaymentBadge } from "./PaymentBadge";
 export function OrdersList() {
   const { t, href } = useI18n();
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["me", "orders"],
+    queryKey: orderKeys.list(),
     queryFn: () => api.orders(),
   });
   const orders = (data ?? []).slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));

@@ -15,6 +15,8 @@ import { createHttpClient } from "@shop/core/http";
 import { type CreateSupportThreadRequest, supportAsChatMessage, type SupportConfig, type SupportMessage, type SupportThread, supportTopic } from "@shop/core/support";
 import { getActiveLocale, getActiveTag } from "@shop/core/i18n";
 import { type Message, type SendMessageRequest } from "@shop/core/types";
+import { createSupportApi } from "@shop/customer/support/api";
+import { SUPPORT_DEFAULTS, SUPPORT_KEYS, SUPPORT_PAGE_SIZE } from "@shop/customer/support/model";
 import { makeT, type TFunction } from "@/i18n";
 import { ApiError, isAuthFailure, refreshSession } from "./api";
 import { useSession } from "./session";
@@ -42,53 +44,10 @@ async function authed<T>(call: () => Promise<T>): Promise<T> {
   }
 }
 
-/** Must match the backend's support message page size. */
-export const SUPPORT_PAGE_SIZE = 50;
+export { SUPPORT_DEFAULTS, SUPPORT_KEYS, SUPPORT_PAGE_SIZE };
 
-export const supportApi = {
-  /** No auth: whether support is on and its limits (entry points hide when `enabled` is false). */
-  publicConfig: () => http.get<SupportConfig>("/api/public/support/config"),
-  config: () => authed(() => http.get<SupportConfig>("/api/me/support/config")),
-  unreadCount: () => authed(() => http.get<{ count: number }>("/api/me/support/unread-count")),
-  threads: () => authed(() => http.get<SupportThread[]>("/api/me/support/threads")),
-  /** With `productId`: an OPEN thread about that product gets the message appended and is returned. */
-  create: (body: CreateSupportThreadRequest) =>
-    authed(() => http.post<SupportThread>("/api/me/support/threads", body)),
-  thread: (id: string) => authed(() => http.get<SupportThread>(`/api/me/support/threads/${id}`)),
-  /** Oldest-first page; `before` = id of the oldest message already shown. */
-  messages: (id: string, before?: number) =>
-    authed(() =>
-      http.get<SupportMessage[]>(
-        `/api/me/support/threads/${id}/messages?limit=${SUPPORT_PAGE_SIZE}${before ? `&before=${before}` : ""}`
-      )
-    ),
-  /** Writing into a CLOSED thread reopens it. */
-  send: (id: string, body: SendMessageRequest) =>
-    authed(() => http.post<SupportMessage>(`/api/me/support/threads/${id}/messages`, body)),
-  markRead: (id: string) => authed(() => http.post<void>(`/api/me/support/threads/${id}/read`)),
-  close: (id: string) => authed(() => http.post<SupportThread>(`/api/me/support/threads/${id}/close`)),
-  /** Same upload endpoint as the order chat; returns the object key to send as `attachmentUrl`. */
-  upload: (file: File) => authed(() => http.upload<{ url: string }>("/api/me/uploads", file)),
-};
-
-/** Query keys. Everything under ["me"] is dropped on logout (see useLogout). */
-export const SUPPORT_KEYS = {
-  config: ["support", "config"] as const,
-  all: ["me", "support"] as const,
-  unread: ["me", "support", "unread"] as const,
-  threads: ["me", "support", "threads"] as const,
-  thread: (id: string) => ["me", "support", "thread", id] as const,
-  messages: (id: string) => ["me", "support", "thread", id, "messages"] as const,
-};
-
-/** Defaults when the config has not arrived yet (match the backend defaults). */
-export const SUPPORT_DEFAULTS: SupportConfig = {
-  enabled: true,
-  maxLength: 2000,
-  cooldownSec: 10,
-  maxOpenThreads: 3,
-  maxMessagesPerHour: 30,
-};
+/** Пути поддержки — @shop/customer/support; история с явным limit (политика сайта). */
+export const supportApi = createSupportApi(http, authed, { messagesLimit: SUPPORT_PAGE_SIZE });
 
 /** Public support config; `enabled` stays undefined until it is known (entry points stay hidden). */
 export function useSupportConfig() {

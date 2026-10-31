@@ -7,26 +7,15 @@
  */
 import { connectOrderChat as connect, type ChatConnection } from "@shop/core/ws";
 import { supportTopic, type CreateSupportThreadRequest, type SupportConfig, type SupportMessage, type SupportThread } from "@shop/core/support";
-import { type SendMessageRequest } from "@shop/core/types";
-import { apiGet, apiPost, getAccessToken, getApiBase } from "@/lib/api";
+import { noAuthRetry } from "@shop/customer/order/api";
+import { createSupportApi } from "@shop/customer/support/api";
+import { parseSupportDeepLink } from "@shop/customer/support/model";
+import { apiGet, apiPost, apiUpload, getAccessToken, getApiBase } from "@/lib/api";
 
 export type { CreateSupportThreadRequest, SupportConfig, SupportMessage, SupportThread };
 
-export const supportApi = {
-  config: () => apiGet<SupportConfig>("/api/me/support/config"),
-  unreadCount: () => apiGet<{ count: number }>("/api/me/support/unread-count"),
-  threads: () => apiGet<SupportThread[]>("/api/me/support/threads"),
-  thread: (id: string) => apiGet<SupportThread>(`/api/me/support/threads/${id}`),
-  create: (body: CreateSupportThreadRequest) => apiPost<SupportThread>("/api/me/support/threads", body),
-  messages: (id: string, before?: number) =>
-    apiGet<SupportMessage[]>(
-      `/api/me/support/threads/${id}/messages${before ? `?before=${before}` : ""}`
-    ),
-  send: (id: string, body: SendMessageRequest) =>
-    apiPost<SupportMessage>(`/api/me/support/threads/${id}/messages`, body),
-  markRead: (id: string) => apiPost<void>(`/api/me/support/threads/${id}/read`),
-  close: (id: string) => apiPost<SupportThread>(`/api/me/support/threads/${id}/close`),
-};
+/** Пути поддержки — @shop/customer/support; токен в памяти, повтор после обновления сессии не нужен. */
+export const supportApi = createSupportApi({ get: apiGet, post: apiPost, upload: apiUpload }, noAuthRetry);
 
 /** Live messages of one thread; reads the in-memory token on every (re)connect. */
 export function connectSupportChat(
@@ -44,9 +33,4 @@ export function connectSupportChat(
   });
 }
 
-/** Deep link `support_<threadId>` from the bot's "support replied" button. */
-export function parseSupportDeepLink(param: string | null): string | null {
-  if (!param) return null;
-  const m = /^support[_-](.+)$/.exec(param);
-  return m ? m[1] : null;
-}
+export { parseSupportDeepLink };
