@@ -28,6 +28,8 @@ const GENERATED_ONLY = new Set([
   // catalog (витрина)
   "SpecOption", "FacetBucket", "SpecAttribute", "SpecGroup", "CatalogCategory", "CatalogBrand", "CatalogSchema",
   "ProductBrandRef", "StorefrontProduct", "StorefrontTag",
+  // translation
+  "TrRejected", "TrImportResult", "TrCounts", "TrTextCounts", "TrStats", "TrAcceptResult", "TrSourceFixResult",
 ]);
 
 /** В orders-api.ts ручные интерфейсы — только тела запросов и этот список (не ответы заказа). */

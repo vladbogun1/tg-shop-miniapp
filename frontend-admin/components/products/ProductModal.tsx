@@ -81,6 +81,7 @@ import { BrandCombobox, type BrandValue } from "@/components/catalog/BrandCombob
 import { SpecsForm } from "@/components/catalog/SpecsForm";
 import { CardStatusBadge } from "@/components/catalog/CardBits";
 import { usePublishGate } from "@/components/catalog/PublishGate";
+import { translationApi } from "@/features/translation";
 
 interface Props {
   open: boolean;
@@ -232,7 +233,7 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
   const { data: translated } = useQuery({
     queryKey: ["translations", "translated-uk-en"],
     queryFn: async () => {
-      const [uk, en] = await Promise.all([adminApi.translationsExport("uk", "translated"), adminApi.translationsExport("en", "translated")]);
+      const [uk, en] = await Promise.all([translationApi.export("uk", "translated"), translationApi.export("en", "translated")]);
       return [...uk, ...en];
     },
     enabled: open && !!product,
