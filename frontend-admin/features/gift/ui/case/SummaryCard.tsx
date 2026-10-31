@@ -4,6 +4,7 @@ import { AlertTriangle } from "lucide-react";
 import { CASE_RARITY_COLOR, type CaseRarity } from "@shop/core/giftcase";
 import { money } from "@/lib/money";
 import { fmtPct, type Summary } from "../../model/case-draft";
+import { roundToUah } from "../../model/units";
 import { CASE_RARITY_LABEL } from "../../model/labels";
 import type { GiftTierAdmin } from "../../model/types";
 
@@ -35,13 +36,13 @@ export function SummaryCard({ t, sum, warnings }: { t: GiftTierAdmin | null; sum
 
       <dl className="mt-3 grid min-w-0 grid-cols-[1fr_auto] gap-x-3 gap-y-1.5 text-[13px]">
         <dt className="text-[var(--text-muted)]">Средний приз</dt>
-        <dd className="tabular text-right font-semibold text-[var(--text)]">{money(Math.round(sum.avgPrizeMinor / 100) * 100)}</dd>
+        <dd className="tabular text-right font-semibold text-[var(--text)]">{money(roundToUah(sum.avgPrizeMinor))}</dd>
         <dt className="text-[var(--text-muted)]">Кейс обходится в</dt>
         <dd className="tabular text-right font-bold" style={{ color: costTone }}>
-          ≈ {money(Math.round(sum.avgCostMinor / 100) * 100)}
+          ≈ {money(roundToUah(sum.avgCostMinor))}
         </dd>
         <dt className="text-[var(--text-muted)]">Маржа с заказа на пороге</dt>
-        <dd className="tabular text-right text-[var(--text)]">{money(Math.round(sum.marginMinor / 100) * 100)}</dd>
+        <dd className="tabular text-right text-[var(--text)]">{money(roundToUah(sum.marginMinor))}</dd>
         <dt className="text-[var(--text-muted)]">Доля маржи на кейс</dt>
         <dd className="tabular text-right font-semibold" style={{ color: costTone }}>
           {fmtPct(sum.costShare, 0)} %

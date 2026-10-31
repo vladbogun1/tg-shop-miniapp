@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 import { productStock } from "@/lib/stock";
+import { GIFT_STALE_MS } from "../queries";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@shop/ui/admin-button";
 
@@ -26,7 +27,7 @@ export function GiftProductField({
   onPick: (id: string) => void;
 }) {
   const [picking, setPicking] = useState(false);
-  const productsQ = useProductsQuery({ staleTime: 60_000 });
+  const productsQ = useProductsQuery({ staleTime: GIFT_STALE_MS });
   const product = productId ? productsQ.data?.find((p) => p.id === productId) ?? null : null;
 
   return (

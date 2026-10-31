@@ -69,3 +69,22 @@ describe("CSV", () => {
     expect(csvFileName(data)).toBe("podarunky_2026-10-01_2026-10-31.csv");
   });
 });
+
+describe("uah", () => {
+  // Старая формула: toFixed + замена точки; для целых копеек обязана совпадать с Intl-вариантом.
+  const old = (minor: number) => (minor / 100).toFixed(2).replace(".", ",");
+
+  it("копейки → «1234,56»: без группировки, запятая, всегда два знака", () => {
+    expect(uah(123456)).toBe("1234,56");
+    expect(uah(0)).toBe("0,00");
+    expect(uah(5)).toBe("0,05");
+    expect(uah(100000000)).toBe("1000000,00");
+    expect(uah(-150)).toBe("-1,50");
+  });
+
+  it("совпадает со старой формулой на целых копейках", () => {
+    const grid = [0, 1, 5, 9, 10, 99, 100, 101, 995, 1005, 12345, 99999, 123456, 1_000_000_07, -1, -99, -100, -12345];
+    for (let i = 0; i < 2000; i++) grid.push(i * 37, -i * 41, i * 1009);
+    for (const m of grid) expect(uah(m)).toBe(old(m));
+  });
+});

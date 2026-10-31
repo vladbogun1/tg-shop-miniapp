@@ -12,12 +12,14 @@
 import { useEffect, useMemo } from "react";
 import { Sparkles } from "lucide-react";
 import { CASE_TIER_METAL, type CaseTier } from "@shop/core/giftcase";
+import { toMinor } from "@shop/core/money";
 import { QUERY_PRESETS } from "@shop/core/query";
 import { useCategoriesQuery } from "@/features/catalog";
 import { useForm } from "@shop/ui/form";
 import { toDraft, type Row } from "../../model/case-draft";
 import { AUTOFILL_COST_SHARE, CASE_TIER_LABEL } from "../../model/labels";
 import type { AutofillResult, GiftTierAdmin } from "../../model/types";
+import { percentOf, roundToUah } from "../../model/units";
 import { useAutofill, useAutofillSettingsQuery, useRememberAutofillCategories } from "../../queries";
 import { cn } from "@/lib/cn";
 import { money } from "@/lib/money";
@@ -99,7 +101,7 @@ export function CaseAutofillModal({
   }, [settings.data, form]);
 
   const locked = rows.filter((r) => r.locked);
-  const T = (t?.thresholdUah ?? 0) * 100;
+  const T = toMinor(t?.thresholdUah ?? 0);
   const margin = t?.marginPercent ?? 15;
   const target = Math.round((T * margin * costShare) / 10_000);
   const cat = chosen ?? [];
@@ -167,7 +169,7 @@ export function CaseAutofillModal({
         <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3">
           <span className="field-label">Щедрость</span>
           <span className="tabular text-[12.5px] text-[var(--text-muted)]">
-            кейс ≈ <b className="text-[var(--ink)]">{money(Math.round(target / 100) * 100)}</b> · {costShare} % маржи
+            кейс ≈ <b className="text-[var(--ink)]">{money(roundToUah(target))}</b> · {costShare} % маржи
           </span>
         </div>
         <input
@@ -185,7 +187,7 @@ export function CaseAutofillModal({
           <span>щедро</span>
         </div>
         <p className="mt-1 text-[11.5px] leading-snug text-[var(--text-faint)]">
-          Маржа с заказа на пороге при средней марже {margin} % — {money(Math.round((T * margin) / 100 / 100) * 100)}. Товар-приз стоит
+          Маржа с заказа на пороге при средней марже {margin} % — {money(roundToUah(percentOf(T, margin)))}. Товар-приз стоит
           магазину цену минус маржу, скидка — всю сумму.
         </p>
       </div>

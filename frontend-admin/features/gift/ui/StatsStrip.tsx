@@ -7,12 +7,13 @@ import { money } from "@/lib/money";
 import { CASE_TIER_LABEL } from "../model/labels";
 import { useGiftStatsQuery } from "../queries";
 import type { GiftStats } from "../model/types";
+import { ratioToPercent } from "../model/units";
 
 type Tile = { label: string; value: string; hint?: string };
 
 /** The four tiles of the strip; `s` is undefined while the stats load. */
 function tilesOf(s: GiftStats | undefined): Tile[] {
-  const share = s && s.orders > 0 ? Math.round((s.giftOrders / s.orders) * 100) : 0;
+  const share = s && s.orders > 0 ? Math.round(ratioToPercent(s.giftOrders, s.orders)) : 0;
   const guaranteedMinor = s?.guaranteedMinor ?? 0;
   return [
     { label: "Заказов с подарком", value: s ? `${s.giftOrders} из ${s.orders}` : "—", hint: s ? `${share}% заказов` : undefined },

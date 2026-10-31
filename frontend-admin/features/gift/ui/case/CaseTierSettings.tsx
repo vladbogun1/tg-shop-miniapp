@@ -7,7 +7,9 @@
  */
 import { useEffect, useState } from "react";
 import { CASE_TIER_METAL } from "@shop/core/giftcase";
+import { toMinor } from "@shop/core/money";
 import { CASE_TIER_LABEL } from "../../model/labels";
+import { guaranteedDiscountMinor } from "../../model/units";
 import type { GiftTierAdmin, GiftTierPatch } from "../../model/types";
 import { cn } from "@/lib/cn";
 import { money } from "@/lib/money";
@@ -32,9 +34,8 @@ export function CaseTierSettingsModal({
   /** gift.promoReminderDays: how many days before the end the customer is reminded (0 = off). */
   reminderDays: number | null;
 }) {
-  const exampleTotal = t.thresholdUah * 100;
-  const gd = t.guaranteedPercent > 0 ? Math.floor((exampleTotal * t.guaranteedPercent) / 100 / 100) * 100 : 0;
-  const guaranteed = t.guaranteedMaxUah > 0 ? Math.min(gd, t.guaranteedMaxUah * 100) : gd;
+  const exampleTotal = toMinor(t.thresholdUah);
+  const guaranteed = guaranteedDiscountMinor(exampleTotal, t.guaranteedPercent, t.guaranteedMaxUah);
   const days = t.promoValidDays ?? 30;
   return (
     <Modal
@@ -56,7 +57,7 @@ export function CaseTierSettingsModal({
           min={1}
           max={1_000_000}
           disabled={busy}
-          onCommit={(v) => onPatch({ thresholdUah: v }, `Порог: ${money(v * 100)}`)}
+          onCommit={(v) => onPatch({ thresholdUah: v }, `Порог: ${money(toMinor(v))}`)}
         />
         <IntField
           label="Замена похожего приза"
@@ -86,13 +87,13 @@ export function CaseTierSettingsModal({
           max={100_000}
           disabled={busy || t.guaranteedPercent === 0}
           hint="0 — без потолка"
-          onCommit={(v) => onPatch({ guaranteedMaxUah: v }, v ? `Потолок: ${money(v * 100)}` : "Потолок снят")}
+          onCommit={(v) => onPatch({ guaranteedMaxUah: v }, v ? `Потолок: ${money(toMinor(v))}` : "Потолок снят")}
         />
       </div>
       {t.guaranteedPercent > 0 && (
         <p className="mt-2 text-[12px] leading-snug text-[var(--text-muted)]">
           Пример: заказ на {money(exampleTotal)} — скидка <b className="tabular text-[var(--text)]">−{money(guaranteed)}</b>
-          {t.guaranteedMaxUah > 0 ? ` (не больше ${money(t.guaranteedMaxUah * 100)})` : ""}.
+          {t.guaranteedMaxUah > 0 ? ` (не больше ${money(toMinor(t.guaranteedMaxUah))})` : ""}.
         </p>
       )}
 

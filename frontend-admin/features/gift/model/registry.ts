@@ -1,4 +1,5 @@
 /** Реестр подарков: границы месяца и CSV для бухгалтера (по-украински, под Excel: «;», запятая в суммах). */
+import { formatNumber, toMajor } from "@shop/core/money";
 import { formatMoment } from "@shop/core/time";
 import { shortOrderId as shortId } from "@shop/core/format";
 import type { GiftRegistry } from "./types";
@@ -51,7 +52,9 @@ const CSV_HEAD = [
 ];
 
 /** Kopecks → "1234,56" (no grouping: Excel reads it as a number in the Ukrainian locale). */
-export const uah = (minor: number) => (minor / 100).toFixed(2).replace(".", ",");
+export const uah = (minor: number) =>
+  // «+ 0»: Intl prints a negative zero as «-0,00», toFixed never did.
+  formatNumber(toMajor(minor) + 0, "ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false });
 
 /** dd.mm.yyyy in Kyiv. */
 export const ukDate = (isoTs: string | null) =>

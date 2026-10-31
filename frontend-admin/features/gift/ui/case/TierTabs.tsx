@@ -2,6 +2,7 @@
 
 import { Settings2 } from "lucide-react";
 import { CASE_TIER_METAL, CASE_TIER_ORDER, type CaseTier } from "@shop/core/giftcase";
+import { toMinor } from "@shop/core/money";
 import { cn } from "@/lib/cn";
 import { money } from "@/lib/money";
 import { Button } from "@shop/ui/admin-button";
@@ -51,7 +52,7 @@ export function TierTabs({
               {CASE_TIER_LABEL[t]}
             </span>
             <span className="tabular text-[11px] leading-tight text-[var(--text-faint)]">
-              {d ? (d.enabled ? `от ${money(d.thresholdUah * 100)}` : "выключен") : "—"}
+              {d ? (d.enabled ? `от ${money(toMinor(d.thresholdUah))}` : "выключен") : "—"}
             </span>
             {d && d.enabled && d.livePrizes === 0 && (
               <span className="text-[10.5px] font-semibold leading-tight text-[var(--danger-ink)]">нет призов</span>

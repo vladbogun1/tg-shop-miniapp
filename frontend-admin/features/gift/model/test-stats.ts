@@ -4,9 +4,10 @@
  * starts the session over.
  */
 import { caseDiscountText, type CaseItem } from "@shop/core/giftcase";
-import { formatNumber } from "@shop/core/money";
+import { formatNumber, toMinor } from "@shop/core/money";
 import { money } from "@/lib/money";
 import type { CaseItemAdmin, CaseTestDraw } from "./types";
+import { fractionToPercent, percentToFraction, ratioToPercent } from "./units";
 
 /** The session's numbers of one tier. */
 export interface TestStats {
@@ -42,7 +43,7 @@ export function toCaseItem(it: CaseItemAdmin): CaseItem {
     priceMinor: it.priceMinor,
     rarity: it.rarity,
     discountPercent: it.discountPercent,
-    discountAmountMinor: it.discountPercent > 0 ? 0 : it.discountUah * 100,
+    discountAmountMinor: it.discountPercent > 0 ? 0 : toMinor(it.discountUah),
   };
 }
 
@@ -81,9 +82,9 @@ export function statLines(stats: TestStats, byId: Map<number, CaseItemAdmin>): S
     .map((id) => {
       const hits = stats.hits[id] ?? 0;
       const chance = stats.chances[id] ?? 0;
-      const fact = stats.n > 0 ? (hits / stats.n) * 100 : 0;
-      const p = chance / 100;
-      const sigma = stats.n > 0 ? Math.sqrt((p * (1 - p)) / stats.n) * 100 : 0;
+      const fact = stats.n > 0 ? ratioToPercent(hits, stats.n) : 0;
+      const p = percentToFraction(chance);
+      const sigma = stats.n > 0 ? fractionToPercent(Math.sqrt((p * (1 - p)) / stats.n)) : 0;
       const odd = stats.n >= 100 && sigma > 0 && Math.abs(fact - chance) > 3 * sigma;
       return { id, it: byId.get(id), hits, chance, fact, odd };
     })

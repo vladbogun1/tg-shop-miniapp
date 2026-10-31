@@ -11,6 +11,7 @@ import { resolveImageSrc } from "@/lib/image";
 import { money } from "@/lib/money";
 import { CASE_RARITY_LABEL } from "../../model/labels";
 import { itemTitle, pct, toCaseItem, type StatLine, type TestStats } from "../../model/test-stats";
+import { ratioToPercent } from "../../model/units";
 
 export const caseImage = (src: string, size: number) => resolveImageSrc(src, size);
 
@@ -101,8 +102,8 @@ export function StatRow({ row, max }: { row: StatLine; max: number }) {
         </div>
       </div>
       <div className="relative mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-hover)]" aria-hidden>
-        <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${(row.fact / max) * 100}%`, background: c }} />
-        <div className="absolute inset-y-[-2px] w-[2px] bg-[var(--ink)]" style={{ left: `calc(${Math.min(100, (row.chance / max) * 100)}% - 1px)` }} />
+        <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${ratioToPercent(row.fact, max)}%`, background: c }} />
+        <div className="absolute inset-y-[-2px] w-[2px] bg-[var(--ink)]" style={{ left: `calc(${Math.min(100, ratioToPercent(row.chance, max))}% - 1px)` }} />
       </div>
     </li>
   );
