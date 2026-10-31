@@ -12,8 +12,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link2, Loader2, Scale, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { compareGroupOf, compareGroups, compareSections, onlyDifferences, type CompareBasics } from "@shop/core/compare";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { compareGroupOf } from "@shop/core/compare";
+import { useCompareView, type CompareT } from "@shop/customer/compare/use-compare-view";
 import { noFadeFlash } from "@shop/ui/motion";
 import { type StorefrontProduct } from "@shop/core/site";
 import { useI18n } from "@/i18n/context";
@@ -25,13 +26,13 @@ import { useFmt } from "@/lib/use-fmt";
 import { stockOf } from "@shop/customer/catalog/model/stock";
 import { toast } from "@shop/ui/toast";
 import { CompareTable } from "./CompareTable";
-import { localStore } from "@shop/core/storage";
 
-const ONLY_DIFF_KEY = "compare.onlyDiff";
+
+const inStockOf = (p: StorefrontProduct) => stockOf(p, null) > 0;
 
 export function CompareModal() {
   const open = useCompare((s) => s.open);
-  const close = useCompare((s) => s.closeModal);
+  const close = useCompare((s) => s.closeScreen);
   useScrollLock(open);
   useEscape(open, close);
   useSharedLink();
@@ -75,76 +76,24 @@ function Body({ onClose }: { onClose: () => void }) {
   const entries = useCompare((s) => s.entries);
   const remove = useCompare((s) => s.remove);
   const removeGroup = useCompare((s) => s.removeGroup);
-  const prune = useCompare((s) => s.prune);
-  const focusGroup = useCompare((s) => s.focusGroup);
 
   const products = useQuery({ queryKey: ["compare-cards", locale], queryFn: () => api.allCards(), staleTime: 60_000 });
   const schema = useQuery({ queryKey: ["catalog-schema", locale], queryFn: () => api.catalogSchema(), staleTime: 5 * 60_000 });
-  const ready = !!products.data && !!schema.data;
-
-  // stored ids that are not in the catalog any more are dropped (once the list is known)
-  useEffect(() => {
-    if (products.data) prune(new Set(products.data.items.map((p) => p.id)));
-  }, [products.data, prune]);
 
   useEffect(() => {
     trackCompare("compare_open", undefined, useCompare.getState().entries.length);
   }, []);
 
-  const groups = useMemo(
-    () => (ready ? compareGroups(schema.data!, entries, products.data!.items) : []),
-    [ready, schema.data, entries, products.data],
-  );
-
-  const [active, setActive] = useState<string | null>(focusGroup);
-  const group = groups.find((g) => g.key === active) ?? groups[0] ?? null;
-
-  const [onlyDiff, setOnlyDiff] = useState(false);
-  useEffect(() => {
-    try {
-      setOnlyDiff(localStore.getItem(ONLY_DIFF_KEY) === "1");
-    } catch {
-      /* private mode */
-    }
-  }, []);
-  const toggleDiff = () => {
-    setOnlyDiff((v) => {
-      try {
-        localStore.setItem(ONLY_DIFF_KEY, v ? "0" : "1");
-      } catch {
-        /* private mode */
-      }
-      return !v;
-    });
-  };
-
-  const basics = useMemo<CompareBasics<StorefrontProduct>>(() => {
-    const anyUsed = group?.items.some((p) => p.condition && p.condition !== "NEW");
-    const condLabel = (c: string | null | undefined) => schema.data?.conditions.find((x) => x.value === (c ?? "NEW"))?.label ?? null;
-    return {
-      title: t("compare.basics"),
-      rows: [
-        { key: "price", label: t("compare.row.price"), value: (p) => fmt.money(p.priceMinor, p.currency), rank: (p) => p.priceMinor },
-        {
-          key: "rating",
-          label: t("compare.row.rating"),
-          value: (p) => ((p.ratingCount ?? 0) > 0 && p.ratingAvg ? `★ ${p.ratingAvg.toFixed(1)} · ${p.ratingCount}` : null),
-          rank: (p) => ((p.ratingCount ?? 0) > 0 ? (p.ratingAvg ?? null) : null),
-          higherIsBetter: true,
-        },
-        { key: "stock", label: t("compare.row.stock"), value: (p) => (stockOf(p, null) > 0 ? t("compare.stock.in") : t("compare.stock.out")) },
-        { key: "brand", label: t("compare.row.brand"), value: (p) => p.brandRef?.name ?? null },
-        ...(anyUsed ? [{ key: "cond", label: t("compare.row.condition"), value: (p: StorefrontProduct) => condLabel(p.condition) }] : []),
-      ],
-    };
-  }, [group, schema.data, t, fmt]);
-
-  const sections = useMemo(() => {
-    if (!group || !schema.data) return [];
-    const all = compareSections(schema.data, group.items, locale, [t("catalog.yes"), t("catalog.no")], basics);
-    // one product has no «differences»: the switch is hidden then and the full table shows
-    return onlyDiff && group.items.length > 1 ? onlyDifferences(all) : all;
-  }, [group, schema.data, locale, t, basics, onlyDiff]);
+  const money = useCallback((p: StorefrontProduct) => fmt.money(p.priceMinor, p.currency), [fmt]);
+  const { ready, group, setActive, groups, onlyDiff, toggleDiff, sections } = useCompareView({
+    store: useCompare,
+    products: products.data?.items,
+    schema: schema.data,
+    locale,
+    t: t as CompareT,
+    money,
+    inStock: inStockOf,
+  });
 
   const total = entries.length;
   const addMoreHref = group?.category ? href(`/catalog/${group.category.slug}`) : href("/catalog");
@@ -373,6 +322,6 @@ function useSharedLink() {
       st.add(p.id, group);
     }
     setSlugs(null);
-    if (group) st.openModal(group);
+    if (group) st.openScreen(group);
   }, [slugs, products.data, schema.data]);
 }

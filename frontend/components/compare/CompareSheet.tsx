@@ -14,11 +14,11 @@ import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Plus, Scale, SlidersHorizontal, Trash2, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { compareGroups, compareSections, onlyDifferences, type CompareBasics, type CompareSection } from "@shop/core/compare";
+import { type CompareSection } from "@shop/core/compare";
+import { useCompareView } from "@shop/customer/compare/use-compare-view";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
 import { useI18n } from "@/i18n/context";
 import { customerApi, type Product } from "@/lib/api";
-import { EMPTY_SCHEMA } from "@shop/customer/catalog/model/filter";
 import { productInStock } from "@shop/customer/catalog/model/stock";
 import { useCatalogSchema } from "@/lib/catalog";
 import { useCompare } from "@/lib/compare";
@@ -26,11 +26,11 @@ import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 import { backdrop, overlayRise } from "@/lib/motion";
 import { haptic, useBackButton } from "@/lib/telegram";
-import { localStore } from "@shop/core/storage";
 
-const ONLY_DIFF_KEY = "compare.onlyDiff";
 const LABEL_W = 180;
 const PHONE_MAX = 640;
+
+const productPrice = (p: Product) => money(p.priceMinor, p.currency);
 
 export function CompareSheet({ onOpenProduct, onBrowse }: { onOpenProduct: (p: Product) => void; onBrowse: (categorySlug: string | null) => void }) {
   const open = useCompare((s) => s.open);
@@ -56,10 +56,7 @@ function Body({
   const entries = useCompare((s) => s.entries);
   const remove = useCompare((s) => s.remove);
   const removeGroup = useCompare((s) => s.removeGroup);
-  const prune = useCompare((s) => s.prune);
-  const focusGroup = useCompare((s) => s.focusGroup);
   const schemaQ = useCatalogSchema();
-  const schema = schemaQ.data ?? EMPTY_SCHEMA;
   const productsQ = useQuery({ queryKey: ["products"], queryFn: () => customerApi.getProducts() });
 
   useEffect(() => {
@@ -79,62 +76,16 @@ function Body({
     };
   }, [onClose]);
 
-  useEffect(() => {
-    if (productsQ.data) prune(new Set(productsQ.data.map((p) => p.id)));
-  }, [productsQ.data, prune]);
-
-  const ready = !!productsQ.data && !!schemaQ.data;
-  const groups = useMemo(() => (ready ? compareGroups(schema, entries, productsQ.data!) : []), [ready, schema, entries, productsQ.data]);
-  const [active, setActive] = useState<string | null>(focusGroup);
-  const group = groups.find((g) => g.key === active) ?? groups[0] ?? null;
-
-  const [onlyDiff, setOnlyDiff] = useState(false);
-  useEffect(() => {
-    try {
-      setOnlyDiff(localStore.getItem(ONLY_DIFF_KEY) === "1");
-    } catch {
-      /* private mode */
-    }
-  }, []);
-  const toggleDiff = () => {
-    haptic();
-    setOnlyDiff((v) => {
-      try {
-        localStore.setItem(ONLY_DIFF_KEY, v ? "0" : "1");
-      } catch {
-        /* private mode */
-      }
-      return !v;
-    });
-  };
-
-  const basics = useMemo<CompareBasics<Product>>(() => {
-    const anyUsed = group?.items.some((p) => p.condition && p.condition !== "NEW");
-    const condLabel = (c: string | null | undefined) => schema.conditions.find((x) => x.value === (c ?? "NEW"))?.label ?? null;
-    return {
-      title: t("compare.basics"),
-      rows: [
-        { key: "price", label: t("compare.row.price"), value: (p) => money(p.priceMinor, p.currency), rank: (p) => p.priceMinor },
-        {
-          key: "rating",
-          label: t("compare.row.rating"),
-          value: (p) => ((p.ratingCount ?? 0) > 0 && p.ratingAvg ? `★ ${p.ratingAvg.toFixed(1)} · ${p.ratingCount}` : null),
-          rank: (p) => ((p.ratingCount ?? 0) > 0 ? (p.ratingAvg ?? null) : null),
-          higherIsBetter: true,
-        },
-        { key: "stock", label: t("compare.row.stock"), value: (p) => (productInStock(p) ? t("compare.stock.in") : t("compare.stock.out")) },
-        { key: "brand", label: t("compare.row.brand"), value: (p) => p.brandRef?.name ?? null },
-        ...(anyUsed ? [{ key: "cond", label: t("compare.row.condition"), value: (p: Product) => condLabel(p.condition) }] : []),
-      ],
-    };
-  }, [group, schema, t]);
-
-  const sections = useMemo(() => {
-    if (!group) return [];
-    const all = compareSections(schema, group.items, locale, [t("catalog.yes"), t("catalog.no")], basics);
-    // one product has no «differences»: the switch is hidden then and the full table shows
-    return onlyDiff && group.items.length > 1 ? onlyDifferences(all) : all;
-  }, [group, schema, locale, t, basics, onlyDiff]);
+  const { ready, groups, group, setActive, onlyDiff, toggleDiff, sections } = useCompareView({
+    store: useCompare,
+    products: productsQ.data,
+    schema: schemaQ.data,
+    locale,
+    t,
+    money: productPrice,
+    inStock: productInStock,
+    onToggleDiff: haptic,
+  });
 
   const close = () => {
     haptic();

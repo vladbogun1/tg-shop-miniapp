@@ -145,7 +145,7 @@ function CompareButton() {
   const { t } = useI18n();
   const hydrated = useHydrated();
   const count = useCompareCount();
-  const open = useCompare((s) => s.openModal);
+  const open = useCompare((s) => s.openScreen);
   if (!hydrated || count === 0) return null;
   return (
     <button

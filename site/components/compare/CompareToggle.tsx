@@ -16,7 +16,7 @@ export function CompareToggle({ productId, group, variant = "icon" }: { productI
   const hydrated = useHydrated();
   const inList = useInCompare(productId) && hydrated;
   const groupCount = useCompare((s) => s.entries.filter((e) => e.group === group).length);
-  const openModal = useCompare((s) => s.openModal);
+  const openModal = useCompare((s) => s.openScreen);
 
   if (variant === "icon") {
     return (
@@ -74,7 +74,7 @@ export function CompareOpenButton({ variant, className = "", onOpen }: { variant
   const { t } = useI18n();
   const hydrated = useHydrated();
   const count = useCompare((s) => s.entries.length);
-  const openModal = useCompare((s) => s.openModal);
+  const openModal = useCompare((s) => s.openScreen);
   if (!hydrated || count === 0) return null;
   const open = () => {
     onOpen?.();

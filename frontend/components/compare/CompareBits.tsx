@@ -10,7 +10,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, Check, CheckCircle2, ChevronRight, Scale } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useT } from "@/i18n/context";
-import { toggleCompare, useCompare, useInCompare } from "@/lib/compare";
+import { toggleCompare, useCompare, useCompareToast, useInCompare } from "@/lib/compare";
 import { haptic } from "@/lib/telegram";
 
 /** Hydration guard: the list lives in localStorage, the first render must match the server's. */
@@ -85,8 +85,8 @@ export function CompareViewButton({ productId, group, onOpenComparison }: { prod
 
 export function CompareToastHost() {
   const t = useT();
-  const toast = useCompare((s) => s.toast);
-  const hide = useCompare((s) => s.hideToast);
+  const toast = useCompareToast((s) => s.toast);
+  const hide = useCompareToast((s) => s.hideToast);
   const openScreen = useCompare((s) => s.openScreen);
   const screenOpen = useCompare((s) => s.open);
   useEffect(() => {
