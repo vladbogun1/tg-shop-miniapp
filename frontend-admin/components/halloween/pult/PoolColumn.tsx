@@ -6,7 +6,7 @@
  * the draw stays fair because each pick depends only on the seed and the round number.
  */
 import { useQuery } from "@tanstack/react-query";
-import { Lock, Users } from "lucide-react";
+import { Lock, RotateCcw, Users } from "lucide-react";
 import { hwDraw, HW_SUPER_VISUAL, type HwPool, type HwPrizes, type HwScreen, type HwShow } from "@/lib/halloween-api";
 import { playingRoll } from "@/lib/use-hw-show";
 import { Badge } from "@/components/ui/Badge";
@@ -22,6 +22,7 @@ export interface PoolActions {
   roll: (round: number, visual: string, superPrize: boolean, prizeName: string) => void;
   reroll: (round: number, visual: string) => void;
   lock: () => void;
+  resetRounds: (played: number) => void;
   testReset: () => void;
   contact: (round: number) => void;
 }
@@ -53,6 +54,9 @@ function Head({ d, test, busy, actions }: { d: HwScreen; test: boolean; busy: bo
         <Badge tone="ok" className="font-mono normal-case" dot>sha256 {d.seedHash.slice(0, 12)}…</Badge>
       ) : (
         <Button size="sm" variant="outline" icon={<Lock className="h-4 w-4" />} disabled={busy} onClick={actions.lock}>Зафиксировать список</Button>
+      )}
+      {d.winners.length > 0 && (
+        <Button size="sm" variant="ghost" icon={<RotateCcw className="h-4 w-4" />} disabled={busy} onClick={() => actions.resetRounds(d.winners.length)}>Сбросить раунды</Button>
       )}
       {test && <Button size="sm" variant="ghost" disabled={busy} onClick={actions.testReset}>Новые тестовые участники</Button>}
     </div>

@@ -45,6 +45,12 @@ export async function lock(pool) {
   return s.lock;
 }
 
+/** Every rehearsal round is free again; the list and its lock stay. */
+export function resetRounds(pool) {
+  const s = sessions.get(pool);
+  if (s) s.draws = [];
+}
+
 export async function drawRound(pool, reroll, expectRound) {
   const s = await current(pool);
   const l = await lock(pool);

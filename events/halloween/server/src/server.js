@@ -146,6 +146,16 @@ async function adminApi(req, res, path, query) {
       await rehearsal.reset(pool, b.count);
       return send(res, 200, await rehearsal.screen(pool));
     }
+    if (path === "test/rounds/reset" && req.method === "POST") {
+      rehearsal.resetRounds(pool);
+      show.cleared(pool, true);
+      return send(res, 200, await rehearsal.screen(pool));
+    }
+    if (path === "rounds/reset" && req.method === "POST") {
+      const cleared = draw.resetRounds(pool);
+      show.cleared(pool, false);
+      return send(res, 200, { cleared });
+    }
     if (path === "test/lock" && req.method === "POST") return send(res, 200, { seedHash: (await rehearsal.lock(pool)).commitment });
     if ((path === "test/draw" || path === "test/reroll") && req.method === "POST") {
       const r = await rehearsal.drawRound(pool, path === "test/reroll", b.round);
@@ -263,6 +273,16 @@ async function stageApi(req, res, path, query) {
     const data = test ? await rehearsal.screen(pool) : await draw.screen(pool);
     const pz = prizes.state(pool); // no message template: it is not the scene's business
     return send(res, 200, { ...data, prizes: { prizes: pz.prizes, rounds: pz.rounds } });
+  }
+  // The between-rounds screen: both draws at once.
+  if (path === "overview" && req.method === "GET") {
+    const { test } = show.snapshot();
+    const pools = await Promise.all(["pumpkins", "orders"].map(async (pool) => {
+      const data = test ? await rehearsal.screen(pool) : await draw.screen(pool);
+      const pz = prizes.state(pool);
+      return { ...data, prizes: { prizes: pz.prizes, rounds: pz.rounds } };
+    }));
+    return send(res, 200, { test, pools });
   }
   if (path === "revealed" && req.method === "POST") {
     show.revealed((await body(req)).id);

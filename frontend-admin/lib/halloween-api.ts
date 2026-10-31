@@ -144,6 +144,10 @@ export interface HwShow {
   avatars: boolean;
   sound: boolean;
   blackout: boolean;
+  /** The scene is transparent: OBS shows the stream under it. */
+  hidden: boolean;
+  /** The between-rounds screen is on. */
+  pause: boolean;
   rev: number;
   roll: { id: number; pool: HwPool; test: boolean; round: number; attempt: number; winnerId: string; totalTickets: number; at: number; revealedAt: number } | null;
   /** OBS scenes connected right now */
@@ -185,10 +189,12 @@ export const hwDraw = {
   /** Voids the pool's last live draw and draws its round again. */
   reroll: (pool: HwPool, test: boolean, visual: string) =>
     apiPost<{ round: number; attempt: number; winner: string }>(`${P}${T(test)}/reroll${q(pool)}`, { visual }),
+  /** Every round of the pool is free again; the winners go back to the pool (the proof keeps the old draws). */
+  resetRounds: (pool: HwPool, test: boolean) => apiPost<unknown>(`${P}${T(test)}/rounds/reset${q(pool)}`, {}),
   /** Rehearsal only: a fresh random list of customers. */
   testReset: (pool: HwPool) => apiPost<HwScreen>(`${P}/test/reset${q(pool)}`, {}),
   show: () => apiGet<HwShow & { key: string }>(`${P}/show`),
-  setShow: (patch: Partial<Pick<HwShow, "test" | "visual" | "avatars" | "sound" | "blackout">>) => apiPost<HwShow>(`${P}/show`, patch),
+  setShow: (patch: Partial<Pick<HwShow, "test" | "visual" | "avatars" | "sound" | "blackout" | "hidden" | "pause">>) => apiPost<HwShow>(`${P}/show`, patch),
   savePrize: (p: { id?: number; name: string; items: string[]; images: string[] }) => apiPost<HwPrizes>(`${P}/prizes${q("pumpkins")}`, p),
   deletePrize: (id: number) => apiPost<HwPrizes>(`${P}/prizes/delete${q("pumpkins")}`, { id }),
   assign: (pool: HwPool, round: number, prizeId: number | null) => apiPost<HwPrizes>(`${P}/prizes/assign${q(pool)}`, { round, prizeId }),

@@ -17,6 +17,10 @@ const state = {
   avatars: true,
   sound: true,
   blackout: false,
+  /** The scene is fully transparent: OBS shows the stream under it until the remote brings it back. */
+  hidden: false,
+  /** The between-rounds screen (prizes still to play, the names of the participants). */
+  pause: false,
   /** Bumped when the list, the winners or the prizes changed: scenes reload their data. */
   rev: 0,
   /** The last roll: { id, pool, test, round, attempt, winnerId, totalTickets, at, revealedAt } */
@@ -50,7 +54,7 @@ const SETTINGS = { pool: ["pumpkins", "orders"], visual: /^[a-z0-9-]{0,40}$/ };
 export function set(b) {
   if (SETTINGS.pool.includes(b.pool)) state.pool = b.pool;
   if (typeof b.visual === "string" && SETTINGS.visual.test(b.visual)) state.visual = b.visual;
-  for (const f of ["test", "avatars", "sound", "blackout"]) if (typeof b[f] === "boolean") state[f] = b[f];
+  for (const f of ["test", "avatars", "sound", "blackout", "hidden", "pause"]) if (typeof b[f] === "boolean") state[f] = b[f];
   state.rev++;
   push();
   return snapshot();
@@ -69,8 +73,16 @@ export function rolled(pool, test, r, visual) {
   state.test = Boolean(test);
   state.roll = { id: ++rollSeq, pool, test: state.test, round: r.round, attempt: r.attempt ?? 1, winnerId: r.winner, totalTickets: r.totalTickets, at: Date.now(), revealedAt: 0 };
   state.blackout = false;
+  state.hidden = false;
+  state.pause = false;
   state.rev++;
   push();
+}
+
+/** The rounds of a pool were reset: a roll of it on screen is history now. */
+export function cleared(pool, test) {
+  if (state.roll && state.roll.pool === pool && state.roll.test === Boolean(test)) state.roll = null;
+  changed();
 }
 
 export function revealed(id) {

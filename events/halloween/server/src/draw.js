@@ -12,6 +12,12 @@ import { liveEntries } from "./pools.js";
 
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
 
+// 01.11: «Скинути раунди» on the remote. A cleared draw stays in the table (and in the proof) as voided,
+// but its winner is back in the pool; the next draw of that round takes the next attempt number.
+if (!db.prepare("SELECT name FROM pragma_table_info('draws')").all().some((c) => c.name === "cleared")) {
+  db.exec("ALTER TABLE draws ADD COLUMN cleared INTEGER NOT NULL DEFAULT 0");
+}
+
 export { liveEntries };
 
 export function getLock(pool) {
@@ -93,8 +99,8 @@ export async function drawRound(pool, by, reroll, expectRound) {
       round = chooseRound(valid.map((d) => d.round), config.rounds[pool], expectRound);
     }
     const attempt = all.filter((d) => d.round === round).length + 1;
-    // Winners and voided winners of this draw. Winning one draw does not keep you out of the other.
-    const out = new Set(all.map((d) => d.tg_id));
+    // Winners and voided winners of this draw (not cleared ones). Winning one draw does not keep you out of the other.
+    const out = new Set(all.filter((d) => !d.cleared).map((d) => d.tg_id));
     const left = frozenEntries(l).filter((e) => !out.has(e.tgId));
     if (!left.length) throw new Error("Пул порожній");
     const { entry, total } = pick(l.seed, round, attempt, left);
@@ -103,6 +109,11 @@ export async function drawRound(pool, by, reroll, expectRound) {
     );
     return { round, attempt, winnerTgId: entry.tgId, totalTickets: total };
   });
+}
+
+/** Every round of the pool is free again (see «cleared» above). Returns how many winners were cleared. */
+export function resetRounds(pool) {
+  return db.prepare("UPDATE draws SET voided = 1, cleared = 1 WHERE pool = ? AND cleared = 0").run(pool).changes;
 }
 
 // ---- presentation ----
@@ -130,7 +141,7 @@ export async function screen(pool) {
   const l = getLock(pool);
   const entries = l ? frozenEntries(l) : await liveEntries(pool);
   const ds = draws(pool);
-  const out = new Set(ds.map((d) => d.tg_id));
+  const out = new Set(ds.filter((d) => !d.cleared).map((d) => d.tg_id));
   const prof = await profiles(entries.map((e) => e.tgId));
   const participants = entries.map((e) => {
     const p = prof.get(e.tgId);

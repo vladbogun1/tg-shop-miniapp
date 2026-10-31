@@ -66,7 +66,8 @@ export function RoundCard({ round, prize, superPrize, state, disabled, onRoll, o
             {prize.items.map((s) => <li key={s}>{s}</li>)}
           </ul>
         )}
-        <div className="mt-auto flex flex-col gap-2 pt-1">
+        {/* one height for every state, so a winner does not make the row jump */}
+        <div className="mt-auto flex min-h-[68px] flex-col justify-end gap-2 pt-1">
           {state.kind === "free" && (
             <Button variant="accent" size="lg" chamfer icon={<Play className="h-4 w-4" />} disabled={disabled} onClick={onRoll}>
               {superPrize ? "Крутить суперприз" : "Крутить"}
@@ -77,11 +78,12 @@ export function RoundCard({ round, prize, superPrize, state, disabled, onRoll, o
           )}
           {state.kind === "won" && (
             <>
-              <div className="flex items-center gap-2 font-semibold text-[var(--ok)]"><Trophy className="h-4 w-4 shrink-0" /> <span className="min-w-0 break-words">{state.winner}</span></div>
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="surface" icon={<MessageCircle className="h-4 w-4" />} onClick={onContact}>Написать</Button>
+              <div className="flex min-w-0 items-center gap-2 font-semibold text-[var(--ok)]"><Trophy className="h-4 w-4 shrink-0" /> <span className="min-w-0 truncate">{state.winner}</span></div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="surface" className="min-w-0 flex-1" icon={<MessageCircle className="h-4 w-4" />} onClick={onContact}>Написать</Button>
                 {state.canReroll && (
-                  <Button size="sm" variant="danger" icon={<RotateCcw className="h-4 w-4" />} disabled={disabled} onClick={onReroll}>Перекрутить</Button>
+                  <Button size="sm" variant="danger" icon={<RotateCcw className="h-4 w-4" />} title="Перекрутить: победитель аннулируется"
+                    aria-label="Перекрутить" disabled={disabled} onClick={onReroll} />
                 )}
               </div>
             </>

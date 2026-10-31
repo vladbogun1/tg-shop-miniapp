@@ -64,6 +64,12 @@ function usePoolActions(test: boolean, setBusy: (b: boolean) => void, setContact
       const ok = test || (await confirm({ title: "Зафиксировать список?", message: "После этого новые тыквы и заказы уже не добавят билетов. Первый розыгрыш фиксирует список сам.", confirmLabel: "Зафиксировать" }));
       if (ok) await run(() => hwDraw.lock(pool, test));
     },
+    async resetRounds(played) {
+      const ok = await confirm(test
+        ? { title: "Сбросить тестовые раунды?", message: `${POOL_TITLE[pool]}: ${played} сыгранных раундов станут свободными. Участники те же.`, confirmLabel: "Сбросить" }
+        : { title: "Сбросить НАСТОЯЩИЕ раунды?", message: `${POOL_TITLE[pool]}: все ${played} победителей аннулируются и вернутся в розыгрыш, раунды можно будет крутить заново (будут другие победители). Старые розыгрыши останутся в журнале доказательства.`, confirmLabel: "Да, сбросить", danger: true });
+      if (ok) await run(() => hwDraw.resetRounds(pool, test));
+    },
     testReset: () => void run(() => hwDraw.testReset(pool)),
     contact: (round) => setContact({ pool, round }),
   });

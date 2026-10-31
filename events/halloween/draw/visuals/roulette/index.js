@@ -444,9 +444,8 @@ export function mount(root, ctx) {
     g.globalAlpha = a;
     const won = new Set(participants.filter((p) => p.won).map((p) => p.id));
     localWon.forEach((id) => won.add(id));
-    const k = Math.min(5, won.size + 1);
     text("CHISETUP  ·  HALLOWEEN", 90, 70, 24, 700, "#ff6600", "left", 7);
-    text(won.size >= 5 ? "Розіграш завершено" : `Розіграш · Раунд ${k} з 5`, 90, 128, 64, 800, "#f4f1ea");
+    text("Розіграш призів", 90, 128, 64, 800, "#f4f1ea");
     const pl = pool(), tickets = pl.reduce((s, p) => s + p.tickets, 0);
     if (pl.length > tiles.length) text(`На стіні випадкові ${tiles.length} з ${pl.length}, решта миготить у темряві`, 90, 180, 24, 500, "#9a958c");
     const line = `УЧАСНИКІВ  ${pl.length}   ·   КВИТКІВ  ${tickets}${won.size ? `   ·   ВЖЕ ВИГРАЛИ  ${won.size}` : ""}`;
