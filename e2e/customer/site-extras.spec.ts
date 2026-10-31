@@ -22,7 +22,7 @@ test("чат замовлення: відповідь магазину видн�
   await expect(chat.getByText("У мережі")).toBeVisible();
   await chat.getByRole("textbox", { name: /^Повідомлення…/ }).fill("Дякую, чекаю на відправку");
   await chat.getByRole("button", { name: "Надіслати" }).click();
-  await expect(chat.getByText("Дякую, чекаю на відправку")).toBeVisible();
+  await expect(chat.getByRole("log").getByText("Дякую, чекаю на відправку")).toBeVisible();
   await expect(chat.getByRole("textbox", { name: /^Повідомлення…/ })).toHaveValue("");
 
   const saved = await query<{ sender_type: string; text: string }>(

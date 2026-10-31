@@ -25,8 +25,8 @@ test("чат замовлення: відповідь магазину видн�
   await expect(page.getByText("Вітаємо! Замовлення підтверджено.")).toBeVisible();
   await page.getByRole("textbox", { name: "Повідомлення…" }).fill("Дякую, чекаю на відправку");
   await page.getByRole("button", { name: "Надіслати" }).click();
-  await expect(page.getByText("Дякую, чекаю на відправку")).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Повідомлення…" })).toHaveValue("");
+  await expect(page.getByText("Дякую, чекаю на відправку")).toBeVisible();
 
   const saved = await query<{ sender_type: string; text: string }>(
     "SELECT sender_type, text FROM order_messages WHERE order_id = UUID_TO_BIN(?) ORDER BY id",
