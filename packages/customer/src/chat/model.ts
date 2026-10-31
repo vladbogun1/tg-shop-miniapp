@@ -12,6 +12,15 @@ export interface ChatItem {
   createdAt: string;
 }
 
+/** Страница перед сообщением `beforeId`; сбой сети/сервера не бросаем, а возвращаем null — кнопка «показать раньше» останется, можно повторить. */
+export async function fetchOlderOrNull<M>(fetchOlder: (beforeId: number) => Promise<M[]>, beforeId: number): Promise<M[] | null> {
+  try {
+    return await fetchOlder(beforeId);
+  } catch {
+    return null;
+  }
+}
+
 /** Полная страница = дальше, вероятно, есть история. */
 export function hasMoreHistory(pageLength: number): boolean {
   return pageLength >= CHAT_PAGE_SIZE;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { markSeen, CHAT_PAGE_SIZE, freshOlder, groupByDay, hasMoreHistory, hasUnreadFromShop, indexById } from "./model";
+import { fetchOlderOrNull, markSeen, CHAT_PAGE_SIZE, freshOlder, groupByDay, hasMoreHistory, hasUnreadFromShop, indexById } from "./model";
 
 const m = (id: number, createdAt = "2026-10-20T10:00:00Z") => ({ id, createdAt });
 
@@ -33,5 +33,16 @@ describe("chat model", () => {
     expect(indexById([m(5)]).get(5)?.id).toBe(5);
     expect(hasUnreadFromShop([{ senderType: "CUSTOMER" }, { senderType: "ADMIN", readAt: "x" }])).toBe(false);
     expect(hasUnreadFromShop([{ senderType: "ADMIN", readAt: null }])).toBe(true);
+  });
+});
+
+describe("fetchOlderOrNull", () => {
+  it("отказ загрузки раньше не бросает наружу, а даёт null (кнопка останется, можно повторить)", async () => {
+    const failing = () => Promise.reject(new Error("network"));
+    await expect(fetchOlderOrNull(failing, 5)).resolves.toBeNull();
+  });
+  it("успех отдаёт страницу как есть", async () => {
+    const page = [{ id: 1 }];
+    await expect(fetchOlderOrNull(async (before) => (before === 5 ? page : []), 5)).resolves.toBe(page);
   });
 });

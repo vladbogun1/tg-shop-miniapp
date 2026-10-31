@@ -66,7 +66,6 @@ export function SupportChat({
     onAppend: (m) => {
       if (m.senderType !== "CUSTOMER") changed.current();
     },
-    swallowLoadErrors: true,
   });
 
   // Realtime once the history is in (that request also refreshed an expired access cookie).

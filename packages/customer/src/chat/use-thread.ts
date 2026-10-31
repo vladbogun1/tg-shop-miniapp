@@ -7,7 +7,7 @@
  * (когда стартует сокет, что делать при обрыве, чем инвалидировать).
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { freshOlder, groupByDay, hasMoreHistory, indexById, markSeen, type ChatItem } from "./model";
+import { fetchOlderOrNull, freshOlder, groupByDay, hasMoreHistory, indexById, markSeen, type ChatItem } from "./model";
 
 export function useThread<M extends ChatItem>(opts: {
   /** Самая свежая страница истории (undefined — ещё грузится). */
@@ -19,10 +19,8 @@ export function useThread<M extends ChatItem>(opts: {
   dayLabel: (iso: string) => string;
   /** Вызывается один раз на каждое НОВОЕ дозаписанное сообщение (не на историю). */
   onAppend?: (m: M) => void;
-  /** Ошибка «показать раньше» глотается (кнопка остаётся, можно повторить) — иначе уходит наружу. */
-  swallowLoadErrors?: boolean;
 }) {
-  const { history, fetchOlder, scrollRef, dayLabel, swallowLoadErrors } = opts;
+  const { history, fetchOlder, scrollRef, dayLabel } = opts;
   const onAppend = useRef(opts.onAppend);
   useEffect(() => {
     onAppend.current = opts.onAppend;
@@ -63,7 +61,8 @@ export function useThread<M extends ChatItem>(opts: {
     if (!oldest || loadingEarlier) return;
     setLoadingEarlier(true);
     try {
-      const older = await fetchOlder(oldest.id);
+      const older = await fetchOlderOrNull(fetchOlder, oldest.id);
+      if (!older) return;
       if (older.length === 0) {
         setHasMore(false);
         return;
@@ -77,8 +76,6 @@ export function useThread<M extends ChatItem>(opts: {
         if (el) el.scrollTop += el.scrollHeight - before;
       });
       setHasMore(hasMoreHistory(older.length));
-    } catch (e) {
-      if (!swallowLoadErrors) throw e;
     } finally {
       setLoadingEarlier(false);
     }
