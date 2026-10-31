@@ -1,6 +1,7 @@
 "use client";
 
 /** Состояние и действия окна «Оформить с ИИ» для одного товара (экран — `CardCompletionModal`). */
+import { toMinor } from "@shop/core/money";
 import { QUERY_PRESETS } from "@shop/core/query";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -26,7 +27,7 @@ interface Args {
 /** Цена из поля ввода в гривнах → копейки; null — не число или не больше нуля. */
 export function priceToMinor(text: string): number | null {
   const uah = Number(text.replace(",", ".").replace(/\s/g, ""));
-  return Number.isFinite(uah) && uah > 0 ? Math.round(uah * 100) : null;
+  return Number.isFinite(uah) && uah > 0 ? toMinor(uah) : null;
 }
 
 function useCompletionData(productId: string, open: boolean) {

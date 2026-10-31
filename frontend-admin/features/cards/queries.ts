@@ -12,12 +12,14 @@ import { catalogKeys } from "@/features/catalog";
 import { cardsApi, type CardStats } from "./api";
 import { cardsKeys } from "./keys";
 
+/** Опрос счётчиков «Карточек»: 2 минуты, как было. */
+const STATS_REFETCH_MS = QUERY_PRESETS.live.refetchInterval * 4;
+
 export function useCardStats() {
   return useQuery({
     queryKey: cardsKeys.stats(),
     queryFn: cardsApi.stats,
-    // 2 минуты, как было.
-    refetchInterval: QUERY_PRESETS.live.refetchInterval * 4,
+    refetchInterval: STATS_REFETCH_MS,
     refetchOnWindowFocus: true,
     retry: false,
     enabled: isAuthenticated(),
@@ -31,7 +33,7 @@ export function useCardItems() {
 
 /** Схема каталога в виде «Карточек» (5 минут, как было). */
 export function useCardSchema() {
-  return useQuery({ queryKey: cardsKeys.schema(), queryFn: cardsApi.schema, staleTime: QUERY_PRESETS.list.staleTime * 10 });
+  return useQuery({ queryKey: cardsKeys.schema(), queryFn: cardsApi.schema, staleTime: QUERY_PRESETS.static.staleTime });
 }
 
 /** Badge: «Оформить» (drafts on the storefront + new hidden) + «Проверить» (every AI_FILLED) of «Карточки». */

@@ -1,4 +1,5 @@
 /** «Карточки»: уровень замечаний и уверенность ИИ (0–100). Чистая логика. */
+import { toPercent } from "./percent";
 import type { CardIssue, Level } from "./types";
 import { parseNumberLoose } from "./value";
 
@@ -17,7 +18,7 @@ export function confidenceOf(raw: unknown, issues: CardIssue[], what: string): n
     return null;
   }
   // 0..1 scale ("0.92") → percent.
-  const pct = n > 0 && n <= 1 && String(raw).includes(".") ? Math.round(n * 100) : Math.round(n);
+  const pct = n > 0 && n <= 1 && String(raw).includes(".") ? Math.round(toPercent(n)) : Math.round(n);
   if (pct < 0 || pct > 100) {
     issues.push({ level: "info", text: `${what}: уверенность ${n} приведена к 0…100` });
     return Math.max(0, Math.min(100, pct));

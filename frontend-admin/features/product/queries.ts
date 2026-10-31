@@ -40,6 +40,9 @@ export function isDoubleSubmit(e: unknown): boolean {
   return e instanceof Error && e.name === "DoubleSubmitError";
 }
 
+/** Переведённые тексты меняются редко: 1 минута (два окна свежести списка). */
+const TRANSLATED_STALE_MS = QUERY_PRESETS.list.staleTime * 2;
+
 /** Тексты uk/en, переведённые у товаров: окно товара считает, сколько из них сбросит правка русского. */
 export function useTranslatedTexts(enabled: boolean) {
   return useQuery({
@@ -49,7 +52,7 @@ export function useTranslatedTexts(enabled: boolean) {
       return [...uk, ...en];
     },
     enabled,
-    staleTime: QUERY_PRESETS.list.staleTime * 2,
+    staleTime: TRANSLATED_STALE_MS,
   });
 }
 

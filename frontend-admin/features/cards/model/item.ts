@@ -1,4 +1,5 @@
 /** «Карточки»: товар в виде выгрузки `GET /api/admin/cards/export`, id товаров в ответе ИИ и мелкие помощники. Чистый модуль. */
+import { toMajor } from "@shop/core/money";
 export type CardCondition = "NEW" | "MARKDOWN" | "USED";
 export type CardStatusCode = "DRAFT" | "AI_FILLED" | "READY";
 
@@ -64,7 +65,7 @@ export function variantNames(item: CardItem): string[] {
 
 export function priceUah(item: CardItem): number | null {
   const minor = item.priceMinor ?? item.price;
-  return typeof minor === "number" ? Math.round(minor) / 100 : null;
+  return typeof minor === "number" ? toMajor(minor) : null;
 }
 
 /** Batches keep the given order — sort by category first, so a batch needs fewer schema sections. */

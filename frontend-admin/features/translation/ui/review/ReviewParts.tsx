@@ -4,6 +4,7 @@
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, PartyPopper, SkipForward } from "lucide-react";
 import { useMemo } from "react";
 import { Button } from "@shop/ui/admin-button";
+import { toPercent } from "../../model/percent";
 import { placeOf } from "../../model/queue";
 import { plural } from "../../model/plural";
 import type { UniqueString } from "../../model/workset";
@@ -41,7 +42,7 @@ export function ReviewHeader({
         </div>
       </div>
       <div className="mb-4 h-1 overflow-hidden rounded-full bg-[var(--surface-3)]" aria-hidden>
-        <div className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-300" style={{ width: `${((finished ? total : index) / Math.max(1, total)) * 100}%` }} />
+        <div className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-300" style={{ width: `${toPercent((finished ? total : index) / Math.max(1, total))}%` }} />
       </div>
     </>
   );

@@ -16,12 +16,14 @@ import { summaryApplied, summaryFixed, type AiSendPlan, type SendSummary } from 
 import type { TrExportData, TrExportItem, TrLocale, TrOrigin } from "./model/types";
 import type { UniqueString } from "./model/workset";
 
+/** Опрос счётчиков переводов: 2 минуты, как было. */
+const STATS_REFETCH_MS = QUERY_PRESETS.live.refetchInterval * 4;
+
 export function useTranslationStats() {
   return useQuery({
     queryKey: translationKeys.stats(),
     queryFn: translationApi.stats,
-    // 2 минуты, как было.
-    refetchInterval: QUERY_PRESETS.live.refetchInterval * 4,
+    refetchInterval: STATS_REFETCH_MS,
     refetchOnWindowFocus: true,
     retry: false,
     enabled: isAuthenticated(),

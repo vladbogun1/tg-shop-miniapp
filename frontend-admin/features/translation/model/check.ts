@@ -1,5 +1,7 @@
 /** Проверки перевода и правки оригинала против русского источника. Чистые функции. */
 import { countMap, wordSimilarity } from "./diff";
+import { toPercent } from "./percent";
+import { ratioText } from "./ratio-text";
 import type { TrLocale } from "./types";
 
 /** `{name}`-style slots of chat templates (ReplyTemplateService fills them in). */
@@ -82,8 +84,8 @@ function checkLength(source: string, lang: TrLocale, text: string, report: Repor
   }
   const r = text.length / source.length;
   const [errLo, warnLo, warnHi, errHi] = lang === "uk" ? [0.4, 0.7, 1.5, 2.5] : [0.35, 0.6, 1.6, 2.5];
-  if (r < errLo || r > errHi) report("error", `длина ×${r.toFixed(2)} от оригинала`);
-  else if (r < warnLo || r > warnHi) report("warn", `длина ×${r.toFixed(2)} от оригинала`);
+  if (r < errLo || r > errHi) report("error", `длина ×${ratioText(r)} от оригинала`);
+  else if (r < warnLo || r > warnHi) report("warn", `длина ×${ratioText(r)} от оригинала`);
 }
 
 function checkScript(lang: TrLocale, text: string, report: Report): void {
@@ -146,7 +148,7 @@ export function checkRuFix(source: string, ru: string): { issues: Issue[]; simil
   const lb = (ru.match(LATIN_TOKEN) ?? []).join(" ").toLowerCase();
   if (la !== lb) err("в правке изменена латиница (бренды/модели)");
   const similarity = wordSimilarity(source, ru);
-  if (similarity < 0.75) err(`текст сильно переписан (совпадение ${Math.round(similarity * 100)} %)`);
+  if (similarity < 0.75) err(`текст сильно переписан (совпадение ${Math.round(toPercent(similarity))} %)`);
   return { issues, similarity };
 }
 
