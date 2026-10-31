@@ -34,6 +34,8 @@ const GENERATED_ONLY = new Set([
   "TrRejected", "TrImportResult", "TrCounts", "TrTextCounts", "TrStats", "TrAcceptResult", "TrSourceFixResult",
   // product (AdminProduct — вид экрана над AdminProductDto, см. features/product/model/from-dto.ts)
   "AdminProductDto", "SpecIssue",
+  // cards
+  "CardStats", "CardImportResult", "CardImportItemResult", "CardExportStatus",
 ]);
 
 /** В orders-api.ts ручные интерфейсы — только тела запросов и этот список (не ответы заказа). */
