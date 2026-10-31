@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { AlertTriangle, Bug, CreditCard, Timer, Truck, XCircle } from "lucide-react";
 import { QueryState } from "@/components/ui/QueryState";
 import { REJECT_REASON_LABEL, type RejectReasonCode } from "@shop/core/orders";
-import { DELIVERY_LABEL } from "@/features/order";
+import { DELIVERY_LABEL } from "@/lib/delivery";
 import { staggerContainer } from "@/lib/motion";
 import { RankBars } from "../charts";
 import { dateTime, duration, num, pct, shortId, uah } from "../../model/format";

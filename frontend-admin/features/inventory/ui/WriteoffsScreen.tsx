@@ -14,9 +14,10 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import type { WriteoffRange } from "../model/types";
 import { WRITEOFF_RANGES } from "../model/writeoffs";
 import { useWriteoffReport } from "../queries";
+import type { RestoreModal } from "../model/types";
 import { WriteoffReportView } from "./WriteoffReportView";
 
-export function WriteoffsScreen() {
+export function WriteoffsScreen({ RestoreWriteoffModal }: { RestoreWriteoffModal: RestoreModal }) {
   const [range, setRange] = useState<WriteoffRange>("month");
   const q = useWriteoffReport(range);
 
@@ -28,7 +29,7 @@ export function WriteoffsScreen() {
         actions={<SegmentedControl options={WRITEOFF_RANGES} value={range} onChange={setRange} />}
       />
       <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Загрузка списаний">
-        {q.data && <WriteoffReportView data={q.data} />}
+        {q.data && <WriteoffReportView data={q.data} RestoreWriteoffModal={RestoreWriteoffModal} />}
       </QueryState>
     </div>
   );

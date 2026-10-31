@@ -2,8 +2,8 @@
 
 import { PackageMinus } from "lucide-react";
 import { useState } from "react";
+import type { RestoreModal } from "../model/types";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { RestoreWriteoffModal } from "@/features/returns";
 import { money } from "@/lib/money";
 import type { WriteoffLine, WriteoffReport } from "../model/types";
 import { WRITEOFF_LABEL, leftOf } from "../model/writeoffs";
@@ -12,7 +12,7 @@ import { WriteoffCards } from "./WriteoffCards";
 import { WriteoffTable } from "./WriteoffTable";
 
 /** Плитки итогов, список списаний и окно «Вернуть на склад». */
-export function WriteoffReportView({ data }: { data: WriteoffReport }) {
+export function WriteoffReportView({ data, RestoreWriteoffModal }: { data: WriteoffReport; RestoreWriteoffModal: RestoreModal }) {
   const invalidate = useInvalidateWriteoffs();
   const [restoring, setRestoring] = useState<{ id: number; title: string; left: number } | null>(null);
   const restore = (l: WriteoffLine) => setRestoring({ id: l.id, title: l.title, left: leftOf(l) });
