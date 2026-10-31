@@ -13,15 +13,12 @@ import {
   sortCasePrizes,
   type CaseItem,
   type CaseRarity,
-  type CaseSize,
   type CaseTier,
   type GiftChoice,
   type GiftTierInfo,
-  type OrderGift,
 } from "@shop/core/giftcase";
 import { CaseStyles } from "./case-opening-bits";
-import { CaseSizePicker, type CaseSizeTexts } from "./case-size";
-import { CaseDiscountTile, CasePromoBox, CaseRulesLink, caseTierAsset, caseTierVars, rarityVars, type CasePromoTexts, type CaseRulesLinkProps } from "./case-tier";
+import { CaseDiscountTile, CaseRulesLink, caseTierAsset, caseTierVars, rarityVars, type CaseRulesLinkProps } from "./case-tier";
 import { sessionStore } from "@shop/core/storage";
 
 const LockIcon = (
@@ -291,146 +288,7 @@ export function GiftChoicePicker({
   );
 }
 
-export interface GiftOrderPanelTexts {
-  tierName: Record<CaseTier, string>;
-  rarity: Record<CaseRarity, string>;
-  /** «Подарунок із кейса» */
-  prizeTitle: string;
-  /** «Знижка {d} на наступне замовлення» */
-  discountPrize: string;
-  promo: CasePromoTexts;
-  /** «Замінити подарунок на знижку» */
-  swapTitle: string;
-  swapHint: string;
-  /** «Замінити на {d}» */
-  swapAction: string;
-  swapped: string;
-  swapError: string;
-  /** «Ви обрали гарантовану знижку» */
-  guaranteedTitle: string;
-  /** «{amount} вже враховано в сумі замовлення» */
-  guaranteedText: string;
-  /** The size picker of a prize with sizes; without it the size is not shown. */
-  size?: CaseSizeTexts;
-}
-
-/** Whether {@link GiftCaseOrderPanel} has anything to show for the order's gift (so the page skips its wrapper). */
-export function hasGiftCaseOrderPanel(gift: OrderGift | null | undefined): boolean {
-  if (!gift) return false;
-  if (gift.guaranteedDiscountMinor > 0) return true;
-  if (gift.caseStatus !== "OPENED" || !gift.prize) return false;
-  return !!gift.promo || (!gift.swap?.swappedAt && gift.prize.kind === "PRODUCT" && (!!gift.swap?.available || !!gift.size));
-}
-
-/**
- * Order page, after the case: what the gift became — the guaranteed discount the customer chose, the
- * code of a discount prize (or of a swapped prize) with «copy», and the swap offer for a product prize
- * similar to what they bought. Renders nothing when there is nothing to say (a product prize without a
- * swap shows as its order line).
- */
-export function GiftCaseOrderPanel({
-  gift,
-  texts,
-  money,
-  formatDate,
-  onSwap,
-  onSize,
-  assetBase = "/case",
-}: {
-  gift: OrderGift;
-  texts: GiftOrderPanelTexts;
-  money: (minor: number) => string;
-  formatDate?: (iso: string) => string;
-  /** Swap the prize (POST …/gift-case/swap); the caller refetches the order. Omit to hide the offer. */
-  onSwap?: () => Promise<unknown>;
-  /** Pick the prize's size (POST …/gift-case/size); the caller refetches the order. Omit: read-only. */
-  onSize?: (variantId: string) => Promise<CaseSize>;
-  assetBase?: string;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState(false);
-  const tier = gift.tier;
-  if (gift.guaranteedDiscountMinor > 0) {
-    return (
-      <section className="gc-sealed gc-panel" style={caseTierVars(tier, assetBase)}>
-        <CaseStyles />
-        <span className="gc-opt-pct gc-disp" aria-hidden>
-          %
-        </span>
-        <div className="gc-sealed-text">
-          {tier && <span className="gc-tier gc-disp">{texts.tierName[tier]}</span>}
-          <b className="gc-disp">{texts.guaranteedTitle}</b>
-          <span>{texts.guaranteedText.replace("{amount}", `−${money(gift.guaranteedDiscountMinor)}`)}</span>
-        </div>
-      </section>
-    );
-  }
-  const prize = gift.prize;
-  if (gift.caseStatus !== "OPENED" || !prize) return null;
-  const swapped = !!gift.swap?.swappedAt;
-  const canSwap = !!onSwap && !!gift.swap?.available && !swapped && prize.kind === "PRODUCT";
-  const size = !swapped && prize.kind === "PRODUCT" && texts.size ? gift.size ?? null : null;
-  const sizePending = !!size?.pending && !!onSize && size.changeable;
-  if (!gift.promo && !canSwap && !size) return null;
-  const swap = async () => {
-    if (!onSwap || busy) return;
-    setBusy(true);
-    setErr(false);
-    try {
-      await onSwap();
-    } catch {
-      setErr(true);
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <section className="gc-sealed gc-panel" style={caseTierVars(tier, assetBase)}>
-      <CaseStyles />
-      <div className="gc-panel-art" style={rarityVars(prize.kind === "DISCOUNT" ? prize.rarity : prize.rarity)}>
-        {prize.kind === "DISCOUNT" ? (
-          <CaseDiscountTile item={prize} money={money} size="md" />
-        ) : (
-          <img src={caseTierAsset(assetBase, tier, "case-open.webp")} alt="" draggable={false} aria-hidden />
-        )}
-      </div>
-      <div className="gc-sealed-text">
-        {tier && <span className="gc-tier gc-disp">{texts.tierName[tier]}</span>}
-        <b className="gc-disp">
-          {sizePending && texts.size
-            ? texts.size.choose
-            : canSwap
-              ? texts.swapTitle
-              : prize.kind === "DISCOUNT"
-                ? texts.discountPrize.replace("{d}", caseDiscountText(prize, money))
-                : swapped
-                  ? texts.swapped
-                  : texts.prizeTitle}
-        </b>
-        {prize.kind === "PRODUCT" && (
-          <span>
-            {texts.prizeTitle}: {prize.title} · {texts.rarity[prize.rarity]}
-          </span>
-        )}
-        {size && texts.size && <CaseSizePicker size={size} texts={texts.size} onChoose={onSize} />}
-        {canSwap && <span>{texts.swapHint}</span>}
-        {gift.promo && <CasePromoBox promo={gift.promo} texts={texts.promo} money={money} formatDate={formatDate} compact />}
-        {canSwap && gift.swap && (
-          <div className="gc-btn-wrap" style={{ marginTop: 0, display: "inline-block" }}>
-            <button type="button" className="gc-btn gc-disp" onClick={() => void swap()} disabled={busy} aria-busy={busy}>
-              {texts.swapAction.replace("{d}", `−${money(gift.swap.amountMinor)}`)}
-            </button>
-          </div>
-        )}
-        {err && (
-          <p className="gc-err" role="alert" style={{ textAlign: "left" }}>
-            {texts.swapError}
-          </p>
-        )}
-      </div>
-    </section>
-  );
-}
+export { GiftCaseOrderPanel, hasGiftCaseOrderPanel, type GiftOrderPanelTexts } from "./gift-order-panel";
 
 /**
  * Cart: the three tiers as one segmented bar — each segment fills up to its threshold in the tier's

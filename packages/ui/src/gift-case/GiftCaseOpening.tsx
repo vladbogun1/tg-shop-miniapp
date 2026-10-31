@@ -23,26 +23,28 @@
  * screen. Everything app-specific — texts, image URLs, haptics, analytics — comes in through props.
  * `prefers-reduced-motion`: no spin, a short fade to the prize.
  */
-import { animate, AnimatePresence, motion, useMotionValue } from "framer-motion";
+import { AnimatePresence, motion, useMotionValue } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   buildCaseReel,
   CASE_RARITY_COLOR,
   caseRarityRank,
-  caseReelOffset,
   CASE_TIER_METAL,
   giftCaseOpenErrorCode,
   sortCasePrizes,
   type CaseItem,
   type GiftCaseOpen,
 } from "@shop/core/giftcase";
-import { caseOpenSound, caseRevealSound, caseStopSound, caseTick, isCaseAudioMuted, setCaseAudioMuted, unlockCaseAudio } from "./case-audio";
+import { caseOpenSound, caseRevealSound, isCaseAudioMuted, setCaseAudioMuted, unlockCaseAudio } from "./case-audio";
 import { playRevealBurst, useCaseOverlayLifecycle } from "./use-case-overlay";
-import { caseTierAsset, caseTierVars } from "./case-tier";
-import { CaseStyles, Icon, preload, reducedMotion, SPIN_EASE, SPIN_SECONDS, wait, type Stage } from "./case-opening-bits";
+import { caseTierVars } from "./case-tier";
+import { CaseStyles, openingShow, preload, reducedMotion, type Stage } from "./case-opening-bits";
+import { CaseBackdrop, CaseStage, CaseTopBar } from "./case-opening-chrome";
 import type { GiftCaseOpeningProps } from "./case-opening-types";
-import { RevealCard, SealedView, SpinView } from "./case-opening-views";
+import { RevealCard } from "./case-opening-views";
+import { useReelSpin } from "./use-case-reel-spin";
+import { useCaseSwap } from "./use-case-swap";
 
 export function GiftCaseOpening(props: GiftCaseOpeningProps) {
   const [mounted, setMounted] = useState(false);
@@ -88,8 +90,6 @@ function CaseOverlay({
   const [muted, setMuted] = useState(() => isCaseAudioMuted());
   const [tile, setTile] = useState({ w: 120, gap: 8 });
   const [run, setRun] = useState(0);
-  const [swapBusy, setSwapBusy] = useState(false);
-  const [swapErr, setSwapErr] = useState(false);
   const tier = result?.tier ?? tierProp;
 
   const shakeRef = useRef<HTMLDivElement>(null);
@@ -97,7 +97,6 @@ function CaseOverlay({
   // The reel mounts only after the sealed view has left (AnimatePresence "wait"), so the spin starts
   // when its viewport appears, not when the stage flips.
   const [vpEl, setVpEl] = useState<HTMLDivElement | null>(null);
-  const spunRun = useRef(0);
   const speedRef = useRef<HTMLDivElement>(null);
   const revealedOnce = useRef(false);
   const x = useMotionValue(0);
@@ -111,7 +110,6 @@ function CaseOverlay({
   useEffect(() => () => onClosableChange?.(true), [onClosableChange]);
 
   const { rootRef, canvasRef, burstRef, alive, anim } = useCaseOverlayLifecycle(closable, onClose);
-
 
   const urls = useCallback(
     (items: CaseItem[], size: number) =>
@@ -155,62 +153,22 @@ function CaseOverlay({
   );
 
   // Drives the reel once the strip for this run is on screen.
-  useEffect(() => {
-    if (stage !== "spin" || !result || run === 0 || spunRun.current === run) return;
-    const vp = vpEl;
-    if (!vp) return;
-    spunRun.current = run;
-    const vw = vp.clientWidth;
-    const step = tile.w + tile.gap;
-    const target = caseReelOffset({ tileWidth: tile.w, gap: tile.gap, viewportWidth: vw, jitter: 0.2 + Math.random() * 0.6 });
-    let lastIdx = Math.floor((vw / 2) / step);
-    let lastTick = 0;
-    let lastHaptic = 0;
-    let lastX = 0;
-    let lastT = performance.now();
-    const res = result;
-    const raf = requestAnimationFrame(() => {
-      anim.current = animate(x, -target, {
-        duration: SPIN_SECONDS,
-        ease: SPIN_EASE,
-        onUpdate: (v) => {
-          const idx = Math.floor((-v + vw / 2) / step);
-          const now = performance.now();
-          if (idx !== lastIdx) {
-            lastIdx = idx;
-            if (now - lastTick > 28) {
-              lastTick = now;
-              caseTick();
-            }
-            if (now - lastHaptic > 70) {
-              lastHaptic = now;
-              hapticsRef.current?.tick?.();
-            }
-          }
-          // speed lines: opacity only, follows the velocity
-          const dt = Math.max(1, now - lastT);
-          const speed = Math.abs(v - lastX) / dt; // px per ms
-          lastX = v;
-          lastT = now;
-          if (speedRef.current) speedRef.current.style.opacity = String(Math.min(0.9, Math.max(0, (speed - 0.6) / 4)));
-        },
-        onComplete: () => {
-          if (!alive.current) return;
-          if (speedRef.current) speedRef.current.style.opacity = "0";
-          caseStopSound();
-          hapticsRef.current?.stop?.();
-          setSpinDone(true);
-          window.setTimeout(() => alive.current && reveal(res, false), 380);
-        },
-      });
-    });
-    return () => {
-      cancelAnimationFrame(raf);
-      spunRun.current = 0;
-      anim.current?.stop();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- one run per `run`
-  }, [run, vpEl]);
+  useReelSpin({
+    stage,
+    result,
+    run,
+    vpEl,
+    tile,
+    x,
+    anim,
+    speedRef,
+    alive,
+    hapticsRef,
+    onStopped: (res) => {
+      setSpinDone(true);
+      window.setTimeout(() => alive.current && reveal(res, false), 380);
+    },
+  });
 
   const start = useCallback(async () => {
     unlockCaseAudio();
@@ -219,17 +177,7 @@ function CaseOverlay({
     setStage("opening");
     caseOpenSound();
     hapticsRef.current?.stop?.();
-    const show = reduced
-      ? wait(150)
-      : (async () => {
-          await wait(720);
-          if (!alive.current) return;
-          setFlash((n) => n + 1);
-          await wait(120);
-          if (!alive.current) return;
-          setLidOpen(true);
-          await wait(900);
-        })();
+    const show = openingShow(reduced, alive, () => setFlash((n) => n + 1), () => setLidOpen(true));
     try {
       const res = result ?? (await openCase());
       if (!alive.current) return;
@@ -266,24 +214,7 @@ function CaseOverlay({
   const won = result?.won ?? null;
   const rank = won ? caseRarityRank(won.rarity) : 0;
   const sortedPrizes = useMemo(() => sortCasePrizes(prizes), [prizes]);
-  const swap = result?.swap ?? null;
-  const swapped = !!swap?.swappedAt;
-  const canSwap = !!onSwap && !!swap?.available && !swapped && won?.kind === "PRODUCT";
-  const doSwap = async () => {
-    if (!onSwap || swapBusy) return;
-    setSwapBusy(true);
-    setSwapErr(false);
-    try {
-      const res = await onSwap();
-      if (!alive.current) return;
-      setResult(res);
-      hapticsRef.current?.success?.();
-    } catch {
-      if (alive.current) setSwapErr(true);
-    } finally {
-      if (alive.current) setSwapBusy(false);
-    }
-  };
+  const { swapped, canSwap, swapBusy, swapErr, doSwap } = useCaseSwap({ result, setResult, onSwap, alive, hapticsRef });
 
   return (
     <motion.div
@@ -300,57 +231,16 @@ function CaseOverlay({
       transition={{ duration: 0.3 }}
       onUpdate={() => {}}
     >
-      <div className="gc-scene" aria-hidden>
-        <picture>
-          <source media="(min-width: 768px)" srcSet={`${assetBase}/scene-wide.webp`} />
-          <img src={`${assetBase}/scene-tall.webp`} alt="" />
-        </picture>
-      </div>
-      <div className="gc-rays" aria-hidden />
-      {/* the case art is preloaded so the swap at the flash is instant */}
-      <link rel="preload" as="image" href={caseTierAsset(assetBase, tier, "case-open.webp")} />
+      <CaseBackdrop assetBase={assetBase} tier={tier} />
 
       <div ref={shakeRef} className="gc-shake" style={{ position: "absolute", inset: 0 }}>
         <div className="gc-body">
-          <AnimatePresence mode="wait" initial={false}>
-            {(stage === "sealed" || stage === "opening") && (
-              <SealedView
-                key="sealed"
-                stage={stage}
-                tier={tier}
-                texts={texts}
-                lidOpen={lidOpen}
-                error={error}
-                assetBase={assetBase}
-                sortedPrizes={sortedPrizes}
-                money={money}
-                resolveImage={resolveImage}
-                rules={rules}
-                onStart={() => void start()}
-              />
-            )}
-
-            {(stage === "spin" || stage === "reveal") && (
-              <SpinView
-                key="spin"
-                stage={stage}
-                tier={tier}
-                assetBase={assetBase}
-                texts={texts}
-                money={money}
-                resolveImage={resolveImage}
-                vpRef={vpRef}
-                setVpEl={setVpEl}
-                speedRef={speedRef}
-                x={x}
-                run={run}
-                spinDone={spinDone}
-                tile={tile}
-                reel={reel}
-                won={won}
-              />
-            )}
-          </AnimatePresence>
+          <CaseStage
+            stage={stage}
+            shared={{ tier, texts, assetBase, money, resolveImage }}
+            sealed={{ lidOpen, error, sortedPrizes, rules, onStart: () => void start() }}
+            spin={{ vpRef, setVpEl, speedRef, x, run, spinDone, tile, reel, won }}
+          />
         </div>
 
         <AnimatePresence>
@@ -381,14 +271,7 @@ function CaseOverlay({
       <div key={flash} className={`gc-flash ${flash ? "on" : ""}`} aria-hidden />
       <canvas ref={canvasRef} className="gc-canvas" aria-hidden />
 
-      <div className="gc-top">
-        <button type="button" className="gc-icon" onClick={onClose} disabled={!closable} aria-label={texts.close}>
-          {Icon.close}
-        </button>
-        <button type="button" className="gc-icon" onClick={toggleMute} aria-label={muted ? texts.soundOn : texts.soundOff} aria-pressed={muted}>
-          {muted ? Icon.mute : Icon.sound}
-        </button>
-      </div>
+      <CaseTopBar texts={texts} closable={closable} muted={muted} onClose={onClose} onToggleMute={toggleMute} />
     </motion.div>
   );
 }

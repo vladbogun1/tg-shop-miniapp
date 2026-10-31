@@ -104,38 +104,72 @@ export function Image({
   const srcSet = raw && sizes ? imgproxySrcSet(raw, IMAGE_BASE, size, fit) : undefined;
   const [near, nearRef] = useNearViewport(priority || eager);
 
-  if (!finalSrc || failed) {
-    return (
-      <div
-        className={`flex items-center justify-center bg-[var(--surface-2)] ${className ?? ""}`}
-        aria-label={alt}
-        role="img"
-      >
-        <span className="text-2xl opacity-40">🖼️</span>
-      </div>
-    );
-  }
+  if (!finalSrc || failed) return <ImageFallback alt={alt} className={className} />;
+
+  const state = { near, nearRef, finalSrc, alt, priority, loaded, onLoad: () => setLoaded(true), onError: () => setFailed(true) };
 
   // FIT: show the whole image at its natural aspect (no crop). The wrapper sizes to the image;
   // `className` (e.g. max-h-72 max-w-full) caps it.
-  if (fit) {
-    return (
-      <div ref={nearRef} className="relative flex justify-center overflow-hidden bg-[var(--surface-2)]">
-        {near && <img
-          src={finalSrc}
-          alt={alt}
-          fetchPriority={priority ? "high" : undefined}
-          decoding="async"
-          onLoad={() => setLoaded(true)}
-          onError={() => setFailed(true)}
-          className={`block h-auto w-auto object-contain transition-opacity duration-500 ${
-            className ?? ""
-          } ${loaded ? "opacity-100" : "opacity-0"}`}
-        />}
-      </div>
-    );
-  }
+  if (fit) return <FitImage {...state} className={className} />;
 
+  return <CoverImage {...state} className={className} srcSet={srcSet} sizes={sizes} />;
+}
+
+interface FrameProps {
+  near: boolean;
+  nearRef: (el: HTMLElement | null) => void;
+  finalSrc: string;
+  alt: string;
+  priority: boolean;
+  loaded: boolean;
+  onLoad: () => void;
+  onError: () => void;
+  className?: string;
+}
+
+function ImageFallback({ alt, className }: { alt: string; className?: string }) {
+  return (
+    <div
+      className={`flex items-center justify-center bg-[var(--surface-2)] ${className ?? ""}`}
+      aria-label={alt}
+      role="img"
+    >
+      <span className="text-2xl opacity-40">🖼️</span>
+    </div>
+  );
+}
+
+function FitImage({ near, nearRef, finalSrc, alt, priority, loaded, onLoad, onError, className }: FrameProps) {
+  return (
+    <div ref={nearRef} className="relative flex justify-center overflow-hidden bg-[var(--surface-2)]">
+      {near && <img
+        src={finalSrc}
+        alt={alt}
+        fetchPriority={priority ? "high" : undefined}
+        decoding="async"
+        onLoad={onLoad}
+        onError={onError}
+        className={`block h-auto w-auto object-contain transition-opacity duration-500 ${
+          className ?? ""
+        } ${loaded ? "opacity-100" : "opacity-0"}`}
+      />}
+    </div>
+  );
+}
+
+function CoverImage({
+  near,
+  nearRef,
+  finalSrc,
+  alt,
+  priority,
+  loaded,
+  onLoad,
+  onError,
+  className,
+  srcSet,
+  sizes,
+}: FrameProps & { srcSet?: string; sizes?: string }) {
   return (
     <div ref={nearRef} className={`relative overflow-hidden ${className ?? ""}`}>
       {!loaded && (
@@ -153,8 +187,8 @@ export function Image({
         alt={alt}
         fetchPriority={priority ? "high" : undefined}
         decoding="async"
-        onLoad={() => setLoaded(true)}
-        onError={() => setFailed(true)}
+        onLoad={onLoad}
+        onError={onError}
         className={`h-full w-full object-cover transition-opacity duration-500 ${
           loaded ? "opacity-100" : "opacity-0"
         }`}

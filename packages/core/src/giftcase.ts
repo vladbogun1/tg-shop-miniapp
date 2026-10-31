@@ -97,18 +97,23 @@ export interface GiftProgress extends GiftInfo {
 export function giftProgress(info: GiftInfo | null | undefined, totalMinor: number): GiftProgress | null {
   if (!info) return null;
   const total = Math.max(0, Math.round(totalMinor || 0));
-  if (info.kind === "CASE") {
-    const tiers = [...(info.tiers ?? [])].sort((a, b) => a.thresholdMinor - b.thresholdMinor);
-    if (!tiers.length) return null;
-    const reachedTiers = total > 0 ? tiers.filter((t) => total >= t.thresholdMinor) : [];
-    const tier = reachedTiers.length ? reachedTiers[reachedTiers.length - 1] : null;
-    const next = tiers.find((t) => t.thresholdMinor > total || total <= 0) ?? null;
-    const from = tier?.thresholdMinor ?? 0;
-    const remainingMinor = next ? Math.max(0, next.thresholdMinor - total) : 0;
-    const span = next ? next.thresholdMinor - from : 1;
-    const share = next ? Math.min(1, Math.max(0, (total - from) / Math.max(1, span))) : 1;
-    return { ...info, tier, next, remainingMinor, reached: !!tier, share };
-  }
+  return info.kind === "CASE" ? caseProgress(info, total) : productProgress(info, total);
+}
+
+function caseProgress(info: GiftInfo, total: number): GiftProgress | null {
+  const tiers = [...(info.tiers ?? [])].sort((a, b) => a.thresholdMinor - b.thresholdMinor);
+  if (!tiers.length) return null;
+  const reachedTiers = total > 0 ? tiers.filter((t) => total >= t.thresholdMinor) : [];
+  const tier = reachedTiers.length ? reachedTiers[reachedTiers.length - 1] : null;
+  const next = tiers.find((t) => t.thresholdMinor > total || total <= 0) ?? null;
+  const from = tier?.thresholdMinor ?? 0;
+  const remainingMinor = next ? Math.max(0, next.thresholdMinor - total) : 0;
+  const span = next ? next.thresholdMinor - from : 1;
+  const share = next ? Math.min(1, Math.max(0, (total - from) / Math.max(1, span))) : 1;
+  return { ...info, tier, next, remainingMinor, reached: !!tier, share };
+}
+
+function productProgress(info: GiftInfo, total: number): GiftProgress {
   const remainingMinor = Math.max(0, info.thresholdMinor - total);
   const reached = remainingMinor === 0 && total > 0;
   const share = info.thresholdMinor > 0 ? Math.min(1, Math.max(0, total / info.thresholdMinor)) : 1;

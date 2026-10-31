@@ -24,6 +24,10 @@ export function useCaseTierShort(): Record<CaseTier, string> {
   return Object.fromEntries(CASE_TIER_ORDER.map((r) => [r, t(`case.tierShort.${r}`)])) as Record<CaseTier, string>;
 }
 
+type Gift = NonNullable<ReturnType<typeof giftProgress>>;
+type View = NonNullable<ReturnType<typeof giftView>>;
+type Tr = ReturnType<typeof useT>;
+
 export function CartGiftProgress({ totalMinor, currency }: { totalMinor: number; currency: string }) {
   const t = useT();
   const rarity = useCaseRarityNames();
@@ -31,62 +35,13 @@ export function CartGiftProgress({ totalMinor, currency }: { totalMinor: number;
   const gift = giftProgress(useGift(), totalMinor);
   const view = giftView(gift);
   if (!gift || !view) return null;
-  const { isCase, shownTier, done, rarest } = view;
-  const acc = (tier: CaseTier) => t(`case.tierAcc.${tier}`);
+  const { isCase, shownTier, done } = view;
   return (
     <div className={`nb mt-4 p-3 ${isCase && done ? "border-[color-mix(in_srgb,var(--accent)_50%,transparent)]" : ""}`}>
       <div className="flex items-center gap-3">
-        {isCase ? (
-          <GiftCaseArt glow={done} tier={shownTier?.tier} className="h-12 w-[72px]" />
-        ) : (
-          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-[var(--r)] bg-[var(--surface-2)]">
-            <Image src={gift.product!.images?.[0]?.url} alt={gift.product!.title} size={120} className="h-full w-full" />
-            <span className="absolute -bottom-px -right-px grid h-5 w-5 place-items-center rounded-tl-[6px] bg-[var(--accent)] text-[var(--accent-ink)]">
-              <Gift className="h-3 w-3" strokeWidth={2.75} />
-            </span>
-          </div>
-        )}
+        <GiftThumb gift={gift} view={view} />
         <div className="min-w-0 flex-1">
-          {isCase ? (
-            <>
-              <p className={`text-[13px] font-semibold leading-snug ${done ? "text-[var(--accent-hi)]" : "text-[var(--ink)]"}`}>
-                {done && gift.tier
-                  ? t("case.reached", { tier: acc(gift.tier.tier) })
-                  : t("case.progress", { amount: money(gift.remainingMinor, currency), tier: acc(shownTier!.tier) })}
-              </p>
-              {done && gift.next && (
-                <p className="mt-0.5 text-[11px] font-semibold text-[var(--muted)]">
-                  {t("case.upgrade", { amount: money(gift.remainingMinor, currency), tier: acc(gift.next.tier) })}
-                </p>
-              )}
-              {rarest?.title && <p className="mt-0.5 line-clamp-1 text-[11px] text-[var(--muted)]">{t("case.teaser", { title: rarest.title })}</p>}
-              {!done && gift.tiers.length <= 1 && (
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-3)]">
-                  <motion.div
-                    className="h-full rounded-full bg-[var(--accent)]"
-                    initial={false}
-                    animate={{ width: `${Math.round(gift.share * 100)}%` }}
-                    transition={spring}
-                  />
-                </div>
-              )}
-            </>
-          ) : gift.reached ? (
-            <p className="text-[13px] font-semibold leading-snug text-[var(--ink)]">🎁 {t("case.giftReached", { title: gift.product!.title })}</p>
-          ) : (
-            <>
-              <p className="text-[13px] font-semibold leading-snug text-[var(--ink)]">{t("case.giftLeft", { amount: money(gift.remainingMinor, currency) })}</p>
-              <p className="line-clamp-1 text-[11px] text-[var(--muted)]">{gift.product!.title}</p>
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-3)]">
-                <motion.div
-                  className="h-full rounded-full bg-[var(--accent)]"
-                  initial={false}
-                  animate={{ width: `${Math.round(gift.share * 100)}%` }}
-                  transition={spring}
-                />
-              </div>
-            </>
-          )}
+          <GiftText gift={gift} view={view} currency={currency} t={t} />
         </div>
       </div>
       {isCase && gift.tiers.length > 1 && <GiftCaseTierLadder tiers={gift.tiers} totalMinor={totalMinor} names={short} money={caseMoney} />}
@@ -96,5 +51,67 @@ export function CartGiftProgress({ totalMinor, currency }: { totalMinor: number;
         </GiftCasePrizeDisclosure>
       )}
     </div>
+  );
+}
+
+function GiftThumb({ gift, view }: { gift: Gift; view: View }) {
+  if (view.isCase) {
+    return <GiftCaseArt glow={view.done} tier={view.shownTier?.tier} className="h-12 w-[72px]" />;
+  }
+  return (
+    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-[var(--r)] bg-[var(--surface-2)]">
+      <Image src={gift.product!.images?.[0]?.url} alt={gift.product!.title} size={120} className="h-full w-full" />
+      <span className="absolute -bottom-px -right-px grid h-5 w-5 place-items-center rounded-tl-[6px] bg-[var(--accent)] text-[var(--accent-ink)]">
+        <Gift className="h-3 w-3" strokeWidth={2.75} />
+      </span>
+    </div>
+  );
+}
+
+function ProgressBar({ share }: { share: number }) {
+  return (
+    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-3)]">
+      <motion.div
+        className="h-full rounded-full bg-[var(--accent)]"
+        initial={false}
+        animate={{ width: `${Math.round(share * 100)}%` }}
+        transition={spring}
+      />
+    </div>
+  );
+}
+
+function GiftText({ gift, view, currency, t }: { gift: Gift; view: View; currency: string; t: Tr }) {
+  if (view.isCase) return <CaseText gift={gift} view={view} currency={currency} t={t} />;
+  if (gift.reached) {
+    return <p className="text-[13px] font-semibold leading-snug text-[var(--ink)]">🎁 {t("case.giftReached", { title: gift.product!.title })}</p>;
+  }
+  return (
+    <>
+      <p className="text-[13px] font-semibold leading-snug text-[var(--ink)]">{t("case.giftLeft", { amount: money(gift.remainingMinor, currency) })}</p>
+      <p className="line-clamp-1 text-[11px] text-[var(--muted)]">{gift.product!.title}</p>
+      <ProgressBar share={gift.share} />
+    </>
+  );
+}
+
+function CaseText({ gift, view, currency, t }: { gift: Gift; view: View; currency: string; t: Tr }) {
+  const { shownTier, done, rarest } = view;
+  const acc = (tier: CaseTier) => t(`case.tierAcc.${tier}`);
+  return (
+    <>
+      <p className={`text-[13px] font-semibold leading-snug ${done ? "text-[var(--accent-hi)]" : "text-[var(--ink)]"}`}>
+        {done && gift.tier
+          ? t("case.reached", { tier: acc(gift.tier.tier) })
+          : t("case.progress", { amount: money(gift.remainingMinor, currency), tier: acc(shownTier!.tier) })}
+      </p>
+      {done && gift.next && (
+        <p className="mt-0.5 text-[11px] font-semibold text-[var(--muted)]">
+          {t("case.upgrade", { amount: money(gift.remainingMinor, currency), tier: acc(gift.next.tier) })}
+        </p>
+      )}
+      {rarest?.title && <p className="mt-0.5 line-clamp-1 text-[11px] text-[var(--muted)]">{t("case.teaser", { title: rarest.title })}</p>}
+      {!done && gift.tiers.length <= 1 && <ProgressBar share={gift.share} />}
+    </>
   );
 }

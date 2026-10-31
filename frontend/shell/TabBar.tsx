@@ -133,94 +133,153 @@ export function TabBar() {
         transform: tucked ? "translateY(calc(100% + 16px + var(--safe-bottom)))" : undefined,
       }}
     >
-      {TABS.map(({ href, labelKey, Icon }, i) => {
-        const active = compareOpen ? false : href === "/" ? pathname === "/" : pathname.startsWith(href);
-        const tab = (
-          <Link
-            key={href}
-            href={href}
-            onClick={(e) => {
-              // Tapping the tab you are already on did nothing — prod shows people tapping "Shop"
-              // on the shop again and again. Like native apps, it now scrolls back to the top.
-              if (pathname !== href) return;
-              e.preventDefault();
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
-            className="tap relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5"
-          >
-            {active && (
-              <motion.span
-                layoutId="tab-highlight"
-                transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                className="absolute left-1/2 top-[-5px] h-[2px] w-9 -translate-x-1/2 rounded-full bg-[var(--accent)] shadow-[0_0_10px_2px_rgba(255,102,0,.55)]"
-              />
-            )}
-            <span
-              key={href === "/cart" ? `cart-${bump}` : href}
-              className={`relative z-10 ${href === "/cart" && bump > 0 ? "tab-bump" : ""}`}
-            >
-              <Icon
-                className="h-5 w-5 transition-colors"
-                strokeWidth={active ? 2.25 : 2}
-                style={{ color: active ? "var(--accent)" : "var(--muted)" }}
-              />
-              {href === "/account" && heldCount > 0 && (
-                <span aria-hidden className="absolute -right-1 -top-0.5 h-2.5 w-2.5 rounded-full bg-[var(--accent)] ring-2 ring-[#1a1a1a]" />
-              )}
-              {href === "/cart" && cartCount > 0 && (
-                <span className="font-display absolute -right-2.5 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-bold leading-none text-[var(--accent-ink)] ring-2 ring-[#1a1a1a]">
-                  {cartCount > 99 ? "99+" : cartCount}
-                </span>
-              )}
-            </span>
-            <span
-              className="font-display relative z-10 text-[10px] font-semibold uppercase leading-3 tracking-[0.08em] transition-colors"
-              style={{ color: active ? "var(--accent)" : "var(--muted)" }}
-            >
-              {t(labelKey)}
-            </span>
-          </Link>
+      {TABS.map((tab, i) => {
+        const link = (
+          <TabLink
+            key={tab.href}
+            tab={tab}
+            pathname={pathname}
+            compareOpen={compareOpen}
+            bump={bump}
+            heldCount={heldCount}
+            cartCount={cartCount}
+            t={t}
+          />
         );
-        if (i !== 0 || !showCompare) return tab;
+        if (i !== 0 || !showCompare) return link;
         return [
-          tab,
-          <button
+          link,
+          <CompareTab
             key="compare"
-            type="button"
+            compareOpen={compareOpen}
+            compareCount={compareCount}
+            t={t}
             onClick={() => {
               // the comparison screen lives on the catalog page; from elsewhere go there first, the
               // open flag survives the navigation
               openCompare();
               if (pathname !== "/") router.push("/");
             }}
-            aria-label={t("compare.headerCount", { n: compareCount })}
-            className="tap relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5"
-          >
-            {compareOpen && (
-              <motion.span
-                layoutId="tab-highlight"
-                transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                className="absolute left-1/2 top-[-5px] h-[2px] w-9 -translate-x-1/2 rounded-full bg-[var(--accent)] shadow-[0_0_10px_2px_rgba(255,102,0,.55)]"
-              />
-            )}
-            <span className="relative z-10">
-              <Scale className="h-5 w-5 transition-colors" strokeWidth={compareOpen ? 2.25 : 2} style={{ color: compareOpen ? "var(--accent)" : "var(--muted)" }} />
-              <span
-                key={compareCount}
-                className="cmp-bump font-display absolute -right-2.5 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-bold leading-none text-[var(--accent-ink)] ring-2 ring-[#1a1a1a]"
-              >
-                {compareCount}
-              </span>
-            </span>
-            <span
-              className="font-display relative z-10 text-[10px] font-semibold uppercase leading-3 tracking-[0.08em] transition-colors"
-              style={{ color: compareOpen ? "var(--accent)" : "var(--muted)" }}
-            >
-              {t("compare.tab")}
-            </span>
-          </button>,
+          />,
         ];
       })}
     </nav>
+  );
+}
+
+type Tr = ReturnType<typeof useT>;
+type TabDef = (typeof TABS)[number];
+
+const HIGHLIGHT_CLASS =
+  "absolute left-1/2 top-[-5px] h-[2px] w-9 -translate-x-1/2 rounded-full bg-[var(--accent)] shadow-[0_0_10px_2px_rgba(255,102,0,.55)]";
+const BADGE_CLASS =
+  "font-display absolute -right-2.5 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-bold leading-none text-[var(--accent-ink)] ring-2 ring-[#1a1a1a]";
+
+function isTabActive(href: string, pathname: string, compareOpen: boolean) {
+  if (compareOpen) return false;
+  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+}
+
+function TabLink({
+  tab: { href, labelKey, Icon },
+  pathname,
+  compareOpen,
+  bump,
+  heldCount,
+  cartCount,
+  t,
+}: {
+  tab: TabDef;
+  pathname: string;
+  compareOpen: boolean;
+  bump: number;
+  heldCount: number;
+  cartCount: number;
+  t: Tr;
+}) {
+  const active = isTabActive(href, pathname, compareOpen);
+  return (
+    <Link
+      href={href}
+      onClick={(e) => {
+        // Tapping the tab you are already on did nothing — prod shows people tapping "Shop"
+        // on the shop again and again. Like native apps, it now scrolls back to the top.
+        if (pathname !== href) return;
+        e.preventDefault();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }}
+      className="tap relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5"
+    >
+      {active && (
+        <motion.span
+          layoutId="tab-highlight"
+          transition={{ type: "spring", stiffness: 420, damping: 34 }}
+          className={HIGHLIGHT_CLASS}
+        />
+      )}
+      <span
+        key={href === "/cart" ? `cart-${bump}` : href}
+        className={`relative z-10 ${href === "/cart" && bump > 0 ? "tab-bump" : ""}`}
+      >
+        <Icon
+          className="h-5 w-5 transition-colors"
+          strokeWidth={active ? 2.25 : 2}
+          style={{ color: active ? "var(--accent)" : "var(--muted)" }}
+        />
+        {href === "/account" && heldCount > 0 && (
+          <span aria-hidden className="absolute -right-1 -top-0.5 h-2.5 w-2.5 rounded-full bg-[var(--accent)] ring-2 ring-[#1a1a1a]" />
+        )}
+        {href === "/cart" && cartCount > 0 && (
+          <span className={BADGE_CLASS}>{cartCount > 99 ? "99+" : cartCount}</span>
+        )}
+      </span>
+      <span
+        className="font-display relative z-10 text-[10px] font-semibold uppercase leading-3 tracking-[0.08em] transition-colors"
+        style={{ color: active ? "var(--accent)" : "var(--muted)" }}
+      >
+        {t(labelKey)}
+      </span>
+    </Link>
+  );
+}
+
+function CompareTab({
+  compareOpen,
+  compareCount,
+  t,
+  onClick,
+}: {
+  compareOpen: boolean;
+  compareCount: number;
+  t: Tr;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={t("compare.headerCount", { n: compareCount })}
+      className="tap relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5"
+    >
+      {compareOpen && (
+        <motion.span
+          layoutId="tab-highlight"
+          transition={{ type: "spring", stiffness: 420, damping: 34 }}
+          className={HIGHLIGHT_CLASS}
+        />
+      )}
+      <span className="relative z-10">
+        <Scale className="h-5 w-5 transition-colors" strokeWidth={compareOpen ? 2.25 : 2} style={{ color: compareOpen ? "var(--accent)" : "var(--muted)" }} />
+        <span key={compareCount} className={`cmp-bump ${BADGE_CLASS}`}>
+          {compareCount}
+        </span>
+      </span>
+      <span
+        className="font-display relative z-10 text-[10px] font-semibold uppercase leading-3 tracking-[0.08em] transition-colors"
+        style={{ color: compareOpen ? "var(--accent)" : "var(--muted)" }}
+      >
+        {t("compare.tab")}
+      </span>
+    </button>
   );
 }

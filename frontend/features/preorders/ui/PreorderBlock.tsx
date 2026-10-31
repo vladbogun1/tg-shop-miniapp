@@ -12,6 +12,39 @@ import { PRE_COLOR } from "@/features/preorders/ui/colors";
 import { useI18n } from "@/i18n/context";
 import { DEFAULT_HOLD_HOURS, etaWhen, holdUntilText, type MyPreorder, type PreorderEta } from "@/features/preorders/state";
 
+type Tr = ReturnType<typeof useI18n>["t"];
+
+function PreorderTimeline({ eta, t }: { eta: PreorderEta; t: Tr }) {
+  const steps = [
+    { key: "ordered", label: t("preorder.step.ordered"), done: true },
+    { key: "transit", label: t("preorder.step.transit"), done: eta.stage === "in_transit" },
+    { key: "stock", label: t("preorder.step.stock"), done: false },
+  ];
+  return (
+    <ol className="mt-3 flex items-start" aria-label={t("preorder.block.title")}>
+      {steps.map((s, i) => (
+        <li key={s.key} className="relative flex min-w-0 flex-1 flex-col items-center gap-1.5 text-center">
+          {i > 0 && (
+            <span
+              aria-hidden
+              className="absolute right-1/2 top-[7px] h-[2px] w-full"
+              style={{ background: s.done ? PRE_COLOR : "var(--line-strong)" }}
+            />
+          )}
+          <span
+            aria-hidden
+            className="relative z-10 h-4 w-4 rounded-full border-2"
+            style={{ borderColor: s.done ? PRE_COLOR : "var(--line-strong)", background: s.done ? PRE_COLOR : "var(--surface)" }}
+          />
+          <span className="px-0.5 text-[11px] font-semibold leading-tight" style={{ color: s.done ? "var(--ink)" : "var(--faint)" }}>
+            {s.label}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 export function PreorderBlock({
   eta,
   waitingCount,
@@ -29,12 +62,6 @@ export function PreorderBlock({
 }) {
   const { t, tag } = useI18n();
   const when = etaWhen(eta, t, tag);
-  const transit = eta?.stage === "in_transit";
-  const steps = [
-    { key: "ordered", label: t("preorder.step.ordered"), done: true },
-    { key: "transit", label: t("preorder.step.transit"), done: transit },
-    { key: "stock", label: t("preorder.step.stock"), done: false },
-  ];
 
   return (
     <div className="nb mt-5 p-4" style={eta ? { borderColor: "color-mix(in srgb, var(--st-approved) 40%, transparent)" } : undefined}>
@@ -43,29 +70,7 @@ export function PreorderBlock({
         {eta ? t("preorder.block.title") : t("preorder.block.titleOut")}
       </p>
 
-      {eta && (
-        <ol className="mt-3 flex items-start" aria-label={t("preorder.block.title")}>
-          {steps.map((s, i) => (
-            <li key={s.key} className="relative flex min-w-0 flex-1 flex-col items-center gap-1.5 text-center">
-              {i > 0 && (
-                <span
-                  aria-hidden
-                  className="absolute right-1/2 top-[7px] h-[2px] w-full"
-                  style={{ background: s.done ? PRE_COLOR : "var(--line-strong)" }}
-                />
-              )}
-              <span
-                aria-hidden
-                className="relative z-10 h-4 w-4 rounded-full border-2"
-                style={{ borderColor: s.done ? PRE_COLOR : "var(--line-strong)", background: s.done ? PRE_COLOR : "var(--surface)" }}
-              />
-              <span className="px-0.5 text-[11px] font-semibold leading-tight" style={{ color: s.done ? "var(--ink)" : "var(--faint)" }}>
-                {s.label}
-              </span>
-            </li>
-          ))}
-        </ol>
-      )}
+      {eta && <PreorderTimeline eta={eta} t={t} />}
 
       {when && (
         <p className="mt-3 flex items-center gap-1.5 text-[14px] font-semibold text-[var(--ink)]">

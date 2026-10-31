@@ -43,7 +43,7 @@ export function ProductCard({
   const hasVariants = (product.variants?.length ?? 0) > 0;
   const inStock = availabilityOf(product) === "in_stock";
 
-  const showPhoto = inStock || (preorder != null && preorder.kind !== "out");
+  const showPhoto = shouldShowPhoto(inStock, preorder);
   const etaLine = preorder?.kind === "preorder" ? etaCardLine(preorder.eta, t, tag) : null;
   const notify = () => {
     haptic();
@@ -69,35 +69,8 @@ export function ProductCard({
           />
           {/* Solid fill, no backdrop-blur: one blurred layer per card meant ~200 of them in the
               catalog, which the iOS webview pays for on every scroll frame. */}
-          {(() => {
-            const kind = preorder?.kind;
-            const color = inStock ? "var(--ok)" : kind === "held" ? "var(--ok)" : kind === "preorder" ? PRE_COLOR : "var(--muted)";
-            const label = inStock
-              ? t("product.inStock")
-              : kind === "held"
-                ? t("preorder.badge.held")
-                : kind === "preorder"
-                  ? t("preorder.badge")
-                  : t("product.outOfStockShort");
-            return (
-              <span
-                className="font-display absolute left-2 top-2 inline-flex max-w-[calc(100%-16px)] items-center gap-1 rounded-full bg-[rgba(14,14,16,.86)] px-2 py-[3px] text-[10px] font-semibold uppercase tracking-[0.06em]"
-                style={{ color }}
-              >
-                {kind === "preorder" ? (
-                  <Truck aria-hidden className="h-3 w-3 shrink-0" strokeWidth={2.5} />
-                ) : (
-                  <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: inStock || kind === "held" ? "var(--ok)" : "var(--faint)" }} />
-                )}
-                <span className="truncate">{label}</span>
-              </span>
-            );
-          })()}
-          {product.condition && product.condition !== "NEW" && (
-            <span className="font-display absolute bottom-2 left-2 rounded-full bg-[var(--accent)] px-2 py-[3px] text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--accent-ink)]">
-              {product.condition === "USED" ? t("catalog.cond.used") : t("catalog.cond.markdown")}
-            </span>
-          )}
+          <StatusBadge inStock={inStock} preorder={preorder} t={t} />
+          <ConditionBadge condition={product.condition} t={t} />
         </div>
 
         <div className="flex flex-col gap-1.5 px-3 pt-2.5">
@@ -118,44 +91,16 @@ export function ProductCard({
       </button>
 
       <div className="mt-auto p-2.5 pt-3">
-        {preorder?.kind === "held" ? (
-          <button type="button" onClick={open} className="nb-accent nb-press nb-up flex h-11 w-full items-center justify-center gap-1.5 px-3 text-[13px]">
-            <span className="truncate">{t("preorder.card.held")}</span>
-          </button>
-        ) : preorder && (onNotify || hasVariants) ? (
-          preorder.queued ? (
-            <button
-              type="button"
-              onClick={notify}
-              className="nb-up nb-press flex h-11 w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3 text-[13px] font-semibold text-[var(--ok)]"
-            >
-              <Check className="h-4 w-4 shrink-0 max-[359px]:hidden" strokeWidth={2.75} />
-              <span className="truncate">{t("preorder.card.queued")}</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={notify}
-              className="nb-up nb-press flex h-11 w-full items-center justify-center gap-1.5 rounded-[var(--r)] border-2 bg-transparent px-3 text-[13px] font-bold"
-              style={{ borderColor: preorder.kind === "preorder" ? PRE_COLOR : "var(--line-strong)", color: preorder.kind === "preorder" ? PRE_COLOR : "var(--ink)" }}
-            >
-              <Bell className="h-4 w-4 shrink-0 max-[359px]:hidden" strokeWidth={2.5} />
-              <span className="truncate">{t("preorder.card.notify")}</span>
-            </button>
-          )
-        ) : hasVariants ? (
-          <button
-            type="button"
-            onClick={open}
-            disabled={!inStock}
-            className="nb-accent nb-press nb-up flex h-11 w-full items-center justify-center gap-1.5 px-3 text-[13px] disabled:opacity-50"
-          >
-            <SlidersHorizontal className="h-4 w-4 shrink-0 max-[359px]:hidden" strokeWidth={2.5} />
-            {inStock ? t("product.choose") : t("product.outOfStock")}
-          </button>
-        ) : (
-          <AddToCartControl product={product} variant={null} fullWidth size="sm" />
-        )}
+        <CardAction
+          product={product}
+          preorder={preorder}
+          inStock={inStock}
+          hasVariants={hasVariants}
+          canNotify={!!onNotify}
+          open={open}
+          notify={notify}
+          t={t}
+        />
       </div>
       {compareGroup && <CompareCardToggle productId={product.id} group={compareGroup} />}
       {/* desktop hover: orange strip along the bottom edge */}
@@ -165,4 +110,110 @@ export function ProductCard({
       />
     </div>
   );
+}
+
+type Tr = ReturnType<typeof useI18n>["t"];
+
+function badgeKind(inStock: boolean, kind: PreorderCardState["kind"] | undefined) {
+  if (inStock) return { color: "var(--ok)", labelKey: "product.inStock" } as const;
+  if (kind === "held") return { color: "var(--ok)", labelKey: "preorder.badge.held" } as const;
+  if (kind === "preorder") return { color: PRE_COLOR, labelKey: "preorder.badge" } as const;
+  return { color: "var(--muted)", labelKey: "product.outOfStockShort" } as const;
+}
+
+function StatusBadge({ inStock, preorder, t }: { inStock: boolean; preorder: PreorderCardState | null; t: Tr }) {
+  const kind = preorder?.kind;
+  const { color, labelKey } = badgeKind(inStock, kind);
+  const label = t(labelKey);
+  return (
+    <span
+      className="font-display absolute left-2 top-2 inline-flex max-w-[calc(100%-16px)] items-center gap-1 rounded-full bg-[rgba(14,14,16,.86)] px-2 py-[3px] text-[10px] font-semibold uppercase tracking-[0.06em]"
+      style={{ color }}
+    >
+      {kind === "preorder" ? (
+        <Truck aria-hidden className="h-3 w-3 shrink-0" strokeWidth={2.5} />
+      ) : (
+        <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: inStock || kind === "held" ? "var(--ok)" : "var(--faint)" }} />
+      )}
+      <span className="truncate">{label}</span>
+    </span>
+  );
+}
+
+function ConditionBadge({ condition, t }: { condition: Product["condition"]; t: Tr }) {
+  if (!condition || condition === "NEW") return null;
+  return (
+    <span className="font-display absolute bottom-2 left-2 rounded-full bg-[var(--accent)] px-2 py-[3px] text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--accent-ink)]">
+      {condition === "USED" ? t("catalog.cond.used") : t("catalog.cond.markdown")}
+    </span>
+  );
+}
+
+function CardAction({
+  product,
+  preorder,
+  inStock,
+  hasVariants,
+  canNotify,
+  open,
+  notify,
+  t,
+}: {
+  product: Product;
+  preorder: PreorderCardState | null;
+  inStock: boolean;
+  hasVariants: boolean;
+  canNotify: boolean;
+  open: () => void;
+  notify: () => void;
+  t: Tr;
+}) {
+  if (preorder?.kind === "held") {
+    return (
+      <button type="button" onClick={open} className="nb-accent nb-press nb-up flex h-11 w-full items-center justify-center gap-1.5 px-3 text-[13px]">
+        <span className="truncate">{t("preorder.card.held")}</span>
+      </button>
+    );
+  }
+  if (preorder && (canNotify || hasVariants)) {
+    return preorder.queued ? (
+      <button
+        type="button"
+        onClick={notify}
+        className="nb-up nb-press flex h-11 w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3 text-[13px] font-semibold text-[var(--ok)]"
+      >
+        <Check className="h-4 w-4 shrink-0 max-[359px]:hidden" strokeWidth={2.75} />
+        <span className="truncate">{t("preorder.card.queued")}</span>
+      </button>
+    ) : (
+      <button
+        type="button"
+        onClick={notify}
+        className="nb-up nb-press flex h-11 w-full items-center justify-center gap-1.5 rounded-[var(--r)] border-2 bg-transparent px-3 text-[13px] font-bold"
+        style={{ borderColor: preorder.kind === "preorder" ? PRE_COLOR : "var(--line-strong)", color: preorder.kind === "preorder" ? PRE_COLOR : "var(--ink)" }}
+      >
+        <Bell className="h-4 w-4 shrink-0 max-[359px]:hidden" strokeWidth={2.5} />
+        <span className="truncate">{t("preorder.card.notify")}</span>
+      </button>
+    );
+  }
+  if (hasVariants) {
+    return (
+      <button
+        type="button"
+        onClick={open}
+        disabled={!inStock}
+        className="nb-accent nb-press nb-up flex h-11 w-full items-center justify-center gap-1.5 px-3 text-[13px] disabled:opacity-50"
+      >
+        <SlidersHorizontal className="h-4 w-4 shrink-0 max-[359px]:hidden" strokeWidth={2.5} />
+        {inStock ? t("product.choose") : t("product.outOfStock")}
+      </button>
+    );
+  }
+  return <AddToCartControl product={product} variant={null} fullWidth size="sm" />;
+}
+
+/** Out-of-stock photos are desaturated unless the product is held / pre-orderable. */
+function shouldShowPhoto(inStock: boolean, preorder: PreorderCardState | null) {
+  return inStock || (preorder != null && preorder.kind !== "out");
 }

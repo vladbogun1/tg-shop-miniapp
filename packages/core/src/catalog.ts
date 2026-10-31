@@ -8,7 +8,10 @@
  */
 
 import type { Schemas } from "./api/schemas";
+import { parseRange } from "./catalog-url";
 import { toMajor } from "./money";
+
+export { filterForCategory, filterFromParams, filterToParams, parseRange, toggleFacet } from "./catalog-url";
 
 // ---- schema ---------------------------------------------------------------------
 
@@ -119,30 +122,37 @@ const nf = (locale: string) => new Intl.NumberFormat(locale === "en" ? "en-US" :
 export function formatSpec(attr: SpecAttribute, value: unknown, locale: string, yesNo: [string, string]): string | null {
   if (value === undefined || value === null) return null;
   const unit = attr.unit ? ` ${attr.unit}` : "";
-  const f = nf(locale);
-  switch (attr.type) {
-    case "number":
-      if (typeof value === "number") return f.format(value) + unit;
-      if (typeof value === "object" && !Array.isArray(value)) {
-        const r = value as { min: number; max: number };
-        return r.min === r.max ? f.format(r.min) + unit : `${f.format(r.min)}–${f.format(r.max)}${unit}`;
-      }
-      return null;
-    case "enum": {
-      const o = attr.options?.find((x) => x.value === value);
-      return o ? o.label : null;
-    }
-    case "multi": {
-      if (!Array.isArray(value) || value.length === 0) return null;
-      const labels = value.map((v) => attr.options?.find((x) => x.value === v)?.label).filter(Boolean);
-      return labels.length ? labels.join(", ") : null;
-    }
-    case "bool":
-      return typeof value === "boolean" ? (value ? yesNo[0] : yesNo[1]) : null;
-    case "text":
-      return typeof value === "string" && value.trim() ? value.trim() : null;
-  }
+  return SPEC_FORMATTERS[attr.type]?.({ attr, value, f: nf(locale), unit, yesNo });
 }
+
+interface SpecFormatArgs {
+  attr: SpecAttribute;
+  value: unknown;
+  f: Intl.NumberFormat;
+  unit: string;
+  yesNo: [string, string];
+}
+
+function formatNumberSpec({ value, f, unit }: SpecFormatArgs): string | null {
+  if (typeof value === "number") return f.format(value) + unit;
+  if (typeof value !== "object" || Array.isArray(value)) return null;
+  const r = value as { min: number; max: number };
+  return r.min === r.max ? f.format(r.min) + unit : `${f.format(r.min)}–${f.format(r.max)}${unit}`;
+}
+
+function formatMultiSpec({ attr, value }: SpecFormatArgs): string | null {
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const labels = value.map((v) => attr.options?.find((x) => x.value === v)?.label).filter(Boolean);
+  return labels.length ? labels.join(", ") : null;
+}
+
+const SPEC_FORMATTERS: Record<SpecType, (a: SpecFormatArgs) => string | null> = {
+  number: formatNumberSpec,
+  enum: ({ attr, value }) => attr.options?.find((x) => x.value === value)?.label ?? null,
+  multi: formatMultiSpec,
+  bool: ({ value, yesNo }) => (typeof value === "boolean" ? (value ? yesNo[0] : yesNo[1]) : null),
+  text: ({ value }) => (typeof value === "string" && value.trim() ? value.trim() : null),
+};
 
 /** Grouped rows for the "Характеристики" block; empty groups are dropped. */
 export function specRows(schema: CatalogSchema, categoryId: string | null | undefined, specs: Readonly<Record<string, unknown>> | null | undefined, locale: string, yesNo: [string, string]) {
@@ -241,15 +251,6 @@ function numericOf(v: unknown): { min: number; max: number } | null {
   return null;
 }
 
-export function parseRange(s: string | undefined): { min: number | null; max: number | null } | null {
-  if (!s || !s.includes("..")) return null;
-  const [a, b] = s.split("..");
-  const min = a.trim() === "" ? null : Number(a);
-  const max = b.trim() === "" ? null : Number(b);
-  if ((min !== null && !Number.isFinite(min)) || (max !== null && !Number.isFinite(max))) return null;
-  return { min, max };
-}
-
 function matchesAttr(attr: SpecAttribute, value: unknown, selected: string[]): boolean {
   if (selected.length === 0) return true;
   switch (attr.type) {
@@ -291,29 +292,44 @@ function resolve(schema: CatalogSchema, filter: CatalogFilter) {
 
 type Ctx = ReturnType<typeof resolve>;
 
-/** Everything except the facet named `skip` ("brand" | "cond" | "price" | attribute key). */
-function matches<P extends FilterableProduct>(p: P, f: CatalogFilter, ctx: Ctx, skip?: string): boolean {
-  if (ctx.scope && !(p.categoryId && ctx.scope.has(p.categoryId))) return false;
-  if (ctx.markdownOnly && (p.condition ?? "NEW") === "NEW") return false;
-  if (f.inStock && !(effectiveStock(p) > 0)) return false;
-  if (f.q) {
-    const q = normalize(f.q);
-    const hay = normalize(`${p.title} ${p.brandRef?.name ?? ""}`);
-    if (!q.split(" ").every((w) => hay.includes(w))) return false;
-  }
-  if (skip !== "brand" && f.brands?.length && !(p.brandRef && f.brands.includes(p.brandRef.slug))) return false;
-  if (skip !== "cond" && f.conditions?.length && !f.conditions.includes(p.condition ?? "NEW")) return false;
-  if (skip !== "price") {
-    const uah = toMajor(p.priceMinor);
-    if (f.priceMin != null && uah < f.priceMin) return false;
-    if (f.priceMax != null && uah > f.priceMax) return false;
-  }
+function matchesQuery(p: FilterableProduct, q: string): boolean {
+  const hay = normalize(`${p.title} ${p.brandRef?.name ?? ""}`);
+  return normalize(q).split(" ").every((w) => hay.includes(w));
+}
+
+function matchesPrice(p: FilterableProduct, f: CatalogFilter): boolean {
+  const uah = toMajor(p.priceMinor);
+  if (f.priceMin != null && uah < f.priceMin) return false;
+  return !(f.priceMax != null && uah > f.priceMax);
+}
+
+function matchesAttrs(p: FilterableProduct, f: CatalogFilter, ctx: Ctx, skip?: string): boolean {
   for (const a of ctx.attrs) {
     if (!a.filterable || a.key === skip) continue;
     const sel = f.attrs?.[a.key];
     if (sel?.length && !matchesAttr(a, p.specs?.[a.key], sel)) return false;
   }
   return true;
+}
+
+function matchesScope(p: FilterableProduct, ctx: Ctx): boolean {
+  if (ctx.scope && !(p.categoryId && ctx.scope.has(p.categoryId))) return false;
+  return !(ctx.markdownOnly && (p.condition ?? "NEW") === "NEW");
+}
+
+function matchesBrandAndCondition(p: FilterableProduct, f: CatalogFilter, skip?: string): boolean {
+  if (skip !== "brand" && f.brands?.length && !(p.brandRef && f.brands.includes(p.brandRef.slug))) return false;
+  return !(skip !== "cond" && f.conditions?.length && !f.conditions.includes(p.condition ?? "NEW"));
+}
+
+/** Everything except the facet named `skip` ("brand" | "cond" | "price" | attribute key). */
+function matches<P extends FilterableProduct>(p: P, f: CatalogFilter, ctx: Ctx, skip?: string): boolean {
+  if (!matchesScope(p, ctx)) return false;
+  if (f.inStock && !(effectiveStock(p) > 0)) return false;
+  if (f.q && !matchesQuery(p, f.q)) return false;
+  if (!matchesBrandAndCondition(p, f, skip)) return false;
+  if (skip !== "price" && !matchesPrice(p, f)) return false;
+  return matchesAttrs(p, f, ctx, skip);
 }
 
 export function filterProducts<P extends FilterableProduct>(schema: CatalogSchema, products: P[], filter: CatalogFilter): P[] {
@@ -334,68 +350,78 @@ export function buildFacets<P extends FilterableProduct>(
   labels: { brand: string; condition: string },
 ): Facet[] {
   const ctx = resolve(schema, filter);
-  const out: Facet[] = [];
   const pool = (skip: string) => products.filter((p) => matches(p, filter, ctx, skip));
+  const out: Facet[] = [];
+  const push = (f: Facet | null) => {
+    if (f) out.push(f);
+  };
 
-  // brand
-  {
-    const base = pool("brand");
-    const counts = new Map<string, number>();
-    for (const p of base) if (p.brandRef) counts.set(p.brandRef.slug, (counts.get(p.brandRef.slug) ?? 0) + 1);
-    const sel = new Set(filter.brands ?? []);
-    const values = schema.brands
-      .filter((b) => counts.has(b.slug) || sel.has(b.slug))
-      .map((b) => ({ value: b.slug, label: b.name, count: counts.get(b.slug) ?? 0, selected: sel.has(b.slug) }))
-      .sort((a, b) => Number(b.selected) - Number(a.selected) || b.count - a.count || a.label.localeCompare(b.label));
-    if (values.length > 1 || sel.size) out.push({ key: "brand", label: labels.brand, kind: "options", values });
-  }
-
+  push(brandFacet(schema, pool("brand"), filter, labels.brand));
   // condition (hidden inside the markdown collection itself)
-  if (!ctx.markdownOnly) {
-    const base = pool("cond");
-    const sel = new Set(filter.conditions ?? []);
-    const values = schema.conditions
-      .map((c) => ({ value: c.value, label: c.label, count: base.filter((p) => (p.condition ?? "NEW") === c.value).length, selected: sel.has(c.value) }))
-      .filter((v) => v.count > 0 || v.selected);
-    if (values.length > 1 || sel.size) out.push({ key: "cond", label: labels.condition, kind: "options", values });
-  }
-
+  if (!ctx.markdownOnly) push(conditionFacet(schema, pool("cond"), filter, labels.condition));
   for (const a of ctx.attrs) {
     if (!a.filterable || a.type === "text") continue;
-    const base = pool(a.key);
-    const sel = filter.attrs?.[a.key] ?? [];
-    if (a.type === "enum" || a.type === "multi") {
-      const values = (a.options ?? [])
-        .map((o) => ({
-          value: o.value,
-          label: o.label,
-          count: base.filter((p) => matchesAttr(a, p.specs?.[a.key], [o.value])).length,
-          selected: sel.includes(o.value),
-        }))
-        .filter((v) => v.count > 0 || v.selected);
-      if (values.length > 1 || sel.length) out.push({ key: a.key, label: a.label, kind: "options", group: a.group, unit: a.unit, values });
-    } else if (a.type === "bool") {
-      const count = base.filter((p) => p.specs?.[a.key] === true).length;
-      if (count > 0 || sel.length) {
-        out.push({ key: a.key, label: a.label, kind: "bool", group: a.group, values: [{ value: "1", label: a.label, count, selected: sel.length > 0 }] });
-      }
-    } else if (a.type === "number") {
-      if (a.buckets?.length) {
-        const values = a.buckets
-          .map((b) => ({ value: b.id, label: b.label ?? b.id, count: base.filter((p) => matchesAttr(a, p.specs?.[a.key], [b.id])).length, selected: sel.includes(b.id) }))
-          .filter((v) => v.count > 0 || v.selected);
-        if (values.length > 1 || sel.length) out.push({ key: a.key, label: a.label, kind: "options", group: a.group, unit: a.unit, values });
-      } else {
-        const nums = base.map((p) => numericOf(p.specs?.[a.key])).filter((x): x is { min: number; max: number } => !!x);
-        if (nums.length < 2 && !sel.length) continue;
-        const min = Math.min(...nums.map((n) => n.min));
-        const max = Math.max(...nums.map((n) => n.max));
-        if (min === max && !sel.length) continue;
-        out.push({ key: a.key, label: a.label, kind: "range", group: a.group, unit: a.unit, values: [], min, max, selectedRange: parseRange(sel[0]) ?? undefined });
-      }
-    }
+    push(attrFacet(a, pool(a.key), filter.attrs?.[a.key] ?? []));
   }
   return out;
+}
+
+function brandFacet(schema: CatalogSchema, base: FilterableProduct[], filter: CatalogFilter, label: string): Facet | null {
+  const counts = new Map<string, number>();
+  for (const p of base) if (p.brandRef) counts.set(p.brandRef.slug, (counts.get(p.brandRef.slug) ?? 0) + 1);
+  const sel = new Set(filter.brands ?? []);
+  const values = schema.brands
+    .filter((b) => counts.has(b.slug) || sel.has(b.slug))
+    .map((b) => ({ value: b.slug, label: b.name, count: counts.get(b.slug) ?? 0, selected: sel.has(b.slug) }))
+    .sort((a, b) => Number(b.selected) - Number(a.selected) || b.count - a.count || a.label.localeCompare(b.label));
+  return values.length > 1 || sel.size ? { key: "brand", label, kind: "options", values } : null;
+}
+
+function conditionFacet(schema: CatalogSchema, base: FilterableProduct[], filter: CatalogFilter, label: string): Facet | null {
+  const sel = new Set(filter.conditions ?? []);
+  const values = schema.conditions
+    .map((c) => ({ value: c.value, label: c.label, count: base.filter((p) => (p.condition ?? "NEW") === c.value).length, selected: sel.has(c.value) }))
+    .filter((v) => v.count > 0 || v.selected);
+  return values.length > 1 || sel.size ? { key: "cond", label, kind: "options", values } : null;
+}
+
+/** Options facet from `{value,label}` candidates: zero-count unselected values dropped, < 2 values without selection → no facet. */
+function optionsFacet(a: SpecAttribute, base: FilterableProduct[], sel: string[], candidates: { value: string; label: string }[]): Facet | null {
+  const values = candidates
+    .map((o) => ({ value: o.value, label: o.label, count: base.filter((p) => matchesAttr(a, p.specs?.[a.key], [o.value])).length, selected: sel.includes(o.value) }))
+    .filter((v) => v.count > 0 || v.selected);
+  return values.length > 1 || sel.length ? { key: a.key, label: a.label, kind: "options", group: a.group, unit: a.unit, values } : null;
+}
+
+function boolFacet(a: SpecAttribute, base: FilterableProduct[], sel: string[]): Facet | null {
+  const count = base.filter((p) => p.specs?.[a.key] === true).length;
+  if (count === 0 && !sel.length) return null;
+  return { key: a.key, label: a.label, kind: "bool", group: a.group, values: [{ value: "1", label: a.label, count, selected: sel.length > 0 }] };
+}
+
+function rangeFacet(a: SpecAttribute, base: FilterableProduct[], sel: string[]): Facet | null {
+  const nums = base.map((p) => numericOf(p.specs?.[a.key])).filter((x): x is { min: number; max: number } => !!x);
+  if (nums.length < 2 && !sel.length) return null;
+  const min = Math.min(...nums.map((n) => n.min));
+  const max = Math.max(...nums.map((n) => n.max));
+  if (min === max && !sel.length) return null;
+  return { key: a.key, label: a.label, kind: "range", group: a.group, unit: a.unit, values: [], min, max, selectedRange: parseRange(sel[0]) ?? undefined };
+}
+
+function attrFacet(a: SpecAttribute, base: FilterableProduct[], sel: string[]): Facet | null {
+  switch (a.type) {
+    case "enum":
+    case "multi":
+      return optionsFacet(a, base, sel, a.options ?? []);
+    case "bool":
+      return boolFacet(a, base, sel);
+    case "number":
+      return a.buckets?.length
+        ? optionsFacet(a, base, sel, a.buckets.map((b) => ({ value: b.id, label: b.label ?? b.id })))
+        : rangeFacet(a, base, sel);
+    default:
+      return null;
+  }
 }
 
 /** Price bounds (UAH) of the selection ignoring the price filter itself. */
@@ -414,64 +440,4 @@ export function activeFilterCount(f: CatalogFilter): number {
     (f.inStock ? 1 : 0) +
     Object.values(f.attrs ?? {}).reduce((n, v) => n + (v.length ? (v.length === 1 && v[0].includes("..") ? 1 : v.length) : 0), 0)
   );
-}
-
-// ---- URL (de)serialization -------------------------------------------------------------------------
-
-const list = (s: string | null | undefined) => (s ? s.split(",").map((x) => x.trim()).filter(Boolean) : []);
-
-/** Reads the filter from URLSearchParams (site and Mini App share the format). Category comes from the path on the site. */
-export function filterFromParams(sp: URLSearchParams | Record<string, string | string[] | undefined>): CatalogFilter {
-  const get = (k: string): string | undefined => {
-    if (sp instanceof URLSearchParams) return sp.get(k) ?? undefined;
-    const v = sp[k];
-    return Array.isArray(v) ? v[0] : v;
-  };
-  const keys = sp instanceof URLSearchParams ? [...sp.keys()] : Object.keys(sp);
-  const attrs: Record<string, string[]> = {};
-  for (const k of keys) {
-    if (!k.startsWith("f.")) continue;
-    const v = get(k);
-    if (v) attrs[k.slice(2)] = v.includes("..") ? [v] : list(v);
-  }
-  const price = parseRange(get("price"));
-  const cond = list(get("cond")).map((c) => c.toUpperCase()).filter((c): c is ProductCondition => c === "NEW" || c === "MARKDOWN" || c === "USED");
-  return {
-    brands: list(get("brand")),
-    conditions: cond,
-    priceMin: price?.min ?? null,
-    priceMax: price?.max ?? null,
-    inStock: get("inStock") === "1" || get("inStock") === "true",
-    q: get("q") || undefined,
-    attrs,
-  };
-}
-
-/** Writes the filter (without category) into URLSearchParams, stable order. */
-export function filterToParams(f: CatalogFilter, base?: URLSearchParams): URLSearchParams {
-  const sp = new URLSearchParams(base);
-  for (const k of [...sp.keys()]) if (k.startsWith("f.") || ["brand", "cond", "price", "inStock", "q"].includes(k)) sp.delete(k);
-  if (f.q) sp.set("q", f.q);
-  if (f.brands?.length) sp.set("brand", f.brands.join(","));
-  if (f.conditions?.length) sp.set("cond", f.conditions.map((c) => c.toLowerCase()).join(","));
-  if (f.priceMin != null || f.priceMax != null) sp.set("price", `${f.priceMin ?? ""}..${f.priceMax ?? ""}`);
-  if (f.inStock) sp.set("inStock", "1");
-  for (const k of Object.keys(f.attrs ?? {}).sort()) {
-    const v = f.attrs![k];
-    if (v?.length) sp.set(`f.${k}`, v.join(","));
-  }
-  return sp;
-}
-
-/** Toggles one value of a multi-select facet. */
-export function toggleFacet(f: CatalogFilter, key: string, value: string): CatalogFilter {
-  const flip = (arr: string[] | undefined) => (arr?.includes(value) ? arr.filter((x) => x !== value) : [...(arr ?? []), value]);
-  if (key === "brand") return { ...f, brands: flip(f.brands) };
-  if (key === "cond") return { ...f, conditions: flip(f.conditions) as ProductCondition[] };
-  return { ...f, attrs: { ...(f.attrs ?? {}), [key]: flip(f.attrs?.[key]) } };
-}
-
-/** Keeps brand/price/condition/stock/q, drops attribute filters — used when the category changes. */
-export function filterForCategory(f: CatalogFilter, category: string | null): CatalogFilter {
-  return { ...f, category, attrs: {} };
 }

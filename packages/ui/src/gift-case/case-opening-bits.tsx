@@ -42,6 +42,18 @@ export function preload(urls: string[], ms = 2500): Promise<void> {
   return Promise.race([Promise.all(all).then(() => undefined), wait(ms)]);
 }
 
+/** The "opening" show before the reel: shake/charge, flash, lid. Stops quietly once the screen is gone. */
+export async function openingShow(reduced: boolean, alive: { current: boolean }, onFlash: () => void, onLid: () => void): Promise<void> {
+  if (reduced) return wait(150);
+  await wait(720);
+  if (!alive.current) return;
+  onFlash();
+  await wait(120);
+  if (!alive.current) return;
+  onLid();
+  await wait(900);
+}
+
 export function itemTitle(item: CaseItem, texts: GiftCaseTexts, money: (m: number) => string): string {
   return item.kind === "DISCOUNT" ? texts.discountTitle.replace("{d}", caseDiscountText(item, money)) : item.title ?? "";
 }

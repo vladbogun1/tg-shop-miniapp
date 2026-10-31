@@ -19,6 +19,35 @@ import { useGift } from "@/features/gift/use-gift";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 
+type Gift = NonNullable<ReturnType<typeof giftProgress>>;
+type View = NonNullable<ReturnType<typeof giftView>>;
+type Tr = ReturnType<typeof useT>;
+
+function bannerTitle(gift: Gift, view: View, threshold: string, t: Tr) {
+  if (view.isCase) {
+    return view.done && gift.tier
+      ? t("case.product.reached", { tier: t(`case.tierAcc.${gift.tier.tier}`) })
+      : t("case.product.threshold", { amount: threshold });
+  }
+  return view.done
+    ? t("case.product.giftReached", { title: gift.product!.title })
+    : t("case.product.giftThreshold", { amount: threshold, title: gift.product!.title });
+}
+
+function BannerThumb({ gift, view }: { gift: Gift; view: View }) {
+  if (view.isCase) {
+    return <GiftCaseArt glow={view.done} tier={view.shownTier?.tier} className="h-11 w-16" />;
+  }
+  return (
+    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-[var(--r)] bg-[var(--surface-2)]">
+      <Image src={gift.product!.images?.[0]?.url} alt={gift.product!.title} size={120} className="h-full w-full" />
+      <span className="absolute -bottom-px -right-px grid h-5 w-5 place-items-center rounded-tl-[6px] bg-[var(--accent)] text-[var(--accent-ink)]">
+        <Gift className="h-3 w-3" strokeWidth={2.75} />
+      </span>
+    </div>
+  );
+}
+
 export function ProductGiftBanner({ priceMinor, currency }: { priceMinor: number; currency: string }) {
   const t = useT();
   const rarity = useCaseRarityNames();
@@ -28,27 +57,12 @@ export function ProductGiftBanner({ priceMinor, currency }: { priceMinor: number
   const { isCase, shownTier, done, rarest } = view;
   const threshold = money(gift.thresholdMinor, currency);
 
-  const title = isCase
-    ? done && gift.tier
-      ? t("case.product.reached", { tier: t(`case.tierAcc.${gift.tier.tier}`) })
-      : t("case.product.threshold", { amount: threshold })
-    : done
-      ? t("case.product.giftReached", { title: gift.product!.title })
-      : t("case.product.giftThreshold", { amount: threshold, title: gift.product!.title });
+  const title = bannerTitle(gift, view, threshold, t);
 
   return (
     <section className={`nb mt-4 p-3 ${done ? "border-[color-mix(in_srgb,var(--accent)_50%,transparent)]" : ""}`}>
       <div className="flex items-center gap-3">
-        {isCase ? (
-          <GiftCaseArt glow={done} tier={shownTier?.tier} className="h-11 w-16" />
-        ) : (
-          <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-[var(--r)] bg-[var(--surface-2)]">
-            <Image src={gift.product!.images?.[0]?.url} alt={gift.product!.title} size={120} className="h-full w-full" />
-            <span className="absolute -bottom-px -right-px grid h-5 w-5 place-items-center rounded-tl-[6px] bg-[var(--accent)] text-[var(--accent-ink)]">
-              <Gift className="h-3 w-3" strokeWidth={2.75} />
-            </span>
-          </div>
-        )}
+        <BannerThumb gift={gift} view={view} />
         <div className="min-w-0 flex-1">
           <p className={`text-[13px] font-semibold leading-snug ${done ? "text-[var(--accent-hi)]" : "text-[var(--ink)]"}`}>{title}</p>
           {rarest?.title && <p className="mt-0.5 line-clamp-1 text-[11px] font-semibold text-[var(--muted)]">{t("case.teaser", { title: rarest.title })}</p>}

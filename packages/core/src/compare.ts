@@ -144,6 +144,27 @@ export interface CompareBasics<P> {
   rows: { key: string; label: string; value: (p: P) => string | null; rank?: (p: P) => number | null; higherIsBetter?: boolean }[];
 }
 
+/** Marks the best cell of a ranked row; a tie of everyone is no "best". */
+function markBest<P>(b: CompareBasics<P>["rows"][number], products: P[], cells: CompareCell[]) {
+  const ranks = products.map((p) => b.rank!(p));
+  const valid = ranks.filter((r): r is number => r !== null && Number.isFinite(r));
+  if (valid.length < 2) return;
+  const best = b.higherIsBetter ? Math.max(...valid) : Math.min(...valid);
+  if (valid.some((r) => r !== best)) ranks.forEach((r, i) => (cells[i].best = r === best));
+}
+
+function basicRows<P>(basics: CompareBasics<P>, products: P[]): CompareRow[] {
+  const rows: CompareRow[] = [];
+  for (const b of basics.rows) {
+    const cells: CompareCell[] = products.map((p) => ({ text: b.value(p) }));
+    if (cells.every((c) => !c.text)) continue;
+    const d = differs(cells);
+    if (b.rank && d) markBest(b, products, cells);
+    rows.push({ key: b.key, label: b.label, cells, differs: d });
+  }
+  return rows;
+}
+
 /**
  * The table: the app's basic rows first, then the characteristics grouped like on the product page.
  * Rows where nobody has a value are dropped. `yesNo` = [yes, no] in the UI language.
@@ -158,22 +179,7 @@ export function compareSections<P extends ComparableProduct>(
   const out: CompareSection[] = [];
 
   if (basics) {
-    const rows: CompareRow[] = [];
-    for (const b of basics.rows) {
-      const cells: CompareCell[] = products.map((p) => ({ text: b.value(p) }));
-      if (cells.every((c) => !c.text)) continue;
-      const d = differs(cells);
-      if (b.rank && d) {
-        const ranks = products.map((p) => b.rank!(p));
-        const valid = ranks.filter((r): r is number => r !== null && Number.isFinite(r));
-        if (valid.length >= 2) {
-          const best = b.higherIsBetter ? Math.max(...valid) : Math.min(...valid);
-          // a tie of everyone is no "best"
-          if (valid.some((r) => r !== best)) ranks.forEach((r, i) => (cells[i].best = r === best));
-        }
-      }
-      rows.push({ key: b.key, label: b.label, cells, differs: d });
-    }
+    const rows = basicRows(basics, products);
     if (rows.length) out.push({ key: "_basics", label: basics.title, rows });
   }
 

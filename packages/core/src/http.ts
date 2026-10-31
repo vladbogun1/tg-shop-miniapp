@@ -82,11 +82,7 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
   const { baseUrl, getToken, onUnauthorized, getLocale, credentials } = options;
   const texts: HttpMessages = { ...RU_MESSAGES, ...options.messages };
 
-  async function request<T>(
-    path: string,
-    init: RequestInit = {},
-    extraHeaders?: Record<string, string>
-  ): Promise<T> {
+  function buildHeaders(init: RequestInit, extraHeaders?: Record<string, string>): Headers {
     const headers = new Headers(init.headers);
     headers.set("Accept", "application/json");
     const isFormData = init.body instanceof FormData;
@@ -100,6 +96,28 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     if (extraHeaders) {
       for (const [k, v] of Object.entries(extraHeaders)) headers.set(k, v);
     }
+    return headers;
+  }
+
+  /** Throws ApiError for 401/403 (after notifying onUnauthorized) and any other non-2xx. */
+  async function throwIfFailed(res: Response): Promise<void> {
+    if (res.status === 401 || res.status === 403) {
+      const failure = await failureOf(res, texts.unauthorized());
+      onUnauthorized?.(res.status, failure.code);
+      throw new ApiError(failure.message, res.status, failure.code, failure.params);
+    }
+    if (!res.ok) {
+      const failure = await failureOf(res, texts.http(res.status));
+      throw new ApiError(failure.message, res.status, failure.code, failure.params);
+    }
+  }
+
+  async function request<T>(
+    path: string,
+    init: RequestInit = {},
+    extraHeaders?: Record<string, string>
+  ): Promise<T> {
+    const headers = buildHeaders(init, extraHeaders);
 
     let res: Response;
     try {
@@ -113,15 +131,7 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
       throw new ApiError(texts.offline(), 0);
     }
 
-    if (res.status === 401 || res.status === 403) {
-      const failure = await failureOf(res, texts.unauthorized());
-      onUnauthorized?.(res.status, failure.code);
-      throw new ApiError(failure.message, res.status, failure.code, failure.params);
-    }
-    if (!res.ok) {
-      const failure = await failureOf(res, texts.http(res.status));
-      throw new ApiError(failure.message, res.status, failure.code, failure.params);
-    }
+    await throwIfFailed(res);
 
     if (res.status === 204) return undefined as T;
     const text = await res.text();

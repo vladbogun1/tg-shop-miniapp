@@ -41,6 +41,35 @@ export interface NpComboboxProps<T> {
 const MIN_LIST = 120;
 const MAX_LIST = 288;
 
+const fieldBorder = (focused: boolean, picked: boolean) =>
+  focused ? "var(--accent)" : picked ? "var(--ok)" : "var(--line)";
+
+function TrailingControl({
+  loading,
+  showClear,
+  clearLabel,
+  onClear,
+}: {
+  loading: boolean;
+  showClear: boolean;
+  clearLabel: string;
+  onClear: () => void;
+}) {
+  if (loading) return <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[var(--muted)]" />;
+  if (!showClear) return null;
+  return (
+    <button
+      type="button"
+      aria-label={clearLabel}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClear}
+      className="tap grid h-8 w-8 min-h-0 min-w-0 shrink-0 place-items-center rounded-full text-[var(--muted)]"
+    >
+      <X className="h-4 w-4" strokeWidth={2.5} />
+    </button>
+  );
+}
+
 export function NpCombobox<T>({
   label,
   placeholder,
@@ -132,7 +161,7 @@ export function NpCombobox<T>({
         ref={field}
         className="relative flex h-14 items-center gap-2.5 rounded-[var(--r)] border bg-[var(--surface-2)] pl-3.5 pr-2 transition-[border-color,box-shadow]"
         style={{
-          borderColor: focused ? "var(--accent)" : picked ? "var(--ok)" : "var(--line)",
+          borderColor: fieldBorder(focused, picked),
           boxShadow: focused ? "0 0 0 3px var(--accent-soft)" : undefined,
         }}
       >
@@ -197,23 +226,16 @@ export function NpCombobox<T>({
             className="absolute inset-x-0 bottom-0 h-full w-full bg-transparent pb-2 pt-6 text-[15px] font-medium text-[var(--ink)] outline-none placeholder:text-[var(--faint)]"
           />
         </div>
-        {loading ? (
-          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[var(--muted)]" />
-        ) : value && focused ? (
-          <button
-            type="button"
-            aria-label={clearLabel}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => {
-              onText("");
-              setOpen(true);
-              input.current?.focus();
-            }}
-            className="tap grid h-8 w-8 min-h-0 min-w-0 shrink-0 place-items-center rounded-full text-[var(--muted)]"
-          >
-            <X className="h-4 w-4" strokeWidth={2.5} />
-          </button>
-        ) : null}
+        <TrailingControl
+          loading={loading}
+          showClear={!!value && focused}
+          clearLabel={clearLabel}
+          onClear={() => {
+            onText("");
+            setOpen(true);
+            input.current?.focus();
+          }}
+        />
       </div>
       {show && (
         <div

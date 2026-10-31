@@ -1,0 +1,532 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildFacets / priceBounds > global 1`] = `
+[
+  {
+    "key": "brand",
+    "kind": "options",
+    "label": "Brand",
+    "values": [
+      {
+        "count": 2,
+        "label": "ATK",
+        "selected": false,
+        "value": "atk",
+      },
+      {
+        "count": 1,
+        "label": "Lamzu",
+        "selected": false,
+        "value": "lamzu",
+      },
+    ],
+  },
+  {
+    "key": "cond",
+    "kind": "options",
+    "label": "Cond",
+    "values": [
+      {
+        "count": 3,
+        "label": "New",
+        "selected": false,
+        "value": "NEW",
+      },
+      {
+        "count": 1,
+        "label": "Markdown",
+        "selected": false,
+        "value": "MARKDOWN",
+      },
+      {
+        "count": 1,
+        "label": "Used",
+        "selected": false,
+        "value": "USED",
+      },
+    ],
+  },
+  {
+    "group": "g",
+    "key": "sensor",
+    "kind": "options",
+    "label": "Sensor",
+    "unit": undefined,
+    "values": [
+      {
+        "count": 2,
+        "label": "PAW",
+        "selected": false,
+        "value": "paw",
+      },
+      {
+        "count": 1,
+        "label": "HERO",
+        "selected": false,
+        "value": "hero",
+      },
+    ],
+  },
+  {
+    "group": "g",
+    "key": "feat",
+    "kind": "options",
+    "label": "Feat",
+    "unit": undefined,
+    "values": [
+      {
+        "count": 2,
+        "label": "A",
+        "selected": false,
+        "value": "a",
+      },
+      {
+        "count": 1,
+        "label": "B",
+        "selected": false,
+        "value": "b",
+      },
+    ],
+  },
+  {
+    "group": "g",
+    "key": "rgb",
+    "kind": "bool",
+    "label": "RGB",
+    "values": [
+      {
+        "count": 1,
+        "label": "RGB",
+        "selected": false,
+        "value": "1",
+      },
+    ],
+  },
+  {
+    "group": "g",
+    "key": "weight",
+    "kind": "range",
+    "label": "Weight",
+    "max": 70,
+    "min": 45,
+    "selectedRange": undefined,
+    "unit": "г",
+    "values": [],
+  },
+  {
+    "group": "g",
+    "key": "dpi",
+    "kind": "options",
+    "label": "DPI",
+    "unit": undefined,
+    "values": [
+      {
+        "count": 2,
+        "label": "Low",
+        "selected": false,
+        "value": "lo",
+      },
+      {
+        "count": 2,
+        "label": "hi",
+        "selected": false,
+        "value": "hi",
+      },
+    ],
+  },
+]
+`;
+
+exports[`buildFacets / priceBounds > markdown collection / pads / selected zero 1`] = `
+[
+  {
+    "group": "g",
+    "key": "feat",
+    "kind": "options",
+    "label": "Feat",
+    "unit": undefined,
+    "values": [
+      {
+        "count": 1,
+        "label": "A",
+        "selected": false,
+        "value": "a",
+      },
+      {
+        "count": 1,
+        "label": "B",
+        "selected": false,
+        "value": "b",
+      },
+    ],
+  },
+]
+`;
+
+exports[`buildFacets / priceBounds > markdown collection / pads / selected zero 2`] = `[]`;
+
+exports[`buildFacets / priceBounds > markdown collection / pads / selected zero 3`] = `
+[
+  {
+    "key": "brand",
+    "kind": "options",
+    "label": "Brand",
+    "values": [
+      {
+        "count": 0,
+        "label": "Zzz",
+        "selected": true,
+        "value": "zzz",
+      },
+    ],
+  },
+  {
+    "key": "cond",
+    "kind": "options",
+    "label": "Cond",
+    "values": [
+      {
+        "count": 0,
+        "label": "Used",
+        "selected": true,
+        "value": "USED",
+      },
+    ],
+  },
+  {
+    "group": "g",
+    "key": "rgb",
+    "kind": "bool",
+    "label": "RGB",
+    "values": [
+      {
+        "count": 0,
+        "label": "RGB",
+        "selected": true,
+        "value": "1",
+      },
+    ],
+  },
+  {
+    "group": "g",
+    "key": "weight",
+    "kind": "range",
+    "label": "Weight",
+    "max": -Infinity,
+    "min": Infinity,
+    "selectedRange": {
+      "max": 2,
+      "min": 1,
+    },
+    "unit": "г",
+    "values": [],
+  },
+]
+`;
+
+exports[`buildFacets / priceBounds > priceBounds 1`] = `
+[
+  {
+    "max": 250,
+    "min": 9,
+  },
+  {
+    "max": 250,
+    "min": 150,
+  },
+  null,
+]
+`;
+
+exports[`buildFacets / priceBounds > with selection in category 1`] = `
+[
+  {
+    "key": "brand",
+    "kind": "options",
+    "label": "Brand",
+    "values": [
+      {
+        "count": 0,
+        "label": "ATK",
+        "selected": true,
+        "value": "atk",
+      },
+    ],
+  },
+  {
+    "group": "g",
+    "key": "sensor",
+    "kind": "options",
+    "label": "Sensor",
+    "unit": undefined,
+    "values": [
+      {
+        "count": 0,
+        "label": "PAW",
+        "selected": true,
+        "value": "paw",
+      },
+    ],
+  },
+  {
+    "group": "g",
+    "key": "rgb",
+    "kind": "bool",
+    "label": "RGB",
+    "values": [
+      {
+        "count": 0,
+        "label": "RGB",
+        "selected": true,
+        "value": "1",
+      },
+    ],
+  },
+  {
+    "group": "g",
+    "key": "weight",
+    "kind": "range",
+    "label": "Weight",
+    "max": -Infinity,
+    "min": Infinity,
+    "selectedRange": {
+      "max": 55,
+      "min": 40,
+    },
+    "unit": "г",
+    "values": [],
+  },
+  {
+    "group": "g",
+    "key": "dpi",
+    "kind": "options",
+    "label": "DPI",
+    "unit": undefined,
+    "values": [
+      {
+        "count": 0,
+        "label": "hi",
+        "selected": true,
+        "value": "hi",
+      },
+    ],
+  },
+]
+`;
+
+exports[`filterProducts > attribute filters 1`] = `
+[
+  [
+    "1",
+    "3",
+  ],
+  [
+    "2",
+  ],
+  [
+    "1",
+  ],
+  [
+    "1",
+    "2",
+  ],
+  [
+    "2",
+  ],
+  [
+    "3",
+  ],
+  [
+    "1",
+    "2",
+    "3",
+  ],
+  [
+    "1",
+    "3",
+  ],
+  [
+    "2",
+    "3",
+  ],
+  [
+    "1",
+    "2",
+    "3",
+  ],
+  [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+  ],
+  [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+  ],
+  [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+  ],
+  [
+    "4",
+  ],
+  [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+  ],
+]
+`;
+
+exports[`filterProducts > combines every criterion 1`] = `
+[
+  [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+  ],
+  [
+    "1",
+    "2",
+    "3",
+    "5",
+  ],
+  [
+    "1",
+    "2",
+    "3",
+  ],
+  [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+  ],
+  [
+    "2",
+    "4",
+  ],
+  [
+    "1",
+    "2",
+    "3",
+    "5",
+  ],
+  [
+    "4",
+  ],
+  [
+    "2",
+    "3",
+  ],
+  [
+    "2",
+    "3",
+  ],
+  [
+    "2",
+    "4",
+  ],
+  [
+    "1",
+    "3",
+    "5",
+  ],
+  [
+    "2",
+    "5",
+  ],
+  [
+    "2",
+    "3",
+  ],
+]
+`;
+
+exports[`formatSpec > per type 1`] = `
+[
+  "51 г",
+  "1 г",
+  "50–30 000",
+  null,
+  null,
+  "A",
+  null,
+  null,
+  "A, B",
+  null,
+  null,
+  null,
+  "Yes",
+  "No",
+  null,
+  "hi",
+  null,
+  null,
+  undefined,
+  null,
+  null,
+]
+`;
+
+exports[`url > filterFromParams 1`] = `
+{
+  "attrs": {
+    "sensor": [
+      "paw",
+      "hero",
+    ],
+    "w": [
+      "1..2",
+    ],
+  },
+  "brands": [
+    "a",
+    "b",
+  ],
+  "conditions": [
+    "MARKDOWN",
+    "USED",
+  ],
+  "inStock": true,
+  "priceMax": null,
+  "priceMin": 10,
+  "q": "hi",
+}
+`;
+
+exports[`url > filterFromParams 2`] = `
+{
+  "attrs": {
+    "x": [
+      "1",
+      "2",
+    ],
+  },
+  "brands": [
+    "a",
+  ],
+  "conditions": [],
+  "inStock": true,
+  "priceMax": null,
+  "priceMin": null,
+  "q": undefined,
+}
+`;
+
+exports[`url > filterToParams 1`] = `"q=a+b&brand=x%2Cy&cond=used%2Cnew&price=5..&inStock=1&f.a=p%2Cq&f.z=1"`;
+
+exports[`url > filterToParams 2`] = `"keep=1&price=..9"`;
