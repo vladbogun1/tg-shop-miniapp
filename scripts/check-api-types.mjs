@@ -27,7 +27,7 @@ const GENERATED_ONLY = new Set([
   "DispatchItem", "DispatchOrder",
   // catalog (витрина)
   "SpecOption", "FacetBucket", "SpecAttribute", "SpecGroup", "CatalogCategory", "CatalogBrand", "CatalogSchema",
-  "ProductBrandRef",
+  "ProductBrandRef", "StorefrontProduct", "StorefrontTag",
 ]);
 
 /** В orders-api.ts ручные интерфейсы — только тела запросов и этот список (не ответы заказа). */

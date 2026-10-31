@@ -10,7 +10,7 @@
  * union of their characteristics). Rows: the basics (price, rating, stock, brand, condition), then
  * every `comparable` characteristic that at least one of the products has, in schema order.
  */
-import { attributesFor, categoryPath, formatSpec, type CatalogCategory, type CatalogFields, type CatalogSchema, type SpecAttribute, type SpecGroup } from "./catalog";
+import { attributesFor, categoryPath, formatSpec, type CatalogCategory, type CatalogSchema, type SpecAttribute, type SpecGroup, type WireCatalogFields } from "./catalog";
 import { nowMs } from "./time";
 
 /** Columns in one group. Two fit a phone, four a laptop; more is just scrolling sideways. */
@@ -62,7 +62,7 @@ export function parseCompareEntries(raw: unknown): CompareEntry[] {
 
 // ---- groups ----------------------------------------------------------------------------------
 
-export interface ComparableProduct extends CatalogFields {
+export interface ComparableProduct extends WireCatalogFields {
   id: string;
   title: string;
   priceMinor: number;

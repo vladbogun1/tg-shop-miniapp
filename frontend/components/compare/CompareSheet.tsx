@@ -18,7 +18,9 @@ import { compareGroups, compareSections, onlyDifferences, type CompareBasics, ty
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
 import { useI18n } from "@/i18n/context";
 import { customerApi, type Product } from "@/lib/api";
-import { EMPTY_SCHEMA, productInStock, useCatalogSchema } from "@/lib/catalog";
+import { EMPTY_SCHEMA } from "@shop/customer/catalog/model/filter";
+import { productInStock } from "@shop/customer/catalog/model/stock";
+import { useCatalogSchema } from "@/lib/catalog";
 import { useCompare } from "@/lib/compare";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
@@ -108,7 +110,7 @@ function Body({
 
   const basics = useMemo<CompareBasics<Product>>(() => {
     const anyUsed = group?.items.some((p) => p.condition && p.condition !== "NEW");
-    const condLabel = (c: string | undefined) => schema.conditions.find((x) => x.value === (c ?? "NEW"))?.label ?? null;
+    const condLabel = (c: string | null | undefined) => schema.conditions.find((x) => x.value === (c ?? "NEW"))?.label ?? null;
     return {
       title: t("compare.basics"),
       rows: [

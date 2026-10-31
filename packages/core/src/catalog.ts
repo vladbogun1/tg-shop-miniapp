@@ -116,7 +116,7 @@ export function attributesFor(schema: CatalogSchema, categoryId: string | null |
 const nf = (locale: string) => new Intl.NumberFormat(locale === "en" ? "en-US" : locale === "ru" ? "ru-RU" : "uk-UA", { maximumFractionDigits: 3 });
 
 /** "51 г", "50–30 000", "PAW3950", "Да". `yesNo` = [yes, no] in the UI language. */
-export function formatSpec(attr: SpecAttribute, value: SpecValue | undefined, locale: string, yesNo: [string, string]): string | null {
+export function formatSpec(attr: SpecAttribute, value: unknown, locale: string, yesNo: [string, string]): string | null {
   if (value === undefined || value === null) return null;
   const unit = attr.unit ? ` ${attr.unit}` : "";
   const f = nf(locale);
@@ -124,7 +124,8 @@ export function formatSpec(attr: SpecAttribute, value: SpecValue | undefined, lo
     case "number":
       if (typeof value === "number") return f.format(value) + unit;
       if (typeof value === "object" && !Array.isArray(value)) {
-        return value.min === value.max ? f.format(value.min) + unit : `${f.format(value.min)}–${f.format(value.max)}${unit}`;
+        const r = value as { min: number; max: number };
+        return r.min === r.max ? f.format(r.min) + unit : `${f.format(r.min)}–${f.format(r.max)}${unit}`;
       }
       return null;
     case "enum": {
@@ -144,7 +145,7 @@ export function formatSpec(attr: SpecAttribute, value: SpecValue | undefined, lo
 }
 
 /** Grouped rows for the "Характеристики" block; empty groups are dropped. */
-export function specRows(schema: CatalogSchema, categoryId: string | null | undefined, specs: ProductSpecs | undefined, locale: string, yesNo: [string, string]) {
+export function specRows(schema: CatalogSchema, categoryId: string | null | undefined, specs: Readonly<Record<string, unknown>> | null | undefined, locale: string, yesNo: [string, string]) {
   const attrs = attributesFor(schema, categoryId);
   const groups = [...schema.groups].sort((a, b) => a.sort - b.sort);
   const byGroup = new Map<string, { attr: SpecAttribute; text: string }[]>();
@@ -161,7 +162,7 @@ export function specRows(schema: CatalogSchema, categoryId: string | null | unde
 }
 
 /** One-line summary for product cards: "51 г · PAW3950 · 8000 Гц". */
-export function specSummary(schema: CatalogSchema, categoryId: string | null | undefined, specs: ProductSpecs | undefined, locale: string, yesNo: [string, string]): string {
+export function specSummary(schema: CatalogSchema, categoryId: string | null | undefined, specs: Readonly<Record<string, unknown>> | null | undefined, locale: string, yesNo: [string, string]): string {
   return attributesFor(schema, categoryId)
     .filter((a) => a.highlight)
     .map((a) => (a.type === "bool" ? (specs?.[a.key] === true ? a.label : null) : formatSpec(a, specs?.[a.key], locale, yesNo)))
@@ -189,13 +190,22 @@ export interface CatalogFilter {
   attrs?: Record<string, string[]>;
 }
 
-export interface FilterableProduct extends CatalogFields {
+/**
+ * Catalog fields as the storefront DTO carries them (OpenAPI: absence = null, specs = `{[key]: unknown}`). Wider than
+ * `CatalogFields` on purpose: the engine reads wire data and checks every spec value by the attribute type anyway.
+ */
+export interface WireCatalogFields extends Omit<CatalogFields, "condition" | "specs"> {
+  condition?: ProductCondition | null;
+  specs?: Readonly<Record<string, unknown>>;
+}
+
+export interface FilterableProduct extends WireCatalogFields {
   id: string;
   title: string;
   priceMinor: number;
   stock?: number;
   /** When present and non-empty, stock is the sum of the variants' (as the backend's effectiveStock). */
-  variants?: { stock: number }[];
+  variants?: { stock: number }[] | null;
 }
 
 /** Effective stock: sum of the variants when there are any, else the product's own. */
@@ -225,7 +235,7 @@ export interface Facet {
   selectedRange?: { min: number | null; max: number | null };
 }
 
-function numericOf(v: SpecValue | undefined): { min: number; max: number } | null {
+function numericOf(v: unknown): { min: number; max: number } | null {
   if (typeof v === "number") return { min: v, max: v };
   if (v && typeof v === "object" && !Array.isArray(v) && typeof (v as { min: number }).min === "number") return v as { min: number; max: number };
   return null;
@@ -240,7 +250,7 @@ export function parseRange(s: string | undefined): { min: number | null; max: nu
   return { min, max };
 }
 
-function matchesAttr(attr: SpecAttribute, value: SpecValue | undefined, selected: string[]): boolean {
+function matchesAttr(attr: SpecAttribute, value: unknown, selected: string[]): boolean {
   if (selected.length === 0) return true;
   switch (attr.type) {
     case "enum":

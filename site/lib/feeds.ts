@@ -176,7 +176,7 @@ function feedSpecs(p: StorefrontProduct, schema: CatalogSchema, locale: Locale):
 export function feedItems(products: StorefrontProduct[], schema: CatalogSchema, locale: Locale, pre?: PreorderIndex | null): FeedItem[] {
   const items: FeedItem[] = [];
   for (const p of products) {
-    if (p.active === false || p.archived === true) continue;
+    if (p.active === false) continue;
     const path = feedPath(p, schema);
     if (!path) continue;
     const leaf = path[path.length - 1];

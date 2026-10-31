@@ -7,7 +7,7 @@
  */
 import { ApiError } from "@shop/core/errors";
 import { createHttpClient, newIdempotencyKey, normalizeBaseUrl } from "@shop/core/http";
-import { type AuthResponse, type Conversation, type CreateOrderResult, type Message, type NpCity, type NpWarehouse, type OrderDetail, type OrderLimits, type OrderSummary, type PaymentOption, type PaymentStart, type Product, type PromoPreview, type SendMessageRequest } from "@shop/core/types";
+import { type AuthResponse, type Conversation, type CreateOrderResult, type Message, type NpCity, type NpWarehouse, type OrderDetail, type OrderLimits, type OrderSummary, type PaymentOption, type PaymentStart, type PromoPreview, type SendMessageRequest } from "@shop/core/types";
 import { type CartLineInput, type ServerCart } from "@shop/core/cart";
 import { createCartApi } from "@shop/customer/cart/api";
 import { type CatalogSchema } from "@shop/core/catalog";
@@ -16,6 +16,7 @@ import { getActiveLocale, getActiveTag } from "@shop/core/i18n";
 import { type Receipt } from "@shop/core/receipts";
 import { en } from "@/i18n/en";
 import { ru } from "@/i18n/ru";
+import type { Product } from "@shop/customer/catalog/model/product";
 import { uk } from "@/i18n/uk";
 
 export { ApiError, newIdempotencyKey };
@@ -33,12 +34,12 @@ export type {
   OrderSummary,
   PaymentOption,
   PaymentStart,
-  Product,
   PromoPreview,
   SendMessageRequest,
   ServerCart,
 };
-export type { DeliveryMethod, NpCategory, OrderStatus, ProductImage, ProductTag, ProductVariant } from "@shop/core/types";
+export type { DeliveryMethod, NpCategory, OrderStatus } from "@shop/core/types";
+export type { Product, ProductImage, ProductTag, ProductVariant } from "@shop/customer/catalog/model/product";
 
 const API_BASE = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, "http://localhost:8080");
 

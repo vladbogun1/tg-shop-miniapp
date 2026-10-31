@@ -9,7 +9,7 @@ import { Check, ShoppingBag, Truck, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { maxQty } from "@shop/core/orders";
-import { type ProductVariant } from "@shop/core/types";
+import { type ProductVariant } from "@shop/customer/catalog/model/product";
 import { type StorefrontProduct } from "@shop/core/site";
 import { ProductGiftBanner } from "@/components/case/ProductGiftBanner";
 import { Button, QtyStepper } from "@shop/ui/primitives";

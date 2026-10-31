@@ -9,12 +9,17 @@
 import type { CatalogSchema } from "@shop/core/catalog";
 import type { Locale } from "@shop/core/i18n";
 import type { StorefrontProduct } from "@shop/core/site";
+import type { ProductImage, ProductVariant } from "@shop/customer/catalog/model/product";
 import { compareGroupOf } from "@shop/core/compare";
 import { specSummary } from "@shop/core/catalog";
 import { type PreorderEta, type PreorderIndex, preorderOf } from "./preorder-core";
 
 /** A catalog tile's data: the product fields below + the spec line computed on the server. */
-export interface CardProduct extends StorefrontProduct {
+export interface CardProduct
+  extends Pick<StorefrontProduct, "id" | "slug" | "title" | "priceMinor" | "currency" | "compareAtMinor" | "stock" | "ratingAvg" | "ratingCount" | "condition"> {
+  /** Only the first photo, and only what the tile reads. */
+  images: Pick<ProductImage, "url" | "sortOrder">[];
+  variants: Pick<ProductVariant, "id" | "name" | "stock" | "sortOrder">[];
   /** "51 г · PAW3950 · 8000 Гц" (highlight attributes); absent when nothing is known. */
   specLine?: string;
   /** Comparison group (root category id) — the card's «Порівняти» needs it without the schema. */

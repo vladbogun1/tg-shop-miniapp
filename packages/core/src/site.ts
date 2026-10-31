@@ -4,28 +4,11 @@
  * Kept apart from `types.ts` so the Mini App and the admin panel do not change shape: every field
  * here is additive, and the existing `/api/products` DTOs stay exactly as they were.
  */
-import type { Product, ProductTag } from "./types";
+import type { Schemas } from "./api/schemas";
 
-/** ProductDto as the public catalog returns it (extra fields the Mini App ignores). */
-export interface StorefrontProduct extends Product {
-  slug: string;
-  /** Old (struck-through) price; only meaningful when greater than priceMinor. */
-  compareAtMinor?: number | null;
-  seoTitle?: string | null;
-  seoDescription?: string | null;
-  createdAt?: string;
-  /** Brand for schema.org (admin field, not translated); null = the site guesses from the texts. */
-  brand?: string | null;
-  /** Article number; null = the site uses the id. */
-  sku?: string | null;
-  tags?: StorefrontTag[];
-}
-
-export interface StorefrontTag extends ProductTag {
-  slug?: string;
-  sortOrder?: number;
-  showInMenu?: boolean;
-}
+/** ProductDto as the public catalog returns it — straight from OpenAPI (absence = null). */
+export type StorefrontProduct = Schemas["ProductDto"];
+export type StorefrontTag = Schemas["TagDto"];
 
 /** GET /api/public/categories */
 export interface PublicCategory {

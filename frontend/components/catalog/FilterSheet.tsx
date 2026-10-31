@@ -18,7 +18,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { buildFacets, filterProducts, MARKDOWN_COLLECTION_SLUG, parseRange, priceBounds, toggleFacet, type CatalogFilter, type CatalogSchema, type Facet } from "@shop/core/catalog";
 import { useI18n } from "@/i18n/context";
-import { EMPTY_FILTER, type EngineItem } from "@/lib/catalog";
+import { EMPTY_FILTER } from "@shop/customer/catalog/model/filter";
+import { type EngineItem } from "@/lib/catalog";
 import { backdrop, sheetVariants } from "@/lib/motion";
 import { haptic, useBackButton } from "@/lib/telegram";
 

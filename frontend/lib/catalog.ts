@@ -7,13 +7,12 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
-import type { CatalogFilter, CatalogSchema, FilterableProduct, ProductCondition } from "@shop/core/catalog";
+import type { CatalogFilter, FilterableProduct, ProductCondition } from "@shop/core/catalog";
+import { EMPTY_FILTER } from "@shop/customer/catalog/model/filter";
+import { productInStock } from "@shop/customer/catalog/model/stock";
 import { useI18n } from "@/i18n/context";
 import { customerApi, type Product } from "@/lib/api";
 import { sessionStore } from "@shop/core/storage";
-
-/** Stand-in while the schema loads (or on an old backend): the engine still searches/sorts. */
-export const EMPTY_SCHEMA: CatalogSchema = { categories: [], brands: [], groups: [], attributes: [], conditions: [] };
 
 export function useCatalogSchema() {
   const { locale } = useI18n();
@@ -22,11 +21,6 @@ export function useCatalogSchema() {
     queryFn: () => customerApi.getCatalogSchema(),
     staleTime: 5 * 60_000,
   });
-}
-
-/** In stock = the product itself, or any of its variants (variant products keep stock 0). */
-export function productInStock(p: Product): boolean {
-  return (p.variants?.length ?? 0) > 0 ? (p.variants ?? []).some((v) => v.stock > 0) : (p.stock ?? 0) > 0;
 }
 
 /** What the engine sees: the product's catalog fields + its effective stock, with the original attached. */
@@ -48,23 +42,13 @@ export function toEngineItems(products: Product[]): EngineItem[] {
   }));
 }
 
-export function isUsedOrMarkdown(c: ProductCondition | undefined): boolean {
+export function isUsedOrMarkdown(c: ProductCondition | null | undefined): boolean {
   return !!c && c !== "NEW";
 }
 
 // ---- filter state (sessionStorage, survives opening a product / switching tabs) ------------
 
 const STORAGE_KEY = "catalog.filter.v2";
-
-export const EMPTY_FILTER: CatalogFilter = {
-  category: null,
-  brands: [],
-  conditions: [],
-  priceMin: null,
-  priceMax: null,
-  inStock: false,
-  attrs: {},
-};
 
 function read(): CatalogFilter | null {
   try {

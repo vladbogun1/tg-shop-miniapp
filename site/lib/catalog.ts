@@ -113,7 +113,7 @@ function catalogEngine(schema: CatalogSchema, products: StorefrontProduct[], cat
       conditions: schema.conditions,
     },
     products: products.map((p) => {
-      const specs: NonNullable<FilterableProduct["specs"]> = {};
+      const specs: Record<string, unknown> = {};
       for (const k of keys) if (p.specs?.[k] !== undefined) specs[k] = p.specs[k];
       return {
         id: p.id,

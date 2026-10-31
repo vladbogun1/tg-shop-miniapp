@@ -63,17 +63,17 @@ function summary(found, known) {
   const cell = (app, rule, map) => [...map.values()].filter((v) => v.rule.name === rule && appOf(v.from) === app.replace("packages/", "")).length;
   console.log("\nСводка dependency-cruiser «правило × приложение» (нарушения; baseline в скобках, если отличается):");
   const w = Math.max(14, ...rules.map((r) => r.length));
-  console.log(`${"".padEnd(w)}  ${APPS.map((a) => a.padStart(16)).join("")}`);
+  console.log(`${"".padEnd(w)}  ${APPS.map((a) => a.padStart(18)).join("")}`);
   for (const rule of rules) {
     const cells = APPS.map((app) => {
       const n = cell(app, rule, found);
       const b = cell(app, rule, known);
       const c = n === 0 ? "." : String(n);
-      return (n === b ? c : `${c} (${b})`).padStart(16);
+      return (n === b ? c : `${c} (${b})`).padStart(18);
     });
     console.log(`${rule.padEnd(w)}  ${cells.join("")}`);
   }
-  console.log(`${"ИТОГО".padEnd(w)}  ${APPS.map((a) => String([...found.values()].filter((v) => appOf(v.from) === a.replace("packages/", "")).length).padStart(16)).join("")}`);
+  console.log(`${"ИТОГО".padEnd(w)}  ${APPS.map((a) => String([...found.values()].filter((v) => appOf(v.from) === a.replace("packages/", "")).length).padStart(18)).join("")}`);
 }
 
 async function main() {

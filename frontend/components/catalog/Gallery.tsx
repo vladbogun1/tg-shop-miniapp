@@ -21,7 +21,7 @@ export function Gallery({
   images,
   alt,
 }: {
-  images?: ProductImage[];
+  images?: ProductImage[] | null;
   alt: string;
 }) {
   const t = useT();

@@ -120,7 +120,7 @@ function Body({ onClose }: { onClose: () => void }) {
 
   const basics = useMemo<CompareBasics<StorefrontProduct>>(() => {
     const anyUsed = group?.items.some((p) => p.condition && p.condition !== "NEW");
-    const condLabel = (c: string | undefined) => schema.data?.conditions.find((x) => x.value === (c ?? "NEW"))?.label ?? null;
+    const condLabel = (c: string | null | undefined) => schema.data?.conditions.find((x) => x.value === (c ?? "NEW"))?.label ?? null;
     return {
       title: t("compare.basics"),
       rows: [
