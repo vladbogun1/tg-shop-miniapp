@@ -45,7 +45,8 @@ import {
   type ActivityRow,
   type BroadcastSummary,
 } from "@/lib/activity";
-import { ApiError, type UserCardDto } from "@/lib/api";
+import { ApiError } from "@/lib/api";
+import { UserProfileDrawer, type UserCardDto } from "@/features/customer";
 import { ordersApi } from "@/lib/orders-api";
 import { formatDateTime } from "@/lib/orders";
 import { cn } from "@/lib/cn";
@@ -58,7 +59,6 @@ import { Input } from "@/components/ui/Input";
 import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Select } from "@/components/ui/Select";
-import { UserProfileDrawer } from "@/components/users/UserProfileDrawer";
 import { OrderDrawer } from "@/components/orders/OrderDrawer";
 
 const PAGE = 50;

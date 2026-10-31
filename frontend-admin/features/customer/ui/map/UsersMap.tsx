@@ -13,7 +13,8 @@ import L from "leaflet";
 import "leaflet.markercluster";
 import { useEffect, useRef } from "react";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
-import type { GeoPoint } from "./geo-api";
+import { pointKey } from "../../model/geo";
+import type { GeoPoint } from "../../model/types";
 
 const WORLD_CENTER: [number, number] = [30, 15];
 const WORLD_ZOOM = 2;
@@ -121,10 +122,6 @@ function FitOnce({ points, resetKey }: { points: GeoPoint[]; resetKey: number })
     if (resetKey > 0) map.flyTo(WORLD_CENTER, WORLD_ZOOM, { duration: 0.6 });
   }, [map, resetKey]);
   return null;
-}
-
-export function pointKey(p: { lat: number; lon: number }): string {
-  return `${p.lat},${p.lon}`;
 }
 
 export default function UsersMap({

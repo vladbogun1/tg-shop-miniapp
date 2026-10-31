@@ -19,8 +19,8 @@ import {
   type OrderCardDto,
   type OrderDetailDto,
   type OrderStatus,
-  type UserCardDto,
 } from "./api";
+import { customerApi, type UserCardDto } from "@/features/customer";
 import { periodQuery, type OrdersPeriod } from "./orders-period";
 import type { BoardKey, MovementChannel, MovementKind, RejectReasonCode } from "./orders";
 
@@ -347,7 +347,7 @@ export const ordersApi = {
 
   /** The customer's profile card, for opening it over the order. */
   findUser: async (telegramUserId: number): Promise<UserCardDto | null> => {
-    const rows = await adminApi.users({ q: String(telegramUserId), size: 10 });
+    const rows = await customerApi.users({ q: String(telegramUserId), size: 10 });
     return rows.find((u) => u.telegramUserId === telegramUserId) ?? null;
   },
 

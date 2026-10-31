@@ -8,7 +8,7 @@ import { useState } from "react";
 import { Autocomplete } from "@/components/ui/Autocomplete";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { adminApi, type UserCardDto } from "@/lib/api";
+import { customerApi, type UserCardDto } from "@/features/customer";
 import { cn } from "@/lib/cn";
 import type { InviteCreated, TeamAdmin } from "../api";
 import { adminName, ROLE_OPTIONS, userLabel, type AdminRoleCode } from "../model/roles";
@@ -119,7 +119,7 @@ function TargetPicker({ manual, onToggleManual, manualId, onManualId, picked, on
         <Autocomplete<UserCardDto>
           placeholder="Имя, @username или id"
           selectedLabel={picked ? `${userLabel(picked)} · ${picked.telegramUserId}` : null}
-          fetchItems={(q) => adminApi.users({ q, size: 8, sortBy: "lastSeenAt", sortDir: "desc" })}
+          fetchItems={(q) => customerApi.users({ q, size: 8, sortBy: "lastSeenAt", sortDir: "desc" })}
           itemLabel={userLabel}
           itemSubLabel={(u) => [u.username ? `@${u.username}` : null, `id ${u.telegramUserId}`].filter(Boolean).join(" · ")}
           itemKey={(u) => String(u.telegramUserId)}

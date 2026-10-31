@@ -26,7 +26,7 @@ import {
   Repeat,
   Merge,
 } from "lucide-react";
-import { adminApi, ApiError, type OrderStatus, type UserCardDto } from "@/lib/api";
+import { adminApi, ApiError, type OrderStatus } from "@/lib/api";
 import { productApi } from "@/features/product";
 import {
   changeStatusConfirmingUnpaid,
@@ -52,7 +52,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Drawer } from "@shop/ui/overlay";
 import { QueryState } from "@/components/ui/QueryState";
 import { useConfirm } from "@shop/ui/confirm";
-import { UserProfileDrawer } from "@/components/users/UserProfileDrawer";
+import { UserProfileDrawer, type UserCardDto } from "@/features/customer";
 import { useIsSuperAdmin } from "@/features/staff";
 import { useBatchProductTools } from "@/components/preorders/BatchItemProduct";
 import { ReturnBadge } from "./ReturnBadge";
@@ -71,7 +71,7 @@ import { ReturnModal } from "./ReturnModal";
 import { ExchangeModal } from "./ExchangeModal";
 import { MergeModal } from "./MergeModal";
 import { GiftCaseModal } from "./GiftCaseModal";
-import { CASE_RARITY_LABEL } from "@/lib/gift";
+import { CASE_RARITY_LABEL } from "@/features/gift";
 import { caseDiscountText, type CaseTier } from "@shop/core/giftcase";
 import { money } from "@/lib/money";
 import { ActionSheet, type SheetAction } from "./ActionSheet";

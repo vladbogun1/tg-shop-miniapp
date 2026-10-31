@@ -10,8 +10,6 @@
  */
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { LANG_LABEL, type ShopLang, type UserCard } from "@/lib/api-extra";
 import {
   Crown,
   Ban,
@@ -21,7 +19,10 @@ import {
   Package,
   ChevronRight,
 } from "lucide-react";
-import { adminApi, type UserCardDto, type OrderCardDto } from "@/lib/api";
+import type { CustomerOrderCard } from "../../api";
+import { displayName, initials, languageLine, telegramHref } from "../../model/user";
+import type { UserCardDto } from "../../model/types";
+import { useUserOrders } from "../../queries";
 import { money } from "@/lib/money";
 import {
   formatDateTime,
@@ -43,37 +44,10 @@ interface Props {
   onOpenOrder?: (orderId: string) => void;
 }
 
-/** «пишет на: Украинский» — the language to answer in (users.locale, else Telegram's). */
-function languageLine(u: UserCard): string {
-  if (u.locale) return "язык магазина: " + (LANG_LABEL[u.locale as ShopLang] ?? u.locale);
-  if (u.languageCode) return "язык Telegram: " + u.languageCode;
-  return "";
-}
-
-function displayName(u: UserCardDto): string {
-  const full = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
-  return full || (u.username ? "@" + u.username : "#" + u.telegramUserId);
-}
-
-function initials(u: UserCardDto): string {
-  const a = u.firstName?.trim()?.[0] ?? u.username?.trim()?.[0] ?? "";
-  const b = u.lastName?.trim()?.[0] ?? "";
-  const both = (a + b).toUpperCase();
-  return both || String(u.telegramUserId).slice(0, 2);
-}
-
-function telegramHref(u: UserCardDto): string {
-  return u.username ? `https://t.me/${u.username}` : `tg://user?id=${u.telegramUserId}`;
-}
-
 export function UserProfileDrawer({ user, onClose, onOpenOrder }: Props) {
   const router = useRouter();
 
-  const { data: orders, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["user-orders", user?.telegramUserId],
-    queryFn: () => adminApi.userOrders(user!.telegramUserId),
-    enabled: !!user,
-  });
+  const { data: orders, isLoading, isError, error, refetch } = useUserOrders(user?.telegramUserId);
 
   const header = user ? (
     <div className="flex min-w-0 items-center gap-3">
@@ -98,7 +72,7 @@ export function UserProfileDrawer({ user, onClose, onOpenOrder }: Props) {
         </div>
         <div className="mt-0.5 truncate text-[12px] text-[var(--text-faint)]">
           {user.username ? "@" + user.username + " · " : ""}#{user.telegramUserId}
-          {languageLine(user as UserCard) ? " · " + languageLine(user as UserCard) : ""}
+          {languageLine(user) ? " · " + languageLine(user) : ""}
         </div>
       </div>
     </div>
@@ -190,7 +164,7 @@ function OrderRow({
   order,
   onClick,
 }: {
-  order: OrderCardDto;
+  order: CustomerOrderCard;
   onClick: () => void;
 }) {
   return (
