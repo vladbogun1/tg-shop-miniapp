@@ -12,6 +12,8 @@ const DEV_HW = process.env.DEV_HW_ORIGIN ?? "http://localhost:8090";
 const nextConfig: NextConfig = {
   // dev only: /hw/draw/ is proxied as is (Next would strip the slash and the service would add it back)
   skipTrailingSlashRedirect: process.env.NODE_ENV === "development",
+  // dev only: gzip held back the /hw/ event stream (pult); in production nginx proxies it
+  compress: process.env.NODE_ENV !== "development",
   reactStrictMode: true,
   env: { NEXT_PUBLIC_APP_BUILD: APP_BUILD },
   // Custom <Image> (lib/image.tsx) builds imgproxy URLs directly, so

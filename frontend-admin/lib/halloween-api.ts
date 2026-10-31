@@ -97,3 +97,106 @@ export const hwApi = {
   removeManual: (tgId: string) => apiPost<{ ok: true }>(`${P}/manual/remove`, { tgId }),
   include: (pool: HwPool, tgId: string) => apiPost<{ ok: true }>(`${P}/include?pool=${pool}`, { tgId }),
 };
+
+// ---------- the stream draw (page /halloween/pult) ----------
+
+/** One person on the draw screen: public id and masked name, the same the OBS scene shows. */
+export interface HwScreenParticipant {
+  id: string;
+  name: string;
+  handle: string | null;
+  tickets: number;
+  won: boolean;
+}
+
+export interface HwScreen {
+  pool: HwPool;
+  rounds: number;
+  locked: boolean;
+  seedHash: string;
+  participants: HwScreenParticipant[];
+  /** Live (not voided) draws in the order they were made. */
+  winners: { round: number; participantId: string }[];
+  test?: boolean;
+}
+
+/** A prize pack: `images` are product photo keys (`products/…`) or https links. */
+export interface HwPrize {
+  id: number;
+  name: string;
+  items: string[];
+  images: string[];
+}
+
+export interface HwPrizes {
+  pool: HwPool;
+  prizes: HwPrize[];
+  /** round → prize id, per draw */
+  rounds: Record<string, number>;
+  template: string;
+}
+
+/** The live show state the OBS scene follows (events/halloween show.js). */
+export interface HwShow {
+  pool: HwPool;
+  test: boolean;
+  visual: string;
+  avatars: boolean;
+  sound: boolean;
+  blackout: boolean;
+  rev: number;
+  roll: { id: number; pool: HwPool; test: boolean; round: number; attempt: number; winnerId: string; totalTickets: number; at: number; revealedAt: number } | null;
+  /** OBS scenes connected right now */
+  stages: number;
+  now: number;
+}
+
+export interface HwContactPreview {
+  round: number;
+  to: { name: string | null; username: string | null };
+  prize: { name: string; items: string[] } | null;
+  text: string;
+  sent: { threadId: string | null; sentAt: string } | null;
+  test: boolean;
+}
+
+/** Visuals of the stream screen (events/halloween/draw/visuals/registry.js), in its order. */
+export const HW_VISUALS = [
+  { value: "roulette", label: "Кейс-рулетка" },
+  { value: "cauldron", label: "Котёл" },
+  { value: "graveyard", label: "Кладбище" },
+  { value: "wild-1-royale", label: "Королевская битва" },
+  { value: "wild-2-swarm", label: "Рой" },
+  { value: "wild-3-royale3d", label: "Рыцари 3D" },
+] as const;
+export type HwVisual = (typeof HW_VISUALS)[number]["value"];
+/** The super prize always plays the knights. */
+export const HW_SUPER_VISUAL: HwVisual = "wild-3-royale3d";
+
+const q = (pool: HwPool) => `?pool=${pool}`;
+const T = (test: boolean) => (test ? "/test" : "");
+
+export const hwDraw = {
+  screen: (pool: HwPool, test: boolean) => apiGet<HwScreen>(`${P}${T(test)}/participants${q(pool)}`),
+  prizes: (pool: HwPool) => apiGet<HwPrizes>(`${P}/prizes${q(pool)}`),
+  lock: (pool: HwPool, test: boolean) => apiPost<{ seedHash: string }>(`${P}${T(test)}/lock${q(pool)}`, {}),
+  draw: (pool: HwPool, test: boolean, round: number, visual: string) =>
+    apiPost<{ round: number; attempt: number; winner: string }>(`${P}${T(test)}/draw${q(pool)}`, { round, visual }),
+  /** Voids the pool's last live draw and draws its round again. */
+  reroll: (pool: HwPool, test: boolean, visual: string) =>
+    apiPost<{ round: number; attempt: number; winner: string }>(`${P}${T(test)}/reroll${q(pool)}`, { visual }),
+  /** Rehearsal only: a fresh random list of customers. */
+  testReset: (pool: HwPool) => apiPost<HwScreen>(`${P}/test/reset${q(pool)}`, {}),
+  show: () => apiGet<HwShow & { key: string }>(`${P}/show`),
+  setShow: (patch: Partial<Pick<HwShow, "test" | "visual" | "avatars" | "sound" | "blackout">>) => apiPost<HwShow>(`${P}/show`, patch),
+  savePrize: (p: { id?: number; name: string; items: string[]; images: string[] }) => apiPost<HwPrizes>(`${P}/prizes${q("pumpkins")}`, p),
+  deletePrize: (id: number) => apiPost<HwPrizes>(`${P}/prizes/delete${q("pumpkins")}`, { id }),
+  assign: (pool: HwPool, round: number, prizeId: number | null) => apiPost<HwPrizes>(`${P}/prizes/assign${q(pool)}`, { round, prizeId }),
+  setTemplate: (text: string) => apiPost<HwPrizes>(`${P}/prizes/template${q("pumpkins")}`, { text }),
+  contactPreview: (pool: HwPool, round: number, test: boolean) => apiPost<HwContactPreview>(`${P}/contact/preview${q(pool)}`, { round, test }),
+  contactSend: (pool: HwPool, round: number, test: boolean, text: string) =>
+    apiPost<{ ok: true; threadId: string | null; to: "you" | "winner" }>(`${P}/contact/send${q(pool)}`, { round, test, text }),
+};
+
+/** The OBS scene link (no admin token in it: the key opens only what the stream shows). */
+export const hwStageUrl = (key: string) => `${typeof location === "undefined" ? "" : location.origin}/hw/draw/stage.html?k=${key}`;

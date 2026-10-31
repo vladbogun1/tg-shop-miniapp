@@ -137,7 +137,7 @@ const SECTIONS: NavSection[] = [
       ...(isHalloween()
         ? [
             { href: "/halloween", label: "Участники 🎃", icon: Ghost },
-            { href: "/hw/draw/", label: "Розыгрыш 🎃", icon: Ghost, external: true },
+            { href: "/halloween/pult", label: "Пульт розыгрыша 🎃", icon: Ghost },
           ]
         : []),
     ],
@@ -183,6 +183,7 @@ const TITLE: Record<string, string> = {
   "/writeoffs": "Списания",
   "/users": "Пользователи",
   "/halloween": "Участники акции",
+  "/halloween/pult": "Пульт розыгрыша",
   "/broadcasts": "Рассылки",
   "/products": "Товары",
   "/preorders": "Поставки",
