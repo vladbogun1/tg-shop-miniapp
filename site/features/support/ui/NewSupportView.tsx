@@ -15,6 +15,25 @@ import { useSupportConfig } from "../queries";
 import { SupportDisabled, SupportTopicCard } from "./parts";
 import { SupportQuestionForm } from "./SupportQuestionForm";
 
+type ProductData = Awaited<ReturnType<typeof api.productById>>;
+type TFn = ReturnType<typeof useI18n>["t"];
+
+/** The product the question is about (card with its photo), while loading a placeholder. */
+function ProductTopic({ pending, p, t }: { pending: boolean; p: ProductData | undefined; t: TFn }) {
+  if (pending) return <div className="shimmer h-20" />;
+  if (!p) return null;
+  const slug = "slug" in p ? (p as StorefrontProduct).slug : null;
+  const image = p.images?.slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0]?.url ?? null;
+  return (
+    <SupportTopicCard
+      eyebrow={t("support.product")}
+      title={p.title}
+      imageUrl={image}
+      productPath={`/product/${slug ?? p.id}`}
+    />
+  );
+}
+
 export function NewSupportView() {
   const { t, href } = useI18n();
   const router = useRouter();
@@ -29,9 +48,6 @@ export function NewSupportView() {
     staleTime: 5 * 60_000,
     retry: false,
   });
-  const p = product.data;
-  const slug = p && "slug" in p ? (p as StorefrontProduct).slug : null;
-  const image = p?.images?.slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0]?.url ?? null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -51,17 +67,7 @@ export function NewSupportView() {
           <p className="mt-1 text-[14px] text-[var(--muted)]">{productId ? t("support.ask.lead") : t("support.new.lead")}</p>
         </div>
 
-        {productId &&
-          (product.isPending ? (
-            <div className="shimmer h-20" />
-          ) : p ? (
-            <SupportTopicCard
-              eyebrow={t("support.product")}
-              title={p.title}
-              imageUrl={image}
-              productPath={`/product/${slug ?? p.id}`}
-            />
-          ) : null)}
+        {productId && <ProductTopic pending={product.isPending} p={product.data} t={t} />}
 
         {config && !config.enabled ? (
           <SupportDisabled />

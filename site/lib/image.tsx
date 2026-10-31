@@ -85,6 +85,99 @@ function useNearViewport(eager: boolean) {
   return [near, setEl] as const;
 }
 
+/** Everything the two <Image> layouts need, so each can be its own small component. */
+interface ImgView {
+  src: string;
+  srcSet?: string;
+  sizes?: string;
+  alt: string;
+  className?: string;
+  imgClassName?: string;
+  priority: boolean;
+  near: boolean;
+  nearRef: (el: HTMLElement | null) => void;
+  loaded: boolean;
+  imgRef: (el: HTMLImageElement | null) => void;
+  onLoad: () => void;
+  onError: () => void;
+}
+
+function ImageFallback({ alt, className }: { alt: string; className?: string }) {
+  return (
+    <div
+      className={`flex items-center justify-center bg-[var(--surface-2)] ${className ?? ""}`}
+      aria-label={alt}
+      role="img"
+    >
+      <span className="text-2xl opacity-40">🖼️</span>
+    </div>
+  );
+}
+
+/** FIT: show the whole image at its natural aspect (no crop). The wrapper sizes to the image; `className` caps it. */
+function FitImage({ v }: { v: ImgView }) {
+  return (
+    <div ref={v.nearRef} className="relative flex justify-center overflow-hidden bg-[var(--surface-2)]">
+      {!v.near && (
+        <noscript>
+          <img src={v.src} alt={v.alt} loading="lazy" decoding="async" className={`block h-auto w-auto object-contain ${v.className ?? ""}`} />
+        </noscript>
+      )}
+      {v.near && <img
+        ref={v.imgRef}
+        src={v.src}
+        alt={v.alt}
+        fetchPriority={v.priority ? "high" : undefined}
+        decoding="async"
+        onLoad={v.onLoad}
+        onError={v.onError}
+        className={`block h-auto w-auto object-contain transition-opacity duration-500 ${
+          v.className ?? ""
+        } ${v.loaded ? "opacity-100" : "opacity-0"}`}
+      />}
+    </div>
+  );
+}
+
+/** FILL: the photo covers its box (cropped), on a blurred placeholder until it loads. */
+function FillImage({ v }: { v: ImgView }) {
+  return (
+    <div ref={v.nearRef} className={`relative overflow-hidden ${v.className ?? ""}`}>
+      {!v.loaded && (
+        <img
+          src={BLUR}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full scale-110 object-cover blur-md"
+        />
+      )}
+      {!v.near && (
+        // Until the photo nears the viewport there is no <img> at all, so the server HTML had only
+        // the grey placeholder: crawlers that do not run JS (image search, link previews,
+        // aggregators) saw no product photos. A <noscript> copy is ignored by every browser with
+        // JS — no extra download, no change on screen.
+        <noscript>
+          <img src={v.src} srcSet={v.srcSet} sizes={v.srcSet ? v.sizes : undefined} alt={v.alt} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+        </noscript>
+      )}
+      {v.near && <img
+        ref={v.imgRef}
+        src={v.src}
+        srcSet={v.srcSet}
+        sizes={v.srcSet ? v.sizes : undefined}
+        alt={v.alt}
+        fetchPriority={v.priority ? "high" : undefined}
+        decoding="async"
+        onLoad={v.onLoad}
+        onError={v.onError}
+        className={`h-full w-full object-cover transition-[opacity,transform] duration-500 ${
+          v.loaded ? "opacity-100" : "opacity-0"
+        } ${v.imgClassName ?? ""}`}
+      />}
+    </div>
+  );
+}
+
 export function Image({
   imageKey,
   src,
@@ -113,77 +206,22 @@ export function Image({
   const srcSet = raw && sizes ? imgproxySrcSet(raw, IMAGE_BASE, size, fit) : undefined;
   const [near, nearRef] = useNearViewport(priority || eager);
 
-  if (!finalSrc || failed) {
-    return (
-      <div
-        className={`flex items-center justify-center bg-[var(--surface-2)] ${className ?? ""}`}
-        aria-label={alt}
-        role="img"
-      >
-        <span className="text-2xl opacity-40">🖼️</span>
-      </div>
-    );
-  }
+  if (!finalSrc || failed) return <ImageFallback alt={alt} className={className} />;
 
-  // FIT: show the whole image at its natural aspect (no crop). The wrapper sizes to the image;
-  // `className` (e.g. max-h-72 max-w-full) caps it.
-  if (fit) {
-    return (
-      <div ref={nearRef} className="relative flex justify-center overflow-hidden bg-[var(--surface-2)]">
-        {!near && (
-          <noscript>
-            <img src={finalSrc} alt={alt} loading="lazy" decoding="async" className={`block h-auto w-auto object-contain ${className ?? ""}`} />
-          </noscript>
-        )}
-        {near && <img
-          ref={imgRef}
-          src={finalSrc}
-          alt={alt}
-          fetchPriority={priority ? "high" : undefined}
-          decoding="async"
-          onLoad={() => setLoaded(true)}
-          onError={() => setFailed(true)}
-          className={`block h-auto w-auto object-contain transition-opacity duration-500 ${
-            className ?? ""
-          } ${loaded ? "opacity-100" : "opacity-0"}`}
-        />}
-      </div>
-    );
-  }
-
-  return (
-    <div ref={nearRef} className={`relative overflow-hidden ${className ?? ""}`}>
-      {!loaded && (
-        <img
-          src={BLUR}
-          alt=""
-          aria-hidden
-          className="absolute inset-0 h-full w-full scale-110 object-cover blur-md"
-        />
-      )}
-      {!near && (
-        // Until the photo nears the viewport there is no <img> at all, so the server HTML had only
-        // the grey placeholder: crawlers that do not run JS (image search, link previews,
-        // aggregators) saw no product photos. A <noscript> copy is ignored by every browser with
-        // JS — no extra download, no change on screen.
-        <noscript>
-          <img src={finalSrc} srcSet={srcSet} sizes={srcSet ? sizes : undefined} alt={alt} loading="lazy" decoding="async" className="h-full w-full object-cover" />
-        </noscript>
-      )}
-      {near && <img
-        ref={imgRef}
-        src={finalSrc}
-        srcSet={srcSet}
-        sizes={srcSet ? sizes : undefined}
-        alt={alt}
-        fetchPriority={priority ? "high" : undefined}
-        decoding="async"
-        onLoad={() => setLoaded(true)}
-        onError={() => setFailed(true)}
-        className={`h-full w-full object-cover transition-[opacity,transform] duration-500 ${
-          loaded ? "opacity-100" : "opacity-0"
-        } ${imgClassName ?? ""}`}
-      />}
-    </div>
-  );
+  const view: ImgView = {
+    src: finalSrc,
+    srcSet,
+    sizes,
+    alt,
+    className,
+    imgClassName,
+    priority,
+    near,
+    nearRef,
+    loaded,
+    imgRef,
+    onLoad: () => setLoaded(true),
+    onError: () => setFailed(true),
+  };
+  return fit ? <FitImage v={view} /> : <FillImage v={view} />;
 }

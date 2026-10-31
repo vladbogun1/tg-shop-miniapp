@@ -2,6 +2,7 @@ import { BadgeInfo, CreditCard, RotateCcw, ShieldCheck, Truck } from "lucide-rea
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { availabilityOf, type Availability } from "@shop/core/availability";
+import { type Locale } from "@shop/core/i18n";
 import { type CatalogSchema, categoryPath, MARKDOWN_COLLECTION_SLUG, type ProductCondition, specRows } from "@shop/core/catalog";
 import { compareGroupOf } from "@shop/core/compare";
 import { imgproxyUrl } from "@shop/core/image";
@@ -110,45 +111,22 @@ const PROMISES: { icon: typeof Truck; title: MessageKey; text: MessageKey; href?
   { icon: ShieldCheck, title: "product.promise.warranty.title", text: "product.promise.warranty.text", href: "/warranty" },
 ];
 
-export default async function ProductPage({ params }: { params: Params }) {
-  const locale = await localeOf(params);
-  const { slug } = await params;
-  const t = makeT(locale);
-  const [product, schema] = await Promise.all([safe(getProductBySlug(decodeURIComponent(slug), locale), null), loadSchema(locale)]);
-  if (!product) notFound();
-  // One address per product: /product/ATTACK-Shark → /product/attack-shark (the API matches slugs
-  // case-insensitively, so the odd spelling would otherwise be a 200 duplicate).
-  if (decodeURIComponent(slug) !== product.slug) permanentRedirect(localePath(locale, `/product/${product.slug}`));
+type T = ReturnType<typeof makeT>;
+type Specs = ReturnType<typeof specRows>;
+type ReviewPage = Awaited<ReturnType<typeof getProductReviews>>;
+type ProductPreorder = Awaited<ReturnType<typeof getProductPreorder>>;
+type CatPath = ReturnType<typeof productCategoryPath>;
 
-  const catPath = productCategoryPath(product, schema);
-  const category = catPath.at(-1) ?? null;
+/** Other in-stock products of the same category (at most 8, without this one). */
+async function loadRelated(product: StorefrontProduct, category: CatPath[number] | null, locale: Locale) {
   const related = category
     ? await safe(getProducts({ category: category.slug, inStock: true, size: 9 }, locale), null)
     : null;
-  const relatedItems = (related?.items ?? []).filter((p) => p.id !== product.id).slice(0, 8);
-  const [reviewPage, preorder, preIndex] = await Promise.all([
-    safe(getProductReviews(product.slug, locale), null),
-    safe(getProductPreorder(product.id, product.slug, locale), null),
-    getPreorderIndex(locale),
-  ]);
+  return (related?.items ?? []).filter((p) => p.id !== product.id).slice(0, 8);
+}
 
-  const crumbs: Crumb[] = [
-    { label: t("catalog.title"), path: "/catalog" },
-    ...catPath.map((c) => ({ label: c.name, path: `/catalog/${c.slug}` })),
-    { label: product.title },
-  ];
-  const path = `/product/${product.slug}`;
-  const images = sortedImages(product);
-  // Sold out but a batch brings it: schema.org PreOrder (+ the date it starts being available)
-  const preEta = preorder?.lines[0]?.eta ?? null;
-  const avail = availabilityOf(product, null, { coming: !!preEta });
-  const preStarts = avail === "preorder" && preEta ? etaStartsOn(preEta) : null;
-
-  const brand = productBrandName(product);
-  const condition = productCondition(product);
-  const markdown = condition !== "NEW";
-  const specs = specRows(schema, product.categoryId, product.specs, locale, yesNo(locale));
-  const additionalProperty = specs.flatMap(({ rows }) =>
+function additionalPropertyOf(product: StorefrontProduct, specs: Specs) {
+  return specs.flatMap(({ rows }) =>
     rows.map(({ attr, text }) => {
       const raw = product.specs?.[attr.key];
       // Plain numbers go as value + unitText; everything else as the formatted text.
@@ -157,8 +135,26 @@ export default async function ProductPage({ params }: { params: Params }) {
         : { "@type": "PropertyValue", name: attr.label, value: text };
     })
   );
-  const productUrl = `${SITE_URL}${localePath(locale, path)}`;
-  const productLd = {
+}
+
+interface LdInput {
+  product: StorefrontProduct;
+  locale: Locale;
+  t: T;
+  catPath: CatPath;
+  specs: Specs;
+  images: string[];
+  markdown: boolean;
+  avail: Availability;
+  preStarts: string | null;
+  reviewPage: ReviewPage;
+}
+
+function productLdOf({ product, locale, t, catPath, specs, images, markdown, avail, preStarts, reviewPage }: LdInput) {
+  const brand = productBrandName(product);
+  const additionalProperty = additionalPropertyOf(product, specs);
+  const productUrl = `${SITE_URL}${localePath(locale, `/product/${product.slug}`)}`;
+  return {
     "@context": "https://schema.org",
     "@type": "Product",
     "@id": `${productUrl}#product`,
@@ -185,6 +181,144 @@ export default async function ProductPage({ params }: { params: Params }) {
     },
     ...reviewsLd(product, reviewPage, t("reviews.customer")),
   };
+}
+
+/** Sold out but a batch brings it: schema.org PreOrder (+ the date it starts being available). */
+function preorderInfo(product: StorefrontProduct, preorder: ProductPreorder) {
+  const preEta = preorder?.lines[0]?.eta ?? null;
+  const avail = availabilityOf(product, null, { coming: !!preEta });
+  const preStarts = avail === "preorder" && preEta ? etaStartsOn(preEta) : null;
+  return { avail, preStarts };
+}
+
+function BrandAndCondition({
+  product,
+  condition,
+  locale,
+  t,
+}: {
+  product: StorefrontProduct;
+  condition: ProductCondition;
+  locale: Locale;
+  t: T;
+}) {
+  const markdown = condition !== "NEW";
+  if (!product.brandRef && !markdown) return null;
+  return (
+    <div className="mt-4 flex flex-col gap-3">
+      {product.brandRef && (
+        <p className="flex flex-wrap items-center gap-2 text-[14px] font-medium text-[var(--muted)]">
+          <span className="eyebrow text-[11px]">{t("product.brand")}</span>
+          <a
+            href={localePath(locale, `/catalog?brand=${encodeURIComponent(product.brandRef.slug)}`)}
+            title={t("product.brandAll", { brand: product.brandRef.name })}
+            className="font-display text-[15px] font-bold text-[var(--ink)] underline decoration-[var(--line-strong)] underline-offset-4 transition-colors hover:text-[var(--accent-hi)] hover:decoration-[var(--accent)]"
+          >
+            {product.brandRef.name}
+          </a>
+        </p>
+      )}
+      {markdown && (
+        <div className="flex gap-3 rounded-[var(--r-card)] border border-[color-mix(in_srgb,var(--warn)_45%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] p-3.5">
+          <BadgeInfo className="mt-0.5 h-5 w-5 shrink-0 text-[var(--warn)]" strokeWidth={2} />
+          <div className="min-w-0">
+            <p className="font-display text-[13px] font-bold uppercase tracking-[.08em] text-[var(--warn)]">
+              {t(condition === "USED" ? "product.cond.USED" : "product.cond.MARKDOWN")}
+            </p>
+            <p className="mt-0.5 whitespace-pre-line text-[14px] font-medium leading-snug text-[var(--ink)]">
+              {product.conditionNote?.trim() || t(condition === "USED" ? "product.cond.USED.text" : "product.cond.MARKDOWN.text")}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PromiseList({ locale, t }: { locale: Locale; t: T }) {
+  return (
+    <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+      {PROMISES.map(({ icon: Icon, title, text, href }) => (
+        <li key={title} className="nb-flat flex gap-3 p-3.5">
+          <Icon className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" strokeWidth={2} />
+          <div className="min-w-0">
+            {href ? (
+              <a href={localePath(locale, href)} className="font-display text-[13px] font-bold uppercase tracking-[.06em] text-[var(--ink)] transition-colors hover:text-[var(--accent-hi)]">
+                {t(title)}
+              </a>
+            ) : (
+              <p className="text-[13px] font-display font-bold uppercase tracking-[.06em] text-[var(--ink)]">{t(title)}</p>
+            )}
+            <p className="mt-0.5 text-[13px] font-medium leading-snug text-[var(--muted)]">{t(text)}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function SpecsSection({ specs, t }: { specs: Specs; t: T }) {
+  if (specs.length === 0) return null;
+  return (
+    <section className="mt-12 max-w-3xl" aria-labelledby="pd-specs">
+      <h2 id="pd-specs" className="mb-4 flex items-center gap-3 font-display text-[22px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)]">
+        <span aria-hidden className="tech-mark" />
+        {t("product.specs")}
+      </h2>
+      <div className="nb overflow-hidden">
+        {specs.map(({ group, rows }) => (
+          <table key={group.key} className="w-full border-collapse text-[14px]">
+            {specs.length > 1 && (
+              <caption className="eyebrow border-b border-[var(--line)] bg-[var(--surface-2)] px-5 py-2.5 text-left text-[11px] sm:px-7">{group.label}</caption>
+            )}
+            <tbody>
+              {rows.map(({ attr, text }) => (
+                <tr key={attr.key} className="border-b border-[var(--line)]">
+                  <th scope="row" className="w-[45%] px-5 py-2.5 text-left align-top font-medium text-[var(--muted)] sm:px-7">
+                    {attr.label}
+                  </th>
+                  <td className="px-5 py-2.5 align-top font-semibold text-[var(--ink)] [overflow-wrap:anywhere] sm:px-7">{text}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export default async function ProductPage({ params }: { params: Params }) {
+  const locale = await localeOf(params);
+  const { slug } = await params;
+  const t = makeT(locale);
+  const [product, schema] = await Promise.all([safe(getProductBySlug(decodeURIComponent(slug), locale), null), loadSchema(locale)]);
+  if (!product) notFound();
+  // One address per product: /product/ATTACK-Shark → /product/attack-shark (the API matches slugs
+  // case-insensitively, so the odd spelling would otherwise be a 200 duplicate).
+  if (decodeURIComponent(slug) !== product.slug) permanentRedirect(localePath(locale, `/product/${product.slug}`));
+
+  const catPath = productCategoryPath(product, schema);
+  const relatedItems = await loadRelated(product, catPath.at(-1) ?? null, locale);
+  const [reviewPage, preorder, preIndex] = await Promise.all([
+    safe(getProductReviews(product.slug, locale), null),
+    safe(getProductPreorder(product.id, product.slug, locale), null),
+    getPreorderIndex(locale),
+  ]);
+
+  const crumbs: Crumb[] = [
+    { label: t("catalog.title"), path: "/catalog" },
+    ...catPath.map((c) => ({ label: c.name, path: `/catalog/${c.slug}` })),
+    { label: product.title },
+  ];
+  const path = `/product/${product.slug}`;
+  const images = sortedImages(product);
+  const { avail, preStarts } = preorderInfo(product, preorder);
+
+  const condition = productCondition(product);
+  const markdown = condition !== "NEW";
+  const specs = specRows(schema, product.categoryId, product.specs, locale, yesNo(locale));
+  const productLd = productLdOf({ product, locale, t, catPath, specs, images, markdown, avail, preStarts, reviewPage });
 
   return (
     <div className="container-site pt-6">
@@ -196,54 +330,10 @@ export default async function ProductPage({ params }: { params: Params }) {
         <Gallery images={images} alt={product.title} />
         <div className="min-w-0">
           <BuyBox product={product} compareGroup={compareGroupOf(schema, product.categoryId)} preorder={preorder} />
-          {(product.brandRef || markdown) && (
-            <div className="mt-4 flex flex-col gap-3">
-              {product.brandRef && (
-                <p className="flex flex-wrap items-center gap-2 text-[14px] font-medium text-[var(--muted)]">
-                  <span className="eyebrow text-[11px]">{t("product.brand")}</span>
-                  <a
-                    href={localePath(locale, `/catalog?brand=${encodeURIComponent(product.brandRef.slug)}`)}
-                    title={t("product.brandAll", { brand: product.brandRef.name })}
-                    className="font-display text-[15px] font-bold text-[var(--ink)] underline decoration-[var(--line-strong)] underline-offset-4 transition-colors hover:text-[var(--accent-hi)] hover:decoration-[var(--accent)]"
-                  >
-                    {product.brandRef.name}
-                  </a>
-                </p>
-              )}
-              {markdown && (
-                <div className="flex gap-3 rounded-[var(--r-card)] border border-[color-mix(in_srgb,var(--warn)_45%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] p-3.5">
-                  <BadgeInfo className="mt-0.5 h-5 w-5 shrink-0 text-[var(--warn)]" strokeWidth={2} />
-                  <div className="min-w-0">
-                    <p className="font-display text-[13px] font-bold uppercase tracking-[.08em] text-[var(--warn)]">
-                      {t(condition === "USED" ? "product.cond.USED" : "product.cond.MARKDOWN")}
-                    </p>
-                    <p className="mt-0.5 whitespace-pre-line text-[14px] font-medium leading-snug text-[var(--ink)]">
-                      {product.conditionNote?.trim() || t(condition === "USED" ? "product.cond.USED.text" : "product.cond.MARKDOWN.text")}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <BrandAndCondition product={product} condition={condition} locale={locale} t={t} />
           <AskProductButton productId={product.id} productTitle={product.title} />
           <TrackProductView productId={product.id} />
-          <ul className="mt-6 grid gap-3 sm:grid-cols-2">
-            {PROMISES.map(({ icon: Icon, title, text, href }) => (
-              <li key={title} className="nb-flat flex gap-3 p-3.5">
-                <Icon className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent)]" strokeWidth={2} />
-                <div className="min-w-0">
-                  {href ? (
-                    <a href={localePath(locale, href)} className="font-display text-[13px] font-bold uppercase tracking-[.06em] text-[var(--ink)] transition-colors hover:text-[var(--accent-hi)]">
-                      {t(title)}
-                    </a>
-                  ) : (
-                    <p className="text-[13px] font-display font-bold uppercase tracking-[.06em] text-[var(--ink)]">{t(title)}</p>
-                  )}
-                  <p className="mt-0.5 text-[13px] font-medium leading-snug text-[var(--muted)]">{t(text)}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <PromiseList locale={locale} t={t} />
         </div>
       </div>
 
@@ -263,33 +353,7 @@ export default async function ProductPage({ params }: { params: Params }) {
         </div>
       </section>
 
-      {specs.length > 0 && (
-        <section className="mt-12 max-w-3xl" aria-labelledby="pd-specs">
-          <h2 id="pd-specs" className="mb-4 flex items-center gap-3 font-display text-[22px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)]">
-            <span aria-hidden className="tech-mark" />
-            {t("product.specs")}
-          </h2>
-          <div className="nb overflow-hidden">
-            {specs.map(({ group, rows }) => (
-              <table key={group.key} className="w-full border-collapse text-[14px]">
-                {specs.length > 1 && (
-                  <caption className="eyebrow border-b border-[var(--line)] bg-[var(--surface-2)] px-5 py-2.5 text-left text-[11px] sm:px-7">{group.label}</caption>
-                )}
-                <tbody>
-                  {rows.map(({ attr, text }) => (
-                    <tr key={attr.key} className="border-b border-[var(--line)]">
-                      <th scope="row" className="w-[45%] px-5 py-2.5 text-left align-top font-medium text-[var(--muted)] sm:px-7">
-                        {attr.label}
-                      </th>
-                      <td className="px-5 py-2.5 align-top font-semibold text-[var(--ink)] [overflow-wrap:anywhere] sm:px-7">{text}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ))}
-          </div>
-        </section>
-      )}
+      <SpecsSection specs={specs} t={t} />
 
       <ProductReviews slug={product.slug} initial={reviewPage} />
 

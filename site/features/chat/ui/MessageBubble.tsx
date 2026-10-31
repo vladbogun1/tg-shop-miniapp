@@ -21,6 +21,125 @@ import { useT } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
 
+type TFn = ReturnType<typeof useT>;
+type Fmt = ReturnType<typeof useFmt>;
+
+function SystemBubble({ text }: { text: Message["text"] }) {
+  return (
+    <div className="my-2 flex justify-center">
+      <span className="rounded-full border border-[var(--line)] bg-[var(--surface-2)] px-3 py-1 font-display text-[11px] font-semibold uppercase tracking-[.08em] text-[var(--muted)]">
+        {text}
+      </span>
+    </div>
+  );
+}
+
+function SenderName({ msg, outgoing }: { msg: Message; outgoing: boolean }) {
+  if (outgoing || !msg.senderName) return null;
+  return (
+    <p className="mb-0.5 font-display text-[12px] font-semibold uppercase tracking-[.08em] text-[var(--accent-hi)]">
+      {msg.senderName}
+    </p>
+  );
+}
+
+function ReplyQuote({ repliedTo, outgoing, t }: { repliedTo?: Message | null; outgoing: boolean; t: TFn }) {
+  if (!repliedTo) return null;
+  return (
+    <div
+      className={`mb-1.5 rounded-[var(--r)] border-l px-2 py-1 text-[12px] ${
+        outgoing
+          ? "border-[var(--accent)] bg-[rgba(0,0,0,.25)]"
+          : "border-[var(--accent)] bg-[var(--surface-3)]"
+      }`}
+    >
+      <span className="block font-semibold opacity-90">
+        {repliedTo.senderName ?? t("chat.reply.fallbackSender")}
+      </span>
+      <span className="line-clamp-1 opacity-75">
+        {repliedTo.text ??
+          (repliedTo.type === "PHOTO" ? t("chat.attachment.photo") : t("chat.attachment.file"))}
+      </span>
+    </div>
+  );
+}
+
+function PhotoAttachment({
+  msg,
+  photoOnly,
+  onImageClick,
+  t,
+}: {
+  msg: Message;
+  photoOnly: boolean;
+  onImageClick?: (url: string) => void;
+  t: TFn;
+}) {
+  if (!isPhotoMessage(msg)) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => onImageClick?.(msg.attachmentUrl!)}
+      className={`block w-full overflow-hidden rounded-[var(--r)] border border-[var(--line)] ${
+        photoOnly ? "" : "mb-1"
+      }`}
+    >
+      <Image
+        src={msg.attachmentUrl}
+        alt={msg.fileName ?? t("chat.attachment.photo")}
+        // A bubble is ~260px wide; asking for the stored original here is what made chat
+        // photos crawl. The lightbox asks for the big one.
+        size={480}
+        fit
+        className="max-h-72 max-w-full"
+      />
+    </button>
+  );
+}
+
+function FileAttachment({ msg, outgoing, t }: { msg: Message; outgoing: boolean; t: TFn }) {
+  if (msg.type !== "FILE" || !msg.attachmentUrl) return null;
+  return (
+    // attachmentUrl is a server-relative signed link, so it needs the API origin to open
+    // in a new tab (the chat pages and the Mini App can be served from different hosts).
+    <a
+      href={msg.attachmentUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`mb-1 flex items-center gap-2 rounded-[var(--r)] border border-[var(--line)] px-2 py-1.5 ${
+        outgoing
+          ? "bg-[rgba(0,0,0,.25)]"
+          : "bg-[var(--surface-3)]"
+      }`}
+    >
+      <FileText className="h-5 w-5 shrink-0" strokeWidth={2.5} />
+      <span className="truncate text-[13px] font-semibold">{msg.fileName ?? t("chat.attachment.file")}</span>
+    </a>
+  );
+}
+
+function BubbleMeta({ msg, outgoing, photoOnly, fmt }: { msg: Message; outgoing: boolean; photoOnly: boolean; fmt: Fmt }) {
+  return (
+    <div
+      className={`flex items-center justify-end gap-1 text-[10px] font-semibold ${
+        photoOnly
+          ? "absolute bottom-2 right-2 rounded-full bg-[rgba(14,14,16,.8)] px-1.5 py-0.5 text-[var(--ink)]"
+          : `mt-0.5 ${outgoing ? "text-[var(--muted)]" : "text-[var(--faint)]"}`
+      }`}
+    >
+      <span>{fmt.time(msg.createdAt)}</span>
+      {outgoing &&
+        (msg.readAt ? (
+          <CheckCheck className="h-3.5 w-3.5" strokeWidth={2.5} />
+        ) : (
+          <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+        ))}
+    </div>
+  );
+}
+
+const isPhotoMessage = (msg: Message) => msg.type === "PHOTO" && !!msg.attachmentUrl;
+
 export function MessageBubble({
   msg,
   outgoing,
@@ -34,19 +153,10 @@ export function MessageBubble({
 }) {
   const t = useT();
   const fmt = useFmt();
-  if (msg.type === "SYSTEM") {
-    return (
-      <div className="my-2 flex justify-center">
-        <span className="rounded-full border border-[var(--line)] bg-[var(--surface-2)] px-3 py-1 font-display text-[11px] font-semibold uppercase tracking-[.08em] text-[var(--muted)]">
-          {msg.text}
-        </span>
-      </div>
-    );
-  }
+  if (msg.type === "SYSTEM") return <SystemBubble text={msg.text} />;
 
-  const isPhoto = msg.type === "PHOTO" && !!msg.attachmentUrl;
   // A photo with no other content: let the image fill the bubble, overlay the time.
-  const photoOnly = isPhoto && !msg.text && !repliedTo && !msg.senderName;
+  const photoOnly = isPhotoMessage(msg) && !msg.text && !repliedTo && !msg.senderName;
 
   return (
     <motion.div
@@ -66,67 +176,13 @@ export function MessageBubble({
             : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)]"
         }`}
       >
-        {!outgoing && msg.senderName && (
-          <p className="mb-0.5 font-display text-[12px] font-semibold uppercase tracking-[.08em] text-[var(--accent-hi)]">
-            {msg.senderName}
-          </p>
-        )}
+        <SenderName msg={msg} outgoing={outgoing} />
 
-        {repliedTo && (
-          <div
-            className={`mb-1.5 rounded-[var(--r)] border-l px-2 py-1 text-[12px] ${
-              outgoing
-                ? "border-[var(--accent)] bg-[rgba(0,0,0,.25)]"
-                : "border-[var(--accent)] bg-[var(--surface-3)]"
-            }`}
-          >
-            <span className="block font-semibold opacity-90">
-              {repliedTo.senderName ?? t("chat.reply.fallbackSender")}
-            </span>
-            <span className="line-clamp-1 opacity-75">
-              {repliedTo.text ??
-                (repliedTo.type === "PHOTO" ? t("chat.attachment.photo") : t("chat.attachment.file"))}
-            </span>
-          </div>
-        )}
+        <ReplyQuote repliedTo={repliedTo} outgoing={outgoing} t={t} />
 
-        {isPhoto && (
-          <button
-            type="button"
-            onClick={() => onImageClick?.(msg.attachmentUrl!)}
-            className={`block w-full overflow-hidden rounded-[var(--r)] border border-[var(--line)] ${
-              photoOnly ? "" : "mb-1"
-            }`}
-          >
-            <Image
-              src={msg.attachmentUrl}
-              alt={msg.fileName ?? t("chat.attachment.photo")}
-              // A bubble is ~260px wide; asking for the stored original here is what made chat
-              // photos crawl. The lightbox asks for the big one.
-              size={480}
-              fit
-              className="max-h-72 max-w-full"
-            />
-          </button>
-        )}
+        <PhotoAttachment msg={msg} photoOnly={photoOnly} onImageClick={onImageClick} t={t} />
 
-        {msg.type === "FILE" && msg.attachmentUrl && (
-          // attachmentUrl is a server-relative signed link, so it needs the API origin to open
-          // in a new tab (the chat pages and the Mini App can be served from different hosts).
-          <a
-            href={msg.attachmentUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`mb-1 flex items-center gap-2 rounded-[var(--r)] border border-[var(--line)] px-2 py-1.5 ${
-              outgoing
-                ? "bg-[rgba(0,0,0,.25)]"
-                : "bg-[var(--surface-3)]"
-            }`}
-          >
-            <FileText className="h-5 w-5 shrink-0" strokeWidth={2.5} />
-            <span className="truncate text-[13px] font-semibold">{msg.fileName ?? t("chat.attachment.file")}</span>
-          </a>
-        )}
+        <FileAttachment msg={msg} outgoing={outgoing} t={t} />
 
         {msg.text && (
           <p className="whitespace-pre-wrap break-words text-[14px] leading-snug">
@@ -134,21 +190,7 @@ export function MessageBubble({
           </p>
         )}
 
-        <div
-          className={`flex items-center justify-end gap-1 text-[10px] font-semibold ${
-            photoOnly
-              ? "absolute bottom-2 right-2 rounded-full bg-[rgba(14,14,16,.8)] px-1.5 py-0.5 text-[var(--ink)]"
-              : `mt-0.5 ${outgoing ? "text-[var(--muted)]" : "text-[var(--faint)]"}`
-          }`}
-        >
-          <span>{fmt.time(msg.createdAt)}</span>
-          {outgoing &&
-            (msg.readAt ? (
-              <CheckCheck className="h-3.5 w-3.5" strokeWidth={2.5} />
-            ) : (
-              <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
-            ))}
-        </div>
+        <BubbleMeta msg={msg} outgoing={outgoing} photoOnly={photoOnly} fmt={fmt} />
       </div>
     </motion.div>
   );

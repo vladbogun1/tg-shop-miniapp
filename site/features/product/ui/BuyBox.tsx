@@ -5,27 +5,23 @@
  * quantity, "В корзину" and "Купить". "Купить" puts the item in the cart and goes straight to the
  * checkout — the same single cart, so nothing the customer added earlier is lost.
  */
-import { Check, ShoppingBag, Truck, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { maxQty } from "@shop/core/orders";
 import { type ProductVariant } from "@shop/customer/catalog/model/product";
 import { type StorefrontProduct } from "@shop/core/site";
 import { ProductGiftBanner } from "@/features/gift/view/ProductGiftBanner";
-import { Button, QtyStepper } from "@shop/ui/primitives";
 import { RatingLink } from "@/features/reviews/view/RatingLink";
 import { CompareToggle } from "@/features/compare/view/CompareToggle";
 import { toast } from "@shop/ui/toast";
-import { PreorderPanel } from "@/features/preorder/view/PreorderPanel";
 import { useI18n } from "@/i18n/context";
 import { trackAddToCart } from "@/lib/analytics";
-import { stockOf } from "@shop/customer/catalog/model/stock";
 import { lineKey, useCart } from "@/features/cart";
 import { useOrderLimits } from "@/features/cart";
 import { discountPercent } from "@/lib/format";
 import { useHydrated } from "@/lib/hooks";
-import { holdUntilText, isLive, type MyPreorder, type PreorderEta, type ProductPreorder, useProductPreorder } from "@/features/preorder";
+import { type ProductPreorder, useProductPreorder } from "@/features/preorder";
 import { useFmt } from "@/lib/use-fmt";
+import { ActionButtons, BuyPreorderPanel, HeldNotice, preorderLookups, PriceBlock, QtyRow, soldOutState, StockLine, stockLevels, VariantPicker } from "./BuyBoxParts";
 
 export function BuyBox({
   product,
@@ -52,18 +48,7 @@ export function BuyBox({
   );
   const hasVariants = variants.length > 0;
   const { data: pre } = useProductPreorder(preorder, product.id);
-  const preLines = pre?.lines ?? [];
-  /** The open batch that brings this variant (or the product); a product-level line covers every variant. */
-  const etaFor = (v: ProductVariant | null): PreorderEta | null =>
-    preLines.find((l) => (l.variantId ?? null) === (v?.id ?? null))?.eta ?? (v ? preLines.find((l) => !l.variantId)?.eta ?? null : null);
-  const myLive = (pre?.mine ?? []).filter((m) => isLive(m.status));
-  const mineFor = (v: ProductVariant | null): MyPreorder | null => myLive.find((m) => (m.variantId ?? null) === (v?.id ?? null)) ?? null;
-  /** Units held for me: the catalog shows stock minus every hold, mine included. */
-  const heldFor = (v: ProductVariant | null): number => {
-    const m = mineFor(v);
-    return m && m.status === "HELD" ? m.heldQty : 0;
-  };
-  const heldTotal = myLive.reduce((s, m) => s + (m.status === "HELD" ? m.heldQty : 0), 0);
+  const lk = preorderLookups(pre);
 
   // Preselect the only in-stock variant when there is exactly one; with nothing in stock, the first
   // variant that is on its way — one less click.
@@ -78,19 +63,9 @@ export function BuyBox({
   });
   const [qty, setQty] = useState(1);
 
-  const totalStock = stockOf(product, null);
-  const stockShown = hasVariants ? (variant ? variant.stock : totalStock) : totalStock;
-  const held = hasVariants && !variant ? 0 : heldFor(variant);
-  const stock = Math.max(stockShown, held);
-  const inStock = totalStock > 0 || heldTotal > 0;
-  const needVariant = hasVariants && !variant;
-  const canBuy = !needVariant && stock > 0;
-  const heldMine = held > 0 ? mineFor(variant) : null;
-  // sold out (the chosen variant, or the product): is it on its way / can one queue for it
-  const out = !needVariant && stock <= 0;
-  const selEta = out ? etaFor(variant) : null;
-  const anyEta = !inStock && needVariant ? preLines[0]?.eta ?? null : null;
-  const showPanel = out && (!!selEta || !!pre?.anyProduct || !!mineFor(variant));
+  const levels = stockLevels(product, hasVariants, variant, lk);
+  const { stock, held, inStock, needVariant, canBuy, stockShown } = levels;
+  const { heldMine, out, selEta, anyEta, showPanel } = soldOutState(variant, lk, pre, levels);
   const off = discountPercent(product.priceMinor, product.compareAtMinor);
   const inCart = hydrated
     ? lines.find((l) => l.key === lineKey(product.id, variant?.id ?? null))?.quantity ?? 0
@@ -115,151 +90,48 @@ export function BuyBox({
       </h1>
       <RatingLink avg={product.ratingAvg} count={product.ratingCount} />
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <span className="font-display text-[34px] font-bold leading-none tabular-nums text-[var(--accent)] [text-shadow:0_0_24px_rgba(255,102,0,.35)]">
-          {fmt.money(product.priceMinor, product.currency)}
-        </span>
-        {off > 0 && (
-          <>
-            <s className="font-display text-[18px] font-medium tabular-nums text-[var(--faint)]">{fmt.money(product.compareAtMinor, product.currency)}</s>
-            <span className="rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-2.5 py-0.5 font-display text-[14px] font-bold text-[var(--accent-hi)]">
-              {t("product.discount", { n: off })}
-            </span>
-          </>
-        )}
-      </div>
+      <PriceBlock product={product} off={off} fmt={fmt} t={t} />
 
-      {(() => {
-        // pre-order: sold out, and a batch brings it (the chosen variant, or — before choosing — the product)
-        const coming = !inStock ? selEta ?? anyEta ?? (!hasVariants ? etaFor(null) : null) : out && selEta ? selEta : null;
-        const tone = inStock && (!out || !selEta) ? "ok" : coming ? "pre" : "off";
-        const color = tone === "ok" ? "var(--ok)" : tone === "pre" ? "var(--pre)" : "var(--faint)";
-        return (
-          <p className="mt-4 flex items-center gap-2 text-[14px] font-semibold" aria-live="polite">
-            <span
-              aria-hidden
-              className="inline-block h-2 w-2 rounded-full"
-              style={{ background: color, boxShadow: tone === "off" ? undefined : `0 0 8px ${color}` }}
-            />
-            <span style={{ color: tone === "off" ? "var(--muted)" : tone === "pre" ? "var(--pre)" : "var(--ink)" }}>
-              {tone === "pre"
-                ? t("preorder.badge")
-                : tone === "off"
-                  ? t("product.outOfStock")
-                  : stock > 0 && stock <= 3 && !held
-                    ? t("product.lowStock", { n: stock })
-                    : t("product.inStock")}
-            </span>
-          </p>
-        );
-      })()}
+      <StockLine info={{ inStock, out, selEta, anyEta, hasVariants, etaFor: lk.etaFor, stock, held }} t={t} />
 
       {hasVariants && (
-        <fieldset className="mt-6">
-          <legend className="eyebrow mb-2.5 text-[11px]">
-            {t("product.variant")}
-            {needVariant && inStock ? ` — ${t("product.chooseVariant")}` : ""}
-          </legend>
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("product.variant")}>
-            {variants.map((v) => {
-              const on = variant?.id === v.id;
-              const vOut = v.stock <= 0 && heldFor(v) <= 0;
-              const vComing = vOut && !!etaFor(v);
-              const selectable = !vOut || vComing || !!pre?.anyProduct;
-              return (
-                <button
-                  key={v.id ?? v.name}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  disabled={!selectable}
-                  onClick={() => {
-                    setVariant(v);
-                    setQty(1);
-                  }}
-                  title={vOut && !vComing ? t("product.variantOut") : undefined}
-                  className={`tap inline-flex min-h-[44px] items-center gap-1.5 rounded-full border px-4 font-display text-[14px] font-semibold transition-colors ${
-                    on
-                      ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
-                      : "border-[var(--line-strong)] bg-[var(--surface-2)] text-[var(--ink)] hover:border-[rgba(255,255,255,.3)]"
-                  } disabled:cursor-not-allowed disabled:line-through disabled:opacity-45 ${vOut && !vComing && selectable ? "opacity-60" : ""}`}
-                >
-                  {on && <Check className="h-4 w-4" strokeWidth={2.25} />}
-                  {v.name}
-                  {vComing && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-[var(--pre-soft)] px-1.5 py-px text-[10px] font-bold uppercase tracking-[.05em] text-[var(--pre)]">
-                      <Truck className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-                      {t("preorder.variantComing")}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
-      )}
-
-      {heldMine?.holdUntil && (
-        <div className="mt-5 rounded-[var(--r-card)] border border-[color-mix(in_srgb,var(--ok)_45%,transparent)] bg-[color-mix(in_srgb,var(--ok)_10%,transparent)] p-3.5">
-          <p className="font-display text-[15px] font-bold text-[var(--ink)]">
-            {t("preorder.held.until", { when: holdUntilText(heldMine.holdUntil, locale) })}
-          </p>
-          <p className="mt-0.5 text-[13px] font-medium text-[var(--muted)]">{t("preorder.held.hint")}</p>
-        </div>
-      )}
-      {heldMine && heldMine.status === "NOTIFIED" && <p className="mt-5 font-display text-[15px] font-bold text-[var(--ink)]">{t("preorder.notified")}</p>}
-
-      {showPanel && (
-        <PreorderPanel
-          key={variant?.id ?? "p"}
-          productId={product.id}
-          productTitle={product.title}
-          variantId={variant?.id ?? null}
-          variantName={variant?.name ?? null}
-          eta={selEta}
-          waitingCount={pre?.waitingCount ?? null}
-          mine={mineFor(variant)}
-          holdHours={pre?.holdHours}
+        <VariantPicker
+          variants={variants}
+          variant={variant}
+          onPick={(v) => {
+            setVariant(v);
+            setQty(1);
+          }}
+          needVariant={needVariant}
+          inStock={inStock}
+          lk={lk}
+          anyProduct={!!pre?.anyProduct}
+          t={t}
         />
       )}
 
-      <div className={`mt-6 flex flex-wrap items-center gap-3 ${showPanel ? "hidden" : ""}`}>
-        <div className="flex items-center gap-3">
-          <span className="eyebrow text-[11px]">{t("qty.label")}</span>
-          <QtyStepper decreaseLabel={t("qty.decrease")} increaseLabel={t("qty.increase")} value={qty} onChange={setQty} min={1} max={maxQty(stock, limits)} />
-        </div>
-        {inCart > 0 && (
-          <span className="text-[13px] font-medium text-[var(--muted)]">{t("product.inCart", { n: inCart })}</span>
-        )}
-      </div>
+      <HeldNotice heldMine={heldMine} locale={locale} t={t} />
 
-      <div className={`mt-5 grid gap-3 sm:grid-cols-2 ${showPanel ? "hidden" : ""}`}>
-        <Button
-          variant="accent"
-          size="lg"
-          disabled={!canBuy}
-          icon={<ShoppingBag className="h-5 w-5" strokeWidth={2.25} />}
-          onClick={() => {
-            if (addToCart()) {
-              toast.success(t("product.added"));
-              openDrawer();
-            }
-          }}
-        >
-          {inStock ? (needVariant ? t("product.chooseVariant") : t("product.addToCart")) : t("product.outOfStock")}
-        </Button>
-        <Button
-          variant="ink"
-          size="lg"
-          disabled={!canBuy}
-          icon={<Zap className="h-5 w-5" strokeWidth={2.25} />}
-          onClick={() => {
-            if (addToCart()) router.push(href("/checkout"));
-          }}
-        >
-          {t("product.buyNow")}
-        </Button>
-      </div>
+      {showPanel && <BuyPreorderPanel product={product} variant={variant} eta={selEta} mine={lk.mineFor(variant)} pre={pre} />}
+
+      <QtyRow qty={qty} onQty={setQty} stock={stock} limits={limits} inCart={inCart} hidden={showPanel} t={t} />
+
+      <ActionButtons
+        canBuy={canBuy}
+        inStock={inStock}
+        needVariant={needVariant}
+        hidden={showPanel}
+        onAdd={() => {
+          if (addToCart()) {
+            toast.success(t("product.added"));
+            openDrawer();
+          }
+        }}
+        onBuyNow={() => {
+          if (addToCart()) router.push(href("/checkout"));
+        }}
+        t={t}
+      />
 
       {compareGroup && (
         <div className="mt-3">

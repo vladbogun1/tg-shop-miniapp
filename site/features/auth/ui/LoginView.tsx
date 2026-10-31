@@ -40,6 +40,73 @@ function safeNext(raw: string | null, fallback: string): string {
   return raw;
 }
 
+type EndedPhase = Extract<Phase, { kind: "ended" }>;
+type TFn = ReturnType<typeof useI18n>["t"];
+
+const ENDED_KEY = {
+  REJECTED: "login.rejected",
+  EXPIRED: "login.expired",
+  USED: "login.used",
+  COMPLETE_FAILED: "login.completeFailed",
+  FAILED: "login.failed",
+} as const;
+
+function EndedPanel({ phase, t, onRestart }: { phase: EndedPhase; t: TFn; onRestart: () => void }) {
+  return (
+    <div className="flex flex-col items-start gap-4">
+      <p className="flex items-start gap-2 text-[15px] font-semibold text-[var(--danger)]">
+        <XCircle className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={2.25} />
+        {phase.message ?? t(ENDED_KEY[phase.reason])}
+      </p>
+      <Button variant="accent" icon={<RotateCcw className="h-4 w-4" strokeWidth={2.25} />} onClick={onRestart}>
+        {t("login.restart")}
+      </Button>
+    </div>
+  );
+}
+
+function PendingPanel({ start, confirming, t }: { start: WebLoginStart; confirming: boolean; t: TFn }) {
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center gap-5">
+        <div
+          className="hud-frame grid h-[120px] w-[150px] place-items-center rounded-[var(--r-card)] border border-[var(--accent)] bg-[var(--accent-soft)] font-display text-[72px] font-extrabold leading-none tracking-[.02em] text-[var(--accent)] shadow-[0_0_32px_-6px_rgba(255,102,0,.5)] [text-shadow:0_0_18px_rgba(255,102,0,.45)]"
+          aria-label={`${t("login.code")}: ${start.matchCode}`}
+        >
+          {start.matchCode}
+        </div>
+        <p className="max-w-[220px] font-display text-[18px] font-bold uppercase leading-tight tracking-[.04em] text-[var(--ink)]">
+          {t("login.code")}
+        </p>
+      </div>
+      <a
+        href={start.deepLink}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="chamfer inline-flex min-h-[60px] w-full items-center sm:self-start justify-center gap-3 bg-[var(--accent)] px-7 font-display text-[17px] font-bold uppercase tracking-[.06em] text-[var(--accent-ink)] transition-[background-color,transform] hover:bg-[var(--accent-hi)] active:scale-[.98] active:bg-[var(--accent-lo)] sm:w-auto"
+      >
+        <Send className="h-5 w-5" strokeWidth={2.25} /> {t("login.open")}
+      </a>
+      <p className="flex items-center gap-2 text-[14px] font-medium text-[var(--muted)]">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        {confirming ? t("login.confirmed") : t("login.waiting")}
+      </p>
+    </div>
+  );
+}
+
+function PhasePanel({ phase, confirming, t, onRestart }: { phase: Phase; confirming: boolean; t: TFn; onRestart: () => void }) {
+  if (phase.kind === "starting") {
+    return (
+      <p className="flex items-center gap-2 text-[15px] font-medium text-[var(--muted)]">
+        <Loader2 className="h-5 w-5 animate-spin" /> {t("common.loading")}
+      </p>
+    );
+  }
+  if (phase.kind === "pending") return <PendingPanel start={phase.start} confirming={confirming} t={t} />;
+  return <EndedPanel phase={phase} t={t} onRestart={onRestart} />;
+}
+
 export function LoginView() {
   const { t, href } = useI18n();
   const router = useRouter();
@@ -169,62 +236,7 @@ export function LoginView() {
             </ol>
 
             <div className="mt-7" aria-live="polite">
-              {phase.kind === "starting" && (
-                <p className="flex items-center gap-2 text-[15px] font-medium text-[var(--muted)]">
-                  <Loader2 className="h-5 w-5 animate-spin" /> {t("common.loading")}
-                </p>
-              )}
-
-              {phase.kind === "pending" && (
-                <div className="flex flex-col gap-5">
-                  <div className="flex flex-wrap items-center gap-5">
-                    <div
-                      className="hud-frame grid h-[120px] w-[150px] place-items-center rounded-[var(--r-card)] border border-[var(--accent)] bg-[var(--accent-soft)] font-display text-[72px] font-extrabold leading-none tracking-[.02em] text-[var(--accent)] shadow-[0_0_32px_-6px_rgba(255,102,0,.5)] [text-shadow:0_0_18px_rgba(255,102,0,.45)]"
-                      aria-label={`${t("login.code")}: ${phase.start.matchCode}`}
-                    >
-                      {phase.start.matchCode}
-                    </div>
-                    <p className="max-w-[220px] font-display text-[18px] font-bold uppercase leading-tight tracking-[.04em] text-[var(--ink)]">
-                      {t("login.code")}
-                    </p>
-                  </div>
-                  <a
-                    href={phase.start.deepLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="chamfer inline-flex min-h-[60px] w-full items-center sm:self-start justify-center gap-3 bg-[var(--accent)] px-7 font-display text-[17px] font-bold uppercase tracking-[.06em] text-[var(--accent-ink)] transition-[background-color,transform] hover:bg-[var(--accent-hi)] active:scale-[.98] active:bg-[var(--accent-lo)] sm:w-auto"
-                  >
-                    <Send className="h-5 w-5" strokeWidth={2.25} /> {t("login.open")}
-                  </a>
-                  <p className="flex items-center gap-2 text-[14px] font-medium text-[var(--muted)]">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {confirming ? t("login.confirmed") : t("login.waiting")}
-                  </p>
-                </div>
-              )}
-
-              {phase.kind === "ended" && (
-                <div className="flex flex-col items-start gap-4">
-                  <p className="flex items-start gap-2 text-[15px] font-semibold text-[var(--danger)]">
-                    <XCircle className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={2.25} />
-                    {phase.message ??
-                      t(
-                        phase.reason === "REJECTED"
-                          ? "login.rejected"
-                          : phase.reason === "EXPIRED"
-                            ? "login.expired"
-                            : phase.reason === "USED"
-                              ? "login.used"
-                              : phase.reason === "COMPLETE_FAILED"
-                                ? "login.completeFailed"
-                                : "login.failed"
-                      )}
-                  </p>
-                  <Button variant="accent" icon={<RotateCcw className="h-4 w-4" strokeWidth={2.25} />} onClick={() => void start()}>
-                    {t("login.restart")}
-                  </Button>
-                </div>
-              )}
+              <PhasePanel phase={phase} confirming={confirming} t={t} onRestart={() => void start()} />
             </div>
           </div>
 

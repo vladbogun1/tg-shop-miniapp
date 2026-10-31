@@ -29,6 +29,21 @@ export const dynamic = "force-dynamic";
 
 type Params = Promise<{ locale: string; category: string }>;
 
+type Named = { slug?: string; name?: string; productCount?: number } | null | undefined;
+
+/** The slug / name / product count come from the schema node first, then the SEO detail, then the menu. */
+function canonicalSlug(slug: string, node: Named, detail: Named, menu: Named): string {
+  return node?.slug ?? detail?.slug ?? menu?.slug ?? slug;
+}
+
+function displayName(fallback: string, node: Named, detail: Named, menu: Named): string {
+  return node?.name ?? detail?.name ?? menu?.name ?? fallback;
+}
+
+function countOf(node: Named, detail: Named, menu: Named): number {
+  return node?.productCount ?? menu?.productCount ?? detail?.productCount ?? 0;
+}
+
 /** Everything the page and its metadata need; null = unknown slug. Deduplicated per request. */
 const resolveCategory = cache(async (rawSlug: string, locale: Locale) => {
   const slug = decodeURIComponent(rawSlug);
@@ -43,9 +58,9 @@ const resolveCategory = cache(async (rawSlug: string, locale: Locale) => {
   const node = isSale ? null : categoryBySlug(schema, slug);
   const menu = categories.find((c) => c.slug === slug) ?? null;
   if (!isSale && !node && !detail && !menu) return null;
-  const canonical = node?.slug ?? detail?.slug ?? menu?.slug ?? slug;
-  const name = node?.name ?? detail?.name ?? menu?.name ?? (isSale ? t("catalog.markdownTitle") : slug);
-  const productCount = node?.productCount ?? menu?.productCount ?? detail?.productCount ?? 0;
+  const canonical = canonicalSlug(slug, node, detail, menu);
+  const name = displayName(isSale ? t("catalog.markdownTitle") : slug, node, detail, menu);
+  const productCount = countOf(node, detail, menu);
   let products = null;
   try {
     products = await getListingProducts(locale, { category: canonical });
@@ -93,6 +108,19 @@ export async function generateMetadata({
   });
 }
 
+type Resolved = NonNullable<Awaited<ReturnType<typeof resolveCategory>>>;
+
+function categoryCrumbs(c: Resolved, t: ReturnType<typeof makeT>) {
+  const path = c.node ? categoryPath(c.schema, c.node.id) : [];
+  return [
+    { label: t("catalog.title"), path: "/catalog" },
+    ...path.slice(0, -1).map((p) => ({ label: p.name, path: `/catalog/${p.slug}` })),
+    { label: c.name },
+  ];
+}
+
+const trimmedOr = (text: string | null | undefined, fallback: string) => text?.trim() || fallback;
+
 export default async function CategoryPage({
   params,
   searchParams,
@@ -111,14 +139,9 @@ export default async function CategoryPage({
   const pre = await getPreorderIndex(locale);
   const listing = c.products ? computeListing(c.schema, c.products, { ...filter, category: c.slug }, state.sort, state.page, locale, state.from, pre) : null;
 
-  const heading = c.detail?.h1?.trim() || c.name;
+  const heading = trimmedOr(c.detail?.h1, c.name);
   const intro = c.detail?.introText?.trim();
-  const path = c.node ? categoryPath(c.schema, c.node.id) : [];
-  const crumbs = [
-    { label: t("catalog.title"), path: "/catalog" },
-    ...path.slice(0, -1).map((p) => ({ label: p.name, path: `/catalog/${p.slug}` })),
-    { label: c.name },
-  ];
+  const crumbs = categoryCrumbs(c, t);
   const tree = menuTree(c.categories, c.slug);
   const root = rootOf(tree, c.slug);
   return (

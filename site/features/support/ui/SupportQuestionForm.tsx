@@ -16,6 +16,68 @@ import { SUPPORT_DEFAULTS, SUPPORT_KEYS, supportApi, supportErrorText, useSuppor
 
 const SUBJECT_MAX = 200;
 
+type TFn = ReturnType<typeof useT>;
+
+/** Thumbnail with a remove button, or the «Attach image» button. */
+function AttachmentPicker({
+  preview,
+  file,
+  fileRef,
+  onClear,
+  onPick,
+  t,
+}: {
+  preview: string | null;
+  file: File | null;
+  fileRef: { current: HTMLInputElement | null };
+  onClear: () => void;
+  onPick: (f: File | null | undefined) => void;
+  t: TFn;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      {preview ? (
+        <div className="relative">
+          <img
+            src={preview}
+            alt={file?.name ?? t("support.photo")}
+            className="h-20 w-20 rounded-[var(--r)] border border-[var(--line)] object-cover"
+          />
+          <button
+            type="button"
+            onClick={onClear}
+            aria-label={t("support.removeImage")}
+            title={t("support.removeImage")}
+            className="absolute -right-2 -top-2 grid h-7 w-7 place-items-center rounded-full border border-[var(--line-strong)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--danger)] hover:text-[var(--danger)]"
+          >
+            <X className="h-4 w-4" strokeWidth={2.5} />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="inline-flex min-h-11 items-center gap-2 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3.5 font-display text-[13px] font-semibold uppercase tracking-[.06em] text-[var(--muted)] transition-colors hover:text-[var(--ink)]"
+        >
+          <ImagePlus className="h-4 w-4" strokeWidth={2.25} />
+          {t("support.attach")}
+        </button>
+      )}
+      <input
+        ref={fileRef}
+        type="file"
+        hidden
+        accept="image/*"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          onPick(f);
+        }}
+      />
+    </div>
+  );
+}
+
 export function SupportQuestionForm({
   productId,
   showSubject = false,
@@ -150,46 +212,7 @@ export function SupportQuestionForm({
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        {preview ? (
-          <div className="relative">
-            <img
-              src={preview}
-              alt={file?.name ?? t("support.photo")}
-              className="h-20 w-20 rounded-[var(--r)] border border-[var(--line)] object-cover"
-            />
-            <button
-              type="button"
-              onClick={() => setFile(null)}
-              aria-label={t("support.removeImage")}
-              title={t("support.removeImage")}
-              className="absolute -right-2 -top-2 grid h-7 w-7 place-items-center rounded-full border border-[var(--line-strong)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--danger)] hover:text-[var(--danger)]"
-            >
-              <X className="h-4 w-4" strokeWidth={2.5} />
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="inline-flex min-h-11 items-center gap-2 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3.5 font-display text-[13px] font-semibold uppercase tracking-[.06em] text-[var(--muted)] transition-colors hover:text-[var(--ink)]"
-          >
-            <ImagePlus className="h-4 w-4" strokeWidth={2.25} />
-            {t("support.attach")}
-          </button>
-        )}
-        <input
-          ref={fileRef}
-          type="file"
-          hidden
-          accept="image/*"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            e.target.value = "";
-            pick(f);
-          }}
-        />
-      </div>
+      <AttachmentPicker preview={preview} file={file} fileRef={fileRef} onClear={() => setFile(null)} onPick={pick} t={t} />
 
       {error && (
         <p role="alert" className="text-[13px] font-semibold text-[var(--danger)]">

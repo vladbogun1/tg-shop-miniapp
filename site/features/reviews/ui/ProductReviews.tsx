@@ -14,12 +14,77 @@ import { api, ApiError } from "@/lib/api";
 import { useFmt } from "@/lib/use-fmt";
 import { formatRating, Stars } from "./Stars";
 
+type TFn = ReturnType<typeof useI18n>["t"];
+
+/** The server-rendered first page, or empty values when the server fetch failed. */
+function initialState(initial: ReviewPage | null) {
+  return {
+    summary: initial?.summary ?? null,
+    items: initial?.items ?? [],
+    page: initial?.page ?? 0,
+    totalPages: initial?.totalPages ?? 0,
+  };
+}
+
+function EmptyReviews({ t }: { t: TFn }) {
+  return (
+    <div className="nb flex flex-col items-start gap-2 p-5 sm:flex-row sm:items-center sm:gap-4 sm:p-6">
+      <MessageSquareText className="h-8 w-8 shrink-0 text-[var(--accent)]" strokeWidth={1.75} />
+      <div>
+        <p className="font-display text-[16px] font-bold uppercase tracking-[.04em] text-[var(--ink)]">{t("reviews.empty.title")}</p>
+        <p className="mt-1 text-[14px] font-medium text-[var(--muted)]">{t("reviews.empty.text")}</p>
+      </div>
+    </div>
+  );
+}
+
+function ReviewsBody({
+  summary,
+  items,
+  hasMore,
+  busy,
+  onMore,
+  t,
+}: {
+  summary: ReviewSummary;
+  items: PublicReview[];
+  hasMore: boolean;
+  busy: boolean;
+  onMore: () => void;
+  t: TFn;
+}) {
+  return (
+    <div className="grid gap-4 md:grid-cols-[260px_minmax(0,1fr)] md:gap-6">
+      <Summary summary={summary} />
+      <div className="min-w-0">
+        <ul className="flex flex-col gap-3">
+          {items.map((r) => (
+            <ReviewItem key={r.id} review={r} />
+          ))}
+        </ul>
+        {hasMore && (
+          <button
+            type="button"
+            onClick={onMore}
+            disabled={busy}
+            className="tap nb-up mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-4 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:border-[rgba(255,255,255,.28)] hover:bg-[var(--surface-3)] disabled:opacity-60"
+          >
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+            {t("reviews.loadMore")}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function ProductReviews({ slug, initial }: { slug: string; initial: ReviewPage | null }) {
   const { t } = useI18n();
-  const [summary, setSummary] = useState<ReviewSummary | null>(initial?.summary ?? null);
-  const [items, setItems] = useState<PublicReview[]>(initial?.items ?? []);
-  const [page, setPage] = useState(initial?.page ?? 0);
-  const [totalPages, setTotalPages] = useState(initial?.totalPages ?? 0);
+  const init = initialState(initial);
+  const [summary, setSummary] = useState<ReviewSummary | null>(init.summary);
+  const [items, setItems] = useState<PublicReview[]>(init.items);
+  const [page, setPage] = useState(init.page);
+  const [totalPages, setTotalPages] = useState(init.totalPages);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -59,38 +124,10 @@ export function ProductReviews({ slug, initial }: { slug: string; initial: Revie
         {count > 0 && <span className="font-display text-[16px] font-bold tabular-nums text-[var(--muted)]">{count}</span>}
       </h2>
 
-      {count === 0 && !busy && !err && (
-        <div className="nb flex flex-col items-start gap-2 p-5 sm:flex-row sm:items-center sm:gap-4 sm:p-6">
-          <MessageSquareText className="h-8 w-8 shrink-0 text-[var(--accent)]" strokeWidth={1.75} />
-          <div>
-            <p className="font-display text-[16px] font-bold uppercase tracking-[.04em] text-[var(--ink)]">{t("reviews.empty.title")}</p>
-            <p className="mt-1 text-[14px] font-medium text-[var(--muted)]">{t("reviews.empty.text")}</p>
-          </div>
-        </div>
-      )}
+      {count === 0 && !busy && !err && <EmptyReviews t={t} />}
 
       {summary && count > 0 && (
-        <div className="grid gap-4 md:grid-cols-[260px_minmax(0,1fr)] md:gap-6">
-          <Summary summary={summary} />
-          <div className="min-w-0">
-            <ul className="flex flex-col gap-3">
-              {items.map((r) => (
-                <ReviewItem key={r.id} review={r} />
-              ))}
-            </ul>
-            {hasMore && (
-              <button
-                type="button"
-                onClick={() => void load(page + 1)}
-                disabled={busy}
-                className="tap nb-up mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-4 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:border-[rgba(255,255,255,.28)] hover:bg-[var(--surface-3)] disabled:opacity-60"
-              >
-                {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-                {t("reviews.loadMore")}
-              </button>
-            )}
-          </div>
-        </div>
+        <ReviewsBody summary={summary} items={items} hasMore={hasMore} busy={busy} onMore={() => void load(page + 1)} t={t} />
       )}
 
       {busy && count === 0 && (

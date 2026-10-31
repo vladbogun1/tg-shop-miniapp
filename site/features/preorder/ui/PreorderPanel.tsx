@@ -69,6 +69,82 @@ function Timeline({ stage }: { stage: PreorderEta["stage"] }) {
   );
 }
 
+type TFn = ReturnType<typeof useI18n>["t"];
+
+/** Title, timeline, expected time, how many wait and the shop's note — only with an open batch. */
+function EtaInfo({ eta, expected, waitingCount, t }: { eta: PreorderEta; expected: string | null; waitingCount: number | null; t: TFn }) {
+  return (
+    <>
+      <p className="flex items-center gap-2 font-display text-[16px] font-extrabold uppercase tracking-[.04em] text-[var(--ink)]">
+        <Truck className="h-5 w-5 shrink-0 text-[var(--pre)]" strokeWidth={2.25} aria-hidden />
+        {t("preorder.panel.title")}
+      </p>
+      <div className="mt-4">
+        <Timeline stage={eta.stage} />
+      </div>
+      {expected && <p className="mt-4 font-display text-[16px] font-bold text-[var(--ink)]">{expected}</p>}
+      {waitingCount != null && waitingCount > 0 && (
+        <p className="mt-1 text-[14px] font-medium text-[var(--muted)]">{t("preorder.waiting", { n: waitingCount })}</p>
+      )}
+      {eta.note?.trim() && (
+        <p className="mt-3 whitespace-pre-line text-[14px] font-medium leading-snug text-[#D4D4D8]">{eta.note.trim()}</p>
+      )}
+    </>
+  );
+}
+
+/** My place in the queue with «Вийти з черги», or the button that puts the customer in the queue. */
+function QueueAction({
+  mine,
+  hasEta,
+  leaving,
+  onLeave,
+  onStart,
+  t,
+}: {
+  mine: MyPreorder | null;
+  hasEta: boolean;
+  leaving: boolean;
+  onLeave: () => void;
+  onStart: () => void;
+  t: TFn;
+}) {
+  if (!mine) {
+    return (
+      <Button
+        variant="surface"
+        size="lg"
+        fullWidth
+        className="!border-[var(--pre)] !bg-[var(--pre-soft)] !text-[var(--ink)] hover:!bg-[rgba(142,124,255,.22)]"
+        icon={<Bell className="h-5 w-5 shrink-0" strokeWidth={2.25} />}
+        onClick={onStart}
+      >
+        {hasEta ? t("preorder.cta") : t("preorder.ctaAny")}
+      </Button>
+    );
+  }
+  const queueLine = mine.position
+    ? t("preorder.queue.in", { n: mine.position, q: mine.qty })
+    : t("preorder.queue.inShort", { q: mine.qty });
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <p className="flex min-w-0 items-center gap-2 font-display text-[15px] font-bold text-[var(--ink)]">
+        <Check className="h-5 w-5 shrink-0 text-[var(--ok)]" strokeWidth={2.5} aria-hidden />
+        <span className="min-w-0 [overflow-wrap:anywhere]">{queueLine}</span>
+      </p>
+      <button
+        type="button"
+        onClick={onLeave}
+        disabled={leaving}
+        className="inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold text-[var(--muted)] underline decoration-[var(--line-strong)] underline-offset-4 transition-colors hover:text-[var(--danger)] disabled:opacity-60"
+      >
+        {leaving && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
+        {t("preorder.queue.leave")}
+      </button>
+    </div>
+  );
+}
+
 export function PreorderPanel({
   productId,
   productTitle,
@@ -130,40 +206,6 @@ export function PreorderPanel({
   }
 
   const expected = eta ? expectedLine(eta, t, locale) : null;
-  const queueLine = mine
-    ? mine.position
-      ? t("preorder.queue.in", { n: mine.position, q: mine.qty })
-      : t("preorder.queue.inShort", { q: mine.qty })
-    : null;
-
-  const action = mine ? (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <p className="flex min-w-0 items-center gap-2 font-display text-[15px] font-bold text-[var(--ink)]">
-        <Check className="h-5 w-5 shrink-0 text-[var(--ok)]" strokeWidth={2.5} aria-hidden />
-        <span className="min-w-0 [overflow-wrap:anywhere]">{queueLine}</span>
-      </p>
-      <button
-        type="button"
-        onClick={() => void leave()}
-        disabled={leaving}
-        className="inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold text-[var(--muted)] underline decoration-[var(--line-strong)] underline-offset-4 transition-colors hover:text-[var(--danger)] disabled:opacity-60"
-      >
-        {leaving && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
-        {t("preorder.queue.leave")}
-      </button>
-    </div>
-  ) : (
-    <Button
-      variant="surface"
-      size="lg"
-      fullWidth
-      className="!border-[var(--pre)] !bg-[var(--pre-soft)] !text-[var(--ink)] hover:!bg-[rgba(142,124,255,.22)]"
-      icon={<Bell className="h-5 w-5 shrink-0" strokeWidth={2.25} />}
-      onClick={start}
-    >
-      {eta ? t("preorder.cta") : t("preorder.ctaAny")}
-    </Button>
-  );
 
   return (
     <>
@@ -172,25 +214,10 @@ export function PreorderPanel({
           eta ? "border-[color-mix(in_srgb,var(--pre)_45%,transparent)] bg-[var(--pre-soft)]" : "border-[var(--line)] bg-[var(--surface)]"
         }`}
       >
-        {eta && (
-          <>
-            <p className="flex items-center gap-2 font-display text-[16px] font-extrabold uppercase tracking-[.04em] text-[var(--ink)]">
-              <Truck className="h-5 w-5 shrink-0 text-[var(--pre)]" strokeWidth={2.25} aria-hidden />
-              {t("preorder.panel.title")}
-            </p>
-            <div className="mt-4">
-              <Timeline stage={eta.stage} />
-            </div>
-            {expected && <p className="mt-4 font-display text-[16px] font-bold text-[var(--ink)]">{expected}</p>}
-            {waitingCount != null && waitingCount > 0 && (
-              <p className="mt-1 text-[14px] font-medium text-[var(--muted)]">{t("preorder.waiting", { n: waitingCount })}</p>
-            )}
-            {eta.note?.trim() && (
-              <p className="mt-3 whitespace-pre-line text-[14px] font-medium leading-snug text-[#D4D4D8]">{eta.note.trim()}</p>
-            )}
-          </>
-        )}
-        <div className={eta ? "mt-4" : ""}>{action}</div>
+        {eta && <EtaInfo eta={eta} expected={expected} waitingCount={waitingCount} t={t} />}
+        <div className={eta ? "mt-4" : ""}>
+          <QueueAction mine={mine} hasEta={!!eta} leaving={leaving} onLeave={() => void leave()} onStart={start} t={t} />
+        </div>
         {!mine && <p className="mt-3 text-[12px] font-medium leading-snug text-[var(--muted)]">{eta ? t("preorder.noPrepay", { h: holdHours }) : t("preorder.noPrepayAny")}</p>}
       </div>
 

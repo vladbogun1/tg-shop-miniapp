@@ -96,6 +96,102 @@ export function PaymentModal({
   );
 }
 
+type Callbacks = { onOrder: (d: OrderDetail) => void; onClose: (why: PaymentModalClose) => void };
+
+/** Focus: into the dialog on open, back to whatever opened it on close; Tab cycles inside (the iframe is one stop). */
+function useDialogFocus(panelRef: { current: HTMLDivElement | null }) {
+  // Focus: into the dialog on open, back to whatever opened it on close.
+  useEffect(() => {
+    const before = document.activeElement as HTMLElement | null;
+    panelRef.current?.querySelector<HTMLElement>("[data-autofocus]")?.focus();
+    return () => before?.focus?.();
+  }, []);
+
+  // Basic focus trap: Tab cycles inside the dialog (the iframe is one stop).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const items = Array.from(
+        panelRef.current.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], iframe, [tabindex]:not([tabindex='-1'])")
+      );
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (!panelRef.current.contains(active)) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+}
+
+/** Messages from the monobank form and from our own /pay-return page inside it. */
+function useMonobankMessages(pageUrl: string, close: (why: PaymentModalClose) => void) {
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      if (e.origin === window.location.origin) {
+        const d = e.data as { source?: unknown; type?: unknown } | null;
+        if (d && typeof d === "object" && d.source === "chisetup-pay" && d.type === "done") close("check");
+        return;
+      }
+      if (!isMonobankOrigin(e.origin, pageUrl)) return;
+      const data = readMessage(e.data);
+      if (!data) return;
+      if (data.message === "close-button") {
+        close("check");
+      } else if (data.message === "monopay-link") {
+        const link = safeLink(data.value);
+        if (link) window.location.href = link;
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [pageUrl, close]);
+}
+
+/** Status polling while open: paid → close; failure → keep open (the form shows it) with fresh data. */
+function usePaymentPolling(orderId: string, cb: { current: Callbacks }, close: (why: PaymentModalClose) => void) {
+  useEffect(() => {
+    let cancelled = false;
+    let timer = 0;
+    const tick = async () => {
+      let d: OrderDetail | null = null;
+      try {
+        d = await api.refreshPayment(orderId);
+      } catch {
+        /* throttled (1 per 5 s on the server) or offline — the next tick tries again */
+      }
+      if (cancelled) return;
+      if (d) {
+        cb.current.onOrder(d);
+        if (!needsTopUp(d) && (d.paid || d.payment.status === "success")) {
+          close("paid");
+          return;
+        }
+        if (d.status === "REJECTED") {
+          close("dismiss");
+          return;
+        }
+      }
+      timer = window.setTimeout(tick, POLL_EVERY_MS);
+    };
+    timer = window.setTimeout(tick, POLL_EVERY_MS);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [orderId, close]);
+}
+
 function PaymentDialog({
   order,
   pageUrl,
@@ -132,92 +228,11 @@ function PaymentDialog({
   const dismiss = useCallback(() => close("dismiss"), [close]);
   useEscape(true, dismiss);
 
-  // Focus: into the dialog on open, back to whatever opened it on close.
-  useEffect(() => {
-    const before = document.activeElement as HTMLElement | null;
-    panelRef.current?.querySelector<HTMLElement>("[data-autofocus]")?.focus();
-    return () => before?.focus?.();
-  }, []);
+  useDialogFocus(panelRef);
 
-  // Basic focus trap: Tab cycles inside the dialog (the iframe is one stop).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Tab" || !panelRef.current) return;
-      const items = Array.from(
-        panelRef.current.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], iframe, [tabindex]:not([tabindex='-1'])")
-      );
-      if (items.length === 0) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      const active = document.activeElement;
-      if (!panelRef.current.contains(active)) {
-        e.preventDefault();
-        first.focus();
-      } else if (e.shiftKey && active === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && active === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, []);
+  useMonobankMessages(pageUrl, close);
 
-  // Messages from the monobank form and from our own /pay-return page inside it.
-  useEffect(() => {
-    const onMessage = (e: MessageEvent) => {
-      if (e.origin === window.location.origin) {
-        const d = e.data as { source?: unknown; type?: unknown } | null;
-        if (d && typeof d === "object" && d.source === "chisetup-pay" && d.type === "done") close("check");
-        return;
-      }
-      if (!isMonobankOrigin(e.origin, pageUrl)) return;
-      const data = readMessage(e.data);
-      if (!data) return;
-      if (data.message === "close-button") {
-        close("check");
-      } else if (data.message === "monopay-link") {
-        const link = safeLink(data.value);
-        if (link) window.location.href = link;
-      }
-    };
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [pageUrl, close]);
-
-  // Status polling while open: paid → close; failure → keep open (the form shows it) with fresh data.
-  useEffect(() => {
-    let cancelled = false;
-    let timer = 0;
-    const tick = async () => {
-      let d: OrderDetail | null = null;
-      try {
-        d = await api.refreshPayment(order.id);
-      } catch {
-        /* throttled (1 per 5 s on the server) or offline — the next tick tries again */
-      }
-      if (cancelled) return;
-      if (d) {
-        cb.current.onOrder(d);
-        if (!needsTopUp(d) && (d.paid || d.payment.status === "success")) {
-          close("paid");
-          return;
-        }
-        if (d.status === "REJECTED") {
-          close("dismiss");
-          return;
-        }
-      }
-      timer = window.setTimeout(tick, POLL_EVERY_MS);
-    };
-    timer = window.setTimeout(tick, POLL_EVERY_MS);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [order.id, close]);
+  usePaymentPolling(order.id, cb, close);
 
   /** Fallback: the normal payment page in a new tab (opened synchronously, so it is not blocked). */
   async function openInNewTab() {

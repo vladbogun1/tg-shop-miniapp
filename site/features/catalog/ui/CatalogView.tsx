@@ -107,26 +107,7 @@ export function CatalogView({
             {filtered && <ActiveFilters locale={locale} state={state} facets={facets} reset={reset} />}
 
             <PendingRegion>
-              {!listing ? (
-                <div className="nb p-8 text-center text-[15px] font-medium text-[var(--muted)]">{t("catalog.error")}</div>
-              ) : listing.items.length === 0 ? (
-                <div className="nb hud-frame flex flex-col items-center gap-3 px-6 py-14 text-center">
-                  <PackageSearch className="h-10 w-10 text-[var(--accent)]" strokeWidth={1.75} />
-                  <p className="font-display text-[18px] font-extrabold uppercase text-[var(--ink)]">{t("catalog.empty.title")}</p>
-                  <p className="max-w-sm text-[14px] font-medium text-[var(--muted)]">{t("catalog.empty.text")}</p>
-                  {filtered && (
-                    <StateLink state={reset} className="link-ink mt-2 text-[14px] font-semibold">
-                      {t("catalog.reset")}
-                    </StateLink>
-                  )}
-                </div>
-              ) : (
-                <>
-                  <ProductGrid products={toCardProducts(listing.items, card)} priorityCount={3} cols="grid-cols-2 md:grid-cols-3" />
-                  <ShowMore state={state} from={listing.from} page={listing.page} pages={listing.pages} total={listing.total} pageSize={PAGE_SIZE} />
-                  {listing.pages > 1 && <Pagination locale={locale} state={{ ...state, page: listing.page, from: listing.from }} pages={listing.pages} />}
-                </>
-              )}
+              <ResultsBody locale={locale} listing={listing} state={state} card={card} reset={reset} filtered={filtered} />
             </PendingRegion>
             {footer}
           </div>
@@ -137,6 +118,49 @@ export function CatalogView({
         </div>
       </div>
     </CatalogNavProvider>
+  );
+}
+
+/** The grid with its pagination, or the error / «nothing found» card. */
+function ResultsBody({
+  locale,
+  listing,
+  state,
+  card,
+  reset,
+  filtered,
+}: {
+  locale: Locale;
+  listing: Listing | null;
+  state: CatalogState;
+  card: CardContext;
+  reset: CatalogState;
+  filtered: boolean;
+}) {
+  const t = makeT(locale);
+  if (!listing) {
+    return <div className="nb p-8 text-center text-[15px] font-medium text-[var(--muted)]">{t("catalog.error")}</div>;
+  }
+  if (listing.items.length === 0) {
+    return (
+      <div className="nb hud-frame flex flex-col items-center gap-3 px-6 py-14 text-center">
+        <PackageSearch className="h-10 w-10 text-[var(--accent)]" strokeWidth={1.75} />
+        <p className="font-display text-[18px] font-extrabold uppercase text-[var(--ink)]">{t("catalog.empty.title")}</p>
+        <p className="max-w-sm text-[14px] font-medium text-[var(--muted)]">{t("catalog.empty.text")}</p>
+        {filtered && (
+          <StateLink state={reset} className="link-ink mt-2 text-[14px] font-semibold">
+            {t("catalog.reset")}
+          </StateLink>
+        )}
+      </div>
+    );
+  }
+  return (
+    <>
+      <ProductGrid products={toCardProducts(listing.items, card)} priorityCount={3} cols="grid-cols-2 md:grid-cols-3" />
+      <ShowMore state={state} from={listing.from} page={listing.page} pages={listing.pages} total={listing.total} pageSize={PAGE_SIZE} />
+      {listing.pages > 1 && <Pagination locale={locale} state={{ ...state, page: listing.page, from: listing.from }} pages={listing.pages} />}
+    </>
   );
 }
 
@@ -264,41 +288,59 @@ function SubcategoryChips({ locale, chips, activeSlug }: { locale: Locale; chips
 
 // ---------------------------------------------------------------- active filters
 
-function ActiveFilters({ locale, state, facets, reset }: { locale: Locale; state: CatalogState; facets: Facet[]; reset: CatalogState }) {
-  const t = makeT(locale);
-  const f = state.filter;
-  const nf = new Intl.NumberFormat(locale === "en" ? "en-US" : locale === "ru" ? "ru-RU" : "uk-UA", { maximumFractionDigits: 3 });
-  const range = (min: number | null | undefined, max: number | null | undefined, unit?: string | null) => {
+type Chip = { key: string; label: string; state: CatalogState };
+type Filter = CatalogState["filter"];
+type TFn = ReturnType<typeof makeT>;
+type FacetValue = { value: string; label: string };
+
+const NUMBER_LOCALE: Record<string, string> = { en: "en-US", ru: "ru-RU" };
+
+function rangeFormatter(locale: Locale, t: TFn) {
+  const nf = new Intl.NumberFormat(NUMBER_LOCALE[locale] ?? "uk-UA", { maximumFractionDigits: 3 });
+  return (min: number | null | undefined, max: number | null | undefined, unit?: string | null) => {
     const u = unit ? ` ${unit}` : "";
     if (min != null && max != null) return `${nf.format(min)}–${nf.format(max)}${u}`;
     if (min != null) return t("catalog.rangeFrom", { v: `${nf.format(min)}${u}` });
     return t("catalog.rangeTo", { v: `${nf.format(max ?? 0)}${u}` });
   };
-  const chips: { key: string; label: string; state: CatalogState }[] = [];
-  const next = (filter: typeof f): CatalogState => ({ ...state, filter, page: 1 });
+}
+
+/** The filter without one selected value of a facet. */
+function withoutValue(f: Filter, facetKey: string, value: string): Filter {
+  if (facetKey === "brand") return { ...f, brands: (f.brands ?? []).filter((x) => x !== value) };
+  if (facetKey === "cond") return { ...f, conditions: (f.conditions ?? []).filter((x) => x !== value) };
+  return { ...f, attrs: { ...(f.attrs ?? {}), [facetKey]: (f.attrs?.[facetKey] ?? []).filter((x) => x !== value) } };
+}
+
+function valueChipLabel(facet: Facet, v: FacetValue): string {
+  if (facet.kind === "bool") return facet.label;
+  return facet.key === "brand" || facet.key === "cond" ? v.label : `${facet.label}: ${v.label}`;
+}
+
+function facetChips(facet: Facet, f: Filter, next: (filter: Filter) => CatalogState, range: ReturnType<typeof rangeFormatter>): Chip[] {
+  if (facet.kind === "range") {
+    if (!facet.selectedRange) return [];
+    const attrs = { ...(f.attrs ?? {}) };
+    delete attrs[facet.key];
+    return [{ key: facet.key, label: `${facet.label}: ${range(facet.selectedRange.min, facet.selectedRange.max, facet.unit)}`, state: next({ ...f, attrs }) }];
+  }
+  return facet.values
+    .filter((x) => x.selected)
+    .map((v) => ({ key: `${facet.key}:${v.value}`, label: valueChipLabel(facet, v), state: next(withoutValue(f, facet.key, v.value)) }));
+}
+
+function ActiveFilters({ locale, state, facets, reset }: { locale: Locale; state: CatalogState; facets: Facet[]; reset: CatalogState }) {
+  const t = makeT(locale);
+  const f = state.filter;
+  const range = rangeFormatter(locale, t);
+  const next = (filter: Filter): CatalogState => ({ ...state, filter, page: 1 });
+  const chips: Chip[] = [];
 
   if (f.inStock) chips.push({ key: "stock", label: t("catalog.inStock"), state: next({ ...f, inStock: false }) });
   if (f.priceMin != null || f.priceMax != null) {
     chips.push({ key: "price", label: `${t("catalog.price").replace(/,.*$/, "")}: ${range(f.priceMin, f.priceMax, "₴")}`, state: next({ ...f, priceMin: null, priceMax: null }) });
   }
-  for (const facet of facets) {
-    if (facet.kind === "range") {
-      if (facet.selectedRange) {
-        const attrs = { ...(f.attrs ?? {}) };
-        delete attrs[facet.key];
-        chips.push({ key: facet.key, label: `${facet.label}: ${range(facet.selectedRange.min, facet.selectedRange.max, facet.unit)}`, state: next({ ...f, attrs }) });
-      }
-      continue;
-    }
-    for (const v of facet.values.filter((x) => x.selected)) {
-      let filter = f;
-      if (facet.key === "brand") filter = { ...f, brands: (f.brands ?? []).filter((x) => x !== v.value) };
-      else if (facet.key === "cond") filter = { ...f, conditions: (f.conditions ?? []).filter((x) => x !== v.value) };
-      else filter = { ...f, attrs: { ...(f.attrs ?? {}), [facet.key]: (f.attrs?.[facet.key] ?? []).filter((x) => x !== v.value) } };
-      const label = facet.kind === "bool" ? facet.label : facet.key === "brand" || facet.key === "cond" ? v.label : `${facet.label}: ${v.label}`;
-      chips.push({ key: `${facet.key}:${v.value}`, label, state: next(filter) });
-    }
-  }
+  for (const facet of facets) chips.push(...facetChips(facet, f, next, range));
   if (chips.length === 0) return null;
   // Phones: one swipeable row (DragScroller); from 768 px the chips wrap.
   return (

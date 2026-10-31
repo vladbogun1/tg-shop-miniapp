@@ -16,10 +16,87 @@ import { useDebounced } from "@/lib/hooks";
 import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
 
+type SuggestItem = NonNullable<Awaited<ReturnType<typeof api.products>>["items"]>[number];
+
+/** The dropdown: searching / empty notice, the matches and the «all results» row. */
+function SuggestionList({
+  id,
+  items,
+  isFetching,
+  active,
+  q,
+  onPick,
+  onSearchAll,
+}: {
+  id: string;
+  items: SuggestItem[];
+  isFetching: boolean;
+  active: number;
+  q: string;
+  onPick: () => void;
+  onSearchAll: () => void;
+}) {
+  const { t, href } = useI18n();
+  const fmt = useFmt();
+  return (
+    <ul
+      id={`${id}-list`}
+      role="listbox"
+      aria-label={t("header.search")}
+      className="absolute inset-x-0 top-[calc(100%+6px)] z-50 max-h-[70vh] overflow-y-auto rounded-[var(--r-card)] border border-[var(--line-strong)] bg-[var(--surface)] py-1 shadow-[0_24px_48px_-16px_rgba(0,0,0,.85)]"
+    >
+      {isFetching && items.length === 0 && (
+        <li className="flex items-center gap-2 px-4 py-3 text-[13px] font-medium text-[var(--muted)]">
+          <Loader2 className="h-4 w-4 animate-spin" /> {t("header.searchSearching")}
+        </li>
+      )}
+      {!isFetching && items.length === 0 && (
+        <li className="px-4 py-3 text-[13px] font-medium text-[var(--muted)]">{t("header.searchEmpty")}</li>
+      )}
+      {items.map((p, i) => (
+        <li
+          key={p.id}
+          id={`${id}-opt-${i}`}
+          role="option"
+          aria-selected={active === i}
+          className={active === i ? "bg-[var(--surface-2)]" : ""}
+        >
+          <Link
+            href={href(`/product/${p.slug}`)}
+            onClick={onPick}
+            className="flex items-center gap-3 px-3 py-2 hover:bg-[var(--surface-2)]"
+            tabIndex={-1}
+          >
+            <span className="h-11 w-11 shrink-0 overflow-hidden rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)]">
+              <Image src={p.images?.[0]?.url} alt="" size={120} className="h-full w-full" />
+            </span>
+            <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-[var(--ink)]">{p.title}</span>
+            <span className="shrink-0 font-display text-[14px] font-bold tabular-nums text-[var(--ink)]">{fmt.money(p.priceMinor, p.currency)}</span>
+          </Link>
+        </li>
+      ))}
+      <li
+        id={`${id}-opt-${items.length}`}
+        role="option"
+        aria-selected={active === items.length}
+        className={`border-t border-[var(--line)] ${active === items.length ? "bg-[var(--surface-2)]" : ""}`}
+      >
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={onSearchAll}
+          className="w-full px-4 py-3 text-left font-display text-[13px] font-semibold uppercase tracking-[.08em] text-[var(--accent-hi)] hover:bg-[var(--surface-2)]"
+        >
+          {t("header.searchAll", { q: q.trim() })}
+        </button>
+      </li>
+    </ul>
+  );
+}
+
 /** `compact`: the phone header's one-row mode — 40 px tall, no «Search» button (Enter / the list submit). */
 export function SearchBox({ compact = false }: { compact?: boolean }) {
   const { t, href, locale } = useI18n();
-  const fmt = useFmt();
   const router = useRouter();
   const id = useId();
   const [q, setQ] = useState("");
@@ -137,58 +214,15 @@ export function SearchBox({ compact = false }: { compact?: boolean }) {
       </form>
 
       {showList && (
-        <ul
-          id={listId}
-          role="listbox"
-          aria-label={t("header.search")}
-          className="absolute inset-x-0 top-[calc(100%+6px)] z-50 max-h-[70vh] overflow-y-auto rounded-[var(--r-card)] border border-[var(--line-strong)] bg-[var(--surface)] py-1 shadow-[0_24px_48px_-16px_rgba(0,0,0,.85)]"
-        >
-          {isFetching && items.length === 0 && (
-            <li className="flex items-center gap-2 px-4 py-3 text-[13px] font-medium text-[var(--muted)]">
-              <Loader2 className="h-4 w-4 animate-spin" /> {t("header.searchSearching")}
-            </li>
-          )}
-          {!isFetching && items.length === 0 && (
-            <li className="px-4 py-3 text-[13px] font-medium text-[var(--muted)]">{t("header.searchEmpty")}</li>
-          )}
-          {items.map((p, i) => (
-            <li
-              key={p.id}
-              id={`${id}-opt-${i}`}
-              role="option"
-              aria-selected={active === i}
-              className={active === i ? "bg-[var(--surface-2)]" : ""}
-            >
-              <Link
-                href={href(`/product/${p.slug}`)}
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 px-3 py-2 hover:bg-[var(--surface-2)]"
-                tabIndex={-1}
-              >
-                <span className="h-11 w-11 shrink-0 overflow-hidden rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)]">
-                  <Image src={p.images?.[0]?.url} alt="" size={120} className="h-full w-full" />
-                </span>
-                <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-[var(--ink)]">{p.title}</span>
-                <span className="shrink-0 font-display text-[14px] font-bold tabular-nums text-[var(--ink)]">{fmt.money(p.priceMinor, p.currency)}</span>
-              </Link>
-            </li>
-          ))}
-          <li
-            id={`${id}-opt-${items.length}`}
-            role="option"
-            aria-selected={active === items.length}
-            className={`border-t border-[var(--line)] ${active === items.length ? "bg-[var(--surface-2)]" : ""}`}
-          >
-            <button
-              type="button"
-              tabIndex={-1}
-              onClick={goSearch}
-              className="w-full px-4 py-3 text-left font-display text-[13px] font-semibold uppercase tracking-[.08em] text-[var(--accent-hi)] hover:bg-[var(--surface-2)]"
-            >
-              {t("header.searchAll", { q: q.trim() })}
-            </button>
-          </li>
-        </ul>
+        <SuggestionList
+          id={id}
+          items={items}
+          isFetching={isFetching}
+          active={active}
+          q={q}
+          onPick={() => setOpen(false)}
+          onSearchAll={goSearch}
+        />
       )}
     </div>
   );

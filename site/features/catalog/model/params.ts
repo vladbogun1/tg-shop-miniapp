@@ -28,6 +28,18 @@ export interface CatalogState {
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
+/** `page` from the URL: a finite number ≥ 1, floored; otherwise 1. */
+function pageFromParam(raw: string | undefined): number {
+  const n = Number(raw ?? "1");
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
+}
+
+/** `from` from the URL: a finite number in [1, page), floored; otherwise undefined. */
+function fromFromParam(raw: string | undefined, page: number): number | undefined {
+  const n = Number(raw ?? "");
+  return Number.isFinite(n) && n >= 1 && n < page ? Math.floor(n) : undefined;
+}
+
 /** URL query → catalog state. The old `priceMax=<₴>` links keep working. */
 export function stateFromParams(basePath: string, p: Record<string, string | string[] | undefined>): CatalogState {
   const filter = filterFromParams(p);
@@ -35,10 +47,8 @@ export function stateFromParams(basePath: string, p: Record<string, string | str
   if (filter.priceMax == null && Number.isFinite(legacyMax) && legacyMax > 0) filter.priceMax = Math.round(legacyMax);
   if (filter.q) filter.q = filter.q.trim().slice(0, 100) || undefined;
   const sortRaw = one(p.sort) ?? "";
-  const pageRaw = Number(one(p.page) ?? "1");
-  const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
-  const fromRaw = Number(one(p.from) ?? "");
-  const from = Number.isFinite(fromRaw) && fromRaw >= 1 && fromRaw < page ? Math.floor(fromRaw) : undefined;
+  const page = pageFromParam(one(p.page));
+  const from = fromFromParam(one(p.from), page);
   return {
     basePath,
     filter,

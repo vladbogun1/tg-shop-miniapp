@@ -70,6 +70,113 @@ export function CompareModal() {
   );
 }
 
+type TFn = ReturnType<typeof useI18n>["t"];
+type CompareView = ReturnType<typeof useCompareView>;
+type Group = CompareView["group"];
+type Groups = CompareView["groups"];
+
+function HeaderTop({
+  t,
+  total,
+  fetching,
+  group,
+  onShare,
+  onClose,
+}: {
+  t: TFn;
+  total: number;
+  fetching: boolean;
+  group: Group;
+  onShare: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 px-4 py-3">
+      <Scale className="h-5 w-5 shrink-0 text-[var(--accent)]" strokeWidth={2.25} />
+      <h2 id="cmp-title" className="min-w-0 flex-1 truncate font-display text-[20px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)]">
+        {t("compare.title")}
+        {total > 0 && <span className="ml-2 text-[14px] font-medium text-[var(--muted)]">{total}</span>}
+      </h2>
+      {fetching && <Loader2 className="h-4 w-4 animate-spin text-[var(--muted)]" aria-hidden />}
+      {group && group.items.length > 1 && (
+        <button
+          type="button"
+          onClick={onShare}
+          className="tap hidden h-11 items-center gap-2 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 font-display text-[12px] font-semibold uppercase tracking-[.08em] text-[var(--ink)] transition-colors hover:border-[var(--line-strong)] sm:inline-flex"
+        >
+          <Link2 className="h-4 w-4" strokeWidth={2.25} />
+          {t("compare.share")}
+        </button>
+      )}
+      <button
+        type="button"
+        autoFocus
+        onClick={onClose}
+        aria-label={t("common.close")}
+        className="tap grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)] transition-colors hover:border-[var(--line-strong)]"
+      >
+        <X className="h-5 w-5" strokeWidth={2.25} />
+      </button>
+    </div>
+  );
+}
+
+function GroupTabs({ t, groups, group, setActive }: { t: TFn; groups: Groups; group: Group; setActive: (key: string) => void }) {
+  return (
+    <div className="no-scrollbar -mx-4 flex w-[calc(100%+2rem)] gap-2 overflow-x-auto px-4 sm:mx-0 sm:w-auto sm:flex-1 sm:px-0" role="tablist">
+      {groups.map((g) => {
+        const on = g.key === group?.key;
+        return (
+          <button
+            key={g.key}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            onClick={() => setActive(g.key)}
+            className={`tap inline-flex min-h-[38px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 font-display text-[13px] font-semibold transition-colors ${
+              on
+                ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+                : "border-[var(--line-strong)] bg-[var(--surface-2)] text-[var(--ink)] hover:border-[rgba(255,255,255,.3)]"
+            }`}
+          >
+            {g.category?.name ?? t("compare.other")}
+            <span className={on ? "text-[var(--accent-hi)]" : "text-[var(--muted)]"}>{g.items.length}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function GroupBar({
+  t,
+  groups,
+  group,
+  setActive,
+  onlyDiff,
+  toggleDiff,
+  removeGroup,
+}: {
+  t: TFn;
+  groups: Groups;
+  group: Group;
+  setActive: (key: string) => void;
+  onlyDiff: boolean;
+  toggleDiff: () => void;
+  removeGroup: (key: string) => void;
+}) {
+  if (groups.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 pb-3">
+      {groups.length > 1 && <GroupTabs t={t} groups={groups} group={group} setActive={setActive} />}
+      <div className="ml-auto flex items-center gap-1">
+        {group && group.items.length > 1 && <DiffSwitch on={onlyDiff} onToggle={toggleDiff} label={t("compare.onlyDiff")} />}
+        {group && <ClearButton count={group.items.length} onClear={() => removeGroup(group.key)} />}
+      </div>
+    </div>
+  );
+}
+
 function Body({ onClose }: { onClose: () => void }) {
   const { t, locale, href } = useI18n();
   const fmt = useFmt();
@@ -110,88 +217,19 @@ function Body({ onClose }: { onClose: () => void }) {
   return (
     <>
       <header className="shrink-0 border-b border-[var(--line)] bg-[var(--surface)] pt-[env(safe-area-inset-top)]">
-        <div className="flex items-center gap-2 px-4 py-3">
-          <Scale className="h-5 w-5 shrink-0 text-[var(--accent)]" strokeWidth={2.25} />
-          <h2 id="cmp-title" className="min-w-0 flex-1 truncate font-display text-[20px] font-extrabold uppercase tracking-[.02em] text-[var(--ink)]">
-            {t("compare.title")}
-            {total > 0 && <span className="ml-2 text-[14px] font-medium text-[var(--muted)]">{total}</span>}
-          </h2>
-          {(products.isFetching || schema.isFetching) && <Loader2 className="h-4 w-4 animate-spin text-[var(--muted)]" aria-hidden />}
-          {group && group.items.length > 1 && (
-            <button
-              type="button"
-              onClick={share}
-              className="tap hidden h-11 items-center gap-2 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 font-display text-[12px] font-semibold uppercase tracking-[.08em] text-[var(--ink)] transition-colors hover:border-[var(--line-strong)] sm:inline-flex"
-            >
-              <Link2 className="h-4 w-4" strokeWidth={2.25} />
-              {t("compare.share")}
-            </button>
-          )}
-          <button
-            type="button"
-            autoFocus
-            onClick={onClose}
-            aria-label={t("common.close")}
-            className="tap grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink)] transition-colors hover:border-[var(--line-strong)]"
-          >
-            <X className="h-5 w-5" strokeWidth={2.25} />
-          </button>
-        </div>
-
-        {groups.length > 0 && (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 pb-3">
-            {groups.length > 1 && (
-              <div className="no-scrollbar -mx-4 flex w-[calc(100%+2rem)] gap-2 overflow-x-auto px-4 sm:mx-0 sm:w-auto sm:flex-1 sm:px-0" role="tablist">
-                {groups.map((g) => {
-                  const on = g.key === group?.key;
-                  return (
-                    <button
-                      key={g.key}
-                      type="button"
-                      role="tab"
-                      aria-selected={on}
-                      onClick={() => setActive(g.key)}
-                      className={`tap inline-flex min-h-[38px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 font-display text-[13px] font-semibold transition-colors ${
-                        on
-                          ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
-                          : "border-[var(--line-strong)] bg-[var(--surface-2)] text-[var(--ink)] hover:border-[rgba(255,255,255,.3)]"
-                      }`}
-                    >
-                      {g.category?.name ?? t("compare.other")}
-                      <span className={on ? "text-[var(--accent-hi)]" : "text-[var(--muted)]"}>{g.items.length}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            <div className="ml-auto flex items-center gap-1">
-              {group && group.items.length > 1 && <DiffSwitch on={onlyDiff} onToggle={toggleDiff} label={t("compare.onlyDiff")} />}
-              {group && <ClearButton count={group.items.length} onClear={() => removeGroup(group.key)} />}
-            </div>
-          </div>
-        )}
+        <HeaderTop t={t} total={total} fetching={products.isFetching || schema.isFetching} group={group} onShare={share} onClose={onClose} />
+        <GroupBar t={t} groups={groups} group={group} setActive={setActive} onlyDiff={onlyDiff} toggleDiff={toggleDiff} removeGroup={removeGroup} />
       </header>
 
       {!ready ? (
-        <div className="grid flex-1 place-items-center p-8 text-[var(--muted)]">
-          {products.isError || schema.isError ? (
-            <div className="text-center">
-              <p className="text-[14px]">{t("compare.error")}</p>
-              <button
-                type="button"
-                onClick={() => {
-                  void products.refetch();
-                  void schema.refetch();
-                }}
-                className="tap mt-3 rounded-[var(--r)] border border-[var(--line-strong)] px-4 py-2 font-display text-[13px] font-semibold uppercase"
-              >
-                {t("common.retry")}
-              </button>
-            </div>
-          ) : (
-            <Loader2 className="h-6 w-6 animate-spin" aria-label={t("common.loading")} />
-          )}
-        </div>
+        <NotReady
+          t={t}
+          failed={products.isError || schema.isError}
+          onRetry={() => {
+            void products.refetch();
+            void schema.refetch();
+          }}
+        />
       ) : !group ? (
         <Empty onClose={onClose} />
       ) : (
@@ -213,6 +251,28 @@ function Body({ onClose }: { onClose: () => void }) {
         </>
       )}
     </>
+  );
+}
+
+/** Loading spinner, or the error with «Retry» while the catalog / schema are not ready. */
+function NotReady({ t, failed, onRetry }: { t: TFn; failed: boolean; onRetry: () => void }) {
+  return (
+    <div className="grid flex-1 place-items-center p-8 text-[var(--muted)]">
+      {failed ? (
+        <div className="text-center">
+          <p className="text-[14px]">{t("compare.error")}</p>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="tap mt-3 rounded-[var(--r)] border border-[var(--line-strong)] px-4 py-2 font-display text-[13px] font-semibold uppercase"
+          >
+            {t("common.retry")}
+          </button>
+        </div>
+      ) : (
+        <Loader2 className="h-6 w-6 animate-spin" aria-label={t("common.loading")} />
+      )}
+    </div>
   );
 }
 

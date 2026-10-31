@@ -21,23 +21,157 @@ import { RatingMini } from "@/features/reviews/view/RatingLink";
 import { CompareToggle } from "@/features/compare/view/CompareToggle";
 import { useFmt } from "@/lib/use-fmt";
 
-export function ProductCard({ product, priority = false }: { product: CardProduct; priority?: boolean }) {
-  const { t, href, locale } = useI18n();
-  const fmt = useFmt();
-  const mine = useMyPreorders().data;
-  const add = useCart((s) => s.add);
-  const hasVariants = (product.variants?.length ?? 0) > 0;
-  const stock = stockOf(product, null);
-  const inStock = stock > 0;
+type TFn = ReturnType<typeof useI18n>["t"];
+type MyPreorders = ReturnType<typeof useMyPreorders>["data"];
+
+/** Everything the tile derives from the product and the viewer's own pre-order places. */
+function cardState(product: CardProduct, mine: MyPreorders) {
+  const inStock = stockOf(product, null) > 0;
   const pre = !inStock ? product.preorder ?? null : null;
   // my places in this product (signed in): held units can be bought, a waiting place is shown as such
   const myLive = inStock ? [] : mine.filter((m) => m.productId === product.id && isLive(m.status));
   const held = myLive.find((m) => m.status === "HELD" || m.status === "NOTIFIED");
-  const queued = !held && myLive.length > 0;
-  const off = discountPercent(product.priceMinor, product.compareAtMinor);
+  return {
+    hasVariants: (product.variants?.length ?? 0) > 0,
+    inStock,
+    pre,
+    held,
+    queued: !held && myLive.length > 0,
+    off: discountPercent(product.priceMinor, product.compareAtMinor),
+    used: product.condition === "MARKDOWN" || product.condition === "USED" ? product.condition : null,
+    image: (product.images ?? []).slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0],
+  };
+}
+
+type CardState = ReturnType<typeof cardState>;
+
+/** Badges over the photo: stock / pre-order (left), discount (right), condition (bottom). */
+function PhotoBadges({ state, t }: { state: CardState; t: TFn }) {
+  const { pre, inStock, off, used } = state;
+  return (
+    <>
+      {pre ? (
+        <PreorderBadge label={t("preorder.badge")} className="absolute left-2 top-2 max-w-[calc(100%-1rem)]" />
+      ) : (
+        <span
+          className={`absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-[rgba(14,14,16,.86)] px-2 py-1 font-display text-[10px] font-semibold uppercase tracking-[.1em] ${
+            inStock ? "text-[var(--ink)]" : "text-[var(--muted)]"
+          }`}
+        >
+          <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: inStock ? "var(--ok)" : "var(--faint)" }} />
+          {inStock ? t("product.inStock") : t("product.outOfStock")}
+        </span>
+      )}
+      {/* on the photo from sm up; a phone tile (~140–170 px) has no room for it next to «В наявності»
+          — there it sits in the price row instead */}
+      {off > 0 && (
+        <span className="absolute right-2 top-2 rounded-full bg-[var(--accent)] px-2 py-0.5 font-display text-[12px] font-bold text-[var(--accent-ink)] max-sm:hidden">
+          {t("product.discount", { n: off })}
+        </span>
+      )}
+      {used && (
+        <span className="absolute bottom-2 left-2 rounded-full border border-[color-mix(in_srgb,var(--warn)_55%,transparent)] bg-[rgba(14,14,16,.86)] px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-[.1em] text-[var(--warn)]">
+          {t(used === "USED" ? "product.cond.USED" : "product.cond.MARKDOWN")}
+        </span>
+      )}
+    </>
+  );
+}
+
+function PriceRow({ product, off, t }: { product: CardProduct; off: number; t: TFn }) {
+  const fmt = useFmt();
+  return (
+    <div className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-1">
+      <span className="font-display text-[18px] font-bold tabular-nums text-[var(--ink)]">
+        {fmt.money(product.priceMinor, product.currency)}
+      </span>
+      {off > 0 && (
+        <s className="font-display text-[13px] font-medium tabular-nums text-[var(--faint)]">
+          {fmt.money(product.compareAtMinor, product.currency)}
+        </s>
+      )}
+      {off > 0 && (
+        <span className="self-center rounded-full bg-[var(--accent)] px-1.5 py-px font-display text-[11px] font-bold leading-[16px] text-[var(--accent-ink)] sm:hidden">
+          {t("product.discount", { n: off })}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** The tile's bottom button: pick up a held unit / in queue / notify / choose a variant / add to cart. */
+function CardAction({ product, url, state, t }: { product: CardProduct; url: string; state: CardState; t: TFn }) {
+  const add = useCart((s) => s.add);
+  const { held, queued, pre, hasVariants, inStock } = state;
+  if (held) {
+    return (
+      <Link
+        href={url}
+        className="nb-press tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[rgba(255,102,0,.55)] bg-[var(--accent-soft)] px-2 text-[12px] font-bold text-[var(--accent-hi)] hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)] sm:text-[13px]"
+      >
+        <ShoppingBag className="h-4 w-4 shrink-0 max-[359px]:hidden" strokeWidth={2.25} />
+        <span className="truncate">{t("preorder.card.held")}</span>
+      </Link>
+    );
+  }
+  if (queued) {
+    return (
+      <Link
+        href={url}
+        className="tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-2 text-[12px] font-semibold text-[var(--muted)] sm:text-[13px]"
+      >
+        <Check className="h-4 w-4 shrink-0 text-[var(--ok)] max-[359px]:hidden" strokeWidth={2.5} />
+        <span className="truncate">{t("preorder.card.inQueue")}</span>
+      </Link>
+    );
+  }
+  if (pre) {
+    return (
+      <Link
+        href={url}
+        className="tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[var(--pre)] bg-transparent px-2 text-[12px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--pre-soft)] sm:text-[13px]"
+      >
+        <Bell className="h-4 w-4 shrink-0 text-[var(--pre)] max-[359px]:hidden" strokeWidth={2.25} />
+        <span className="truncate">{t("preorder.card.notify")}</span>
+      </Link>
+    );
+  }
+  if (hasVariants || !inStock) {
+    return (
+      <Link
+        href={url}
+        aria-disabled={!inStock}
+        className={`tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3 text-[12px] font-semibold text-[var(--ink)] transition-colors hover:border-[rgba(255,255,255,.28)] hover:bg-[var(--surface-3)] sm:text-[13px] ${
+          inStock ? "" : "text-[var(--muted)] opacity-70"
+        }`}
+      >
+        <SlidersHorizontal className="h-4 w-4 shrink-0 max-[359px]:hidden" strokeWidth={2.25} />
+        {inStock ? t("product.choose") : t("product.outOfStock")}
+      </Link>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        add(product, null, 1);
+        trackAddToCart(product.id, null, 1);
+        toast.success(t("product.added"));
+      }}
+      className="nb-press tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[rgba(255,102,0,.55)] bg-[var(--accent-soft)] px-3 text-[12px] font-bold text-[var(--accent-hi)] hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)] sm:text-[13px]"
+    >
+      <ShoppingBag className="h-4 w-4 shrink-0 max-[359px]:hidden" strokeWidth={2.25} />
+      {t("product.addToCart")}
+    </button>
+  );
+}
+
+export function ProductCard({ product, priority = false }: { product: CardProduct; priority?: boolean }) {
+  const { t, href, locale } = useI18n();
+  const mine = useMyPreorders().data;
+  const state = cardState(product, mine);
+  const { inStock, pre, held, off, image } = state;
   const url = href(`/product/${product.slug}`);
-  const used = product.condition === "MARKDOWN" || product.condition === "USED" ? product.condition : null;
-  const image = (product.images ?? []).slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
 
   return (
     <article className="nb nb-hover group relative flex h-full flex-col overflow-hidden">
@@ -52,30 +186,7 @@ export function ProductCard({ product, priority = false }: { product: CardProduc
             className="h-full w-full"
             imgClassName="group-hover:scale-[1.04]"
           />
-          {pre ? (
-            <PreorderBadge label={t("preorder.badge")} className="absolute left-2 top-2 max-w-[calc(100%-1rem)]" />
-          ) : (
-            <span
-              className={`absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-[rgba(14,14,16,.86)] px-2 py-1 font-display text-[10px] font-semibold uppercase tracking-[.1em] ${
-                inStock ? "text-[var(--ink)]" : "text-[var(--muted)]"
-              }`}
-            >
-              <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: inStock ? "var(--ok)" : "var(--faint)" }} />
-              {inStock ? t("product.inStock") : t("product.outOfStock")}
-            </span>
-          )}
-          {/* on the photo from sm up; a phone tile (~140–170 px) has no room for it next to «В наявності»
-              — there it sits in the price row instead */}
-          {off > 0 && (
-            <span className="absolute right-2 top-2 rounded-full bg-[var(--accent)] px-2 py-0.5 font-display text-[12px] font-bold text-[var(--accent-ink)] max-sm:hidden">
-              {t("product.discount", { n: off })}
-            </span>
-          )}
-          {used && (
-            <span className="absolute bottom-2 left-2 rounded-full border border-[color-mix(in_srgb,var(--warn)_55%,transparent)] bg-[rgba(14,14,16,.86)] px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-[.1em] text-[var(--warn)]">
-              {t(used === "USED" ? "product.cond.USED" : "product.cond.MARKDOWN")}
-            </span>
-          )}
+          <PhotoBadges state={state} t={t} />
         </div>
         <div className="flex flex-1 flex-col gap-2 px-3 pt-3 sm:px-4 sm:pt-4">
           <h3 className="line-clamp-2 min-h-[2.7em] font-sans text-[14px] font-semibold leading-snug text-[var(--ink)] transition-colors group-hover:text-[var(--accent-hi)]">
@@ -87,76 +198,14 @@ export function ProductCard({ product, priority = false }: { product: CardProduc
             </p>
           )}
           <RatingMini avg={product.ratingAvg} count={product.ratingCount} />
-          <div className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className="font-display text-[18px] font-bold tabular-nums text-[var(--ink)]">
-              {fmt.money(product.priceMinor, product.currency)}
-            </span>
-            {off > 0 && (
-              <s className="font-display text-[13px] font-medium tabular-nums text-[var(--faint)]">
-                {fmt.money(product.compareAtMinor, product.currency)}
-              </s>
-            )}
-            {off > 0 && (
-              <span className="self-center rounded-full bg-[var(--accent)] px-1.5 py-px font-display text-[11px] font-bold leading-[16px] text-[var(--accent-ink)] sm:hidden">
-                {t("product.discount", { n: off })}
-              </span>
-            )}
-          </div>
+          <PriceRow product={product} off={off} t={t} />
           {pre && (
             <p className="line-clamp-1 font-display text-[12px] font-semibold text-[var(--pre)]">{cardEtaLine(pre, t, locale)}</p>
           )}
         </div>
       </Link>
       <div className="p-3 sm:p-4">
-        {held ? (
-          <Link
-            href={url}
-            className="nb-press tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[rgba(255,102,0,.55)] bg-[var(--accent-soft)] px-2 text-[12px] font-bold text-[var(--accent-hi)] hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)] sm:text-[13px]"
-          >
-            <ShoppingBag className="h-4 w-4 shrink-0 max-[359px]:hidden" strokeWidth={2.25} />
-            <span className="truncate">{t("preorder.card.held")}</span>
-          </Link>
-        ) : queued ? (
-          <Link
-            href={url}
-            className="tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-2 text-[12px] font-semibold text-[var(--muted)] sm:text-[13px]"
-          >
-            <Check className="h-4 w-4 shrink-0 text-[var(--ok)] max-[359px]:hidden" strokeWidth={2.5} />
-            <span className="truncate">{t("preorder.card.inQueue")}</span>
-          </Link>
-        ) : pre ? (
-          <Link
-            href={url}
-            className="tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[var(--pre)] bg-transparent px-2 text-[12px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--pre-soft)] sm:text-[13px]"
-          >
-            <Bell className="h-4 w-4 shrink-0 text-[var(--pre)] max-[359px]:hidden" strokeWidth={2.25} />
-            <span className="truncate">{t("preorder.card.notify")}</span>
-          </Link>
-        ) : hasVariants || !inStock ? (
-          <Link
-            href={url}
-            aria-disabled={!inStock}
-            className={`tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3 text-[12px] font-semibold text-[var(--ink)] transition-colors hover:border-[rgba(255,255,255,.28)] hover:bg-[var(--surface-3)] sm:text-[13px] ${
-              inStock ? "" : "text-[var(--muted)] opacity-70"
-            }`}
-          >
-            <SlidersHorizontal className="h-4 w-4 shrink-0 max-[359px]:hidden" strokeWidth={2.25} />
-            {inStock ? t("product.choose") : t("product.outOfStock")}
-          </Link>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              add(product, null, 1);
-              trackAddToCart(product.id, null, 1);
-              toast.success(t("product.added"));
-            }}
-            className="nb-press tap nb-up flex min-h-[42px] w-full items-center justify-center gap-1.5 rounded-[var(--r)] border border-[rgba(255,102,0,.55)] bg-[var(--accent-soft)] px-3 text-[12px] font-bold text-[var(--accent-hi)] hover:border-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-ink)] sm:text-[13px]"
-          >
-            <ShoppingBag className="h-4 w-4 shrink-0 max-[359px]:hidden" strokeWidth={2.25} />
-            {t("product.addToCart")}
-          </button>
-        )}
+        <CardAction product={product} url={url} state={state} t={t} />
       </div>
       {/* ⚖ in the photo's free bottom-right corner: a square layer over the photo (buttons cannot
           live inside the link), so the cart button keeps the full width on narrow phones */}

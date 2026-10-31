@@ -68,6 +68,34 @@ export function Waitlist() {
   );
 }
 
+type TFn = ReturnType<typeof useI18n>["t"];
+
+/** Status line, its colour and the one action that makes sense for a place in a queue. */
+function rowStatus(m: MyPreorder, t: TFn, locale: ReturnType<typeof useI18n>["locale"]) {
+  switch (m.status) {
+    case "HELD":
+      return {
+        status: m.holdUntil ? t("preorder.account.held", { when: holdUntilText(m.holdUntil, locale) }) : t("preorder.notified"),
+        tone: "var(--ok)",
+        action: "buy" as "buy" | "again" | null,
+      };
+    case "NOTIFIED":
+      return { status: t("preorder.notified"), tone: "var(--ok)", action: "buy" as "buy" | "again" | null };
+    case "WAITING":
+      return {
+        status: m.position ? t("preorder.account.waiting", { n: m.position }) : t("preorder.queue.inShort", { q: m.qty }),
+        tone: "var(--pre)",
+        action: null as "buy" | "again" | null,
+      };
+    case "BOUGHT":
+      return { status: t("preorder.account.bought"), tone: "var(--muted)", action: null as "buy" | "again" | null };
+    case "EXPIRED":
+      return { status: t("preorder.account.expired"), tone: "var(--warn)", action: "again" as "buy" | "again" | null };
+    default:
+      return { status: t("preorder.account.cancelled"), tone: "var(--muted)", action: null as "buy" | "again" | null };
+  }
+}
+
 function Row({ m }: { m: MyPreorder }) {
   const { t, href, locale } = useI18n();
   const qc = useQueryClient();
@@ -89,35 +117,7 @@ function Row({ m }: { m: MyPreorder }) {
   }
 
   // status line + colour, then the one action that makes sense
-  let status: string;
-  let tone = "var(--muted)";
-  let action: "buy" | "again" | null = null;
-  switch (m.status) {
-    case "HELD":
-      status = m.holdUntil ? t("preorder.account.held", { when: holdUntilText(m.holdUntil, locale) }) : t("preorder.notified");
-      tone = "var(--ok)";
-      action = "buy";
-      break;
-    case "NOTIFIED":
-      status = t("preorder.notified");
-      tone = "var(--ok)";
-      action = "buy";
-      break;
-    case "WAITING":
-      status = m.position ? t("preorder.account.waiting", { n: m.position }) : t("preorder.queue.inShort", { q: m.qty });
-      tone = "var(--pre)";
-      break;
-    case "BOUGHT":
-      status = t("preorder.account.bought");
-      break;
-    case "EXPIRED":
-      status = t("preorder.account.expired");
-      tone = "var(--warn)";
-      action = "again";
-      break;
-    default:
-      status = t("preorder.account.cancelled");
-  }
+  const { status, tone, action } = rowStatus(m, t, locale);
   const eta = live && m.status === "WAITING" && m.eta ? cardEtaLine(m.eta, t, locale) : null;
 
   return (
