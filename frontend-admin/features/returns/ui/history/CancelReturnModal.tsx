@@ -5,7 +5,8 @@
  * деньги — вернули сейчас, записали долг или оставили покупателю. Обмен отменяет и заказ-замену.
  * Ничего не удаляется: запись помечается, в журнале денег появляются встречные строки.
  */
-import { useEffect, useState } from "react";
+import { useLayoutEffect } from "react";
+import { useForm } from "@shop/ui/form";
 import { ArrowLeftRight, CircleDollarSign, Gift, HandCoins } from "lucide-react";
 import { shortOrderId } from "@shop/core/format";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
@@ -31,15 +32,15 @@ export function CancelReturnModal({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [moneyChoice, setMoneyChoice] = useState<CancelMoney | null>(null);
-  const [note, setNote] = useState("");
+  const form = useForm<{ moneyChoice: CancelMoney | null; note: string }>({ defaultValues: { moneyChoice: null, note: "" } });
+  const { reset, setValue } = form;
+  const { moneyChoice, note } = form.watch();
+  const setMoneyChoice = (m: CancelMoney) => setValue("moneyChoice", m);
   const cancel = useCancelReturn(order.id, onDone);
-  useEffect(() => {
-    if (record) {
-      setMoneyChoice(null);
-      setNote("");
-    }
-  }, [record]);
+  // Layout effect: a passive reset would race with the textarea's own change handler.
+  useLayoutEffect(() => {
+    if (record) reset({ moneyChoice: null, note: "" });
+  }, [record, reset]);
 
   const cur = order.currency;
   const exchange = record?.kind === "EXCHANGE";
@@ -153,8 +154,7 @@ export function CancelReturnModal({
             label="Почему отменяем (обязательно)"
             rows={2}
             maxLength={500}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
+            {...form.register("note")}
             placeholder="Например: передумал возвращать"
             hint={clean !== "" && clean.length < 3 ? "Минимум 3 символа." : undefined}
           />

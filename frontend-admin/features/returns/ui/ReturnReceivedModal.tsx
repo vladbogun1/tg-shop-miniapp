@@ -5,7 +5,8 @@
  * возврата отправил «едет назад». Всё, что не отмечено браком, возвращается на полку; брак списывается («Списания»).
  * У каждой строки переключатель «Брак»; при нескольких единицах — счётчик, сколько из них сломано.
  */
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
+import { useForm } from "@shop/ui/form";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
@@ -32,14 +33,17 @@ export function ReturnReceivedModal({
 }) {
   /** itemId → единиц вернулось сломанными (спишутся). */
   const [defect, setDefect] = useState<Record<number, number>>({});
-  const [note, setNote] = useState("");
+  const form = useForm<{ note: string }>({ defaultValues: { note: "" } });
+  const { reset } = form;
+  const note = form.watch("note");
 
   const orderId = order?.id ?? null;
-  useEffect(() => {
+  // Layout effect: a passive reset would race with the input's own change handler.
+  useLayoutEffect(() => {
     if (!open) return;
     setDefect({});
-    setNote("");
-  }, [open, orderId]);
+    reset({ note: "" });
+  }, [open, orderId, reset]);
 
   if (!order) return null;
 
@@ -129,7 +133,7 @@ export function ReturnReceivedModal({
             </div>
           );
         })}
-        <Input label="Комментарий (в журнал)" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} />
+        <Input label="Комментарий (в журнал)" {...form.register("note")} maxLength={500} />
       </div>
     </Modal>
   );
