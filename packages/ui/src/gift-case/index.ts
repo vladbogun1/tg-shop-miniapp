@@ -4,6 +4,8 @@
  * React components it never renders.
  */
 export * from "./GiftCaseOpening";
+export * from "./case-opening-types";
+export { CaseStyles } from "./case-opening-bits";
 export * from "./GiftCaseParts";
 export { unlockCaseAudio, isCaseAudioMuted, setCaseAudioMuted } from "./case-audio";
 export * from "./case-tier";

@@ -19,7 +19,7 @@ import {
   type GiftTierInfo,
   type OrderGift,
 } from "@shop/core/giftcase";
-import { CaseStyles } from "./GiftCaseOpening";
+import { CaseStyles } from "./case-opening-bits";
 import { CaseSizePicker, type CaseSizeTexts } from "./case-size";
 import { CaseDiscountTile, CasePromoBox, CaseRulesLink, caseTierAsset, caseTierVars, rarityVars, type CasePromoTexts, type CaseRulesLinkProps } from "./case-tier";
 import { sessionStore } from "@shop/core/storage";

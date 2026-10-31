@@ -6,7 +6,6 @@ const legacy = {
   ],
   "max-depth": [],
   "max-lines": [
-    "src/gift-case/GiftCaseOpening.tsx",
     "src/gift-case/GiftCaseParts.tsx",
   ],
 };
