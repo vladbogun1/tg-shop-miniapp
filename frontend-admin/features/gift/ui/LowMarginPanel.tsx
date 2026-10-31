@@ -7,41 +7,26 @@
  * Each change is saved at once (PUT /api/admin/gift/low-margin).
  */
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BadgePercent, Plus, X } from "lucide-react";
-import { ApiError } from "@/lib/api";
 import { CATALOG_STALE_MS, useBrandsQuery } from "@/features/catalog";
-import { giftApi, type LowMargin } from "@/lib/gift";
+import type { LowMarginBody } from "../model/types";
+import { useLowMarginQuery, useSetLowMargin } from "../queries";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
-import { toast } from "@shop/ui/toast";
 import { Button } from "@shop/ui/admin-button";
 import { Select } from "@/components/ui/Select";
 import { ProductPickModal } from "@/components/ProductPickModal";
 import { PanelHeader } from "@/components/ui/PanelHeader";
 
-const KEY = ["gift", "low-margin"] as const;
-
 export function LowMarginPanel() {
-  const qc = useQueryClient();
-  const q = useQuery({ queryKey: KEY, queryFn: giftApi.lowMargin });
+  const q = useLowMarginQuery();
+  const setLowMargin = useSetLowMargin();
   const brandsQ = useBrandsQuery({ staleTime: CATALOG_STALE_MS });
   const [picking, setPicking] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const busy = setLowMargin.isPending;
   const data = q.data;
 
-  async function save(body: { brands?: string[]; products?: string[] }, ok: string) {
-    setBusy(true);
-    try {
-      const fresh = await giftApi.setLowMargin(body);
-      qc.setQueryData<LowMargin>(KEY, fresh);
-      toast.success(ok);
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : "Не удалось сохранить");
-    } finally {
-      setBusy(false);
-    }
-  }
+  const save = (body: LowMarginBody, okText: string) => setLowMargin.mutate({ body, okText });
 
   const brandSlugs = data?.brands.map((b) => b.slug) ?? [];
   const productIds = data?.products.map((p) => p.id) ?? [];
@@ -70,7 +55,7 @@ export function LowMarginPanel() {
                   disabled={busy}
                   label={`${b.name} · ${b.productCount} шт.`}
                   onRemove={() =>
-                    void save({ brands: brandSlugs.filter((s) => s !== b.slug) }, `${b.name}: снова обычный кейс`)
+                    save({ brands: brandSlugs.filter((s) => s !== b.slug) }, `${b.name}: снова обычный кейс`)
                   }
                 />
               ))}
@@ -83,7 +68,7 @@ export function LowMarginPanel() {
                   placeholder="Добавить бренд…"
                   onChange={(slug) => {
                     const name = brandsQ.data?.find((b) => b.slug === slug)?.name ?? slug;
-                    void save({ brands: [...brandSlugs, slug] }, `${name}: упор на скидки`);
+                    save({ brands: [...brandSlugs, slug] }, `${name}: упор на скидки`);
                   }}
                 />
               </div>
@@ -106,7 +91,7 @@ export function LowMarginPanel() {
                       disabled={busy}
                       aria-label="Убрать товар"
                       onClick={() =>
-                        void save({ products: productIds.filter((id) => id !== p.id) }, "Товар: снова обычный кейс")
+                        save({ products: productIds.filter((id) => id !== p.id) }, "Товар: снова обычный кейс")
                       }
                       className="focusable grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r-sm)] text-[var(--text-faint)] hover:text-[var(--danger-ink)] pointer-coarse:h-10 pointer-coarse:w-10"
                     >
@@ -134,7 +119,7 @@ export function LowMarginPanel() {
         onClose={() => setPicking(false)}
         onPick={(p) => {
           setPicking(false);
-          if (!productIds.includes(p.id)) void save({ products: [...productIds, p.id] }, `${p.title}: упор на скидки`);
+          if (!productIds.includes(p.id)) save({ products: [...productIds, p.id] }, `${p.title}: упор на скидки`);
         }}
       />
     </section>

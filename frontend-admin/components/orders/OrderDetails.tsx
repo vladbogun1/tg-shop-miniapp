@@ -29,7 +29,7 @@ import type { AdminOrderDetail } from "@/lib/orders-api";
 import { CASE_RARITY_COLOR, CASE_TIER_METAL, caseDiscountText } from "@shop/core/giftcase";
 import { payableMinor } from "@shop/core/orders";
 import { money } from "@/lib/money";
-import { CASE_RARITY_LABEL, CASE_TIER_LABEL } from "@/lib/gift";
+import { CASE_RARITY_LABEL, CASE_TIER_LABEL } from "@/features/gift";
 import {
   codMinor,
   DELIVERY_LABEL,

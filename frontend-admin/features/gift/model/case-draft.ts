@@ -7,7 +7,7 @@
  * discount prize its full amount (a percent one — that percent of the threshold).
  */
 import { CASE_RARITY_ORDER, type CaseRarity, type CaseTier } from "@shop/core/giftcase";
-import type { CaseDraftItem, CaseItemAdmin, DraftItem, GiftTierAdmin } from "@/lib/gift";
+import type { CaseDraftItem, CaseItemAdmin, DraftItem, GiftTierAdmin } from "./types";
 import { formatNumber } from "@shop/core/money";
 
 /** Sum of the weights = 100 % (weight units per 1 % — the server's GiftService.CASE_WEIGHT_PER_PERCENT). */
@@ -157,6 +157,13 @@ export interface Summary {
   shortStock: Row[];
 }
 
+/** The guaranteed discount on an order at the threshold, kopecks (0 = none). */
+function guaranteedOf(t: GiftTierAdmin | null, thresholdMinor: number): number {
+  if (!t || t.guaranteedPercent <= 0) return 0;
+  const g = Math.floor((thresholdMinor * t.guaranteedPercent) / 100 / 100) * 100;
+  return t.guaranteedMaxUah > 0 ? Math.min(g, t.guaranteedMaxUah * 100) : g;
+}
+
 export function summarize(rows: Row[], t: GiftTierAdmin | null): Summary {
   const T = (t?.thresholdUah ?? 0) * 100;
   const margin = t?.marginPercent ?? 15;
@@ -182,11 +189,6 @@ export function summarize(rows: Row[], t: GiftTierAdmin | null): Summary {
     if (r.kind === "PRODUCT" && pm > r.stock) shortStock.push(r);
   }
   const marginMinor = (T * margin) / 100;
-  let guaranteed = 0;
-  if (t && t.guaranteedPercent > 0) {
-    guaranteed = Math.floor((T * t.guaranteedPercent) / 100 / 100) * 100;
-    if (t.guaranteedMaxUah > 0) guaranteed = Math.min(guaranteed, t.guaranteedMaxUah * 100);
-  }
   return {
     total,
     chance,
@@ -196,7 +198,7 @@ export function summarize(rows: Row[], t: GiftTierAdmin | null): Summary {
     avgCostMinor: Math.round(avgCost),
     marginMinor,
     costShare: marginMinor > 0 ? (avgCost / marginMinor) * 100 : 0,
-    guaranteedMinor: guaranteed,
+    guaranteedMinor: guaranteedOf(t, T),
     monthly,
     perMonth,
     shortStock,

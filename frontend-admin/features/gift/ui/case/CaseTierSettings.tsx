@@ -7,7 +7,8 @@
  */
 import { useEffect, useState } from "react";
 import { CASE_TIER_METAL } from "@shop/core/giftcase";
-import { CASE_TIER_LABEL, type GiftTierAdmin, type GiftTierPatch } from "@/lib/gift";
+import { CASE_TIER_LABEL } from "../../model/labels";
+import type { GiftTierAdmin, GiftTierPatch } from "../../model/types";
 import { cn } from "@/lib/cn";
 import { money } from "@/lib/money";
 import { Modal } from "@shop/ui/overlay";

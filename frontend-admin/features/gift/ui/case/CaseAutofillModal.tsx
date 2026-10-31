@@ -9,15 +9,16 @@
  * The chosen categories are remembered as the defaults (settings gift.caseCategories /
  * gift.caseSuperCategories).
  */
-import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
 import { Sparkles } from "lucide-react";
 import { CASE_TIER_METAL, type CaseTier } from "@shop/core/giftcase";
 import { QUERY_PRESETS } from "@shop/core/query";
-import { ApiError } from "@/lib/api";
 import { useCategoriesQuery } from "@/features/catalog";
-import { AUTOFILL_COST_SHARE, CASE_TIER_LABEL, giftApi, type AutofillResult, type GiftTierAdmin } from "@/lib/gift";
-import { settingsApi } from "@/features/settings";
+import { useForm } from "@shop/ui/form";
+import { toDraft, type Row } from "../../model/case-draft";
+import { AUTOFILL_COST_SHARE, CASE_TIER_LABEL } from "../../model/labels";
+import type { AutofillResult, GiftTierAdmin } from "../../model/types";
+import { useAutofill, useAutofillSettingsQuery, useRememberAutofillCategories } from "../../queries";
 import { cn } from "@/lib/cn";
 import { money } from "@/lib/money";
 import { toast } from "@shop/ui/toast";
@@ -25,7 +26,6 @@ import { Button } from "@shop/ui/admin-button";
 import { Modal } from "@shop/ui/overlay";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Toggle } from "@/components/ui/Toggle";
-import { toDraft, type Row } from "./case-draft";
 
 const CATS_KEY = "gift.caseCategories";
 const SUPER_KEY = "gift.caseSuperCategories";
@@ -37,6 +37,18 @@ const splitSlugs = (v: unknown) =>
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+
+/** The wizard's fields. `chosen` / `superChosen` are null until the remembered defaults arrive from the settings. */
+interface AutofillForm {
+  costShare: number;
+  prizes: (typeof PRIZES)[number];
+  discounts: (typeof DISCOUNTS)[number];
+  chosen: string[] | null;
+  superChosen: string[] | null;
+  jackpot: boolean;
+  newOnly: boolean;
+  keepLocked: boolean;
+}
 
 export function CaseAutofillModal({
   open,
@@ -54,33 +66,37 @@ export function CaseAutofillModal({
   onResult: (res: AutofillResult) => void;
 }) {
   const cats = useCategoriesQuery({ enabled: open, staleTime: QUERY_PRESETS.static.staleTime });
-  // Its own key: the page's settings query backs a form whose draft must not reset when these change.
-  const settings = useQuery({ queryKey: ["gift", "autofill-settings"], queryFn: settingsApi.list, enabled: open, staleTime: 60_000 });
+  const settings = useAutofillSettingsQuery(open);
+  const remember = useRememberAutofillCategories();
   const roots = useMemo(
     () => (cats.data ?? []).filter((c) => !c.parentId && c.productCount > 0).sort((a, b) => a.sortOrder - b.sortOrder),
     [cats.data]
   );
 
-  const [costShare, setCostShare] = useState(AUTOFILL_COST_SHARE[tier]);
-  const [prizes, setPrizes] = useState<(typeof PRIZES)[number]>("8");
-  const [discounts, setDiscounts] = useState<(typeof DISCOUNTS)[number]>("2");
-  const [chosen, setChosen] = useState<string[] | null>(null);
-  const [superChosen, setSuperChosen] = useState<string[] | null>(null);
-  const [jackpot, setJackpot] = useState(true);
-  const [newOnly, setNewOnly] = useState(true);
-  const [keepLocked, setKeepLocked] = useState(true);
-  const [busy, setBusy] = useState(false);
+  const form = useForm<AutofillForm>({
+    defaultValues: {
+      costShare: AUTOFILL_COST_SHARE[tier],
+      prizes: tier === "GOLD" ? "10" : "8",
+      discounts: "2",
+      chosen: null,
+      superChosen: null,
+      jackpot: true,
+      newOnly: true,
+      keepLocked: true,
+    },
+  });
+  const { costShare, prizes, discounts, chosen, superChosen, jackpot, newOnly, keepLocked } = form.watch();
 
   useEffect(() => {
-    setCostShare(AUTOFILL_COST_SHARE[tier]);
-    setPrizes(tier === "GOLD" ? "10" : "8");
-  }, [tier]);
+    form.setValue("costShare", AUTOFILL_COST_SHARE[tier]);
+    form.setValue("prizes", tier === "GOLD" ? "10" : "8");
+  }, [tier, form]);
   useEffect(() => {
     if (!settings.data) return;
     const v = new Map(settings.data.items.map((it) => [it.key, it.value]));
-    setChosen((c) => c ?? splitSlugs(v.get(CATS_KEY)));
-    setSuperChosen((c) => c ?? splitSlugs(v.get(SUPER_KEY)));
-  }, [settings.data]);
+    if (form.getValues("chosen") === null) form.setValue("chosen", splitSlugs(v.get(CATS_KEY)));
+    if (form.getValues("superChosen") === null) form.setValue("superChosen", splitSlugs(v.get(SUPER_KEY)));
+  }, [settings.data, form]);
 
   const locked = rows.filter((r) => r.locked);
   const T = (t?.thresholdUah ?? 0) * 100;
@@ -89,37 +105,34 @@ export function CaseAutofillModal({
   const cat = chosen ?? [];
   const sup = superChosen ?? [];
 
-  async function build() {
+  const autofill = useAutofill(tier, (res) => {
+    onResult(res);
+    onClose();
+    // Remember the categories as the defaults (best effort).
+    const values: Record<string, string> = {};
+    const v = new Map((settings.data?.items ?? []).map((it) => [it.key, String(it.value ?? "")]));
+    if (cat.join(",") !== v.get(CATS_KEY)) values[CATS_KEY] = cat.join(",");
+    if (sup.join(",") !== v.get(SUPER_KEY)) values[SUPER_KEY] = sup.join(",");
+    if (Object.keys(values).length) remember.mutate(values);
+  });
+  const busy = autofill.isPending;
+
+  function build() {
     if (cat.length === 0) {
       toast.error("Выберите хотя бы одну категорию призов");
       return;
     }
-    setBusy(true);
-    try {
-      const res = await giftApi.autofill(tier, {
-        prizes: Number(prizes),
-        costShare,
-        discounts: Number(discounts),
-        categories: cat,
-        superCategories: sup,
-        jackpot: tier === "GOLD" && jackpot,
-        newOnly,
-        locked: keepLocked ? toDraft(locked) : [],
-        seed: Math.floor(Math.random() * 2 ** 31),
-      });
-      onResult(res);
-      onClose();
-      // Remember the categories as the defaults (best effort).
-      const values: Record<string, string> = {};
-      const v = new Map((settings.data?.items ?? []).map((it) => [it.key, String(it.value ?? "")]));
-      if (cat.join(",") !== v.get(CATS_KEY)) values[CATS_KEY] = cat.join(",");
-      if (sup.join(",") !== v.get(SUPER_KEY)) values[SUPER_KEY] = sup.join(",");
-      if (Object.keys(values).length) void settingsApi.save(values).then(() => settings.refetch(), () => undefined);
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : "Не удалось собрать кейс");
-    } finally {
-      setBusy(false);
-    }
+    autofill.mutate({
+      prizes: Number(prizes),
+      costShare,
+      discounts: Number(discounts),
+      categories: cat,
+      superCategories: sup,
+      jackpot: tier === "GOLD" && jackpot,
+      newOnly,
+      locked: keepLocked ? toDraft(locked) : [],
+      seed: Math.floor(Math.random() * 2 ** 31),
+    });
   }
 
   const toggle = (list: string[], slug: string) => (list.includes(slug) ? list.filter((s) => s !== slug) : [...list, slug]);
@@ -139,7 +152,7 @@ export function CaseAutofillModal({
           <Button variant="ghost" onClick={onClose} disabled={busy}>
             Отмена
           </Button>
-          <Button variant="accent" icon={<Sparkles className="h-4 w-4" />} loading={busy} onClick={() => void build()}>
+          <Button variant="accent" icon={<Sparkles className="h-4 w-4" />} loading={busy} onClick={build}>
             Собрать в черновик
           </Button>
         </div>
@@ -164,7 +177,7 @@ export function CaseAutofillModal({
           step={5}
           value={costShare}
           aria-label="Щедрость: доля маржи на кейс, %"
-          onChange={(e) => setCostShare(Number(e.target.value))}
+          onChange={(e) => form.setValue("costShare", Number(e.target.value))}
           className="mt-2 w-full accent-[var(--accent)]"
         />
         <div className="flex justify-between text-[11px] text-[var(--text-faint)]">
@@ -180,29 +193,29 @@ export function CaseAutofillModal({
       <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 min-[420px]:grid-cols-2">
         <div className="min-w-0">
           <div className="field-label mb-1.5">Призов</div>
-          <SegmentedControl value={prizes} onChange={setPrizes} options={PRIZES.map((p) => ({ value: p, label: p }))} />
+          <SegmentedControl value={prizes} onChange={(v) => form.setValue("prizes", v)} options={PRIZES.map((p) => ({ value: p, label: p }))} />
         </div>
         <div className="min-w-0">
           <div className="field-label mb-1.5">Из них скидок</div>
-          <SegmentedControl value={discounts} onChange={setDiscounts} options={DISCOUNTS.map((p) => ({ value: p, label: p }))} />
+          <SegmentedControl value={discounts} onChange={(v) => form.setValue("discounts", v)} options={DISCOUNTS.map((p) => ({ value: p, label: p }))} />
         </div>
       </div>
 
       <div className="mt-4 min-w-0">
         <div className="field-label mb-1.5">Категории призов</div>
-        <Chips roots={roots} loading={cats.isLoading} value={cat} onToggle={(s) => setChosen(toggle(cat, s))} />
+        <Chips roots={roots} loading={cats.isLoading} value={cat} onToggle={(s) => form.setValue("chosen", toggle(cat, s))} />
       </div>
 
       {tier === "GOLD" && (
         <div className="mt-4 min-w-0">
-          <Toggle checked={jackpot} onChange={setJackpot} label="Джекпот — суперприз" />
+          <Toggle checked={jackpot} onChange={(v) => form.setValue("jackpot", v)} label="Джекпот — суперприз" />
           {jackpot && (
             <>
               <p className="mt-1 text-[11.5px] leading-snug text-[var(--text-faint)]">
                 Самый дорогой товар в наличии из этих категорий, шанс — до 0,5 %.
               </p>
               <div className="mt-1.5">
-                <Chips roots={roots} loading={cats.isLoading} value={sup} onToggle={(s) => setSuperChosen(toggle(sup, s))} />
+                <Chips roots={roots} loading={cats.isLoading} value={sup} onToggle={(s) => form.setValue("superChosen", toggle(sup, s))} />
               </div>
             </>
           )}
@@ -210,9 +223,9 @@ export function CaseAutofillModal({
       )}
 
       <div className="mt-4 flex min-w-0 flex-col gap-2.5">
-        <Toggle checked={newOnly} onChange={setNewOnly} label="Только новые товары (без уценки и б/у)" />
+        <Toggle checked={newOnly} onChange={(v) => form.setValue("newOnly", v)} label="Только новые товары (без уценки и б/у)" />
         {locked.length > 0 && (
-          <Toggle checked={keepLocked} onChange={setKeepLocked} label={`Оставить закреплённые (${locked.length})`} />
+          <Toggle checked={keepLocked} onChange={(v) => form.setValue("keepLocked", v)} label={`Оставить закреплённые (${locked.length})`} />
         )}
       </div>
     </Modal>

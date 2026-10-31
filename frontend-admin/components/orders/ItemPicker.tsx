@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Gift, Plus, Search, TriangleAlert } from "lucide-react";
 import { adminApi, ApiError, type Product, type ProductVariant } from "@/lib/api";
 import { productApi } from "@/features/product";
-import { giftApi, type GiftLimit } from "@/lib/gift";
+import { giftApi, type GiftLimit } from "@/features/gift";
 import { money } from "@/lib/money";
 import { toast } from "@shop/ui/toast";
 import { cn } from "@/lib/cn";
