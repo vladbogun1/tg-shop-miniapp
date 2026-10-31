@@ -46,7 +46,7 @@ import { Toggle } from "@/components/ui/Toggle";
 import { AiWizardLayer } from "@/features/cards/ui/AiWizardLayer";
 import { CardCompletionModal } from "@/features/cards";
 import { CardList } from "@/features/cards/ui/CardList";
-import { ReviewPanel } from "@/features/cards/ui/ReviewPanel";
+import { ReviewPanel } from "@/features/cards/ui/review/ReviewPanel";
 
 const PAGE = 100;
 
