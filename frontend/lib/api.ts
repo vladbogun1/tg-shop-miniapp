@@ -9,6 +9,7 @@ import { ApiError } from "@shop/core/errors";
 import { createHttpClient, newIdempotencyKey, normalizeBaseUrl } from "@shop/core/http";
 import { type AuthResponse, type Conversation, type CreateOrderResult, type Message, type NpCity, type NpWarehouse, type OrderDetail, type OrderLimits, type OrderSummary, type PaymentOption, type PaymentStart, type Product, type PromoPreview, type SendMessageRequest } from "@shop/core/types";
 import { type CartLineInput, type ServerCart } from "@shop/core/cart";
+import { createCartApi } from "@shop/customer/cart/api";
 import { type CatalogSchema } from "@shop/core/catalog";
 import { type CaseSize, type GiftCaseOpen, type GiftResponse } from "@shop/core/giftcase";
 import { getActiveLocale, getActiveTag } from "@shop/core/i18n";
@@ -252,9 +253,7 @@ export const customerApi = {
     http.post<void>(`/api/me/locale?locale=${encodeURIComponent(locale)}`),
   unreadCount: () => http.get<{ count: number }>("/api/me/unread-count"),
   /** Server cart shared with the website (same Telegram account) — see lib/cart-sync. */
-  getCart: () => http.get<ServerCart>("/api/me/cart"),
-  putCart: (lines: CartLineInput[]) => http.put<ServerCart>("/api/me/cart", { lines }),
-  mergeCart: (lines: CartLineInput[]) => http.post<ServerCart>("/api/me/cart/merge", { lines }),
+  cart: createCartApi(http),
   conversations: () => http.get<Conversation[]>("/api/me/conversations"),
   /**
    * Places an order. The idempotency key makes a retry (lost response, double tap) return the

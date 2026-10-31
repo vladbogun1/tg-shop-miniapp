@@ -22,7 +22,7 @@ import { trackCompare } from "@/lib/analytics";
 import { useCompare } from "@/lib/compare";
 import { copyText, useEscape, useScrollLock } from "@/lib/hooks";
 import { useFmt } from "@/lib/use-fmt";
-import { stockOf } from "@/lib/stock";
+import { stockOf } from "@shop/customer/catalog/model/stock";
 import { toast } from "@shop/ui/toast";
 import { CompareTable } from "./CompareTable";
 import { localStore } from "@shop/core/storage";

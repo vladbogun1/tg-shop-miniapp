@@ -1,171 +1,39 @@
 "use client";
 
 /**
- * Cart store (zustand, persisted to localStorage).
+ * Корзина Mini App: общий стор из @shop/customer/cart/store + то, чем Mini App отличается от сайта.
  *
- * Since the server cart (shared with the website, same Telegram account) this store is the local,
- * optimistic copy of it: actions stay synchronous, `lib/cart-sync.ts` writes changes back and
- * re-reads the server cart when the app becomes visible again.
- *
- * Lines are keyed by `${productId}::${variantId ?? ""}` so the same product
- * with different variants are distinct lines. Quantities are clamped to the
- * captured stock at add/setQty time. Money is in minor units (÷100 via money()).
+ * Локальная, оптимистичная копия серверной корзины (её же видит сайт при входе тем же Telegram-аккаунтом):
+ * действия синхронные, `lib/cart-sync.ts` пишет изменения на сервер и перечитывает корзину при возврате в приложение.
+ * Строки — по ключу `${productId}::${variantId ?? ""}`; количество зажато остатком (деньги — minor units).
  */
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import type { Product, ProductVariant } from "@/lib/api";
+import { createCartStore } from "@shop/customer/cart/store";
 
-export interface CartLine {
-  key: string;
-  productId: string;
-  variantId: string | null;
-  variantName: string | null;
-  title: string;
-  priceMinor: number;
-  currency: string;
-  imageUrl: string | null;
-  /** Stock available for this product/variant — qty is clamped to it. */
-  stock: number;
-  quantity: number;
-}
+export { lineKey, type CartLine } from "@shop/customer/cart/lines";
 
-export function lineKey(productId: string, variantId?: string | null): string {
-  return `${productId}::${variantId ?? ""}`;
-}
-
-function clamp(n: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, n, qtyCap));
-}
-
-/** antibot.maxQtyPerProduct from the server (lib/order-limits.ts); Infinity until known / 0 = off. */
-let qtyCap = Number.POSITIVE_INFINITY;
-
-export function setQtyCap(n: number): void {
-  qtyCap = n > 0 ? n : Number.POSITIVE_INFINITY;
-}
-
-interface CartState {
-  lines: CartLine[];
-  /** Promo code typed by the user (validated server-side at checkout). */
-  promoCode: string;
+interface MiniAppCartExtra {
   /**
-   * The cart that lived only on this device (before the server cart) has been merged into the
-   * server one. Until then the local lines are the customer's own and must not be overwritten.
+   * Корзина, жившая только на этом устройстве (до серверной), влита в серверную. Пока нет — локальные строки
+   * принадлежат покупателю и перезаписывать их нельзя.
    */
   migrated: boolean;
-
-  add: (
-    product: Product,
-    variant: ProductVariant | null,
-    qty?: number
-  ) => void;
-  setQty: (key: string, qty: number) => void;
-  inc: (key: string) => void;
-  dec: (key: string) => void;
-  remove: (key: string) => void;
-  clear: () => void;
-  setPromoCode: (code: string) => void;
-
-  // selectors (call via store getState in non-react ctx)
-  totalQuantity: () => number;
-  subtotalMinor: () => number;
 }
 
-export const useCart = create<CartState>()(
-  persist(
-    (set, get) => ({
-      lines: [],
-      promoCode: "",
-      migrated: false,
+const cart = createCartStore<MiniAppCartExtra>({
+  policy: {
+    storageKey: "tgshop-cart-v1",
+    // Остаток товара с вариантами без выбранного варианта — собственный (у такого товара он 0): Mini App всегда
+    // кладёт в корзину либо товар без вариантов, либо конкретный вариант.
+    stockOf: (product, variant) => (variant ? variant.stock : (product.stock ?? 0)),
+    imageUrlOf: (product) => product.images?.[0]?.url ?? null,
+    trackSlug: false,
+    keepSoldOut: false,
+    counts: () => true,
+  },
+  extra: () => ({ migrated: false }),
+  persistExtra: (s) => ({ migrated: s.migrated }),
+});
 
-      add: (product, variant, qty = 1) => {
-        const variantId = variant?.id ?? null;
-        const key = lineKey(product.id, variantId);
-        const stock = variant ? variant.stock : (product.stock ?? 0);
-        if (stock <= 0) return;
-
-        set((state) => {
-          const existing = state.lines.find((l) => l.key === key);
-          if (existing) {
-            return {
-              lines: state.lines.map((l) =>
-                l.key === key
-                  ? { ...l, quantity: clamp(l.quantity + qty, 1, stock), stock }
-                  : l
-              ),
-            };
-          }
-          const line: CartLine = {
-            key,
-            productId: product.id,
-            variantId,
-            variantName: variant?.name ?? null,
-            title: product.title,
-            priceMinor: product.priceMinor,
-            currency: product.currency ?? "UAH",
-            imageUrl: product.images?.[0]?.url ?? null,
-            stock,
-            quantity: clamp(qty, 1, stock),
-          };
-          return { lines: [...state.lines, line] };
-        });
-      },
-
-      setQty: (key, qty) =>
-        set((state) => ({
-          lines: state.lines
-            .map((l) =>
-              l.key === key
-                ? { ...l, quantity: clamp(qty, 0, l.stock) }
-                : l
-            )
-            .filter((l) => l.quantity > 0),
-        })),
-
-      inc: (key) => {
-        const l = get().lines.find((x) => x.key === key);
-        if (l) get().setQty(key, l.quantity + 1);
-      },
-      dec: (key) => {
-        const l = get().lines.find((x) => x.key === key);
-        if (l) get().setQty(key, l.quantity - 1);
-      },
-
-      remove: (key) =>
-        set((state) => ({ lines: state.lines.filter((l) => l.key !== key) })),
-
-      clear: () => set({ lines: [], promoCode: "" }),
-      setPromoCode: (code) => set({ promoCode: code }),
-
-      totalQuantity: () =>
-        get().lines.reduce((sum, l) => sum + l.quantity, 0),
-      subtotalMinor: () =>
-        get().lines.reduce((sum, l) => sum + l.priceMinor * l.quantity, 0),
-    }),
-    {
-      name: "tgshop-cart-v1",
-      // only persist data, not the action fns
-      partialize: (s) => ({ lines: s.lines, promoCode: s.promoCode, migrated: s.migrated }),
-    }
-  )
-);
-
-/** Hook: total quantity (re-renders on change). */
-export function useCartCount(): number {
-  return useCart((s) => s.lines.reduce((sum, l) => sum + l.quantity, 0));
-}
-
-/**
- * The cart lines for the promo check, `id*qty,…` (a code from the gift case is counted without the
- * low-margin products, like the checkout does). A string, so the selector stays stable.
- */
-export function useCartPromoItems(): string {
-  return useCart((s) => s.lines.filter((l) => l.quantity > 0).map((l) => `${l.productId}*${l.quantity}`).join(","));
-}
-
-/** Hook: subtotal in minor units (re-renders on change). */
-export function useCartSubtotal(): number {
-  return useCart((s) =>
-    s.lines.reduce((sum, l) => sum + l.priceMinor * l.quantity, 0)
-  );
-}
+export const { useCart, useCartCount, useCartPromoItems, useCartSubtotal } = cart;
+/** antibot.maxQtyPerProduct с сервера (lib/order-limits.ts). */
+export const { setQtyCap } = cart;

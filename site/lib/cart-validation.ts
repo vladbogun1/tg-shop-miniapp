@@ -12,7 +12,8 @@ import { useEffect, useMemo } from "react";
 import type { Product } from "@shop/core/types";
 import { useI18n } from "@/i18n/context";
 import { api, ApiError } from "./api";
-import { stockOf, useCart } from "./cart";
+import { stockOf } from "@shop/customer/catalog/model/stock";
+import { useCart } from "./cart";
 import { holdFloor } from "./preorder-core";
 
 export function useCartValidation(enabled = true) {

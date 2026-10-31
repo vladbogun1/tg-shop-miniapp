@@ -1,165 +1,54 @@
 "use client";
 
 /**
- * Website cart — zustand persisted to localStorage under its own key (`site-cart-v1`).
+ * Корзина сайта: общий стор из @shop/customer/cart/store + то, чем сайт отличается от Mini App.
  *
- * Same line model as the Mini App (`frontend/lib/cart.ts`): one line per product+variant, a price
- * snapshot, and the stock captured at add time to clamp the quantity. The snapshot is only a
- * snapshot: {@link useCartValidation} re-reads every line from the server and corrects price and
- * stock, because a cart can sit in a browser for weeks.
+ * Своё имя в localStorage (`site-cart-v1`); та же модель строки: одна на товар+вариант, снимок цены и остаток на
+ * момент добавления (количество зажато им). Снимок — только снимок: {@link useCartValidation} перечитывает каждую
+ * строку с сервера и поправляет цену и остаток, ведь корзина в браузере может лежать неделями.
+ * Состояние ящика корзины живёт здесь же, чтобы «В корзину» где угодно могло его открыть.
  *
- * The drawer's open/closed state lives here too, so "В корзину" anywhere can open it.
- *
- * Signed in, the same store is a local copy of the server cart shared with the Mini App: the
- * actions stay synchronous and optimistic, and `lib/cart-sync.ts` writes changes back (debounced)
- * and re-reads the server cart on sign-in and when the window regains focus.
+ * Вошедшему покупателю тот же стор — локальная копия серверной корзины, общей с Mini App: действия синхронные и
+ * оптимистичные, `lib/cart-sync.ts` пишет их на сервер (с задержкой) и перечитывает корзину при входе и возврате в окно.
  */
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import type { Product, ProductVariant } from "@shop/core/types";
-import type { StorefrontProduct } from "@shop/core/site";
-import { stockOf } from "./stock";
+import { createCartStore } from "@shop/customer/cart/store";
+import { stockOf } from "@shop/customer/catalog/model/stock";
 
-export { stockOf };
-
-export interface CartLine {
-  key: string;
-  productId: string;
-  /** For links back to the product page; absent on lines added before slugs existed. */
-  slug?: string | null;
-  variantId: string | null;
-  variantName: string | null;
-  title: string;
-  priceMinor: number;
-  currency: string;
-  imageUrl: string | null;
-  stock: number;
-  quantity: number;
-  /** Set by validation when the server price differs from the snapshot the customer saw. */
-  previousPriceMinor?: number | null;
-}
-
-export function lineKey(productId: string, variantId?: string | null): string {
-  return `${productId}::${variantId ?? ""}`;
-}
-
-function clamp(n: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, n, qtyCap));
-}
-
-/** antibot.maxQtyPerProduct from the server (lib/order-limits.ts); Infinity until known / 0 = off. */
-let qtyCap = Number.POSITIVE_INFINITY;
-
-export function setQtyCap(n: number): void {
-  qtyCap = n > 0 ? n : Number.POSITIVE_INFINITY;
-}
+export { lineKey, type CartLine } from "@shop/customer/cart/lines";
 
 /**
- * Who the stored lines belong to. `guest` — this browser's own cart (merged into the account on
- * sign-in); `server` — a local copy of the signed-in customer's server cart (lib/cart-sync.ts).
+ * Чья корзина лежит в сторе. `guest` — собственная корзина этого браузера (при входе вливается в аккаунт);
+ * `server` — локальная копия серверной корзины вошедшего покупателя.
  */
 export type CartOwner = "guest" | "server";
 
-interface CartState {
-  lines: CartLine[];
-  promoCode: string;
+interface SiteCartExtra {
   drawerOpen: boolean;
   owner: CartOwner;
-
-  add: (product: Product | StorefrontProduct, variant: ProductVariant | null, qty?: number) => void;
-  setQty: (key: string, qty: number) => void;
-  remove: (key: string) => void;
-  clear: () => void;
-  setPromoCode: (code: string) => void;
   openDrawer: () => void;
   closeDrawer: () => void;
-  /** Replace lines with server-corrected values (see useCartValidation). */
-  patchLines: (patch: (lines: CartLine[]) => CartLine[]) => void;
 }
 
-export const useCart = create<CartState>()(
-  persist(
-    (set) => ({
-      lines: [],
-      promoCode: "",
-      drawerOpen: false,
-      owner: "guest",
+const cart = createCartStore<SiteCartExtra>({
+  policy: {
+    storageKey: "site-cart-v1",
+    stockOf,
+    imageUrlOf: (product) =>
+      (product.images ?? []).slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0]?.url ?? null,
+    trackSlug: true,
+    // строка без остатка остаётся (серым, оформление заблокировано), в сумму и промокод не входит
+    keepSoldOut: true,
+    counts: (l) => l.stock > 0,
+  },
+  extra: (set) => ({
+    drawerOpen: false,
+    owner: "guest",
+    openDrawer: () => set({ drawerOpen: true }),
+    closeDrawer: () => set({ drawerOpen: false }),
+  }),
+  persistExtra: (s) => ({ owner: s.owner }),
+});
 
-      add: (product, variant, qty = 1) => {
-        const variantId = variant?.id ?? null;
-        const key = lineKey(product.id, variantId);
-        const stock = stockOf(product, variant);
-        if (stock <= 0) return;
-        const slug = "slug" in product ? product.slug : null;
-        set((state) => {
-          const existing = state.lines.find((l) => l.key === key);
-          if (existing) {
-            return {
-              lines: state.lines.map((l) =>
-                l.key === key
-                  ? { ...l, quantity: clamp(l.quantity + qty, 1, stock), stock, slug: slug ?? l.slug }
-                  : l
-              ),
-            };
-          }
-          const images = (product.images ?? [])
-            .slice()
-            .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-          const line: CartLine = {
-            key,
-            productId: product.id,
-            slug,
-            variantId,
-            variantName: variant?.name ?? null,
-            title: product.title,
-            priceMinor: product.priceMinor,
-            currency: product.currency ?? "UAH",
-            imageUrl: images[0]?.url ?? null,
-            stock,
-            quantity: clamp(qty, 1, stock),
-          };
-          return { lines: [...state.lines, line] };
-        });
-      },
-
-      setQty: (key, qty) =>
-        set((state) => ({
-          lines: state.lines
-            .map((l) => (l.key === key ? { ...l, quantity: clamp(qty, 0, Math.max(l.stock, 0)) } : l))
-            .filter((l) => l.quantity > 0 || l.stock <= 0),
-        })),
-
-      remove: (key) => set((state) => ({ lines: state.lines.filter((l) => l.key !== key) })),
-      clear: () => set({ lines: [], promoCode: "" }),
-      setPromoCode: (code) => set({ promoCode: code }),
-      openDrawer: () => set({ drawerOpen: true }),
-      closeDrawer: () => set({ drawerOpen: false }),
-      patchLines: (patch) => set((state) => ({ lines: patch(state.lines) })),
-    }),
-    {
-      name: "site-cart-v1",
-      partialize: (s) => ({ lines: s.lines, promoCode: s.promoCode, owner: s.owner }),
-    }
-  )
-);
-
-export function useCartCount(): number {
-  return useCart((s) => s.lines.reduce((sum, l) => sum + l.quantity, 0));
-}
-
-/**
- * The orderable cart lines for the promo check, `id*qty,…` (a code from the gift case is counted
- * without the low-margin products, like the checkout does). A string, so the selector stays stable.
- */
-export function useCartPromoItems(): string {
-  return useCart((s) =>
-    s.lines.filter((l) => l.stock > 0 && l.quantity > 0).map((l) => `${l.productId}*${l.quantity}`).join(",")
-  );
-}
-
-/** Only lines that can actually be ordered (in stock, qty > 0). */
-export function useCartSubtotal(): number {
-  return useCart((s) =>
-    s.lines.reduce((sum, l) => (l.stock > 0 ? sum + l.priceMinor * l.quantity : sum), 0)
-  );
-}
+export const { useCart, useCartCount, useCartPromoItems, useCartSubtotal } = cart;
+/** antibot.maxQtyPerProduct с сервера (lib/order-limits.ts). */
+export const { setQtyCap } = cart;

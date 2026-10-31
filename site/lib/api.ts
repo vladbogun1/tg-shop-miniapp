@@ -12,6 +12,7 @@ import { createHttpClient, newIdempotencyKey } from "@shop/core/http";
 import { type AuthUser, type BonusCode, type CreateOrderResult, type Message, type MyReview, type NpCity, type NpWarehouse, type OrderDetail, type OrderLimits, type OrderSummary, type PaymentOption, type PaymentStart, type PendingReviewLine, type Product, type PromoPreview, type ReviewPage, type SendMessageRequest, type SubmitReviewRequest, type SubmitReviewResult } from "@shop/core/types";
 import { type CatalogSchema } from "@shop/core/catalog";
 import { type CartLineInput, type ServerCart } from "@shop/core/cart";
+import { createCartApi } from "@shop/customer/cart/api";
 import { type CaseSize, type GiftCaseOpen, type GiftResponse } from "@shop/core/giftcase";
 import { getActiveLocale, getActiveTag } from "@shop/core/i18n";
 import { type PublicCategory, type PublicProductPage, type StorefrontProduct, type WebLoginStart, type WebLoginStatus, type WebSession } from "@shop/core/site";
@@ -224,10 +225,7 @@ export const api = {
   releasePromo: (code: string) =>
     authed(() => http.del<void>(`/api/me/promo/reserve?code=${encodeURIComponent(code)}`)),
   // server-side cart (shared with the Mini App; see lib/cart-sync.ts)
-  cart: () => authed(() => http.get<ServerCart>("/api/me/cart")),
-  putCart: (lines: CartLineInput[]) => authed(() => http.put<ServerCart>("/api/me/cart", { lines })),
-  mergeCart: (lines: CartLineInput[]) =>
-    authed(() => http.post<ServerCart>("/api/me/cart/merge", { lines })),
+  cart: createCartApi(http, authed),
   createOrder: (body: CreateOrderRequest, idempotencyKey: string) =>
     authed(() =>
       http.post<CreateOrderResult>("/api/orders", body, { "Idempotency-Key": idempotencyKey })

@@ -11,9 +11,9 @@
   ],
   "scripts": {
     "build": "npm run build -w frontend && npm run build -w frontend-admin && npm run build -w site",
-    "lint": "npm run lint -w @shop/core -w @shop/ui -w frontend -w frontend-admin -w site",
-    "typecheck": "npm run typecheck -w @shop/core -w @shop/ui -w frontend -w frontend-admin -w site -w e2e",
-    "test": "npm run test -w @shop/core -w @shop/ui -w frontend -w frontend-admin -w site",
+    "lint": "npm run lint -w @shop/core -w @shop/ui -w @shop/customer -w frontend -w frontend-admin -w site",
+    "typecheck": "npm run typecheck -w @shop/core -w @shop/ui -w @shop/customer -w frontend -w frontend-admin -w site -w e2e",
+    "test": "npm run test -w @shop/core -w @shop/ui -w @shop/customer -w frontend -w frontend-admin -w site",
     "arch:front": "node scripts/arch-front.mjs",
     "check:bundle": "node scripts/check-bundle.mjs",
     "gen:api": "openapi-typescript backend/src/test/resources/openapi/openapi.json -o packages/core/src/api/generated.d.ts && node scripts/gen-error-codes.mjs",

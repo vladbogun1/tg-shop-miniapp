@@ -11,7 +11,7 @@ import { buildPreorderIndex, groupTitle, type PreorderEta } from "@/lib/preorder
 import { localeOf, type LocaleParams } from "@/lib/route";
 import { pageMeta } from "@/lib/seo";
 import { getComingBatches, getListingProducts, safe } from "@/lib/server-api";
-import { stockOf } from "@/lib/stock";
+import { stockOf } from "@shop/customer/catalog/model/stock";
 
 /**
  * The batches and their products come through the data cache tagged "catalog" (the backend drops it

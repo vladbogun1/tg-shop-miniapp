@@ -11,7 +11,7 @@ import type { CardContext } from "./card";
 import { PAGE_SIZE } from "./config";
 import { getCatalogSchema, getCategories, safe } from "./server-api";
 import { availabilityRank, type PreorderIndex } from "./preorder-core";
-import { stockOf } from "./stock";
+import { stockOf } from "@shop/customer/catalog/model/stock";
 
 /** UI words of yes/no for bool specs, in the page language. */
 export function yesNo(locale: Locale): [string, string] {
