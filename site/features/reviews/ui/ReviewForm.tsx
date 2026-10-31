@@ -16,7 +16,7 @@ import { StarInput } from "./StarInput";
 const REVIEW_MAX = 4000;
 
 /** The website: «Send» is active from the start and asks for the stars on click; length in characters. */
-const REVIEW_FORM_POLICY: ReviewFormPolicy = { maxLength: REVIEW_MAX, countCharacters: true, gateSubmit: false, clampInput: false };
+const REVIEW_FORM_POLICY: ReviewFormPolicy = { maxLength: REVIEW_MAX, countCharacters: true, gateSubmit: true, clampInput: false };
 
 export function ReviewForm({
   orderItemId,
@@ -35,7 +35,7 @@ export function ReviewForm({
 }) {
   const { t } = useI18n();
   const id = useId();
-  const { rating, setRating, text, setText, busy, err, len, submit } = useReviewForm({
+  const { rating, setRating, text, setText, busy, err, len, canSubmit, submit } = useReviewForm({
     api: api.reviews,
     orderItemId,
     initialRating,
@@ -87,7 +87,7 @@ export function ReviewForm({
         </p>
       )}
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" variant="accent" loading={busy} disabled={busy}>
+        <Button type="submit" variant="accent" loading={busy} disabled={!canSubmit}>
           {edit ? t("reviews.form.save") : t("reviews.form.submit")}
         </Button>
         {onCancel && (
