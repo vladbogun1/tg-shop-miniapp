@@ -3,7 +3,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useApiMutation } from "@shop/ui/mutation";
 import { isAuthenticated } from "@/lib/session";
-import { INBOX_QUERY_KEY } from "@/lib/inbox";
+import { inboxKeys } from "@/features/inbox";
 import { reviewsApi } from "./api";
 import { reviewKeys } from "./keys";
 import { publishedToast, REVIEWS_PAGE_SIZE } from "./model/filters";
@@ -74,7 +74,7 @@ function successText({ review, action, text }: ReviewActionVars): string {
 export function useReviewActions() {
   const m = useApiMutation({
     mutationFn: (v: ReviewActionVars) => call(v),
-    invalidate: [reviewKeys.all(), INBOX_QUERY_KEY],
+    invalidate: [reviewKeys.all(), inboxKeys.all()],
     success: (_d, v) => successText(v),
     errorFallback: "Ошибка",
   });

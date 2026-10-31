@@ -7,7 +7,7 @@ import { keepPreviousData, useQuery, useQueryClient, type QueryClient } from "@t
 import { useCallback, useMemo } from "react";
 import { isAuthenticated } from "@/lib/session";
 import type { SendMessageRequest } from "@shop/core/types";
-import { INBOX_QUERY_KEY } from "@/lib/inbox";
+import { inboxKeys } from "@/features/inbox";
 import { supportApi } from "./api";
 import { MESSAGES_SEGMENT, supportKeys } from "./keys";
 import { appendUnique, markCustomerRead } from "./model/chat";
@@ -63,7 +63,7 @@ export function refreshSupport(qc: QueryClient): void {
     queryKey: supportKeys.all(),
     predicate: (q) => q.queryKey[MESSAGES_SEGMENT] !== "messages",
   });
-  void qc.invalidateQueries({ queryKey: INBOX_QUERY_KEY });
+  void qc.invalidateQueries({ queryKey: inboxKeys.all() });
 }
 
 /** Правки кэша открытого чата: добавить сообщение, пометить сообщения клиента прочитанными. */

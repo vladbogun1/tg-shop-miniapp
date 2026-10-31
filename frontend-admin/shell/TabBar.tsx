@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { useInbox } from "@/lib/inbox";
+import { useInbox } from "@/features/inbox";
 import { TABS, isActive } from "./nav-config";
 
 const TAB_CELL =

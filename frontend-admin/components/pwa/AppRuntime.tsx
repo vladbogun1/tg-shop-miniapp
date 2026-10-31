@@ -10,7 +10,7 @@
  */
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { useInbox } from "@/lib/inbox";
+import { useInbox } from "@/features/inbox";
 import { startPwa } from "@/lib/pwa";
 import { setAppBadge } from "@/features/notification";
 

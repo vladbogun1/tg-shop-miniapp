@@ -1,4 +1,4 @@
-import { useInbox } from "@/lib/inbox";
+import { useInbox } from "@/features/inbox";
 import { useSupportUnread } from "@/features/support";
 import { pendingCount, useTranslationStats } from "@/features/translation";
 import { pendingCards, useCardStats } from "@/features/cards";

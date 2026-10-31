@@ -9,7 +9,7 @@ import { Bell } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { useInbox } from "@/lib/inbox";
+import { useInbox } from "@/features/inbox";
 
 export function NotificationsBell() {
   const pathname = usePathname();
