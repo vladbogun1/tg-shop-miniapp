@@ -6,11 +6,11 @@
  */
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
-import type { TrLocale } from "@/lib/api";
-import type { UniqueString } from "@/lib/translation-check";
-import { currentText, langState, placeOf } from "@/lib/translation-queue";
+import type { TrLocale } from "../model/types";
+import type { UniqueString } from "../model/workset";
+import { currentText, langState, placeOf } from "../model/queue";
 import { Button } from "@shop/ui/admin-button";
-import { KindBadge, StateChip } from "@/components/translations/shared";
+import { KindBadge, StateChip } from "./shared";
 
 const PAGE = 50;
 
