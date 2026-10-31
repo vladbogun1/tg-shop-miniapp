@@ -11,7 +11,7 @@ import { CASE_RARITY_ORDER, type CaseRarity, type CaseTier } from "@shop/core/gi
 import { Button } from "@shop/ui/admin-button";
 import { Modal } from "@shop/ui/overlay";
 import { Select } from "@/components/ui/Select";
-import { ProductPickModal } from "@/components/ProductPickModal";
+import { ProductPickModal } from "@/features/product";
 import type { Row } from "../../model/case-draft";
 import { catalogItem } from "../../model/case-rows";
 import { CASE_RARITY_LABEL } from "../../model/labels";

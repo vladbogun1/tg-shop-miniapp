@@ -7,14 +7,18 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
-import { productApi } from "@/features/product/api";
-import type { AdminProduct } from "@/features/product/model/types";
+import { productApi } from "../api";
+import { productKeys } from "../keys";
+import type { AdminProduct } from "../model/types";
 import { productStock } from "@/lib/stock";
 import { cn } from "@/lib/cn";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@shop/ui/overlay";
+
+/** Список товаров для выбора свежий минуту: окно открывают часто, а каталог меняется редко. */
+const PICK_STALE_MS = 60_000;
 
 export function ProductPickModal({
   open,
@@ -31,10 +35,10 @@ export function ProductPickModal({
 }) {
   const [q, setQ] = useState("");
   const { data: products = [], isLoading } = useQuery({
-    queryKey: ["products"],
+    queryKey: productKeys.list(),
     queryFn: () => productApi.list(),
     enabled: open,
-    staleTime: 60_000,
+    staleTime: PICK_STALE_MS,
   });
 
   const filtered = useMemo(() => {

@@ -15,7 +15,7 @@ import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 import { Button } from "@shop/ui/admin-button";
 import { Select } from "@/components/ui/Select";
-import { ProductPickModal } from "@/components/ProductPickModal";
+import { ProductPickModal } from "@/features/product";
 import { PanelHeader } from "@/components/ui/PanelHeader";
 
 export function LowMarginPanel() {

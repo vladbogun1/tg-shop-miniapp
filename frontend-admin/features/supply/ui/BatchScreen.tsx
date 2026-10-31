@@ -8,7 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { ProductPickModal } from "@/components/ProductPickModal";
+import { ProductPickModal } from "@/features/product";
 import { QueryState } from "@/components/ui/QueryState";
 import { Tabs } from "@/components/ui/Tabs";
 import { BatchFormModal, isOpenStatus, useFinanceAccess, type Batch } from "@/features/procurement";

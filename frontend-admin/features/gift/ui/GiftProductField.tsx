@@ -3,14 +3,13 @@
 /** The gift product (or the fallback one when the buyer gets a case): the picture, price, stock, the warnings. */
 import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
-import { useProductsQuery, type AdminProduct } from "@/features/product";
+import { ProductPickModal, useProductsQuery, type AdminProduct } from "@/features/product";
 import { cn } from "@/lib/cn";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 import { productStock } from "@/lib/stock";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@shop/ui/admin-button";
-import { ProductPickModal } from "@/components/ProductPickModal";
 
 export function GiftProductField({
   productId,

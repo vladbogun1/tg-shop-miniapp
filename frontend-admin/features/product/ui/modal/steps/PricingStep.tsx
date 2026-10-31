@@ -1,7 +1,7 @@
 "use client";
 
 import { FactoryOrderLine, WaitLine } from "@/features/procurement";
-import { ProductPickModal } from "@/components/ProductPickModal";
+import { ProductPickModal } from "../../ProductPickModal";
 import { Input } from "@/components/ui/Input";
 import { ProductCostBlock } from "../ProductCostBlock";
 import { Variants } from "../Variants";

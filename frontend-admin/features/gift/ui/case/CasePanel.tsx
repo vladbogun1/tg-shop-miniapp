@@ -16,12 +16,11 @@
 import { useMemo, useState } from "react";
 import { Dices, Sparkles } from "lucide-react";
 import { CASE_TIER_ORDER, type CaseRarity, type CaseTier } from "@shop/core/giftcase";
-import type { AdminProduct } from "@/features/product";
+import { ProductPickModal, type AdminProduct } from "@/features/product";
 import { toast } from "@shop/ui/toast";
 import { Button } from "@shop/ui/admin-button";
 import { useConfirm } from "@shop/ui/confirm";
 import { QueryState } from "@/components/ui/QueryState";
-import { ProductPickModal } from "@/components/ProductPickModal";
 import { lanesOf, sortRows, toDraft } from "../../model/case-draft";
 import { toAdminItem } from "../../model/case-rows";
 import { CASE_RARITY_LABEL, CASE_TIER_LABEL } from "../../model/labels";
