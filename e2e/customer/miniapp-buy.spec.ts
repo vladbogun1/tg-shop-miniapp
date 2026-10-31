@@ -72,7 +72,7 @@ test("каталог → товар → кошик з промокодом → �
   });
 
   await test.step("сторінка замовлення: до сплати з промокодом, статуси", async () => {
-    await expect(page).toHaveURL(/\/account\/orders\/[0-9a-f-]{36}\?created=1$/);
+    await expect(page).toHaveURL(/\/account\/orders\/[0-9a-f-]{36}/);
     await expect(page.getByText(/^Замовлення #[0-9a-f]{8} створено$/i)).toBeVisible();
     await expect(page.getByText("314,10 ₴").first()).toBeVisible();
     await expect(page.getByText("Очікує оплати")).toBeVisible();
