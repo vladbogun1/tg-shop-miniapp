@@ -21,7 +21,7 @@ import {
 } from "recharts";
 import type { ForecastPoint, SeriesPoint } from "../model/types";
 import { bucketLabel, num, pct, uah, uahShort } from "../model/format";
-import { toPercent } from "../model/percent";
+import { toPercent } from "@shop/core/percent";
 
 const axis = {
   tick: { fill: "var(--mx-axis)", fontSize: 11, fontFamily: "var(--font-body), system-ui, sans-serif" },

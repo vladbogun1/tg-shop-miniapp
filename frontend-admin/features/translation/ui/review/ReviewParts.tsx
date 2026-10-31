@@ -4,7 +4,7 @@
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, PartyPopper, SkipForward } from "lucide-react";
 import { useMemo } from "react";
 import { Button } from "@shop/ui/admin-button";
-import { toPercent } from "../../model/percent";
+import { toPercent } from "@shop/core/percent";
 import { placeOf } from "../../model/queue";
 import { plural } from "../../model/plural";
 import type { UniqueString } from "../../model/workset";

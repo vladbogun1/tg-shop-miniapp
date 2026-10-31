@@ -11,7 +11,7 @@ import { LOT_KIND_LABEL, costingApi, procurementKeys, useFinanceAccess, type Lot
 import { money } from "@/lib/money";
 import { cn } from "@/lib/cn";
 import { pct } from "@/features/analytics";
-import { toPercent } from "../../model/percent";
+import { toPercent } from "@shop/core/percent";
 import { Badge } from "@/components/ui/Badge";
 
 /** Себестоимость товара; undefined — нет права «Финансы», не загружено или не нужно (новый товар). */

@@ -1,6 +1,6 @@
 /** Проверки перевода и правки оригинала против русского источника. Чистые функции. */
 import { countMap, wordSimilarity } from "./diff";
-import { toPercent } from "./percent";
+import { toPercent } from "@shop/core/percent";
 import { ratioText } from "./ratio-text";
 import type { TrLocale } from "./types";
 

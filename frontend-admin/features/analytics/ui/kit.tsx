@@ -12,7 +12,7 @@ import { cn } from "@/lib/cn";
 import { riseItem } from "@/lib/motion";
 import type { Kpi } from "../model/types";
 import { pct } from "../model/format";
-import { toPercent } from "../model/percent";
+import { toPercent } from "@shop/core/percent";
 
 export function Panel({
   title,

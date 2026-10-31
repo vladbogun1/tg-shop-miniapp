@@ -1,5 +1,5 @@
 /** «Карточки»: уровень замечаний и уверенность ИИ (0–100). Чистая логика. */
-import { toPercent } from "./percent";
+import { toPercent } from "@shop/core/percent";
 import type { CardIssue, Level } from "./types";
 import { parseNumberLoose } from "./value";
 

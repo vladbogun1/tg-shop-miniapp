@@ -15,7 +15,7 @@ import { cn } from "@/lib/cn";
 import type { MarginReport, MarginRow, PeriodParams } from "../../model/types";
 import { useMarginReport } from "../../queries";
 import { num, pct, uah, uahExact } from "../../model/format";
-import { toPercent } from "../../model/percent";
+import { toPercent } from "@shop/core/percent";
 import { Empty, KpiTile, Note, Panel, TableWrap, useLimited } from "../kit";
 
 export function MarginTab({ params }: { params: PeriodParams }) {

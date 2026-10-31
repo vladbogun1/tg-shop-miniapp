@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { percentOf, toPercent } from "./percent";
+import { toPercent } from "@shop/core/percent";
+import { percentOf } from "./percent";
 
 // Сверка со старыми формулами: (a / b) * 100, r * 100, (a * 100) / b — бит-в-бит.
 describe("проценты", () => {
