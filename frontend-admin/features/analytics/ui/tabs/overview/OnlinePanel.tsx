@@ -1,5 +1,6 @@
 import { CreditCard } from "lucide-react";
 import { dateTime, num, pct, uah, uahExact } from "../../../model/format";
+import { percentOf } from "../../../model/percent";
 import type { OnlinePayments } from "../../../model/types";
 import { Empty, Panel } from "../../kit";
 import { Row } from "./Row";
@@ -35,7 +36,7 @@ export function OnlinePanel({ p }: { p: OnlinePayments }) {
           <div className="border-t border-[var(--line)] pt-2 flex flex-col gap-3">
             <Row label="Пришло онлайн" value={uah(p.paidMinor)} />
             <Row label="Возвраты на карту" value={uahExact(p.refundedMinor)} />
-            <Row label="Комиссия банка" value={uahExact(p.feeMinor)} sub={p.paidMinor > 0 ? `${pct((p.feeMinor * 100) / p.paidMinor, 2)} от оплат` : undefined} />
+            <Row label="Комиссия банка" value={uahExact(p.feeMinor)} sub={p.paidMinor > 0 ? `${pct(percentOf(p.feeMinor, p.paidMinor), 2)} от оплат` : undefined} />
           </div>
         </div>
       )}

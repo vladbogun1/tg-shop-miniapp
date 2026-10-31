@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/Input";
 import { pct } from "@/features/analytics";
 import { costUahMinor, lineTitle, type ArriveLineResult, type Batch } from "@/features/procurement";
 import { money, toMinor } from "@/lib/money";
+import { marginPercent } from "../model/format";
 
 export interface ArriveRow {
   qty: string;
@@ -27,7 +28,7 @@ export function ArriveLine({
   onEdit: (patch: Partial<ArriveRow>) => void;
 }) {
   const priceNow = toMinor(r.price.replace(",", "."));
-  const marginPct = unitCost != null && priceNow > 0 ? ((priceNow - unitCost) / priceNow) * 100 : null;
+  const marginPct = unitCost != null && priceNow > 0 ? marginPercent(priceNow, unitCost) : null;
   const cost = batch.moneyVisible ? costUahMinor(i.unitPriceFx, batch.fxRate) : null;
   return (
     <div key={i.id} className="card-2 flex min-w-0 flex-col gap-2 p-3">

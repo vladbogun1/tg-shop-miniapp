@@ -1,4 +1,6 @@
+import { toMinor } from "@shop/core/money";
 import { nowMs } from "@shop/core/time";
+import { minorToInput } from "./costing";
 import type { BatchStatus, BatchSummary, Distribution, EtaMode, SubStatus } from "./types";
 
 type Tone = "neutral" | "accent" | "ok" | "warn" | "danger" | "info";
@@ -104,16 +106,16 @@ export function etaText(b: Pick<BatchSummary, "etaMode" | "etaFrom" | "etaTo">):
   }
 }
 
-/** Центы валюты → «95.00» (для поля ввода). */
+/** Центы валюты → «95.00» (для поля ввода): тот же формат, что у копеек. */
 export function fxToInput(v: number | null | undefined): string {
-  return v == null ? "" : (v / 100).toFixed(2);
+  return minorToInput(v);
 }
 /** «95,5» → 9550; пусто → null. */
 export function inputToFx(s: string): number | null {
   const t = s.trim().replace(",", ".");
   if (!t) return null;
   const n = Number(t);
-  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : null;
+  return Number.isFinite(n) && n >= 0 ? toMinor(n) : null;
 }
 
 /** Закупка в гривнах за штуку (копейки): центы валюты × курс. */

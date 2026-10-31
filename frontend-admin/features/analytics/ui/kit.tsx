@@ -12,6 +12,7 @@ import { cn } from "@/lib/cn";
 import { riseItem } from "@/lib/motion";
 import type { Kpi } from "../model/types";
 import { pct } from "../model/format";
+import { toPercent } from "../model/percent";
 
 export function Panel({
   title,
@@ -129,7 +130,7 @@ export function Empty({ children }: { children: ReactNode }) {
 
 /** Thin inline bar for table cells (share of the column max). */
 export function InlineBar({ value, max, color = "var(--mx-s1)" }: { value: number; max: number; color?: string }) {
-  const w = max > 0 ? Math.max(2, (value / max) * 100) : 0;
+  const w = max > 0 ? Math.max(2, toPercent(value / max)) : 0;
   return (
     <div className="h-1.5 w-full min-w-[60px] overflow-hidden rounded-full bg-[var(--surface-3)]">
       <div className="h-full rounded-full" style={{ width: `${w}%`, background: color }} />

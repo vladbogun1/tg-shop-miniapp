@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Factory } from "lucide-react";
 import { errorMessage } from "@shop/core/errors";
+import { QUERY_PRESETS } from "@shop/core/query";
 import { toast } from "@shop/ui/toast";
 import { Button } from "@shop/ui/admin-button";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
@@ -62,7 +63,7 @@ export function FactoryOrderLine({ product, ProductPicker }: { product: PickedPr
     }
     setBusy(true);
     try {
-      const b = await qc.fetchQuery({ queryKey: procurementKeys.batch(pick), queryFn: () => preordersApi.batch(pick), staleTime: 0 });
+      const b = await qc.fetchQuery({ queryKey: procurementKeys.batch(pick), queryFn: () => preordersApi.batch(pick), staleTime: QUERY_PRESETS.live.staleTime });
       setChoice(null);
       setForm({ batch: b });
     } catch (e) {

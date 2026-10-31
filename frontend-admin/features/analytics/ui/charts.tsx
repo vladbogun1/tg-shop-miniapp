@@ -21,6 +21,7 @@ import {
 } from "recharts";
 import type { ForecastPoint, SeriesPoint } from "../model/types";
 import { bucketLabel, num, pct, uah, uahShort } from "../model/format";
+import { toPercent } from "../model/percent";
 
 const axis = {
   tick: { fill: "var(--mx-axis)", fontSize: 11, fontFamily: "var(--font-body), system-ui, sans-serif" },
@@ -304,7 +305,7 @@ export function FunnelBars({
           <div className="h-7 overflow-hidden rounded-[4px] bg-[var(--surface-2)]">
             <div
               className="h-full rounded-r-[4px]"
-              style={{ width: `${Math.max(1.5, (s.count / max) * 100)}%`, background: `var(${ramp[i] ?? "--mx-q3"})` }}
+              style={{ width: `${Math.max(1.5, toPercent(s.count / max))}%`, background: `var(${ramp[i] ?? "--mx-q3"})` }}
             />
           </div>
           <div className="text-[12px] text-[var(--text-muted)] mx-num">
@@ -338,7 +339,7 @@ export function RankBars({
             <span className="font-display shrink-0 font-bold text-[var(--text)] mx-num">{format(r.value)}</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-2)]">
-            <div className="h-full rounded-full" style={{ width: `${Math.max(1, (r.value / max) * 100)}%`, background: "var(--mx-s1)" }} />
+            <div className="h-full rounded-full" style={{ width: `${Math.max(1, toPercent(r.value / max))}%`, background: "var(--mx-s1)" }} />
           </div>
           {sub && <div className="text-[11px] text-[var(--text-faint)]">{sub(r.key)}</div>}
         </div>

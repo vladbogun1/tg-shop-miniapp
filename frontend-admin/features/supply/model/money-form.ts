@@ -11,6 +11,7 @@ import {
   type Expense,
   type ExpenseKind,
 } from "@/features/procurement";
+import { decimal1 } from "./format";
 
 export interface LineDraft {
   price: string;
@@ -41,7 +42,7 @@ export function marginTone(p: number | null | undefined): string {
 export function fileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} Б`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} КБ`;
-  return `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} МБ`;
+  return `${decimal1(bytes / 1024 / 1024)} МБ`;
 }
 
 /** Форма из свежего ответа сервера (первая загрузка, сохранение, правка расхода). */

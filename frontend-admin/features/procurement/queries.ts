@@ -12,13 +12,15 @@ import { procurementKeys } from "./keys";
 import { releaseSummary, sumReleases } from "./model/demand";
 import type { Batch, BatchRequest, Demand, Supplier } from "./model/types";
 
+const DEMAND_STALE_MS = 60_000;
+
 /** «Чего ждут» — один запрос на экран «Поставки», список товаров и карточку товара. */
 export function useDemand(enabled = true) {
   return useQuery({
     queryKey: procurementKeys.demand(),
     queryFn: preordersApi.demand,
     enabled: enabled && isAuthenticated(),
-    staleTime: 60_000,
+    staleTime: DEMAND_STALE_MS,
     retry: false,
   });
 }

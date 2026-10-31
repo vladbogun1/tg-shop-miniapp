@@ -18,6 +18,8 @@ import { BatchList } from "./BatchList";
 import { DemandList } from "./DemandList";
 import { SuppliersList } from "./SuppliersList";
 
+const PRODUCTS_STALE_MS = 60_000;
+
 type TabKey = "open" | "arrived" | "cancelled" | "demand" | "suppliers";
 
 function seedOf(d: Demand): SeedLine {
@@ -50,7 +52,7 @@ function PreordersBody() {
   const productsQ = useQuery({
     queryKey: productKeys.list(),
     queryFn: () => productApi.list(),
-    staleTime: 60_000,
+    staleTime: PRODUCTS_STALE_MS,
   });
 
   // Глубокая ссылка «?newProduct=id»: открыть форму с этим товаром, один раз.

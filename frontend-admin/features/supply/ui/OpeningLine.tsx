@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { inputToMinor, lineTitle, minorToInput, type OpeningRow } from "@/features/procurement";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
+import { decimal1, marginPercent } from "../model/format";
 import { useSetOpeningCost } from "../queries";
 
 export function OpeningLine({ row }: { row: OpeningRow }) {
@@ -32,7 +33,7 @@ export function OpeningLine({ row }: { row: OpeningRow }) {
       ),
   };
 
-  const margin = minor != null && minor > 0 && row.priceMinor > 0 ? ((row.priceMinor - minor) / row.priceMinor) * 100 : null;
+  const margin = minor != null && minor > 0 && row.priceMinor > 0 ? marginPercent(row.priceMinor, minor) : null;
 
   return (
     <div className="card flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 p-3">
@@ -43,7 +44,7 @@ export function OpeningLine({ row }: { row: OpeningRow }) {
         </div>
         <div className="text-[12px] text-[var(--text-faint)]">
           {row.units} шт. · цена {money(row.priceMinor)}
-          {margin != null && ` · маржа ${margin.toFixed(1).replace(".", ",")} %`}
+          {margin != null && ` · маржа ${decimal1(margin)} %`}
         </div>
       </div>
       {row.unitCostMinor == null ? <Badge tone="warn">нет данных</Badge> : <Badge tone="ok">{money(row.unitCostMinor)}</Badge>}

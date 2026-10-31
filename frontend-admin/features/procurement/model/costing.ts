@@ -1,3 +1,4 @@
+import { formatNumber, toMajor, toMinor } from "@shop/core/money";
 import type { Allocation, ExpenseKind } from "./types";
 
 export const ALLOCATIONS: { value: Allocation; label: string; hint: string }[] = [
@@ -23,9 +24,11 @@ export function inputToMinor(s: string): number | null {
   const t = s.trim().replace(/\s/g, "").replace(",", ".");
   if (!t) return null;
   const n = Number(t);
-  return Number.isFinite(n) ? Math.round(n * 100) : null;
+  return Number.isFinite(n) ? toMinor(n) : null;
 }
-/** Копейки → «95.50» для поля ввода; null → пусто. */
+/** Копейки → «95.50» для поля ввода (точка, без группировки); null → пусто. */
 export function minorToInput(v: number | null | undefined): string {
-  return v == null ? "" : (v / 100).toFixed(2);
+  if (v == null) return "";
+  const major = toMajor(v);
+  return formatNumber(major === 0 ? 0 : major, "en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false });
 }

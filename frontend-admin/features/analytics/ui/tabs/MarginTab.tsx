@@ -15,6 +15,7 @@ import { cn } from "@/lib/cn";
 import type { MarginReport, MarginRow, PeriodParams } from "../../model/types";
 import { useMarginReport } from "../../queries";
 import { num, pct, uah, uahExact } from "../../model/format";
+import { toPercent } from "../../model/percent";
 import { Empty, KpiTile, Note, Panel, TableWrap, useLimited } from "../kit";
 
 export function MarginTab({ params }: { params: PeriodParams }) {
@@ -48,7 +49,7 @@ function MarginBody({ r }: { r: MarginReport }) {
         <KpiTile
           label="С известной себестоимостью"
           value={uah(r.knownRevenueMinor)}
-          hint={r.knownShare != null ? `${pct(r.knownShare * 100)} выручки — остальное в расчёт не входит` : undefined}
+          hint={r.knownShare != null ? `${pct(toPercent(r.knownShare))} выручки — остальное в расчёт не входит` : undefined}
         />
         <KpiTile label="Себестоимость" value={uah(r.costMinor)} />
         <KpiTile label="Комиссии эквайринга" value={uahExact(r.feeMinor)} />
