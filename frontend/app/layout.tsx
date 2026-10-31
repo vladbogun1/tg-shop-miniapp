@@ -10,6 +10,7 @@ import "@fontsource-variable/inter/wght.css";
 import "@fontsource-variable/exo-2/wght.css";
 import "@fontsource-variable/exo-2/wght-italic.css";
 import "./globals.css";
+import { APP_META_DESCRIPTION } from "./metadata.data";
 
 
 export const metadata: Metadata = {
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
   // Next re-asserts it on updates, so a client-side override does not stick. A brand name is the
   // right title anyway — it reads the same in all three languages.
   title: "ChiSetup",
-  description: "ChiSetup — ігрові девайси для твого сетапу",
+  description: APP_META_DESCRIPTION,
   // The Mini App (app.chisetup.com.ua) is opened from Telegram, not from search: the public shop
   // is chisetup.com.ua. Keep its pages out of the index (Telegram does not read this).
   robots: { index: false, follow: false },

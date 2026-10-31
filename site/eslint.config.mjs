@@ -22,11 +22,13 @@ const config = [
   // Size/complexity limits: error everywhere (no exceptions list).
   // Translation dictionaries are data, their length says nothing about complexity.
   ...architectureLimits(["i18n/{en,ru,uk}.ts"]),
-  // Единые способы и совместимость браузеров: счётные правила — warn (храповик), запреты — error.
-  ...frontRules({ customer: true, allow: { "no-fetch": ["lib/server-http.ts"] },
+  // Единые способы и совместимость браузеров: счётные правила и запреты — error (храповик обнулён, baseline пуст).
+  ...frontRules({ customer: true, skipCyrillic: ["i18n/**", "**/*.data.ts"], allow: { "no-fetch": ["lib/server-http.ts"] },
     // XML-фиды отдаёт сервер, в браузер этот файл не попадает (lookbehind в нём безопасен).
     serverOnly: ["features/feeds/server/feeds.ts"],
   }),
+  // Хуки: зависимости эффектов — честно, без eslint-disable (храповик обнулён).
+  { rules: { "react-hooks/exhaustive-deps": "error" } },
 ];
 
 export default config;

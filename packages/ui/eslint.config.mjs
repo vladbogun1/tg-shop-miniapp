@@ -12,6 +12,8 @@ const config = [
   { rules: { "@next/next/no-img-element": "off" } },
   ...architectureLimits(),
   ...frontRules({}),
+  // Хуки: зависимости эффектов — честно, без eslint-disable (храповик обнулён).
+  { rules: { "react-hooks/exhaustive-deps": "error" } },
 ];
 
 export default config;

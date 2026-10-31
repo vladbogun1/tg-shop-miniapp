@@ -6,7 +6,7 @@ import { CANCEL_REASON_MAX } from "@shop/core/orders";
 import { useT } from "@/i18n/context";
 import { ApiError, customerApi } from "@/lib/api";
 import { haptic } from "@/platform/telegram";
-import { CANCEL_REASONS, type CancelReasonId } from "../model/cancel-reasons";
+import { CANCEL_REASONS, type CancelReasonId } from "@shop/core/cancel-reasons";
 
 /** Cancel an unpaid order (NEW/APPROVED) — the reason is optional. */
 export function CancelOrder({ orderId, onClose, onDone }: { orderId: string; onClose: () => void; onDone: () => void }) {

@@ -167,7 +167,7 @@ function groupByFiles(allow) {
  * @param {boolean} [opts.customer] покупательское приложение: включает правило кириллицы
  * @param {Record<string, string[]>} [opts.allow] id счётного правила → файлы (глобы относительно конфига), где оно не действует
  * @param {string[]} [opts.testFiles] глобы тестов — счётные правила там выключены
- * @param {string[]} [opts.skipCyrillic] глобы словарей/юр. текстов
+ * @param {string[]} [opts.skipCyrillic] глобы словарей/юр. текстов и `*.data.ts` (данные, не тексты интерфейса: SEO-формулировки, ключевые слова, продавец)
  * @param {boolean} [opts.compat] запреты iOS 15.4 (false — админка: только свежие десктопные браузеры)
  * @param {string[]} [opts.serverOnly] файлы, которые никогда не попадают в браузер (запреты совместимости там не нужны)
  */
@@ -181,10 +181,10 @@ export function frontRules({
 } = {}) {
   const active = RATCHET_SELECTORS.filter((s) => customer || !s.customerOnly);
   const ratchetRules = (excluded = new Set()) => ({
-    "front/ratchet": ["warn", active.filter((s) => !s.hard && !excluded.has(s.id))],
+    "front/ratchet": ["error", active.filter((s) => !s.hard && !excluded.has(s.id))],
     "front/ratchet-hard": ["error", active.filter((s) => s.hard && !excluded.has(s.id))],
     "no-restricted-globals": [
-      "warn",
+      "error",
       ...GLOBALS.filter((g) => !excluded.has(g.id)).map(({ id, name, message }) => ({ name, message: `[${id}] ${message}` })),
     ],
   });
@@ -195,7 +195,7 @@ export function frontRules({
       rules: {
         ...ratchetRules(),
         ...(compat ? COMPAT_RULES : {}),
-        "max-lines-per-function": ["warn", { max: 200, skipBlankLines: true, skipComments: true }],
+        "max-lines-per-function": ["error", { max: 200, skipBlankLines: true, skipComments: true }],
       },
     },
   ];

@@ -23,7 +23,7 @@ const config = [
   },
   // Size/complexity limits: error everywhere (no exceptions list).
   ...architectureLimits(),
-  // Единые способы и совместимость браузеров: счётные правила — warn (храповик), запреты — error.
+  // Единые способы и совместимость браузеров: счётные правила и запреты — error (храповик обнулён, baseline пуст).
   ...frontRules({
     customer: false,
     compat: false,
@@ -37,6 +37,8 @@ const config = [
       "no-fetch": ALLOW_RAW,
     },
   }),
+  // Хуки: зависимости эффектов — честно, без eslint-disable (храповик обнулён).
+  { rules: { "react-hooks/exhaustive-deps": "error" } },
 ];
 
 export default config;

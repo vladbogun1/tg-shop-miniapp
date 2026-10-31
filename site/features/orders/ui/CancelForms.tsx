@@ -3,21 +3,11 @@
 import { Check } from "lucide-react";
 import { useState } from "react";
 import { CANCEL_REASON_MAX } from "@shop/core/orders";
+import { CANCEL_REASONS, type CancelReasonId } from "@shop/core/cancel-reasons";
 import { Button } from "@shop/ui/primitives";
 import type { MessageKey } from "@/i18n";
 import { useI18n } from "@/i18n/context";
 import { api, ApiError } from "@/lib/api";
-
-/** What the seller receives is always Russian (see the Mini App); the buyer sees a translation. */
-const CANCEL_REASONS = [
-  { id: "payment", ru: "Проблема с оплатой / картой" },
-  { id: "changedMind", ru: "Передумал(а)" },
-  { id: "mistake", ru: "Оформил(а) по ошибке" },
-  { id: "cheaper", ru: "Нашёл(ла) дешевле" },
-  { id: "other", ru: "Другое" },
-] as const;
-
-type CancelReasonId = (typeof CANCEL_REASONS)[number]["id"];
 
 export function CancelOrder({ orderId, onClose, onDone }: { orderId: string; onClose: () => void; onDone: () => void }) {
   const { t } = useI18n();

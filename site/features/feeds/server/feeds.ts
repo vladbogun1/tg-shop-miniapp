@@ -27,6 +27,7 @@ import { imgproxyUrl } from "@shop/core/image";
 import { type Locale } from "@shop/core/i18n";
 import { decimal2, priceDecimal } from "@shop/core/money";
 import { type StorefrontProduct } from "@shop/core/site";
+import { FEED_IN_STOCK, FEED_SHIPPING_SERVICE } from "./feeds.data";
 import { localePath, makeT } from "@/i18n";
 import { IMAGE_BASE, SITE_URL } from "@/lib/config";
 import { categoryWords } from "@/features/catalog/server";
@@ -257,7 +258,7 @@ function googleShipping(): string {
   return (
     "<g:shipping>" +
     el("g:country", "UA") +
-    el("g:service", "Нова Пошта") +
+    el("g:service", FEED_SHIPPING_SERVICE) +
     el("g:price", `${decimal2(value)} UAH`) +
     el("g:min_handling_time", 1) +
     el("g:max_handling_time", 2) +
@@ -383,7 +384,7 @@ export function hotlineFeed(items: FeedItem[], now = new Date(nowMs())): string 
         ...it.images.slice(0, 10).map((u) => el("image", u)),
         el("priceRUAH", price(p.priceMinor)),
         p.compareAtMinor != null && p.compareAtMinor > p.priceMinor ? el("oldprice", price(p.compareAtMinor)) : "",
-        el("stock", "В наличии"),
+        el("stock", FEED_IN_STOCK),
         warranty ? el("guarantee", warranty, ' type="shop"') : "",
         ...it.specs.map((d) => el("param", d.value, ` name="${xmlEscape(d.name)}"`)),
         "</item>",

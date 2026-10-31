@@ -1,4 +1,2 @@
 # Храповик фронтов: <правило> <приложение> <число>. Нули не пишутся. Числа только падают.
 # Обновление: node scripts/check-front-ratchet.mjs --update (docs/ARCHITECTURE-FRONT.md, 2.7.2).
-cyrillic-literal frontend 6
-cyrillic-literal site 120

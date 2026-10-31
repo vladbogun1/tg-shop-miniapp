@@ -3,6 +3,7 @@ import { LOCALE_TAG, LOCALES, type Locale } from "@shop/core/i18n";
 import { localePath, makeT } from "@/i18n";
 
 import { BOT_URL, OWNER_TELEGRAM, SELLER, SITE_URL } from "@/lib/config";
+import { SELLER_LOCALITY } from "@/lib/seller.data";
 import { DEFAULT_OG_IMAGE, LOGO_URL, ORG_ID, SITE_NAME, WEBSITE_ID } from "./meta";
 import { returnPolicyLd } from "./policy-ld";
 
@@ -25,7 +26,7 @@ export function storeJsonLd(locale: Locale) {
         image: DEFAULT_OG_IMAGE.url,
         description: t("meta.description"),
         sameAs: [BOT_URL],
-        address: { "@type": "PostalAddress", addressLocality: locale === "en" ? "Kharkiv" : locale === "ru" ? "Харьков" : "Харків", addressCountry: "UA" },
+        address: { "@type": "PostalAddress", addressLocality: SELLER_LOCALITY[locale], addressCountry: "UA" },
         areaServed: { "@type": "Country", name: "Ukraine" },
         contactPoint: {
           "@type": "ContactPoint",

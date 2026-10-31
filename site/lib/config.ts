@@ -14,10 +14,7 @@ export const OWNER_TELEGRAM = "fullfocusme";
 /** Same-origin image entry point (gateway → nginx cache → imgproxy). Dev: rewritten to :8082. */
 export const IMAGE_BASE = "/img";
 
-export const SELLER = {
-  name: "ФОП Солоха Максим Андрійович",
-  taxId: "3547612413",
-};
+export { SELLER } from "./seller.data";
 
 /** Catalog page size (spec: size ≤ 60). */
 export const PAGE_SIZE = 24;
