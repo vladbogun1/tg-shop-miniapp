@@ -3,7 +3,7 @@
 /** Account screen entry «Мої очікування» → /account/preorders, with a count of live holds. */
 import { ChevronRight, Truck } from "lucide-react";
 import Link from "next/link";
-import { PRE_COLOR } from "@/components/preorder/PreorderBlock";
+import { PRE_COLOR } from "@/components/preorder/colors";
 import { useT } from "@/i18n/context";
 import { useHeldCount } from "@/lib/preorders";
 import { haptic } from "@/lib/telegram";

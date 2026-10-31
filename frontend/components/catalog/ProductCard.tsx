@@ -12,7 +12,7 @@ import { Bell, Check, SlidersHorizontal, Truck } from "lucide-react";
 import { AddToCartControl } from "@/components/catalog/AddToCartControl";
 import { CompareCardToggle } from "@/components/compare/CompareBits";
 import { RatingBadge } from "@/components/reviews/Stars";
-import { PRE_COLOR } from "@/components/preorder/PreorderBlock";
+import { PRE_COLOR } from "@/components/preorder/colors";
 import { useI18n } from "@/i18n/context";
 import { etaCardLine, type PreorderCardState } from "@/lib/preorders";
 import { Image } from "@/lib/image";

@@ -8,11 +8,9 @@
  *  - PreorderCta: the button of the sticky bar («Повідомити…» / «Ви в черзі»).
  */
 import { Bell, Check, Clock, Truck } from "lucide-react";
+import { PRE_COLOR } from "@/components/preorder/colors";
 import { useI18n } from "@/i18n/context";
 import { DEFAULT_HOLD_HOURS, etaWhen, holdUntilText, type MyPreorder, type PreorderEta } from "@/lib/preorders";
-
-/** Violet of the pre-order state (same as the «approved» order status). */
-export const PRE_COLOR = "var(--st-approved)";
 
 export function PreorderBlock({
   eta,

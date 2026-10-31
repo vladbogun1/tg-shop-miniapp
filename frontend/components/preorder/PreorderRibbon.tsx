@@ -5,7 +5,7 @@
  * Shown only while there are open batches; the arrow opens the full list (the «Передзамовлення» filter).
  */
 import { ChevronRight, Truck } from "lucide-react";
-import { PRE_COLOR } from "@/components/preorder/PreorderBlock";
+import { PRE_COLOR } from "@/components/preorder/colors";
 import { useI18n } from "@/i18n/context";
 import type { Product } from "@/lib/api";
 import { Image } from "@/lib/image";

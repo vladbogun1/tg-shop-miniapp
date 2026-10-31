@@ -9,7 +9,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { ArrowLeft, Truck, WifiOff } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { PRE_COLOR } from "@/components/preorder/PreorderBlock";
+import { PRE_COLOR } from "@/components/preorder/colors";
 import { Button } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import { Image } from "@/lib/image";
