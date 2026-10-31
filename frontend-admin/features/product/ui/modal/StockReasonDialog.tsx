@@ -13,7 +13,7 @@ import { Modal } from "@shop/ui/overlay";
 import { Button } from "@shop/ui/admin-button";
 import { Textarea } from "@/components/ui/Textarea";
 import { cn } from "@/lib/cn";
-import { WRITEOFF_REASONS, type WriteoffReason } from "@/lib/writeoffs";
+import { WRITEOFF_REASONS, type WriteoffReason } from "@/features/inventory";
 
 export interface StockReason {
   reason: WriteoffReason;
