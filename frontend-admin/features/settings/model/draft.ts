@@ -26,7 +26,7 @@ export function initialDraft(items: SettingItem[]): Draft {
 
 function validateInt(item: SettingItem, raw: string | boolean): string | null {
   const s = String(raw).trim();
-  if (!/^-?d+$/.test(s)) return "Нужно целое число";
+  if (!/^-?\d+$/.test(s)) return "Нужно целое число";
   const n = Number(s);
   if (item.min != null && n < item.min) return `Не меньше ${item.min}`;
   if (item.max != null && n > item.max) return `Не больше ${item.max}`;

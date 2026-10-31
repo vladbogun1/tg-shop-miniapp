@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@shop/ui/admin-button";
-import { useForm, useFormValues } from "@shop/ui/form";
+import { useForm } from "@shop/ui/form";
 import { Modal } from "@shop/ui/overlay";
 import { Send } from "lucide-react";
 import { useState } from "react";
@@ -54,7 +54,7 @@ function InviteFooter(p: { existing: boolean; pending: boolean; ready: boolean; 
 
 function parseTelegramId(raw: string): number | null {
   const v = raw.trim();
-  return /^d{1,15}$/.test(v) ? Number(v) : null;
+  return /^\d{1,15}$/.test(v) ? Number(v) : null;
 }
 
 /** Можно ли отправлять приглашение: есть id, код из 6 цифр и либо новое имя, либо «живой» админ без логина. */
@@ -112,7 +112,7 @@ function TargetPicker({ manual, onToggleManual, manualId, onManualId, picked, on
           inputMode="numeric"
           placeholder="например, 977067472"
           value={manualId}
-          onChange={(e) => onManualId(e.target.value.replace(/[^d]/g, ""))}
+          onChange={(e) => onManualId(e.target.value.replace(/\D/g, ""))}
           hint="Числовой id. Его покажет, например, @userinfobot."
         />
       ) : (
@@ -142,12 +142,12 @@ export function InviteModal({ initialTelegramId, admins, onClose, onCreated }: P
   const form = useForm<Values>({
     defaultValues: { manualId: initialTelegramId ? String(initialTelegramId) : "", name: "", role: "ADMIN", code: "" },
   });
-  const { manualId, name, role, code } = useFormValues(form);
+  const { manualId, name, role, code } = form.watch();
 
-  const tgId = manual ? (/^\d{1,15}$/.test(manualId.trim()) ? Number(manualId.trim()) : null) : (picked?.telegramUserId ?? null);
+  const tgId = manual ? parseTelegramId(manualId) : (picked?.telegramUserId ?? null);
   const existing = tgId ? admins.find((a) => a.telegramUserId === tgId) : undefined;
   const hasLogin = hasPasswordLogin(existing);
-  const ready = !!tgId && code.length === 6 && (existing ? existing.active && !hasLogin && !existing.self : !!name.trim());
+  const ready = canInvite({ tgId, code, name, existing, hasLogin });
 
   const invite = useInviteAdmin(onCreated, () => form.setValue("code", ""));
 

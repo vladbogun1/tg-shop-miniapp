@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm as useHookForm, useWatch, type DefaultValues, type FieldErrors, type FieldValues, type Resolver, type UseFormProps, type UseFormReturn } from "react-hook-form";
+import { useForm as useHookForm, type DefaultValues, type FieldErrors, type FieldValues, type Resolver, type UseFormProps, type UseFormReturn } from "react-hook-form";
 import { useMemo } from "react";
 import { validateAll, type Rules } from "./validators";
 
@@ -45,12 +45,4 @@ export function useForm<T extends FieldValues>({ rules, messages, defaultValues,
     return typeof err?.message === "string" ? err.message : undefined;
   };
   return Object.assign(form, { errorText });
-}
-
-/**
- * Текущие значения формы с перерисовкой при любом `setValue`. `form.watch()` для этого не годится:
- * `setValue` по полю без `register` его не перерисовывает (react-hook-form смотрит только на явно названные поля).
- */
-export function useFormValues<T extends FieldValues>(form: ShopForm<T>): T {
-  return useWatch({ control: form.control }) as T;
 }

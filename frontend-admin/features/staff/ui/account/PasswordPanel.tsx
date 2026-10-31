@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@shop/ui/admin-button";
-import { useForm, useFormValues } from "@shop/ui/form";
+import { useForm } from "@shop/ui/form";
 import { toast } from "@shop/ui/toast";
 import { KeyRound, Lock } from "lucide-react";
 import { Input } from "@/components/ui/Input";
@@ -22,7 +22,7 @@ const EMPTY: Values = { current: "", next: "", repeat: "", code: "" };
 
 export function PasswordPanel({ account }: { account: AdminAccount }) {
   const form = useForm<Values>({ defaultValues: EMPTY });
-  const { current, next, repeat, code } = useFormValues(form);
+  const { current, next, repeat, code } = form.watch();
   const change = useChangePassword(
     () => form.reset(EMPTY),
     () => form.setValue("code", ""),

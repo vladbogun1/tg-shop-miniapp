@@ -7,7 +7,7 @@
  *  - «Сайт»: пересобрать ISR; «Система»: факты только для чтения.
  * Секреты и инфраструктура (.env) API не отдаёт вообще.
  */
-import { useForm, useFormValues } from "@shop/ui/form";
+import { useForm } from "@shop/ui/form";
 import { motion } from "framer-motion";
 import { Bell, BellRing, Bot, Boxes, ChevronRight, Gift, LifeBuoy, ShieldAlert, SlidersHorizontal, Ticket, Truck, type LucideIcon } from "lucide-react";
 import Link from "next/link";
@@ -48,7 +48,7 @@ export function SettingsScreen() {
 
   // Правки живут в форме (поле `entries`); заново заполняется, когда меняется копия сервера.
   const form = useForm<{ entries: Draft }>({ defaultValues: { entries: {} } });
-  const draft = useFormValues(form).entries ?? EMPTY_DRAFT;
+  const draft = form.watch("entries") ?? EMPTY_DRAFT;
   const { reset: resetForm } = form;
   useEffect(() => {
     if (q.data) resetForm({ entries: initialDraft(q.data.items) });

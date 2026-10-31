@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@shop/ui/admin-button";
-import { useForm, useFormValues } from "@shop/ui/form";
+import { useForm } from "@shop/ui/form";
 import { Modal } from "@shop/ui/overlay";
 import { toast } from "@shop/ui/toast";
 import { Input } from "@/components/ui/Input";
@@ -19,7 +19,7 @@ interface Values {
 
 export function EditAdminModal({ admin, onClose }: { admin: TeamAdmin; onClose: () => void }) {
   const form = useForm<Values>({ defaultValues: { name: admin.name ?? "", role: admin.role as AdminRoleCode, code: "" } });
-  const { name, role, code } = useFormValues(form);
+  const { name, role, code } = form.watch();
   const roleChanged = role !== admin.role;
   const nameChanged = name.trim() !== (admin.name ?? "");
 
