@@ -64,12 +64,13 @@ const q = {
 
 const row = (r) => (r ? { id: r.id, name: r.name, items: JSON.parse(r.items), images: JSON.parse(r.images || "[]") } : null);
 
-/** A product photo key from the shop bucket (`products/…`, shown through /img) or an https link. */
-function cleanImages(images) {
+/** A product photo key from the shop bucket (`products/…`, shown through /img), an https link, or `sets/<name>` —
+ *  a whole pack drawn as one picture, shipped with this service (draw/assets/prizes/<name>.webp). */
+export function cleanImages(images) {
   const list = Array.isArray(images) ? images : String(images || "").split("\n");
   return list
     .map((s) => String(s).trim())
-    .filter((s) => /^products\/[\w./-]{1,200}$/.test(s) || /^https:\/\/[^\s"'<>]{1,400}$/.test(s))
+    .filter((s) => /^products\/[\w./-]{1,200}$/.test(s) || /^https:\/\/[^\s"'<>]{1,400}$/.test(s) || /^sets\/[a-z0-9-]{1,60}$/.test(s))
     .slice(0, 6);
 }
 

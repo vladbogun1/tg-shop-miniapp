@@ -220,3 +220,7 @@ body.test #test-badge {
 /* even lines instead of one long line and an orphan word (OBS 30+ has a new enough Chromium; older just wraps) */
 .intro-name, .intro-label, .p-lot-name, .p-banner, .p-sub { text-wrap: balance; }
 .p-lot-name, .p-win-prize { overflow-wrap: break-word; }
+
+/* a pack drawn as one scene (assets/prizes, 3:2): one wide picture instead of separate product photos */
+.intro-photos.set .intro-photo img, #intro.super .intro-photos.set .intro-photo img { width: 600px; height: 400px; }
+.p-lot-photo.set img { object-fit: contain; }

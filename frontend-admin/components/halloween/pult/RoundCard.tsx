@@ -7,7 +7,7 @@
 import { MessageCircle, Play, RotateCcw, Sparkles, Trophy } from "lucide-react";
 import type { HwPrize } from "@/lib/halloween-api";
 import { cn } from "@/lib/cn";
-import { Image } from "@/lib/image";
+import { PrizePhoto, isPackPicture } from "./PrizePhoto";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
@@ -16,7 +16,10 @@ export type RoundState = { kind: "free" } | { kind: "rolling" } | { kind: "won";
 
 function Photos({ prize, superPrize }: { prize: HwPrize | null; superPrize: boolean }) {
   const box = superPrize ? "aspect-[16/10] sm:w-[46%] sm:shrink-0 sm:aspect-auto sm:min-h-[200px]" : "aspect-[16/10]";
-  const pics = (prize?.images ?? []).slice(0, 4);
+  const all = prize?.images ?? [];
+  // a pack drawn as one scene says it all; otherwise up to four product photos
+  const set = all.find(isPackPicture);
+  const pics = set ? [set] : all.slice(0, 4);
   if (!pics.length) {
     return (
       <div className={cn("flex items-center justify-center bg-[var(--surface-2)] text-[var(--text-faint)]", box)}>
@@ -27,7 +30,7 @@ function Photos({ prize, superPrize }: { prize: HwPrize | null; superPrize: bool
   return (
     <div className={cn("grid gap-px bg-[var(--line)]", box, pics.length > 1 && "grid-cols-2", pics.length > 2 && "grid-rows-2")}>
       {pics.map((key, i) => (
-        <Image key={key} imageKey={key} alt="" size={360}
+        <PrizePhoto key={key} imageKey={key} size={360}
           className={cn("h-full w-full bg-[var(--surface-2)] object-cover", pics.length === 3 && i === 0 && "row-span-2")} />
       ))}
     </div>

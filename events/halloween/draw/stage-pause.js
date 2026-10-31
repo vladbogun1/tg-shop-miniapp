@@ -2,7 +2,7 @@
 // turn (lots still to play, a pixel-art interlude, the participants scrolling, who already won) and a
 // ticker of names. One look with the mascot: pixel art (assets/scenes, tools/art), pixel font and frames.
 // Data: /hw/api/stage/overview (both draws, masked names only — what the stream shows anyway).
-import { POOL_SHORT, POOL_UK, el, isSuper, packOf, photoUrl, plainName, scene, sprite } from "./stage-common.js";
+import { POOL_SHORT, POOL_UK, el, isSuper, lotPictures, packOf, photoUrl, plainName, scene, sprite } from "./stage-common.js";
 
 const PAGE_MS = 4500; // one page of lots
 const NAMES_MS = 14_000;
@@ -33,7 +33,9 @@ function lotCard(pool, round, total, pack) {
   const sup = isSuper(round, total, pack?.name);
   const c = el("div", "p-lot px" + (sup ? " super" : ""));
   const ph = el("div", "p-lot-photo");
-  const key = pack?.images?.[0];
+  const { set, keys } = lotPictures(pack, 1);
+  const key = keys[0];
+  if (set) ph.classList.add("set");
   if (key) {
     const img = el("img");
     img.src = photoUrl(key, 120); // small on purpose: shown pixelated, like the rest of the art

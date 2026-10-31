@@ -6,6 +6,7 @@ const IMG = (new URLSearchParams(location.search).get("img") || "/img").replace(
 
 export function photoUrl(key, size = 600) {
   if (/^https?:\/\//i.test(key)) return key;
+  if (key.startsWith("sets/")) return new URL(`./assets/prizes/${key.slice(5)}.webp`, import.meta.url).href;
   return `${IMG}/insecure/rs:fill:${size}:${size}/plain/s3://product-images/${key.replace(/^\/+/, "")}@webp`;
 }
 
@@ -20,6 +21,14 @@ export const isSuper = (round, total, name) => round === total || /суперп�
 export function packOf(prizes, round) {
   const p = prizes?.prizes.find((x) => x.id === prizes.rounds[round]);
   return p ? { name: p.name, items: p.items || [], images: p.images || [] } : null;
+}
+
+/** What a lot shows: its pack picture (`sets/…`, every thing of the pack in one scene, 3:2) if it has one,
+ *  otherwise up to `max` product photos. */
+export function lotPictures(pack, max = 4) {
+  const imgs = pack?.images || [];
+  const set = imgs.find((k) => k.startsWith("sets/"));
+  return set ? { set: true, keys: [set] } : { set: false, keys: imgs.slice(0, max) };
 }
 
 export function el(tag, cls, text) {

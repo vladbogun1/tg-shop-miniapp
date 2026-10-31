@@ -2,7 +2,7 @@
 // countdown, then the visual rolls. The winner is already drawn on the server; this is only the show.
 // A super prize first gets its own entrance: the knights' hall and «СУПЕРПРИЗ», then the lot.
 // Pixel art throughout (assets/scenes, tools/art), like the pause screen and the mascot.
-import { POOL_UK, el, isSuper, photoUrl, scene, titleName, wait } from "./stage-common.js";
+import { POOL_UK, el, isSuper, lotPictures, photoUrl, scene, titleName, wait } from "./stage-common.js";
 
 const SHOW_MS = 6000; // long enough for Maxim to read the lot out
 const SUPER_ENTRANCE_MS = 2800;
@@ -16,9 +16,9 @@ function card({ pool, round, total, pack, sup }) {
   const name = titleName(pack?.name ?? `Приз раунду ${round}`);
   // «Суперприз: …» — the label above already says it
   c.append(el("h1", "intro-name", sup ? name.replace(/^суперприз\s*[:—-]\s*/i, "") : name));
-  const pics = (pack?.images || []).slice(0, 4);
+  const { set, keys: pics } = lotPictures(pack);
   if (pics.length) {
-    const row = el("div", pics.length === 1 ? "intro-photos one" : "intro-photos");
+    const row = el("div", set ? "intro-photos set" : pics.length === 1 ? "intro-photos one" : "intro-photos");
     pics.forEach((key, i) => {
       const f = el("div", "intro-photo px");
       const img = el("img");

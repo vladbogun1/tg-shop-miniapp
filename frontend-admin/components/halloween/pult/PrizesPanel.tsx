@@ -9,7 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { hwDraw, type HwPool, type HwPrize } from "@/lib/halloween-api";
 import { useToast } from "@/lib/toast";
-import { Image } from "@/lib/image";
+import { PrizePhoto } from "./PrizePhoto";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
@@ -50,7 +50,7 @@ function PackCard({ p, onEdit, onDelete }: { p: HwPrize; onEdit: () => void; onD
   return (
     <div className="card flex gap-3 p-3">
       <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-[var(--r-md)] bg-[var(--surface-2)]">
-        {p.images[0] && <Image imageKey={p.images[0]} alt="" size={128} className="h-full w-full object-cover" />}
+        {p.images[0] && <PrizePhoto imageKey={p.images[0]} size={128} className="h-full w-full object-cover" />}
       </div>
       <div className="min-w-0 flex-1">
         <p className="font-display text-[14px] font-bold leading-tight">{p.name}</p>

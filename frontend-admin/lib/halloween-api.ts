@@ -120,7 +120,8 @@ export interface HwScreen {
   test?: boolean;
 }
 
-/** A prize pack: `images` are product photo keys (`products/…`) or https links. */
+/** A prize pack: `images` are product photo keys (`products/…`), https links, or `sets/<name>` — the whole pack
+ *  drawn as one picture, shipped with the draw service. */
 export interface HwPrize {
   id: number;
   name: string;

@@ -9,7 +9,7 @@ import { useState } from "react";
 import { PackagePlus, X } from "lucide-react";
 import { hwDraw, type HwPrize } from "@/lib/halloween-api";
 import { useToast } from "@/lib/toast";
-import { Image } from "@/lib/image";
+import { PrizePhoto } from "./PrizePhoto";
 import { Modal, ModalCancel } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -58,7 +58,7 @@ export function PrizeModal({ prize, onClose, onSaved }: {
             <div className="flex flex-wrap gap-2">
               {images.map((key) => (
                 <div key={key} className="relative h-20 w-20 overflow-hidden rounded-[var(--r-md)] border border-[var(--line)]">
-                  <Image imageKey={key} alt="" size={160} className="h-full w-full object-cover" />
+                  <PrizePhoto imageKey={key} size={160} className="h-full w-full object-cover" />
                   <button type="button" aria-label="Убрать фото" onClick={() => setImages(images.filter((k) => k !== key))}
                     className="focusable absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-black/70 text-white">
                     <X className="h-3.5 w-3.5" />
