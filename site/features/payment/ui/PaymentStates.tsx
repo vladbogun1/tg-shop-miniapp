@@ -153,7 +153,7 @@ export function AwaitingCard({ order, created, topUp, left, err, starting, onPay
               <Clock className="h-3.5 w-3.5" strokeWidth={2.5} />
               {t("pay.left", { time: countdown(left) })}
             </p>
-            <p className="mt-1 text-[12px] font-semibold text-[var(--muted)]">{t("pay.until", { time: fmt.dateTime(order.paymentDueAt) })}</p>
+            <p className="mt-1 text-[12px] font-semibold text-[var(--muted)]">{t("pay.until", { when: fmt.dateTime(order.paymentDueAt) })}</p>
           </div>
         )}
       </div>

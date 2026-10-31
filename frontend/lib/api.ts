@@ -97,7 +97,7 @@ const http = createHttpClient({
   // The client's own wording (no signal / expired session) follows the language too.
   messages: {
     offline: () => text("common.offline"),
-    unauthorized: () => text("common.sessionExpired"),
+    unauthorized: () => text("common.sessionExpiredApp"),
     http: (status) => text("common.httpError").replace("{status}", String(status)),
   },
 });

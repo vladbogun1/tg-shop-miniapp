@@ -39,7 +39,7 @@ export function VariantPicker({ product, p }: { product: Product; p: Purchase })
                         >
                           {on && <Check className="h-3.5 w-3.5" strokeWidth={2.75} />}
                           {v.name}
-                          {v.stock > 0 ? "" : vHeld ? t("preorder.variant.held") : vComing ? t("preorder.variant.coming") : t("product.variantOut")}
+                          {v.stock > 0 ? "" : vHeld ? t("preorder.variant.held") : vComing ? t("preorder.variant.coming") : t("product.variantOutSuffix")}
                         </button>
                       );
                     })}

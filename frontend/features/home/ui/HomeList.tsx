@@ -41,8 +41,8 @@ export function HomeList({ h }: { h: HomeState }) {
           {!isLoading && !isError && products.length === 0 && (
             <EmptyState
               icon={<PackageOpen className="h-9 w-9" strokeWidth={2.5} />}
-              title={t("catalog.empty.title")}
-              text={t("catalog.empty.text")}
+              title={t("catalog.empty.titleApp")}
+              text={t("catalog.empty.textApp")}
             />
           )}
       

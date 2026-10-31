@@ -22,7 +22,7 @@ export function AccountPreordersLink() {
       <div className="min-w-0 flex-1">
         <p className="font-display text-[15px] font-bold text-[var(--ink)]">{t("preorder.account.title")}</p>
         <p className="truncate text-[12px] text-[var(--muted)]">
-          {held > 0 ? t("preorder.account.held", { n: held }) : t("preorder.account.subtitle")}
+          {held > 0 ? t("preorder.account.heldCount", { n: held }) : t("preorder.account.subtitle")}
         </p>
       </div>
       {held > 0 && (

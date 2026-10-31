@@ -34,7 +34,7 @@ export function AccountScreen() {
     <div className="pt-2">
       <header className="mb-4 flex items-start justify-between gap-3 pt-2">
         <div className="min-w-0">
-          <h1 className="nb-up text-[26px] font-extrabold text-[var(--ink)]">{t("account.title")}</h1>
+          <h1 className="nb-up text-[26px] font-extrabold text-[var(--ink)]">{t("account.titleApp")}</h1>
           <p className="text-[13px] text-[var(--muted)]">{t("account.subtitle")}</p>
         </div>
         <NotificationsBell />

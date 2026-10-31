@@ -199,7 +199,7 @@ export function ChatComposer({
             }
           }}
           rows={1}
-          placeholder={t("chat.placeholder")}
+          placeholder={t("chat.placeholderApp")}
           className="max-h-28 min-h-[44px] flex-1 resize-none rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-2.5 text-[15px] text-[var(--ink)] outline-none transition-[border-color,box-shadow] placeholder:text-[var(--faint)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)]"
         />
 

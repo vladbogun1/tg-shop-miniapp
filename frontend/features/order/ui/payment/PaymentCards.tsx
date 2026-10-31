@@ -194,7 +194,7 @@ export function FailureNote({ reason }: { reason: string | null | undefined }) {
   const { t } = useI18n();
   return (
     <p className="mt-3 rounded-[var(--r)] border border-[color-mix(in_srgb,var(--danger)_45%,transparent)] bg-[color-mix(in_srgb,var(--danger)_12%,var(--surface))] px-3 py-2 text-[12px] font-semibold text-[var(--ink)]">
-      {reason ? t("pay.failed", { reason }) : t("pay.failedGeneric")}
+      {t("pay.failed", { reason: reason ? `: ${reason}` : "" })}
     </p>
   );
 }

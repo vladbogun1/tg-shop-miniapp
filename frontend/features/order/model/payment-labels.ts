@@ -17,7 +17,7 @@ export function methodLabel(order: OrderDetail, t: T): string | null {
     case "monobank":
       return t("pay.method.monobank");
     default:
-      return last4 ? t("pay.method.card", { last4 }) : null;
+      return last4 ? t("pay.method.cardLast4", { last4 }) : null;
   }
 }
 

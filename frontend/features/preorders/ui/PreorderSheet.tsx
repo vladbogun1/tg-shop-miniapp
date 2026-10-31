@@ -145,7 +145,7 @@ function Body({
           </div>
 
           <p className="mt-4 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-3 text-[13px] leading-snug text-[var(--muted)]">
-            {coming ? t("preorder.sheet.bot", { h: holdHours }) : t("preorder.sheet.botOut")}
+            {coming ? t("preorder.sheet.botText", { h: holdHours }) : t("preorder.sheet.botOut")}
           </p>
 
           {error && (

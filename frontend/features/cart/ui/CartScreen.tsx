@@ -134,7 +134,7 @@ export function CartScreen() {
 
                   <motion.button
                     type="button"
-                    aria-label={t("cart.remove")}
+                    aria-label={t("cart.remove", { title: l.title })}
                     whileTap={{ scale: 0.88 }}
                     onClick={() => {
                       haptic();
