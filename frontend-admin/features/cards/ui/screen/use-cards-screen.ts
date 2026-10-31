@@ -87,7 +87,7 @@ export function useCardsScreen() {
 
   return {
     itemsQ, schemaQ, items, schema: schemaQ.data, ids, current, counts, list, incompleteReady,
-    query, setQuery: (q: string) => { setQuery(q); setLimit(PAGE); },
+    query, setQuery: (q: string) => { setQuery(q); setLimit(PAGE); }, clearQuery: () => setQuery(""),
     vitrine, setVitrine: (v: Vitrine) => { setVitrine(v); setLimit(PAGE); },
     onlyIncomplete, setOnlyIncomplete, resetFilters: () => { setQuery(""); setVitrine("work"); setOnlyIncomplete(false); },
     selected, setSelected, selectedItems, bulkOk, wizardIds, bulk,

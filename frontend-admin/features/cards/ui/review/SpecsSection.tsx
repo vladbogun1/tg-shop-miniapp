@@ -41,9 +41,8 @@ function SpecsEditor({ item, draft, onDraft }: { item: CardItem; draft: ProductS
 }
 
 /** Таблица «Характеристика / Было → стало / ИИ»; без изменений — под спойлером. */
-function SpecsTable({ groups }: { groups: SpecGroups }) {
+function SpecsTable({ groups, showSameRaw, setShowSame }: { groups: SpecGroups; showSameRaw: boolean | null; setShowSame: (v: boolean) => void }) {
   const { changed, empty, same } = groups;
-  const [showSameRaw, setShowSame] = useState<boolean | null>(null);
   // Nothing changed and nothing missing (a reviewed card): show what it has right away.
   const showSame = showSameRaw ?? (changed.length === 0 && empty.length === 0);
   return (
@@ -85,7 +84,9 @@ function SpecsTable({ groups }: { groups: SpecGroups }) {
   );
 }
 
-function SpecsContent({ item, rows, groups, draft, onDraft }: { item: CardItem; rows: SpecRow[]; groups: SpecGroups; draft: ProductSpecs | null; onDraft: (s: ProductSpecs | null) => void }) {
+type SameToggle = { showSameRaw: boolean | null; setShowSame: (v: boolean) => void };
+
+function SpecsContent({ item, rows, groups, draft, onDraft, same }: { item: CardItem; rows: SpecRow[]; groups: SpecGroups; draft: ProductSpecs | null; onDraft: (s: ProductSpecs | null) => void; same: SameToggle }) {
   if (draft !== null) return <SpecsEditor item={item} draft={draft} onDraft={onDraft} />;
   if (rows.length === 0)
     return (
@@ -93,7 +94,7 @@ function SpecsContent({ item, rows, groups, draft, onDraft }: { item: CardItem; 
         Характеристик нет — оформите карточку с ИИ или заполните вручную («Править»).
       </div>
     );
-  return <SpecsTable groups={groups} />;
+  return <SpecsTable groups={groups} showSameRaw={same.showSameRaw} setShowSame={same.setShowSame} />;
 }
 
 export function SpecsSection({
@@ -110,6 +111,8 @@ export function SpecsSection({
   onDraft: (s: ProductSpecs | null) => void;
 }) {
   const editing = draft !== null;
+  // Lives here, not in the table: stays through entering/leaving edit mode, as in the old panel.
+  const [showSameRaw, setShowSame] = useState<boolean | null>(null);
   const rows = useMemo(() => buildSpecRows(item, schema, data?.last?.changed?.specs ?? {}), [schema, item, data]);
   const groups = useMemo(() => groupSpecRows(rows), [rows]);
   return (
@@ -131,7 +134,7 @@ export function SpecsSection({
         </>
       }
     >
-      <SpecsContent item={item} rows={rows} groups={groups} draft={draft} onDraft={onDraft} />
+      <SpecsContent item={item} rows={rows} groups={groups} draft={draft} onDraft={onDraft} same={{ showSameRaw, setShowSame }} />
     </Section>
   );
 }

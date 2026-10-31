@@ -8,7 +8,7 @@ import { useMediaQuery } from "@shop/ui/use-media";
 import { TAB_LABEL, type CardTab, type Vitrine } from "../../model/view";
 import type { CardsScreenState } from "./use-cards-screen";
 
-function SearchBox({ query, onQuery }: { query: string; onQuery: (q: string) => void }) {
+function SearchBox({ query, onQuery, onClear }: { query: string; onQuery: (q: string) => void; onClear: () => void }) {
   return (
     <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3 transition-[border-color,box-shadow] focus-within:border-[var(--accent)] focus-within:shadow-[var(--ring-accent)] sm:w-[240px] sm:flex-none pointer-coarse:h-11">
       <Search className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />
@@ -21,7 +21,7 @@ function SearchBox({ query, onQuery }: { query: string; onQuery: (q: string) => 
         className="min-w-0 flex-1 bg-transparent text-[13px] text-[var(--text)] outline-none placeholder:text-[var(--text-faint)]"
       />
       {query && (
-        <button type="button" aria-label="Очистить поиск" onClick={() => onQuery("")} className="focusable rounded-[var(--r-sm)] text-[var(--text-faint)] hover:text-[var(--text)]">
+        <button type="button" aria-label="Очистить поиск" onClick={onClear} className="focusable rounded-[var(--r-sm)] text-[var(--text-faint)] hover:text-[var(--text)]">
           <X className="h-4 w-4" />
         </button>
       )}
@@ -42,7 +42,7 @@ export function CardsToolbar({ s }: { s: CardsScreenState }) {
           options={(["draft", "review", "ready"] as const).map((t) => ({ value: t, label: TAB_LABEL[t], count: s.counts[t] }))}
         />
         <div className="ml-auto flex w-full flex-wrap items-center gap-2 sm:w-auto">
-          <SearchBox query={s.query} onQuery={s.setQuery} />
+          <SearchBox query={s.query} onQuery={s.setQuery} onClear={s.clearQuery} />
           <Select<Vitrine>
             className="w-[170px] shrink-0"
             value={s.vitrine}
