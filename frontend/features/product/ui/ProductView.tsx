@@ -7,32 +7,29 @@
  * gating + AddToCartControl + onAdded toast all unchanged. Only the look changes.
  */
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { AddToCartControl } from "@/features/cart";
 import { toast } from "@shop/ui/toast";
-import { AskAboutProduct } from "@/features/product/ui/AskAboutProduct";
+import { AskAboutProduct } from "./AskAboutProduct";
 import { ProductGiftBanner } from "@/features/gift";
-import { CompareViewButton } from "@/features/compare";
-import { availabilityOf } from "@shop/core/availability";
+import { CompareViewButton, useCompare } from "@/features/compare";
 import { compareGroupOf } from "@shop/core/compare";
-import { useCompare } from "@/features/compare";
-import { Gallery } from "@/features/product/ui/Gallery";
-import { ConditionPlate, ProductBrand, ProductCrumbs, SpecsTable } from "@/features/product/ui/ProductSpecs";
-import { HoldBanner, PreorderBlock, PreorderCta } from "@/features/preorders";
-import { PreorderSheet } from "@/features/preorders";
-import { ProductReviews } from "@/features/reviews";
-import { RatingBadge } from "@/features/reviews";
+import { Gallery } from "./Gallery";
+import { ConditionPlate, ProductBrand, ProductCrumbs, SpecsTable } from "./ProductSpecs";
+import { ProductActionBar } from "./ProductActionBar";
+import { useProductPurchase } from "./use-product-purchase";
+import { useSheetChrome } from "./use-sheet-chrome";
+import { VariantPicker } from "./VariantPicker";
+import { PreorderBlock, PreorderSheet } from "@/features/preorders";
+import { ProductReviews, RatingBadge } from "@/features/reviews";
 import { useT } from "@/i18n/context";
 import { trackProductView } from "@/lib/analytics";
 import { EMPTY_SCHEMA } from "@shop/customer/catalog/model/filter";
 import { useCatalogSchema } from "@/features/catalog";
 import { money } from "@/lib/money";
-import { heldFor, queuedFor, useComing, useMyPreorders, useProductPreorder } from "@/features/preorders";
-import { useAccessToken } from "@/lib/auth";
 import { haptic } from "@/platform/telegram";
 import { overlayRise, backdrop } from "@/lib/motion";
-import type { Product, ProductVariant } from "@/lib/api";
+import type { Product } from "@/lib/api";
 
 interface Nav {
   /** Breadcrumb tap: back to the catalog with this category (null = all products). */
@@ -61,6 +58,7 @@ export function ProductView({
   );
 }
 
+
 function ViewBody({
   product,
   onClose,
@@ -74,37 +72,8 @@ function ViewBody({
 } & Nav) {
   const t = useT();
   const schema = useCatalogSchema().data ?? EMPTY_SCHEMA;
-  const hasVariants = (product.variants?.length ?? 0) > 0;
-  const [variant, setVariant] = useState<ProductVariant | null>(null);
-  const [touchedVariant, setTouchedVariant] = useState(false);
-
-  const needsVariant = hasVariants && !variant;
-  const stock = hasVariants ? (variant?.stock ?? 0) : (product.stock ?? 0);
-
-  // Pre-orders: stock is net of reservations (mine too), so a unit held for me is added back here.
-  const token = useAccessToken();
-  const preQ = useProductPreorder(product.id);
-  const coming = useComing();
-  const mineAll = useMyPreorders().list;
-  const lineVariantId = hasVariants ? (variant?.id ?? null) : null;
-  const hold = needsVariant ? undefined : heldFor(mineAll, product.id, lineVariantId);
-  const queued = needsVariant ? undefined : queuedFor(mineAll, product.id, lineVariantId);
-  const eta = needsVariant
-    ? undefined
-    : (preQ.data?.lines.find((l) => (l.variantId ?? null) === lineVariantId)?.eta ?? coming.etaOf(product.id, lineVariantId));
-  const buyable = stock + (hold?.heldQty ?? 0);
-  const canNotify = !!token && preQ.data?.anyProduct !== false;
-  const holdHours = preQ.data?.holdHours ?? coming.holdHoursOf(product.id);
-  const avail = availabilityOf(product, variant, { coming: !!eta, heldQty: hold?.heldQty });
-  const mode: "pick" | "buy" | "pre" | "out" = needsVariant
-    ? "pick"
-    : avail === "in_stock" || avail === "held"
-      ? "buy"
-      : avail === "preorder" || canNotify
-        ? "pre"
-        : "out";
-  const buyProduct = hold && !hasVariants ? { ...product, stock: buyable } : product;
-  const buyVariant = hold && variant ? { ...variant, stock: buyable } : variant;
+  const p = useProductPurchase(product);
+  const { hasVariants, mode, eta, queued, holdHours, needsVariant, variant, preQ } = p;
   const [sheetOpen, setSheetOpen] = useState(false);
   const fireToast = (m: string) => toast.success(m, { duration: 1800 });
 
@@ -113,35 +82,7 @@ function ViewBody({
     trackProductView(product.id);
   }, [product.id]);
 
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    // the tab bar (which may have slid away in the catalogue) comes back under the sheet's action bar
-    document.documentElement.setAttribute("data-sheet", "");
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = prev;
-      document.documentElement.removeAttribute("data-sheet");
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [onClose]);
-
-  // The action bar (button + hint + the tab bar under it) is taller than any fixed guess once the
-  // hint or a variant warning wraps, and the end of the description hid behind it. The copy now
-  // scrolls exactly past the bar's measured height, plus breathing room.
-  const barRef = useRef<HTMLDivElement>(null);
-  const [barH, setBarH] = useState<number | null>(null);
-  useEffect(() => {
-    const el = barRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => setBarH(el.offsetHeight));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
+  const { barRef, barH } = useSheetChrome(onClose);
   const reviewsRef = useRef<HTMLDivElement>(null);
 
   const close = () => {
@@ -223,39 +164,7 @@ function ViewBody({
 
             <ConditionPlate product={product} />
 
-            {hasVariants && (
-              <div className="mt-5">
-                <p className="eyebrow mb-2.5 !tracking-[0.2em]">
-                  {t("product.variantLabel")}
-                  {needsVariant && touchedVariant && <span className="text-[var(--danger)]">{t("product.chooseHint")}</span>}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {(product.variants ?? []).map((v) => {
-                    const vHeld = !!heldFor(mineAll, product.id, v.id ?? null);
-                    const vComing = !!coming.etaOf(product.id, v.id ?? null);
-                    const out = v.stock <= 0 && !vHeld && !vComing && !canNotify;
-                    const on = variant?.id === v.id;
-                    return (
-                      <button
-                        key={v.id}
-                        type="button"
-                        disabled={out}
-                        onClick={() => {
-                          haptic();
-                          setTouchedVariant(true);
-                          setVariant(v);
-                        }}
-                        className={`nb-chip nb-press inline-flex items-center gap-1.5 px-3.5 py-2 text-[13px] disabled:opacity-40 ${on ? "nb-chip-active" : ""}`}
-                      >
-                        {on && <Check className="h-3.5 w-3.5" strokeWidth={2.75} />}
-                        {v.name}
-                        {v.stock > 0 ? "" : vHeld ? t("preorder.variant.held") : vComing ? t("preorder.variant.coming") : t("product.variantOut")}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            {hasVariants && <VariantPicker product={product} p={p} />}
 
             {mode === "pre" && (
               <PreorderBlock eta={eta} waitingCount={preQ.data?.waitingCount ?? null} mine={queued} holdHours={holdHours} onEdit={() => setSheetOpen(true)} />
@@ -286,41 +195,7 @@ function ViewBody({
         </div>
 
         {/* sticky bottom action bar */}
-        <div
-          ref={barRef}
-          className="absolute inset-x-0 bottom-0 z-10 border-t border-[var(--line)] px-4 pt-3 backdrop-blur-[12px]"
-          style={{ paddingBottom: "calc(var(--tabbar-h) + var(--safe-bottom))", background: "rgba(14,14,16,.9)" }}
-        >
-          <div className="mx-auto w-full max-w-[480px]">
-            {hold && mode === "buy" && <HoldBanner hold={hold} />}
-            {mode === "pre" ? (
-              <PreorderCta hasEta={!!eta} queued={!!queued} onClick={() => { haptic(); setSheetOpen(true); }} />
-            ) : (
-              <AddToCartControl
-                product={buyProduct}
-                variant={buyVariant}
-                needsVariant={needsVariant}
-                fullWidth
-                onAdded={() => {
-                  haptic();
-                  onAdded?.();
-                }}
-              />
-            )}
-            {/* in the pre-order state the block above already carries the hint */}
-            {mode !== "pre" && (
-            <p className="mt-2 text-center text-[12px] font-medium text-[var(--muted)]">
-              {hold && buyable > 0
-                  ? t("preorder.held.left", { n: buyable })
-                  : stock > 0
-                  ? t("product.stockLeft", { n: stock })
-                : hasVariants && !variant
-                  ? t("addToCart.chooseVariant")
-                  : t("product.outOfStock")}
-            </p>
-            )}
-          </div>
-        </div>
+        <ProductActionBar ref={barRef} p={p} onAdded={onAdded} onPreorder={() => setSheetOpen(true)} />
       </motion.div>
       <PreorderSheet
         product={product}
