@@ -195,7 +195,6 @@ export const sharedUk: SharedDictionary = {
   "compare.row.condition": "Стан",
   "compare.stock.in": "Є в наявності",
   "compare.stock.out": "Немає",
-  "compare.cond.new": "Новий",
   "compare.noDiff": "Усі характеристики цих товарів однакові",
   "compare.other": "Інше",
   "compare.best": "найкраще",

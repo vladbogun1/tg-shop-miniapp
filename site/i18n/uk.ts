@@ -185,13 +185,9 @@ export const uk: RuDictionary = {
   "home.categoryCount": { one: "{n} товар", few: "{n} товари", many: "{n} товарів", other: "{n} товару" },
 
   "catalog.title": "Каталог",
-  "catalog.showFilters": "Фільтри й категорії",
   "catalog.categories": "Категорії",
   "catalog.all": "Усі товари",
   "catalog.inStock": "Лише в наявності",
-  "catalog.priceMax": "Ціна до, ₴",
-  "catalog.priceUpTo": "до {amount}",
-  "catalog.apply": "Застосувати",
   "catalog.reset": "Скинути фільтри",
   "catalog.sort": "Сортування",
   "catalog.sort.default": "За популярністю",

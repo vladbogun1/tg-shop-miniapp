@@ -185,13 +185,9 @@ export const en: RuDictionary = {
   "home.categoryCount": { one: "{n} item", other: "{n} items" },
 
   "catalog.title": "Catalogue",
-  "catalog.showFilters": "Filters & categories",
   "catalog.categories": "Categories",
   "catalog.all": "All products",
   "catalog.inStock": "In stock only",
-  "catalog.priceMax": "Max price, ₴",
-  "catalog.priceUpTo": "up to {amount}",
-  "catalog.apply": "Apply",
   "catalog.reset": "Reset filters",
   "catalog.sort": "Sort by",
   "catalog.sort.default": "Popularity",

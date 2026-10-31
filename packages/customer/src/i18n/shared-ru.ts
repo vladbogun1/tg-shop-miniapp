@@ -203,7 +203,6 @@ export const sharedRu = {
   "compare.row.condition": "Состояние",
   "compare.stock.in": "В наличии",
   "compare.stock.out": "Нет",
-  "compare.cond.new": "Новый",
   "compare.noDiff": "Все характеристики этих товаров одинаковые",
   "compare.other": "Другое",
   "compare.best": "лучшее",

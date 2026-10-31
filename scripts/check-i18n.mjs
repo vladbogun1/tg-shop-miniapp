@@ -171,19 +171,7 @@ for (const k of sharedKeys) if (!used(k)) orphans.push(`общий:${k}`);
 for (const app of Object.keys(APPS)) {
   for (const k of own[`${app}/ru`]) if (!used(k)) orphans.push(`${app}:${k}`);
 }
-// Известные сироты: отложены (текст не удаляем в шаге 5e — это решение владельца контента). Список только уменьшается.
-const ORPHAN_BASELINE = JSON.parse(fs.readFileSync(path.join(ROOT, "scripts/i18n-orphans-baseline.json"), "utf8"));
-const knownOrphans = new Set(ORPHAN_BASELINE);
-for (const o of orphans) if (!knownOrphans.has(o)) fail(`сирота: ключ «${o}» нигде не используется (удали или добавь в scripts/i18n-orphans-baseline.json с причиной в коммите)`);
-const fixed = ORPHAN_BASELINE.filter((o) => !orphans.includes(o));
-if (fixed.length > 0 && !process.argv.includes("--update-orphans")) {
-  fail(`сироты из baseline больше не сироты (${fixed.length}): ${fixed.slice(0, 5).join(", ")}… — запусти --update-orphans`);
-}
-if (process.argv.includes("--update-orphans")) {
-  fs.writeFileSync(path.join(ROOT, "scripts/i18n-orphans-baseline.json"), JSON.stringify(orphans.sort(), null, 1) + "\n");
-  console.log(`i18n-orphans-baseline.json обновлён: ${orphans.length}`);
-  process.exit(0);
-}
+for (const o of orphans) fail(`сирота: ключ «${o}» нигде не используется — удали его из словарей`);
 
 const bothApps = (pred) => Object.keys(APPS).every((app) => pred(Object.keys(dicts[`${app}/ru`])));
 for (const [file, line, key, kind] of pkgCalls) {
@@ -215,7 +203,7 @@ console.log(`  общий словарь:  ${count(shared.ru)} (на каждо�
 for (const app of Object.keys(APPS)) {
   console.log(`  ${APPS[app].padEnd(14)}: своих ${own[`${app}/ru`].length}, всего ${count(dicts[`${app}/ru`])}`);
 }
-console.log(`  сирот (известных, в baseline): ${orphans.length}; хардкод кириллицы (храповик cyrillic-literal): Mini App ${cyr.frontend ?? 0}, сайт ${cyr.site ?? 0}`);
+console.log(`  сирот: ${orphans.length}; хардкод кириллицы (храповик cyrillic-literal): Mini App ${cyr.frontend ?? 0}, сайт ${cyr.site ?? 0}`);
 
 if (problems.length > 0) {
   console.error(`\ni18n УПАЛ (${problems.length}):\n  ` + problems.slice(0, 80).join("\n  "));

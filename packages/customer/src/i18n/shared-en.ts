@@ -195,7 +195,6 @@ export const sharedEn: SharedDictionary = {
   "compare.row.condition": "Condition",
   "compare.stock.in": "In stock",
   "compare.stock.out": "Out of stock",
-  "compare.cond.new": "New",
   "compare.noDiff": "All characteristics of these products are the same",
   "compare.other": "Other",
   "compare.best": "best",

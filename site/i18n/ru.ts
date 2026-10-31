@@ -203,13 +203,9 @@ export const ru = {
 
   // ── catalog ───────────────────────────────────────────────────────────────
   "catalog.title": "Каталог",
-  "catalog.showFilters": "Фильтры и категории",
   "catalog.categories": "Категории",
   "catalog.all": "Все товары",
   "catalog.inStock": "Только в наличии",
-  "catalog.priceMax": "Цена до, ₴",
-  "catalog.priceUpTo": "до {amount}",
-  "catalog.apply": "Применить",
   "catalog.reset": "Сбросить фильтры",
   "catalog.sort": "Сортировка",
   "catalog.sort.default": "По популярности",
