@@ -22,7 +22,7 @@ import { Check, Loader2, Ticket, X } from "lucide-react";
 import { bonusKind } from "@shop/core/bonuses";
 import { useT } from "@/i18n/context";
 import { BonusOffer, useMyBonuses } from "./BonusOffer";
-import { usePromoPreview as useSharedPromoPreview } from "@shop/customer/checkout/promo";
+import { swallowPromoEnter, usePromoPreview as useSharedPromoPreview } from "@shop/customer/checkout/promo";
 import { api, type PromoPreview } from "@/lib/api";
 import { useCartPromoItems } from "@/features/cart";
 import { useFmt } from "@/lib/use-fmt";
@@ -76,6 +76,7 @@ export function PromoField({
         <input
           value={code}
           onChange={(e) => onChange(e.target.value.toUpperCase())}
+          onKeyDown={swallowPromoEnter}
           placeholder={t("promo.placeholder")}
           aria-label={t("promo.placeholder")}
           aria-invalid={state === "bad"}

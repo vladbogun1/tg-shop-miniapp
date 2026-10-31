@@ -17,6 +17,22 @@ import { checkoutKeys } from "./keys";
 
 export const PROMO_DEBOUNCE_MS = 450;
 
+/**
+ * Enter in the promo field must not submit the surrounding checkout form (the order would go out
+ * before the discount is applied). The code is checked as typed, so Enter has nothing else to do.
+ * Enter that confirms an IME composition is left alone.
+ */
+export function swallowPromoEnter(e: {
+  key: string;
+  isComposing?: boolean;
+  nativeEvent?: { isComposing?: boolean };
+  preventDefault: () => void;
+}): boolean {
+  if (e.key !== "Enter" || e.isComposing || e.nativeEvent?.isComposing) return false;
+  e.preventDefault();
+  return true;
+}
+
 export function isAuthFailure(e: unknown): boolean {
   return e instanceof ApiError && (e.status === 401 || e.status === 403);
 }
