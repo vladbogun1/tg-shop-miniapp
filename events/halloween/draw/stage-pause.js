@@ -1,11 +1,18 @@
 // The between-rounds screen of the OBS scene: «Розіграш триває», both draws' progress, a few scenes in
-// turn (lots still to play, the participants scrolling, who already won) and a ticker of names.
+// turn (lots still to play, a pixel-art interlude, the participants scrolling, who already won) and a
+// ticker of names. One look with the mascot: pixel art (assets/scenes, tools/art), pixel font and frames.
 // Data: /hw/api/stage/overview (both draws, masked names only — what the stream shows anyway).
-import { POOL_ICON, POOL_UK, el, isSuper, packOf, photoUrl, sprite } from "./stage-common.js";
+import { POOL_SHORT, POOL_UK, el, isSuper, packOf, photoUrl, plainName, scene, sprite } from "./stage-common.js";
 
 const PAGE_MS = 4500; // one page of lots
 const NAMES_MS = 14_000;
 const WINNERS_MS = 10_000;
+const ART_MS = 8000;
+/** Full-screen pixel-art interludes between the info scenes. */
+const ART = {
+  cauldron: "Котел ще варить призи — наступний лот уже близько",
+  pumpkins: "Гарбузи рахують ваші квитки…",
+};
 const LOTS_PER_PAGE = 4;
 const COLUMNS = 5;
 
@@ -24,20 +31,20 @@ function avatarOf(p, avatars) {
 
 function lotCard(pool, round, total, pack) {
   const sup = isSuper(round, total, pack?.name);
-  const c = el("div", "p-lot" + (sup ? " super" : ""));
+  const c = el("div", "p-lot px" + (sup ? " super" : ""));
   const ph = el("div", "p-lot-photo");
   const key = pack?.images?.[0];
   if (key) {
     const img = el("img");
-    img.src = photoUrl(key, 480);
+    img.src = photoUrl(key, 120); // small on purpose: shown pixelated, like the rest of the art
     img.alt = "";
     ph.append(img);
   } else {
-    ph.append(el("span", "p-lot-none", sup ? "⭐" : "🎁"));
+    ph.append(el("span", "p-lot-none", "?"));
   }
   c.append(ph);
-  c.append(el("div", "p-lot-round", `${POOL_ICON[pool]} Раунд ${round}${sup ? " · Суперприз" : ""}`));
-  c.append(el("div", "p-lot-name", pack?.name ?? "Сюрприз"));
+  c.append(el("div", "p-lot-round", `${POOL_SHORT[pool]} · раунд ${round}`));
+  c.append(el("div", "p-lot-name", plainName(pack?.name ?? "Сюрприз")));
   return c;
 }
 
@@ -123,7 +130,7 @@ function winnersScene(pools) {
   const grid = el("div", "p-wgrid");
   for (const r of rows.slice(-12)) {
     const row = el("div", "p-win");
-    row.append(el("span", "p-win-round", `${POOL_ICON[r.pool]} ${r.round}`), el("b", null, r.name), el("span", "p-win-prize", r.pack?.name ?? ""));
+    row.append(el("span", "p-win-round", `${POOL_SHORT[r.pool]} · ${r.round}`), el("b", null, r.name), el("span", "p-win-prize", plainName(r.pack?.name ?? "")));
     grid.append(row);
   }
   s.append(grid);
@@ -134,8 +141,8 @@ function ticker(pools) {
   const names = shuffle(stillIn(pools).map((p) => p.name));
   const t = el("div", "p-ticker");
   const run = el("div", "p-run");
-  const line = names.slice(0, 120).join("   ✦   ");
-  run.append(el("span", null, line + "   ✦   "), el("span", null, line + "   ✦   "));
+  const line = names.slice(0, 120).join("   ·   ");
+  run.append(el("span", null, line + "   ·   "), el("span", null, line + "   ·   "));
   run.style.animationDuration = `${Math.max(40, line.length / 9)}s`;
   t.append(run);
   return t;
@@ -144,15 +151,34 @@ function ticker(pools) {
 function stats(pools) {
   const box = el("div", "p-stats");
   for (const d of pools) {
-    const chip = el("div", "p-chip");
-    chip.append(el("b", null, `${POOL_ICON[d.pool]} ${POOL_UK[d.pool]}`), el("span", null, `зіграно ${d.winners.length} з ${d.rounds} · ${d.participants.length} учасників`));
+    const chip = el("div", "p-chip px");
+    chip.append(el("b", null, POOL_UK[d.pool]), el("span", null, `зіграно ${d.winners.length} з ${d.rounds} · ${d.participants.length} учасників`));
     box.append(chip);
   }
   return box;
 }
 
+function artScene(name) {
+  const s = el("section", "p-scene p-artcap");
+  s.dataset.art = name;
+  s.dataset.ms = ART_MS;
+  s.append(el("div", "p-banner px", ART[name]));
+  return s;
+}
+
 function decor() {
   const bg = el("div", "p-bg");
+  const night = el("img", "p-night");
+  night.src = scene("bg-night");
+  night.alt = "";
+  bg.append(night);
+  for (const name of Object.keys(ART)) {
+    const art = el("img", "p-art");
+    art.src = scene(`scene-${name}`);
+    art.alt = "";
+    art.dataset.name = name;
+    bg.append(art);
+  }
   for (let i = 0; i < 26; i++) {
     const f = el("i", "p-spark");
     f.style.left = `${Math.random() * 100}%`;
@@ -181,6 +207,7 @@ export function makePause(root) {
     if (!scenes.length) return;
     const cur = scenes[idx];
     scenes.forEach((x) => x.classList.toggle("on", x === cur));
+    root.dataset.art = cur.dataset.art || "";
     idx = (idx + 1) % scenes.length;
     const pages = [...cur.querySelectorAll(".p-page")];
     if (!pages.length) {
@@ -205,7 +232,7 @@ export function makePause(root) {
       root.innerHTML = "";
       const head = el("header", "p-head");
       head.append(el("div", "p-kicker", "ChiSetup · Halloween"), el("div", "p-big", "Розіграш триває"), el("div", "p-sub", "Наступний раунд — зовсім скоро, не перемикайся"));
-      scenes = [lotsScene(pools), namesScene(pools, avatars), winnersScene(pools)].filter(Boolean);
+      scenes = [lotsScene(pools), artScene("cauldron"), namesScene(pools, avatars), artScene("pumpkins"), winnersScene(pools)].filter(Boolean);
       const stage = el("div", "p-stagebox");
       stage.append(...scenes);
       root.append(...decor(), head, stats(pools), stage, ticker(pools));
