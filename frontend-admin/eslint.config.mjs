@@ -5,6 +5,8 @@ import { architectureLimits } from "../packages/core/eslint/architecture-limits.
 import { frontRules } from "../packages/core/eslint/front-rules.mjs";
 import legacyLimits from "./eslint.legacy-limits.mjs";
 
+const ALLOW_RAW = ["next.config.ts", "public/sw.js", "lib/session.ts", "features/procurement/api.ts"];
+
 const compat = new FlatCompat({ baseDirectory: dirname(fileURLToPath(import.meta.url)) });
 
 /**
@@ -27,9 +29,13 @@ const config = [
     customer: false,
     compat: false,
     allow: {
-      "time-date-now": ["next.config.ts", "public/sw.js"],
-      // Сервис-воркер (нет HttpClient), выход/обновление токена (keepalive, ошибка не разлогинивает), скачивание файлов с токеном (blob).
-      "no-fetch": ["public/sw.js", "lib/session.ts", "features/procurement/api.ts"],
+      // Списки у правил одинаковые намеренно: frontRules склеивает правила только с равным списком файлов,
+      // иначе второй блок для sw.js снова включил бы правило, исключённое в первом.
+      // time-date-now: next.config.ts и sw.js (обычный JS, core/time недоступен).
+      // no-fetch: sw.js (нет HttpClient), lib/session.ts (выход с keepalive и тихое обновление токена, ошибка не разлогинивает),
+      // features/procurement/api.ts (скачивание файлов с токеном через blob; HttpClient разбирает только JSON).
+      "time-date-now": ALLOW_RAW,
+      "no-fetch": ALLOW_RAW,
     },
   }),
 ];

@@ -1,3 +1,5 @@
+import type { Schemas } from "@shop/core/api/schemas";
+
 /** Kinds the UI knows (icon, colour, main action). The server may add more — see `knownType`. */
 export const INBOX_TYPES = [
   "PAYMENT",
@@ -17,50 +19,14 @@ export type KnownInboxType = (typeof INBOX_TYPES)[number];
 /** A kind from the server: one of the known ones, or a newer one rendered with its own title. */
 export type InboxType = KnownInboxType | (string & {});
 
-export interface InboxItem {
-  /** `TYPE:entityId` */
-  key: string;
-  type: InboxType;
-  /** Order id, `productId` / `productId:variantId`, or `site`. */
-  entityId: string;
-  /** Event version — sent back with snooze/dismiss; a newer event brings the row back. */
-  version: string;
-  title: string;
-  subtitle?: string | null;
-  orderId?: string | null;
-  shortId?: string | null;
-  status?: string | null;
-  amountMinor?: number | null;
-  amountNote?: string | null;
-  productId?: string | null;
-  variantId?: string | null;
-  stock?: number | null;
-  daysToZero?: number | null;
-  unread?: number | null;
-  since?: string | null;
-  waitMinutes: number;
-  overdue: boolean;
-}
-
-export interface InboxGroup {
-  id: InboxType;
-  title: string;
-  hint: string;
-  dismissible: boolean;
-  count: number;
-  /** Rows of this kind hidden by «Отложить» right now. */
-  snoozed: number;
-  items: InboxItem[];
-}
-
-export interface Inbox {
-  generatedAt: string;
-  total: number;
-  groups: InboxGroup[];
-  newStaleHours: number;
-  approvedStaleHours: number;
-  returnsDays: number;
-}
+/**
+ * Строки «Внимания» — ответ `GET /api/admin/inbox` из OpenAPI; поверх него только уточнён `type`/`id`
+ * (известные виды + новые от сервера). Необязательные поля сервер шлёт как null (у сгенерированных типов они без `| null`),
+ * поэтому экран проверяет их на «пусто».
+ */
+export type InboxItem = Omit<Schemas["InboxItem"], "type"> & { type: InboxType };
+export type InboxGroup = Omit<Schemas["InboxGroup"], "id" | "items"> & { id: InboxType; items: InboxItem[] };
+export type Inbox = Omit<Schemas["Inbox"], "groups"> & { groups: InboxGroup[] };
 
 export type SnoozePreset = "HOUR" | "TOMORROW" | "DAYS3";
 

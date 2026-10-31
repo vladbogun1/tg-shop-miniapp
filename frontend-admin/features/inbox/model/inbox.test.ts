@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { formatWait, hasGroupAction, isRefundRow, knownType, snoozedTotal, visibleGroups, withoutItem } from "./inbox";
 import type { Inbox, InboxGroup, InboxItem } from "./types";
 
-const item = (key: string, type = "CHAT"): InboxItem => ({ key, type, entityId: key, version: "v", title: key, waitMinutes: 0, overdue: false });
+/** Необязательные поля сервер шлёт как null; в тестах они не нужны. */
+const item = (key: string, type = "CHAT"): InboxItem =>
+  ({ key, type, entityId: key, version: "v", title: key, waitMinutes: 0, overdue: false }) as InboxItem;
 const group = (id: string, items: InboxItem[], snoozed = 0): InboxGroup => ({ id, title: id, hint: "", dismissible: true, count: items.length, snoozed, items });
 const inbox = (groups: InboxGroup[]): Inbox => ({ generatedAt: "", total: groups.reduce((n, g) => n + g.items.length, 0), groups, newStaleHours: 1, approvedStaleHours: 1, returnsDays: 1 });
 

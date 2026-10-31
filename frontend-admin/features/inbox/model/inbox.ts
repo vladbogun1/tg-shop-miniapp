@@ -10,7 +10,7 @@ export function knownType(type: InboxType): KnownInboxType | null {
  * «Оплачен онлайн — подтвердите заказ» (`paid:…`) and «Оплачен, но отменён — верните деньги»
  * (`refund:…`). Falls back to the subtitle wording.
  */
-export function isRefundRow(item: Pick<InboxItem, "type" | "version" | "subtitle">): boolean {
+export function isRefundRow(item: { type: string; version: string; subtitle?: string | null }): boolean {
   if (item.type !== "PAYMENT") return false;
   if (item.version.startsWith("refund:")) return true;
   if (item.version.startsWith("paid:")) return false;

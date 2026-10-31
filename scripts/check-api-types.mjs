@@ -7,8 +7,7 @@
  * `export type X = Schemas["XDto"]`. Ручной `interface X {...}` / `type X = {...}` с именем из списка ниже
  * вернул бы тип, который снова может разойтись с бэкендом, поэтому он запрещён. Разрешено: алиасы на Schemas,
  * view-модели (в model/ или с другим именем), тела запросов (*Body, *Request, *Write, *Patch).
- * Дополнительно в frontend-admin/lib/orders-api.ts любой `export interface` должен быть телом запроса или
- * явно разрешённым не-ответом.
+ * Дополнительно в frontend-admin/features/<фича>/api.ts любой `export interface` должен быть телом запроса или фильтром.
  * Запуск: node scripts/check-api-types.mjs
  */
 import fs from "node:fs";
@@ -46,11 +45,17 @@ const GENERATED_ONLY = new Set([
   "Batch", "BatchSummary", "BatchItem", "Supplier", "Demand", "Subscriber", "ArriveResult", "ArriveLineResult", "ReleaseResult",
   "BatchMoney", "BatchMoneyLine", "Expense", "ExpenseFile", "BatchSales", "BatchSalesLine", "Lot", "ProductCost", "OpeningRow",
   "Reconcile", "OrderProfit", "OrderLineCost",
+  // inbox («Внимание», шаг 4f)
+  "Inbox", "InboxGroup", "InboxItem",
 ]);
 
-/** В orders-api.ts ручные интерфейсы — только тела запросов и этот список (не ответы заказа). */
-const ORDERS_API = "frontend-admin/lib/orders-api.ts";
-const ORDERS_API_ALLOWED = /(Body|Request|Write|Patch)$|^(ReplyTemplate|RenderedTemplate)$/;
+/**
+ * Админка: в `frontend-admin/features/<фича>/api.ts` ручные `export interface` — только тела запросов и фильтры.
+ * Ответ API объявляется алиасом на `Schemas["…"]`. Исключения (бэкенд отдаёт нетипизированный объект, в OpenAPI его формы нет):
+ * AuditFacets — GET /api/admin/audit/facets.
+ */
+const ADMIN_FEATURE_API = /^frontend-admin\/features\/[^/]+\/api\.ts$/;
+const ADMIN_API_ALLOWED = /(Body|Request|Write|Patch|Filter)$|^(AuditFacets|ReplyTemplate|RenderedTemplate)$/;
 
 const SKIP = new Set(["node_modules", ".next", "dist", "build", ".git", "_worktrees", "_logs", "_shots"]);
 function walk(dir, out = []) {
@@ -75,8 +80,8 @@ for (const file of files) {
     if (GENERATED_ONLY.has(name)) {
       problems.push(`${rel}:${i + 1}: ручной тип ответа API «${name}» — возьми из OpenAPI: Schemas["…"] (packages/core/src/api/schemas.ts)`);
     }
-    if (rel === ORDERS_API && /^\s*export\s+interface/.test(line) && !ORDERS_API_ALLOWED.test(name)) {
-      problems.push(`${rel}:${i + 1}: «${name}» — в orders-api.ts ручные интерфейсы только для тел запросов`);
+    if (ADMIN_FEATURE_API.test(rel) && /^\s*export\s+interface/.test(line) && !ADMIN_API_ALLOWED.test(name)) {
+      problems.push(`${rel}:${i + 1}: «${name}» — в features/<фича>/api.ts ручные интерфейсы только для тел запросов и фильтров`);
     }
   });
 }
