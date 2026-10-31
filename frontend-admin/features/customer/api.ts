@@ -14,6 +14,11 @@ export type { GeoOnline, GeoOverview, GeoPointDetails, UserCardDto, UserMetricsD
 export type CustomerOrderCard = Schemas["OrderCardDto"];
 
 export const customerApi = {
+  /** Карточка покупателя по Telegram id (поиск по id, точное совпадение); null — не нашли. */
+  findUser: async (telegramUserId: number): Promise<UserCardDto | null> => {
+    const rows = await customerApi.users({ q: String(telegramUserId), size: 10 });
+    return rows.find((u) => u.telegramUserId === telegramUserId) ?? null;
+  },
   /** GET /api/admin/users -> PLAIN UserCardDto[] (not paged). */
   users: (params: UsersTableQuery) => {
     const sp = new URLSearchParams();

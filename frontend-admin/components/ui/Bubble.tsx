@@ -13,7 +13,7 @@ function timeOf(iso: string | null | undefined): string {
   return formatTime(iso);
 }
 
-/** Exported for the support chat (components/support/SupportChat.tsx) — same bubbles. */
+/** Exported for the support chat (features/support/ui/chat/SupportChat.tsx) — same bubbles. */
 export function Bubble({
   m,
   onOpenImage,

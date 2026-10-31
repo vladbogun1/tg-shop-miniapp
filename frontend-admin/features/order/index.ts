@@ -5,7 +5,6 @@
 export { OrdersScreen } from "./ui/OrdersScreen";
 export { OrderDeepLinkScreen } from "./ui/OrderDeepLinkScreen";
 export { OrderDrawer } from "./ui/drawer/OrderDrawer";
-export { Bubble } from "./ui/chat/Bubble";
 
 export { orderApi, changeStatusConfirmingUnpaid } from "./api";
 export type { AdminBoard, AdminDispatchOrder, AdminOrderCard, AdminOrderDetail } from "./api";

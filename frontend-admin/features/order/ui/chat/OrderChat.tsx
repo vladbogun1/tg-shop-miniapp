@@ -28,10 +28,9 @@ import {
   useSendMessageMutation,
   useSendPhotoMutation,
 } from "../../queries/chat";
-import { Bubble } from "./Bubble";
+import { Bubble } from "@/components/ui/Bubble";
 import { TemplatePicker } from "./ReplyTemplates";
 
-export { Bubble } from "./Bubble";
 
 const messageTime = (m: { createdAt: string }) => m.createdAt;
 

@@ -7,7 +7,6 @@ import type { Schemas } from "@shop/core/api/schemas";
 import type { CaseTier } from "@shop/core/giftcase";
 import type { NpCity, NpWarehouse, SendMessageRequest } from "@shop/core/types";
 import type { ConfirmOptions } from "@shop/ui/confirm";
-import { customerApi, type UserCardDto } from "@/features/customer";
 import { ApiError, apiDelete, apiGet, apiPatch, apiPost, apiPut, uploadFile, type OrderStatus } from "@/lib/api";
 import { periodQuery, type OrdersPeriod } from "./model/period";
 import type { MovementChannel } from "@/features/payment";
@@ -222,11 +221,6 @@ export const orderApi = {
   },
 
   /** Карточка покупателя — открыть поверх заказа. */
-  findUser: async (telegramUserId: number): Promise<UserCardDto | null> => {
-    const rows = await customerApi.users({ q: String(telegramUserId), size: 10 });
-    return rows.find((u) => u.telegramUserId === telegramUserId) ?? null;
-  },
-
   npCities: (q: string) => apiGet<NpCity[]>(`/api/np/cities?q=${encodeURIComponent(q)}`),
   npWarehouses: (cityRef: string, q: string) =>
     apiGet<NpWarehouse[]>(`/api/np/warehouses?cityRef=${encodeURIComponent(cityRef)}&q=${encodeURIComponent(q)}`),

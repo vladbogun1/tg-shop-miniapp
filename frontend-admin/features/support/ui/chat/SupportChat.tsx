@@ -12,7 +12,7 @@
  */
 import { supportAsChatMessage } from "@shop/core/support";
 import { useState } from "react";
-import { Bubble } from "@/features/order";
+import { Bubble } from "@/components/ui/Bubble";
 import { ChatDaySection, useChatDays } from "@/components/ui/ChatDays";
 import { Button } from "@shop/ui/admin-button";
 import { Lightbox } from "@shop/ui/overlay";

@@ -46,8 +46,7 @@ import {
   type BroadcastSummary,
 } from "@/lib/activity";
 import { ApiError } from "@/lib/api";
-import { UserProfileDrawer, type UserCardDto } from "@/features/customer";
-import { orderApi } from "@/features/order";
+import { UserProfileDrawer, customerApi, type UserCardDto } from "@/features/customer";
 import { formatDateTime } from "@shop/core/time";
 import { cn } from "@/lib/cn";
 import { toast } from "@shop/ui/toast";
@@ -103,7 +102,7 @@ export function ActivityTab() {
     if (!r.tgUserId) return;
     const tgId = r.tgUserId;
     try {
-      const found = await orderApi.findUser(tgId);
+      const found = await customerApi.findUser(tgId);
       setProfile(
         found ?? {
           telegramUserId: tgId,

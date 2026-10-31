@@ -7,7 +7,7 @@ import { toast } from "@shop/ui/toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { productApi, type AdminProduct } from "@/features/product";
-import type { UserCardDto } from "@/features/customer";
+import { customerApi, type UserCardDto } from "@/features/customer";
 import { orderApi, type AdminOrderDetail } from "../api";
 import { orderKeys } from "../keys";
 
@@ -127,7 +127,7 @@ export function useOpenCustomerMutation(onFound: (u: UserCardDto) => void) {
   return useApiMutation<UserCardDto, AdminOrderDetail>({
     mutationFn: async (order) => {
       const tgId = order.tgUserId as number;
-      const found = await orderApi.findUser(tgId);
+      const found = await customerApi.findUser(tgId);
       return (
         found ?? {
           telegramUserId: tgId,
