@@ -33,6 +33,10 @@ CREATE TABLE IF NOT EXISTS contacts (
   sent_by   TEXT
 );
 `);
+// 01.11: photos of a pack for the remote's round cards (S3 keys of product photos or https links).
+if (!db.prepare("SELECT name FROM pragma_table_info('prizes')").all().some((c) => c.name === "images")) {
+  db.exec("ALTER TABLE prizes ADD COLUMN images TEXT NOT NULL DEFAULT '[]'");
+}
 
 export const DEFAULT_TEMPLATE = `Привіт, {name}! 🎃
 
@@ -43,10 +47,10 @@ export const DEFAULT_TEMPLATE = `Привіт, {name}! 🎃
 Напиши тут, у цьому чаті, куди надіслати приз: ПІБ, телефон і місто з відділенням Нової пошти. Вітаємо!`;
 
 const q = {
-  list: db.prepare("SELECT id, name, items FROM prizes ORDER BY id"),
-  one: db.prepare("SELECT id, name, items FROM prizes WHERE id = ?"),
-  insert: db.prepare("INSERT INTO prizes (name, items, created_at) VALUES (?, ?, ?)"),
-  update: db.prepare("UPDATE prizes SET name = ?, items = ? WHERE id = ?"),
+  list: db.prepare("SELECT id, name, items, images FROM prizes ORDER BY id"),
+  one: db.prepare("SELECT id, name, items, images FROM prizes WHERE id = ?"),
+  insert: db.prepare("INSERT INTO prizes (name, items, images, created_at) VALUES (?, ?, ?, ?)"),
+  update: db.prepare("UPDATE prizes SET name = ?, items = ?, images = ? WHERE id = ?"),
   remove: db.prepare("DELETE FROM prizes WHERE id = ?"),
   unassignPrize: db.prepare("DELETE FROM round_prizes WHERE prize_id = ?"),
   rounds: db.prepare("SELECT round, prize_id FROM round_prizes WHERE pool = ?"),
@@ -58,7 +62,16 @@ const q = {
   addContact: db.prepare("INSERT INTO contacts (draw_id, tg_id, thread_id, text, sent_at, sent_by) VALUES (?, ?, ?, ?, ?, ?)"),
 };
 
-const row = (r) => (r ? { id: r.id, name: r.name, items: JSON.parse(r.items) } : null);
+const row = (r) => (r ? { id: r.id, name: r.name, items: JSON.parse(r.items), images: JSON.parse(r.images || "[]") } : null);
+
+/** A product photo key from the shop bucket (`products/…`, shown through /img) or an https link. */
+function cleanImages(images) {
+  const list = Array.isArray(images) ? images : String(images || "").split("\n");
+  return list
+    .map((s) => String(s).trim())
+    .filter((s) => /^products\/[\w./-]{1,200}$/.test(s) || /^https:\/\/[^\s"'<>]{1,400}$/.test(s))
+    .slice(0, 6);
+}
 
 function cleanItems(items) {
   const list = Array.isArray(items) ? items : String(items || "").split("\n");
@@ -79,10 +92,12 @@ export function save(pool, b) {
   const name = String(b.name || "").trim().slice(0, 120);
   if (!name) throw new Error("Назва призу порожня");
   const items = JSON.stringify(cleanItems(b.items));
-  if (b.id) {
-    if (!q.one.get(Number(b.id))) throw new Error("Приз не знайдено");
-    q.update.run(name, items, Number(b.id));
-  } else q.insert.run(name, items, Date.now());
+  const old = b.id ? q.one.get(Number(b.id)) : null;
+  if (b.id && !old) throw new Error("Приз не знайдено");
+  // Photos are optional in the request: the prize dialog without them keeps what is there.
+  const images = b.images === undefined ? old?.images || "[]" : JSON.stringify(cleanImages(b.images));
+  if (old) q.update.run(name, items, images, old.id);
+  else q.insert.run(name, items, images, Date.now());
   return state(pool);
 }
 

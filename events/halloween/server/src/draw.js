@@ -60,7 +60,22 @@ export function pick(seed, round, attempt, entries) {
 }
 
 /**
- * Next round, or (reroll) the last round again: its winner did not answer, is voided and stays
+ * Which round a draw plays: the one asked for (the remote lets Maxim pick any round still free), else
+ * the lowest free one. Fairness does not depend on the order: every round is HMAC(seed, round:attempt).
+ */
+export function chooseRound(playedRounds, total, want) {
+  const played = new Set(playedRounds);
+  let round = Number(want) || 0;
+  if (!round) for (round = 1; round <= total && played.has(round); round++);
+  if (round > total && !want) throw new Error("Усі раунди вже зіграні");
+  if (!(round >= 1 && round <= total)) throw new Error("Немає такого раунду");
+  // Two clicks or two open screens must not burn two rounds.
+  if (played.has(round)) throw new Error(`Раунд ${round} уже зіграно — онови сторінку`);
+  return round;
+}
+
+/**
+ * A round (any free one, see chooseRound), or (reroll) the last drawn round again: its winner did not answer, is voided and stays
  * out of the pool, the round is drawn with the next attempt number.
  */
 export async function drawRound(pool, by, reroll, expectRound) {
@@ -75,10 +90,7 @@ export async function drawRound(pool, by, reroll, expectRound) {
       db.prepare("UPDATE draws SET voided = 1 WHERE id = ?").run(last.id);
       round = last.round;
     } else {
-      round = valid.length + 1;
-      if (round > config.rounds[pool]) throw new Error("Усі раунди вже зіграні");
-      // Two clicks or two open screens must not burn two rounds.
-      if (expectRound && Number(expectRound) !== round) throw new Error(`Раунд ${expectRound} уже зіграно — онови сторінку`);
+      round = chooseRound(valid.map((d) => d.round), config.rounds[pool], expectRound);
     }
     const attempt = all.filter((d) => d.round === round).length + 1;
     // Winners and voided winners of this draw. Winning one draw does not keep you out of the other.

@@ -6,6 +6,7 @@ import { mockParticipants, mockDraw } from "./mock.js";
 import { showPeople, spendCell } from "./admin-tools.js";
 import { showInvites } from "./invites-tool.js";
 import { startRemote } from "./remote.js";
+import { showContact as contactDialog } from "./contact-tool.js";
 
 const qs = new URLSearchParams(location.search);
 const MOCK = qs.has("mock") ? Number(qs.get("mock")) || 120 : 0;
@@ -93,7 +94,11 @@ function renderLive(s) {
   $("blackout").classList.toggle("on", Boolean(s?.blackout));
 }
 
-const nextRound = () => Math.min(state.winners.length + 1, ROUNDS);
+// The lowest round still free: the remote (pult.html) may have played rounds out of order.
+const nextRound = () => {
+  for (let r = 1; r <= ROUNDS; r++) if (!state.winners.some((w) => w.round === r)) return r;
+  return ROUNDS;
+};
 
 function prizeOf(round) {
   return packOf(state.prizes, round);
@@ -278,6 +283,8 @@ async function lockList() {
   } catch (e) { fail(e); }
 }
 
+const showContact = (round) => (MOCK ? Promise.reject(new Error("У mock-режимі писати нікому")) : contactDialog({ api, dialog, esc, test: TEST }, round));
+
 // Full names and Telegram ids, for Maxim to message the winners. Never shown on the stream screen.
 async function showContacts() {
   if (MOCK || TEST) return fail("У тестовому режимі контактів немає: учасники несправжні");
@@ -329,6 +336,7 @@ async function showPrizes() {
       <input type="hidden" name="id" />
       <input name="name" placeholder="Назва паку, напр. «Мишка Lamzu + килимок»" required maxlength="120" />
       <textarea name="items" rows="3" placeholder="Що входить, по рядку на пункт"></textarea>
+      <textarea name="images" rows="2" placeholder="Фото для пульта, по рядку: https://… або products/… (ключ фото товару)"></textarea>
       <div><button class="primary">Зберегти пак</button> <button type="button" data-new hidden>Скасувати</button></div>
     </form>
     <h3 style="margin:18px 0 8px">Який пак у якому раунді</h3>
@@ -353,13 +361,14 @@ async function showPrizes() {
   form.onsubmit = async (e) => {
     e.preventDefault();
     const f = new FormData(form);
-    if (await post("/prizes", { id: f.get("id") ? Number(f.get("id")) : undefined, name: f.get("name"), items: f.get("items") })) showPrizes();
+    if (await post("/prizes", { id: f.get("id") ? Number(f.get("id")) : undefined, name: f.get("name"), items: f.get("items"), images: f.get("images") })) showPrizes();
   };
   el.querySelectorAll("[data-edit]").forEach((b) => (b.onclick = () => {
     const p = prizes.find((x) => x.id === Number(b.dataset.edit));
     form.elements.id.value = p.id;
     form.elements.name.value = p.name;
     form.elements.items.value = p.items.join("\n");
+    form.elements.images.value = (p.images || []).join("\n");
     form.querySelector("[data-new]").hidden = false;
     form.elements.name.focus();
   }));
@@ -370,34 +379,6 @@ async function showPrizes() {
   el.querySelectorAll("[data-round]").forEach((s) => (s.onchange = () => post("/prizes/assign", { round: Number(s.dataset.round), prizeId: s.value ? Number(s.value) : null })));
   el.querySelector("[data-tpl]").onclick = async () => {
     if (await post("/prizes/template", { text: el.querySelector("[name=tpl]").value })) el.querySelector("[data-tpl]").textContent = "Збережено ✓";
-  };
-}
-
-// «Написати переможцю»: the filled template, editable, goes to the winner as a shop chat message
-// (bot DM with a button into the chat; the answer comes to «Чати» in the admin panel).
-async function showContact(round) {
-  if (MOCK) return fail("У mock-режимі писати нікому");
-  const pv = await api("/contact/preview", { method: "POST", body: JSON.stringify({ round, test: TEST }) });
-  const who = `${esc(pv.to.name || "без імені")}${pv.to.username ? ` · <a href="https://t.me/${esc(pv.to.username)}" target="_blank" rel="noopener">@${esc(pv.to.username)}</a>` : ""}`;
-  const el = dialog(
-    `Написати переможцю раунду ${round}`,
-    `<p>Кому: <b>${who}</b>${pv.prize ? ` · приз: <b>${esc(pv.prize.name)}</b>` : ' · <span class="warn">приз раунду не вибрано</span>'}</p>
-    ${pv.test ? '<p class="warn">Тестовий режим: повідомлення прийде вам у чат магазину, а не цій людині.</p>' : ""}
-    ${pv.sent ? `<p class="warn">Уже написано ${new Date(pv.sent.sentAt).toLocaleString("uk-UA")}. Ще одне повідомлення відкриє новий чат.</p>` : ""}
-    <textarea rows="11" name="text">${esc(pv.text)}</textarea>
-    <p class="muted">Людина отримає повідомлення від бота з кнопкою в чат. Відповідь прийде в адмінку → «Чати».</p>
-    <button class="primary" data-send>Надіслати</button> <span data-res></span>`
-  );
-  const btn = el.querySelector("[data-send]");
-  btn.onclick = async () => {
-    btn.disabled = true;
-    try {
-      const r = await api("/contact/send", { method: "POST", body: JSON.stringify({ round, test: TEST, text: el.querySelector("[name=text]").value }) });
-      el.querySelector("[data-res]").innerHTML = `<span class="ok">Надіслано ✓</span>${r.threadId ? ` · <a href="/support?thread=${esc(r.threadId)}" target="_blank" rel="noopener">відкрити чат</a>` : ""}`;
-    } catch (e) {
-      btn.disabled = false;
-      el.querySelector("[data-res]").innerHTML = `<span class="warn">${esc(e.message || e)}</span>`;
-    }
   };
 }
 

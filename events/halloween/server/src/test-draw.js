@@ -6,7 +6,7 @@ import { createHash, randomBytes, randomInt } from "node:crypto";
 import { config } from "./config.js";
 import { randomCustomers } from "./shop.js";
 import { pumpkinWeight, orderTickets } from "./pools.js";
-import { pick, publicId, displayName, maskHandle } from "./draw.js";
+import { pick, publicId, displayName, maskHandle, chooseRound } from "./draw.js";
 
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
 const sessions = new Map();
@@ -45,7 +45,7 @@ export async function lock(pool) {
   return s.lock;
 }
 
-export async function drawRound(pool, reroll) {
+export async function drawRound(pool, reroll, expectRound) {
   const s = await current(pool);
   const l = await lock(pool);
   const valid = s.draws.filter((d) => !d.voided);
@@ -56,8 +56,7 @@ export async function drawRound(pool, reroll) {
     last.voided = true;
     round = last.round;
   } else {
-    round = valid.length + 1;
-    if (round > config.rounds[pool]) throw new Error("Усі раунди вже зіграні");
+    round = chooseRound(valid.map((d) => d.round), config.rounds[pool], expectRound);
   }
   const attempt = s.draws.filter((d) => d.round === round).length + 1;
   const out = new Set(s.draws.map((d) => d.tgId));

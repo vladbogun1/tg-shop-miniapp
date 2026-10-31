@@ -148,8 +148,8 @@ async function adminApi(req, res, path, query) {
     }
     if (path === "test/lock" && req.method === "POST") return send(res, 200, { seedHash: (await rehearsal.lock(pool)).commitment });
     if ((path === "test/draw" || path === "test/reroll") && req.method === "POST") {
-      const r = await rehearsal.drawRound(pool, path === "test/reroll");
-      show.rolled(pool, true, r);
+      const r = await rehearsal.drawRound(pool, path === "test/reroll", b.round);
+      show.rolled(pool, true, r, b.visual);
       return send(res, 200, r);
     }
     if (path === "participants" && req.method === "GET") return send(res, 200, await draw.screen(pool));
@@ -160,7 +160,7 @@ async function adminApi(req, res, path, query) {
     if ((path === "draw" || path === "reroll") && req.method === "POST") {
       const r = await draw.drawRound(pool, who.tgId, path === "reroll", b.round);
       const out = { round: r.round, attempt: r.attempt, winner: draw.publicId(r.winnerTgId), totalTickets: r.totalTickets };
-      show.rolled(pool, false, out);
+      show.rolled(pool, false, out, b.visual);
       return send(res, 200, out);
     }
     if (path === "winners" && req.method === "GET") {

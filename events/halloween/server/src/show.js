@@ -62,8 +62,10 @@ export function changed() {
   push();
 }
 
-export function rolled(pool, test, r) {
+/** visual: the remote picks it per round (the super prize plays the knights); empty = keep the current one. */
+export function rolled(pool, test, r, visual) {
   state.pool = pool;
+  if (typeof visual === "string" && visual && SETTINGS.visual.test(visual)) state.visual = visual;
   state.test = Boolean(test);
   state.roll = { id: ++rollSeq, pool, test: state.test, round: r.round, attempt: r.attempt ?? 1, winnerId: r.winner, totalTickets: r.totalTickets, at: Date.now(), revealedAt: 0 };
   state.blackout = false;
