@@ -3,7 +3,7 @@
  * pagination over the `all=1` product list with the ONE shared engine (@shop/core/catalog). Pure, no I/O.
  */
 import { attributesFor, buildFacets, type CatalogFilter, type CatalogSchema, categoryBySlug, type Facet, filterProducts, type FilterableProduct, MARKDOWN_COLLECTION_SLUG, priceBounds } from "@shop/core/catalog";
-import { type CatalogSort, type PublicCategory, type StorefrontProduct } from "@shop/core/site";
+import { type CatalogSort, type StorefrontProduct } from "@shop/core/site";
 import { type Locale } from "@shop/core/i18n";
 import { makeT } from "@/i18n";
 import { PAGE_SIZE } from "@/lib/config";

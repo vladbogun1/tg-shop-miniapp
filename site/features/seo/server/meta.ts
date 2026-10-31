@@ -9,11 +9,9 @@ import "server-only";
  * {@link CATEGORY_SEO} as the wording.
  */
 import type { Metadata } from "next";
-import { guessProductBrand } from "@shop/core/product-brand";
 import { type Locale, LOCALE_TAG, LOCALES } from "@shop/core/i18n";
-import { type StorefrontProduct } from "@shop/core/site";
-import { alternates, localePath, makeT } from "@/i18n";
-import { BOT_URL, OWNER_TELEGRAM, SELLER, SITE_URL } from "@/lib/config";
+import { alternates, localePath } from "@/i18n";
+import { SITE_URL } from "@/lib/config";
 import { formatNumber } from "@shop/core/money";
 
 export const SITE_NAME = "ChiSetup";

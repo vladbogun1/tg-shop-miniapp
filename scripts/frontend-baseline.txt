@@ -19,13 +19,12 @@ exhaustive-deps frontend 1
 exhaustive-deps site 2
 exhaustive-deps ui 1
 max-lines frontend 3
-max-lines site 2
 max-lines ui 1
 max-lines-per-function frontend 2
 max-lines-per-function site 2
 max-lines-per-function ui 1
 complexity frontend 14
-complexity site 25
+complexity site 23
 complexity core 7
 complexity ui 2
 max-depth core 1

@@ -3,10 +3,10 @@ import type { CatalogSchema } from "@shop/core/catalog";
 import type { CatalogSort, PublicCategory, PublicCategoryDetail, PublicProductPage, StorefrontProduct } from "@shop/core/site";
 import type { Locale } from "@shop/core/i18n";
 import { catalogSearchParams, type CatalogQuery } from "@/lib/api";
+import { SORTS } from "../model/params";
 import { PAGE_SIZE } from "@/lib/config";
 import { getJson, NotFoundError } from "@/lib/server-http";
 
-export const SORTS: CatalogSort[] = ["default", "price_asc", "price_desc", "new", "name"];
 
 export function parseSort(value: string | undefined): CatalogSort {
   return (SORTS as string[]).includes(value ?? "") ? (value as CatalogSort) : "default";
