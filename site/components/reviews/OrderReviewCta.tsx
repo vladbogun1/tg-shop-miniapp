@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Gift, Star } from "lucide-react";
 import Link from "next/link";
 import type { OrderStatus } from "@shop/core/types";
+import { reviewKeys } from "@shop/customer/review/keys";
 import { useI18n } from "@/i18n/context";
 import { api } from "@/lib/api";
 import { Image } from "@/lib/image";
@@ -13,8 +14,8 @@ export function OrderReviewCta({ orderId, status }: { orderId: string; status: O
   const { t, href, locale } = useI18n();
   const delivered = status === "DELIVERED";
   const { data } = useQuery({
-    queryKey: ["me", "reviews", "pending", locale, orderId],
-    queryFn: () => api.pendingReviews(orderId),
+    queryKey: reviewKeys.pending(orderId, locale),
+    queryFn: () => api.reviews.pending(orderId),
     enabled: delivered,
   });
   if (!delivered || !data || data.length === 0) return null;

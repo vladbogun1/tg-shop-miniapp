@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { isCaseBonus, reviewBonusText } from "@shop/core/bonuses";
 import { type BonusCode, type MyReview, type PendingReviewLine, type ReviewStatus, type SubmitReviewResult } from "@shop/core/types";
+import { reviewKeys } from "@shop/customer/review/keys";
 import { Button } from "@shop/ui/primitives";
 import { CopyButton } from "@/components/ui/CopyButton";
 import type { MessageKey } from "@/i18n";
@@ -25,12 +26,12 @@ import { Stars } from "./Stars";
 export function AccountReviews() {
   const { t, locale } = useI18n();
   const qc = useQueryClient();
-  const pending = useQuery({ queryKey: ["me", "reviews", "pending", locale], queryFn: () => api.pendingReviews() });
-  const mine = useQuery({ queryKey: ["me", "reviews", "mine", locale], queryFn: () => api.myReviews() });
+  const pending = useQuery({ queryKey: reviewKeys.pending(undefined, locale), queryFn: () => api.reviews.pending() });
+  const mine = useQuery({ queryKey: reviewKeys.mine(locale), queryFn: () => api.reviews.mine() });
   // Case prize codes live in their order and the cart offer, not among the review bonuses.
   const bonuses = useQuery({
-    queryKey: ["me", "bonuses"],
-    queryFn: () => api.myBonuses(),
+    queryKey: reviewKeys.bonuses,
+    queryFn: () => api.reviews.bonuses(),
     select: (list: BonusCode[]) => list.filter((b) => !isCaseBonus(b)),
   });
   const [last, setLast] = useState<SubmitReviewResult | null>(null);
@@ -43,8 +44,8 @@ export function AccountReviews() {
 
   function done(res: SubmitReviewResult) {
     setLast(res);
-    void qc.invalidateQueries({ queryKey: ["me", "reviews"] });
-    void qc.invalidateQueries({ queryKey: ["me", "bonuses"] });
+    void qc.invalidateQueries({ queryKey: reviewKeys.allMine });
+    void qc.invalidateQueries({ queryKey: reviewKeys.bonuses });
     window.setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
 

@@ -37,7 +37,7 @@ export default function AccountReviewsPage() {
     enabled: !!token,
   });
   const mine = useQuery({
-    queryKey: reviewKeys.mine,
+    queryKey: reviewKeys.mine(),
     queryFn: () => reviewsApi.mine(),
     enabled: !!token,
   });

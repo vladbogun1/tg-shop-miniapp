@@ -13,6 +13,7 @@ import { Gift } from "lucide-react";
 import { BONUS_EXPIRING_DAYS, isCaseBonus, pickBonusOffer, reviewBonusText } from "@shop/core/bonuses";
 import { caseDiscountText } from "@shop/core/giftcase";
 import { type BonusCode } from "@shop/core/types";
+import { reviewKeys } from "@shop/customer/review/keys";
 import { useT } from "@/i18n/context";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -23,8 +24,8 @@ export function useMyBonuses(): BonusCode[] {
   const session = useSession();
   const q = useQuery({
     // Same key as the account's "My bonuses", so a code used there is not offered here.
-    queryKey: ["me", "bonuses"],
-    queryFn: () => api.myBonuses(),
+    queryKey: reviewKeys.bonuses,
+    queryFn: () => api.reviews.bonuses(),
     enabled: session.status === "authed",
     staleTime: 60_000,
   });

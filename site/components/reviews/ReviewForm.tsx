@@ -4,16 +4,19 @@
  * Review form for one order line: stars + text with a counter. Creates the review, or re-submits it
  * while it is still PENDING (same orderItemId). Server refusals (400) arrive already localized.
  */
-import { useId, useState } from "react";
+import { useId } from "react";
 import type { SubmitReviewResult } from "@shop/core/types";
+import { REVIEW_MIN_LENGTH, useReviewForm, type ReviewFormPolicy } from "@shop/customer/review/use-review-form";
 import { Button } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
 import { StarInput } from "./StarInput";
 
-/** Defaults of the backend (`reviews.minLength`, ReviewRules.MAX_TEXT); the server has the final word. */
-export const REVIEW_MIN = 10;
-export const REVIEW_MAX = 4000;
+/** The website text limit (ReviewRules.MAX_TEXT; the Mini App clamps to 2000); the server has the final word. */
+const REVIEW_MAX = 4000;
+
+/** The website: «Send» is active from the start and asks for the stars on click; length in characters. */
+const REVIEW_FORM_POLICY: ReviewFormPolicy = { maxLength: REVIEW_MAX, countCharacters: true, gateSubmit: false, clampInput: false };
 
 export function ReviewForm({
   orderItemId,
@@ -32,32 +35,23 @@ export function ReviewForm({
 }) {
   const { t } = useI18n();
   const id = useId();
-  const [rating, setRating] = useState(initialRating);
-  const [text, setText] = useState(initialText);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const len = [...text.trim()].length;
+  const { rating, setRating, text, setText, busy, err, len, submit } = useReviewForm({
+    api: api.reviews,
+    orderItemId,
+    initialRating,
+    initialText,
+    policy: REVIEW_FORM_POLICY,
+    messages: { ratingRequired: t("reviews.form.ratingRequired"), failed: t("reviews.form.failed") },
+    onDone,
+  });
 
-  async function submit(e: React.FormEvent) {
+  function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!rating) {
-      setErr(t("reviews.form.ratingRequired"));
-      return;
-    }
-    setBusy(true);
-    setErr(null);
-    try {
-      const res = await api.submitReview({ orderItemId, rating, text: text.trim() });
-      onDone(res);
-    } catch (e2) {
-      setErr(e2 instanceof ApiError ? e2.message : t("reviews.form.failed"));
-    } finally {
-      setBusy(false);
-    }
+    void submit();
   }
 
   return (
-    <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3">
+    <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <div>
         <p id={`${id}-rating`} className="eyebrow mb-1 text-[11px]">
           {t("reviews.form.rating")}
@@ -79,8 +73,8 @@ export function ReviewForm({
           className="w-full resize-y rounded-[var(--r)] border border-[var(--line-strong)] bg-[var(--surface-2)] px-3 py-2.5 text-[14px] text-[var(--ink)] outline-none transition-colors focus:border-[var(--accent)]"
         />
         <p id={`${id}-hint`} className="mt-1 flex justify-between gap-3 text-[12px] font-medium">
-          <span className={len > 0 && len < REVIEW_MIN ? "text-[var(--warn)]" : "text-[var(--faint)]"}>
-            {t("reviews.form.minHint", { n: REVIEW_MIN })}
+          <span className={len > 0 && len < REVIEW_MIN_LENGTH ? "text-[var(--warn)]" : "text-[var(--faint)]"}>
+            {t("reviews.form.minHint", { n: REVIEW_MIN_LENGTH })}
           </span>
           <span className="tabular-nums text-[var(--faint)]">
             {len}/{REVIEW_MAX}

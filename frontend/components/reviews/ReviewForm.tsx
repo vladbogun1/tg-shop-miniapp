@@ -11,10 +11,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Copy, Gift, PartyPopper } from "lucide-react";
 import { useState } from "react";
+import { useReviewForm, type ReviewFormPolicy } from "@shop/customer/review/use-review-form";
 import { reviewBonusText } from "@shop/core/bonuses";
 import { Button } from "@shop/ui/primitives";
 import { useT } from "@/i18n/context";
-import { ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
@@ -30,6 +30,9 @@ import {
 } from "@/lib/reviews";
 import { haptic, hapticSuccess } from "@/lib/telegram";
 import { StarInput } from "./Stars";
+
+/** The Mini App: «Send» stays disabled until stars + enough text are in; the text is clamped while typing. */
+const REVIEW_FORM_POLICY: ReviewFormPolicy = { maxLength: REVIEW_MAX_LENGTH, countCharacters: false, gateSubmit: true, clampInput: true };
 
 export function ReviewForm({
   orderItemId,
@@ -50,35 +53,24 @@ export function ReviewForm({
 }) {
   const t = useT();
   const queryClient = useQueryClient();
-  const [rating, setRating] = useState(initialRating);
-  const [text, setText] = useState(initialText);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  const len = text.trim().length;
-  const tooShort = len < REVIEW_MIN_LENGTH;
-  const canSubmit = rating >= 1 && !tooShort && !busy;
-
-  async function submit() {
-    if (!canSubmit) return;
-    haptic();
-    setBusy(true);
-    setErr(null);
-    try {
-      const res = await reviewsApi.submit({ orderItemId, rating, text: text.trim() });
+  const { rating, setRating, text, setText, busy, err, len, tooShort, canSubmit, submit } = useReviewForm({
+    api: reviewsApi,
+    orderItemId,
+    initialRating,
+    initialText,
+    policy: REVIEW_FORM_POLICY,
+    messages: { ratingRequired: "", failed: t("reviews.form.failed") },
+    onStart: haptic,
+    onDone: (res) => {
       hapticSuccess();
       void queryClient.invalidateQueries({ queryKey: reviewKeys.pendingAll });
-      void queryClient.invalidateQueries({ queryKey: reviewKeys.mine });
+      void queryClient.invalidateQueries({ queryKey: reviewKeys.mine() });
       void queryClient.invalidateQueries({ queryKey: reviewKeys.bonuses });
       const pid = productId ?? res.review.productId;
       if (pid) void queryClient.invalidateQueries({ queryKey: reviewKeys.product(pid) });
       onDone(res);
-    } catch (e) {
-      setErr(e instanceof ApiError ? e.message : t("reviews.form.failed"));
-    } finally {
-      setBusy(false);
-    }
-  }
+    },
+  });
 
   const fieldId = `review-text-${orderItemId}`;
   return (
@@ -90,7 +82,7 @@ export function ReviewForm({
       <textarea
         id={fieldId}
         value={text}
-        onChange={(e) => setText(e.target.value.slice(0, REVIEW_MAX_LENGTH))}
+        onChange={(e) => setText(e.target.value)}
         placeholder={t("reviews.form.placeholder")}
         rows={3}
         maxLength={REVIEW_MAX_LENGTH}

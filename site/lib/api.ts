@@ -9,11 +9,12 @@
  */
 import { ApiError } from "@shop/core/errors";
 import { createHttpClient, newIdempotencyKey } from "@shop/core/http";
-import { type AuthUser, type BonusCode, type CreateOrderResult, type Message, type MyReview, type NpCity, type NpWarehouse, type OrderDetail, type OrderLimits, type OrderSummary, type PaymentOption, type PaymentStart, type PendingReviewLine, type Product, type PromoPreview, type ReviewPage, type SendMessageRequest, type SubmitReviewRequest, type SubmitReviewResult } from "@shop/core/types";
+import { type AuthUser, type CreateOrderResult, type Message, type NpCity, type NpWarehouse, type OrderDetail, type OrderLimits, type OrderSummary, type PaymentOption, type PaymentStart, type Product, type PromoPreview, type SendMessageRequest } from "@shop/core/types";
 import { type CatalogSchema } from "@shop/core/catalog";
 import { type CartLineInput, type ServerCart } from "@shop/core/cart";
 import { createCartApi } from "@shop/customer/cart/api";
 import { createCheckoutApi } from "@shop/customer/checkout/api";
+import { createReviewApi } from "@shop/customer/review/api";
 import { type CaseSize, type GiftCaseOpen, type GiftResponse } from "@shop/core/giftcase";
 import { getActiveLocale, getActiveTag } from "@shop/core/i18n";
 import { type PublicCategory, type PublicProductPage, type StorefrontProduct, type WebLoginStart, type WebLoginStatus, type WebSession } from "@shop/core/site";
@@ -200,22 +201,8 @@ export const api = {
   uploadAttachment: (file: File) =>
     authed(() => http.upload<{ url: string }>("/api/me/uploads", file)),
 
-  // reviews (V44)
-  /** Public: published reviews of a product, newest first (page is 0-based). */
-  productReviews: (idOrSlug: string, page = 0, size = 10) =>
-    http.get<ReviewPage>(`/api/public/products/${encodeURIComponent(idOrSlug)}/reviews?page=${page}&size=${size}`),
-  /** Lines of my DELIVERED orders still waiting for a review (optionally one order). */
-  pendingReviews: (orderId?: string) =>
-    authed(() =>
-      http.get<PendingReviewLine[]>(
-        `/api/me/reviews/pending${orderId ? `?orderId=${encodeURIComponent(orderId)}` : ""}`
-      )
-    ),
-  myReviews: () => authed(() => http.get<MyReview[]>("/api/me/reviews")),
-  /** Create, or edit while still PENDING (same orderItemId). 400 = localized message. */
-  submitReview: (body: SubmitReviewRequest) =>
-    authed(() => http.post<SubmitReviewResult>("/api/me/reviews", body)),
-  myBonuses: () => authed(() => http.get<BonusCode[]>("/api/me/bonuses")),
+  /** Отзывы и бонус-коды (V44): лента, ожидающие строки, мои отзывы, отправка (@shop/customer/review). */
+  reviews: createReviewApi(http, authed),
 };
 
 export type { CreateOrderItem, CreateOrderRequest, NpBboxParams } from "@shop/customer/checkout/api";

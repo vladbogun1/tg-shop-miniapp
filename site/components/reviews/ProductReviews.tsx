@@ -8,12 +8,11 @@
 import { Loader2, MessageSquareText, Store } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { PublicReview, ReviewPage, ReviewSummary } from "@shop/core/types";
+import { REVIEWS_PAGE_SIZE } from "@shop/customer/review/api";
 import { useI18n } from "@/i18n/context";
 import { api, ApiError } from "@/lib/api";
 import { useFmt } from "@/lib/use-fmt";
 import { formatRating, Stars } from "./Stars";
-
-export const REVIEWS_PAGE_SIZE = 10;
 
 export function ProductReviews({ slug, initial }: { slug: string; initial: ReviewPage | null }) {
   const { t } = useI18n();
@@ -28,7 +27,7 @@ export function ProductReviews({ slug, initial }: { slug: string; initial: Revie
     setBusy(true);
     setErr(null);
     try {
-      const res = await api.productReviews(slug, next, REVIEWS_PAGE_SIZE);
+      const res = await api.reviews.productReviews(slug, next, REVIEWS_PAGE_SIZE);
       setSummary(res.summary);
       setItems((prev) => {
         const seen = new Set(prev.map((r) => r.id));
