@@ -82,7 +82,7 @@ export function usePlaceOrder(input: PlaceOrderInput) {
       invalidateMe();
       // The "order created" step: the order page shows the amount, the 24 h countdown,
       // «Оплатити» (the in-app monobank sheet) and «Скасувати» (`?created=1`,
-      // components/account/OrderPayment). Nothing opens by itself any more.
+      // features/order/ui/payment/OrderPayment). Nothing opens by itself any more.
       router.replace(
         created.amountDueMinor > 0 ? `/account/orders/${orderId}?created=1` : `/account/orders/${orderId}`
       );

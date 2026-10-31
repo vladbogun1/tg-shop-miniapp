@@ -5,7 +5,7 @@
  * from the Mini App.
  *
  * It opens in a REGULAR browser (Chrome / Safari — the Mini App sends the payment there, see
- * components/account/OrderPayment), not inside the Mini App: no initData, no sign-in. Its job is to
+ * features/order/ui/payment/OrderPayment), not inside the Mini App: no initData, no sign-in. Its job is to
  * put the customer back into Telegram, onto this order: the bot has a main Mini App, so
  * `tg://resolve?domain=<bot>&startapp=view_<id>` launches it straight on the order page (Providers
  * routes view_<id>), which re-reads the payment on arrival. That is tried at once; browsers that

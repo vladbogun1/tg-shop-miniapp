@@ -2,9 +2,9 @@
 # Обновление: node scripts/check-front-ratchet.mjs --update (docs/ARCHITECTURE-FRONT.md, 2.7.2).
 no-fetch frontend 1
 no-fetch site 1
-query-key-literal frontend 23
+query-key-literal frontend 10
 query-key-literal site 13
-stale-time-literal frontend 12
+stale-time-literal frontend 10
 stale-time-literal site 14
 refetch-interval-literal frontend 3
 refetch-interval-literal site 1
@@ -18,13 +18,13 @@ cyrillic-literal site 120
 exhaustive-deps frontend 1
 exhaustive-deps site 2
 exhaustive-deps ui 1
-max-lines frontend 7
+max-lines frontend 3
 max-lines site 6
 max-lines ui 1
-max-lines-per-function frontend 7
+max-lines-per-function frontend 2
 max-lines-per-function site 4
 max-lines-per-function ui 1
-complexity frontend 24
+complexity frontend 14
 complexity site 31
 complexity core 7
 complexity ui 2

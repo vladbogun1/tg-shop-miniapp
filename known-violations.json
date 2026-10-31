@@ -37,7 +37,7 @@
   },
   {
     "type": "dependency",
-    "from": "frontend/app/account/orders/[id]/chat/page.tsx",
+    "from": "frontend/features/order/ui/OrderChatScreen.tsx",
     "to": "frontend/lib/ws.ts",
     "rule": {
       "severity": "error",
