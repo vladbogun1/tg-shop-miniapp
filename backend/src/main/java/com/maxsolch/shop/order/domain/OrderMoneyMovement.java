@@ -7,7 +7,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.time.Instant;
 
@@ -17,7 +16,6 @@ import java.time.Instant;
  * writes one of these, so the totals can always be explained line by line.
  */
 @Getter
-@Setter
 @Entity
 @Table(name = "order_money_movements")
 public class OrderMoneyMovement {
@@ -43,6 +41,27 @@ public class OrderMoneyMovement {
 
     public enum Source {
         AUTO, ADMIN, BACKFILL
+    }
+
+    /** For JPA. */
+    protected OrderMoneyMovement() {
+    }
+
+    /** A new journal line, as of {@code now}; text columns are cut to their width by the caller. */
+    public static OrderMoneyMovement of(byte[] orderId, Kind kind, Channel channel, long amountMinor, Source source,
+                                        Instant now, String adminName, String note, String invoiceExtId) {
+        OrderMoneyMovement m = new OrderMoneyMovement();
+        m.orderId = orderId;
+        m.kind = kind.name();
+        m.channel = channel.name();
+        m.amountMinor = amountMinor;
+        m.occurredAt = now;
+        m.createdAt = now;
+        m.source = source.name();
+        m.adminName = adminName;
+        m.note = note;
+        m.invoiceExtId = invoiceExtId;
+        return m;
     }
 
     @Id

@@ -10,7 +10,6 @@ import com.maxsolch.shop.order.infra.OrderMoneyMovementRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
-import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 
@@ -31,18 +30,8 @@ public class MoneyLedger {
 
     public OrderMoneyMovement record(byte[] orderId, Kind kind, Channel channel, long amountMinor,
                                      Source source, String adminName, String note, String invoiceExtId) {
-        OrderMoneyMovement m = new OrderMoneyMovement();
-        m.setOrderId(orderId);
-        m.setKind(kind.name());
-        m.setChannel(channel.name());
-        m.setAmountMinor(amountMinor);
-        Instant now = clock.instant();
-        m.setOccurredAt(now);
-        m.setCreatedAt(now);
-        m.setSource(source.name());
-        m.setAdminName(cut(adminName, 255));
-        m.setNote(cut(note, 500));
-        m.setInvoiceExtId(cut(invoiceExtId, 64));
+        OrderMoneyMovement m = OrderMoneyMovement.of(orderId, kind, channel, amountMinor, source, clock.instant(),
+                cut(adminName, 255), cut(note, 500), cut(invoiceExtId, 64));
         return repository.save(m);
     }
 
