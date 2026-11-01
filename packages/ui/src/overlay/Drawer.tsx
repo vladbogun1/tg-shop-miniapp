@@ -1,12 +1,13 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { X } from "lucide-react";
-import { useEffect, type MutableRefObject, type ReactNode } from "react";
+import { useEffect, useId, type MutableRefObject, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../cn";
 import { backdropVariants, drawerVariants } from "./variants";
 import { useOverlayLayer } from "./overlay-stack";
+import { useDialogFocus } from "./use-dialog-focus";
 import { useBackToClose } from "./use-back-close";
 
 /**
@@ -42,6 +43,8 @@ export function Drawer({
 }) {
   const close = useBackToClose(open && !!backClose, onClose, { marker: backClose, navigatesAway: closeNavigates });
   useOverlayLayer(open, close);
+  const focusRef = useDialogFocus();
+  const titleId = useId();
   useEffect(() => {
     if (closeRef) closeRef.current = close;
   });
@@ -52,7 +55,7 @@ export function Drawer({
     <AnimatePresence>
       {open && (
         <div className={cn("fixed inset-0", zClass)}>
-          <motion.div
+          <m.div
             variants={backdropVariants}
             initial="initial"
             animate="animate"
@@ -60,9 +63,12 @@ export function Drawer({
             onClick={close}
             className="absolute inset-0 bg-black/60 backdrop-blur-[6px]"
           />
-          <motion.aside
+          <m.aside
+            ref={focusRef}
             role="dialog"
             aria-modal="true"
+            aria-labelledby={title && !header ? titleId : undefined}
+            aria-label={!title || header ? "Панель" : undefined}
             variants={drawerVariants}
             initial="initial"
             animate="animate"
@@ -80,7 +86,7 @@ export function Drawer({
             >
               <div className="min-w-0 flex-1">
                 {header ?? (
-                  <div className="font-display text-[16px] font-bold uppercase tracking-[0.04em] text-[var(--ink)]">{title}</div>
+                  <div id={titleId} className="font-display text-[16px] font-bold uppercase tracking-[0.04em] text-[var(--ink)]">{title}</div>
                 )}
               </div>
               <button
@@ -93,7 +99,7 @@ export function Drawer({
             </div>
             {/* The content's own bottom bar (order actions, chat composer) pads for the home indicator. */}
             <div className="thin-scroll min-h-0 flex-1 overflow-auto overscroll-contain">{children}</div>
-          </motion.aside>
+          </m.aside>
         </div>
       )}
     </AnimatePresence>,

@@ -34,7 +34,25 @@ class OrderPlacementTest {
     private final OrderIdempotencyService idempotency = mock(OrderIdempotencyService.class);
     private final OrderGuard guard = mock(OrderGuard.class);
     private final ActivityLog activity = mock(ActivityLog.class);
-    private final OrderPlacement placement = new OrderPlacement(checkout, lookup, users, idempotency, guard, activity);
+    private final OrderPlacement placement = new OrderPlacement(checkout, lookup, users, idempotency, guard, activity,
+            new org.springframework.transaction.support.AbstractPlatformTransactionManager() {
+                @Override
+                protected Object doGetTransaction() {
+                    return new Object();
+                }
+
+                @Override
+                protected void doBegin(Object t, org.springframework.transaction.TransactionDefinition d) {
+                }
+
+                @Override
+                protected void doCommit(org.springframework.transaction.support.DefaultTransactionStatus st) {
+                }
+
+                @Override
+                protected void doRollback(org.springframework.transaction.support.DefaultTransactionStatus st) {
+                }
+            });
 
     {
         org.mockito.Mockito.when(activity.fromRequest(org.mockito.ArgumentMatchers.anyString()))
@@ -69,7 +87,8 @@ class OrderPlacementTest {
         assertThat(cmd.getValue().tgUsername()).isEqualTo("vasya");
         assertThat(cmd.getValue().source()).isEqualTo(OrderSource.WEB);
         assertThat(placed.orderId()).isEqualTo(UuidUtil.toString(order.getId()));
-        verify(idempotency).remember(7L, "k", placed.orderId());
+        verify(idempotency).claim(7L, "k");
+        verify(idempotency).attach(7L, "k", order.getId());
         verify(activity).record(any(ActivityLog.Entry.class));
     }
 
@@ -94,6 +113,20 @@ class OrderPlacementTest {
 
         verify(checkout, never()).createOrder(any());
         verify(activity).record(any(ActivityLog.Entry.class));
-        verify(idempotency, never()).remember(any(Long.class), any(), any());
+        verify(idempotency, never()).attach(any(Long.class), any(), any());
+    }
+
+    @Test
+    void lostRaceForTheKey_returnsTheWinnersOrder_andIsNotJournaledAsFailure() {
+        Order winner = created();
+        String winnerId = UuidUtil.toString(winner.getId());
+        doThrow(new OrderIdempotencyService.AlreadyClaimed()).when(idempotency).claim(7L, "k");
+        when(idempotency.previousOrderId(7L, "k")).thenReturn(null, winnerId);
+        when(lookup.get(winner.getId())).thenReturn(winner);
+
+        assertThat(placement.place(7L, false, "k", draft()).orderId()).isEqualTo(winnerId);
+
+        verify(checkout, never()).createOrder(any());
+        verify(activity, never()).record(any(ActivityLog.Entry.class));
     }
 }

@@ -78,7 +78,25 @@ class PreorderQueueServiceTest {
         PreorderCards cards = new PreorderCards(subs, batches, productsApp, translations, clock,
                 new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"));
         service = new PreorderQueueService(subs, batches, productsApp, settings, events, messages, cards, clock);
-        expiry = new PreorderHoldExpiry(subs, productsApp, events, service, clock);
+        expiry = new PreorderHoldExpiry(subs, productsApp, events, service, clock,
+                new org.springframework.transaction.support.AbstractPlatformTransactionManager() {
+                    @Override
+                    protected Object doGetTransaction() {
+                        return new Object();
+                    }
+
+                    @Override
+                    protected void doBegin(Object t, org.springframework.transaction.TransactionDefinition d) {
+                    }
+
+                    @Override
+                    protected void doCommit(org.springframework.transaction.support.DefaultTransactionStatus st) {
+                    }
+
+                    @Override
+                    protected void doRollback(org.springframework.transaction.support.DefaultTransactionStatus st) {
+                    }
+                });
         product = new Product();
         ReflectionTestUtils.setField(product, "id", UuidUtil.toBytes(UUID.randomUUID()));
         product.retitle("Lamzu Maya");
@@ -299,6 +317,22 @@ class PreorderQueueServiceTest {
         assertThat(next.getStatus()).isEqualTo("HELD");
         verify(events).publish(new PreorderEvents.HoldExpired(1L));
         verify(events).publish(new PreorderEvents.HoldGranted(2L));
+    }
+
+    @Test
+    void oneBadHoldDoesNotStopTheOthers() {
+        product.changeStock(1);
+        PreorderSubscription late = seat(2, 12, Status.HELD, 1, 1, 3000);
+        late.setHoldUntil(NOW.minus(Duration.ofMinutes(1)));
+        when(subs.findExpiredHoldIds(eq(NOW), any())).thenReturn(List.<Object[]>of(
+                new Object[]{1L, product.getId()}, new Object[]{2L, product.getId()}));
+        when(subs.findForUpdate(1L)).thenThrow(new IllegalStateException("broken row"));
+        when(subs.findForUpdate(2L)).thenReturn(Optional.of(late));
+        when(subs.lockQueue(any(), isNull())).thenReturn(new ArrayList<>());
+
+        assertThat(expiry.expireHolds()).isEqualTo(1);
+
+        assertThat(late.getStatus()).isEqualTo("EXPIRED");
     }
 
     @Test

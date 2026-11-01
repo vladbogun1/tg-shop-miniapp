@@ -142,6 +142,13 @@ class ReceiptDeliveryJobTest {
     }
 
     @Test
+    void claimsStuckInSendingFor15MinutesAreGivenBackToTheQueue() {
+        job.deliver(NOW);
+
+        verify(store).releaseStale(NOW.minus(ReceiptDeliveryJob.STUCK_AFTER));
+    }
+
+    @Test
     void transientSendFailure_releasesClaim_forTheNextRun() {
         when(mono.fiscalChecks("inv-1")).thenReturn(List.of(check("c-sale", "sale", "done")));
         when(notifications.send(any(), any(), any(), any())).thenReturn(ReceiptNotifier.Delivery.FAILED);

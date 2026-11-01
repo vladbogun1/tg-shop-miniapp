@@ -28,6 +28,13 @@ export function useThread<M extends ChatItem>(opts: {
   const [messages, setMessages] = useState<M[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingEarlier, setLoadingEarlier] = useState(false);
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
   const seen = useRef<Set<number>>(new Set());
 
   useEffect(() => {
@@ -62,7 +69,7 @@ export function useThread<M extends ChatItem>(opts: {
     setLoadingEarlier(true);
     try {
       const older = await fetchOlderOrNull(fetchOlder, oldest.id);
-      if (!older) return;
+      if (!older || !alive.current) return;
       if (older.length === 0) {
         setHasMore(false);
         return;
@@ -77,7 +84,7 @@ export function useThread<M extends ChatItem>(opts: {
       });
       setHasMore(hasMoreHistory(older.length));
     } finally {
-      setLoadingEarlier(false);
+      if (alive.current) setLoadingEarlier(false);
     }
   }
 

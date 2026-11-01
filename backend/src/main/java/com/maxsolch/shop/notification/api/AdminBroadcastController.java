@@ -1,6 +1,7 @@
 package com.maxsolch.shop.notification.api;
 
 import com.maxsolch.shop.platform.security.RequiredAdmin;
+import com.maxsolch.shop.notification.app.BroadcastPhotoStore;
 import com.maxsolch.shop.notification.app.BroadcastService;
 import com.maxsolch.shop.notification.app.BroadcastHistoryDto;
 import com.maxsolch.shop.notification.app.BroadcastRequest;
@@ -11,12 +12,16 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 import java.util.List;
 import java.util.Map;
@@ -29,9 +34,17 @@ import java.util.Map;
 public class AdminBroadcastController {
 
     private final BroadcastService broadcastService;
+    private final BroadcastPhotoStore photos;
 
-    public AdminBroadcastController(BroadcastService broadcastService) {
+    public AdminBroadcastController(BroadcastService broadcastService, BroadcastPhotoStore photos) {
         this.broadcastService = broadcastService;
+        this.photos = photos;
+    }
+
+    @PostMapping(value = "/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload the broadcast picture (jpg/png/webp, up to 5 MB); returns photoId for /test and start")
+    public Map<String, String> uploadPhoto(@RequestParam("file") MultipartFile file) throws IOException {
+        return Map.of("photoId", photos.put(file.getBytes()));
     }
 
     @GetMapping("/audiences")

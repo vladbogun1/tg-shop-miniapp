@@ -9,7 +9,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { STALE_TIME } from "@shop/core/query";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { Gift } from "lucide-react";
 import { BONUS_EXPIRING_DAYS, isCaseBonus, pickBonusOffer, reviewBonusText } from "@shop/core/bonuses";
 import { caseDiscountText } from "@shop/core/giftcase";
@@ -64,7 +64,7 @@ export function BonusOffer({
   return (
     <AnimatePresence initial={false}>
       {show && offer && (
-        <motion.div
+        <m.div
           key={offer.bonus.code}
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
@@ -87,7 +87,7 @@ export function BonusOffer({
                   {offer.bonus.code}
                 </p>
               </div>
-              <motion.button
+              <m.button
                 type="button"
                 whileTap={{ scale: 0.94 }}
                 onClick={() => {
@@ -96,7 +96,7 @@ export function BonusOffer({
                 className="tap shrink-0 rounded-[var(--r)] bg-[var(--accent)] px-3.5 py-2 text-[13px] font-bold text-[var(--accent-ink)]"
               >
                 {t("promo.bonus.apply")}
-              </motion.button>
+              </m.button>
             </div>
             {meta.length > 0 && (
               <p className="mt-2 pl-12 text-[11.5px] font-medium leading-snug text-[var(--muted)]">
@@ -112,7 +112,7 @@ export function BonusOffer({
               </p>
             )}
           </div>
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

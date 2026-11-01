@@ -1,3 +1,5 @@
+> **Пути до архитектуры v2:** `shared/src/*` → `packages/core/src/*` (или `packages/ui`, `packages/customer`), `frontend/lib`, `frontend/components` → `features/*`. Названия классов бэкенда (`OrderService` и др.) исторические — актуальные в [ARCHITECTURE.md](ARCHITECTURE.md).
+
 # Сравнение товаров
 
 Ветка `compare` (2026-10-09). Сайт и Mini App; без миграций, бэкенд — одна строка в белом списке аналитики.

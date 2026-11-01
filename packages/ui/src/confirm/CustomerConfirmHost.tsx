@@ -1,7 +1,7 @@
 "use client";
 
 /** Подтверждения покупательских приложений: небольшой центрированный диалог. Подписи по умолчанию задаёт приложение (i18n). */
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useOverlayLayer } from "../overlay/overlay-stack";
@@ -27,7 +27,7 @@ export function CustomerConfirmHost({ labels }: { labels: ConfirmLabels }) {
   return createPortal(
     <AnimatePresence>
       {options && (
-        <motion.div
+        <m.div
           variants={backdropVariants}
           initial="initial"
           animate="animate"
@@ -35,7 +35,7 @@ export function CustomerConfirmHost({ labels }: { labels: ConfirmLabels }) {
           onClick={() => answerConfirm(false)}
           className="fixed inset-0 z-[200] flex items-center justify-center bg-black/65 p-4"
         >
-          <motion.div
+          <m.div
             role="alertdialog"
             aria-modal="true"
             variants={modalVariants}
@@ -55,8 +55,8 @@ export function CustomerConfirmHost({ labels }: { labels: ConfirmLabels }) {
                 {options.confirmLabel ?? labels.confirm}
               </Button>
             </div>
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       )}
     </AnimatePresence>,
     document.body,

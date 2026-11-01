@@ -38,9 +38,9 @@ npm run dev -w frontend-admin   # админка  → http://localhost:3005
 **База.** Снять дамп на сервере и залить локально:
 
 ```bash
-SRV="ubuntu@132.145.132.80"
-KEY="C:/Users/nikto/oracleserver.key"
-ssh -i $KEY $SRV 'cd /home/ubuntu/TELEGRAM_BOTS/maxsolch-v2 && \
+# SRV (user@host), KEY (путь к ключу), PROJ_DIR (каталог проекта на сервере №1) — во внутренней базе знаний владельца
+: "${SRV:?}" "${KEY:?}" "${PROJ_DIR:?}"
+ssh -i "$KEY" "$SRV" 'cd '"$PROJ_DIR"' && \
   docker compose exec -T mysql sh -c "mysqldump -uroot -p\$MYSQL_ROOT_PASSWORD --single-transaction tgshop_v2" | gzip' \
   > .devdata/prod.sql.gz
 
@@ -54,7 +54,7 @@ gunzip -c .devdata/prod.sql.gz | docker compose exec -T mysql mysql -uroot -p"$D
 контейнером:
 
 ```bash
-ssh -i $KEY $SRV 'docker run --rm -v maxsolch-v2_minio_data:/d alpine tar -C /d -cf - product-images' \
+ssh -i "$KEY" "$SRV" 'docker run --rm -v maxsolch-v2_minio_data:/d alpine tar -C /d -cf - product-images' \
   > .devdata/product-images.tar
 docker run --rm -i -v tg-shop-v2_minio_data:/d alpine sh -c 'rm -rf /d/product-images && tar -C /d -xf -' \
   < .devdata/product-images.tar
@@ -162,7 +162,7 @@ npm run e2e
 2. собирает jar (`mvn -DskipTests package`), если его нет или исходники бэкенда новее;
 3. копирует `frontend-admin/` в `.e2e-admin/` и собирает там с
    `NEXT_PUBLIC_API_BASE_URL=http://localhost:18089` (сборка прямо в `frontend-admin/` затёрла бы
-   `.next` работающего `next dev`); пересобирает, только если поменялись `frontend-admin/` или `shared/`;
+   `.next` работающего `next dev`); пересобирает, только если поменялись `frontend-admin/` или `packages/`;
 4. запускает `playwright test`: Playwright сам стартует бэкенд и админку, global setup заливает
    фикстуру `e2e/fixtures/seed.sql` (поверх Flyway, перед каждым прогоном) и логинится один раз;
 5. гасит MySQL (`down -v`).
@@ -209,3 +209,12 @@ job'а, браузер кешируется; при падении выгруж�
   по-настоящему можно только на телефоне;
 - HTTPS-контур (Caddy, gateway) — локально фронты ходят на `localhost:8080`
   напрямую.
+
+## Подводные камни чистой машины и другие наборы e2e
+
+- `docker-compose.dev.yml` берёт образы minio/mc из `quay.io` с `pull_policy: missing`: они могут не скачаться
+  на чистой машине — подставьте образы, которые уже есть локально (`minio/minio`, `minio/mc`).
+- `cp .env.example .env && docker compose up -d --build` работает без явного профиля: `SPRING_PROFILES_ACTIVE` по умолчанию `dev`.
+- Для воспроизводимой установки зависимостей — `npm ci`, не `npm install`.
+- Кроме админки (`npm run e2e`) есть наборы `npm run e2e -- --suite=customer` (Mini App + сайт, фейковый monobank) и
+  `--suite=money` (админка против фейкового monobank: вебхук, возвраты, доплата, мастер возврата). Описание — в шапке `e2e/scripts/run.mjs`.

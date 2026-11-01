@@ -30,6 +30,17 @@ public class Customers {
         return users.findAllById(telegramUserIds);
     }
 
+    /**
+     * Serialises the customer's own transactions (two devices or tabs placing orders at once) until the caller's
+     * transaction ends: the row lock of {@code users}. It must be the first statement of that transaction that
+     * reads data, or the snapshot of REPEATABLE READ is taken before the wait and does not see what the winner
+     * committed.
+     */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void lockForUpdate(long telegramUserId) {
+        users.lockById(telegramUserId);
+    }
+
     /** The language the customer chose in the shop (users.locale), if any. */
     public Optional<String> localeOf(long telegramUserId) {
         return users.localeOf(telegramUserId);

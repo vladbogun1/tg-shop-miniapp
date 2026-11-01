@@ -1,7 +1,7 @@
 # Интеграционные тесты бэкенда (реальная MySQL)
 
 Юниты (`*Test`, Mockito) не проверяют блокировки, Flyway, `@Transactional` и события после коммита.
-Для этого — тесты `*IT` в `backend/src/test/java/com/maxsolch/shop/it/`: весь Spring-контекст, миграции и MySQL 8.4.
+Для этого — тесты `*IT` (в основном `backend/src/test/java/com/maxsolch/shop/it/`, часть рядом с кодом: `analytics/app/ReportsSqlIT`, `gift/app/GiftReminderDbBoundsIT`, `review/app`, `staff/app`): весь Spring-контекст, миграции и MySQL 8.4.
 
 - `mvn -B -ntp test` их **не** запускает (surefire берёт только `*Test`) — быстрый цикл не страдает.
 - В CI их гоняет джоба **«Backend (integration tests on MySQL)»** (`backend-integration`, service-контейнер `mysql:8.4`
@@ -16,7 +16,7 @@
   ```
 
 Правила: тесты коммитят по-настоящему, поэтому каждый создаёт свои товары/заказы с новыми id и не рассчитывает на пустую базу;
-Telegram (`NotificationService`) и MinIO (`ImageStorageService`) — `@MockitoBean`, сети и ключей нет. Базовый класс — `AbstractMysqlIT`.
+Telegram (`OrderSellerNotifier`, `OrderCustomerNotifier`) и MinIO (`ImageStorageService`) — `@MockitoBean`, сети и ключей нет. Базовый класс — `AbstractMysqlIT`.
 
 ## Клиентские эндпоинты и `open-in-view: false`
 

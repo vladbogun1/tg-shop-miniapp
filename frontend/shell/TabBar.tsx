@@ -25,6 +25,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useT } from "@/i18n/context";
+import { useHydrated } from "@shop/ui/use-hydrated";
 import { useCartCount } from "@/features/cart/store";
 import { useCompare, useCompareCount } from "@/features/compare/store";
 import { useHeldCount } from "@/features/preorders/state";
@@ -44,7 +45,9 @@ const IDLE_SHOW_MS = 5000;
 export function TabBar() {
   const t = useT();
   const pathname = usePathname();
-  const cartCount = useCartCount();
+  const hydrated = useHydrated();
+  // the cart lives in localStorage: the badge appears only after hydration (no #418)
+  const cartCount = useCartCount() * (hydrated ? 1 : 0);
   const router = useRouter();
   // «Сравнить» appears as a tab only while the comparison list is not empty (and after mount: the
   // list lives in localStorage). A tab instead of a floating button: a button over the grid covered

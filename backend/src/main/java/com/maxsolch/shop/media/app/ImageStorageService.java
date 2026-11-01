@@ -1,6 +1,5 @@
 package com.maxsolch.shop.media.app;
 
-import com.maxsolch.shop.media.api.MediaController;
 import com.maxsolch.shop.media.domain.ObjectStore;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -104,7 +103,7 @@ public class ImageStorageService {
     }
 
     /**
-     * Reads an object back out of storage. Used by {@link MediaController} to serve private chat
+     * Reads an object back out of storage. Used by {@code MediaController} to serve private chat
      * attachments, which is why the bucket no longer needs to be world-readable.
      *
      * @return the object, or null if it does not exist

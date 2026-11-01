@@ -4,7 +4,7 @@
  * Разметка экрана открытия кейса по стадиям: запечатанный кейс, барабан, карточка приза. Состояние и таймеры живут в
  * `GiftCaseOpening`; здесь только отрисовка по пропсам (порядок и анимации те же, что были в одном файле).
  */
-import { motion, type MotionValue } from "framer-motion";
+import { m, type MotionValue } from "framer-motion";
 import type { CSSProperties, MutableRefObject, RefObject } from "react";
 import { CASE_REEL_WIN_INDEX, type CaseItem, type CaseSize, type CaseTier, type GiftCaseOpen } from "@shop/core/giftcase";
 import { CaseSizePicker } from "./case-size";
@@ -59,7 +59,7 @@ export interface SealedViewProps {
 /** Запечатанный кейс: заголовок, кейс над ареной, кнопка «Відкрити», «що може випасти», правила. */
 export function SealedView({ stage, tier, texts, lidOpen, error, assetBase, sortedPrizes, money, resolveImage, rules, onStart }: SealedViewProps) {
   return (
-      <motion.div
+      <m.div
         key="sealed"
         style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", margin: "auto 0" }}
         initial={{ opacity: 0, y: 16 }}
@@ -72,7 +72,7 @@ export function SealedView({ stage, tier, texts, lidOpen, error, assetBase, sort
         <div className={`gc-stage ${stage === "opening" ? (lidOpen ? "is-open" : "is-opening") : ""}`} aria-hidden>
           <CaseArt tier={tier} lidOpen={lidOpen} assetBase={assetBase} />
         </div>
-        <motion.div
+        <m.div
           className="gc-btn-wrap"
           animate={{ opacity: stage === "opening" ? 0 : 1, y: stage === "opening" ? 12 : 0 }}
           transition={{ duration: 0.25 }}
@@ -80,14 +80,14 @@ export function SealedView({ stage, tier, texts, lidOpen, error, assetBase, sort
           <button type="button" className="gc-btn gc-disp" onClick={onStart} disabled={stage !== "sealed"} aria-busy={stage === "opening"}>
             {error ? texts.retry : stage === "opening" ? texts.opening : texts.open}
           </button>
-        </motion.div>
+        </m.div>
         {error && (
           <p className="gc-err" role="alert">
             {texts.error}
           </p>
         )}
         {sortedPrizes.length > 0 && (
-          <motion.section
+          <m.section
             className="gc-drops"
             animate={{ opacity: stage === "opening" ? 0 : 1 }}
             transition={{ duration: 0.25 }}
@@ -103,14 +103,14 @@ export function SealedView({ stage, tier, texts, lidOpen, error, assetBase, sort
                 </li>
               ))}
             </ul>
-          </motion.section>
+          </m.section>
         )}
         {rules && (
-          <motion.div animate={{ opacity: stage === "opening" ? 0 : 1 }} transition={{ duration: 0.25 }}>
+          <m.div animate={{ opacity: stage === "opening" ? 0 : 1 }} transition={{ duration: 0.25 }}>
             <CaseRulesLink {...rules} />
-          </motion.div>
+          </m.div>
         )}
-      </motion.div>
+      </m.div>
   );
 }
 
@@ -135,7 +135,7 @@ export interface SpinViewProps {
 /** Барабан: мини-кейс, лента с призами, метка, подсказка. */
 export function SpinView({ stage, tier, assetBase, texts, money, resolveImage, vpRef, setVpEl, speedRef, x, run, spinDone, tile, reel, won }: SpinViewProps) {
   return (
-      <motion.div
+      <m.div
         key="spin"
         className="gc-spinwrap"
         initial={{ opacity: 0 }}
@@ -143,7 +143,7 @@ export function SpinView({ stage, tier, assetBase, texts, money, resolveImage, v
         exit={{ opacity: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <motion.div
+        <m.div
           className="gc-mini"
           aria-hidden
           initial={{ opacity: 0, y: 40, scale: 1.4 }}
@@ -151,8 +151,8 @@ export function SpinView({ stage, tier, assetBase, texts, money, resolveImage, v
           transition={{ duration: 0.55, ease: [0.2, 0.8, 0.2, 1] }}
         >
           <img src={caseTierAsset(assetBase, tier, "case-open.webp")} alt="" draggable={false} />
-        </motion.div>
-        <motion.div
+        </m.div>
+        <m.div
           className="gc-reel"
           initial={{ opacity: 0, x: 120 }}
           animate={{ opacity: 1, x: 0 }}
@@ -166,7 +166,7 @@ export function SpinView({ stage, tier, assetBase, texts, money, resolveImage, v
             }}
             className="gc-reel-vp"
           >
-            <motion.div
+            <m.div
               key={run}
               className={`gc-strip ${spinDone ? "is-done" : ""}`}
               style={{ x, ["--tw" as string]: `${tile.w}px`, ["--gap" as string]: `${tile.gap}px` } as never}
@@ -182,15 +182,15 @@ export function SpinView({ stage, tier, assetBase, texts, money, resolveImage, v
                   <p>{itemTitle(it, texts, money)}</p>
                 </div>
               ))}
-            </motion.div>
+            </m.div>
             <div ref={speedRef} className="gc-speed" />
           </div>
           <div className="gc-marker" />
-        </motion.div>
+        </m.div>
         <p className="gc-hint gc-disp" aria-live="polite">
           {stage === "spin" ? texts.opening : won ? texts.rarity[won.rarity] : ""}
         </p>
-      </motion.div>
+      </m.div>
   );
 }
 
@@ -217,7 +217,7 @@ export interface RevealCardProps {
 export function RevealCard({ won, rank, result, texts, money, formatDate, resolveImage, swapped, canSwap, swapBusy, swapErr, onClose, onAgain, againLabel, onSize, onSwap }: RevealCardProps) {
   const swap = result?.swap ?? null;
   return (
-      <motion.div
+      <m.div
         key="card"
         className="gc-reveal"
         initial={{ opacity: 0 }}
@@ -225,7 +225,7 @@ export function RevealCard({ won, rank, result, texts, money, formatDate, resolv
         exit={{ opacity: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <motion.div
+        <m.div
           className="gc-card"
           style={rc(won.rarity)}
           initial={{ opacity: 0, scale: 0.7, y: 30 }}
@@ -240,14 +240,14 @@ export function RevealCard({ won, rank, result, texts, money, formatDate, resolv
           <p className="gc-eyebrow gc-disp" style={{ position: "relative", color: "rgba(255,255,255,.7)" }}>
             {texts.youGot}
           </p>
-          <motion.div
+          <m.div
             className="gc-prize"
             initial={{ scale: 0.4, rotate: -8 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 220, damping: 13, delay: 0.08 }}
           >
             <PrizeImg item={won} resolveImage={resolveImage} size={480} money={money} />
-          </motion.div>
+          </m.div>
           <span className="gc-rarity gc-disp">{texts.rarity[won.rarity]}</span>
           <p className="gc-prize-title gc-disp" style={swapped ? { textDecoration: "line-through", opacity: 0.55 } : undefined}>
             {itemTitle(won, texts, money)}
@@ -261,8 +261,8 @@ export function RevealCard({ won, rank, result, texts, money, formatDate, resolv
             </p>
           )}
           <RevealActions texts={texts} money={money} swap={canSwap ? swap : null} swapBusy={swapBusy} onClose={onClose} onAgain={onAgain} againLabel={againLabel} onSwap={onSwap} />
-        </motion.div>
-      </motion.div>
+        </m.div>
+      </m.div>
   );
 }
 
@@ -333,9 +333,9 @@ function RevealExtras({ won, swapped, result, texts, money, formatDate, onSize }
           <CaseSizePicker size={result.size} texts={texts.size} onChoose={onSize} />
         )}
         {promo && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+          <m.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
             <CasePromoBox promo={promo} texts={texts.promo} money={money} formatDate={formatDate} />
-          </motion.div>
+          </m.div>
         )}
     </>
   );

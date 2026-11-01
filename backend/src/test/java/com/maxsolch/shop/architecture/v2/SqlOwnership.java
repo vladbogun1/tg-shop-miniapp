@@ -60,7 +60,7 @@ final class SqlOwnership {
         own(m, "gift", "gift_case_items", "gift_case_tiers", "order_gift_cases");
         own(m, "delivery", "nova_poshta_cities", "nova_poshta_warehouses");
         own(m, "returns", "order_exchange_lines", "order_exchanges", "order_return_lines", "order_returns");
-        own(m, "order", "order_item_lots", "order_items", "order_messages", "order_money_movements", "orders");
+        own(m, "order", "order_item_lots", "order_idempotency", "order_items", "order_messages", "order_money_movements", "orders");
         own(m, "payment", "payment_invoices", "payment_options", "payment_receipts_sent", "payment_requisites",
                 "payment_webhook_log");
         own(m, "preorder", "preorder_subscriptions");

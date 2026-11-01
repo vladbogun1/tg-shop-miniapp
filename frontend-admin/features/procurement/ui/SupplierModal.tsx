@@ -37,6 +37,7 @@ export function SupplierModal({ open, onClose, onCreated }: { open: boolean; onC
 
   return (
     <Modal
+      dirty={form.formState.isDirty}
       open={open}
       onClose={onClose}
       size="sm"

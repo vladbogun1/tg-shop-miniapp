@@ -1,3 +1,5 @@
+> **Пути до архитектуры v2:** `shared/src/*` → `packages/core/src/*` (или `packages/ui`, `packages/customer`), `frontend/lib`, `frontend/components` → `features/*`. Названия классов бэкенда (`OrderService` и др.) исторические — актуальные в [ARCHITECTURE.md](ARCHITECTURE.md).
+
 # Онлайн-оплата через monobank (plata by mono) — исследование, дизайн, план
 
 Статус: **в проде с v3.9.0** (07.10.2026, боевой мерчант, чеки ПРРО — Вчасно.Каса через monobank, код ставки «Без ПДВ» = 2

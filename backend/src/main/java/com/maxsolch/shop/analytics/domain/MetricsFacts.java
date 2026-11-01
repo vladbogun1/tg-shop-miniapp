@@ -229,10 +229,8 @@ public record MetricsFacts(List<OrderFact> orders,
             if (!sold()) {
                 return 0;
             }
-            long total = OrderMoney.collectableMinor(totalMinor, uncollectedMinor);
-            long overpaid = Math.max(0, Math.max(receivedMinor, onlinePaidMinor) - total);
-            long returned = Math.max(0, refundedMinor - overpaid);
-            return Math.max(0, total - Math.min(total, returned));
+            return OrderMoney.soldMinor(totalMinor, uncollectedMinor, refundedMinor,
+                    Math.max(receivedMinor, onlinePaidMinor));
         }
 
         /** Наложка still to collect: the total without the units refused at the branch, minus what arrived. */

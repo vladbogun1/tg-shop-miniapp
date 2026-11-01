@@ -10,7 +10,7 @@
  *    It is followed while on the page too (a push tapped with the page already open) and removed
  *    from the address right after opening.
  */
-import { LifeBuoy, RotateCw, Search, X } from "lucide-react";
+import { LifeBuoy, PenSquare, RotateCw, Search, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -24,6 +24,7 @@ import { useDebounced } from "@/lib/use-debounced";
 import { awaitingCount, EMPTY_HINT, searchWithoutThread } from "../model/thread";
 import type { SupportFilter } from "../model/types";
 import { useSupportThreads, useSupportUnread } from "../queries";
+import { StartThreadModal } from "./StartThreadModal";
 import { SupportThreadDrawer } from "./SupportThreadDrawer";
 import { ThreadRow } from "./ThreadRow";
 
@@ -40,6 +41,7 @@ function SupportContent() {
   const params = useSearchParams();
   const deepId = params.get("thread");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [composing, setComposing] = useState(false);
 
   const [filter, setFilter] = useState<SupportFilter>("open");
   const [search, setSearch] = useState("");
@@ -74,6 +76,10 @@ function SupportContent() {
         title="Поддержка"
         subtitle="Вопросы покупателей о товарах и общие вопросы. Обновляется каждые 15 секунд."
         actions={
+          <>
+          <Button variant="accent" size="sm" icon={<PenSquare className="h-4 w-4" />} onClick={() => setComposing(true)}>
+            Написать клиенту
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -82,6 +88,7 @@ function SupportContent() {
           >
             Обновить
           </Button>
+          </>
         }
       />
 
@@ -131,6 +138,15 @@ function SupportContent() {
           </ul>
         )}
       </QueryState>
+
+      <StartThreadModal
+        open={composing}
+        onClose={() => setComposing(false)}
+        onStarted={(t) => {
+          setComposing(false);
+          setOpenId(t.id);
+        }}
+      />
 
       <SupportThreadDrawer
         threadId={openId}

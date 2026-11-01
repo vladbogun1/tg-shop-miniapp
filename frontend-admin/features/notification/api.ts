@@ -1,6 +1,6 @@
 import type { Schemas } from "@shop/core/api/schemas";
 import { customerApi, type UserCardDto } from "@/features/customer";
-import { apiGet, apiPost } from "@/lib/http";
+import { apiGet, apiPost, uploadFile } from "@/lib/http";
 import type { BroadcastAudience, BroadcastHistoryItem, BroadcastStartBody, BroadcastTestBody, ShopLang } from "./model/types";
 
 export type BroadcastStatus = Schemas["BroadcastStatus"];
@@ -19,6 +19,8 @@ export const broadcastApi = {
   start: (body: BroadcastStartBody) => apiPost<BroadcastStatus>("/api/admin/broadcast", body),
   /** `telegramUserId` не задан — тому админу, кто отправляет («себе»). */
   test: (body: BroadcastTestBody) => apiPost<BroadcastResult>("/api/admin/broadcast/test", body),
+  /** Картинка рассылки (jpg/png/webp до 5 МБ): id уходит в `start` / `test`. */
+  uploadPhoto: (file: File) => uploadFile<{ photoId: string }>("/api/admin/broadcast/photo", file),
   /** Поиск получателя теста (поиск покупателей — как в «Покупателях»). */
   searchUsers: (q: string): Promise<UserCardDto[]> => customerApi.users({ q, size: 8 }),
 };

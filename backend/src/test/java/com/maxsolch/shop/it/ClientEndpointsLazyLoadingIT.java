@@ -143,6 +143,14 @@ class ClientEndpointsLazyLoadingIT {
         }
 
         @Override
+        public Message execute(org.telegram.telegrambots.meta.api.methods.send.SendPhoto photo) {
+            calls.add("SendPhoto");
+            Message m = new Message();
+            m.setMessageId(ids.incrementAndGet());
+            return m;
+        }
+
+        @Override
         public Message execute(SendDocument document) {
             calls.add("SendDocument");
             Message m = new Message();

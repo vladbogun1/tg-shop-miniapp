@@ -10,8 +10,9 @@ import { Toggle } from "@/components/ui/Toggle";
 import { cn } from "@/lib/cn";
 import { LANG_LABEL } from "@/lib/shop-lang";
 import { riseItem } from "@/lib/motion";
-import { DEFAULT_BUTTON, hasAnyText, MAX_LEN, TEXT_TABS, type TextKey } from "../model/compose";
+import { CAPTION_LIMIT, DEFAULT_BUTTON, hasAnyText, MAX_LEN, TEXT_TABS, type TextKey } from "../model/compose";
 import { FormatToolbar } from "./FormatToolbar";
+import { PhotoField } from "./PhotoField";
 import type { Compose } from "./use-compose";
 
 function EditHint({ editing }: { editing: TextKey }) {
@@ -86,9 +87,16 @@ export function ComposeCard({ c }: { c: Compose }) {
             text.length > MAX_LEN ? "text-[var(--danger-ink)]" : "text-[var(--text-muted)]"
           )}
         >
-          {text.length} / {MAX_LEN}
+          {text.length} / {c.photo ? CAPTION_LIMIT : MAX_LEN}
         </span>
       </div>
+      {c.photo && text.length > CAPTION_LIMIT && (
+        <p className="text-[11.5px] font-semibold text-[var(--text-muted)]">
+          Длиннее {CAPTION_LIMIT} символов — текст уйдёт отдельным сообщением после картинки (кнопка будет под ним).
+        </p>
+      )}
+
+      <PhotoField value={c.photo} onChange={c.setPhoto} />
 
       {c.problems.length > 0 && hasAnyText(texts) && <Problems problems={c.problems} />}
 

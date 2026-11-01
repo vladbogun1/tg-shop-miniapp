@@ -90,6 +90,12 @@ export function NpCombobox<T>({
 }: NpComboboxProps<T>) {
   const id = useId();
   const wrap = useRef<HTMLDivElement>(null);
+  // Timers die with the component: no scrollIntoView / setState after unmount.
+  const timers = useRef<number[]>([]);
+  useEffect(() => () => timers.current.forEach(window.clearTimeout), []);
+  const later = (fn: () => void, ms: number) => {
+    timers.current.push(window.setTimeout(fn, ms));
+  };
   const field = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLUListElement>(null);
@@ -147,9 +153,9 @@ export function NpCombobox<T>({
   function keepInView() {
     // Touch screens only: wait for the keyboard to start sliding up, then park the field high.
     if (!window.matchMedia("(pointer: coarse)").matches) return;
-    window.setTimeout(() => {
+    later(() => {
       wrap.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      window.setTimeout(fit, 350);
+      later(fit, 350);
     }, 300);
   }
 
@@ -197,7 +203,7 @@ export function NpCombobox<T>({
             }}
             onBlur={() => {
               setFocused(false);
-              window.setTimeout(() => setOpen(false), 150);
+              later(() => setOpen(false), 150);
             }}
             onKeyDown={(e) => {
               if (e.key === "ArrowDown") {

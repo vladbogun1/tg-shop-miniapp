@@ -76,6 +76,18 @@ class CheckoutTest extends OrderScenarioTestBase {
     }
 
     @Test
+    void createOrder_sameLineRepeatedPastTheCap_isRefusedInsteadOfWrappingAroundInt() {
+        CreateOrderCommand command = cmd(List.of(
+                new CreateOrderCommand.Line(productUuid, null, Integer.MAX_VALUE),
+                new CreateOrderCommand.Line(productUuid, null, 2)), null);
+
+        assertThatThrownBy(() -> service.createOrder(command))
+                .isInstanceOf(DomainException.BadRequest.class)
+                .satisfies(e -> assertThat(((DomainException) e).errorCode()).isEqualTo(OrderError.QUANTITY_TOO_HIGH));
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
     void createOrder_withoutPaymentOption_throws() {
         CreateOrderCommand command = cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 1)), null, null);
 

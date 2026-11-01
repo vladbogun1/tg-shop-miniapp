@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, type PanInfo, useDragControls, useReducedMotion } from "framer-motion";
+import { AnimatePresence, m, type PanInfo, useDragControls, useReducedMotion } from "framer-motion";
 import { SlidersHorizontal, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -167,7 +167,7 @@ export function FiltersDrawer({ active, hint }: { active: number; hint?: boolean
       {hydrated && createPortal(
         <AnimatePresence>
           {open && wide && (
-            <motion.div
+            <m.div
               key="backdrop"
               {...noFadeFlash}
               initial={{ opacity: 0 }}
@@ -179,7 +179,7 @@ export function FiltersDrawer({ active, hint }: { active: number; hint?: boolean
             />
           )}
           {open && (
-            <motion.div
+            <m.div
               key="panel"
               {...noFadeFlash}
               role="dialog"
@@ -204,7 +204,7 @@ export function FiltersDrawer({ active, hint }: { active: number; hint?: boolean
                 <FacetPanel hint={hint} />
               </div>
               <DrawerFoot dirty={dirty} total={total} pending={pending} draft={draft} setDraft={setDraft} close={close} onShowList={() => { setOpen(false); requestAnimationFrame(toResults); }} />
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>,
         document.body
@@ -296,7 +296,7 @@ type Spring = { duration: number } | { type: "spring"; stiffness: number; dampin
 function InlineCallout({ top, total, spring, reduce, apply, cancel }: { top: number; total: number; spring: Spring; reduce: boolean; apply: () => void; cancel: () => void }) {
   const { t } = useI18n();
   return (
-    <motion.div
+    <m.div
       key="callout"
       role="group"
       aria-label={t("catalog.draftChanged")}
@@ -324,14 +324,14 @@ function InlineCallout({ top, total, spring, reduce, apply, cancel }: { top: num
           {t("common.cancel")}
         </button>
       </div>
-    </motion.div>
+    </m.div>
   );
 }
 
 function BottomBar({ total, spring, apply, cancel }: { total: number; spring: Spring; apply: () => void; cancel: () => void }) {
   const { t } = useI18n();
   return (
-    <motion.div
+    <m.div
       key="bar"
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
@@ -360,6 +360,6 @@ function BottomBar({ total, spring, apply, cancel }: { total: number; spring: Sp
           <X className="h-4 w-4" strokeWidth={2.5} />
         </button>
       </div>
-    </motion.div>
+    </m.div>
   );
 }

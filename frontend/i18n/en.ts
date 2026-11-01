@@ -248,13 +248,13 @@ export const en: RuDictionary = {
   "reviews.account.bonuses": "My bonuses",
 
   // ── payment return page (opened in a browser, outside Telegram) ──────────
-  "payReturn.title": "Thank you! Your payment is being processed",
-  "payReturn.text": "Taking you back to the shop in Telegram — the payment status updates by itself, and the bot will send you a message.",
+  "payReturn.title": "Taking you back to the shop",
+  "payReturn.text": "The payment status is shown in your order — it updates by itself, and the bot will send you a message. If the payment failed, you can retry it from the order.",
   "payReturn.order": "Order {id}",
   "payReturn.back": "Back to the shop",
   "payReturn.closeHint": "Didn’t switch? Tap “Back to the shop” or just close the browser.",
-  "payReturn.embedded": "Your payment is being processed…",
-  "payReturn.embeddedText": "Taking you back to the order",
+  "payReturn.embedded": "Checking your payment…",
+  "payReturn.embeddedText": "Taking you back to the order — the status is there",
   // ---- comparison ----
   "compare.tab": "Compare",
   // ---- gift for the order sum / gift case (docs/GIFT-CASE.md) ----

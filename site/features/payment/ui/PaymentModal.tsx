@@ -17,7 +17,7 @@
  * that misbehaves: it starts a normal (PAGE) invoice — which closes the framed one on the server —
  * and the modal then just waits for the payment.
  */
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { ExternalLink, Loader2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -264,7 +264,7 @@ function PaymentDialog({
 
   return (
     <>
-      <motion.div
+      <m.div
         key="pay-backdrop"
         {...noFadeFlash}
         initial={{ opacity: 0 }}
@@ -280,7 +280,7 @@ function PaymentDialog({
           if (e.target === e.currentTarget) dismiss();
         }}
       >
-        <motion.div
+        <m.div
           ref={panelRef}
           role="dialog"
           aria-modal="true"
@@ -353,7 +353,7 @@ function PaymentDialog({
               </>
             )}
           </div>
-        </motion.div>
+        </m.div>
       </div>
     </>
   );

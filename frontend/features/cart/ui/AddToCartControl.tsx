@@ -10,6 +10,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { useT } from "@/i18n/context";
 import { trackAddToCart } from "@/lib/analytics";
+import { useHydrated } from "@shop/ui/use-hydrated";
 import { lineKey, useCart } from "@/features/cart/store";
 import { maxQty } from "@shop/core/orders";
 import { useOrderLimits } from "@/features/cart/order-limits";
@@ -51,7 +52,9 @@ export function AddToCartControl({
   const limits = useOrderLimits();
   const inc = useCart((s) => s.inc);
   const dec = useCart((s) => s.dec);
-  const qty = useCart((s) => s.lines.find((l) => l.key === key)?.quantity ?? 0);
+  const hydrated = useHydrated();
+  const storedQty = useCart((s) => s.lines.find((l) => l.key === key)?.quantity ?? 0);
+  const qty = hydrated ? storedQty : 0;
 
   const stock = variant ? variant.stock : (product.stock ?? 0);
   const outOfStock = stock <= 0;

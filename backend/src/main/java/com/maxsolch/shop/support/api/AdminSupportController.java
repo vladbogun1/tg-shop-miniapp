@@ -8,12 +8,14 @@ import com.maxsolch.shop.media.app.UploadValidator;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.support.app.SupportDtos.CountDto;
 import com.maxsolch.shop.support.app.SupportDtos.MessageDto;
+import com.maxsolch.shop.support.app.SupportDtos.StartThreadRequest;
 import com.maxsolch.shop.support.app.SupportDtos.ThreadDto;
 import com.maxsolch.shop.order.app.SendMessageRequest;
 import com.maxsolch.shop.media.app.UploadResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -74,6 +76,12 @@ public class AdminSupportController {
                                      @RequestParam(required = false) Long before,
                                      @RequestParam(required = false) Integer limit) {
         return support.adminMessages(id, before, limit);
+    }
+
+    @PostMapping("/threads")
+    @Operation(summary = "Write to a customer first — opens a thread, the customer gets a bot DM")
+    public ThreadDto start(@Valid @RequestBody StartThreadRequest req) {
+        return adminSupport.start(req);
     }
 
     @PostMapping("/threads/{id}/messages")

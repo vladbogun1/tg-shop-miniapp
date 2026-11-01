@@ -10,6 +10,11 @@ public class ReviewScenario {
     MultipartFile file;
     JdbcTemplate jdbc;
 
+    /** A void mutator of a guarded entity of another module: O2. */
+    void settle(com.maxsolch.shopfixture.order.domain.Order order) {
+        order.markPaid();
+    }
+
     void load(EntityManager em) {
         em.createQuery("select 1");
         new AdminAccess().requireSuperAdmin(1L, "load");

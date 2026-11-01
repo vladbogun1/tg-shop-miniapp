@@ -167,13 +167,6 @@ public class OrderItem implements LotAllocations {
         quantity += more;
     }
 
-    /** The customer picked their size: the line moves to it and no longer waits for a choice. */
-    public void chooseVariant(byte[] id, String name) {
-        variantId = id;
-        variantNameSnapshot = name;
-        variantPending = false;
-    }
-
     public void confirmVariant() {
         variantPending = false;
     }

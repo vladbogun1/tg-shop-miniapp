@@ -2,11 +2,16 @@ package com.maxsolch.shop.platform.time;
 
 import com.maxsolch.shop.platform.config.AppProperties;
 
+import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.platform.error.PlatformError;
+
 import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.LocalDate;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeParseException;
 
 /**
  * The shop's business timezone ({@code app.timezone}, default Europe/Kyiv): the zone for "today", day buckets,
@@ -43,6 +48,22 @@ public final class ShopZone {
     /** The shop's current date. */
     public LocalDate today(Clock clock) {
         return LocalDate.now(clock.withZone(zone));
+    }
+
+    /**
+     * Start of the calendar day {@code yyyy-MM-dd} in the shop zone ({@code nextDay}: start of the NEXT day, so a
+     * range {@code [day(from), day(to, true))} includes the last given day); blank gives null.
+     */
+    public Instant day(String value, boolean nextDay) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            LocalDate d = LocalDate.parse(value.trim());
+            return (nextDay ? d.plusDays(1) : d).atStartOfDay(zone).toInstant();
+        } catch (DateTimeParseException e) {
+            throw new DomainException.BadRequest(PlatformError.DATE_FORMAT_INVALID);
+        }
     }
 
     /** The current moment on the shop's wall clock. */

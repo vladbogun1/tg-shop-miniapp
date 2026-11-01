@@ -42,7 +42,7 @@
   /* Text. --text is a hair softer than pure white: long tables in pure #FFF glare. */
   --text: #F4F4F5;
   --text-muted: #A1A1AA;
-  --text-faint: #6B6B73;
+  --text-faint: #8A8A93;
   /* Aliases with the Mini App / site names, so markup can move between apps unchanged. */
   --ink: #FFFFFF;
   --muted: var(--text-muted);
