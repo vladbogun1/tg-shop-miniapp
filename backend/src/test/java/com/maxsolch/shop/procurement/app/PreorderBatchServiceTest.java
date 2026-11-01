@@ -72,7 +72,9 @@ class PreorderBatchServiceTest {
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
         com.maxsolch.shop.platform.time.ShopZone zone = new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv");
         service = new PreorderBatchService(batches, items, suppliers, productsApp, queue, lineProducts, settings,
-                ledger, revalidator, clock, zone, new BatchEditor(suppliers, productsApp, items, clock, zone));
+                new com.maxsolch.shop.inventory.app.Stock(productsApp, org.mockito.Mockito.mock(com.maxsolch.shop.platform.i18n.Messages.class), ledger,
+                        org.mockito.Mockito.mock(com.maxsolch.shop.inventory.domain.StockHolds.class)),
+                revalidator, clock, zone, new BatchEditor(suppliers, productsApp, items, clock, zone));
         batch = new PreorderBatch();
         batch.setId(5L);
         batch.setTitle("Lamzu, ноябрь");

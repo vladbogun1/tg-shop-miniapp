@@ -84,7 +84,7 @@ public class Stock {
                 throw new DomainException.BadRequest(InventoryError.OUT_OF_STOCK, product.getTitle() + " (" + variant.getName() + ")", Math.max(0, variant.getStock()));
             }
             variant.setStock(variant.getStock() - qty);
-            syncRollup(product);
+            product.syncStockFromVariants();
         } else {
             if (product.getStock() < qty) {
                 throw new DomainException.BadRequest(InventoryError.OUT_OF_STOCK, product.getTitle(), Math.max(0, product.getStock()));
@@ -105,7 +105,7 @@ public class Stock {
     public void release(Product product, ProductVariant variant, int qty, LotAllocations sale) {
         if (variant != null) {
             variant.setStock(variant.getStock() + qty);
-            syncRollup(product);
+            product.syncStockFromVariants();
         } else {
             product.setStock(product.getStock() + qty);
         }
@@ -116,13 +116,43 @@ public class Stock {
         }
     }
 
-    /** product.stock mirrors the sum of variant stocks whenever the product has variants. */
-    private static void syncRollup(Product product) {
-        if (product.getVariants() == null || product.getVariants().isEmpty()) {
-            return;
+    /**
+     * {@link #release} for a line that knows its variant only by id (product locked). A variant deleted from the
+     * catalog after the sale: the units go back on the product so they are not lost — no lots, no queue.
+     */
+    public void releaseById(Product product, byte[] variantId, int qty, LotAllocations sale) {
+        ProductVariant variant = variantId == null ? null : variantOf(product, variantId);
+        if (variantId != null && variant == null) {
+            product.setStock(product.getStock() + qty);
+        } else {
+            release(product, variant, qty, sale);
         }
-        int rollup = product.getVariants().stream().mapToInt(ProductVariant::getStock).sum();
-        product.setStock(Math.max(0, rollup));
+    }
+
+    /** {@link #reserve} for a line that knows its variant only by id; a deleted variant is taken from the product. */
+    public void reserveById(Product product, byte[] variantId, int qty, LotAllocations sale) {
+        ProductVariant variant = variantId == null ? null : variantOf(product, variantId);
+        if (variantId != null && variant == null) {
+            product.setStock(product.getStock() - qty);
+        } else {
+            reserve(product, variant, qty, sale);
+        }
+    }
+
+    /**
+     * A supplier batch line arrived (product locked): the units go on the shelf and into a new FIFO lot of the
+     * batch line. {@code variant} null = a product without variants. The queue is handed out by the caller.
+     */
+    public void arrive(Product product, ProductVariant variant, int units, long batchItemId) {
+        if (variant != null) {
+            variant.setStock(variant.getStock() + units);
+            product.syncStockFromVariants();
+        } else {
+            product.setStock(product.getStock() + units);
+        }
+        if (units > 0) {
+            lots.receive(product.getId(), variant == null ? null : variant.getId(), batchItemId, units);
+        }
     }
 
     // ------------------------------------------------------------------ units without a line
@@ -142,12 +172,7 @@ public class Stock {
         }
         Product product = products.findByIdForUpdate(productId)
                 .orElseThrow(() -> new DomainException.BadRequest(InventoryError.PRODUCT_DELETED));
-        ProductVariant variant = variantId == null ? null : variantOf(product, variantId);
-        if (variantId != null && variant == null) {
-            product.setStock(product.getStock() + units);
-        } else {
-            release(product, variant, units, sale);
-        }
+        releaseById(product, variantId, units, sale);
         products.save(product);
     }
 }

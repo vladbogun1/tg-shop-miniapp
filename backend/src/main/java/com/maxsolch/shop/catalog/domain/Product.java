@@ -139,4 +139,16 @@ public class Product {
             id = UuidUtil.randomBytes();
         }
     }
+
+    /**
+     * The one place of the rule «a product with variants has {@code stock} = the sum of their stocks». Call
+     * after any change of a variant's stock or of the variant list; no-op without variants (the product's own
+     * counter is then the source of truth).
+     */
+    public void syncStockFromVariants() {
+        if (variants == null || variants.isEmpty()) {
+            return;
+        }
+        stock = Math.max(0, variants.stream().mapToInt(ProductVariant::getStock).sum());
+    }
 }

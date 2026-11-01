@@ -40,7 +40,6 @@ final class ProductVariantsEditor {
         // Resolve every incoming variant to an existing row (by id, else by name) or a new one.
         List<ProductVariant> keep = new ArrayList<>();
         int order = 0;
-        int rollup = 0;
         for (ProductUpsertRequest.VariantInput vi : req.variants()) {
             if (vi.name() == null || vi.name().isBlank()) {
                 continue;
@@ -76,7 +75,6 @@ final class ProductVariantsEditor {
             }
             v.setSortOrder(order++);
             keep.add(v);
-            rollup += v.getStock();
         }
 
         // Anything not matched was removed by the admin (orphanRemoval deletes the rows).
@@ -86,11 +84,7 @@ final class ProductVariantsEditor {
                 .toList();
         p.getVariants().removeIf(v -> !keep.contains(v));
 
-        // Product stock is the rollup of variant stock whenever variants exist (OrderStock
-        // relies on the same invariant when reserving/releasing units).
-        if (!p.getVariants().isEmpty()) {
-            p.setStock(rollup);
-        }
+        p.syncStockFromVariants();
         return removed;
     }
 
