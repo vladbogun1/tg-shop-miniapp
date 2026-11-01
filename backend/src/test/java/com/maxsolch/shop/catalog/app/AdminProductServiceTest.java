@@ -302,6 +302,30 @@ class AdminProductServiceTest {
         verify(writeoffRepository, org.mockito.Mockito.times(2)).save(any());
     }
 
+    @Test
+    void removingAVariantShrinksTheRollup() {
+        ProductVariant white = variant("white", 2);
+        ProductVariant black = variant("black", 3);
+        product.getVariants().add(white);
+        product.getVariants().add(black);
+        product.setStock(5);
+
+        AdminProductDto saved = service.update(id, req(null, null, List.of(
+                new VariantInput(UuidUtil.toString(white.getId()), "white", null, null))));
+
+        assertThat(saved.variants()).hasSize(1);
+        assertThat(saved.stock()).isEqualTo(2);
+    }
+
+    @Test
+    void productStockIsSetAsTypedWhenThereAreNoVariants() {
+        product.setStock(3);
+
+        AdminProductDto saved = service.update(id, req(7, 3, null));
+
+        assertThat(saved.stock()).isEqualTo(7);
+    }
+
     private ProductVariant variant(String name, int stock) {
         ProductVariant v = new ProductVariant();
         v.setId(UuidUtil.randomBytes());
