@@ -37,6 +37,8 @@ export interface OrderDetail {
     exchangeOrderIds?: string[];
     mergedIntoId?: string | null;
     mergedFromIds?: string[];
+    /** The money journal of the order (V68). */
+    movements?: { kind: string; channel: string; amountMinor: number; invoiceExtId?: string | null }[];
   } | null;
   deliveryMethod?: string;
   npWarehouseName?: string | null;
@@ -117,8 +119,8 @@ export class Api {
   }
 
   /** Raw response, for asserting on a refusal (status + error body). */
-  async raw(method: "get" | "post" | "put" | "patch" | "delete", url: string, data?: unknown) {
-    const res = await this.ctx[method](url, data === undefined ? undefined : { data });
+  async raw(method: "get" | "post" | "put" | "patch" | "delete", url: string, data?: unknown, timeout?: number) {
+    const res = await this.ctx[method](url, { ...(data === undefined ? {} : { data }), ...(timeout ? { timeout } : {}) });
     const text = await res.text();
     let body: Record<string, unknown> = {};
     try {
@@ -227,10 +229,15 @@ export function customerToken(telegramUserId: number): string {
 export class CustomerApi {
   private constructor(private readonly ctx: APIRequestContext) {}
 
-  static async create(telegramUserId: number): Promise<CustomerApi> {
+  /** `clientIp`: the address the backend rate-limits by (X-Forwarded-For), for a spec that places several orders. */
+  static async create(telegramUserId: number, clientIp?: string): Promise<CustomerApi> {
     const ctx = await request.newContext({
       baseURL: API_URL,
-      extraHTTPHeaders: { Authorization: `Bearer ${customerToken(telegramUserId)}`, Accept: "application/json" },
+      extraHTTPHeaders: {
+        Authorization: `Bearer ${customerToken(telegramUserId)}`,
+        Accept: "application/json",
+        ...(clientIp ? { "X-Forwarded-For": clientIp } : {}),
+      },
     });
     return new CustomerApi(ctx);
   }
@@ -243,6 +250,18 @@ export class CustomerApi {
     const res = await this.ctx.post(url, { data });
     if (!res.ok()) throw new Error(`POST ${url} → ${res.status()}: ${await res.text()}`);
     return (await res.json()) as T;
+  }
+
+  /** The buyer's own view of the order (GET /api/me/orders/{id}). */
+  async order(id: string): Promise<{ status: string; paid: boolean; totalMinor: number; receivedMinor: number; amountDueMinor: number }> {
+    const res = await this.ctx.get(`/api/me/orders/${id}`);
+    if (!res.ok()) throw new Error(`GET order → ${res.status()}: ${await res.text()}`);
+    return res.json();
+  }
+
+  /** «Оплатити» / «Доплатити»: a payment page for what is due now (a live one is reused). */
+  startPayment(orderId: string) {
+    return this.post<{ invoiceId: string; pageUrl: string; amountMinor: number }>(`/api/me/orders/${orderId}/payment`, {});
   }
 
   /** «Повідомити, коли з'явиться»: встать в очередь на товар без остатка. */

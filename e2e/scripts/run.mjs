@@ -16,6 +16,9 @@
  * (copies built into .e2e-miniapp / .e2e-site), the fake monobank and a gateway in front of the site, run by
  * playwright.customer.config.ts against the same MySQL and jar (docs/ARCHITECTURE-FRONT.md, step 5.0).
  *
+ * `--suite=money`: the admin UI against a backend with the fake monobank (webhook, refunds, top-up, return wizard);
+ * built and run like the admin suite, by playwright.money.config.ts (e2e/money/).
+ *
  * Exit code = Playwright's.
  */
 import { spawnSync } from "node:child_process";
@@ -40,8 +43,8 @@ const keep = flag("--keep") || process.env.E2E_KEEP === "1";
 const suiteArg = args.find((a) => a.startsWith("--suite="));
 if (suiteArg) args.splice(args.indexOf(suiteArg), 1);
 const suite = suiteArg ? suiteArg.slice("--suite=".length) : process.env.E2E_SUITE || "admin";
-if (suite !== "admin" && suite !== "customer") {
-  console.error(`unknown suite: ${suite} (admin | customer)`);
+if (suite !== "admin" && suite !== "customer" && suite !== "money") {
+  console.error(`unknown suite: ${suite} (admin | customer | money)`);
   process.exit(2);
 }
 
@@ -135,7 +138,7 @@ try {
       console.log(`✔ ${srcName} build is up to date: ${path.relative(REPO_ROOT, destDir)}`);
     }
   };
-  if (suite === "admin") {
+  if (suite === "admin" || suite === "money") {
     buildCopy("frontend-admin", ADMIN_BUILD_DIR, { NEXT_PUBLIC_API_BASE_URL: API_URL });
   } else {
     // The Mini App talks to the backend cross-origin (url baked in); the site is same-origin (gateway).
@@ -144,7 +147,7 @@ try {
   }
 
   // ---- 4. tests ---------------------------------------------------------------------------------
-  const config = suite === "customer" ? ["-c", "playwright.customer.config.ts"] : [];
+  const config = suite === "admin" ? [] : ["-c", `playwright.${suite}.config.ts`];
   exitCode = run("npx", ["playwright", "test", ...config, ...args], { cwd: E2E_DIR });
 } finally {
   // ---- 5. cleanup -------------------------------------------------------------------------------
