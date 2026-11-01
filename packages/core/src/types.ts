@@ -7,7 +7,8 @@
  * payload whose field is actually `userId`, so it was always `undefined`.
  */
 
-export type OrderStatus = "NEW" | "APPROVED" | "SHIPPED" | "DELIVERED" | "REJECTED";
+/** Order status: the union generated from the backend enum, so a new status breaks typecheck wherever it is tabulated. */
+export type OrderStatus = Schemas["OrderCardDto"]["status"];
 export type DeliveryMethod = "NOVA_POSHTA" | "PICKUP";
 export type SenderType = "CUSTOMER" | "ADMIN" | "SYSTEM";
 export type MessageType = "TEXT" | "PHOTO" | "FILE" | "SYSTEM";

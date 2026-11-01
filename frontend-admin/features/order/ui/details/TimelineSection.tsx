@@ -2,11 +2,10 @@
 
 /** «Таймлайн»: причина отказа, ход статусов, возврат и обмены. */
 import { Ban, Repeat } from "lucide-react";
-import type { OrderStatus } from "@shop/core/types";
 import { formatDateTime } from "@shop/core/time";
 import { money } from "@/lib/money";
 import type { AdminOrderDetail } from "../../api";
-import { REJECT_REASON_LABEL, STATUS_LABEL, STATUS_VAR } from "../../model/status";
+import { REJECT_REASON_LABEL, STATUS_LABEL, STATUS_VAR, TIMELINE_STATUSES, statusTimestamp } from "../../model/status";
 import type { DetailHandlers } from "./types";
 import { OrderLink, Section } from "./section";
 
@@ -66,30 +65,15 @@ export function TimelineSection({ order, h }: { order: AdminOrderDetail; h: Deta
 
 function Timeline({ order }: { order: AdminOrderDetail }) {
   // Linear progress NEW -> APPROVED -> SHIPPED -> DELIVERED; REJECTED branches.
-  const linear: OrderStatus[] = ["NEW", "APPROVED", "SHIPPED", "DELIVERED"];
+  const linear = TIMELINE_STATUSES;
   const rejected = order.status === "REJECTED";
   const reachedIdx = rejected ? 0 : linear.indexOf(order.status);
-
-  const tsFor = (s: OrderStatus): string | null | undefined => {
-    switch (s) {
-      case "NEW":
-        return order.createdAt;
-      case "APPROVED":
-        return order.approvedAt;
-      case "SHIPPED":
-        return order.shippedAt;
-      case "DELIVERED":
-        return order.deliveredAt;
-      case "REJECTED":
-        return order.rejectedAt;
-    }
-  };
 
   return (
     <ol className="flex flex-col gap-3">
       {linear.map((s, i) => {
         const done = i <= reachedIdx;
-        const ts = tsFor(s);
+        const ts = statusTimestamp(order, s);
         return (
           <li key={s} className="flex items-center gap-3">
             <span
