@@ -2,6 +2,7 @@ package com.maxsolch.shop.staff.infra;
 
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.staff.domain.IncidentFinding;
+import com.maxsolch.shop.staff.domain.LedgerDrift;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -63,24 +64,31 @@ public class IncidentQueries {
 
     /** The money journal and the order totals disagree: something changed money outside the journal. */
     private List<IncidentFinding> ledgerDrift() {
+        return ledgerDriftOrders().stream().map(d -> new IncidentFinding(AUTO + "ledger-drift:" + d.orderRef(),
+                "Журнал денег не сходится с заказом", d.orderRef(), "MEDIUM",
+                "Статус " + d.status() + ". По журналу у магазина " + uah(d.journalNetMinor())
+                        + ", по заказу (получено − возвращено) " + uah(d.orderNetMinor()) + ", разница "
+                        + uah(d.orderNetMinor() - d.journalNetMinor()) + ".",
+                "Сумму в заказе поменяли в обход журнала (старая версия, ручной SQL) или запись в журнал не дошла.",
+                "Сверьте с банком/НП и внесите приход или корректировку с комментарием.")).toList();
+    }
+
+    /**
+     * Orders whose {@code received − refunded} differs from the journal's net (payments + corrections −
+     * refunds). An order with money but no journal line at all counts too (net 0). Read-only.
+     */
+    public List<LedgerDrift> ledgerDriftOrders() {
         return jdbc.query("""
-                select bin_to_uuid(o.id) ref, o.status, o.received_minor, o.refunded_minor, j.net
+                select bin_to_uuid(o.id) ref, o.status, o.received_minor, o.refunded_minor,
+                       coalesce(j.net, 0) net
                 from orders o
-                join (select order_id,
+                left join (select order_id,
                              sum(case kind when 'PAYMENT' then amount_minor when 'CORRECTION' then amount_minor
                                            when 'REFUND' then -amount_minor else 0 end) net
                       from order_money_movements group by order_id) j on j.order_id = o.id
-                where j.net <> o.received_minor - o.refunded_minor
-                """, (rs, n) -> {
-            String ref = rs.getString("ref");
-            long net = rs.getLong("net");
-            long totals = rs.getLong("received_minor") - rs.getLong("refunded_minor");
-            return new IncidentFinding(AUTO + "ledger-drift:" + ref, "Журнал денег не сходится с заказом", ref, "MEDIUM",
-                    "Статус " + rs.getString("status") + ". По журналу у магазина " + uah(net)
-                            + ", по заказу (получено − возвращено) " + uah(totals) + ", разница " + uah(totals - net) + ".",
-                    "Сумму в заказе поменяли в обход журнала (старая версия, ручной SQL) или запись в журнал не дошла.",
-                    "Сверьте с банком/НП и внесите приход или корректировку с комментарием.");
-        });
+                where coalesce(j.net, 0) <> o.received_minor - o.refunded_minor
+                """, (rs, n) -> new LedgerDrift(rs.getString("ref"), rs.getString("status"),
+                rs.getLong("received_minor") - rs.getLong("refunded_minor"), rs.getLong("net")));
     }
 
     /** A refused parcel marked «едет назад» that never arrived. */

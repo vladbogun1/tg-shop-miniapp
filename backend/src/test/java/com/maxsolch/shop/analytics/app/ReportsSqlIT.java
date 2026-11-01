@@ -46,6 +46,12 @@ class ReportsSqlIT extends AbstractMysqlIT {
     private static final LocalDate D12 = LocalDate.of(2001, 3, 12);
     private static final LocalDate D13 = LocalDate.of(2001, 3, 13);
 
+    /** Hand-built history with raw SQL: its orders are not meant to match the journal. */
+    @Override
+    protected boolean checksMoneyJournal() {
+        return false;
+    }
+
     @Autowired AnalyticsAggregationService aggregation;
     @Autowired AnalyticsReader reader;
     @Autowired MetricsFactsLoader loader;
