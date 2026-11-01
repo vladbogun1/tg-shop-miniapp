@@ -154,10 +154,10 @@ abstract class OrderScenarioTestBase {
 
     ProductVariant variant(Product p, int stock) {
         ProductVariant v = new ProductVariant();
-        v.setId(UuidUtil.randomBytes());
-        v.setProduct(p);
-        v.setName("Size M");
-        v.setStock(stock);
+        v.assignId(UuidUtil.randomBytes());
+        v.attachTo(p);
+        v.rename("Size M");
+        v.changeStock(stock);
         return v;
     }
 
@@ -242,13 +242,13 @@ abstract class OrderScenarioTestBase {
     SizedPrize sizedPrize(OrderStatus status) {
         Product p = simpleProduct(0, 50_000);
         ProductVariant m = variant(p, 3);
-        m.setName("M");
+        m.rename("M");
         ProductVariant l = variant(p, 1);
-        l.setName("L");
-        l.setSortOrder(1);
+        l.rename("L");
+        l.reorder(1);
         ProductVariant xl = variant(p, 0);
-        xl.setName("XL");
-        xl.setSortOrder(2);
+        xl.rename("XL");
+        xl.reorder(2);
         ReflectionTestUtils.setField(p, "variants", new ArrayList<>(List.of(m, l, xl)));
         Order o = new Order();
         OrderFixtures.set(o, "id", UuidUtil.randomBytes());

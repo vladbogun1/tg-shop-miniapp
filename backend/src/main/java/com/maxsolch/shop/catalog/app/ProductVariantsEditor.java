@@ -26,7 +26,8 @@ final class ProductVariantsEditor {
      * one, then by name (the admin UI historically sent no ids at all), so existing rows keep their
      * identity either way; only genuinely removed variants are deleted.
      */
-    static List<byte[]> apply(Product p, ProductUpsertRequest req, List<ProductStock.StockDrop> drops) {
+    static List<byte[]> apply(Product p, ProductUpsertRequest req, ProductStock stock,
+                              List<ProductStock.StockDrop> drops) {
         if (req.variants() == null) {
             return List.of();
         }
@@ -58,11 +59,10 @@ final class ProductVariantsEditor {
                 }
             }
             if (v == null) {
-                v = new ProductVariant();
-                v.setProduct(p);
+                v = ProductVariant.of(p, null);
                 p.getVariants().add(v);
             }
-            v.setName(vi.name().trim());
+            v.rename(vi.name().trim());
             if (vi.stock() != null) {
                 if (v.getId() != null) {
                     checkStock(v.getStock(), vi.stock(), vi.expectedStock(),
@@ -71,9 +71,9 @@ final class ProductVariantsEditor {
                         drops.add(new ProductStock.StockDrop(v.getId(), v.getName(), v.getStock() - vi.stock()));
                     }
                 }
-                v.setStock(vi.stock());
+                stock.overwrite(p, v, vi.stock());
             }
-            v.setSortOrder(order++);
+            v.reorder(order++);
             keep.add(v);
         }
 

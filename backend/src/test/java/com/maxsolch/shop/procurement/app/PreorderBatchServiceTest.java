@@ -105,9 +105,9 @@ class PreorderBatchServiceTest {
 
     private ProductVariant variant(String name, int stock) {
         ProductVariant v = new ProductVariant();
-        v.setId(UuidUtil.toBytes(UUID.randomUUID()));
-        v.setName(name);
-        v.setStock(stock);
+        v.assignId(UuidUtil.toBytes(UUID.randomUUID()));
+        v.rename(name);
+        v.changeStock(stock);
         product.getVariants().add(v);
         return v;
     }

@@ -10,10 +10,8 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
-import lombok.Setter;
 
 @Getter
-@Setter
 @Entity
 @Table(name = "product_variants")
 public class ProductVariant {
@@ -40,5 +38,35 @@ public class ProductVariant {
         if (id == null) {
             id = UuidUtil.randomBytes();
         }
+    }
+
+    /** A new variant of {@code owner}; the caller adds it to the owner's list. The id is made on insert. */
+    public static ProductVariant of(Product owner, String name) {
+        ProductVariant v = new ProductVariant();
+        v.product = owner;
+        v.name = name;
+        return v;
+    }
+
+    /** Fixes the id before the first save (imports, tests); a saved variant keeps its id. */
+    public void assignId(byte[] newId) {
+        this.id = newId;
+    }
+
+    public void attachTo(Product owner) {
+        this.product = owner;
+    }
+
+    public void rename(String newName) {
+        this.name = newName;
+    }
+
+    public void reorder(int newSortOrder) {
+        this.sortOrder = newSortOrder;
+    }
+
+    /** The counter only; the product's rollup is kept by {@link Product#syncStockFromVariants()}. */
+    public void changeStock(int newStock) {
+        this.stock = newStock;
     }
 }

@@ -155,7 +155,7 @@ public class AdminProductService {
         p.showInShop(false);
         p.changeCardStatus(CardStatus.DRAFT);
         p.markUnfinished(true);
-        ProductVariantsEditor.apply(p, req, null);
+        ProductVariantsEditor.apply(p, req, stock, null);
         Product created = productRepository.save(p);
         syncLots(created);
         return AdminProductDto.of(created, catalogDirectory.load()).withSpecIssues(issues);
@@ -196,7 +196,7 @@ public class AdminProductService {
         }
         ProductPublishing.syncUnfinished(p);
         List<ProductStock.StockDrop> drops = new ArrayList<>();
-        List<byte[]> removedVariants = ProductVariantsEditor.apply(p, req, drops);
+        List<byte[]> removedVariants = ProductVariantsEditor.apply(p, req, stock, drops);
         // With variants the product stock is their rollup: only the variant drops count then.
         if (productDrop > 0 && (p.getVariants().isEmpty() || req.variants() == null)) {
             drops.add(new ProductStock.StockDrop(null, null, productDrop));
@@ -293,7 +293,7 @@ public class AdminProductService {
         if (req.stock() != null) {
             ProductVariantsEditor.checkStock(p.getStock(), req.stock(), req.expectedStock(), p.getTitle());
             drop = Math.max(0, p.getStock() - req.stock());
-            p.changeStock(req.stock());
+            stock.overwrite(p, null, req.stock());
         }
         if (req.active() != null) {
             p.showInShop(req.active());

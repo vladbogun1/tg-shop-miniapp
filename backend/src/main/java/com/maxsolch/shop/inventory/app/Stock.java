@@ -70,7 +70,7 @@ public class Stock {
             if (variant.getStock() < qty) {
                 throw new DomainException.BadRequest(InventoryError.OUT_OF_STOCK, product.getTitle() + " (" + variant.getName() + ")", Math.max(0, variant.getStock()));
             }
-            variant.setStock(variant.getStock() - qty);
+            variant.changeStock(variant.getStock() - qty);
             product.syncStockFromVariants();
         } else {
             if (product.getStock() < qty) {
@@ -91,7 +91,7 @@ public class Stock {
      */
     public void release(Product product, ProductVariant variant, int qty, LotAllocations sale) {
         if (variant != null) {
-            variant.setStock(variant.getStock() + qty);
+            variant.changeStock(variant.getStock() + qty);
             product.syncStockFromVariants();
         } else {
             product.changeStock(product.getStock() + qty);
@@ -132,7 +132,7 @@ public class Stock {
      */
     public void arrive(Product product, ProductVariant variant, int units, long batchItemId) {
         if (variant != null) {
-            variant.setStock(variant.getStock() + units);
+            variant.changeStock(variant.getStock() + units);
             product.syncStockFromVariants();
         } else {
             product.changeStock(product.getStock() + units);
@@ -143,6 +143,20 @@ public class Stock {
     }
 
     // ------------------------------------------------------------------ units without a line
+
+    /**
+     * The admin typed a stock by hand: the counter becomes exactly {@code units} (the lots follow in
+     * {@link LotLedger#syncProduct}, a drop is written off by the caller). A variant's own counter, or the
+     * product's when {@code variant} is null; with variants the product keeps the rollup.
+     */
+    public static void overwrite(Product product, ProductVariant variant, int units) {
+        if (variant != null) {
+            variant.changeStock(units);
+            product.syncStockFromVariants();
+        } else {
+            product.changeStock(units);
+        }
+    }
 
     /** Puts units of a product (variant) back on the shelf — a write-off that turned out fine. */
     public void restockProduct(byte[] productId, byte[] variantId, int units) {

@@ -126,10 +126,10 @@ class CartServiceTest {
 
     private ProductVariant variant(Product p, int stock) {
         ProductVariant v = new ProductVariant();
-        v.setId(UuidUtil.randomBytes());
-        v.setProduct(p);
-        v.setName("M");
-        v.setStock(stock);
+        v.assignId(UuidUtil.randomBytes());
+        v.attachTo(p);
+        v.rename("M");
+        v.changeStock(stock);
         p.getVariants().add(v);
         return v;
     }
