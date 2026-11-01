@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable front/ratchet -- the dictionaries are unavailable here (the root providers crashed): inline texts on purpose */
+
 /**
  * Last resort for the Mini App: the root layout or Providers crashed, so the dictionaries and styles
  * are not available. Texts are inline in the three languages, picked from the browser language.
