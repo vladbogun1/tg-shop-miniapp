@@ -1,14 +1,19 @@
 name: CI
 
-# The invite bot (bots/invite-bot) is a separate app with its own workflow (invite-bot.yml):
-# a change that touches only the bot must not run the shop's CI.
+# Запускается на каждый push и PR без paths-ignore: пропущенная проверка не присылает статус, и обязательная
+# проверка в branch protection зависала бы (а publish.yml ждёт зелёный CI на коммите тега). Бот
+# (bots/invite-bot) имеет свой workflow invite-bot.yml; лишний прогон магазина при правке только бота — дешёвая цена.
 on:
   push:
     branches: ["**"]
-    paths-ignore: ["bots/**", ".github/workflows/invite-bot.yml"]
   pull_request:
     branches: ["**"]
-    paths-ignore: ["bots/**", ".github/workflows/invite-bot.yml"]
+    # labeled/unlabeled: метка `ratchet-growth` меняет результат шага храповика, прогон должен перезапуститься.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+# Минимум прав: CI только читает код (артефакты и кэш GitHub выдаёт отдельным токеном рантайма).
+permissions:
+  contents: read
 
 # Cancel superseded runs on the same ref.
 concurrency:
@@ -319,7 +324,21 @@ jobs:
       - run: npm run test
       # Architecture ratchet (docs/ARCHITECTURE-FRONT.md 2.7): invariants, dependency-cruiser, ESLint rule counts.
       # Each prints an "app x rule" summary; growth against known-violations.json / frontend-baseline.txt fails.
-      - run: npm run arch:front
+      #   Храповик сравнивается с baseline из БАЗОВОЙ ветки PR (а не из этого же коммита): рост baseline в PR — ошибка,
+      #   пока у PR нет метки `ratchet-growth` (осознанный рост с причиной в описании).
+      - name: Fetch base branch (PR)
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags --depth=1 origin "${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+      - name: Architecture ratchet (front)
+        env:
+          RATCHET_BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || '' }}
+          RATCHET_GROWTH_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'ratchet-growth') && '1' || '0' }}
+        run: npm run arch:front
+      - name: Baselines did not grow (known-violations, ArchUnit v2)
+        if: github.event_name == 'pull_request'
+        env:
+          RATCHET_GROWTH_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'ratchet-growth') && '1' || '0' }}
+        run: node scripts/check-baseline-growth.mjs "origin/${{ github.base_ref }}"
       # Типы API генерируются из backend/src/test/resources/openapi/openapi.json (снимок /v3/api-docs, его охраняет
       # OpenApiSnapshotTest): сгенерированное обязано совпадать с закоммиченным (docs/ARCHITECTURE-FRONT.md 2.6).
       - name: Generated API types are up to date
@@ -335,3 +354,89 @@ jobs:
       # First Load JS per route of the Mini App and the website: growth > 3 % over scripts/bundle-baseline.txt fails.
       - name: Bundle budget
         run: npm run check:bundle
+
+  # Dockerfile ломался только при публикации тега (publish.yml). Здесь все четыре образа собираются без push,
+  # чтобы сломанная сборка ловилась в PR. amd64 на ubuntu-latest: ловим ошибки Dockerfile, не архитектуры.
+  docker-build:
+    name: Docker build (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: backend
+            context: ./backend
+            file: ./backend/Dockerfile
+            build-args: ""
+          - image: frontend
+            context: .
+            file: ./frontend/Dockerfile
+            build-args: |
+              NEXT_PUBLIC_API_BASE_URL=
+              NEXT_PUBLIC_IMAGE_BASE_URL=/img
+          - image: admin
+            context: .
+            file: ./frontend-admin/Dockerfile
+            build-args: |
+              NEXT_PUBLIC_API_BASE_URL=
+              NEXT_PUBLIC_IMAGE_BASE_URL=/img
+          - image: site
+            context: .
+            file: ./site/Dockerfile
+            build-args: |
+              NEXT_PUBLIC_SITE_URL=https://chisetup.com.ua
+              NEXT_PUBLIC_BOT_URL=https://t.me/ChiSetupShop_bot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          push: false
+          build-args: ${{ matrix.build-args }}
+          cache-from: type=gha,scope=ci-${{ matrix.image }}
+          cache-to: type=gha,scope=ci-${{ matrix.image }},mode=max
+
+  # Репозиторий публичный: секрет в коде или в коммитах PR виден всем. Сканируем дерево на HEAD и ТОЛЬКО коммиты
+  # этого PR/пуша (историю целиком не читаем: старое уже вычищено, переписывать её дальше нельзя). Бинарник gitleaks
+  # прибит по версии и sha256 (а не «последняя версия экшена»); исключения — .gitleaks.toml, без значений.
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: "8.28.0"
+      GITLEAKS_SHA256: a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: |
+          curl -sSfL --max-time 120 -o gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tgz" | sha256sum -c -
+          tar -xzf gitleaks.tgz gitleaks
+      - name: Scan working tree (HEAD)
+        run: ./gitleaks dir . --config .gitleaks.toml --redact --no-banner
+      - name: Scan commits of this PR / push
+        env:
+          RANGE: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || (github.event.before != '0000000000000000000000000000000000000000' && format('{0}..{1}', github.event.before, github.sha) || '') }}
+        run: |
+          if [ -z "$RANGE" ]; then echo "нет диапазона (новая ветка): только дерево"; exit 0; fi
+          ./gitleaks git --log-opts="$RANGE" --config .gitleaks.toml --redact --no-banner
+
+  # Зависимости рантайма. Сейчас КРАСНЫЙ (next / postcss / sharp / source-map-js), поэтому пока режим отчёта:
+  # continue-on-error, результат — в сводке прогона. Починить обновлением зависимостей и убрать continue-on-error.
+  npm-audit:
+    name: npm audit (report only)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: npm audit
+        run: npm audit --omit=dev --audit-level=high
