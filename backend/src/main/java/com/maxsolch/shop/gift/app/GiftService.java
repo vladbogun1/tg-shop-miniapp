@@ -254,7 +254,7 @@ public class GiftService {
         c.setProductId(prize.productId() == null ? null : UuidUtil.toBytes(prize.productId()));
         c.setTitle(title);
         if (prize.isDiscount()) {
-            c.setDiscountPercent(prize.discountPercent() > 0 ? Math.min(100, prize.discountPercent()) : 0);
+            c.setDiscountPercent(PromoCode.clampPercent(prize.discountPercent()));
             c.setDiscountAmountMinor(prize.discountPercent() > 0 ? 0 : prize.discountUah() * 100L);
         }
         return c;
@@ -266,19 +266,9 @@ public class GiftService {
      */
     @Transactional
     public PromoCode issuePromo(Long ownerUserId, byte[] orderId, String tier, int percent, long amountMinor) {
-        PromoCode promo = new PromoCode();
-        promo.setCode(uniqueCode());
-        promo.setDiscountPercent(percent > 0 ? Math.min(100, percent) : 0);
-        promo.setDiscountAmountMinor(percent > 0 ? 0 : Math.max(0, amountMinor));
-        promo.setMaxUses(1);
-        promo.setUsesCount(0);
-        promo.setActive(true);
-        promo.setOwnerUserId(ownerUserId);
         int days = Math.max(1, tierSettings(tier).map(GiftCaseTier::getPromoValidDays).orElse(30));
-        promo.setExpiresAt(clock.instant().plus(Duration.ofDays(days)));
-        promo.setSource(PromoCode.SOURCE_GIFT_CASE);
-        promo.setSourceOrderId(orderId);
-        return promoCodes.save(promo);
+        return promoCodes.save(PromoCode.personalOneTime(uniqueCode(), ownerUserId, percent, amountMinor, 0,
+                clock.instant().plus(Duration.ofDays(days)), PromoCode.SOURCE_GIFT_CASE, orderId));
     }
 
     @Transactional(readOnly = true)
@@ -296,7 +286,7 @@ public class GiftService {
                 .flatMap(promoCodes::find)
                 .filter(p -> p.getUsesCount() == 0 && p.isActive())
                 .ifPresent(p -> {
-                    p.setActive(false);
+                    p.deactivate();
                     promoCodes.save(p);
                 });
     }
@@ -367,7 +357,7 @@ public class GiftService {
 
     public static CaseItemDto itemDto(CaseEntry c, ProductDto p) {
         if (c.isDiscount()) {
-            int pc = c.discountPercent() > 0 ? Math.min(100, c.discountPercent()) : 0;
+            int pc = PromoCode.clampPercent(c.discountPercent());
             return new CaseItemDto("d" + c.id(), GiftCaseItem.Kind.DISCOUNT.name(), null, null, null, 0,
                     c.rarity(), pc, pc > 0 ? 0 : c.discountUah() * 100L);
         }

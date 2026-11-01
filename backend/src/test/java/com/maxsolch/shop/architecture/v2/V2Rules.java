@@ -120,7 +120,8 @@ final class V2Rules {
     static final Set<String> GUARDED = Set.of(
             "order.domain.Order", "order.domain.OrderItem", "order.domain.OrderItemLot",
             "payment.domain.PaymentInvoice", "returns.domain.OrderReturn", "returns.domain.OrderReturnLine",
-            "order.domain.OrderMoneyMovement", "catalog.domain.Product", "staff.domain.AdminUser");
+            "order.domain.OrderMoneyMovement", "catalog.domain.Product", "staff.domain.AdminUser",
+            "promo.domain.PromoCode");
 
     private final Placement placement;
     private final String root;

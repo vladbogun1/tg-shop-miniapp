@@ -1,5 +1,7 @@
 package com.maxsolch.shop.gift.app;
 
+import static com.maxsolch.shop.promo.domain.PromoCodes.with;
+import static com.maxsolch.shop.promo.domain.PromoCodes.promo;
 import com.maxsolch.shop.promo.app.CaseLowMargin;
 
 import com.maxsolch.shop.gift.domain.GiftCaseItem;
@@ -113,14 +115,12 @@ class CaseLowMarginTest {
 
     @Test
     void casePromoSkipsTheExcludedPart() {
-        PromoCode percent = new PromoCode();
-        percent.setDiscountPercent(10);
+        PromoCode percent = promo().discountPercent(10).build();
         // Mouse 4 000 ₴ (low-margin) + pad 800 ₴: 10 % of 800 only.
         assertThat(PromoDiscount.discountFor(percent, 480_000, 400_000)).isEqualTo(8_000);
         assertThat(PromoDiscount.discountFor(percent, 480_000)).isEqualTo(48_000);
 
-        PromoCode fixed = new PromoCode();
-        fixed.setDiscountAmountMinor(30_000);
+        PromoCode fixed = promo().discountAmountMinor(30_000).build();
         // −300 ₴ is capped at the 200 ₴ the code may touch.
         assertThat(PromoDiscount.discountFor(fixed, 420_000, 400_000)).isEqualTo(20_000);
         assertThat(PromoDiscount.discountFor(fixed, 480_000, 400_000)).isEqualTo(30_000);
@@ -129,9 +129,9 @@ class CaseLowMarginTest {
 
     @Test
     void casePromoIsRecognisedBySource() {
-        PromoCode p = new PromoCode();
+        PromoCode p = promo().build();
         assertThat(OrderPromos.isCasePromo(p)).isFalse();
-        p.setSource(PromoCode.SOURCE_GIFT_CASE);
+        with(p, b -> b.source(PromoCode.SOURCE_GIFT_CASE));
         assertThat(OrderPromos.isCasePromo(p)).isTrue();
     }
 

@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.app;
 
+import static com.maxsolch.shop.promo.domain.PromoCodes.with;
+import static com.maxsolch.shop.promo.domain.PromoCodes.promo;
 import com.maxsolch.shop.promo.domain.PromoDiscount;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import org.junit.jupiter.api.Test;
@@ -11,8 +13,7 @@ class PromoDiscountTest extends OrderScenarioTestBase {
 
     @Test
     void discountFor_capsPercentAtOneHundred() {
-        PromoCode broken = new PromoCode();
-        broken.setDiscountPercent(150); // misconfigured code
+        PromoCode broken = promo().discountPercent(150).build();
 
         // Capped at the subtotal, so a total can never go negative and the stored discount can
         // never exceed the order itself.
@@ -21,9 +22,7 @@ class PromoDiscountTest extends OrderScenarioTestBase {
 
     @Test
     void discountFor_fixedAmountBeatsPercentAndIsCapped() {
-        PromoCode promo = new PromoCode();
-        promo.setDiscountAmountMinor(30_000);
-        promo.setDiscountPercent(10);
+        PromoCode promo = promo().discountAmountMinor(30_000).discountPercent(10).build();
 
         assertThat(PromoDiscount.discountFor(promo, 10_000)).isEqualTo(10_000);
         assertThat(PromoDiscount.discountFor(promo, 100_000)).isEqualTo(30_000);
@@ -31,24 +30,20 @@ class PromoDiscountTest extends OrderScenarioTestBase {
 
     @Test
     void discountFor_ceilingCapsThePercent() {
-        PromoCode bonus = new PromoCode();
-        bonus.setDiscountPercent(5);
-        bonus.setMaxDiscountMinor(10_000); // 5 %, but at most 100 ₴
+        PromoCode bonus = promo().discountPercent(5).maxDiscountMinor(10_000).build();
 
         assertThat(PromoDiscount.discountFor(bonus, 1_000_000)).isEqualTo(10_000); // 10 000 ₴ → −100 ₴
         assertThat(PromoDiscount.discountFor(bonus, 200_000)).isEqualTo(10_000);   // exactly 5 %
         assertThat(PromoDiscount.discountFor(bonus, 100_000)).isEqualTo(5_000);    // below the ceiling
         assertThat(PromoDiscount.discountFor(bonus, 4_000)).isEqualTo(200);
 
-        bonus.setMaxDiscountMinor(0); // no ceiling
+        with(bonus, b -> b.maxDiscountMinor(0)); // no ceiling
         assertThat(PromoDiscount.discountFor(bonus, 1_000_000)).isEqualTo(50_000);
     }
 
     @Test
     void discountFor_ceilingAppliesAfterTheExcludedPartAndThePercent() {
-        PromoCode promo = new PromoCode();
-        promo.setDiscountPercent(10);
-        promo.setMaxDiscountMinor(15_000);
+        PromoCode promo = promo().discountPercent(10).maxDiscountMinor(15_000).build();
 
         // 10 000 ₴, of them 8 000 ₴ excluded: 10 % of 2 000 ₴ = 200 ₴ → ceiling 150 ₴.
         assertThat(PromoDiscount.discountFor(promo, 1_000_000, 800_000)).isEqualTo(15_000);
@@ -58,9 +53,7 @@ class PromoDiscountTest extends OrderScenarioTestBase {
 
     @Test
     void discountFor_ceilingAlsoCapsAFixedAmount() {
-        PromoCode promo = new PromoCode();
-        promo.setDiscountAmountMinor(30_000);
-        promo.setMaxDiscountMinor(20_000);
+        PromoCode promo = promo().discountAmountMinor(30_000).maxDiscountMinor(20_000).build();
 
         assertThat(PromoDiscount.discountFor(promo, 100_000)).isEqualTo(20_000);
         assertThat(PromoDiscount.discountFor(promo, 10_000)).isEqualTo(10_000); // still not above the subtotal

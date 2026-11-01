@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import static com.maxsolch.shop.promo.domain.PromoCodes.promo;
 import com.maxsolch.shop.inventory.domain.InventoryError;
 import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderFixtures;
@@ -241,11 +242,7 @@ class CheckoutTest extends OrderScenarioTestBase {
         Product p = simpleProduct(10, 10_000); // 100.00
         when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
-        PromoCode promo = new PromoCode();
-        promo.setCode("SAVE10");
-        promo.setDiscountPercent(10);
-        promo.setDiscountAmountMinor(0);
-        promo.setActive(true);
+        PromoCode promo = promo().code("SAVE10").discountPercent(10).discountAmountMinor(0).active(true).build();
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("SAVE10")).thenReturn(Optional.of(promo));
 
         CreateOrderCommand command = cmd(
@@ -266,11 +263,7 @@ class CheckoutTest extends OrderScenarioTestBase {
         Product p = simpleProduct(10, 1_000_000); // 10 000 ₴
         when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
-        PromoCode promo = new PromoCode();
-        promo.setCode("SAVE5");
-        promo.setDiscountPercent(5);
-        promo.setMaxDiscountMinor(10_000); // at most 100 ₴
-        promo.setActive(true);
+        PromoCode promo = promo().code("SAVE5").discountPercent(5).maxDiscountMinor(10_000).active(true).build();
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("SAVE5")).thenReturn(Optional.of(promo));
 
         Order order = service.createOrder(cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 1)), "SAVE5"));
@@ -283,10 +276,7 @@ class CheckoutTest extends OrderScenarioTestBase {
     void createOrder_promoCoversEverything_isPaidAtOnce_withoutDeadline() {
         Product p = simpleProduct(10, 15_000); // glides at 150 ₴, a case prize code for 150 ₴
         when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
-        PromoCode promo = new PromoCode();
-        promo.setCode("CASE150");
-        promo.setDiscountAmountMinor(15_000);
-        promo.setActive(true);
+        PromoCode promo = promo().code("CASE150").discountAmountMinor(15_000).active(true).build();
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("CASE150")).thenReturn(Optional.of(promo));
 
         Order order = service.createOrder(cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 1)), "CASE150"));
@@ -313,10 +303,7 @@ class CheckoutTest extends OrderScenarioTestBase {
     @Test
     void createOrder_ordinaryPromo_alsoSkipsLowMarginProducts() {
         String mouse = lowMarginCart();
-        PromoCode promo = new PromoCode();
-        promo.setCode("SAVE10");
-        promo.setDiscountPercent(10);
-        promo.setActive(true);
+        PromoCode promo = promo().code("SAVE10").discountPercent(10).active(true).build();
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("SAVE10")).thenReturn(Optional.of(promo));
 
         Order order = service.createOrder(cmd(List.of(new CreateOrderCommand.Line(mouse, null, 1),
@@ -328,11 +315,7 @@ class CheckoutTest extends OrderScenarioTestBase {
     @Test
     void createOrder_promoCeiling_appliesAfterLowMarginProducts() {
         String mouse = lowMarginCart(); // mouse 4 000 ₴ low-margin, pad 800 ₴
-        PromoCode promo = new PromoCode();
-        promo.setCode("SAVE30");
-        promo.setDiscountPercent(30);
-        promo.setMaxDiscountMinor(10_000); // at most 100 ₴
-        promo.setActive(true);
+        PromoCode promo = promo().code("SAVE30").discountPercent(30).maxDiscountMinor(10_000).active(true).build();
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("SAVE30")).thenReturn(Optional.of(promo));
 
         Order order = service.createOrder(cmd(List.of(new CreateOrderCommand.Line(mouse, null, 1),
@@ -345,10 +328,7 @@ class CheckoutTest extends OrderScenarioTestBase {
     @Test
     void createOrder_ordinaryPromo_onlyLowMarginProducts_isRefused() {
         String mouse = lowMarginCart();
-        PromoCode promo = new PromoCode();
-        promo.setCode("SAVE10");
-        promo.setDiscountPercent(10);
-        promo.setActive(true);
+        PromoCode promo = promo().code("SAVE10").discountPercent(10).active(true).build();
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("SAVE10")).thenReturn(Optional.of(promo));
 
         assertThatThrownBy(() -> service.createOrder(cmd(List.of(new CreateOrderCommand.Line(mouse, null, 1)), "SAVE10")))
@@ -373,11 +353,7 @@ class CheckoutTest extends OrderScenarioTestBase {
         Product p = simpleProduct(10, 10_000);
         when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
-        PromoCode promo = new PromoCode();
-        promo.setCode("MIX");
-        promo.setDiscountPercent(50);          // would be 5000
-        promo.setDiscountAmountMinor(2_000);   // fixed wins
-        promo.setActive(true);
+        PromoCode promo = promo().code("MIX").discountPercent(50).discountAmountMinor(2_000).active(true).build();
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("MIX")).thenReturn(Optional.of(promo));
 
         CreateOrderCommand command = cmd(
@@ -394,10 +370,7 @@ class CheckoutTest extends OrderScenarioTestBase {
         Product p = simpleProduct(10, 3_000);
         when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
-        PromoCode promo = new PromoCode();
-        promo.setCode("BIG");
-        promo.setDiscountAmountMinor(999_999); // way more than subtotal
-        promo.setActive(true);
+        PromoCode promo = promo().code("BIG").discountAmountMinor(999_999).active(true).build();
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("BIG")).thenReturn(Optional.of(promo));
 
         CreateOrderCommand command = cmd(

@@ -2,6 +2,7 @@ package com.maxsolch.shop.promo.app;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.domain.PromoCode;
+import com.maxsolch.shop.promo.domain.PromoCodes;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.platform.error.DomainException;
 import jakarta.validation.Validation;
@@ -37,17 +38,14 @@ class PromoAdminServiceTest {
     @BeforeEach
     void setUp() {
         service = new PromoAdminService(repository, usage);
-        existing = new PromoCode();
-        existing.setId(UuidUtil.randomBytes());
-        existing.setCode("SALE");
-        existing.setDiscountPercent(10);
+        existing = PromoCodes.promo().id(UuidUtil.randomBytes()).code("SALE").discountPercent(10).build();
         id = UuidUtil.toString(existing.getId());
         lenient().when(repository.save(any(PromoCode.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
     @Test
     void update_takesTheRowLock_soACheckoutsUseIsNotOverwritten() {
-        existing.setUsesCount(4); // value under the lock: a checkout just counted a use
+        PromoCodes.with(existing, b -> b.usesCount(4)); // value under the lock: a checkout just counted a use
         when(repository.findByIdForUpdate(existing.getId())).thenReturn(Optional.of(existing));
 
         PromoAdminService.Updated r = service.update(id, req("SALE", 15, 0, 10));
@@ -60,7 +58,7 @@ class PromoAdminServiceTest {
 
     @Test
     void usedCode_cannotBeDeleted() {
-        existing.setUsesCount(2);
+        PromoCodes.with(existing, b -> b.usesCount(2));
         when(repository.findByIdForUpdate(existing.getId())).thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> service.delete(id))
@@ -91,7 +89,7 @@ class PromoAdminServiceTest {
 
     @Test
     void usedCode_cannotBeRenamed() {
-        existing.setUsesCount(1);
+        PromoCodes.with(existing, b -> b.usesCount(1));
         when(repository.findByIdForUpdate(existing.getId())).thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> service.update(id, req("SALE2", 10, 0, null)))

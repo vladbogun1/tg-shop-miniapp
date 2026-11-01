@@ -27,7 +27,7 @@ public class PromoUses {
 
     /** One more use of a code that {@link #lockActive} returned. */
     public void countUse(PromoCode promo) {
-        promo.setUsesCount(promo.getUsesCount() + 1);
+        promo.countUse();
         promoCodeRepository.save(promo);
     }
 
@@ -35,8 +35,7 @@ public class PromoUses {
     public void release(String code) {
         // Locked like the checkout increment, or the two could overwrite each other's count.
         promoCodeRepository.findByCodeForUpdate(code).ifPresent(p -> {
-            if (p.getUsesCount() > 0) {
-                p.setUsesCount(p.getUsesCount() - 1);
+            if (p.giveBackUse()) {
                 promoCodeRepository.save(p);
             }
         });

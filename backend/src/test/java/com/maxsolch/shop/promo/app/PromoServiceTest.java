@@ -1,5 +1,6 @@
 package com.maxsolch.shop.promo.app;
 
+import static com.maxsolch.shop.promo.domain.PromoCodes.promo;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.promo.domain.PromoReservation;
@@ -60,12 +61,7 @@ class PromoServiceTest {
     }
 
     private PromoCode code(String value, Integer maxUses, int usesCount) {
-        PromoCode promo = new PromoCode();
-        promo.setId(UuidUtil.randomBytes());
-        promo.setCode(value);
-        promo.setDiscountPercent(10);
-        promo.setMaxUses(maxUses);
-        promo.setUsesCount(usesCount);
+        PromoCode promo = promo().id(UuidUtil.randomBytes()).code(value).discountPercent(10).maxUses(maxUses).usesCount(usesCount).build();
         return promo;
     }
 

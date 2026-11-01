@@ -6,13 +6,14 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Instant;
 
 @Getter
-@Setter
+@Setter(AccessLevel.PACKAGE)
 @Entity
 @Table(name = "promo_codes")
 public class PromoCode {
@@ -73,6 +74,79 @@ public class PromoCode {
     public static final String SOURCE_REVIEW_BONUS = "REVIEW_BONUS";
     /** A code the gift case gave (a discount prize or the swap of a product prize). */
     public static final String SOURCE_GIFT_CASE = "GIFT_CASE";
+
+    /** A percent as the code may hold it: 0..100 (a "150 %" code is not a thing). */
+    public static int clampPercent(int percent) {
+        return percent > 0 ? Math.min(100, percent) : 0;
+    }
+
+    /** An admin's code: no owner, no expiry. The discount is set by {@link #edit}. */
+    public static PromoCode named(String code) {
+        PromoCode p = new PromoCode();
+        p.code = code;
+        return p;
+    }
+
+    /**
+     * A personal single-use code (the gift case, the review bonus): only {@code ownerUserId} may use it, once,
+     * until {@code expiresAt}. A percent wins over a fixed amount; the percent is held to 100.
+     */
+    public static PromoCode personalOneTime(String code, Long ownerUserId, int percent, long amountMinor,
+                                            long maxDiscountMinor, Instant expiresAt, String source,
+                                            byte[] sourceOrderId) {
+        PromoCode p = new PromoCode();
+        p.code = code;
+        p.discountPercent = clampPercent(percent);
+        p.discountAmountMinor = percent > 0 ? 0 : Math.max(0, amountMinor);
+        p.maxDiscountMinor = maxDiscountMinor;
+        p.maxUses = 1;
+        p.usesCount = 0;
+        p.active = true;
+        p.ownerUserId = ownerUserId;
+        p.expiresAt = expiresAt;
+        p.source = source;
+        p.sourceOrderId = sourceOrderId;
+        return p;
+    }
+
+    /**
+     * An admin's edit of the discount. {@code maxDiscountMinor} and {@code active} are left as they are when
+     * null. (The percent is not clamped here: the admin form validates it, and {@link PromoDiscount} caps at 100.)
+     */
+    public void edit(int percent, long amountMinor, Integer maxUses, Long maxDiscountMinor, Boolean active) {
+        this.discountPercent = percent;
+        this.discountAmountMinor = amountMinor;
+        this.maxUses = maxUses;
+        if (maxDiscountMinor != null) {
+            this.maxDiscountMinor = maxDiscountMinor;
+        }
+        if (active != null) {
+            this.active = active;
+        }
+    }
+
+    public void rename(String newCode) {
+        this.code = newCode;
+    }
+
+    /** Switches the code off (a rejected order's case promo). */
+    public void deactivate() {
+        this.active = false;
+    }
+
+    /** One more use; the caller holds the row lock and has checked the limit. */
+    public void countUse() {
+        usesCount++;
+    }
+
+    /** Gives one use back (order cancelled or edited); a code with no uses is left alone. */
+    public boolean giveBackUse() {
+        if (usesCount <= 0) {
+            return false;
+        }
+        usesCount--;
+        return true;
+    }
 
     /** Expired at {@code now}: {@code expires_at} reached. */
     public boolean isExpiredAt(Instant now) {

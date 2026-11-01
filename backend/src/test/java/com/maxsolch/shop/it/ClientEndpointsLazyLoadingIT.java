@@ -1,5 +1,6 @@
 package com.maxsolch.shop.it;
 
+import static com.maxsolch.shop.promo.domain.PromoCodes.promo;
 import com.maxsolch.shop.review.app.ReviewSettings;
 import com.maxsolch.shop.support.app.SupportSettings;
 import com.maxsolch.shop.order.app.AntibotSettings;
@@ -676,10 +677,7 @@ class ClientEndpointsLazyLoadingIT {
         String giftProduct = simpleProduct("IT Подарунок", 1_000, 50, ProductCondition.NEW);
         productSoldOut = simpleProduct("IT Немає в наявності", 70_000, 0, ProductCondition.NEW);
 
-        PromoCode promo = new PromoCode();
-        promo.setCode("" + PROMO + "");
-        promo.setDiscountPercent(10);
-        promo.setActive(true);
+        PromoCode promo = promo().code("" + PROMO + "").discountPercent(10).active(true).build();
         promoCodes.save(promo);
 
         // orders in every status
