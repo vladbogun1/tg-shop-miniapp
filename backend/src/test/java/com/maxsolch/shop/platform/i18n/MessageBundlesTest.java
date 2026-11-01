@@ -80,6 +80,24 @@ class MessageBundlesTest {
         }
     }
 
+    /**
+     * The bot header key is built as {@code "bot.status." + status}, which no compiler sees: a new
+     * OrderStatus without text would show a raw key to the customer.
+     */
+    @Test
+    void everyOrderStatusHasABotHeaderInEveryLanguage() throws IOException {
+        for (String bundle : List.of("messages.properties", "messages_ru.properties",
+                "messages_uk.properties", "messages_en.properties")) {
+            Properties props = load(bundle);
+            for (com.maxsolch.shop.order.domain.OrderStatus status
+                    : com.maxsolch.shop.order.domain.OrderStatus.values()) {
+                assertThat(props.getProperty("bot.status." + status.name()))
+                        .as("%s[bot.status.%s]", bundle, status)
+                        .isNotBlank();
+            }
+        }
+    }
+
     private static Set<String> placeholders(String value) {
         Set<String> found = new TreeSet<>();
         if (value == null) {

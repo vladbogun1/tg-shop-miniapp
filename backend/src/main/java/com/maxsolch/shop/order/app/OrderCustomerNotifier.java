@@ -354,7 +354,7 @@ public class OrderCustomerNotifier {
                     ? messages.get(locale, "bot.note.REJECTED.reason",
                             escHtml(customerRejectReason.localize(order.getRejectReason(), locale)))
                     : messages.get(locale, "bot.note.REJECTED");
-            default -> "";
+            case NEW -> "";
         };
     }
 

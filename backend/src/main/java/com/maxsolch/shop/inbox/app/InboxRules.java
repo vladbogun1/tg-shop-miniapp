@@ -8,6 +8,7 @@ import com.maxsolch.shop.inbox.domain.InboxMark;
 import com.maxsolch.shop.analytics.app.MetricsDtos.ReorderRow;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.OrderTransitions;
 import com.maxsolch.shop.inbox.app.InboxDtos.Group;
 import com.maxsolch.shop.inbox.app.InboxDtos.Inbox;
 import com.maxsolch.shop.inbox.app.InboxDtos.Item;
@@ -175,7 +176,7 @@ public final class InboxRules {
     /** The customer asked to cancel a paid order that has not shipped: an admin approves or declines. */
     static boolean isCancelRequested(InboxOrderRow o) {
         return "PENDING".equals(o.cancelRequestStatus())
-                && (o.status() == OrderStatus.NEW || o.status() == OrderStatus.APPROVED);
+                && OrderTransitions.isOpen(o.status());
     }
 
     /** Paid online (monobank) and still NEW: the payment does not move the status, an admin confirms. */
