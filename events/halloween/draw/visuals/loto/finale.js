@@ -2,7 +2,7 @@
 // disc turns into the avatar (or the number), rays behind, the name huge, the prize on the right.
 import { t } from "../../lang.js";
 
-export function makeFinale({ px, art, W, H, host, reduced }) {
+export function makeFinale({ px, art, W, H, reduced }) {
   const { PAL } = px;
   const rays = px.lowres(W, H);
   const BIG = 150, CY = 360;
@@ -36,13 +36,6 @@ export function makeFinale({ px, art, W, H, host, reduced }) {
       drawRays(g, now, col, ramp);
       px.glow(g, W / 2, CY, 1000, col, 0.5 * ramp);
       px.glow(g, W / 2, CY, 600, PAL.orange, 0.45 * ramp);
-      // the mascot presents the winner
-      if (px.ready(host) && u > 0.5) {
-        const a = stepped((u - 0.5) / 0.6, 5), w = 380, h = (w * host.naturalHeight) / host.naturalWidth;
-        g.globalAlpha = a;
-        g.drawImage(host, px.snap(W / 2 - 680 - w / 2 - (1 - a) * 120), px.snap(700 - h + (Math.floor(now * 3) % 2 ? -8 : 0)), w, h);
-        g.globalAlpha = 1;
-      }
       // the ball flies to the centre and grows
       const f = easeOutCubic(u / 0.9), k = easeOutBack(u / 0.9);
       const x = s.from.x + (W / 2 - s.from.x) * f, y = s.from.y + (CY - s.from.y) * f;
@@ -53,14 +46,7 @@ export function makeFinale({ px, art, W, H, host, reduced }) {
       const pop = (d) => stepped(easeOutBack((u - d) / 0.55), 8);
       const at = (sc2, yy, fn, xx = W / 2) => { if (sc2 <= 0.01) return; g.save(); g.translate(xx, yy); g.scale(sc2, sc2); g.globalAlpha = Math.min(1, sc2); fn(); g.restore(); };
       at(pop(0.45), 86, () => px.text(g, t("ПЕРЕМОЖЕЦЬ", "ПОБЕДИТЕЛЬ"), 0, 0, { size: 80, color: PAL.gold, align: "center", ls: 6, depth: 5, drop: PAL.rust }));
-      if (s.pic && px.ready(s.pic.img)) {
-        const [pw, ph] = px.prizePictureSize(s.pic, 360);
-        at(pop(0.9), CY, () => {
-          px.prizeFrame(g, s.pic, -pw / 2, -ph / 2, pw, ph);
-          const pn = px.prizeLabel(s.info?.prize?.name);
-          if (pn) px.text(g, pn, 0, ph / 2 + 52, { size: clamp(px.fit(g, pn, 34, 420), 20, 34), color: PAL.gold, align: "center", depth: 3 });
-        }, W / 2 + 640);
-      }
+      at(pop(0.9), CY, () => px.prizeBlock(g, s.pic, s.info?.prize?.name), W / 2 + 640);
       const nm = s.winner.name || "?";
       at(pop(0.75), 660, () => px.text(g, nm, 0, 0, { size: clamp(px.fit(g, nm, 160, 1560), 64, 160), color: PAL.bone, align: "center", depth: 8, drop: PAL.rust }));
       if (s.winner.handle) at(pop(1.0), 770, () => px.text(g, s.winner.handle, 0, 0, { size: clamp(px.fit(g, s.winner.handle, 72, 1200), 40, 72), color: PAL.slime, align: "center", depth: 5, drop: PAL.moss }));

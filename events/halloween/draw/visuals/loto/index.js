@@ -39,7 +39,6 @@ export function mount(root, ctx) {
   const pedestal = px.loadImage(px.spriteUrl("loto-pedestal"));
   const pump = px.loadImage(px.spriteUrl("loto-pump"));
   const holder = px.loadImage(px.spriteUrl("loto-holder"));
-  const host = px.loadImage(px.spriteUrl("host"));
   const tubePath = art.buildTube(), dropPath = art.buildDrop();
   const tube = art.renderTube([tubePath, dropPath]);
   const drumL = px.lowres(W, H), frontL = px.lowres(W, H);
@@ -111,7 +110,7 @@ export function mount(root, ctx) {
   let particles = [];
   let flash = 0, shake = 0, nextSwapAt = 0, bumpAt = 0;
   const board = makeBoard({ px, art, W });
-  const finale = makeFinale({ px, art, W, H, host, reduced });
+  const finale = makeFinale({ px, art, W, H, reduced });
 
   // ---------------------------------------------------------------- roll
   function startRoll(winner, info, resolve) {
@@ -285,11 +284,6 @@ export function mount(root, ctx) {
     if (bp && roll && roll.phase === "settle") {
       px.glow(g, bp.x, bp.y, 260, PAL.gold, 0.6 + 0.3 * Math.sin(now * 12));
       art.drawBall(g, roll.ball, bp.x, bp.y);
-    }
-    // mascot
-    if (px.ready(host) && mode !== "win") {
-      const w = 230, h = (w * host.naturalHeight) / host.naturalWidth;
-      g.drawImage(host, 24, px.snap(H - h - 30 + (Math.floor(now / 0.8) % 2 ? -8 : 0)), w, h);
     }
     // title
     px.text(g, "ЛОТО ЗАБАВА", 300, 64, { size: 58, color: PAL.gold, align: "center", depth: 5, drop: PAL.rust, ls: 4 });

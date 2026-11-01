@@ -2,7 +2,8 @@
 // one pixel font, notched pixel frames, hard stepped shadows instead of blur, dithered glows instead of
 // radial gradients, pixelated photos. Used by the visuals only; the overlays have their own CSS (.px, .pxt).
 import * as common from "../stage-common.js";
-export { t } from "../lang.js";
+import { t } from "../lang.js";
+export { t };
 
 /** One art pixel of the scenes at 1920×1080. */
 export const PX = 4;
@@ -285,6 +286,19 @@ export function prizeFrame(g, pic, x, y, w, h, o = {}) {
   if (!pic || !ready(pic.img)) return false;
   box(g, x, y, w, h, { frame: PAL.gold, fill: PAL.ink, bevel: false, ...o });
   return pixelImage(g, pic.img, x, y, w, h);
+}
+
+/**
+ * The won prize on a winner screen, centred on 0,0: «ВИГРАШ», the framed picture (once it has loaded) and the
+ * prize name under it; only the heading and the name while the picture is missing. Nothing without a prize.
+ */
+export function prizeBlock(g, pic, name, w = 360) {
+  const label = prizeLabel(name), shown = !!(pic && ready(pic.img));
+  if (!label && !shown) return;
+  const [pw, ph] = shown ? prizePictureSize(pic, w) : [0, 0];
+  text(g, t("ВИГРАШ", "ВЫИГРЫШ"), 0, (shown ? -ph / 2 : -30) - 44, { size: 30, color: PAL.amber, align: "center", depth: 3, ls: 4 });
+  if (shown) prizeFrame(g, pic, -pw / 2, -ph / 2, pw, ph);
+  if (label) text(g, label, 0, (shown ? ph / 2 + 52 : 10), { size: Math.max(20, Math.min(40, fit(g, label, 40, 440))), color: PAL.gold, align: "center", depth: 3 });
 }
 
 /**

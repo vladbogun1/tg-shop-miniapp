@@ -2,7 +2,7 @@
 // chosen visual animate to it. See VISUAL-CONTRACT.md.
 import { VISUALS } from "./visuals/registry.js";
 import { makeSound, prizeOf as packOf, renderRail as drawRail, visualCtx, mountVisual as mountInto } from "./screen-kit.js";
-import { mockParticipants, mockDraw } from "./mock.js";
+import { mockParticipants, mockDraw, mockPrizes } from "./mock.js";
 import { showPeople, spendCell } from "./admin-tools.js";
 import { showInvites } from "./invites-tool.js";
 import { startRemote } from "./remote.js";
@@ -47,6 +47,7 @@ async function load() {
   if (MOCK) {
     state.participants = mockParticipants(MOCK);
     state.seedHash = "mock";
+    state.prizes = mockPrizes(ROUNDS);
     return;
   }
   const [data, pz] = await Promise.all([api(P + "/participants"), api("/prizes")]);

@@ -47,3 +47,14 @@ export function mockDraw(list) {
   }
   return { winner: pool[pool.length - 1], totalTickets: total };
 }
+
+/** Two prize packs with local pictures, one per round in turn, so the winner screens show a prize in ?mock. */
+export function mockPrizes(rounds = 10) {
+  const prizes = [
+    { id: 1, name: "Пак «Мисливець»", items: "Мишка, килимок", images: ["sets/hunt-1"] },
+    { id: 2, name: "Пак «Хвиля»", items: "Клавіатура, мишка", images: ["sets/wave-black"] },
+  ];
+  const r = {};
+  for (let i = 1; i <= rounds; i++) r[i] = prizes[(i - 1) % 2].id;
+  return { prizes, rounds: r, template: "" };
+}
