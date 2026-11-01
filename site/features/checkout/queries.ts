@@ -4,10 +4,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { siteCheckoutKeys } from "@shop/customer/checkout/keys";
 import { meKeys } from "@shop/customer/account/keys";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLatest } from "@shop/ui/use-latest";
 import { type DeliveryMethod, type OrderDetail } from "@shop/core/types";
-import { visiblePaymentOptions } from "@shop/core/orders";
+import { useChosenPayment } from "@shop/customer/checkout/payment-choice";
 import { giftProgress, guaranteedDiscountMinor, type GiftChoice } from "@shop/core/giftcase";
 import { resolveNpWarehouse } from "@shop/core/np-geo";
 import { type useNpSelection } from "@shop/customer/delivery/np-selection";
@@ -89,18 +89,9 @@ export function useLastOrderPrefill(np: ReturnType<typeof useNpSelection>, targe
 export function usePaymentChoice(total: number) {
   const { locale } = useI18n();
   const query = useQuery({ queryKey: siteCheckoutKeys.paymentOptions(locale), queryFn: () => api.checkout.paymentOptions() });
-  const [paymentId, setPaymentId] = useState<string | null>(null);
-  const options = useMemo(() => visiblePaymentOptions(query.data ?? [], total), [query.data, total]);
-  const chosen =
-    options.find((p) => p.id === paymentId) ?? (paymentId ? options.find((p) => !p.requiresPrepayment) ?? null : null);
-  const chosenId = chosen?.id ?? null;
-  const optionsLoaded = !!query.data;
-  useEffect(() => {
-    if (optionsLoaded && chosenId !== paymentId) setPaymentId(chosenId);
-  }, [optionsLoaded, chosenId, paymentId]);
-  const dueNow = chosen?.requiresPrepayment && chosen.prepaymentMinor ? Math.min(chosen.prepaymentMinor, total) : total;
+  const pay = useChosenPayment(query.data, total);
   const status: "loading" | "error" | "ready" = query.isLoading ? "loading" : query.isError ? "error" : "ready";
-  return { status, options, chosen, chosenId, dueNow, choose: setPaymentId };
+  return { status, options: pay.options, chosen: pay.chosen, chosenId: pay.chosenId, dueNow: pay.dueNow, choose: pay.choose };
 }
 
 /**

@@ -28,4 +28,5 @@ export const webPlatform: Platform = {
     return () => document.removeEventListener("visibilitychange", onVisibility);
   },
   putCartOnUnload,
+  haptic() {},
 };

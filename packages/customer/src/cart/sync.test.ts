@@ -57,6 +57,7 @@ function setup(server = fakeServer()) {
     onForeground: (cb) => (fg.add(cb), () => fg.delete(cb)),
     onBackground: (cb) => (bg.add(cb), () => bg.delete(cb)),
     putCartOnUnload: unload,
+    haptic: () => {},
   };
   type S = ReturnType<typeof cart.useCart.getState>;
   const policy: CartSyncPolicy<S> = {
