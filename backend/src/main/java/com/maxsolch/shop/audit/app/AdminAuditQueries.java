@@ -26,6 +26,11 @@ public class AdminAuditQueries {
         return repository.search(action, entityType, entityId, adminId, from, to, PageRequest.of(page, size));
     }
 
+    /** Entries the admin made, not counting their own sign-in and account ones (`ADMIN_*`). */
+    public long countWorkBy(long adminId) {
+        return repository.countExcludingAction(adminId, "ADMIN\\_%");
+    }
+
     /** (admin id, admin name) pairs seen in the log. */
     public List<Object[]> admins() {
         return repository.admins();

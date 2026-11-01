@@ -101,10 +101,7 @@ final class V2Rules {
             "M3", java.util.Map.ofEntries(
                     java.util.Map.entry("gift.infra.GiftQueries", "report over orders, order_items, order_gift_cases: one statement counts across the tables, splitting it would send every order through the JVM"),
                     java.util.Map.entry("gift.infra.GiftRegistryStore", "registry report: gift lines joined with their order and product price, read-only"),
-                    java.util.Map.entry("gift.infra.GiftReminderStore", "пакет 5: scan of expiring gift-case promo codes joined with order and bot_blocked; claim is one atomic update of the code"),
-                    java.util.Map.entry("review.infra.ReviewStore", "пакет 5: review scans and feed joined with order, product and promo rows, plus once-only claims written with 'update ... where flag is null' (atomic)"),
-                    java.util.Map.entry("staff.infra.IncidentQueries", "the admin incident report: audit log, orders and money movements in one read"),
-                    java.util.Map.entry("staff.infra.AdminTeamQueries", "пакет 5: the admin team screen: one activity summary per admin over audit, chat, broadcasts, marks and push rows, read-only")),
+                    java.util.Map.entry("staff.infra.IncidentQueries", "the admin incident report: audit log, orders and money movements in one read")),
             "A3", java.util.Map.of(
                     "catalog.app.AdminCatalog", "force=1 on deleting a characteristic is for the main admin: the rule reads a request parameter, a method annotation cannot see it",
                     "translation.app.AdminTranslations", "deleting a whole language (blank entityId) is for the main admin: the rule reads a request parameter"),

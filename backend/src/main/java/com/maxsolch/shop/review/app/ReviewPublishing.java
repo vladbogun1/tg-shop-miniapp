@@ -5,7 +5,8 @@ import com.maxsolch.shop.review.app.ReviewDtos.Bonus;
 import com.maxsolch.shop.review.domain.ProductReview;
 import com.maxsolch.shop.review.domain.ReviewEvents;
 import com.maxsolch.shop.review.infra.ReviewStore;
-import com.maxsolch.shop.review.infra.ReviewStore.ProductInfo;
+import com.maxsolch.shop.catalog.app.ProductBriefs;
+import com.maxsolch.shop.catalog.domain.ProductBrief;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -21,14 +22,16 @@ import java.util.List;
 public class ReviewPublishing {
 
     private final ReviewStore store;
+    private final ProductBriefs products;
     private final ReviewMapper mapper;
     private final ReviewBonus bonus;
     private final SiteRevalidator siteRevalidator;
     private final DomainEvents events;
 
-    public ReviewPublishing(ReviewStore store, ReviewMapper mapper, ReviewBonus bonus,
+    public ReviewPublishing(ReviewStore store, ProductBriefs products, ReviewMapper mapper, ReviewBonus bonus,
                             SiteRevalidator siteRevalidator, DomainEvents events) {
         this.store = store;
+        this.products = products;
         this.mapper = mapper;
         this.bonus = bonus;
         this.siteRevalidator = siteRevalidator;
@@ -48,8 +51,9 @@ public class ReviewPublishing {
 
     /** Recompute the aggregate now; drop the catalog caches after commit and rebuild the site page. */
     void ratingChanged(byte[] productId) {
-        store.recomputeRating(productId);
-        ProductInfo info = mapper.infoOf(productId);
+        ReviewStore.Rating rating = store.ratingOf(productId);
+        products.setRating(productId, rating.count(), rating.avg());
+        ProductBrief info = mapper.infoOf(productId);
         events.publish(new ReviewEvents.RatingChanged(productId));
         if (info != null && info.slug() != null) {
             try {

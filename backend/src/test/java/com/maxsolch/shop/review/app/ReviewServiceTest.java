@@ -7,6 +7,8 @@ import com.maxsolch.shop.review.domain.ReviewRulesTest;
 import com.maxsolch.shop.review.domain.ReviewStatus;
 import com.maxsolch.shop.review.infra.ProductReviewRepository;
 import com.maxsolch.shop.review.infra.ReviewStore;
+import com.maxsolch.shop.catalog.app.ProductBriefs;
+import com.maxsolch.shop.order.app.OrderReviewMarks;
 
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
@@ -36,6 +38,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.math.BigDecimal;
 import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.Optional;
@@ -43,6 +46,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -74,6 +78,10 @@ class ReviewServiceTest {
     @Mock
     ReviewStore store;
     @Mock
+    ProductBriefs briefs;
+    @Mock
+    OrderReviewMarks orderMarks;
+    @Mock
     SettingsService settings;
     @Mock
     Messages messages;
@@ -100,10 +108,10 @@ class ReviewServiceTest {
             }
         });
         OrderLines orderLines = new OrderLines(orderItems);
-        ReviewMapper mapper = new ReviewMapper(store, orderLines, users);
-        ReviewBonus bonus = new ReviewBonus(store, settings, new PromoCodes(promoCodes), events, clock);
-        ReviewPublishing publishing = new ReviewPublishing(store, mapper, bonus, siteRevalidator, events);
-        service = new ReviewService(reviews, orders, orderLines, users, store, settings, messages, mapper, publishing,
+        ReviewMapper mapper = new ReviewMapper(briefs, orderLines, users);
+        ReviewBonus bonus = new ReviewBonus(orderMarks, settings, new PromoCodes(promoCodes), events, clock);
+        ReviewPublishing publishing = new ReviewPublishing(store, briefs, mapper, bonus, siteRevalidator, events);
+        service = new ReviewService(reviews, orders, orderLines, users, briefs, settings, messages, mapper, publishing,
                 bonus, events, clock);
         moderation = new ReviewModeration(reviews, mapper, publishing, clock);
         lenient().when(settings.get(eq(ReviewSettings.REVIEWS_ENABLED), any(Boolean.class))).thenReturn(true);
@@ -125,7 +133,8 @@ class ReviewServiceTest {
         });
         lenient().when(promoCodes.save(any(PromoCode.class))).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(promoCodes.findByCode(anyString())).thenReturn(Optional.empty());
-        lenient().when(store.productInfos(any())).thenReturn(Map.of());
+        lenient().when(briefs.briefs(any())).thenReturn(Map.of());
+        lenient().when(store.ratingOf(any())).thenReturn(new ReviewStore.Rating(1, BigDecimal.valueOf(5)));
         lenient().when(users.findById(anyLong())).thenReturn(Optional.empty());
     }
 
@@ -150,8 +159,8 @@ class ReviewServiceTest {
         assertThat(result.review().status()).isEqualTo("PENDING");
         assertThat(result.review().editable()).isTrue();
         assertThat(result.bonus()).isNull();
-        verify(store, never()).recomputeRating(any());
-        verify(store, never()).claimBonus(any(), any());
+        verify(briefs, never()).setRating(any(), anyInt(), any());
+        verify(orderMarks, never()).claimBonus(any(), any());
         verify(promoCodes, never()).save(any());
         verify(notifier).pendingForModeration(eq("Мышь"), eq(5), anyLong());
     }
@@ -160,12 +169,12 @@ class ReviewServiceTest {
     void withoutPremoderationTheReviewIsPublishedAndEarnsAPersonalCode() {
         premoderation = false;
         OrderItem item = deliveredLine(USER);
-        when(store.claimBonus(item.getOrder().getId(), NOW)).thenReturn(true);
+        when(orderMarks.claimBonus(item.getOrder().getId(), NOW)).thenReturn(true);
 
         SubmitResult result = service.submit(USER, request());
 
         assertThat(result.review().status()).isEqualTo("PUBLISHED");
-        verify(store).recomputeRating(item.getProductId());
+        verify(briefs).setRating(eq(item.getProductId()), eq(1), any());
         ArgumentCaptor<PromoCode> promo = ArgumentCaptor.forClass(PromoCode.class);
         verify(promoCodes).save(promo.capture());
         PromoCode code = promo.getValue();
@@ -188,7 +197,7 @@ class ReviewServiceTest {
         premoderation = false;
         OrderItem item = deliveredLine(USER);
         // Another review of the same order already claimed the bonus.
-        when(store.claimBonus(item.getOrder().getId(), NOW)).thenReturn(false);
+        when(orderMarks.claimBonus(item.getOrder().getId(), NOW)).thenReturn(false);
 
         SubmitResult result = service.submit(USER, request());
 
@@ -207,7 +216,7 @@ class ReviewServiceTest {
         SubmitResult result = service.submit(USER, request());
 
         assertThat(result.bonus()).isNull();
-        verify(store, never()).claimBonus(any(), any());
+        verify(orderMarks, never()).claimBonus(any(), any());
         verify(promoCodes, never()).save(any());
     }
 
@@ -223,13 +232,13 @@ class ReviewServiceTest {
         pending.setText("Хороший товар, всё ок");
         pending.setStatus(ReviewStatus.PENDING);
         when(reviews.findById(3L)).thenReturn(Optional.of(pending));
-        when(store.claimBonus(pending.getOrderId(), NOW)).thenReturn(true);
+        when(orderMarks.claimBonus(pending.getOrderId(), NOW)).thenReturn(true);
 
         ReviewDtos.AdminReview published = moderation.publish(3L);
 
         assertThat(published.status()).isEqualTo("PUBLISHED");
         assertThat(pending.getPublishedAt()).isEqualTo(NOW);
-        verify(store).recomputeRating(pending.getProductId());
+        verify(briefs).setRating(eq(pending.getProductId()), eq(1), any());
         verify(promoCodes).save(any(PromoCode.class));
 
         // Publishing it again (already published) changes nothing and issues nothing.

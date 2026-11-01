@@ -2,7 +2,10 @@ package com.maxsolch.shop.review.app;
 
 import com.maxsolch.shop.order.app.OrderSettings;
 import com.maxsolch.shop.review.domain.ReviewRules;
-import com.maxsolch.shop.review.infra.ReviewStore;
+import com.maxsolch.shop.customer.app.Customers;
+import com.maxsolch.shop.order.app.OrderReviewMarks;
+import com.maxsolch.shop.order.domain.DeliveredOrder;
+import com.maxsolch.shop.review.infra.ProductReviewRepository;
 
 import com.maxsolch.shop.settings.app.SettingsService;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +16,8 @@ import org.springframework.stereotype.Component;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 /**
@@ -25,14 +30,21 @@ import java.util.List;
 public class ReviewReminderJob {
 
     static final int BATCH = 50;
+    /** Pages read before giving up: orders the checks skip must not hide the next ones, but the scan is bounded. */
+    static final int MAX_PAGES = 20;
 
-    private final ReviewStore store;
+    private final OrderReviewMarks orders;
+    private final ProductReviewRepository reviews;
+    private final Customers customers;
     private final SettingsService settings;
     private final ReviewNotifier notifier;
     private final Clock clock;
 
-    public ReviewReminderJob(ReviewStore store, SettingsService settings, ReviewNotifier notifier, Clock clock) {
-        this.store = store;
+    public ReviewReminderJob(OrderReviewMarks orders, ProductReviewRepository reviews, Customers customers,
+                             SettingsService settings, ReviewNotifier notifier, Clock clock) {
+        this.orders = orders;
+        this.reviews = reviews;
+        this.customers = customers;
         this.settings = settings;
         this.notifier = notifier;
         this.clock = clock;
@@ -67,15 +79,15 @@ public class ReviewReminderJob {
         Instant deliveredFrom = deliveredTo.minus(Duration.ofDays(ReviewRules.REMINDER_WINDOW_DAYS));
         int bonusPercent = settings.get(ReviewSettings.REVIEWS_BONUS_PERCENT, 5);
         long bonusMax = ReviewRules.bonusMaxMinor(settings.get(ReviewSettings.REVIEWS_BONUS_MAX_UAH, 100));
-        List<ReviewStore.ReminderCandidate> candidates = store.reminderCandidates(deliveredFrom, deliveredTo, BATCH);
+        List<DeliveredOrder> candidates = candidates(deliveredFrom, deliveredTo);
         int sent = 0;
-        for (ReviewStore.ReminderCandidate c : candidates) {
+        for (DeliveredOrder c : candidates) {
             if (!ReviewRules.reminderDue(com.maxsolch.shop.order.domain.OrderStatus.DELIVERED, c.deliveredAt(), null,
-                    c.tgUserId(), c.hasPendingLines(), now, days)) {
+                    c.tgUserId(), true, now, days)) {
                 continue;
             }
             // Claimed before sending: a second instance (or a retry) never DMs the same order twice.
-            if (!store.claimReminder(c.orderId(), now)) {
+            if (!orders.claimReminder(c.orderId(), now)) {
                 continue;
             }
             if (notifier.reminder(c.tgUserId(), c.orderId(), bonusPercent, bonusMax)) {
@@ -83,5 +95,30 @@ public class ReviewReminderJob {
             }
         }
         return sent;
+    }
+
+    /**
+     * Delivered orders in the window with a line still to review and a customer who has not blocked the bot, oldest
+     * first, up to {@link #BATCH}. Orders that fail those checks are read past, so they never hide the ones behind them.
+     */
+    private List<DeliveredOrder> candidates(Instant deliveredFrom, Instant deliveredTo) {
+        List<DeliveredOrder> out = new ArrayList<>();
+        for (int page = 0; page < MAX_PAGES && out.size() < BATCH; page++) {
+            List<DeliveredOrder> batch = orders.deliveredWithoutReminder(deliveredFrom, deliveredTo, BATCH, page * BATCH);
+            for (DeliveredOrder o : batch) {
+                if (out.size() < BATCH && hasLineToReview(o) && customers.findById(o.tgUserId())
+                        .map(u -> !u.isBotBlocked()).orElse(true)) {
+                    out.add(o);
+                }
+            }
+            if (batch.size() < BATCH) {
+                break;
+            }
+        }
+        return out;
+    }
+
+    private boolean hasLineToReview(DeliveredOrder o) {
+        return !new HashSet<>(reviews.reviewedItemIds(o.itemIds())).containsAll(o.itemIds());
     }
 }

@@ -13,6 +13,8 @@ public interface BroadcastRepository extends JpaRepository<Broadcast, Long> {
     @Query("SELECT b FROM Broadcast b ORDER BY b.startedAt DESC, b.id DESC")
     List<Broadcast> recent(Pageable pageable);
 
+    long countByAdminId(Long adminId);
+
     /** On startup: a RUNNING row can only be left over from a restart mid-send. */
     @Modifying
     @Query("UPDATE Broadcast b SET b.status = 'INTERRUPTED' WHERE b.status = 'RUNNING'")

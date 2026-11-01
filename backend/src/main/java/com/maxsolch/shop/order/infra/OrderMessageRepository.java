@@ -30,6 +30,9 @@ public interface OrderMessageRepository extends JpaRepository<OrderMessage, Long
     /** Most recent message of an order (any sender) — for conversation previews. */
     OrderMessage findFirstByOrderIdOrderByCreatedAtDescIdDesc(byte[] orderId);
 
+    /** Messages of one sender, e.g. everything an admin wrote in order chats. */
+    long countBySenderTypeAndSenderId(SenderType senderType, Long senderId);
+
     long countByOrderIdAndSenderTypeAndReadAtIsNull(byte[] orderId, SenderType senderType);
 
     /**

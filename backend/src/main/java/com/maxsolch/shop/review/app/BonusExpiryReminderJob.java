@@ -1,7 +1,10 @@
 package com.maxsolch.shop.review.app;
 
 import com.maxsolch.shop.order.app.OrderSettings;
-import com.maxsolch.shop.review.infra.ReviewStore;
+import com.maxsolch.shop.customer.app.Customers;
+import com.maxsolch.shop.promo.app.PromoExpiry;
+import com.maxsolch.shop.promo.domain.ExpiringPromo;
+import com.maxsolch.shop.promo.domain.PromoCode;
 
 import com.maxsolch.shop.settings.app.SettingsService;
 import lombok.extern.slf4j.Slf4j;
@@ -25,13 +28,15 @@ public class BonusExpiryReminderJob {
 
     static final int BATCH = 50;
 
-    private final ReviewStore store;
+    private final PromoExpiry promos;
+    private final Customers customers;
     private final SettingsService settings;
     private final ReviewNotifier notifier;
     private final Clock clock;
 
-    public BonusExpiryReminderJob(ReviewStore store, SettingsService settings, ReviewNotifier notifier, Clock clock) {
-        this.store = store;
+    public BonusExpiryReminderJob(PromoExpiry promos, Customers customers, SettingsService settings, ReviewNotifier notifier, Clock clock) {
+        this.promos = promos;
+        this.customers = customers;
         this.settings = settings;
         this.notifier = notifier;
         this.clock = clock;
@@ -64,16 +69,22 @@ public class BonusExpiryReminderJob {
         Instant now = clock.instant();
         Duration window = Duration.ofDays(days);
         int sent = 0;
-        for (ReviewStore.BonusExpiryCandidate c
-                : store.bonusExpiryCandidates(now, now.plus(window), now.minus(window), BATCH)) {
+        for (ExpiringPromo c : promos.expiring(PromoCode.SOURCE_REVIEW_BONUS, now, now.plus(window), now.minus(window),
+                BATCH, this::reachable)) {
             // Claimed before sending: a second instance (or a retry) never DMs the same code twice.
-            if (!store.claimBonusExpiryReminder(c.promoId(), now)) {
+            if (!promos.claimReminder(c.promoId(), now)) {
                 continue;
             }
-            if (notifier.bonusExpiring(c.tgUserId(), c.code(), c.percent(), c.maxDiscountMinor(), c.expiresAt())) {
+            if (notifier.bonusExpiring(c.ownerUserId(), c.code(), c.percent(), c.maxDiscountMinor(), c.expiresAt())) {
                 sent++;
             }
         }
         return sent;
+    }
+
+    /** A personal code of a customer with a Telegram chat who has not blocked the bot. */
+    private boolean reachable(ExpiringPromo c) {
+        return c.ownerUserId() != null && c.ownerUserId() > 0
+                && customers.findById(c.ownerUserId()).map(u -> !u.isBotBlocked()).orElse(true);
     }
 }

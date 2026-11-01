@@ -1,9 +1,12 @@
 package com.maxsolch.shop.review.app;
 
+import com.maxsolch.shop.customer.app.Customers;
+import com.maxsolch.shop.customer.domain.User;
+import com.maxsolch.shop.order.app.OrderReviewMarks;
 import com.maxsolch.shop.order.app.OrderSettings;
+import com.maxsolch.shop.order.domain.DeliveredOrder;
 import com.maxsolch.shop.review.domain.ReviewRules;
-import com.maxsolch.shop.review.infra.ReviewStore;
-
+import com.maxsolch.shop.review.infra.ProductReviewRepository;
 import com.maxsolch.shop.settings.app.SettingsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +19,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -34,7 +38,11 @@ class ReviewReminderJobTest {
     private static final Instant NOW = Instant.parse("2026-10-05T12:00:00Z");
 
     @Mock
-    ReviewStore store;
+    OrderReviewMarks orders;
+    @Mock
+    ProductReviewRepository reviews;
+    @Mock
+    Customers customers;
     @Mock
     SettingsService settings;
     @Mock
@@ -47,7 +55,7 @@ class ReviewReminderJobTest {
 
     @BeforeEach
     void setUp() {
-        job = new ReviewReminderJob(store, settings, notifier, Clock.fixed(NOW, ZoneOffset.UTC));
+        job = new ReviewReminderJob(orders, reviews, customers, settings, notifier, Clock.fixed(NOW, ZoneOffset.UTC));
         lenient().when(settings.get(eq(ReviewSettings.REVIEWS_ENABLED), any(Boolean.class))).thenAnswer(i -> enabled);
         lenient().when(settings.get(eq(OrderSettings.NOTIFY_CUSTOMER_STATUS), any(Boolean.class)))
                 .thenAnswer(i -> notify);
@@ -58,18 +66,21 @@ class ReviewReminderJobTest {
         lenient().when(notifier.enabled()).thenReturn(true);
     }
 
-    private static ReviewStore.ReminderCandidate candidate(long tgUser, Duration deliveredAgo) {
-        return new ReviewStore.ReminderCandidate(new byte[16], tgUser, NOW.minus(deliveredAgo), true);
+    private static DeliveredOrder candidate(long tgUser, Duration deliveredAgo) {
+        return new DeliveredOrder(new byte[16], tgUser, NOW.minus(deliveredAgo), List.of(10L, 11L));
+    }
+
+    private void scanReturns(DeliveredOrder... found) {
+        when(orders.deliveredWithoutReminder(NOW.minus(Duration.ofDays(2 + ReviewRules.REMINDER_WINDOW_DAYS)),
+                NOW.minus(Duration.ofDays(2)), ReviewReminderJob.BATCH, 0)).thenReturn(List.of(found));
     }
 
     @Test
     void scansTheWindowAfterTheDelayAndSendsOncePerOrder() {
-        ReviewStore.ReminderCandidate due = candidate(1L, Duration.ofDays(3));
-        ReviewStore.ReminderCandidate claimedElsewhere = candidate(2L, Duration.ofDays(4));
-        when(store.reminderCandidates(NOW.minus(Duration.ofDays(2 + ReviewRules.REMINDER_WINDOW_DAYS)),
-                NOW.minus(Duration.ofDays(2)), ReviewReminderJob.BATCH))
-                .thenReturn(List.of(due, claimedElsewhere));
-        when(store.claimReminder(due.orderId(), NOW)).thenReturn(true, false);
+        DeliveredOrder due = candidate(1L, Duration.ofDays(3));
+        DeliveredOrder claimedElsewhere = candidate(2L, Duration.ofDays(4));
+        scanReturns(due, claimedElsewhere);
+        when(orders.claimReminder(due.orderId(), NOW)).thenReturn(true, false);
         when(notifier.reminder(1L, due.orderId(), 5, 10_000L)).thenReturn(true);
 
         assertThat(job.sendDue()).isEqualTo(1);
@@ -77,12 +88,31 @@ class ReviewReminderJobTest {
     }
 
     @Test
+    void ordersWithEveryLineReviewedOrABlockedBotAreReadPast() {
+        DeliveredOrder reviewed = candidate(1L, Duration.ofDays(3));
+        DeliveredOrder blocked = candidate(2L, Duration.ofDays(3));
+        DeliveredOrder due = candidate(3L, Duration.ofDays(3));
+        scanReturns(reviewed, blocked, due);
+        when(reviews.reviewedItemIds(any())).thenReturn(List.of(10L, 11L), List.of(10L), List.of(10L));
+        User blockedUser = new User();
+        blockedUser.setBotBlocked(true);
+        when(customers.findById(2L)).thenReturn(Optional.of(blockedUser));
+        when(orders.claimReminder(any(), any())).thenReturn(true);
+        when(notifier.reminder(eq(3L), any(), anyInt(), anyLong())).thenReturn(true);
+
+        assertThat(job.sendDue()).isEqualTo(1);
+        verify(orders).claimReminder(due.orderId(), NOW);
+        verify(notifier, never()).reminder(eq(1L), any(), anyInt(), anyLong());
+        verify(notifier, never()).reminder(eq(2L), any(), anyInt(), anyLong());
+    }
+
+    @Test
     void tooEarlyCandidateIsSkipped() {
-        ReviewStore.ReminderCandidate early = candidate(1L, Duration.ofHours(10));
-        when(store.reminderCandidates(any(), any(), anyInt())).thenReturn(List.of(early));
+        DeliveredOrder early = candidate(1L, Duration.ofHours(10));
+        when(orders.deliveredWithoutReminder(any(), any(), anyInt(), anyInt())).thenReturn(List.of(early));
 
         assertThat(job.sendDue()).isZero();
-        verify(store, never()).claimReminder(any(), any());
+        verify(orders, never()).claimReminder(any(), any());
     }
 
     @Test
@@ -95,6 +125,6 @@ class ReviewReminderJobTest {
         enabled = true;
         notify = false;
         assertThat(job.sendDue()).isZero();
-        verify(store, never()).reminderCandidates(any(), any(), anyInt());
+        verify(orders, never()).deliveredWithoutReminder(any(), any(), anyInt(), anyInt());
     }
 }

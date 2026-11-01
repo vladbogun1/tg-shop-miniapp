@@ -1,5 +1,7 @@
 package com.maxsolch.shop.staff.app;
 
+import com.maxsolch.shop.customer.app.Customers;
+import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.staff.domain.AdminInvite;
 import com.maxsolch.shop.staff.domain.AdminInviteStore;
 import com.maxsolch.shop.staff.domain.AdminUser;
@@ -45,13 +47,39 @@ public class AdminTeamView {
     private final AdminUserRepository repo;
     private final AdminInviteStore inviteStore;
     private final AdminTeamQueries facts;
+    private final Customers customers;
     private final Clock clock;
 
-    public AdminTeamView(AdminUserRepository repo, AdminInviteStore inviteStore, AdminTeamQueries facts, Clock clock) {
+    public AdminTeamView(AdminUserRepository repo, AdminInviteStore inviteStore, AdminTeamQueries facts, Customers customers,
+                         Clock clock) {
         this.repo = repo;
         this.inviteStore = inviteStore;
         this.facts = facts;
+        this.customers = customers;
         this.clock = clock;
+    }
+
+    /** «@username · Имя Фамилия» of shop users (customer module), by Telegram id; nobody without either. */
+    private Map<Long, String> telegramLabels(Set<Long> ids) {
+        Map<Long, String> out = new java.util.HashMap<>();
+        if (ids.isEmpty()) {
+            return out;
+        }
+        for (User u : customers.findAllById(ids)) {
+            String full = ((u.getFirstName() == null ? "" : u.getFirstName()) + " "
+                    + (u.getLastName() == null ? "" : u.getLastName())).trim();
+            List<String> parts = new ArrayList<>();
+            if (u.getUsername() != null && !u.getUsername().isBlank()) {
+                parts.add("@" + u.getUsername());
+            }
+            if (!full.isEmpty()) {
+                parts.add(full);
+            }
+            if (!parts.isEmpty()) {
+                out.put(u.getTelegramUserId(), String.join(" · ", parts));
+            }
+        }
+        return out;
     }
 
     public Team team(long callerId) {
@@ -61,7 +89,7 @@ public class AdminTeamView {
         List<AdminInvite> open = inviteStore.live(now);
         Set<Long> tgIds = new HashSet<>(byId.keySet());
         open.forEach(i -> tgIds.add(i.telegramUserId()));
-        Map<Long, String> labels = facts.telegramLabels(tgIds);
+        Map<Long, String> labels = telegramLabels(tgIds);
         Map<Long, AdminTeamQueries.LastLogin> logins = facts.lastLogins();
         Map<Long, Integer> devices = facts.trustedDevices(clock.instant());
 

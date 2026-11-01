@@ -10,7 +10,7 @@ import com.maxsolch.shop.staff.domain.Totp;
 import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;
-import com.maxsolch.shop.staff.infra.AdminTeamQueries;
+import com.maxsolch.shop.notification.app.AdminPushService;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
 import com.maxsolch.shop.platform.security.AdminTokenValidator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,7 +49,8 @@ public class AdminTeamService {
     private final AdminSessions sessions;
     private final TrustedDeviceService trustedDevices;
     private final AdminTokenValidator tokenValidator;
-    private final AdminTeamQueries facts;
+    private final AdminHistory history;
+    private final AdminPushService push;
     private final AdminAuditService audit;
     private final AdminTeamMessenger messenger;
     private final Clock clock;
@@ -58,7 +59,7 @@ public class AdminTeamService {
     public AdminTeamService(AdminUserRepository repo, AdminInviteService invites, AdminInviteStore inviteStore,
                      AdminTotp totp, AdminLockout lockout, AdminSessions sessions,
                      TrustedDeviceService trustedDevices, AdminTokenValidator tokenValidator,
-                     AdminTeamQueries facts, AdminAuditService audit, AdminTeamMessenger messenger, Clock clock) {
+                     AdminHistory history, AdminPushService push, AdminAuditService audit, AdminTeamMessenger messenger, Clock clock) {
         this.repo = repo;
         this.invites = invites;
         this.inviteStore = inviteStore;
@@ -67,7 +68,8 @@ public class AdminTeamService {
         this.sessions = sessions;
         this.trustedDevices = trustedDevices;
         this.tokenValidator = tokenValidator;
-        this.facts = facts;
+        this.history = history;
+        this.push = push;
         this.audit = audit;
         this.messenger = messenger;
         this.clock = clock;
@@ -256,12 +258,12 @@ public class AdminTeamService {
         AdminUser fresh = find(targetId);
         fresh.block();
         repo.save(fresh);
-        int push = facts.deletePushSubscriptions(targetId); // before revokeEverything, which also drops them: keeps the count for the journal
+        int pushDevices = push.forgetAdmin(targetId); // before revokeEverything, which also drops them: keeps the count for the journal
         int devices = sessions.revokeEverything(targetId);
         int links = inviteStore.revokeOpenFor(targetId, clock.instant());
         audit.recordFor(callerId, "ADMIN_BLOCKED", "ADMIN", String.valueOf(targetId),
                 who(fresh) + ": заблокирован; сессии завершены, забыто доверенных устройств: " + devices
-                        + ", отозвано ссылок: " + links + ", отключено push-подписок: " + push + ", IP " + client.ip());
+                        + ", отозвано ссылок: " + links + ", отключено push-подписок: " + pushDevices + ", IP " + client.ip());
         notice(targetId, "⛔ <b>Ваш доступ к админке ChiSetup заблокирован</b> главным админом.\n"
                 + "Все сессии завершены, вход паролем и через Telegram невозможен.");
     }
@@ -282,19 +284,19 @@ public class AdminTeamService {
         notice(targetId, "✅ <b>Доступ к админке ChiSetup восстановлен</b> главным админом.");
     }
 
-    /** Only an admin without history in the shop's data ({@link AdminTeamQueries#history}); otherwise block. */
+    /** Only an admin without history in the shop's data ({@link AdminHistory}); otherwise block. */
     public void delete(long callerId, long targetId, String code, ClientInfo client) {
         AdminUser target = find(targetId);
         guard(callerId, target, true);
-        List<String> history = facts.history(targetId);
-        if (!history.isEmpty()) {
-            throw new DomainException.Conflict(StaffError.HAS_HISTORY, String.join(", ", history));
+        List<String> traces = history.of(targetId);
+        if (!traces.isEmpty()) {
+            throw new DomainException.Conflict(StaffError.HAS_HISTORY, String.join(", ", traces));
         }
         requireOwnCode(callerId, code, client, "удаление админа");
         String label = who(target);
         inviteStore.revokeOpenFor(targetId, clock.instant());
         trustedDevices.revokeAll(targetId);
-        facts.deletePushSubscriptions(targetId);
+        push.forgetAdmin(targetId);
         repo.deleteById(targetId);
         tokenValidator.invalidate(targetId);
         audit.recordFor(callerId, "ADMIN_DELETED", "ADMIN", String.valueOf(targetId),

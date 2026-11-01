@@ -1,15 +1,17 @@
 package com.maxsolch.shop.review.app;
 
-import com.maxsolch.shop.review.infra.ReviewStore;
-
-import com.maxsolch.shop.translation.domain.SourceHash;
+import com.maxsolch.shop.catalog.app.ProductBriefs;
+import com.maxsolch.shop.catalog.domain.ProductBrief;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.review.app.ReviewDtos.ReviewFeed;
-import com.maxsolch.shop.review.app.ReviewDtos.Summary;
-import com.maxsolch.shop.review.infra.ReviewStore.FeedRow;
+import com.maxsolch.shop.review.infra.ReviewStore;
+import com.maxsolch.shop.review.infra.ReviewStore.ProductRatingCount;
+import com.maxsolch.shop.review.infra.ReviewStore.Quote;
 import com.maxsolch.shop.settings.app.SettingsService;
+import com.maxsolch.shop.translation.app.TranslationService;
+import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.translation.domain.TranslationOrigin;
-import com.maxsolch.shop.translation.app.TranslationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -18,8 +20,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -29,33 +33,36 @@ import static org.mockito.Mockito.when;
 class ReviewFeedServiceTest {
 
     private static final String PID = "11111111-2222-3333-4444-555555555555";
+    private static final byte[] PRODUCT = UuidUtil.toBytes(UUID.fromString(PID));
 
     @Mock
     ReviewStore store;
+    @Mock
+    ProductBriefs products;
     @Mock
     SettingsService settings;
     @Mock
     TranslationService translations;
 
     private ReviewFeedService service() {
-        return new ReviewFeedService(store, settings, translations);
+        return new ReviewFeedService(store, products, settings, translations);
     }
 
-    private static FeedRow row(String title) {
-        return row(title, true);
+    private static Quote quote() {
+        return new Quote(7, "Олена К.", 5, "Топ", Instant.parse("2026-10-01T10:00:00Z"), PRODUCT);
     }
 
-    private static FeedRow row(String title, boolean live) {
-        return new FeedRow(7, "Олена К.", 5, "Топ", Instant.parse("2026-10-01T10:00:00Z"), PID, title, "mouse",
-                "https://img/1.jpg", live);
+    private void oneFiveStarReviewOf(ProductBrief brief) {
+        when(store.publishedCounts()).thenReturn(List.of(new ProductRatingCount(PRODUCT, 5, 1)));
+        when(products.briefs(any())).thenReturn(brief == null ? Map.of() : Map.of(PID, brief));
     }
 
     @Test
     void reviewOfAHiddenProductStaysButIsNotLinked() {
         when(settings.get(ReviewSettings.REVIEWS_ENABLED, true)).thenReturn(true);
         when(translations.overlay("ru")).thenReturn(new TranslationService.Overlay(Map.of()));
-        when(store.latestFeed(24)).thenReturn(List.of(row("Мышка", false)));
-        when(store.shopSummary()).thenReturn(new com.maxsolch.shop.review.domain.RatingSummary(5.0, 1, List.of(0L, 0L, 0L, 0L, 1L)));
+        when(store.latestQuotes(24, 0)).thenReturn(List.of(quote()));
+        oneFiveStarReviewOf(new ProductBrief("Мышка", "mouse", "https://img/1.jpg", false));
 
         ReviewFeed feed = service().latest(24, "ru");
 
@@ -63,6 +70,21 @@ class ReviewFeedServiceTest {
             assertThat(r.productTitle()).isEqualTo("Мышка");
             assertThat(r.productSlug()).isNull();
         });
+        assertThat(feed.summary().count()).isEqualTo(1);
+    }
+
+    @Test
+    void reviewOfADeletedProductIsNeitherShownNorCounted() {
+        when(settings.get(ReviewSettings.REVIEWS_ENABLED, true)).thenReturn(true);
+        when(translations.overlay("ru")).thenReturn(new TranslationService.Overlay(Map.of()));
+        when(store.latestQuotes(24, 0)).thenReturn(List.of(quote()));
+        oneFiveStarReviewOf(null);
+
+        ReviewFeed feed = service().latest(24, "ru");
+
+        assertThat(feed.items()).isEmpty();
+        assertThat(feed.summary().count()).isZero();
+        assertThat(feed.summary().avg()).isNull();
     }
 
     @Test
@@ -71,7 +93,7 @@ class ReviewFeedServiceTest {
         ReviewFeed feed = service().latest(24, "uk");
         assertThat(feed.items()).isEmpty();
         assertThat(feed.summary().count()).isZero();
-        verify(store, never()).latestFeed(anyInt());
+        verify(store, never()).latestQuotes(anyInt(), anyInt());
     }
 
     @Test
@@ -81,8 +103,8 @@ class ReviewFeedServiceTest {
         when(translations.overlay("uk")).thenReturn(new TranslationService.Overlay(Map.of(
                 new TranslationService.Key(TranslationEntityType.PRODUCT, PID, TranslationEntityType.TITLE),
                 new TranslationService.Entry("Мишка", SourceHash.sha256Hex(source), TranslationOrigin.values()[0]))));
-        when(store.latestFeed(ReviewFeedService.MAX_SIZE)).thenReturn(List.of(row(source)));
-        when(store.shopSummary()).thenReturn(new com.maxsolch.shop.review.domain.RatingSummary(5.0, 1, List.of(0L, 0L, 0L, 0L, 1L)));
+        when(store.latestQuotes(ReviewFeedService.MAX_SIZE, 0)).thenReturn(List.of(quote()));
+        oneFiveStarReviewOf(new ProductBrief(source, "mouse", "https://img/1.jpg", true));
 
         ReviewFeed feed = service().latest(1000, "uk");
 

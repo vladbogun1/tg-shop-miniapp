@@ -74,7 +74,7 @@ public class Product {
 
     /**
      * Average of the published reviews (V44), null while there are none. Written only by
-     * {@code ReviewStore.recomputeRating} with SQL — the entity never writes it back.
+     * {@code ProductBriefs.setRating} with SQL — the entity never writes it back.
      */
     @Column(name = "rating_avg", precision = 3, scale = 2, insertable = false, updatable = false)
     private java.math.BigDecimal ratingAvg;

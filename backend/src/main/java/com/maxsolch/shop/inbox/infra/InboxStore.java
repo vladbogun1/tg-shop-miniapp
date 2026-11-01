@@ -121,6 +121,12 @@ public class InboxStore {
         return out;
     }
 
+    /** How many marks this admin made. */
+    public long countMarksBy(long adminId) {
+        Long n = jdbc.queryForObject("select count(*) from inbox_marks where created_by = ?", Long.class, adminId);
+        return n == null ? 0 : n;
+    }
+
     /** Insert or replace the mark of one row (the latest action wins). */
     public void upsert(InboxMark mark, Long adminId, String adminName, Instant now) {
         jdbc.update("insert into inbox_marks (item_type, entity_id, item_version, mark, until_at, created_at, "

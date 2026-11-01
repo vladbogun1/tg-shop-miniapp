@@ -1,8 +1,10 @@
 package com.maxsolch.shop.gift.app;
 
 import com.maxsolch.shop.order.app.OrderSettings;
-import com.maxsolch.shop.gift.domain.PromoReminder;
-import com.maxsolch.shop.gift.infra.GiftReminderStore;
+import com.maxsolch.shop.customer.app.Customers;
+import com.maxsolch.shop.promo.app.PromoExpiry;
+import com.maxsolch.shop.promo.domain.ExpiringPromo;
+import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.order.app.OrderCustomerNotifier;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.settings.app.SettingsService;
@@ -28,15 +30,17 @@ public class GiftCasePromoReminderJob {
 
     static final int BATCH = 50;
 
-    private final GiftReminderStore store;
+    private final PromoExpiry promos;
+    private final Customers customers;
     private final SettingsService settings;
     private final OrderLookup orders;
     private final OrderCustomerNotifier notifier;
     private final Clock clock;
 
-    public GiftCasePromoReminderJob(GiftReminderStore store, SettingsService settings, OrderLookup orders,
+    public GiftCasePromoReminderJob(PromoExpiry promos, Customers customers, SettingsService settings, OrderLookup orders,
                                     OrderCustomerNotifier notifier, Clock clock) {
-        this.store = store;
+        this.promos = promos;
+        this.customers = customers;
         this.settings = settings;
         this.orders = orders;
         this.notifier = notifier;
@@ -68,16 +72,25 @@ public class GiftCasePromoReminderJob {
         Instant now = clock.instant();
         Duration window = Duration.ofDays(days);
         int sent = 0;
-        for (PromoReminder c : store.candidates(now, now.plus(window), now.minus(window), BATCH)) {
+        for (ExpiringPromo c : promos.expiring(PromoCode.SOURCE_GIFT_CASE, now, now.plus(window), now.minus(window), BATCH,
+                this::reachable)) {
             // Claimed before sending: a second instance (or a retry) never DMs the same code twice.
-            if (!store.claim(c.promoId(), now)) {
+            if (!promos.claimReminder(c.promoId(), now)) {
                 continue;
             }
-            var order = orders.find(c.orderId()).orElse(null);
+            var order = orders.find(c.sourceOrderId()).orElse(null);
             if (order != null && notifier.notifyCustomerCasePromoExpiring(order, c.code(), c.percent(), c.amountMinor(), c.expiresAt())) {
                 sent++;
             }
         }
         return sent;
+    }
+
+    /** The code was announced in an order chat of a customer who has not blocked the bot. */
+    private boolean reachable(ExpiringPromo c) {
+        return c.sourceOrderId() != null && orders.find(c.sourceOrderId())
+                .map(o -> o.getTgUserId() != null && o.getTgUserId() > 0
+                        && customers.findById(o.getTgUserId()).map(u -> !u.isBotBlocked()).orElse(true))
+                .orElse(false);
     }
 }
