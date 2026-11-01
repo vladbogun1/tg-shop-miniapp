@@ -35,7 +35,8 @@
 2. На сервере: дамп БД и копия `.env` в `~/BACKUPS/maxsolch-pre-v3.N.M-<дата>/`.
 3. `IMAGE_TAG=v3.N.M` в `.env`, `git pull` (конфиги/compose), затем `pull` и
    `up -d --no-build` (команды ниже). Миграции Flyway бэкенд накатывает сам при старте.
-4. Обновить `rollback.sh` на предыдущий тег (старый сохраняется как `rollback.sh.<от>-to-<к>`).
+4. Откат — `infra/rollback.sh <предыдущий тег>`; генерировать `rollback.sh` руками больше не нужно
+   (старые серверные `rollback.sh.<от>-to-<к>` можно удалить).
 
 ### Сервер: грабли
 - Oracle Cloud режет ingress ещё и в VCN Security List — новый порт открывать и в ufw, и в консоли.
@@ -60,7 +61,11 @@ C="-f docker-compose.yml -f docker-compose.public.yml -f docker-compose.prod.yml
 # Голый `docker compose $C pull` на них упадёт — не запускать его без списка сервисов.
 git pull \
   && docker compose $C pull backend frontend-public frontend-admin-public site-public \
-  && docker compose $C up -d --no-build
+  && docker compose $C up -d --no-build mysql minio imgproxy nginx backend \
+       frontend-public gateway frontend-admin-public gateway-admin site-public gateway-site caddy
+# Список сервисов ОБЯЗАТЕЛЕН: в базовом compose есть dev-сервисы (frontend, frontend-admin, site, minio-init),
+# голый `up -d` запустил бы их. backend теперь имеет healthcheck: `docker compose ps` покажет (healthy)
+# после миграций; gateway'и ждут его при старте.
 
 # рестарт одного сервиса
 docker compose restart backend
@@ -71,12 +76,11 @@ docker compose restart backend
 docker compose $C up -d imgproxy
 docker exec tgshop_v2_nginx sh -c 'rm -rf /var/cache/nginx/img/*' && docker compose restart nginx
 
-# бэкап БД (cron-friendly)
-docker exec tgshop_v2_mysql sh -c 'exec mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" \
-  --single-transaction tgshop_v2' | gzip > ~/BACKUPS/tgshop_v2-$(date +%F).sql.gz
+# бэкап БД: infra/backup.sh (с ротацией; расписание — §5)
+infra/backup.sh
 
-# ОТКАТ релиза: ./rollback.sh в каталоге проекта (возвращает предыдущий IMAGE_TAG;
-# что именно он делает — в его шапке). Миграции Flyway назад не откатываются — для этого дамп.
+# ОТКАТ релиза: infra/rollback.sh <тег> (лежит в репозитории; снимает дамп, возвращает IMAGE_TAG и
+# конфиги тега, ждёт healthy backend; что именно делает — в его шапке). Миграции Flyway назад не откатываются — для этого дамп.
 # ⚠️ V48 (чистка 2026-10) — точка невозврата: она дропает колонки и таблицы старой оплаты на карту,
 # а бэкенд v3.10.0 и ниже валидирует схему (order_messages.width/height) и на ней не стартует.
 # Откат за V48 — только восстановлением дампа, снятого до релиза.
@@ -106,6 +110,9 @@ web.push.apple.com, updates.push.services.mozilla.com.
 (`docker image prune -a` удалит неиспользуемый `minio/mc` — он нужен только при `up` minio-init).
 Чтобы не зависеть от локального кэша:
 
+0. С этого релиза в compose образы закреплены по digest (`minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:…`,
+   `minio/mc:RELEASE.2025-08-13T08-35-41Z@sha256:…`): ровно те, что стоят на сервере. Образа **нет в реестрах**,
+   поэтому при потере с диска новый `pull` не поможет — сделайте п. 1 (копия в свой Docker Hub) **один раз**.
 1. **Закрепить образ у себя:** `docker save minio/minio minio/mc | gzip > ~/BACKUPS/minio-images.tar.gz`
    (восстановить — `docker load < ...`), либо `docker tag` + `docker push` в свой Docker Hub
    (`<DOCKERHUB_USERNAME>/minio:<дата>`) и прописать этот тег в `image:` (лучше по digest, не `latest`).
@@ -126,3 +133,76 @@ web.push.apple.com, updates.push.services.mozilla.com.
 С тех пор: модуль `migration/` удалён из репозитория (перенос давно выполнен), магазин переехал на
 `chisetup.com.ua` (v3.1.0, 05.10.2026), прокси 80/443 — на edge Caddy + EdgeDeck. Подробности
 того деплоя — в истории git этого файла и в `docs/archive/HANDOFF.md`.
+
+---
+
+## 4. Лимиты ресурсов и проверка здоровья (с релиза, где появился этот раздел)
+
+Сервер общий (11,9 ГБ RAM, 4,1 ГБ «available», подкачка уже ~2 ГБ используется), поэтому в
+`docker-compose.prod.yml` у каждого сервиса магазина есть `mem_limit`, а у JVM —
+`-XX:MaxRAMPercentage=65 -XX:+ExitOnOutOfMemoryError`. Лимиты ≈ 2× от того, что контейнер ест в покое
+(замер `docker stats` 01.11.2026):
+
+| сервис | в покое | `mem_limit` |
+|---|---|---|
+| backend | 780 МБ | 1536 МБ (куча ≈ 1 ГБ) |
+| mysql | 575 МБ | 1536 МБ |
+| imgproxy | 57 МБ | 768 МБ (всплески при ресайзе больших фото) |
+| minio | 152 МБ | 512 МБ |
+| frontend-public / frontend-admin-public / site-public | 53 / 68 / 228 МБ | 512 МБ |
+| gateway ×3, nginx, caddy | < 50 МБ | 128 МБ |
+
+Если контейнер упёрся в лимит, Docker его убьёт и поднимет заново (`restart: unless-stopped`):
+смотрите `docker inspect <имя> --format '{{.State.OOMKilled}}'` и поднимайте лимит в оверлее, а не руками.
+Логи ограничены (`json-file`, 10 МБ × 3 на контейнер; то же задано в `/etc/docker/daemon.json`).
+
+`backend` — healthcheck `GET /actuator/health` (порт управления совпадает с портом приложения, 8080;
+наружу actuator закрыт gateway'ями). Зависший backend получает статус `unhealthy` — это видно в
+`docker compose ps`, Portainer и Dozzle. Сам по себе Docker unhealthy-контейнер **не перезапускает**:
+статус нужен для зависимостей (`service_healthy`) и для глаз.
+Backend теперь работает не от root (uid 10001); томов у него нет, писать на диск ему нечего.
+
+## 5. Бэкап и восстановление БД
+
+`infra/backup.sh` — дамп `mysqldump --single-transaction` в `~/BACKUPS/db/<база>-<дата>.sql.gz`:
+проверяет, что архив целый и дамп дописан, хранит 14 дней ежедневных и 12 недель воскресных,
+по желанию (`OFFSITE_TARGET=user@host:/путь/`) копирует каталог rsync'ом на другой сервер.
+Пароль в файле не лежит: имя базы берётся из `.env`, пароль root — из окружения контейнера MySQL.
+
+**Cron (настроить один раз, под пользователем `ubuntu`; `crontab -e`):**
+
+```cron
+# дамп БД магазина каждую ночь в 03:30 по времени сервера
+30 3 * * * cd /home/ubuntu/TELEGRAM_BOTS/maxsolch-v2 && infra/backup.sh >> ~/BACKUPS/db-backup.log 2>&1
+```
+
+Бэкап лежит на том же диске, что и база: от потери сервера он не спасает. Задайте `OFFSITE_TARGET`
+(например, на сервер №2, где уже есть restic-репозиторий) — строка в cron тогда:
+`30 3 * * * cd … && OFFSITE_TARGET=user@host:/путь/ infra/backup.sh …`. Раз в месяц проверяйте, что
+свежий файл не пустой и разворачивается (команда ниже на копии, не на проде).
+
+**Восстановление** (останавливает магазин на время заливки):
+
+```bash
+cd /home/ubuntu/TELEGRAM_BOTS/maxsolch-v2
+C="-f docker-compose.yml -f docker-compose.public.yml -f docker-compose.prod.yml"
+docker compose $C stop backend site-public
+zcat ~/BACKUPS/db/<файл>.sql.gz | docker exec -i tgshop_v2_mysql sh -c \
+  'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -uroot "$MYSQL_DATABASE"'
+docker compose $C up -d --no-build backend site-public
+```
+
+## 6. Первый релиз после этих правок — что сделает владелец
+
+1. **До выкатки:** `docker save minio/minio minio/mc | gzip > ~/BACKUPS/minio-images.tar.gz` и (лучше) залить
+   образы в свой Docker Hub — см. «MinIO: образов больше нет в реестрах».
+2. Дамп БД и копия `.env` как обычно. `git pull` (или checkout тега) — подтянутся новые compose и `infra/*.sh`.
+3. Выкатка командой из §2 **со списком сервисов**. Изменится: контейнеры mysql, minio, imgproxy, nginx,
+   gateway'и **пересоздадутся** (новые лимиты памяти и закреплённые образы; digest совпадает с текущим,
+   данные в томах остаются) — 5–20 секунд без сайта. backend запустится на новой JVM-настройке и под
+   пользователем `app`; `docker compose ps` должен показать `backend (healthy)` в течение ~2 минут.
+4. Проверить: `docker stats --no-stream` (память ниже лимитов), `docker inspect tgshop_v2_backend --format '{{.State.Health.Status}}'`,
+   сайт, Mini App, загрузка фото в админке (backend теперь не root, MinIO по сети — должно работать).
+5. Руками, один раз: cron из §5 (и off-site), копия образа MinIO (п. 1), `chmod +x infra/*.sh` не нужен
+   (права в git), старые `rollback.sh*` в каталоге проекта можно убрать.
+6. Если что-то не так — `infra/rollback.sh <прежний тег>`.

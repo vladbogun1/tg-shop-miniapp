@@ -4,7 +4,8 @@
 
 services:
   mysql:
-    image: mysql:8.4
+    image: mysql:8.4@sha256:563602a18ffd5be220968e8508d84c9dcd80fbffe69e28af51572db29e3285b2
+    # Pinned by digest = mysql 8.4.10, what runs on the server (the floating tag moves silently).
     container_name: tgshop_v2_mysql
     restart: unless-stopped
     command:
@@ -21,7 +22,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD}"]
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysqladmin ping -h localhost"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -30,7 +31,7 @@ services:
       - tgshop
 
   minio:
-    image: minio/minio
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
     # The minio/minio and minio/mc images are no longer published (neither on Docker Hub nor on
     # quay.io): a pull would fail and take the whole `docker compose pull` down with it. Use the
     # image already present on the host and never try to refresh it. See docs/DEPLOY-SERVER.md §6
@@ -61,7 +62,7 @@ services:
   # photos and files) are served only through the backend's signed /api/media links.
   # It used to be public-read, which made every uploaded file world-readable forever.
   minio-init:
-    image: minio/mc
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
     pull_policy: missing
     container_name: tgshop_v2_minio_init
     depends_on:
@@ -83,7 +84,7 @@ services:
       - tgshop
 
   imgproxy:
-    image: darthsim/imgproxy
+    image: darthsim/imgproxy:v4.0.17@sha256:c0d8c00be50c091b975c230d50b5d8bed93c5eefee30444b4b490367d58566a8
     container_name: tgshop_v2_imgproxy
     restart: unless-stopped
     depends_on:
@@ -114,7 +115,7 @@ services:
       - tgshop
 
   nginx:
-    image: nginx:alpine
+    image: nginx:alpine@sha256:d565d19ef132a5834f5897f602831ad2e40a36c26c625f2f94f9b3fdf0ed292d
     container_name: tgshop_v2_nginx
     restart: unless-stopped
     depends_on:
@@ -136,7 +137,7 @@ services:
       mysql:
         condition: service_healthy
       minio:
-        condition: service_started
+        condition: service_healthy
     environment:
       # Local stack runs as "dev": StartupSecurityCheck only tolerates ALLOW_UNSIGNED_INIT_DATA
       # and placeholder secrets under this profile. docker-compose.prod.yml overrides it.
@@ -205,6 +206,15 @@ services:
       PAYMENT_INVOICE_TTL_MINUTES: ${PAYMENT_INVOICE_TTL_MINUTES:-60}
     ports:
       - "8080:8080"
+    # /actuator/health answers 503 when the DB is down. A hung backend (exhausted pool, deadlock)
+    # used to stay "Up" for ever; now it is "unhealthy" and the gateways wait for it on start.
+    # start_period covers Flyway migrations on a release.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-m", "5", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 8s
+      retries: 5
+      start_period: 120s
     networks:
       - tgshop
 
@@ -223,9 +233,10 @@ services:
     container_name: tgshop_v2_frontend
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     networks:
       - tgshop
 
@@ -239,9 +250,10 @@ services:
     container_name: tgshop_v2_frontend_admin
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
     networks:
       - tgshop
 
@@ -256,13 +268,14 @@ services:
     container_name: tgshop_v2_site
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     environment:
       INTERNAL_API_BASE: http://backend:8080
       SITE_INDEXABLE: ${SITE_INDEXABLE:-false}
       SITE_REVALIDATE_SECRET: ${SITE_REVALIDATE_SECRET:-}
     ports:
-      - "3007:3000"
+      - "127.0.0.1:3007:3000"
     networks:
       - tgshop
 
