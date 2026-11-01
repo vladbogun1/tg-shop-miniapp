@@ -15,7 +15,7 @@ export interface WebAppMainButton {
 export interface WebApp {
   MainButton?: WebAppMainButton;
   initData?: string;
-  initDataUnsafe?: { start_param?: string };
+  initDataUnsafe?: { start_param?: string; user?: { language_code?: string } };
   HapticFeedback?: {
     impactOccurred?: (s: string) => void;
     notificationOccurred?: (s: "error" | "success" | "warning") => void;
@@ -23,6 +23,8 @@ export interface WebApp {
   };
   /** "android", "ios", "tdesktop", "macos", "weba", … */
   platform?: string;
+  /** Bot API version of the client. */
+  version?: string;
   /**
    * Bot API 6.1+: opens a link in the browser OVER the Mini App, which stays alive underneath.
    * `try_browser` (7.6+, undocumented but in telegram-web-app.js and the Android client): skip

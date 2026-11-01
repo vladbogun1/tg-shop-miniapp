@@ -14,12 +14,13 @@ import {
   productViewEvent,
 } from "@shop/customer/analytics/events";
 import { getAccessToken, getApiBase } from "@/lib/api";
+import { webApp } from "@/platform/telegram/webapp";
 import { nowMs } from "@shop/core/time";
 
 /** Telegram-клиент, в котором открыт Mini App (ios / android / tdesktop… и версия Bot API). */
 function telegramRuntime(): Record<string, unknown> {
   try {
-    const wa = (window as { Telegram?: { WebApp?: { platform?: string; version?: string } } }).Telegram?.WebApp;
+    const wa = webApp();
     return { tg: wa?.platform, tgv: wa?.version };
   } catch {
     return {};

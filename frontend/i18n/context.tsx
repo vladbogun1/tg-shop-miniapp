@@ -24,6 +24,7 @@ import {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getAccessToken, onAccessToken, customerApi } from "@/lib/api";
+import { webApp } from "@/platform/telegram/webapp";
 import { type Dictionary, FALLBACK_LOCALE, type Locale, LOCALE_TAG, normalizeLocale, type Params, setActiveLocale, translate } from "@shop/core/i18n";
 import { ru, type MessageKey } from "./ru";
 import { uk } from "./uk";
@@ -54,13 +55,7 @@ function resolveLocale(): Locale {
   } catch {
     /* private mode — fall through to Telegram */
   }
-  const fromTelegram = normalizeLocale(
-    (
-      window as unknown as {
-        Telegram?: { WebApp?: { initDataUnsafe?: { user?: { language_code?: string } } } };
-      }
-    ).Telegram?.WebApp?.initDataUnsafe?.user?.language_code
-  );
+  const fromTelegram = normalizeLocale(webApp()?.initDataUnsafe?.user?.language_code);
   return fromTelegram ?? FALLBACK_LOCALE;
 }
 
