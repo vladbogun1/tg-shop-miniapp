@@ -13,10 +13,14 @@ interface Props {
   /** The submit was attempted: show validation. */
   touched: boolean;
   prefilled: boolean;
+  /** The server rejected this field (validation) although the client check passed. */
+  serverField?: "name" | "phone" | "comment" | null;
 }
 
-export function ContactsSection({ name, phone, onName, onPhone, nameOk, phoneOk, touched, prefilled }: Props) {
+export function ContactsSection({ name, phone, onName, onPhone, nameOk, phoneOk, touched, prefilled, serverField }: Props) {
   const { t } = useI18n();
+  const nameBad = (touched && !nameOk) || serverField === "name";
+  const phoneBad = (touched && !phoneOk) || serverField === "phone";
   return (
     <Section id="co-contacts" n={1} title={t("checkout.contacts")}>
       {prefilled && <p className="mb-3 text-[13px] font-medium text-[var(--ok)]">{t("checkout.prefilled")}</p>}
@@ -25,11 +29,11 @@ export function ContactsSection({ name, phone, onName, onPhone, nameOk, phoneOk,
           label={t("checkout.name")}
           value={name}
           onChange={(e) => onName(e.target.value)}
-          status={touched && !nameOk ? "danger" : nameOk ? "ok" : undefined}
-          hint={touched && !nameOk ? t("checkout.nameError") : undefined}
+          status={nameBad ? "danger" : nameOk ? "ok" : undefined}
+          hint={nameBad ? t("checkout.nameError") : undefined}
           autoComplete="name"
           name="name"
-          aria-invalid={touched && !nameOk}
+          aria-invalid={nameBad}
         />
         <Input
           label={t("checkout.phone")}
@@ -39,11 +43,11 @@ export function ContactsSection({ name, phone, onName, onPhone, nameOk, phoneOk,
             if (!phone) onPhone("+38");
           }}
           onChange={(e) => onPhone(e.target.value)}
-          status={touched && !phoneOk ? "danger" : phoneOk ? "ok" : undefined}
-          hint={touched && !phoneOk ? t("checkout.phoneError") : undefined}
+          status={phoneBad ? "danger" : phoneOk ? "ok" : undefined}
+          hint={phoneBad ? t("checkout.phoneError") : undefined}
           autoComplete="tel"
           name="tel"
-          aria-invalid={touched && !phoneOk}
+          aria-invalid={phoneBad}
         />
       </div>
     </Section>

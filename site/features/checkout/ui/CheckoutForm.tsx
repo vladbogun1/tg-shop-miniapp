@@ -83,7 +83,7 @@ export function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void
     },
     { lines: orderable, name, phone, comment, promoCode, promoValid, delivery, warehouse, payment: pay.chosen, giftTier, giftDiscount },
   );
-  const { submitting, submitError, limitCode, setSubmitError } = place;
+  const { submitting, submitError, limitCode, setSubmitError, fieldError, clearFieldError } = place;
 
   function submit() {
     setTouched(true);
@@ -113,8 +113,15 @@ export function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void
           <ContactsSection
             name={name}
             phone={phone}
-            onName={setName}
-            onPhone={setPhone}
+            onName={(v) => {
+              clearFieldError();
+              setName(v);
+            }}
+            onPhone={(v) => {
+              clearFieldError();
+              setPhone(v);
+            }}
+            serverField={fieldError}
             nameOk={nameOk}
             phoneOk={phoneOk}
             touched={touched}

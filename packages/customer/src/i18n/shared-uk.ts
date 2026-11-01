@@ -301,6 +301,7 @@ export const sharedUk: SharedDictionary = {
   "chat.uploadFailed": "Не вдалося завантажити вкладення",
   "checkout.emptyCart": "У кошику порожньо — оформлювати нічого.",
   "checkout.failed": "Не вдалося оформити замовлення",
+  "checkout.fieldInvalid": "Перевірте позначені поля.",
   "checkout.title": "Оформлення замовлення",
   "common.offline": "Не вдалося зв'язатися з сервером",
   "common.retry": "Повторити",

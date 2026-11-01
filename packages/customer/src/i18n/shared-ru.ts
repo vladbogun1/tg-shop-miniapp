@@ -309,6 +309,7 @@ export const sharedRu = {
   "chat.uploadFailed": "Не удалось загрузить вложение",
   "checkout.emptyCart": "В корзине пусто — оформлять нечего.",
   "checkout.failed": "Не удалось оформить заказ",
+  "checkout.fieldInvalid": "Проверьте отмеченные поля.",
   "checkout.title": "Оформление заказа",
   "common.offline": "Не удалось связаться с сервером",
   "common.retry": "Повторить",
