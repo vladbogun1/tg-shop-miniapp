@@ -134,6 +134,9 @@ class OpenApiSnapshotTest {
     }
 
     private static void compareOrUpdate(Path file, String actual) throws IOException {
+        if (!Files.exists(file) && System.getenv("CI") != null) {
+            throw new AssertionError("API snapshot is missing in CI (commit it, never generate it there): " + file);
+        }
         if (Boolean.getBoolean("openapi.update") || !Files.exists(file)) {
             Files.createDirectories(file.getParent());
             Files.writeString(file, actual, StandardCharsets.UTF_8);
