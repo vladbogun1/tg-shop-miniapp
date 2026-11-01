@@ -157,11 +157,13 @@ public class OrderItem implements LotAllocations {
         return this;
     }
 
-    public void changeQuantity(int newQuantity) {
+    /** Package-private: the order recounts its total, so quantities change through {@link Order#changeQuantity}. */
+    void changeQuantity(int newQuantity) {
         quantity = newQuantity;
     }
 
-    public void addQuantity(int more) {
+    /** Package-private, see {@link Order#addToLine}. */
+    void addQuantity(int more) {
         quantity += more;
     }
 

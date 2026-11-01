@@ -131,7 +131,7 @@ public class OrderMerge {
         if (useSourceDelivery) {
             target.takeRecipientOf(source);
         }
-        ops.recomputeTotals(target);
+        ops.settleIfFree(target);
 
         // 3. Money: what the merged order received moves over (no real money moves).
         long money = OrderMoney.refundableMinor(source);
@@ -169,7 +169,7 @@ public class OrderMerge {
                     .findFirst().orElse(null);
             OrderItem to;
             if (same != null) {
-                same.addQuantity(from.getQuantity());
+                target.addToLine(same, from.getQuantity());
                 to = same;
             } else {
                 to = from.copyTo(target);

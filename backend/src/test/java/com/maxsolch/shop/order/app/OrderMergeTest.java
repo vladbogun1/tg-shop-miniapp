@@ -54,7 +54,7 @@ class OrderMergeTest {
             OrderFixtures.set(o, "discountMinor", Math.min(o.getDiscountMinor(), sub));
             OrderFixtures.set(o, "totalMinor", sub - o.getDiscountMinor());
             return null;
-        }).when(ops).recomputeTotals(any());
+        }).when(ops).settleIfFree(any());
     }
 
     private Order order(OrderStatus status, long tgUserId, OrderItem... items) {

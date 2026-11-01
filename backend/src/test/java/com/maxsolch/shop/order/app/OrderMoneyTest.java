@@ -37,7 +37,7 @@ class OrderMoneyTest {
         return it;
     }
 
-    // ----- subtotal / total (OrderService.recomputeTotals) -----
+    // ----- subtotal / total (Order.reprice) -----
 
     private static Order repriced(long discount, long giftDiscount, long[][] priceQty) {
         Order o = new Order();
@@ -47,7 +47,8 @@ class OrderMoneyTest {
         }
         OrderFixtures.set(o, "discountMinor", discount);
         OrderFixtures.set(o, "giftDiscountMinor", giftDiscount);
-        OrderApp.create(null, null, null, null, null, null, null, null, null, null, null, null).ops().recomputeTotals(o);
+        o.reprice();
+        OrderApp.create(null, null, null, null, null, null, null, null, null, null, null, null).ops().settleIfFree(o);
         return o;
     }
 
