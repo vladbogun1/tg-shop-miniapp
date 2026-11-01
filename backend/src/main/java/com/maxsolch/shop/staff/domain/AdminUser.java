@@ -43,7 +43,7 @@ public class AdminUser {
     private String name;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false)
+    @Column(name = "role", nullable = false, length = 32)
     private AdminRole role = AdminRole.ADMIN;
 
     @Column(name = "active", nullable = false)

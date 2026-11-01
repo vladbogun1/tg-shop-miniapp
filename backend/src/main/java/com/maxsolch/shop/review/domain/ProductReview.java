@@ -57,7 +57,7 @@ public class ProductReview {
     private String text;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, length = 32)
     private ReviewStatus status = ReviewStatus.PENDING;
 
     @Column(name = "admin_reply", length = 2000)

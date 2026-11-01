@@ -18,7 +18,7 @@ import java.util.Objects;
 public class ContentTranslationId implements Serializable {
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "entity_type", nullable = false)
+    @Column(name = "entity_type", nullable = false, length = 32)
     private TranslationEntityType entityType;
 
     @Column(name = "entity_id", columnDefinition = "BINARY(16)", nullable = false)

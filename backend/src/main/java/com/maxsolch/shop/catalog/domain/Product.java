@@ -103,7 +103,7 @@ public class Product {
     private byte[] brandId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "`condition`", nullable = false)
+    @Column(name = "`condition`", nullable = false, length = 32)
     private ProductCondition condition = ProductCondition.NEW;
 
     /** Reason of the markdown / state of a used item (Russian source; uk/en via PRODUCT condition_note). */
@@ -115,7 +115,7 @@ public class Product {
     private String specsJson;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "card_status", nullable = false)
+    @Column(name = "card_status", nullable = false, length = 32)
     private CardStatus cardStatus = CardStatus.DRAFT;
 
     /** 0..100, overall confidence of the last AI import. */

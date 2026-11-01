@@ -41,7 +41,7 @@ public class SpecAttribute {
     private String labelEn;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false)
+    @Column(name = "type", nullable = false, length = 32)
     private SpecType type;
 
     @Column(name = "unit_ru", length = 24)

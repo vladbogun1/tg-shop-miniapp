@@ -72,12 +72,12 @@ public abstract class OrderColumns {
 
     /** Changes only through the transition methods of {@link Order} ({@code approve}, {@code ship}, ...). */
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, length = 32)
     protected OrderStatus status = OrderStatus.NEW;
 
     /** Where the order was placed: Mini App (default, everything before the site), site, admin. */
     @Enumerated(EnumType.STRING)
-    @Column(name = "source", nullable = false)
+    @Column(name = "source", nullable = false, length = 32)
     protected OrderSource source = OrderSource.MINIAPP;
 
     @Column(name = "tracking_number", length = 128)
@@ -118,7 +118,7 @@ public abstract class OrderColumns {
     protected Instant rejectedAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "delivery_method", nullable = false)
+    @Column(name = "delivery_method", nullable = false, length = 32)
     protected DeliveryMethod deliveryMethod = DeliveryMethod.NOVA_POSHTA;
 
     @Column(name = "np_city_ref", length = 64)

@@ -45,7 +45,7 @@ public class ContentTranslation implements Persistable<ContentTranslationId> {
     private String sourceText;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "origin", nullable = false)
+    @Column(name = "origin", nullable = false, length = 32)
     private TranslationOrigin origin = TranslationOrigin.AI;
 
     /** A person looked at it and accepted it (V56); null = AI output nobody has checked yet. */

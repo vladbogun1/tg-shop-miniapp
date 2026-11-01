@@ -36,7 +36,7 @@ public class WebLoginToken {
     private int matchCode;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, length = 32)
     private WebLoginStatus status = WebLoginStatus.PENDING;
 
     @Column(name = "telegram_user_id")
