@@ -12,7 +12,15 @@
  */
 import "server-only";
 import type { Locale } from "@shop/core/i18n";
+import { fetchWithTimeout } from "@shop/core/fetch-timeout";
 import { REVALIDATE_SECONDS } from "./config";
+
+/**
+ * Зависший бэкенд не должен держать страницу: SSR/ISR ждёт ответ не дольше 8 с. Дальше сработает
+ * `safe()` с запасным значением, либо страница ошибки; ISR отдаст прежний кэш и перестроит позже.
+ * (У браузерного клиента 15 с — человек ждёт дольше, чем сервер, который держит соединение.)
+ */
+export const SSR_TIMEOUT_MS = 8_000;
 
 export function apiBase(): string {
   return (process.env.INTERNAL_API_BASE ?? "http://localhost:8080").replace(/\/$/, "");
@@ -34,13 +42,18 @@ export async function getJson<T>(
 ): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (locale) headers["Accept-Language"] = locale;
-  const res = await fetch(`${apiBase()}${locale ? withLang(path, locale) : path}`, {
-    headers,
-    next: { revalidate, tags },
-  });
-  if (res.status === 404) throw new NotFoundError(path);
-  if (!res.ok) throw new Error(`${path} → HTTP ${res.status}`);
-  return (await res.json()) as T;
+  const { res, done } = await fetchWithTimeout(
+    `${apiBase()}${locale ? withLang(path, locale) : path}`,
+    { headers, next: { revalidate, tags } },
+    SSR_TIMEOUT_MS
+  );
+  try {
+    if (res.status === 404) throw new NotFoundError(path);
+    if (!res.ok) throw new Error(`${path} → HTTP ${res.status}`);
+    return (await res.json()) as T;
+  } finally {
+    done();
+  }
 }
 
 /** Same as the promise-returning getters, but resolves to a fallback instead of throwing. */

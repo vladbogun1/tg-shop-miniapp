@@ -14,7 +14,7 @@ const config = [
   // Файлы, ради которых правила существуют (у каждого файла — ровно одна группа: списки не должны пересекаться).
   ...frontRules({
     allow: {
-      "no-fetch": ["src/http.ts"],
+      "no-fetch": ["src/http.ts", "src/fetch-timeout.ts"],
       "money-div-mul-100": ["src/money.ts"],
       "to-fixed": ["src/money.ts"],
       "time-to-locale": ["src/money.ts"],
