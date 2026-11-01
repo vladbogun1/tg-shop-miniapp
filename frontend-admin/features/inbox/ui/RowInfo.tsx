@@ -1,6 +1,6 @@
 import { StatusBadge } from "@/components/ui/Badge";
 import { money } from "@shop/core/money";
-import { isOrderStatus } from "@/features/order";
+import { isOrderStatus } from "@shop/core/orders";
 import type { InboxItem } from "../model/types";
 import { WaitChip } from "./WaitChip";
 

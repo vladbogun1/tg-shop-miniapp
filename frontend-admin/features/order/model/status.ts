@@ -9,9 +9,8 @@ export { codMinor, isNovaPoshtaTtn, ORDER_STATUS_COLOR as STATUS_VAR, REJECT_REA
 export { DELIVERY_LABEL } from "@/lib/delivery";
 export { shortOrderId as shortId } from "@shop/core/format";
 
-import { allowedTargets as sharedAllowedTargets, canTransition as sharedCanTransition, ORDER_STATUS_COLOR, STATUS_COLUMN_LABEL, STATUS_ORDER } from "@shop/core/orders";
+import { allowedTargets as sharedAllowedTargets, canTransition as sharedCanTransition, ORDER_STATUS_COLOR, STATUS_COLUMN_LABEL, STATUS_ORDER, isOrderStatus } from "@shop/core/orders";
 import { type OrderStatus } from "@shop/core/types";
-import type { AdminOrderDetail } from "../api";
 
 /** The field of the order card that holds the moment the order entered a status. */
 type StatusTimestampKey = "createdAt" | "approvedAt" | "shippedAt" | "deliveredAt" | "rejectedAt";
@@ -40,9 +39,7 @@ export const STATUS_META: Record<OrderStatus, StatusMeta> = {
   REJECTED: { step: null, closed: true, needsModal: true, at: "rejectedAt" },
 };
 
-export function isOrderStatus(value: string): value is OrderStatus {
-  return Object.hasOwn(STATUS_META, value);
-}
+export { isOrderStatus };
 
 /** Happy-path statuses in timeline order. */
 export const TIMELINE_STATUSES: OrderStatus[] = STATUS_ORDER.filter((s) => STATUS_META[s].step !== null).sort(
@@ -50,7 +47,7 @@ export const TIMELINE_STATUSES: OrderStatus[] = STATUS_ORDER.filter((s) => STATU
 );
 
 /** When the order entered `status`. */
-export function statusTimestamp(order: Pick<AdminOrderDetail, StatusTimestampKey>, status: OrderStatus): string | null | undefined {
+export function statusTimestamp(order: Record<StatusTimestampKey, string | null | undefined>, status: OrderStatus): string | null | undefined {
   return order[STATUS_META[status].at];
 }
 

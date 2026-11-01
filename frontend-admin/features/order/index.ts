@@ -14,7 +14,6 @@ export {
   REJECT_REASON_LABEL,
   STATUS_LABEL,
   STATUS_VAR,
-  isOrderStatus,
   isNovaPoshtaTtn,
   shortId,
   type RejectReasonCode,
