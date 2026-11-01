@@ -63,7 +63,7 @@ public class PreorderBatchService {
     /** The admin form written onto the batch and its lines. */
     private final BatchEditor editor;
     /** FIFO stock lots: an arrival becomes a lot priced by the batch. */
-    private final com.maxsolch.shop.inventory.app.LotLedger ledger;
+    private final com.maxsolch.shop.inventory.app.Stock stock;
     /** Public pages show «скоро в наличии» and ETAs: rebuilt once a change commits. */
     private final com.maxsolch.shop.site.app.SiteRevalidator siteRevalidator;
 
@@ -71,7 +71,7 @@ public class PreorderBatchService {
                                 SupplierRepository suppliers,
                                 Products products, BatchQueue queue, LineProducts lineProducts,
                                 SettingsService settings,
-                                com.maxsolch.shop.inventory.app.LotLedger ledger,
+                                com.maxsolch.shop.inventory.app.Stock stock,
                                 com.maxsolch.shop.site.app.SiteRevalidator siteRevalidator, Clock clock,
                                 ShopZone shopZone, BatchEditor editor) {
         this.batches = batches;
@@ -81,7 +81,7 @@ public class PreorderBatchService {
         this.queue = queue;
         this.lineProducts = lineProducts;
         this.settings = settings;
-        this.ledger = ledger;
+        this.stock = stock;
         this.siteRevalidator = siteRevalidator;
         this.clock = clock;
         this.shopZone = shopZone;
@@ -239,20 +239,12 @@ public class PreorderBatchService {
             if (dry) {
                 h = queue.preview(p.getId(), i.getVariantId(), stockAfter, mode);
             } else {
-                if (v != null) {
-                    v.setStock(v.getStock() + arrived);
-                    p.setStock(p.getVariants().stream().mapToInt(ProductVariant::getStock).sum());
-                } else {
-                    p.setStock(p.getStock() + arrived);
-                }
+                stock.arrive(p, v, arrived, i.getId());
                 if (price != null) {
                     p.setPriceMinor(price);
                 }
                 products.save(p);
                 i.setQtyArrived(arrived);
-                if (arrived > 0) {
-                    ledger.receive(p.getId(), i.getVariantId(), i.getId(), arrived);
-                }
                 h = queue.handOut(p, v, b.getId(), mode, hold);
             }
             out.add(new ArriveLineResult(i.getId(), p.getTitle(), v == null ? null : v.getName(), arrived, stockAfter,

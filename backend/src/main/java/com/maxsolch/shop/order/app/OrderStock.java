@@ -84,14 +84,7 @@ public class OrderStock {
     /** Puts {@code units} of one order line back on the shelf without recording them on the line. */
     private void releaseUnits(OrderItem item, int units) {
         productRepository.findByIdForUpdate(item.getProductId()).ifPresent(product -> {
-            ProductVariant variant = item.getVariantId() == null ? null : Stock.variantOf(product, item.getVariantId());
-            if (item.getVariantId() != null && variant == null) {
-                // The variant was deleted from the catalog after the order was placed: put the
-                // units back on the product so they are not lost entirely.
-                product.setStock(product.getStock() + units);
-            } else {
-                stock.release(product, variant, units, item);
-            }
+            stock.releaseById(product, item.getVariantId(), units, item);
             productRepository.save(product);
         });
     }
@@ -111,11 +104,7 @@ public class OrderStock {
         if (onShelf < units) {
             throw new DomainException.BadRequest(OrderError.RESTOCK_SHORTAGE, item.getTitleSnapshot(), String.valueOf(Math.max(0, onShelf)), String.valueOf(units));
         }
-        if (item.getVariantId() != null && variant == null) {
-            product.setStock(product.getStock() - units);
-        } else {
-            stock.reserve(product, variant, units, item);
-        }
+        stock.reserveById(product, item.getVariantId(), units, item);
         productRepository.save(product);
         item.unmarkRestocked(units);
     }
