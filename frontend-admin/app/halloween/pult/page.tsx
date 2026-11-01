@@ -60,7 +60,10 @@ function usePoolActions(test: boolean, setBusy: (b: boolean) => void, setContact
     start: (round, visual) => void run(() => hwDraw.draw(pool, test, round, visual)),
     cancel: () => void run(() => hwDraw.announce({ cancel: true })),
     async reroll(round, visual) {
-      const ok = test || (await confirm({ title: `Перекрутить раунд ${round}?`, message: "Текущий победитель аннулируется (останется в журнале доказательства) и больше не участвует.", confirmLabel: "Перекрутить", danger: true }));
+      // In rehearsal too: one stray click would roll the scene at once, with no visual picker in between.
+      const ok = await confirm(test
+        ? { title: `Перекрутить тестовый раунд ${round}?`, message: "Сцена сразу начнёт крутить раунд заново.", confirmLabel: "Перекрутить" }
+        : { title: `Перекрутить раунд ${round}?`, message: "Текущий победитель аннулируется (останется в журнале доказательства) и больше не участвует.", confirmLabel: "Перекрутить", danger: true });
       if (ok) await run(() => hwDraw.reroll(pool, test, visual));
     },
     async lock() {
