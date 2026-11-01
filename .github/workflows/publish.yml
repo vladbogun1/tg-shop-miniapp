@@ -5,10 +5,17 @@ name: Publish images
 # single-origin gateway prod setup (docker-compose.public.yml / .prod.yml).
 #
 # Triggers:
-#   - pushing a tag like v2.0.0  -> images tagged with that version + :latest
+#   - pushing a tag like v3.0.0  -> images tagged with that version + :latest
 #   - manual run (workflow_dispatch) with an explicit tag input
 #
-# A PRE-RELEASE tag (v2.7.0-rc1, -beta, -alpha) does NOT move :latest. Those builds are for
+# Порядок (аудит 2026-11, P2-17): gate -> сборка backend без push -> smoke -> push версионных тегов -> :latest.
+#   1. gate: образы не публикуются, пока CI на ЭТОМ коммите (GITHUB_SHA) не завершился зелёным. Выбрана проверка
+#      результата ci.yml через API, а не workflow_call: CI уже отработал на ветке до тега, повторный прогон ~20 минут
+#      ничего бы не добавил, а тег на красном коммите отсекается так же надёжно. Нет прогона CI на коммите = отказ.
+#   2. smoke: собранный backend-образ поднимается с MySQL и профилем prod и должен ответить UP на /actuator/health.
+#   3. :latest двигается последним, отдельным шагом, и только после того, как все четыре версионных образа в реестре.
+#
+# A PRE-RELEASE tag (v3.7.0-rc1, -beta, -alpha) does NOT move :latest. Those builds are for
 # trying a branch on the server without merging it, and the whole point is that :latest keeps
 # pointing at what master produced — so a rollback is just IMAGE_TAG back to the last release.
 #
@@ -20,9 +27,12 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Image tag (e.g. v2.0.0)"
+        description: "Image tag (e.g. v3.0.0)"
         required: true
-        default: "v2.0.0"
+        default: "v3.0.0"
+
+permissions:
+  contents: read
 
 env:
   BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-backend
@@ -31,10 +41,66 @@ env:
   SITE_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-site
 
 jobs:
+  gate:
+    name: CI is green on this commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Wait for CI on this commit
+        run: |
+          # CI мог ещё не закончиться (тег поставили сразу после пуша): ждём до 50 минут.
+          # Нет ни одного прогона дольше 5 минут — отказ: CI на этом коммите не запускался.
+          start=$SECONDS
+          while true; do
+            runs=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" --event push \
+                     --limit 20 --json status,conclusion,databaseId)
+            if [ "$(echo "$runs" | jq 'any(.[]; .conclusion == "success")')" = "true" ]; then
+              echo "CI зелёный на $GITHUB_SHA: $(echo "$runs" | jq -c '[.[] | select(.conclusion == "success") | .databaseId]')"
+              exit 0
+            fi
+            pending=$(echo "$runs" | jq '[.[] | select(.status != "completed")] | length')
+            total=$(echo "$runs" | jq 'length')
+            if [ "$pending" = "0" ] && [ "$total" != "0" ]; then
+              echo "::error::CI на коммите $GITHUB_SHA завершился не зелёным: образы не публикуются."
+              echo "$runs"
+              exit 1
+            fi
+            if [ "$total" = "0" ] && [ $((SECONDS - start)) -gt 300 ]; then
+              echo "::error::Нет прогона CI на коммите $GITHUB_SHA (тег не на коммите ветки?): образы не публикуются."
+              exit 1
+            fi
+            if [ $((SECONDS - start)) -gt 3000 ]; then
+              echo "::error::CI не закончился за 50 минут: образы не публикуются."
+              exit 1
+            fi
+            echo "ждём CI (прогонов: $total, не завершено: $pending)…"
+            sleep 30
+          done
+
   publish:
-    name: Build & push (${{ github.event.inputs.tag || github.ref_name }})
+    name: Build, smoke & push (${{ github.event.inputs.tag || github.ref_name }})
+    needs: gate
     # Native ARM64 runner — the prod server is Oracle Ampere (aarch64).
     runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: rootpw
+          MYSQL_DATABASE: tgshop_v2
+          MYSQL_USER: tgshop
+          MYSQL_PASSWORD: tgshoppw
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -prootpw"
+          --health-interval=10s --health-timeout=5s --health-retries=10
     steps:
       - uses: actions/checkout@v4
 
@@ -43,17 +109,54 @@ jobs:
         run: |
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          # The second tag every image gets. For a real release that is ":latest"; for a
-          # pre-release it is the tag itself, i.e. the same push twice — a no-op that leaves
-          # :latest alone without needing a conditional tag list.
+          # Pre-release tags never move :latest.
           case "$TAG" in
-            *-rc*|*-beta*|*-alpha*) MOVING="$TAG" ;;
-            *)                      MOVING="latest" ;;
+            *-rc*|*-beta*|*-alpha*) PROMOTE=false ;;
+            *)                      PROMOTE=true ;;
           esac
-          echo "moving=$MOVING" >> "$GITHUB_OUTPUT"
-          echo "Tagging images as $TAG and $MOVING"
+          echo "promote=$PROMOTE" >> "$GITHUB_OUTPUT"
+          echo "Tag $TAG, move :latest = $PROMOTE"
 
       - uses: docker/setup-buildx-action@v3
+
+      # Сначала собираем backend локально, без push, и проверяем, что он живой.
+      - name: Build backend (local, no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          load: true
+          push: false
+          tags: maxsolch2-backend:smoke
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke - backend image boots and /actuator/health is UP
+        run: |
+          # Тот же строгий профиль prod и те же безопасные значения, что в ci.yml (backend-boot).
+          docker run -d --name smoke --network host \
+            -e SPRING_PROFILES_ACTIVE=prod -e SERVER_PORT=8099 \
+            -e DB_HOST=127.0.0.1 -e DB_PORT=3306 -e DB_NAME=tgshop_v2 -e DB_USER=tgshop -e DB_PASSWORD=tgshoppw \
+            -e JWT_SECRET=c29tZS1yZWFsbHktbG9uZy1zZWNyZXQtdmFsdWUtaGVyZQ== \
+            -e ADMIN_LOGIN=admin -e ADMIN_PASSWORD=ci-not-a-placeholder \
+            -e ALLOW_UNSIGNED_INIT_DATA=false -e BOT_TOKEN= \
+            -e WEBAPP_BASE_URL=https://example.test:666 -e ADMIN_BASE_URL=https://example.test:667 \
+            maxsolch2-backend:smoke
+          for i in $(seq 1 48); do
+            if curl -sf --max-time 5 http://localhost:8099/actuator/health | grep -q '"status":"UP"'; then
+              echo "backend image is healthy"
+              docker rm -f smoke >/dev/null
+              exit 0
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' smoke)" != "true" ]; then
+              echo "::error::backend container exited during startup"
+              docker logs --tail 80 smoke
+              exit 1
+            fi
+            sleep 5
+          done
+          echo "::error::backend image did not become healthy in time"
+          docker logs --tail 80 smoke
+          exit 1
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -61,14 +164,13 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build & push backend
+      # Дальше пушатся только версионные теги: :latest не трогаем, пока все четыре образа не легли в реестр.
+      - name: Push backend
         uses: docker/build-push-action@v6
         with:
           context: ./backend
           push: true
-          tags: |
-            ${{ env.BACKEND_IMAGE }}:${{ steps.meta.outputs.tag }}
-            ${{ env.BACKEND_IMAGE }}:${{ steps.meta.outputs.moving }}
+          tags: ${{ env.BACKEND_IMAGE }}:${{ steps.meta.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -82,9 +184,7 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_BASE_URL=
             NEXT_PUBLIC_IMAGE_BASE_URL=/img
-          tags: |
-            ${{ env.FRONTEND_IMAGE }}:${{ steps.meta.outputs.tag }}
-            ${{ env.FRONTEND_IMAGE }}:${{ steps.meta.outputs.moving }}
+          tags: ${{ env.FRONTEND_IMAGE }}:${{ steps.meta.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -97,9 +197,7 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_BASE_URL=
             NEXT_PUBLIC_IMAGE_BASE_URL=/img
-          tags: |
-            ${{ env.ADMIN_IMAGE }}:${{ steps.meta.outputs.tag }}
-            ${{ env.ADMIN_IMAGE }}:${{ steps.meta.outputs.moving }}
+          tags: ${{ env.ADMIN_IMAGE }}:${{ steps.meta.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -112,8 +210,14 @@ jobs:
           build-args: |
             NEXT_PUBLIC_SITE_URL=https://chisetup.com.ua
             NEXT_PUBLIC_BOT_URL=https://t.me/ChiSetupShop_bot
-          tags: |
-            ${{ env.SITE_IMAGE }}:${{ steps.meta.outputs.tag }}
-            ${{ env.SITE_IMAGE }}:${{ steps.meta.outputs.moving }}
+          tags: ${{ env.SITE_IMAGE }}:${{ steps.meta.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Последний шаг: :latest переезжает на уже опубликованные версионные образы (без пересборки).
+      - name: Move :latest (releases only, after everything above)
+        if: steps.meta.outputs.promote == 'true'
+        run: |
+          for image in "$BACKEND_IMAGE" "$FRONTEND_IMAGE" "$ADMIN_IMAGE" "$SITE_IMAGE"; do
+            docker buildx imagetools create -t "$image:latest" "$image:${{ steps.meta.outputs.tag }}"
+          done
