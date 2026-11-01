@@ -248,13 +248,13 @@ export const uk: RuDictionary = {
   "reviews.account.bonuses": "Мої бонуси",
 
   // ── payment return page (opened in a browser, outside Telegram) ──────────
-  "payReturn.title": "Дякуємо! Оплату прийнято в обробку",
-  "payReturn.text": "Зараз повернемо вас у магазин у Telegram — статус оплати оновиться сам, а бот надішле повідомлення.",
+  "payReturn.title": "Повертаємо вас у магазин",
+  "payReturn.text": "Статус оплати покажемо в замовленні — він оновиться сам, а бот надішле повідомлення. Якщо оплата не пройшла, її можна повторити із замовлення.",
   "payReturn.order": "Замовлення {id}",
   "payReturn.back": "Повернутися в магазин",
   "payReturn.closeHint": "Не перекинуло? Натисніть «Повернутися в магазин» або просто закрийте браузер.",
-  "payReturn.embedded": "Оплату прийнято в обробку…",
-  "payReturn.embeddedText": "Повертаємося до замовлення",
+  "payReturn.embedded": "Перевіряємо оплату…",
+  "payReturn.embeddedText": "Повертаємося до замовлення — статус буде там",
   // ---- comparison ----
   "compare.tab": "Порівняти",
   // ---- gift for the order sum / gift case (docs/GIFT-CASE.md) ----
