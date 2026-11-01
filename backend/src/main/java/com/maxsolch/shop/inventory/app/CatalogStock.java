@@ -29,6 +29,11 @@ public class CatalogStock implements ProductStock {
     }
 
     @Override
+    public void overwrite(Product product, com.maxsolch.shop.catalog.domain.ProductVariant variant, int units) {
+        Stock.overwrite(product, variant, units);
+    }
+
+    @Override
     public void syncLots(Product product) {
         ledger.syncProduct(product);
     }

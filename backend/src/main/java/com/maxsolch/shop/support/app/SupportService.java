@@ -10,7 +10,6 @@ import com.maxsolch.shop.support.infra.SupportThreadRepository;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.catalog.domain.Product;
-import com.maxsolch.shop.catalog.domain.ProductImage;
 import com.maxsolch.shop.order.domain.SenderType;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.catalog.app.Products;
@@ -30,7 +29,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -166,7 +164,7 @@ public class SupportService {
             t.setProductId(product.getId());
             t.setProductTitle(ellipsize(product.getTitle(), 255));
             t.setProductSlug(ellipsize(product.getSlug(), 255));
-            t.setProductImageUrl(firstImage(product));
+            t.setProductImageUrl(product.firstImageUrl());
             t.setSubject(ellipsize(product.getTitle(), SUBJECT_MAX));
         } else {
             String subject = req.subject() == null ? null : req.subject().strip();
@@ -363,14 +361,4 @@ public class SupportService {
                 .orElseThrow(() -> new DomainException.NotFound(SupportError.PRODUCT_NOT_FOUND));
     }
 
-    private static String firstImage(Product p) {
-        if (p.getImages() == null || p.getImages().isEmpty()) {
-            return null;
-        }
-        return p.getImages().stream()
-                .min(Comparator.comparingInt(ProductImage::getSortOrder)
-                        .thenComparing(i -> i.getId() == null ? Long.MAX_VALUE : i.getId()))
-                .map(ProductImage::getUrl)
-                .orElse(null);
-    }
 }

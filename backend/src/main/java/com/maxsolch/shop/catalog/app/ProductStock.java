@@ -10,6 +10,9 @@ import java.util.List;
  */
 public interface ProductStock {
 
+    /** The counter becomes exactly {@code units} (a hand edit): the variant's, or the product's when null. */
+    void overwrite(Product product, com.maxsolch.shop.catalog.domain.ProductVariant variant, int units);
+
     /** FIFO stock lots follow a stock typed by hand. */
     void syncLots(Product product);
 

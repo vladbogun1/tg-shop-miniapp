@@ -329,10 +329,10 @@ class AdminProductServiceTest {
 
     private ProductVariant variant(String name, int stock) {
         ProductVariant v = new ProductVariant();
-        v.setId(UuidUtil.randomBytes());
-        v.setProduct(product);
-        v.setName(name);
-        v.setStock(stock);
+        v.assignId(UuidUtil.randomBytes());
+        v.attachTo(product);
+        v.rename(name);
+        v.changeStock(stock);
         return v;
     }
 }

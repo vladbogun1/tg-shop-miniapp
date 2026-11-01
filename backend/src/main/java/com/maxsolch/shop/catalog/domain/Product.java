@@ -138,16 +138,64 @@ public class Product {
         }
     }
 
+    /** The product is sold in variants (sizes, colours): their counters, not {@link #stock}, are the truth. */
+    public boolean hasVariants() {
+        return variants != null && !variants.isEmpty();
+    }
+
+    /** The variant with this id, or null — also for a null id and for a product without variants. */
+    public ProductVariant variant(byte[] variantId) {
+        if (variantId == null || variants == null) {
+            return null;
+        }
+        return variants.stream().filter(v -> java.util.Arrays.equals(v.getId(), variantId)).findFirst().orElse(null);
+    }
+
+    /** {@link #variant(byte[])} for an id typed as text (a cart line); null, blank or malformed means none. */
+    public ProductVariant variant(String variantId) {
+        if (variantId == null || variantId.isBlank()) {
+            return null;
+        }
+        try {
+            return variant(UuidUtil.toBytes(variantId.trim()));
+        } catch (IllegalArgumentException malformed) {
+            return null;
+        }
+    }
+
     /**
-     * The one place of the rule «a product with variants has {@code stock} = the sum of their stocks». Call
+     * Units that can be sold: the sum of the variants (a negative one counts as zero) when there are variants,
+     * else the product's own counter. The one definition behind the cart, the catalog, the rollup and gifts;
+     * units held for a pre-order queue are taken off by the caller.
+     */
+    public int availableUnits() {
+        if (!hasVariants()) {
+            return stock;
+        }
+        return variants.stream().mapToInt(v -> Math.max(0, v.getStock())).sum();
+    }
+
+    /**
+     * The one place of the rule «a product with variants has {@code stock} = {@link #availableUnits()}». Call
      * after any change of a variant's stock or of the variant list; no-op without variants (the product's own
      * counter is then the source of truth).
      */
     public void syncStockFromVariants() {
-        if (variants == null || variants.isEmpty()) {
-            return;
+        if (hasVariants()) {
+            stock = availableUnits();
         }
-        stock = Math.max(0, variants.stream().mapToInt(ProductVariant::getStock).sum());
+    }
+
+    /** The first picture: lowest sort order, equal ones by id (a not yet saved one last); null without pictures. */
+    public String firstImageUrl() {
+        if (images == null) {
+            return null;
+        }
+        return images.stream()
+                .min(java.util.Comparator.comparingInt(ProductImage::getSortOrder)
+                        .thenComparing(i -> i.getId() == null ? Long.MAX_VALUE : i.getId()))
+                .map(ProductImage::getUrl)
+                .orElse(null);
     }
 
     /** A product the admin just created: hidden, a draft card, not published yet (V53, «Незавершённые»). */

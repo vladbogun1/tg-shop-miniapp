@@ -121,6 +121,6 @@ class OrderOps {
     }
 
     ProductVariant findVariant(Product product, String variantId) {
-        return Stock.variantOf(product, toBytes(variantId, "variantId"));
+        return product.variant(toBytes(variantId, "variantId"));
     }
 }

@@ -7,6 +7,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Getter;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import lombok.AccessLevel;
 import lombok.Setter;
 
 import java.time.Instant;
@@ -48,8 +51,10 @@ public class PreorderSubscription {
     @Column(name = "qty", nullable = false)
     private int qty = 1;
 
+    @Setter(AccessLevel.NONE)
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 12)
-    private String status = Status.WAITING.name();
+    private Status status = Status.WAITING;
 
     @Column(name = "batch_id")
     private Long batchId;
@@ -82,13 +87,14 @@ public class PreorderSubscription {
     @Column(name = "close_reason", length = 255)
     private String closeReason;
 
-    public Status statusEnum() {
-        return Status.valueOf(status);
+    /** Moves a live seat between its live states (waiting, notified, held); a seat that left is closed with {@link #close}. */
+    public void moveTo(Status to) {
+        status = to;
     }
 
     /** Leaves the queue: no units kept any more. */
     public void close(Status to, String reason, Instant at) {
-        status = to.name();
+        status = to;
         heldQty = 0;
         holdUntil = null;
         closedAt = at;

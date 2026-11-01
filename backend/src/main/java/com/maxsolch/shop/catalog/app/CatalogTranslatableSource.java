@@ -164,7 +164,7 @@ public class CatalogTranslatableSource implements TranslatableSource {
         if (!c.holds(v.getName())) {
             return "STALE";
         }
-        v.setName(c.newSource());
+        v.rename(c.newSource());
         return "OK";
     }
 

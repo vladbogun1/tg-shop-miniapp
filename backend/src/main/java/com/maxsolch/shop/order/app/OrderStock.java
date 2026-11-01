@@ -99,7 +99,7 @@ public class OrderStock {
         }
         Product product = productRepository.findByIdForUpdate(item.getProductId())
                 .orElseThrow(() -> new DomainException.BadRequest(OrderError.PRODUCT_DELETED, item.getTitleSnapshot()));
-        ProductVariant variant = item.getVariantId() == null ? null : Stock.variantOf(product, item.getVariantId());
+        ProductVariant variant = item.getVariantId() == null ? null : product.variant(item.getVariantId());
         int onShelf = variant != null ? variant.getStock() : product.getStock();
         if (onShelf < units) {
             throw new DomainException.BadRequest(OrderError.RESTOCK_SHORTAGE, item.getTitleSnapshot(), String.valueOf(Math.max(0, onShelf)), String.valueOf(units));
@@ -116,7 +116,7 @@ public class OrderStock {
     public void resizeLine(OrderItem item, int delta) {
         Product product = productRepository.findByIdForUpdate(item.getProductId())
                 .orElseThrow(() -> new DomainException.BadRequest(OrderError.PRODUCT_NOT_FOUND));
-        ProductVariant variant = item.getVariantId() == null ? null : Stock.variantOf(product, item.getVariantId());
+        ProductVariant variant = item.getVariantId() == null ? null : product.variant(item.getVariantId());
         if (delta > 0) {
             stock.reserve(product, variant, delta, item);
         } else {
@@ -130,7 +130,7 @@ public class OrderStock {
      * caller; the caller checked the target has enough). The line's own variant fields stay the caller's.
      */
     public void moveLine(Product product, ProductVariant target, OrderItem item) {
-        ProductVariant held = Stock.variantOf(product, item.getVariantId());
+        ProductVariant held = product.variant(item.getVariantId());
         if (held != null) {
             stock.release(product, held, item.getQuantity(), item);
         }

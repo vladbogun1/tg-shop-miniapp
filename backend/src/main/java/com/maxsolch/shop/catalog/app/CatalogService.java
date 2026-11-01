@@ -86,17 +86,17 @@ public class CatalogService {
     /** The stock a customer sees: minus the units held for people in a pre-order queue. */
     private static int shownStock(Product p, Map<String, Integer> held) {
         if (held.isEmpty()) {
-            return p.getStock();
+            return p.availableUnits();
         }
         int heldHere = 0;
-        if (p.getVariants() == null || p.getVariants().isEmpty()) {
+        if (!p.hasVariants()) {
             heldHere = held.getOrDefault(LineKey.of(p.getId(), null), 0);
         } else {
             for (var v : p.getVariants()) {
                 heldHere += held.getOrDefault(LineKey.of(p.getId(), v.getId()), 0);
             }
         }
-        return Math.max(0, p.getStock() - heldHere);
+        return Math.max(0, p.availableUnits() - heldHere);
     }
 
     private ProductDto toDto(Product p, Map<String, Long> soldCounts, Map<String, Integer> held) {

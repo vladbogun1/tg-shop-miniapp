@@ -241,7 +241,7 @@ public class Checkout {
 
         OrderItem item = OrderItem.sold(order, product.getId(), product.getTitle(), product.getPriceMinor(), line.quantity);
 
-        boolean hasVariants = product.getVariants() != null && !product.getVariants().isEmpty();
+        boolean hasVariants = product.hasVariants();
         ProductVariant variant = null;
         if (line.variantId != null && !line.variantId.isBlank()) {
             variant = ops.findVariant(product, line.variantId);

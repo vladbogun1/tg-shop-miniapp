@@ -58,7 +58,7 @@ class QueueBatchPort implements BatchQueue {
                 continue;
             }
             for (PreorderSubscription s : subs.queue(line[0], line[1])) {
-                if (s.statusEnum() != Status.WAITING) {
+                if (s.getStatus() != Status.WAITING) {
                     continue;
                 }
                 if (closeQueue) {

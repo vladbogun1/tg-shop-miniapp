@@ -8,6 +8,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Getter;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import lombok.AccessLevel;
 import lombok.Setter;
 
 import java.math.BigDecimal;
@@ -59,8 +62,10 @@ public class PreorderBatch {
     @Column(name = "public_note", length = 1000)
     private String publicNote;
 
+    @Setter(AccessLevel.NONE)
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 16)
-    private String status = Status.ORDERED.name();
+    private Status status = Status.ORDERED;
 
     @Column(name = "preorder_open", nullable = false)
     private boolean preorderOpen = true;
@@ -113,8 +118,9 @@ public class PreorderBatch {
     @Column(name = "cancelled_at")
     private Instant cancelledAt;
 
-    public Status statusEnum() {
-        return Status.valueOf(status);
+    /** The batch moves along its way (ordered → in transit → customs) or ends (arrived, cancelled). */
+    public void moveTo(Status to) {
+        status = to;
     }
 
     public EtaMode etaModeEnum() {

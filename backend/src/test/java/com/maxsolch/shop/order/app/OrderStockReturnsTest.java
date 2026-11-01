@@ -54,10 +54,10 @@ class OrderStockReturnsTest {
 
     private ProductVariant variant(Product p, int stock) {
         ProductVariant v = new ProductVariant();
-        v.setId(UuidUtil.randomBytes());
-        v.setProduct(p);
-        v.setName("black");
-        v.setStock(stock);
+        v.assignId(UuidUtil.randomBytes());
+        v.attachTo(p);
+        v.rename("black");
+        v.changeStock(stock);
         p.getVariants().add(v);
         p.changeStock(p.getVariants().stream().mapToInt(ProductVariant::getStock).sum());
         return v;

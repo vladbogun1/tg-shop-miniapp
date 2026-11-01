@@ -83,17 +83,17 @@ public class PreorderHoldExpiry {
         // lock before us may have bought the hold meanwhile — then there is nothing to expire
         Product product = products.findByIdForUpdate(productId).orElse(null);
         PreorderSubscription s = subs.findForUpdate(id).orElse(null);
-        if (s == null || !(s.statusEnum() == Status.HELD || s.statusEnum() == Status.NOTIFIED)
+        if (s == null || !(s.getStatus() == Status.HELD || s.getStatus() == Status.NOTIFIED)
                 || s.getHoldUntil() == null || !s.getHoldUntil().isBefore(now)) {
             return false;
         }
-        boolean wasHeld = s.statusEnum() == Status.HELD;
+        boolean wasHeld = s.getStatus() == Status.HELD;
         s.close(Status.EXPIRED, wasHeld ? "бронь закончилась" : "не купил после уведомления", now);
         subs.save(s);
         events.publish(new PreorderEvents.HoldExpired(s.getId()));
         if (wasHeld && product != null) {
             queue.holdsChanged(product);
-            queue.handOut(product, Lines.variantById(product, s.getVariantId()), s.getBatchId(), Distribution.QUEUE_HOLD,
+            queue.handOut(product, product.variant(s.getVariantId()), s.getBatchId(), Distribution.QUEUE_HOLD,
                     queue.holdHours(s.getBatchId()), false);
         }
         return true;

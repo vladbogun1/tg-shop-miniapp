@@ -101,10 +101,10 @@ public class PreorderBatchService {
         String f = filter == null ? "open" : filter.trim().toLowerCase(Locale.ROOT);
         List<PreorderBatch> rows = switch (f) {
             case "all" -> batches.findAllByOrderByCreatedAtDesc();
-            case "arrived" -> batches.findByStatusInOrderByCreatedAtDesc(List.of(PreorderBatch.Status.ARRIVED.name()));
-            case "cancelled" -> batches.findByStatusInOrderByCreatedAtDesc(List.of(PreorderBatch.Status.CANCELLED.name()));
-            default -> batches.findByStatusInOrderByCreatedAtDesc(List.of(PreorderBatch.Status.ORDERED.name(),
-                    PreorderBatch.Status.IN_TRANSIT.name(), PreorderBatch.Status.CUSTOMS.name()));
+            case "arrived" -> batches.findByStatusInOrderByCreatedAtDesc(List.of(PreorderBatch.Status.ARRIVED));
+            case "cancelled" -> batches.findByStatusInOrderByCreatedAtDesc(List.of(PreorderBatch.Status.CANCELLED));
+            default -> batches.findByStatusInOrderByCreatedAtDesc(List.of(PreorderBatch.Status.ORDERED,
+                    PreorderBatch.Status.IN_TRANSIT, PreorderBatch.Status.CUSTOMS));
         };
         if (rows.isEmpty()) {
             return List.of();
@@ -125,7 +125,7 @@ public class PreorderBatchService {
                     units += d[1];
                 }
             }
-            out.add(new BatchSummaryDto(b.getId(), b.getTitle(), supplierNames.get(b.getSupplierId()), b.getStatus(),
+            out.add(new BatchSummaryDto(b.getId(), b.getTitle(), supplierNames.get(b.getSupplierId()), b.getStatus().name(),
                     b.getEtaMode(), b.getEtaFrom(), b.getEtaTo(), b.isPreorderOpen(), lines.size(),
                     lines.stream().mapToInt(PreorderBatchItem::getQtyOrdered).sum(), people, units,
                     b.getCreatedAt(), b.getArrivedAt()));
@@ -160,7 +160,7 @@ public class PreorderBatchService {
         PreorderBatch b = batches.findForUpdate(id).orElseThrow(() -> notFound(id));
         editor.apply(b, req, money);
         if (req.items() != null) {
-            if (!b.statusEnum().open()) {
+            if (!b.getStatus().open()) {
                 throw new DomainException.BadRequest(ProcurementError.BATCH_CLOSED_ITEMS);
             }
             if (req.items().isEmpty()) {
@@ -176,7 +176,7 @@ public class PreorderBatchService {
     @Transactional
     public BatchDto setStatus(long id, String status, boolean money) {
         PreorderBatch b = batches.findForUpdate(id).orElseThrow(() -> notFound(id));
-        if (!b.statusEnum().open()) {
+        if (!b.getStatus().open()) {
             throw new DomainException.BadRequest(ProcurementError.BATCH_CLOSED);
         }
         PreorderBatch.Status to = BatchEditor.parse(PreorderBatch.Status.class, status, null, "статус");
@@ -186,7 +186,7 @@ public class PreorderBatchService {
         if (to != PreorderBatch.Status.ORDERED && b.getInTransitAt() == null) {
             b.setInTransitAt(clock.instant());
         }
-        b.setStatus(to.name());
+        b.moveTo(to);
         publicChanged();
         return toDto(batches.save(b), money);
     }
@@ -203,7 +203,7 @@ public class PreorderBatchService {
     public ArriveResult arrive(long id, ArriveRequest req) {
         boolean dry = req != null && Boolean.TRUE.equals(req.dryRun());
         PreorderBatch b = (dry ? batches.findById(id) : batches.findForUpdate(id)).orElseThrow(() -> notFound(id));
-        if (!b.statusEnum().open()) {
+        if (!b.getStatus().open()) {
             throw new DomainException.BadRequest(ProcurementError.BATCH_CLOSED);
         }
         Distribution mode = BatchEditor.parse(Distribution.class, req == null ? null : req.distribution(),
@@ -230,7 +230,7 @@ public class PreorderBatchService {
             }
             Product p = (dry ? products.findById(i.getProductId()) : products.findByIdForUpdate(i.getProductId()))
                     .orElseThrow(() -> new DomainException.BadRequest(ProcurementError.PRODUCT_GONE));
-            ProductVariant v = Lines.variantById(p, i.getVariantId());
+            ProductVariant v = p.variant(i.getVariantId());
             if (i.getVariantId() != null && v == null) {
                 throw new DomainException.BadRequest(ProcurementError.VARIANT_GONE, p.getTitle());
             }
@@ -253,7 +253,7 @@ public class PreorderBatchService {
         }
         if (!dry) {
             items.saveAll(lines);
-            b.setStatus(PreorderBatch.Status.ARRIVED.name());
+            b.moveTo(PreorderBatch.Status.ARRIVED);
             b.setArrivedAt(clock.instant());
             b.setDistribution(mode.name());
             b.setHoldHours(hold);
@@ -272,11 +272,11 @@ public class PreorderBatchService {
     @Transactional
     public BatchDto cancel(long id, CancelRequest req, boolean money) {
         PreorderBatch b = batches.findForUpdate(id).orElseThrow(() -> notFound(id));
-        if (!b.statusEnum().open()) {
+        if (!b.getStatus().open()) {
             throw new DomainException.BadRequest(ProcurementError.BATCH_CLOSED);
         }
         Instant now = clock.instant();
-        b.setStatus(PreorderBatch.Status.CANCELLED.name());
+        b.moveTo(PreorderBatch.Status.CANCELLED);
         b.setCancelledAt(now);
         if (req != null && req.note() != null && !req.note().isBlank()) {
             String old = b.getPrivateNote() == null ? "" : b.getPrivateNote() + "\n";
@@ -297,18 +297,18 @@ public class PreorderBatchService {
         List<ItemDto> itemDtos = new ArrayList<>();
         for (PreorderBatchItem i : lines) {
             Product p = byId.get(UuidUtil.toString(i.getProductId()));
-            ProductVariant v = p == null ? null : Lines.variantById(p, i.getVariantId());
+            ProductVariant v = p == null ? null : p.variant(i.getVariantId());
             long[] d = demand.getOrDefault(Lines.key(i.getProductId(), i.getVariantId()), new long[2]);
             itemDtos.add(new ItemDto(i.getId(), UuidUtil.toString(i.getProductId()),
                     i.getVariantId() == null ? null : UuidUtil.toString(i.getVariantId()),
                     p == null ? "(товар удалён)" : p.getTitle(), v == null ? null : v.getName(),
-                    p == null ? null : Lines.imageOf(p),
+                    p == null ? null : p.firstImageUrl(),
                     p == null ? 0 : Lines.stockOf(p, v), p == null ? 0 : p.getPriceMinor(),
                     i.getQtyOrdered(), i.getQtyArrived(), money ? i.getUnitPriceFx() : null, d[0], d[1]));
         }
         return new BatchDto(b.getId(), b.getTitle(), b.getSupplierId(), supplierNames().get(b.getSupplierId()),
-                b.getPrivateNote(), b.getPublicNote(), b.getStatus(), b.getEtaMode(), b.getEtaFrom(), b.getEtaTo(),
-                b.statusEnum().open() ? BatchCatalog.eta(b, shopZone.today(clock)) : null, b.getHoldHours(), b.getDistribution(),
+                b.getPrivateNote(), b.getPublicNote(), b.getStatus().name(), b.getEtaMode(), b.getEtaFrom(), b.getEtaTo(),
+                b.getStatus().open() ? BatchCatalog.eta(b, shopZone.today(clock)) : null, b.getHoldHours(), b.getDistribution(),
                 b.isPreorderOpen(), b.getCurrency(), money ? b.getFxRate() : null, money, itemDtos,
                 b.getCreatedBy(), b.getCreatedAt(), b.getInTransitAt(), b.getArrivedAt(), b.getCancelledAt());
     }

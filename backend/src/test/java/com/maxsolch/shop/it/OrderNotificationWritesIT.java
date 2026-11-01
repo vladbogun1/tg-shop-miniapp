@@ -18,6 +18,13 @@ import static org.mockito.Mockito.doAnswer;
  */
 class OrderNotificationWritesIT extends AbstractMysqlIT {
 
+    /** The test sets the received amount with raw SQL to stand in for a concurrent admin edit. */
+    @Override
+    protected boolean checksMoneyJournal() {
+        return false;
+    }
+
+
     @Autowired
     Checkout orders;
     @Autowired

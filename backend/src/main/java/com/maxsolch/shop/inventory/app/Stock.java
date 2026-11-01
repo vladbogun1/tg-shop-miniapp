@@ -10,8 +10,6 @@ import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.catalog.app.Products;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
-
 /**
  * The shelf: units moving between the shelf and whoever sells them. One move touches three things that must stay
  * in step — the counters ({@code product.stock} and, when the product has variants, the variant stocks with
@@ -36,17 +34,6 @@ public class Stock {
         this.messages = messages;
         this.lots = lots;
         this.holds = holds;
-    }
-
-    /** The variant of a product by id, or null (also when the product has no variants). */
-    public static ProductVariant variantOf(Product product, byte[] variantId) {
-        if (product.getVariants() == null) {
-            return null;
-        }
-        return product.getVariants().stream()
-                .filter(v -> Arrays.equals(v.getId(), variantId))
-                .findFirst()
-                .orElse(null);
     }
 
     // ------------------------------------------------------------------ taking units
@@ -83,7 +70,7 @@ public class Stock {
             if (variant.getStock() < qty) {
                 throw new DomainException.BadRequest(InventoryError.OUT_OF_STOCK, product.getTitle() + " (" + variant.getName() + ")", Math.max(0, variant.getStock()));
             }
-            variant.setStock(variant.getStock() - qty);
+            variant.changeStock(variant.getStock() - qty);
             product.syncStockFromVariants();
         } else {
             if (product.getStock() < qty) {
@@ -104,7 +91,7 @@ public class Stock {
      */
     public void release(Product product, ProductVariant variant, int qty, LotAllocations sale) {
         if (variant != null) {
-            variant.setStock(variant.getStock() + qty);
+            variant.changeStock(variant.getStock() + qty);
             product.syncStockFromVariants();
         } else {
             product.changeStock(product.getStock() + qty);
@@ -121,7 +108,7 @@ public class Stock {
      * catalog after the sale: the units go back on the product so they are not lost — no lots, no queue.
      */
     public void releaseById(Product product, byte[] variantId, int qty, LotAllocations sale) {
-        ProductVariant variant = variantId == null ? null : variantOf(product, variantId);
+        ProductVariant variant = variantId == null ? null : product.variant(variantId);
         if (variantId != null && variant == null) {
             product.changeStock(product.getStock() + qty);
         } else {
@@ -131,7 +118,7 @@ public class Stock {
 
     /** {@link #reserve} for a line that knows its variant only by id; a deleted variant is taken from the product. */
     public void reserveById(Product product, byte[] variantId, int qty, LotAllocations sale) {
-        ProductVariant variant = variantId == null ? null : variantOf(product, variantId);
+        ProductVariant variant = variantId == null ? null : product.variant(variantId);
         if (variantId != null && variant == null) {
             product.changeStock(product.getStock() - qty);
         } else {
@@ -145,7 +132,7 @@ public class Stock {
      */
     public void arrive(Product product, ProductVariant variant, int units, long batchItemId) {
         if (variant != null) {
-            variant.setStock(variant.getStock() + units);
+            variant.changeStock(variant.getStock() + units);
             product.syncStockFromVariants();
         } else {
             product.changeStock(product.getStock() + units);
@@ -156,6 +143,20 @@ public class Stock {
     }
 
     // ------------------------------------------------------------------ units without a line
+
+    /**
+     * The admin typed a stock by hand: the counter becomes exactly {@code units} (the lots follow in
+     * {@link LotLedger#syncProduct}, a drop is written off by the caller). A variant's own counter, or the
+     * product's when {@code variant} is null; with variants the product keeps the rollup.
+     */
+    public static void overwrite(Product product, ProductVariant variant, int units) {
+        if (variant != null) {
+            variant.changeStock(units);
+            product.syncStockFromVariants();
+        } else {
+            product.changeStock(units);
+        }
+    }
 
     /** Puts units of a product (variant) back on the shelf — a write-off that turned out fine. */
     public void restockProduct(byte[] productId, byte[] variantId, int units) {

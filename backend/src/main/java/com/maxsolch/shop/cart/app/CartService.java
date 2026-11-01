@@ -6,7 +6,6 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.cart.domain.Cart;
 import com.maxsolch.shop.cart.domain.CartItem;
 import com.maxsolch.shop.catalog.domain.Product;
-import com.maxsolch.shop.catalog.domain.ProductImage;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.cart.infra.CartItemRepository;
@@ -28,7 +27,6 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -210,7 +208,7 @@ public class CartService {
             if (p == null) {
                 continue;
             }
-            if (l.key().variantId() != null && findVariant(p, l.key().variantId()) == null) {
+            if (l.key().variantId() != null && p.variant(l.key().variantId()) == null) {
                 continue;
             }
             out.add(l);
@@ -255,7 +253,7 @@ public class CartService {
                 continue; // deleted in this very transaction; the FK cascade removes the row
             }
             String variantId = it.getVariantId() == null ? null : UuidUtil.toString(it.getVariantId());
-            ProductVariant variant = variantId == null ? null : findVariant(p, variantId);
+            ProductVariant variant = variantId == null ? null : p.variant(variantId);
             if (variantId != null && variant == null) {
                 continue;
             }
@@ -267,7 +265,7 @@ public class CartService {
     static CartLineDto lineDto(Product p, ProductVariant variant, CartItem it, TranslationService.Overlay overlay) {
         String productId = UuidUtil.toString(p.getId());
         String variantId = variant == null ? null : UuidUtil.toString(variant.getId());
-        boolean hasVariants = p.getVariants() != null && !p.getVariants().isEmpty();
+        boolean hasVariants = p.hasVariants();
         int stock = stockOf(p, variant);
         String problem = null;
         if (!p.isActive() || p.isArchived()) {
@@ -285,7 +283,7 @@ public class CartService {
                 p.getSlug(),
                 variant == null ? null
                         : overlay.text(TranslationEntityType.VARIANT, variantId, TranslationEntityType.NAME, variant.getName()),
-                firstImage(p),
+                p.firstImageUrl(),
                 p.getPriceMinor(),
                 p.getCompareAtMinor(),
                 p.getCurrency(),
@@ -300,33 +298,7 @@ public class CartService {
         if (variant != null) {
             return variant.getStock();
         }
-        if (p.getVariants() != null && !p.getVariants().isEmpty()) {
-            return p.getVariants().stream().mapToInt(v -> Math.max(0, v.getStock())).sum();
-        }
-        return p.getStock();
-    }
-
-    private static String firstImage(Product p) {
-        if (p.getImages() == null || p.getImages().isEmpty()) {
-            return null;
-        }
-        return p.getImages().stream()
-                .min(Comparator.comparingInt(ProductImage::getSortOrder)
-                        .thenComparing(i -> i.getId() == null ? Long.MAX_VALUE : i.getId()))
-                .map(ProductImage::getUrl)
-                .orElse(null);
-    }
-
-    private static ProductVariant findVariant(Product p, String variantId) {
-        if (p.getVariants() == null) {
-            return null;
-        }
-        for (ProductVariant v : p.getVariants()) {
-            if (variantId.equals(UuidUtil.toString(v.getId()))) {
-                return v;
-            }
-        }
-        return null;
+        return p.availableUnits();
     }
 
     private Map<String, Product> loadProducts(Collection<String> ids) {

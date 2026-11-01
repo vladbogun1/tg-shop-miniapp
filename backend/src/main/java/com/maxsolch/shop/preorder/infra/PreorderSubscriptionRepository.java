@@ -21,7 +21,7 @@ public interface PreorderSubscriptionRepository extends JpaRepository<PreorderSu
     String SAME_LINE = "s.productId = :productId and ((:variantId is null and s.variantId is null) "
             + "or s.variantId = :variantId)";
 
-    String LIVE = "s.status in ('WAITING', 'HELD', 'NOTIFIED')";
+    String LIVE = "s.status in (com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.WAITING, com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.HELD, com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.NOTIFIED)";
 
     @Query("select s from PreorderSubscription s where s.userId = :userId and " + SAME_LINE + " and " + LIVE)
     List<PreorderSubscription> findLive(@Param("userId") Long userId, @Param("productId") byte[] productId,
@@ -39,32 +39,32 @@ public interface PreorderSubscriptionRepository extends JpaRepository<PreorderSu
 
     /** People waiting for a product (any variant) — «Чекають N людей». */
     @Query("select count(distinct s.userId) from PreorderSubscription s where s.productId = :productId and "
-            + "s.status in ('WAITING', 'HELD')")
+            + "s.status in (com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.WAITING, com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.HELD)")
     long countPeople(@Param("productId") byte[] productId);
 
     /** Units on hold per line, {@code [productId, variantId, held]} — the catalog shows the rest. */
-    @Query("select s.productId, s.variantId, sum(s.heldQty) from PreorderSubscription s where s.status = 'HELD' "
+    @Query("select s.productId, s.variantId, sum(s.heldQty) from PreorderSubscription s where s.status = com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.HELD "
             + "and s.heldQty > 0 group by s.productId, s.variantId")
     List<Object[]> heldByLine();
 
     /** Waiting before this subscription in its queue (its place = this + 1). */
-    @Query("select count(s) from PreorderSubscription s where " + SAME_LINE + " and s.status = 'WAITING' "
+    @Query("select count(s) from PreorderSubscription s where " + SAME_LINE + " and s.status = com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.WAITING "
             + "and (s.createdAt < :createdAt or (s.createdAt = :createdAt and s.id < :id))")
     long countAhead(@Param("productId") byte[] productId, @Param("variantId") byte[] variantId,
                     @Param("createdAt") Instant createdAt, @Param("id") Long id);
 
-    long countByUserIdAndStatusIn(Long userId, Collection<String> statuses);
+    long countByUserIdAndStatusIn(Long userId, Collection<PreorderSubscription.Status> statuses);
 
     List<PreorderSubscription> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
-    List<PreorderSubscription> findByUserIdAndStatusIn(Long userId, Collection<String> statuses);
+    List<PreorderSubscription> findByUserIdAndStatusIn(Long userId, Collection<PreorderSubscription.Status> statuses);
 
     /**
      * Holds (and «everybody at once» notices) past their deadline, as {@code [id, productId]} — no entities
      * on purpose: the job locks the product first and then re-reads the row with {@link #findForUpdate}, and a
      * managed copy loaded here would be served from the persistence context with its stale status.
      */
-    @Query("select s.id, s.productId from PreorderSubscription s where s.status in ('HELD', 'NOTIFIED') "
+    @Query("select s.id, s.productId from PreorderSubscription s where s.status in (com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.HELD, com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.NOTIFIED) "
             + "and s.holdUntil < :now order by s.holdUntil")
     List<Object[]> findExpiredHoldIds(@Param("now") Instant now, Pageable pageable);
 
@@ -80,7 +80,7 @@ public interface PreorderSubscriptionRepository extends JpaRepository<PreorderSu
                                         @Param("variantId") byte[] variantId);
 
     /** Holds ending before {@code before} that have not been reminded of yet. */
-    @Query("select s from PreorderSubscription s where s.status = 'HELD' and s.remindedAt is null "
+    @Query("select s from PreorderSubscription s where s.status = com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.HELD and s.remindedAt is null "
             + "and s.holdUntil > :now and s.holdUntil <= :before order by s.holdUntil")
     List<PreorderSubscription> findHoldsToRemind(@Param("now") Instant now, @Param("before") Instant before,
                                                  Pageable pageable);
@@ -91,7 +91,7 @@ public interface PreorderSubscriptionRepository extends JpaRepository<PreorderSu
      */
     @Query("select s.productId, s.variantId, count(s), sum(s.qty), min(s.createdAt), "
             + "sum(case when s.createdAt >= :since then 1 else 0 end) "
-            + "from PreorderSubscription s where s.status in ('WAITING', 'HELD') "
+            + "from PreorderSubscription s where s.status in (com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.WAITING, com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.HELD) "
             + "group by s.productId, s.variantId order by count(s) desc, min(s.createdAt) asc")
     List<Object[]> demand(@Param("since") Instant since);
 
@@ -102,7 +102,7 @@ public interface PreorderSubscriptionRepository extends JpaRepository<PreorderSu
 
     /** Distinct people waiting per product (any variant): {@code [productId, people, units]}. */
     @Query("select s.productId, count(distinct s.userId), sum(s.qty) from PreorderSubscription s "
-            + "where s.status in ('WAITING', 'HELD') group by s.productId")
+            + "where s.status in (com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.WAITING, com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.HELD) group by s.productId")
     List<Object[]> waitingByProduct();
 
     /** New subscriptions in [from, to): {@code [count, distinct people]}. */
@@ -115,15 +115,15 @@ public interface PreorderSubscriptionRepository extends JpaRepository<PreorderSu
      * got units (not just a notice). {@code held_qty} is zeroed when a place closes, so a finished place is
      * counted by what it asked for ({@code qty}) — an approximation for partial holds.
      */
-    @Query("select coalesce(sum(case when s.status = 'HELD' then s.heldQty else s.qty end), 0) "
+    @Query("select coalesce(sum(case when s.status = com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.HELD then s.heldQty else s.qty end), 0) "
             + "from PreorderSubscription s where s.notifiedAt >= :from and s.notifiedAt < :to "
-            + "and s.status in ('HELD', 'BOUGHT', 'EXPIRED')")
+            + "and s.status in (com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.HELD, com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.BOUGHT, com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.EXPIRED)")
     long holdUnitsGiven(@Param("from") Instant from, @Param("to") Instant to);
 
     /** Units of places that were held and then bought / ran out, closed in [from, to). */
     @Query("select coalesce(sum(s.qty), 0) from PreorderSubscription s where s.status = :status "
             + "and s.notifiedAt is not null and s.closedAt >= :from and s.closedAt < :to")
-    long closedAfterHold(@Param("status") String status, @Param("from") Instant from, @Param("to") Instant to);
+    long closedAfterHold(@Param("status") PreorderSubscription.Status status, @Param("from") Instant from, @Param("to") Instant to);
 
     /** Live places created in [from, to): digest. {@code [productId, count, distinct people]} per product. */
     @Query("select s.productId, count(s), count(distinct s.userId) from PreorderSubscription s "

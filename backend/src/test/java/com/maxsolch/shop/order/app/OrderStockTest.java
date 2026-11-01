@@ -115,10 +115,10 @@ class OrderStockTest {
 
     private ProductVariant variant(Product p, String name, int stock) {
         ProductVariant v = new ProductVariant();
-        v.setId(UuidUtil.randomBytes());
-        v.setProduct(p);
-        v.setName(name);
-        v.setStock(stock);
+        v.assignId(UuidUtil.randomBytes());
+        v.attachTo(p);
+        v.rename(name);
+        v.changeStock(stock);
         p.getVariants().add(v);
         p.changeStock(p.getVariants().stream().mapToInt(ProductVariant::getStock).sum());
         return v;

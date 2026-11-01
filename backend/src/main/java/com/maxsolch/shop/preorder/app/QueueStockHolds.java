@@ -34,7 +34,7 @@ class QueueStockHolds implements StockHolds {
         // order's first read, which may predate a hold that the expiry job released while we waited for the
         // product lock. FOR UPDATE reads the latest committed rows.
         return subs.lockQueue(productId, variantId).stream()
-                .filter(s -> s.statusEnum() == Status.HELD && (userId == null || !userId.equals(s.getUserId())))
+                .filter(s -> s.getStatus() == Status.HELD && (userId == null || !userId.equals(s.getUserId())))
                 .mapToInt(PreorderSubscription::getHeldQty).sum();
     }
 

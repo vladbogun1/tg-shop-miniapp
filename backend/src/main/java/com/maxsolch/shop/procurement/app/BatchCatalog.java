@@ -23,8 +23,8 @@ import java.util.Optional;
 @Service
 public class BatchCatalog {
 
-    private static final List<String> OPEN = List.of(PreorderBatch.Status.ORDERED.name(),
-            PreorderBatch.Status.IN_TRANSIT.name(), PreorderBatch.Status.CUSTOMS.name());
+    private static final List<PreorderBatch.Status> OPEN = List.of(PreorderBatch.Status.ORDERED,
+            PreorderBatch.Status.IN_TRANSIT, PreorderBatch.Status.CUSTOMS);
 
     /** A line of a batch customers can see (on the way, pre-order open) with its batch. */
     public record PublicLine(PreorderBatchItem item, PreorderBatch batch) {
@@ -82,7 +82,7 @@ public class BatchCatalog {
     public static EtaDto eta(PreorderBatch b, LocalDate today) {
         PreorderBatch.EtaMode mode = b.etaModeEnum();
         boolean hidden = mode == PreorderBatch.EtaMode.HIDDEN;
-        return new EtaDto(b.statusEnum() == PreorderBatch.Status.ORDERED ? "ordered" : "in_transit",
+        return new EtaDto(b.getStatus() == PreorderBatch.Status.ORDERED ? "ordered" : "in_transit",
                 mode.name(),
                 hidden ? null : b.getEtaFrom(),
                 hidden || mode == PreorderBatch.EtaMode.DATE ? null : b.getEtaTo(),

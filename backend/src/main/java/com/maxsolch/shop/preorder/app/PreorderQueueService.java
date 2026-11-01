@@ -49,7 +49,7 @@ public class PreorderQueueService {
     public static final String SOURCE_MINIAPP = "MINIAPP";
     public static final String SOURCE_WEB = "WEB";
 
-    static final List<String> LIVE = List.of(Status.WAITING.name(), Status.HELD.name(), Status.NOTIFIED.name());
+    static final List<Status> LIVE = List.of(Status.WAITING, Status.HELD, Status.NOTIFIED);
     /** Queue size when the anti-hoarding limit is off. */
     static final int DEFAULT_MAX_QTY = 10;
 
@@ -102,7 +102,7 @@ public class PreorderQueueService {
         Optional<PreorderSubscription> existing = subs.findLive(userId, productId, variantId).stream().findFirst();
         if (existing.isPresent()) {
             PreorderSubscription s = existing.get();
-            if (s.statusEnum() == Status.WAITING && s.getQty() != qty) {
+            if (s.getStatus() == Status.WAITING && s.getQty() != qty) {
                 s.setQty(qty);
                 subs.save(s);
             }
@@ -140,16 +140,16 @@ public class PreorderQueueService {
         PreorderSubscription s = subs.findById(id)
                 .filter(x -> x.getUserId() == userId)
                 .orElseThrow(() -> new DomainException.NotFound(PreorderError.WAITING_NOT_FOUND));
-        if (!s.statusEnum().live()) {
+        if (!s.getStatus().live()) {
             return;
         }
         Product product = products.findByIdForUpdate(s.getProductId()).orElse(null);
-        boolean wasHeld = s.statusEnum() == Status.HELD;
+        boolean wasHeld = s.getStatus() == Status.HELD;
         s.close(Status.CANCELLED, "вышел из очереди", clock.instant());
         subs.save(s);
         if (wasHeld && product != null) {
             holdsChanged(product);
-            handOut(product, Lines.variantById(product, s.getVariantId()), s.getBatchId(), Distribution.QUEUE_HOLD,
+            handOut(product, product.variant(s.getVariantId()), s.getBatchId(), Distribution.QUEUE_HOLD,
                     holdHours(s.getBatchId()), false);
         }
     }
@@ -183,14 +183,14 @@ public class PreorderQueueService {
         Instant now = clock.instant();
         for (byte[][] line : lines) {
             for (PreorderSubscription s : subs.lockLive(userId, line[0], line[1])) {
-                boolean partlyUnused = s.statusEnum() == Status.HELD;
+                boolean partlyUnused = s.getStatus() == Status.HELD;
                 s.close(Status.BOUGHT, null, now);
                 s.setOrderId(orderId);
                 subs.save(s);
                 if (partlyUnused) {
                     products.findByIdForUpdate(line[0]).ifPresent(p -> {
                         holdsChanged(p);
-                        handOut(p, Lines.variantById(p, line[1]), s.getBatchId(), Distribution.QUEUE_HOLD,
+                        handOut(p, p.variant(line[1]), s.getBatchId(), Distribution.QUEUE_HOLD,
                                 holdHours(s.getBatchId()), false);
                     });
                 }
@@ -213,20 +213,20 @@ public class PreorderQueueService {
      */
     public void onStockTaken(Product product, ProductVariant variant, int stockAfter) {
         List<PreorderSubscription> queue = subs.lockQueue(product.getId(), variant == null ? null : variant.getId());
-        int held = queue.stream().filter(s -> s.statusEnum() == Status.HELD).mapToInt(PreorderSubscription::getHeldQty).sum();
+        int held = queue.stream().filter(s -> s.getStatus() == Status.HELD).mapToInt(PreorderSubscription::getHeldQty).sum();
         int over = held - Math.max(0, stockAfter);
         if (over > 0) {
             holdsChanged(product);
         }
         for (int i = queue.size() - 1; i >= 0 && over > 0; i--) {
             PreorderSubscription s = queue.get(i);
-            if (s.statusEnum() != Status.HELD) {
+            if (s.getStatus() != Status.HELD) {
                 continue;
             }
             int back = Math.min(over, s.getHeldQty());
             over -= back;
             if (back == s.getHeldQty()) {
-                s.setStatus(Status.WAITING.name());
+                s.moveTo(Status.WAITING);
                 s.setHeldQty(0);
                 s.setHoldUntil(null);
                 s.setRemindedAt(null);
@@ -257,8 +257,8 @@ public class PreorderQueueService {
         if (mode == Distribution.ALL_AT_ONCE) {
             int told = 0;
             for (PreorderSubscription s : queue) {
-                if (s.statusEnum() == Status.WAITING) {
-                    s.setStatus(Status.NOTIFIED.name());
+                if (s.getStatus() == Status.WAITING) {
+                    s.moveTo(Status.NOTIFIED);
                     s.setNotifiedAt(now);
                     s.setHoldUntil(until);
                     s.setBatchId(batchId);
@@ -275,7 +275,7 @@ public class PreorderQueueService {
         queue.forEach(s -> byId.put(s.getId(), s));
         for (PreorderRules.Grant g : a.grants()) {
             PreorderSubscription s = byId.get(g.subscriptionId());
-            s.setStatus(Status.HELD.name());
+            s.moveTo(Status.HELD);
             s.setHeldQty(g.qty());
             s.setHoldUntil(until);
             s.setNotifiedAt(now);
@@ -312,7 +312,7 @@ public class PreorderQueueService {
             return new HandOut(0, 0, 0, 0, free);
         }
         if (mode == Distribution.ALL_AT_ONCE) {
-            int told = (int) queue.stream().filter(s -> s.statusEnum() == Status.WAITING).count();
+            int told = (int) queue.stream().filter(s -> s.getStatus() == Status.WAITING).count();
             return new HandOut(0, 0, told, 0, free);
         }
         PreorderRules.Allocation a = PreorderRules.allocate(seats, free);
@@ -338,20 +338,20 @@ public class PreorderQueueService {
 
     static List<PreorderRules.Seat> seats(List<PreorderSubscription> queue) {
         return queue.stream()
-                .map(s -> new PreorderRules.Seat(s.getId(), s.statusEnum(), s.getQty(), s.getHeldQty()))
+                .map(s -> new PreorderRules.Seat(s.getId(), s.getStatus(), s.getQty(), s.getHeldQty()))
                 .toList();
     }
 
     /** The variant the customer picked; required when the product has variants, refused when it has none. */
     ProductVariant variantOf(Product p, String variantIdText) {
-        boolean hasVariants = p.getVariants() != null && !p.getVariants().isEmpty();
+        boolean hasVariants = p.hasVariants();
         if (variantIdText == null || variantIdText.isBlank()) {
             if (hasVariants) {
                 throw new DomainException.BadRequest(PreorderError.VARIANT_REQUIRED, p.getTitle());
             }
             return null;
         }
-        ProductVariant v = hasVariants ? Lines.variantById(p, bytes(variantIdText)) : null;
+        ProductVariant v = hasVariants ? p.variant(bytes(variantIdText)) : null;
         if (v == null) {
             throw new DomainException.BadRequest(PreorderError.VARIANT_REQUIRED, p.getTitle());
         }

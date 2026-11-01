@@ -141,7 +141,7 @@ public class BatchMarginService {
         boolean preliminary = false;
         for (PreorderBatchItem i : lines) {
             Product p = products.get(UuidUtil.toString(i.getProductId()));
-            ProductVariant v = p == null ? null : Lines.variantById(p, i.getVariantId());
+            ProductVariant v = p == null ? null : p.variant(i.getVariantId());
             int in = i.getQtyArrived() == null ? 0 : i.getQtyArrived();
             int l = batchLots.stream().filter(x -> x.getBatchItemId().equals(i.getId()))
                     .mapToInt(StockLot::getQtyLeft).sum();

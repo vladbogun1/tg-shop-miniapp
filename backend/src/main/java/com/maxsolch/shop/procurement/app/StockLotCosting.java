@@ -62,7 +62,7 @@ public class StockLotCosting {
             if (l.getQtyLeft() <= 0 && l.getQtyIn() <= 0) {
                 continue;
             }
-            ProductVariant v = Lines.variantById(p, l.getVariantId());
+            ProductVariant v = p.variant(l.getVariantId());
             UnitCost c = book.of(l);
             PreorderBatch b = book.batchOf(l);
             out.add(new LotDto(l.getId(), l.getVariantId() == null ? null : UuidUtil.toString(l.getVariantId()),
@@ -107,10 +107,10 @@ public class StockLotCosting {
             if (p == null || p.isArchived()) {
                 return;
             }
-            ProductVariant v = Lines.variantById(p, l.getVariantId());
+            ProductVariant v = p.variant(l.getVariantId());
             out.add(new OpeningRowDto(UuidUtil.toString(p.getId()),
                     l.getVariantId() == null ? null : UuidUtil.toString(l.getVariantId()), p.getTitle(),
-                    v == null ? null : v.getName(), Lines.imageOf(p), n[0], cost.get(key),
+                    v == null ? null : v.getName(), p.firstImageUrl(), n[0], cost.get(key),
                     p.getPriceMinor()));
         });
         out.sort(Comparator.comparing(OpeningRowDto::title, String.CASE_INSENSITIVE_ORDER)
@@ -149,7 +149,7 @@ public class StockLotCosting {
         List<String> details = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         for (Product p : products.findAll()) {
-            boolean variants = p.getVariants() != null && !p.getVariants().isEmpty();
+            boolean variants = p.hasVariants();
             boolean drift = false;
             if (variants) {
                 for (ProductVariant v : p.getVariants()) {

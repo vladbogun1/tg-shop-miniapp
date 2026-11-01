@@ -664,9 +664,9 @@ class ClientEndpointsLazyLoadingIT {
         }
         for (String name : List.of("S", "M", "L")) {
             ProductVariant v = new ProductVariant();
-            v.setProduct(a);
-            v.setName(name);
-            v.setSortOrder(a.getVariants().size());
+            v.attachTo(a);
+            v.rename(name);
+            v.reorder(a.getVariants().size());
             a.getVariants().add(v);
         }
         Product savedA = products.save(a);
