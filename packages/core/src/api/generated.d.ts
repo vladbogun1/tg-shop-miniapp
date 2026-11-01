@@ -531,6 +531,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/broadcast/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload the broadcast picture (jpg/png/webp, up to 5 MB); returns photoId for /test and start */
+        post: operations["AdminBroadcastController_uploadPhoto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/broadcast/status": {
         parameters: {
             query?: never;
@@ -2894,7 +2911,8 @@ export interface paths {
         /** Threads, latest activity first. filter = open (default) | awaiting | closed | all */
         get: operations["AdminSupportController_list"];
         put?: never;
-        post?: never;
+        /** Write to a customer first — opens a thread, the customer gets a bot DM */
+        post: operations["AdminSupportController_start"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5320,6 +5338,7 @@ export interface components {
             audience?: string;
             buttonText?: string;
             lang?: string;
+            photoId?: string;
             text: string;
             textEn?: string;
             textRu?: string;
@@ -5347,6 +5366,7 @@ export interface components {
         };
         BroadcastTestRequest: {
             buttonText?: string;
+            photoId?: string;
             /** Format: int64 */
             telegramUserId?: number;
             text: string;
@@ -8263,6 +8283,12 @@ export interface components {
             /** Format: int32 */
             matchCode: number;
         };
+        StartThreadRequest: {
+            subject?: string;
+            text?: string;
+            /** Format: int64 */
+            userId: number;
+        };
         Stats: {
             locales: {
                 [key: string]: {
@@ -9535,6 +9561,35 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["BroadcastHistoryDto"][];
+                };
+            };
+        };
+    };
+    AdminBroadcastController_uploadPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: string;
+                    };
                 };
             };
         };
@@ -13400,6 +13455,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ThreadDto"][];
+                };
+            };
+        };
+    };
+    AdminSupportController_start: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartThreadRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ThreadDto"];
                 };
             };
         };

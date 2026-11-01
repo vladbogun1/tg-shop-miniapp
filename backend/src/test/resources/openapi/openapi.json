@@ -2623,6 +2623,11 @@
             "pattern" : "^(|uk|ru|en)$",
             "type" : "string"
           },
+          "photoId" : {
+            "maxLength" : 64,
+            "minLength" : 0,
+            "type" : "string"
+          },
           "text" : {
             "maxLength" : 4096,
             "minLength" : 0,
@@ -2711,6 +2716,11 @@
       "BroadcastTestRequest" : {
         "properties" : {
           "buttonText" : {
+            "maxLength" : 64,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "photoId" : {
             "maxLength" : 64,
             "minLength" : 0,
             "type" : "string"
@@ -8794,6 +8804,7 @@
           },
           "quantity" : {
             "format" : "int32",
+            "maximum" : 1000,
             "type" : "integer"
           },
           "variantId" : {
@@ -12478,6 +12489,26 @@
         ],
         "type" : "object"
       },
+      "StartThreadRequest" : {
+        "properties" : {
+          "subject" : {
+            "maxLength" : 255,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "text" : {
+            "type" : "string"
+          },
+          "userId" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "userId"
+        ],
+        "type" : "object"
+      },
       "Stats" : {
         "properties" : {
           "locales" : {
@@ -15459,6 +15490,53 @@
           }
         ],
         "summary" : "Past broadcasts, newest first (text, audience, result, who)",
+        "tags" : [
+          "Admin Broadcast"
+        ]
+      }
+    },
+    "/api/admin/broadcast/photo" : {
+      "post" : {
+        "operationId" : "AdminBroadcastController_uploadPhoto",
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "properties" : {
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  }
+                },
+                "required" : [
+                  "file"
+                ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "additionalProperties" : {
+                    "type" : "string"
+                  },
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Upload the broadcast picture (jpg/png/webp, up to 5 MB); returns photoId for /test and start",
         "tags" : [
           "Admin Broadcast"
         ]
@@ -22117,6 +22195,40 @@
           }
         ],
         "summary" : "Threads, latest activity first. filter = open (default) | awaiting | closed | all",
+        "tags" : [
+          "Admin Support"
+        ]
+      },
+      "post" : {
+        "operationId" : "AdminSupportController_start",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/StartThreadRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ThreadDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Write to a customer first — opens a thread, the customer gets a bot DM",
         "tags" : [
           "Admin Support"
         ]

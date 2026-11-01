@@ -41,11 +41,13 @@ public class MarginQueries {
         MapSqlParameterSource p = new MapSqlParameterSource("ids",
                 orderIds.stream().map(UuidUtil::toBytes).toList());
         List<OrderRow> orders = jdbc.query("select bin_to_uuid(id) id, total_minor, refunded_minor, "
-                + "uncollected_minor, status, payment_due_at is not null online, prepayment_minor "
+                + "uncollected_minor, status, payment_due_at is not null online, prepayment_minor, "
+                + "received_minor, (select coalesce(sum(pi.amount_minor), 0) from payment_invoices pi "
+                + "where pi.order_id = orders.id and pi.applied_at is not null) online_paid_minor "
                 + "from orders where id in (:ids)", p, (rs, i) -> new OrderRow(
                 rs.getString("id"), rs.getLong("total_minor"), rs.getLong("refunded_minor"),
                 rs.getLong("uncollected_minor"), rs.getString("status"), rs.getBoolean("online"),
-                rs.getLong("prepayment_minor")));
+                rs.getLong("prepayment_minor"), rs.getLong("received_minor"), rs.getLong("online_paid_minor")));
         List<ItemRow> items = jdbc.query("select id, bin_to_uuid(order_id) order_id, bin_to_uuid(product_id) pid, "
                 + "bin_to_uuid(variant_id) vid, title_snapshot, variant_name_snapshot, price_minor_snapshot, quantity, "
                 + "returned_qty, restocked_qty, gift from order_items where order_id in (:ids) order by id", p,

@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { ArrowRight, ChevronDown, LayoutGrid } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -76,7 +76,7 @@ export function CatalogMenu({
       </div>
       <AnimatePresence>
         {open && (
-          <motion.div
+          <m.div
             {...noFadeFlash}
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
@@ -152,7 +152,7 @@ export function CatalogMenu({
               </Link>
             </nav>
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

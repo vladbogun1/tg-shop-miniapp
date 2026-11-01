@@ -26,6 +26,8 @@ export function CheckoutSteps({
   subtotal,
   currency,
   items,
+  serverField,
+  onFieldEdit,
 }: {
   step: number;
   touched: boolean;
@@ -35,6 +37,9 @@ export function CheckoutSteps({
   subtotal: number;
   currency: string;
   items: { title: string; qty: number; amount: number; currency: string }[];
+  /** Field the server rejected (see usePlaceOrder.fieldError) and the reset when the customer edits it. */
+  serverField: "name" | "phone" | "comment" | null;
+  onFieldEdit: () => void;
 }) {
   const t = useT();
   const { np } = form;
@@ -55,9 +60,16 @@ export function CheckoutSteps({
             touched={touched}
             nameOk={isValidCustomerName(form.name)}
             phoneOk={isValidPhone(form.phone)}
-            onName={form.setName}
-            onPhone={form.setPhone}
+            onName={(v) => {
+              onFieldEdit();
+              form.setName(v);
+            }}
+            onPhone={(v) => {
+              onFieldEdit();
+              form.setPhone(v);
+            }}
             prefilled={form.prefilled}
+            serverField={serverField}
           />
         )}
         {step === 1 && (

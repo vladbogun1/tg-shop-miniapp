@@ -26,7 +26,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import L from "leaflet";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Check } from "lucide-react";
 import { MapContainer, TileLayer } from "react-leaflet";
 import type { MessageKey } from "@/i18n";
@@ -106,7 +106,7 @@ export default function NpWarehouseMap({
         {CAT_TABS.map((tab) => {
           const on = category === tab.key;
           return (
-            <motion.button
+            <m.button
               key={tab.key}
               type="button"
               whileTap={{ scale: 0.96 }}
@@ -116,7 +116,7 @@ export default function NpWarehouseMap({
               }`}
             >
               {t(tab.labelKey)}
-            </motion.button>
+            </m.button>
           );
         })}
       </div>

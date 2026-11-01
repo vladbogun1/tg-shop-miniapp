@@ -13,7 +13,7 @@
  * Reply quote, file row, time via `formatTime` preserved from the original.
  * Sharp corners, thick borders, hard offset shadow.
  */
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Check, CheckCheck, FileText } from "lucide-react";
 import { type Message } from "@shop/core/types";
 import { noFadeFlash, spring } from "@shop/ui/motion";
@@ -159,7 +159,7 @@ export function MessageBubble({
   const photoOnly = isPhotoMessage(msg) && !msg.text && !repliedTo && !msg.senderName;
 
   return (
-    <motion.div
+    <m.div
       layout="position"
       {...noFadeFlash}
       initial={{ opacity: 0, y: 10, scale: 0.96 }}
@@ -192,6 +192,6 @@ export function MessageBubble({
 
         <BubbleMeta msg={msg} outgoing={outgoing} photoOnly={photoOnly} fmt={fmt} />
       </div>
-    </motion.div>
+    </m.div>
   );
 }

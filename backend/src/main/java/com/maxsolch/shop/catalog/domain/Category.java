@@ -1,6 +1,5 @@
 package com.maxsolch.shop.catalog.domain;
 
-import com.maxsolch.shop.catalog.app.CatalogDirectory;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -2,6 +2,7 @@ package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.preorder.app.PreorderSettings;
 import com.maxsolch.shop.catalog.app.CatalogNames;
+import com.maxsolch.shop.catalog.domain.LineKey;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.infra.OrderGuardStore;
@@ -110,8 +111,8 @@ public class OrderGuard {
         long units = 0;
         for (CreateOrderCommand.Line line : lines) {
             int q = Math.max(0, line.quantity());
-            String key = line.productId() + "::" + (line.variantId() == null ? "" : line.variantId());
-            perLine.merge(key, q, Integer::sum);
+            String key = LineKey.of(line.productId(), line.variantId());
+            perLine.merge(key, q, (a, b) -> (int) Math.min(Integer.MAX_VALUE, (long) a + b));
             productOf.put(key, line.productId());
             units += q;
         }

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, type HTMLMotionProps } from "framer-motion";
+import { m, type HTMLMotionProps } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { forwardRef, type ReactNode } from "react";
 import { cn } from "../cn";
@@ -53,7 +53,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   ref
 ) {
   return (
-    <motion.button
+    <m.button
       ref={ref}
       disabled={disabled || loading}
       className={cn(
@@ -73,6 +73,6 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       )}
       {children && <span className="truncate">{children}</span>}
       {!loading && iconRight && <span className="shrink-0">{iconRight}</span>}
-    </motion.button>
+    </m.button>
   );
 });

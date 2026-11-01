@@ -1,15 +1,8 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 
-/** False during SSR and the hydration pass; true afterwards (for localStorage-backed UI). */
-export function useHydrated(): boolean {
-  return useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false
-  );
-}
+export { useHydrated } from "@shop/ui/use-hydrated";
 
 /** Value that settles `delay` ms after the last change. */
 export function useDebounced<T>(value: T, delay = 300): T {

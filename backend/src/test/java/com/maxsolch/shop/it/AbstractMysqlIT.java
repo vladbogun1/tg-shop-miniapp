@@ -11,7 +11,13 @@ import com.maxsolch.shop.order.app.CreateOrderCommand;
 import com.maxsolch.shop.order.app.OrderCustomerNotifier;
 import com.maxsolch.shop.order.app.OrderSellerNotifier;
 import org.junit.jupiter.api.AfterEach;
+import com.maxsolch.shop.order.app.OrderNotificationListener;
+import com.maxsolch.shop.platform.jobs.Workers;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,7 +26,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.AbstractExecutorService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionHandler;
+import java.util.concurrent.TimeUnit;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,7 +54,35 @@ import static org.assertj.core.api.Assertions.assertThat;
         "app.security.jwt-secret=dGVzdC1vbmx5LWp3dC1zZWNyZXQtZm9yLWludGVncmF0aW9uLXRlc3Rz",
         "app.geoip.enabled=false"
 })
+@Import(AbstractMysqlIT.InlineNotifications.class)
 public abstract class AbstractMysqlIT {
+
+    /** The order notifications run on the committing thread, so tests can assert right after the commit. */
+    @TestConfiguration
+    static class InlineNotifications {
+        @Bean
+        @Primary
+        Workers inlineWorkers() {
+            return new Workers() {
+                @Override
+                public ExecutorService bounded(String name, int capacity, RejectedExecutionHandler onFull,
+                                               Duration drainOnStop) {
+                    if (!OrderNotificationListener.WORKER.equals(name)) {
+                        return super.bounded(name, capacity, onFull, drainOnStop);
+                    }
+                    return new AbstractExecutorService() {
+                        public void execute(Runnable r) { r.run(); }
+                        public void shutdown() { }
+                        public List<Runnable> shutdownNow() { return List.of(); }
+                        public boolean isShutdown() { return false; }
+                        public boolean isTerminated() { return false; }
+                        public boolean awaitTermination(long t, TimeUnit u) { return true; }
+                    };
+                }
+            };
+        }
+    }
+
 
     @MockitoBean
     protected OrderSellerNotifier sellerNotifier;

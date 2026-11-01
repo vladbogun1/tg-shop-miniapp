@@ -1,3 +1,5 @@
+> **Архив, состояние на 2026-11-01.** Документ описывает код до архитектуры v2 (`OrderService`, `NotificationService`, `shared/` и т. п. больше нет). Актуальное: [ARCHITECTURE.md](../ARCHITECTURE.md), контракт API — `backend/src/test/resources/openapi/openapi.json`.
+
 # Сайт магазина — контракт (этап 1)
 
 Канонический контракт между бэкендом и фронтом сайта `site/`. Дизайн-документ с обоснованием —

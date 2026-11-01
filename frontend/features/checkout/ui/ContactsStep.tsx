@@ -13,6 +13,7 @@ export function ContactsStep({
   onName,
   onPhone,
   prefilled,
+  serverField,
 }: {
   name: string;
   phone: string;
@@ -23,7 +24,11 @@ export function ContactsStep({
   onPhone: (v: string) => void;
   /** Name / phone came from the last order. */
   prefilled: boolean;
+  /** The server rejected this field (validation) although the client check passed. */
+  serverField?: "name" | "phone" | "comment" | null;
 }) {
+  const nameBad = (touched && !nameOk) || serverField === "name";
+  const phoneBad = (touched && !phoneOk) || serverField === "phone";
   const t = useT();
   return (
     <div className="flex flex-col gap-4">
@@ -37,8 +42,8 @@ export function ContactsStep({
         label={t("checkout.contacts.name")}
         value={name}
         onChange={(e) => onName(e.target.value)}
-        status={touched && !nameOk ? "danger" : nameOk ? "ok" : undefined}
-        hint={touched && !nameOk ? t("checkout.contacts.nameError") : undefined}
+        status={nameBad ? "danger" : nameOk ? "ok" : undefined}
+        hint={nameBad ? t("checkout.contacts.nameError") : undefined}
         autoComplete="name"
       />
       <Input
@@ -46,12 +51,8 @@ export function ContactsStep({
         inputMode="tel"
         value={formatPhone(phone)}
         onChange={(e) => onPhone(e.target.value)}
-        status={touched && !phoneOk ? "danger" : phoneOk ? "ok" : undefined}
-        hint={
-          touched && !phoneOk
-            ? t("checkout.contacts.phoneError")
-            : undefined
-        }
+        status={phoneBad ? "danger" : phoneOk ? "ok" : undefined}
+        hint={phoneBad ? t("checkout.contacts.phoneError") : undefined}
         autoComplete="tel"
       />
     </div>

@@ -81,6 +81,30 @@ class MessageServiceTest {
     }
 
     @Test
+    void customerTextOverTheLimitIsRefusedAndNothingSaved() {
+        String longText = "x".repeat(MessageService.MAX_TEXT_LENGTH + 1);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.postCustomerMessage(orderId, 7L, "Покупатель",
+                new SendMessageRequest(longText, "TEXT", null, null, null, null)))
+                .isInstanceOf(com.maxsolch.shop.platform.error.DomainException.BadRequest.class);
+
+        org.mockito.Mockito.verify(messageRepository, org.mockito.Mockito.never()).saveAndFlush(any(OrderMessage.class));
+    }
+
+    @Test
+    void customerFloodingTheChatIsStopped() {
+        when(messageRepository.countBySenderTypeAndSenderIdAndCreatedAtAfter(
+                eq(com.maxsolch.shop.order.domain.SenderType.CUSTOMER), eq(7L), any()))
+                .thenReturn((long) MessageService.MAX_PER_MINUTE);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.postCustomerMessage(orderId, 7L, "Покупатель",
+                new SendMessageRequest("привет", "TEXT", null, null, null, null)))
+                .isInstanceOf(com.maxsolch.shop.platform.error.DomainException.BadRequest.class);
+
+        org.mockito.Mockito.verify(messageRepository, org.mockito.Mockito.never()).saveAndFlush(any(OrderMessage.class));
+    }
+
+    @Test
     void markReadUsesTheClock() {
         service.markRead(orderId, com.maxsolch.shop.order.domain.SenderType.CUSTOMER);
 

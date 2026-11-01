@@ -117,6 +117,12 @@ class SupportPosts {
         t.setClosedBy(null);
     }
 
+    /** Name of an existing customer; an admin cannot open a thread to someone who is not in the shop. */
+    String requireCustomerName(long userId) {
+        return SupportMapper.displayName(userRepository.findById(userId)
+                .orElseThrow(() -> new DomainException.NotFound(SupportError.CUSTOMER_NOT_FOUND)));
+    }
+
     String customerName(long userId) {
         return userRepository.findById(userId).map(SupportMapper::displayName).orElse(null);
     }

@@ -8,6 +8,11 @@ public final class LineKey {
     private LineKey() {
     }
 
+    /** The same key for ids that are already strings (the order command carries them as text). */
+    public static String of(String productId, String variantId) {
+        return productId + ":" + (variantId == null ? "" : variantId);
+    }
+
     public static String of(byte[] productId, byte[] variantId) {
         return UuidUtil.toString(productId) + ":" + (variantId == null ? "" : UuidUtil.toString(variantId));
     }

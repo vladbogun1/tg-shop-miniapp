@@ -18,7 +18,7 @@
  * The language comes from the query (the app's own choice is in another browser's storage), and
  * the text is looked up directly so the app-wide language preference is left untouched.
  */
-import { CheckCircle2, Loader2, Send, X } from "lucide-react";
+import { Loader2, Send, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { type Dictionary, FALLBACK_LOCALE, type Locale, LOCALE_TAG, normalizeLocale, type Params, translate } from "@shop/core/i18n";
@@ -97,8 +97,8 @@ function EmbeddedReturn({ orderId, t }: { orderId: string | null; t: (key: strin
 
   return (
     <div className="flex min-h-[70dvh] flex-col items-center justify-center gap-4 py-8 text-center">
-      <div className="grid h-16 w-16 place-items-center rounded-full border border-[var(--ok)] bg-[color-mix(in_srgb,var(--ok)_14%,transparent)]">
-        <CheckCircle2 className="h-8 w-8 text-[var(--ok)]" strokeWidth={2.25} />
+      <div className="grid h-16 w-16 place-items-center rounded-full border border-[var(--line-strong)] bg-[var(--surface-2)]">
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--accent)]" strokeWidth={2.25} />
       </div>
       <p className="font-display text-[17px] font-extrabold uppercase leading-tight tracking-[0.02em] text-[var(--ink)]">
         {t("payReturn.embedded")}
@@ -169,8 +169,8 @@ function StandaloneReturn({
       <Logo size="sm" variant="full" />
 
       <div className="hud-frame flex w-full flex-col items-center rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] px-6 py-8">
-        <div className="grid h-20 w-20 place-items-center rounded-full border border-[var(--ok)] bg-[color-mix(in_srgb,var(--ok)_14%,transparent)] shadow-[0_0_28px_-4px_rgba(34,197,94,.5)]">
-          <CheckCircle2 className="h-10 w-10 text-[var(--ok)]" strokeWidth={2.25} />
+        <div className="grid h-20 w-20 place-items-center rounded-full border border-[var(--line-strong)] bg-[var(--surface-2)]">
+          <Send className="h-9 w-9 text-[var(--accent)]" strokeWidth={2.25} />
         </div>
         <h1 className="font-display mt-5 text-[22px] font-extrabold uppercase leading-tight tracking-[0.02em] text-[var(--ink)]">
           {t("payReturn.title")}

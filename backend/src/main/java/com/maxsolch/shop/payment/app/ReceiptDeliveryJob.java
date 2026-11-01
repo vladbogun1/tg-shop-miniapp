@@ -44,6 +44,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ReceiptDeliveryJob {
 
     static final Duration WINDOW = Duration.ofHours(48);
+    /** A claim still SENDING after this long belongs to a process that died mid-send. */
+    static final Duration STUCK_AFTER = Duration.ofMinutes(15);
     static final Duration BANK_FALLBACK_AFTER = Duration.ofMinutes(30);
 
     private final MonobankGateway mono;
@@ -99,6 +101,10 @@ public class ReceiptDeliveryJob {
         if (!mono.isEnabled() || !notifications.isBotEnabled()
                 || !settings.getBool(PaymentSettings.PAYMENT_SEND_RECEIPTS_TO_TELEGRAM)) {
             return;
+        }
+        int released = store.releaseStale(now.minus(STUCK_AFTER));
+        if (released > 0) {
+            log.warn("{} receipt(s) stuck in SENDING for over {} were put back in the queue", released, STUCK_AFTER);
         }
         for (PaymentInvoice inv : invoices.findReceiptCandidates(now.minus(WINDOW))) {
             try {

@@ -7,9 +7,12 @@ import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.infra.OrderRepository;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.util.Optional;
+import java.util.concurrent.Executor;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -25,13 +28,14 @@ class OrderNotificationListenerTest {
     private final OrderRepository orders = mock(OrderRepository.class);
     private final OrderSellerNotifier notifications = mock(OrderSellerNotifier.class);
     private final OrderNotificationListener listener =
-            new OrderNotificationListener(orders, notifications, mock(OrderCustomerNotifier.class));
+            new OrderNotificationListener(orders, mock(EntityManager.class), notifications,
+                    mock(OrderCustomerNotifier.class), mock(PlatformTransactionManager.class), (Executor) Runnable::run);
 
     private Order order(OrderStatus status) {
         Order o = new Order();
         OrderFixtures.set(o, "id", ID);
         OrderStates.withStatus(o, status);
-        when(orders.findById(ID)).thenReturn(Optional.of(o));
+        when(orders.findWithItemsById(ID)).thenReturn(Optional.of(o));
         return o;
     }
 

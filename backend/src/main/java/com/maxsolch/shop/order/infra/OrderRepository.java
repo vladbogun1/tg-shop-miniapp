@@ -66,6 +66,16 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
     int updateDispatchMessageId(@Param("id") byte[] id, @Param("messageId") Integer messageId);
 
     /**
+     * Writes back where the seller's order card is (chat, topic, message). A targeted UPDATE: the notification
+     * path never writes the whole row of an order it read seconds ago.
+     */
+    @Modifying
+    @Query("update Order o set o.notifyChatId = :chatId, o.notifyThreadId = :threadId, "
+            + "o.notifyMessageId = :messageId where o.id = :id")
+    int updateSellerCard(@Param("id") byte[] id, @Param("chatId") Long chatId,
+                         @Param("threadId") Integer threadId, @Param("messageId") Integer messageId);
+
+    /**
      * Smart, paged search for the order table. The predicate itself lives in
      * {@link OrderSearchQueries} so the list, its count, and the two board queries below cannot
      * drift apart.

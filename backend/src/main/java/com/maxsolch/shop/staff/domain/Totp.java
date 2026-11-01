@@ -1,6 +1,5 @@
 package com.maxsolch.shop.staff.domain;
 
-import com.maxsolch.shop.staff.app.AdminAuthService;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.net.URLEncoder;

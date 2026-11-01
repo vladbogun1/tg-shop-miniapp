@@ -86,11 +86,20 @@ public class ReviewReminderJob {
                     c.tgUserId(), true, now, days)) {
                 continue;
             }
-            // Claimed before sending: a second instance (or a retry) never DMs the same order twice.
+            // Claimed before sending, so a second instance never DMs the same order twice; given back when the
+            // send did not go out, so a Telegram hiccup does not lose the reminder for good.
             if (!orders.claimReminder(c.orderId(), now)) {
                 continue;
             }
-            if (notifier.reminder(c.tgUserId(), c.orderId(), bonusPercent, bonusMax)) {
+            boolean delivered = false;
+            try {
+                delivered = notifier.reminder(c.tgUserId(), c.orderId(), bonusPercent, bonusMax);
+            } finally {
+                if (!delivered) {
+                    orders.releaseReminder(c.orderId(), now);
+                }
+            }
+            if (delivered) {
                 sent++;
             }
         }

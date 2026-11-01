@@ -1,3 +1,5 @@
+> **Архив, состояние на 2026-11-01.** Документ описывает код до архитектуры v2 (`OrderService`, `NotificationService`, `shared/` и т. п. больше нет). Актуальное: [ARCHITECTURE.md](../ARCHITECTURE.md), контракт API — `backend/src/test/resources/openapi/openapi.json`.
+
 # tg-shop-v2 — технический контракт (canonical)
 
 Единый источник правды для всех подсистем (backend / frontend / site / frontend-admin / infra).

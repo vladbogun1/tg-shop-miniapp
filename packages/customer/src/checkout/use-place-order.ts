@@ -13,10 +13,10 @@ import type { CreateOrderResult, DeliveryMethod, NpWarehouse } from "@shop/core/
 import { markGiftCaseAutoOpen } from "@shop/ui/gift-case";
 import type { Platform } from "../platform/platform";
 import type { CheckoutApi } from "./api";
-import { buildCreateOrderRequest, classifyOrderFailure, type OrderLineInput } from "./order-request";
+import { buildCreateOrderRequest, classifyOrderFailure, type OrderField, type OrderLineInput } from "./order-request";
 import { useCreateOrder } from "./use-create-order";
 
-type FailureT = (key: "checkout.promoDropped" | "checkout.failed", params?: Record<string, string | number>) => string;
+type FailureT = (key: "checkout.promoDropped" | "checkout.failed" | "checkout.fieldInvalid", params?: Record<string, string | number>) => string;
 
 export interface PlaceOrderInput {
   /** Только то, что можно заказать; `key` — строка корзины, которую уберёт `onPlaced`. */
@@ -48,13 +48,14 @@ export interface PlaceOrderDeps {
 }
 
 /** Что показать покупателю, когда создать заказ не вышло. */
-export function describeFailure(e: unknown, t: FailureT): { dropPromo: boolean; message: string; limitCode: OrderLimitCode | null } {
+export function describeFailure(e: unknown, t: FailureT): { dropPromo: boolean; message: string; limitCode: OrderLimitCode | null; field: OrderField | null } {
   const failure = classifyOrderFailure(e);
   if (failure.kind === "promoRejected") {
-    return { dropPromo: true, message: t("checkout.promoDropped", { message: failure.message }), limitCode: null };
+    return { dropPromo: true, message: t("checkout.promoDropped", { message: failure.message }), limitCode: null, field: null };
   }
-  if (failure.kind === "limit") return { dropPromo: false, message: failure.message, limitCode: failure.code };
-  return { dropPromo: false, message: failure.message ?? t("checkout.failed"), limitCode: null };
+  if (failure.kind === "limit") return { dropPromo: false, message: failure.message, limitCode: failure.code, field: null };
+  if (failure.kind === "field") return { dropPromo: false, message: t("checkout.fieldInvalid"), limitCode: null, field: failure.field };
+  return { dropPromo: false, message: failure.message ?? t("checkout.failed"), limitCode: null, field: null };
 }
 
 export function usePlaceOrder(deps: PlaceOrderDeps, input: PlaceOrderInput) {
@@ -63,6 +64,8 @@ export function usePlaceOrder(deps: PlaceOrderDeps, input: PlaceOrderInput) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   /** Последний отказ — лимит антиспама (TOO_MANY_UNPAID → ссылка на «Мои заказы»). */
   const [limitCode, setLimitCode] = useState<OrderLimitCode | null>(null);
+  /** Поле, которое отклонил сервер (подсвечивается у поля, пока его не поправят). */
+  const [fieldError, setFieldError] = useState<OrderField | null>(null);
   /** Заказ создан, идёт переход на его страницу (корзина к этому моменту уже пуста). */
   const [placedId, setPlacedId] = useState<string | null>(null);
 
@@ -70,6 +73,7 @@ export function usePlaceOrder(deps: PlaceOrderDeps, input: PlaceOrderInput) {
     if (submitting || placedId || !input.payment) return;
     setSubmitError(null);
     setLimitCode(null);
+    setFieldError(null);
     setSubmitting(true);
     const { giftTier, giftDiscount } = input;
     const body = buildCreateOrderRequest({
@@ -99,6 +103,7 @@ export function usePlaceOrder(deps: PlaceOrderDeps, input: PlaceOrderInput) {
       if (failure.dropPromo) deps.dropPromo();
       setSubmitError(failure.message);
       setLimitCode(failure.limitCode);
+      setFieldError(failure.field);
     } finally {
       setSubmitting(false);
     }
@@ -111,6 +116,9 @@ export function usePlaceOrder(deps: PlaceOrderDeps, input: PlaceOrderInput) {
     submitError,
     setSubmitError,
     limitCode,
+    /** Поле, отклонённое сервером; `clearFieldError` — когда покупатель его правит. */
+    fieldError,
+    clearFieldError: () => setFieldError(null),
     placedId,
   };
 }

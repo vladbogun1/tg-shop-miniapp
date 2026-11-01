@@ -88,6 +88,28 @@ class ReviewReminderJobTest {
     }
 
     @Test
+    void aReminderThatDidNotGoOutIsGivenBackSoTheNextRunRetriesIt() {
+        DeliveredOrder due = candidate(1L, Duration.ofDays(3));
+        scanReturns(due);
+        when(orders.claimReminder(due.orderId(), NOW)).thenReturn(true);
+        when(notifier.reminder(1L, due.orderId(), 5, 10_000L)).thenReturn(false);
+
+        assertThat(job.sendDue()).isZero();
+        verify(orders).releaseReminder(due.orderId(), NOW);
+    }
+
+    @Test
+    void aSentReminderStaysClaimed() {
+        DeliveredOrder due = candidate(1L, Duration.ofDays(3));
+        scanReturns(due);
+        when(orders.claimReminder(due.orderId(), NOW)).thenReturn(true);
+        when(notifier.reminder(1L, due.orderId(), 5, 10_000L)).thenReturn(true);
+
+        assertThat(job.sendDue()).isEqualTo(1);
+        verify(orders, never()).releaseReminder(any(), any());
+    }
+
+    @Test
     void ordersWithEveryLineReviewedOrABlockedBotAreReadPast() {
         DeliveredOrder reviewed = candidate(1L, Duration.ofDays(3));
         DeliveredOrder blocked = candidate(2L, Duration.ofDays(3));
