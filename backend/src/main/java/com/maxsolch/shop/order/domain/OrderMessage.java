@@ -32,7 +32,7 @@ public class OrderMessage {
     private Order order;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "sender_type", nullable = false)
+    @Column(name = "sender_type", nullable = false, length = 32)
     private SenderType senderType;
 
     @Column(name = "sender_id")
@@ -42,7 +42,7 @@ public class OrderMessage {
     private String senderName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false)
+    @Column(name = "type", nullable = false, length = 32)
     private MessageType type = MessageType.TEXT;
 
     @Column(name = "text", length = 8192)

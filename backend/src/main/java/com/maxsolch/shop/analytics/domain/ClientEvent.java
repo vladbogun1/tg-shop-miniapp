@@ -32,7 +32,7 @@ public class ClientEvent {
 
     /** MINIAPP or WEB; see {@link EventChannel}. */
     @Enumerated(EnumType.STRING)
-    @Column(name = "channel", nullable = false)
+    @Column(name = "channel", nullable = false, length = 32)
     private EventChannel channel = EventChannel.MINIAPP;
 
     /** Null for an anonymous website visitor who has not signed in yet. */

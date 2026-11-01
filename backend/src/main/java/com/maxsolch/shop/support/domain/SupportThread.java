@@ -53,7 +53,7 @@ public class SupportThread {
     private String subject;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, length = 32)
     private SupportStatus status = SupportStatus.OPEN;
 
     /** MINIAPP | WEB. */
@@ -64,7 +64,7 @@ public class SupportThread {
     private Instant lastMessageAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "last_sender")
+    @Column(name = "last_sender", length = 32)
     private SenderType lastSender;
 
     @Column(name = "last_preview", length = 255)

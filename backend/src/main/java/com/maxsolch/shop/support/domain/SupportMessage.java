@@ -31,7 +31,7 @@ public class SupportMessage {
     private byte[] threadId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "sender_type", nullable = false)
+    @Column(name = "sender_type", nullable = false, length = 32)
     private SenderType senderType;
 
     /** Customer: users.telegram_user_id; admin: admin id. The customer limits count by this. */
@@ -42,7 +42,7 @@ public class SupportMessage {
     private String senderName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false)
+    @Column(name = "type", nullable = false, length = 32)
     private MessageType type = MessageType.TEXT;
 
     @Column(name = "text", length = 8192)
