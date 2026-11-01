@@ -33,10 +33,8 @@ export const config = {
   // Pumpkin draw: everyone with at least one pumpkin is in, but a full set weighs far more.
   goal: num("HW_GOAL", 15),
   dailyCap: num("HW_DAILY_CAP", 8),
-  /** Draw weight of a full set; a partial set weighs 1 per pumpkin (1..goal-1). */
-  fullWeight: num("HW_FULL_WEIGHT", 100),
-  /** All partial sets together get at most this share of the pumpkin draw (full sets weigh more if needed). */
-  partialShare: num("HW_PARTIAL_SHARE", 0.1),
+  /** Draw weight of a full set; a partial set of n pumpkins weighs n² (pools.js). */
+  fullWeight: num("HW_FULL_WEIGHT", 450),
   // Purchase draw: orders inside the window adding up to minSpend; one ticket per minSpend, capped.
   minSpendMinor: Math.round(num("HW_MIN_SPEND_UAH", 500) * 100),
   maxOrderTickets: num("HW_MAX_ORDER_TICKETS", 5),
