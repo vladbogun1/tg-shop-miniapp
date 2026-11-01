@@ -42,13 +42,15 @@ public class OrderMerge {
     private final OrderOps ops;
     private final DomainEvents events;
     private final MoneyLedger moneyLedger;
+    private final OrderOnlinePayments payments;
 
     public OrderMerge(OrderRepository orderRepository, OrderOps ops,
-                             DomainEvents events, MoneyLedger moneyLedger) {
+                             DomainEvents events, MoneyLedger moneyLedger, OrderOnlinePayments payments) {
         this.orderRepository = orderRepository;
         this.ops = ops;
         this.events = events;
         this.moneyLedger = moneyLedger;
+        this.payments = payments;
     }
 
     /** One order the admin may merge with the open one, and what the merged order would look like. */
@@ -118,6 +120,10 @@ public class OrderMerge {
         }
         if (blocked != null) {
             throw blocked;
+        }
+        // Checked under the order locks: a payment cannot start between the check and the merge.
+        if (payments.hasPaymentInFlight(target.getId()) || payments.hasPaymentInFlight(source.getId())) {
+            throw new DomainException.BadRequest(OrderError.ONE_ORDER_PAYMENT_PENDING);
         }
         String targetShort = shortId(target.getId());
         String sourceShort = shortId(source.getId());

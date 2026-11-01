@@ -168,7 +168,7 @@ public final class OrderApp {
 
     /** The merge scenario over the same ops, with its own repository / events / ledger mocks. */
     public OrderMerge merge(OrderRepository orders, DomainEvents events, MoneyLedger ledger) {
-        return new OrderMerge(orders, ops, events, ledger);
+        return new OrderMerge(orders, ops, events, ledger, org.mockito.Mockito.mock(OrderOnlinePayments.class));
     }
 
     public OrderDeliveryEditing deliveryEditing(OrderRepository orders, DomainEvents events) {

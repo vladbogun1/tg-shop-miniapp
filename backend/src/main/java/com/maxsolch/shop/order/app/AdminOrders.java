@@ -1,7 +1,5 @@
 package com.maxsolch.shop.order.app;
 
-import com.maxsolch.shop.platform.error.DomainException;
-import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.SenderType;
@@ -89,9 +87,6 @@ public class AdminOrders {
     public Order merge(String id, String sourceId, boolean useSourceDelivery, boolean notifyCustomer, String note) {
         Order target = queries.load(id);
         Order source = queries.load(sourceId);
-        if (payments.hasPaymentInFlight(target.getId()) || payments.hasPaymentInFlight(source.getId())) {
-            throw new DomainException.BadRequest(OrderError.ONE_ORDER_PAYMENT_PENDING);
-        }
         OrderMerge.Result r = merges.merge(target.getId(), source.getId(), useSourceDelivery, notifyCustomer,
                 note, audit.currentAdminName());
         // The merged order will not be paid any more; the open pages of this one are for the old amount.
