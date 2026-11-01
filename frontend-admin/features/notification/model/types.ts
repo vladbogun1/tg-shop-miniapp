@@ -32,6 +32,8 @@ export interface BroadcastStartBody {
   textUk?: string;
   textRu?: string;
   textEn?: string;
+  /** Из `uploadPhoto`; нет — только текст. */
+  photoId?: string;
 }
 
 export interface BroadcastTestBody {
@@ -39,4 +41,5 @@ export interface BroadcastTestBody {
   telegramUserId?: number;
   withButton: boolean;
   buttonText?: string;
+  photoId?: string;
 }

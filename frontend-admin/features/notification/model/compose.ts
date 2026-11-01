@@ -6,6 +6,19 @@ import { LANG_SHORT } from "@/lib/shop-lang";
 /** Telegram refuses longer messages (the backend checks the same). */
 export const MAX_LEN = 4096;
 
+/** Telegram: подпись под картинкой не длиннее 1024; длиннее — картинка и отдельное сообщение. */
+export const CAPTION_LIMIT = 1024;
+export const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+export const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+/** Картинка, уже загруженная на сервер: `photoId` идёт в тест / рассылку. */
+export interface BroadcastPhoto {
+  photoId: string;
+  /** Object URL локального файла — для предпросмотра. */
+  previewUrl: string;
+  name: string;
+}
+
 export type TextKey = "main" | ShopLang;
 export type Texts = Record<TextKey, string>;
 export const EMPTY_TEXTS: Texts = { main: "", uk: "", ru: "", en: "" };
@@ -68,7 +81,7 @@ export function textProblems(texts: Texts): string[] {
   return out;
 }
 
-export function startBody(v: ComposeValues): BroadcastStartBody {
+export function startBody(v: ComposeValues, photoId?: string): BroadcastStartBody {
   return {
     text: v.main,
     textUk: v.uk.trim() || undefined,
@@ -78,6 +91,7 @@ export function startBody(v: ComposeValues): BroadcastStartBody {
     lang: v.lang,
     withButton: v.withButton,
     buttonText: v.buttonText.trim() || undefined,
+    photoId,
   };
 }
 
@@ -89,8 +103,8 @@ export function testRecipient(manualId: string, pickedId: number | null): number
   return id;
 }
 
-export function testBody(text: string, id: number | undefined, v: Pick<ComposeValues, "withButton" | "buttonText">): BroadcastTestBody {
-  return { text, telegramUserId: id, withButton: v.withButton, buttonText: v.buttonText.trim() || undefined };
+export function testBody(text: string, id: number | undefined, v: Pick<ComposeValues, "withButton" | "buttonText">, photoId?: string): BroadcastTestBody {
+  return { text, telegramUserId: id, withButton: v.withButton, buttonText: v.buttonText.trim() || undefined, photoId };
 }
 
 /** Какие языковые версии заполнены (для подтверждения). */

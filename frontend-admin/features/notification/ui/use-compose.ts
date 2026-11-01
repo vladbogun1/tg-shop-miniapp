@@ -6,6 +6,7 @@ import { sanitizeTelegramHtml, validateTelegramHtml } from "@shop/core/telegram-
 import { useEffect, useMemo, useState } from "react";
 import {
   EMPTY_COMPOSE,
+  type BroadcastPhoto,
   filledVersions,
   textProblems,
   textsOf,
@@ -24,6 +25,8 @@ export function useCompose() {
   const v = form.watch();
   const [editing, setEditing] = useState<TextKey>("main");
   const [restored, setRestored] = useState(false);
+  /** Картинка не входит в черновик: её id живёт на сервере два часа. */
+  const [photo, setPhoto] = useState<BroadcastPhoto | null>(null);
 
   const patch = (p: Partial<ComposeValues>) => {
     for (const [k, val] of Object.entries(p)) form.setValue(k as keyof ComposeValues, val as never);
@@ -55,6 +58,7 @@ export function useCompose() {
   function resetTexts() {
     patch({ main: "", uk: "", ru: "", en: "" });
     setEditing("main");
+    setPhoto(null);
   }
 
   function clearDraft() {
@@ -92,6 +96,8 @@ export function useCompose() {
     texts,
     editing,
     setEditing,
+    photo,
+    setPhoto,
     text,
     setText,
     setField,

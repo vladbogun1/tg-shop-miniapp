@@ -24,6 +24,10 @@ export function PreviewCard({ c }: { c: Compose }) {
       </div>
       <div className="rounded-[var(--r-md)] border border-[var(--line)] bg-[#0e1621] p-4">
         <div className="max-w-[85%] rounded-[14px] rounded-tl-[4px] bg-[#17212b] p-3 shadow-[var(--shadow-2)]">
+          {c.photo && (
+            // eslint-disable-next-line @next/next/no-img-element -- local object URL, not a site image
+            <img src={c.photo.previewUrl} alt="" className="mb-2 max-h-[260px] w-full rounded-[8px] object-cover" />
+          )}
           {previewSource.trim() ? (
             <div
               className="tg-preview whitespace-pre-wrap break-words text-[14px] leading-relaxed text-white"

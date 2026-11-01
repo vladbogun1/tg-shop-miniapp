@@ -11,3 +11,10 @@ export interface SupportThreadsQuery {
   q?: string;
   limit?: number;
 }
+
+/** «Написать первым»: `userId` — Telegram id покупателя. */
+export interface StartThreadBody {
+  userId: number;
+  subject?: string;
+  text: string;
+}

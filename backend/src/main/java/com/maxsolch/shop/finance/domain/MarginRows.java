@@ -13,20 +13,25 @@ public final class MarginRows {
     }
 
     public record OrderRow(String id, long totalMinor, long refundedMinor, long uncollectedMinor, String status,
-                           boolean online, long prepaymentMinor) {
+                           boolean online, long prepaymentMinor, long receivedMinor,
+                           long onlinePaidMinor) {
 
         public OrderRow(String id, long totalMinor, long refundedMinor, long uncollectedMinor, String status) {
-            this(id, totalMinor, refundedMinor, uncollectedMinor, status, false, 0);
+            this(id, totalMinor, refundedMinor, uncollectedMinor, status, false, 0, 0, 0);
         }
 
-        /** What the bank is to take the fee from: the prepayment, or the whole order when paid in full online. */
+        /**
+         * What the bank is yet to take the fee from: the online part (the prepayment, or the whole order) not
+         * received yet. Money the admin took by hand (crypto, cash, a card transfer) never went through monobank.
+         */
         public long onlineDueMinor() {
-            return !online ? 0 : OrderMoney.dueOnlineMinor(totalMinor, prepaymentMinor);
+            return !online ? 0 : OrderMoney.amountDueMinor(totalMinor, prepaymentMinor, receivedMinor);
         }
 
-        /** What the order keeps: total minus refunds minus what was not collected at the post office. */
+        /** What the order keeps: the same definition the analytics uses ({@link OrderMoney#soldMinor}). */
         public long revenue() {
-            return OrderMoney.codMinor(totalMinor, uncollectedMinor, refundedMinor);
+            return OrderMoney.soldMinor(totalMinor, uncollectedMinor, refundedMinor,
+                    Math.max(receivedMinor, onlinePaidMinor));
         }
     }
 

@@ -8,5 +8,7 @@ public record BroadcastTestRequest(
         @NotBlank @Size(max = 4096) String text,
         Long telegramUserId,
         boolean withButton,
-        @Size(max = 64) String buttonText) {
+        @Size(max = 64) String buttonText,
+        /** Id from {@code POST /api/admin/broadcast/photo}; blank = text only. */
+        @Size(max = 64) String photoId) {
 }
