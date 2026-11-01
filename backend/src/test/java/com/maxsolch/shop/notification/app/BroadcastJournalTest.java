@@ -53,7 +53,8 @@ class BroadcastJournalTest {
         props.getTelegram().setBotToken("123:test");
         service = new BroadcastService(bot, props, users, mock(BroadcastRepository.class), activity,
                 java.time.Clock.systemUTC(), mock(AdminAuditService.class), mock(CurrentActor.class),
-                new com.maxsolch.shop.platform.jobs.DbLocks(new com.maxsolch.shop.platform.jobs.InMemoryLockProvider(), java.time.Clock.systemUTC()), new com.maxsolch.shop.platform.jobs.Workers());
+                new com.maxsolch.shop.platform.jobs.DbLocks(new com.maxsolch.shop.platform.jobs.InMemoryLockProvider(), java.time.Clock.systemUTC()), new com.maxsolch.shop.platform.jobs.Workers(),
+                new BroadcastPhotoStore(new org.springframework.cache.concurrent.ConcurrentMapCacheManager("broadcastPhotos")));
     }
 
     @Test

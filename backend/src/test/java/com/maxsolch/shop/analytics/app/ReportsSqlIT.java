@@ -251,9 +251,10 @@ class ReportsSqlIT extends AbstractMysqlIT {
         OrderProfitDto p = margin.order(id);
         assertThat(p.revenueMinor()).isEqualTo(9_999);
         assertThat(p.costMinor()).isZero();
-        assertThat(p.feeMinor()).isEqualTo(130); // 1,3 % estimated: the order is online-payable, no invoice
-        assertThat(p.feeEstimated()).isTrue();
-        assertThat(p.profitMinor()).isEqualTo(9_869);
+        // online-payable, but the 9 999 was received by hand (no invoice): no bank took a fee from it
+        assertThat(p.feeMinor()).isZero();
+        assertThat(p.feeEstimated()).isFalse();
+        assertThat(p.profitMinor()).isEqualTo(9_999);
         assertThat(p.complete()).isFalse();
         assertThat(p.lines()).hasSize(1);
         assertThat(p.lines().get(0).unknownUnits()).isEqualTo(3);

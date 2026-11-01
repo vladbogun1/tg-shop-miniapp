@@ -33,6 +33,9 @@ public interface OrderMessageRepository extends JpaRepository<OrderMessage, Long
     /** Messages of one sender, e.g. everything an admin wrote in order chats. */
     long countBySenderTypeAndSenderId(SenderType senderType, Long senderId);
 
+    /** Messages of one sender since {@code since}: the chat's flood brake. */
+    long countBySenderTypeAndSenderIdAndCreatedAtAfter(SenderType senderType, Long senderId, Instant since);
+
     long countByOrderIdAndSenderTypeAndReadAtIsNull(byte[] orderId, SenderType senderType);
 
     /**

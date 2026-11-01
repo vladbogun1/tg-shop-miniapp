@@ -1,3 +1,5 @@
+> **Пути до архитектуры v2:** `shared/src/*` → `packages/core/src/*` (или `packages/ui`, `packages/customer`), `frontend/lib`, `frontend/components` → `features/*`. Названия классов бэкенда (`OrderService` и др.) исторические — актуальные в [ARCHITECTURE.md](ARCHITECTURE.md).
+
 # Подарок за сумму и кейс (gift case)
 
 За заказ от порога магазин сам кладёт подарок. Подарок бывает двух видов: один заданный товар или

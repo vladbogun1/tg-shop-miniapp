@@ -11,7 +11,7 @@ import { inboxKeys } from "@/features/inbox";
 import { supportApi } from "./api";
 import { MESSAGES_SEGMENT, supportKeys } from "./keys";
 import { appendUnique, markCustomerRead } from "./model/chat";
-import type { SupportFilter, SupportMessage, SupportThread } from "./model/types";
+import type { StartThreadBody, SupportFilter, SupportMessage, SupportThread } from "./model/types";
 
 /** Список вопросов опрашивается чаще бейджа (15 с против 30 с пресета live). */
 const THREADS_POLL_MS = 15_000;
@@ -152,4 +152,18 @@ export function useMarkSupportRead(threadId: string) {
       })
       .catch(() => {});
   }, [threadId, qc, cache]);
+}
+
+/** Админ пишет первым: открывает вопрос с первым сообщением, список и бейдж обновляются. */
+export function useStartSupportThread(onStarted: (thread: SupportThread) => void) {
+  const qc = useQueryClient();
+  return useApiMutation({
+    mutationFn: (body: StartThreadBody) => supportApi.start(body),
+    success: "Сообщение отправлено клиенту",
+    errorFallback: "Не удалось написать клиенту",
+    onSuccess: (thread) => {
+      refreshSupport(qc);
+      onStarted(thread);
+    },
+  });
 }

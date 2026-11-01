@@ -8,7 +8,7 @@
  * keyboard that slides up next does not cover it or its suggestions.
  */
 import { Loader2 } from "lucide-react";
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 export interface NpComboboxProps<T> {
   label: string;
@@ -44,6 +44,12 @@ export function NpCombobox<T>({
 }: NpComboboxProps<T>) {
   const id = useId();
   const wrap = useRef<HTMLDivElement>(null);
+  // Timers die with the component: no scrollIntoView / setState after unmount.
+  const timers = useRef<number[]>([]);
+  useEffect(() => () => timers.current.forEach(window.clearTimeout), []);
+  const later = (fn: () => void, ms: number) => {
+    timers.current.push(window.setTimeout(fn, ms));
+  };
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const show = open && listOpen;
@@ -57,7 +63,7 @@ export function NpCombobox<T>({
   function keepInView() {
     // Only on touch screens: wait for the keyboard to start sliding up, then park the field high.
     if (!window.matchMedia("(pointer: coarse)").matches) return;
-    window.setTimeout(() => {
+    later(() => {
       wrap.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 300);
   }
@@ -82,7 +88,7 @@ export function NpCombobox<T>({
             e.currentTarget.select();
             keepInView();
           }}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onBlur={() => later(() => setOpen(false), 150)}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {
               e.preventDefault();

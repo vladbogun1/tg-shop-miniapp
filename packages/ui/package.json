@@ -17,6 +17,7 @@
     "./primitives": "./src/primitives/index.ts",
     "./admin-button": "./src/primitives/AdminButton.tsx",
     "./look": "./src/look.tsx",
+    "./motion-provider": "./src/motion-provider.tsx",
     "./*": "./src/*.ts"
   },
   "peerDependencies": {

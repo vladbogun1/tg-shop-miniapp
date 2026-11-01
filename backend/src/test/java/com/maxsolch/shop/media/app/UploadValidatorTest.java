@@ -113,6 +113,12 @@ class UploadValidatorTest {
                 .isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> validator.validateBrandLogo(svg("<svg><a href=\"javascript:x\"/></svg>")))
                 .isInstanceOf(DomainException.BadRequest.class);
+        for (String evil : new String[] {"<svg/onload=alert(1)>", "<svg\tonload=alert(1)>", "<svg\nONLOAD = alert(1)>",
+                "<svg><g\u00a0onclick=\"x\"/></svg>", "<svg><set attributeName=\"href\" to=\"x\"/></svg>",
+                "<svg><a href=\"&#106;avascript:x\"/></svg>", "<svg><style>@import url(x)</style></svg>"}) {
+            assertThatThrownBy(() -> validator.validateBrandLogo(svg(evil))).as(evil)
+                    .isInstanceOf(DomainException.BadRequest.class);
+        }
         assertThatThrownBy(() -> validator.validateBrandLogo(svg("<html>not a logo</html>")))
                 .isInstanceOf(DomainException.BadRequest.class);
         assertThatThrownBy(() -> validator.validateBrandLogo(file("logo.jpg", "image/jpeg", 1024)))

@@ -71,11 +71,20 @@ public class BonusExpiryReminderJob {
         int sent = 0;
         for (ExpiringPromo c : promos.expiring(PromoCode.SOURCE_REVIEW_BONUS, now, now.plus(window), now.minus(window),
                 BATCH, this::reachable)) {
-            // Claimed before sending: a second instance (or a retry) never DMs the same code twice.
+            // Claimed before sending, so a second instance never DMs the same code twice; given back when the
+            // send did not go out, so a Telegram hiccup does not lose the reminder for good.
             if (!promos.claimReminder(c.promoId(), now)) {
                 continue;
             }
-            if (notifier.bonusExpiring(c.ownerUserId(), c.code(), c.percent(), c.maxDiscountMinor(), c.expiresAt())) {
+            boolean delivered = false;
+            try {
+                delivered = notifier.bonusExpiring(c.ownerUserId(), c.code(), c.percent(), c.maxDiscountMinor(), c.expiresAt());
+            } finally {
+                if (!delivered) {
+                    promos.releaseReminder(c.promoId(), now);
+                }
+            }
+            if (delivered) {
                 sent++;
             }
         }

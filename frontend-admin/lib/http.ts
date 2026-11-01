@@ -34,7 +34,7 @@ export const apiPatch = http.patch;
 export const apiPut = http.put;
 export const apiDelete = http.del;
 
-/** Multipart upload -> { key } (POST /api/admin/uploads). */
-export function uploadFile(path: string, file: File): Promise<{ key: string }> {
-  return http.upload<{ key: string }>(path, file);
+/** Multipart upload -> { key } (POST /api/admin/uploads); `T` — другая форма ответа (рассылка: { photoId }). */
+export function uploadFile<T = { key: string }>(path: string, file: File): Promise<T> {
+  return http.upload<T>(path, file);
 }

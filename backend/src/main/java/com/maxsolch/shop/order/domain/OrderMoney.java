@@ -78,6 +78,20 @@ public final class OrderMoney {
                 - Math.min(Math.max(0, receivedMinor), totalMinor));
     }
 
+    /**
+     * Выручка заказа — единственное определение для «Маржи» и аналитики: итог без не выкупленных на почте
+     * единиц минус возвраты, где возврат, возвращающий лишь переплату, не считается (админ убрал товар из
+     * оплаченного заказа: итог упал И разница возвращена — вычитать второй раз нельзя). Переплата — то, что
+     * заплачено сверх итога ({@code paidMinor}: большее из полученного и принятых онлайн-счетов — «Доставлен»
+     * обнуляет полученное, счета остаются). Продан ли заказ — решает вызывающий.
+     */
+    public static long soldMinor(long totalMinor, long uncollectedMinor, long refundedMinor, long paidMinor) {
+        long total = collectableMinor(totalMinor, uncollectedMinor);
+        long overpaid = Math.max(0, paidMinor - total);
+        long returned = Math.max(0, refundedMinor - overpaid);
+        return Math.max(0, total - Math.min(total, returned));
+    }
+
     // ----- возвраты -----
 
     /**

@@ -189,6 +189,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     }
                 } else if (StompCommand.SUBSCRIBE.equals(command)) {
                     authorizeSubscription(accessor);
+                } else if (StompCommand.SEND.equals(command)) {
+                    rejectClientSend(accessor);
                 } else if (StompCommand.DISCONNECT.equals(command) && accessor.getSessionId() != null) {
                     adminSessions.remove(accessor.getSessionId());
                 }
@@ -252,15 +254,36 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         }
     }
 
-    private void authorizeSubscription(StompHeaderAccessor accessor) {
+    /** Exactly {@code <prefix><key>} or {@code <prefix><key>/<segment>}: no wildcards, braces, empty or dot segments. */
+    private static final java.util.regex.Pattern TOPIC_TAIL =
+            java.util.regex.Pattern.compile("[0-9A-Za-z-]{1,64}(?:/[0-9A-Za-z_-]{1,32})?");
+
+    /**
+     * Deny by default: the simple broker matches SUBSCRIBE destinations as ant patterns, so only a
+     * concrete address under a known owner's prefix may pass (never {@code /topic/**} and the like).
+     */
+    void authorizeSubscription(StompHeaderAccessor accessor) {
         String destination = accessor.getDestination();
         if (destination != null && topicOwners != null) {
             for (StompTopicOwner topic : (Iterable<StompTopicOwner>) topicOwners.orderedStream()::iterator) {
-                if (destination.startsWith(topic.topicPrefix())) {
+                String prefix = topic.topicPrefix();
+                if (destination.startsWith(prefix)) {
+                    if (!TOPIC_TAIL.matcher(destination.substring(prefix.length())).matches()) {
+                        throw new IllegalArgumentException("forbidden destination");
+                    }
                     authorizeOwnedTopic(accessor, topic, destination);
                     return;
                 }
             }
+        }
+        throw new IllegalArgumentException("forbidden destination");
+    }
+
+    /** Clients never publish into the broker: every /topic message comes from the server. */
+    void rejectClientSend(StompHeaderAccessor accessor) {
+        String destination = accessor.getDestination();
+        if (destination == null || destination.startsWith("/topic") || destination.startsWith("/app")) {
+            throw new IllegalArgumentException("forbidden: clients cannot send");
         }
     }
 

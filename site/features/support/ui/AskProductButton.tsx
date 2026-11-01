@@ -6,7 +6,7 @@
  * the bot, which then continues on /account/support/new?product=<id> (the same form as a page).
  * Hidden while support is off or its config is unknown.
  */
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { MessageCircleQuestion, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -109,7 +109,7 @@ function AskPanel({
 
   return (
     <>
-      <motion.div
+      <m.div
         {...noFadeFlash}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -119,7 +119,7 @@ function AskPanel({
         aria-hidden
       />
       <div className="pointer-events-none fixed inset-0 z-[71] flex items-end justify-center sm:items-center sm:p-4">
-        <motion.div
+        <m.div
           ref={panelRef}
           role="dialog"
           aria-modal="true"
@@ -150,7 +150,7 @@ function AskPanel({
             <p className="mb-3 text-[14px] text-[var(--muted)]">{t("support.ask.lead")}</p>
             <SupportQuestionForm productId={productId} autoFocus onCreated={(th) => onCreated(th.id)} />
           </div>
-        </motion.div>
+        </m.div>
       </div>
     </>
   );

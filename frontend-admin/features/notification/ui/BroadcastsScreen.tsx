@@ -52,7 +52,7 @@ export function BroadcastsScreen() {
 
   function startBroadcast() {
     setConfirmOpen(false);
-    startM.mutate(startBody(c.values));
+    startM.mutate(startBody(c.values, c.photo?.photoId));
   }
 
   return (

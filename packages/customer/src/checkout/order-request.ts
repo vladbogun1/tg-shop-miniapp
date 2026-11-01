@@ -59,10 +59,32 @@ export type OrderFailure =
   | { kind: "promoRejected"; message: string }
   /** Лимит антиспама (TOO_MANY_UNPAID → ссылка на «Мои заказы»): текст сервера говорит, что делать. */
   | { kind: "limit"; code: OrderLimitCode; message: string }
+  /** Сервер отклонил одно поле запроса (400 без кода, текст «поле: сообщение») — показать у поля. */
+  | { kind: "field"; field: OrderField }
   /** Остальное: текст сервера, а без него — общий текст экрана (`message: null`). */
   | { kind: "other"; message: string | null };
 
+export type OrderField = "name" | "phone" | "comment";
+
+const SERVER_FIELDS: Record<string, OrderField> = { customerName: "name", phone: "phone", comment: "comment" };
+
+/** «customerName: must not be blank» от валидации Spring → поле формы. Сообщение сервера людям не показываем. */
+export function serverFieldOf(e: unknown): OrderField | null {
+  const name = validationFieldName(e);
+  return (name && SERVER_FIELDS[name]) || null;
+}
+
+/** Имя поля из текста валидации «поле: сообщение» (400 без кода), иначе null. */
+function validationFieldName(e: unknown): string | null {
+  if (!(e instanceof ApiError) || e.status !== 400 || e.code) return null;
+  return /^(\w+): /.exec(e.message)?.[1] ?? null;
+}
+
 export function classifyOrderFailure(e: unknown): OrderFailure {
+  const field = serverFieldOf(e);
+  if (field) return { kind: "field", field };
+  // Другое поле валидации («items: …»): сырой текст Spring покупателю не показываем.
+  if (validationFieldName(e)) return { kind: "other", message: null };
   if (e instanceof ApiError && e.code === "PROMO_REJECTED") return { kind: "promoRejected", message: e.message };
   if (e instanceof ApiError && isOrderLimitCode(e.code)) return { kind: "limit", code: e.code, message: e.message };
   return { kind: "other", message: e instanceof ApiError ? e.message : null };

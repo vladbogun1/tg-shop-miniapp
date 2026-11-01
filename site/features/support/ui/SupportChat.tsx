@@ -7,7 +7,7 @@
  * shown inline, and a closed state — writing into a CLOSED thread reopens it.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { Lock, WifiOff, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useThread } from "@shop/customer/chat/use-thread";
@@ -190,7 +190,7 @@ export function SupportChat({
 
       <AnimatePresence>
         {lightbox && (
-          <motion.div
+          <m.div
             role="dialog"
             aria-modal="true"
             aria-label={t("chat.attachmentAlt")}
@@ -213,7 +213,7 @@ export function SupportChat({
             <div onClick={(e) => e.stopPropagation()} className="max-w-[min(92vw,1100px)]">
               <Image src={lightbox} alt={t("chat.attachmentAlt")} size={1600} fit className="max-h-[86dvh] max-w-full rounded-[var(--r-card)] border border-[var(--line)]" />
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </section>

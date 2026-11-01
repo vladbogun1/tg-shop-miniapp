@@ -92,6 +92,7 @@ export function DiscountModal({
 
   return (
     <Modal
+      dirty={form.formState.isDirty || promoCode !== ""}
       open={open}
       onClose={onClose}
       size="md"

@@ -301,6 +301,7 @@ export const sharedEn: SharedDictionary = {
   "chat.uploadFailed": "Could not upload the attachment",
   "checkout.emptyCart": "Your cart is empty — nothing to check out.",
   "checkout.failed": "Could not place the order",
+  "checkout.fieldInvalid": "Please check the highlighted fields.",
   "checkout.title": "Checkout",
   "common.offline": "Could not reach the server",
   "common.retry": "Try again",

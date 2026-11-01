@@ -129,7 +129,8 @@ public final class OrderApp {
         OrderGiftCases giftCases = new OrderGiftCases(ops, orders, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), stock, events, messages, gifts, orderPromos,
                 prizes);
         Checkout checkout = new Checkout(orders, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), new com.maxsolch.shop.payment.app.OrderPaymentOptionsAdapter(options), events, orderPromos, carts, messages,
-                stock, shelf, payments, gifts, ops, prizes, new OrderProperties());
+                stock, shelf, payments, gifts, ops, prizes, new OrderProperties(),
+                mock(com.maxsolch.shop.customer.app.Customers.class));
         return new OrderApp(ops, payments, archive, cancelRequests, lifecycle, editing, orderPromos, giftCases,
                 checkout);
     }

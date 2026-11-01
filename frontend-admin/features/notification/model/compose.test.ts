@@ -43,6 +43,14 @@ describe("startBody / testBody", () => {
   });
 });
 
+describe("photoId", () => {
+  it("уходит в рассылку и в тест, без картинки — undefined", () => {
+    expect(startBody({ ...EMPTY_COMPOSE, main: "hi" }, "p1").photoId).toBe("p1");
+    expect(startBody({ ...EMPTY_COMPOSE, main: "hi" }).photoId).toBeUndefined();
+    expect(testBody("t", 5, { withButton: false, buttonText: "" }, "p2").photoId).toBe("p2");
+  });
+});
+
 describe("testRecipient", () => {
   it("введённый id важнее выбранного; ноль и мусор — null", () => {
     expect(testRecipient(" 42 ", 7)).toBe(42);

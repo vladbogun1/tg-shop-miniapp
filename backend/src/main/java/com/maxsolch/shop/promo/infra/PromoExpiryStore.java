@@ -41,4 +41,10 @@ public class PromoExpiryStore {
         return jdbc.update("update promo_codes set expiry_reminded_at = ? where id = ? and expiry_reminded_at is null",
                 Timestamp.from(now), promoId) == 1;
     }
+
+    /** Takes the claim back after a failed send; only if it is still the caller's. */
+    public void release(byte[] promoId, Instant claimedAt) {
+        jdbc.update("update promo_codes set expiry_reminded_at = null where id = ? and expiry_reminded_at = ?",
+                promoId, Timestamp.from(claimedAt));
+    }
 }

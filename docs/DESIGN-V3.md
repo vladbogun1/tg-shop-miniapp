@@ -1,3 +1,5 @@
+> **Пути до архитектуры v2:** `shared/src/*` → `packages/core/src/*` (или `packages/ui`, `packages/customer`), `frontend/lib`, `frontend/components` → `features/*`. Названия классов бэкенда (`OrderService` и др.) исторические — актуальные в [ARCHITECTURE.md](ARCHITECTURE.md).
+
 # Дизайн v3 — ChiSetup
 
 Редизайн v3: новая айдентика **ChiSetup — Gaming Gear & Setup** для сайта (`site/`),
@@ -296,7 +298,7 @@ HUD-рамкой, «Войти» оранжевая со срезом.
 
 ---
 
-## 10. Тестовый стенд (сервер №3, oracle-3, 150.136.40.217)
+## 10. Тестовый стенд (сервер №3, oracle-3)
 
 Отдельная копия всего стека в `~/maxsolch-demo` (compose-проект `maxsolch-demo`), подключена к
 общей сети `edge`. Маршруты заводятся в `~/edge/routes.yaml` (EdgeDeck), TLS выпускает Caddy.

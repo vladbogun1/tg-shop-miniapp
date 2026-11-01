@@ -3,7 +3,6 @@ package com.maxsolch.shop.payment.app;
 import com.maxsolch.shop.payment.domain.MonobankInvoiceStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.payment.infra.WebhookLogStore;
-import com.maxsolch.shop.journal.app.ActivityLog;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -30,7 +29,6 @@ class MonobankWebhooksTest {
     private MonobankSignatureVerifier verifier;
     private OnlinePaymentService payments;
     private WebhookLogStore webhookLog;
-    private ActivityLog activity;
     private MonobankWebhooks webhooks;
 
     @BeforeEach
@@ -38,9 +36,8 @@ class MonobankWebhooksTest {
         verifier = mock(MonobankSignatureVerifier.class);
         payments = mock(OnlinePaymentService.class);
         webhookLog = mock(WebhookLogStore.class);
-        activity = mock(ActivityLog.class);
         when(payments.isEnabled()).thenReturn(true);
-        webhooks = new MonobankWebhooks(verifier, payments, new ObjectMapper(), webhookLog, activity,
+        webhooks = new MonobankWebhooks(verifier, payments, new ObjectMapper(), webhookLog,
                 java.time.Clock.systemUTC());
     }
 
@@ -59,14 +56,23 @@ class MonobankWebhooksTest {
     }
 
     @Test
-    void badSignatureIs401IsLoggedRawAndJournaledAndNotApplied() {
+    void badSignatureIs401AndNothingIsWrittenOrApplied() {
         when(verifier.verify(BODY, "forged")).thenReturn(false);
 
         assertThat(handle(BODY, "forged")).isEqualTo(MonobankWebhooks.Outcome.BAD_SIGNATURE);
 
         verify(payments, never()).applyStatus(any());
-        verify(webhookLog).append(eq("inv-1"), eq("success"), eq(false), anyString(), any());
-        verify(activity).record(any(ActivityLog.Entry.class));
+        verify(webhookLog, never()).append(any(), any(), org.mockito.ArgumentMatchers.anyBoolean(), anyString(), any());
+    }
+
+    @Test
+    void anOversizedBodyIsIgnoredBeforeAnyCheck() {
+        byte[] big = new byte[MonobankWebhooks.MAX_BODY + 1];
+
+        assertThat(handle(big, "sig")).isEqualTo(MonobankWebhooks.Outcome.IGNORED);
+
+        verify(verifier, never()).verify(any(), any());
+        verify(webhookLog, never()).append(any(), any(), org.mockito.ArgumentMatchers.anyBoolean(), anyString(), any());
     }
 
     @Test

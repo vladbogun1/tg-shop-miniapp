@@ -37,6 +37,11 @@ public class WebhookLogStore {
                 Timestamp.from(receivedAt));
     }
 
+    /** Deletes rows received before {@code cutoff}; returns how many went. */
+    public int purgeBefore(Instant cutoff) {
+        return jdbc.update("delete from payment_webhook_log where received_at < ?", Timestamp.from(cutoff));
+    }
+
     public Optional<LastWebhook> last() {
         List<LastWebhook> last = jdbc.query(
                 "select received_at, signature_ok from payment_webhook_log order by id desc limit 1",

@@ -10,7 +10,7 @@
  * A guest is sent to the sign-in page and brought back to the product afterwards.
  */
 import { useQueryClient } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { Bell, Check, Loader2, Send, Truck, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
@@ -307,7 +307,7 @@ function SheetBody({
 
   return (
     <>
-      <motion.div
+      <m.div
         {...noFadeFlash}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -317,7 +317,7 @@ function SheetBody({
         aria-hidden
       />
       <div className="pointer-events-none fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-4">
-        <motion.div
+        <m.div
           role="dialog"
           aria-modal="true"
           aria-labelledby="pre-sheet-title"
@@ -372,7 +372,7 @@ function SheetBody({
           <Button variant="accent" size="lg" fullWidth loading={busy} className="mt-5" onClick={() => void submit()}>
             {t("preorder.sheet.submit")}
           </Button>
-        </motion.div>
+        </m.div>
       </div>
     </>
   );

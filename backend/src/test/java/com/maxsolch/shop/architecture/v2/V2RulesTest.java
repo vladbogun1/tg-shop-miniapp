@@ -27,6 +27,7 @@ class V2RulesTest {
     @Test
     void guardedEntitiesHaveNoSettersAndAreNotSetFromOutside() {
         assertThat(count("O2", "order")).isEqualTo(1);
+        assertThat(count("O2", "review")).isEqualTo(1); // a void mutator called from another module
         assertThat(count("O3", "order")).isEqualTo(1);
     }
 

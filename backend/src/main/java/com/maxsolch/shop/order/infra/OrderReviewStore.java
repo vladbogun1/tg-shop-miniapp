@@ -30,6 +30,12 @@ public class OrderReviewStore {
                 + "where id = ? and review_reminder_sent_at is null", Timestamp.from(now), orderId) == 1;
     }
 
+    /** Takes the claim back after a failed send, so the next run tries again; only if it is still the caller's. */
+    public void releaseReminder(byte[] orderId, Instant claimedAt) {
+        jdbc.update("update orders set review_reminder_sent_at = null where id = ? and review_reminder_sent_at = ?",
+                orderId, Timestamp.from(claimedAt));
+    }
+
     /**
      * Orders delivered in {@code [from, to]} with no reminder yet and a Telegram chat, oldest first, one page at
      * {@code offset}; each has the ids of its lines that are paid (not a gift) and not fully returned.
