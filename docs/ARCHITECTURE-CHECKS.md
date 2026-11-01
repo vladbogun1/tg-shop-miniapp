@@ -153,3 +153,11 @@
 - **Бандл** (`check:bundle`, после `npm run build`): рост First Load JS маршрута > 3 % — падение. Ловушка: barrel фичи, импортированный страницей или общим кодом, тянет в маршрут весь экран —
   берите вход экрана (`screen.ts`, `chat.ts`, `view/<Модуль>.ts`), а не общий `index.ts`.
 - Совместимость: `node scripts/check-browser-compat.mjs site frontend` после сборки (iOS 15.4+/Chrome 92+, без lookbehind).
+
+## Храповик сравнивается с базовой веткой PR (аудит 2026-11, P2-19)
+
+В CI baseline-файлы читаются из базовой ветки PR, а не из того же коммита: `check-front-ratchet.mjs --base-ref` (через
+`RATCHET_BASE_REF`) и `check-baseline-growth.mjs` (`known-violations.json`, `v2-baseline.txt`). Рост baseline в PR — отдельная
+ошибка. Осознанный рост допустим только с меткой PR `ratchet-growth` и причиной в описании; `--allow-growth` в CI отключён.
+`.github/CODEOWNERS` требует подтверждения владельца для baseline-файлов, правил архитектуры и workflows.
+Сканер секретов — `.gitleaks.toml` (дерево + коммиты PR, историю не читает).

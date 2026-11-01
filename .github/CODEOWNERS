@@ -1,0 +1,13 @@
+# Владелец репозитория подтверждает правки того, что защищает качество (аудит 2026-11, P2-19).
+# Работает вместе с branch protection «Require review from Code Owners» на master и arch/v2.
+/.github/                                                    @vladbogun1
+/.gitleaks.toml                                              @vladbogun1
+/scripts/frontend-baseline.txt                               @vladbogun1
+/scripts/bundle-baseline.txt                                 @vladbogun1
+/known-violations.json                                       @vladbogun1
+/backend/src/test/resources/architecture/                    @vladbogun1
+/backend/src/test/java/com/maxsolch/shop/architecture/       @vladbogun1
+/scripts/check-*.mjs                                         @vladbogun1
+/scripts/arch-front.mjs                                      @vladbogun1
+/packages/core/eslint/                                       @vladbogun1
+/docs/ARCHITECTURE-CHECKS.md                                 @vladbogun1

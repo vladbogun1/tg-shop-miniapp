@@ -1,0 +1,15 @@
+# Сканер секретов в CI (job `secrets` в .github/workflows/ci.yml): дерево на HEAD + коммиты PR/пуша, историю целиком не читаем.
+# Правила по умолчанию + список заведомо тестовых значений. Настоящие секреты сюда не вносятся: убрать из кода и отозвать.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "тестовые значения и документация сторонних API"
+paths = [
+  '''^\.claude/skills/''',                      # выдержки из документации monobank / Новой почты с примерами ключей
+  '''^backend/src/test/''',                     # фикстуры тестов
+  '''^e2e/(env\.js|tests/.*\.spec\.ts)$''',    # одноразовые учётки изолированного e2e-стенда
+]
+regexes = [
+  '''c29tZS1yZWFsbHktbG9uZy1zZWNyZXQtdmFsdWUtaGVyZQ==''',  # JWT_SECRET в ci.yml (backend-boot): base64 от "some-really-long-secret-value-here"
+]

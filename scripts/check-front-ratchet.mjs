@@ -13,9 +13,13 @@
  *   node scripts/check-front-ratchet.mjs                  проверка + сводка «приложение × правило»
  *   node scripts/check-front-ratchet.mjs --update         записать baseline (только вниз; первый раз — создаёт)
  *   node scripts/check-front-ratchet.mjs --update --allow-growth=<правило>,<правило>
- *                                                         осознанный рост (причина — в сообщении коммита)
+ *                                                         осознанный рост (причина — в сообщении коммита); в CI отключён
+ *   node scripts/check-front-ratchet.mjs --base-ref=origin/master
+ *                                                         сравнивать с baseline из базовой ветки PR, а не из этого же коммита:
+ *                                                         рост baseline в PR — отдельная ошибка. Разрешается только явным
+ *                                                         RATCHET_GROWTH_APPROVED=1 (в CI — метка PR `ratchet-growth`).
  */
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -95,9 +99,24 @@ function count(report) {
 }
 
 function readBaseline() {
+  return fs.existsSync(BASELINE) ? parseBaseline(fs.readFileSync(BASELINE, "utf8")) : new Map();
+}
+
+/** Baseline из базовой ветки PR. Нет файла в базе = пусто; нет самой ветки = ошибка (молча не сравниваем). */
+function readBaseBaseline(ref) {
+  const rel = path.relative(ROOT, BASELINE).split(path.sep).join("/");
+  const r = spawnSync("git", ["show", `${ref}:${rel}`], { cwd: ROOT, encoding: "utf8" });
+  if (r.status === 0) return parseBaseline(r.stdout);
+  if (spawnSync("git", ["rev-parse", "--verify", "-q", ref], { cwd: ROOT }).status !== 0) {
+    console.error(`--base-ref: не найдена ссылка ${ref} (нужен fetch базовой ветки).`);
+    process.exit(1);
+  }
+  return new Map();
+}
+
+function parseBaseline(text) {
   const map = new Map();
-  if (!fs.existsSync(BASELINE)) return map;
-  for (const raw of fs.readFileSync(BASELINE, "utf8").split(/\r?\n/)) {
+  for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
     if (!line || line.startsWith("#")) continue;
     const [rule, app, n] = line.split(/\s+/);
@@ -145,12 +164,27 @@ async function main() {
     (args.find((a) => a.startsWith("--allow-growth="))?.split("=")[1] ?? "").split(",").filter(Boolean),
   );
 
+  const baseRef = args.find((a) => a.startsWith("--base-ref="))?.split("=")[1] || process.env.RATCHET_BASE_REF || "";
+  const approved = process.env.RATCHET_GROWTH_APPROVED === "1";
+  if (process.env.CI && allow.size > 0) {
+    console.error("--allow-growth в CI не принимается: рост baseline разрешается меткой PR ratchet-growth.");
+    process.exit(1);
+  }
+
   const reports = await Promise.all(APPS.map(runEslint));
   const current = new Map();
   APPS.forEach((app, i) => {
     for (const [rule, n] of Object.entries(count(reports[i]))) current.set(`${rule} ${app}`, n);
   });
-  const baseline = readBaseline();
+  let baseline = readBaseline();
+
+  const baselineGrown = [];
+  if (baseRef && !update) {
+    const base = readBaseBaseline(baseRef);
+    for (const [key, n] of baseline) if (n > (base.get(key) ?? 0)) baselineGrown.push(`${key}: ${base.get(key) ?? 0} -> ${n}`);
+    // Без одобрения сверяемся с базой: поднятый в PR baseline не «зеленит» код.
+    if (!approved) baseline = base;
+  }
 
   const grown = [];
   const shrunk = [];
@@ -176,6 +210,14 @@ async function main() {
   printSummary(current, baseline);
   if (shrunk.length > 0) {
     console.log(`\nНарушений стало меньше — понизьте baseline (node scripts/check-front-ratchet.mjs --update):\n  ${shrunk.join("\n  ")}`);
+  }
+  if (baselineGrown.length > 0) {
+    console.error(`\nХРАПОВИК: scripts/frontend-baseline.txt ВЫРОС относительно ${baseRef} (правило/приложение: было -> стало):\n  ${baselineGrown.join("\n  ")}`);
+    if (approved) console.error("Рост одобрен (RATCHET_GROWTH_APPROVED=1, метка ratchet-growth) — предупреждение, не ошибка.");
+    else {
+      console.error("Исправьте код, а не baseline. Осознанный рост — только с меткой PR ratchet-growth и причиной в описании.");
+      process.exit(1);
+    }
   }
   if (grown.length > 0) {
     console.error(`\nХРАПОВИК: нарушений стало БОЛЬШЕ (правило/приложение: было -> стало):\n  ${grown.join("\n  ")}`);
