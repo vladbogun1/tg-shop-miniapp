@@ -45,13 +45,17 @@ export function wholePercent(num: number): number {
   return Math.min(Math.round(num), 100);
 }
 
-export function promoDiscountMinor(p: PromoCodeFull, subtotal: number): number {
-  return (p.discountAmountMinor ?? 0) > 0
-    ? Math.min(p.discountAmountMinor!, subtotal)
-    : Math.min(
-        percentOfMinor(subtotal, p.discountPercent ?? 0),
-        (p.maxDiscountMinor ?? 0) > 0 ? p.maxDiscountMinor! : Number.POSITIVE_INFINITY
-      );
+/**
+ * Скидка промокода — зеркало Java (`PromoDiscount.discountFor`): сначала вычитаем часть корзины, на которую
+ * промокод не действует (`excludedMinor`, «Упор на скидки»; админка её не знает, сервер учтёт при применении),
+ * потом фикс (он главнее процента) или процент, потом потолок `maxDiscountMinor`, и не больше остатка.
+ * Расхождение с сервером ловят общие тест-векторы `backend/src/test/resources/promo/discount-vectors.json`.
+ */
+export function promoDiscountMinor(p: PromoCodeFull, subtotal: number, excludedMinor = 0): number {
+  const base = Math.max(0, subtotal - Math.max(0, excludedMinor));
+  const raw = (p.discountAmountMinor ?? 0) > 0 ? p.discountAmountMinor! : percentOfMinor(base, Math.min(100, p.discountPercent ?? 0));
+  const capped = (p.maxDiscountMinor ?? 0) > 0 ? Math.min(raw, p.maxDiscountMinor!) : raw;
+  return Math.min(Math.max(0, capped), base);
 }
 
 export function manualDiscountMinor(kind: DiscountKind, num: number, pct: number, subtotal: number): number {

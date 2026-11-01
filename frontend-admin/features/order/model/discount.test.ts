@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { PromoCode as PromoCodeFull } from "@/features/promo";
 import { canApplyDiscount, manualDiscountMinor, minorFromInput, parseNumberInput, promoDiscountMinor, usablePromos, wholePercent } from "./discount";
@@ -66,5 +68,17 @@ describe("usablePromos", () => {
       promo({ id: "d", code: "OLD", expiresAt: "2026-10-01T00:00:00Z", origin: "OURS" }),
     ];
     expect(usablePromos(list, 1, NOW).map((p) => p.code)).toEqual(["OK"]);
+  });
+});
+
+/** Те же векторы гоняет JUnit (PromoDiscountVectorsTest): формула админки не должна разойтись с серверной. */
+describe("общие тест-векторы с сервером", () => {
+  type Vector = { name: string; percent?: number; amountMinor?: number; maxMinor?: number; subtotalMinor: number; excludedMinor?: number; expected: number };
+  const file = fileURLToPath(new URL("../../../../backend/src/test/resources/promo/discount-vectors.json", import.meta.url));
+  const { cases } = JSON.parse(readFileSync(file, "utf8")) as { cases: Vector[] };
+
+  it.each(cases)("$name", (c) => {
+    const p = promo({ discountPercent: c.percent ?? 0, discountAmountMinor: c.amountMinor ?? 0, maxDiscountMinor: c.maxMinor ?? 0 });
+    expect(promoDiscountMinor(p, c.subtotalMinor, c.excludedMinor ?? 0)).toBe(c.expected);
   });
 });
