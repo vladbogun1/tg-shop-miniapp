@@ -1,7 +1,7 @@
 # TODO — что не забыть
 
 Список дел, которые отложены, но не отменены. Сделанное — вычёркивать (`~~...~~`) с датой и версией.
-Подробности по SEO — `docs/SEO-AUDIT-TECH.md` и `docs/SEO-GROWTH-GUIDE.md`.
+Подробности по SEO — `docs/archive/audits/SEO-AUDIT-TECH.md` и `docs/SEO-GROWTH-GUIDE.md`.
 
 ## Владелец (руками, не код)
 

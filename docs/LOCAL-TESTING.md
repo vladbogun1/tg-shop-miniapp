@@ -162,7 +162,7 @@ npm run e2e
 2. собирает jar (`mvn -DskipTests package`), если его нет или исходники бэкенда новее;
 3. копирует `frontend-admin/` в `.e2e-admin/` и собирает там с
    `NEXT_PUBLIC_API_BASE_URL=http://localhost:18089` (сборка прямо в `frontend-admin/` затёрла бы
-   `.next` работающего `next dev`); пересобирает, только если поменялись `frontend-admin/` или `shared/`;
+   `.next` работающего `next dev`); пересобирает, только если поменялись `frontend-admin/` или `packages/`;
 4. запускает `playwright test`: Playwright сам стартует бэкенд и админку, global setup заливает
    фикстуру `e2e/fixtures/seed.sql` (поверх Flyway, перед каждым прогоном) и логинится один раз;
 5. гасит MySQL (`down -v`).
