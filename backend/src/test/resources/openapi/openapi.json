@@ -119,7 +119,6 @@
               "MONO",
               "ORIGINAL"
             ],
-            "nullable" : true,
             "type" : "string"
           },
           "logoUrl" : {
@@ -1783,6 +1782,11 @@
             "type" : "integer"
           },
           "tier" : {
+            "enum" : [
+              "BRONZE",
+              "SILVER",
+              "GOLD"
+            ],
             "type" : "string"
           },
           "warnings" : {
@@ -3403,12 +3407,23 @@
             "type" : "integer"
           },
           "kind" : {
+            "enum" : [
+              "PRODUCT",
+              "DISCOUNT"
+            ],
             "type" : "string"
           },
           "productId" : {
             "type" : "string"
           },
           "rarity" : {
+            "enum" : [
+              "COMMON",
+              "RARE",
+              "EPIC",
+              "LEGENDARY",
+              "GOLD"
+            ],
             "type" : "string"
           },
           "weight" : {
@@ -3451,9 +3466,14 @@
             "type" : "integer"
           },
           "imageUrl" : {
+            "nullable" : true,
             "type" : "string"
           },
           "kind" : {
+            "enum" : [
+              "PRODUCT",
+              "DISCOUNT"
+            ],
             "type" : "string"
           },
           "priceMinor" : {
@@ -3464,9 +3484,17 @@
             "type" : "boolean"
           },
           "productId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "rarity" : {
+            "enum" : [
+              "COMMON",
+              "RARE",
+              "EPIC",
+              "LEGENDARY",
+              "GOLD"
+            ],
             "type" : "string"
           },
           "sortOrder" : {
@@ -3478,6 +3506,11 @@
             "type" : "integer"
           },
           "tier" : {
+            "enum" : [
+              "BRONZE",
+              "SILVER",
+              "GOLD"
+            ],
             "type" : "string"
           },
           "title" : {
@@ -4986,6 +5019,7 @@
             "type" : "boolean"
           },
           "category" : {
+            "nullable" : true,
             "type" : "string"
           },
           "discountPercent" : {
@@ -4998,12 +5032,18 @@
           },
           "id" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "imageUrl" : {
+            "nullable" : true,
             "type" : "string"
           },
           "kind" : {
+            "enum" : [
+              "PRODUCT",
+              "DISCOUNT"
+            ],
             "type" : "string"
           },
           "priceMinor" : {
@@ -5014,9 +5054,17 @@
             "type" : "boolean"
           },
           "productId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "rarity" : {
+            "enum" : [
+              "COMMON",
+              "RARE",
+              "EPIC",
+              "LEGENDARY",
+              "GOLD"
+            ],
             "type" : "string"
           },
           "stock" : {
@@ -5775,6 +5823,7 @@
           },
           "deliveredAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "month" : {
@@ -5801,15 +5850,27 @@
             "type" : "integer"
           },
           "source" : {
+            "enum" : [
+              "CASE",
+              "THRESHOLD",
+              "ADMIN"
+            ],
             "type" : "string"
           },
           "status" : {
             "type" : "string"
           },
           "tgUsername" : {
+            "nullable" : true,
             "type" : "string"
           },
           "tier" : {
+            "enum" : [
+              "BRONZE",
+              "SILVER",
+              "GOLD"
+            ],
+            "nullable" : true,
             "type" : "string"
           },
           "title" : {
@@ -5824,6 +5885,7 @@
             "type" : "integer"
           },
           "variant" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -6316,6 +6378,7 @@
       "InventoryStockWriteoffReportServiceLine" : {
         "properties" : {
           "adminName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "createdAt" : {
@@ -6327,12 +6390,15 @@
             "type" : "integer"
           },
           "note" : {
+            "nullable" : true,
             "type" : "string"
           },
           "orderId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "orderShortId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "productId" : {
@@ -6349,6 +6415,7 @@
             "type" : "string"
           },
           "undoneNote" : {
+            "nullable" : true,
             "type" : "string"
           },
           "undoneQty" : {
@@ -6364,6 +6431,7 @@
             "type" : "integer"
           },
           "variantId" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -7135,6 +7203,7 @@
             "type" : "string"
           },
           "imageUrl" : {
+            "nullable" : true,
             "type" : "string"
           },
           "priceMinor" : {
@@ -9727,6 +9796,10 @@
       "PointUser" : {
         "properties" : {
           "channel" : {
+            "enum" : [
+              "MINIAPP",
+              "WEB"
+            ],
             "type" : "string"
           },
           "city" : {
@@ -12986,6 +13059,11 @@
             "type" : "array"
           },
           "tier" : {
+            "enum" : [
+              "BRONZE",
+              "SILVER",
+              "GOLD"
+            ],
             "type" : "string"
           },
           "won" : {
@@ -13190,6 +13268,11 @@
             "type" : "integer"
           },
           "tier" : {
+            "enum" : [
+              "BRONZE",
+              "SILVER",
+              "GOLD"
+            ],
             "type" : "string"
           }
         },
@@ -13304,6 +13387,11 @@
             "type" : "integer"
           },
           "tier" : {
+            "enum" : [
+              "BRONZE",
+              "SILVER",
+              "GOLD"
+            ],
             "type" : "string"
           }
         },
@@ -13682,22 +13770,28 @@
           },
           "createdAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "firstName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "languageCode" : {
+            "nullable" : true,
             "type" : "string"
           },
           "lastName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "lastSeenAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "locale" : {
+            "nullable" : true,
             "type" : "string"
           },
           "ordersCount" : {
@@ -13716,6 +13810,7 @@
             "type" : "integer"
           },
           "username" : {
+            "nullable" : true,
             "type" : "string"
           }
         },

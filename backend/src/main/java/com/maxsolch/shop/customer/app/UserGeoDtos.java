@@ -1,7 +1,7 @@
 package com.maxsolch.shop.customer.app;
 
 import com.maxsolch.shop.customer.domain.UserCardDto;
-
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -34,7 +34,7 @@ public final class UserGeoDtos {
     }
 
     /** A signed-in customer at a point: their admin card plus where they were last seen from. */
-    public record PointUser(UserCardDto user, String ip, String channel, String city, String country,
+    public record PointUser(UserCardDto user, String ip, @Schema(allowableValues = {"MINIAPP", "WEB"}) String channel, String city, String country,
                             Instant seenAt) {
     }
 

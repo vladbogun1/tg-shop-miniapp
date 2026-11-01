@@ -1,14 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { UserCardDto } from "./types";
-import { displayName, initials, languageLine, telegramHref, userLang } from "./user";
+import { stubUserCard, displayName, initials, languageLine, telegramHref, userLang } from "./user";
 
-const base: UserCardDto = {
-  telegramUserId: 123456,
-  premium: false,
-  botBlocked: false,
-  ordersCount: 0,
-  totalSpentMinor: 0,
-};
+const base: UserCardDto = stubUserCard({ telegramUserId: 123456, username: null, firstName: null });
 
 describe("user model", () => {
   it("displayName: имя, потом @username, потом #id", () => {

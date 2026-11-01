@@ -4600,8 +4600,8 @@ export interface components {
         AdminBrandDto: {
             aliases: string[];
             id: string;
-            /** @enum {string|null} */
-            logoMode: "MONO" | "ORIGINAL" | null;
+            /** @enum {string} */
+            logoMode: "MONO" | "ORIGINAL";
             logoUrl: string | null;
             name: string;
             /** Format: int64 */
@@ -5070,7 +5070,8 @@ export interface components {
             marginMinor: number;
             /** Format: int64 */
             targetCostMinor: number;
-            tier: string;
+            /** @enum {string} */
+            tier: "BRONZE" | "SILVER" | "GOLD";
             warnings: string[];
         };
         AutofillRequest: {
@@ -5576,9 +5577,11 @@ export interface components {
             discountUah?: number;
             /** Format: int64 */
             id?: number;
-            kind?: string;
+            /** @enum {string} */
+            kind?: "PRODUCT" | "DISCOUNT";
             productId?: string;
-            rarity?: string;
+            /** @enum {string} */
+            rarity?: "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD";
             /** Format: int32 */
             weight?: number;
         };
@@ -5595,18 +5598,21 @@ export interface components {
             discountUah: number;
             /** Format: int64 */
             id: number;
-            imageUrl: string;
-            kind: string;
+            imageUrl: string | null;
+            /** @enum {string} */
+            kind: "PRODUCT" | "DISCOUNT";
             /** Format: int64 */
             priceMinor: number;
             productActive: boolean;
-            productId: string;
-            rarity: string;
+            productId: string | null;
+            /** @enum {string} */
+            rarity: "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD";
             /** Format: int32 */
             sortOrder: number;
             /** Format: int32 */
             stock: number;
-            tier: string;
+            /** @enum {string} */
+            tier: "BRONZE" | "SILVER" | "GOLD";
             title: string;
             /** Format: int32 */
             weight: number;
@@ -6048,20 +6054,22 @@ export interface components {
         };
         DraftItemDto: {
             active: boolean;
-            category: string;
+            category: string | null;
             /** Format: int32 */
             discountPercent: number;
             /** Format: int32 */
             discountUah: number;
             /** Format: int64 */
-            id: number;
-            imageUrl: string;
-            kind: string;
+            id: number | null;
+            imageUrl: string | null;
+            /** @enum {string} */
+            kind: "PRODUCT" | "DISCOUNT";
             /** Format: int64 */
             priceMinor: number;
             productActive: boolean;
-            productId: string;
-            rarity: string;
+            productId: string | null;
+            /** @enum {string} */
+            rarity: "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD";
             /** Format: int32 */
             stock: number;
             title: string;
@@ -6280,7 +6288,7 @@ export interface components {
             createdAt: string;
             customerName: string;
             /** Format: date-time */
-            deliveredAt: string;
+            deliveredAt: string | null;
             month: string;
             /** Format: int64 */
             monthTotalMinor: number;
@@ -6290,16 +6298,18 @@ export interface components {
             phone: string;
             /** Format: int32 */
             quantity: number;
-            source: string;
+            /** @enum {string} */
+            source: "CASE" | "THRESHOLD" | "ADMIN";
             status: string;
-            tgUsername: string;
-            tier: string;
+            tgUsername: string | null;
+            /** @enum {string|null} */
+            tier: "BRONZE" | "SILVER" | "GOLD" | null;
             title: string;
             /** Format: int64 */
             unitMinor: number;
             /** Format: int64 */
             valueMinor: number;
-            variant: string;
+            variant: string | null;
         };
         GiftResponse: {
             gift: components["schemas"]["GiftInfoDto"];
@@ -6451,27 +6461,27 @@ export interface components {
             views: number;
         };
         InventoryStockWriteoffReportServiceLine: {
-            adminName: string;
+            adminName: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: int64 */
             id: number;
-            note: string;
-            orderId: string;
-            orderShortId: string;
+            note: string | null;
+            orderId: string | null;
+            orderShortId: string | null;
             productId: string;
             /** Format: int32 */
             quantity: number;
             reason: string;
             title: string;
-            undoneNote: string;
+            undoneNote: string | null;
             /** Format: int32 */
             undoneQty: number;
             /** Format: int64 */
             unitValueMinor: number;
             /** Format: int64 */
             valueMinor: number;
-            variantId: string;
+            variantId: string | null;
         };
         InviteAcceptRequest: {
             password?: string;
@@ -6694,7 +6704,7 @@ export interface components {
         };
         LowMarginProductDto: {
             id: string;
-            imageUrl: string;
+            imageUrl: string | null;
             /** Format: int64 */
             priceMinor: number;
             title: string;
@@ -7453,7 +7463,8 @@ export interface components {
             users: components["schemas"]["PointUser"][];
         };
         PointUser: {
-            channel: string;
+            /** @enum {string} */
+            channel: "MINIAPP" | "WEB";
             city: string;
             country: string;
             ip: string;
@@ -8433,7 +8444,8 @@ export interface components {
             drops: components["schemas"]["CaseItemDto"][];
             hits: components["schemas"]["TestHitDto"][];
             reel: components["schemas"]["CaseItemDto"][];
-            tier: string;
+            /** @enum {string} */
+            tier: "BRONZE" | "SILVER" | "GOLD";
             won: components["schemas"]["CaseItemDto"];
         };
         TestHitDto: {
@@ -8505,7 +8517,8 @@ export interface components {
             swapPercent: number;
             /** Format: int32 */
             thresholdUah: number;
-            tier: string;
+            /** @enum {string} */
+            tier: "BRONZE" | "SILVER" | "GOLD";
         };
         TierInfoDto: {
             /** Format: int64 */
@@ -8544,7 +8557,8 @@ export interface components {
             guaranteed: number;
             /** Format: int64 */
             opened: number;
-            tier: string;
+            /** @enum {string} */
+            tier: "BRONZE" | "SILVER" | "GOLD";
         };
         Today: {
             /** Format: int64 */
@@ -8659,13 +8673,13 @@ export interface components {
         UserCardDto: {
             botBlocked: boolean;
             /** Format: date-time */
-            createdAt: string;
-            firstName: string;
-            languageCode: string;
-            lastName: string;
+            createdAt: string | null;
+            firstName: string | null;
+            languageCode: string | null;
+            lastName: string | null;
             /** Format: date-time */
-            lastSeenAt: string;
-            locale: string;
+            lastSeenAt: string | null;
+            locale: string | null;
             /** Format: int64 */
             ordersCount: number;
             premium: boolean;
@@ -8673,7 +8687,7 @@ export interface components {
             telegramUserId: number;
             /** Format: int64 */
             totalSpentMinor: number;
-            username: string;
+            username: string | null;
         };
         UserMetricsDto: {
             /** Format: int64 */
