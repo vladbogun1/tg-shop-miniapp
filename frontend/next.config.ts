@@ -19,6 +19,12 @@ const nextConfig: NextConfig = {
   // (local runs, the preview server), and a page that is only safe behind one specific proxy is
   // not actually safe. A Telegram Mini App is framed by Telegram on web clients, so framing is
   // restricted with CSP frame-ancestors rather than X-Frame-Options: DENY, which would break it.
+  async rewrites() {
+    if (process.env.NODE_ENV !== "development") return [];
+    // DEV_API_ORIGIN: a second local Mini App on a port the backend CORS does not know (3004 is taken)
+    // sets NEXT_PUBLIC_API_BASE_URL to its own origin and reaches the backend through here.
+    return process.env.DEV_API_ORIGIN ? [{ source: "/api/:path*", destination: `${process.env.DEV_API_ORIGIN}/api/:path*` }] : [];
+  },
   async headers() {
     return [
       {
