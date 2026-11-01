@@ -209,3 +209,12 @@ job'а, браузер кешируется; при падении выгруж�
   по-настоящему можно только на телефоне;
 - HTTPS-контур (Caddy, gateway) — локально фронты ходят на `localhost:8080`
   напрямую.
+
+## Подводные камни чистой машины и другие наборы e2e
+
+- `docker-compose.dev.yml` берёт образы minio/mc из `quay.io` с `pull_policy: missing`: они могут не скачаться
+  на чистой машине — подставьте образы, которые уже есть локально (`minio/minio`, `minio/mc`).
+- `cp .env.example .env && docker compose up -d --build` работает без явного профиля: `SPRING_PROFILES_ACTIVE` по умолчанию `dev`.
+- Для воспроизводимой установки зависимостей — `npm ci`, не `npm install`.
+- Кроме админки (`npm run e2e`) есть наборы `npm run e2e -- --suite=customer` (Mini App + сайт, фейковый monobank) и
+  `--suite=money` (админка против фейкового monobank: вебхук, возвраты, доплата, мастер возврата). Описание — в шапке `e2e/scripts/run.mjs`.
