@@ -6,4 +6,5 @@ export const VISUALS = {
   "wild-1-royale": "./visuals/wild-1-royale/index.js",
   "wild-2-swarm": "./visuals/wild-2-swarm/index.js",
   "wild-3-royale3d": "./visuals/wild-3-royale3d/index.js",
+  loto: "./visuals/loto/index.js",
 };
