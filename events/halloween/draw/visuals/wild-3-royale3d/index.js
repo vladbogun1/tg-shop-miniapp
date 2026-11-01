@@ -241,7 +241,7 @@ export function mount(root, ctx) {
     box.textContent = initial(p.name);
     if (ctx.privacy?.avatars && p.avatar) {
       const im = new Image(); im.src = p.avatar;
-      im.onload = () => { const c = px.canvas(20, 20), g = c.getContext("2d"); g.imageSmoothingQuality = "high"; const k = Math.max(20 / im.naturalWidth, 20 / im.naturalHeight); try { g.drawImage(im, (20 - im.naturalWidth * k) / 2, (20 - im.naturalHeight * k) / 2, im.naturalWidth * k, im.naturalHeight * k); box.textContent = ""; box.append(c); } catch {} };
+      im.onload = () => { const c = px.canvas(152, 152), g = c.getContext("2d"); g.imageSmoothingQuality = "high"; const k = Math.max(152 / im.naturalWidth, 152 / im.naturalHeight); try { g.drawImage(im, (152 - im.naturalWidth * k) / 2, (152 - im.naturalHeight * k) / 2, im.naturalWidth * k, im.naturalHeight * k); box.textContent = ""; box.append(c); } catch {} };
     }
   }
   const hud = {
