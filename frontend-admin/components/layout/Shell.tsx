@@ -42,10 +42,8 @@ import {
   ChevronDown,
   ChevronRight,
   Gift,
-  Ghost,
   PackagePlus,
 } from "lucide-react";
-import { isHalloween } from "@shop/shared";
 import { useQuery } from "@tanstack/react-query";
 import { AppRuntime } from "@/components/pwa/AppRuntime";
 import { InstallBanner, PushOfferBanner, UpdateBanner } from "@/components/pwa/Banners";
@@ -79,8 +77,6 @@ interface NavItem {
   exact?: boolean;
   badge?: BadgeKey;
   superOnly?: boolean;
-  /** Not a page of this app (e.g. /hw/draw/ of the Halloween service): opens in a new tab. */
-  external?: boolean;
 }
 interface NavSection {
   id: string;
@@ -133,13 +129,6 @@ const SECTIONS: NavSection[] = [
       { href: "/broadcasts", label: "Рассылки", icon: Send },
       { href: "/promocodes", label: "Промокоды", icon: Ticket },
       { href: "/gift", label: "Кейс", icon: Gift },
-      // Halloween 2026 stream draw (events/halloween) — disappears with the event date, remove after.
-      ...(isHalloween()
-        ? [
-            { href: "/halloween", label: "Участники 🎃", icon: Ghost },
-            { href: "/halloween/pult", label: "Пульт розыгрыша 🎃", icon: Ghost },
-          ]
-        : []),
     ],
   },
   {
@@ -182,8 +171,6 @@ const TITLE: Record<string, string> = {
   "/metrics": "Метрики",
   "/writeoffs": "Списания",
   "/users": "Пользователи",
-  "/halloween": "Участники акции",
-  "/halloween/pult": "Пульт розыгрыша",
   "/broadcasts": "Рассылки",
   "/products": "Товары",
   "/preorders": "Поставки",
@@ -302,7 +289,6 @@ function NavRow({
   return (
     <Link
       href={item.href}
-      {...(item.external ? { target: "_blank", rel: "noopener" } : {})}
       onClick={onNavigate}
       tabIndex={tabIndex}
       title={collapsed ? item.label : badge?.title}

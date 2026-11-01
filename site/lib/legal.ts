@@ -21,7 +21,6 @@ export const LEGAL_FILES = {
   privacy: "privacy.md",
   terms: "terms.md",
   caseRules: "case-rules.md",
-  halloweenRules: "halloween-rules.md", // Halloween 2026 — remove with the event
 } as const;
 
 export type LegalPage = keyof typeof LEGAL_FILES;
@@ -34,7 +33,6 @@ export const LEGAL_PATHS: Record<LegalPage, string> = {
   privacy: "/privacy",
   terms: "/terms",
   caseRules: "/case-rules",
-  halloweenRules: "/halloween-rules",
 };
 
 export interface LegalDoc {

@@ -34,4 +34,3 @@ export * from "./giftcase";
 export * from "./support";
 export * from "./types";
 export * from "./ws";
-export * from "./event";

@@ -31,7 +31,6 @@ import { LangMenu } from "./LangMenu";
 import { LangSwitch } from "./LangSwitch";
 import { Logo } from "./Logo";
 import { SearchBox } from "./SearchBox";
-import { HalloweenCounter } from "@/components/event/Halloween";
 import { SupportGate } from "@/components/support/SupportGate";
 import { useSupportUnread } from "@/lib/support";
 import "./header.css";
@@ -121,7 +120,6 @@ export function Header({ tree, hasComing = false }: { tree: MenuNode[]; /** Open
           <div className="hidden sm:block">
             <LangMenu />
           </div>
-          <HalloweenCounter />
           <AccountButton />
           <CompareButton />
           <CartButton />

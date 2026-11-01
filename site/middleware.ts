@@ -7,23 +7,12 @@
  *   /en/…     → English
  *   /uk/…     → permanent redirect to the unprefixed URL (one canonical address per page)
  *
- * So the middleware only redirects, and only runs for /uk… and product/category paths — plus, until
- * the end of Halloween 2026, swaps the mascot/case pictures for their Halloween versions.
+ * So the middleware only redirects, and only runs for /uk… and product/category paths.
  */
 import { NextResponse, type NextRequest } from "next/server";
-import { HW_SITE_ASSETS, isHalloween } from "@shop/shared/event";
 
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
-
-  // Halloween 2026: the same mascot/case pictures, redrawn, under public/mascot-hw and public/case-hw.
-  if (/^\/(mascot|case)\//.test(pathname)) {
-    // Only the pictures that were redrawn (list: events/halloween/tools/hw-manifest.mjs).
-    if (!isHalloween() || !HW_SITE_ASSETS.has(pathname)) return NextResponse.next();
-    const url = req.nextUrl.clone();
-    url.pathname = pathname.replace(/^\/(mascot|case)\//, "/$1-hw/");
-    return NextResponse.rewrite(url);
-  }
 
   if (pathname === "/uk" || pathname.startsWith("/uk/")) {
     const url = req.nextUrl.clone();
@@ -47,8 +36,6 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/mascot/:path*",
-    "/case/:path*",
     "/uk",
     "/uk/:path*",
     "/product/:path*",

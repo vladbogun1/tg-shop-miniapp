@@ -6,8 +6,6 @@ import { Preloader } from "@/components/Preloader";
 import { PreloaderReady } from "@/components/PreloaderReady";
 import { Providers } from "@/components/Providers";
 import { SceneFx } from "@/components/scene/SceneFx";
-import { HalloweenWidget } from "@/components/event/Halloween";
-import { EVENT_ATTR, isHalloween } from "@shop/shared";
 import { makeT } from "@/i18n";
 import { CHUNK_RECOVERY_SCRIPT, isLocale, LOCALE_TAG, type Locale } from "@shop/shared";
 import { SITE_URL } from "@/lib/config";
@@ -77,7 +75,7 @@ export default async function LocaleLayout({
   const tree = menuTree(categories);
 
   return (
-    <html lang={LOCALE_TAG[locale]} data-event={isHalloween() ? EVENT_ATTR : undefined} suppressHydrationWarning>
+    <html lang={LOCALE_TAG[locale]} suppressHydrationWarning>
       <head>
         {/* First thing on the page: reload once if a chunk of another build breaks it (@shop/shared chunk-recovery). */}
         <script dangerouslySetInnerHTML={{ __html: CHUNK_RECOVERY_SCRIPT }} />
@@ -88,7 +86,6 @@ export default async function LocaleLayout({
         <SceneFx />
         <Providers locale={locale}>
           <PreloaderReady />
-          <HalloweenWidget />
           <Header tree={tree} hasComing={(pre?.size ?? 0) > 0} />
           {/* No z-index here: it would trap the sheets and lightboxes rendered inside under the sticky header. */}
           <main id="main" className="relative flex-1">

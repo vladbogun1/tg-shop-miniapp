@@ -1,8 +1,0 @@
-STYLE BIBLE — ChiSetup Halloween stream art (all images of the set must look like one game):
-- 16-bit pixel art, like a polished SNES / modern indie pixel game (Owlboy, Blasphemous key art level of detail), crisp hard pixel edges, no anti-aliased smooth gradients, no painterly blur, no 3D render look, no vector flat look.
-- Same pixel scale everywhere: chunky readable pixels, about 4 screen pixels per art pixel at 1920x1080.
-- Palette: near-black night #0E0E10 and deep purple-black #1a0f24 for darkness; pumpkin orange #FF6600 and warm amber #FFB15C as the main light; toxic slime green #7CFF4F and violet #8A3FFC as secondary glows; bone white #F4F1EA for highlights. Limited palette, dithering for gradients.
-- Mood: fun spooky Halloween night for a gaming gear shop stream, not gore, not horror-scary; cozy-creepy, energetic.
-- The hero (when present) is the shop mascot: a muscular young man with short brown spiky hair, black sports jersey with gold number "21" on the sleeve and a gold triangle logo on the chest, black pants with gold stripes, black-gold sneakers, black vampire cape with purple-orange lining — exactly like the reference sprite.
-- Strong silhouettes, dramatic rim light from orange and violet sources, dark vignette edges.
-- No text, no letters, no numbers, no logos other than the triangle on the jersey, no UI, no watermarks, no frames or borders.
