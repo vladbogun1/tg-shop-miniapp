@@ -109,4 +109,9 @@ public class OrderPaymentsAdapter implements OrderOnlinePayments {
     public void refund(byte[] orderId, String invoiceId, Long amountMinor) {
         payments.refund(orderId, invoiceId, amountMinor);
     }
+
+    @Override
+    public void refundHeld(byte[] orderId, String invoiceId, Long amountMinor) {
+        payments.refundHeld(orderId, invoiceId, amountMinor);
+    }
 }

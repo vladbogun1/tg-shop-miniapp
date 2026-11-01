@@ -156,7 +156,7 @@ class AdminReturnControllerTest {
         InOrder in = inOrder(returns, payments, audit);
         in.verify(returns).checkPlan(eq(order.getId()), any());
         in.verify(payments).refundableInvoice(order.getId(), 2_500);
-        in.verify(payments).refund(order.getId(), "inv-1", 2_500L);
+        in.verify(payments).refundHeld(order.getId(), "inv-1", 2_500L);
         in.verify(audit).record("ORDER_REFUND_ONLINE", "ORDER", id,
                 "возврат на карту через monobank 25 ₴ (мастер возврата)");
         in.verify(returns).registerPlan(eq(order.getId()), any(), eq("Иван"), eq(true));
@@ -173,7 +173,7 @@ class AdminReturnControllerTest {
                 return "нет денег";
             }
         }).when(payments)
-                .refund(any(byte[].class), anyString(), anyLong());
+                .refundHeld(any(byte[].class), anyString(), anyLong());
 
         assertThatThrownBy(() -> controller().returnWizard(id, req))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class, e -> {

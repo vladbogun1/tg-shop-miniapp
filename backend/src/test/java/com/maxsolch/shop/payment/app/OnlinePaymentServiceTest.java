@@ -316,4 +316,92 @@ class OnlinePaymentServiceTest {
                 .satisfies(t -> assertThat(code(t)).isEqualTo("PAYMENT_UNAVAILABLE"));
         verify(orders, never()).findWithItems(any());
     }
+
+    // ------------------------------------------------------------------ refund
+
+    private PaymentInvoice paidInvoice(Order o, long amount, long refunded) {
+        PaymentInvoice inv = invoice(o, "success", amount, Instant.now().plus(Duration.ofDays(1)));
+        OrderFixtures.set(inv, "appliedAt", Instant.now().minus(Duration.ofHours(1)));
+        OrderFixtures.set(inv, "refundedMinor", refunded);
+        when(invoices.findByProviderAndExternalId(PaymentInvoice.PROVIDER_MONOBANK, inv.getExternalId()))
+                .thenReturn(Optional.of(inv));
+        return inv;
+    }
+
+    @Test
+    void refund_secondRequestWhileTheFirstIsAtTheBankIsRefusedAndTheBankIsAskedOnce() throws Exception {
+        Order o = order();
+        PaymentInvoice inv = paidInvoice(o, 1000_00, 0);
+        java.util.concurrent.CountDownLatch atBank = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+        when(mono.cancel(anyString(), anyString(), any(), any())).thenAnswer(a -> {
+            atBank.countDown();
+            release.await(5, java.util.concurrent.TimeUnit.SECONDS);
+            return "ok";
+        });
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newSingleThreadExecutor();
+        try {
+            var first = pool.submit(() -> service.refund(o.getId(), inv.getExternalId(), 100_00L));
+            assertThat(atBank.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+
+            assertThatThrownBy(() -> service.refund(o.getId(), inv.getExternalId(), 100_00L))
+                    .isInstanceOf(DomainException.BadRequest.class)
+                    .satisfies(e -> assertThat(((DomainException) e).errorCode().name()).isEqualTo("REFUND_IN_PROGRESS"));
+
+            release.countDown();
+            first.get(5, java.util.concurrent.TimeUnit.SECONDS);
+        } finally {
+            release.countDown();
+            pool.shutdownNow();
+        }
+        verify(mono, org.mockito.Mockito.times(1)).cancel(anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    void refund_releasesTheLockSoTheNextRequestIsNotRefusedForGood() {
+        Order o = order();
+        PaymentInvoice inv = paidInvoice(o, 1000_00, 0);
+        when(mono.cancel(anyString(), anyString(), any(), any())).thenThrow(new MonobankGateway.MonobankException(400, "no", "no"));
+
+        assertThatThrownBy(() -> service.refund(o.getId(), inv.getExternalId(), 100_00L))
+                .satisfies(e -> assertThat(((DomainException) e).errorCode().name()).isEqualTo("MONO_REFUND_REJECTED"));
+        assertThatThrownBy(() -> service.refund(o.getId(), inv.getExternalId(), 100_00L))
+                .satisfies(e -> assertThat(((DomainException) e).errorCode().name()).isEqualTo("MONO_REFUND_REJECTED"));
+    }
+
+    @Test
+    void refund_sameRefundGetsTheSameRequestNumberAtTheBank() {
+        Order o = order();
+        PaymentInvoice inv = paidInvoice(o, 1000_00, 0);
+
+        service.refund(o.getId(), inv.getExternalId(), 100_00L);
+        service.refund(o.getId(), inv.getExternalId(), 100_00L);
+        service.refund(o.getId(), inv.getExternalId(), 150_00L);
+
+        ArgumentCaptor<String> ref = ArgumentCaptor.forClass(String.class);
+        verify(mono, org.mockito.Mockito.times(3)).cancel(anyString(), ref.capture(), any(), any());
+        assertThat(ref.getAllValues().get(0)).isEqualTo(ref.getAllValues().get(1));
+        assertThat(ref.getAllValues().get(2)).isNotEqualTo(ref.getAllValues().get(0));
+    }
+
+    @Test
+    void refund_isRefusedWhileThePreviousOneWaitsForTheBank() {
+        Order o = order();
+        PaymentInvoice inv = paidInvoice(o, 1000_00, 0);
+        inv.awaitRefundUntil(Instant.now().plus(Duration.ofHours(1)));
+
+        assertThatThrownBy(() -> service.refund(o.getId(), inv.getExternalId(), 100_00L))
+                .satisfies(e -> assertThat(((DomainException) e).errorCode().name()).isEqualTo("MONO_REFUND_PENDING"));
+        verify(mono, never()).cancel(anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    void refund_amountAboveTheRemainderIsRefused() {
+        Order o = order();
+        PaymentInvoice inv = paidInvoice(o, 1000_00, 950_00);
+
+        assertThatThrownBy(() -> service.refund(o.getId(), inv.getExternalId(), 100_00L))
+                .satisfies(e -> assertThat(((DomainException) e).errorCode().name()).isEqualTo("REFUND_AMOUNT_OUT_OF_RANGE"));
+        verify(mono, never()).cancel(anyString(), anyString(), any(), any());
+    }
 }

@@ -191,6 +191,20 @@ public class PaymentInvoice {
         refundPendingUntil = until;
     }
 
+    /**
+     * The number the bank knows a refund by. The same invoice, refunded part and amount always give the same
+     * number, so a repeated request is recognised by the bank instead of paying out twice.
+     */
+    public String refundRequestRef(long amount) {
+        try {
+            byte[] sha = java.security.MessageDigest.getInstance("SHA-256").digest(
+                    (externalId + ":" + refundedMinor + ":" + amount).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return "refund-" + java.util.HexFormat.of().formatHex(sha).substring(0, 24);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     public void clearRefundPending() {
         refundPendingUntil = null;
     }
