@@ -28,7 +28,7 @@ class BrandLogoTest {
     void setUp() {
         db = new InMemoryCatalog();
         storage = mock(ImageStorageService.class);
-        service = new BrandAdminService(db.brandRepository, db.productRepository, db.directory, storage,
+        service = new BrandAdminService(db.brandRepository, db.productRepository, db.directory,
                 db.events(storage));
     }
 
@@ -100,5 +100,23 @@ class BrandLogoTest {
         assertThat(merged.logoUrl()).isEqualTo(KEY);
         assertThat(merged.logoMode()).isEqualTo("ORIGINAL");
         verify(storage, never()).deleteQuietly(KEY);
+    }
+
+    @Test
+    void filesAreDeletedOnlyAfterTheCommitNotInsideTheTransaction() {
+        java.util.List<Object> held = new java.util.ArrayList<>();
+        BrandAdminService inTx = new BrandAdminService(db.brandRepository, db.productRepository, db.directory,
+                new com.maxsolch.shop.platform.tx.DomainEvents(held::add));
+        AdminBrandDto old = inTx.create(req("Lamzu", KEY, null));
+        AdminBrandDto other = inTx.create(req("ATK Gear", ImageStorageService.BRAND_LOGO_PREFIX + "2b/logo.svg", null));
+
+        inTx.update(old.id(), req(null, ImageStorageService.BRAND_LOGO_PREFIX + "1a/logo.png", null));
+        inTx.merge(other.id(), old.id());
+
+        // Nothing touched the storage; the keys wait in events that @OnCommitted listeners get after the commit.
+        verify(storage, never()).deleteQuietly(org.mockito.ArgumentMatchers.anyString());
+        assertThat(held).filteredOn(e -> e instanceof com.maxsolch.shop.catalog.domain.CatalogFilesDropped)
+                .extracting(e -> ((com.maxsolch.shop.catalog.domain.CatalogFilesDropped) e).keys())
+                .containsExactly(java.util.List.of(KEY), java.util.List.of(ImageStorageService.BRAND_LOGO_PREFIX + "2b/logo.svg"));
     }
 }

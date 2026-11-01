@@ -36,6 +36,10 @@ public interface AdminAuditRepository extends JpaRepository<AdminAuditEntry, Lon
                                  @Param("to") Instant to,
                                  Pageable pageable);
 
+    /** What the admin did in the shop: every entry except their own sign-in / account ones (`ADMIN_*`). */
+    @Query("SELECT COUNT(e) FROM AdminAuditEntry e WHERE e.adminId = :adminId AND e.action NOT LIKE :ownPrefix ESCAPE '\\'")
+    long countExcludingAction(@Param("adminId") long adminId, @Param("ownPrefix") String ownPrefix);
+
     /** Values for the filter dropdowns. */
     @Query("SELECT DISTINCT e.action FROM AdminAuditEntry e ORDER BY e.action")
     List<String> distinctActions();

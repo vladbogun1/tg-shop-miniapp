@@ -52,6 +52,11 @@ import static com.maxsolch.shop.platform.util.Texts.blankToNull;
 @Service
 public class BroadcastService {
 
+    /** How many broadcasts this admin started. */
+    public long countBy(long adminId) {
+        return broadcastRepository.countByAdminId(adminId);
+    }
+
     private enum Outcome { OK, BLOCKED, FAILED }
 
     /** The lock of the running broadcast: renewed while it makes progress, free {@value} minutes after a crash. */

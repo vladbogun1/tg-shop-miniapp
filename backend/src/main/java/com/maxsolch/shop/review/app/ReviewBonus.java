@@ -9,7 +9,7 @@ import com.maxsolch.shop.review.app.ReviewDtos.Bonus;
 import com.maxsolch.shop.review.domain.ProductReview;
 import com.maxsolch.shop.review.domain.ReviewEvents;
 import com.maxsolch.shop.review.domain.ReviewRules;
-import com.maxsolch.shop.review.infra.ReviewStore;
+import com.maxsolch.shop.order.app.OrderReviewMarks;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,15 +23,15 @@ import java.util.List;
 @Component
 public class ReviewBonus {
 
-    private final ReviewStore store;
+    private final OrderReviewMarks orderMarks;
     private final SettingsService settings;
     private final PromoCodes promoCodes;
     private final DomainEvents events;
     private final Clock clock;
 
-    public ReviewBonus(ReviewStore store, SettingsService settings, PromoCodes promoCodes, DomainEvents events,
+    public ReviewBonus(OrderReviewMarks orderMarks, SettingsService settings, PromoCodes promoCodes, DomainEvents events,
                        Clock clock) {
-        this.store = store;
+        this.orderMarks = orderMarks;
         this.settings = settings;
         this.promoCodes = promoCodes;
         this.events = events;
@@ -50,7 +50,7 @@ public class ReviewBonus {
             return null;
         }
         Instant now = clock.instant();
-        if (!store.claimBonus(review.getOrderId(), now)) {
+        if (!orderMarks.claimBonus(review.getOrderId(), now)) {
             return null;
         }
         PromoCode promo = new PromoCode();

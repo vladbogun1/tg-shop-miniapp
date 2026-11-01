@@ -3,6 +3,8 @@ package com.maxsolch.shop.staff.app;
 import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.staff.infra.AdminTeamQueries;
+import com.maxsolch.shop.customer.app.Customers;
+import com.maxsolch.shop.notification.app.AdminPushService;
 import com.maxsolch.shop.staff.domain.AdminInvite;
 import com.maxsolch.shop.staff.domain.SecretCipher;
 import com.maxsolch.shop.staff.domain.Totp;
@@ -50,6 +52,9 @@ class AdminTeamServiceTest {
     AdminSessions sessions;
     TrustedDeviceService trustedDevices;
     AdminTeamQueries facts;
+    AdminHistory history;
+    AdminPushService push;
+    Customers customers;
     AdminAuditService audit;
     AdminTeamMessenger messenger;
     AdminTeamService team;
@@ -83,8 +88,11 @@ class AdminTeamServiceTest {
         });
         trustedDevices = mock(TrustedDeviceService.class);
         facts = mock(AdminTeamQueries.class);
-        when(facts.history(anyLong())).thenReturn(List.of());
-        when(facts.telegramLabels(any())).thenReturn(Map.of());
+        history = mock(AdminHistory.class);
+        push = mock(AdminPushService.class);
+        customers = mock(Customers.class);
+        when(history.of(anyLong())).thenReturn(List.of());
+        when(customers.findAllById(any())).thenReturn(List.of());
         when(facts.lastLogins()).thenReturn(Map.of());
         when(facts.trustedDevices(any())).thenReturn(Map.of());
         messenger = mock(AdminTeamMessenger.class);
@@ -92,8 +100,8 @@ class AdminTeamServiceTest {
                 totp, sessions, mock(AdminTokenValidator.class), mock(AdminAuthService.class), audit, messenger,
                 org.springframework.transaction.support.TransactionOperations.withoutTransaction(), "", clock);
         team = new AdminTeamService(admins.repo, invites, store, totp, lockout, sessions, trustedDevices,
-                mock(AdminTokenValidator.class), facts, audit, messenger, clock);
-        view = new AdminTeamView(admins.repo, store, facts, clock);
+                mock(AdminTokenValidator.class), history, push, audit, messenger, clock);
+        view = new AdminTeamView(admins.repo, store, facts, customers, clock);
     }
 
     /** A code of the boss's authenticator not used yet (each code is accepted once). */
@@ -196,7 +204,7 @@ class AdminTeamServiceTest {
         assertThat(helper.isActive()).isFalse();
         assertThat(helper.getTokenVersion()).isEqualTo(versionBefore + 1);
         verify(sessions).revokeEverything(HELPER);
-        verify(facts).deletePushSubscriptions(HELPER);
+        verify(push).forgetAdmin(HELPER);
         verify(audit).recordFor(eq(BOSS), eq("ADMIN_BLOCKED"), eq("ADMIN"), eq("2"), anyString());
         verify(messenger).accountNotice(eq(HELPER), contains("заблокирован"));
         // A blocked admin can neither sign in (findByTelegramUserIdAndActiveTrue) nor get a login link.
@@ -231,11 +239,11 @@ class AdminTeamServiceTest {
 
     @Test
     void deleteOnlyWithoutHistory() {
-        when(facts.history(HELPER)).thenReturn(List.of("записей в журнале: 3"));
+        when(history.of(HELPER)).thenReturn(List.of("записей в журнале: 3"));
         assertConflict(() -> team.delete(BOSS, HELPER, code(), CLIENT), "HAS_HISTORY");
         assertThat(admins.rows).containsKey(HELPER);
 
-        when(facts.history(HELPER)).thenReturn(List.of());
+        when(history.of(HELPER)).thenReturn(List.of());
         team.delete(BOSS, HELPER, code(), CLIENT);
         assertThat(admins.rows).doesNotContainKey(HELPER);
         verify(audit).recordFor(eq(BOSS), eq("ADMIN_DELETED"), eq("ADMIN"), eq("2"), anyString());

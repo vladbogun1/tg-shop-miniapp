@@ -31,16 +31,13 @@ public class BrandAdminService {
     private final BrandRepository repository;
     private final ProductRepository productRepository;
     private final CatalogDirectory directory;
-    private final ImageStorageService storage;
     private final DomainEvents events;
 
     public BrandAdminService(BrandRepository repository, ProductRepository productRepository,
-                             CatalogDirectory directory, ImageStorageService storage,
-                             DomainEvents events) {
+                             CatalogDirectory directory, DomainEvents events) {
         this.repository = repository;
         this.productRepository = productRepository;
         this.directory = directory;
-        this.storage = storage;
         this.events = events;
     }
 
@@ -86,7 +83,8 @@ public class BrandAdminService {
         apply(b, req);
         repository.save(b);
         if (oldLogo != null && !oldLogo.equals(b.getLogoUrl())) {
-            storage.deleteQuietly(oldLogo);
+            // The old file goes only once the update has committed: a rollback must not leave the brand without it.
+            events.publish(new CatalogFilesDropped(List.of(oldLogo)));
         }
         directory.evictAll();
         return dto(b, CategoryAdminService.counts(productRepository.countsByBrand()));
@@ -123,7 +121,7 @@ public class BrandAdminService {
             target.setLogoUrl(source.getLogoUrl());
             target.setLogoMode(source.getLogoMode());
         } else {
-            storage.deleteQuietly(source.getLogoUrl());
+            events.publish(new CatalogFilesDropped(java.util.Collections.singletonList(source.getLogoUrl())));
         }
         repository.delete(source);
         repository.flush();

@@ -3,10 +3,10 @@ package com.maxsolch.shop.review.app;
 import com.maxsolch.shop.review.domain.ReviewError;
 import com.maxsolch.shop.review.domain.ProductReview;
 import com.maxsolch.shop.review.domain.ReviewRules;
-import com.maxsolch.shop.review.infra.ReviewStore.ProductInfo;
+import com.maxsolch.shop.catalog.domain.ProductBrief;
 import com.maxsolch.shop.review.domain.ReviewStatus;
 import com.maxsolch.shop.review.infra.ProductReviewRepository;
-import com.maxsolch.shop.review.infra.ReviewStore;
+import com.maxsolch.shop.catalog.app.ProductBriefs;
 
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
@@ -67,7 +67,7 @@ public class ReviewService {
     private final OrderLookup orders;
     private final OrderLines orderLines;
     private final Customers users;
-    private final ReviewStore store;
+    private final ProductBriefs briefs;
     private final SettingsService settings;
     private final Messages messages;
     private final ReviewMapper mapper;
@@ -77,14 +77,14 @@ public class ReviewService {
     private final Clock clock;
 
     public ReviewService(ProductReviewRepository reviews, OrderLookup orders, OrderLines orderLines,
-                         Customers users, ReviewStore store, SettingsService settings, Messages messages,
+                         Customers users, ProductBriefs briefs, SettingsService settings, Messages messages,
                          ReviewMapper mapper, ReviewPublishing publishing, ReviewBonus bonus, DomainEvents events,
                          Clock clock) {
         this.reviews = reviews;
         this.orders = orders;
         this.orderLines = orderLines;
         this.users = users;
-        this.store = store;
+        this.briefs = briefs;
         this.settings = settings;
         this.messages = messages;
         this.mapper = mapper;
@@ -148,7 +148,7 @@ public class ReviewService {
                 // a slug that happens to be 36 characters long
             }
         }
-        return store.productIdBySlug(key).orElseThrow(() -> new DomainException.NotFound(ReviewError.PRODUCT_NOT_FOUND));
+        return briefs.idBySlug(key).orElseThrow(() -> new DomainException.NotFound(ReviewError.PRODUCT_NOT_FOUND));
     }
 
     // ================================================================== customer
@@ -177,13 +177,13 @@ public class ReviewService {
         }
         Set<Long> reviewed = new HashSet<>(reviews.reviewedItemIds(
                 candidates.stream().map(OrderItem::getId).toList()));
-        Map<String, ProductInfo> infos = store.productInfos(candidates.stream().map(OrderItem::getProductId).toList());
+        Map<String, ProductBrief> infos = briefs.briefs(candidates.stream().map(OrderItem::getProductId).toList());
         List<PendingLine> out = new ArrayList<>();
         for (OrderItem i : candidates) {
             if (reviewed.contains(i.getId())) {
                 continue;
             }
-            ProductInfo info = infos.get(UuidUtil.toString(i.getProductId()));
+            ProductBrief info = infos.get(UuidUtil.toString(i.getProductId()));
             Order o = i.getOrder();
             out.add(new PendingLine(i.getId(), UuidUtil.toString(o.getId()), UuidUtil.toString(i.getProductId()),
                     info == null ? null : info.slug(), ReviewMapper.titleOf(i, info), i.getVariantNameSnapshot(),

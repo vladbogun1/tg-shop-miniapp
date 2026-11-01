@@ -9,8 +9,9 @@ import com.maxsolch.shop.review.app.ReviewDtos.AdminReview;
 import com.maxsolch.shop.review.app.ReviewDtos.MyReview;
 import com.maxsolch.shop.review.domain.ProductReview;
 import com.maxsolch.shop.review.domain.ReviewStatus;
+import com.maxsolch.shop.catalog.app.ProductBriefs;
 import com.maxsolch.shop.review.infra.ReviewStore;
-import com.maxsolch.shop.review.infra.ReviewStore.ProductInfo;
+import com.maxsolch.shop.catalog.domain.ProductBrief;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -26,18 +27,18 @@ import java.util.stream.Collectors;
 @Component
 public class ReviewMapper {
 
-    private final ReviewStore store;
+    private final ProductBriefs briefs;
     private final OrderLines orderLines;
     private final Customers users;
 
-    public ReviewMapper(ReviewStore store, OrderLines orderLines, Customers users) {
-        this.store = store;
+    public ReviewMapper(ProductBriefs briefs, OrderLines orderLines, Customers users) {
+        this.briefs = briefs;
         this.orderLines = orderLines;
         this.users = users;
     }
 
-    ProductInfo infoOf(byte[] productId) {
-        return store.productInfos(List.of(productId)).get(UuidUtil.toString(productId));
+    ProductBrief infoOf(byte[] productId) {
+        return briefs.briefs(List.of(productId)).get(UuidUtil.toString(productId));
     }
 
     Map<Long, OrderItem> linesOf(List<ProductReview> list) {
@@ -53,14 +54,14 @@ public class ReviewMapper {
         return line == null ? null : line.getVariantNameSnapshot();
     }
 
-    static String titleOf(OrderItem line, ProductInfo info) {
+    static String titleOf(OrderItem line, ProductBrief info) {
         if (info != null && info.title() != null) {
             return info.title();
         }
         return line == null ? null : line.getTitleSnapshot();
     }
 
-    MyReview toMine(ProductReview r, OrderItem line, ProductInfo info) {
+    MyReview toMine(ProductReview r, OrderItem line, ProductBrief info) {
         return new MyReview(r.getId(), r.getOrderItemId() == null ? 0 : r.getOrderItemId(),
                 r.getOrderId() == null ? null : UuidUtil.toString(r.getOrderId()),
                 UuidUtil.toString(r.getProductId()), info == null ? null : info.slug(), titleOf(line, info),
@@ -71,7 +72,7 @@ public class ReviewMapper {
 
     List<MyReview> toMine(List<ProductReview> mine) {
         Map<Long, OrderItem> lines = linesOf(mine);
-        Map<String, ProductInfo> infos = store.productInfos(mine.stream().map(ProductReview::getProductId).toList());
+        Map<String, ProductBrief> infos = briefs.briefs(mine.stream().map(ProductReview::getProductId).toList());
         return mine.stream()
                 .map(r -> toMine(r, lines.get(r.getOrderItemId()), infos.get(UuidUtil.toString(r.getProductId()))))
                 .toList();
@@ -82,13 +83,13 @@ public class ReviewMapper {
             return List.of();
         }
         Map<Long, OrderItem> lines = linesOf(list);
-        Map<String, ProductInfo> infos = store.productInfos(list.stream().map(ProductReview::getProductId).toList());
+        Map<String, ProductBrief> infos = briefs.briefs(list.stream().map(ProductReview::getProductId).toList());
         Map<Long, User> people = new HashMap<>();
         users.findAllById(list.stream().map(ProductReview::getUserId).collect(Collectors.toSet()))
                 .forEach(u -> people.put(u.getTelegramUserId(), u));
         return list.stream().map(r -> {
             OrderItem line = lines.get(r.getOrderItemId());
-            ProductInfo info = infos.get(UuidUtil.toString(r.getProductId()));
+            ProductBrief info = infos.get(UuidUtil.toString(r.getProductId()));
             User u = people.get(r.getUserId());
             return new AdminReview(r.getId(), r.getStatus().name(), r.getRating(), r.getText(), r.getAuthorName(),
                     UuidUtil.toString(r.getProductId()), titleOf(line, info), info == null ? null : info.slug(),

@@ -1,8 +1,11 @@
 package com.maxsolch.shop.review.app;
 
+import com.maxsolch.shop.customer.app.Customers;
+import com.maxsolch.shop.customer.domain.User;
 import com.maxsolch.shop.order.app.OrderSettings;
-import com.maxsolch.shop.review.infra.ReviewStore;
-
+import com.maxsolch.shop.promo.app.PromoExpiry;
+import com.maxsolch.shop.promo.domain.ExpiringPromo;
+import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.settings.app.SettingsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +18,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Predicate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -35,7 +40,9 @@ class BonusExpiryReminderJobTest {
     private static final Instant NOW = Instant.parse("2026-10-07T12:00:00Z");
 
     @Mock
-    ReviewStore store;
+    PromoExpiry promos;
+    @Mock
+    Customers customers;
     @Mock
     SettingsService settings;
     @Mock
@@ -48,7 +55,7 @@ class BonusExpiryReminderJobTest {
 
     @BeforeEach
     void setUp() {
-        job = new BonusExpiryReminderJob(store, settings, notifier, Clock.fixed(NOW, ZoneOffset.UTC));
+        job = new BonusExpiryReminderJob(promos, customers, settings, notifier, Clock.fixed(NOW, ZoneOffset.UTC));
         lenient().when(settings.get(eq(ReviewSettings.REVIEWS_ENABLED), any(Boolean.class))).thenAnswer(i -> enabled);
         lenient().when(settings.get(eq(OrderSettings.NOTIFY_CUSTOMER_STATUS), any(Boolean.class)))
                 .thenAnswer(i -> notify);
@@ -57,17 +64,23 @@ class BonusExpiryReminderJobTest {
         lenient().when(notifier.enabled()).thenReturn(true);
     }
 
-    private static ReviewStore.BonusExpiryCandidate code(long tgUser, String code) {
-        return new ReviewStore.BonusExpiryCandidate(new byte[16], tgUser, code, 5, 10_000, NOW.plus(Duration.ofDays(2)));
+    private static ExpiringPromo code(long tgUser, String code) {
+        return new ExpiringPromo(new byte[16], code, 5, 0, 10_000, tgUser, null, NOW.plus(Duration.ofDays(2)));
+    }
+
+    /** The owner module's scan: applies the job's own "reachable" filter to the codes it would return. */
+    private void scanReturns(ExpiringPromo... found) {
+        when(promos.expiring(eq(PromoCode.SOURCE_REVIEW_BONUS), eq(NOW), eq(NOW.plus(Duration.ofDays(3))),
+                eq(NOW.minus(Duration.ofDays(3))), eq(BonusExpiryReminderJob.BATCH), any()))
+                .thenAnswer(i -> List.of(found).stream().filter(i.<Predicate<ExpiringPromo>>getArgument(5)).toList());
     }
 
     @Test
     void looksAheadTheWindowSkipsFreshCodesAndSendsOncePerCode() {
-        ReviewStore.BonusExpiryCandidate due = code(1L, "THANKS-AAAAAA");
-        ReviewStore.BonusExpiryCandidate claimedElsewhere = code(2L, "THANKS-BBBBBB");
-        when(store.bonusExpiryCandidates(NOW, NOW.plus(Duration.ofDays(3)), NOW.minus(Duration.ofDays(3)),
-                BonusExpiryReminderJob.BATCH)).thenReturn(List.of(due, claimedElsewhere));
-        when(store.claimBonusExpiryReminder(due.promoId(), NOW)).thenReturn(true, false);
+        ExpiringPromo due = code(1L, "THANKS-AAAAAA");
+        ExpiringPromo claimedElsewhere = code(2L, "THANKS-BBBBBB");
+        scanReturns(due, claimedElsewhere);
+        when(promos.claimReminder(due.promoId(), NOW)).thenReturn(true, false);
         when(notifier.bonusExpiring(1L, "THANKS-AAAAAA", 5, 10_000L, due.expiresAt())).thenReturn(true);
 
         assertThat(job.sendDue()).isEqualTo(1);
@@ -75,10 +88,22 @@ class BonusExpiryReminderJobTest {
     }
 
     @Test
+    void ownersWhoBlockedTheBotAreNotReminded() {
+        ExpiringPromo blocked = code(7L, "THANKS-CCCCCC");
+        User blockedUser = new User();
+        blockedUser.setBotBlocked(true);
+        when(customers.findById(7L)).thenReturn(Optional.of(blockedUser));
+        scanReturns(blocked);
+
+        assertThat(job.sendDue()).isZero();
+        verify(promos, never()).claimReminder(any(), any());
+    }
+
+    @Test
     void failedDmIsNotCounted() {
-        ReviewStore.BonusExpiryCandidate due = code(1L, "THANKS-AAAAAA");
-        when(store.bonusExpiryCandidates(any(), any(), any(), anyInt())).thenReturn(List.of(due));
-        when(store.claimBonusExpiryReminder(any(), any())).thenReturn(true);
+        ExpiringPromo due = code(1L, "THANKS-AAAAAA");
+        scanReturns(due);
+        when(promos.claimReminder(any(), any())).thenReturn(true);
         when(notifier.bonusExpiring(any(), any(), anyInt(), anyLong(), any())).thenReturn(false);
 
         assertThat(job.sendDue()).isZero();
@@ -88,7 +113,7 @@ class BonusExpiryReminderJobTest {
     void zeroDaysTurnsItOff() {
         days = 0;
         assertThat(job.sendDue()).isZero();
-        verifyNoInteractions(store);
+        verifyNoInteractions(promos);
     }
 
     @Test
@@ -98,6 +123,6 @@ class BonusExpiryReminderJobTest {
         enabled = true;
         notify = false;
         assertThat(job.sendDue()).isZero();
-        verifyNoInteractions(store);
+        verifyNoInteractions(promos);
     }
 }

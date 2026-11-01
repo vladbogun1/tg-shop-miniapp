@@ -197,10 +197,7 @@ API (URL и JSON), схема БД и поведение не меняются; 
 |---|---|---|
 | M3 | `gift.infra.GiftQueries` | отчёт по `orders`, `order_items`, `order_gift_cases`: один запрос считает по таблицам, разбиение гнало бы каждый заказ через JVM |
 | M3 | `gift.infra.GiftRegistryStore` | реестр подарков: строки подарков с заказом и ценой товара, только чтение |
-| M3 | `gift.infra.GiftReminderStore` | скан истекающих промокодов кейса с заказом и `bot_blocked`; `claim` — один атомарный `update` кода (пишет в чужую таблицу) |
-| M3 | `review.infra.ReviewStore` | сканы и лента отзывов с заказом, товаром и промокодом; разовые «захваты» `update ... where flag is null` (атомарно, пишут в чужие таблицы) |
 | M3 | `staff.infra.IncidentQueries` | отчёт инцидентов админов: журнал, заказы и движения денег одним чтением |
-| M3 | `staff.infra.AdminTeamQueries` | экран команды: сводка активности по каждому админу из аудита, чата, рассылок, меток и push, только чтение |
 | A3 | `catalog.app.AdminCatalog`, `translation.app.AdminTranslations` | `force=1` при удалении характеристики и пустой `entityId` при удалении языка — только главному админу; правило зависит от параметра, аннотация метода его не видит |
 
 Остаток, который не закрыт портом: записи в чужие таблицы остаются в `ReviewStore` (`claimBonus`, `claimReminder`, `recomputeRating`, `claimBonusExpiryReminder`) и `GiftReminderStore` (`claim`) — это атомарные однократные захваты.
