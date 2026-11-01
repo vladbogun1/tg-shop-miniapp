@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
@@ -52,13 +53,13 @@ class AdminBootstrapTest {
 
     private AdminUser existing() {
         AdminUser a = new AdminUser();
-        a.setTelegramUserId(593289478L);
-        a.setUsername("admin");
-        a.setPasswordHash(encoder.encode("changed-in-the-panel"));
-        a.setTotpSecretEnc("v1:xxx");
-        a.setTotpEnabledAt(Instant.now());
-        a.setTokenVersion(9);
-        a.setActive(true);
+        ReflectionTestUtils.setField(a, "telegramUserId", 593289478L);
+        ReflectionTestUtils.setField(a, "username", "admin");
+        ReflectionTestUtils.setField(a, "passwordHash", encoder.encode("changed-in-the-panel"));
+        ReflectionTestUtils.setField(a, "totpSecretEnc", "v1:xxx");
+        ReflectionTestUtils.setField(a, "totpEnabledAt", Instant.now());
+        ReflectionTestUtils.setField(a, "tokenVersion", 9);
+        ReflectionTestUtils.setField(a, "active", true);
         return a;
     }
 

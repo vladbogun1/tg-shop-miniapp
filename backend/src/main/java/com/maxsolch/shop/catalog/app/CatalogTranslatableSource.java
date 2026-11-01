@@ -147,11 +147,11 @@ public class CatalogTranslatableSource implements TranslatableSource {
             return "STALE";
         }
         switch (field) {
-            case TranslationEntityType.TITLE -> p.setTitle(c.newSource());
-            case TranslationEntityType.DESCRIPTION -> p.setDescription(c.newSource());
-            case TranslationEntityType.SEO_TITLE -> p.setSeoTitle(c.newSource());
-            case TranslationEntityType.CONDITION_NOTE -> p.setConditionNote(c.newSource());
-            default -> p.setSeoDescription(c.newSource());
+            case TranslationEntityType.TITLE -> p.retitle(c.newSource());
+            case TranslationEntityType.DESCRIPTION -> p.redescribe(c.newSource());
+            case TranslationEntityType.SEO_TITLE -> p.retitleSeo(c.newSource());
+            case TranslationEntityType.CONDITION_NOTE -> p.noteCondition(c.newSource());
+            default -> p.redescribeSeo(c.newSource());
         }
         return "OK";
     }

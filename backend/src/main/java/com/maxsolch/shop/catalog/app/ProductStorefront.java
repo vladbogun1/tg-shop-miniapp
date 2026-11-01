@@ -35,26 +35,26 @@ class ProductStorefront {
                 if (!normalised.equals(p.getSlug()) && slugService.productSlugTaken(normalised, p.getId())) {
                     throw new DomainException.BadRequest(CatalogError.SLUG_TAKEN_BY_PRODUCT, normalised);
                 }
-                p.setSlug(normalised);
+                p.changeSlug(normalised);
             } else {
-                p.setSlug(slugService.forProduct(null, p.getTitle(), p.getId()));
+                p.changeSlug(slugService.forProduct(null, p.getTitle(), p.getId()));
             }
         }
         if (req.compareAtMinor() != null) {
-            p.setCompareAtMinor(req.compareAtMinor() > 0 ? req.compareAtMinor() : null);
+            p.markDownFrom(req.compareAtMinor() > 0 ? req.compareAtMinor() : null);
         }
         if (req.seoTitle() != null) {
-            p.setSeoTitle(trimToNull(req.seoTitle()));
+            p.retitleSeo(trimToNull(req.seoTitle()));
         }
         if (req.seoDescription() != null) {
-            p.setSeoDescription(trimToNull(req.seoDescription()));
+            p.redescribeSeo(trimToNull(req.seoDescription()));
         }
         if (req.sku() != null) {
             String sku = trimToNull(req.sku());
             if (sku != null && !sku.equalsIgnoreCase(p.getSku()) && productRepository.skuTaken(sku, p.getId())) {
                 throw new DomainException.BadRequest(CatalogError.SKU_TAKEN, sku);
             }
-            p.setSku(sku);
+            p.changeSku(sku);
         }
     }
 }

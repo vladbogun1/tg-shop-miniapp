@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderStates;
@@ -136,7 +137,7 @@ class OrderQueryServiceGoldenTest {
                 String p = UuidUtil.toString(pid);
                 if (thumbs.containsKey(p)) {
                     Product product = new Product();
-                    product.setId(pid);
+                    ReflectionTestUtils.setField(product, "id", pid);
                     ProductImage img = new ProductImage();
                     img.setProduct(product);
                     img.setUrl(thumbs.get(p));

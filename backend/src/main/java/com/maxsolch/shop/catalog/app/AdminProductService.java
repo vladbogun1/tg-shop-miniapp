@@ -152,9 +152,9 @@ public class AdminProductService {
         CatalogSnapshot catalog = catalogDirectory.load();
         List<SpecsValidator.Issue> issues = applyCatalog(p, req, catalog);
         // Unfinished until the card is done: hidden, DRAFT — whatever the form asked for.
-        p.setActive(false);
-        p.setCardStatus(CardStatus.DRAFT);
-        p.setUnfinished(true);
+        p.showInShop(false);
+        p.changeCardStatus(CardStatus.DRAFT);
+        p.markUnfinished(true);
         ProductVariantsEditor.apply(p, req, null);
         Product created = productRepository.save(p);
         syncLots(created);
@@ -235,7 +235,7 @@ public class AdminProductService {
             ProductPublishing.checkPublishable(p, force);
         }
         boolean wasActive = p.isActive();
-        p.setActive(active);
+        p.showInShop(active);
         if (wasActive && !active) {
             closeQueues(p);
         }
@@ -251,7 +251,7 @@ public class AdminProductService {
     @Transactional
     public AdminProductDto setArchived(String id, boolean archived) {
         Product p = load(id);
-        p.setArchived(archived);
+        p.archive(archived);
         if (archived) {
             closeQueues(p);
         }
@@ -281,22 +281,22 @@ public class AdminProductService {
     private int applyScalars(Product p, ProductUpsertRequest req) {
         int drop = 0;
         if (req.title() != null) {
-            p.setTitle(req.title().trim());
+            p.retitle(req.title().trim());
         }
-        p.setDescription(req.description());
-        p.setPriceMinor(req.priceMinor());
+        p.redescribe(req.description());
+        p.reprice(req.priceMinor());
         if (req.currency() != null && !req.currency().isBlank()) {
-            p.setCurrency(req.currency().trim());
+            p.changeCurrency(req.currency().trim());
         }
         // base product stock: kept in sync with rolled-up variant stock if variants present.
         // null = the admin did not touch the field, so units sold meanwhile are not overwritten.
         if (req.stock() != null) {
             ProductVariantsEditor.checkStock(p.getStock(), req.stock(), req.expectedStock(), p.getTitle());
             drop = Math.max(0, p.getStock() - req.stock());
-            p.setStock(req.stock());
+            p.changeStock(req.stock());
         }
         if (req.active() != null) {
-            p.setActive(req.active());
+            p.showInShop(req.active());
         }
         storefront.apply(p, req);
         return drop;
@@ -315,7 +315,7 @@ public class AdminProductService {
             String cid = req.categoryId().trim();
             if (cid.isEmpty()) {
                 categoryChanged = p.getCategoryId() != null;
-                p.setCategoryId(null);
+                p.categorize(null);
             } else {
                 CatalogSnapshot.Cat c = catalog.category(normalizeId(cid));
                 if (c == null) {
@@ -326,40 +326,40 @@ public class AdminProductService {
                 }
                 byte[] next = UuidUtil.toBytes(c.id());
                 categoryChanged = !Arrays.equals(next, p.getCategoryId());
-                p.setCategoryId(next);
+                p.categorize(next);
             }
         }
         if (req.brandId() != null) {
             String bid = req.brandId().trim();
             if (bid.isEmpty()) {
-                p.setBrandId(null);
+                p.assignBrand(null);
             } else {
                 CatalogSnapshot.BrandInfo b = catalog.brand(normalizeId(bid));
                 if (b == null) {
                     throw new DomainException.BadRequest(CatalogError.BRAND_NOT_FOUND_FOR_PRODUCT);
                 }
-                p.setBrandId(UuidUtil.toBytes(b.id()));
+                p.assignBrand(UuidUtil.toBytes(b.id()));
             }
         } else if (req.brandName() != null) {
             Brand b = brandService.findOrCreate(req.brandName(), null);
-            p.setBrandId(b == null ? null : b.getId());
+            p.assignBrand(b == null ? null : b.getId());
         }
         if (req.condition() != null) {
             ProductCondition c = ProductCondition.parse(req.condition());
             if (c == null) {
                 throw new DomainException.BadRequest(CatalogError.INVALID_CONDITION);
             }
-            p.setCondition(c);
+            p.changeCondition(c);
         }
         if (req.conditionNote() != null) {
-            p.setConditionNote(trimToNull(req.conditionNote()));
+            p.noteCondition(trimToNull(req.conditionNote()));
         }
         List<SpecsValidator.Issue> issues = List.of();
         String categoryId = ProductCatalogFields.categoryId(p);
         if (req.specs() != null || categoryChanged) {
             Map<String, Object> raw = req.specs() != null ? req.specs() : SpecsJson.readMap(p.getSpecsJson());
             SpecsValidator.Result r = SpecsValidator.validate(catalog.attributesFor(categoryId), raw);
-            p.setSpecsJson(SpecsJson.write(r.specs()));
+            p.changeSpecs(SpecsJson.write(r.specs()));
             issues = r.issues();
         }
         // cardStatus of the form is ignored: a manual save never changes the card status — only the

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.cart.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.cart.domain.CartError;
 import com.maxsolch.shop.cart.domain.CartRules;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -110,15 +111,15 @@ class CartServiceTest {
 
     private Product product(int stock) {
         Product p = new Product();
-        p.setId(UuidUtil.randomBytes());
-        p.setTitle("Товар " + catalog.size());
-        p.setSlug("tovar-" + catalog.size());
-        p.setPriceMinor(10_000);
-        p.setStock(stock);
-        p.setActive(true);
-        p.setArchived(false);
-        p.setVariants(new ArrayList<>());
-        p.setImages(new ArrayList<>());
+        ReflectionTestUtils.setField(p, "id", UuidUtil.randomBytes());
+        p.retitle("Товар " + catalog.size());
+        p.changeSlug("tovar-" + catalog.size());
+        p.reprice(10_000);
+        p.changeStock(stock);
+        p.showInShop(true);
+        p.archive(false);
+        ReflectionTestUtils.setField(p, "variants", new ArrayList<>());
+        ReflectionTestUtils.setField(p, "images", new ArrayList<>());
         catalog.put(UuidUtil.toString(p.getId()), p);
         return p;
     }
@@ -256,7 +257,7 @@ class CartServiceTest {
         Product gotVariants = product(5);
         service.replace(USER, List.of(in(ok, null, 1), in(hidden, null, 1), in(soldOut, null, 1),
                 in(gotVariants, null, 1)), "ru");
-        hidden.setActive(false);
+        hidden.showInShop(false);
         variant(gotVariants, 5);
 
         CartDto dto = service.get(USER, "ru");
@@ -283,7 +284,7 @@ class CartServiceTest {
         a.getImages().add(second);
         a.getImages().add(first);
         service.replace(USER, List.of(in(a, v, 1)), "ru");
-        a.setPriceMinor(12_345);
+        a.reprice(12_345);
 
         CartLineDto line = service.get(USER, "ru").lines().get(0);
 

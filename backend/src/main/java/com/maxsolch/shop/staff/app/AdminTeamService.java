@@ -161,7 +161,7 @@ public class AdminTeamService {
         if (nameChange) {
             details.append("имя: «").append(fresh.getName() == null ? "" : fresh.getName()).append("» → «")
                     .append(newName).append("»");
-            fresh.setName(newName);
+            fresh.rename(newName);
         }
         if (roleChange) {
             if (!details.isEmpty()) {
@@ -169,7 +169,7 @@ public class AdminTeamService {
             }
             details.append("роль: ").append(AdminInviteService.roleLabel(fresh.getRole())).append(" → ")
                     .append(AdminInviteService.roleLabel(newRole));
-            fresh.setRole(newRole);
+            fresh.changeRole(newRole);
         }
         repo.save(fresh);
         tokenValidator.invalidate(targetId);
@@ -189,7 +189,7 @@ public class AdminTeamService {
         }
         requireOwnCode(callerId, code, client, "право «Финансы»");
         AdminUser fresh = find(targetId);
-        fresh.setFinance(finance);
+        fresh.allowFinance(finance);
         repo.save(fresh);
         audit.recordFor(callerId, "ADMIN_FINANCE", "ADMIN", String.valueOf(targetId),
                 who(fresh) + ": «Финансы» " + (finance ? "включены" : "выключены"));
@@ -202,8 +202,7 @@ public class AdminTeamService {
         requireOwnCode(callerId, code, client, "сброс 2FA админа");
         AdminUser fresh = find(targetId);
         AdminTotp.clear(fresh);
-        fresh.setFailedAttempts(0);
-        fresh.setLockedUntil(null);
+        fresh.resetLockout();
         repo.save(fresh);
         int devices = sessions.revokeEverything(targetId);
         audit.recordFor(callerId, "ADMIN_2FA_RESET_BY", "ADMIN", String.valueOf(targetId),
@@ -226,8 +225,7 @@ public class AdminTeamService {
         }
         requireOwnCode(callerId, code, client, "сброс пароля админа");
         AdminUser fresh = find(targetId);
-        fresh.setPasswordHash(null);
-        fresh.setPasswordChangedAt(null);
+        fresh.clearPassword();
         repo.save(fresh);
         int devices = sessions.revokeEverything(targetId);
         AdminInvite.Kind kind = fresh.getUsername() == null ? AdminInvite.Kind.CREDENTIALS : AdminInvite.Kind.PASSWORD_RESET;
@@ -256,7 +254,7 @@ public class AdminTeamService {
         }
         requireOwnCode(callerId, code, client, "блокировка админа");
         AdminUser fresh = find(targetId);
-        fresh.setActive(false);
+        fresh.block();
         repo.save(fresh);
         int push = facts.deletePushSubscriptions(targetId); // before revokeEverything, which also drops them: keeps the count for the journal
         int devices = sessions.revokeEverything(targetId);
@@ -276,9 +274,7 @@ public class AdminTeamService {
         }
         requireOwnCode(callerId, code, client, "разблокировка админа");
         AdminUser fresh = find(targetId);
-        fresh.setActive(true);
-        fresh.setFailedAttempts(0);
-        fresh.setLockedUntil(null);
+        fresh.unblock();
         repo.save(fresh);
         tokenValidator.invalidate(targetId);
         audit.recordFor(callerId, "ADMIN_UNBLOCKED", "ADMIN", String.valueOf(targetId),

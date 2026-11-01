@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.catalog.app.CatalogDtos.BrandRefDto;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -160,12 +161,12 @@ class PublicCatalogServiceSitemapTest {
 
     private static Product product(String slug, Instant created, Instant updated) {
         Product p = new Product();
-        p.setId(UuidUtil.randomBytes());
-        p.setTitle(slug);
-        p.setSlug(slug);
-        p.setActive(true);
-        p.setCreatedAt(created);
-        p.setUpdatedAt(updated);
+        ReflectionTestUtils.setField(p, "id", UuidUtil.randomBytes());
+        p.retitle(slug);
+        p.changeSlug(slug);
+        p.showInShop(true);
+        ReflectionTestUtils.setField(p, "createdAt", created);
+        ReflectionTestUtils.setField(p, "updatedAt", updated);
         return p;
     }
 

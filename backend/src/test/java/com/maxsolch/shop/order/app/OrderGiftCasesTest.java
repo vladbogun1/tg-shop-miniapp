@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -65,12 +66,12 @@ class OrderGiftCasesTest extends OrderScenarioTestBase {
         var tier = com.maxsolch.shop.gift.domain.GiftCaseTier.Tier.SILVER;
         String prizeUuid = UUID.randomUUID().toString();
         Product prize = new Product();
-        prize.setId(UuidUtil.toBytes(prizeUuid));
-        prize.setTitle("Prize");
-        prize.setPriceMinor(3_000_00);
-        prize.setStock(5);
-        prize.setActive(true);
-        prize.setVariants(new ArrayList<>());
+        ReflectionTestUtils.setField(prize, "id", UuidUtil.toBytes(prizeUuid));
+        prize.retitle("Prize");
+        prize.reprice(3_000_00);
+        prize.changeStock(5);
+        prize.showInShop(true);
+        ReflectionTestUtils.setField(prize, "variants", new ArrayList<>());
         when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(prize));
         when(gift.tier(tier)).thenReturn(Optional.of(new com.maxsolch.shop.gift.app.GiftService.TierConfig(tier, 1_500_00,
                 0, 0, 0, List.of(new com.maxsolch.shop.gift.app.GiftService.CaseEntry(1, tier,

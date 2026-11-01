@@ -1,5 +1,6 @@
 package com.maxsolch.shop.preorder.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.preorder.infra.PreorderSubscriptionRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.preorder.infra.PreorderProperties;
@@ -53,8 +54,8 @@ class PreorderDigestJobTest {
             String[] titles = {"Lamzu <Maya>", "Razer", "Logitech", "Fourth"};
             for (int i = 0; i < 4; i++) {
                 Product p = new Product();
-                p.setId(ids[i]);
-                p.setTitle(titles[i]);
+                ReflectionTestUtils.setField(p, "id", ids[i]);
+                p.retitle(titles[i]);
                 m.put(UuidUtil.toString(ids[i]), p);
             }
             return m;

@@ -85,14 +85,14 @@ class ReturnCancellationTest extends ReturnsTestBase {
                 List.of(new ManualRefund(
                         com.maxsolch.shop.order.domain.OrderMoneyMovement.Channel.CARD_TRANSFER, 10_000, null)),
                 0, 0), "owner");
-        p.setStock(0); // sold to someone else meanwhile
+        p.changeStock(0); // sold to someone else meanwhile
 
         assertThatThrownBy(() -> cancellation.cancel(o.getId(), recs.get(0).getId(),
                 ReturnCancellation.CancelMoney.DEBT, "передумал", "owner"))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("уже продали");
 
-        p.setStock(1);
+        p.changeStock(1);
         cancellation.cancel(o.getId(), recs.get(0).getId(), ReturnCancellation.CancelMoney.DEBT,
                 "передумал", "owner");
         assertThat(recs.get(0).getDebtMinor()).isEqualTo(10_000);

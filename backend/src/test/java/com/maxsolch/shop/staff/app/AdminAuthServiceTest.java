@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.staff.domain.Base32;
 import com.maxsolch.shop.staff.domain.LoginMethod;
@@ -67,12 +68,12 @@ class AdminAuthServiceTest {
         clock = new MutableClock(Instant.parse("2026-10-05T09:12:00Z"));
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(4);
         admin = new AdminUser();
-        admin.setTelegramUserId(ID);
-        admin.setUsername("boss");
-        admin.setPasswordHash(encoder.encode("right-password"));
-        admin.setRole(AdminRole.SUPER_ADMIN);
-        admin.setActive(true);
-        admin.setTokenVersion(4);
+        ReflectionTestUtils.setField(admin, "telegramUserId", ID);
+        ReflectionTestUtils.setField(admin, "username", "boss");
+        ReflectionTestUtils.setField(admin, "passwordHash", encoder.encode("right-password"));
+        ReflectionTestUtils.setField(admin, "role", AdminRole.SUPER_ADMIN);
+        ReflectionTestUtils.setField(admin, "active", true);
+        ReflectionTestUtils.setField(admin, "tokenVersion", 4);
 
         repo = mock(AdminUserRepository.class);
         lenient().when(repo.findByUsername("boss")).thenAnswer(i -> Optional.of(admin));
@@ -83,23 +84,23 @@ class AdminAuthServiceTest {
         lenient().when(repo.acceptTotpStep(eq(ID), anyLong())).thenAnswer(i -> {
             long step = i.getArgument(1);
             if (admin.getTotpLastStep() == null || admin.getTotpLastStep() < step) {
-                admin.setTotpLastStep(step);
+                ReflectionTestUtils.setField(admin, "totpLastStep", step);
                 return 1;
             }
             return 0;
         });
         lenient().when(repo.incrementFailures(ID)).thenAnswer(i -> {
-            admin.setFailedAttempts(admin.getFailedAttempts() + 1);
+            ReflectionTestUtils.setField(admin, "failedAttempts", admin.getFailedAttempts() + 1);
             return 1;
         });
         lenient().when(repo.failuresOf(ID)).thenAnswer(i -> Optional.of(admin.getFailedAttempts()));
         lenient().when(repo.lockUntil(eq(ID), any())).thenAnswer(i -> {
-            admin.setLockedUntil(i.getArgument(1));
-            admin.setFailedAttempts(0);
+            ReflectionTestUtils.setField(admin, "lockedUntil", i.getArgument(1));
+            ReflectionTestUtils.setField(admin, "failedAttempts", 0);
             return 1;
         });
         lenient().when(repo.resetFailures(ID)).thenAnswer(i -> {
-            admin.setFailedAttempts(0);
+            ReflectionTestUtils.setField(admin, "failedAttempts", 0);
             return 1;
         });
 
@@ -135,8 +136,8 @@ class AdminAuthServiceTest {
 
     private void enable2fa() {
         secret = Totp.newSecret();
-        admin.setTotpSecretEnc(cipher.encrypt(secret, ID));
-        admin.setTotpEnabledAt(clock.instant());
+        ReflectionTestUtils.setField(admin, "totpSecretEnc", cipher.encrypt(secret, ID));
+        ReflectionTestUtils.setField(admin, "totpEnabledAt", clock.instant());
     }
 
     private String code() {
@@ -293,7 +294,7 @@ class AdminAuthServiceTest {
     void logoutEverywhere_killsAHalfFinishedSignIn() {
         enable2fa();
         Outcome o = service.passwordLogin("boss", "right-password", null, CLIENT);
-        admin.setTokenVersion(5); // «Выйти на всех устройствах» / «Заблокировать» in Telegram
+        ReflectionTestUtils.setField(admin, "tokenVersion", 5); // «Выйти на всех устройствах» / «Заблокировать» in Telegram
         assertThatThrownBy(() -> service.verify(o.preAuthToken(), code(), false, CLIENT))
                 .isInstanceOf(DomainException.Unauthorized.class).hasMessageContaining("войдите заново");
     }

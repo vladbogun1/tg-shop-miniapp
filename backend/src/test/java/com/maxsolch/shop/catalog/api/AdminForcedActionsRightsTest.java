@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.api;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import com.maxsolch.shop.platform.error.DomainException;
@@ -46,7 +47,7 @@ class AdminForcedActionsRightsTest {
     static AdminAccess access(AdminRole role) {
         AdminUserRepository repo = org.mockito.Mockito.mock(AdminUserRepository.class);
         AdminUser u = new AdminUser();
-        u.setRole(role);
+        ReflectionTestUtils.setField(u, "role", role);
         org.mockito.Mockito.when(repo.findByTelegramUserIdAndActiveTrue(ADMIN_ID)).thenReturn(Optional.of(u));
         return new AdminAccess(new com.maxsolch.shop.staff.app.StaffAdminDirectory(repo, org.mockito.Mockito.mock(com.maxsolch.shop.staff.app.AdminTokenRevocations.class)));
     }

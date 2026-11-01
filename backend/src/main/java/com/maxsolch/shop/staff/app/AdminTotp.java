@@ -49,8 +49,7 @@ public class AdminTotp {
     /** Puts a fresh pending secret on the entity (the caller saves it) and returns it for the QR. */
     public NewSecret createPending(AdminUser admin) {
         byte[] secret = Totp.newSecret();
-        admin.setTotpPendingEnc(cipher.encrypt(secret, admin.getTelegramUserId()));
-        admin.setTotpPendingAt(clock.instant());
+        admin.startTotpSetup(cipher.encrypt(secret, admin.getTelegramUserId()), clock.instant());
         String base32 = Base32.encode(secret);
         return new NewSecret(base32, Totp.otpauthUri(issuer, accountLabel(admin), base32));
     }
@@ -128,20 +127,12 @@ public class AdminTotp {
 
     /** The pending secret becomes the active one; {@code step} (its confirming code) counts as used. */
     public void activatePending(AdminUser admin, long step) {
-        admin.setTotpSecretEnc(admin.getTotpPendingEnc());
-        admin.setTotpEnabledAt(clock.instant());
-        admin.setTotpPendingEnc(null);
-        admin.setTotpPendingAt(null);
-        admin.setTotpLastStep(step);
+        admin.enableTotp(admin.getTotpPendingEnc(), clock.instant(), step);
     }
 
     /** Wipes 2FA (emergency reset): the next sign-in goes through setup again. */
     public static void clear(AdminUser admin) {
-        admin.setTotpSecretEnc(null);
-        admin.setTotpEnabledAt(null);
-        admin.setTotpPendingEnc(null);
-        admin.setTotpPendingAt(null);
-        admin.setTotpLastStep(null);
+        admin.resetTotp();
     }
 
     public String issuer() {

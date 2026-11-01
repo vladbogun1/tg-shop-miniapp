@@ -192,7 +192,7 @@ public class CardsImporter {
         if (Boolean.TRUE.equals(item.markReady())) {
             ProductPublishing.setStatus(p, CardStatus.READY, adminId, clock.instant());
         } else if (ch.content && !manual) {
-            p.setCardStatus(CardStatus.AI_FILLED);
+            p.changeCardStatus(CardStatus.AI_FILLED);
         }
         productRepository.save(p);
         productRepository.flush();
@@ -218,7 +218,7 @@ public class CardsImporter {
             issues.add(new CardIssue(pid, "category", "CATEGORY_NOT_LEAF",
                     "«" + catSlug + "» — раздел с подкатегориями"));
         } else {
-            p.setCategoryId(UuidUtil.toBytes(c.id()));
+            p.categorize(UuidUtil.toBytes(c.id()));
             ch.categoryAfter = c.slug();
         }
     }
@@ -232,7 +232,7 @@ public class CardsImporter {
         boolean[] created = {false};
         Brand b = brandService.findOrCreate(brandName, created);
         if (b != null) {
-            p.setBrandId(b.getId());
+            p.assignBrand(b.getId());
             ch.brandNameAfter = b.getName();
             if (created[0]) {
                 run.createdBrands.add(b.getName());
@@ -246,11 +246,11 @@ public class CardsImporter {
             if (c == null) {
                 issues.add(new CardIssue(pid, "condition", "UNKNOWN_CONDITION", item.condition()));
             } else {
-                p.setCondition(c);
+                p.changeCondition(c);
             }
         }
         if (item.conditionNote() != null) {
-            p.setConditionNote(CardMeta.cut(trimToNull(item.conditionNote()), 255));
+            p.noteCondition(CardMeta.cut(trimToNull(item.conditionNote()), 255));
         }
     }
 
@@ -265,7 +265,7 @@ public class CardsImporter {
         } else if (!title.equalsIgnoreCase(p.getTitle()) && productRepository.existsByTitle(title)) {
             issues.add(new CardIssue(pid, "title", "TITLE_TAKEN", "такое название уже есть"));
         } else {
-            p.setTitle(title);
+            p.retitle(title);
             ch.content = true;
         }
     }
@@ -280,7 +280,7 @@ public class CardsImporter {
         if (description.length() > 20_000) {
             issues.add(new CardIssue(pid, "description", "TOO_LONG", "описание длиннее 20 000 символов"));
         } else {
-            p.setDescription(description);
+            p.redescribe(description);
             ch.content = true;
         }
     }
@@ -300,7 +300,7 @@ public class CardsImporter {
         merged.putAll(r.specs());
         // Keep only what the (current) schema knows, in schema order.
         SpecsValidator.Result clean = SpecsValidator.validate(s.attributesFor(cid), merged);
-        p.setSpecsJson(SpecsJson.write(clean.specs()));
+        p.changeSpecs(SpecsJson.write(clean.specs()));
         ch.content = true;
     }
 
@@ -315,9 +315,9 @@ public class CardsImporter {
         Map<String, Object> meta = manual ? SpecsJson.readMap(p.getCardMetaJson()) : cardMeta.meta(p, item);
         // An AI import replaces the snapshot (no history kept); the admin's edits are merged into it.
         meta.put("last", manual ? cardMeta.mergeLast(meta.get("last"), changed) : cardMeta.lastOf(changed, item));
-        p.setCardMetaJson(SpecsJson.write(meta));
+        p.recordCardMeta(SpecsJson.write(meta));
         if (item.overall() != null) {
-            p.setCardConfidence(Math.max(0, Math.min(100, item.overall())));
+            p.recordCardConfidence(Math.max(0, Math.min(100, item.overall())));
         }
         productRepository.save(p);
     }
@@ -334,7 +334,7 @@ public class CardsImporter {
             } else if (CardsService.status(p) == CardStatus.DRAFT) {
                 reason = CatalogError.CARD_NOT_READY.code();
             } else {
-                p.setActive(true);
+                p.showInShop(true);
                 ProductPublishing.syncUnfinished(p);
                 productRepository.save(p);
                 published = true;

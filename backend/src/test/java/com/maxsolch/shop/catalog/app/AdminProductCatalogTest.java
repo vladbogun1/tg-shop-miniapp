@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.catalog.domain.CardStatus;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -43,11 +44,11 @@ class AdminProductCatalogTest {
         when(directory.snapshot()).thenReturn(CatalogFixtures.snapshot());
         when(products.save(any())).thenAnswer(i -> i.getArgument(0));
         product = new Product();
-        product.setId(UuidUtil.randomBytes());
-        product.setTitle("Lamzu Maya");
-        product.setSlug("lamzu-maya");
-        product.setPriceMinor(3000_00);
-        product.setActive(false);
+        ReflectionTestUtils.setField(product, "id", UuidUtil.randomBytes());
+        product.retitle("Lamzu Maya");
+        product.changeSlug("lamzu-maya");
+        product.reprice(3000_00);
+        product.showInShop(false);
         id = UuidUtil.toString(product.getId());
         when(products.findByIdForUpdate(any())).thenReturn(Optional.of(product));
         when(products.findByIdWithDetails(any())).thenReturn(Optional.of(product));
@@ -55,8 +56,8 @@ class AdminProductCatalogTest {
 
     @Test
     void aManualSaveNeverChangesTheCardStatus() {
-        product.setCardStatus(CardStatus.READY);
-        product.setCategoryId(UuidUtil.toBytes(CatalogFixtures.MICE));
+        product.changeCardStatus(CardStatus.READY);
+        product.categorize(UuidUtil.toBytes(CatalogFixtures.MICE));
         ProductUpsertRequest stale = new ProductUpsertRequest("Lamzu Maya", "desc", 3000_00, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, Map.of("weight_g", 50),
                 "AI_FILLED");
@@ -67,7 +68,7 @@ class AdminProductCatalogTest {
 
     @Test
     void archivingClearsUnfinished() {
-        product.setUnfinished(true);
+        product.markUnfinished(true);
         assertThat(service.setArchived(id, true).unfinished()).isFalse();
     }
 
@@ -104,11 +105,11 @@ class AdminProductCatalogTest {
 
     @Test
     void publishingADraftNeedsForce() {
-        product.setCategoryId(UuidUtil.toBytes(CatalogFixtures.MICE));
+        product.categorize(UuidUtil.toBytes(CatalogFixtures.MICE));
         assertThatThrownBy(() -> service.setActive(id, true, false))
                 .isInstanceOf(DomainException.Conflict.class)
                 .satisfies(e -> assertThat(((DomainException.Conflict) e).getCode()).isEqualTo(CatalogError.CARD_NOT_READY.code()));
-        product.setUnfinished(true);
+        product.markUnfinished(true);
         AdminProductDto published = service.setActive(id, true, true);
         assertThat(published.active()).isTrue();
         assertThat(published.unfinished()).isFalse();
@@ -118,8 +119,8 @@ class AdminProductCatalogTest {
 
     @Test
     void publishingNeedsPriceAndCategoryEvenWithForce() {
-        product.setCardStatus(CardStatus.READY);
-        product.setPriceMinor(0);
+        product.changeCardStatus(CardStatus.READY);
+        product.reprice(0);
         assertThatThrownBy(() -> service.setActive(id, true, true))
                 .isInstanceOf(DomainException.Conflict.class)
                 .satisfies(e -> {
@@ -131,9 +132,9 @@ class AdminProductCatalogTest {
 
     @Test
     void theFormCanPublishAReadyCardAndChangingTheCategoryRecheckesSpecs() {
-        product.setCardStatus(CardStatus.READY);
-        product.setCategoryId(UuidUtil.toBytes(CatalogFixtures.MICE));
-        product.setSpecsJson("{\"weight_g\":49,\"color\":[\"black\"]}");
+        product.changeCardStatus(CardStatus.READY);
+        product.categorize(UuidUtil.toBytes(CatalogFixtures.MICE));
+        product.changeSpecs("{\"weight_g\":49,\"color\":[\"black\"]}");
         AdminProductDto saved = service.update(id, req(3000_00, null, true, CatalogFixtures.MAGNETIC, null, null, null));
         assertThat(saved.active()).isTrue();
         assertThat(saved.cardStatus()).isEqualTo("READY"); // manual edits never change the status

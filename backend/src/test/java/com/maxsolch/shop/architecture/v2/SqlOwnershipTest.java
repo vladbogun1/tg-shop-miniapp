@@ -52,4 +52,16 @@ class SqlOwnershipTest {
 
         assertThat(SqlOwnership.unownedTables(dir.resolve("db"))).containsExactly("brand_new_table");
     }
+
+    @Test
+    void everyTableOfTheRealMigrationsHasAnOwner() {
+        assertThat(SqlOwnership.unownedTables(Path.of("src/main/resources/db/migration")))
+                .as("tables created by the Flyway migrations with no owner in SqlOwnership.TABLE_OWNERS").isEmpty();
+    }
+
+    @Test
+    void everyTableInTheOwnerMapIsCreatedByTheMigrations() {
+        assertThat(SqlOwnership.ownedButNotCreated(Path.of("src/main/resources/db/migration")))
+                .as("tables in SqlOwnership.TABLE_OWNERS that no migration creates (a typo makes M3 miss them)").isEmpty();
+    }
 }

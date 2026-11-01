@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.catalog.domain.CatalogSnapshot;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -97,12 +98,12 @@ class CatalogServiceCacheTest {
         clearInvocations(productRepository, translationRepository);
 
         Product p = new Product();
-        p.setId(UuidUtil.toBytes(ID));
-        p.setTitle("Ковер");
-        p.setSlug("kover");
-        p.setActive(true);
-        p.setCategoryId(UuidUtil.toBytes("22222222-2222-2222-2222-222222222222"));
-        p.setSpecsJson("{\"weight_g\":51}");
+        ReflectionTestUtils.setField(p, "id", UuidUtil.toBytes(ID));
+        p.retitle("Ковер");
+        p.changeSlug("kover");
+        p.showInShop(true);
+        p.categorize(UuidUtil.toBytes("22222222-2222-2222-2222-222222222222"));
+        p.changeSpecs("{\"weight_g\":51}");
         when(productRepository.findAllActive()).thenReturn(List.of(p));
         when(productRepository.findByIdWithDetails(any())).thenReturn(Optional.of(p));
 

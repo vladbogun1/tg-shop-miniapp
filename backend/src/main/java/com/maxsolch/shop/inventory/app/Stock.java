@@ -89,7 +89,7 @@ public class Stock {
             if (product.getStock() < qty) {
                 throw new DomainException.BadRequest(InventoryError.OUT_OF_STOCK, product.getTitle(), Math.max(0, product.getStock()));
             }
-            product.setStock(product.getStock() - qty);
+            product.changeStock(product.getStock() - qty);
         }
         lots.take(product.getId(), variant == null ? null : variant.getId(), qty, sale);
         // Admin paths (a line added to an order, a cancelled return) may take units that were held for
@@ -107,7 +107,7 @@ public class Stock {
             variant.setStock(variant.getStock() + qty);
             product.syncStockFromVariants();
         } else {
-            product.setStock(product.getStock() + qty);
+            product.changeStock(product.getStock() + qty);
         }
         if (qty > 0) {
             lots.give(product.getId(), variant == null ? null : variant.getId(), qty, sale);
@@ -123,7 +123,7 @@ public class Stock {
     public void releaseById(Product product, byte[] variantId, int qty, LotAllocations sale) {
         ProductVariant variant = variantId == null ? null : variantOf(product, variantId);
         if (variantId != null && variant == null) {
-            product.setStock(product.getStock() + qty);
+            product.changeStock(product.getStock() + qty);
         } else {
             release(product, variant, qty, sale);
         }
@@ -133,7 +133,7 @@ public class Stock {
     public void reserveById(Product product, byte[] variantId, int qty, LotAllocations sale) {
         ProductVariant variant = variantId == null ? null : variantOf(product, variantId);
         if (variantId != null && variant == null) {
-            product.setStock(product.getStock() - qty);
+            product.changeStock(product.getStock() - qty);
         } else {
             reserve(product, variant, qty, sale);
         }
@@ -148,7 +148,7 @@ public class Stock {
             variant.setStock(variant.getStock() + units);
             product.syncStockFromVariants();
         } else {
-            product.setStock(product.getStock() + units);
+            product.changeStock(product.getStock() + units);
         }
         if (units > 0) {
             lots.receive(product.getId(), variant == null ? null : variant.getId(), batchItemId, units);

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.support.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.platform.web.TopicMessagePosted;
 import com.maxsolch.shop.support.domain.SupportEvents;
 
@@ -211,9 +212,9 @@ class SupportServiceTest {
     @Test
     void questionAboutTheSameProduct_goesIntoTheOpenThread_evenAtTheLimit() {
         Product p = new Product();
-        p.setId(UuidUtil.randomBytes());
-        p.setTitle("Cooler");
-        p.setSlug("cooler");
+        ReflectionTestUtils.setField(p, "id", UuidUtil.randomBytes());
+        p.retitle("Cooler");
+        p.changeSlug("cooler");
         when(productRepository.findById(any())).thenReturn(Optional.of(p));
         SupportThread existing = thread(USER, SupportStatus.OPEN);
         existing.setProductId(p.getId());
@@ -231,9 +232,9 @@ class SupportServiceTest {
     @Test
     void create_snapshotsTheProduct_andNotifiesAdmins() {
         Product p = new Product();
-        p.setId(UuidUtil.randomBytes());
-        p.setTitle("Thermal paste");
-        p.setSlug("thermal-paste");
+        ReflectionTestUtils.setField(p, "id", UuidUtil.randomBytes());
+        p.retitle("Thermal paste");
+        p.changeSlug("thermal-paste");
         when(productRepository.findById(any())).thenReturn(Optional.of(p));
         when(threads.findOpenForProduct(eq(USER), any(byte[].class))).thenReturn(Optional.empty());
 
@@ -257,8 +258,8 @@ class SupportServiceTest {
     @Test
     void archivedProduct_isNotFound() {
         Product p = new Product();
-        p.setId(UuidUtil.randomBytes());
-        p.setArchived(true);
+        ReflectionTestUtils.setField(p, "id", UuidUtil.randomBytes());
+        p.archive(true);
         when(productRepository.findById(any())).thenReturn(Optional.of(p));
         assertThatThrownBy(() -> service.create(USER, "WEB", ask(UuidUtil.toString(p.getId()), "?")))
                 .isInstanceOf(DomainException.NotFound.class);

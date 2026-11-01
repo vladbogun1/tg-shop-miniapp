@@ -43,8 +43,8 @@ class ExchangesTest extends ReturnsTestBase {
         OrderFixtures.set(o, "userId", 77L);
         Product mouse = product(5);
         Product other = product(3);
-        other.setTitle("Клава");
-        other.setPriceMinor(15_000);
+        other.retitle("Клава");
+        other.reprice(15_000);
         item(o, mouse, 1L, 2);
         OrderFixtures.set(o, "subtotalMinor", 20_000);
         OrderFixtures.set(o, "totalMinor", 20_000);
@@ -99,7 +99,7 @@ class ExchangesTest extends ReturnsTestBase {
         OrderFixtures.set(o, "paid", true);
         OrderFixtures.set(o, "userId", 77L);
         Product other = product(3);
-        other.setPriceMinor(20_000);
+        other.reprice(20_000);
         OrderItem line = item(o, product(5), 1L, 3);
         OrderFixtures.set(line, "priceMinorSnapshot", 3_333);
         OrderFixtures.set(o, "subtotalMinor", 9_999);
@@ -121,7 +121,7 @@ class ExchangesTest extends ReturnsTestBase {
         Order o = order(OrderStatus.DELIVERED);
         Product mouse = product(5);
         Product other = product(3);
-        other.setPriceMinor(5_000);
+        other.reprice(5_000);
         item(o, mouse, 1L, 1);
         OrderFixtures.set(o, "subtotalMinor", 10_000);
         OrderFixtures.set(o, "totalMinor", 10_000);
@@ -195,8 +195,8 @@ class ExchangesTest extends ReturnsTestBase {
     void exchange_isLinkedToItsReturnRecord_andCancellingItRejectsTheReplacementAndTakesTheCreditBack() {
         Product mouse = product(5);
         Product other = product(3);
-        other.setTitle("Клава");
-        other.setPriceMinor(15_000);
+        other.retitle("Клава");
+        other.reprice(15_000);
         Order o = deliveredOrderForExchange(mouse);
         List<Order> all = trackOrders(o);
         when(productRepository.findByIdForUpdate(other.getId())).thenReturn(Optional.of(other));
@@ -250,7 +250,7 @@ class ExchangesTest extends ReturnsTestBase {
     void cancelReturn_exchangeWhoseReplacementShipped_isRefusedAndNothingChanges() {
         Product mouse = product(5);
         Product other = product(3);
-        other.setPriceMinor(15_000);
+        other.reprice(15_000);
         Order o = deliveredOrderForExchange(mouse);
         trackOrders(o);
         when(productRepository.findByIdForUpdate(other.getId())).thenReturn(Optional.of(other));

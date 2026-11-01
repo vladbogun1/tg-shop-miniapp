@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
@@ -43,10 +44,10 @@ class OrderStockReturnsTest {
 
     private Product product(int stock) {
         Product p = new Product();
-        p.setId(UuidUtil.randomBytes());
-        p.setTitle("Мишка");
-        p.setStock(stock);
-        p.setVariants(new ArrayList<>());
+        ReflectionTestUtils.setField(p, "id", UuidUtil.randomBytes());
+        p.retitle("Мишка");
+        p.changeStock(stock);
+        ReflectionTestUtils.setField(p, "variants", new ArrayList<>());
         when(products.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
         return p;
     }
@@ -58,7 +59,7 @@ class OrderStockReturnsTest {
         v.setName("black");
         v.setStock(stock);
         p.getVariants().add(v);
-        p.setStock(p.getVariants().stream().mapToInt(ProductVariant::getStock).sum());
+        p.changeStock(p.getVariants().stream().mapToInt(ProductVariant::getStock).sum());
         return v;
     }
 

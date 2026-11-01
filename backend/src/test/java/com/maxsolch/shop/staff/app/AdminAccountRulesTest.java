@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;
@@ -43,11 +44,11 @@ class AdminAccountRulesTest {
     void superAdminCheckLooksAtTheDatabaseRole() {
         AdminUserRepository repo = mock(AdminUserRepository.class);
         AdminUser boss = new AdminUser();
-        boss.setTelegramUserId(1L);
-        boss.setRole(AdminRole.SUPER_ADMIN);
+        ReflectionTestUtils.setField(boss, "telegramUserId", 1L);
+        ReflectionTestUtils.setField(boss, "role", AdminRole.SUPER_ADMIN);
         AdminUser helper = new AdminUser();
-        helper.setTelegramUserId(2L);
-        helper.setRole(AdminRole.ADMIN);
+        ReflectionTestUtils.setField(helper, "telegramUserId", 2L);
+        ReflectionTestUtils.setField(helper, "role", AdminRole.ADMIN);
         when(repo.findByTelegramUserIdAndActiveTrue(1L)).thenReturn(Optional.of(boss));
         when(repo.findByTelegramUserIdAndActiveTrue(2L)).thenReturn(Optional.of(helper));
         when(repo.findByTelegramUserIdAndActiveTrue(3L)).thenReturn(Optional.empty());

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.translation.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.translation.domain.ContentTranslation;
 import com.maxsolch.shop.translation.domain.ContentTranslationId;
@@ -475,9 +476,9 @@ class TranslationAdminServiceTest {
 
     private Product product() {
         Product p = new Product();
-        p.setId(UuidUtil.toBytes(PRODUCT));
-        p.setTitle("Ковер черрный");
-        p.setDescription("Описание");
+        ReflectionTestUtils.setField(p, "id", UuidUtil.toBytes(PRODUCT));
+        p.retitle("Ковер черрный");
+        p.redescribe("Описание");
         return p;
     }
 

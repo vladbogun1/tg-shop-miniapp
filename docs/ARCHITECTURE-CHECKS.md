@@ -21,7 +21,7 @@
   L4 infra знает только domain; M1 чужой модуль — только через его app; M2 нет зависимостей против направления модулей (раздел 2.2);
   P1 platform не знает бизнес-модулей; P2 в platform нет `@RestController` и `@Entity`; E1 ошибки — `DomainException` с `ErrorCode`; E2 причина ошибки — только константа enum (класс/лямбда, реализующие `ErrorCode`, вне `platform.error` запрещены; `ErrorCode.of("...")` удалён), текст — в бандлах, их полноту проверяет `ErrorCatalogTest`; T1 после коммита — только событие
   (`DomainEvents` + `@OnCommitted`); T2 `@Transactional` только на публичных методах app; A1 `CurrentActor` вместо `SecurityUtil`;
-  A2 контроллеры не пишут ни аудит, ни журнал активности (это сценарий в app); A3 права аннотациями (`AdminAccess.require*` не вызывают ни api, ни app); N1 Telegram/push только из `notification` и `*Notifier`; K1 нет замков в памяти;
+  A2 контроллеры не пишут ни аудит, ни журнал активности (это сценарий в app); A3 права аннотациями (`AdminAccess.require*` не вызывают ни api, ни app); N1 Telegram/push только из `notification` и четырёх названных классов (`V2Rules.TELEGRAM_USERS`; по суффиксу `Notifier` больше нельзя); K1 нет замков в памяти;
   C1 время через `Clock`/`ShopZone`; V1 нет `@Value`; V2 `@ConfigurationProperties` с `@Validated`; CA кэш только Spring Cache;
   J1 `@Scheduled` только в `*Job(s)` и с `@SchedulerLock`; H1 внешний HTTP через `platform.http`; W1 зависимости только конструктором;
   S1 `JdbcTemplate`/`NamedParameterJdbcTemplate` и `EntityManager.createQuery/createNativeQuery/createNamedQuery` только в слое infra (по слою, не по имени класса); M3 SQL/JPQL модуля трогает только его таблицы и сущности; L5 app не знает `org.springframework.web.*` и `jakarta.servlet.*`; O1 `setStatus` заказа не снаружи. Полный текст — в `V2Rules.RULES`.
@@ -57,11 +57,11 @@
   `OrderEventsPublishedInTransactionTest`, набор слушателей (событие, фаза, fallback) — снимок `EventListenersSnapshotTest`
   (`-Dsnapshot.update=true` только осознанно).
 - **Шаг 9д: агрегаты без сеттеров.** O2 вызов `set*` у сущности из `V2Rules.GUARDED` (`Order`, `OrderItem`, `OrderItemLot`, `PaymentInvoice`,
-  `OrderReturn`, `OrderReturnLine`) из другого пакета запрещён; O3 у такой сущности нет public `set*` (и `@Setter`). Проверено фикстурой
+  `OrderReturn`, `OrderReturnLine`, `OrderMoneyMovement`, `Product`, `AdminUser`) из другого пакета запрещён; O3 у такой сущности нет public `set*` (и `@Setter`). Проверено фикстурой
   (`shopfixture/order/domain/Order`, `BadPractices.overwriteTotal`). Тесты задают состояние через `OrderFixtures.set` (рефлексия), не сеттерами.
 - **Шаг 9е: границы без дыр.** M2 теперь ищет и циклы внутри одного яруса (компоненты сильной связности графа модулей): цикл `customer`↔`staff` убран портом `customer.app.AdminCheck`.
   M3 (`SqlOwnership`) читает исходники: строковые литералы SQL/JPQL модуля ищут `FROM/JOIN/UPDATE/INTO <таблица>` и сущности; владелец таблицы — `SqlOwnership.TABLE_OWNERS`, читать любые таблицы
-  могут только `analytics`, `finance`, `inbox`; таблица без владельца (`SqlOwnership.unownedTables` по миграциям) — ошибка. Остальное спрашивает владельца через порт: `OrderHistory`, `OnlineVisitors`
+  могут только `analytics`, `finance`, `inbox`; таблица без владельца (`SqlOwnership.unownedTables` по настоящим миграциям `db/migration`, `SqlOwnershipTest`) — ошибка; имя в карте без таблицы в миграциях — тоже. Класс, который названо в `V2Rules` (цели A2, GUARDED, TELEGRAM_USERS, исключения), обязан существовать (`ArchitectureV2Test.everyClassNamedByTheRulesExists`): правило не может молча опустеть. Остальное спрашивает владельца через порт: `OrderHistory`, `OnlineVisitors`
   (customer), `JournalOrders`, `JournalPeople` (журнал), `TranslatableSource.orphanTypes()/orphans()` (переводы), названия товаров через `CatalogNames`. L5: `platform.web.UploadedFile` вместо `MultipartFile`,
   cookie доверенного устройства и клиент запроса разбирает `staff.api`. Порты внешних систем: `media.domain.ObjectStore` (MinIO), `media.domain.Imgproxy`, `site.domain.SiteCache` (запрос к сайту) — адаптеры в `infra`.
   Права по `@RequiresFinance` (`platform.security.FinanceGuard`), а не ручными проверками; запись журнала покупателя — в сценариях app (`CustomerOrderActions`, `CustomerGiftCase`, `CartPromo`, ...).

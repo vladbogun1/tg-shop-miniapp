@@ -1,5 +1,6 @@
 package com.maxsolch.shop.preorder.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.procurement.app.ProcurementSettings;
 import com.maxsolch.shop.preorder.domain.PreorderEvents;
 import com.maxsolch.shop.preorder.domain.PreorderSubscription;
@@ -79,9 +80,9 @@ class PreorderQueueServiceTest {
         service = new PreorderQueueService(subs, batches, productsApp, settings, events, messages, cards, clock);
         expiry = new PreorderHoldExpiry(subs, productsApp, events, service, clock);
         product = new Product();
-        product.setId(UuidUtil.toBytes(UUID.randomUUID()));
-        product.setTitle("Lamzu Maya");
-        product.setStock(0);
+        ReflectionTestUtils.setField(product, "id", UuidUtil.toBytes(UUID.randomUUID()));
+        product.retitle("Lamzu Maya");
+        product.changeStock(0);
         when(products.findByIdForUpdate(any())).thenReturn(Optional.of(product));
         when(products.findById(any())).thenReturn(Optional.of(product));
         when(settings.getBool(ProcurementSettings.PREORDER_ANY_PRODUCT)).thenReturn(true);
@@ -134,7 +135,7 @@ class PreorderQueueServiceTest {
 
     @Test
     void subscribeIsRefusedWhileSomethingIsFree() {
-        product.setStock(1);
+        product.changeStock(1);
 
         assertThatThrownBy(() -> service.subscribe(USER, "MINIAPP", req(1)))
                 .isInstanceOf(DomainException.BadRequest.class);
@@ -143,7 +144,7 @@ class PreorderQueueServiceTest {
 
     @Test
     void subscribeIsAllowedWhenTheOnlyUnitIsHeldForSomebodyElse() {
-        product.setStock(1);
+        product.changeStock(1);
         when(subs.queue(any(), isNull())).thenReturn(List.of(seat(1, 7, Status.HELD, 1, 1, 60)));
 
         service.subscribe(USER, "MINIAPP", req(1));
@@ -183,7 +184,7 @@ class PreorderQueueServiceTest {
 
     @Test
     void subscribeToAHiddenProductIsRefused() {
-        product.setActive(false);
+        product.showInShop(false);
 
         assertThatThrownBy(() -> service.subscribe(USER, "MINIAPP", req(1)))
                 .isInstanceOf(DomainException.BadRequest.class);
@@ -193,7 +194,7 @@ class PreorderQueueServiceTest {
 
     @Test
     void handOutHoldsUnitsForTheFirstPeopleAndTellsTheRest() {
-        product.setStock(2);
+        product.changeStock(2);
         List<PreorderSubscription> queue = new ArrayList<>(List.of(
                 seat(1, 11, Status.WAITING, 1, 0, 300),
                 seat(2, 12, Status.WAITING, 1, 0, 200),
@@ -214,7 +215,7 @@ class PreorderQueueServiceTest {
 
     @Test
     void handOutAllAtOnceNotifiesEverybodyWithoutHolding() {
-        product.setStock(1);
+        product.changeStock(1);
         List<PreorderSubscription> queue = new ArrayList<>(List.of(
                 seat(1, 11, Status.WAITING, 1, 0, 300),
                 seat(2, 12, Status.WAITING, 1, 0, 200)));
@@ -229,7 +230,7 @@ class PreorderQueueServiceTest {
 
     @Test
     void handOutDoesNothingWhenEverythingIsAlreadyHeld() {
-        product.setStock(1);
+        product.changeStock(1);
         List<PreorderSubscription> queue = new ArrayList<>(List.of(
                 seat(1, 11, Status.HELD, 1, 1, 300),
                 seat(2, 12, Status.WAITING, 1, 0, 200)));
@@ -245,7 +246,7 @@ class PreorderQueueServiceTest {
 
     @Test
     void leavingWithAHoldPassesTheUnitToTheNextPerson() {
-        product.setStock(1);
+        product.changeStock(1);
         PreorderSubscription mine = seat(1, USER, Status.HELD, 1, 1, 300);
         mine.setHoldUntil(NOW.plus(Duration.ofHours(5)));
         PreorderSubscription next = seat(2, 12, Status.WAITING, 1, 0, 200);
@@ -268,7 +269,7 @@ class PreorderQueueServiceTest {
 
     @Test
     void buyingClosesThePlaceAndAnUnusedHoldGoesOn() {
-        product.setStock(1);
+        product.changeStock(1);
         PreorderSubscription mine = seat(1, USER, Status.HELD, 2, 2, 300);
         PreorderSubscription next = seat(2, 12, Status.WAITING, 1, 0, 200);
         when(subs.lockLive(eq(USER), any(), isNull())).thenReturn(List.of(mine));
@@ -284,7 +285,7 @@ class PreorderQueueServiceTest {
 
     @Test
     void anExpiredHoldGoesToTheNextPerson() {
-        product.setStock(1);
+        product.changeStock(1);
         PreorderSubscription late = seat(1, 11, Status.HELD, 1, 1, 3000);
         late.setHoldUntil(NOW.minus(Duration.ofMinutes(1)));
         PreorderSubscription next = seat(2, 12, Status.WAITING, 1, 0, 200);
@@ -302,7 +303,7 @@ class PreorderQueueServiceTest {
 
     @Test
     void aHoldBoughtJustBeforeTheJobIsNotExpired() {
-        product.setStock(1);
+        product.changeStock(1);
         PreorderSubscription bought = seat(1, 11, Status.BOUGHT, 1, 0, 3000);
         bought.setHoldUntil(NOW.minus(Duration.ofMinutes(1)));
         when(subs.findExpiredHoldIds(eq(NOW), any())).thenReturn(List.<Object[]>of(new Object[]{1L, product.getId()}));
@@ -340,7 +341,7 @@ class PreorderQueueServiceTest {
 
     @Test
     void unitsReturnedToTheShelfGoToTheQueue() {
-        product.setStock(1);
+        product.changeStock(1);
         PreorderSubscription next = seat(2, 12, Status.WAITING, 1, 0, 200);
         when(subs.lockQueue(any(), isNull())).thenReturn(new ArrayList<>(List.of(next)));
 

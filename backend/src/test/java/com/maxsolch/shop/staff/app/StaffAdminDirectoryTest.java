@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.staff.domain.AdminRole;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import com.maxsolch.shop.staff.infra.AdminUserRepository;
@@ -19,11 +20,11 @@ class StaffAdminDirectoryTest {
 
     private static AdminUser admin(AdminRole role, String name, String username, int version) {
         AdminUser a = new AdminUser();
-        a.setRole(role);
-        a.setName(name);
-        a.setUsername(username);
-        a.setTokenVersion(version);
-        a.setActive(true);
+        ReflectionTestUtils.setField(a, "role", role);
+        ReflectionTestUtils.setField(a, "name", name);
+        ReflectionTestUtils.setField(a, "username", username);
+        ReflectionTestUtils.setField(a, "tokenVersion", version);
+        ReflectionTestUtils.setField(a, "active", true);
         return a;
     }
 

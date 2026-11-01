@@ -79,22 +79,35 @@ final class SqlOwnership {
         }
     }
 
-    /** Tables created by the migrations that have no owner in {@link #TABLE_OWNERS}. */
-    static Set<String> unownedTables(Path migrations) {
-        Pattern create = Pattern.compile("(?i)CREATE TABLE (?:IF NOT EXISTS )?`?([a-z_0-9]+)`?");
+    private static final Pattern CREATE = Pattern.compile("(?i)CREATE TABLE (?:IF NOT EXISTS )?`?([a-z_0-9]+)`?");
+
+    /** Names of the tables the migrations create (lower case). */
+    private static Set<String> createdTables(Path migrations) {
         Set<String> out = new TreeSet<>();
         try (Stream<Path> files = Files.list(migrations)) {
             for (Path f : files.filter(p -> p.toString().endsWith(".sql")).toList()) {
-                Matcher mt = create.matcher(Files.readString(f, StandardCharsets.UTF_8));
+                Matcher mt = CREATE.matcher(Files.readString(f, StandardCharsets.UTF_8));
                 while (mt.find()) {
-                    if (!TABLE_OWNERS.containsKey(mt.group(1).toLowerCase())) {
-                        out.add(mt.group(1));
-                    }
+                    out.add(mt.group(1).toLowerCase());
                 }
             }
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+        return out;
+    }
+
+    /** Tables created by the migrations that have no owner in {@link #TABLE_OWNERS}. */
+    static Set<String> unownedTables(Path migrations) {
+        Set<String> out = createdTables(migrations);
+        out.removeIf(TABLE_OWNERS::containsKey);
+        return out;
+    }
+
+    /** Tables in {@link #TABLE_OWNERS} that no migration creates: a misspelt name would make M3 miss that table. */
+    static Set<String> ownedButNotCreated(Path migrations) {
+        Set<String> out = new TreeSet<>(TABLE_OWNERS.keySet());
+        out.removeAll(createdTables(migrations));
         return out;
     }
 

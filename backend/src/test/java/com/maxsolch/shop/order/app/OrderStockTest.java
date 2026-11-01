@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
@@ -102,12 +103,12 @@ class OrderStockTest {
 
     private Product product(int stock) {
         Product p = new Product();
-        p.setId(UuidUtil.randomBytes());
-        p.setTitle("Мишка");
-        p.setPriceMinor(1_000);
-        p.setStock(stock);
-        p.setActive(true);
-        p.setVariants(new ArrayList<>());
+        ReflectionTestUtils.setField(p, "id", UuidUtil.randomBytes());
+        p.retitle("Мишка");
+        p.reprice(1_000);
+        p.changeStock(stock);
+        p.showInShop(true);
+        ReflectionTestUtils.setField(p, "variants", new ArrayList<>());
         lenient().when(productRepository.findByIdForUpdate(p.getId())).thenReturn(Optional.of(p));
         return p;
     }
@@ -119,7 +120,7 @@ class OrderStockTest {
         v.setName(name);
         v.setStock(stock);
         p.getVariants().add(v);
-        p.setStock(p.getVariants().stream().mapToInt(ProductVariant::getStock).sum());
+        p.changeStock(p.getVariants().stream().mapToInt(ProductVariant::getStock).sum());
         return v;
     }
 

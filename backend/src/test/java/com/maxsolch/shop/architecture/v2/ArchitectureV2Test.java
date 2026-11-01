@@ -101,6 +101,18 @@ class ArchitectureV2Test {
                 + "fix the code, do not raise the baseline").isEmpty();
     }
 
+    /** A rule that names a class which does not exist checks nothing (A2 once looked at two wrong packages). */
+    @Test
+    void everyClassNamedByTheRulesExists() {
+        JavaClasses classes = new ClassFileImporter()
+                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .importPackages(ROOT);
+        List<String> missing = V2Rules.namedClasses().stream()
+                .filter(name -> !classes.contain(ROOT + "." + name)).toList();
+        assertThat(missing).as("classes named in V2Rules (A2, GUARDED, N1, exemptions) that are not in the code: "
+                + "the rule that names them checks nothing").isEmpty();
+    }
+
     private static Map<String, Integer> ruleTotals(Map<String, Integer> perRuleAndModule) {
         Map<String, Integer> m = new TreeMap<>();
         perRuleAndModule.forEach((key, n) -> m.merge(key.split(" ")[0], n, Integer::sum));

@@ -48,7 +48,7 @@ final class V2Rules {
         RULES.put("A1", "current actor through CurrentActor (SecurityContextHolder only in platform.web and platform.security)");
         RULES.put("A2", "controllers do not write the audit log or the activity journal (a scenario in app does)");
         RULES.put("A3", "rights by annotations only (neither api nor app calls AdminAccess.require*; a rule that depends on a request parameter is the exception)");
-        RULES.put("N1", "Telegram and push only from notification and *Notifier");
+        RULES.put("N1", "Telegram and push only from notification and the named notifiers (TELEGRAM_USERS)");
         RULES.put("T3", "events are published through platform.tx.DomainEvents only (no ApplicationEventPublisher)");
         RULES.put("T4", "listeners are @OnCommitted/@OnCompleted (no @TransactionalEventListener; @EventListener only for Spring's own events)");
         RULES.put("T5", "an event is a type of <module>.domain (or platform), never of app/api/infra");
@@ -67,6 +67,17 @@ final class V2Rules {
         RULES.put("O2", "an entity with invariants (GUARDED) is changed only by its own methods: no set* call from outside its domain package");
         RULES.put("O3", "an entity with invariants (GUARDED) has no public set* method (no @Setter)");
     }
+
+    /** The classes rule A2 keeps out of controllers (relative to the root); {@link #namedClasses} checks they exist. */
+    private static final String AUDIT_SERVICE = "audit.app.AdminAuditService";
+    private static final String ACTIVITY_LOG = "journal.app.ActivityLog";
+    /**
+     * Classes (relative to the root) that may use the Telegram library: the notification module and these. A suffix
+     * would let any class pass by its name; a list does not.
+     */
+    private static final Set<String> TELEGRAM_USERS = Set.of(
+            "customer.app.WebLoginNotifier", "order.app.OrderCustomerNotifier",
+            "preorder.app.PreorderNotifier", "staff.app.AdminSecurityNotifier");
 
     private static final String SPRING_VALUE = "org.springframework.beans.factory.annotation.Value";
     private static final String AUTOWIRED = "org.springframework.beans.factory.annotation.Autowired";
@@ -90,10 +101,10 @@ final class V2Rules {
             "M3", java.util.Map.ofEntries(
                     java.util.Map.entry("gift.infra.GiftQueries", "report over orders, order_items, order_gift_cases: one statement counts across the tables, splitting it would send every order through the JVM"),
                     java.util.Map.entry("gift.infra.GiftRegistryStore", "registry report: gift lines joined with their order and product price, read-only"),
-                    java.util.Map.entry("gift.infra.GiftReminderStore", "scan of expiring gift-case promo codes joined with order and bot_blocked; claim is one atomic update of the code"),
-                    java.util.Map.entry("review.infra.ReviewStore", "review scans and feed joined with order, product and promo rows, plus once-only claims written with 'update ... where flag is null' (atomic)"),
+                    java.util.Map.entry("gift.infra.GiftReminderStore", "пакет 5: scan of expiring gift-case promo codes joined with order and bot_blocked; claim is one atomic update of the code"),
+                    java.util.Map.entry("review.infra.ReviewStore", "пакет 5: review scans and feed joined with order, product and promo rows, plus once-only claims written with 'update ... where flag is null' (atomic)"),
                     java.util.Map.entry("staff.infra.IncidentQueries", "the admin incident report: audit log, orders and money movements in one read"),
-                    java.util.Map.entry("staff.infra.AdminTeamQueries", "the admin team screen: one activity summary per admin over audit, chat, broadcasts, marks and push rows, read-only")),
+                    java.util.Map.entry("staff.infra.AdminTeamQueries", "пакет 5: the admin team screen: one activity summary per admin over audit, chat, broadcasts, marks and push rows, read-only")),
             "A3", java.util.Map.of(
                     "catalog.app.AdminCatalog", "force=1 on deleting a characteristic is for the main admin: the rule reads a request parameter, a method annotation cannot see it",
                     "translation.app.AdminTranslations", "deleting a whole language (blank entityId) is for the main admin: the rule reads a request parameter"),
@@ -111,10 +122,23 @@ final class V2Rules {
      */
     static final Set<String> GUARDED = Set.of(
             "order.domain.Order", "order.domain.OrderItem", "order.domain.OrderItemLot",
-            "payment.domain.PaymentInvoice", "returns.domain.OrderReturn", "returns.domain.OrderReturnLine");
+            "payment.domain.PaymentInvoice", "returns.domain.OrderReturn", "returns.domain.OrderReturnLine",
+            "order.domain.OrderMoneyMovement", "catalog.domain.Product", "staff.domain.AdminUser");
 
     private final Placement placement;
     private final String root;
+
+    /**
+     * Every class the rules name (A2 targets, GUARDED, the Telegram users, the exempt classes), relative to the root.
+     * A rule that names a class which is not there checks nothing; {@code ArchitectureV2Test} fails on such a name.
+     */
+    static Set<String> namedClasses() {
+        Set<String> out = new java.util.TreeSet<>(Set.of(AUDIT_SERVICE, ACTIVITY_LOG));
+        out.addAll(GUARDED);
+        out.addAll(TELEGRAM_USERS);
+        ALLOWED.values().forEach(m -> out.addAll(m.keySet()));
+        return out;
+    }
 
     V2Rules(String root) {
         this.root = root;
@@ -335,8 +359,7 @@ final class V2Rules {
                     && !pkg.equals(root + ".platform.web") && !pkg.equals(root + ".platform.security")) {
                 out.add(new Violation("A1", from.module(), detail));
             }
-            if (from.layer() == Layer.API && (tn.equals(root + ".platform.audit.AdminAuditService")
-                    || tn.equals(root + ".platform.journal.ActivityLog"))) {
+            if (from.layer() == Layer.API && (tn.equals(root + "." + AUDIT_SERVICE) || tn.equals(root + "." + ACTIVITY_LOG))) {
                 out.add(new Violation("A2", from.module(), detail));
             }
             if (isTelegram(tn, c, from)) {
@@ -416,8 +439,8 @@ final class V2Rules {
 
     /** The Telegram library used from outside notification and *Notifier classes. */
     private static boolean isTelegram(String targetName, JavaClass c, Place from) {
-        boolean allowed = from.module().equals("notification")
-                || Placement.outermost(c).getSimpleName().endsWith("Notifier");
+        String name = Placement.outermost(c).getName();
+        boolean allowed = from.module().equals("notification") || TELEGRAM_USERS.stream().anyMatch(name::endsWith);
         return !allowed && targetName.startsWith("org.telegram.");
     }
 

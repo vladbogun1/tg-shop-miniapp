@@ -3,6 +3,7 @@ package com.maxsolch.shop.gift.app;
 import com.maxsolch.shop.order.app.OrderSettings;
 import com.maxsolch.shop.gift.domain.PromoReminder;
 import com.maxsolch.shop.gift.infra.GiftReminderStore;
+import com.maxsolch.shop.order.app.OrderCustomerNotifier;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.settings.app.SettingsService;
@@ -35,7 +36,7 @@ class GiftCasePromoReminderJobTest {
     @Mock GiftReminderStore store;
     @Mock SettingsService settings;
     @Mock OrderLookup orders;
-    @Mock GiftNotifier notifier;
+    @Mock OrderCustomerNotifier notifier;
 
     private GiftCasePromoReminderJob job() {
         return new GiftCasePromoReminderJob(store, settings, orders, notifier, Clock.fixed(NOW, ZoneOffset.UTC));
@@ -57,7 +58,7 @@ class GiftCasePromoReminderJobTest {
         when(store.claim(taken.promoId(), NOW)).thenReturn(false);
         Order order = new Order();
         when(orders.find(mine.orderId())).thenReturn(Optional.of(order));
-        when(notifier.promoExpiring(order, "CASEABC", 10, 0, mine.expiresAt())).thenReturn(true);
+        when(notifier.notifyCustomerCasePromoExpiring(order, "CASEABC", 10, 0, mine.expiresAt())).thenReturn(true);
 
         assertThat(job().sendDue()).isEqualTo(1);
         verify(orders, never()).find(taken.orderId());

@@ -8,12 +8,10 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.time.Instant;
 
 @Getter
-@Setter
 @Entity
 @Table(name = "admin_users")
 public class AdminUser {
@@ -90,5 +88,94 @@ public class AdminUser {
 
     public boolean isSuperAdmin() {
         return role == AdminRole.SUPER_ADMIN;
+    }
+
+    /** A new admin account (an invite accepted, the bootstrap admin): active, with the given role. */
+    public static AdminUser enroll(long telegramUserId, String name, AdminRole role) {
+        AdminUser a = new AdminUser();
+        a.telegramUserId = telegramUserId;
+        a.name = name;
+        a.role = role;
+        a.active = true;
+        return a;
+    }
+
+    public void rename(String newName) {
+        this.name = newName;
+    }
+
+    public void changeRole(AdminRole newRole) {
+        this.role = newRole;
+    }
+
+    /** The «Финансы» right (purchase prices, expenses, margin). */
+    public void allowFinance(boolean allowed) {
+        this.finance = allowed;
+    }
+
+    /** Sets the browser login with its password hash; the password counts as changed at {@code at}. */
+    public void assignLogin(String login, String newPasswordHash, Instant at) {
+        this.username = login;
+        changePassword(newPasswordHash, at);
+    }
+
+    public void changePassword(String newPasswordHash, Instant at) {
+        this.passwordHash = newPasswordHash;
+        this.passwordChangedAt = at;
+    }
+
+    /** The admin has no password any more and must be invited again. */
+    public void clearPassword() {
+        this.passwordHash = null;
+        this.passwordChangedAt = null;
+    }
+
+    public void block() {
+        this.active = false;
+    }
+
+    /** Active again, with a clean lockout counter. */
+    public void unblock() {
+        this.active = true;
+        resetLockout();
+    }
+
+    /** Active without touching the lockout (the bootstrap admin). */
+    public void activate() {
+        this.active = true;
+    }
+
+    public void resetLockout() {
+        this.failedAttempts = 0;
+        this.lockedUntil = null;
+    }
+
+    /** Every JWT issued so far stops working (the version it carries no longer matches). */
+    public void revokeTokens() {
+        this.tokenVersion++;
+    }
+
+    /** A new secret waiting for its first code (setup / re-setup). */
+    public void startTotpSetup(String secretEnc, Instant at) {
+        this.totpPendingEnc = secretEnc;
+        this.totpPendingAt = at;
+    }
+
+    /** 2FA is on with {@code secretEnc}; {@code step} (the confirming code) counts as used; nothing is pending. */
+    public void enableTotp(String secretEnc, Instant at, long step) {
+        this.totpSecretEnc = secretEnc;
+        this.totpEnabledAt = at;
+        this.totpLastStep = step;
+        this.totpPendingEnc = null;
+        this.totpPendingAt = null;
+    }
+
+    /** Wipes 2FA: the next sign-in goes through setup again. */
+    public void resetTotp() {
+        this.totpSecretEnc = null;
+        this.totpEnabledAt = null;
+        this.totpLastStep = null;
+        this.totpPendingEnc = null;
+        this.totpPendingAt = null;
     }
 }

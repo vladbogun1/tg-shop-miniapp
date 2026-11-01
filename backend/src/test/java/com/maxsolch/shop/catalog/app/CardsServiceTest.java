@@ -86,8 +86,8 @@ class CardsServiceTest {
         db.brands.add(lamzu);
 
         mouse = db.product("Lamzu Maya", mice);
-        mouse.setDescription("Старое описание");
-        mouse.setSpecsJson("{\"wireless\":true}");
+        mouse.redescribe("Старое описание");
+        mouse.changeSpecs("{\"wireless\":true}");
     }
 
     private String id() {
@@ -153,21 +153,21 @@ class CardsServiceTest {
 
     @Test
     void publishNeedsAFinishedPublishableCard() {
-        mouse.setActive(false);
-        mouse.setUnfinished(true);
+        mouse.showInShop(false);
+        mouse.markUnfinished(true);
         // only a brand → no content → stays DRAFT → not published
         CardsImportResult r = importer.importCards(new CardsImportRequest(List.of(
                 item(id(), null, "Lamzu", null, null, false, true, null)), false), 1L);
         assertThat(r.items().get(0).published()).isFalse();
         assertThat(r.items().get(0).reason()).isEqualTo("CARD_NOT_READY");
 
-        mouse.setPriceMinor(0);
+        mouse.reprice(0);
         r = importer.importCards(new CardsImportRequest(List.of(
                 item(id(), null, null, Map.of("weight_g", 49), null, false, true, null)), false), 1L);
         assertThat(r.items().get(0).reason()).isEqualTo("NOT_PUBLISHABLE: price");
         assertThat(mouse.isActive()).isFalse();
 
-        mouse.setPriceMinor(1000_00);
+        mouse.reprice(1000_00);
         r = importer.importCards(new CardsImportRequest(List.of(
                 item(id(), null, null, Map.of("weight_g", 49), null, false, true, null)), false), 1L);
         assertThat(r.items().get(0).published()).isTrue();
@@ -203,11 +203,11 @@ class CardsServiceTest {
     @Test
     void statsAndExport() {
         Product hidden = db.product("Draft mouse", mice);
-        hidden.setActive(false);
-        hidden.setUnfinished(true);
+        hidden.showInShop(false);
+        hidden.markUnfinished(true);
         Product legacy = db.product("Sold out mouse", mice); // hidden long ago, never «unfinished»
-        legacy.setActive(false);
-        mouse.setActive(true);
+        legacy.showInShop(false);
+        mouse.showInShop(true);
         CatalogDtos.CardsStats st = service.stats();
         assertThat(st.draft()).isEqualTo(2); // the legacy hidden one is not work
         assertThat(st.unfinished()).isEqualTo(1);
@@ -215,13 +215,13 @@ class CardsServiceTest {
         assertThat(st.aiFilled()).isZero();
 
         // An old hidden product the AI once filled is not «Проверить» work (the tab hides it by default)
-        legacy.setCardStatus(CardStatus.AI_FILLED);
-        hidden.setCardStatus(CardStatus.AI_FILLED);
+        legacy.changeCardStatus(CardStatus.AI_FILLED);
+        hidden.changeCardStatus(CardStatus.AI_FILLED);
         CatalogDtos.CardsStats st2 = service.stats();
         assertThat(st2.aiFilled()).isEqualTo(1); // only the new unfinished one
         assertThat(st2.draft()).isEqualTo(1);
-        hidden.setCardStatus(null);
-        legacy.setCardStatus(null);
+        hidden.changeCardStatus(null);
+        legacy.changeCardStatus(null);
 
         List<CatalogDtos.CardExportItem> items = service.export("incomplete", null);
         assertThat(items).hasSize(1);
@@ -249,7 +249,7 @@ class CardsServiceTest {
 
     @Test
     void importKeepsASnapshotOfWhatChangedAndTheNextImportReplacesIt() {
-        mouse.setTitle("Lamzu Maya old");
+        mouse.retitle("Lamzu Maya old");
         importer.importCards(new CardsImportRequest(List.of(new CardImportItem(id(), null, "VAXEE",
                 Map.of("weight_g", 49, "wireless", true), Map.of("weight_g", 95, "wireless", 40), 90, "Новое описание",
                 List.of("https://lamzu.com"), null, "gpt", false, null, null, "Lamzu Maya", Map.of(
@@ -314,7 +314,7 @@ class CardsServiceTest {
         assertThat(SpecsJson.readMap(mouse.getCardMetaJson())).containsEntry("reviewedBy", 7);
 
         // plain «Принять» without edits: only the status, the snapshot is untouched
-        mouse.setCardStatus(CardStatus.AI_FILLED);
+        mouse.changeCardStatus(CardStatus.AI_FILLED);
         Map<String, Object> before = last();
         importer.accept(id(), null, 7L);
         assertThat(mouse.getCardStatus()).isEqualTo(CardStatus.READY);
@@ -338,7 +338,7 @@ class CardsServiceTest {
         assertThat(r.translations().get("uk").get("description").stale()).isFalse();
         assertThat(r.translations().get("en")).isEmpty();
 
-        mouse.setDescription("Ещё новее");
+        mouse.redescribe("Ещё новее");
         assertThat(service.review(id()).translations().get("uk").get("description").stale()).isTrue();
     }
 }
