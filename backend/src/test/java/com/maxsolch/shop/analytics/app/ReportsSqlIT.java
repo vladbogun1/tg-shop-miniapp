@@ -23,6 +23,7 @@ import com.maxsolch.shop.procurement.app.CostingDtos.OrderProfitDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.CacheManager;
 
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -62,6 +63,7 @@ class ReportsSqlIT extends AbstractMysqlIT {
     @Autowired Checkout orders;
     @Autowired OrderLifecycle lifecycle;
     @Autowired OrderPayments orderPayments;
+    @Autowired CacheManager cacheManager;
 
     private static Instant at(LocalDate day, int hour) {
         return day.atTime(hour, 0).atZone(KYIV).toInstant();
@@ -173,14 +175,14 @@ class ReportsSqlIT extends AbstractMysqlIT {
     }
 
     /**
-     * The facts snapshot is memoised for 15 s, so both historic orders are created first and the test waits the
-     * memo out once: whatever an earlier test loaded can no longer hide them.
+     * The facts snapshot is memoised for 15 s, so both historic orders are created first and the test drops the
+     * memo once: whatever an earlier test loaded can no longer hide them.
      */
     @Test
-    void factsMetricsReturnsAndMarginOfHistoricDays() throws InterruptedException {
+    void factsMetricsReturnsAndMarginOfHistoricDays() {
         Order o = historicOrder(9_301, "+380675551301", D12);
         Order marginOrder = historicOrder(9_302, "+380675551302", D13);
-        Thread.sleep(15_500);
+        cacheManager.getCache(AnalyticsReadCaches.METRICS_FACTS.name()).clear(); // drop the 15 s memo instead of waiting it out
         factsAndMetricsOfAHistoricDay(o);
         marginOfAHistoricOrderAndPeriod(marginOrder);
     }

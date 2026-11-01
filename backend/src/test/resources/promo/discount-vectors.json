@@ -3,6 +3,9 @@
   "cases": [
     { "name": "percent", "percent": 10, "subtotalMinor": 100000, "expected": 10000 },
     { "name": "percent rounds down", "percent": 33, "subtotalMinor": 1001, "expected": 330 },
+    { "name": "percent rounds down, fraction .9 (not half-up)", "percent": 10, "subtotalMinor": 1999, "expected": 199 },
+    { "name": "percent rounds down, fraction exactly .5", "percent": 5, "subtotalMinor": 1010, "expected": 50 },
+    { "name": "percent rounds down, fraction .75", "percent": 15, "subtotalMinor": 1005, "expected": 150 },
     { "name": "percent over 100 is capped at the subtotal", "percent": 150, "subtotalMinor": 10000, "expected": 10000 },
     { "name": "fixed", "amountMinor": 30000, "subtotalMinor": 100000, "expected": 30000 },
     { "name": "fixed is capped at the subtotal", "amountMinor": 5000, "subtotalMinor": 3000, "expected": 3000 },

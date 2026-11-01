@@ -60,6 +60,37 @@ class OrderEditingTest extends OrderScenarioTestBase {
     }
 
     @Test
+    void applyDiscount_codeWithNoUsesLeft_isRefusedAndNotCounted_lastUseGoesThrough() {
+        Order o = orderWithOneLine(OrderStatus.NEW, 10_000, 1);
+        PromoCode spent = new PromoCode();
+        spent.setCode("ONCE");
+        spent.setActive(true);
+        spent.setDiscountPercent(10);
+        spent.setMaxUses(1);
+        spent.setUsesCount(1); // exactly used up: left == 0
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("ONCE")).thenReturn(Optional.of(spent));
+
+        assertThatThrownBy(() -> app.editing().applyDiscount(o.getId(), "ONCE", null, null, false, false))
+                .isInstanceOf(DomainException.class)
+                .extracting(e -> ((DomainException) e).errorCode())
+                .isEqualTo(com.maxsolch.shop.order.domain.OrderError.PROMO_REJECTED_TAKEN);
+        assertThat(spent.getUsesCount()).isEqualTo(1);
+
+        PromoCode last = new PromoCode();
+        last.setCode("LAST");
+        last.setActive(true);
+        last.setDiscountPercent(10);
+        last.setMaxUses(2);
+        last.setUsesCount(1); // one use left
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("LAST")).thenReturn(Optional.of(last));
+
+        app.editing().applyDiscount(o.getId(), "LAST", null, null, false, false);
+
+        assertThat(last.getUsesCount()).isEqualTo(2);
+        assertThat(o.getDiscountMinor()).isEqualTo(1_000);
+    }
+
+    @Test
     void applyDiscount_realCodeCountsOneUseAndGivesItsDiscount_shippedOrderIsRefused() {
         Order o = orderWithOneLine(OrderStatus.NEW, 10_000, 1);
         PromoCode code = promo().code("TEN").active(true).discountPercent(10).usesCount(0).build();

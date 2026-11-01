@@ -410,6 +410,9 @@ class OrderQueryServiceGoldenTest {
         String actual = mapper.writer(printer).writeValueAsString(all) + "\n";
 
         Path file = GOLDEN_DIR.resolve(name + ".json");
+        if (!Files.exists(file) && System.getenv("CI") != null) {
+            throw new AssertionError("golden file is missing in CI (commit it, never generate it there): " + file);
+        }
         if (!Files.exists(file) || Boolean.getBoolean("golden.update")) {
             Files.createDirectories(GOLDEN_DIR);
             Files.writeString(file, actual, StandardCharsets.UTF_8);
