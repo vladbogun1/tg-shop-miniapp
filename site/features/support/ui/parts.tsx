@@ -8,6 +8,7 @@ import type { TFunction } from "@/i18n";
 import { useI18n } from "@/i18n/context";
 import { BOT_URL } from "@/lib/config";
 import { Image } from "@/lib/image";
+import { tint } from "@shop/ui/tint";
 
 /** Product title, else the subject, else «General question». */
 export function threadTitle(thread: SupportThread, t: TFunction): string {
@@ -21,7 +22,7 @@ export function SupportStatusChip({ status }: { status: SupportStatus }) {
   return (
     <span
       className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-display text-[11px] font-semibold uppercase tracking-[.08em]"
-      style={{ background: `color-mix(in srgb, ${color} 16%, transparent)`, color: open ? "var(--ok)" : "var(--muted)" }}
+      style={{ background: tint(color, 16), color: open ? "var(--ok)" : "var(--muted)" }}
     >
       <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: color }} />
       {open ? t("support.status.open") : t("support.status.closed")}

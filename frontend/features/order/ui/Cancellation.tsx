@@ -7,6 +7,7 @@ import type { OrderDetail } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { haptic } from "@/platform/telegram";
 import { CancelOrder, RequestCancel } from "./CancelForms";
+import { tint, tintOver } from "@shop/ui/tint";
 
 type CancelMode = ReturnType<typeof customerCancelMode>;
 
@@ -144,7 +145,7 @@ function StateCard({
   return (
     <div
       className="nb flex items-start gap-2.5 p-4"
-      style={{ borderColor: `color-mix(in srgb, ${c} 45%, transparent)`, background: `color-mix(in srgb, ${c} 10%, var(--surface))` }}
+      style={{ borderColor: tint(c, 45), background: tintOver(c, 10, "var(--surface)") }}
     >
       <span className="mt-0.5 shrink-0" style={{ color: c }}>
         {icon}

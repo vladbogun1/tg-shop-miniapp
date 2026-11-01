@@ -26,6 +26,7 @@ import { money } from "@/lib/money";
 import { riseItem } from "@/lib/motion";
 import { downloadFile, haptic, openExternalLink } from "@/platform/telegram";
 import { nowMs } from "@shop/core/time";
+import { tint } from "@shop/ui/tint";
 
 /** Signed links live ≥ 10 min; re-read the list before using one older than this. */
 const LINK_FRESH_MS = 8 * 60_000;
@@ -129,7 +130,7 @@ function StatusChip({ status }: { status: ReceiptStatus }) {
   return (
     <span
       className="font-display rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.08em]"
-      style={{ color: c, background: `color-mix(in srgb, ${c} 14%, transparent)` }}
+      style={{ color: c, background: tint(c, 14) }}
     >
       {t(`receipts.status.${status}`)}
     </span>

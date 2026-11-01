@@ -6,6 +6,7 @@
  * orange case in public/case/). Plus the small pieces every case screen shares: the discount tile
  * (a discount prize has no picture), the promo code box with «copy», the tier badge.
  */
+import { hexChannels } from "../tint";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   CASE_RARITY_COLOR,
@@ -30,7 +31,9 @@ export function caseTierVars(tier: CaseTier | null | undefined, assetBase = "/ca
   const m = CASE_TIER_METAL[tier];
   return {
     ["--ga" as string]: m.ga,
+    ["--ga-rgb" as string]: hexChannels(m.ga),
     ["--ga2" as string]: m.ga2,
+    ["--ga2-rgb" as string]: hexChannels(m.ga2),
     ["--gb1" as string]: m.gb1,
     ["--gb2" as string]: m.gb2,
     ["--gink" as string]: m.ink,
@@ -39,7 +42,8 @@ export function caseTierVars(tier: CaseTier | null | undefined, assetBase = "/ca
 }
 
 export function rarityVars(r: CaseRarity | string | null | undefined): CSSProperties {
-  return { ["--rc" as string]: CASE_RARITY_COLOR[(r as CaseRarity) ?? "COMMON"] ?? CASE_RARITY_COLOR.COMMON } as CSSProperties;
+  const color = CASE_RARITY_COLOR[(r as CaseRarity) ?? "COMMON"] ?? CASE_RARITY_COLOR.COMMON;
+  return { ["--rc" as string]: color, ["--rc-rgb" as string]: hexChannels(color) } as CSSProperties;
 }
 
 /** «Золотий кейс» — a small metal pill. */
