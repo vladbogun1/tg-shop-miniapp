@@ -19,6 +19,11 @@ public final class Money {
     private Money() {
     }
 
+    /** A whole-hryvnia amount (settings, tiers) in kopecks. */
+    public static long fromUah(long uah) {
+        return uah * 100;
+    }
+
     /** {@code percent} % of {@code amount}, cut down to a whole kopeck. */
     public static long percentOf(long amount, int percent) {
         return amount * percent / 100;

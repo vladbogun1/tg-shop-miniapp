@@ -1,5 +1,6 @@
 package com.maxsolch.shop.review.domain;
 
+import com.maxsolch.shop.platform.util.Money;
 import com.maxsolch.shop.review.app.ReviewService;
 
 import com.maxsolch.shop.order.domain.Order;
@@ -153,7 +154,7 @@ public final class ReviewRules {
 
     /** The ceiling setting ({@code reviews.bonusMaxDiscountUah}, ₴) in kopecks; 0 or less = no ceiling. */
     public static long bonusMaxMinor(int maxUah) {
-        return maxUah > 0 ? maxUah * 100L : 0;
+        return maxUah > 0 ? Money.fromUah(maxUah) : 0;
     }
 
     /** Kopecks as hryvnias for a text: 10000 → "100", 1234567 → "12 345.67" (groups split by a no-break space). */

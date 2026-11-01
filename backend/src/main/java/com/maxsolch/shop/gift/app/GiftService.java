@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.platform.util.Money;
 import com.maxsolch.shop.promo.app.CaseLowMargin;
 
 import com.maxsolch.shop.gift.domain.GiftCaseItem;
@@ -111,7 +112,7 @@ public class GiftService {
         if (productId == null && tiers.isEmpty()) {
             return Optional.empty();
         }
-        return Optional.of(new GiftConfig(productId, settings.getInt(GiftSettings.GIFT_THRESHOLD_UAH) * 100L,
+        return Optional.of(new GiftConfig(productId, Money.fromUah(settings.getInt(GiftSettings.GIFT_THRESHOLD_UAH)),
                 tiers));
     }
 
@@ -255,7 +256,7 @@ public class GiftService {
         c.setTitle(title);
         if (prize.isDiscount()) {
             c.setDiscountPercent(PromoCode.clampPercent(prize.discountPercent()));
-            c.setDiscountAmountMinor(prize.discountPercent() > 0 ? 0 : prize.discountUah() * 100L);
+            c.setDiscountAmountMinor(prize.discountPercent() > 0 ? 0 : Money.fromUah(prize.discountUah()));
         }
         return c;
     }
@@ -321,7 +322,7 @@ public class GiftService {
             if (!prizes.isEmpty()) {
                 int promoDays = Math.max(1, tierSettings(t.tier().name()).map(GiftCaseTier::getPromoValidDays).orElse(30));
                 tiers.add(new TierInfoDto(t.tier().name(), t.thresholdMinor(), t.guaranteedPercent(),
-                        t.guaranteedMaxUah() * 100L, t.swapPercent() > 0, t.swapPercent(), promoDays, prizes));
+                        Money.fromUah(t.guaranteedMaxUah()), t.swapPercent() > 0, t.swapPercent(), promoDays, prizes));
             }
         }
         if (!tiers.isEmpty()) {
@@ -359,7 +360,7 @@ public class GiftService {
         if (c.isDiscount()) {
             int pc = PromoCode.clampPercent(c.discountPercent());
             return new CaseItemDto("d" + c.id(), GiftCaseItem.Kind.DISCOUNT.name(), null, null, null, 0,
-                    c.rarity(), pc, pc > 0 ? 0 : c.discountUah() * 100L);
+                    c.rarity(), pc, pc > 0 ? 0 : Money.fromUah(c.discountUah()));
         }
         return new CaseItemDto("p" + c.productId(), GiftCaseItem.Kind.PRODUCT.name(), c.productId(),
                 p == null ? null : p.title(), image(p), p == null ? 0 : p.priceMinor(), c.rarity(), 0, 0);
