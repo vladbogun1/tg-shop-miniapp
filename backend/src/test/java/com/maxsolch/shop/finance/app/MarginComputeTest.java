@@ -67,16 +67,32 @@ class MarginComputeTest {
         ItemRow pad = new ItemRow(1, "o", "p", null, "Pad", null, 400000, 1, 0, 0, false);
         Map<Long, List<Alloc>> allocs = Map.of(1L, List.of(new Alloc(1, 1, 1, null)));
 
-        OrderProfit full = money(new OrderRow("o", 400000, 0, 0, "NEW", true, 0), List.of(pad), allocs, List.of());
+        OrderProfit full = money(new OrderRow("o", 400000, 0, 0, "NEW", true, 0, 0, 0), List.of(pad), allocs, List.of());
         assertThat(full.fee()).isEqualTo(5200);
         assertThat(full.feeEstimated()).isTrue();
 
-        OrderProfit prepay = money(new OrderRow("o", 400000, 0, 0, "NEW", true, 10000), List.of(pad), allocs,
+        OrderProfit prepay = money(new OrderRow("o", 400000, 0, 0, "NEW", true, 10000, 0, 0), List.of(pad), allocs,
                 List.of());
         assertThat(prepay.fee()).isEqualTo(130);
 
         OrderProfit cash = money(new OrderRow("o", 400000, 0, 0, "NEW"), List.of(pad), allocs, List.of());
         assertThat(cash.fee()).isZero();
+    }
+
+    @Test
+    void anOnlineOrderPaidByHandPaysNoBankFee() {
+        // «Предоплата 100 грн онлайн», but the admin took the whole sum in crypto: no monobank invoice
+        ItemRow pad = new ItemRow(1, "o", "p", null, "Pad", null, 540000, 1, 0, 0, false);
+        Map<Long, List<Alloc>> allocs = Map.of(1L, List.of(new Alloc(1, 1, 1, null)));
+
+        OrderProfit paid = money(new OrderRow("o", 540000, 0, 0, "APPROVED", true, 10000, 540000, 0),
+                List.of(pad), allocs, List.of());
+        assertThat(paid.fee()).isZero();
+        assertThat(paid.feeEstimated()).isFalse();
+
+        OrderProfit part = money(new OrderRow("o", 400000, 0, 0, "NEW", true, 0, 100000, 0), List.of(pad), allocs,
+                List.of());
+        assertThat(part.fee()).isEqualTo(3900);
     }
 
     @Test
