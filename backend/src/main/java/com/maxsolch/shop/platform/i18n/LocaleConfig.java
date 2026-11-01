@@ -5,9 +5,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver;
 
-import java.util.List;
-import java.util.Locale;
-
 /**
  * How an HTTP request tells the backend which language to answer in.
  *
@@ -31,10 +28,7 @@ public class LocaleConfig {
     public LocaleResolver localeResolver() {
         // Accept-Language, plus ?lang= on the public catalog endpoints (see ContentLocaleResolver).
         AcceptHeaderLocaleResolver resolver = new ContentLocaleResolver();
-        resolver.setSupportedLocales(List.of(
-                Locale.forLanguageTag("uk"),
-                Locale.forLanguageTag("ru"),
-                Locale.forLanguageTag("en")));
+        resolver.setSupportedLocales(AppLocale.javaLocales());
         resolver.setDefaultLocale(Messages.FALLBACK);
         return resolver;
     }

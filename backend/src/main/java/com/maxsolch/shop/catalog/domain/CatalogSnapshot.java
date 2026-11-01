@@ -1,6 +1,7 @@
 package com.maxsolch.shop.catalog.domain;
 
 import com.maxsolch.shop.catalog.app.CatalogDirectory;
+import com.maxsolch.shop.platform.i18n.AppLocale;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -206,10 +207,10 @@ public final class CatalogSnapshot {
     // ------------------------------------------------------------------ helpers
 
     public static String pick(String lang, String ru, String uk, String en) {
-        String v = switch (lang == null ? "uk" : lang) {
-            case "ru" -> ru;
-            case "en" -> en;
-            default -> uk;
+        String v = switch (AppLocale.parseOrDefault(lang)) {
+            case RU -> ru;
+            case EN -> en;
+            case UK -> uk;
         };
         return v == null || v.isBlank() ? ru : v;
     }

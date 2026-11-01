@@ -6,7 +6,6 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.util.Locale;
-import java.util.Set;
 
 /**
  * Text the SHOP sends to a CUSTOMER, in the language that customer reads.
@@ -23,10 +22,8 @@ import java.util.Set;
 @Component
 public class Messages {
 
-    /** The languages the app ships. Anything else falls back. */
-    private static final Set<String> SUPPORTED = Set.of("uk", "ru", "en");
-
-    public static final Locale FALLBACK = Locale.forLanguageTag("uk");
+    /** Anything that is not an {@link AppLocale} falls back to the default one. */
+    public static final Locale FALLBACK = AppLocale.DEFAULT.javaLocale();
 
     private final MessageSource messageSource;
     private final CustomerLanguages languages;
@@ -90,7 +87,7 @@ public class Messages {
         if (raw == null || raw.isBlank()) {
             return null;
         }
-        String base = raw.trim().toLowerCase().split("[-_]")[0];
-        return SUPPORTED.contains(base) ? Locale.forLanguageTag(base) : null;
+        AppLocale l = AppLocale.parse(raw);
+        return l == null ? null : l.javaLocale();
     }
 }

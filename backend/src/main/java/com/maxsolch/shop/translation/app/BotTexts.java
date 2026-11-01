@@ -4,7 +4,9 @@ import com.maxsolch.shop.platform.cache.CacheConfig;
 import com.maxsolch.shop.platform.tx.OnCommitted;
 import com.maxsolch.shop.translation.domain.SourceHash;
 import com.maxsolch.shop.translation.domain.TranslationsChanged;
+import com.maxsolch.shop.platform.i18n.AppLocale;
 import com.maxsolch.shop.platform.i18n.Messages;
+import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
@@ -69,7 +71,7 @@ public class BotTexts {
         this.messages = messages;
         this.settings = settings;
         this.translations = translations;
-        for (String lang : List.of("ru", "uk", "en")) {
+        for (String lang : AppLocale.codes()) {
             Properties p = new Properties();
             try (var in = new InputStreamReader(
                     new ClassPathResource("i18n/messages_" + lang + ".properties").getInputStream(),
@@ -78,7 +80,7 @@ public class BotTexts {
             } catch (Exception e) {
                 log.warn("cannot read messages_{}.properties: {}", lang, e.toString());
             }
-            Map<String, String> target = "ru".equals(lang) ? defaultsRu : builtin.computeIfAbsent(lang, x -> new HashMap<>());
+            Map<String, String> target = ContentLocale.RU.equals(lang) ? defaultsRu : builtin.computeIfAbsent(lang, x -> new HashMap<>());
             for (String k : KEYS) {
                 String v = p.getProperty(k);
                 if (v != null) {
@@ -192,7 +194,7 @@ public class BotTexts {
     /** The edited template for a language, or null to use the properties. */
     String overrideFor(Locale locale, String key) {
         String lang = locale == null ? "" : locale.getLanguage();
-        if ("ru".equals(lang)) {
+        if (ContentLocale.RU.equals(lang)) {
             return overrides().get(key);
         }
         String source = sourceRu(key);

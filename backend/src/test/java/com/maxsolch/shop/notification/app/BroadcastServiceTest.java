@@ -39,6 +39,16 @@ class BroadcastServiceTest {
     }
 
     @Test
+    void everyLanguageHasADefaultButtonAndUnknownGetsRussian() {
+        for (String code : com.maxsolch.shop.platform.i18n.AppLocale.codes()) {
+            assertThat(BroadcastRules.defaultButton(code)).as(code).isNotBlank();
+        }
+        assertThat(BroadcastRules.defaultButton("uk")).isEqualTo("🛍 Відкрити магазин");
+        assertThat(BroadcastRules.defaultButton(null)).isEqualTo("🛍 Открыть магазин");
+        assertThat(BroadcastRules.defaultButton("de")).isEqualTo("🛍 Открыть магазин");
+    }
+
+    @Test
     void onlyKnownLanguagesFilter() {
         assertThat(BroadcastRules.normLang(" UK ")).isEqualTo("uk");
         assertThat(BroadcastRules.normLang("de")).isNull();

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.notification.app;
 
+import com.maxsolch.shop.platform.i18n.AppLocale;
 import com.maxsolch.shop.platform.i18n.Messages;
 
 import java.util.ArrayList;
@@ -17,10 +18,15 @@ final class BroadcastRules {
     record Recipient(long id, String lang) {
     }
 
-    static final Map<String, String> DEFAULT_BUTTON = Map.of(
-            "uk", "🛍 Відкрити магазин",
-            "ru", "🛍 Открыть магазин",
-            "en", "🛍 Open the shop");
+    /** The label of the default button for the recipient's language; an unknown language gets Russian. */
+    static String defaultButton(String lang) {
+        AppLocale l = AppLocale.parse(lang);
+        return switch (l == null ? AppLocale.RU : l) {
+            case UK -> "🛍 Відкрити магазин";
+            case RU -> "🛍 Открыть магазин";
+            case EN -> "🛍 Open the shop";
+        };
+    }
 
     /** Shop choice first, then the Telegram language, then the shop fallback (Ukrainian). */
     static String langOf(String locale, String languageCode) {
@@ -45,11 +51,11 @@ final class BroadcastRules {
 
     /** The version written for the recipient's language, else the main text. */
     static String textFor(String lang, String text, String uk, String ru, String en) {
-        String v = switch (lang == null ? "" : lang) {
-            case "uk" -> uk;
-            case "ru" -> ru;
-            case "en" -> en;
-            default -> null;
+        AppLocale l = AppLocale.parse(lang);
+        String v = l == null ? null : switch (l) {
+            case UK -> uk;
+            case RU -> ru;
+            case EN -> en;
         };
         return v == null || v.isBlank() ? text : v;
     }
@@ -59,6 +65,6 @@ final class BroadcastRules {
             return null;
         }
         String l = lang.trim().toLowerCase(Locale.ROOT);
-        return DEFAULT_BUTTON.containsKey(l) ? l : null;
+        return AppLocale.codes().contains(l) ? l : null;
     }
 }

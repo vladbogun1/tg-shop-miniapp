@@ -36,7 +36,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.maxsolch.shop.notification.app.BroadcastRules.DEFAULT_BUTTON;
 import static com.maxsolch.shop.platform.util.Texts.blankToNull;
 
 /**
@@ -221,7 +220,7 @@ public class BroadcastService {
         }
         // A typed label is used as is; the default one follows the recipient's language, like the text.
         String label = (buttonText == null || buttonText.isBlank())
-                ? DEFAULT_BUTTON.getOrDefault(lang == null ? "ru" : lang, DEFAULT_BUTTON.get("ru"))
+                ? BroadcastRules.defaultButton(lang)
                 : buttonText.trim();
         InlineKeyboardButton btn = InlineKeyboardButton.builder()
                 .text(label)

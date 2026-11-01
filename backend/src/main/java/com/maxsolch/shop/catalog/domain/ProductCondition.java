@@ -1,5 +1,7 @@
 package com.maxsolch.shop.catalog.domain;
 
+import com.maxsolch.shop.platform.i18n.AppLocale;
+
 import java.util.Locale;
 
 /** State of a product (V52); replaces the old «Уценка» tag. Labels are fixed (three values). */
@@ -19,10 +21,10 @@ public enum ProductCondition {
     }
 
     public String label(String lang) {
-        return switch (lang == null ? "uk" : lang) {
-            case "ru" -> ru;
-            case "en" -> en;
-            default -> uk;
+        return switch (AppLocale.parseOrDefault(lang)) {
+            case RU -> ru;
+            case EN -> en;
+            case UK -> uk;
         };
     }
 
