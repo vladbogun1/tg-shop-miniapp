@@ -52,11 +52,11 @@ public class PreorderHoldExpiry {
             // lock before us may have bought the hold meanwhile — then there is nothing to expire
             Product product = products.findByIdForUpdate((byte[]) candidate[1]).orElse(null);
             PreorderSubscription s = subs.findForUpdate(((Number) candidate[0]).longValue()).orElse(null);
-            if (s == null || !(s.statusEnum() == Status.HELD || s.statusEnum() == Status.NOTIFIED)
+            if (s == null || !(s.getStatus() == Status.HELD || s.getStatus() == Status.NOTIFIED)
                     || s.getHoldUntil() == null || !s.getHoldUntil().isBefore(now)) {
                 continue;
             }
-            boolean wasHeld = s.statusEnum() == Status.HELD;
+            boolean wasHeld = s.getStatus() == Status.HELD;
             s.close(Status.EXPIRED, wasHeld ? "бронь закончилась" : "не купил после уведомления", now);
             subs.save(s);
             events.publish(new PreorderEvents.HoldExpired(s.getId()));

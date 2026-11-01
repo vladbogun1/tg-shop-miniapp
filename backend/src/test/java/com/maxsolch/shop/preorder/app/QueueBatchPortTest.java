@@ -53,7 +53,7 @@ class QueueBatchPortTest {
         s.setId(id);
         s.setUserId(100 + id);
         s.setProductId(productId);
-        s.setStatus(status.name());
+        s.moveTo(status);
         s.setQty(1);
         s.setCreatedAt(NOW);
         return s;
@@ -72,7 +72,7 @@ class QueueBatchPortTest {
 
         port.onBatchCancelled(List.<byte[][]>of(new byte[][]{productId, null}), false, NOW);
 
-        assertThat(q).extracting(PreorderSubscription::getStatus).containsExactly("WAITING", "HELD", "WAITING");
+        assertThat(q).extracting(PreorderSubscription::getStatus).containsExactly(PreorderSubscription.Status.WAITING, PreorderSubscription.Status.HELD, PreorderSubscription.Status.WAITING);
         verify(events).publish(new PreorderEvents.BatchCancelledKept(1));
         verify(events).publish(new PreorderEvents.BatchCancelledKept(3));
         verify(events, never()).publish(new PreorderEvents.BatchCancelledKept(2));
@@ -84,7 +84,7 @@ class QueueBatchPortTest {
 
         port.onBatchCancelled(List.<byte[][]>of(new byte[][]{productId, null}), true, NOW);
 
-        assertThat(q).extracting(PreorderSubscription::getStatus).containsExactly("CANCELLED", "HELD", "CANCELLED");
+        assertThat(q).extracting(PreorderSubscription::getStatus).containsExactly(PreorderSubscription.Status.CANCELLED, PreorderSubscription.Status.HELD, PreorderSubscription.Status.CANCELLED);
         verify(events).publish(new PreorderEvents.Closed(1, "BATCH_CANCELLED"));
         verify(events).publish(new PreorderEvents.Closed(3, "BATCH_CANCELLED"));
     }

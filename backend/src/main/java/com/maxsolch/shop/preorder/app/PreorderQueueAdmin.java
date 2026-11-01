@@ -126,8 +126,8 @@ public class PreorderQueueAdmin {
         Instant end = to.plusDays(1).atStartOfDay(shopZone.zone()).toInstant();
         Object[] joined = subs.joinedBetween(start, end).stream().findFirst().orElse(new Object[]{0L, 0L});
         int given = (int) subs.holdUnitsGiven(start, end);
-        int bought = (int) subs.closedAfterHold(Status.BOUGHT.name(), start, end);
-        int expired = (int) subs.closedAfterHold(Status.EXPIRED.name(), start, end);
+        int bought = (int) subs.closedAfterHold(Status.BOUGHT, start, end);
+        int expired = (int) subs.closedAfterHold(Status.EXPIRED, start, end);
         double conversion = given > 0 ? Math.round(bought * 1000.0 / given) / 10.0 : 0;
         return new PreorderDtos.MetricsDto((int) num(joined[0]), (int) num(joined[1]), given, bought, expired,
                 conversion, (int) batches.arrivedUnitsBetween(start, end));
@@ -138,11 +138,11 @@ public class PreorderQueueAdmin {
     public void removeSubscriber(long subscriptionId, String adminName) {
         PreorderSubscription s = subs.findById(subscriptionId)
                 .orElseThrow(() -> new DomainException.NotFound(PreorderError.QUEUE_ENTRY_NOT_FOUND));
-        if (!s.statusEnum().live()) {
+        if (!s.getStatus().live()) {
             return;
         }
         Product p = products.findByIdForUpdate(s.getProductId()).orElse(null);
-        boolean wasHeld = s.statusEnum() == Status.HELD;
+        boolean wasHeld = s.getStatus() == Status.HELD;
         s.close(Status.CANCELLED, "убран админом" + (adminName == null ? "" : " (" + adminName + ")"), clock.instant());
         subs.save(s);
         events.publish(new PreorderEvents.Closed(s.getId(), "ADMIN"));
@@ -224,14 +224,14 @@ public class PreorderQueueAdmin {
             Product p = byId.get(UuidUtil.toString(s.getProductId()));
             ProductVariant v = p == null ? null : p.variant(s.getVariantId());
             Integer position = null;
-            if (s.statusEnum() == Status.WAITING) {
+            if (s.getStatus() == Status.WAITING) {
                 position = waitingSeen.merge(Lines.key(s.getProductId(), s.getVariantId()), 1, Integer::sum);
             }
             User u = people.get(s.getUserId());
             out.add(new SubscriberDto(s.getId(), s.getUserId(), u == null ? null : nameOf(u),
                     u == null ? null : u.getUsername(), u != null && u.isBotBlocked(),
                     UuidUtil.toString(s.getProductId()), s.getVariantId() == null ? null : UuidUtil.toString(s.getVariantId()),
-                    p == null ? null : p.getTitle(), v == null ? null : v.getName(), s.getQty(), s.getStatus(), position,
+                    p == null ? null : p.getTitle(), v == null ? null : v.getName(), s.getQty(), s.getStatus().name(), position,
                     s.getHeldQty(), s.getHoldUntil(), s.getSource(), s.getCreatedAt(), s.getClosedAt(), s.getCloseReason()));
         }
         return out;

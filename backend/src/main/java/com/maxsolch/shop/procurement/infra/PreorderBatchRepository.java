@@ -18,7 +18,7 @@ public interface PreorderBatchRepository extends JpaRepository<PreorderBatch, Lo
     @Query("select b from PreorderBatch b where b.id = :id")
     Optional<PreorderBatch> findForUpdate(@Param("id") Long id);
 
-    List<PreorderBatch> findByStatusInOrderByCreatedAtDesc(Collection<String> statuses);
+    List<PreorderBatch> findByStatusInOrderByCreatedAtDesc(Collection<PreorderBatch.Status> statuses);
 
     List<PreorderBatch> findAllByOrderByCreatedAtDesc();
 }

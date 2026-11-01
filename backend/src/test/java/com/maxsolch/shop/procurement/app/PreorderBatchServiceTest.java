@@ -129,7 +129,7 @@ class PreorderBatchServiceTest {
             assertThat(l.stockAfter()).isEqualTo(5);
         });
         verify(ledger).receive(product.getId(), null, 11L, 4);
-        assertThat(batch.statusEnum()).isEqualTo(PreorderBatch.Status.ARRIVED);
+        assertThat(batch.getStatus()).isEqualTo(PreorderBatch.Status.ARRIVED);
         assertThat(batch.getArrivedAt()).isEqualTo(NOW);
     }
 
@@ -141,7 +141,7 @@ class PreorderBatchServiceTest {
         service.arrive(5L, new ArriveRequest(false, null, null, List.of(new ArriveLine(11, 0, null))));
 
         verify(ledger, never()).receive(any(), any(), anyLong(), anyInt());
-        assertThat(batch.statusEnum()).isEqualTo(PreorderBatch.Status.ARRIVED);
+        assertThat(batch.getStatus()).isEqualTo(PreorderBatch.Status.ARRIVED);
     }
 
     @Test
@@ -174,7 +174,7 @@ class PreorderBatchServiceTest {
 
         assertThat(result.dryRun()).isTrue();
         assertThat(product.getStock()).isZero();
-        assertThat(batch.statusEnum()).isEqualTo(PreorderBatch.Status.ORDERED);
+        assertThat(batch.getStatus()).isEqualTo(PreorderBatch.Status.ORDERED);
         verify(ledger, never()).receive(any(), any(), anyLong(), anyInt());
     }
 
@@ -190,7 +190,7 @@ class PreorderBatchServiceTest {
 
         service.cancel(5L, new CancelRequest(false, null), false);
 
-        assertThat(batch.statusEnum()).isEqualTo(PreorderBatch.Status.CANCELLED);
+        assertThat(batch.getStatus()).isEqualTo(PreorderBatch.Status.CANCELLED);
         verify(queue).onBatchCancelled(argThat(lines -> lines.size() == 1), eq(false), eq(NOW));
         verify(revalidator).allChanged();
     }
@@ -217,7 +217,7 @@ class PreorderBatchServiceTest {
 
     @Test
     void aClosedBatchCannotBeCancelledAgain() {
-        batch.setStatus(PreorderBatch.Status.ARRIVED.name());
+        batch.moveTo(PreorderBatch.Status.ARRIVED);
 
         assertThatThrownBy(() -> service.cancel(5L, null, false)).isInstanceOf(DomainException.BadRequest.class);
         verify(queue, never()).onBatchCancelled(any(), anyBoolean(), any());

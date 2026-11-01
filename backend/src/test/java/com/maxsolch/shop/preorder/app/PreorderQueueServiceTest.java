@@ -110,7 +110,7 @@ class PreorderQueueServiceTest {
         s.setUserId(user);
         s.setProductId(product.getId());
         s.setQty(qty);
-        s.setStatus(status.name());
+        s.moveTo(status);
         s.setHeldQty(held);
         s.setCreatedAt(NOW.minus(Duration.ofMinutes(minutesAgo)));
         return s;
@@ -126,7 +126,7 @@ class PreorderQueueServiceTest {
         verify(subs).save(saved.capture());
         assertThat(saved.getValue().getUserId()).isEqualTo(USER);
         assertThat(saved.getValue().getQty()).isEqualTo(2);
-        assertThat(saved.getValue().getStatus()).isEqualTo("WAITING");
+        assertThat(saved.getValue().getStatus().name()).isEqualTo("WAITING");
         assertThat(saved.getValue().getSource()).isEqualTo("WEB");
         assertThat(saved.getValue().getCreatedAt()).isEqualTo(NOW);
         assertThat(dto.status()).isEqualTo("WAITING");
@@ -205,11 +205,11 @@ class PreorderQueueServiceTest {
 
         assertThat(out.heldPeople()).isEqualTo(2);
         assertThat(out.shortPeople()).isEqualTo(1);
-        assertThat(queue.get(0).getStatus()).isEqualTo("HELD");
+        assertThat(queue.get(0).getStatus().name()).isEqualTo("HELD");
         assertThat(queue.get(0).getHeldQty()).isEqualTo(1);
         assertThat(queue.get(0).getHoldUntil()).isEqualTo(NOW.plus(Duration.ofHours(24)));
         assertThat(queue.get(0).getBatchId()).isEqualTo(9L);
-        assertThat(queue.get(2).getStatus()).isEqualTo("WAITING");
+        assertThat(queue.get(2).getStatus().name()).isEqualTo("WAITING");
         verify(events).publish(new PreorderEvents.StillWaiting(3, 1));
     }
 
@@ -224,7 +224,7 @@ class PreorderQueueServiceTest {
         var out = service.handOut(product, null, 9L, Distribution.ALL_AT_ONCE, 24, true);
 
         assertThat(out.notifiedPeople()).isEqualTo(2);
-        assertThat(queue).allMatch(s -> s.getStatus().equals("NOTIFIED") && s.getHeldQty() == 0
+        assertThat(queue).allMatch(s -> s.getStatus().name().equals("NOTIFIED") && s.getHeldQty() == 0
                 && s.getHoldUntil() != null);
     }
 
@@ -239,7 +239,7 @@ class PreorderQueueServiceTest {
         var out = service.handOut(product, null, null, Distribution.QUEUE_HOLD, 24, true);
 
         assertThat(out.heldPeople()).isZero();
-        assertThat(queue.get(1).getStatus()).isEqualTo("WAITING");
+        assertThat(queue.get(1).getStatus().name()).isEqualTo("WAITING");
     }
 
     // ---- leaving, buying, expiry
@@ -255,9 +255,9 @@ class PreorderQueueServiceTest {
 
         service.unsubscribe(USER, 1);
 
-        assertThat(mine.getStatus()).isEqualTo("CANCELLED");
+        assertThat(mine.getStatus().name()).isEqualTo("CANCELLED");
         assertThat(mine.getHeldQty()).isZero();
-        assertThat(next.getStatus()).isEqualTo("HELD");
+        assertThat(next.getStatus().name()).isEqualTo("HELD");
     }
 
     @Test
@@ -278,9 +278,9 @@ class PreorderQueueServiceTest {
 
         service.onOrderPlaced(USER, orderId, List.<byte[][]>of(new byte[][]{product.getId(), null}));
 
-        assertThat(mine.getStatus()).isEqualTo("BOUGHT");
+        assertThat(mine.getStatus().name()).isEqualTo("BOUGHT");
         assertThat(mine.getOrderId()).isEqualTo(orderId);
-        assertThat(next.getStatus()).isEqualTo("HELD");
+        assertThat(next.getStatus().name()).isEqualTo("HELD");
     }
 
     @Test
@@ -295,8 +295,8 @@ class PreorderQueueServiceTest {
 
         assertThat(expiry.expireHolds()).isEqualTo(1);
 
-        assertThat(late.getStatus()).isEqualTo("EXPIRED");
-        assertThat(next.getStatus()).isEqualTo("HELD");
+        assertThat(late.getStatus().name()).isEqualTo("EXPIRED");
+        assertThat(next.getStatus().name()).isEqualTo("HELD");
         verify(events).publish(new PreorderEvents.HoldExpired(1L));
         verify(events).publish(new PreorderEvents.HoldGranted(2L));
     }
@@ -311,7 +311,7 @@ class PreorderQueueServiceTest {
 
         assertThat(expiry.expireHolds()).isZero();
 
-        assertThat(bought.getStatus()).isEqualTo("BOUGHT");
+        assertThat(bought.getStatus().name()).isEqualTo("BOUGHT");
         verify(events, never()).publish(any(PreorderEvents.HoldExpired.class));
     }
 
@@ -347,7 +347,7 @@ class PreorderQueueServiceTest {
 
         service.onStockReturned(product, null);
 
-        assertThat(next.getStatus()).isEqualTo("HELD");
+        assertThat(next.getStatus().name()).isEqualTo("HELD");
         assertThat(next.getHoldUntil()).isEqualTo(NOW.plus(Duration.ofHours(24)));
         verify(events).publish(new PreorderEvents.HoldGranted(2L));
     }
@@ -361,8 +361,8 @@ class PreorderQueueServiceTest {
 
         service.onStockTaken(product, null, 1);
 
-        assertThat(first.getStatus()).isEqualTo("HELD");
-        assertThat(second.getStatus()).isEqualTo("WAITING");
+        assertThat(first.getStatus().name()).isEqualTo("HELD");
+        assertThat(second.getStatus().name()).isEqualTo("WAITING");
         assertThat(second.getHeldQty()).isZero();
         assertThat(second.getHoldUntil()).isNull();
     }
@@ -374,7 +374,7 @@ class PreorderQueueServiceTest {
 
         service.onStockTaken(product, null, 2);
 
-        assertThat(only.getStatus()).isEqualTo("HELD");
+        assertThat(only.getStatus().name()).isEqualTo("HELD");
         assertThat(only.getHeldQty()).isEqualTo(2);
     }
 }

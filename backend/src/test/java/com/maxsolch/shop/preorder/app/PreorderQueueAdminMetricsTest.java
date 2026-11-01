@@ -66,8 +66,8 @@ class PreorderQueueAdminMetricsTest {
         Instant to = LocalDate.of(2026, 10, 8).atStartOfDay(java.time.ZoneId.of("Europe/Kyiv")).toInstant();
         when(subs.joinedBetween(from, to)).thenReturn(List.<Object[]>of(new Object[]{12L, 9L}));
         when(subs.holdUnitsGiven(from, to)).thenReturn(8L);
-        when(subs.closedAfterHold(eq("BOUGHT"), eq(from), eq(to))).thenReturn(3L);
-        when(subs.closedAfterHold(eq("EXPIRED"), eq(from), eq(to))).thenReturn(4L);
+        when(subs.closedAfterHold(eq(com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.BOUGHT), eq(from), eq(to))).thenReturn(3L);
+        when(subs.closedAfterHold(eq(com.maxsolch.shop.preorder.domain.PreorderSubscription.Status.EXPIRED), eq(from), eq(to))).thenReturn(4L);
         when(batches.arrivedUnitsBetween(from, to)).thenReturn(40L);
 
         var m = admin.metrics(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 7));

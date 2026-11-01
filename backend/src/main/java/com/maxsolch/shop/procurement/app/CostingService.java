@@ -151,7 +151,7 @@ public class CostingService {
                                 f.getCreatedAt()), Collectors.toList())));
         List<ExpenseDto> exDtos = ex.stream().map(e -> toDto(e, docs.getOrDefault(e.getId(), List.of()))).toList();
         boolean preliminary = !b.isCostsFinal() || !r.problems().isEmpty();
-        return new BatchMoneyDto(b.getId(), b.getTitle(), b.getStatus(), b.getCurrency(), b.getFxRate(),
+        return new BatchMoneyDto(b.getId(), b.getTitle(), b.getStatus().name(), b.getCurrency(), b.getFxRate(),
                 b.getCostAllocation(), b.isCostsFinal(), preliminary, out, exDtos, r.purchaseMinor(),
                 r.expensesMinor(), r.purchaseMinor() > 0 ? pct(r.expensesMinor(), r.purchaseMinor()) : null,
                 r.unassignedMinor(), r.purchaseMinor() + r.expensesMinor(), r.problems());
