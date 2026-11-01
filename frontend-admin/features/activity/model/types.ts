@@ -1,35 +1,14 @@
-import type { BroadcastHistoryItem } from "@/features/notification";
+import type { Schemas } from "@shop/core/api/schemas";
 
-export type ActivitySource = "BOT" | "SITE" | "MINIAPP" | "PAYMENT" | "SYSTEM";
-export type ActivityResult = "OK" | "FAILED" | "SKIPPED";
+export type ActivityRow = Schemas["JournalActivityFeedRow"];
+export type ActivitySource = ActivityRow["source"];
+export type ActivityResult = ActivityRow["result"];
+export type ActivityPage = Schemas["Page"];
+export type ActivityFacets = Schemas["Facets"];
+/** Per source: counters of the last hours (total / failed / skipped / ok). */
+export type ActivityStats = Record<string, Record<string, number>>;
 
-export interface ActivityRow {
-  id: number;
-  createdAt: string;
-  source: ActivitySource | string;
-  type: string;
-  result: ActivityResult | string;
-  /** CUSTOMER | ADMINS — whom the bot wrote to; null for non-messages. */
-  recipient?: string | null;
-  tgUserId?: number | null;
-  customerName?: string | null;
-  customerUsername?: string | null;
-  chatId?: number | null;
-  orderId?: string | null;
-  groupId?: string | null;
-  summary?: string | null;
-  errorCode?: string | null;
-  error?: string | null;
-  /** JSON object as text. */
-  details?: string | null;
-}
-
-export interface ActivityPage {
-  items: ActivityRow[];
-  /** By result for the whole filter; only on page 0. */
-  totals?: Record<string, number> | null;
-}
-
+/** The feed's query string as the filter bar builds it: UI state, not a response (paging is added by the api). */
 export interface ActivityFilter {
   source?: string;
   type?: string;
@@ -44,19 +23,4 @@ export interface ActivityFilter {
   to?: string;
 }
 
-export interface ActivityFacets {
-  types: { source: string; type: string }[];
-  errorCodes: string[];
-  retentionDays: number;
-}
-
-export type ActivityStats = Record<string, { total?: number; ok?: number; failed?: number; skipped?: number }>;
-
-export interface BroadcastSummary {
-  broadcast: BroadcastHistoryItem;
-  group: string;
-  delivered: number;
-  failed: number;
-  skipped: number;
-  reasons: Record<string, number>;
-}
+export type BroadcastSummary = Schemas["NotificationBroadcastDeliveryReportSummary"];

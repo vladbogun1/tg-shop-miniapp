@@ -6,7 +6,25 @@ import { customerLabel, errorLabel, recipientText, resultLabel, typeLabel } from
 import { resultTone } from "./tone";
 import type { ActivityRow, BroadcastSummary } from "./types";
 
-const row = (p: Partial<ActivityRow>): ActivityRow => ({ id: 1, createdAt: "", source: "BOT", type: "START", result: "OK", ...p });
+const row = (p: Partial<ActivityRow>): ActivityRow => ({
+  id: 1,
+  createdAt: "",
+  source: "BOT",
+  type: "START",
+  result: "OK",
+  recipient: null,
+  tgUserId: null,
+  customerName: null,
+  customerUsername: null,
+  chatId: null,
+  orderId: null,
+  groupId: null,
+  summary: null,
+  errorCode: null,
+  error: null,
+  details: null,
+  ...p,
+});
 
 describe("labels", () => {
   it("bot results read as delivery", () => {

@@ -6166,6 +6166,12 @@ export interface components {
             /** Format: double */
             min: number | null;
         };
+        Facets: {
+            errorCodes: string[];
+            /** Format: int32 */
+            retentionDays: number;
+            types: components["schemas"]["TypeFacet"][];
+        };
         FeedReview: {
             author: string;
             /** Format: int64 */
@@ -6557,24 +6563,26 @@ export interface components {
         };
         JournalActivityFeedRow: {
             /** Format: int64 */
-            chatId: number;
+            chatId: number | null;
             /** Format: date-time */
             createdAt: string;
-            customerName: string;
-            customerUsername: string;
-            details: string;
-            error: string;
-            errorCode: string;
-            groupId: string;
+            customerName: string | null;
+            customerUsername: string | null;
+            details: string | null;
+            error: string | null;
+            errorCode: string | null;
+            groupId: string | null;
             /** Format: int64 */
             id: number;
-            orderId: string;
-            recipient: string;
-            result: string;
-            source: string;
-            summary: string;
+            orderId: string | null;
+            recipient: string | null;
+            /** @enum {string} */
+            result: "OK" | "FAILED" | "SKIPPED";
+            /** @enum {string} */
+            source: "BOT" | "SITE" | "MINIAPP" | "PAYMENT" | "SYSTEM";
+            summary: string | null;
             /** Format: int64 */
-            tgUserId: number;
+            tgUserId: number | null;
             type: string;
         };
         JsonNode: unknown;
@@ -7356,7 +7364,7 @@ export interface components {
             items: components["schemas"]["JournalActivityFeedRow"][];
             totals: {
                 [key: string]: number;
-            };
+            } | null;
         };
         PaymentOptionDto: {
             description: string;
@@ -8599,6 +8607,10 @@ export interface components {
             otpauthUri: string;
             secret: string;
         };
+        TypeFacet: {
+            source: string;
+            type: string;
+        };
         UpdateDeliveryRequest: {
             customerName?: string;
             npCityName?: string;
@@ -8923,9 +8935,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: Record<string, never>;
-                    };
+                    "*/*": components["schemas"]["Facets"];
                 };
             };
         };

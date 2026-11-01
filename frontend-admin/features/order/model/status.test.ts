@@ -20,7 +20,7 @@ describe("STATUS_META", () => {
   });
 
   it("reads the time of entering a status from the card", () => {
-    const order = { createdAt: "c", approvedAt: "a", shippedAt: null, deliveredAt: undefined, rejectedAt: "r" };
+    const order = { createdAt: "c", approvedAt: "a", shippedAt: null, deliveredAt: null, rejectedAt: "r" };
     expect(statusTimestamp(order, "APPROVED")).toBe("a");
     expect(statusTimestamp(order, "SHIPPED")).toBeNull();
     expect(statusTimestamp(order, "REJECTED")).toBe("r");

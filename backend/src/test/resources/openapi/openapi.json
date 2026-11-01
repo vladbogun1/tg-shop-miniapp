@@ -5306,6 +5306,32 @@
         ],
         "type" : "object"
       },
+      "Facets" : {
+        "properties" : {
+          "errorCodes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "retentionDays" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "types" : {
+            "items" : {
+              "$ref" : "#/components/schemas/TypeFacet"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [
+          "errorCodes",
+          "retentionDays",
+          "types"
+        ],
+        "type" : "object"
+      },
       "FeedReview" : {
         "properties" : {
           "author" : {
@@ -6567,6 +6593,7 @@
         "properties" : {
           "chatId" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "createdAt" : {
@@ -6574,21 +6601,27 @@
             "type" : "string"
           },
           "customerName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "customerUsername" : {
+            "nullable" : true,
             "type" : "string"
           },
           "details" : {
+            "nullable" : true,
             "type" : "string"
           },
           "error" : {
+            "nullable" : true,
             "type" : "string"
           },
           "errorCode" : {
+            "nullable" : true,
             "type" : "string"
           },
           "groupId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "id" : {
@@ -6596,22 +6629,38 @@
             "type" : "integer"
           },
           "orderId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "recipient" : {
+            "nullable" : true,
             "type" : "string"
           },
           "result" : {
+            "enum" : [
+              "OK",
+              "FAILED",
+              "SKIPPED"
+            ],
             "type" : "string"
           },
           "source" : {
+            "enum" : [
+              "BOT",
+              "SITE",
+              "MINIAPP",
+              "PAYMENT",
+              "SYSTEM"
+            ],
             "type" : "string"
           },
           "summary" : {
+            "nullable" : true,
             "type" : "string"
           },
           "tgUserId" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "type" : {
@@ -9274,6 +9323,7 @@
               "format" : "int64",
               "type" : "integer"
             },
+            "nullable" : true,
             "type" : "object"
           }
         },
@@ -13308,6 +13358,21 @@
         ],
         "type" : "object"
       },
+      "TypeFacet" : {
+        "properties" : {
+          "source" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "source",
+          "type"
+        ],
+        "type" : "object"
+      },
       "UpdateDeliveryRequest" : {
         "properties" : {
           "customerName" : {
@@ -14082,10 +14147,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "additionalProperties" : {
-                    "type" : "object"
-                  },
-                  "type" : "object"
+                  "$ref" : "#/components/schemas/Facets"
                 }
               }
             },
