@@ -17,6 +17,7 @@ import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.OrderSource;
 import com.maxsolch.shop.order.domain.OrderItem;
+import com.maxsolch.shop.catalog.domain.LineKey;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.promo.domain.PromoCode;
@@ -167,7 +168,7 @@ public class Checkout {
             if (line.quantity() <= 0) {
                 throw new DomainException.BadRequest(OrderError.QUANTITY_NOT_POSITIVE);
             }
-            String key = line.productId() + "::" + (line.variantId() == null ? "" : line.variantId());
+            String key = LineKey.of(line.productId(), line.variantId());
             acc.computeIfAbsent(key, k -> new AccLine(line.productId(), line.variantId()))
                     .quantity += line.quantity();
         }
