@@ -3,10 +3,32 @@ package com.maxsolch.shop.promo.domain;
 import com.maxsolch.shop.platform.util.Money;
 
 
-/** What a promo code takes off an order subtotal. */
+/**
+ * What a promo code takes off a cart: the one rule the checkout, the admin editing an order and the cart
+ * preview all go through ({@link #apply}).
+ */
 public final class PromoDiscount {
 
     private PromoDiscount() {
+    }
+
+    /** The answer of {@link #apply}: the discount, or why the code does not apply (then the discount is 0). */
+    public record Applied(long discountMinor, PromoRejection rejection) {
+        public boolean rejected() {
+            return rejection != null;
+        }
+    }
+
+    /**
+     * Apply a code to a cart worth {@code subtotal} of which {@code excludedMinor} are low-margin products no
+     * promo code applies to. A cart of only such products is refused, so a use of the code is not wasted.
+     * Otherwise see {@link #discountFor(PromoCode, long, long)} for the arithmetic.
+     */
+    public static Applied apply(PromoCode promo, long subtotal, long excludedMinor) {
+        if (excludedMinor > 0 && subtotal - excludedMinor <= 0) {
+            return new Applied(0, PromoRejection.CASE_EXCLUDED);
+        }
+        return new Applied(discountFor(promo, subtotal, excludedMinor), null);
     }
 
     /**
@@ -30,15 +52,11 @@ public final class PromoDiscount {
     }
 
     private static long discountOn(PromoCode promo, long subtotal) {
-        long discount;
-        if (promo.getDiscountAmountMinor() > 0) {
-            discount = promo.getDiscountAmountMinor();
-        } else if (promo.getDiscountPercent() > 0) {
-            int percent = Math.min(100, promo.getDiscountPercent());
-            discount = Money.percentOf(subtotal, percent);
-        } else {
-            discount = 0;
-        }
+        long discount = switch (promo.kind()) {
+            case FIXED -> promo.getDiscountAmountMinor();
+            case PERCENT -> Money.percentOf(subtotal, Math.min(100, promo.getDiscountPercent()));
+            case NONE -> 0;
+        };
         if (promo.getMaxDiscountMinor() > 0) {
             discount = Math.min(discount, promo.getMaxDiscountMinor());
         }

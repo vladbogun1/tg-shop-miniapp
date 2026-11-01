@@ -243,11 +243,10 @@ public class Checkout {
     /** Promo (fixed amount takes priority over percent), then the order priced; returns the low-margin part. */
     private long applyPromo(Order order, CreateOrderCommand cmd) {
         long discount = 0;
-        long subtotal = OrderMoney.subtotalMinor(order);
         PromoCode promo = promos.resolve(cmd.promoCode(), cmd.tgUserId(), true);
         long lowMarginMinor = promos.lowMarginMinor(order);
         if (promo != null) {
-            discount = PromoDiscount.discountFor(promo, subtotal, promos.excluded(promo, lowMarginMinor, subtotal));
+            discount = promos.discountFor(promo, order, lowMarginMinor);
             order.labelPromo(promo.getCode());
             promos.countUse(promo);
             if (cmd.tgUserId() != null) {

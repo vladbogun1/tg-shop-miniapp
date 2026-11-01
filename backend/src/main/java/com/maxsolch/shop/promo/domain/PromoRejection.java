@@ -5,7 +5,9 @@ public enum PromoRejection {
     EXPIRED("api.promo.expired"),
     SIGN_IN("api.promo.personalSignIn"),
     /** Somebody else's personal code: the same answer as for a code that does not exist. */
-    NOT_FOUND("api.promo.notFound");
+    NOT_FOUND("api.promo.notFound"),
+    /** The cart holds only low-margin products («Упор на скидки») no promo code applies to. */
+    CASE_EXCLUDED("api.promo.caseExcluded");
 
     private final String messageKey;
 

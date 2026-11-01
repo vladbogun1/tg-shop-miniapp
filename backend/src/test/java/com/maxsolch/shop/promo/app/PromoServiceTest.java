@@ -191,4 +191,33 @@ class PromoServiceTest {
 
         verify(reservationRepository, never()).release(any(), anyLong());
     }
+
+    private PromoService withLowMargin(long excludedMinor) {
+        CaseLowMargin lowMargin = org.mockito.Mockito.mock(CaseLowMargin.class);
+        when(lowMargin.excludedMinor(any())).thenReturn(excludedMinor);
+        return new PromoService(promoCodeRepository, reservationRepository, messages, settings,
+                java.time.Clock.systemUTC(), lowMargin);
+    }
+
+    @Test
+    void previewSkipsTheLowMarginPartAndSaysSo() {
+        when(promoCodeRepository.findByCodeAndActiveTrue("TEN")).thenReturn(Optional.of(code("TEN", null, 0)));
+
+        PromoPreviewDto result = withLowMargin(60_000L).preview("TEN", SUBTOTAL, USER, java.util.Map.of("p", 1));
+
+        assertThat(result.valid()).isTrue();
+        assertThat(result.discountMinor()).isEqualTo(4_000L); // 10 % of the 400 ₴ left
+        assertThat(result.message()).isEqualTo("api.promo.partlyExcluded");
+    }
+
+    @Test
+    void previewRefusesACartOfOnlyLowMarginProducts() {
+        when(promoCodeRepository.findByCodeAndActiveTrue("TEN")).thenReturn(Optional.of(code("TEN", null, 0)));
+
+        PromoPreviewDto result = withLowMargin(SUBTOTAL).preview("TEN", SUBTOTAL, USER, java.util.Map.of("p", 1));
+
+        assertThat(result.valid()).isFalse();
+        assertThat(result.message()).isEqualTo("api.promo.caseExcluded");
+        assertThat(result.totalMinor()).isEqualTo(SUBTOTAL);
+    }
 }

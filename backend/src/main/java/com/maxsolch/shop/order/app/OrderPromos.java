@@ -9,6 +9,8 @@ import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.app.PromoService;
 import com.maxsolch.shop.promo.domain.PromoCode;
+import com.maxsolch.shop.promo.domain.PromoDiscount;
+import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.promo.app.PromoUses;
 import org.springframework.stereotype.Component;
 
@@ -64,11 +66,7 @@ public class OrderPromos {
         // Personal codes (review bonus, V44): only the owner, and only until they expire.
         PromoRejection personal = PromoService.personalRejection(promo, tgUserId, ops.now());
         if (personal != null) {
-            throw new DomainException.BadRequest(switch (personal) {
-                case EXPIRED -> OrderError.PROMO_REJECTED_EXPIRED;
-                case SIGN_IN -> OrderError.PROMO_REJECTED_SIGN_IN;
-                case NOT_FOUND -> OrderError.PROMO_REJECTED_NOT_FOUND;
-            });
+            throw rejected(personal);
         }
         // Remaining uses minus other customers' live holds: a code someone reserved from their cart
         // must not be taken by a checkout that merely submitted first.
@@ -103,18 +101,25 @@ public class OrderPromos {
     }
 
     /**
-     * What of the subtotal a code does not touch: the low-margin products ("Упор на скидки"): no promo
-     * code applies to them, a case code or any other. A code on a cart of only such products is refused,
-     * so the use is not wasted.
+     * What a code takes off this order (the one rule, {@link PromoDiscount#apply}): the low-margin products
+     * ("Упор на скидки") are not touched by any promo code, a case code or any other; a cart of only such
+     * products is refused, so the use is not wasted.
      */
-    long excluded(PromoCode promo, long lowMarginMinor, long subtotal) {
-        if (promo == null || lowMarginMinor <= 0) {
-            return 0;
+    long discountFor(PromoCode promo, Order order, long lowMarginMinor) {
+        PromoDiscount.Applied applied = PromoDiscount.apply(promo, OrderMoney.subtotalMinor(order), lowMarginMinor);
+        if (applied.rejected()) {
+            throw rejected(applied.rejection());
         }
-        if (subtotal - lowMarginMinor <= 0) {
-            throw new DomainException.BadRequest(OrderError.PROMO_REJECTED_CASE_EXCLUDED);
-        }
-        return lowMarginMinor;
+        return applied.discountMinor();
+    }
+
+    private static DomainException.BadRequest rejected(PromoRejection reason) {
+        return new DomainException.BadRequest(switch (reason) {
+            case EXPIRED -> OrderError.PROMO_REJECTED_EXPIRED;
+            case SIGN_IN -> OrderError.PROMO_REJECTED_SIGN_IN;
+            case NOT_FOUND -> OrderError.PROMO_REJECTED_NOT_FOUND;
+            case CASE_EXCLUDED -> OrderError.PROMO_REJECTED_CASE_EXCLUDED;
+        });
     }
 
     public static boolean isCasePromo(PromoCode promo) {

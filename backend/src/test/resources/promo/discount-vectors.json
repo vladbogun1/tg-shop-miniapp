@@ -1,0 +1,23 @@
+{
+  "_comment": "Общие тест-векторы формулы скидки промокода. Гоняют и JUnit (PromoDiscountVectorsTest), и vitest админки (features/order/model/discount.test.ts): серверная формула и её зеркало в админке не должны разойтись. Деньги в копейках; excludedMinor — часть корзины, на которую промокод не действует (товары «Упор на скидки»).",
+  "cases": [
+    { "name": "percent", "percent": 10, "subtotalMinor": 100000, "expected": 10000 },
+    { "name": "percent rounds down", "percent": 33, "subtotalMinor": 1001, "expected": 330 },
+    { "name": "percent over 100 is capped at the subtotal", "percent": 150, "subtotalMinor": 10000, "expected": 10000 },
+    { "name": "fixed", "amountMinor": 30000, "subtotalMinor": 100000, "expected": 30000 },
+    { "name": "fixed is capped at the subtotal", "amountMinor": 5000, "subtotalMinor": 3000, "expected": 3000 },
+    { "name": "fixed beats percent", "amountMinor": 30000, "percent": 10, "subtotalMinor": 100000, "expected": 30000 },
+    { "name": "ceiling caps a percent", "percent": 10, "maxMinor": 5000, "subtotalMinor": 100000, "expected": 5000 },
+    { "name": "ceiling caps a fixed amount", "amountMinor": 30000, "maxMinor": 20000, "subtotalMinor": 100000, "expected": 20000 },
+    { "name": "ceiling not reached", "percent": 10, "maxMinor": 50000, "subtotalMinor": 100000, "expected": 10000 },
+    { "name": "review bonus: 5 % up to 100 UAH, big order", "percent": 5, "maxMinor": 10000, "subtotalMinor": 1000000, "expected": 10000 },
+    { "name": "review bonus: 5 % up to 100 UAH, small order", "percent": 5, "maxMinor": 10000, "subtotalMinor": 100000, "expected": 5000 },
+    { "name": "gift case code: 15 %", "percent": 15, "subtotalMinor": 200000, "expected": 30000 },
+    { "name": "excluded part: percent only on the rest", "percent": 10, "subtotalMinor": 480000, "excludedMinor": 400000, "expected": 8000 },
+    { "name": "excluded part: fixed capped at the rest", "amountMinor": 30000, "subtotalMinor": 420000, "excludedMinor": 400000, "expected": 20000 },
+    { "name": "excluded part: nothing left", "amountMinor": 30000, "subtotalMinor": 400000, "excludedMinor": 400000, "expected": 0 },
+    { "name": "excluded part, then percent, then ceiling", "percent": 10, "maxMinor": 15000, "subtotalMinor": 1000000, "excludedMinor": 800000, "expected": 15000 },
+    { "name": "code without a discount", "subtotalMinor": 100000, "expected": 0 },
+    { "name": "empty cart", "percent": 10, "subtotalMinor": 0, "expected": 0 }
+  ]
+}
