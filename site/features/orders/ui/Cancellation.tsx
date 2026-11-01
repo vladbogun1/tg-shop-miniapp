@@ -7,6 +7,7 @@ import { type OrderDetail } from "@shop/core/types";
 import { useI18n } from "@/i18n/context";
 import { useFmt } from "@/lib/use-fmt";
 import { CancelOrder, RequestCancel } from "./CancelForms";
+import { tint, tintOver } from "@shop/ui/tint";
 
 type CancelMode = ReturnType<typeof customerCancelMode>;
 
@@ -151,7 +152,7 @@ function StateCard({
   return (
     <section
       className="nb flex items-start gap-3 p-5"
-      style={{ borderColor: `color-mix(in srgb, ${c} 45%, transparent)`, background: `color-mix(in srgb, ${c} 8%, var(--surface))` }}
+      style={{ borderColor: tint(c, 45), background: tintOver(c, 8, "var(--surface)") }}
       aria-live="polite"
     >
       <span className="mt-0.5 shrink-0" style={{ color: c }}>

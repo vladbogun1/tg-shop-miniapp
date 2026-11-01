@@ -12,6 +12,7 @@ import { Check, X } from "lucide-react";
 import type { OrderStatus } from "@/lib/api";
 import { timelineSteps } from "@shop/customer/order/timeline";
 import { useT } from "@/i18n/context";
+import { tint, tintOver } from "@shop/ui/tint";
 
 export function StatusTimeline({ status }: { status: OrderStatus }) {
   const t = useT();
@@ -20,8 +21,8 @@ export function StatusTimeline({ status }: { status: OrderStatus }) {
       <div
         className="flex items-center gap-3 rounded-[var(--r-card)] border p-4"
         style={{
-          background: "color-mix(in srgb, var(--danger) 12%, var(--surface))",
-          borderColor: "color-mix(in srgb, var(--danger) 45%, transparent)",
+          background: tintOver("var(--danger)", 12, "var(--surface)"),
+          borderColor: tint("var(--danger)", 45),
         }}
       >
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--danger)] text-white">
@@ -56,7 +57,7 @@ export function StatusTimeline({ status }: { status: OrderStatus }) {
                 }
                 className="font-display flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-[12px] font-bold"
                 style={{
-                  background: done ? `color-mix(in srgb, ${stepColor} 18%, transparent)` : "var(--surface-2)",
+                  background: done ? tint(stepColor, 18) : "var(--surface-2)",
                   borderColor: done ? stepColor : "var(--line)",
                   color: done ? stepColor : "var(--faint)",
                   boxShadow: isCurrent ? `0 0 14px -2px ${stepColor}` : "none",

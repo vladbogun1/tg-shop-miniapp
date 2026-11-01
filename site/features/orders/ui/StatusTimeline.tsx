@@ -10,6 +10,7 @@ import { timelineSteps } from "@shop/customer/order/timeline";
 import type { MessageKey } from "@/i18n";
 import { useT } from "@/i18n/context";
 import { useFmt } from "@/lib/use-fmt";
+import { tint } from "@shop/ui/tint";
 
 export function StatusTimeline({ order }: { order: OrderDetail }) {
   const t = useT();
@@ -39,10 +40,10 @@ export function StatusTimeline({ order }: { order: OrderDetail }) {
               <span
                 className="grid h-9 w-9 shrink-0 place-items-center rounded-full border font-display text-[13px] font-bold"
                 style={{
-                  background: done ? `color-mix(in srgb, ${color} 18%, transparent)` : "var(--surface-2)",
+                  background: done ? tint(color, 18) : "var(--surface-2)",
                   borderColor: done ? color : "var(--line-strong)",
                   color: done ? color : "var(--faint)",
-                  boxShadow: isCurrent ? `0 0 14px color-mix(in srgb, ${color} 55%, transparent)` : "none",
+                  boxShadow: isCurrent ? `0 0 14px ${tint(color, 55)}` : "none",
                 }}
               >
                 {done ? <Check className="h-4 w-4" strokeWidth={2.5} /> : i + 1}

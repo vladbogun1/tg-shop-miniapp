@@ -10,6 +10,7 @@ import { ORDER_PAY_ANCHOR } from "@/features/gift/view/OrderGiftCase";
 import { useI18n } from "@/i18n/context";
 import { useFmt } from "@/lib/use-fmt";
 import { countdown, paymentMethodLabel } from "../model/helpers";
+import { tint, tintOver } from "@shop/ui/tint";
 
 const TONE = {
   danger: "var(--danger)",
@@ -34,8 +35,8 @@ export function Notice({
     <section
       className="nb flex items-start gap-3 p-5"
       style={{
-        borderColor: `color-mix(in srgb, ${c} 45%, transparent)`,
-        background: `color-mix(in srgb, ${c} 10%, var(--surface))`,
+        borderColor: tint(c, 45),
+        background: tintOver(c, 10, "var(--surface)"),
       }}
     >
       <span className="mt-0.5 shrink-0" style={{ color: c }}>

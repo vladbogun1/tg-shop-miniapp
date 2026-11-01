@@ -11,6 +11,7 @@ import { Bell, Check, Clock, Truck } from "lucide-react";
 import { PRE_COLOR } from "@/features/preorders/ui/colors";
 import { useI18n } from "@/i18n/context";
 import { DEFAULT_HOLD_HOURS, etaWhen, holdUntilText, type MyPreorder, type PreorderEta } from "@/features/preorders/state";
+import { tint } from "@shop/ui/tint";
 
 type Tr = ReturnType<typeof useI18n>["t"];
 
@@ -64,7 +65,7 @@ export function PreorderBlock({
   const when = etaWhen(eta, t, tag);
 
   return (
-    <div className="nb mt-5 p-4" style={eta ? { borderColor: "color-mix(in srgb, var(--st-approved) 40%, transparent)" } : undefined}>
+    <div className="nb mt-5 p-4" style={eta ? { borderColor: tint("var(--st-approved)", 40) } : undefined}>
       <p className="font-display flex items-center gap-2 text-[15px] font-bold" style={{ color: eta ? PRE_COLOR : "var(--ink)" }}>
         {eta ? <Truck className="h-[18px] w-[18px] shrink-0" strokeWidth={2.25} /> : <Bell className="h-[18px] w-[18px] shrink-0 text-[var(--muted)]" strokeWidth={2.25} />}
         {eta ? t("preorder.block.title") : t("preorder.block.titleOut")}

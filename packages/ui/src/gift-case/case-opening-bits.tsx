@@ -4,6 +4,8 @@
 import { useState, type CSSProperties } from "react";
 import { CASE_RARITY_COLOR, caseDiscountText, type CaseItem, type CaseRarity } from "@shop/core/giftcase";
 import { CASE_CSS } from "./case-styles";
+import { CASE_CSS_FALLBACK } from "./case-styles-fallback";
+import { hexChannels } from "../tint";
 import { CaseDiscountTile } from "./case-tier";
 import type { GiftCaseTexts } from "./case-opening-types";
 
@@ -59,14 +61,15 @@ export function itemTitle(item: CaseItem, texts: GiftCaseTexts, money: (m: numbe
 }
 
 export function rc(r: CaseRarity | string | null | undefined): CSSProperties {
-  return { ["--rc" as string]: CASE_RARITY_COLOR[(r as CaseRarity) ?? "COMMON"] ?? CASE_RARITY_COLOR.COMMON } as CSSProperties;
+  const color = CASE_RARITY_COLOR[(r as CaseRarity) ?? "COMMON"] ?? CASE_RARITY_COLOR.COMMON;
+  return { ["--rc" as string]: color, ["--rc-rgb" as string]: hexChannels(color) } as CSSProperties;
 }
 
 export function CaseStyles() {
   // React 19 hoists this to <head> once, however many case components are mounted.
   return (
     <style href="gift-case-ui" precedence="default">
-      {CASE_CSS}
+      {CASE_CSS + CASE_CSS_FALLBACK}
     </style>
   );
 }

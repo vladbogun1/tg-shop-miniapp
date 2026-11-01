@@ -18,6 +18,7 @@ import { buttonClass } from "@shop/ui/button-styles";
 import { useI18n } from "@/i18n/context";
 import { api } from "@/lib/api";
 import { useFmt } from "@/lib/use-fmt";
+import { tint } from "@shop/ui/tint";
 
 const CHIP: Record<ReceiptStatus, string> = {
   PENDING: "var(--warn)",
@@ -88,7 +89,7 @@ function StatusChip({ status }: { status: ReceiptStatus }) {
   return (
     <span
       className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-[.06em]"
-      style={{ color: c, background: `color-mix(in srgb, ${c} 14%, transparent)` }}
+      style={{ color: c, background: tint(c, 14) }}
     >
       {t(`receipts.status.${status}`)}
     </span>
