@@ -9,7 +9,6 @@ import com.maxsolch.shop.platform.jobs.Workers;
 import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -52,15 +51,15 @@ public class OrderNotificationListener {
     private final TransactionTemplate newTx;
     private final Executor executor;
 
-    /** {@code app.order-notify.async=false} runs the handlers inline: the integration tests assert right after commit. */
+    /** The integration tests swap the {@code Workers} bean for one that runs this worker inline (they assert right after commit). */
+    public static final String WORKER = "order-notify";
+
     @Autowired
     public OrderNotificationListener(OrderRepository orderRepository, EntityManager entityManager,
                                      OrderSellerNotifier seller, OrderCustomerNotifier customer,
-                                     PlatformTransactionManager txManager, Workers workers,
-                                     @Value("${app.order-notify.async:true}") boolean async) {
+                                     PlatformTransactionManager txManager, Workers workers) {
         this(orderRepository, entityManager, seller, customer, txManager,
-                async ? workers.bounded("order-notify", QUEUE_CAPACITY, new DropAndLog(), Duration.ofSeconds(5))
-                        : (Executor) Runnable::run);
+                workers.bounded(WORKER, QUEUE_CAPACITY, new DropAndLog(), Duration.ofSeconds(5)));
     }
 
     OrderNotificationListener(OrderRepository orderRepository, EntityManager entityManager,
