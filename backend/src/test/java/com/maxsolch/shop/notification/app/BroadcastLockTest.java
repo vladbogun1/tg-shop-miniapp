@@ -54,11 +54,12 @@ class BroadcastLockTest {
         });
         return new BroadcastService(bot, props, users, repo, activity, Clock.systemUTC(),
                 mock(AdminAuditService.class), mock(CurrentActor.class),
-                new DbLocks(table, Clock.systemUTC()), new com.maxsolch.shop.platform.jobs.Workers());
+                new DbLocks(table, Clock.systemUTC()), new com.maxsolch.shop.platform.jobs.Workers(),
+                new BroadcastPhotoStore(new org.springframework.cache.concurrent.ConcurrentMapCacheManager("broadcastPhotos")));
     }
 
     private static BroadcastRequest request() {
-        return new BroadcastRequest("hi", "all", false, null, null, null, null, null);
+        return new BroadcastRequest("hi", "all", false, null, null, null, null, null, null);
     }
 
     @Test
@@ -86,7 +87,8 @@ class BroadcastLockTest {
         when(broken.ids(any())).thenThrow(new IllegalStateException("db down"));
         BroadcastService failing = new BroadcastService(mock(TelegramGateway.class), tokenProps(), broken,
                 mock(BroadcastRepository.class), mock(ActivityLog.class), Clock.systemUTC(),
-                mock(AdminAuditService.class), mock(CurrentActor.class), new DbLocks(table, Clock.systemUTC()), new com.maxsolch.shop.platform.jobs.Workers());
+                mock(AdminAuditService.class), mock(CurrentActor.class), new DbLocks(table, Clock.systemUTC()), new com.maxsolch.shop.platform.jobs.Workers(),
+                new BroadcastPhotoStore(new org.springframework.cache.concurrent.ConcurrentMapCacheManager("broadcastPhotos")));
 
         assertThatThrownBy(() -> failing.start(request(), 1L, "Max")).isInstanceOf(IllegalStateException.class);
 
