@@ -411,6 +411,49 @@ class CheckoutTest extends OrderScenarioTestBase {
     }
 
     @Test
+    void createOrder_promoWithNoUsesLeft_isRefusedAsTaken_andNotCounted() {
+        Product p = simpleProduct(10, 10_000);
+        lenient().when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
+        PromoCode promo = new PromoCode();
+        promo.setCode("ONCE");
+        promo.setDiscountPercent(10);
+        promo.setActive(true);
+        promo.setMaxUses(1);
+        promo.setUsesCount(1);
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("ONCE")).thenReturn(Optional.of(promo));
+        // Holds of other customers are PromoServiceTest's concern; here they eat the last use.
+        when(promoService.remainingUses(any(), any())).thenReturn(0L);
+
+        CreateOrderCommand command = cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 1)), "ONCE");
+
+        assertThatThrownBy(() -> service.createOrder(command))
+                .isInstanceOf(DomainException.BadRequest.class)
+                .extracting(e -> ((DomainException) e).errorCode())
+                .isEqualTo(OrderError.PROMO_REJECTED_TAKEN);
+        assertThat(promo.getUsesCount()).isEqualTo(1);
+        verify(promoCodeRepository, never()).save(any());
+    }
+
+    @Test
+    void createOrder_promoWithOneUseLeft_goesThrough() {
+        Product p = simpleProduct(10, 10_000);
+        when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
+        PromoCode promo = new PromoCode();
+        promo.setCode("ONCE");
+        promo.setDiscountPercent(10);
+        promo.setActive(true);
+        promo.setMaxUses(1);
+        promo.setUsesCount(0);
+        when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("ONCE")).thenReturn(Optional.of(promo));
+        when(promoService.remainingUses(any(), any())).thenReturn(1L);
+
+        Order order = service.createOrder(cmd(List.of(new CreateOrderCommand.Line(productUuid, null, 1)), "ONCE"));
+
+        assertThat(order.getDiscountMinor()).isEqualTo(1_000);
+        assertThat(promo.getUsesCount()).isEqualTo(1);
+    }
+
+    @Test
     void createOrder_invalidPromo_throws() {
         Product p = simpleProduct(10, 1_000);
         lenient().when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
