@@ -83,14 +83,18 @@ public class MarginService {
     // ---------------------------------------------------------------- raw rows
 
     record OrderRow(String id, long totalMinor, long refundedMinor, long uncollectedMinor, String status,
-                    boolean online, long prepaymentMinor) {
+                    boolean online, long prepaymentMinor, long receivedMinor) {
         OrderRow(String id, long totalMinor, long refundedMinor, long uncollectedMinor, String status) {
-            this(id, totalMinor, refundedMinor, uncollectedMinor, status, false, 0);
+            this(id, totalMinor, refundedMinor, uncollectedMinor, status, false, 0, 0);
         }
 
-        /** What the bank is to take the fee from: the prepayment, or the whole order when paid in full online. */
+        /**
+         * What the bank is yet to take the fee from: the online part (the prepayment, or the whole order) not
+         * received yet. Money the admin took by hand (crypto, cash, a card transfer) never went through monobank.
+         */
         long onlineDueMinor() {
-            return !online ? 0 : com.maxsolch.shop.domain.OrderMoney.dueOnlineMinor(totalMinor, prepaymentMinor);
+            return !online ? 0
+                    : com.maxsolch.shop.domain.OrderMoney.amountDueMinor(totalMinor, prepaymentMinor, receivedMinor);
         }
 
         long revenue() {
@@ -140,11 +144,11 @@ public class MarginService {
         MapSqlParameterSource p = new MapSqlParameterSource("ids",
                 orderIds.stream().map(UuidUtil::toBytes).toList());
         List<OrderRow> orders = jdbc.query("select bin_to_uuid(id) id, total_minor, refunded_minor, "
-                + "uncollected_minor, status, payment_due_at is not null online, prepayment_minor "
+                + "uncollected_minor, status, payment_due_at is not null online, prepayment_minor, received_minor "
                 + "from orders where id in (:ids)", p, (rs, i) -> new OrderRow(
                 rs.getString("id"), rs.getLong("total_minor"), rs.getLong("refunded_minor"),
                 rs.getLong("uncollected_minor"), rs.getString("status"), rs.getBoolean("online"),
-                rs.getLong("prepayment_minor")));
+                rs.getLong("prepayment_minor"), rs.getLong("received_minor")));
         List<ItemRow> items = jdbc.query("select id, bin_to_uuid(order_id) order_id, bin_to_uuid(product_id) pid, "
                 + "bin_to_uuid(variant_id) vid, title_snapshot, variant_name_snapshot, price_minor_snapshot, quantity, "
                 + "returned_qty, restocked_qty, gift from order_items where order_id in (:ids) order by id", p,
