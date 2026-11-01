@@ -7,6 +7,7 @@ import com.maxsolch.shop.inbox.domain.InboxMark;
 
 
 import com.maxsolch.shop.order.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.OrderTransitions;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -48,7 +49,7 @@ public class InboxStore {
                 + "and pi.applied_at is not null) paid_online "
                 + "from orders o "
                 + "where (o.status = 'NEW' and o.paid = true) "
-                + "or (o.cancel_request_status = 'PENDING' and o.status in ('NEW', 'APPROVED')) "
+                + "or (o.cancel_request_status = 'PENDING' and o.status in (" + OrderTransitions.OPEN_SQL + ")) "
                 + "or (o.status = 'REJECTED' and o.shipped_at is null and o.received_minor > o.refunded_minor) "
                 + "or (o.status = 'NEW' and o.created_at <= ?) "
                 + "or (o.status = 'APPROVED' and coalesce(o.approved_at, o.created_at) <= ?) "

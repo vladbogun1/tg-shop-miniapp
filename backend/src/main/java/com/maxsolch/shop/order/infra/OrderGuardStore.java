@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.infra;
 
+import com.maxsolch.shop.order.domain.OrderTransitions;
 import com.maxsolch.shop.order.app.OrderGuard;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -22,7 +23,7 @@ public class OrderGuardStore {
     /** NEW/APPROVED orders of the customer with no money received yet. */
     public int countUnpaid(long userId) {
         Integer n = jdbc.queryForObject("select count(*) from orders where user_id = ? "
-                + "and status in ('NEW', 'APPROVED') and paid = false and received_minor = 0", Integer.class, userId);
+                + "and status in (" + OrderTransitions.OPEN_SQL + ") and paid = false and received_minor = 0", Integer.class, userId);
         return n == null ? 0 : n;
     }
 

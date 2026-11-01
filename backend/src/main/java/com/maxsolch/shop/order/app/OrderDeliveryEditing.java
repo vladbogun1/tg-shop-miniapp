@@ -7,6 +7,7 @@ import com.maxsolch.shop.order.domain.OrderEvents;
 import com.maxsolch.shop.order.domain.DeliveryMethod;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.OrderTransitions;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
@@ -79,7 +80,7 @@ public class OrderDeliveryEditing {
     public OrderChange updateDelivery(byte[] orderId, DeliveryPatch patch) {
         Order order = ops.lock(orderId);
         OrderStatus s = order.getStatus();
-        if (s != OrderStatus.NEW && s != OrderStatus.APPROVED && s != OrderStatus.SHIPPED) {
+        if (!OrderTransitions.isDeliveryEditable(s)) {
             throw new DomainException.BadRequest(OrderError.DELIVERY_EDIT_NOT_ALLOWED);
         }
         List<String> changes = new ArrayList<>();

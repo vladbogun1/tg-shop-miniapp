@@ -14,6 +14,7 @@ import com.maxsolch.shop.order.domain.OrderItem;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.OrderStatus;
+import com.maxsolch.shop.order.domain.OrderTransitions;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.returns.domain.LineOutcome;
 import com.maxsolch.shop.returns.domain.ManualRefund;
@@ -82,7 +83,7 @@ public class Exchanges {
 
     /** Where the replacement order of an exchange starts: «Новый» (default) or straight «Одобрен». */
     public static boolean isTarget(OrderStatus s) {
-        return s == OrderStatus.NEW || s == OrderStatus.APPROVED;
+        return OrderTransitions.isOpen(s);
     }
 
     /**

@@ -38,6 +38,17 @@ public final class OrderTransitions {
         return status == OrderStatus.NEW || status == OrderStatus.APPROVED;
     }
 
+    /** The same set as {@link #isOpen(OrderStatus)}, for a SQL {@code status in (...)} list: {@code 'NEW', 'APPROVED'}. */
+    public static final String OPEN_SQL = java.util.Arrays.stream(OrderStatus.values())
+            .filter(OrderTransitions::isOpen)
+            .map(s -> "'" + s.name() + "'")
+            .collect(java.util.stream.Collectors.joining(", "));
+
+    /** The delivery address of an order may be corrected until it is delivered or rejected. */
+    public static boolean isDeliveryEditable(OrderStatus status) {
+        return isOpen(status) || status == OrderStatus.SHIPPED;
+    }
+
     public static boolean isOpen(Order order) {
         return isOpen(order.getStatus());
     }
