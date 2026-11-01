@@ -130,7 +130,7 @@ public class CostingService {
         List<MoneyLineDto> out = new ArrayList<>();
         for (PreorderBatchItem i : lines) {
             Product p = byId.get(UuidUtil.toString(i.getProductId()));
-            ProductVariant v = p == null ? null : Lines.variantById(p, i.getVariantId());
+            ProductVariant v = p == null ? null : p.variant(i.getVariantId());
             BatchCost.LineCost c = cost.get(i.getId());
             long price = p == null ? 0 : p.getPriceMinor();
             Long unit = c == null ? null : c.costUnitMinor();
@@ -138,7 +138,7 @@ public class CostingService {
             out.add(new MoneyLineDto(i.getId(), UuidUtil.toString(i.getProductId()),
                     i.getVariantId() == null ? null : UuidUtil.toString(i.getVariantId()),
                     p == null ? "(товар удалён)" : p.getTitle(), v == null ? null : v.getName(),
-                    p == null ? null : Lines.imageOf(p), i.getQtyOrdered(), i.getQtyArrived(),
+                    p == null ? null : p.firstImageUrl(), i.getQtyOrdered(), i.getQtyArrived(),
                     qtyOf(i), i.getUnitPriceFx(), i.getWeightG(), i.getManualExtraMinor(),
                     c == null ? null : c.purchaseUnitMinor(), c == null ? null : c.purchaseLineMinor(),
                     c == null ? 0 : c.extraLineMinor(), c == null ? 0 : c.extraUnitMinor(), unit, price, margin,

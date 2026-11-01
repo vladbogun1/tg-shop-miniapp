@@ -140,10 +140,10 @@ class BatchEditor {
             byte[] productId = Lines.bytes(r.productId());
             Product p = products.findById(productId)
                     .orElseThrow(() -> new DomainException.BadRequest(ProcurementError.BAD_PRODUCT, String.valueOf(r.productId())));
-            boolean hasVariants = p.getVariants() != null && !p.getVariants().isEmpty();
+            boolean hasVariants = p.hasVariants();
             byte[] variantId = null;
             if (r.variantId() != null && !r.variantId().isBlank()) {
-                ProductVariant v = Lines.variantById(p, Lines.bytes(r.variantId()));
+                ProductVariant v = p.variant(Lines.bytes(r.variantId()));
                 if (v == null) {
                     throw new DomainException.BadRequest(ProcurementError.BAD_VARIANT, p.getTitle());
                 }

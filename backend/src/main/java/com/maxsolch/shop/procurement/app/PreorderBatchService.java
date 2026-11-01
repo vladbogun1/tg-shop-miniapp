@@ -230,7 +230,7 @@ public class PreorderBatchService {
             }
             Product p = (dry ? products.findById(i.getProductId()) : products.findByIdForUpdate(i.getProductId()))
                     .orElseThrow(() -> new DomainException.BadRequest(ProcurementError.PRODUCT_GONE));
-            ProductVariant v = Lines.variantById(p, i.getVariantId());
+            ProductVariant v = p.variant(i.getVariantId());
             if (i.getVariantId() != null && v == null) {
                 throw new DomainException.BadRequest(ProcurementError.VARIANT_GONE, p.getTitle());
             }
@@ -297,12 +297,12 @@ public class PreorderBatchService {
         List<ItemDto> itemDtos = new ArrayList<>();
         for (PreorderBatchItem i : lines) {
             Product p = byId.get(UuidUtil.toString(i.getProductId()));
-            ProductVariant v = p == null ? null : Lines.variantById(p, i.getVariantId());
+            ProductVariant v = p == null ? null : p.variant(i.getVariantId());
             long[] d = demand.getOrDefault(Lines.key(i.getProductId(), i.getVariantId()), new long[2]);
             itemDtos.add(new ItemDto(i.getId(), UuidUtil.toString(i.getProductId()),
                     i.getVariantId() == null ? null : UuidUtil.toString(i.getVariantId()),
                     p == null ? "(товар удалён)" : p.getTitle(), v == null ? null : v.getName(),
-                    p == null ? null : Lines.imageOf(p),
+                    p == null ? null : p.firstImageUrl(),
                     p == null ? 0 : Lines.stockOf(p, v), p == null ? 0 : p.getPriceMinor(),
                     i.getQtyOrdered(), i.getQtyArrived(), money ? i.getUnitPriceFx() : null, d[0], d[1]));
         }

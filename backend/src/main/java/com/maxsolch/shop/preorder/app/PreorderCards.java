@@ -85,7 +85,7 @@ class PreorderCards {
         if (s.statusEnum() == Status.WAITING) {
             position = (int) subs.countAhead(s.getProductId(), s.getVariantId(), s.getCreatedAt(), s.getId()) + 1;
         }
-        ProductVariant v = Lines.variantById(p, s.getVariantId());
+        ProductVariant v = p.variant(s.getVariantId());
         String productId = UuidUtil.toString(s.getProductId());
         String variantId = s.getVariantId() == null ? null : UuidUtil.toString(s.getVariantId());
         TranslationService.Overlay overlay = translations.overlay(lang);
@@ -94,7 +94,7 @@ class PreorderCards {
         String variantName = v == null ? null : overlay == null ? v.getName()
                 : overlay.text(TranslationEntityType.VARIANT, variantId, TranslationEntityType.NAME, v.getName());
         return new MyPreorderDto(s.getId(), productId, variantId,
-                title, p.getSlug(), Lines.imageOf(p), variantName, s.getQty(), s.getStatus(),
+                title, p.getSlug(), p.firstImageUrl(), variantName, s.getQty(), s.getStatus(),
                 position, s.getHeldQty(), s.getHoldUntil(), s.getCreatedAt(),
                 s.statusEnum().live() ? eta : null);
     }

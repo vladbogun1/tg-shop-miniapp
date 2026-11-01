@@ -114,7 +114,7 @@ public class OrderGiftCases {
             return List.of();
         }
         Product product = productRepository.findById(line.getProductId()).orElse(null);
-        if (product == null || product.getVariants() == null) {
+        if (product == null || !product.hasVariants()) {
             return List.of();
         }
         return product.getVariants().stream()

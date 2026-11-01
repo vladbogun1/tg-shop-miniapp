@@ -147,7 +147,7 @@ public class PreorderQueueAdmin {
         subs.save(s);
         events.publish(new PreorderEvents.Closed(s.getId(), "ADMIN"));
         if (wasHeld && p != null) {
-            queue.handOut(p, Lines.variantById(p, s.getVariantId()), s.getBatchId(),
+            queue.handOut(p, p.variant(s.getVariantId()), s.getBatchId(),
                     Distribution.QUEUE_HOLD, queue.holdHours(s.getBatchId()), false);
         }
     }
@@ -159,7 +159,7 @@ public class PreorderQueueAdmin {
         Product p = products.findByIdForUpdate(productId).orElseThrow(() -> new DomainException.NotFound(PreorderError.PRODUCT_NOT_FOUND));
         ProductVariant v = null;
         if (req.variantId() != null && !req.variantId().isBlank()) {
-            v = Lines.variantById(p, PreorderQueueService.bytes(req.variantId()));
+            v = p.variant(PreorderQueueService.bytes(req.variantId()));
             if (v == null) {
                 throw new DomainException.BadRequest(PreorderError.VARIANT_GONE);
             }
@@ -199,10 +199,10 @@ public class PreorderQueueAdmin {
             if (p == null) {
                 continue;
             }
-            ProductVariant v = Lines.variantById(p, variantId);
+            ProductVariant v = p.variant(variantId);
             PreorderBatch b = openByLine.get(Lines.key(productId, variantId));
             out.add(new DemandDto(UuidUtil.toString(productId), variantId == null ? null : UuidUtil.toString(variantId),
-                    p.getTitle(), v == null ? null : v.getName(), Lines.imageOf(p),
+                    p.getTitle(), v == null ? null : v.getName(), p.firstImageUrl(),
                     Lines.stockOf(p, v), p.getPriceMinor(), num(r[2]), num(r[3]), (Instant) r[4],
                     num(r[5]), b == null ? null : b.getId(), b == null ? null : b.getTitle(),
                     peopleOfProduct.getOrDefault(UuidUtil.toString(productId), num(r[2]))));
@@ -222,7 +222,7 @@ public class PreorderQueueAdmin {
         List<SubscriberDto> out = new ArrayList<>();
         for (PreorderSubscription s : rows) {
             Product p = byId.get(UuidUtil.toString(s.getProductId()));
-            ProductVariant v = p == null ? null : Lines.variantById(p, s.getVariantId());
+            ProductVariant v = p == null ? null : p.variant(s.getVariantId());
             Integer position = null;
             if (s.statusEnum() == Status.WAITING) {
                 position = waitingSeen.merge(Lines.key(s.getProductId(), s.getVariantId()), 1, Integer::sum);

@@ -96,7 +96,7 @@ class OrderGiftPrizes {
             return false;
         }
         ProductVariant variant = null;
-        if (product.getVariants() != null && !product.getVariants().isEmpty()) {
+        if (product.hasVariants()) {
             variant = product.getVariants().stream()
                     .filter(v -> v.getStock() > 0)
                     .max(Comparator.comparingInt(ProductVariant::getStock))
@@ -120,9 +120,6 @@ class OrderGiftPrizes {
         if (!product.isActive() || product.isArchived()) {
             return false;
         }
-        if (product.getVariants() != null && !product.getVariants().isEmpty()) {
-            return product.getVariants().stream().anyMatch(v -> v.getStock() > 0);
-        }
-        return product.getStock() > 0;
+        return product.availableUnits() > 0;
     }
 }

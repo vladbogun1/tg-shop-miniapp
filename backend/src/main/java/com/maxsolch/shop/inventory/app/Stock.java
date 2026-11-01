@@ -10,8 +10,6 @@ import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.catalog.app.Products;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
-
 /**
  * The shelf: units moving between the shelf and whoever sells them. One move touches three things that must stay
  * in step — the counters ({@code product.stock} and, when the product has variants, the variant stocks with
@@ -36,17 +34,6 @@ public class Stock {
         this.messages = messages;
         this.lots = lots;
         this.holds = holds;
-    }
-
-    /** The variant of a product by id, or null (also when the product has no variants). */
-    public static ProductVariant variantOf(Product product, byte[] variantId) {
-        if (product.getVariants() == null) {
-            return null;
-        }
-        return product.getVariants().stream()
-                .filter(v -> Arrays.equals(v.getId(), variantId))
-                .findFirst()
-                .orElse(null);
     }
 
     // ------------------------------------------------------------------ taking units
@@ -121,7 +108,7 @@ public class Stock {
      * catalog after the sale: the units go back on the product so they are not lost — no lots, no queue.
      */
     public void releaseById(Product product, byte[] variantId, int qty, LotAllocations sale) {
-        ProductVariant variant = variantId == null ? null : variantOf(product, variantId);
+        ProductVariant variant = variantId == null ? null : product.variant(variantId);
         if (variantId != null && variant == null) {
             product.changeStock(product.getStock() + qty);
         } else {
@@ -131,7 +118,7 @@ public class Stock {
 
     /** {@link #reserve} for a line that knows its variant only by id; a deleted variant is taken from the product. */
     public void reserveById(Product product, byte[] variantId, int qty, LotAllocations sale) {
-        ProductVariant variant = variantId == null ? null : variantOf(product, variantId);
+        ProductVariant variant = variantId == null ? null : product.variant(variantId);
         if (variantId != null && variant == null) {
             product.changeStock(product.getStock() - qty);
         } else {

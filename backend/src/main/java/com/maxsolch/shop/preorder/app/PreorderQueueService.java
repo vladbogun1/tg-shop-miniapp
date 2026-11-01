@@ -149,7 +149,7 @@ public class PreorderQueueService {
         subs.save(s);
         if (wasHeld && product != null) {
             holdsChanged(product);
-            handOut(product, Lines.variantById(product, s.getVariantId()), s.getBatchId(), Distribution.QUEUE_HOLD,
+            handOut(product, product.variant(s.getVariantId()), s.getBatchId(), Distribution.QUEUE_HOLD,
                     holdHours(s.getBatchId()), false);
         }
     }
@@ -190,7 +190,7 @@ public class PreorderQueueService {
                 if (partlyUnused) {
                     products.findByIdForUpdate(line[0]).ifPresent(p -> {
                         holdsChanged(p);
-                        handOut(p, Lines.variantById(p, line[1]), s.getBatchId(), Distribution.QUEUE_HOLD,
+                        handOut(p, p.variant(line[1]), s.getBatchId(), Distribution.QUEUE_HOLD,
                                 holdHours(s.getBatchId()), false);
                     });
                 }
@@ -344,14 +344,14 @@ public class PreorderQueueService {
 
     /** The variant the customer picked; required when the product has variants, refused when it has none. */
     ProductVariant variantOf(Product p, String variantIdText) {
-        boolean hasVariants = p.getVariants() != null && !p.getVariants().isEmpty();
+        boolean hasVariants = p.hasVariants();
         if (variantIdText == null || variantIdText.isBlank()) {
             if (hasVariants) {
                 throw new DomainException.BadRequest(PreorderError.VARIANT_REQUIRED, p.getTitle());
             }
             return null;
         }
-        ProductVariant v = hasVariants ? Lines.variantById(p, bytes(variantIdText)) : null;
+        ProductVariant v = hasVariants ? p.variant(bytes(variantIdText)) : null;
         if (v == null) {
             throw new DomainException.BadRequest(PreorderError.VARIANT_REQUIRED, p.getTitle());
         }

@@ -100,7 +100,7 @@ public class LotLedger {
      * (cost unknown), a cut leaves the oldest lots, lots of removed variants are emptied.
      */
     public void syncProduct(Product p) {
-        boolean variants = p.getVariants() != null && !p.getVariants().isEmpty();
+        boolean variants = p.hasVariants();
         Set<String> live = new HashSet<>();
         if (variants) {
             for (ProductVariant v : p.getVariants()) {

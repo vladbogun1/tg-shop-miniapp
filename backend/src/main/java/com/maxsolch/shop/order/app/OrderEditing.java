@@ -66,7 +66,7 @@ public class OrderEditing {
         if (product.isArchived()) {
             throw new DomainException.BadRequest(OrderError.PRODUCT_ARCHIVED, product.getTitle());
         }
-        boolean hasVariants = product.getVariants() != null && !product.getVariants().isEmpty();
+        boolean hasVariants = product.hasVariants();
         ProductVariant variant = null;
         if (hasVariants) {
             if (variantId == null || variantId.isBlank()) {

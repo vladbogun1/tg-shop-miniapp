@@ -2,12 +2,9 @@ package com.maxsolch.shop.procurement.domain;
 
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.catalog.domain.Product;
-import com.maxsolch.shop.catalog.domain.ProductImage;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
 import com.maxsolch.shop.platform.util.UuidUtil;
 
-import java.util.Arrays;
-import java.util.Comparator;
 
 /** A "line" is a product or one of its variants — what a batch brings and what a queue waits for. */
 public final class Lines {
@@ -35,24 +32,5 @@ public final class Lines {
     /** Units on the shelf: of the variant when there is one, else of the product. */
     public static int stockOf(Product p, ProductVariant v) {
         return v != null ? v.getStock() : p.getStock();
-    }
-
-    /** The variant of {@code p} with this id, or null (also for a null id or a product without variants). */
-    public static ProductVariant variantById(Product p, byte[] variantId) {
-        if (variantId == null || p.getVariants() == null) {
-            return null;
-        }
-        return p.getVariants().stream().filter(v -> Arrays.equals(v.getId(), variantId)).findFirst().orElse(null);
-    }
-
-    /** The first picture of the product, or null. */
-    public static String imageOf(Product p) {
-        if (p.getImages() == null) {
-            return null;
-        }
-        return p.getImages().stream()
-                .min(Comparator.comparingInt(ProductImage::getSortOrder))
-                .map(ProductImage::getUrl)
-                .orElse(null);
     }
 }

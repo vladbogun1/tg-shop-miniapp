@@ -63,7 +63,7 @@ public class PreorderHoldExpiry {
             done++;
             if (wasHeld && product != null) {
                 queue.holdsChanged(product);
-                queue.handOut(product, Lines.variantById(product, s.getVariantId()), s.getBatchId(), Distribution.QUEUE_HOLD,
+                queue.handOut(product, product.variant(s.getVariantId()), s.getBatchId(), Distribution.QUEUE_HOLD,
                         queue.holdHours(s.getBatchId()), false);
             }
         }
