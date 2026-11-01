@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useOverlayLayer } from "./overlay-stack";
@@ -24,7 +24,7 @@ export function Lightbox({
   return createPortal(
     <AnimatePresence>
       {src && (
-        <motion.div
+        <m.div
           ref={focusRef}
           role="dialog"
           aria-modal="true"
@@ -52,7 +52,7 @@ export function Lightbox({
             <X className="h-6 w-6" />
           </button>
           <div className="flex min-h-0 w-full flex-1 items-center justify-center">
-            <motion.img
+            <m.img
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -87,7 +87,7 @@ export function Lightbox({
               </a>
             )}
           </div>
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>,
     document.body

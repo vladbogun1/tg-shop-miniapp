@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, useIsPresent } from "framer-motion";
+import { AnimatePresence, m, useIsPresent } from "framer-motion";
 import { X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -208,7 +208,7 @@ export function Modal({
             // Phone: a full-width bottom sheet (footer under the thumb, room for the keyboard);
             // from sm up: the centred dialog.
             <ModalLayer key={session}>
-              <motion.div
+              <m.div
                 variants={backdropVariants}
                 initial="initial"
                 animate="animate"
@@ -217,7 +217,7 @@ export function Modal({
                 onClick={onBackdropClick}
                 className="absolute inset-0 bg-black/60 backdrop-blur-[6px]"
               />
-              <motion.div
+              <m.div
                 ref={focusRef}
                 role="dialog"
                 aria-modal="true"
@@ -246,7 +246,7 @@ export function Modal({
                   </div>
                   <ModalFooter footer={footer} />
                 </ModalCloseContext.Provider>
-              </motion.div>
+              </m.div>
             </ModalLayer>
           )}
         </AnimatePresence>,

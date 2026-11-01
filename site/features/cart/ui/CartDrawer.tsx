@@ -5,7 +5,7 @@
  * Opened by the header cart button and by "В корзину" on the product page. Re-validates prices and
  * stock against the server every time it opens.
  */
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { Loader2, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -43,7 +43,7 @@ export function CartDrawer() {
     <AnimatePresence>
       {open && (
         <>
-          <motion.div
+          <m.div
             key="cart-backdrop"
             {...noFadeFlash}
             initial={{ opacity: 0 }}
@@ -53,7 +53,7 @@ export function CartDrawer() {
             className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-[6px]"
             aria-hidden
           />
-          <motion.aside
+          <m.aside
             key="cart-drawer"
             role="dialog"
             aria-modal="true"
@@ -126,7 +126,7 @@ export function CartDrawer() {
                 </div>
               </footer>
             )}
-          </motion.aside>
+          </m.aside>
         </>
       )}
     </AnimatePresence>

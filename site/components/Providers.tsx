@@ -13,6 +13,7 @@ import { CartDrawer } from "@/features/cart/view/CartDrawer";
 import { CompareModal } from "@/features/compare/view/CompareModal";
 import { CustomerConfirmHost } from "@shop/ui/confirm/customer";
 import { UiLookProvider } from "@shop/ui/look";
+import { MotionProvider } from "@shop/ui/motion-provider";
 import { Toaster } from "@shop/ui/toast";
 import { I18nProvider, useT } from "@/i18n/context";
 import type { Locale } from "@shop/core/i18n";
@@ -74,6 +75,7 @@ export function Providers({ locale, children }: { locale: Locale; children: Reac
   return (
     <QueryClientProvider client={client}>
       <UiLookProvider look="site">
+      <MotionProvider>
       <I18nProvider locale={locale}>
         <InputModality />
         <LocaleSync locale={locale} />
@@ -87,6 +89,7 @@ export function Providers({ locale, children }: { locale: Locale; children: Reac
         <Toaster />
         <SiteConfirmHost />
       </I18nProvider>
+      </MotionProvider>
       </UiLookProvider>
     </QueryClientProvider>
   );

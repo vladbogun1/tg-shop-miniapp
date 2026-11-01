@@ -23,7 +23,7 @@
  * screen. Everything app-specific — texts, image URLs, haptics, analytics — comes in through props.
  * `prefers-reduced-motion`: no spin, a short fade to the prize.
  */
-import { AnimatePresence, motion, useMotionValue } from "framer-motion";
+import { AnimatePresence, m, useMotionValue } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -217,7 +217,7 @@ function CaseOverlay({
   const { swapped, canSwap, swapBusy, swapErr, doSwap } = useCaseSwap({ result, setResult, onSwap, alive, hapticsRef });
 
   return (
-    <motion.div
+    <m.div
       ref={rootRef}
       className="gc-root"
       style={caseTierVars(tier, assetBase)}
@@ -272,6 +272,6 @@ function CaseOverlay({
       <canvas ref={canvasRef} className="gc-canvas" aria-hidden />
 
       <CaseTopBar texts={texts} closable={closable} muted={muted} onClose={onClose} onToggleMute={toggleMute} />
-    </motion.div>
+    </m.div>
   );
 }

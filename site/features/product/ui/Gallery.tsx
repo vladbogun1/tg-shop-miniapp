@@ -4,7 +4,7 @@
  * Product gallery: big photo with arrows (swipe on touch), a thumbnail strip, and a full-screen
  * lightbox on click (← → to browse, Esc to close). Adapted from the Mini App's carousel.
  */
-import { AnimatePresence, motion, type PanInfo } from "framer-motion";
+import { AnimatePresence, m, type PanInfo } from "framer-motion";
 import { toPercent } from "@shop/core/percent";
 import { ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -55,7 +55,7 @@ export function Gallery({ images, alt }: { images: string[]; alt: string }) {
         onPointerDown={warm}
         onFocus={warm}
       >
-        <motion.div
+        <m.div
           className="flex h-full"
           drag={multi ? "x" : false}
           dragConstraints={{ left: 0, right: 0 }}
@@ -85,7 +85,7 @@ export function Gallery({ images, alt }: { images: string[]; alt: string }) {
               />
             </button>
           ))}
-        </motion.div>
+        </m.div>
 
         {multi && (
           <>
@@ -197,7 +197,7 @@ function Lightbox({
   return (
     <AnimatePresence>
       {open && (
-        <motion.div
+        <m.div
           role="dialog"
           aria-modal="true"
           aria-label={alt}
@@ -244,7 +244,7 @@ function Lightbox({
               </button>
             </>
           )}
-          <motion.div
+          <m.div
             key={index}
             {...noFadeFlash}
             initial={{ scale: 0.96, opacity: 0 }}
@@ -260,11 +260,11 @@ function Lightbox({
               priority
               className="max-h-[88dvh] max-w-full rounded-[var(--r-card)] border border-[var(--line)]"
             />
-          </motion.div>
+          </m.div>
           <p className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-1 font-display text-[13px] font-semibold tabular-nums text-[var(--ink)]">
             {index + 1} / {slides.length}
           </p>
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

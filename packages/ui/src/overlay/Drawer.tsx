@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { X } from "lucide-react";
 import { useEffect, useId, type MutableRefObject, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -55,7 +55,7 @@ export function Drawer({
     <AnimatePresence>
       {open && (
         <div className={cn("fixed inset-0", zClass)}>
-          <motion.div
+          <m.div
             variants={backdropVariants}
             initial="initial"
             animate="animate"
@@ -63,7 +63,7 @@ export function Drawer({
             onClick={close}
             className="absolute inset-0 bg-black/60 backdrop-blur-[6px]"
           />
-          <motion.aside
+          <m.aside
             ref={focusRef}
             role="dialog"
             aria-modal="true"
@@ -99,7 +99,7 @@ export function Drawer({
             </div>
             {/* The content's own bottom bar (order actions, chat composer) pads for the home indicator. */}
             <div className="thin-scroll min-h-0 flex-1 overflow-auto overscroll-contain">{children}</div>
-          </motion.aside>
+          </m.aside>
         </div>
       )}
     </AnimatePresence>,

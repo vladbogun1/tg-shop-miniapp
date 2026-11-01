@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { X } from "lucide-react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
@@ -38,7 +38,7 @@ export function MobileMenu({
     <AnimatePresence>
       {open && (
         <>
-          <motion.div
+          <m.div
             key="backdrop"
             {...noFadeFlash}
             initial={{ opacity: 0 }}
@@ -48,7 +48,7 @@ export function MobileMenu({
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[6px] lg:hidden"
             aria-hidden
           />
-          <motion.aside
+          <m.aside
             key="sheet"
             role="dialog"
             aria-modal="true"
@@ -134,7 +134,7 @@ export function MobileMenu({
             <div className="border-t border-[var(--line)] px-4 py-3">
               <LangSwitch />
             </div>
-          </motion.aside>
+          </m.aside>
         </>
       )}
     </AnimatePresence>,
