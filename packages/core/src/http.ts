@@ -8,6 +8,18 @@
 
 import { nowMs } from "./time";
 import { ApiError, type ErrorParams } from "./errors";
+import { fetchWithTimeout } from "./fetch-timeout";
+
+/**
+ * Сколько ждём ответа. Обычный запрос — 15 с: дольше человек уже не ждёт, а «нет связи / повторить»
+ * лучше вечной загрузки. Оформление заказа (запрос с Idempotency-Key) ходит к платёжному провайдеру и
+ * НП — ему 45 с; повтор безопасен благодаря ключу, но делает его человек кнопкой, а не клиент сам.
+ * Загрузка файла — 60 с (фото по мобильной сети). Автоповторов нет: POST повторять нельзя, а у GET
+ * повтор уже есть в react-query.
+ */
+export const REQUEST_TIMEOUT_MS = 15_000;
+export const CHECKOUT_TIMEOUT_MS = 45_000;
+export const UPLOAD_TIMEOUT_MS = 60_000;
 
 /**
  * Wording the client produces itself, when there is no response to read one from.
@@ -52,6 +64,8 @@ export interface HttpClientOptions {
    * cart can answer in the right language.
    */
   getLocale?: () => string;
+  /** Таймаут обычного запроса, мс (по умолчанию {@link REQUEST_TIMEOUT_MS}). */
+  timeoutMs?: number;
   /** Overrides for the client's own wording; defaults are Russian (the admin panel's language). */
   messages?: Partial<HttpMessages>;
   /**
@@ -85,6 +99,7 @@ export function normalizeBaseUrl(raw: string | undefined, fallback: string): str
 
 export function createHttpClient(options: HttpClientOptions): HttpClient {
   const { baseUrl, getToken, onUnauthorized, getLocale, credentials } = options;
+  const defaultTimeout = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
   const texts: HttpMessages = { ...RU_MESSAGES, ...options.messages };
 
   function buildHeaders(init: RequestInit, extraHeaders?: Record<string, string>): Headers {
@@ -120,28 +135,36 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
   async function request<T>(
     path: string,
     init: RequestInit = {},
-    extraHeaders?: Record<string, string>
+    extraHeaders?: Record<string, string>,
+    timeoutMs: number = extraHeaders?.["Idempotency-Key"] ? Math.max(defaultTimeout, CHECKOUT_TIMEOUT_MS) : defaultTimeout
   ): Promise<T> {
     const headers = buildHeaders(init, extraHeaders);
 
-    let res: Response;
+    let timed: Awaited<ReturnType<typeof fetchWithTimeout>>;
     try {
-      res = await fetch(`${baseUrl}${path}`, {
-        ...init,
-        headers,
-        ...(credentials ? { credentials } : {}),
-      });
+      timed = await fetchWithTimeout(
+        `${baseUrl}${path}`,
+        { ...init, headers, ...(credentials ? { credentials } : {}) },
+        timeoutMs
+      );
     } catch {
-      // Network error / backend offline — status 0 lets callers tell it apart from an HTTP error.
+      // Network error / timeout / backend offline — status 0 lets callers tell it apart from an HTTP error.
       throw new ApiError(texts.offline(), 0);
     }
 
-    await throwIfFailed(res);
-
-    if (res.status === 204) return undefined as T;
-    const text = await res.text();
-    if (!text) return undefined as T;
-    return JSON.parse(text) as T;
+    // The timer also covers reading the body: a response that stalls half-way is a hang too.
+    try {
+      await throwIfFailed(timed.res);
+      if (timed.res.status === 204) return undefined as T;
+      const text = await timed.res.text();
+      if (!text) return undefined as T;
+      return JSON.parse(text) as T;
+    } catch (e) {
+      if (e instanceof ApiError || e instanceof SyntaxError) throw e;
+      throw new ApiError(texts.offline(), 0); // aborted mid-body
+    } finally {
+      timed.done();
+    }
   }
 
   async function failureOf(
@@ -180,7 +203,7 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
       const form = new FormData();
       form.append("file", file);
       // Content-Type is intentionally not set: the browser adds the multipart boundary.
-      return request<T>(path, { method: "POST", body: form });
+      return request<T>(path, { method: "POST", body: form }, undefined, UPLOAD_TIMEOUT_MS);
     },
     putOnUnload: (path, body) => {
       try {
