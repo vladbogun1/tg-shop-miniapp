@@ -287,8 +287,7 @@ public class GiftService {
                 .flatMap(promoCodes::find)
                 .filter(p -> p.getUsesCount() == 0 && p.isActive())
                 .ifPresent(p -> {
-                    p.deactivate();
-                    promoCodes.save(p);
+                    promoCodes.deactivate(p);
                 });
     }
 

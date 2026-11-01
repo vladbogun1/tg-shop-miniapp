@@ -26,6 +26,12 @@ public class PromoCodes {
         return repository.save(code);
     }
 
+    /** Switches a code off, inside the caller's transaction (the module of the code owns the change). */
+    public void deactivate(PromoCode code) {
+        code.deactivate();
+        repository.save(code);
+    }
+
     @Transactional(readOnly = true)
     public Optional<PromoCode> find(String code) {
         return repository.findByCode(code);
