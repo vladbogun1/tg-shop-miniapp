@@ -12,6 +12,10 @@ import java.util.List;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
+    /** Takes the row lock of the customer until the end of the transaction (the row itself is not needed). */
+    @Query(value = "SELECT telegram_user_id FROM users WHERE telegram_user_id = :id FOR UPDATE", nativeQuery = true)
+    List<Long> lockById(@Param("id") long id);
+
     // ---- Block tracking ----
 
     @Modifying
