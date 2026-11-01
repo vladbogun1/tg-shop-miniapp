@@ -30,6 +30,11 @@ public class OrderReviewMarks {
         return store.claimReminder(orderId, now);
     }
 
+    /** Gives the reminder back after a send that failed: the next run tries again. */
+    public void releaseReminder(byte[] orderId, Instant claimedAt) {
+        store.releaseReminder(orderId, claimedAt);
+    }
+
     /** Delivered orders in {@code [from, to]} with no reminder yet, a chat and a paid line left: oldest first, one page. */
     public List<DeliveredOrder> deliveredWithoutReminder(Instant from, Instant to, int limit, int offset) {
         return store.deliveredWithoutReminder(from, to, limit, offset);

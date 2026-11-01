@@ -51,4 +51,9 @@ public class PromoExpiry {
     public boolean claimReminder(byte[] promoId, Instant now) {
         return store.claim(promoId, now);
     }
+
+    /** Gives the reminder back after a send that failed: the next run tries again. */
+    public void releaseReminder(byte[] promoId, Instant claimedAt) {
+        store.release(promoId, claimedAt);
+    }
 }

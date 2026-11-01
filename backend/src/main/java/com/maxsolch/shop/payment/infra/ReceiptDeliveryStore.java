@@ -60,4 +60,16 @@ public class ReceiptDeliveryStore {
     public void release(String checkId) {
         jdbc.update("delete from payment_receipts_sent where check_id = ? and outcome = ?", checkId, SENDING);
     }
+
+    /**
+     * Gives a receipt claimed before {@code olderThan} back to the queue. A process that died between {@link #claim}
+     * and {@link #finish} (a restart in the middle of a send) leaves it SENDING for ever, and every later run counts
+     * it as handled; a send takes seconds, so a claim this old is dead. A duplicate receipt beats a lost one.
+     *
+     * @return how many claims were released
+     */
+    public int releaseStale(Instant olderThan) {
+        return jdbc.update("delete from payment_receipts_sent where outcome = ? and sent_at < ?",
+                SENDING, Timestamp.from(olderThan));
+    }
 }

@@ -74,12 +74,22 @@ public class GiftCasePromoReminderJob {
         int sent = 0;
         for (ExpiringPromo c : promos.expiring(PromoCode.SOURCE_GIFT_CASE, now, now.plus(window), now.minus(window), BATCH,
                 this::reachable)) {
-            // Claimed before sending: a second instance (or a retry) never DMs the same code twice.
+            // Claimed before sending, so a second instance never DMs the same code twice; given back when the
+            // send did not go out, so a Telegram hiccup does not lose the reminder for good.
             if (!promos.claimReminder(c.promoId(), now)) {
                 continue;
             }
-            var order = orders.find(c.sourceOrderId()).orElse(null);
-            if (order != null && notifier.notifyCustomerCasePromoExpiring(order, c.code(), c.percent(), c.amountMinor(), c.expiresAt())) {
+            boolean delivered = false;
+            try {
+                var order = orders.find(c.sourceOrderId()).orElse(null);
+                delivered = order != null && notifier.notifyCustomerCasePromoExpiring(
+                        order, c.code(), c.percent(), c.amountMinor(), c.expiresAt());
+            } finally {
+                if (!delivered) {
+                    promos.releaseReminder(c.promoId(), now);
+                }
+            }
+            if (delivered) {
                 sent++;
             }
         }
