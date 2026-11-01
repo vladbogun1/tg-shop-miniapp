@@ -1,6 +1,5 @@
 package com.maxsolch.shop.catalog.domain;
 
-import com.maxsolch.shop.catalog.app.CatalogDirectory;
 import com.maxsolch.shop.platform.i18n.AppLocale;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -15,7 +14,7 @@ import java.util.Set;
 
 /**
  * Immutable, detached copy of the whole catalog schema (categories, brands, groups, attributes with
- * options) — a few hundred rows, read whole and cached ({@link CatalogDirectory}). Everything that
+ * options) — a few hundred rows, read whole and cached ({@code CatalogDirectory}). Everything that
  * needs the tree (product DTOs, filters, validation) works on this instead of on JPA entities.
  */
 public final class CatalogSnapshot {
