@@ -1,0 +1,11 @@
+{
+  "comment": "Allowed order status moves, every (from, to) pair. Run by OrderTransitionsVectorsTest (Java, OrderTransitions) and orders.test.ts (core): the two tables cannot drift apart. A delivered order is not rejected: it is handled with a return.",
+  "statuses": ["NEW", "APPROVED", "SHIPPED", "DELIVERED", "REJECTED"],
+  "allowed": {
+    "NEW": ["APPROVED", "SHIPPED", "REJECTED"],
+    "APPROVED": ["SHIPPED", "REJECTED"],
+    "SHIPPED": ["DELIVERED", "REJECTED"],
+    "DELIVERED": [],
+    "REJECTED": []
+  }
+}

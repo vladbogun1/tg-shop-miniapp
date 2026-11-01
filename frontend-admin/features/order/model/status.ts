@@ -9,7 +9,7 @@ export { codMinor, isNovaPoshtaTtn, ORDER_STATUS_COLOR as STATUS_VAR, REJECT_REA
 export { DELIVERY_LABEL } from "@/lib/delivery";
 export { shortOrderId as shortId } from "@shop/core/format";
 
-import { allowedTargets as sharedAllowedTargets, canTransition as sharedCanTransition, ORDER_STATUS_COLOR, STATUS_COLUMN_LABEL, STATUS_ORDER, isOrderStatus } from "@shop/core/orders";
+import { allowedTargets, canTransition, ORDER_STATUS_COLOR, STATUS_COLUMN_LABEL, STATUS_ORDER, isOrderStatus } from "@shop/core/orders";
 import { type OrderStatus } from "@shop/core/types";
 
 /** The field of the order card that holds the moment the order entered a status. */
@@ -72,18 +72,7 @@ export function returningMinor(order: { lines?: { returningMinor?: number }[] })
   return (order.lines ?? []).reduce((acc, l) => acc + (l.returningMinor ?? 0), 0);
 }
 
-/**
- * Admin transitions: the shared table still lists DELIVERED → REJECTED, but the server refuses it
- * since 25.10.2026 (ORDER_DELIVERED_REJECT) — a delivered order is handled with «Возврат».
- */
-export function allowedTargets(from: OrderStatus): OrderStatus[] {
-  return sharedAllowedTargets(from).filter((t) => !(from === "DELIVERED" && t === "REJECTED"));
-}
-
-export function canTransition(from: OrderStatus, to: OrderStatus): boolean {
-  if (from === "DELIVERED" && to === "REJECTED") return false;
-  return sharedCanTransition(from, to);
-}
+export { allowedTargets, canTransition };
 
 /** Shown when a delivered order is dragged to «Отклонён». */
 export const DELIVERED_REJECT_HINT =
