@@ -1,12 +1,12 @@
 "use client";
 
 import { makeT } from "@/i18n";
-import { FALLBACK_LOCALE, LOCALE_TAG, type Locale } from "@shop/core/i18n";
+import { FALLBACK_LOCALE, LOCALE_TAG, PREFIXED_LOCALES, type Locale } from "@shop/core/i18n";
 
 /** The language from the URL prefix (/ru/…, /en/…) — no provider is mounted when this page shows. */
 function urlLocale(): Locale {
   if (typeof window === "undefined") return FALLBACK_LOCALE;
-  const m = window.location.pathname.match(/^\/(ru|en)(?=\/|$)/);
+  const m = window.location.pathname.match(new RegExp(`^/(${PREFIXED_LOCALES.join("|")})(?=/|$)`));
   return m ? (m[1] as Locale) : FALLBACK_LOCALE;
 }
 

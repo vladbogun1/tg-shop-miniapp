@@ -4,7 +4,7 @@
  * Server components call `makeT(locale)` with the locale from the route; client components use
  * `useT()` from `./context`, which is the same function bound by the provider.
  */
-import { FALLBACK_LOCALE, translate, type Dictionary, type Locale, type Params } from "@shop/core/i18n";
+import { FALLBACK_LOCALE, LOCALES, LOCALE_PATTERN, translate, type Dictionary, type Locale, type Params } from "@shop/core/i18n";
 import { en } from "./en";
 import { ru, type MessageKey } from "./ru";
 import { uk } from "./uk";
@@ -28,7 +28,7 @@ export function localePath(locale: Locale, path: string): string {
 
 /** Strips a leading `/ru` or `/en` from a pathname — the inverse of {@link localePath}. */
 export function stripLocale(pathname: string): string {
-  const m = pathname.match(/^\/(ru|en|uk)(?=\/|$)/);
+  const m = pathname.match(new RegExp(`^/(${LOCALE_PATTERN})(?=/|$)`));
   if (!m) return pathname || "/";
   const rest = pathname.slice(m[0].length);
   return rest || "/";
@@ -39,10 +39,8 @@ export function alternates(path: string, current: Locale) {
   return {
     canonical: localePath(current, path),
     languages: {
-      uk: localePath("uk", path),
-      ru: localePath("ru", path),
-      en: localePath("en", path),
-      "x-default": localePath("uk", path),
+      ...Object.fromEntries(LOCALES.map((l) => [l, localePath(l, path)])),
+      "x-default": localePath(FALLBACK_LOCALE, path),
     },
   };
 }

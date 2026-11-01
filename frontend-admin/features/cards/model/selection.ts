@@ -5,6 +5,7 @@
 import { TEXT_FIELDS, type ProductReview, type TextReview } from "./types";
 import { finalRu } from "./text";
 import type { CardImportItem, CardTextTranslations } from "./wire";
+import { type TranslatedLocale } from "@shop/core/i18n";
 
 export interface ProductSel {
   on: boolean;
@@ -72,7 +73,7 @@ export function ruAccepted(t: TextReview, s: ProductSel): boolean {
 }
 
 /** Translation of one language is saved: present, no errors, and made for the final ru. */
-export function translationSendable(t: TextReview, lang: "uk" | "en", s: ProductSel): boolean {
+export function translationSendable(t: TextReview, lang: TranslatedLocale, s: ProductSel): boolean {
   return s.translations && !!t[lang].trim() && !!finalRu(t).trim() && ruAccepted(t, s) && !t.issues[lang].some((i) => i.level === "error");
 }
 
@@ -91,8 +92,8 @@ function chosenSpecs(r: ProductReview, s: ProductSel) {
 }
 
 /** uk/en финального русского текста — только то, что можно отправить (см. `translationSendable`). */
-function chosenTranslations(r: ProductReview, s: ProductSel): Partial<Record<"uk" | "en", CardTextTranslations>> {
-  const translations: Partial<Record<"uk" | "en", CardTextTranslations>> = {};
+function chosenTranslations(r: ProductReview, s: ProductSel): Partial<Record<TranslatedLocale, CardTextTranslations>> {
+  const translations: Partial<Record<TranslatedLocale, CardTextTranslations>> = {};
   for (const lang of ["uk", "en"] as const) {
     const out: CardTextTranslations = {};
     for (const field of TEXT_FIELDS) {

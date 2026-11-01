@@ -1,3 +1,4 @@
+import { type TranslatedLocale } from "@shop/core/i18n";
 /**
  * «Карточки»: тела запросов записи (импорт ответа ИИ, принятие карточки, опции характеристики) — то, что собирает интерфейс.
  * Проверяются на совместимость со сгенерированными схемами OpenAPI в `api.ts`.
@@ -20,7 +21,7 @@ export interface CardImportItem {
   /** New Russian title (only when the rename is accepted). */
   title?: string;
   /** uk/en of the FINAL Russian texts (title, description, condition note). */
-  translations?: Partial<Record<"uk" | "en", CardTextTranslations>>;
+  translations?: Partial<Record<TranslatedLocale, CardTextTranslations>>;
   /** Source url per characteristic, when the AI named one (card_meta.fields[key].src). */
   fieldSources?: Record<string, string>;
 }
@@ -41,7 +42,7 @@ export interface CardAcceptBody {
   title?: string;
   description?: string;
   specs?: Record<string, unknown>;
-  translations?: Partial<Record<"uk" | "en", CardTextTranslations>>;
+  translations?: Partial<Record<TranslatedLocale, CardTextTranslations>>;
   /** false = save the edits but keep the status. Default true. */
   ready?: boolean;
 }

@@ -8,6 +8,7 @@ import type { TextField } from "./types";
 
 export type { CardChange, CardLast, CardMeta } from "@/features/catalog";
 import type { CardLast } from "@/features/catalog";
+import { type TranslatedLocale } from "@shop/core/i18n";
 
 export interface CardTextState {
   text: string;
@@ -24,5 +25,5 @@ export interface CardReviewData {
   reviewedAt: string | null;
   reviewedBy: number | null;
   reviewedByName: string | null;
-  translations: Record<"uk" | "en", Partial<Record<TextField, CardTextState>>>;
+  translations: Record<TranslatedLocale, Partial<Record<TextField, CardTextState>>>;
 }

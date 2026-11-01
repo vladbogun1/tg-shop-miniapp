@@ -3,6 +3,7 @@ import { countMap, wordSimilarity } from "./diff";
 import { toPercent } from "@shop/core/percent";
 import { ratioText } from "./ratio-text";
 import type { TrLocale } from "./types";
+import { type Locale } from "@shop/core/i18n";
 
 /** `{name}`-style slots of chat templates (ReplyTemplateService fills them in). */
 const PLACEHOLDER = /\{[a-zA-Z0-9]+\}/g;
@@ -11,7 +12,7 @@ export type Level = "ok" | "warn" | "error";
 
 export interface Issue {
   level: Exclude<Level, "ok">;
-  lang: "uk" | "en" | "ru" | "*";
+  lang: Locale | "*";
   text: string;
 }
 

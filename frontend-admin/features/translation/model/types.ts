@@ -4,8 +4,9 @@
  * и тела запросов.
  */
 import type { Schemas } from "@shop/core/api/schemas";
+import { type TranslatedLocale } from "@shop/core/i18n";
 
-export type TrLocale = "uk" | "en";
+export type TrLocale = TranslatedLocale;
 export type TrEntityType = "PRODUCT" | "VARIANT" | "CATEGORY" | "PAYMENT_OPTION" | "REPLY_TEMPLATE" | "BOT_TEXT";
 export type TrStatus = "TRANSLATED" | "STALE" | "MISSING";
 export type TrOrigin = "AI" | "MANUAL";

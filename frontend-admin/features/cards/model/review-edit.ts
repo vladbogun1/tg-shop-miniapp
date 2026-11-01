@@ -8,10 +8,12 @@ import { attributesForCategory, type CardAttribute, type CardSchema } from "./sc
 import { TEXT_FIELDS, type TextField } from "./types";
 import { metaOf } from "./view";
 import type { CardAcceptBody, CardTextTranslations } from "./wire";
+import { CONTENT_SOURCE_LOCALE, TRANSLATED_LOCALES, type Locale, type TranslatedLocale } from "@shop/core/i18n";
 
-export type Lang = "ru" | "uk" | "en";
+export type Lang = "ru" | TranslatedLocale;
 export const LANG_LABEL: Record<Lang, string> = { ru: "RU", uk: "UA", en: "EN" };
-export const LANGS: readonly Lang[] = ["ru", "uk", "en"];
+/** Источник первым, затем переводы. */
+export const LANGS: readonly Lang[] = [CONTENT_SOURCE_LOCALE, ...TRANSLATED_LOCALES];
 
 /** Ключ правки текста: «язык/поле», например `uk/title`. */
 export const textKey = (lang: Lang, field: TextField): string => `${lang}/${field}`;
@@ -35,7 +37,7 @@ export function realTextEdits(texts: Record<string, string>, current: (lang: Lan
 export function buildAcceptBody(specs: Record<string, unknown> | null, edits: [string, string][]): CardAcceptBody {
   const body: CardAcceptBody = {};
   if (specs) body.specs = specs;
-  const tr: Partial<Record<"uk" | "en", CardTextTranslations>> = {};
+  const tr: Partial<Record<TranslatedLocale, CardTextTranslations>> = {};
   for (const [k, v] of edits) {
     const [lang, field] = splitKey(k);
     const text = v.trim();

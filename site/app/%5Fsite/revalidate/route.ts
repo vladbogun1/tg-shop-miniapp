@@ -14,12 +14,16 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { LOCALE_PATTERN } from "@shop/core/i18n";
+
 export const dynamic = "force-dynamic";
+
+const HAS_LOCALE = new RegExp(`^/(${LOCALE_PATTERN})(/|$)`);
 
 function internalPath(p: string): string | null {
   if (typeof p !== "string" || !p.startsWith("/") || p.length > 300) return null;
   const clean = p.split("?")[0];
-  if (/^\/(ru|en|uk)(\/|$)/.test(clean)) return clean;
+  if (HAS_LOCALE.test(clean)) return clean;
   return clean === "/" ? "/uk" : `/uk${clean}`;
 }
 

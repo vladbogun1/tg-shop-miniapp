@@ -1,6 +1,7 @@
 /** «Карточки»: общие типы проверки ответа ИИ — замечания, уровни, значения характеристик и результат разбора по товарам. */
 import type { CardItem } from "./item";
 import type { CardAttribute } from "./schema";
+import { type Locale } from "@shop/core/i18n";
 
 export type Level = "ok" | "warn" | "error";
 
@@ -48,7 +49,7 @@ export interface DescriptionReview {
 }
 
 export type TextField = "title" | "description" | "conditionNote";
-export type TextLang = "ru" | "uk" | "en";
+export type TextLang = Locale;
 export const TEXT_FIELDS: TextField[] = ["title", "description", "conditionNote"];
 export const TEXT_LABEL: Record<TextField, string> = {
   title: "Название",
