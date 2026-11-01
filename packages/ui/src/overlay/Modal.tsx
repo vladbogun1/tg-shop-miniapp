@@ -2,11 +2,12 @@
 
 import { AnimatePresence, motion, useIsPresent } from "framer-motion";
 import { X } from "lucide-react";
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../cn";
 import { backdropVariants, modalVariants, sheetVariants } from "./variants";
 import { useOverlayLayer } from "./overlay-stack";
+import { useDialogFocus } from "./use-dialog-focus";
 import { useBackToClose } from "./use-back-close";
 import { useMediaQuery } from "../use-media";
 import { Button } from "../primitives/AdminButton";
@@ -93,11 +94,11 @@ function UnsavedCloseModal({
   );
 }
 
-function ModalHeader({ title, onClose }: { title: ReactNode; onClose: () => void }) {
+function ModalHeader({ title, titleId, onClose }: { title: ReactNode; titleId: string; onClose: () => void }) {
   if (!title) return null;
   return (
     <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-5 py-3.5">
-      <div className="min-w-0 font-display text-[16px] font-bold uppercase tracking-[0.04em] text-[var(--ink)]">{title}</div>
+      <div id={titleId} className="min-w-0 font-display text-[16px] font-bold uppercase tracking-[0.04em] text-[var(--ink)]">{title}</div>
       <button
         onClick={onClose}
         aria-label="Закрыть"
@@ -180,6 +181,8 @@ export function Modal({
   }, [dirty, closeViaHistory]);
 
   useOverlayLayer(open, requestClose);
+  const focusRef = useDialogFocus();
+  const titleId = useId();
   // A fresh key per opening (computed during render, so the dialog never remounts while open): if a
   // previous exit got stuck (see ModalLayer), the new dialog still enters.
   const session = useOpenSession(open);
@@ -215,8 +218,10 @@ export function Modal({
                 className="absolute inset-0 bg-black/60 backdrop-blur-[6px]"
               />
               <motion.div
+                ref={focusRef}
                 role="dialog"
                 aria-modal="true"
+                aria-labelledby={title ? titleId : undefined}
                 variants={dialog ? modalVariants : sheetVariants}
                 initial="initial"
                 animate="animate"
@@ -230,7 +235,7 @@ export function Modal({
                 )}
               >
                 <ModalCloseContext.Provider value={requestClose}>
-                  <ModalHeader title={title} onClose={requestClose} />
+                  <ModalHeader title={title} titleId={titleId} onClose={requestClose} />
                   <div
                     className={cn(
                       "thin-scroll min-h-0 flex-1 overflow-auto overscroll-contain px-4 py-4 sm:px-5",

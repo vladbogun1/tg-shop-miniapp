@@ -2,11 +2,12 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { useEffect, type MutableRefObject, type ReactNode } from "react";
+import { useEffect, useId, type MutableRefObject, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../cn";
 import { backdropVariants, drawerVariants } from "./variants";
 import { useOverlayLayer } from "./overlay-stack";
+import { useDialogFocus } from "./use-dialog-focus";
 import { useBackToClose } from "./use-back-close";
 
 /**
@@ -42,6 +43,8 @@ export function Drawer({
 }) {
   const close = useBackToClose(open && !!backClose, onClose, { marker: backClose, navigatesAway: closeNavigates });
   useOverlayLayer(open, close);
+  const focusRef = useDialogFocus();
+  const titleId = useId();
   useEffect(() => {
     if (closeRef) closeRef.current = close;
   });
@@ -61,8 +64,11 @@ export function Drawer({
             className="absolute inset-0 bg-black/60 backdrop-blur-[6px]"
           />
           <motion.aside
+            ref={focusRef}
             role="dialog"
             aria-modal="true"
+            aria-labelledby={title && !header ? titleId : undefined}
+            aria-label={!title || header ? "Панель" : undefined}
             variants={drawerVariants}
             initial="initial"
             animate="animate"
@@ -80,7 +86,7 @@ export function Drawer({
             >
               <div className="min-w-0 flex-1">
                 {header ?? (
-                  <div className="font-display text-[16px] font-bold uppercase tracking-[0.04em] text-[var(--ink)]">{title}</div>
+                  <div id={titleId} className="font-display text-[16px] font-bold uppercase tracking-[0.04em] text-[var(--ink)]">{title}</div>
                 )}
               </div>
               <button

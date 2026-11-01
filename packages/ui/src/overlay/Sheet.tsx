@@ -10,6 +10,7 @@ import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useOverlayLayer } from "./overlay-stack";
+import { useDialogFocus } from "./use-dialog-focus";
 import { useBackToClose } from "./use-back-close";
 
 const sheetVariants: Variants = {
@@ -50,6 +51,7 @@ export function Sheet({
 }) {
   const close = useBackToClose(open && !!backClose, onClose, { marker: backClose });
   useOverlayLayer(open, close);
+  const focusRef = useDialogFocus();
 
   // In a portal: opened from a screen's own layer the sheet must still cover the tab bar.
   if (typeof document === "undefined") return null;
@@ -65,6 +67,7 @@ export function Sheet({
           className={`fixed inset-0 flex items-end justify-center bg-black/65 ${zClass}`}
         >
           <motion.div
+            ref={focusRef}
             role="dialog"
             aria-modal="true"
             aria-label={ariaLabel}

@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useOverlayLayer } from "./overlay-stack";
+import { useDialogFocus } from "./use-dialog-focus";
 
 export function Lightbox({
   src,
@@ -16,6 +17,7 @@ export function Lightbox({
 }) {
   // Esc closes the picture only — not the chat drawer underneath it.
   useOverlayLayer(!!src, onClose);
+  const focusRef = useDialogFocus();
 
   if (typeof document === "undefined") return null;
 
@@ -23,6 +25,10 @@ export function Lightbox({
     <AnimatePresence>
       {src && (
         <motion.div
+          ref={focusRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Фото"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
