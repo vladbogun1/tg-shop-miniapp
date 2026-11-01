@@ -22,9 +22,6 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 public class CacheConfig {
 
-    /** Checkout idempotency keys ("userId:key" → order id): retries of one checkout, a half hour at most. */
-    public static final String ORDER_IDEMPOTENCY = "orderIdempotency";
-
     /**
      * Fiscal-check lists of a paid invoice, one cache per lifetime (payment module): a check may still change
      * (45 s), every check is final (10 min), monobank failed (60 s, do not retry on every page load).
@@ -43,7 +40,6 @@ public class CacheConfig {
     CacheManagerCustomizer<CaffeineCacheManager> perCacheLimits(ObjectProvider<CacheSpec> moduleCaches) {
         return manager -> {
             manager.registerCustomCache(TRANSLATION_SNAPSHOTS, expiring(8, Duration.ofSeconds(60)));
-            manager.registerCustomCache(ORDER_IDEMPOTENCY, expiring(10_000, Duration.ofMinutes(30)));
             manager.registerCustomCache(RECEIPT_CHECKS_OPEN, expiring(5_000, Duration.ofSeconds(45)));
             manager.registerCustomCache(RECEIPT_CHECKS_FINAL, expiring(5_000, Duration.ofMinutes(10)));
             manager.registerCustomCache(RECEIPT_CHECKS_ERROR, expiring(5_000, Duration.ofSeconds(60)));

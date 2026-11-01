@@ -133,6 +133,8 @@ services:
       context: ./backend
     container_name: tgshop_v2_backend
     restart: unless-stopped
+    # Graceful shutdown бэкенда ждёт до 30 с (spring.lifecycle.timeout-per-shutdown-phase): запас на SIGKILL.
+    stop_grace_period: 40s
     depends_on:
       mysql:
         condition: service_healthy

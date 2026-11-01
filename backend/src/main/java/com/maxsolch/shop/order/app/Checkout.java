@@ -24,6 +24,7 @@ import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.catalog.app.Products;
 import com.maxsolch.shop.order.infra.OrderProperties;
+import com.maxsolch.shop.customer.app.Customers;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +50,9 @@ import java.util.function.Consumer;
 @Service
 public class Checkout {
 
+    /** One product (variant) per order, all its lines together; the cart itself stops at 99. */
+    static final int MAX_LINE_QUANTITY = 1000;
+
     private final OrderRepository orderRepository;
     private final Products productRepository;
     private final OrderPaymentOptions paymentOptions;
@@ -66,6 +70,8 @@ public class Checkout {
     /** Drawing and placing the gift of the order sum. */
     private final OrderGiftPrizes giftPrizes;
     private final OrderProperties props;
+    /** The buyer's row lock: see {@link Customers#lockForUpdate}. */
+    private final Customers customers;
 
     Checkout(OrderRepository orderRepository,
                         Products productRepository,
@@ -80,7 +86,9 @@ public class Checkout {
                         OrderGifts gifts,
                         OrderOps ops,
                         OrderGiftPrizes giftPrizes,
-                        OrderProperties props) {
+                        OrderProperties props,
+                        Customers customers) {
+        this.customers = customers;
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.paymentOptions = paymentOptions;
@@ -104,6 +112,11 @@ public class Checkout {
      */
     @Transactional
     public Order createOrder(CreateOrderCommand cmd) {
+        // Two orders of one person at once would both see the whole monthly gift limit left: serialise them
+        // on the buyer's row, before anything is read (an admin's manual order has no buyer account).
+        if (cmd.userId() != null) {
+            customers.lockForUpdate(cmd.userId());
+        }
         if (cmd.items() == null || cmd.items().isEmpty()) {
             throw new DomainException.BadRequest(OrderError.NO_ITEMS);
         }
@@ -168,8 +181,13 @@ public class Checkout {
                 throw new DomainException.BadRequest(OrderError.QUANTITY_NOT_POSITIVE);
             }
             String key = line.productId() + "::" + (line.variantId() == null ? "" : line.variantId());
-            acc.computeIfAbsent(key, k -> new AccLine(line.productId(), line.variantId()))
-                    .quantity += line.quantity();
+            AccLine acc1 = acc.computeIfAbsent(key, k -> new AccLine(line.productId(), line.variantId()));
+            // long: many copies of one line must not wrap around int into a small (or negative) quantity
+            long sum = (long) acc1.quantity + line.quantity();
+            if (sum > MAX_LINE_QUANTITY) {
+                throw new DomainException.BadRequest(OrderError.QUANTITY_TOO_HIGH, MAX_LINE_QUANTITY);
+            }
+            acc1.quantity = (int) sum;
         }
         return acc;
     }

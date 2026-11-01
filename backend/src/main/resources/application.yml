@@ -1,11 +1,24 @@
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   application:
     name: tg-shop-v2-backend
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:tgshop_v2}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:tgshop_v2}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8&connectTimeout=3000&socketTimeout=60000
     username: ${DB_USER:tgshop}
     password: ${DB_PASSWORD:change_me}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      # Явно, а не по умолчанию: 20 соединений на веб-запросы, планировщик и слушатели REQUIRES_NEW (второе
+      # соединение, пока первое ещё не отпущено); укладывается в max_connections MySQL с запасом.
+      maximum-pool-size: 20
+      minimum-idle: 5
+      # Нет соединения за 5 с — быстрая ошибка вместо очереди зависших потоков Tomcat (по умолчанию 30 с).
+      connection-timeout: 5000
+      # Соединение живёт меньше wait_timeout MySQL и обрывов NAT/докера.
+      max-lifetime: 1500000
+      # Предупреждение в логе о соединении, не вернувшемся в пул за 30 с (утечка или долгая транзакция).
+      leak-detection-threshold: 30000
   jpa:
     # false: the JPA session lives only as long as a transaction of the app layer. Whatever a controller renders
     # must be loaded (fetch join / read model) inside that transaction - a lazy collection read in the web layer
@@ -43,6 +56,9 @@ spring:
 
 server:
   port: 8080
+  # SIGTERM (docker stop, релиз): новые запросы не принимаются, текущие дорабатывают, потом выход.
+  # Без этого Tomcat рвал соединения посреди оформления заказа. stop_grace_period в compose — 40 с.
+  shutdown: graceful
   # Behind the nginx gateway: honour X-Forwarded-For/Proto so client IPs (rate limiting, logs)
   # and generated URLs are the real ones instead of the proxy's.
   # native = Tomcat's RemoteIpValve: X-Forwarded-For is read right-to-left, skipping trusted proxies

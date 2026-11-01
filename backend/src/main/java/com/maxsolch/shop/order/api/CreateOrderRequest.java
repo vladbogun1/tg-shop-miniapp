@@ -1,5 +1,7 @@
 package com.maxsolch.shop.order.api;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -7,7 +9,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 public record CreateOrderRequest(
-        @NotEmpty List<Item> items,
+        @NotEmpty List<@Valid Item> items,
         @NotBlank String customerName,
         @NotBlank String phone,
         String comment,
@@ -24,6 +26,6 @@ public record CreateOrderRequest(
     public record Item(
             @NotBlank String productId,
             String variantId,
-            int quantity) {
+            @Max(1000) int quantity) {
     }
 }

@@ -8804,6 +8804,7 @@
           },
           "quantity" : {
             "format" : "int32",
+            "maximum" : 1000,
             "type" : "integer"
           },
           "variantId" : {
