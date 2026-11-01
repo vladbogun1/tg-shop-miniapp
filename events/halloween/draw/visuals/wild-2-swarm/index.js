@@ -162,7 +162,7 @@ export function mount(root, ctx) {
   let hud = { round: 1, total: 5, seed: "", remaining: 0, show: 0, label: "", tickets: 0 };
   let dlg = { text: "", t0: 0, talk: 0 };
   let lineEnd = 0;                 // когда текущую реплику уже можно менять (допечаталась + HOLD)
-  let prize = null;                // { name, items } | null — приз раунда
+  let prize = null;                // { name, items, pic } | null — приз раунда (pic: px.prizePicture)
   let mon = null;                  // монстр-«едок» на сцене: { kind: "glutton"|"skull", t0, a, ta, lastFr }
   let ringArtA = 0, frameA = 0, oopsT = 0, prizeA = 0, prizeShake = 0;
   let idleLineT = 3, idleLineI = 0;
@@ -710,6 +710,7 @@ export function mount(root, ctx) {
     if (!fin || fin.a <= 0.01) return;
     g.globalAlpha = Math.round(fin.a * 4) / 4;
     ptext(g, "ПЕРЕМОЖЕЦЬ", CX, 160, { size: 44, color: KP.slime, align: "center", ls: 14, drop: KP.moss, depth: 4 });
+    if (fin.pic) { const [pw, ph] = px.prizePictureSize(fin.pic, 360); px.prizeFrame(g, fin.pic, snap(CX + 420 - pw / 2), snap(fin.portraitY - ph / 2), pw, ph); }
     ptext(g, fin.name, CX, fin.nameY, { size: fin.fs, color: KP.amber, align: "center", drop: KP.rust, depth: Math.max(4, snap(fin.fs / 28)) });
     if (fin.handle) ptext(g, fin.handle, CX, fin.nameY + fin.fs * 0.5 + 52, { size: 44, color: KP.bone, align: "center", depth: 4 });
     const my = fin.nameY + fin.fs * 0.5 + (fin.handle ? 106 : 62);
@@ -890,7 +891,7 @@ export function mount(root, ctx) {
     const fs = px.fit(g, name, 220, 1180);
     const pz = px.prizeLabel(prizeName());
     const meta = `${winner.tickets} ${px.ticketsWord(winner.tickets)}`;
-    return { name, fs, nameY: pz ? 570 : 600, portraitY: pz ? 335 : 350, handle: winner.handle, meta, prize: pz, a: 0 };
+    return { name, fs, nameY: pz ? 570 : 600, portraitY: pz ? 335 : 350, handle: winner.handle, meta, prize: pz, pic: prize?.pic, a: 0 };
   }
 
   function sampleText(name, fs, nameY) {
@@ -971,6 +972,7 @@ export function mount(root, ctx) {
 
   function setPrize(p) {
     const np = p && typeof p === "object" && p.name ? { name: String(p.name), items: Array.isArray(p.items) ? p.items.map(String).slice(0, 12) : [] } : null;
+    if (np) np.pic = p.picture === prize?.pic?.url ? prize.pic : px.prizePicture(p); // loads ahead of the reveal
     if ((np && np.name) !== (prize && prize.name)) prizeShake = 1;
     prize = np;
   }

@@ -119,6 +119,10 @@
 .r3-sub b { color: #ffb15c; }
 .r3-pw { display: none; margin-top: 14px; font-size: 30px; font-weight: 700; color: #ffb15c; text-shadow: 4px 4px 0 #0e0e10; }
 .r3-pw.on { display: block; } .r3-pw b { color: #f4f1ea; }
+.r3-pp { position: absolute; left: 64px; top: 288px; width: 384px; text-align: center; opacity: 0; transform: translateY(32px); transition: opacity .5s .3s steps(4), transform .5s .3s steps(4); z-index: 5; }
+.r3-pp.on { opacity: 1; transform: none; }
+.r3-pp canvas { display: inline-block; width: calc(var(--pw) * 1px); image-rendering: pixelated; visibility: hidden; }
+.r3-pp canvas.ready { visibility: visible; }
 
 /* owner cleanup: no round counters, seed footer, idle explainer, top prize box (the prize is shown on the winner card) */
 .r3-zone, .r3-seed, .r3-idle, .r3-prize { display: none !important; }

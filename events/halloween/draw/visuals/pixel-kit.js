@@ -244,25 +244,75 @@ const photoCache = new WeakMap();
  * nearest-neighbour. Returns false when the image is not loaded yet.
  */
 export function photo(g, img, x, y, size, p = PX) {
+  return pixelImage(g, img, x, y, size, size, p);
+}
+
+/** Like photo(), for any w×h box (cover-fit). */
+export function pixelImage(g, img, x, y, w, h, p = PX) {
   if (!ready(img)) return false;
-  const n = Math.max(4, Math.round(size / p));
+  const nw = Math.max(4, Math.round(w / p)), nh = Math.max(4, Math.round(h / p)), key = `${nw}x${nh}`;
   let m = photoCache.get(img);
   if (!m) photoCache.set(img, (m = new Map()));
-  let c = m.get(n);
+  let c = m.get(key);
   if (!c) {
-    c = canvas(n, n);
+    c = canvas(nw, nh);
     const gg = c.getContext("2d");
     gg.imageSmoothingEnabled = true;
     gg.imageSmoothingQuality = "high";
-    const iw = img.naturalWidth, ih = img.naturalHeight, k = Math.max(n / iw, n / ih);
-    try { gg.drawImage(img, (n - iw * k) / 2, (n - ih * k) / 2, iw * k, ih * k); } catch { return false; }
-    m.set(n, c);
+    const iw = img.naturalWidth, ih = img.naturalHeight, k = Math.max(nw / iw, nh / ih);
+    try { gg.drawImage(img, (nw - iw * k) / 2, (nh - ih * k) / 2, iw * k, ih * k); } catch { return false; }
+    m.set(key, c);
   }
   const s = g.imageSmoothingEnabled;
   g.imageSmoothingEnabled = false;
-  g.drawImage(c, Math.round(x), Math.round(y), n * p, n * p);
+  g.drawImage(c, Math.round(x), Math.round(y), nw * p, nh * p);
   g.imageSmoothingEnabled = s;
   return true;
+}
+
+// ---------------------------------------------------------------- prize picture (winner screen)
+
+/**
+ * The won prize's picture (prizeOf().picture in screen-kit.js) — starts loading at once and never blocks:
+ * visuals draw it when it is ready and simply skip it otherwise. null when the prize has no picture.
+ * A set is one drawn scene (3:2), anything else the first product photo (1:1).
+ */
+export function prizePicture(prize) {
+  if (!prize?.picture) return null;
+  return { img: loadImage(prize.picture), set: !!prize.set, url: prize.picture };
+}
+
+/** Frame size of the picture for a given width of a set (≈360 at 1920×1080); a photo gets a square of 2/3 that. */
+export function prizePictureSize(pic, w = 360) {
+  const h = snap(w * 2 / 3);
+  return pic?.set ? [snap(w), h] : [h, h];
+}
+
+/** The picture in a pixel frame (box), top-left at x,y. false — nothing drawn — until the image has loaded. */
+export function prizeFrame(g, pic, x, y, w, h, o = {}) {
+  if (!pic || !ready(pic.img)) return false;
+  box(g, x, y, w, h, { frame: PAL.gold, fill: PAL.ink, bevel: false, ...o });
+  return pixelImage(g, pic.img, x, y, w, h);
+}
+
+/**
+ * The same framed picture as a <canvas> for DOM overlays (class `px-prize-pic`, sized in design pixels,
+ * frame margin included). It stays empty and gets `.ready` once the image loads; a failed load leaves it hidden.
+ */
+export function prizeCanvas(pic, w = 360) {
+  if (!pic) return null;
+  const [fw, fh] = prizePictureSize(pic, w), m = 3 * PX;
+  const c = canvas(fw + 2 * m, fh + 2 * m + 2 * PX);
+  c.className = "px-prize-pic";
+  c.style.setProperty("--pw", String(c.width)); // design width, for CSS sizing: calc(var(--u) * var(--pw) * 1px)
+  c.style.imageRendering = "pixelated";
+  const paint = () => {
+    const g = c.getContext("2d");
+    g.imageSmoothingEnabled = false;
+    if (prizeFrame(g, pic, m, m, fw, fh, { shadow: false })) c.classList.add("ready");
+  };
+  if (ready(pic.img)) paint(); else pic.img.addEventListener("load", paint, { once: true });
+  return c;
 }
 
 // ---------------------------------------------------------------- low-res layer

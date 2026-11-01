@@ -50,7 +50,7 @@ export function mount(root, ctx) {
         <div class="wr-feed"></div>
         <div class="wr-banner"></div>
         <div class="wr-flash"></div>
-        <div class="wr-win"><div class="wr-kicker"></div><div class="wr-emblemwrap"><div class="wr-emblem"></div></div><div class="wr-name"></div><div class="wr-sub"></div><div class="wr-prizewin"><canvas class="wr-chest" width="64" height="64"></canvas><span>ВИГРАВ: <b></b></span></div><img class="wr-hero" alt="" src="${SPR("hero_wave")}"></div>
+        <div class="wr-win"><div class="wr-kicker"></div><div class="wr-emblemwrap"><div class="wr-emblem"></div></div><div class="wr-prizepic"></div><div class="wr-name"></div><div class="wr-sub"></div><div class="wr-prizewin"><canvas class="wr-chest" width="64" height="64"></canvas><span>ВИГРАВ: <b></b></span></div><img class="wr-hero" alt="" src="${SPR("hero_wave")}"></div>
       </div>
     </div>`;
   const $ = (s) => root.querySelector(s);
@@ -58,7 +58,7 @@ export function mount(root, ctx) {
   const el = {
     n: $(".wr-n"), al: $(".wr-al"), zk: $(".wr-zk"), zv: $(".wr-zv"), zone: $(".wr-zone"), feed: $(".wr-feed"), banner: $(".wr-banner"),
     flash: $(".wr-flash"), win: $(".wr-win"), kicker: $(".wr-kicker"), emblem: $(".wr-emblem"),
-    name: $(".wr-name"), sub: $(".wr-sub"), prize: $(".wr-prize"), pn: $(".wr-pn"), pi: $(".wr-pi"), prizewin: $(".wr-prizewin"), pwn: $(".wr-prizewin b"),
+    name: $(".wr-name"), sub: $(".wr-sub"), prize: $(".wr-prize"), pn: $(".wr-pn"), pi: $(".wr-pi"), prizewin: $(".wr-prizewin"), pwn: $(".wr-prizewin b"), prizepic: $(".wr-prizepic"),
   };
 
   // ----- layout -----
@@ -237,7 +237,7 @@ export function mount(root, ctx) {
   let cam = { x: W / 2, y: H / 2, s: 1 }, shake = 0, lastFeed = 0, lastTick = 0, lastShotSnd = 0;
   const particles = [], bullets = [], fxs = [], confetti = [], feedRows = [], fights = [], labelRects = [];
   let radarA = 0, hudAlive = -1, rollResolve = null, lastStage = -1, lastFight = 0, featureI = 0, features = [], tokQuota = 0;
-  let prize = null, firstSet = true, bornAt = 0, winAt = 0;
+  let prize = null, prizePic = null, firstSet = true, bornAt = 0, winAt = 0;
   const onehp = () => { banner("1 HP !!!", "red", 3.4, 2, true); say("НІІІІ!", 3.2, 2); flash(); shake = ctx.reducedMotion ? 0 : 20; };
 
   // ----- message queues: nothing is replaced before it has been on screen long enough to be read -----
@@ -285,6 +285,7 @@ export function mount(root, ctx) {
   // ----- prize -----
   function setPrize(p) {
     prize = p && p.name ? p : null;
+    if (prize?.picture !== prizePic?.url) prizePic = prize?.picture ? { url: prize.picture, el: px.prizeCanvas(px.prizePicture(prize), 360) } : null; // load ahead of the reveal
     el.prize.style.display = ""; el.prize.classList.toggle("on", !!prize);
     if (prize) { el.pn.textContent = prize.name; el.pi.textContent = (prize.items || []).slice(0, 4).join(" · "); el.pi.style.display = prize.items?.length ? "" : "none"; }
   }
@@ -551,6 +552,7 @@ export function mount(root, ctx) {
     }
     else el.emblem.textContent = initial(w.name);
     el.prizewin.classList.toggle("on", !!prize); if (prize) el.pwn.textContent = px.prizeLabel(prize.name);
+    el.prizepic.replaceChildren(...(prizePic ? [prizePic.el] : []));
     el.win.classList.add("on");
     el.al.textContent = "ЖИВИХ"; el.n.textContent = 1; hudAlive = 1;
     el.zone.style.display = "none"; el.zone.classList.remove("hot");

@@ -391,7 +391,7 @@ export function mount(root, ctx) {
     const s0 = 4 * STEP;
     const s1 = (Wi - 1) * STEP + STEP * 0.5 - STEP * 0.08;   // pointer on the neighbour, a hair from the winner
     const s2 = Wi * STEP + off;
-    return { winner, info, strip, Wi, s0, s1, s2, s: s0, v: 0, idx: -1, kick: 0, lastTick: 0, t0: 0, lockT: 0, revealed: false };
+    return { winner, info, pic: px.prizePicture(info?.prize), strip, Wi, s0, s1, s2, s: s0, v: 0, idx: -1, kick: 0, lastTick: 0, t0: 0, lockT: 0, revealed: false };
   }
 
   const T_INTRO = 1.2, T_A = 7.0, T_PAUSE = 0.95, T_CREEP = 2.7, T_HOLD = 0.65;
@@ -584,11 +584,21 @@ export function mount(root, ctx) {
     // texts
     const pop = (d) => stepped(easeOutBack((u - d) / 0.55), 8);
     const popA = (d) => stepped((u - d) / 0.3, 3);
-    const scaled = (s, y, fn) => { if (s <= 0.01) return; g.save(); g.translate(W / 2, y); g.scale(s, s); fn(); g.restore(); };
+    const scaled = (s, y, fn, x = W / 2) => { if (s <= 0.01) return; g.save(); g.translate(x, y); g.scale(s, s); fn(); g.restore(); };
     scaled(pop(0.45), 92, () => {
       g.globalAlpha = popA(0.45);
       text("ПЕРЕМОЖЕЦЬ", 0, 0, { size: 80, color: PAL.gold, align: "center", ls: 6, depth: 5, drop: PAL.rust });
     });
+    // the won prize, mirroring the mascot on the right
+    if (r.pic && px.ready(r.pic.img)) {
+      const [pw, ph] = px.prizePictureSize(r.pic, 360), pcx = W / 2 + 640;
+      scaled(pop(0.9), WIN_CARD_Y, () => {
+        g.globalAlpha = popA(0.9);
+        px.prizeFrame(g, r.pic, -pw / 2, -ph / 2, pw, ph);
+        const pn = px.prizeLabel(r.info.prize.name);
+        if (pn) text(pn, 0, ph / 2 + 52, { size: clamp(px.fit(g, pn, 34, 420), 20, 34), color: PAL.gold, align: "center", depth: 3 });
+      }, pcx);
+    }
     const nm = r.winner.name;
     const fs = clamp(px.fit(g, nm, 168, 1560), 64, 168);
     scaled(pop(0.75), 806, () => {

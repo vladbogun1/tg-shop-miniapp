@@ -80,7 +80,7 @@ export function mount(root, ctx) {
         <div class="r3-idle">Шукай себе на острові, чат!<small>Бій почнеться, коли ведучий запустить розіграш</small></div>
         <div class="r3-seed"></div>
         <div class="r3-flash"></div>
-        <div class="r3-win"><div class="r3-kicker"></div><div class="r3-emb"></div><div class="r3-name"></div><div class="r3-sub"></div><div class="r3-pw">ВИГРАВ: <b></b></div></div>
+        <div class="r3-win"><div class="r3-kicker"></div><div class="r3-emb"></div><div class="r3-name"></div><div class="r3-sub"></div><div class="r3-pw">ВИГРАВ: <b></b></div></div><div class="r3-pp"></div>
       </div>
     </div>`;
   const $ = (s) => root.querySelector(s);
@@ -88,7 +88,7 @@ export function mount(root, ctx) {
   const el = {
     n: $(".r3-n"), al: $(".r3-al"), zk: $(".r3-zk"), zv: $(".r3-zv"), prize: $(".r3-prize"), pn: $(".r3-pn"), pi: $(".r3-pi"), loc: $(".r3-loc"),
     feed: $(".r3-feed"), banner: $(".r3-banner"), ko: $(".r3-ko"), vs: $(".r3-vs"), idle: $(".r3-idle"), seed: $(".r3-seed"), flash: $(".r3-flash"),
-    win: $(".r3-win"), kicker: $(".r3-kicker"), emb: $(".r3-emb"), name: $(".r3-name"), sub: $(".r3-sub"), pw: $(".r3-pw"), pwb: $(".r3-pw b"),
+    win: $(".r3-win"), kicker: $(".r3-kicker"), emb: $(".r3-emb"), name: $(".r3-name"), sub: $(".r3-sub"), pw: $(".r3-pw"), pwb: $(".r3-pw b"), pp: $(".r3-pp"),
   };
   const vsSide = ["l", "r"].map((k) => { const s = root.querySelector(".r3-side." + k); return { el: s, av: s.querySelector(".r3-av"), name: s.querySelector("b"), hp: s.querySelector(".r3-hp i"), combo: s.querySelector(".r3-combo"), f: null, n: 0, last: 0, hpShown: 1 }; });
 
@@ -150,7 +150,7 @@ export function mount(root, ctx) {
 
   // ---------- state ----------
   let people = [], byId = new Map(), heroes = [], heroIds = [];
-  let phase = "idle", st = 0, now = 0, plan = null, info = null, prize = null, winner = null, rollResolve = null;
+  let phase = "idle", st = 0, now = 0, plan = null, info = null, prize = null, prizePic = null, winner = null, rollResolve = null;
   let rate = 1, hitstop = 0, shake = 0, wasSlow = false, lbOn = false;
   const tmpPool = Array.from({ length: 24 }, () => new THREE.Vector3()); let tmpI = 0;
   const tmp = () => tmpPool[(tmpI = (tmpI + 1) % tmpPool.length)];
@@ -216,6 +216,7 @@ export function mount(root, ctx) {
   // ---------- prize ----------
   function setPrize(p) {
     prize = p && p.name ? p : null;
+    if (prize?.picture !== prizePic?.url) prizePic = prize?.picture ? { url: prize.picture, el: px.prizeCanvas(px.prizePicture(prize), 360) } : null; // load ahead of the reveal
     el.prize.classList.toggle("on", !!prize);
     if (prize) { el.pn.textContent = prize.name; el.pi.textContent = (prize.items || []).slice(0, 4).join(" · "); el.pi.style.display = prize.items?.length ? "" : "none"; }
   }
@@ -475,7 +476,7 @@ export function mount(root, ctx) {
       plan = makeRoll(S, W0, info, rollRnd);
       scheduleCrowd();
       phase = "roll"; rollResolve = resolve;
-      el.win.classList.remove("on"); root.classList.remove("idle");
+      el.win.classList.remove("on"); el.pp.classList.remove("on"); root.classList.remove("idle");
       el.al.textContent = "ЖИВИХ"; el.zk.textContent = "РАУНД"; 
       
       el.feed.innerHTML = ""; hud.vs(null); hud.letterbox(false);
@@ -536,6 +537,7 @@ export function mount(root, ctx) {
     el.sub.innerHTML = `${w.handle ? esc(w.handle) + " · " : ""}<b>${w.tickets}</b> ${px.ticketsWord(w.tickets)}`;
     avatarInto(el.emb, w);
     el.pw.classList.toggle("on", !!prize); if (prize) el.pwb.textContent = px.prizeLabel(prize.name);
+    el.pp.replaceChildren(...(prizePic ? [prizePic.el] : [])); el.pp.classList.add("on");
     el.win.classList.add("on");
     hud.letterbox(false);
     ctx.sound?.("win"); ctx.sound?.("boom"); flash("#ffb15c"); shakeBy(0.4);
@@ -546,7 +548,7 @@ export function mount(root, ctx) {
   function reset() {
     phase = "idle"; plan = null; winner = null; rate = 1;
     const r = rollResolve; rollResolve = null; r?.();
-    el.win.classList.remove("on"); hud.vs(null); hud.letterbox(false); el.banner.classList.remove("on"); el.loc.classList.remove("on");
+    el.win.classList.remove("on"); el.pp.classList.remove("on"); hud.vs(null); hud.letterbox(false); el.banner.classList.remove("on"); el.loc.classList.remove("on");
     el.feed.innerHTML = ""; el.seed.textContent = ""; root.classList.add("idle");
     el.al.textContent = "УЧАСНИКІВ"; el.zk.textContent = "РАУНД"; 
     fx.clear(); stormLevel(0); world.setStorm(160, 0);

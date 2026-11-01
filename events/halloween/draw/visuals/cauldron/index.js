@@ -447,7 +447,7 @@ export function mount(root, host) {
     if (w.handle) sub.push(w.handle);
     sub.push(`Квитки: ${w.tickets}`);
     const subS = textSprite(sub.join("  ·  "), { size: 44, color: px.PAL.slime, depth: 4, pad: 14 });
-    return { head, prize, name, subS, col: colorFor(w) };
+    return { head, prize, name, subS, col: colorFor(w), pic: px.prizePicture(info?.prize) };
   }
 
   function roll(winner, info) {
@@ -619,6 +619,11 @@ export function mount(root, host) {
     // портрет в рамке
     const open = smooth(age / 0.45), pulse = Math.floor(T * 2) % 2 ? P : 0;
     drawPortrait(WX, WY, 256 * lerp(0.4, 1, open), w, wn.col, steps(smooth(age / 0.25) * fadeA, 4) || 0.25);
+    // выигранный приз — справа от портрета, за кольцом душ
+    if (wn.pic) {
+      const [pw, ph] = px.prizePictureSize(wn.pic, 360), pa = steps(smooth((age - 0.6) / 0.4) * fadeA, 4);
+      if (pa > 0) { g.globalAlpha = pa; px.prizeFrame(g, wn.pic, snap(1530 - pw / 2), snap(WY - ph / 2 - (1 - pa) * 24), pw, ph); g.globalAlpha = 1; }
+    }
     // тексты
     const hA = steps(smooth((age - 0.1) / 0.5) * fadeA, 4), hy = snap(110 - (1 - easeOut((age - 0.1) / 0.6)) * 40);
     drawSprite(wn.head, WX, hy, hA);

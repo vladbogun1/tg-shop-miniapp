@@ -38,6 +38,10 @@ const cssFor = () => `
   text-shadow:calc(var(--u)*6px) calc(var(--u)*6px) 0 var(--ink),calc(var(--u)*12px) calc(var(--u)*12px) 0 #5a2200}
 .gy-banner .r{display:inline-block;margin-top:calc(var(--u)*22px);padding:calc(var(--u)*8px) calc(var(--u)*32px);background:#ff6600;--fr:#ffb15c;color:#170800;
   font-weight:700;font-size:calc(var(--u)*38px);letter-spacing:.04em}
+.gy-prize{position:absolute;left:calc(var(--u)*1428px);top:calc(var(--u)*300px);width:calc(var(--u)*384px);text-align:center;opacity:0}
+.gy-prize.on{animation:gy-pop .7s steps(7) .3s both}
+.gy-prize canvas{display:inline-block;width:calc(var(--u)*var(--pw)*1px);height:auto;image-rendering:pixelated;visibility:hidden}
+.gy-prize canvas.ready{visibility:visible}
 .gy-ticker{position:absolute;left:0;right:0;bottom:calc(var(--u)*52px);text-align:center;opacity:0;transform:translateY(calc(var(--u)*16px));transition:opacity .35s steps(4),transform .35s steps(4)}
 .gy-ticker.on{opacity:1;transform:none}
 .gy-ticker .box{--fr:#7cff4f;display:inline-flex;align-items:baseline;gap:calc(var(--u)*20px);padding:calc(var(--u)*12px) calc(var(--u)*36px) calc(var(--u)*14px)}
@@ -63,9 +67,9 @@ export function mount(root, ctx) {
   let g = mg; // current drawing target: the low-res world layer while the world is drawn, else mg
   let L = null; // low-res layer
   const ui = document.createElement("div"); ui.className = "gy-ui";
-  ui.innerHTML = `<div class="gy-stat gy-px"></div><div class="gy-banner"><div class="t">ПЕРЕМОЖЕЦЬ</div><div class="r gy-px"></div></div><div class="gy-ticker"><div class="box gy-px"><span class="l">Учасник</span><b class="n"></b></div></div>`;
+  ui.innerHTML = `<div class="gy-stat gy-px"></div><div class="gy-banner"><div class="t">ПЕРЕМОЖЕЦЬ</div><div class="r gy-px"></div></div><div class="gy-prize"></div><div class="gy-ticker"><div class="box gy-px"><span class="l">Учасник</span><b class="n"></b></div></div>`;
   root.append(ui);
-  const $stat = ui.querySelector(".gy-stat"), $banner = ui.querySelector(".gy-banner"), $round = ui.querySelector(".gy-banner .r");
+  const $stat = ui.querySelector(".gy-stat"), $pic = ui.querySelector(".gy-prize"), $banner = ui.querySelector(".gy-banner"), $round = ui.querySelector(".gy-banner .r");
   const $ticker = ui.querySelector(".gy-ticker"), $tname = ui.querySelector(".gy-ticker .n");
 
   const heroWave = loadImg("hero_wave"), heroBlink = loadImg("hero_blink");
@@ -296,10 +300,10 @@ export function mount(root, ctx) {
     const pts = [[W_ / 2, HY + G / LY.Zgate]];
     for (let i = 0; i < 4; i++) pts.push([W_ / 2 + side0 * (i % 2 ? -1 : 1) * (0.3 + Math.random() * 0.16) * Wu, yoOf(clamp(vs[i], 0, vmax + 0.2))]);
     pts.push([lerp(pts[4][0], Fp[0], 0.55), lerp(pts[4][1], Fp[1], 0.5)]); pts.push(Fp);
-    R0 = { t: 0, W, F, Fp, path: catmull(pts), prize: px.prizeLabel(info?.prize?.name), ticks: 0, ev: {}, shake: 0, lastXo: pts[0][0], lastYo: pts[0][1] };
+    R0 = { t: 0, W, F, Fp, path: catmull(pts), prize: px.prizeLabel(info?.prize?.name), pic: px.prizeCanvas(px.prizePicture(info?.prize), 360), ticks: 0, ev: {}, shake: 0, lastXo: pts[0][0], lastYo: pts[0][1] };
     R0.promise = new Promise((res) => { R0.res = res; });
     gh.on = true; gh.a = 0; gh.xo = pts[0][0]; gh.yo = pts[0][1]; gh.alt = 0; gh.spd = 0; gh.lean = 0;
-    fin = null; $banner.classList.remove("on"); $stat.style.display = "none"; // the chip is idle-only
+    fin = null; $banner.classList.remove("on"); $pic.classList.remove("on"); $pic.replaceChildren(); if (R0.pic) $pic.append(R0.pic); $stat.style.display = "none"; // the chip is idle-only
     return R0.promise;
   }
 
@@ -361,13 +365,13 @@ export function mount(root, ctx) {
       fin.crackP = crackP; fin.splitE = easeOut((t - Tm.split) / 0.75); fin.handE = easeBack((t - Tm.hand) / 1.05); fin.beam = sstep(Tm.split, Tm.split + 0.3, t) * (1 - 0.35 * sstep(Tm.split + 1.5, Tm.split + 3, t));
     }
     ev("split", Tm.split, () => { snd("boom"); r.shake = 2.4; r.burst = true; });
-    ev("banner", Tm.banner, () => { $round.textContent = r.prize; $round.style.display = r.prize ? "" : "none"; $banner.classList.add("on"); $ticker.classList.remove("on"); });
+    ev("banner", Tm.banner, () => { $round.textContent = r.prize; $round.style.display = r.prize ? "" : "none"; $banner.classList.add("on"); $pic.classList.add("on"); $ticker.classList.remove("on"); });
     ev("win", Tm.win, () => snd("win"));
     ev("end", Tm.end, () => { justWon.add(W.id); wonSet.add(W.id); updateStat(); const res = r.res; r.res = null; R0 = null; res && res(); });
   }
 
   function doReset() {
-    $banner.classList.remove("on"); $ticker.classList.remove("on"); tickerId = null; $stat.style.display = "";
+    $banner.classList.remove("on"); $pic.classList.remove("on"); $ticker.classList.remove("on"); tickerId = null; $stat.style.display = "";
     if (R0) { const res = R0.res; R0 = null; res && res(); }
     gh.on = false;
     if (fin) { fin.leaving = T; }
