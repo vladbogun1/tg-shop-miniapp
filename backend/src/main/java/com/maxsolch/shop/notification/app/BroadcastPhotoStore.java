@@ -5,7 +5,6 @@ import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.cache.CacheSpec;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -33,11 +32,6 @@ public class BroadcastPhotoStore {
 
     public BroadcastPhotoStore(CacheManager caches) {
         this.items = Objects.requireNonNull(caches.getCache(SPEC.name()), "cache " + SPEC.name());
-    }
-
-    @Bean
-    CacheSpec broadcastPhotosSpec() {
-        return SPEC;
     }
 
     /** Validates (jpg/png/webp by magic bytes, up to 5 MB) and stores; returns the id. */
