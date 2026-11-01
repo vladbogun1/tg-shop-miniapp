@@ -1,7 +1,9 @@
 package com.maxsolch.shop.review.app;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.lang.Nullable;
 
 /** Wire shapes of the reviews API (public, customer, admin). Ids of products/orders are UUID strings. */
 public final class ReviewDtos {
@@ -77,11 +79,13 @@ public final class ReviewDtos {
     // ------------------------------------------------------------------ admin
 
     /** A review row in the admin «Отзывы» list. */
-    public record AdminReview(long id, String status, int rating, String text, String author,
-                              String productId, String productTitle, String productSlug, String variantName,
-                              String orderId, String orderShortId, Long userId, String customerName,
-                              String adminReply, Instant adminReplyAt, Instant createdAt, Instant updatedAt,
-                              Instant publishedAt) {
+    public record AdminReview(long id, @Schema(allowableValues = {"PENDING", "PUBLISHED", "HIDDEN"}) String status,
+                              int rating, String text, String author,
+                              String productId, @Nullable String productTitle, @Nullable String productSlug,
+                              @Nullable String variantName, @Nullable String orderId, @Nullable String orderShortId,
+                              @Nullable Long userId, @Nullable String customerName,
+                              @Nullable String adminReply, @Nullable Instant adminReplyAt, Instant createdAt,
+                              @Nullable Instant updatedAt, @Nullable Instant publishedAt) {
     }
 
     /** Page of the admin list with per-status counts (the filter chips). */

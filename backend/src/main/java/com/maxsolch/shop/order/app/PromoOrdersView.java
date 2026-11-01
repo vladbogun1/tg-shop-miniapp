@@ -35,10 +35,10 @@ public class PromoOrdersView {
     public record ManualDiscountDto(
             String id,
             String status,
-            String customerName,
+            @Nullable String customerName,
             @Nullable Long tgUserId,
-            /** The label as stored: «Ручная скидка» or «Ручная скидка 10%». */
-            @Nullable String label,
+            /** The label as stored: «Ручная скидка» or «Ручная скидка 10%» (the query selects by it, so never null). */
+            String label,
             long totalMinor,
             long discountMinor,
             Instant createdAt) {

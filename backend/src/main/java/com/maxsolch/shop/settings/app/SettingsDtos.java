@@ -1,6 +1,7 @@
 package com.maxsolch.shop.settings.app;
 
 import com.maxsolch.shop.settings.domain.SettingDefinition;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +19,7 @@ public final class SettingsDtos {
     public record SettingItemDto(
             String key,
             String group,
-            String type,
+            @Schema(allowableValues = {"INT", "BOOL", "STRING", "TEXT", "SELECT"}) String type,
             String label,
             String description,
             Object defaultValue,

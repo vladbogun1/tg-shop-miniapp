@@ -1,9 +1,11 @@
 package com.maxsolch.shop.preorder.app;
 
 import com.maxsolch.shop.procurement.app.BatchDtos.EtaDto;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.lang.Nullable;
 
 /** Pre-order API shapes: customer (me/public) first, then admin. Ids of products/variants are UUID strings. */
 public final class PreorderDtos {
@@ -48,10 +50,10 @@ public final class PreorderDtos {
 
     // ---- admin ----
 
-    public record SubscriberDto(long id, long userId, String name, String username, boolean botBlocked,
-                                String productId, String variantId, String productTitle, String variantName,
-                                int qty, String status, Integer position, int heldQty, Instant holdUntil,
-                                String source, Instant createdAt, Instant closedAt, String closeReason) {
+    public record SubscriberDto(long id, long userId, @Nullable String name, @Nullable String username, boolean botBlocked,
+                                String productId, @Nullable String variantId, String productTitle, @Nullable String variantName,
+                                int qty, @Schema(allowableValues = {"WAITING", "HELD", "NOTIFIED", "BOUGHT", "EXPIRED", "CANCELLED"}) String status, @Nullable Integer position, int heldQty, @Nullable Instant holdUntil,
+                                @Nullable String source, Instant createdAt, @Nullable Instant closedAt, @Nullable String closeReason) {
     }
 
     /**
@@ -59,9 +61,9 @@ public final class PreorderDtos {
      * {@code productPeople} — distinct people waiting for ANY variant of the product (one person in two
      * variants counts once), so the UI can total per product without double counting.
      */
-    public record DemandDto(String productId, String variantId, String title, String variantName, String imageUrl,
+    public record DemandDto(String productId, @Nullable String variantId, String title, @Nullable String variantName, @Nullable String imageUrl,
                             int stock, long priceMinor, long people, long units, Instant firstAt, long newLast7d,
-                            Long openBatchId, String openBatchTitle, long productPeople) {
+                            @Nullable Long openBatchId, @Nullable String openBatchTitle, long productPeople) {
     }
 
     /**

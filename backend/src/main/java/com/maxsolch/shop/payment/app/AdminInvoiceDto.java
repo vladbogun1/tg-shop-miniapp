@@ -1,11 +1,12 @@
 package com.maxsolch.shop.payment.app;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 
 /** One monobank invoice of an order, for the admin order drawer. */
 public record AdminInvoiceDto(
         String invoiceId,
-        String status,
+        @Schema(allowableValues = {"none", "created", "processing", "hold", "success", "failure", "reversed", "expired"}) String status,
         long amountMinor,
         Long finalAmountMinor,
         long refundedMinor,

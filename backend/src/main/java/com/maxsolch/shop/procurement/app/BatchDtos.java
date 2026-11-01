@@ -1,9 +1,11 @@
 package com.maxsolch.shop.procurement.app;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.lang.Nullable;
 
 /** Batch ("Поставки") API shapes: suppliers, batches with their lines, arrival. Ids of products/variants are UUID strings. */
 public final class BatchDtos {
@@ -18,7 +20,7 @@ public final class BatchDtos {
     public record EtaDto(String stage, String mode, LocalDate from, LocalDate to, Integer approxWeeks, String note) {
     }
 
-    public record SupplierDto(long id, String name, String note) {
+    public record SupplierDto(long id, String name, @Nullable String note) {
     }
 
     public record SupplierRequest(String name, String note) {
@@ -34,24 +36,24 @@ public final class BatchDtos {
                                List<ItemRequest> items) {
     }
 
-    public record BatchSummaryDto(long id, String title, String supplierName, String status, String etaMode,
-                                  LocalDate etaFrom, LocalDate etaTo, boolean preorderOpen, int itemsCount,
+    public record BatchSummaryDto(long id, String title, @Nullable String supplierName, @Schema(allowableValues = {"ORDERED", "IN_TRANSIT", "CUSTOMS", "ARRIVED", "CANCELLED"}) String status, @Schema(allowableValues = {"DATE", "RANGE", "APPROX", "HIDDEN"}) String etaMode,
+                                  @Nullable LocalDate etaFrom, @Nullable LocalDate etaTo, boolean preorderOpen, int itemsCount,
                                   int qtyOrdered, long waitingPeople, long waitingQty, Instant createdAt,
-                                  Instant arrivedAt) {
+                                  @Nullable Instant arrivedAt) {
     }
 
     /** {@code unitPriceFx} — null unless the caller may see money (main admin). */
-    public record ItemDto(long id, String productId, String variantId, String title, String variantName,
-                          String imageUrl, int stock, long priceMinor, int qtyOrdered, Integer qtyArrived,
-                          Long unitPriceFx, long waitingPeople, long waitingQty) {
+    public record ItemDto(long id, String productId, @Nullable String variantId, String title, @Nullable String variantName,
+                          @Nullable String imageUrl, int stock, long priceMinor, int qtyOrdered, @Nullable Integer qtyArrived,
+                          @Nullable Long unitPriceFx, long waitingPeople, long waitingQty) {
     }
 
     /** {@code fxRate} and item prices are null unless {@code moneyVisible}. */
-    public record BatchDto(long id, String title, Long supplierId, String supplierName, String privateNote,
-                           String publicNote, String status, String etaMode, LocalDate etaFrom, LocalDate etaTo,
-                           EtaDto eta, int holdHours, String distribution, boolean preorderOpen, String currency,
-                           BigDecimal fxRate, boolean moneyVisible, List<ItemDto> items, String createdBy,
-                           Instant createdAt, Instant inTransitAt, Instant arrivedAt, Instant cancelledAt) {
+    public record BatchDto(long id, String title, @Nullable Long supplierId, @Nullable String supplierName, @Nullable String privateNote,
+                           @Nullable String publicNote, @Schema(allowableValues = {"ORDERED", "IN_TRANSIT", "CUSTOMS", "ARRIVED", "CANCELLED"}) String status, @Schema(allowableValues = {"DATE", "RANGE", "APPROX", "HIDDEN"}) String etaMode, @Nullable LocalDate etaFrom, @Nullable LocalDate etaTo,
+                           EtaDto eta, int holdHours, @Schema(allowableValues = {"QUEUE_HOLD", "ALL_AT_ONCE"}) String distribution, boolean preorderOpen, @Nullable String currency,
+                           @Nullable BigDecimal fxRate, boolean moneyVisible, List<ItemDto> items, @Nullable String createdBy,
+                           Instant createdAt, @Nullable Instant inTransitAt, @Nullable Instant arrivedAt, @Nullable Instant cancelledAt) {
     }
 
     public record StatusRequest(String status) {
@@ -68,11 +70,11 @@ public final class BatchDtos {
     }
 
     /** One line of the «Приехала» preview / result. */
-    public record ArriveLineResult(long itemId, String title, String variantName, int arrived, int stockAfter,
+    public record ArriveLineResult(long itemId, String title, @Nullable String variantName, int arrived, int stockAfter,
                                    int heldPeople, int heldQty, int notifiedPeople, int shortPeople, int freeAfter,
                                    long priceMinor) {
     }
 
-    public record ArriveResult(boolean dryRun, String distribution, int holdHours, List<ArriveLineResult> lines) {
+    public record ArriveResult(boolean dryRun, @Schema(allowableValues = {"QUEUE_HOLD", "ALL_AT_ONCE"}) String distribution, int holdHours, List<ArriveLineResult> lines) {
     }
 }

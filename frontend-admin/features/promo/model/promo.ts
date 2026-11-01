@@ -17,11 +17,9 @@ export const TAB_EMPTY: Record<PromoOrigin, { title: string; text: string }> = {
   REVIEW: { title: "Бонусов за отзывы нет", text: "Код выдаётся автоматически, когда клиент оставляет отзыв о заказе." },
 };
 
-/** Откуда код: поле бэкенда, а для старого бэкенда — по владельцу и источнику. */
-export function promoOrigin(p: PromoCode): PromoOrigin {
-  if (p.origin) return p.origin;
-  if (p.source === "REVIEW_BONUS") return "REVIEW";
-  return p.ownerUserId != null || p.source ? "PERSONAL" : "OURS";
+/** Откуда код: поле бэкенда (`PromoOrigin`); фронт и бэкенд выкатываются вместе, старого бэкенда нет. */
+export function promoOrigin(p: Pick<PromoCode, "origin">): PromoOrigin {
+  return p.origin;
 }
 
 /** Can a customer still use it right now? */

@@ -492,6 +492,16 @@
             "type" : "string"
           },
           "status" : {
+            "enum" : [
+              "none",
+              "created",
+              "processing",
+              "hold",
+              "success",
+              "failure",
+              "reversed",
+              "expired"
+            ],
             "type" : "string"
           },
           "updatedAt" : {
@@ -889,10 +899,12 @@
       "AdminReview" : {
         "properties" : {
           "adminReply" : {
+            "nullable" : true,
             "type" : "string"
           },
           "adminReplyAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "author" : {
@@ -903,6 +915,7 @@
             "type" : "string"
           },
           "customerName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "id" : {
@@ -910,22 +923,27 @@
             "type" : "integer"
           },
           "orderId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "orderShortId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "productId" : {
             "type" : "string"
           },
           "productSlug" : {
+            "nullable" : true,
             "type" : "string"
           },
           "productTitle" : {
+            "nullable" : true,
             "type" : "string"
           },
           "publishedAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "rating" : {
@@ -933,6 +951,11 @@
             "type" : "integer"
           },
           "status" : {
+            "enum" : [
+              "PENDING",
+              "PUBLISHED",
+              "HIDDEN"
+            ],
             "type" : "string"
           },
           "text" : {
@@ -940,13 +963,16 @@
           },
           "updatedAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "userId" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "variantName" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -1576,6 +1602,7 @@
             "type" : "string"
           },
           "variantName" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -1618,6 +1645,10 @@
       "ArriveResult" : {
         "properties" : {
           "distribution" : {
+            "enum" : [
+              "QUEUE_HOLD",
+              "ALL_AT_ONCE"
+            ],
             "type" : "string"
           },
           "dryRun" : {
@@ -1829,10 +1860,12 @@
         "properties" : {
           "arrivedAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "cancelledAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "createdAt" : {
@@ -1840,12 +1873,18 @@
             "type" : "string"
           },
           "createdBy" : {
+            "nullable" : true,
             "type" : "string"
           },
           "currency" : {
+            "nullable" : true,
             "type" : "string"
           },
           "distribution" : {
+            "enum" : [
+              "QUEUE_HOLD",
+              "ALL_AT_ONCE"
+            ],
             "type" : "string"
           },
           "eta" : {
@@ -1853,16 +1892,25 @@
           },
           "etaFrom" : {
             "format" : "date",
+            "nullable" : true,
             "type" : "string"
           },
           "etaMode" : {
+            "enum" : [
+              "DATE",
+              "RANGE",
+              "APPROX",
+              "HIDDEN"
+            ],
             "type" : "string"
           },
           "etaTo" : {
             "format" : "date",
+            "nullable" : true,
             "type" : "string"
           },
           "fxRate" : {
+            "nullable" : true,
             "type" : "number"
           },
           "holdHours" : {
@@ -1875,6 +1923,7 @@
           },
           "inTransitAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "items" : {
@@ -1890,19 +1939,30 @@
             "type" : "boolean"
           },
           "privateNote" : {
+            "nullable" : true,
             "type" : "string"
           },
           "publicNote" : {
+            "nullable" : true,
             "type" : "string"
           },
           "status" : {
+            "enum" : [
+              "ORDERED",
+              "IN_TRANSIT",
+              "CUSTOMS",
+              "ARRIVED",
+              "CANCELLED"
+            ],
             "type" : "string"
           },
           "supplierId" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "supplierName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "title" : {
@@ -1939,6 +1999,12 @@
       "BatchMoneyDto" : {
         "properties" : {
           "allocation" : {
+            "enum" : [
+              "BY_VALUE",
+              "BY_QTY",
+              "BY_WEIGHT",
+              "MANUAL"
+            ],
             "type" : "string"
           },
           "batchId" : {
@@ -1963,9 +2029,11 @@
           },
           "expensesPct" : {
             "format" : "double",
+            "nullable" : true,
             "type" : "number"
           },
           "fxRate" : {
+            "nullable" : true,
             "type" : "number"
           },
           "lines" : {
@@ -2081,6 +2149,7 @@
           },
           "arrivedAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "batchId" : {
@@ -2093,6 +2162,7 @@
           },
           "daysToSellOut" : {
             "format" : "int32",
+            "nullable" : true,
             "type" : "integer"
           },
           "left" : {
@@ -2111,6 +2181,7 @@
           },
           "marginPct" : {
             "format" : "double",
+            "nullable" : true,
             "type" : "number"
           },
           "preliminary" : {
@@ -2134,6 +2205,7 @@
           },
           "soldOutAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "spentMinor" : {
@@ -2173,6 +2245,7 @@
           },
           "costUnitMinor" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "itemId" : {
@@ -2203,6 +2276,7 @@
             "type" : "string"
           },
           "variantName" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -2225,6 +2299,7 @@
         "properties" : {
           "arrivedAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "createdAt" : {
@@ -2233,13 +2308,21 @@
           },
           "etaFrom" : {
             "format" : "date",
+            "nullable" : true,
             "type" : "string"
           },
           "etaMode" : {
+            "enum" : [
+              "DATE",
+              "RANGE",
+              "APPROX",
+              "HIDDEN"
+            ],
             "type" : "string"
           },
           "etaTo" : {
             "format" : "date",
+            "nullable" : true,
             "type" : "string"
           },
           "id" : {
@@ -2258,9 +2341,17 @@
             "type" : "integer"
           },
           "status" : {
+            "enum" : [
+              "ORDERED",
+              "IN_TRANSIT",
+              "CUSTOMS",
+              "ARRIVED",
+              "CANCELLED"
+            ],
             "type" : "string"
           },
           "supplierName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "title" : {
@@ -4606,6 +4697,7 @@
             "type" : "string"
           },
           "imageUrl" : {
+            "nullable" : true,
             "type" : "string"
           },
           "newLast7d" : {
@@ -4614,9 +4706,11 @@
           },
           "openBatchId" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "openBatchTitle" : {
+            "nullable" : true,
             "type" : "string"
           },
           "people" : {
@@ -4646,9 +4740,11 @@
             "type" : "integer"
           },
           "variantId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "variantName" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -5115,6 +5211,7 @@
             "type" : "string"
           },
           "createdBy" : {
+            "nullable" : true,
             "type" : "string"
           },
           "currency" : {
@@ -5127,6 +5224,7 @@
             "type" : "array"
           },
           "fxRate" : {
+            "nullable" : true,
             "type" : "number"
           },
           "id" : {
@@ -5135,16 +5233,27 @@
           },
           "itemId" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "kind" : {
+            "enum" : [
+              "FREIGHT",
+              "CUSTOMS",
+              "BROKER",
+              "DOMESTIC",
+              "BANK",
+              "OTHER"
+            ],
             "type" : "string"
           },
           "note" : {
+            "nullable" : true,
             "type" : "string"
           },
           "spentOn" : {
             "format" : "date",
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -5167,6 +5276,7 @@
       "ExpenseFileDto" : {
         "properties" : {
           "contentType" : {
+            "nullable" : true,
             "type" : "string"
           },
           "createdAt" : {
@@ -6506,6 +6616,7 @@
             "type" : "integer"
           },
           "imageUrl" : {
+            "nullable" : true,
             "type" : "string"
           },
           "priceMinor" : {
@@ -6517,6 +6628,7 @@
           },
           "qtyArrived" : {
             "format" : "int32",
+            "nullable" : true,
             "type" : "integer"
           },
           "qtyOrdered" : {
@@ -6532,12 +6644,15 @@
           },
           "unitPriceFx" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "variantId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "variantName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "waitingPeople" : {
@@ -6905,9 +7020,11 @@
         "properties" : {
           "batchId" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "batchTitle" : {
+            "nullable" : true,
             "type" : "string"
           },
           "createdAt" : {
@@ -6919,6 +7036,11 @@
             "type" : "integer"
           },
           "kind" : {
+            "enum" : [
+              "OPENING",
+              "BATCH",
+              "MANUAL"
+            ],
             "type" : "string"
           },
           "preliminary" : {
@@ -6934,12 +7056,15 @@
           },
           "unitCostMinor" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "variantId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "variantName" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -7052,6 +7177,7 @@
             "type" : "string"
           },
           "customerName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "discountMinor" : {
@@ -7062,7 +7188,6 @@
             "type" : "string"
           },
           "label" : {
-            "nullable" : true,
             "type" : "string"
           },
           "status" : {
@@ -7439,6 +7564,7 @@
         "properties" : {
           "costUnitMinor" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "extraLineMinor" : {
@@ -7450,6 +7576,7 @@
             "type" : "integer"
           },
           "imageUrl" : {
+            "nullable" : true,
             "type" : "string"
           },
           "itemId" : {
@@ -7458,14 +7585,17 @@
           },
           "manualExtraMinor" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "marginPct" : {
             "format" : "double",
+            "nullable" : true,
             "type" : "number"
           },
           "marginUnitMinor" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "priceMinor" : {
@@ -7477,10 +7607,12 @@
           },
           "purchaseLineMinor" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "purchaseUnitMinor" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "qty" : {
@@ -7489,6 +7621,7 @@
           },
           "qtyArrived" : {
             "format" : "int32",
+            "nullable" : true,
             "type" : "integer"
           },
           "qtyOrdered" : {
@@ -7500,16 +7633,20 @@
           },
           "unitPriceFx" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "variantId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "variantName" : {
+            "nullable" : true,
             "type" : "string"
           },
           "weightG" : {
             "format" : "int32",
+            "nullable" : true,
             "type" : "integer"
           }
         },
@@ -8201,6 +8338,7 @@
       "OpeningRowDto" : {
         "properties" : {
           "imageUrl" : {
+            "nullable" : true,
             "type" : "string"
           },
           "priceMinor" : {
@@ -8215,6 +8353,7 @@
           },
           "unitCostMinor" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "units" : {
@@ -8222,9 +8361,11 @@
             "type" : "integer"
           },
           "variantId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "variantName" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -9072,6 +9213,7 @@
             "type" : "integer"
           },
           "variantName" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -9189,6 +9331,7 @@
           },
           "marginPct" : {
             "format" : "double",
+            "nullable" : true,
             "type" : "number"
           },
           "orderId" : {
@@ -9645,9 +9788,11 @@
         "properties" : {
           "currentCostMinor" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "currentPreliminary" : {
+            "nullable" : true,
             "type" : "boolean"
           },
           "lots" : {
@@ -9658,14 +9803,17 @@
           },
           "marginMinor" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "marginPct" : {
             "format" : "double",
+            "nullable" : true,
             "type" : "number"
           },
           "markupPct" : {
             "format" : "double",
+            "nullable" : true,
             "type" : "number"
           },
           "onLots" : {
@@ -10122,6 +10270,7 @@
           },
           "expiresAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "id" : {
@@ -10133,13 +10282,20 @@
           },
           "maxUses" : {
             "format" : "int32",
+            "nullable" : true,
             "type" : "integer"
           },
           "origin" : {
+            "enum" : [
+              "OURS",
+              "PERSONAL",
+              "REVIEW"
+            ],
             "type" : "string"
           },
           "ownerUserId" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "reservedCount" : {
@@ -10147,6 +10303,10 @@
             "type" : "integer"
           },
           "source" : {
+            "enum" : [
+              "REVIEW_BONUS"
+            ],
+            "nullable" : true,
             "type" : "string"
           },
           "usesCount" : {
@@ -10760,6 +10920,11 @@
             "type" : "integer"
           },
           "locale" : {
+            "enum" : [
+              "uk",
+              "ru",
+              "en"
+            ],
             "type" : "string"
           },
           "text" : {
@@ -11547,6 +11712,13 @@
             "type" : "boolean"
           },
           "type" : {
+            "enum" : [
+              "INT",
+              "BOOL",
+              "STRING",
+              "TEXT",
+              "SELECT"
+            ],
             "type" : "string"
           },
           "unit" : {
@@ -12397,10 +12569,12 @@
             "type" : "boolean"
           },
           "closeReason" : {
+            "nullable" : true,
             "type" : "string"
           },
           "closedAt" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "createdAt" : {
@@ -12413,6 +12587,7 @@
           },
           "holdUntil" : {
             "format" : "date-time",
+            "nullable" : true,
             "type" : "string"
           },
           "id" : {
@@ -12420,10 +12595,12 @@
             "type" : "integer"
           },
           "name" : {
+            "nullable" : true,
             "type" : "string"
           },
           "position" : {
             "format" : "int32",
+            "nullable" : true,
             "type" : "integer"
           },
           "productId" : {
@@ -12437,9 +12614,18 @@
             "type" : "integer"
           },
           "source" : {
+            "nullable" : true,
             "type" : "string"
           },
           "status" : {
+            "enum" : [
+              "WAITING",
+              "HELD",
+              "NOTIFIED",
+              "BOUGHT",
+              "EXPIRED",
+              "CANCELLED"
+            ],
             "type" : "string"
           },
           "userId" : {
@@ -12447,12 +12633,15 @@
             "type" : "integer"
           },
           "username" : {
+            "nullable" : true,
             "type" : "string"
           },
           "variantId" : {
+            "nullable" : true,
             "type" : "string"
           },
           "variantName" : {
+            "nullable" : true,
             "type" : "string"
           }
         },
@@ -12488,6 +12677,7 @@
             "type" : "string"
           },
           "note" : {
+            "nullable" : true,
             "type" : "string"
           }
         },

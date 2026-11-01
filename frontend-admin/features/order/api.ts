@@ -33,7 +33,7 @@ export type OrderMessage = Schemas["OrderMessageDto"];
 export type ReplyTemplate = Schemas["TemplateDto"];
 export type ReplyTemplateWrite = Schemas["TemplateUpsertRequest"];
 /** Шаблон, заполненный под один заказ, на языке покупателя. */
-export type RenderedTemplate = Omit<Schemas["RenderedTemplateDto"], "locale"> & { locale: "uk" | "ru" | "en" };
+export type RenderedTemplate = Schemas["RenderedTemplateDto"];
 export type AuditEntry = Schemas["AuditEntryDto"];
 
 /** Доска + настоящие суммы по колонкам с сервера (колонки — пять статусов + RETURNING). */
