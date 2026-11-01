@@ -44,8 +44,9 @@ public class UploadValidator {
     private static final Set<String> LOGO_EXTENSIONS = Set.of("png", "webp", "svg");
     private static final long LOGO_MAX_BYTES = 2L * 1024 * 1024;
     private static final java.util.regex.Pattern SVG_ACTIVE = java.util.regex.Pattern.compile(
-            "<script|<foreignobject|<!entity|<iframe|<embed|<object|javascript:|\son[a-z]+\s*=",
-            java.util.regex.Pattern.CASE_INSENSITIVE);
+            "<script|<foreignobject|<!entity|<iframe|<embed|<object|<animate|<set[\\s/>]|<handler|<style|<use[\\s/>]"
+                    + "|javascript:|data:text/html|&#|\\u0000|[\\s\"'/]on[a-z]+\\s*=",
+            java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CHARACTER_CLASS);
 
     private final Messages messages;
 

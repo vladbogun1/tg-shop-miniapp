@@ -77,9 +77,24 @@ public class MessageService {
         return dtos;
     }
 
+    /** Longest customer chat text, and customer messages per minute (every one pings the seller in Telegram). */
+    static final int MAX_TEXT_LENGTH = 2000;
+    static final int MAX_PER_MINUTE = 20;
+
+    private void requireWithinLimits(Long senderId, SendMessageRequest req) {
+        if (req != null && req.text() != null && req.text().length() > MAX_TEXT_LENGTH) {
+            throw new DomainException.BadRequest(OrderError.MESSAGE_TOO_LONG, MAX_TEXT_LENGTH);
+        }
+        if (senderId != null && messageRepository.countBySenderTypeAndSenderIdAndCreatedAtAfter(
+                SenderType.CUSTOMER, senderId, clock.instant().minusSeconds(60)) >= MAX_PER_MINUTE) {
+            throw new DomainException.BadRequest(OrderError.MESSAGE_RATE_LIMIT, MAX_PER_MINUTE);
+        }
+    }
+
     @Transactional
     public MessageDto postCustomerMessage(byte[] orderId, Long senderId, String senderName,
                                           SendMessageRequest req) {
+        requireWithinLimits(senderId, req);
         Order order = order(orderId);
         OrderMessage saved = persist(order, SenderType.CUSTOMER, senderId, senderName, req);
         MessageDto dto = toDto(saved);
