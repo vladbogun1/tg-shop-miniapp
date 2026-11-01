@@ -161,4 +161,4 @@
 
 ## Подписи журнала в админке
 
-`frontend-admin/features/activity/model/labels-coverage.test.ts` читает Java: каждый код `audit.record("КОД", …)` должен иметь подпись в `AUDIT_ACTION_LABEL` (`features/staff/model/audit-labels.ts`), каждый тип сообщения бота `send("метод", "ТИП", …)` / `send("ТИП", …)` — в `TYPE_LABEL` (`features/activity/model/labels.ts`). Добавил код в бэкенде — добавь русскую подпись, иначе `npm run test` упадёт.
+`frontend-admin/features/staff/model/audit-labels-coverage.test.ts` и `features/activity/model/labels-coverage.test.ts` читают Java (`lib/backend-codes.ts`): каждый код `audit.record("КОД", …)` должен иметь подпись в `AUDIT_ACTION_LABEL` (`features/staff/model/audit-labels.ts`), каждый тип сообщения бота `send("метод", "ТИП", …)` / `send("ТИП", …)` — в `TYPE_LABEL` (`features/activity/model/labels.ts`). Добавил код в бэкенде — добавь русскую подпись, иначе `npm run test` упадёт.
