@@ -1,6 +1,7 @@
 // What the old one-page screen (host.js) and the OBS scene (stage.js) both draw: the host sounds,
 // the round rail and a mounted visual. See VISUAL-CONTRACT.md.
 import { VISUALS } from "./visuals/registry.js";
+import { lotPictures, photoUrl } from "./stage-common.js";
 
 /** Short synthesised host sounds (no files); `prefs.sound` switches them off. */
 export function makeSound(prefs) {
@@ -27,9 +28,14 @@ export function makeSound(prefs) {
 }
 
 /** prizes: { prizes: [{id, name, items}], rounds: {round: prizeId} } → the pack of a round or null. */
+/** The prize of a round for a visual: name, contents and one picture for the winner screen —
+ *  `picture` is a URL (the pack drawn as one scene, 3:2, when `set`; otherwise the first product photo, 1:1;
+ *  null without photos). A photo: draw it smooth, not pixelated — only the art around it is pixel art. */
 export function prizeOf(prizes, round) {
   const p = prizes.prizes.find((x) => x.id === prizes.rounds[round]);
-  return p ? { name: p.name, items: p.items } : null;
+  if (!p) return null;
+  const { set, keys } = lotPictures(p, 1);
+  return { name: p.name, items: p.items, picture: keys[0] ? photoUrl(keys[0], 480) : null, set };
 }
 
 /** One slot per round: the winner (masked name) and the prize. */

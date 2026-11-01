@@ -80,15 +80,18 @@ async function serveStatic(req, res, prefix, dir) {
   if (!file.startsWith(dir + sep) && file !== dir) return send(res, 404, { error: "not found" });
   try {
     let f = file;
-    if ((await stat(f)).isDirectory()) f = join(f, "index.html");
+    let st = await stat(f);
+    if (st.isDirectory()) st = await stat((f = join(f, "index.html")));
+    // Art gets redrawn under the same names, and OBS keeps its cache between streams: everything is
+    // revalidated (a cheap 304 when the file did not change), nothing is trusted for a day.
+    const etag = `"${st.size.toString(36)}-${Math.floor(st.mtimeMs).toString(36)}"`;
+    const head = { "Cache-Control": "no-cache", ETag: etag, "X-Content-Type-Options": "nosniff" };
+    if (req.headers["if-none-match"] === etag) {
+      res.writeHead(304, head);
+      return res.end();
+    }
     const data = await readFile(f);
-    const isCode = /\.(js|html|css)$/.test(f);
-    res.writeHead(200, {
-      "Content-Type": TYPES[extname(f)] || "application/octet-stream",
-      // Code may change during the week; images are fixed per name.
-      "Cache-Control": isCode ? "no-cache" : "public, max-age=86400",
-      "X-Content-Type-Options": "nosniff",
-    });
+    res.writeHead(200, { "Content-Type": TYPES[extname(f)] || "application/octet-stream", ...head });
     res.end(data);
   } catch {
     send(res, 404, { error: "not found" });

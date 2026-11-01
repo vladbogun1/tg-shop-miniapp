@@ -22,7 +22,7 @@ function card({ pool, round, total, pack, sup }) {
     pics.forEach((key, i) => {
       const f = el("div", "intro-photo px");
       const img = el("img");
-      img.src = photoUrl(key, 150); // small on purpose: shown pixelated
+      img.src = photoUrl(key, 600); // photos stay sharp: only the art around them is pixel art
       img.alt = "";
       f.append(img);
       f.style.animationDelay = `${300 + i * 160}ms`;

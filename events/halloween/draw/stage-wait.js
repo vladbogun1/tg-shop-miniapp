@@ -29,7 +29,7 @@ function winnerCard(person, pack, avatars) {
   const ph = el("div", "w-photo" + (set ? " set" : ""));
   if (keys[0]) {
     const img = el("img");
-    img.src = photoUrl(keys[0], 160); // small on purpose: shown pixelated
+    img.src = photoUrl(keys[0], 600);
     img.alt = "";
     ph.append(img);
   }

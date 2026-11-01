@@ -38,7 +38,7 @@ export function lotCard(pool, round, total, pack) {
   if (set) ph.classList.add("set");
   if (key) {
     const img = el("img");
-    img.src = photoUrl(key, 120); // small on purpose: shown pixelated, like the rest of the art
+    img.src = photoUrl(key, 480);
     img.alt = "";
     ph.append(img);
   } else {
@@ -135,9 +135,21 @@ function winnersScene(pools) {
   s.dataset.ms = WINNERS_MS;
   s.append(el("h2", "p-title", `Вже виграли · ${rows.length}`));
   const grid = el("div", "p-wgrid");
-  for (const r of rows.slice(-12)) {
+  for (const r of rows.slice(-10)) {
     const row = el("div", "p-win");
-    row.append(el("span", "p-win-round", `${POOL_SHORT[r.pool]} · ${r.round}`), el("b", null, r.name), el("span", "p-win-prize", plainName(r.pack?.name ?? "")));
+    const { set, keys } = lotPictures(r.pack, 1);
+    const pic = el("span", "p-win-pic" + (set ? " set" : ""));
+    if (keys[0]) {
+      const img = el("img");
+      img.src = photoUrl(keys[0], 200);
+      img.alt = "";
+      pic.append(img);
+    }
+    const text = el("span", "p-win-text");
+    const top = el("span", "p-win-top");
+    top.append(el("span", "p-win-round", `${POOL_SHORT[r.pool]} · ${r.round}`), el("b", null, r.name));
+    text.append(top, el("span", "p-win-prize", plainName(r.pack?.name ?? "")));
+    row.append(pic, text);
     grid.append(row);
   }
   s.append(grid);
