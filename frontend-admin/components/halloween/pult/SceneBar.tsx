@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Toggle } from "@/components/ui/Toggle";
 import { POOL_TITLE } from "./PoolColumn";
+import { WaitPanel } from "./WaitPanel";
 
 function NowLine({ show, test, winnerName }: { show: HwShow; test: boolean; winnerName: (pool: string, id: string) => string | null }) {
   const r = show.roll;
@@ -36,6 +37,7 @@ function ModeBadges({ show }: { show: HwShow | null }) {
     <>
       {show?.hidden && <Badge tone="warn">Сцена скрыта — в эфире стрим</Badge>}
       {show?.pause && <Badge tone="info">На сцене экран паузы</Badge>}
+      {show?.wait && <Badge tone="info">На сцене отсчёт ответа</Badge>}
       {show?.blackout && <Badge tone="danger">Затемнено</Badge>}
     </>
   );
@@ -97,6 +99,7 @@ export function SceneBar({ show, online, stageKey, test, onTest, visual, onVisua
         </div>
       </div>
       {show && <NowLine show={show} test={test} winnerName={winnerName} />}
+      {show && <WaitPanel show={show} test={test} winnerName={winnerName} />}
       <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
         <Select<HwVisual> label="Визуал обычных раундов" value={visual} options={[...HW_VISUALS]} onChange={onVisual} className="w-[240px]" />
         <Toggle label="Аватарки" checked={show?.avatars ?? true} onChange={(v) => set({ avatars: v })} />

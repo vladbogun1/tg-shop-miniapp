@@ -18,7 +18,7 @@ const COLUMNS = 5;
 
 const shuffle = (a) => a.map((x) => [Math.random(), x]).sort((p, q) => p[0] - q[0]).map((p) => p[1]);
 
-function avatarOf(p, avatars) {
+export function avatarOf(p, avatars) {
   if (avatars && p.avatar) {
     const img = el("img", "p-ava");
     img.src = p.avatar;
@@ -29,7 +29,7 @@ function avatarOf(p, avatars) {
   return el("span", "p-ava", [...p.name][0] || "?");
 }
 
-function lotCard(pool, round, total, pack) {
+export function lotCard(pool, round, total, pack) {
   const sup = isSuper(round, total, pack?.name);
   const c = el("div", "p-lot px" + (sup ? " super" : ""));
   const ph = el("div", "p-lot-photo");
@@ -50,15 +50,20 @@ function lotCard(pool, round, total, pack) {
   return c;
 }
 
-/** Free rounds of both draws, the super prizes last, as cards. */
-function lotsScene(pools) {
+/** Free rounds of both draws, the super prizes last. */
+export function freeLots(pools) {
   const lots = [];
   for (const d of pools) {
     const played = new Set(d.winners.map((w) => w.round));
     for (let r = 1; r <= d.rounds; r++) if (!played.has(r)) lots.push({ pool: d.pool, round: r, total: d.rounds, pack: packOf(d.prizes, r) });
   }
+  return lots.sort((a, b) => Number(isSuper(a.round, a.total, a.pack?.name)) - Number(isSuper(b.round, b.total, b.pack?.name)));
+}
+
+/** Free rounds of both draws as cards. */
+function lotsScene(pools) {
+  const lots = freeLots(pools);
   if (!lots.length) return null;
-  lots.sort((a, b) => Number(isSuper(a.round, a.total, a.pack?.name)) - Number(isSuper(b.round, b.total, b.pack?.name)));
   const s = el("section", "p-scene p-lots");
   s.append(el("h2", "p-title", `Ще в грі · ${lots.length} ${lots.length === 1 ? "лот" : lots.length < 5 ? "лоти" : "лотів"}`));
   const pages = el("div", "p-pages");
@@ -139,7 +144,7 @@ function winnersScene(pools) {
   return s;
 }
 
-function ticker(pools) {
+export function ticker(pools) {
   const names = shuffle(stillIn(pools).map((p) => p.name));
   const t = el("div", "p-ticker");
   const run = el("div", "p-run");
@@ -168,7 +173,8 @@ function artScene(name) {
   return s;
 }
 
-function decor() {
+/** Night graveyard, embers, the mascot and the cauldron: the backdrop of the pause and the countdown. */
+export function decor() {
   const bg = el("div", "p-bg");
   const night = el("img", "p-night");
   night.src = scene("bg-night");

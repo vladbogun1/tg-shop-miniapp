@@ -151,6 +151,8 @@ export interface HwShow {
   pause: boolean;
   rev: number;
   roll: { id: number; pool: HwPool; test: boolean; round: number; attempt: number; winnerId: string; totalTickets: number; at: number; revealedAt: number } | null;
+  /** «Ждём ответа»: the scene counts down to endsAt (server clock, see `now`) for the winner of the last roll. */
+  wait: { pool: HwPool; test: boolean; round: number; winnerId: string; minutes: number; startedAt: number; endsAt: number; answeredAt: number } | null;
   /** OBS scenes connected right now */
   stages: number;
   now: number;
@@ -196,6 +198,8 @@ export const hwDraw = {
   testReset: (pool: HwPool) => apiPost<HwScreen>(`${P}/test/reset${q(pool)}`, {}),
   show: () => apiGet<HwShow & { key: string }>(`${P}/show`),
   setShow: (patch: Partial<Pick<HwShow, "test" | "visual" | "avatars" | "sound" | "blackout" | "hidden" | "pause">>) => apiPost<HwShow>(`${P}/show`, patch),
+  /** The countdown on the scene for the winner of the last revealed roll. */
+  wait: (b: { action: "start" | "add"; minutes: number } | { action: "answered" | "stop" }) => apiPost<HwShow>(`${P}/show/wait`, b),
   savePrize: (p: { id?: number; name: string; items: string[]; images: string[] }) => apiPost<HwPrizes>(`${P}/prizes${q("pumpkins")}`, p),
   deletePrize: (id: number) => apiPost<HwPrizes>(`${P}/prizes/delete${q("pumpkins")}`, { id }),
   assign: (pool: HwPool, round: number, prizeId: number | null) => apiPost<HwPrizes>(`${P}/prizes/assign${q(pool)}`, { round, prizeId }),

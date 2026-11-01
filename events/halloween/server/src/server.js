@@ -140,6 +140,7 @@ async function adminApi(req, res, path, query) {
     // The remote (?remote=1) drives the scene: its settings and the scene key for the OBS link.
     if (path === "show" && req.method === "GET") return send(res, 200, { ...show.snapshot(), key: show.key() });
     if (path === "show" && req.method === "POST") return send(res, 200, show.set(b));
+    if (path === "show/wait" && req.method === "POST") return send(res, 200, show.waitFor(b));
     // Rehearsal (?test=1 on the screen): random customers, nothing real is touched.
     if (path === "test/participants" && req.method === "GET") return send(res, 200, await rehearsal.screen(pool));
     if (path === "test/reset" && req.method === "POST") {

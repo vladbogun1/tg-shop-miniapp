@@ -1,6 +1,6 @@
 // The OBS scene (stage.html?k=<scene key>): no buttons, no admin token. It follows the show state from
 // the server (server/src/show.js) — pool, rehearsal, visual, avatars, sound, blackout, hidden (transparent),
-// pause (the between-rounds screen) — and plays every roll the remote starts: the lot and a 3-2-1
+// pause (the between-rounds screen), wait (the countdown for the winner's answer, stage-wait.js) — and plays every roll the remote starts: the lot and a 3-2-1
 // (stage-intro.js), then the visual; then tells the server the winner is on screen.
 // The address and the key must not change: the link sits in Maxim's OBS.
 import { VISUALS } from "./visuals/registry.js";
@@ -8,6 +8,7 @@ import { makeSound, prizeOf, visualCtx, mountVisual } from "./screen-kit.js";
 import { packOf } from "./stage-common.js";
 import { playIntro } from "./stage-intro.js";
 import { makePause } from "./stage-pause.js";
+import { makeWait } from "./stage-wait.js";
 
 const K = new URLSearchParams(location.search).get("k") || "";
 const $ = (id) => document.getElementById(id);
@@ -24,6 +25,7 @@ let latest = null; // the newest show state; older ones are skipped while a roll
 let busy = false;
 let pauseRev = -1; // the rev the pause screen was drawn for
 const pause = makePause($("pause"));
+const waitScr = makeWait($("wait"), sound);
 
 function say(text) {
   $("scene-msg").hidden = !text;
@@ -87,11 +89,23 @@ async function apply(s) {
   if (fresh) {
     rev = s.rev;
     pause.hide();
+    waitScr.hide();
     await play(r);
   } else if (r) {
     playedId = Math.max(playedId, r.id); // seen: never replay an old roll after a reconnect
   }
   await syncPause(s, fresh);
+  await syncWait(s, fresh);
+}
+
+/** The countdown while Maxim waits for the winner's answer (stage-wait.js). */
+async function syncWait(s, fresh) {
+  const w = s.wait;
+  if (!w || fresh || w.test !== s.test) return waitScr.hide();
+  if (waitScr.on && !waitScr.needs(w, s.rev)) return waitScr.update(w, s.now);
+  const res = await fetch(`/hw/api/stage/overview?k=${encodeURIComponent(K)}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Відлік: ${res.status}`);
+  waitScr.show(w, s.rev, await res.json(), s.avatars, s.now);
 }
 
 async function syncPause(s, fresh) {

@@ -25,6 +25,9 @@ const state = {
   rev: 0,
   /** The last roll: { id, pool, test, round, attempt, winnerId, totalTickets, at, revealedAt } */
   roll: null,
+  /** «Чекаємо відповідь»: Maxim wrote to the winner of the last roll, the scene counts down to endsAt.
+   *  { pool, test, round, winnerId, minutes, startedAt, endsAt, answeredAt } */
+  wait: null,
 };
 const clients = new Set(); // { res, role }
 let rollSeq = 0;
@@ -55,6 +58,7 @@ export function set(b) {
   if (SETTINGS.pool.includes(b.pool)) state.pool = b.pool;
   if (typeof b.visual === "string" && SETTINGS.visual.test(b.visual)) state.visual = b.visual;
   for (const f of ["test", "avatars", "sound", "blackout", "hidden", "pause"]) if (typeof b[f] === "boolean") state[f] = b[f];
+  if (b.pause === true) state.wait = null; // the pause screen replaces the countdown
   state.rev++;
   push();
   return snapshot();
@@ -75,13 +79,43 @@ export function rolled(pool, test, r, visual) {
   state.blackout = false;
   state.hidden = false;
   state.pause = false;
+  state.wait = null;
   state.rev++;
   push();
+}
+
+const MAX_WAIT_MIN = 30;
+const minutesOf = (v) => Math.min(MAX_WAIT_MIN, Math.max(0.5, Number(v) || 0));
+
+/** The countdown for the winner of the last roll: start (minutes) / add (minutes) / answered / stop. */
+export function waitFor(b) {
+  const now = Date.now();
+  const w = state.wait;
+  if (b.action === "start") {
+    const r = state.roll;
+    if (!r?.revealedAt) throw new Error("Сначала покажите победителя на сцене");
+    const minutes = minutesOf(b.minutes);
+    state.wait = { pool: r.pool, test: r.test, round: r.round, winnerId: r.winnerId, minutes, startedAt: now, endsAt: now + minutes * 60_000, answeredAt: 0 };
+    state.pause = false;
+  } else if (b.action === "add" && w && !w.answeredAt) {
+    const m = minutesOf(b.minutes);
+    w.endsAt = Math.max(w.endsAt, now) + m * 60_000;
+    w.minutes += m;
+  } else if (b.action === "answered" && w) {
+    w.answeredAt = w.answeredAt || now;
+  } else if (b.action === "stop") {
+    state.wait = null;
+  } else {
+    throw new Error("Отсчёт не запущен");
+  }
+  push();
+  return snapshot();
 }
 
 /** The rounds of a pool were reset: a roll of it on screen is history now. */
 export function cleared(pool, test) {
   if (state.roll && state.roll.pool === pool && state.roll.test === Boolean(test)) state.roll = null;
+  if (state.wait && state.wait.pool === pool && state.wait.test === Boolean(test)) state.wait = null;
   changed();
 }
 
