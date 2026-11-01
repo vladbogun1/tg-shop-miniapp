@@ -6,6 +6,7 @@
 // а стрілка рухається до його слота за заздалегідь порахованим шляхом. Нічого випадкового в фіналі.
 
 import * as px from "../pixel-kit.js";
+import { t as tr } from "../../lang.js";
 
 export const meta = { id: "wild-2-swarm", title: "Рій душ: качок-ведучий", author: "agent-wild-2" };
 
@@ -172,9 +173,9 @@ export function mount(root, ctx) {
   const tasks = [];
 
   const IDLE_LINES = [
-    "Привіт, чат! Це Хеллоуїн-розіграш ChiSetup. Усі ці душі хочуть виграти!",
-    "Гарбуз, привид і кажан: за що душа потрапила в рій. Чим більше квитків, тим вона яскравіша.",
-    "П'ять раундів, п'ять переможців. Тримайте кулаки!",
+    tr("Привіт, чат! Це Хеллоуїн-розіграш ChiSetup. Усі ці душі хочуть виграти!", "Привет, чат! Это Хеллоуин-розыгрыш ChiSetup. Все эти души хотят выиграть!"),
+    tr("Гарбуз, привид і кажан: за що душа потрапила в рій. Чим більше квитків, тим вона яскравіша.", "Тыква, призрак и летучая мышь: за что душа попала в рой. Чем больше билетов, тем она ярче."),
+    tr("П'ять раундів, п'ять переможців. Тримайте кулаки!", "Пять раундов, пять победителей. Держите кулачки!"),
   ];
 
   // ---------- timeline helpers ----------
@@ -545,7 +546,7 @@ export function mount(root, ctx) {
   }
 
   // ---------- ведучий-качок ----------
-  const VOWELS = "аеєиіїоуюяaeiouyАЕЄИІЇОУЮЯAEIOUY";
+  const VOWELS = "аеєиіїоуюяыэёaeiouyАЕЄИІЇОУЮЯЫЭЁAEIOUY";
   function mouthOpen() {
     const f = (T - dlg.t0) * CPS, i = Math.floor(f);
     if (i >= dlg.text.length) return false;
@@ -648,7 +649,7 @@ export function mount(root, ctx) {
 
   function drawHud() {
     if (!rolling && phaseName === "idle") { // єдиний дрібний чип у спокої
-      const st = `Учасників ${parts.length} · Квитків ${hud.tickets}`;
+      const st = `${tr("Учасників", "Участников")} ${parts.length} · ${tr("Квитків", "Билетов")} ${hud.tickets}`;
       const bw = snap(Math.ceil(px.measure(g, st, 24)) + 48);
       pbox(g, 56, 48, bw, 56, { frame: KP.orange, shadow: false });
       ptext(g, st, 56 + 24, 78, { size: 24, color: KP.bone, ink: false });
@@ -657,7 +658,7 @@ export function mount(root, ctx) {
       const a = phaseName === "reveal" || phaseName === "final" ? Math.max(0, 1 - (fin?.hudFade ?? 0)) : 1;
       if (a > 0.01) {
         g.globalAlpha = Math.round(a * 4) / 4;
-        ptext(g, hud.label || "ЛИШИЛОСЬ ДУШ", CX, 126, { size: 24, color: KP.amber, align: "center", ls: 2, depth: 4 });
+        ptext(g, hud.label || tr("ЛИШИЛОСЬ ДУШ", "ОСТАЛОСЬ ДУШ"), CX, 126, { size: 24, color: KP.amber, align: "center", ls: 2, depth: 4 });
         if (phaseName !== "ring" && phaseName !== "pointer") ptext(g, String(Math.round(hud.remaining)), CX, 206, { size: 92, color: KP.bone, align: "center", depth: 4, drop: glowCol === KP.slime ? KP.moss : KP.rust });
         g.globalAlpha = 1;
       }
@@ -709,13 +710,13 @@ export function mount(root, ctx) {
   function drawCrisp() {
     if (!fin || fin.a <= 0.01) return;
     g.globalAlpha = Math.round(fin.a * 4) / 4;
-    ptext(g, "ПЕРЕМОЖЕЦЬ", CX, 160, { size: 44, color: KP.slime, align: "center", ls: 14, drop: KP.moss, depth: 4 });
+    ptext(g, tr("ПЕРЕМОЖЕЦЬ", "ПОБЕДИТЕЛЬ"), CX, 160, { size: 44, color: KP.slime, align: "center", ls: 14, drop: KP.moss, depth: 4 });
     if (fin.pic) { const [pw, ph] = px.prizePictureSize(fin.pic, 360); px.prizeFrame(g, fin.pic, snap(CX + 420 - pw / 2), snap(fin.portraitY - ph / 2), pw, ph); }
     ptext(g, fin.name, CX, fin.nameY, { size: fin.fs, color: KP.amber, align: "center", drop: KP.rust, depth: Math.max(4, snap(fin.fs / 28)) });
     if (fin.handle) ptext(g, fin.handle, CX, fin.nameY + fin.fs * 0.5 + 52, { size: 44, color: KP.bone, align: "center", depth: 4 });
     const my = fin.nameY + fin.fs * 0.5 + (fin.handle ? 106 : 62);
     ptext(g, fin.meta, CX, my, { size: px.fit(g, fin.meta, 30, 1120), color: "#d6d0e0", align: "center", depth: 4 });
-    if (fin.prize) ptext(g, `Виграв: ${clip(fin.prize, 32)}`, CX, my + 54, { size: px.fit(g, `Виграв: ${clip(fin.prize, 32)}`, 38, 1120), color: KP.gold, align: "center", depth: 4, drop: KP.rust });
+    if (fin.prize) ptext(g, `${tr("Виграв", "Выиграл")}: ${clip(fin.prize, 32)}`, CX, my + 54, { size: px.fit(g, `${tr("Виграв", "Выиграл")}: ${clip(fin.prize, 32)}`, 38, 1120), color: KP.gold, align: "center", depth: 4, drop: KP.rust });
     g.globalAlpha = 1;
   }
 
@@ -802,26 +803,26 @@ export function mount(root, ctx) {
     const setCount = (from, to, d, label) => { tween(d, (u) => { hud.remaining = Math.round(lerp(from, to, easeOutCubic(u))); hud.label = label; }).catch(() => {}); };
 
     // 0. prelude (реплика читается целиком: ~20 симв/с + HOLD)
-    phaseName = "prelude"; dbg.phase = phaseName; hud.show = 1; hud.remaining = N; hud.label = "ЛИШИЛОСЬ ДУШ"; glowCol = "#ff6600";
-    say("Усі душі — у вихор!");
+    phaseName = "prelude"; dbg.phase = phaseName; hud.show = 1; hud.remaining = N; hud.label = tr("ЛИШИЛОСЬ ДУШ", "ОСТАЛОСЬ ДУШ"); glowCol = "#ff6600";
+    say(tr("Усі душі — у вихор!", "Все души — в вихрь!"));
     snd("drum");
     await tween(2.2, (u) => { contract = 1 - 0.5 * easeInOut(u); spin = 1 + 4 * easeInOut(u); glowA = u * 0.6; });
     await waitLine();
     // 1. pumpkin
     phaseName = "cut1"; dbg.phase = phaseName; snd("boom"); shake = 14; flash = 0.5;
-    say("Гарбуз-ненажера їсть душі!");
+    say(tr("Гарбуз-ненажера їсть душі!", "Тыква-обжора ест души!"));
     runStage(S1, "pumpkin", ["#ff6600", "#ff8a2b", "#ffb347", "#ffd27a"], "#ff6600", rnd);
-    setCount(N, c1, 2.2, "ЛИШИЛОСЬ ДУШ");
+    setCount(N, c1, 2.2, tr("ЛИШИЛОСЬ ДУШ", "ОСТАЛОСЬ ДУШ"));
     await waitLine();
     // 2. skull
     phaseName = "cut2"; dbg.phase = phaseName; snd("boom"); shake = 16; flash = 0.5; contract = 0.5;
-    say(c1 > c2 ? "Череп голодний! Хто виживе?" : "Череп придивляється…");
+    say(c1 > c2 ? tr("Череп голодний! Хто виживе?", "Череп голоден! Кто выживет?") : tr("Череп придивляється…", "Череп присматривается…"));
     runStage(S2, "skull", ["#7cff4f", "#a8ff8a", "#d4ffc4", "#f2fff0"], "#7cff4f", rnd);
-    setCount(c1, c2, 2.0, "ЛИШИЛОСЬ ДУШ");
+    setCount(c1, c2, 2.0, tr("ЛИШИЛОСЬ ДУШ", "ОСТАЛОСЬ ДУШ"));
     await waitLine();
     // 3. magic circle with finalists
     phaseName = "ring"; dbg.phase = phaseName; snd("whoosh"); shake = 8;
-    say(K > 1 ? `Лишилось ${K}. Коло обирає одну!` : "Лишилась одна душа.");
+    say(K > 1 ? tr(`Лишилось ${K}. Коло обирає одну!`, `Осталось ${K}. Круг выбирает одну!`) : tr("Лишилась одна душа.", "Осталась одна душа."));
     if (mon) mon.ta = 0;
     const a0 = K === 2 ? Math.PI : -Math.PI / 2, R = K <= 2 ? 300 : 250;
     ring = { a0, R };
@@ -836,10 +837,10 @@ export function mount(root, ctx) {
     dustPal = ["#6b7280", "#8a3ffc", "#8a93a6", "#ff6600"]; glowCol = "#4a3a6a";
     const rp = ringPoints(K, R, a0, Math.floor(dusts.length * 0.9), rnd);
     shuffle(dusts.slice(), rnd).forEach((p, i) => { if (i < rp.length) sched(p, T + rnd() * 0.6, SEEK, rp[i][0], rp[i][1], true); else sched(p, T + rnd() * 0.6, ORB); });
-    setCount(c2, K, 1.4, "ФІНАЛІСТИ");
+    setCount(c2, K, 1.4, tr("ФІНАЛІСТИ", "ФИНАЛИСТЫ"));
     await wait(1.5);
     // 4. pointer with a false stop (стрілка сповільнюється ближче до кінця)
-    phaseName = "pointer"; dbg.phase = phaseName; hud.label = "ФІНАЛІСТИ"; ptr = Math.floor(rnd() * K);
+    phaseName = "pointer"; dbg.phase = phaseName; hud.label = tr("ФІНАЛІСТИ", "ФИНАЛИСТЫ"); ptr = Math.floor(rnd() * K);
     let lastTick = -1, lastTickT = 0;
     const tickCheck = () => { const idx = Math.floor(ptr + 0.5); if (idx !== lastTick) { lastTick = idx; if (T - lastTickT > 0.045) { snd("tick"); lastTickT = T; } } };
     if (K > 1) {
@@ -850,12 +851,12 @@ export function mount(root, ctx) {
       await tween(2.7, (u) => { ptr = lerp(s0, aEnd, 1 - Math.pow(1 - u, 3.4)); tickCheck(); });
       await waitLine();
       hitSlot = f; hitT = 1.6; oopsT = T + 3.2; snd("drum"); fx.push({ x: finalists[f].p.x, y: finalists[f].p.y, t0: T, s: 3 });
-      say("Ой, ні-ні-ні, не він!");
+      say(tr("Ой, ні-ні-ні, не він!", "Ой, нет-нет-нет, не он!"));
       await wait(1.3);
       const bEnd = aEnd + K + mod(wSlot - f);
       await tween(2.4, (u) => { ptr = lerp(aEnd, bEnd + 0.62, easeOutCubic(u)); tickCheck(); });
       await waitLine();
-      say("Ще крок… Ні, назад!");
+      say(tr("Ще крок… Ні, назад!", "Ещё шаг… Нет, назад!"));
       await wait(1.5);
       await tween(0.9, (u) => { ptr = lerp(bEnd + 0.62, bEnd, easeInOut(u)); tickCheck(); });
       hitSlot = wSlot; hitT = 1.2;
@@ -869,7 +870,7 @@ export function mount(root, ctx) {
     lastWinner = W;
     fin = { W, a: 0, hudFade: 0, ...lay };
     finalists.forEach((f, j) => { if (f.p !== W) { f.gone = true; f.p.boom = true; sched(f.p, T, FALL); f.p.smt = 1.2; fx.push({ x: f.p.x, y: f.p.y, t0: T, s: 3.2 }); } });
-    dlg = { text: "", t0: T, talk: 0 }; lineEnd = 0; sr.textContent = `Переможець: ${winner.name}`; // без бульбашки: картка вже каже все
+    dlg = { text: "", t0: T, talk: 0 }; lineEnd = 0; sr.textContent = `${tr("Переможець", "Победитель")}: ${winner.name}`; // без бульбашки: картка вже каже все
     snd("win");
     if (mon) mon.ta = 0;
     for (let i = 0; i < 150; i++) conf.push({ x: CX + (rnd() - 0.5) * 300, y: CY - 100, vx: (rnd() - 0.5) * 1700, vy: -700 - rnd() * 900, c: ["#ff6600", "#c9c4b8", "#ff6600", "#ffb36b", "#8a93a6"][i % 5], life: 3 });

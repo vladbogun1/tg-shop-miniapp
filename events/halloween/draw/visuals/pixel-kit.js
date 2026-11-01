@@ -2,6 +2,7 @@
 // one pixel font, notched pixel frames, hard stepped shadows instead of blur, dithered glows instead of
 // radial gradients, pixelated photos. Used by the visuals only; the overlays have their own CSS (.px, .pxt).
 import * as common from "../stage-common.js";
+export { t } from "../lang.js";
 
 /** One art pixel of the scenes at 1920×1080. */
 export const PX = 4;
@@ -42,7 +43,7 @@ export function ensureFont() {
     l.dataset.pixelKit = "1";
     document.head.append(l);
   }
-  const sample = "Розіграш Ґєїі ABC 123";
+  const sample = "Розіграш Ґєїі ыэъё ABC 123";
   fontReady = (declared ? Promise.resolve() : new Promise((r) => setTimeout(r, 300)))
     .then(() => Promise.all([document.fonts.load(font(32, 400), sample), document.fonts.load(font(32, 700), sample)]))
     .catch(() => {});
@@ -238,35 +239,26 @@ export function ember(g, x, y, size, color) {
 
 // ---------------------------------------------------------------- photos
 
-const photoCache = new WeakMap();
 /**
- * A photo/avatar as chunky pixels: downscaled to `size / p` art pixels once (cached), drawn back with
- * nearest-neighbour. Returns false when the image is not loaded yet.
+ * A photo/avatar in a size×size box (cover-fit), drawn smooth: photos stay sharp, only the art around them is
+ * pixel art. `p` is kept for the callers' signature. Returns false when the image is not loaded yet.
  */
 export function photo(g, img, x, y, size, p = PX) {
   return pixelImage(g, img, x, y, size, size, p);
 }
 
 /** Like photo(), for any w×h box (cover-fit). */
-export function pixelImage(g, img, x, y, w, h, p = PX) {
+export function pixelImage(g, img, x, y, w, h) {
   if (!ready(img)) return false;
-  const nw = Math.max(4, Math.round(w / p)), nh = Math.max(4, Math.round(h / p)), key = `${nw}x${nh}`;
-  let m = photoCache.get(img);
-  if (!m) photoCache.set(img, (m = new Map()));
-  let c = m.get(key);
-  if (!c) {
-    c = canvas(nw, nh);
-    const gg = c.getContext("2d");
-    gg.imageSmoothingEnabled = true;
-    gg.imageSmoothingQuality = "high";
-    const iw = img.naturalWidth, ih = img.naturalHeight, k = Math.max(nw / iw, nh / ih);
-    try { gg.drawImage(img, (nw - iw * k) / 2, (nh - ih * k) / 2, iw * k, ih * k); } catch { return false; }
-    m.set(key, c);
+  const iw = img.naturalWidth, ih = img.naturalHeight, k = Math.max(w / iw, h / ih);
+  const sw = w / k, sh = h / k;
+  const s = g.imageSmoothingEnabled, q = g.imageSmoothingQuality;
+  g.imageSmoothingEnabled = true;
+  g.imageSmoothingQuality = "high";
+  try { g.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, Math.round(x), Math.round(y), Math.round(w), Math.round(h)); } catch { return false; } finally {
+    g.imageSmoothingEnabled = s;
+    g.imageSmoothingQuality = q;
   }
-  const s = g.imageSmoothingEnabled;
-  g.imageSmoothingEnabled = false;
-  g.drawImage(c, Math.round(x), Math.round(y), nw * p, nh * p);
-  g.imageSmoothingEnabled = s;
   return true;
 }
 
@@ -333,10 +325,5 @@ export function lowres(w = 1920, h = 1080, p = PX) {
   };
 }
 
-/** Ukrainian plural of «квиток». */
-export function ticketsWord(n) {
-  const a = n % 10, b = n % 100;
-  if (a === 1 && b !== 11) return "квиток";
-  if (a >= 2 && a <= 4 && (b < 10 || b >= 20)) return "квитки";
-  return "квитків";
-}
+/** Plural of «квиток» in the scene's language. */
+export { ticketsWord } from "../lang.js";

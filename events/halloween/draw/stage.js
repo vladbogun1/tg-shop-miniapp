@@ -7,6 +7,7 @@ import { VISUALS } from "./visuals/registry.js";
 import { makeSound, prizeOf, visualCtx, mountVisual } from "./screen-kit.js";
 import { packOf } from "./stage-common.js";
 import { playIntro } from "./stage-intro.js";
+import { setLang, t } from "./lang.js";
 import { makePause } from "./stage-pause.js";
 import { makeWait } from "./stage-wait.js";
 
@@ -70,7 +71,10 @@ async function apply(s) {
   document.body.classList.toggle("test", s.test);
   $("scene-black").classList.toggle("on", s.blackout);
   document.documentElement.classList.toggle("ghost", s.hidden);
-  const want = (s.visual && /^[a-z0-9-]+$/.test(s.visual) ? s.visual : Object.keys(VISUALS)[0]) + (s.avatars ? "" : ":noava");
+  setLang(s.lang);
+  $("test-badge").textContent = t("ТЕСТ · учасники несправжні", "ТЕСТ · участники ненастоящие");
+  // the language is part of the key: visuals write their texts when mounted
+  const want = (s.visual && /^[a-z0-9-]+$/.test(s.visual) ? s.visual : Object.keys(VISUALS)[0]) + (s.avatars ? "" : ":noava") + `:${s.lang === "ru" ? "ru" : "uk"}`;
   const r = s.roll;
   const fresh = r && r.id !== playedId && !r.revealedAt && Date.now() - r.at < PLAY_WINDOW_MS && r.pool === s.pool && r.test === s.test;
   if (want !== mounted) {
@@ -102,18 +106,18 @@ async function apply(s) {
 async function syncWait(s, fresh) {
   const w = s.wait;
   if (!w || fresh || w.test !== s.test) return waitScr.hide();
-  if (waitScr.on && !waitScr.needs(w, s.rev)) return waitScr.update(w, s.now);
+  if (waitScr.on && !waitScr.needs(w, `${s.rev}:${s.lang}`)) return waitScr.update(w, s.now);
   const res = await fetch(`/hw/api/stage/overview?k=${encodeURIComponent(K)}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Відлік: ${res.status}`);
-  waitScr.show(w, s.rev, await res.json(), s.avatars, s.now);
+  waitScr.show(w, `${s.rev}:${s.lang}`, await res.json(), s.avatars, s.now);
 }
 
 async function syncPause(s, fresh) {
   if (!s.pause || fresh) return pause.hide();
-  if (pause.on && pauseRev === s.rev) return;
+  if (pause.on && pauseRev === `${s.rev}:${s.lang}`) return;
   const res = await fetch(`/hw/api/stage/overview?k=${encodeURIComponent(K)}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Пауза: ${res.status}`);
-  pauseRev = s.rev;
+  pauseRev = `${s.rev}:${s.lang}`;
   pause.show(await res.json(), s.avatars);
 }
 

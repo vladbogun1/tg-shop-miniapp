@@ -4,6 +4,7 @@
 import { CLIPS } from "./fighter.js";
 import { sfx } from "./audio.js";
 import { ARENA_R } from "./world.js";
+import { t as tr } from "../../lang.js";
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const ORB = 0.24; // flight time of a staff orb
@@ -169,7 +170,7 @@ export function makeRoll(S, W, info, rnd) {
   shots.push({ t0: 0, kind: "drop", cut: true });
   shots.push({ t0: 2.7, kind: "aerial", r: 95, h: 62, a0: 0.6, w: 0.1, fly: true });
   banners.push([0.4, `РАУНД ${info.round}/${info.totalRounds}`, "big", 2.4]);
-  banners.push([2.9, "ШТОРМ НАСУВАЄТЬСЯ", "red", 2.4]);
+  banners.push([2.9, tr("ШТОРМ НАСУВАЄТЬСЯ", "ШТОРМ НАДВИГАЕТСЯ"), "red", 2.4]);
 
   const POIS = S.world.POIS;
   const poiOrder = shuffle(POIS.slice());
@@ -179,7 +180,7 @@ export function makeRoll(S, W, info, rnd) {
     const K = killOrder[i % killOrder.length];
     if (i === C1) { // storm shot between the waves
       shots.push({ t0: tc, kind: "aerial", r: 80, h: 70, a0: rnd() * 6, w: 0.14, fly: true });
-      banners.push([tc + 0.4, "ЗОНА 2 · ТІСНІШЕ", "red", 2.4]);
+      banners.push([tc + 0.4, tr("ЗОНА 2 · ТІСНІШЕ", "ЗОНА 2 · ТЕСНЕЕ"), "red", 2.4]);
       tc += 2.6;
     }
     const ph2 = i >= C1;
@@ -191,16 +192,16 @@ export function makeRoll(S, W, info, rnd) {
     at(s0 - 0.2, () => S.clearCrowd(mx, mz, 5));
     const { tFin, th } = bout(K, V, b0, { onCam: true, n: 2, slow: 0.3 });
     const side = i % 2 ? -1 : 1;
-    shots.push({ t0: s0, kind: "duel", a: K, b: V, side, fly: true, loc: ph2 ? `Дорога: ${poi.n}` : poi.n });
-    shots.push({ t0: tFin - 0.05, kind: i % 2 ? "low" : "orbit", a: K, b: V, r: 4.6, h: 1.5, w: 0.8 * side, cut: true, loc: ph2 ? `Дорога: ${poi.n}` : poi.n });
+    shots.push({ t0: s0, kind: "duel", a: K, b: V, side, fly: true, loc: ph2 ? `${tr("Дорога", "Дорога")}: ${poi.n}` : poi.n });
+    shots.push({ t0: tFin - 0.05, kind: i % 2 ? "low" : "orbit", a: K, b: V, r: 4.6, h: 1.5, w: 0.8 * side, cut: true, loc: ph2 ? `${tr("Дорога", "Дорога")}: ${poi.n}` : poi.n });
     at(th + 1.2, () => S.hud.vs(null));
     tc = th + 1.55;
     if (i === C1 - 1 || (C1 === 0 && i === 0)) keys.push([tc, 70]);
   }
-  if (C === 0) { shots.push({ t0: tc, kind: "aerial", r: 80, h: 70, a0: 2, w: 0.14, fly: true }); banners.push([tc + 0.3, "ЗОНА ЗВУЖУЄТЬСЯ", "red", 2.4]); tc += 3; keys.push([tc, 70]); }
+  if (C === 0) { shots.push({ t0: tc, kind: "aerial", r: 80, h: 70, a0: 2, w: 0.14, fly: true }); banners.push([tc + 0.3, tr("ЗОНА ЗВУЖУЄТЬСЯ", "ЗОНА СУЖАЕТСЯ"), "red", 2.4]); tc += 3; keys.push([tc, 70]); }
   // last wave
   shots.push({ t0: tc, kind: "aerial", r: 55, h: 58, a0: rnd() * 6, w: -0.16, fly: true });
-  banners.push([tc + 0.3, "ОСТАННЯ ЗОНА", "red", 2.4]);
+  banners.push([tc + 0.3, tr("ОСТАННЯ ЗОНА", "ПОСЛЕДНЯЯ ЗОНА"), "red", 2.4]);
   keys.push([tc + 2.6, 36]);
   tc += 2.6;
 
@@ -237,11 +238,11 @@ export function makeRoll(S, W, info, rnd) {
     });
   });
   shots.push({ t0: tConv, kind: "gate", fly: true, loc: "Арена" });
-  banners.push([tConv + 0.3, "ВСІ НА АРЕНУ", "red", 2.2]);
+  banners.push([tConv + 0.3, tr("ВСІ НА АРЕНУ", "ВСЕ НА АРЕНУ"), "red", 2.2]);
   tc = tConv + 4.0;
   at(tc - 0.2, () => S.hud.letterbox(true));
   shots.push({ t0: tc, kind: "arena", r: 17, h: 6.2, a0: rnd() * 6, w: 0.22, cut: true, loc: "Арена" });
-  banners.push([tc + 0.2, FIN.length > 1 ? `ФІНАЛ · ЛИШИЛОСЬ ${FIN.length}` : "ФІНАЛ", "big", 2.6]);
+  banners.push([tc + 0.2, FIN.length > 1 ? tr(`ФІНАЛ · ЛИШИЛОСЬ ${FIN.length}`, `ФИНАЛ · ОСТАЛОСЬ ${FIN.length}`) : tr("ФІНАЛ", "ФИНАЛ"), "big", 2.6]);
   at(tc, () => { sfx("ko", 1, 0.6); S.drum(true); });
 
   let alive = FIN.slice();
@@ -278,39 +279,39 @@ export function makeRoll(S, W, info, rnd) {
       tc = r.th + 1.4;
       const left = alive.length;
       shots.push({ t0: tc, kind: "arena", r: 15, h: 5, a0: rnd() * 6, w: 0.3, cut: true, loc: "Арена" });
-      banners.push([tc + 0.1, left === 2 ? "ЛИШИЛОСЬ ДВОЄ" : `ЛИШИЛОСЬ ${left}`, "big", 2]);
+      banners.push([tc + 0.1, left === 2 ? tr("ЛИШИЛОСЬ ДВОЄ", "ОСТАЛОСЬ ДВОЕ") : tr(`ЛИШИЛОСЬ ${left}`, `ОСТАЛОСЬ ${left}`), "big", 2]);
       tc += 1.4;
     });
     // ---------- the final duel ----------
     const O = D[0];
     const o = { onCam: true };
     at(tc - 0.6, () => { W.engage(O); O.engage(W); W.circle = O.circle = 0.5; S.hud.vs(W, O); });
-    shots.push({ t0: tc - 0.6, kind: "duel", a: W, b: O, side: 1, cut: true, loc: "Фінальна дуель" });
+    shots.push({ t0: tc - 0.6, kind: "duel", a: W, b: O, side: 1, cut: true, loc: tr("Фінальна дуель", "Финальная дуэль") });
     let t = tc;
     t += BEATS.clash(W, O, t, o) + 0.2;
     t += BEATS.combo(O, W, t, o) + 0.15; // the winner takes damage too
-    shots.push({ t0: t - 1.6, kind: "ots", a: W, b: O, cut: true, loc: "Фінальна дуель" });
+    shots.push({ t0: t - 1.6, kind: "ots", a: W, b: O, cut: true, loc: tr("Фінальна дуель", "Финальная дуэль") });
     t += BEATS.counter(W, O, t, o) + 0.2;
     t += BEATS.trade(O, W, t, o) + 0.15;
     // O knocks the winner down, slow motion while O leaps for the finish
-    shots.push({ t0: t, kind: "low", a: O, b: W, side: -1, cut: true, loc: "Фінальна дуель" });
+    shots.push({ t0: t, kind: "low", a: O, b: W, side: -1, cut: true, loc: tr("Фінальна дуель", "Финальная дуэль") });
     const tk = strike(O, W, t, "kick", "down", { ...o, dmg: 0.5, power: 5 });
     at(tk + 0.05, () => { W.opp = O; O.circle = 0; W.circle = 0; });
-    banners.push([tk + 0.15, "НА МЕЖІ!", "red", 1.6]);
+    banners.push([tk + 0.15, tr("НА МЕЖІ!", "НА ГРАНИ!"), "red", 1.6]);
     const tl = tk + 0.75;
     strike(O, W, tl, "leap", "miss", { ...o, leap: true });
     at(tl + 0.5, () => { if (W.alive) { W.faceTo(O.pos.x, O.pos.z); W.play("roll", "guard"); } });
     slow(tl + CLIPS.leap.hit, 0.6, 0.3, 0.22);
-    shots.push({ t0: tl + 0.15, kind: "orbit", a: O, b: W, r: 5, h: 0.9, w: -0.7, cut: true, loc: "Фінальна дуель" });
+    shots.push({ t0: tl + 0.15, kind: "orbit", a: O, b: W, r: 5, h: 0.9, w: -0.7, cut: true, loc: tr("Фінальна дуель", "Финальная дуэль") });
     t = tl + CLIPS.leap.dur + 0.35;
     at(t - 0.15, () => { W.engage(O); O.engage(W); });
-    shots.push({ t0: t, kind: "duel", a: W, b: O, side: -1, cut: true, loc: "Фінальна дуель" });
+    shots.push({ t0: t, kind: "duel", a: W, b: O, side: -1, cut: true, loc: tr("Фінальна дуель", "Финальная дуэль") });
     // comeback
     strike(W, O, t, "slashR", "hit", { ...o, dmg: 0.25 });
     strike(W, O, t + 0.42, "slashL", "hit", { ...o, dmg: 0.25 });
     t += 0.95;
     const fk = W.weapon === "staff" ? "cast" : pick(["spin", "uppercut"]);
-    shots.push({ t0: t - 0.05, kind: "orbit", a: W, b: O, r: 4.2, h: 1.25, w: 0.75, cut: true, loc: "Фінальна дуель" });
+    shots.push({ t0: t - 0.05, kind: "orbit", a: W, b: O, r: 4.2, h: 1.25, w: 0.75, cut: true, loc: tr("Фінальна дуель", "Финальная дуэль") });
     const thw = finisher(W, O, t, o, fk);
     slow(thw, 0.32, 0.55, 0.11);
     at(thw, () => { S.drum(false); });

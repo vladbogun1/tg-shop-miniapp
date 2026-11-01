@@ -4,6 +4,7 @@
 // ticks, brakes, fake-stops on the neighbour and creeps onto the winner chosen by the server.
 // Finale: the card flies forward, pixel rays and bursts, the name huge in the pixel font.
 import * as px from "../pixel-kit.js";
+import { t as tr } from "../../lang.js";
 
 export const meta = { id: "roulette", title: "Кейс-рулетка", author: "agent" };
 
@@ -13,11 +14,11 @@ const P = px.PX;
 
 // rarity colours from the scene palette (stone, slime, violet, pumpkin, gold)
 const RAR = [
-  { n: "ЗВИЧАЙНА", c: "#a59cb8" },
-  { n: "РІДКІСНА", c: "#7cff4f" },
-  { n: "ЕПІЧНА", c: "#a46bff" },
-  { n: "МІФІЧНА", c: "#ff6600" },
-  { n: "ЛЕГЕНДАРНА", c: "#ffd36b" },
+  { get n() { return tr("ЗВИЧАЙНА", "ОБЫЧНАЯ"); }, c: "#a59cb8" },
+  { get n() { return tr("РІДКІСНА", "РЕДКАЯ"); }, c: "#7cff4f" },
+  { get n() { return tr("ЕПІЧНА", "ЭПИЧЕСКАЯ"); }, c: "#a46bff" },
+  { get n() { return tr("МІФІЧНА", "МИФИЧЕСКАЯ"); }, c: "#ff6600" },
+  { get n() { return tr("ЛЕГЕНДАРНА", "ЛЕГЕНДАРНАЯ"); }, c: "#ffd36b" },
 ];
 const rarOf = (t) => Math.max(0, Math.min(4, (t | 0) - 1));
 const plural = px.ticketsWord;
@@ -350,7 +351,7 @@ export function mount(root, ctx) {
     if (a <= 0.01) return;
     g.globalAlpha = a;
     const pl = pool(), tickets = pl.reduce((s, p) => s + p.tickets, 0);
-    chips([["УЧАСНИКІВ", `${pl.length}  ·  КВИТКІВ ${tickets}`]], W / 2, 1030, a);
+    chips([[tr("УЧАСНИКІВ", "УЧАСТНИКОВ"), `${pl.length}  ·  ${tr("КВИТКІВ", "БИЛЕТОВ")} ${tickets}`]], W / 2, 1030, a);
   }
 
   function drawMascot(now, a) {
@@ -461,7 +462,7 @@ export function mount(root, ctx) {
     const ch = CARD_W * 4 / 3, yOff = px.snap((1 - A) * 160);
     // header + footer
     g.globalAlpha = a;
-    text("ВІДКРИВАЄМО КЕЙС", W / 2, 70, { size: 30, color: PAL.orange, align: "center", ls: 10 });
+    text(tr("ВІДКРИВАЄМО КЕЙС", "ОТКРЫВАЕМ КЕЙС"), W / 2, 70, { size: 30, color: PAL.orange, align: "center", ls: 10 });
     if (r.info.prize?.name) {
       const pn = px.prizeLabel(r.info.prize.name);
       text(pn, W / 2, 158 - px.snap((1 - A) * 20), { size: px.fit(g, pn, 72, 1600), color: PAL.gold, align: "center", depth: 6, drop: PAL.rust });
@@ -587,7 +588,7 @@ export function mount(root, ctx) {
     const scaled = (s, y, fn, x = W / 2) => { if (s <= 0.01) return; g.save(); g.translate(x, y); g.scale(s, s); fn(); g.restore(); };
     scaled(pop(0.45), 92, () => {
       g.globalAlpha = popA(0.45);
-      text("ПЕРЕМОЖЕЦЬ", 0, 0, { size: 80, color: PAL.gold, align: "center", ls: 6, depth: 5, drop: PAL.rust });
+      text(tr("ПЕРЕМОЖЕЦЬ", "ПОБЕДИТЕЛЬ"), 0, 0, { size: 80, color: PAL.gold, align: "center", ls: 6, depth: 5, drop: PAL.rust });
     });
     // the won prize, mirroring the mascot on the right
     if (r.pic && px.ready(r.pic.img)) {

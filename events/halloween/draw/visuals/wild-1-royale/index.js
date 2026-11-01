@@ -2,6 +2,7 @@
 // стискається навколо заздалегідь заданого переможця, поки учасники б'ються між собою, а фінал це дуель трьох
 // на арені. Візуал лише показує: переможець обраний сервером до анімації і не може програти жоден бій.
 import * as px from "../pixel-kit.js";
+import { t as tr } from "../../lang.js";
 export const meta = { id: "wild-1-royale", title: "Гарбузовий Рояль", author: "agent" };
 
 const W = 1920, H = 1080;
@@ -23,12 +24,12 @@ const loadImg = (src) => new Promise((res) => { const i = new Image(); i.onload 
 
 // Локації: центр спрайта у світових координатах 1920x1080, ширина відмальовування.
 const POIS = [
-  { n: "Гарбузове поле", k: "field", x: 410, y: 240, w: 300, h: 248 },
-  { n: "Цвинтар", k: "yard", x: 1570, y: 230, w: 300, h: 278 },
-  { n: "Маєток", k: "manor", x: 990, y: 470, w: 230, h: 404 },
+  { get n() { return tr("Гарбузове поле", "Тыквенное поле"); }, k: "field", x: 410, y: 240, w: 300, h: 248 },
+  { get n() { return tr("Цвинтар", "Кладбище"); }, k: "yard", x: 1570, y: 230, w: 300, h: 278 },
+  { get n() { return tr("Маєток", "Поместье"); }, k: "manor", x: 990, y: 470, w: 230, h: 404 },
   { n: "Болото", k: "swamp", x: 350, y: 720, w: 300, h: 188 },
   { n: "Магазин ChiSetup", k: "shop", x: 1540, y: 790, w: 230, h: 225 },
-  { n: "Хатина відьми", k: "hut", x: 970, y: 200, w: 180, h: 206 },
+  { get n() { return tr("Хатина відьми", "Хижина ведьмы"); }, k: "hut", x: 970, y: 200, w: 180, h: 206 },
 ];
 // Декор: [проп, x, y, масштаб]. Запікається в карту, його мало: карта має лишатися чистою. prop4 = смолоскип.
 const PROPS = [[0, 640, 610, 0.75], [0, 1330, 610, 0.75], [1, 700, 850, 0.7], [7, 1210, 330, 0.8], [7, 260, 560, 0.7]];
@@ -45,12 +46,12 @@ export function mount(root, ctx) {
     <div class="wr-stage">
       <canvas class="wr-c"></canvas>
       <div class="wr-hud">
-        <div class="wr-counter"><div class="wr-alive"><small class="wr-al">УЧАСНИКІВ</small><b class="wr-n">0</b></div><div class="wr-zone"><small class="wr-zk">РАУНД</small><span class="wr-zv">1/5</span></div></div>
-        <div class="wr-prize"><canvas class="wr-chest" width="64" height="64"></canvas><div><small>РОЗІГРУЄМО</small><b class="wr-pn"></b><span class="wr-pi"></span></div></div>
+        <div class="wr-counter"><div class="wr-alive"><small class="wr-al">${tr("УЧАСНИКІВ", "УЧАСТНИКОВ")}</small><b class="wr-n">0</b></div><div class="wr-zone"><small class="wr-zk">РАУНД</small><span class="wr-zv">1/5</span></div></div>
+        <div class="wr-prize"><canvas class="wr-chest" width="64" height="64"></canvas><div><small>${tr("РОЗІГРУЄМО", "РАЗЫГРЫВАЕМ")}</small><b class="wr-pn"></b><span class="wr-pi"></span></div></div>
         <div class="wr-feed"></div>
         <div class="wr-banner"></div>
         <div class="wr-flash"></div>
-        <div class="wr-win"><div class="wr-kicker"></div><div class="wr-emblemwrap"><div class="wr-emblem"></div></div><div class="wr-prizepic"></div><div class="wr-name"></div><div class="wr-sub"></div><div class="wr-prizewin"><canvas class="wr-chest" width="64" height="64"></canvas><span>ВИГРАВ: <b></b></span></div><img class="wr-hero" alt="" src="${SPR("hero_wave")}"></div>
+        <div class="wr-win"><div class="wr-kicker"></div><div class="wr-emblemwrap"><div class="wr-emblem"></div></div><div class="wr-prizepic"></div><div class="wr-name"></div><div class="wr-sub"></div><div class="wr-prizewin"><canvas class="wr-chest" width="64" height="64"></canvas><span>${tr("ВИГРАВ", "ВЫИГРАЛ")}: <b></b></span></div><img class="wr-hero" alt="" src="${SPR("hero_wave")}"></div>
       </div>
     </div>`;
   const $ = (s) => root.querySelector(s);
@@ -238,7 +239,7 @@ export function mount(root, ctx) {
   const particles = [], bullets = [], fxs = [], confetti = [], feedRows = [], fights = [], labelRects = [];
   let radarA = 0, hudAlive = -1, rollResolve = null, lastStage = -1, lastFight = 0, featureI = 0, features = [], tokQuota = 0;
   let prize = null, prizePic = null, firstSet = true, bornAt = 0, winAt = 0;
-  const onehp = () => { banner("1 HP !!!", "red", 3.4, 2, true); say("НІІІІ!", 3.2, 2); flash(); shake = ctx.reducedMotion ? 0 : 20; };
+  const onehp = () => { banner("1 HP !!!", "red", 3.4, 2, true); say(tr("НІІІІ!", "НЕЕЕЕТ!"), 3.2, 2); flash(); shake = ctx.reducedMotion ? 0 : 20; };
 
   // ----- message queues: nothing is replaced before it has been on screen long enough to be read -----
   function makeQueue(node, activeCls, minHold) {
@@ -338,7 +339,7 @@ export function mount(root, ctx) {
     if (phase === "idle") hudIdle();
   }
   function hudIdle() {
-    el.al.textContent = "УЧАСНИКІВ"; el.n.textContent = N; hudAlive = N;
+    el.al.textContent = tr("УЧАСНИКІВ", "УЧАСТНИКОВ"); el.n.textContent = N; hudAlive = N;
     el.zone.style.display = "none";
   }
 
@@ -404,11 +405,11 @@ export function mount(root, ctx) {
     kills++;
     const hero = v.role > 0 || (by && by.role > 0);
     if (big) {
-      if (by && by !== v && cause !== "zone") feed(by.p.name, "вибив", v.p.name, hero ? "hero" : "", "✕", hero);
-      else feed("", "згорів у шторм", v.p.name, "zone", "▼", hero);
+      if (by && by !== v && cause !== "zone") feed(by.p.name, tr("вибив", "выбил"), v.p.name, hero ? "hero" : "", "✕", hero);
+      else feed("", tr("згорів у шторм", "сгорел в шторме"), v.p.name, "zone", "▼", hero);
     }
     if (now - lastTick > 0.06) { lastTick = now; ctx.sound?.("tick"); }
-    if (v.role === 2 && phase === "roll" && fin.filter((f) => f.alive).length === 2) { banner("ЛИШИЛОСЬ 2", "red", 2.8, 2, true); ctx.sound?.("boom"); shake = ctx.reducedMotion ? 0 : 12; }
+    if (v.role === 2 && phase === "roll" && fin.filter((f) => f.alive).length === 2) { banner(tr("ЛИШИЛОСЬ 2", "ОСТАЛОСЬ 2"), "red", 2.8, 2, true); ctx.sound?.("boom"); shake = ctx.reducedMotion ? 0 : 12; }
   }
   function removeFrom(arr, v) { const i = arr.indexOf(v); if (i >= 0) { arr[i] = arr[arr.length - 1]; arr.pop(); } }
 
@@ -527,9 +528,9 @@ export function mount(root, ctx) {
       features = [{ t: 7.2, who: wd }, { t: 9.4, who: decoys[0] }, { t: 13.6, who: wd }, { t: 15.0, who: decoys[1] }, { t: 19.4, who: wd }].filter((x) => x.who);
       st = 0; phase = "roll"; lastStage = -1; lastFight = 0; tokQuota = 0;
       bq.clear(); sq.clear();
-      el.win.classList.remove("on"); el.al.textContent = "ЖИВИХ"; el.n.textContent = N; hudAlive = N;
-      el.zone.style.display = ""; el.zk.textContent = "ЗОНА"; el.zv.textContent = "ВИСАДКА";
-        banner("ВИСАДКА", "green", 2.8, 2); say("ПОЇХАЛИ!!!", 2.8, 2);
+      el.win.classList.remove("on"); el.al.textContent = tr("ЖИВИХ", "ЖИВЫХ"); el.n.textContent = N; hudAlive = N;
+      el.zone.style.display = ""; el.zk.textContent = "ЗОНА"; el.zv.textContent = tr("ВИСАДКА", "ВЫСАДКА");
+        banner(tr("ВИСАДКА", "ВЫСАДКА"), "green", 2.8, 2); say(tr("ПОЇХАЛИ!!!", "ПОЕХАЛИ!!!"), 2.8, 2);
       ctx.sound?.("drum"); ctx.sound?.("whoosh"); flash();
     });
   }
@@ -538,7 +539,7 @@ export function mount(root, ctx) {
     phase = "win";
     const w = winnerDot.p;
     bq.clear(); sq.clear();
-    el.kicker.textContent = "ПЕРЕМОЖЕЦЬ";
+    el.kicker.textContent = tr("ПЕРЕМОЖЕЦЬ", "ПОБЕДИТЕЛЬ");
     el.name.textContent = w.name;
     el.prize.classList.remove("on"); el.prize.style.display = "none";
     el.name.style.fontSize = px.fit(scratch, w.name, 128, 1300, 700) + "px";
@@ -554,7 +555,7 @@ export function mount(root, ctx) {
     el.prizewin.classList.toggle("on", !!prize); if (prize) el.pwn.textContent = px.prizeLabel(prize.name);
     el.prizepic.replaceChildren(...(prizePic ? [prizePic.el] : []));
     el.win.classList.add("on");
-    el.al.textContent = "ЖИВИХ"; el.n.textContent = 1; hudAlive = 1;
+    el.al.textContent = tr("ЖИВИХ", "ЖИВЫХ"); el.n.textContent = 1; hudAlive = 1;
     el.zone.style.display = "none"; el.zone.classList.remove("hot");
     if (!ctx.reducedMotion) for (let i = 0; i < 50; i++) confetti.push({ x: Math.random() * W, y: -Math.random() * H * 0.8, vy: 120 + Math.random() * 260, vx: (Math.random() - 0.5) * 120, c: [COLORS[0], COLORS[1], COLORS[2], COLORS[4], "#f4f1ea"][(Math.random() * 5) | 0], s: Math.random() < 0.7 ? 4 : 8, rot: Math.random() * 6 });
     ctx.sound?.("win"); ctx.sound?.("boom"); 
@@ -609,20 +610,20 @@ export function mount(root, ctx) {
     const stageKey = st < T.LAND ? 0 : st < T.S[0][0] ? 1 : st < T.S[0][1] ? 1.1 : st < T.S[1][0] ? 1.5 : st < T.S[1][1] ? 2 : st < T.S[2][0] ? 2.5 : st < T.S[2][1] ? 3 : 4;
     if (stageKey !== lastStage) {
       lastStage = stageKey;
-      if (stageKey === 1) { banner("ЗОНА 1 · ЗАКРИВАЄТЬСЯ", "red", 3, 2); ctx.sound?.("whoosh"); }
-      if (stageKey === 1.1) { say("ХТО НЕ ВСТИГ?!", 3, 1); }
-      if (stageKey === 1.5) { banner("ЗОНА 2 · ТІСНІШЕ!", "red", 3, 2); ctx.sound?.("whoosh"); flash(); }
-      if (stageKey === 2) { say("ТІКАЙТЕ!!!", 3, 1); }
-      if (stageKey === 2.5) { banner("ОСТАННЯ ЗОНА", "red", 3, 2); ctx.sound?.("whoosh"); flash(); }
-      if (stageKey === 3) { say("ЛИШИЛОСЬ ТРОХИ...", 3, 1); }
-      if (stageKey === 4) { banner(fin.length >= 3 ? "ФІНАЛ · ЛИШИЛОСЬ 3" : "ФІНАЛ", "green", 3, 2, true); ctx.sound?.("boom"); shake = ctx.reducedMotion ? 0 : 10; }
+      if (stageKey === 1) { banner(tr("ЗОНА 1 · ЗАКРИВАЄТЬСЯ", "ЗОНА 1 · ЗАКРЫВАЕТСЯ"), "red", 3, 2); ctx.sound?.("whoosh"); }
+      if (stageKey === 1.1) { say(tr("ХТО НЕ ВСТИГ?!", "КТО НЕ УСПЕЛ?!"), 3, 1); }
+      if (stageKey === 1.5) { banner(tr("ЗОНА 2 · ТІСНІШЕ!", "ЗОНА 2 · ТЕСНЕЕ!"), "red", 3, 2); ctx.sound?.("whoosh"); flash(); }
+      if (stageKey === 2) { say(tr("ТІКАЙТЕ!!!", "БЕГИТЕ!!!"), 3, 1); }
+      if (stageKey === 2.5) { banner(tr("ОСТАННЯ ЗОНА", "ПОСЛЕДНЯЯ ЗОНА"), "red", 3, 2); ctx.sound?.("whoosh"); flash(); }
+      if (stageKey === 3) { say(tr("ЛИШИЛОСЬ ТРОХИ...", "ОСТАЛОСЬ НЕМНОГО..."), 3, 1); }
+      if (stageKey === 4) { banner(fin.length >= 3 ? tr("ФІНАЛ · ЛИШИЛОСЬ 3", "ФИНАЛ · ОСТАЛОСЬ 3") : tr("ФІНАЛ", "ФИНАЛ"), "green", 3, 2, true); ctx.sound?.("boom"); shake = ctx.reducedMotion ? 0 : 10; }
       if (stageKey === 1.5 || stageKey === 2.5) ctx.sound?.("boom");
     }
     if (stageKey >= 1 && stageKey < 4 && Math.floor(st * 1.4) !== Math.floor((st - dt) * 1.4)) ctx.sound?.("tick");
     if (stageKey >= 4 && Math.floor(st / 0.8) !== Math.floor((st - dt) / 0.8)) ctx.sound?.("drum");
     el.zone.classList.toggle("hot", z.shrink);
-    el.zk.textContent = stageKey >= 4 ? "ФІНАЛ" : stageKey < 1 ? "ВИСАДКА" : `ЗОНА ${Math.min(3, z.stage)}/3`;
-    el.zv.textContent = stageKey >= 4 ? "ДУЕЛЬ" : stageKey < 1 ? "ВІДЛІК" : z.shrink ? "ЗАКРИВАЄТЬСЯ" : `0:0${Math.max(0, Math.ceil(z.wait))}`;
+    el.zk.textContent = stageKey >= 4 ? tr("ФІНАЛ", "ФИНАЛ") : stageKey < 1 ? tr("ВИСАДКА", "ВЫСАДКА") : `ЗОНА ${Math.min(3, z.stage)}/3`;
+    el.zv.textContent = stageKey >= 4 ? tr("ДУЕЛЬ", "ДУЭЛЬ") : stageKey < 1 ? tr("ВІДЛІК", "ОТСЧЁТ") : z.shrink ? tr("ЗАКРИВАЄТЬСЯ", "ЗАКРЫВАЕТСЯ") : `0:0${Math.max(0, Math.ceil(z.wait))}`;
 
     // movement + zone damage
     const duel = st >= T.F, arenaZ = zones[3];

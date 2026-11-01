@@ -4,6 +4,7 @@
 // (draw/assets). Свечение — дизерные «лужи», кромки жёсткие, текст — пиксельным шрифтом из pixel-kit.
 
 import * as px from "../pixel-kit.js";
+import { t as tr } from "../../lang.js";
 
 export const meta = { id: "cauldron", title: "Котёл ведьмы", author: "agent" };
 
@@ -349,9 +350,9 @@ export function mount(root, host) {
   const T_QUIET = T_SUCK + SPREAD + SUCK_DUR;  // 5.6
   const T_SH1 = 6.3, T_F1 = 7.3, T_SH2 = 7.8, T_F2 = 8.7, T_F2_END = 9.55, T_SH3 = 10.3, T_EJECT = 11.3, T_REVEAL = 12.2, T_END = 13.7;
   const CAPTIONS = [
-    [0, 1.8, "Зілля закипає…"], [1.8, 5.6, "Душі злітаються до котла…"], [5.6, 6.3, "Тиша…"],
-    [6.3, 7.4, "Котел здригається…"], [7.4, 8.7, "Щось піднімається…"], [8.7, 9.9, "Хибна тривога!"],
-    [9.9, 11.3, "Хто ж вилетить?!"],
+    [0, 1.8, tr("Зілля закипає…", "Зелье закипает…")], [1.8, 5.6, tr("Душі злітаються до котла…", "Души слетаются к котлу…")], [5.6, 6.3, tr("Тиша…", "Тишина…")],
+    [6.3, 7.4, tr("Котел здригається…", "Котёл вздрагивает…")], [7.4, 8.7, tr("Щось піднімається…", "Что-то поднимается…")], [8.7, 9.9, tr("Хибна тривога!", "Ложная тревога!")],
+    [9.9, 11.3, tr("Хто ж вилетить?!", "Кто же вылетит?!")],
   ];
   const winnerPath = (u) => {
     // кубическая кривая: из устья котла по петле к портрету
@@ -438,14 +439,14 @@ export function mount(root, host) {
   let shakeKick = 0;
 
   function buildWinnerSprites(w, info) {
-    const head = textSprite("ПЕРЕМОЖЕЦЬ", { size: 72, color: px.PAL.slime, drop: px.PAL.moss, ls: 6, depth: 6, pad: 16 });
+    const head = textSprite(tr("ПЕРЕМОЖЕЦЬ", "ПОБЕДИТЕЛЬ"), { size: 72, color: px.PAL.slime, drop: px.PAL.moss, ls: 6, depth: 6, pad: 16 });
     const pn = info?.prize?.name ? px.prizeLabel(info.prize.name) : "";
     const prize = pn ? textSprite(pn, { size: px.fit(tctx, pn, 40, 1500), color: px.PAL.amber, depth: 4, pad: 12 }) : null;
     const fs = px.fit(tctx, w.name, 150, 1560);
     const name = textSprite(w.name, { size: fs, color: px.PAL.bone, drop: px.PAL.rust, depth: 8, pad: 20 });
     const sub = [];
     if (w.handle) sub.push(w.handle);
-    sub.push(`Квитки: ${w.tickets}`);
+    sub.push(`${tr("Квитки", "Билеты")}: ${w.tickets}`);
     const subS = textSprite(sub.join("  ·  "), { size: 44, color: px.PAL.slime, depth: 4, pad: 14 });
     return { head, prize, name, subS, col: colorFor(w), pic: px.prizePicture(info?.prize) };
   }
@@ -644,7 +645,7 @@ export function mount(root, host) {
 
   function drawHud() {
     if (phase !== "idle") return;
-    const t = textSprite(`Учасників ${total} · Квитків ${totalTickets}`, { size: 28, color: px.PAL.bone, depth: P, pad: 8 });
+    const t = textSprite(`${tr("Учасників", "Участников")} ${total} · ${tr("Квитків", "Билетов")} ${totalTickets}`, { size: 28, color: px.PAL.bone, depth: P, pad: 8 });
     const bw = snap(t.tw + 32, P);
     px.box(g, 48, 40, bw, 56, { frame: px.PAL.orange, fill: px.PAL.plum });
     drawSprite(t, 48 + 16 + t.w / 2 - 8, 68, 1);

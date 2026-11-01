@@ -14,6 +14,8 @@ const state = {
   pool: "pumpkins",
   test: false,
   visual: "",
+  /** The language of everything the scene writes: "uk" or "ru" (draw/lang.js). */
+  lang: "uk",
   avatars: true,
   sound: true,
   blackout: false,
@@ -52,10 +54,11 @@ function push() {
   for (const c of clients) c.res.write(data);
 }
 
-const SETTINGS = { pool: ["pumpkins", "orders"], visual: /^[a-z0-9-]{0,40}$/ };
+const SETTINGS = { pool: ["pumpkins", "orders"], lang: ["uk", "ru"], visual: /^[a-z0-9-]{0,40}$/ };
 
 export function set(b) {
   if (SETTINGS.pool.includes(b.pool)) state.pool = b.pool;
+  if (SETTINGS.lang.includes(b.lang)) state.lang = b.lang;
   if (typeof b.visual === "string" && SETTINGS.visual.test(b.visual)) state.visual = b.visual;
   for (const f of ["test", "avatars", "sound", "blackout", "hidden", "pause"]) if (typeof b[f] === "boolean") state[f] = b[f];
   if (b.pause === true) state.wait = null; // the pause screen replaces the countdown

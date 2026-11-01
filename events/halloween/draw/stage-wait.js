@@ -2,7 +2,8 @@
 // the time to answer (minutes from the remote): who won, what, how much time is left, and the lots
 // still in the game. Then «Відповів!» or «Час вийшов». Same pixel look as the pause (its backdrop).
 // Data: the show state's `wait` (server/src/show.js) + /hw/api/stage/overview.
-import { POOL_UK, el, lotPictures, packOf, photoUrl, plainName } from "./stage-common.js";
+import { t } from "./lang.js";
+import { poolTitle, el, lotPictures, packOf, photoUrl, plainName } from "./stage-common.js";
 import { avatarOf, decor, freeLots, lotCard, ticker } from "./stage-pause.js";
 
 const SEGMENTS = 24; // the time bar, in pixel blocks
@@ -21,10 +22,10 @@ function winnerCard(person, pack, avatars) {
   const ava = avatarOf(person || { name: "?" }, avatars);
   ava.classList.add("w-ava");
   const names = el("div", "w-names");
-  names.append(el("div", "w-name", person?.name ?? "Переможець"));
+  names.append(el("div", "w-name", person?.name ?? t("Переможець", "Победитель")));
   if (person?.handle) names.append(el("div", "w-handle", person.handle));
   who.append(ava, names);
-  c.append(el("div", "w-tag", "Переможець"), who);
+  c.append(el("div", "w-tag", t("Переможець", "Победитель")), who);
   const { set, keys } = lotPictures(pack, 1);
   const ph = el("div", "w-photo" + (set ? " set" : ""));
   if (keys[0]) {
@@ -33,26 +34,26 @@ function winnerCard(person, pack, avatars) {
     img.alt = "";
     ph.append(img);
   }
-  c.append(ph, el("div", "w-prize", plainName(pack?.name ?? "Приз раунду")));
+  c.append(ph, el("div", "w-prize", plainName(pack?.name ?? t("Приз раунду", "Приз раунда"))));
   return c;
 }
 
 function timerBox() {
-  const t = el("div", "w-timer px");
-  const label = el("div", "w-label", "Час на відповідь");
+  const box = el("div", "w-timer px");
+  const label = el("div", "w-label", t("Час на відповідь", "Время на ответ"));
   const digits = el("div", "w-digits", "00:00");
   const bar = el("div", "w-bar");
   for (let i = 0; i < SEGMENTS; i++) bar.append(el("i"));
-  const hint = el("div", "w-hint", "Не відповість вчасно — перекрутимо раунд");
-  t.append(label, digits, bar, hint);
-  return { t, label, digits, bar: [...bar.children], hint };
+  const hint = el("div", "w-hint", t("Не відповість вчасно — перекрутимо раунд", "Не ответит вовремя — перекрутим раунд"));
+  box.append(label, digits, bar, hint);
+  return { t: box, label, digits, bar: [...bar.children], hint };
 }
 
 function lotsStrip(pools) {
   const lots = freeLots(pools);
   const box = el("div", "w-lots");
   if (!lots.length) return box;
-  box.append(el("h2", "p-title w-lots-title", `Ще в грі · ${lots.length}`));
+  box.append(el("h2", "p-title w-lots-title", `${t("Ще в грі", "Ещё в игре")} · ${lots.length}`));
   const pages = el("div", "w-pages");
   for (let i = 0; i < lots.length; i += LOTS_PER_PAGE) {
     const page = el("div", "w-page");
@@ -80,22 +81,22 @@ export function makeWait(root, sound) {
     const st = wait.answeredAt ? "answered" : left <= 0 ? "over" : left <= HURRY_MS ? "hurry" : "running";
     root.dataset.state = st;
     if (st === "answered") {
-      parts.label.textContent = "Є відповідь";
-      parts.digits.textContent = "Відповів!";
-      parts.hint.textContent = "Приз їде до переможця";
+      parts.label.textContent = t("Є відповідь", "Есть ответ");
+      parts.digits.textContent = t("Відповів!", "Ответил!");
+      parts.hint.textContent = t("Приз їде до переможця", "Приз едет к победителю");
     } else if (st === "over") {
-      parts.label.textContent = "Час на відповідь";
-      parts.digits.textContent = "Час вийшов";
-      parts.hint.textContent = "Відповіді немає — перекрутимо раунд";
+      parts.label.textContent = t("Час на відповідь", "Время на ответ");
+      parts.digits.textContent = t("Час вийшов", "Время вышло");
+      parts.hint.textContent = t("Відповіді немає — перекрутимо раунд", "Ответа нет — перекрутим раунд");
     } else {
-      parts.label.textContent = "Час на відповідь";
+      parts.label.textContent = t("Час на відповідь", "Время на ответ");
       parts.digits.textContent = mmss(left);
-      parts.hint.textContent = "Не відповість вчасно — перекрутимо раунд";
+      parts.hint.textContent = t("Не відповість вчасно — перекрутимо раунд", "Не ответит вовремя — перекрутим раунд");
     }
     const lit = st === "answered" ? SEGMENTS : Math.ceil((Math.max(0, left) / total) * SEGMENTS);
     parts.bar.forEach((b, i) => b.classList.toggle("on", i < lit));
-    parts.head.textContent = st === "answered" ? "Зв'язок є!" : "Є переможець!";
-    parts.sub.textContent = st === "answered" ? "Переможець відповів Максиму — вітаємо!" : "Максим пише переможцю в Telegram — чекаємо відповідь";
+    parts.head.textContent = st === "answered" ? t("Зв'язок є!", "Связь есть!") : t("Є переможець!", "Есть победитель!");
+    parts.sub.textContent = st === "answered" ? t("Переможець відповів Максиму — вітаємо!", "Победитель ответил Максиму — поздравляем!") : t("Максим пише переможцю в Telegram — чекаємо відповідь", "Максим пишет победителю в Telegram — ждём ответ");
     if (st !== last) {
       if (last && st === "answered") sound("win");
       else if (last && st === "over") sound("boom");
@@ -132,9 +133,9 @@ export function makeWait(root, sound) {
       const pack = d ? packOf(d.prizes, w.round) : null;
       root.innerHTML = "";
       const head = el("header", "p-head w-head");
-      const big = el("div", "p-big", "Є переможець!");
+      const big = el("div", "p-big", t("Є переможець!", "Есть победитель!"));
       const sub = el("div", "p-sub");
-      head.append(el("div", "p-kicker", `${POOL_UK[w.pool]} · раунд ${w.round}`), big, sub);
+      head.append(el("div", "p-kicker", `${poolTitle(w.pool)} · ${t("раунд", "раунд")} ${w.round}`), big, sub);
       const timer = timerBox();
       const mid = el("div", "w-mid");
       mid.append(winnerCard(person, pack, avatars), timer.t);

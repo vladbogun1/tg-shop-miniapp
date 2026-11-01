@@ -13,6 +13,7 @@ import { makeRoll } from "./director.js";
 import { sfx, stormLevel, stopAll } from "./audio.js";
 import { disposeTex } from "./tex.js";
 import * as px from "../pixel-kit.js";
+import { t as tr } from "../../lang.js";
 
 export const meta = { id: "wild-3-royale3d", title: "Гарбузовий рояль 3D", author: "agent" };
 
@@ -67,8 +68,8 @@ export function mount(root, ctx) {
       <div class="r3-labels"></div>
       <div class="r3-hud">
         <div class="r3-tl">
-          <div class="r3-counter"><div class="r3-alive"><small class="r3-al">УЧАСНИКІВ</small><b class="r3-n">0</b></div><div class="r3-zone"><small class="r3-zk">РАУНД</small><span class="r3-zv">—</span></div></div>
-          <div class="r3-prize"><small>РОЗІГРУЄМО</small><b class="r3-pn"></b><span class="r3-pi"></span></div>
+          <div class="r3-counter"><div class="r3-alive"><small class="r3-al">${tr("УЧАСНИКІВ", "УЧАСТНИКОВ")}</small><b class="r3-n">0</b></div><div class="r3-zone"><small class="r3-zk">РАУНД</small><span class="r3-zv">—</span></div></div>
+          <div class="r3-prize"><small>${tr("РОЗІГРУЄМО", "РАЗЫГРЫВАЕМ")}</small><b class="r3-pn"></b><span class="r3-pi"></span></div>
           <div class="r3-loc"></div>
         </div>
         <div class="r3-feed"></div>
@@ -80,7 +81,7 @@ export function mount(root, ctx) {
         <div class="r3-idle">Шукай себе на острові, чат!<small>Бій почнеться, коли ведучий запустить розіграш</small></div>
         <div class="r3-seed"></div>
         <div class="r3-flash"></div>
-        <div class="r3-win"><div class="r3-kicker"></div><div class="r3-emb"></div><div class="r3-name"></div><div class="r3-sub"></div><div class="r3-pw">ВИГРАВ: <b></b></div></div><div class="r3-pp"></div>
+        <div class="r3-win"><div class="r3-kicker"></div><div class="r3-emb"></div><div class="r3-name"></div><div class="r3-sub"></div><div class="r3-pw">${tr("ВИГРАВ", "ВЫИГРАЛ")}: <b></b></div></div><div class="r3-pp"></div>
       </div>
     </div>`;
   const $ = (s) => root.querySelector(s);
@@ -95,7 +96,7 @@ export function mount(root, ctx) {
   // ---------- renderer ----------
   let renderer;
   try { renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" }); }
-  catch (e) { root.querySelector(".r3-idle").textContent = "WebGL недоступний"; console.error(e); return { setParticipants() {}, async roll() {}, reset() {}, destroy() { root.innerHTML = ""; link.remove(); } }; }
+  catch (e) { root.querySelector(".r3-idle").textContent = tr("WebGL недоступний", "WebGL недоступен"); console.error(e); return { setParticipants() {}, async roll() {}, reset() {}, destroy() { root.innerHTML = ""; link.remove(); } }; }
   renderer.setPixelRatio(1);
   renderer.toneMapping = THREE.NoToneMapping; // the palette pass does the grading
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -241,7 +242,7 @@ export function mount(root, ctx) {
     box.textContent = initial(p.name);
     if (ctx.privacy?.avatars && p.avatar) {
       const im = new Image(); im.src = p.avatar;
-      im.onload = () => { const c = px.canvas(20, 20), g = c.getContext("2d"); g.imageSmoothingQuality = "high"; const k = Math.max(20 / im.naturalWidth, 20 / im.naturalHeight); try { g.drawImage(im, (20 - im.naturalWidth * k) / 2, (20 - im.naturalHeight * k) / 2, im.naturalWidth * k, im.naturalHeight * k); box.textContent = ""; box.append(c); } catch {} };
+      im.onload = () => { const c = px.canvas(152, 152), g = c.getContext("2d"); g.imageSmoothingQuality = "high"; const k = Math.max(152 / im.naturalWidth, 152 / im.naturalHeight); try { g.drawImage(im, (152 - im.naturalWidth * k) / 2, (152 - im.naturalHeight * k) / 2, im.naturalWidth * k, im.naturalHeight * k); box.textContent = ""; box.append(c); } catch {} };
     }
   }
   const hud = {
@@ -249,7 +250,7 @@ export function mount(root, ctx) {
     combo(att) {
       const s = vsSide.find((q) => q.f === att); if (!s) return;
       s.n = now - s.last < 1.6 ? s.n + 1 : 1; s.last = now;
-      if (s.n >= 2) { const n = s.n, w = n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "УДАРИ" : "УДАРІВ"; s.combo.innerHTML = `<b>${n}</b> ${w}`; s.combo.classList.remove("pop"); void s.combo.offsetWidth; s.combo.classList.add("pop"); }
+      if (s.n >= 2) { const n = s.n, w = n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? tr("УДАРИ", "УДАРА") : tr("УДАРІВ", "УДАРОВ"); s.combo.innerHTML = `<b>${n}</b> ${w}`; s.combo.classList.remove("pop"); void s.combo.offsetWidth; s.combo.classList.add("pop"); }
     },
     vs(a, b) {
       if (!a) { el.vs.classList.remove("on"); vsSide[0].f = vsSide[1].f = null; return; }
@@ -273,7 +274,7 @@ export function mount(root, ctx) {
     },
     ko(att, vic, onCam) {
       if (att) feed(`<span class="k">${esc(att.p.name)}</span><span class="ic"></span><span class="v">${esc(vic.p.name)}</span>`, "hero");
-      else feed(`<span class="v">${esc(vic.p.name)}</span><span class="m">шторм</span>`, "zone");
+      else feed(`<span class="v">${esc(vic.p.name)}</span><span class="m">${tr("шторм", "шторм")}</span>`, "zone");
       if (onCam) { el.ko.classList.remove("on"); void el.ko.offsetWidth; el.ko.classList.add("on"); koT = now; flash("#ff6600"); }
     },
     clearCrowd(x, z, r) {
@@ -477,7 +478,7 @@ export function mount(root, ctx) {
       scheduleCrowd();
       phase = "roll"; rollResolve = resolve;
       el.win.classList.remove("on"); el.pp.classList.remove("on"); root.classList.remove("idle");
-      el.al.textContent = "ЖИВИХ"; el.zk.textContent = "РАУНД"; 
+      el.al.textContent = tr("ЖИВИХ", "ЖИВЫХ"); el.zk.textContent = "РАУНД"; 
       
       el.feed.innerHTML = ""; hud.vs(null); hud.letterbox(false);
       ctx.sound?.("drum"); sfx("drop", 1, 1);
@@ -517,11 +518,11 @@ export function mount(root, ctx) {
       if (!quiet) { loud++; if (camera.position.distanceTo(c1.set(d.x, d.y, d.z)) < 35) sfx("poof", 1, 0.5); }
       if (now - crowdFeedT > 0.5) {
         crowdFeedT = now;
-        if (d.dieKind === 1) feed(`<span class="v">${esc(d.p.name)}</span><span class="m">шторм</span>`, "zone");
+        if (d.dieKind === 1) feed(`<span class="v">${esc(d.p.name)}</span><span class="m">${tr("шторм", "шторм")}</span>`, "zone");
         else {
           const k = crowd.list[Math.floor(rollRnd() * crowd.list.length)];
           if (k && k.alive && k !== d) feed(`<span class="k">${esc(k.p.name)}</span><span class="ic"></span><span class="v">${esc(d.p.name)}</span>`, "");
-          else feed(`<span class="v">${esc(d.p.name)}</span><span class="m">вибув</span>`, "zone");
+          else feed(`<span class="v">${esc(d.p.name)}</span><span class="m">${tr("вибув", "выбыл")}</span>`, "zone");
         }
       }
     }
@@ -531,7 +532,7 @@ export function mount(root, ctx) {
     phase = "win";
     const w = winner;
     hud.vs(null);
-    el.kicker.textContent = "ПЕРЕМОЖЕЦЬ";
+    el.kicker.textContent = tr("ПЕРЕМОЖЕЦЬ", "ПОБЕДИТЕЛЬ");
     el.name.textContent = w.name;
     el.name.style.fontSize = Math.min(128, Math.floor((W - 300) / (Math.max(6, String(w.name).length) * 0.74)) & ~3) + "px";
     el.sub.innerHTML = `${w.handle ? esc(w.handle) + " · " : ""}<b>${w.tickets}</b> ${px.ticketsWord(w.tickets)}`;
@@ -550,7 +551,7 @@ export function mount(root, ctx) {
     const r = rollResolve; rollResolve = null; r?.();
     el.win.classList.remove("on"); el.pp.classList.remove("on"); hud.vs(null); hud.letterbox(false); el.banner.classList.remove("on"); el.loc.classList.remove("on");
     el.feed.innerHTML = ""; el.seed.textContent = ""; root.classList.add("idle");
-    el.al.textContent = "УЧАСНИКІВ"; el.zk.textContent = "РАУНД"; 
+    el.al.textContent = tr("УЧАСНИКІВ", "УЧАСТНИКОВ"); el.zk.textContent = "РАУНД"; 
     fx.clear(); stormLevel(0); world.setStorm(160, 0);
     buildHeroes(chooseHeroIds(people));
     crowd.revive();

@@ -1,4 +1,5 @@
 // Small helpers of the OBS scene overlays (stage-intro.js, stage-pause.js).
+import { t } from "./lang.js";
 
 // Prize photos are S3 keys of product photos (through the shop's imgproxy, same origin on prod) or https links.
 // Locally: stage.html?k=…&img=https://admin.chisetup.com.ua/img
@@ -10,9 +11,10 @@ export function photoUrl(key, size = 600) {
   return `${IMG}/insecure/rs:fill:${size}:${size}/plain/s3://product-images/${key.replace(/^\/+/, "")}@webp`;
 }
 
-export const POOL_UK = { pumpkins: "Розіграш за гарбузи", orders: "Розіграш за покупки" };
+/** Title of a draw in the scene's language. */
+export const poolTitle = (pool) => (pool === "orders" ? t("Розіграш за покупки", "Розыгрыш за покупки") : t("Розіграш за гарбузи", "Розыгрыш за тыквы"));
 /** Short tag of a draw (no emoji: the overlays are pixel art, an emoji would break the look). */
-export const POOL_SHORT = { pumpkins: "Гарбузи", orders: "Покупки" };
+export const poolShort = (pool) => (pool === "orders" ? "Покупки" : t("Гарбузи", "Тыквы"));
 
 /** The same rule as the remote: the last round or a pack named «Суперприз…» plays the knights. */
 export const isSuper = (round, total, name) => round === total || /суперприз/i.test(name || "");
@@ -50,7 +52,7 @@ export function plainName(s) {
   return s
     .replace(/^[⭐️\u{1F300}-\u{1FAFF}\s]+/u, "")
     .replace(/ \+ /g, `${NBSP}+ `)
-    .replace(/(^|\s)([а-яієїґ]{1,2}) /giu, (m, sp, w) => (w === w.toLowerCase() ? `${sp}${w}${NBSP}` : m))
+    .replace(/(^|\s)([а-яієїґё]{1,2}) /giu, (m, sp, w) => (w === w.toLowerCase() ? `${sp}${w}${NBSP}` : m))
     .replace(/ (XL|XXL|L|M|S|\d+×\d+)\b/g, `${NBSP}$1`);
 }
 

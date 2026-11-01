@@ -1,4 +1,5 @@
 // Острів: рельєф, вода, небо, локації з простих форм, арена в центрі, стіна шторму.
+import { t as tr } from "../../lang.js";
 import * as THREE from "./vendor/three.module.min.js";
 import { glowTex } from "./fx.js";
 import { tex, triplanar } from "./tex.js";
@@ -16,13 +17,14 @@ function vnoise(x, y) {
 const fbm = (x, y) => vnoise(x, y) * 0.55 + vnoise(x * 2.1, y * 2.1) * 0.3 + vnoise(x * 4.3, y * 4.3) * 0.15;
 
 export const ARENA_R = 13;
+// names are getters: the scene language may change between mounts (../../lang.js)
 export const POIS = [
-  { k: "manor", n: "Маєток", x: 0, z: -64, r: 15, h: 2.2 },
-  { k: "yard", n: "Цвинтар", x: 54, z: -38, r: 14, h: 1.6 },
+  { k: "manor", get n() { return tr("Маєток", "Поместье"); }, x: 0, z: -64, r: 15, h: 2.2 },
+  { k: "yard", get n() { return tr("Цвинтар", "Кладбище"); }, x: 54, z: -38, r: 14, h: 1.6 },
   { k: "shop", n: "Магазин ChiSetup", x: 54, z: 38, r: 12, h: 1.2 },
   { k: "swamp", n: "Болото", x: -4, z: 66, r: 14, h: 0.55 },
-  { k: "hut", n: "Хатина відьми", x: -56, z: 34, r: 11, h: 1.4 },
-  { k: "field", n: "Гарбузове поле", x: -56, z: -32, r: 15, h: 1.1 },
+  { k: "hut", get n() { return tr("Хатина відьми", "Хижина ведьмы"); }, x: -56, z: 34, r: 11, h: 1.4 },
+  { k: "field", get n() { return tr("Гарбузове поле", "Тыквенное поле"); }, x: -56, z: -32, r: 15, h: 1.1 },
 ];
 const FLATS = [{ x: 0, z: 0, r: ARENA_R + 4, h: 1.0 }, ...POIS];
 

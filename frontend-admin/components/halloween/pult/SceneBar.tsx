@@ -2,15 +2,16 @@
 
 /**
  * The OBS scene panel of the remote: is a scene connected, what it shows now, the scene link,
- * hide (transparent) / pause screen / blackout, the visual of ordinary rounds, avatars/sound and the rehearsal switch.
+ * hide (transparent) / pause screen / blackout, the visual of ordinary rounds, the scene language, avatars/sound and the rehearsal switch.
  */
 import { Copy, ExternalLink, Eye, EyeOff, Moon, Pause, Play, Sun } from "lucide-react";
-import { HW_VISUALS, hwDraw, hwStageUrl, type HwShow, type HwVisual } from "@/lib/halloween-api";
+import { HW_VISUALS, hwDraw, hwStageUrl, type HwShow, type HwStageLang, type HwVisual } from "@/lib/halloween-api";
 import { HW_PLAY_WINDOW_MS } from "@/lib/use-hw-show";
 import { useToast } from "@/lib/toast";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Toggle } from "@/components/ui/Toggle";
 import { POOL_TITLE } from "./PoolColumn";
 import { WaitPanel } from "./WaitPanel";
@@ -102,6 +103,11 @@ export function SceneBar({ show, online, stageKey, test, onTest, visual, onVisua
       {show && <WaitPanel show={show} test={test} winnerName={winnerName} />}
       <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
         <Select<HwVisual> label="Визуал обычных раундов" value={visual} options={[...HW_VISUALS]} onChange={onVisual} className="w-[240px]" />
+        <div className="flex flex-col gap-1.5">
+          <span className="field-label">Язык сцены</span>
+          <SegmentedControl<HwStageLang> size="sm" value={show?.lang ?? "uk"} onChange={(v) => set({ lang: v })}
+            options={[{ value: "uk", label: "Українська" }, { value: "ru", label: "Русский" }]} />
+        </div>
         <Toggle label="Аватарки" checked={show?.avatars ?? true} onChange={(v) => set({ avatars: v })} />
         <Toggle label="Звук" checked={show?.sound ?? true} onChange={(v) => set({ sound: v })} />
         <Toggle label="Тестовый режим" checked={test} onChange={onTest} />

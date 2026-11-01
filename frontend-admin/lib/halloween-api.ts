@@ -137,11 +137,15 @@ export interface HwPrizes {
   template: string;
 }
 
+export type HwStageLang = "uk" | "ru";
+
 /** The live show state the OBS scene follows (events/halloween show.js). */
 export interface HwShow {
   pool: HwPool;
   test: boolean;
   visual: string;
+  /** The language of the scene's texts (no English: the stream is uk/ru). */
+  lang: HwStageLang;
   avatars: boolean;
   sound: boolean;
   blackout: boolean;
@@ -175,6 +179,7 @@ export const HW_VISUALS = [
   { value: "wild-1-royale", label: "Королевская битва" },
   { value: "wild-2-swarm", label: "Рой" },
   { value: "wild-3-royale3d", label: "Рыцари 3D" },
+  { value: "loto", label: "Лото Забава" },
 ] as const;
 export type HwVisual = (typeof HW_VISUALS)[number]["value"];
 /** The super prize always plays the knights. */
@@ -197,7 +202,7 @@ export const hwDraw = {
   /** Rehearsal only: a fresh random list of customers. */
   testReset: (pool: HwPool) => apiPost<HwScreen>(`${P}/test/reset${q(pool)}`, {}),
   show: () => apiGet<HwShow & { key: string }>(`${P}/show`),
-  setShow: (patch: Partial<Pick<HwShow, "test" | "visual" | "avatars" | "sound" | "blackout" | "hidden" | "pause">>) => apiPost<HwShow>(`${P}/show`, patch),
+  setShow: (patch: Partial<Pick<HwShow, "test" | "visual" | "lang" | "avatars" | "sound" | "blackout" | "hidden" | "pause">>) => apiPost<HwShow>(`${P}/show`, patch),
   /** The countdown on the scene for the winner of the last revealed roll. */
   wait: (b: { action: "start" | "add"; minutes: number } | { action: "answered" | "stop" }) => apiPost<HwShow>(`${P}/show/wait`, b),
   savePrize: (p: { id?: number; name: string; items: string[]; images: string[] }) => apiPost<HwPrizes>(`${P}/prizes${q("pumpkins")}`, p),

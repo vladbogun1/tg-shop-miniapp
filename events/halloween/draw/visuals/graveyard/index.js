@@ -5,6 +5,7 @@
 // blitted nearest-neighbour; the winner's sign text, the name tags and the DOM UI are drawn crisp on top.
 import * as A from "./art.js";
 import * as px from "../pixel-kit.js";
+import { t as tr } from "../../lang.js";
 
 export const meta = { id: "graveyard", title: "Цвинтар", author: "agent" };
 
@@ -67,7 +68,7 @@ export function mount(root, ctx) {
   let g = mg; // current drawing target: the low-res world layer while the world is drawn, else mg
   let L = null; // low-res layer
   const ui = document.createElement("div"); ui.className = "gy-ui";
-  ui.innerHTML = `<div class="gy-stat gy-px"></div><div class="gy-banner"><div class="t">ПЕРЕМОЖЕЦЬ</div><div class="r gy-px"></div></div><div class="gy-prize"></div><div class="gy-ticker"><div class="box gy-px"><span class="l">Учасник</span><b class="n"></b></div></div>`;
+  ui.innerHTML = `<div class="gy-stat gy-px"></div><div class="gy-banner"><div class="t">${tr("ПЕРЕМОЖЕЦЬ", "ПОБЕДИТЕЛЬ")}</div><div class="r gy-px"></div></div><div class="gy-prize"></div><div class="gy-ticker"><div class="box gy-px"><span class="l">${tr("Учасник", "Участник")}</span><b class="n"></b></div></div>`;
   root.append(ui);
   const $stat = ui.querySelector(".gy-stat"), $pic = ui.querySelector(".gy-prize"), $banner = ui.querySelector(".gy-banner"), $round = ui.querySelector(".gy-banner .r");
   const $ticker = ui.querySelector(".gy-ticker"), $tname = ui.querySelector(".gy-ticker .n");
@@ -189,7 +190,7 @@ export function mount(root, ctx) {
   function updateStat() {
     const pool = parts.filter((p) => !(wonSet.has(p.id) || justWon.has(p.id) || p.won));
     const tickets = pool.reduce((s, p) => s + p.tickets, 0);
-    $stat.innerHTML = `Учасники <b>${pool.length}</b> &nbsp;·&nbsp; Квитки <b>${tickets}</b>`;
+    $stat.innerHTML = `${tr("Учасники", "Участники")} <b>${pool.length}</b> &nbsp;·&nbsp; ${tr("Квитки", "Билеты")} <b>${tickets}</b>`;
   }
 
   /** Light every stone near an overview-plane point; returns nearest participant stone. */
