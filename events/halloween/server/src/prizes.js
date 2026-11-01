@@ -63,16 +63,14 @@ export const DEFAULT_TEMPLATE = `🎃 {name}, вітаємо! Ти виграв!
 🎁 Твій приз: {prize}
 {items}
 
-⏳ Відповідь чекаємо до {deadline} за Києвом ({minutes} хв). Якщо не встигнеш, приз розіграємо ще раз і він піде іншому учаснику.
+⏳ Щоб забрати приз, напиши «+» у чат підтримки до {deadline} за Києвом ({minutes} хв). Якщо не встигнеш, приз розіграємо ще раз і він піде іншому учаснику.
 
-✍️ Наступним повідомленням прийде чат підтримки з кнопкою «Відкрити переписку». Напиши туди:
-• ПІБ
-• телефон
-• місто і відділення Нової пошти`;
+✍️ Чат прийде наступним повідомленням, кнопка «Відкрити переписку». Дані для доставки попросимо вже потім, у тому ж чаті.`;
 
-/** Goes into the shop support chat: short, its bot DM shows it as a one-paragraph preview. */
+/** Goes into the shop support chat: short, its bot DM shows it as a one-paragraph preview. Only «+» is asked
+ *  now (typing the address takes minutes); the delivery details are asked later in the same chat. */
 export const CHAT_TEMPLATE =
-  "🎃 Перемога в Хелловін-розіграші ({draw}, раунд {round}). Напиши сюди ПІБ, телефон, місто і відділення Нової пошти до {deadline} за Києвом.";
+  "🎃 Перемога в Хелловін-розіграші ({draw}, раунд {round}). Щоб забрати приз, напиши сюди «+» до {deadline} за Києвом. Дані для доставки попросимо потім.";
 
 const q = {
   list: db.prepare("SELECT id, name, items, images FROM prizes ORDER BY id"),
@@ -176,7 +174,7 @@ export function render(tpl, { name, round, prize, pool, deadline }) {
   const items = prize?.items?.length ? prize.items.map((s) => `• ${s}`).join("\n") : "";
   // A customised template without the deadline still gets it: the winner has to know.
   const body = deadline && !tpl.includes("{deadline}")
-    ? `${tpl}\n\n⏳ Відповідь чекаємо до {deadline} за Києвом ({minutes} хв). Якщо не встигнеш, приз розіграємо ще раз.`
+    ? `${tpl}\n\n⏳ Щоб забрати приз, напиши «+» у чат підтримки до {deadline} за Києвом ({minutes} хв). Якщо не встигнеш, приз розіграємо ще раз.`
     : tpl;
   return body
     .replaceAll("{name}", name || "друже")
