@@ -1,6 +1,7 @@
 package com.maxsolch.shop.site.app;
 
 import com.maxsolch.shop.site.domain.SiteRevalidationFailed;
+import com.maxsolch.shop.platform.i18n.AppLocale;
 import com.maxsolch.shop.platform.jobs.Workers;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.platform.tx.OnCommitted;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -38,7 +40,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @Component
 public class SiteRevalidator {
 
-    private static final List<String> LOCALE_PREFIXES = List.of("", "/ru", "/en");
+    private static final List<String> LOCALE_PREFIXES = Arrays.stream(AppLocale.values()).map(AppLocale::sitePrefix).toList();
 
     /** Lets cache evictions that run after the admin call (@CacheEvict on controllers) land first. */
     private static final long DELAY_MS = 1_000;

@@ -6,6 +6,7 @@ import { checkTranslation } from "@/features/translation";
 import type { CardItem } from "./item";
 import { levelOf } from "./level";
 import type { CardIssue, DescriptionReview, TextLang, TextReview } from "./types";
+import { type TranslatedLocale } from "@shop/core/i18n";
 
 /** Remarks the new description must keep (condition, defects, bundle, sizes). */
 const REMARKS: { re: RegExp; label: string }[] = [
@@ -99,7 +100,7 @@ function checkRussian(t: TextReview, item: CardItem, specs: Record<string, unkno
 }
 
 /** Замечания к переводу на один язык. */
-function checkLang(t: TextReview, lang: "uk" | "en"): CardIssue[] {
+function checkLang(t: TextReview, lang: TranslatedLocale): CardIssue[] {
   const source = finalRu(t);
   const text = t[lang];
   if (!text.trim()) return source.trim() ? [{ level: "warn", text: "нет перевода — не сохранится" }] : [];

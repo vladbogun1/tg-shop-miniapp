@@ -9,11 +9,35 @@
  * translating 800 back-office strings would buy nothing.
  */
 
+/**
+ * THE list of languages. Everything on the fronts that used to spell "uk" | "ru" | "en" (site routes,
+ * the admin's language switches, check-i18n) takes it from here. The backend has the same list in
+ * `platform/i18n/AppLocale.java`, and `scripts/check-locales-sync.mjs` (in `npm run arch:front`)
+ * fails when the two, the gateway config or the files that cannot import it (the site's
+ * `middleware` matcher, `next.config.ts`) disagree. Why here and not in `packages/customer`: the
+ * admin panel needs it too and does not depend on `customer`.
+ */
 export const LOCALES = ["uk", "ru", "en"] as const;
 
 export type Locale = (typeof LOCALES)[number];
 
 export const FALLBACK_LOCALE: Locale = "uk";
+
+/** The language the catalog content is written in; every other language is a translation of it. */
+export const CONTENT_SOURCE_LOCALE = "ru" satisfies Locale;
+
+export type TranslatedLocale = Exclude<Locale, typeof CONTENT_SOURCE_LOCALE>;
+
+/** The languages that have a translation of the content (what the admin edits besides the source). */
+export const TRANSLATED_LOCALES: readonly TranslatedLocale[] = LOCALES.filter(
+  (l): l is TranslatedLocale => l !== CONTENT_SOURCE_LOCALE,
+);
+
+/** Regex alternation of the URL language segments: `uk|ru|en`. */
+export const LOCALE_PATTERN = LOCALES.join("|");
+
+/** The segments that appear in a URL: every language except the default one, which has no prefix. */
+export const PREFIXED_LOCALES: readonly Locale[] = LOCALES.filter((l) => l !== FALLBACK_LOCALE);
 
 /**
  * Each language is named in ITSELF. If the app opens in a language you cannot read, "украинский"

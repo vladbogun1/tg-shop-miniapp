@@ -8,6 +8,7 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.DeliveryMethod;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.support.domain.ReplyTemplate;
+import com.maxsolch.shop.platform.i18n.AppLocale;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.support.infra.ReplyTemplateRepository;
@@ -135,8 +136,16 @@ public class ReplyTemplateService {
             rows.put(row.getId().getLocale(), row);
         }
         boolean changed = false;
-        for (String locale : List.of("uk", "en")) {
-            String wanted = trimToNull("uk".equals(locale) ? req.bodyUk() : req.bodyEn());
+        for (AppLocale l : AppLocale.values()) {
+            if (l == AppLocale.CONTENT_SOURCE) {
+                continue;
+            }
+            String locale = l.code();
+            String wanted = trimToNull(switch (l) {
+                case UK -> req.bodyUk();
+                case EN -> req.bodyEn();
+                case RU -> throw new IllegalStateException("the source language has no translation");
+            });
             ContentTranslation row = rows.get(locale);
             if (wanted == null) {
                 if (row != null) {
@@ -227,17 +236,17 @@ public class ReplyTemplateService {
 
     /** Customer's language → Ukrainian (the shop's fallback) → Russian (always present). */
     static Picked pick(String ru, String uk, String en, String lang) {
-        String want = lang == null ? "uk" : lang;
-        if ("en".equals(want) && notBlank(en)) {
-            return new Picked(en, "en");
+        AppLocale want = AppLocale.parseOrDefault(lang);
+        if (want == AppLocale.RU) {
+            return new Picked(ru, AppLocale.RU.code());
         }
-        if ("ru".equals(want)) {
-            return new Picked(ru, "ru");
+        if (want == AppLocale.EN && notBlank(en)) {
+            return new Picked(en, AppLocale.EN.code());
         }
         if (notBlank(uk)) {
-            return new Picked(uk, "uk");
+            return new Picked(uk, AppLocale.UK.code());
         }
-        return new Picked(ru, "ru");
+        return new Picked(ru, AppLocale.RU.code());
     }
 
     Map<String, String> variables(Order order, Locale locale) {

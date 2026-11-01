@@ -13,6 +13,7 @@ import type { OrderStatus } from "@shop/core/types";
 import { periodQuery, type OrdersPeriod } from "./model/period";
 import type { MovementChannel } from "@/features/payment";
 import type { BoardKey, RejectReasonCode } from "./model/status";
+import { type Locale } from "@shop/core/i18n";
 
 export type { NpCity, NpWarehouse };
 
@@ -33,7 +34,7 @@ export type OrderMessage = Schemas["OrderMessageDto"];
 export type ReplyTemplate = Schemas["TemplateDto"];
 export type ReplyTemplateWrite = Schemas["TemplateUpsertRequest"];
 /** Шаблон, заполненный под один заказ, на языке покупателя. */
-export type RenderedTemplate = Omit<Schemas["RenderedTemplateDto"], "locale"> & { locale: "uk" | "ru" | "en" };
+export type RenderedTemplate = Omit<Schemas["RenderedTemplateDto"], "locale"> & { locale: Locale };
 export type AuditEntry = Schemas["AuditEntryDto"];
 
 /** Доска + настоящие суммы по колонкам с сервера (колонки — пять статусов + RETURNING). */

@@ -1,7 +1,8 @@
 /** Шаблоны ответов: правила редактора (без React). */
 import type { ReplyTemplate } from "../api";
+import { type Locale, type TranslatedLocale } from "@shop/core/i18n";
 
-export type TemplateLang = "uk" | "ru" | "en";
+export type TemplateLang = Locale;
 
 export interface TemplateDraft {
   title: string;
@@ -23,7 +24,7 @@ export function isDraftDirty(t: ReplyTemplate | null, d: TemplateDraft): boolean
 }
 
 /** A uk/en text made for an older Russian one is not used in the chat until it is redone. */
-export function isTranslationStale(t: ReplyTemplate | null, lang: "uk" | "en", d: TemplateDraft): boolean {
+export function isTranslationStale(t: ReplyTemplate | null, lang: TranslatedLocale, d: TemplateDraft): boolean {
   const saved = draftOf(t);
   const flagged = lang === "uk" ? t?.ukStale : t?.enStale;
   const untouched = lang === "uk" ? d.uk === saved.uk : d.en === saved.en;

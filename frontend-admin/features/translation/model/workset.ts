@@ -3,8 +3,9 @@
  * Чистые функции без React; формат ответа ИИ описан в `prompt.ts`, разбор — в `parse.ts`.
  */
 import type { TrExportItem, TrLocale, TrOrigin, TrStatus } from "./types";
+import { TRANSLATED_LOCALES } from "@shop/core/i18n";
 
-export const LOCALES: TrLocale[] = ["uk", "en"];
+export const LOCALES: TrLocale[] = [...TRANSLATED_LOCALES];
 
 // ============================================================================
 // Work set

@@ -198,4 +198,14 @@ class ReplyTemplateServiceTest {
         assertThat(saved.get(0).getSourceHash()).isEqualTo(SourceHash.sha256Hex("Новый"));
         verify(translations, never()).delete(uk);
     }
+
+    @Test
+    void pickFollowsTheCustomersLanguageThenUkrainianThenRussian() {
+        assertThat(ReplyTemplateService.pick("р", "у", "e", "en").body()).isEqualTo("e");
+        assertThat(ReplyTemplateService.pick("р", "у", " ", "en").body()).isEqualTo("у");
+        assertThat(ReplyTemplateService.pick("р", "у", "e", "ru").lang()).isEqualTo("ru");
+        assertThat(ReplyTemplateService.pick("р", "у", "e", null).lang()).isEqualTo("uk");
+        assertThat(ReplyTemplateService.pick("р", "у", "e", "de").lang()).isEqualTo("uk");
+        assertThat(ReplyTemplateService.pick("р", null, "e", "uk")).isEqualTo(new ReplyTemplateService.Picked("р", "ru"));
+    }
 }

@@ -32,7 +32,7 @@ export function storeJsonLd(locale: Locale) {
           "@type": "ContactPoint",
           contactType: "customer service",
           url: `https://t.me/${OWNER_TELEGRAM}`,
-          availableLanguage: ["uk", "ru", "en"],
+          availableLanguage: [...LOCALES],
           areaServed: "UA",
         },
         hasMerchantReturnPolicy: returnPolicyLd(),

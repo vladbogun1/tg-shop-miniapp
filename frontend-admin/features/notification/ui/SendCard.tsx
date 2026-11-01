@@ -11,6 +11,7 @@ import { AUDIENCE_LABEL } from "../model/compose";
 import type { BroadcastAudience, ShopLang } from "../model/types";
 import { BroadcastProgress } from "./BroadcastProgress";
 import type { Compose } from "./use-compose";
+import { LOCALES } from "@shop/core/i18n";
 
 interface Props {
   c: Compose;
@@ -46,9 +47,7 @@ export function SendCard({ c, audiences, status, starting, onRequest }: Props) {
             onChange={(v) => c.setField("lang", v as ShopLang | "")}
             options={[
               { value: "", label: "Все языки" },
-              { value: "uk", label: LANG_LABEL.uk },
-              { value: "ru", label: LANG_LABEL.ru },
-              { value: "en", label: LANG_LABEL.en },
+              ...LOCALES.map((l) => ({ value: l, label: LANG_LABEL[l] })),
             ]}
           />
         </div>

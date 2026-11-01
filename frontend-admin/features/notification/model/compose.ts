@@ -1,5 +1,7 @@
 import { validateTelegramHtml } from "@shop/core/telegram-html";
 import type { BroadcastAudience, BroadcastStartBody, BroadcastTestBody, ShopLang } from "./types";
+import { LOCALES } from "@shop/core/i18n";
+import { LANG_SHORT } from "@/lib/shop-lang";
 
 /** Telegram refuses longer messages (the backend checks the same). */
 export const MAX_LEN = 4096;
@@ -10,9 +12,7 @@ export const EMPTY_TEXTS: Texts = { main: "", uk: "", ru: "", en: "" };
 
 export const TEXT_TABS: { value: TextKey; label: string }[] = [
   { value: "main", label: "Основной" },
-  { value: "uk", label: "UA" },
-  { value: "ru", label: "RU" },
-  { value: "en", label: "EN" },
+  ...LOCALES.map((l) => ({ value: l, label: LANG_SHORT[l] })),
 ];
 
 export const AUDIENCE_LABEL: Record<BroadcastAudience, string> = {
@@ -95,7 +95,7 @@ export function testBody(text: string, id: number | undefined, v: Pick<ComposeVa
 
 /** Какие языковые версии заполнены (для подтверждения). */
 export function filledVersions(texts: Texts): ShopLang[] {
-  return (["uk", "ru", "en"] as ShopLang[]).filter((l) => texts[l].trim());
+  return LOCALES.filter((l) => texts[l].trim());
 }
 
 /** Короткий текст без тегов для строки истории. */

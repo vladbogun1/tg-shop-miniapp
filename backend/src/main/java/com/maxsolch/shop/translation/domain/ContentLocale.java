@@ -1,7 +1,11 @@
 package com.maxsolch.shop.translation.domain;
 
+import com.maxsolch.shop.platform.i18n.AppLocale;
+
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Stream;
 
 /**
  * Content languages. Russian is the source of truth stored in the main tables; only {@code uk} and
@@ -10,15 +14,17 @@ import java.util.Locale;
  */
 public final class ContentLocale {
 
-    public static final String RU = "ru";
-    public static final String UK = "uk";
-    public static final String EN = "en";
+    public static final String RU = AppLocale.CONTENT_SOURCE.code();
+    /** Named for the fixed label_uk / label_en columns, which stage 2 of the language list removes. */
+    public static final String UK = AppLocale.UK.code();
+    public static final String EN = AppLocale.EN.code();
 
     /** Languages that have translations (and are accepted by the admin import). */
-    public static final List<String> TRANSLATED = List.of(UK, EN);
+    public static final List<String> TRANSLATED = Arrays.stream(AppLocale.values())
+            .filter(l -> l != AppLocale.CONTENT_SOURCE).map(AppLocale::code).toList();
 
     /** Every content language, source first — what the cross-language search scans. */
-    public static final List<String> ALL = List.of(RU, UK, EN);
+    public static final List<String> ALL = Stream.concat(Stream.of(RU), TRANSLATED.stream()).toList();
 
     private ContentLocale() {
     }

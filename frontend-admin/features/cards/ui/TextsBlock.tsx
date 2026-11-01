@@ -15,6 +15,8 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Diff, InlineText, SourceText, wordDiff } from "@/features/translation";
 import { ruAccepted, translationSendable, type ProductSel } from "../model/selection";
 import { CardIssues, Check } from "./shared";
+import type { TranslatedLocale } from "@shop/core/i18n";
+import { LANGS } from "../model/review-edit";
 
 const LANG_LABEL: Record<TextLang, string> = { ru: "RU", uk: "UA", en: "EN" };
 
@@ -47,7 +49,7 @@ export function TextsBlock({
           size="sm"
           value={lang}
           onChange={setLang}
-          options={(["ru", "uk", "en"] as const).map((l) => ({ value: l, label: LANG_LABEL[l], count: count(l) }))}
+          options={LANGS.map((l) => ({ value: l, label: LANG_LABEL[l], count: count(l) }))}
         />
         {hasTranslations && (
           <label className="ml-auto flex cursor-pointer items-center gap-2 text-[12.5px] font-semibold text-[var(--text-muted)]">
@@ -138,7 +140,7 @@ function RuText({ t, sel, onSel, onEdit }: { t: TextReview; sel: ProductSel; onS
   );
 }
 
-function LangText({ t, lang, sel, onEdit }: { t: TextReview; lang: "uk" | "en"; sel: ProductSel; onEdit: (v: string) => void }) {
+function LangText({ t, lang, sel, onEdit }: { t: TextReview; lang: TranslatedLocale; sel: ProductSel; onEdit: (v: string) => void }) {
   const sendable = translationSendable(t, lang, sel);
   const why = !sel.translations
     ? "переводы выключены"

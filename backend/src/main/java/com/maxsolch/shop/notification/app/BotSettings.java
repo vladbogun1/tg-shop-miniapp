@@ -1,11 +1,13 @@
 package com.maxsolch.shop.notification.app;
 
+import com.maxsolch.shop.platform.i18n.AppLocale;
 import com.maxsolch.shop.settings.app.SettingsContribution;
 import com.maxsolch.shop.settings.domain.SettingDefinition;
 import com.maxsolch.shop.settings.domain.SettingGroup;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static com.maxsolch.shop.settings.domain.SettingDefinition.boolSetting;
@@ -32,18 +34,20 @@ public class BotSettings implements SettingsContribution {
 
     @Override
     public List<SettingDefinition> definitions() {
-        return List.of(
-            textSetting(BOT_START_TEXT_PREFIX + "uk", "bot",
-                    "Приветствие /start — украинский",
-                    "Пусто — стандартный текст. Обычный текст без разметки, до 2000 символов.",
-                    "", 2000),
-            textSetting(BOT_START_TEXT_PREFIX + "ru", "bot",
-                    "Приветствие /start — русский",
-                    "Пусто — стандартный текст. Обычный текст без разметки, до 2000 символов.",
-                    "", 2000),
-            textSetting(BOT_START_TEXT_PREFIX + "en", "bot",
-                    "Приветствие /start — английский",
-                    "Пусто — стандартный текст. Обычный текст без разметки, до 2000 символов.",
-                    "", 2000));
+        return Arrays.stream(AppLocale.values())
+                .map(l -> textSetting(BOT_START_TEXT_PREFIX + l.code(), "bot",
+                        "Приветствие /start — " + languageName(l),
+                        "Пусто — стандартный текст. Обычный текст без разметки, до 2000 символов.",
+                        "", 2000))
+                .toList();
+    }
+
+    /** The language in the admin's words (the settings page is Russian); no default: a new language must be named. */
+    private static String languageName(AppLocale l) {
+        return switch (l) {
+            case UK -> "украинский";
+            case RU -> "русский";
+            case EN -> "английский";
+        };
     }
 }

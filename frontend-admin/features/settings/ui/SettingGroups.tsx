@@ -5,6 +5,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import type { SettingItem } from "../api";
 import { isDirty, type Draft } from "../model/draft";
 import { SettingField } from "./SettingField";
+import { LOCALES, type Locale } from "@shop/core/i18n";
 
 export interface GroupProps {
   items: SettingItem[];
@@ -26,12 +27,9 @@ export function GroupFields({ items, draft, onChange, onReset }: GroupProps) {
 }
 
 const BOT_TEXT_PREFIX = "bot.startText.";
-type BotLang = "uk" | "ru" | "en";
-const BOT_LANGS: { value: BotLang; label: string }[] = [
-  { value: "uk", label: "Укр" },
-  { value: "ru", label: "Рус" },
-  { value: "en", label: "Eng" },
-];
+type BotLang = Locale;
+const BOT_LANG_LABEL: Record<BotLang, string> = { uk: "Укр", ru: "Рус", en: "Eng" };
+const BOT_LANGS: { value: BotLang; label: string }[] = LOCALES.map((l) => ({ value: l, label: BOT_LANG_LABEL[l] }));
 
 /** Три приветствия /start — один редактор с переключателем языка. */
 export function BotTexts({ items, draft, onChange, onReset }: GroupProps) {

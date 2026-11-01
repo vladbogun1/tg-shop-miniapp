@@ -22,6 +22,9 @@ import {
   type TemplateLang,
 } from "../../model/templates";
 import { LOCALE_LABEL, PLACEHOLDERS } from "./template-meta";
+import { CONTENT_SOURCE_LOCALE, TRANSLATED_LOCALES, type TranslatedLocale } from "@shop/core/i18n";
+
+const LANGS = [CONTENT_SOURCE_LOCALE, ...TRANSLATED_LOCALES] as const;
 
 export function TemplateEditor({
   open,
@@ -53,7 +56,7 @@ export function TemplateEditor({
   }, [open, id, reset, templateRef]);
 
   const value = draft[lang];
-  const stale = (l: "uk" | "en") => isTranslationStale(template, l, draft);
+  const stale = (l: TranslatedLocale) => isTranslationStale(template, l, draft);
   const setValue = (v: string) => setField(lang, v);
 
   return (
@@ -76,7 +79,7 @@ export function TemplateEditor({
       <div className="flex flex-col gap-3">
         <Input label="Название (видите только вы)" {...form.register("title")} maxLength={128} />
         <div className="flex gap-1.5">
-          {(["ru", "uk", "en"] as const).map((l) => (
+          {LANGS.map((l) => (
             <button
               key={l}
               type="button"

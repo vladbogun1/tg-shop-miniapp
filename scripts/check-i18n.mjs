@@ -26,7 +26,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(path.join(ROOT, "package.json"));
 const ts = require("typescript");
 
-const LANGS = ["ru", "uk", "en"];
+// Список языков — из packages/core/src/i18n.ts (единственный источник), а не копия.
+const LANGS = [...fs.readFileSync(path.join(ROOT, "packages/core/src/i18n.ts"), "utf8").match(/LOCALES = \[([^\]]+)\] as const/)[1].matchAll(/"(\w+)"/g)].map((m) => m[1]);
+if (LANGS.length === 0 || !LANGS.includes("ru") || !LANGS.includes("uk") || !LANGS.includes("en")) throw new Error("check-i18n: не разобрал LOCALES");
 const APPS = { frontend: "Mini App", site: "сайт" };
 const SHARED_DIR = "packages/customer/src/i18n";
 const problems = [];
@@ -43,7 +45,7 @@ function loadTs(file) {
   const mod = { exports: {} };
   cache.set(abs, mod.exports);
   const req = (spec) => {
-    const m = /^@shop\/customer\/i18n\/(shared-(?:ru|uk|en))$/.exec(spec);
+    const m = /^@shop\/customer\/i18n\/(shared-[a-z]{2})$/.exec(spec);
     if (m) return loadTs(`${SHARED_DIR}/${m[1]}.ts`);
     throw new Error(`check-i18n: неожиданный импорт «${spec}» в ${file}`);
   };
@@ -85,7 +87,7 @@ const placeholders = (v) => [...new Set(forms(v).flatMap((s) => [...s.matchAll(/
 // ---- 1–3: полнота, плейсхолдеры, алфавит ---------------------------------------------------------------
 function checkSet(label, byLang) {
   const ruKeys = Object.keys(byLang.ru);
-  for (const l of ["uk", "en"]) {
+  for (const l of LANGS.filter((x) => x !== "ru")) {
     for (const k of ruKeys) if (!(k in byLang[l])) fail(`${label}: в ${l} нет ключа «${k}»`);
     for (const k of Object.keys(byLang[l])) if (!(k in byLang.ru)) fail(`${label}: в ${l} лишний ключ «${k}»`);
   }

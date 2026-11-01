@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class MessageBundlesTest {
 
-    private static final List<String> LOCALES = List.of("ru", "uk", "en");
+    private static final List<String> LOCALES = AppLocale.codes();
 
     private static Properties load(String name) throws IOException {
         Properties props = new Properties();
