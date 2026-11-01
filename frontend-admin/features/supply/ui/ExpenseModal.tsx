@@ -47,6 +47,7 @@ export function ExpenseModal({
 
   return (
     <Modal
+      dirty={form.formState.isDirty}
       open
       onClose={onClose}
       size="md"

@@ -69,6 +69,7 @@ export function PromoFormModal({ open, editing, onClose, onSaved }: Props) {
 
   return (
     <Modal
+      dirty={form.formState.isDirty}
       open={open}
       onClose={onClose}
       closeOnBackdrop={false}
