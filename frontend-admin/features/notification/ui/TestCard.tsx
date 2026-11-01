@@ -31,7 +31,7 @@ export function TestCard({ c }: { c: Compose }) {
       if (to === null) return toast.error("Выберите получателя в списке или введите его Telegram ID");
       id = to;
     }
-    testM.mutate({ body: testBody(text, id, values), toMe });
+    testM.mutate({ body: testBody(text, id, values, c.photo?.photoId), toMe });
   }
 
   return (

@@ -7,13 +7,14 @@
  *  GET  /api/admin/support/threads/{id}            → SupportThread
  *  GET  /api/admin/support/threads/{id}/messages   → SupportMessage[] oldest-first, `before` = older
  *  POST /api/admin/support/threads/{id}/messages   → SupportMessage
+ *  POST /api/admin/support/threads                 → SupportThread (admin writes first: { userId, subject?, text })
  *  POST /api/admin/support/threads/{id}/attachments (multipart) → { key }
  *  POST /api/admin/support/threads/{id}/read | close | reopen
  */
 import { apiGet, apiPost, uploadFile } from "@/lib/http";
 import type { SendMessageRequest } from "@shop/core/types";
 import { SUPPORT_CHAT_PAGE } from "./model/chat";
-import type { SupportMessage, SupportThread, SupportThreadsQuery } from "./model/types";
+import type { StartThreadBody, SupportMessage, SupportThread, SupportThreadsQuery } from "./model/types";
 
 const thread = (id: string) => `/api/admin/support/threads/${encodeURIComponent(id)}`;
 
@@ -27,6 +28,8 @@ export const supportApi = {
     if (params.limit) sp.set("limit", String(params.limit));
     return apiGet<SupportThread[]>(`/api/admin/support/threads?${sp.toString()}`);
   },
+
+  start: (body: StartThreadBody) => apiPost<SupportThread>("/api/admin/support/threads", body),
 
   thread: (id: string) => apiGet<SupportThread>(thread(id)),
 
