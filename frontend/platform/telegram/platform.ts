@@ -2,6 +2,7 @@
 
 /** Платформа Mini App (интерфейс — @shop/customer/platform/platform): токен в памяти, события видимости вкладки. */
 import type { Platform } from "@shop/customer/platform/platform";
+import { haptic } from "./haptics";
 import { getAccessToken, putCartOnUnload } from "@/lib/api";
 
 function onVisibility(want: "visible" | "hidden", cb: () => void): () => void {
@@ -19,4 +20,5 @@ export const telegramPlatform: Platform = {
   onForeground: (cb) => onVisibility("visible", cb),
   onBackground: (cb) => onVisibility("hidden", cb),
   putCartOnUnload,
+  haptic,
 };

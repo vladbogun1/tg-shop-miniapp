@@ -1,23 +1,6 @@
 import type { LooseT } from "@shop/core/i18n";
 import type { GiftProgress, GiftTierInfo } from "@shop/core/giftcase";
-import type { DeliveryMethod, NpWarehouse, PaymentOption } from "@/lib/api";
-
-/**
- * The chosen option among the visible ones. A prepayment option is hidden when the whole order
- * costs no more than the prepayment: if the customer had picked one and the total then dropped
- * (promo, quantity), the choice moves to the first full-payment option.
- */
-export function resolvePayment(options: PaymentOption[], paymentId: string | null): PaymentOption | null {
-  return (
-    options.find((p) => p.id === paymentId) ??
-    (paymentId ? options.find((p) => !p.requiresPrepayment) ?? null : null)
-  );
-}
-
-/** What the customer pays right now: the prepayment for prepay options, otherwise the full total. */
-export function dueNowOf(chosen: PaymentOption | null, total: number): number {
-  return chosen?.requiresPrepayment && chosen.prepaymentMinor ? Math.min(chosen.prepaymentMinor, total) : total;
-}
+import type { DeliveryMethod, NpWarehouse } from "@/lib/api";
 
 export function stepIsValid(
   step: number,

@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { giftProgress, guaranteedDiscountMinor, type GiftChoice } from "@shop/core/giftcase";
-import { visiblePaymentOptions } from "@shop/core/orders";
+import { useChosenPayment } from "@shop/customer/checkout/payment-choice";
 import { usePromoPreview } from "@/features/cart";
 import { useGift } from "@/features/gift";
-import { dueNowOf, resolvePayment } from "../model/totals";
 import { usePaymentOptionsQuery } from "../queries";
 
 /**
@@ -27,16 +26,7 @@ export function useCheckoutOrder(promoCode: string, subtotal: number) {
   const giftDiscount = giftChoice === "DISCOUNT" ? guaranteedDiscountMinor(giftTier, baseTotal) : 0;
   const total = baseTotal - giftDiscount;
 
-  const [paymentId, setPaymentId] = useState<string | null>(null);
-  // A prepayment option is hidden when the whole order costs no more than the prepayment. The choice
-  // is derived here so the summary never shows a hidden option, and synced into state below so it sticks.
-  const paymentOptions = visiblePaymentOptions(paymentQuery.data ?? [], total);
-  const chosenPayment = resolvePayment(paymentOptions, paymentId);
-  const chosenPaymentId = chosenPayment?.id ?? null;
-  const optionsLoaded = !!paymentQuery.data;
-  useEffect(() => {
-    if (optionsLoaded && chosenPaymentId !== paymentId) setPaymentId(chosenPaymentId);
-  }, [optionsLoaded, chosenPaymentId, paymentId]);
+  const pay = useChosenPayment(paymentQuery.data, total);
 
   return {
     paymentQuery,
@@ -50,10 +40,10 @@ export function useCheckoutOrder(promoCode: string, subtotal: number) {
     giftTier,
     giftDiscount,
     total,
-    paymentOptions,
-    chosenPayment,
-    chosenPaymentId,
-    setPaymentId,
-    dueNow: dueNowOf(chosenPayment, total),
+    paymentOptions: pay.options,
+    chosenPayment: pay.chosen,
+    chosenPaymentId: pay.chosenId,
+    setPaymentId: pay.choose,
+    dueNow: pay.dueNow,
   };
 }

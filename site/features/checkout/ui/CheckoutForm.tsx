@@ -12,17 +12,16 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { type DeliveryMethod } from "@shop/core/types";
 import { isValidPhone } from "@shop/core/phone";
-import { type OrderLimitCode } from "@shop/core/orders";
-import { buildCreateOrderRequest, isValidCustomerName } from "@shop/customer/checkout/order-request";
-import { useCreateOrder } from "@shop/customer/checkout/use-create-order";
+import { isValidCustomerName } from "@shop/customer/checkout/order-request";
+import { usePlaceOrder } from "@shop/customer/checkout/use-place-order";
 import { useNpSelection } from "@shop/customer/delivery/np-selection";
-import { markGiftCaseAutoOpen } from "@shop/ui/gift-case";
 import { orderCreatedHref } from "@/features/payment";
 import { useI18n } from "@/i18n/context";
 import { trackOrderCreated } from "@/lib/analytics";
 import { api } from "@/lib/api";
+import { webPlatform } from "@/lib/platform";
 import { cartAfterOrder, flushCart, useCart, useCartSubtotal, useCartValidation } from "@/features/cart";
-import { describeFailure, firstInvalidSection } from "../model/failure";
+import { firstInvalidSection } from "../model/sections";
 import { useCheckoutTotals, useLastOrderPrefill, usePaymentChoice } from "../queries";
 import { ContactsSection } from "./ContactsSection";
 import { DeliverySection } from "./DeliverySection";
@@ -53,14 +52,6 @@ export function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void
   const [prefilled, setPrefilled] = useState(false);
   useLastOrderPrefill(np, { setName, setPhone, setDelivery, setPrefilled });
 
-  // One idempotency key per checkout attempt (useApiMutation, idempotent); a quantity change still in its
-  // debounce reaches the server cart BEFORE the order (flushCart runs first, inside the mutation).
-  const placeOrder = useCreateOrder(api.checkout, flushCart);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  /** The last refusal was an anti-bot limit (TOO_MANY_UNPAID → link to my orders). */
-  const [limitCode, setLimitCode] = useState<OrderLimitCode | null>(null);
-
   const { promo, promoValid, discount, baseTotal, gift, giftTier, giftChoice, setGiftChoice, giftDiscount, total } = useCheckoutTotals(promoCode, subtotal);
   const pay = usePaymentChoice(total);
 
@@ -71,48 +62,40 @@ export function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void
   const hasProblems = lines.some((l) => l.stock <= 0);
   const formOk = nameOk && phoneOk && deliveryOk && paymentOk && !hasProblems && subtotal > 0;
 
-  async function submit() {
+  const orderable = lines.filter((l) => l.stock > 0);
+  // The scenario is shared with the Mini App; the site's own: cart store, analytics, the way to the order page.
+  const place = usePlaceOrder(
+    {
+      api: api.checkout,
+      platform: webPlatform,
+      t,
+      beforePlace: flushCart,
+      dropPromo: () => setPromoCode(""),
+      onPlaced(created, orderedKeys) {
+        trackOrderCreated(created.orderId);
+        cartAfterOrder(orderedKeys);
+        onPlaced(created.orderId);
+        const orderPage = href(`/account/orders/${created.orderId}`);
+        // Something to pay: the order page shows the "order created" step — amount, 24 h countdown,
+        // «Оплатити» (the monobank form opens over the page) and «Скасувати». Nothing opens by itself.
+        router.push(created.amountDueMinor > 0 ? orderCreatedHref(orderPage) : orderPage);
+      },
+    },
+    { lines: orderable, name, phone, comment, promoCode, promoValid, delivery, warehouse, payment: pay.chosen, giftTier, giftDiscount },
+  );
+  const { submitting, submitError, limitCode, setSubmitError } = place;
+
+  function submit() {
     setTouched(true);
-    setSubmitError(null);
-    setLimitCode(null);
     if (!formOk) {
       setSubmitError(hasProblems ? t("cart.hasProblems") : t("checkout.fixErrors"));
       document.getElementById(firstInvalidSection({ nameOk, phoneOk, deliveryOk }))?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
-    if (submitting) return;
-    setSubmitting(true);
-    const orderable = lines.filter((l) => l.stock > 0);
-    const body = buildCreateOrderRequest({
-      lines: orderable,
-      name,
-      phone,
-      comment,
-      // ONLY a code the server has just confirmed (see docs/archive/UI-FIXES.md §6).
-      promoCode: promoValid ? promoCode.trim() : undefined,
-      delivery,
-      warehouse,
-      paymentOptionId: pay.chosen!.id,
-      giftChoice: giftTier ? (giftDiscount > 0 ? "DISCOUNT" : "CASE") : undefined,
-    });
-    try {
-      const created = await placeOrder.mutateAsync(body);
-      trackOrderCreated(created.orderId);
-      if (giftTier && giftDiscount === 0) markGiftCaseAutoOpen(created.orderId);
-      cartAfterOrder(orderable.map((l) => l.key));
-      onPlaced(created.orderId);
-      const orderPage = href(`/account/orders/${created.orderId}`);
-      // Something to pay: the order page shows the "order created" step — amount, 24 h countdown,
-      // «Оплатити» (the monobank form opens over the page) and «Скасувати». Nothing opens by itself.
-      router.push(created.amountDueMinor > 0 ? orderCreatedHref(orderPage) : orderPage);
-    } catch (e) {
-      const failure = describeFailure(e, t);
-      if (failure.dropPromo) setPromoCode("");
-      setSubmitError(failure.message);
-      setLimitCode(failure.limitCode);
-      setSubmitting(false);
-    }
+    void place.submit();
   }
+
+
 
   return (
     <div className="container-site pt-8">
@@ -122,7 +105,7 @@ export function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
-          void submit();
+          submit();
         }}
         className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-10"
       >
