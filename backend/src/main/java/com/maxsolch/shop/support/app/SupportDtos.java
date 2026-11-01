@@ -1,5 +1,8 @@
 package com.maxsolch.shop.support.app;
 
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
 import java.time.Instant;
 
 /** Wire shapes of {@code /api/me/support/**}, {@code /api/admin/support/**} and the STOMP topic. */
@@ -70,5 +73,9 @@ public final class SupportDtos {
     }
 
     public record CountDto(long count) {
+    }
+
+    /** Admin writes first: {@code userId} is the customer's id (their Telegram id); the subject is optional. */
+    public record StartThreadRequest(@NotNull Long userId, @Size(max = 255) String subject, String text) {
     }
 }
