@@ -38,9 +38,9 @@ npm run dev -w frontend-admin   # админка  → http://localhost:3005
 **База.** Снять дамп на сервере и залить локально:
 
 ```bash
-SRV="ubuntu@132.145.132.80"
-KEY="C:/Users/nikto/oracleserver.key"
-ssh -i $KEY $SRV 'cd /home/ubuntu/TELEGRAM_BOTS/maxsolch-v2 && \
+# SRV (user@host), KEY (путь к ключу), PROJ_DIR (каталог проекта на сервере №1) — во внутренней базе знаний владельца
+: "${SRV:?}" "${KEY:?}" "${PROJ_DIR:?}"
+ssh -i "$KEY" "$SRV" 'cd '"$PROJ_DIR"' && \
   docker compose exec -T mysql sh -c "mysqldump -uroot -p\$MYSQL_ROOT_PASSWORD --single-transaction tgshop_v2" | gzip' \
   > .devdata/prod.sql.gz
 
@@ -54,7 +54,7 @@ gunzip -c .devdata/prod.sql.gz | docker compose exec -T mysql mysql -uroot -p"$D
 контейнером:
 
 ```bash
-ssh -i $KEY $SRV 'docker run --rm -v maxsolch-v2_minio_data:/d alpine tar -C /d -cf - product-images' \
+ssh -i "$KEY" "$SRV" 'docker run --rm -v maxsolch-v2_minio_data:/d alpine tar -C /d -cf - product-images' \
   > .devdata/product-images.tar
 docker run --rm -i -v tg-shop-v2_minio_data:/d alpine sh -c 'rm -rf /d/product-images && tar -C /d -xf -' \
   < .devdata/product-images.tar
