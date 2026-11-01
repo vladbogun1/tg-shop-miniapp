@@ -8,7 +8,11 @@ import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.customer.app.Customers;
+import com.maxsolch.shop.order.domain.OrderError;
+import com.maxsolch.shop.platform.error.DomainException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import static com.maxsolch.shop.platform.util.Texts.trimToNull;
 
@@ -17,8 +21,9 @@ import static com.maxsolch.shop.platform.util.Texts.trimToNull;
  * checked, the buyer's Telegram name is snapshotted, the order is created and «Журнал → Бот и сайт» gets a line
  * for the order or the refusal.
  *
- * <p>Not {@code @Transactional}: {@link Checkout#createOrder} is the transaction; the journal entry is written
- * after it has committed (or failed).
+ * <p>Not {@code @Transactional}: with an idempotency key this class opens the transaction itself (the key row
+ * and the order commit together, see {@link OrderIdempotencyService}); without a key {@link Checkout#createOrder}
+ * is the transaction. The journal entry is written after it has committed (or failed).
  */
 @Service
 public class OrderPlacement {
@@ -33,9 +38,12 @@ public class OrderPlacement {
     private final OrderIdempotencyService idempotency;
     private final OrderGuard orderGuard;
     private final ActivityLog activity;
+    private final TransactionTemplate tx;
 
     public OrderPlacement(Checkout checkout, OrderLookup orderLookup, Customers userRepository,
-                          OrderIdempotencyService idempotency, OrderGuard orderGuard, ActivityLog activity) {
+                          OrderIdempotencyService idempotency, OrderGuard orderGuard, ActivityLog activity,
+                          PlatformTransactionManager txManager) {
+        this.tx = new TransactionTemplate(txManager);
         this.checkout = checkout;
         this.orderLookup = orderLookup;
         this.userRepository = userRepository;
@@ -59,7 +67,14 @@ public class OrderPlacement {
 
         Order order;
         try {
-            order = create(userId, web, draft);
+            order = createOnce(userId, web, idempotencyKey, draft);
+        } catch (OrderIdempotencyService.AlreadyClaimed e) {
+            // a parallel request with the same key won and has committed by now: hand its order back
+            String winner = idempotency.previousOrderId(userId, idempotencyKey);
+            if (winner == null) {
+                throw new DomainException.Conflict(OrderError.IDEMPOTENCY_KEY_BUSY);
+            }
+            return new Placed(winner, OrderMoney.amountDueMinor(orderLookup.get(UuidUtil.toBytes(winner))));
         } catch (RuntimeException e) {
             activity.record(activity.fromRequest("ORDER_FAILED")
                     .text("Заказ не оформлен: " + e.getMessage())
@@ -69,7 +84,6 @@ public class OrderPlacement {
             throw e;
         }
         String orderId = UuidUtil.toString(order.getId());
-        idempotency.remember(userId, idempotencyKey, orderId);
         activity.record(activity.fromRequest("ORDER_CREATED")
                 .order(order.getId())
                 .text("Заказ #" + orderId.substring(0, 8) + " на " + MoneyFormat.amount(order.getTotalMinor())
@@ -83,6 +97,22 @@ public class OrderPlacement {
                 .detail("delivery", order.getDeliveryMethod()));
         // Next step for the app: POST /api/me/orders/{id}/payment → monobank payment page.
         return new Placed(orderId, OrderMoney.amountDueMinor(order));
+    }
+
+    /** The order and its key row in one transaction; without a key just the order. */
+    private Order createOnce(long userId, boolean web, String idempotencyKey, CreateOrderCommand draft) {
+        String key = OrderIdempotencyService.normalize(idempotencyKey);
+        if (key == null) {
+            return create(userId, web, draft);
+        }
+        return tx.execute(status -> {
+            // the buyer's lock before any read of the transaction (the guard reads): gifts and the monthly limit
+            userRepository.lockForUpdate(userId);
+            idempotency.claim(userId, key);
+            Order order = create(userId, web, draft);
+            idempotency.attach(userId, key, order.getId());
+            return order;
+        });
     }
 
     private Order create(long userId, boolean web, CreateOrderCommand draft) {
