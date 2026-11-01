@@ -4686,27 +4686,27 @@ export interface components {
             /** Format: int64 */
             amountMinor: number;
             /** Format: date-time */
-            appliedAt: string;
-            approvalCode: string;
+            appliedAt: string | null;
+            approvalCode: string | null;
             /** Format: date-time */
             createdAt: string;
-            errCode: string;
+            errCode: string | null;
             /** Format: date-time */
-            expiresAt: string;
-            failureReason: string;
+            expiresAt: string | null;
+            failureReason: string | null;
             /** Format: int64 */
-            feeMinor: number;
+            feeMinor: number | null;
             /** Format: int64 */
-            finalAmountMinor: number;
+            finalAmountMinor: number | null;
             invoiceId: string;
-            maskedPan: string;
-            pageUrl: string;
-            paymentMethod: string;
-            paymentSystem: string;
+            maskedPan: string | null;
+            pageUrl: string | null;
+            paymentMethod: string | null;
+            paymentSystem: string | null;
             refundPending: boolean;
             /** Format: int64 */
             refundedMinor: number;
-            rrn: string;
+            rrn: string | null;
             /** @enum {string} */
             status: "none" | "created" | "processing" | "hold" | "success" | "failure" | "reversed" | "expired";
             /** Format: date-time */
@@ -5260,16 +5260,17 @@ export interface components {
             amountMinor: number;
             code: string;
             /** Format: date-time */
-            createdAt: string;
+            createdAt: string | null;
             /** Format: date-time */
-            expiresAt: string;
+            expiresAt: string | null;
             /** Format: int64 */
             maxDiscountMinor: number;
-            orderId: string;
+            orderId: string | null;
             /** Format: int32 */
             percent: number;
-            source: string;
-            state: string;
+            source: string | null;
+            /** @enum {string} */
+            state: "ACTIVE" | "USED" | "EXPIRED";
         };
         BooleanFlagRequest: {
             active?: boolean;
@@ -6194,11 +6195,11 @@ export interface components {
             author: string;
             /** Format: int64 */
             id: number;
-            imageUrl: string;
-            productSlug: string;
+            imageUrl: string | null;
+            productSlug: string | null;
             productTitle: string;
             /** Format: date-time */
-            publishedAt: string;
+            publishedAt: string | null;
             /** Format: int32 */
             rating: number;
             text: string;
@@ -6966,26 +6967,27 @@ export interface components {
             variantName: string;
         };
         MyReview: {
-            adminReply: string;
+            adminReply: string | null;
             /** Format: date-time */
             createdAt: string;
             editable: boolean;
             /** Format: int64 */
             id: number;
-            imageUrl: string;
-            orderId: string;
+            imageUrl: string | null;
+            orderId: string | null;
             /** Format: int64 */
             orderItemId: number;
             productId: string;
-            productSlug: string;
+            productSlug: string | null;
             /** Format: date-time */
-            publishedAt: string;
+            publishedAt: string | null;
             /** Format: int32 */
             rating: number;
-            status: string;
+            /** @enum {string} */
+            status: "PENDING" | "PUBLISHED" | "HIDDEN";
             text: string;
             title: string;
-            variantName: string;
+            variantName: string | null;
         };
         NotificationAdminPushControllerSubscribeRequest: {
             endpoint: string;
@@ -7405,15 +7407,15 @@ export interface components {
         };
         PendingLine: {
             /** Format: date-time */
-            deliveredAt: string;
-            imageUrl: string;
+            deliveredAt: string | null;
+            imageUrl: string | null;
             orderId: string;
             /** Format: int64 */
             orderItemId: number;
             productId: string;
-            productSlug: string;
+            productSlug: string | null;
             title: string;
-            variantName: string;
+            variantName: string | null;
         };
         PeriodInfo: {
             channel: string;
@@ -7693,20 +7695,20 @@ export interface components {
             soldMinor: number;
         };
         PublicReview: {
-            adminReply: string;
+            adminReply: string | null;
             /** Format: date-time */
-            adminReplyAt: string;
+            adminReplyAt: string | null;
             author: string;
             /** Format: date-time */
             createdAt: string;
             /** Format: int64 */
             id: number;
             /** Format: date-time */
-            publishedAt: string;
+            publishedAt: string | null;
             /** Format: int32 */
             rating: number;
             text: string;
-            variantName: string;
+            variantName: string | null;
         };
         PushConfig: {
             /** Format: int32 */
@@ -8009,7 +8011,7 @@ export interface components {
         };
         ReviewSummary: {
             /** Format: double */
-            avg: number;
+            avg: number | null;
             /** Format: int64 */
             count: number;
             distribution: number[];
