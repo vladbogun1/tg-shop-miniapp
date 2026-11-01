@@ -33,8 +33,20 @@ public interface OrderOnlinePayments {
     /** Id of an invoice that can give back {@code amountMinor} in one refund; 400 naming what is refundable when none can. */
     String refundableInvoice(byte[] orderId, long amountMinor);
 
-    /** Asks the bank to refund {@code amountMinor} (null = all that is left) of the invoice. */
+    /** Name (plus order id) of the lock that lets one money operation per order run at a time. */
+    String RETURN_LOCK = "order-return:";
+
+    /** Longer than the bank call timeout: the lock frees itself if the instance dies mid-operation. */
+    java.time.Duration RETURN_LOCK_TTL = java.time.Duration.ofMinutes(3);
+
+    /**
+     * Asks the bank to refund {@code amountMinor} (null = all that is left) of the invoice. Takes the order's
+     * {@link #RETURN_LOCK}; a refund already running for the order is refused with a 400.
+     */
     void refund(byte[] orderId, String invoiceId, Long amountMinor);
+
+    /** Same as {@link #refund}, for a caller that already holds the order's {@link #RETURN_LOCK}. */
+    void refundHeld(byte[] orderId, String invoiceId, Long amountMinor);
 
     /**
      * Outcome of {@link #refundAll}.

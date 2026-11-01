@@ -61,18 +61,25 @@ public class PaymentJobs {
         try {
             Instant now = clock.instant();
             if (payments.isEnabled()) {
-                for (PaymentInvoice inv : invoices.findOpenCreatedBefore(PaymentInvoice.OPEN, now.minus(POLL_AFTER))) {
-                    payments.refresh(inv);
-                }
-                for (PaymentInvoice inv : invoices.findByRefundPendingUntilAfter(now)) {
-                    payments.refresh(inv);
-                }
+                refreshAll(invoices.findOpenCreatedBefore(PaymentInvoice.OPEN, now.minus(POLL_AFTER)));
+                refreshAll(invoices.findByRefundPendingUntilAfter(now));
             }
             cancelOverdue(now);
         } catch (Exception e) {
             log.warn("payment jobs failed: {}", e.getMessage(), e);
         } finally {
             running.set(false);
+        }
+    }
+
+    /** One bad invoice (a poisoned row, an unexpected answer) is logged and skipped: the rest still get polled. */
+    private void refreshAll(Iterable<PaymentInvoice> list) {
+        for (PaymentInvoice inv : list) {
+            try {
+                payments.refresh(inv);
+            } catch (RuntimeException e) {
+                log.warn("payment poll of invoice {} failed: {}", inv.getExternalId(), e.getMessage(), e);
+            }
         }
     }
 

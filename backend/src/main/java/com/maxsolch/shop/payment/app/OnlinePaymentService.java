@@ -15,6 +15,7 @@ import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.i18n.Messages;
 import com.maxsolch.shop.order.app.OrderLookup;
+import com.maxsolch.shop.order.app.OrderOnlinePayments;
 import com.maxsolch.shop.platform.jobs.DbLocks;
 import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.settings.app.SettingsService;
@@ -299,6 +300,19 @@ public class OnlinePaymentService {
      * money is booked when monobank confirms it (status poll / webhook via {@link #applyStatus}).
      */
     public void refund(byte[] orderId, String invoiceId, Long amountMinor) {
+        String key = OrderOnlinePayments.RETURN_LOCK + UuidUtil.toString(orderId);
+        try (DbLocks.Held ignored = locks.tryLock(key, OrderOnlinePayments.RETURN_LOCK_TTL)
+                .orElseThrow(() -> new DomainException.BadRequest(PaymentError.REFUND_IN_PROGRESS))) {
+            refundHeld(orderId, invoiceId, amountMinor);
+        }
+    }
+
+    /**
+     * {@link #refund} for a caller that holds the order's return lock. The remainder is read here, under that lock, so
+     * two requests cannot both see the same one; the bank's request number is the same for the same refund, so a
+     * repeated request is recognised by the bank instead of paying out twice.
+     */
+    public void refundHeld(byte[] orderId, String invoiceId, Long amountMinor) {
         PaymentInvoice inv = invoices.findByProviderAndExternalId(PaymentInvoice.PROVIDER_MONOBANK, invoiceId)
                 .filter(i -> java.util.Arrays.equals(i.getOrderId(), orderId))
                 .orElseThrow(() -> new DomainException.BadRequest(PaymentError.INVOICE_NOT_FOUND));
@@ -312,7 +326,11 @@ public class OnlinePaymentService {
         if (left <= 0) {
             throw new DomainException.BadRequest(PaymentError.ALREADY_REFUNDED);
         }
-        String extRef = "refund-" + UuidUtil.toString(UuidUtil.randomBytes()).substring(0, 13);
+        if (inv.getRefundPendingUntil() != null && inv.getRefundPendingUntil().isAfter(clock.instant())) {
+            // The bank has not confirmed the previous refund yet, so the remainder above is not final.
+            throw new DomainException.BadRequest(PaymentError.MONO_REFUND_PENDING);
+        }
+        String extRef = inv.refundRequestRef(amountMinor == null ? left : amountMinor);
         try {
             boolean full = amountMinor == null || amountMinor == left;
             // A full refund of an untouched invoice returns the sold lines; anything else is one line.

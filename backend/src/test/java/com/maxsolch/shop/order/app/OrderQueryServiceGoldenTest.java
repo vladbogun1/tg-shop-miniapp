@@ -492,17 +492,12 @@ class OrderQueryServiceGoldenTest {
     }
 
     private static OrderMoneyMovement movement(long n, Order o, String kind, String channel, long amount) {
-        OrderMoneyMovement m = new OrderMoneyMovement();
-        m.setId(n);
-        m.setOrderId(o.getId());
-        m.setKind(kind);
-        m.setChannel(channel);
-        m.setAmountMinor(amount);
-        m.setOccurredAt(Instant.parse("2026-10-02T10:05:00Z").plusSeconds(n));
-        m.setAdminName("Админ");
-        m.setNote("note " + n);
-        m.setInvoiceExtId("inv-" + n);
-        m.setSource("ADMIN");
+        OrderMoneyMovement m = OrderMoneyMovement.of(o.getId(), OrderMoneyMovement.Kind.PAYMENT,
+                OrderMoneyMovement.Channel.OTHER, amount, OrderMoneyMovement.Source.ADMIN,
+                Instant.parse("2026-10-02T10:05:00Z").plusSeconds(n), "Админ", "note " + n, "inv-" + n);
+        OrderFixtures.set(m, "id", n);
+        OrderFixtures.set(m, "kind", kind);
+        OrderFixtures.set(m, "channel", channel);
         return m;
     }
 

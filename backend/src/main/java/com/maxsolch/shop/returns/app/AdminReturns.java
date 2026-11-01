@@ -14,6 +14,7 @@ import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.returns.domain.ReturnPlan;
 import com.maxsolch.shop.returns.domain.WizardLine;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -28,6 +29,7 @@ import java.util.List;
  * {@link Returns}, and the audit entries are written on their own. Only one wizard per order runs at a time on any
  * instance (a database lock, {@link DbLocks}); a second submit is refused rather than queued.
  */
+@Slf4j
 @Service
 public class AdminReturns {
 
@@ -41,9 +43,8 @@ public class AdminReturns {
     private final AdminAuditService audit;
     private final DefectWriteoffs defects;
 
-    private static final String LOCK = "order-return:";
-    /** Longer than the bank call timeout: it frees itself if the instance dies mid-wizard. */
-    private static final java.time.Duration LOCK_TTL = java.time.Duration.ofMinutes(3);
+    /** Tries to write the plan down this many times after the bank has already paid out. */
+    private static final int BOOK_ATTEMPTS = 3;
     private final DbLocks locks;
 
     public AdminReturns(AdminOrderQueries queries, OrderLookup orders, Returns returns, ReturnReceiving receiving,
@@ -84,7 +85,7 @@ public class AdminReturns {
         Order order = queries.load(id);
         long mono = plan.monoRefundMinor();
         String key = UuidUtil.toString(order.getId());
-        DbLocks.Held held = locks.tryLock(LOCK + key, LOCK_TTL)
+        DbLocks.Held held = locks.tryLock(OrderOnlinePayments.RETURN_LOCK + key, OrderOnlinePayments.RETURN_LOCK_TTL)
                 .orElseThrow(() -> new DomainException.BadRequest(ReturnsError.RETURN_IN_PROGRESS));
         try {
             // Check first, then the bank, then the books: a refused plan sends no money, and a refund
@@ -93,19 +94,49 @@ public class AdminReturns {
             if (mono > 0) {
                 String monoInvoice = payments.refundableInvoice(order.getId(), mono);
                 try {
-                    payments.refund(order.getId(), monoInvoice, mono);
+                    payments.refundHeld(order.getId(), monoInvoice, mono);
                 } catch (DomainException.BadRequest e) {
                     throw new DomainException.BadRequest(ReturnsError.MONO_REFUND_FAILED, e.getMessage());
                 }
-                audit.record("ORDER_REFUND_ONLINE", "ORDER", id,
+                auditQuietly("ORDER_REFUND_ONLINE", id,
                         "возврат на карту через monobank " + MoneyFormat.uah(mono) + " (мастер возврата)");
             }
-            OrderChange r = returns.registerPlan(order.getId(), plan, audit.currentAdminName(), mono > 0);
-            audit.record("ORDER_RETURN", "ORDER", id, r.auditDetails());
+            OrderChange r = mono > 0 ? bookAfterBank(order, plan, mono, id)
+                    : returns.registerPlan(order.getId(), plan, audit.currentAdminName(), false);
+            auditQuietly("ORDER_RETURN", id, r.auditDetails());
         } finally {
             held.release();
         }
         return orders.get(order.getId());
+    }
+
+    /**
+     * The bank has paid out, so the goods and manual refunds are saved even through a short database hiccup: the
+     * write is one transaction, so a failed attempt left nothing and can simply be repeated. If it still fails, the
+     * admin gets a message that says the money has gone (a repeat would send it again) and the audit log keeps the fact.
+     */
+    private OrderChange bookAfterBank(Order order, ReturnPlan plan, long mono, String id) {
+        RuntimeException last = null;
+        for (int attempt = 1; attempt <= BOOK_ATTEMPTS; attempt++) {
+            try {
+                return returns.registerPlan(order.getId(), plan, audit.currentAdminName(), true);
+            } catch (RuntimeException e) {
+                last = e;
+                log.warn("return of order {} after the bank refund: attempt {} failed: {}", id, attempt, e.getMessage());
+            }
+        }
+        auditQuietly("ORDER_REFUND_ONLINE_UNBOOKED", id, "monobank вернул " + MoneyFormat.uah(mono)
+                + ", но возврат (товар, остатки, строки) не записан: " + last.getMessage());
+        throw new DomainException.BadRequest(ReturnsError.MONO_REFUND_SENT_NOT_BOOKED, MoneyFormat.uah(mono));
+    }
+
+    /** After the money moved a failed audit line must not look like a failed return. */
+    private void auditQuietly(String action, String orderId, String details) {
+        try {
+            audit.record(action, "ORDER", orderId, details);
+        } catch (RuntimeException e) {
+            log.error("audit {} of order {} not written: {}", action, orderId, e.getMessage());
+        }
     }
 
     /** The refused / returned parcel is back at the shop. */
