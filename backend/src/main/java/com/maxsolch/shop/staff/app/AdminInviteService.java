@@ -243,23 +243,12 @@ public class AdminInviteService {
         }
         AdminUser admin = target;
         if (admin == null) {
-            admin = new AdminUser();
-            admin.setTelegramUserId(id);
-            admin.setName(inv.name());
-            admin.setRole(inv.role());
-            admin.setActive(true);
+            admin = AdminUser.enroll(id, inv.name(), inv.role());
         }
-        admin.setUsername(inv.pendingUsername());
-        admin.setPasswordHash(inv.pendingPasswordHash());
-        admin.setPasswordChangedAt(now);
-        admin.setFailedAttempts(0);
-        admin.setLockedUntil(null);
+        admin.assignLogin(inv.pendingUsername(), inv.pendingPasswordHash(), now);
+        admin.resetLockout();
         if (setup) {
-            admin.setTotpSecretEnc(inv.pendingTotpEnc());
-            admin.setTotpEnabledAt(now);
-            admin.setTotpPendingEnc(null);
-            admin.setTotpPendingAt(null);
-            admin.setTotpLastStep(step);
+            admin.enableTotp(inv.pendingTotpEnc(), now, step);
         }
         try {
             adminUserRepository.saveAndFlush(admin);

@@ -91,11 +91,9 @@ public class AdminBootstrap implements CommandLineRunner {
         }
         long tgId = props.getSecurity().getAdminBootstrapTgId();
         AdminUser admin = adminUserRepository.findById(tgId).orElseGet(() -> newAdmin(tgId));
-        admin.setUsername(login);
-        admin.setPasswordHash(passwordEncoder.encode(password));
-        admin.setPasswordChangedAt(clock.instant());
-        admin.setActive(true);
-        admin.setTokenVersion(admin.getTokenVersion() + 1);
+        admin.assignLogin(login, passwordEncoder.encode(password), clock.instant());
+        admin.activate();
+        admin.revokeTokens();
         adminUserRepository.save(admin);
         adminTokenValidator.invalidate(tgId);
         log.info("Admin bootstrap: login '{}' created (tg id {}); 2FA is set up at the first sign-in", login, tgId);
@@ -116,14 +114,11 @@ public class AdminBootstrap implements CommandLineRunner {
             return;
         }
         AdminUser admin = adminUserRepository.findById(tgId).orElseGet(() -> newAdmin(tgId));
-        admin.setUsername(login);
-        admin.setPasswordHash(passwordEncoder.encode(password));
-        admin.setPasswordChangedAt(clock.instant());
-        admin.setActive(true);
+        admin.assignLogin(login, passwordEncoder.encode(password), clock.instant());
+        admin.activate();
         AdminTotp.clear(admin);
-        admin.setFailedAttempts(0);
-        admin.setLockedUntil(null);
-        admin.setTokenVersion(admin.getTokenVersion() + 1);
+        admin.resetLockout();
+        admin.revokeTokens();
         adminUserRepository.save(admin);
         int devices = trustedDevices.revokeAll(tgId);
         adminTokenValidator.invalidate(tgId);
@@ -140,11 +135,6 @@ public class AdminBootstrap implements CommandLineRunner {
     }
 
     private static AdminUser newAdmin(long tgId) {
-        AdminUser a = new AdminUser();
-        a.setTelegramUserId(tgId);
-        a.setRole(AdminRole.SUPER_ADMIN);
-        a.setActive(true);
-        a.setName("Bootstrap admin");
-        return a;
+        return AdminUser.enroll(tgId, "Bootstrap admin", AdminRole.SUPER_ADMIN);
     }
 }

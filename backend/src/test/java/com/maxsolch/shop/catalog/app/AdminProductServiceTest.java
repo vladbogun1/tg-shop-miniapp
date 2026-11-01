@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductVariant;
@@ -75,11 +76,11 @@ class AdminProductServiceTest {
         lenient().when(catalogDirectory.load()).thenReturn(CatalogSnapshot.EMPTY);
         lenient().when(catalogDirectory.snapshot()).thenReturn(CatalogSnapshot.EMPTY);
         product = new Product();
-        product.setId(UuidUtil.randomBytes());
-        product.setTitle("Mouse X");
-        product.setSlug("mouse-x");
-        product.setPriceMinor(90_000);
-        product.setStock(1); // two units sold while the form was open (it showed 3)
+        ReflectionTestUtils.setField(product, "id", UuidUtil.randomBytes());
+        product.retitle("Mouse X");
+        product.changeSlug("mouse-x");
+        product.reprice(90_000);
+        product.changeStock(1); // two units sold while the form was open (it showed 3)
         id = UuidUtil.toString(product.getId());
         lenient().when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(product));
         lenient().when(productRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -107,10 +108,10 @@ class AdminProductServiceTest {
 
     private static Product named(String title) {
         Product p = new Product();
-        p.setId(UuidUtil.randomBytes());
-        p.setTitle(title);
-        p.setSlug(title.toLowerCase());
-        p.setPriceMinor(100);
+        ReflectionTestUtils.setField(p, "id", UuidUtil.randomBytes());
+        p.retitle(title);
+        p.changeSlug(title.toLowerCase());
+        p.reprice(100);
         return p;
     }
 
@@ -138,7 +139,7 @@ class AdminProductServiceTest {
 
     @Test
     void nullSkuKeepsTheStoredValue() {
-        product.setSku("V-1");
+        product.changeSku("V-1");
         AdminProductDto saved = service.update(id, seoReq(null, null));
         assertThat(saved.sku()).isEqualTo("V-1");
     }
@@ -189,7 +190,7 @@ class AdminProductServiceTest {
         ProductVariant black = variant("black", 0);
         product.getVariants().add(white);
         product.getVariants().add(black);
-        product.setStock(2);
+        product.changeStock(2);
 
         // white untouched (null), black 0 -> 3 with a correct expectation; a new variant gets 0.
         AdminProductDto saved = service.update(id, req(null, null, List.of(
@@ -223,7 +224,7 @@ class AdminProductServiceTest {
 
     @Test
     void loweringStockWithoutAReasonIsRefused() {
-        product.setStock(5);
+        product.changeStock(5);
         assertThatThrownBy(() -> service.update(id, req(3, null, null)))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessageContaining("причину")
@@ -234,7 +235,7 @@ class AdminProductServiceTest {
 
     @Test
     void reasonOtherNeedsANote() {
-        product.setStock(5);
+        product.changeStock(5);
         assertThatThrownBy(() -> service.update(id, withReason(3, null, "OTHER", "  ")))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .extracting("code").isEqualTo("STOCK_REASON_REQUIRED");
@@ -243,14 +244,14 @@ class AdminProductServiceTest {
 
     @Test
     void unknownReasonCountsAsMissing() {
-        product.setStock(5);
+        product.changeStock(5);
         assertThatThrownBy(() -> service.update(id, withReason(3, null, "BECAUSE", null)))
                 .isInstanceOf(DomainException.BadRequest.class);
     }
 
     @Test
     void loweringStockWithAReasonWritesOffTheDifferenceAtTheCurrentPrice() {
-        product.setStock(5);
+        product.changeStock(5);
         service.update(id, withReason(3, null, "defect", null));
 
         ArgumentCaptor<StockWriteoff> cap = ArgumentCaptor.forClass(StockWriteoff.class);
@@ -274,7 +275,7 @@ class AdminProductServiceTest {
     void loweringAVariantWritesOffThatVariantNotTheRollup() {
         ProductVariant white = variant("white", 4);
         product.getVariants().add(white);
-        product.setStock(4);
+        product.changeStock(4);
 
         service.update(id, withReason(null, List.of(
                 new VariantInput(UuidUtil.toString(white.getId()), "white", 1, 4)), "INVENTORY", null));
@@ -293,7 +294,7 @@ class AdminProductServiceTest {
         ProductVariant black = variant("black", 2);
         product.getVariants().add(white);
         product.getVariants().add(black);
-        product.setStock(6);
+        product.changeStock(6);
 
         service.update(id, withReason(5, List.of(
                 new VariantInput(UuidUtil.toString(white.getId()), "white", 2, null),
@@ -308,7 +309,7 @@ class AdminProductServiceTest {
         ProductVariant black = variant("black", 3);
         product.getVariants().add(white);
         product.getVariants().add(black);
-        product.setStock(5);
+        product.changeStock(5);
 
         AdminProductDto saved = service.update(id, req(null, null, List.of(
                 new VariantInput(UuidUtil.toString(white.getId()), "white", null, null))));
@@ -319,7 +320,7 @@ class AdminProductServiceTest {
 
     @Test
     void productStockIsSetAsTypedWhenThereAreNoVariants() {
-        product.setStock(3);
+        product.changeStock(3);
 
         AdminProductDto saved = service.update(id, req(7, 3, null));
 

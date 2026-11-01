@@ -97,8 +97,7 @@ public class AdminAccountService {
         requireCode(a, code, client, "смена пароля");
 
         AdminUser fresh = admin(adminId);
-        fresh.setPasswordHash(passwordEncoder.encode(newPassword));
-        fresh.setPasswordChangedAt(clock.instant());
+        fresh.changePassword(passwordEncoder.encode(newPassword), clock.instant());
         adminUserRepository.save(fresh);
         int devices = sessions.revokeEverything(adminId);
         lockout.reset(adminId);

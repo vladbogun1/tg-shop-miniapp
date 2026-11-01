@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.catalog.domain.Brand;
 import com.maxsolch.shop.catalog.domain.Category;
 import com.maxsolch.shop.catalog.domain.SpecAttribute;
@@ -93,7 +94,7 @@ final class InMemoryCatalog {
             int n = 0;
             for (Product p : products) {
                 if (Arrays.equals(p.getCategoryId(), (byte[]) i.getArgument(0))) {
-                    p.setCategoryId(i.getArgument(1));
+                    p.categorize(i.getArgument(1));
                     n++;
                 }
             }
@@ -161,11 +162,11 @@ final class InMemoryCatalog {
 
     Product product(String title, Category category) {
         Product p = new Product();
-        p.setId(UuidUtil.randomBytes());
-        p.setTitle(title);
-        p.setSlug(title.toLowerCase().replace(' ', '-'));
-        p.setPriceMinor(100_00);
-        p.setCategoryId(category == null ? null : category.getId());
+        ReflectionTestUtils.setField(p, "id", UuidUtil.randomBytes());
+        p.retitle(title);
+        p.changeSlug(title.toLowerCase().replace(' ', '-'));
+        p.reprice(100_00);
+        p.categorize(category == null ? null : category.getId());
         products.add(p);
         return p;
     }

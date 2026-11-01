@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.staff.domain.AdminInvite;
 import com.maxsolch.shop.staff.domain.Base32;
@@ -273,7 +274,7 @@ class AdminInviteServiceTest {
     void passwordResetWithTwoFactorAsksForTheCurrentCode() {
         byte[] secret = Totp.newSecret();
         AdminUser helper = admins.add(42L, "helper", AdminRole.ADMIN, cipher.encrypt(secret, 42L));
-        helper.setPasswordHash(null); // reset: the old password is already gone
+        ReflectionTestUtils.setField(helper, "passwordHash", null); // reset: the old password is already gone
         String token = invite(AdminInvite.Kind.PASSWORD_RESET, 42L);
         AdminInviteService.InviteInfo info = service.check(token);
         assertThat(info.loginEditable()).isFalse();
@@ -298,7 +299,7 @@ class AdminInviteServiceTest {
 
         AdminUser helper = admins.add(43L, null, AdminRole.ADMIN, null);
         String token2 = invite(AdminInvite.Kind.CREDENTIALS, 43L);
-        helper.setActive(false);
+        ReflectionTestUtils.setField(helper, "active", false);
         assertInvalid(() -> service.check(token2));
     }
 

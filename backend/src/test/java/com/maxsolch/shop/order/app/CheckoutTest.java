@@ -225,7 +225,7 @@ class CheckoutTest extends OrderScenarioTestBase {
     @Test
     void createOrder_inactiveProduct_throws() {
         Product p = simpleProduct(10, 1_000);
-        p.setActive(false);
+        p.showInShop(false);
         when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
 
         CreateOrderCommand command = cmd(

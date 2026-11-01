@@ -13,14 +13,12 @@ import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 @Getter
-@Setter
 @Entity
 @Table(name = "products")
 public class Product {
@@ -150,5 +148,99 @@ public class Product {
             return;
         }
         stock = Math.max(0, variants.stream().mapToInt(ProductVariant::getStock).sum());
+    }
+
+    /** A product the admin just created: hidden, a draft card, not published yet (V53, «Незавершённые»). */
+    public void startAsDraft() {
+        this.active = false;
+        this.cardStatus = CardStatus.DRAFT;
+        this.unfinished = true;
+    }
+
+    public void retitle(String newTitle) {
+        this.title = newTitle;
+    }
+
+    public void redescribe(String newDescription) {
+        this.description = newDescription;
+    }
+
+    public void reprice(long newPriceMinor) {
+        this.priceMinor = newPriceMinor;
+    }
+
+    public void changeCurrency(String newCurrency) {
+        this.currency = newCurrency;
+    }
+
+    /** The «old» (struck-through) price; null or 0 means none. */
+    public void markDownFrom(Long newCompareAtMinor) {
+        this.compareAtMinor = newCompareAtMinor;
+    }
+
+    public void retitleSeo(String newSeoTitle) {
+        this.seoTitle = newSeoTitle;
+    }
+
+    public void redescribeSeo(String newSeoDescription) {
+        this.seoDescription = newSeoDescription;
+    }
+
+    public void changeSlug(String newSlug) {
+        this.slug = newSlug;
+    }
+
+    public void changeSku(String newSku) {
+        this.sku = newSku;
+    }
+
+    /** The product's own counter; with variants it is {@link #syncStockFromVariants()} that sets it. */
+    public void changeStock(int newStock) {
+        this.stock = newStock;
+    }
+
+    /** Shown in the shop (true) or hidden (false). */
+    public void showInShop(boolean shown) {
+        this.active = shown;
+    }
+
+    public void archive(boolean archived) {
+        this.archived = archived;
+    }
+
+    public void categorize(byte[] newCategoryId) {
+        this.categoryId = newCategoryId;
+    }
+
+    public void assignBrand(byte[] newBrandId) {
+        this.brandId = newBrandId;
+    }
+
+    public void changeCondition(ProductCondition newCondition) {
+        this.condition = newCondition;
+    }
+
+    public void noteCondition(String newConditionNote) {
+        this.conditionNote = newConditionNote;
+    }
+
+    public void changeSpecs(String newSpecsJson) {
+        this.specsJson = newSpecsJson;
+    }
+
+    public void changeCardStatus(CardStatus newStatus) {
+        this.cardStatus = newStatus;
+    }
+
+    public void recordCardMeta(String newCardMetaJson) {
+        this.cardMetaJson = newCardMetaJson;
+    }
+
+    public void recordCardConfidence(Integer confidence) {
+        this.cardConfidence = confidence;
+    }
+
+    public void markUnfinished(boolean isUnfinished) {
+        this.unfinished = isUnfinished;
     }
 }

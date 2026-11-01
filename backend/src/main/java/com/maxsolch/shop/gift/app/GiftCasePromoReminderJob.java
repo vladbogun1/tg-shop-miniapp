@@ -3,6 +3,7 @@ package com.maxsolch.shop.gift.app;
 import com.maxsolch.shop.order.app.OrderSettings;
 import com.maxsolch.shop.gift.domain.PromoReminder;
 import com.maxsolch.shop.gift.infra.GiftReminderStore;
+import com.maxsolch.shop.order.app.OrderCustomerNotifier;
 import com.maxsolch.shop.order.app.OrderLookup;
 import com.maxsolch.shop.settings.app.SettingsService;
 import lombok.extern.slf4j.Slf4j;
@@ -30,11 +31,11 @@ public class GiftCasePromoReminderJob {
     private final GiftReminderStore store;
     private final SettingsService settings;
     private final OrderLookup orders;
-    private final GiftNotifier notifier;
+    private final OrderCustomerNotifier notifier;
     private final Clock clock;
 
     public GiftCasePromoReminderJob(GiftReminderStore store, SettingsService settings, OrderLookup orders,
-                                    GiftNotifier notifier, Clock clock) {
+                                    OrderCustomerNotifier notifier, Clock clock) {
         this.store = store;
         this.settings = settings;
         this.orders = orders;
@@ -73,7 +74,7 @@ public class GiftCasePromoReminderJob {
                 continue;
             }
             var order = orders.find(c.orderId()).orElse(null);
-            if (order != null && notifier.promoExpiring(order, c.code(), c.percent(), c.amountMinor(), c.expiresAt())) {
+            if (order != null && notifier.notifyCustomerCasePromoExpiring(order, c.code(), c.percent(), c.amountMinor(), c.expiresAt())) {
                 sent++;
             }
         }

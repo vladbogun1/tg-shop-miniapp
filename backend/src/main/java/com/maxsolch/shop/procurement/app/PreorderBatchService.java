@@ -241,7 +241,7 @@ public class PreorderBatchService {
             } else {
                 stock.arrive(p, v, arrived, i.getId());
                 if (price != null) {
-                    p.setPriceMinor(price);
+                    p.reprice(price);
                 }
                 products.save(p);
                 i.setQtyArrived(arrived);

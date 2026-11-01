@@ -1,5 +1,6 @@
 package com.maxsolch.shop.returns.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.cart.app.CartService;
 import com.maxsolch.shop.catalog.domain.Product;
@@ -127,10 +128,10 @@ abstract class ReturnsTestBase {
 
     Product product(int stock) {
         Product p = new Product();
-        p.setId(UuidUtil.randomBytes());
-        p.setTitle("Мишка");
-        p.setStock(stock);
-        p.setVariants(new ArrayList<>());
+        ReflectionTestUtils.setField(p, "id", UuidUtil.randomBytes());
+        p.retitle("Мишка");
+        p.changeStock(stock);
+        ReflectionTestUtils.setField(p, "variants", new ArrayList<>());
         return p;
     }
 

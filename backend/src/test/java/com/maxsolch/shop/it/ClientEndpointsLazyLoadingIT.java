@@ -637,15 +637,15 @@ class ClientEndpointsLazyLoadingIT {
         specOptions.save(wireless);
 
         Product a = new Product();
-        a.setTitle("IT Мишка з розмірами " + UUID.randomUUID().toString().substring(0, 6));
-        a.setSlug("it-a-" + UUID.randomUUID());
-        a.setDescription("Опис мишки");
-        a.setPriceMinor(50_000);
-        a.setCompareAtMinor(60_000L);
-        a.setCategoryId(child.getId());
-        a.setBrandId(brand.getId());
-        a.setSpecsJson("{\"it_weight\":63,\"it_conn\":\"wireless\"}");
-        a.setCardMetaJson("{\"bullets\":[\"раз\",\"два\"]}");
+        a.retitle("IT Мишка з розмірами " + UUID.randomUUID().toString().substring(0, 6));
+        a.changeSlug("it-a-" + UUID.randomUUID());
+        a.redescribe("Опис мишки");
+        a.reprice(50_000);
+        a.markDownFrom(60_000L);
+        a.categorize(child.getId());
+        a.assignBrand(brand.getId());
+        a.changeSpecs("{\"it_weight\":63,\"it_conn\":\"wireless\"}");
+        a.recordCardMeta("{\"bullets\":[\"раз\",\"два\"]}");
         for (int i = 0; i < 3; i++) {
             ProductImage img = new ProductImage();
             img.setProduct(a);
@@ -755,10 +755,10 @@ class ClientEndpointsLazyLoadingIT {
 
     private String simpleProduct(String title, long price, int stock, ProductCondition condition) {
         Product p = new Product();
-        p.setTitle(title + " " + UUID.randomUUID().toString().substring(0, 6));
-        p.setSlug("it-" + UUID.randomUUID());
-        p.setPriceMinor(price);
-        p.setCondition(condition);
+        p.retitle(title + " " + UUID.randomUUID().toString().substring(0, 6));
+        p.changeSlug("it-" + UUID.randomUUID());
+        p.reprice(price);
+        p.changeCondition(condition);
         ProductImage img = new ProductImage();
         img.setProduct(p);
         img.setUrl("products/" + p.getSlug() + ".jpg");

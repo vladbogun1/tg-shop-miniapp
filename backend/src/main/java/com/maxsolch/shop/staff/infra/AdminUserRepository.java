@@ -1,6 +1,5 @@
 package com.maxsolch.shop.staff.infra;
 
-import com.maxsolch.shop.customer.infra.UserRepository;
 import com.maxsolch.shop.staff.domain.AdminUser;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;

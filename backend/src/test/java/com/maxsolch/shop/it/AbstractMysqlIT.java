@@ -79,10 +79,10 @@ public abstract class AbstractMysqlIT {
     protected Product product(long priceMinor, int... lotSizes) {
         int stock = java.util.Arrays.stream(lotSizes).sum();
         Product p = new Product();
-        p.setTitle("IT товар " + UUID.randomUUID().toString().substring(0, 8));
-        p.setSlug("it-" + UUID.randomUUID());
-        p.setPriceMinor(priceMinor);
-        p.setStock(0);
+        p.retitle("IT товар " + UUID.randomUUID().toString().substring(0, 8));
+        p.changeSlug("it-" + UUID.randomUUID());
+        p.reprice(priceMinor);
+        p.changeStock(0);
         Product saved = products.save(p);
         // Each sync() with a higher stock opens one MANUAL lot of the difference: lots of the given sizes, oldest first.
         int running = 0;

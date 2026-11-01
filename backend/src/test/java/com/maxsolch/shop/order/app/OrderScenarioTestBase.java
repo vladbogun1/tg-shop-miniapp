@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
@@ -141,13 +142,13 @@ abstract class OrderScenarioTestBase {
 
     Product simpleProduct(int stock, long priceMinor) {
         Product p = new Product();
-        p.setId(productId);
-        p.setTitle("Test Product");
-        p.setPriceMinor(priceMinor);
-        p.setStock(stock);
-        p.setActive(true);
-        p.setArchived(false);
-        p.setVariants(new ArrayList<>());
+        ReflectionTestUtils.setField(p, "id", productId);
+        p.retitle("Test Product");
+        p.reprice(priceMinor);
+        p.changeStock(stock);
+        p.showInShop(true);
+        p.archive(false);
+        ReflectionTestUtils.setField(p, "variants", new ArrayList<>());
         return p;
     }
 
@@ -180,7 +181,7 @@ abstract class OrderScenarioTestBase {
         Product pad = simpleProduct(10, 80_000);
         String mouseUuid = UUID.randomUUID().toString();
         Product mouse = simpleProduct(10, 400_000);
-        mouse.setId(UuidUtil.toBytes(mouseUuid));
+        ReflectionTestUtils.setField(mouse, "id", UuidUtil.toBytes(mouseUuid));
         when(productRepository.findByIdForUpdate(any())).thenAnswer(inv -> Optional.of(
                 java.util.Arrays.equals((byte[]) inv.getArgument(0), productId) ? pad : mouse));
         lenient().when(caseLowMargin.none()).thenReturn(false);
@@ -248,7 +249,7 @@ abstract class OrderScenarioTestBase {
         ProductVariant xl = variant(p, 0);
         xl.setName("XL");
         xl.setSortOrder(2);
-        p.setVariants(new ArrayList<>(List.of(m, l, xl)));
+        ReflectionTestUtils.setField(p, "variants", new ArrayList<>(List.of(m, l, xl)));
         Order o = new Order();
         OrderFixtures.set(o, "id", UuidUtil.randomBytes());
         OrderStates.withStatus(o, status);
@@ -276,12 +277,12 @@ abstract class OrderScenarioTestBase {
         Product bought = simpleProduct(10, 2_500_00);
         String prizeUuid = UUID.randomUUID().toString();
         Product prize = new Product();
-        prize.setId(UuidUtil.toBytes(prizeUuid));
-        prize.setTitle("Prize");
-        prize.setPriceMinor(3_000_00);
-        prize.setStock(5);
-        prize.setActive(true);
-        prize.setVariants(new ArrayList<>());
+        ReflectionTestUtils.setField(prize, "id", UuidUtil.toBytes(prizeUuid));
+        prize.retitle("Prize");
+        prize.reprice(3_000_00);
+        prize.changeStock(5);
+        prize.showInShop(true);
+        ReflectionTestUtils.setField(prize, "variants", new ArrayList<>());
         when(productRepository.findByIdForUpdate(any())).thenAnswer(inv -> Optional.of(
                 java.util.Arrays.equals((byte[]) inv.getArgument(0), productId) ? bought : prize));
 

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.staff.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.staff.infra.AdminTeamQueries;
 import com.maxsolch.shop.staff.domain.AdminInvite;
@@ -143,10 +144,10 @@ class AdminTeamServiceTest {
         AdminUser other = admins.add(3L, "other", AdminRole.SUPER_ADMIN, null);
         AdminUser boss = admins.rows.get(BOSS);
         assertConflict(() -> team.guard(99L, boss, true), "LAST_SUPER_ADMIN");
-        other.setTotpSecretEnc(cipher.encrypt(Totp.newSecret(), 3L));
-        other.setActive(false);
+        ReflectionTestUtils.setField(other, "totpSecretEnc", cipher.encrypt(Totp.newSecret(), 3L));
+        ReflectionTestUtils.setField(other, "active", false);
         assertConflict(() -> team.guard(99L, boss, true), "LAST_SUPER_ADMIN");
-        other.setActive(true);
+        ReflectionTestUtils.setField(other, "active", true);
         team.guard(99L, boss, true); // now someone else can manage admins
     }
 

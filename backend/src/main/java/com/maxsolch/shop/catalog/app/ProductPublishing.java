@@ -52,20 +52,20 @@ final class ProductPublishing {
     /** An unfinished product stops being one once it is published or archived (V53). */
     static void syncUnfinished(Product p) {
         if (p.isActive() || p.isArchived()) {
-            p.setUnfinished(false);
+            p.markUnfinished(false);
         }
     }
 
     /** Sets the card status; READY records who reviewed it and when (card_meta). */
     static void setStatus(Product p, CardStatus st, Long adminId, Instant now) {
-        p.setCardStatus(st);
+        p.changeCardStatus(st);
         if (st == CardStatus.READY) {
             Map<String, Object> meta = SpecsJson.readMap(p.getCardMetaJson());
             meta.put("reviewedAt", now.toString());
             if (adminId != null) {
                 meta.put("reviewedBy", adminId);
             }
-            p.setCardMetaJson(SpecsJson.write(meta));
+            p.recordCardMeta(SpecsJson.write(meta));
         }
     }
 }

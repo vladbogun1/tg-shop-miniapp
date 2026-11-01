@@ -33,7 +33,6 @@ import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.translation.domain.ContentTranslation;
 import com.maxsolch.shop.translation.domain.ContentTranslationId;
-import com.maxsolch.shop.translation.infra.ContentTranslationRepository;
 import com.maxsolch.shop.translation.app.TranslationAdminService;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
 import com.maxsolch.shop.translation.domain.TranslationOrigin;

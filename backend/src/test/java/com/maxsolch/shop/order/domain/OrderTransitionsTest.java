@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.domain;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.order.app.MoneyLedger;
 import com.maxsolch.shop.returns.app.Exchanges;
@@ -102,10 +103,10 @@ class OrderTransitionsTest {
         lenient().when(messages.current(anyString(), any(Object[].class))).thenAnswer(inv -> inv.getArgument(0));
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
         product = new Product();
-        product.setId(UuidUtil.randomBytes());
-        product.setTitle("Кепка");
-        product.setStock(3);
-        product.setVariants(new ArrayList<>());
+        ReflectionTestUtils.setField(product, "id", UuidUtil.randomBytes());
+        product.retitle("Кепка");
+        product.changeStock(3);
+        ReflectionTestUtils.setField(product, "variants", new ArrayList<>());
         lenient().when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(product));
     }
 

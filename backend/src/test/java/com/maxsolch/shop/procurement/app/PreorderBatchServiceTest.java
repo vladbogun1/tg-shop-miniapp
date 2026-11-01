@@ -1,5 +1,6 @@
 package com.maxsolch.shop.procurement.app;
 
+import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.procurement.domain.BatchQueue;
 import com.maxsolch.shop.procurement.domain.PreorderBatch;
 import com.maxsolch.shop.procurement.domain.PreorderBatchItem;
@@ -86,8 +87,8 @@ class PreorderBatchServiceTest {
         when(queue.handOut(any(), any(), anyLong(), any(), anyInt()))
                 .thenReturn(new BatchQueue.HandOut(0, 0, 0, 0, 0));
         product = new Product();
-        product.setId(UuidUtil.toBytes(UUID.randomUUID()));
-        product.setTitle("Lamzu Maya");
+        ReflectionTestUtils.setField(product, "id", UuidUtil.toBytes(UUID.randomUUID()));
+        product.retitle("Lamzu Maya");
         when(products.findByIdForUpdate(any())).thenReturn(Optional.of(product));
         when(products.findById(any())).thenReturn(Optional.of(product));
     }
@@ -115,7 +116,7 @@ class PreorderBatchServiceTest {
 
     @Test
     void aPartialArrivalPutsOnlyWhatCameOnTheShelf() {
-        product.setStock(1);
+        product.changeStock(1);
         PreorderBatchItem i = line(11, null, 10);
         when(items.findByBatchIdOrderByIdAsc(5L)).thenReturn(List.of(i));
 
@@ -147,7 +148,7 @@ class PreorderBatchServiceTest {
     void twoVariantsOfOneProductArriveSeparately() {
         ProductVariant black = variant("Black", 0);
         ProductVariant white = variant("White", 1);
-        product.setStock(1);
+        product.changeStock(1);
         PreorderBatchItem a = line(11, black, 3);
         PreorderBatchItem b = line(12, white, 2);
         when(items.findByBatchIdOrderByIdAsc(5L)).thenReturn(List.of(a, b));
