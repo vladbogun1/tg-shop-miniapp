@@ -94,6 +94,11 @@ function UnsavedCloseModal({
   );
 }
 
+/** The dialog is named by its title when it has one. */
+function labelledBy(title: ReactNode, titleId: string): string | undefined {
+  return title ? titleId : undefined;
+}
+
 function ModalHeader({ title, titleId, onClose }: { title: ReactNode; titleId: string; onClose: () => void }) {
   if (!title) return null;
   return (
@@ -221,7 +226,7 @@ export function Modal({
                 ref={focusRef}
                 role="dialog"
                 aria-modal="true"
-                aria-labelledby={title ? titleId : undefined}
+                aria-labelledby={labelledBy(title, titleId)}
                 variants={dialog ? modalVariants : sheetVariants}
                 initial="initial"
                 animate="animate"

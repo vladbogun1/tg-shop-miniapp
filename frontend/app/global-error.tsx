@@ -1,16 +1,9 @@
 "use client";
 
-/* eslint-disable front/ratchet -- the dictionaries are unavailable here (the root providers crashed): inline texts on purpose */
+import { TEXTS } from "@/i18n/global-error-texts";
 
-/**
- * Last resort for the Mini App: the root layout or Providers crashed, so the dictionaries and styles
- * are not available. Texts are inline in the three languages, picked from the browser language.
- */
-const TEXTS = {
-  uk: { title: "Щось пішло не так", text: "Застосунок не завантажився. Спробуйте ще раз.", retry: "Повторити" },
-  ru: { title: "Что-то пошло не так", text: "Приложение не загрузилось. Попробуйте ещё раз.", retry: "Повторить" },
-  en: { title: "Something went wrong", text: "The app failed to load. Please try again.", retry: "Retry" },
-} as const;
+
+/** Last resort for the Mini App: the root layout or Providers crashed (texts: i18n/global-error-texts.ts). */
 
 function pick() {
   const lang = typeof navigator === "undefined" ? "" : navigator.language.slice(0, 2).toLowerCase();
