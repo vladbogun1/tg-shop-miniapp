@@ -1,3 +1,5 @@
+> **Пути до архитектуры v2:** `shared/src/*` → `packages/core/src/*` (или `packages/ui`, `packages/customer`), `frontend/lib`, `frontend/components` → `features/*`. Названия классов бэкенда (`OrderService` и др.) исторические — актуальные в [ARCHITECTURE.md](ARCHITECTURE.md).
+
 # Каталог v2: категории, бренды, характеристики, фильтры и «оформление карточек» ИИ
 
 Ветка `catalog-specs` (от master 3102933, 2026-10-09). Контракт для бэкенда, Mini App, сайта и админки.

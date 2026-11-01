@@ -73,8 +73,7 @@ imgproxy + nginx · Docker Compose.
 
 ```
 backend/         Spring Boot API + бот (package com.maxsolch.shop), миграции Flyway
-shared/          @shop/shared — общий код фронтов: деньги, даты, правила заказов, HTTP-клиент,
-                 типы API, WebSocket, i18n-ядро, маска телефона, геометрия логотипа
+packages/        @shop/core (логика без React, OpenAPI-типы), @shop/ui, @shop/customer — см. packages/README.md
 site/            Next.js — сайт
 frontend/        Next.js — Telegram Mini App
 frontend-admin/  Next.js — админка
@@ -84,7 +83,7 @@ infra/           gateway'и (nginx), Caddyfile старых адресов, сл
 docs/            контракты и runbook'и; docs/archive/ — устаревшие документы
 ```
 
-Фронты — один npm workspace; `shared/` подключается как TypeScript-исходник через
+Фронты — один npm workspace; пакеты из `packages/` подключаются как TypeScript-исходник через
 `transpilePackages`, без отдельной сборки.
 
 ---
@@ -119,7 +118,8 @@ Mini App требует HTTPS: для теста в Telegram — туннель 
 
 ## Тесты и CI
 
-- Бэкенд: `cd backend && mvn test` (JUnit 5 + Mockito).
+- Бэкенд: `cd backend && mvn test` (JUnit 5 + Mockito; интеграционные `*IT` сюда не входят — они идут в `mvn verify` и требуют MySQL, см. [`docs/INTEGRATION-TESTS.md`](docs/INTEGRATION-TESTS.md)).
+- Фронты целиком: `npm run lint && npm run typecheck && npm run test && npm run arch:front && npm run build`; e2e админки — `npm run e2e` (нужен Docker).
 - Фронты: `npm run lint`, `npm run typecheck`, `npm run build` для каждого workspace (`-w frontend`,
   `-w site`, `-w frontend-admin`).
 - E2E: `npm run e2e` (Playwright, `e2e/`).
@@ -137,13 +137,13 @@ Mini App требует HTTPS: для теста в Telegram — туннель 
 
 - Деплой и эксплуатация — [`docs/DEPLOY-SERVER.md`](docs/DEPLOY-SERVER.md), TLS — [`docs/TLS-RENEWAL.md`](docs/TLS-RENEWAL.md).
 - Безопасность и чек-лист перед выкаткой — [`docs/SECURITY.md`](docs/SECURITY.md), вход админов и 2FA — [`docs/ADMIN-2FA.md`](docs/ADMIN-2FA.md).
-- Контракт API — [`docs/SPEC.md`](docs/SPEC.md), сайт — [`docs/SITE-SPEC.md`](docs/SITE-SPEC.md),
-  дизайн — [`docs/DESIGN-V3.md`](docs/DESIGN-V3.md), переводы контента — [`docs/CONTENT-I18N.md`](docs/CONTENT-I18N.md),
+- Контракт API — `backend/src/test/resources/openapi/openapi.json` (снимок проверяет `OpenApiSnapshotTest`); как добавить эндпоинт — [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), раздел «Рецепт».
+  Дизайн — [`docs/DESIGN-V3.md`](docs/DESIGN-V3.md), переводы контента — [`docs/CONTENT-I18N.md`](docs/CONTENT-I18N.md),
   заказы/поддержка/отзывы — [`docs/ORDERS-SUPPORT-REVIEWS.md`](docs/ORDERS-SUPPORT-REVIEWS.md).
 - Подарок за сумму и кейсы — [`docs/GIFT-CASE.md`](docs/GIFT-CASE.md).
 - Отложенные дела — [`docs/TODO.md`](docs/TODO.md).
 
-Удалено при чистке 2026-10 ([`docs/CLEANUP-AUDIT-2026-10.md`](docs/CLEANUP-AUDIT-2026-10.md)):
+Удалено при чистке 2026-10 ([`docs/archive/audits/CLEANUP-AUDIT-2026-10.md`](docs/archive/audits/CLEANUP-AUDIT-2026-10.md)):
 одноразовый модуль переноса старой БД `migration/`, «закрытый сайт» с кодом доступа, служебная
 Thymeleaf-страница бэкенда, неиспользуемые эндпоинты (`/api/tags` и др.), одноразовые скрипты
 `infra/np_create_*.py` и `infra/ngrok-policy.yml`. Миграция V48 удаляет таблицы и колонки старой оплаты

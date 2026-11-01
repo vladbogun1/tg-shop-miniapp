@@ -6,7 +6,7 @@ Telegram-бот-«визитка»: на `/start` отправляет карт�
 - Java 21, Spring Boot 4, `telegrambots-spring-boot-starter` (long polling). HTTP-сервера нет, порты не нужны.
 - Код: `src/main/java/shop/maxsolch/invitebot/`, тексты и ссылки — `src/main/resources/application.yml`.
 - Образ: `vladbogun1/maxsolch-invite-bot` (linux/arm64), собирает `.github/workflows/invite-bot.yml`.
-- Прод: сервер №2 (150.136.127.73, arm64), каталог `~/TELEGRAM_BOTS/tg-shop-miniapp/`,
+- Прод: сервер №2 (arm64; адрес — во внутренней базе знаний владельца, вне репо), каталог `~/TELEGRAM_BOTS/tg-shop-miniapp/`,
   контейнер `telegram-maxsolch-invite-bot`.
 
 ## Настройки (ENV)
@@ -60,7 +60,7 @@ gh run watch "$(gh run list --workflow invite-bot.yml --limit 1 --json databaseI
 На сервере тег прибит в `.env` (`INVITE_BOT_TAG`). Автообновления нет, `:latest` не используется.
 
 ```bash
-ssh ubuntu@150.136.127.73
+ssh "$SERVER2_HOST"
 cd ~/TELEGRAM_BOTS/tg-shop-miniapp
 sed -i 's/^INVITE_BOT_TAG=.*/INVITE_BOT_TAG=1.0.1/' .env
 docker compose pull && docker compose up -d

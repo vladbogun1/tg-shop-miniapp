@@ -27,6 +27,7 @@ class V2RulesBoundariesTest {
     @Test
     void appWithWebTypesIsFound() {
         assertThat(count("L5", "review")).isEqualTo(1);
+        assertThat(VIOLATIONS).anyMatch(v -> v.rule().equals("L5") && v.key().contains("HttpStatus")); // org.springframework.http in app
     }
 
     @Test

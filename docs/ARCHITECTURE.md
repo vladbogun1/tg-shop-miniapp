@@ -7,7 +7,7 @@
 **Статус: утверждено 29.10.2026.** Версия 1. Основа — карта кода master `7c7cf46` (486 классов, ~56 тыс. строк) и книги-скиллы (Clean Architecture,
 Ousterhout, Fowler, Feathers, Nygard). Правила проверяет ArchUnit (см. `docs/ARCHITECTURE-CHECKS.md`) **на весь код без заморозки**: число нарушений = объём оставшейся работы, цель — ноль.
 
-## 1. Что не так сейчас (коротко)
+## 1. Что было не так до переезда (история, на 29.10.2026)
 
 Одна и та же задача решена по-разному в разных местах — это и есть «костыли»:
 
@@ -58,6 +58,9 @@ Ousterhout, Fowler, Feathers, Nygard). Правила проверяет ArchUni
 | `customer` | покупатели, профиль, вход через Telegram/сайт, сессии, гео |
 | `staff` | админы, 2FA, приглашения, команда, инциденты (`adminauth`, часть `web`) |
 | `notification` | каналы доставки: бот покупателю, канал продавца, web push, рассылки (`tg`, `push`, `BroadcastService`) |
+| `settings` | настройки магазина, правимые из админки (то, что не в `application.yml`) |
+| `audit` | журнал действий админов (`AdminAuditService.record` — вызывается из `app`) |
+| `journal` | журнал «Бот и сайт» (`ActivityLog`): события бота и сайта |
 | `analytics` | события клиентов, воронка, метрики |
 | `finance` | маржа, P&L, отчёты по деньгам (`MarginService`, «Финансы») |
 
@@ -81,7 +84,7 @@ Ousterhout, Fowler, Feathers, Nygard). Правила проверяет ArchUni
   `gift` его реализует — так уходит цикл gift↔order).
 - Направление модулей (сверху вниз, нижние не знают о верхних):
   `finance, analytics, inbox` → `review, support, gift` → `returns, payment, delivery` → `order` → `cart, promo` →
-  `preorder` → `procurement` → `inventory` → `catalog` → `customer, staff` → `translation, media, site, notification` → `platform`.
+  `preorder` → `procurement` → `inventory` → `catalog` → `customer, staff` → `translation, media, site, notification` → `settings` → `audit, journal` → `platform`.
 
 ### 2.3. Сознательные компромиссы (чтобы не было «архитектуры ради архитектуры»)
 
@@ -103,9 +106,9 @@ Ousterhout, Fowler, Feathers, Nygard). Правила проверяет ArchUni
 | Ошибки | `platform.error`: `throw new DomainException.NotFound(OrderError.ORDER_NOT_FOUND, args)`. Причина — константа enum `<Модуль>Error` в `<модуль>.domain` (код для клиента + ключ `error.<модуль>.<ИМЯ>`); текст лежит только в `i18n/messages*.properties` (4 файла; админские — по-русски во всех), подбирается по языку запроса в одном обработчике; HTTP-статус — по типу исключения. Строк с текстом в коде нет, `ErrorCode.of("...")` и `ResponseStatusException` нет. Новая ошибка = константа + 4 строки в бандлах (`ErrorCatalogTest` не даст забыть) | ArchUnit E1/E2; `ErrorCatalogTest` |
 | Валидация | формат — Bean Validation на DTO в `api`; бизнес-правила — в `domain` | ревью |
 | События | публикуем только `platform.tx.DomainEvents.publish(...)`; слушаем только `@OnCommitted` (после коммита, и сразу, если публикация была вне транзакции) или `@OnCompleted` (после коммита и после отката — например сброс кэша). Тип события — в `<модуль>.domain`, имя в прошедшем времени (`OrderStatusChanged`-стиль); платформенное событие — в `platform` (`TopicMessagePosted`). `ApplicationEventPublisher`, `@TransactionalEventListener`, ручной `TransactionSynchronizationManager` запрещены | ArchUnit T1, T3, T4, T5 |
-| Уведомления | модуль публикует событие → его `XxxNotifier` в `app` слушает и шлёт через порты `notification` (`CustomerBot`, `SellerChannel`, `PushSender`) | ArchUnit: Telegram/push только из `notification` и названных `XxxNotifier` (список в `V2Rules.TELEGRAM_USERS`) |
-| Аудит админа | в сценарии `app`, не в контроллере; кто действует — `CurrentActor` (вместо статического `SecurityUtil`) | ArchUnit: контроллеры не зовут аудит |
-| Права | только аннотации: `@RequiredAdmin`, `@RequiredSuperAdmin`, новая `@RequiresFinance` | ArchUnit: нет ручных `require*` в контроллерах |
+| Уведомления | модуль публикует событие → его `XxxNotifier` в `app` слушает и шлёт через порты `notification` (`CustomerBot`, `SellerChannel`; web push — `AdminPushService`, транспорт `PushTransport` в `notification/infra`) | ArchUnit: Telegram/push только из `notification` и названных `XxxNotifier` (список в `V2Rules.TELEGRAM_USERS`) |
+| Аудит админа | в сценарии `app`, не в контроллере; запись — `audit.app.AdminAuditService.record`; кто действует — `CurrentActor` (вместо статического `SecurityUtil`) | ArchUnit: контроллеры не зовут аудит |
+| Права | только аннотации: `@RequiredAdmin`, `@RequiredSuperAdmin`, `@RequiresFinance` | ArchUnit: нет ручных `require*` в контроллерах |
 | Транзакции | `@Transactional` только на публичных методах `app`; в `api` — нет | ArchUnit |
 | Блокировки | только в БД (`SELECT … FOR UPDATE`); замки в памяти (`ConcurrentHashMap`, `synchronized`) уходят — иначе второй экземпляр бэкенда их не видит | ArchUnit |
 | Время | бин `Clock` + `ShopZone` (часовой пояс из `app.timezone`, создаётся только конструктором в `TimeConfig`); `Instant.now()`, `System.currentTimeMillis`, `ZoneId.of` запрещены везде, в том числе в `platform` (точечно: `TimeConfig`, `ShopZone`, `DbLocks` — `nanoTime` как дедлайн) | ArchUnit C1 + `ShopZoneLiteralTest` |
@@ -120,7 +123,7 @@ Ousterhout, Fowler, Feathers, Nygard). Правила проверяет ArchUni
 | Размер | файл ≤ 400 строк, метод ≤ 80; без исключений | `ClassSizeTest`, `MethodSizeTest` без списка |
 | Тесты | домен — быстрые юниты без Spring; сценарии — с фейками портов; транзакции/локи/события — IT на MySQL; DTO — golden; тексты — snapshot | CI |
 
-## 4. Заказ — как будет выглядеть ядро
+## 4. Заказ — как устроено ядро
 
 - `order/domain/Order` — агрегат (шаг 9д). Сеттеров нет: состав и деньги меняются только его методами, и после каждого вызова
   верно «итог = сумма строк − скидки, не меньше нуля». Размещение: `placeBy`, `deliverTo`, `choosePayment`, `dropPrepayment`, `replaces`;
@@ -134,12 +137,12 @@ Ousterhout, Fowler, Feathers, Nygard). Правила проверяет ArchUni
   кейсы подарков, поставки предзаказов и т.п.) оставлены анемичными: у них нет денежного автомата, сеттеры вызывает только их админский CRUD.
   Округление денег — `platform.util.Money`: процент от суммы покупателя усекается, себестоимость и курс — half-up.
 - `order/app`: `Checkout` (оформление), `OrderLifecycle` (одобрить/отправить/доставить/отклонить/истечение срока),
-  `CancelRequests`, `OrderEditing`, `OrderPayments` (ручные оплаты), `OrderMerge`, `CustomerOrders` и `AdminOrderBoard` (чтение).
-  Вместо `OrderService` (1629 строк) и `OrderAdjustmentService` (1222) — 8–10 классов по 150–350 строк.
-- `returns/app`: `Returns`, `Exchanges`, `PartialPickup` — каждое действие мастера возврата отдельно.
+  `CancelRequests`, `OrderEditing`, `OrderPayments` (ручные оплаты), `OrderMerge`, `CustomerOrders`, `AdminOrderQueries`, `OrderQueryService` (чтение; DTO доски — `OrderBoardDto`). Всего в `order/app` ~70 классов: новый сценарий — новый класс по смыслу, а не метод в существующем.
+  Прежних `OrderService` и `OrderAdjustmentService` уже нет.
+- `returns/app`: `Returns`, `Exchanges`, `ReturnReceiving`, `ReturnCancellation`, `ReturnRecords`, `DefectWriteoffs`, `AdminReturns`, `ReturnText` — каждое действие мастера возврата отдельно; `PartialPickup` (расчёт частичного выкупа) — в `returns/domain`.
 - Склад — только через `inventory/app/Stock` (резерв, возврат, партии), деньги — через `payment/app`.
 
-## 5. Порядок переезда (помодульно, каждый шаг — в master после CI)
+## 5. Порядок переезда (история: выполнен, все шаги в master)
 
 Каждый шаг: характеризующие тесты → перенос без изменения поведения → нарушения ArchUnit по модулю = 0 → CI → master.
 API (URL и JSON), схема БД и поведение не меняются; защищают golden-JSON, snapshot-тексты, IT и e2e админки.
@@ -200,4 +203,15 @@ API (URL и JSON), схема БД и поведение не меняются; 
 | M3 | `staff.infra.IncidentQueries` | отчёт инцидентов админов: журнал, заказы и движения денег одним чтением |
 | A3 | `catalog.app.AdminCatalog`, `translation.app.AdminTranslations` | `force=1` при удалении характеристики и пустой `entityId` при удалении языка — только главному админу; правило зависит от параметра, аннотация метода его не видит |
 
-Остаток, который не закрыт портом: записи в чужие таблицы остаются в `ReviewStore` (`claimBonus`, `claimReminder`, `recomputeRating`, `claimBonusExpiryReminder`) и `GiftReminderStore` (`claim`) — это атомарные однократные захваты.
+Остаток, который не закрыт портом: записи в чужие таблицы остаются в `ReviewStore` (`claimBonus`, `claimReminder`, `recomputeRating`, `claimBonusExpiryReminder`) и `claimReminder` промокода, который зовёт `GiftCasePromoReminderJob` (`claim`) — это атомарные однократные захваты.
+
+## 7. Рецепт: новый эндпоинт админки и кнопка под него
+
+Пример: кнопка в карточке заказа, которая меняет поле заказа. Шаги — по порядку.
+
+1. **Модуль и слой.** Модуль — по смыслу (здесь `order`). Контроллер — в `<модуль>/api`: новый тонкий `Admin<Что>Controller` с `@RequiredAdmin` (деньги — `@RequiresFinance`), префикс тот же, что у соседей (`/api/admin/orders`; прецедент — `AdminPromoOrdersController`). В существующий большой контроллер не дописываем.
+2. **Сценарий.** Логика — новый класс в `<модуль>/app` (`@Transactional` на публичных методах). Поле меняется только методом сущности (`Order`/`OrderHousekeeping`), не сеттером. Аудит — `audit.app.AdminAuditService.record` из сценария, актор — `CurrentActor`; последствия после коммита — событие через `DomainEvents` + `@OnCommitted`. Ошибка — константа `<Модуль>Error` + 4 строки в `i18n/messages*.properties` (проверяет `ErrorCatalogTest`).
+3. **Тесты бэкенда.** Юнит рядом со сценарием; если нужен SQL — `*IT` (см. [INTEGRATION-TESTS.md](INTEGRATION-TESTS.md)). Подпись нового кода журнала — см. раздел «Подписи журнала» в [ARCHITECTURE-CHECKS.md](ARCHITECTURE-CHECKS.md).
+4. **Контракт.** `cd backend && mvn test -Dtest=OpenApiSnapshotTest -Dopenapi.update=true` обновит снимок `backend/src/test/resources/openapi/openapi.json`; затем в корне `npm run gen:api` (читает снимок, не живой бэкенд) → закоммитить `packages/core/src/api/*`.
+5. **Админка.** `frontend-admin/features/order/{api.ts,keys.ts,queries/,ui/}`: запрос — типы ответа только из `generated.d.ts`, мутация — `useApiMutation`, подтверждение — `useConfirm`. Строки админки — русский прямо в JSX.
+6. **Проверки.** `npm run lint && npm run typecheck && npm run test && npm run arch:front && npm run build`; бэкенд — `mvn test` (включает ArchUnit); `npm run e2e` для сквозного сценария (нужен Docker).

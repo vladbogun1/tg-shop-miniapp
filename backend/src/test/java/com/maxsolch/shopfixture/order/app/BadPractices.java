@@ -37,7 +37,7 @@ public class BadPractices {
 
     public Object tick() {
         Object who = SecurityContextHolder.getContext();
-        if (memo.isEmpty()) {
+        if (memo.isEmpty()) { // L5: an HTTP status code in app
             throw new ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "no");
         }
         return new Object[]{System.currentTimeMillis(), new Date(), who};

@@ -152,9 +152,7 @@ public class AdminProductService {
         CatalogSnapshot catalog = catalogDirectory.load();
         List<SpecsValidator.Issue> issues = applyCatalog(p, req, catalog);
         // Unfinished until the card is done: hidden, DRAFT — whatever the form asked for.
-        p.showInShop(false);
-        p.changeCardStatus(CardStatus.DRAFT);
-        p.markUnfinished(true);
+        p.startAsDraft();
         ProductVariantsEditor.apply(p, req, null);
         Product created = productRepository.save(p);
         syncLots(created);

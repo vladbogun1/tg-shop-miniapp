@@ -1,3 +1,5 @@
+> **Пути до архитектуры v2:** `shared/src/*` → `packages/core/src/*` (или `packages/ui`, `packages/customer`), `frontend/lib`, `frontend/components` → `features/*`. Названия классов бэкенда (`OrderService` и др.) исторические — актуальные в [ARCHITECTURE.md](ARCHITECTURE.md).
+
 # Заказ → оплата/отмена, поддержка, отзывы, защита от ботов
 
 Статус: **в проде с v3.9.0** (07.10.2026; разрабатывалось в ветке `mono-acquiring` на демо-стенде). Решения владельца + дефолты разработчика.

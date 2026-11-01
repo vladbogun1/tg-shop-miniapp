@@ -4,9 +4,7 @@ import com.maxsolch.shop.journal.app.ActivityLog;
 import com.maxsolch.shop.journal.app.ActivityLogRetentionJob;
 import com.maxsolch.shop.journal.app.JournalFeed;
 import com.maxsolch.shop.journal.domain.ActivityFeed;
-import com.maxsolch.shop.platform.error.PlatformError;
 import java.time.Clock;
-import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -21,9 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -52,7 +47,7 @@ public class ActivityLogController {
 
     private final JournalFeed store;
     private final ActivityLogRetentionJob retention;
-    private final ZoneId zone;
+    private final ShopZone shopZone;
     private final Clock clock;
 
     public ActivityLogController(JournalFeed store,
@@ -62,7 +57,7 @@ public class ActivityLogController {
         this.clock = clock;
         this.store = store;
         this.retention = retention;
-        this.zone = shopZone.zone();
+        this.shopZone = shopZone;
     }
 
     /** A page of the feed; {@code totals} (by result, whole filter) only on the first page. */
@@ -97,7 +92,7 @@ public class ActivityLogController {
         ActivityFeed.Filter f = new ActivityFeed.Filter(
                 upper(source), upper(type), upper(result), upper(recipient), tgUserId,
                 trimToNull(order), trimToNull(group), upper(errorCode), trimToNull(q),
-                day(from, false), day(to, true));
+                shopZone.day(from, false), shopZone.day(to, true));
         List<ActivityFeed.Row> items = store.search(f, p, capped);
         return new Page(items, p == 0 ? store.countByResult(f) : null);
     }
@@ -123,19 +118,6 @@ public class ActivityLogController {
     }
 
     // ------------------------------------------------------------------ helpers
-
-    /** Start of the day ({@code to}: start of the NEXT day, so the given day is included). */
-    private Instant day(String value, boolean endExclusive) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        try {
-            LocalDate d = LocalDate.parse(value.trim());
-            return (endExclusive ? d.plusDays(1) : d).atStartOfDay(zone).toInstant();
-        } catch (DateTimeParseException e) {
-            throw new DomainException.BadRequest(PlatformError.DATE_FORMAT_INVALID);
-        }
-    }
 
     private static String upper(String s) {
         String v = trimToNull(s);

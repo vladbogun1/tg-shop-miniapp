@@ -1,6 +1,5 @@
 package com.maxsolch.shop.review.domain;
 
-import com.maxsolch.shop.review.app.ReviewService;
 
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderItem;
@@ -13,7 +12,7 @@ import java.util.Locale;
 import java.util.function.Predicate;
 
 /**
- * Pure rules of the reviews feature (no I/O), shared by {@link ReviewService} and the reminder job
+ * Pure rules of the reviews feature (no I/O), shared by {@code ReviewService} and the reminder job
  * and unit-tested on their own.
  */
 public final class ReviewRules {

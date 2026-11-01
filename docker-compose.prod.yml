@@ -1,5 +1,5 @@
 # ==========================================================
-#  Production TLS overlay for the server (132.145.132.80).
+#  Production TLS overlay for server #1 (address: owner's internal knowledge base, not in this repo).
 #  Since v3.1.0 the public addresses are subdomains served by the HOST's edge Caddy
 #  (~/edge on the server, 80/443), which reaches the gateways over the maxsolch-v2_tgshop network:
 #     https://chisetup.com.ua        -> gateway-site

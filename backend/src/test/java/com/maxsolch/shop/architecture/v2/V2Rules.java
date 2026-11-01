@@ -38,7 +38,7 @@ final class V2Rules {
         RULES.put("M1", "another module is called through its app only (not its api or infra)");
         RULES.put("M2", "no dependency against the module direction, and no cycle between modules of one row (SCC of the module graph)");
         RULES.put("M3", "SQL/JPQL strings of a module touch its own tables and entities only (analytics, finance, inbox read any); the rest asks the owner through a port");
-        RULES.put("L5", "app knows no web types (org.springframework.web.*, jakarta.servlet.*): requests are parsed in api");
+        RULES.put("L5", "app and domain know no web types (org.springframework.web.*, org.springframework.http.*, jakarta.servlet.*): requests are parsed in api");
         RULES.put("P1", "platform knows no business module");
         RULES.put("P2", "platform holds technical code only: no @RestController and no @Entity (a business endpoint or table belongs to a module)");
         RULES.put("E1", "business errors are DomainException with an ErrorCode (no other RuntimeException subclass, no ResponseStatusException)");
@@ -64,7 +64,7 @@ final class V2Rules {
         RULES.put("W1", "dependencies by constructor only (no field/setter @Autowired, @Inject, @Resource, @PersistenceContext, required=false, @Lazy)");
         RULES.put("S1", "JdbcTemplate and native EntityManager queries only in the infra layer (no exemption by class name)");
         RULES.put("O1", "order status changes only through Order methods (no setStatus from outside)");
-        RULES.put("O2", "an entity with invariants (GUARDED) is changed only by its own methods: no set* call from outside its domain package");
+        RULES.put("O2", "an entity with invariants (GUARDED) is changed only by its own methods: no set* call from outside its domain package, and no mutator (a public void method) called from another module");
         RULES.put("O3", "an entity with invariants (GUARDED) has no public set* method (no @Setter)");
     }
 
@@ -105,6 +105,14 @@ final class V2Rules {
             "A3", java.util.Map.of(
                     "catalog.app.AdminCatalog", "force=1 on deleting a characteristic is for the main admin: the rule reads a request parameter, a method annotation cannot see it",
                     "translation.app.AdminTranslations", "deleting a whole language (blank entityId) is for the main admin: the rule reads a request parameter"),
+            "O2", java.util.Map.of(
+                    "inventory.app.Stock", "the stock owner: reserves and returns units by the product's own methods (changeStock, syncStockFromVariants)",
+                    "procurement.app.PreorderBatchService", "a landed batch reprices the product by its own method (reprice)",
+                    "returns.app.Returns", "the return wizard moves money and units of the order by the order's own methods",
+                    "returns.app.ReturnReceiving", "receiving a return books units back by the order's own methods",
+                    "returns.app.ReturnCancellation", "cancelling a return undoes what the wizard booked, by the order's own methods",
+                    "returns.app.Exchanges", "an exchange re-opens and re-prices the order by the order's own methods",
+                    "returns.app.DefectWriteoffs", "a defect write-off marks the line restocked by the line's own method"),
             "E1", java.util.Map.of("payment.domain.MonobankGateway",
                     "MonobankException is a failure of the port, always caught in payment.app and turned into a DomainException; it never reaches HTTP"),
             "C1", java.util.Map.of(
@@ -237,6 +245,16 @@ final class V2Rules {
         return name.length() > 3 && name.startsWith("set") && Character.isUpperCase(name.charAt(3));
     }
 
+    /** A public void method of a guarded entity called from another module: the entity changes behind its module's back. */
+    private boolean isForeignMutator(JavaMethodCall call, Place from) {
+        if (placement.place(call.getTargetOwner()).module().equals(from.module())) {
+            return false;
+        }
+        return call.getTarget().resolveMember()
+                .map(m -> m.getModifiers().contains(JavaModifier.PUBLIC) && m.getRawReturnType().getName().equals("void"))
+                .orElse(false);
+    }
+
     private static boolean samePackage(String a, String b) {
         return a.equals(b);
     }
@@ -304,7 +322,8 @@ final class V2Rules {
                     && Placement.TIER_OF.get(to.module()) < Placement.TIER_OF.get(from.module())) {
                 out.add(new Violation("M2", from.module(), detail));
             }
-            if (from.layer() == Layer.APP && (target.getName().startsWith("org.springframework.web.")
+            if ((from.layer() == Layer.APP || from.layer() == Layer.DOMAIN) && (target.getName().startsWith("org.springframework.web.")
+                    || target.getName().startsWith("org.springframework.http.")
                     || target.getName().startsWith("jakarta.servlet."))) {
                 out.add(new Violation("L5", from.module(), detail));
             }
@@ -398,7 +417,8 @@ final class V2Rules {
                     && (name.equals("newBuilder") || name.equals("newHttpClient"))) {
                 out.add(new Violation("H1", from.module(), detail));
             }
-            if (isGuarded(owner) && isSetter(name) && !samePackage(c.getPackageName(), call.getTargetOwner().getPackageName())) {
+            if (isGuarded(owner) && !samePackage(c.getPackageName(), call.getTargetOwner().getPackageName())
+                    && (isSetter(name) || isForeignMutator(call, from))) {
                 out.add(new Violation("O2", from.module(), detail));
             }
             if ((owner.equals(root + ".domain.Order") || owner.equals(root + ".order.domain.Order")) && name.equals("setStatus")

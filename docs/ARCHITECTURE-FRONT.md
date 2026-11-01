@@ -4,106 +4,11 @@
 `docs/ARCHITECTURE.md`), обмер сделан на этом коммите. Образец формы — архитектура бэкенда: модули по смыслу, слои, «одна задача — один способ»,
 проверки в CI с храповиком «только вниз», цель — ноль исключений.
 
-Охват: `frontend/` (Mini App), `frontend-admin/` (админка), `site/` (сайт), `shared/`, `e2e/`. Ограничения, которые нельзя ломать, собраны в разделе 2.9.
+Охват: `frontend/` (Mini App), `frontend-admin/` (админка), `site/` (сайт), `packages/`, `e2e/`. Ограничения, которые нельзя ломать, собраны в разделе 2.9.
 
 ---
 
-## 1. Аудит (числа на `0243500a`)
-
-### 1.1. Размер
-
-| Пакет | Файлов ts/tsx | Строк ts/tsx | Файлов > 500 строк | Файлов > 300 | Что внутри |
-|---|---|---|---|---|---|
-| `frontend-admin` | 228 | 54 534 | 25 | 60 | 29 страниц, 136 компонентов, 46 файлов `lib/` |
-| `site` | 160 | 22 725 | 8 | 22 | `app/[locale]` (32 файла), 83 компонента, 30 `lib/` |
-| `frontend` (Mini App) | 87 | 17 481 | 10 | 16 | 14 файлов `app/`, 49 компонентов, 19 `lib/` |
-| `shared` | 37 | 6 094 | 3 | 7 | деньги, даты, http, типы, i18n-ядро, анимация кейса |
-| `e2e` | 46 | 4 696 | — | — | 38 спек **только админки** |
-| Итого (без e2e) | 512 | ≈ 100 800 | 46 | 105 | + 2 666 строк CSS |
-
-Бэкенд для сравнения: 56 тыс. строк Java. Админка по объёму — главный фронт, и в ней же меньше всего структуры.
-
-### 1.2. Топ-20 самых длинных файлов (ts/tsx, кроме словарей)
-
-| # | Файл | Строк |
-|---|---|---|
-| 1 | `frontend-admin/components/products/ProductModal.tsx` | 1 404 |
-| 2 | `frontend-admin/lib/api.ts` | 1 392 |
-| 3 | `frontend/app/checkout/page.tsx` | 1 207 |
-| 4 | `frontend-admin/components/layout/Shell.tsx` | 1 125 |
-| 5 | `frontend-admin/app/admins/page.tsx` | 1 083 |
-| 6 | `frontend-admin/components/cards/ReviewPanel.tsx` | 984 |
-| 7 | `frontend-admin/components/orders/ReturnModal.tsx` | 948 |
-| 8 | `site/components/catalog/CatalogFilters.tsx` | 943 |
-| 9 | `frontend-admin/app/products/page.tsx` | 900 |
-| 10 | `frontend/app/account/orders/[id]/page.tsx` | 872 |
-| 11 | `frontend-admin/components/orders/OrderDrawer.tsx` | 871 |
-| 12 | `frontend-admin/lib/card-check.ts` | 868 |
-| 13 | `frontend-admin/components/catalog/AttributeDialog.tsx` | 847 |
-| 14 | `frontend-admin/components/journal/ActivityTab.tsx` | 809 |
-| 15 | `shared/src/ui/GiftCaseOpening.tsx` | 793 |
-| 16 | `site/components/checkout/CheckoutView.tsx` | 771 |
-| 17 | `frontend-admin/components/orders/OrderDetails.tsx` | 743 |
-| 18 | `frontend-admin/components/translations/AiTranslate.tsx` | 726 |
-| 19 | `frontend-admin/app/broadcasts/page.tsx` | 721 |
-| 20 | `frontend-admin/components/catalog/CategoryDialog.tsx` | 705 |
-
-Ещё: `frontend/app/page.tsx` 692, `frontend-admin/app/users/page.tsx` 692, `site/lib/*` и `frontend/lib/telegram.ts` 572.
-
-### 1.3. Главные проблемы
-
-**П1. Один и тот же покупательский код написан дважды — в Mini App и на сайте.** 36 файлов с одинаковыми именами лежат и в `frontend/`, и в `site/`
-(`cart.ts`, `cart-sync.ts`, `analytics.ts`, `api.ts`, `compare.ts`, `order-limits.ts`, `ws.ts`, `image.tsx`, `ProductCard`, `MessageBubble`, `NpCombobox`,
-`PromoField`, `OrderGiftCase`, `StatusTimeline`, `ProductReviews`, `ReviewForm`…): **4 819 строк в Mini App против 4 758 на сайте**; `order-limits.ts` и
-`ws.ts` почти совпадают построчно, `cart-sync.ts` 226 против 265 строк, расходятся они уже не по смыслу, а по случайности. Словари:
-338 общих ключей из 569 (Mini App) и 786 (сайт), у **291 из 335** общих ключей текст одинаковый — то есть переводятся дважды.
-Исправление ошибки в одном приложении не доезжает до второго (так уже было с `http.ts`, поэтому он ушёл в `shared`).
-
-**П2. Состояние сервера — react-query, но «как попало».** react-query стоит во всех трёх приложениях (184 `useQuery`, 14 `useMutation`), но:
-- **335 `queryKey:`, из них 221 (66 %) — строковый литерал на месте** (`["products", …]` в админке 21 раз), остальные — самодельные константы в разных стилях
-  (`REVIEWS_QUERY_KEY`, `PREORDERS_KEY`, `["metrics2", …]`). Инвалидация (`invalidateQueries` 141) работает по совпадению строк — опечатка молча ничего не обновляет.
-- **Мутаций через `useMutation` 14, а блоков `catch` — 333** (admin 185, site 77, Mini App 71): записи делаются руками (`try { await api… ; toast } catch (e) { toast.error(e.message) }`),
-  у каждого экрана своё поведение при ошибке (`e.message` — 168 мест), нет единого «ждём → блокируем кнопку → инвалидируем → показываем ошибку».
-- Три разных набора по умолчанию (`staleTime` 15 с в админке, 30 с на двух других), 83 `staleTime`-литерала и 27 `refetchInterval`-литералов по экранам.
-- Прямой `fetch(` мимо `HttpClient`: 8 мест (admin `api.ts` ×2, `costing.ts`, `preorders.ts`; Mini App `analytics.ts`, `api.ts`; site `analytics.ts`, `api.ts`) + `server-api.ts`.
-
-**П3. Типы DTO — вручную, 611 `interface`/`type`; сверка есть только для заказа.** В админке 186 уникальных путей `/api/…`, в сайте 74, в Mini App 53; типы
-написаны руками и лежат кучей: `frontend-admin/lib/api.ts` (1 392 строки, **98 экспортов**: каталог, 2FA, команда, переводы, промокоды, аудит…) + `api-extra.ts` +
-`orders-api.ts` + ещё 40 файлов. `scripts/check-dto-drift.mjs` покрывает 8 типов заказа (по golden-JSON), остальное — на честном слове. При этом в бэкенде **уже есть
-springdoc** (`/v3/api-docs`, 69 контроллеров) — но не используется.
-
-**П4. Структура папок: «по типу», а не «по фиче».** Админка: фича «Заказы» размазана по `app/orders/[id]/`, `components/orders/` (37 файлов), `lib/orders.ts`,
-`lib/orders-api.ts`, `lib/orders-period.ts`, `lib/online-payment.ts`, `components/metrics/…` и `lib/api.ts`. Исключение — `components/metrics/` (там есть свой `api.ts`),
-оно же единственное читается целиком. Страницы-god-экраны: `app/admins` 1 083 строк (15 компонентов в одном файле), `app/products` 900, `app/broadcasts` 721,
-`app/users` 692, `app/categories` 669. Межфичевые импорты никто не проверяет (`components/orders` → `cards`, `translations`, `catalog`: 13/16/10 раз).
-
-**П5. Лимиты есть, но долг в них — 171 исключение.** ESLint `complexity` 15 / `max-lines` 400 / `max-depth` 4 включены как **error**, но 171 пара «файл — правило» стоит в
-`eslint.legacy-limits.mjs` (admin: 76 + 36, site: 24 + 6, Mini App: 22 + 7) — там это warn. Плюс 27 `eslint-disable` (26 — `react-hooks/exhaustive-deps`, то есть
-скрытые баги эффектов; всего 310 `useEffect`). **`shared/src` (6 094 строки) не линтится вообще** (у пакета нет скриптов, `eslint .` бежит только внутри приложений).
-Корневые `npm run lint` и `typecheck` **пропускают `site`** (для него отдельная джоба CI).
-
-**П6. Нет юнит-тестов вообще.** 0 файлов `*.test.*`/`*.spec.*` в `frontend`, `frontend-admin`, `site`, `shared`; нет vitest/jest. Админку держат 38 e2e-спек (Playwright,
-3 764 строки), **покупательские приложения в CI не проверяются ничем, кроме сборки, линтера и `check-browser-compat`** (смоук-тесты — скилл `shop-smoke`, вручную).
-Чистая логика (деньги, корзина, лимиты, подарок/кейс, сравнение, доплаты, проверка карточек `card-check.ts` 868 строк) лежит без тестов.
-
-**П7. Деньги, даты, часовой пояс — не «одним способом».**
-- Часовой пояс Киева: пинится только на сайте (`site/lib/format.ts`) и в 5 местах админки; **Mini App форматирует даты в поясе телефона**
-  (`frontend/lib/format.ts` без `timeZone`); в админке 42 вызова `toLocale…` без `timeZone`.
-- `new Date(` 49 мест, `Date.now` 46 — «сейчас» не подменить в тесте.
-- Деньги: `money()` есть, но в админке `/ 100` — 30 мест и `toFixed` — 9, на сайте `/ 100` — 5; округление должно совпадать с бэкендом (`OrderMoney`/`MoneyFormat`).
-- Модалки/подтверждения: в админке `Modal` — 84 места, `<ConfirmModal` — 1, `window.confirm` — 4; тосты: свой `useToast` в админке (80), свой `Toast` в Mini App
-  и на сайте (три разные реализации).
-
-**П8. i18n покупателя типизирован наполовину.** Сайт: `t(key: MessageKey)` — опечатка в ключе не соберётся. Mini App: `t: (key: string)` — любая строка. Сверки ключей
-между `uk/ru/en` в CI нет (`uk.ts` объявлен как `RuDictionary` — это ловит только отсутствие ключа, но не лишний/пустой/потерянный `{плейсхолдер}`). Хардкод кириллицы в
-коде покупательских приложений небольшой (Mini App 13 строк в 7 файлах, сайт 71 в 8 файлах — в основном юридические тексты и фиды), его не охраняет ничего. Админка русская
-намеренно: 4 736 строк кириллицы в 178 файлах — это решение, не долг.
-
-**Что уже хорошо (трогать не надо, а закрепить).** Один `HttpClient` в `shared/src/http.ts` с `ApiError{status, code}`; `lib/*-api.ts` — единственное место путей
-(страницы почти не зовут `apiGet/apiPost`: 3 вызова); `transpilePackages` без шага сборки `shared`; нет `any`/`@ts-ignore` (2 `: any` на сайте); `components → app` импортов 0;
-`check-browser-compat.mjs` смотрит собранные чанки; `CHUNK_RECOVERY_SCRIPT` и no-cache HTML; `check-dto-drift` и golden-подход; ESLint-лимиты уже в CI.
-
----
+Аудит «до» (числа на коммите `0243500a`), план переезда по шагам 0–8 и исходные вопросы — в [archive/ARCHITECTURE-FRONT-plan-2026-10.md](archive/ARCHITECTURE-FRONT-plan-2026-10.md).
 
 ## 2. Целевая архитектура
 
@@ -120,7 +25,7 @@ springdoc** (`/v3/api-docs`, 69 контроллеров) — но не испо
 ### 2.2. Состав пакетов (workspaces)
 
 ```
-shared/         →  делится на три пакета (имена папок приложений НЕ меняем — см. решение Р1):
+(было shared/)         →  делится на три пакета (имена папок приложений НЕ меняем — см. решение Р1):
   packages/core      @shop/core      чистый TS, без React и DOM-зависимостей: money, time (Киев), http/ApiError/ErrorCode, locale-ядро,
                                      телефон, URL картинок, ws-клиент, типы из OpenAPI, правила домена без UI (orders, cart, giftcase, compare, catalog)
   packages/ui        @shop/ui        React-примитивы на токенах CSS: Button, Input, Stars, QtyStepper, RadioCard, StatusChip, Toaster+toast, Modal/Sheet,
@@ -284,77 +189,7 @@ Next 15 + React 19 + Tailwind 4 + framer-motion + react-query + zustand; `output
 
 ---
 
-## 3. План переезда
-
-**9 шагов (0–8), 18 веток.** Шаг = ветка от `arch/v2` (`arch/front-step-N-<имя>`), все проверки CI зелёные, храповик не вырос, в `arch/v2` — после CI и демо-проверки. Прод — по решению В5.
-Порядок: сначала то, что **измеряет и защищает** (0), потом общий фундамент без смены вида (1–3), потом **админка** (есть e2e → безопасно отработать шаблон), потом
-**покупательские** приложения (нет тестов → сначала страхуем, потом двигаем). Размер: S ≈ 1 сессия, M ≈ 2–3, L ≈ 4–6.
-
-| Шаг | Что делаем | Размер | Поведение меняется? |
-|---|---|---|---|
-| **0. Измерение и страховка** | `dependency-cruiser` + `known-violations.json`; `check-front-ratchet.mjs` + `frontend-baseline.txt`; новые ESLint-правила как warn; `check-invariants.mjs`; vitest в workspaces; `shared/src` под линтер; корневые `lint/typecheck/test` покрывают `site` и `shared`; сводка «приложение × правило»; бандл-baseline; Dockerfile'ы готовятся к новым workspace-пакетам (`COPY packages/*/package.json`) | M | нет |
-| **1. `@shop/core`** | Разрезать `shared` на `core / ui / customer` (пока кладём в `core` и `ui`, `customer` пустой); `core/time` (пояс пользователя, `now()`), `core/storage`, `core/errors` (`ApiError{code,params}`, `errorMessage`), `core/query` (пресеты, `makeQueryClient`); заменить 49 `new Date`, 46 `Date.now`, 42 `toLocale*` без пояса, 62 прямых `localStorage`; vitest: money, time, format, orders, cart, compare, giftcase | L | **Да, одно:** сайт и админка показывают время в поясе пользователя, как Mini App (В4), отдельным коммитом |
-| **2. `@shop/ui` и платформа UI** | Единые `toast`, `Modal/Sheet/Drawer`, `useConfirm`, `useApiMutation`; `useForm`-обвязка; заменить 4 `window.confirm`, три реализации Toast, самодельные оверлеи; примитивы Button/Input/QtyStepper/RadioCard/StatusChip переезжают из дубликатов `frontend`/`site` (визуально идентичны — это проверяется скриншотами) | L | нет |
-| **3. Типы из OpenAPI** | Пилот `order` + `catalog` (настройка springdoc, снимок, `gen:api`, CI); затем остальные модули; `error-codes.json`; для админки и покупателя ручные DTO заменяются на сгенерированные волнами (вместе с фичами в шагах 4–7) | M (пилот) → дальше внутри 4–7 | нет |
-| **4. Админка (6 веток)** | см. ниже | L×6 | нет |
-| **5. `@shop/customer` (6 веток)** | см. ниже | L×6 | нет |
-| **6. Mini App** | `features/` по фичам, разбор god-экранов: `checkout/page.tsx` 1 207 → экран ≤ 60 строк + `features/checkout`; `orders/[id]/page.tsx` 872; `page.tsx` 692; `FilterSheet` 469; `CompareSheet` 525; `telegram.ts` 572 → `platform/telegram/*`; `TabBar`; `t(key: MessageKey)` | L | нет |
-| **7. Сайт** | то же + граница RSC: `features/*/server.ts` (то, что сегодня в `server-api.ts`, `feeds.ts`, `seo.ts`), `CatalogFilters` 943, `CheckoutView` 771, `site/lib` 30 файлов → фичи; ISR/теги/rewrites не трогаем | L | нет |
-| **8. Финиш** ✅ | `eslint.legacy-limits.mjs` ×5 удалены (лимиты — error везде), `check-dto-drift` удалён (ещё в шаге 3), `knip`-отчёт и удаление явно мёртвого, `toPercent` → `@shop/core`, сироты i18n = 0, документы и скиллы; отдельный коммит с изменением поведения (push на iOS 16.4–16.9) | M | **Да, одно:** push в админке на iOS 16.4–16.9 больше не считается «слишком старым» |
-
-**Шаг 4. Админка** (порядок — от простого и покрытого e2e к большому; после каждой ветки — `npm run e2e` целиком + ручной обход на десктопе и телефоне):
-- 4a: каркас `features/`, `shell/` (разрезать `Shell.tsx` 1 125: навигация-конфиг / сайдбар / нижний tab-bar / бейджи), `staff` (`admins/page.tsx` 1 083, 2FA, приглашения, `account`, `audit`, `incidents`), `settings`, `site`. e2e: 01, 13, 15, 17–19, 33, 36.
-- 4b: `order` + `returns` + `payment` (самый тяжёлый домен: `OrderDrawer` 871, `ReturnModal` 948, `OrderDetails` 743, доска, `lib/orders*.ts`, `online-payment.ts`). e2e: 04–09, 21, 37.
-- 4c: `catalog` + `translation` + `cards` (`ProductModal` 1 404, `AttributeDialog` 847, `CategoryDialog` 705, `ReviewPanel` 984, `AiTranslate` 726, `card-check.ts` 868, `translation-check.ts` 584). e2e: 10, 20, 22–24, 32.
-- 4d: `promo`, `gift` (`CasePanel` 704, `case-draft`), `review`, `support`, `customer`, `notification` (рассылки, push). e2e: 25–28, 30.
-- 4e: `procurement` + `inventory` + `analytics/finance` (предзаказы, себестоимость, списания, метрики). e2e: 14, 29, 35, 38.
-- 4f: `inbox` («Внимание»), `dispatch` («Отправка»), остаток `lib/api.ts` → 0 (файл удалён), `lib/` почищен, `api-extra.ts` удалён; ratchet по админке = 0.
-
-**Шаг 5. `@shop/customer`** (в каждой ветке: код фичи переезжает в пакет, **оба** приложения переключаются на него, дубликат в `frontend/` и `site/` удаляется; перед и после — смоук 5.0 и `shop-ui-qa`):
-- **5.0 Страховка (до переноса):** смоук-спеки Playwright в `e2e/` для покупателя (WebKit, профиль iPhone + десктоп): каталог → товар → корзина (промокод) → оформление до старта оплаты (тестовый режим monobank/заглушка) → страница заказа → чат → отзыв → сравнение → подарок/кейс. Это характеризующие тесты в смысле Feathers: **фиксируют текущее поведение**, не желаемое. Бегут в CI на изолированном стеке, как e2e админки.
-  *Сделано:* `e2e/customer/` (запуск: `npm run e2e -- --suite=customer`, CI-джоба `e2e-customer`). Стенд — тот же, что у админки, плюс сборки-копии `frontend/` и `site/`, шлюз сайта (`e2e/lib/gateway.mjs`) и fake monobank (`e2e/lib/fake-mono.mjs`); Telegram в Mini App подменяет `e2e/lib/tg-stub.ts`; каждому тесту — свой IP (`customer/fixtures.ts`), потому что лимиты бэкенда по IP нельзя поднять.
-- 5a: `Platform` + `cart` (`cart.ts`, `cart-sync.ts` — разошлись 226/265) + `catalog` (фильтры, карточка, `catalog.ts` 103/204).
-- 5b: `checkout` + `payment` + `delivery` (НП: `NpCombobox`, `NpWarehouseMap` 432/326; `PromoField`; `order-limits`).
-- 5c: `order` (страница заказа, `StatusTimeline`, доплата, чек) + `chat` + `support`.
-- 5d: `review` + `compare` + `gift` (`OrderGiftCase` 350/326, `CartGiftProgress`, `ProductGiftBanner`; `shared/src/ui/GiftCaseOpening.tsx` 793 разбирается) + `preorder`.
-- 5e: i18n: общий словарь (338 общих ключей, 291 с одинаковым текстом → одна копия), `t(MessageKey)` в Mini App, `check-i18n.mjs` в CI, `analytics.ts` (214/202 → одна реализация).
-  *Сделано (шаг 5e):* общих имён 338, из них одинаковый текст на всех языках у 258 → `packages/customer/src/i18n/shared-{ru,uk,en}.ts` (приложения подмешивают спредом); 80 ключей с разным текстом остались у приложений ([I18N-APP-DIFFERENCES.md](I18N-APP-DIFFERENCES.md)); `t(key: MessageKey)` в Mini App, в пакетах — `LooseT` (`@shop/core/i18n`), литералы ключей в пакетах сверяет `scripts/check-i18n.mjs` (входит в `arch:front`); аналитика — `@shop/customer/analytics` (движок + политика приложения).
-
-Ожидание (не обещание): из ~4,8 тыс. + 4,8 тыс. дублированных строк в `@shop/customer` останется около половины — вёрстка, которая действительно разная, остаётся в приложениях.
-
-**Храповик по шагам.** На каждом шаге в PR показывается таблица «до → после» (по образцу сводки бэкенда): число `legacy`-записей ESLint, число нарушений depcruise, число
-литералов `queryKey`, `catch`, `toLocale*`, файлов > 400, размер бандла по маршрутам. Строки таблицы могут только падать. Осознанный рост (правило стало измеримым) — только
-с флагом `--allow-growth=<правила>` и причиной в сообщении коммита.
-
-### 3.1. Риски и защита
-
-| Риск | Что делаем |
-|---|---|
-| Покупательские приложения без тестов — рефакторинг вслепую | Шаг 5.0 до любого переноса; перенос по одной фиче; каждый шаг сначала на демо-стенде (`shop-demo`) |
-| iOS 15.4–16.3: новая библиотека/регулярка роняет чанк (как 25.10) | `check-browser-compat` на каждом шаге для обоих покупательских приложений; правила в линтере; новые зависимости — по одной |
-| Рост бандла из-за общего пакета (барель-импорты, «всё в одном index») | Явные подпути `@shop/customer/<фича>`; `sideEffects: false`; бюджет бандла +3 % |
-| Сайт/админка: время «Киев» → пояс пользователя; SSR даёт расхождение гидрации | Единственное намеренное изменение поведения (В4), **отдельный коммит** шага 1; на сайте даты только клиентские (`LocalTime`), проверка консоли на #418 |
-| OpenAPI-типы «слишком мягкие» | Пилот шага 3 с критерием выхода; план Б (расширить golden/drift) |
-| Админка: e2e 38 спек покрывают не всё (метрики значения, предзаказы, поддержка — частично) | В каждой ветке шага 4 дописываются спеки на то, что двигается без покрытия (по списку веток выше); ручной обход |
-| Гидратация/RSC на сайте (React #418 уже был) | В шаге 7 `server.ts` и клиентские границы не смешиваем; `HydrationGate` остаётся; смотреть консоль в `shop-ui-qa` |
-| Конфликты с параллельными ветками (Хеллоуин, НП, предзаказы) | Каждый шаг короткий; правки фичи в чужой ветке портируются вручную; на время шага фича «замораживается» в `TODO`; НП/Хеллоуин в план не входят |
-| Dockerfile'ы/CI: новые workspace-пакеты не попадают в контекст сборки | Подготовка в шаге 0; сборка всех образов (`publish.yml` dry-run) в CI на каждом шаге |
-| «Архитектура ради архитектуры» | Паттерн вводится, только если он убирает измеримое (таблица в 3): `Platform` — единственный интерфейс с одной-двумя реализациями и только на границе платформы |
-
-### 3.2. Что проверять (на каждом шаге)
-
-1. `npm run lint && npm run typecheck && npm run test && npm run arch:front` (все workspaces) — зелёные, храповик не вырос.
-2. `npm run build` всех приложений + `check-browser-compat.mjs frontend site` + бандл-бюджет.
-3. **Админка:** `npm run e2e` целиком (38 спек, после шага 4 — больше) + ручной обход затронутых разделов на десктопе и телефоне (мобильные спеки 03, 05, 18 есть).
-4. **Mini App и сайт (шаги 5–7 и всегда, если тронут покупательский код):** `shop-ui-qa` — **7 ширин (320 … 1440) × 3 языка (uk/ru/en)**, WebKit-профиль iPhone, скрипт на
-   боковой скролл, вылезания, наложения, переносы; без плавающих кнопок над сеткой; смоук 5.0; сверка скриншотов «до/после» (визуальный дифф должен быть пуст, кроме намеренных мест).
-5. Демо-стенд (`shop-demo`) с данными прода: вход в Mini App через `?tgstub=`, оплата тестовым токеном monobank, чат, отзыв, сравнение, подарок.
-6. После релиза на прод — `shop-smoke` + `shop-seo-check` (метаданные, hreflang, фиды, ISR, редиректы `/uk` → без префикса).
-7. Журнал ошибок фронта (`client_events`/«Бот и сайт») за сутки после выкатки — нет новых типов (особенно `e[n].call`, #418, SyntaxError на старых iOS).
-
----
-
-## 4. Решения владельца (30.10.2026)
+## 3. Решения владельца (30.10.2026)
 
 - **В1:** НЕ объединять приложения, общий пакет `@shop/customer` — да.
 - **В2:** типы генерировать из OpenAPI.
@@ -363,28 +198,7 @@ Next 15 + React 19 + Tailwind 4 + framer-motion + react-query + zustand; `output
 - **В5:** три релиза на прод (после админки, после Mini App, после сайта).
 - Переделка полная, не частичная.
 
-### Исходные вопросы (для истории)
-
-**В1. Объединять ли Mini App и сайт в одно покупательское приложение?** Сейчас два деплоя с 4,8 тыс. строк дублей; можно сделать один Next-проект с двумя «оболочками».
-*Рекомендация: нет. Сделать общий пакет `@shop/customer` (шаг 5) и два деплоя как сейчас* — у них разный рендер (клиент против RSC/ISR), разные политики кэша, SEO и безопасности (frame-ancestors, cookie против токена),
-и каждый слитый вопрос — риск для SEO сайта. Вернёмся к вопросу после шага 5, когда будет видно, сколько вёрстки реально совпало.
-
-**В2. Генерация типов из OpenAPI (новая зависимость `openapi-typescript`, springdoc уже есть) — согласны?** Альтернатива — расширить текущий `check-dto-drift` на другие модули.
-*Рекомендация: да, с пилотом на `order` + `catalog` и критерием «типы не мягче, чем DTO»; не сошлось за 2 сессии — план Б (расширение drift-чека).* Это единственное, что убирает 611 ручных типов, а не только сторожит их.
-
-**В3. Формы: `react-hook-form` + чистые валидаторы (без zod) — согласны?** +9 КБ gzip, только в чанках оформления/отзыва/поддержки у покупателя, в админке — везде, где форма > 3 полей.
-*Рекомендация: да.* Альтернатива «ничего не добавлять, свой хук формы» — больше своего кода и снова «у каждого экрана по-своему».
-
-**В4. Можно ли одним осознанным изменением показать даты в Mini App в поясе Киева, как на сайте?** Сейчас — в поясе телефона (человек в отпуске увидит «вчера» вместо «сегодня» у своего заказа).
-*Рекомендация: да, отдельным коммитом шага 1, остальное в плане — без изменения поведения.* Заодно админка: все 42 `toLocale…` без пояса получают Киев.
-
-**В5. Как выкатывать: каждый шаг на прод, или копить?**
-*Рекомендация: после каждого шага — на демо и в `arch/v2` (не на прод); на прод — тремя релизами: после шага 4 (админка, e2e-страховка), после шагов 5–6 (Mini App) и после 7–8 (сайт).* Покупательские шаги трогают
-SEO и оплату — их безопаснее выкатывать крупными, но проверенными кусками, чем накапливать все 9 шагов в одном релизе (откат = `rollback.sh` предыдущего релиза, как и сейчас).
-
----
-
-## 5. Итог (шаг 8, 31.10.2026)
+## 4. Итог (шаг 8, 31.10.2026)
 
 Шаги 0–8 выполнены в `arch/v2` (прод не затронут).
 
@@ -402,7 +216,7 @@ SEO и оплату — их безопаснее выкатывать круп�
 Что в конце (числа на HEAD шага 8):
 - `eslint.legacy-limits.mjs`: 171 запись (на старте) → **0 файлов**; `complexity` / `max-lines` / `max-depth` / `max-lines-per-function` в baseline — **0**.
 - `known-violations.json` (depcruise): 6 → **4**, все — `ws-only-from-realtime`: чат заказа и поддержка подключают WebSocket из своих экранов (Mini App: `OrderChatScreen`, `support/api.ts`; сайт: `OrderChat`, `support/queries.ts`). Перенос подписок в `shell/realtime.ts` меняет момент подключения — оставлено.
-- `scripts/frontend-baseline.txt` — **не пуст**: остались счётные правила, по которым нужны отдельные решения/правки данных: `cyrillic-literal` (сайт 120 — SEO-словари и данные, Mini App 6), `query-key-literal` (23), `stale-time-literal` (24), `refetch-interval-literal` (4), `money-div-mul-100` (15), `to-fixed` (4), `no-fetch` (2), `exhaustive-deps` (4), остаток `max-lines`/`max-lines-per-function` в `ui`, если есть. Числа только падают.
+- `scripts/frontend-baseline.txt` — **пуст** (только комментарий): все счётные правила на нуле, `npm run arch:front` показывает нули по 18 правилам.
 - `scripts/i18n-orphans-baseline.json` удалён: сирота — ошибка `check-i18n`.
 - `knip` (разовый отчёт, не в CI): удалены `site/components/ui/Toast.tsx` (+ зависимость `zustand`), пустой barrel `frontend/features/checkout/index.ts`, `frontend-admin/features/order/queries/index.ts`. Остальное (≈160 неиспользуемых экспортов/типов, `server-only` и `eslint-config-next` как «непрописанные/лишние» зависимости) — публичные входы фич и ложные срабатывания.
 - `toPercent`: четыре копии в админке → `@shop/core/percent`.
