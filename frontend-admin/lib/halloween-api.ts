@@ -180,6 +180,7 @@ export const HW_VISUALS = [
   { value: "wild-2-swarm", label: "Рой" },
   { value: "wild-3-royale3d", label: "Рыцари 3D" },
   { value: "loto", label: "Лото Забава" },
+  { value: "casino", label: "Рулетка казино" },
 ] as const;
 export type HwVisual = (typeof HW_VISUALS)[number]["value"];
 /** The super prize always plays the knights. */
