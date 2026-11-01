@@ -6,19 +6,16 @@
  * `?newProduct=<id>` открывает форму новой поставки с этим товаром (из карточки товара и «Ждут»).
  */
 import { Button } from "@shop/ui/admin-button";
-import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Tabs } from "@/components/ui/Tabs";
 import { BatchFormModal, SupplierModal, useDemand, type Demand, type SeedLine } from "@/features/procurement";
-import { ProductPickModal, productApi, productKeys } from "@/features/product";
+import { PICK_PRODUCTS_STALE_MS, ProductPickModal, useProductsQuery } from "@/features/product";
 import { BatchList } from "./BatchList";
 import { DemandList } from "./DemandList";
 import { SuppliersList } from "./SuppliersList";
-
-const PRODUCTS_STALE_MS = 60_000;
 
 type TabKey = "open" | "arrived" | "cancelled" | "demand" | "suppliers";
 
@@ -49,11 +46,7 @@ function PreordersBody() {
   const [supplierModal, setSupplierModal] = useState(false);
 
   const demandQ = useDemand();
-  const productsQ = useQuery({
-    queryKey: productKeys.list(),
-    queryFn: () => productApi.list(),
-    staleTime: PRODUCTS_STALE_MS,
-  });
+  const productsQ = useProductsQuery({ staleTime: PICK_PRODUCTS_STALE_MS });
 
   // Глубокая ссылка «?newProduct=id»: открыть форму с этим товаром, один раз.
   const newProduct = params.get("newProduct");

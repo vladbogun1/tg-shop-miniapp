@@ -4,28 +4,13 @@
  * Карточка товара → «Себестоимость»: по какой цене уйдёт следующая штука (FIFO), маржа при текущей цене,
  * партии с остатком и сверка с остатком на складе. Рендерится только при праве «Финансы».
  */
-import { QUERY_PRESETS } from "@shop/core/query";
-import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { LOT_KIND_LABEL, costingApi, procurementKeys, useFinanceAccess, type Lot, type ProductCost } from "@/features/procurement";
+import { LOT_KIND_LABEL, useProductCost, type Lot, type ProductCost } from "@/features/procurement";
 import { money } from "@/lib/money";
 import { cn } from "@/lib/cn";
 import { pct } from "@/features/analytics";
 import { toPercent } from "@shop/core/percent";
 import { Badge } from "@/components/ui/Badge";
-
-/** Себестоимость товара; undefined — нет права «Финансы», не загружено или не нужно (новый товар). */
-export function useProductCost(productId: string | null | undefined, enabled = true): ProductCost | undefined {
-  const finance = useFinanceAccess();
-  const q = useQuery({
-    queryKey: procurementKeys.product(productId as string),
-    queryFn: () => costingApi.product(productId as string),
-    enabled: finance && enabled && !!productId,
-    staleTime: QUERY_PRESETS.list.staleTime,
-    retry: false,
-  });
-  return finance ? q.data : undefined;
-}
 
 /** «Маржа при этой цене: 450 ₴ (31,2 %)» — для подсказки у поля цены; null, если считать не из чего. */
 export function marginHint(cost: ProductCost | undefined, priceMinor: number): string | null {
