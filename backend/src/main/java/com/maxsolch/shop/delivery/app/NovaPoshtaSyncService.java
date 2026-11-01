@@ -11,6 +11,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -83,8 +84,7 @@ public class NovaPoshtaSyncService {
                 sync();
             } catch (Exception e) {
                 log.warn("Nova Poshta sync failed: {}", e.getMessage());
-                settings.putSystem(NovaPoshtaSyncStatus.LAST_ERROR_AT, clock.instant().toString());
-                settings.putSystem(NovaPoshtaSyncStatus.LAST_ERROR, String.valueOf(e.getMessage()));
+                recordError(e.getMessage());
             }
         });
     }
@@ -99,6 +99,11 @@ public class NovaPoshtaSyncService {
             return;
         }
         syncAsync();
+    }
+
+    private void recordError(String message) {
+        settings.putSystem(NovaPoshtaSyncStatus.LAST_ERROR_AT, clock.instant().toString());
+        settings.putSystem(NovaPoshtaSyncStatus.LAST_ERROR, String.valueOf(message));
     }
 
     /**
@@ -135,14 +140,18 @@ public class NovaPoshtaSyncService {
             upsertService.saveCities(cities.values());
             log.info("Nova Poshta sync done: {} warehouses, {} cities.", total, cities.size());
             if (total == 0) {
-                // A non-200 or an empty first page is not a successful sync, whatever the log says.
-                settings.putSystem(NovaPoshtaSyncStatus.LAST_ERROR_AT, clock.instant().toString());
-                settings.putSystem(NovaPoshtaSyncStatus.LAST_ERROR, "API Новой Почты не вернул ни одного отделения");
+                // An empty first page is not a successful sync either.
+                recordError("API Новой Почты не вернул ни одного отделения");
             } else {
                 settings.putSystem(NovaPoshtaSyncStatus.LAST_SYNC_AT, clock.instant().toString());
                 settings.putSystem(NovaPoshtaSyncStatus.LAST_SYNC_SUMMARY,
                         "отделений: " + total + ", городов: " + cities.size());
             }
+        } catch (IOException e) {
+            // An API error (HTTP status, success:false, broken body) is a failed run, not the end of the directory.
+            // Pages stored before the failure stay; nothing is deleted, so the existing directory is never wiped.
+            log.warn("Nova Poshta sync failed: {}", e.getMessage());
+            recordError(e.getMessage());
         } finally {
             running.set(false);
         }

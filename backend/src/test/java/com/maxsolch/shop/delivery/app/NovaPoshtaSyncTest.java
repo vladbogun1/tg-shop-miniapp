@@ -24,10 +24,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -118,6 +121,89 @@ class NovaPoshtaSyncTest {
         verify(warehouses, never()).saveAll(any());
         verify(settings).putSystem(eq(NovaPoshtaSyncStatus.LAST_ERROR), anyString());
         verify(settings, never()).putSystem(eq(NovaPoshtaSyncStatus.LAST_SYNC_AT), anyString());
+    }
+
+    @Test
+    void successFalseInA200AnswerIsAnErrorWithTheApiReason() throws Exception {
+        answer = "{\"success\":false,\"data\":[],\"errors\":[\"API key expired\"]}";
+
+        sync.sync();
+
+        verify(warehouses, never()).saveAll(any());
+        verify(settings).putSystem(eq(NovaPoshtaSyncStatus.LAST_ERROR), contains("API key expired"));
+        verify(settings, never()).putSystem(eq(NovaPoshtaSyncStatus.LAST_SYNC_AT), anyString());
+    }
+
+    @Test
+    void anAnswerWithoutADataListIsAnError() throws Exception {
+        answer = "{\"success\":true}";
+
+        sync.sync();
+
+        verify(settings).putSystem(eq(NovaPoshtaSyncStatus.LAST_ERROR), anyString());
+        verify(settings, never()).putSystem(eq(NovaPoshtaSyncStatus.LAST_SYNC_AT), anyString());
+    }
+
+    @Test
+    void aFailureOnALaterPageIsNotTheEndOfTheDirectory() throws Exception {
+        StringBuilder full = new StringBuilder("{\"data\":[");
+        for (int i = 0; i < 500; i++) {
+            full.append(i == 0 ? "" : ",").append("{\"Ref\":\"w").append(i).append("\",\"CityRef\":\"c1\"}");
+        }
+        String firstPage = full.append("]}").toString();
+        server.removeContext("/");
+        server.createContext("/", ex -> {
+            String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            bodies.add(body);
+            boolean pageOne = body.contains("\"Page\":\"1\"");
+            byte[] out = (pageOne ? firstPage : "{\"success\":false,\"errors\":[\"down\"]}").getBytes(StandardCharsets.UTF_8);
+            ex.sendResponseHeaders(200, out.length);
+            ex.getResponseBody().write(out);
+            ex.close();
+        });
+
+        sync.sync();
+
+        verify(settings).putSystem(eq(NovaPoshtaSyncStatus.LAST_ERROR), contains("down"));
+        verify(settings, never()).putSystem(eq(NovaPoshtaSyncStatus.LAST_SYNC_AT), anyString());
+        verify(settings, never()).putSystem(eq(NovaPoshtaSyncStatus.LAST_SYNC_SUMMARY), anyString());
+        verify(warehouses, never()).deleteAll();
+        verify(warehouses, never()).deleteAllInBatch();
+    }
+
+    @Test
+    void aSecondRunWhileOneIsGoingIsSkipped() throws Exception {
+        CountDownLatch inside = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        server.removeContext("/");
+        server.createContext("/", ex -> {
+            bodies.add(new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            inside.countDown();
+            try {
+                release.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            byte[] out = "{\"data\":[{\"Ref\":\"w1\",\"CityRef\":\"c1\"}]}".getBytes(StandardCharsets.UTF_8);
+            ex.sendResponseHeaders(200, out.length);
+            ex.getResponseBody().write(out);
+            ex.close();
+        });
+        Thread first = new Thread(() -> {
+            try {
+                sync.sync();
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+        });
+        first.start();
+        assertThat(inside.await(5, TimeUnit.SECONDS)).isTrue();
+
+        sync.sync(); // overlaps: must return at once without asking the API again
+        release.countDown();
+        first.join(5_000);
+
+        assertThat(bodies).hasSize(1);
     }
 
     @Test
