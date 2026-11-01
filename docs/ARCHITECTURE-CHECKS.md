@@ -54,7 +54,7 @@
   CA усилено: Caffeine только в `platform.cache`. Новых точечных исключений нет. Проверено фикстурой `BadEvents`; порядок публикаций в транзакциях —
   `OrderEventsPublishedInTransactionTest`, набор слушателей (событие, фаза, fallback) — снимок `EventListenersSnapshotTest`
   (`-Dsnapshot.update=true` только осознанно).
-- **Шаг 9д: агрегаты без сеттеров.** O2 вызов `set*` у сущности из `V2Rules.GUARDED` (`Order`, `OrderItem`, `OrderItemLot`, `PaymentInvoice`,
+- **Шаг 9д: агрегаты без сеттеров.** O2 вызов `set*` у сущности из `V2Rules.GUARDED` **и** вызов её публичного `void`-метода из другого модуля (законные вызовы `returns`, `inventory`, `procurement` перечислены в `V2Rules.ALLOWED["O2"]` с причинами; новый — только с причиной) (`Order`, `OrderItem`, `OrderItemLot`, `PaymentInvoice`,
   `OrderReturn`, `OrderReturnLine`, `OrderMoneyMovement`, `Product`, `AdminUser`) из другого пакета запрещён; O3 у такой сущности нет public `set*` (и `@Setter`). Проверено фикстурой
   (`shopfixture/order/domain/Order`, `BadPractices.overwriteTotal`). Тесты задают состояние через `OrderFixtures.set` (рефлексия), не сеттерами.
 - **Шаг 9е: границы без дыр.** M2 теперь ищет и циклы внутри одного яруса (компоненты сильной связности графа модулей): цикл `customer`↔`staff` убран портом `customer.app.AdminCheck`.
@@ -158,3 +158,7 @@
 ошибка. Осознанный рост допустим только с меткой PR `ratchet-growth` и причиной в описании; `--allow-growth` в CI отключён.
 `.github/CODEOWNERS` требует подтверждения владельца для baseline-файлов, правил архитектуры и workflows.
 Сканер секретов — `.gitleaks.toml` (дерево + коммиты PR, историю не читает).
+
+## Подписи журнала в админке
+
+`frontend-admin/features/activity/model/labels-coverage.test.ts` читает Java: каждый код `audit.record("КОД", …)` должен иметь подпись в `AUDIT_ACTION_LABEL` (`features/staff/model/audit-labels.ts`), каждый тип сообщения бота `send("метод", "ТИП", …)` / `send("ТИП", …)` — в `TYPE_LABEL` (`features/activity/model/labels.ts`). Добавил код в бэкенде — добавь русскую подпись, иначе `npm run test` упадёт.
