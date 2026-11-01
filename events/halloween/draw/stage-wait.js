@@ -5,6 +5,7 @@
 import { t } from "./lang.js";
 import { poolTitle, el, lotPictures, packOf, photoUrl, plainName } from "./stage-common.js";
 import { avatarOf, decor, freeLots, lotCard, ticker } from "./stage-pause.js";
+import { makeChat } from "./stage-chat.js";
 
 const SEGMENTS = 24; // the time bar, in pixel blocks
 const HURRY_MS = 30_000;
@@ -96,6 +97,7 @@ export function makeWait(root, sound) {
     const lit = st === "answered" ? SEGMENTS : Math.ceil((Math.max(0, left) / total) * SEGMENTS);
     parts.bar.forEach((b, i) => b.classList.toggle("on", i < lit));
     parts.head.textContent = st === "answered" ? t("Зв'язок є!", "Связь есть!") : t("Є переможець!", "Есть победитель!");
+    parts.chat.set(wait.chat, st, wait.answeredAt);
     parts.sub.textContent = st === "answered" ? t("Переможець відповів Максиму — вітаємо!", "Победитель ответил Максиму — поздравляем!") : t("Максим пише переможцю в Telegram — чекаємо відповідь", "Максим пишет победителю в Telegram — ждём ответ");
     if (st !== last) {
       if (last && st === "answered") sound("win");
@@ -138,9 +140,10 @@ export function makeWait(root, sound) {
       head.append(el("div", "p-kicker", `${poolTitle(w.pool)} · ${t("раунд", "раунд")} ${w.round}`), big, sub);
       const timer = timerBox();
       const mid = el("div", "w-mid");
-      mid.append(winnerCard(person, pack, avatars), timer.t);
+      const chat = makeChat(person?.name ?? t("Переможець", "Победитель"));
+      mid.append(winnerCard(person, pack, avatars), chat.el, timer.t);
       root.append(...decor(), head, mid, lotsStrip(pools), ticker(pools));
-      parts = { ...timer, head: big, sub };
+      parts = { ...timer, head: big, sub, chat };
       root.classList.toggle("test", Boolean(overview.test));
       if (!root.classList.contains("on")) last = "";
       root.classList.add("on");

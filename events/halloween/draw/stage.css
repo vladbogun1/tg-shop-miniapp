@@ -245,9 +245,9 @@ html.ghost #wait { opacity: 0 !important; }
 #wait .p-big { font-size: 100px; }
 #wait[data-state="answered"] .p-big { color: var(--slime); text-shadow: 8px 8px 0 var(--ink), 16px 16px 0 #1f5c10; animation: none; }
 
-.w-mid { position: absolute; left: 300px; right: 330px; top: 268px; height: 470px; display: flex; gap: 56px; justify-content: center; align-items: stretch; }
+.w-mid { position: absolute; left: 140px; right: 140px; top: 268px; height: 470px; display: flex; gap: 40px; justify-content: center; align-items: stretch; }
 
-.w-card { --frame: var(--gold); width: 560px; display: flex; flex-direction: column; padding: 18px 22px 20px; box-sizing: border-box; animation: intro-in .6s steps(6) both; }
+.w-card { --frame: var(--gold); width: 470px; display: flex; flex-direction: column; padding: 18px 22px 20px; box-sizing: border-box; animation: intro-in .6s steps(6) both; }
 .w-tag { font-size: 22px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--orange); }
 .w-who { display: flex; align-items: center; gap: 20px; margin: 10px 0 16px; }
 .w-ava.p-ava { width: 104px; height: 104px; font-size: 56px;
@@ -261,14 +261,45 @@ html.ghost #wait { opacity: 0 !important; }
 .w-photo.set img { object-fit: contain; }
 .w-prize { margin-top: 12px; font-size: 27px; line-height: 1.15; color: var(--text); text-wrap: balance; }
 
-.w-timer { --frame: var(--orange); width: 640px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px 30px; box-sizing: border-box; animation: intro-in .6s steps(6) .15s both; }
+/* the chat window between the winner and the timer (stage-chat.js): the bot's card as Telegram shows it */
+.w-chat { --frame: var(--violet); width: 600px; display: flex; flex-direction: column; padding: 0; box-sizing: border-box; overflow: hidden; animation: intro-in .6s steps(6) .08s both; }
+.c-head { display: flex; align-items: center; gap: 14px; padding: 12px 18px; background: #24133a; box-shadow: inset 0 calc(-1 * var(--px)) 0 0 var(--ink); }
+.c-ava { width: 48px; height: 48px; display: grid; place-items: center; font-size: 28px; background: var(--orange); box-shadow: inset calc(-1 * var(--px)) calc(-1 * var(--px)) 0 0 #00000055; }
+.c-who { min-width: 0; flex: 1; }
+.c-bot { font-size: 24px; font-weight: 700; color: #fff3c4; }
+.c-to { font-size: 18px; color: var(--gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.c-tg { font-size: 15px; letter-spacing: .12em; text-transform: uppercase; color: #8fb8ff; }
+/* newest at the bottom; a card longer than the window loses its top, faded like a scrolled chat */
+.c-feed { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; padding: 12px 16px; overflow: hidden;
+  background: #120a1c; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 28px); mask-image: linear-gradient(to bottom, transparent 0, #000 28px); }
+.c-msg { position: relative; max-width: 88%; padding: 10px 14px 8px; flex: none; }
+.c-msg.bot { align-self: flex-start; background: #2c1d40; box-shadow: inset var(--px) 0 0 0 var(--violet); }
+.c-msg.me { align-self: flex-end; min-width: 120px; background: #2f6a1a; box-shadow: inset calc(-1 * var(--px)) 0 0 0 var(--slime); animation: count-pop-in .6s steps(6) both; }
+.c-msg.me .c-text { font-size: 64px; line-height: 1; font-weight: 700; color: #fff; text-align: center; }
+.c-text { font-size: 17px; line-height: 1.26; color: #f3e9ff; white-space: pre-wrap; overflow-wrap: break-word; }
+.c-text p { margin: 0; }
+.c-text p + p { margin-top: 6px; }
+.c-time { margin-top: 4px; font-size: 14px; color: #a993c9; text-align: right; }
+.c-msg.me .c-time { color: #c8ffb0; }
+.c-typing { display: flex; align-items: center; gap: 10px; }
+.c-sys { align-self: center; padding: 6px 14px; font-size: 18px; color: #ffd0d0; background: #5a1515; }
+.c-foot { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 8px 16px; font-size: 20px; color: var(--gold); background: #1c1029; box-shadow: inset 0 var(--px) 0 0 var(--ink); }
+.c-ok { color: var(--slime); font-weight: 700; }
+.c-late { color: #ff6b6b; font-weight: 700; }
+.c-dots { display: inline-flex; gap: 6px; }
+.c-dots i { width: 8px; height: 8px; background: currentColor; animation: c-dot 1.2s steps(1) infinite; }
+.c-dots i:nth-child(2) { animation-delay: .2s; }
+.c-dots i:nth-child(3) { animation-delay: .4s; }
+@keyframes c-dot { 0%, 60%, 100% { opacity: .25; } 30% { opacity: 1; } }
+
+.w-timer { --frame: var(--orange); width: 470px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px 30px; box-sizing: border-box; animation: intro-in .6s steps(6) .15s both; }
 .w-label { font-size: 30px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); text-shadow: var(--px) var(--px) 0 var(--ink); }
 .w-digits {
-  font-size: 190px; line-height: 1; font-weight: 700; color: var(--orange); font-variant-numeric: tabular-nums; white-space: nowrap;
+  font-size: 150px; line-height: 1; font-weight: 700; color: var(--orange); font-variant-numeric: tabular-nums; white-space: nowrap;
   text-shadow: 10px 10px 0 var(--ink), 20px 20px 0 #7a2c00;
 }
-.w-bar { display: flex; gap: 6px; padding: 8px; background: var(--ink); }
-.w-bar i { width: 16px; height: 34px; background: #3a2a48; }
+.w-bar { display: flex; gap: 5px; padding: 8px; background: var(--ink); }
+.w-bar i { width: 11px; height: 34px; background: #3a2a48; }
 .w-bar i.on { background: var(--slime); box-shadow: inset 0 calc(-1 * var(--px)) 0 0 #3fae20, inset 0 var(--px) 0 0 #c8ffb0; }
 .w-hint { font-size: 24px; color: var(--text); text-align: center; text-shadow: var(--px) var(--px) 0 var(--ink); }
 
@@ -277,11 +308,12 @@ html.ghost #wait { opacity: 0 !important; }
 #wait[data-state="hurry"] .w-bar i.on { background: #ff4d4d; box-shadow: inset 0 calc(-1 * var(--px)) 0 0 #a00, inset 0 var(--px) 0 0 #ffb0b0; }
 @keyframes hurry { 50% { color: #ffd36b; } }
 #wait[data-state="over"] .w-timer { --frame: #ff3b3b; }
-#wait[data-state="answered"] .w-digits { font-size: 104px; }
-/* «Время вышло» is the longest word here: 80px keeps it inside the 640px frame in both languages */
-#wait[data-state="over"] .w-digits { font-size: 80px; }
+#wait[data-state="answered"] .w-digits { font-size: 76px; }
+/* «Время вышло» is the longest word here: 58px keeps it inside the 470px frame in both languages */
+#wait[data-state="over"] .w-digits { font-size: 58px; }
 #wait[data-state="over"] .w-digits { color: #ff4d4d; text-shadow: 8px 8px 0 var(--ink), 16px 16px 0 #6a0000; }
-#wait[data-state="answered"] .w-timer, #wait[data-state="answered"] .w-card { --frame: var(--slime); }
+#wait[data-state="answered"] .w-timer, #wait[data-state="answered"] .w-card, #wait[data-state="answered"] .w-chat { --frame: var(--slime); }
+#wait[data-state="over"] .w-chat { --frame: #ff3b3b; }
 #wait[data-state="answered"] .w-digits { color: var(--slime); text-shadow: 8px 8px 0 var(--ink), 16px 16px 0 #1f5c10; animation: count-pop-in .6s steps(6) both; }
 @keyframes count-pop-in { from { transform: scale(1.8); opacity: 0; } to { transform: none; opacity: 1; } }
 

@@ -116,15 +116,16 @@ export function announce(b) {
 const MAX_WAIT_MIN = 30;
 const minutesOf = (v) => Math.min(MAX_WAIT_MIN, Math.max(0.5, Number(v) || 0));
 
-/** The countdown for the winner of the last roll: start (minutes) / add (minutes) / answered / stop. */
-export function waitFor(b) {
+/** The countdown for the winner of the last roll: start (minutes) / add (minutes) / answered / stop.
+ *  chat — the card the bot sent that winner ({ text, sentAt }, contact.js), the scene's chat window. */
+export function waitFor(b, chat) {
   const now = Date.now();
   const w = state.wait;
   if (b.action === "start") {
     const r = state.roll;
     if (!r?.revealedAt) throw new Error("Сначала покажите победителя на сцене");
     const minutes = minutesOf(b.minutes);
-    state.wait = { pool: r.pool, test: r.test, round: r.round, winnerId: r.winnerId, minutes, startedAt: now, endsAt: now + minutes * 60_000, answeredAt: 0 };
+    state.wait = { pool: r.pool, test: r.test, round: r.round, winnerId: r.winnerId, minutes, startedAt: now, endsAt: now + minutes * 60_000, answeredAt: 0, chat: chat || null };
     state.pause = false;
   } else if (b.action === "add" && w && !w.answeredAt) {
     const m = minutesOf(b.minutes);
@@ -139,6 +140,14 @@ export function waitFor(b) {
   }
   push();
   return snapshot();
+}
+
+/** The card went out while its round's countdown runs (Maxim started the timer first): the chat window gets it. */
+export function chatSent(pool, test, round, chat) {
+  const w = state.wait;
+  if (!chat || !w || w.pool !== pool || w.test !== Boolean(test) || w.round !== Number(round)) return;
+  w.chat = chat;
+  push();
 }
 
 /** The rounds of a pool were reset: a roll of it on screen is history now. */

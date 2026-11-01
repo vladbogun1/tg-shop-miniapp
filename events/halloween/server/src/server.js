@@ -147,7 +147,10 @@ async function adminApi(req, res, path, query) {
     // The remote (?remote=1) drives the scene: its settings and the scene key for the OBS link.
     if (path === "show" && req.method === "GET") return send(res, 200, { ...show.snapshot(), key: show.key() });
     if (path === "show" && req.method === "POST") return send(res, 200, show.set(b));
-    if (path === "show/wait" && req.method === "POST") return send(res, 200, show.waitFor(b));
+    if (path === "show/wait" && req.method === "POST") {
+      const r = show.snapshot().roll;
+      return send(res, 200, show.waitFor(b, r && contact.cardFor(r.pool, r.round, r.test)));
+    }
     if (path === "show/announce" && req.method === "POST") return send(res, 200, show.announce(b));
     // Rehearsal (?test=1 on the screen): random customers, nothing real is touched.
     if (path === "test/participants" && req.method === "GET") return send(res, 200, await rehearsal.screen(pool));
@@ -213,6 +216,7 @@ async function adminApi(req, res, path, query) {
         token: bearer(req), by: who.tgId, tgId: b.test ? who.tgId : w.tgId, drawId: w.drawId, pool, round,
         test: Boolean(b.test), text, deadline: contact.deadlineFor(pool, round, b.test),
       });
+      show.chatSent(pool, Boolean(b.test), round, contact.cardFor(pool, round, b.test));
       return send(res, 200, { ok: true, threadId: r.threadId, to: b.test ? "you" : "winner" });
     }
     if (path === "proof" && req.method === "GET") return send(res, 200, draw.proof(pool) || {});

@@ -88,6 +88,7 @@ const q = {
   addContact: db.prepare("INSERT INTO contacts (draw_id, tg_id, thread_id, text, sent_at, sent_by, tg_msg_id, ref) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"),
   liveFor: db.prepare("SELECT id, tg_id, thread_id, tg_msg_id FROM contacts WHERE ref = ? AND expired_at IS NULL"),
   expire: db.prepare("UPDATE contacts SET expired_at = ? WHERE id = ?"),
+  lastCard: db.prepare("SELECT text, sent_at FROM contacts WHERE ref = ? AND expired_at IS NULL ORDER BY id DESC LIMIT 1"),
 };
 
 const row = (r) => (r ? { id: r.id, name: r.name, items: JSON.parse(r.items), images: JSON.parse(r.images || "[]") } : null);
@@ -198,6 +199,12 @@ export function contacted() {
 /** One row per winner card + support chat; ref = "live|test:<pool>:<round>", what a reroll looks up. */
 export function addContact({ drawId, tgId, threadId, text, by, msgId, ref }) {
   q.addContact.run(drawId ?? null, String(tgId), threadId || null, text, Date.now(), by, msgId ?? null, ref);
+}
+
+/** The last card sent for the round and not voided: the scene shows it in the chat window while we wait. */
+export function lastCard(ref) {
+  const r = q.lastCard.get(ref);
+  return r ? { text: r.text, sentAt: Number(r.sent_at) } : null;
 }
 
 /** The round's messages not voided yet, marked voided now (a reroll is drawing that round again). */

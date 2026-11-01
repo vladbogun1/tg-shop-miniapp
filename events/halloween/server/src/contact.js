@@ -52,9 +52,11 @@ async function backend(token, path, body) {
   return res.json();
 }
 
+const TEST_MARK = "[ТЕСТ: справжньому переможцю це не пішло]\n\n";
+
 /** text = the card the admin saw and maybe edited. Without a bot token the card goes into the chat as before. */
 export async function send({ token, by, tgId, drawId, pool, round, test, text, deadline }) {
-  const card = test ? `[ТЕСТ: справжньому переможцю це не пішло]\n\n${text}` : text;
+  const card = test ? TEST_MARK + text : text;
   const sent = await tg("sendMessage", { chat_id: Number(tgId), text: card, disable_web_page_preview: true });
   const line = prizes.render(prizes.CHAT_TEMPLATE, { round, pool, deadline });
   const chatText = sent ? line : card;
@@ -65,6 +67,12 @@ export async function send({ token, by, tgId, drawId, pool, round, test, text, d
   });
   prizes.addContact({ drawId: test ? null : drawId, tgId, threadId: t.id, text: card, by, msgId: sent?.message_id, ref: refOf(test, pool, round) });
   return { threadId: t.id || null, card: Boolean(sent) };
+}
+
+/** What the winner got from the bot, for the scene's chat window (the name in it is the masked one the scene shows). */
+export function cardFor(pool, round, test) {
+  const c = prizes.lastCard(refOf(test, pool, round));
+  return c && { text: c.text.replace(TEST_MARK, ""), sentAt: c.sentAt };
 }
 
 const EXPIRED = (round) =>
