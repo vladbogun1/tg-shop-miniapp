@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift.app;
 
+import static com.maxsolch.shop.promo.domain.PromoCodes.promo;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.gift.domain.GiftCaseItem;
 import com.maxsolch.shop.gift.domain.OrderGiftCase;
@@ -69,10 +70,7 @@ class GiftCasePromoNotifyTest {
     @Test
     void aFreshDiscountCodeIsAnnounced() {
         discountPrize(null);
-        PromoCode promo = new PromoCode();
-        promo.setCode("CASE-ABC123");
-        promo.setDiscountPercent(10);
-        promo.setExpiresAt(Instant.parse("2026-11-18T10:00:00Z"));
+        PromoCode promo = promo().code("CASE-ABC123").discountPercent(10).expiresAt(Instant.parse("2026-11-18T10:00:00Z")).build();
         when(giftService.issuePromo(eq(42L), eq(ORDER_ID), any(), eq(10), eq(0L))).thenReturn(promo);
         when(giftService.saveOrderCase(any())).thenAnswer(inv -> inv.getArgument(0));
 

@@ -36,10 +36,30 @@ public class Order extends OrderPlacement {
 
     public void addLine(OrderItem line) {
         items.add(line);
+        reprice();
     }
 
     public void removeLine(OrderItem line) {
         items.remove(line);
+        reprice();
+    }
+
+    /** The line gets {@code more} units (the same product added again). */
+    public void addToLine(OrderItem line, int more) {
+        if (more <= 0) {
+            throw new DomainException.BadRequest(OrderError.QUANTITY_NOT_POSITIVE);
+        }
+        line.addQuantity(more);
+        reprice();
+    }
+
+    /** The line gets a new quantity. */
+    public void changeQuantity(OrderItem line, int newQuantity) {
+        if (newQuantity <= 0) {
+            throw new DomainException.BadRequest(OrderError.QUANTITY_NOT_POSITIVE);
+        }
+        line.changeQuantity(newQuantity);
+        reprice();
     }
 
     // ----- money: discounts and totals -----
@@ -65,7 +85,8 @@ public class Order extends OrderPlacement {
     /** First pricing of a new order: the discount of the promo, as it was computed against the subtotal. */
     public void priceWith(long discount) {
         subtotalMinor = OrderMoney.subtotalMinor(this);
-        discountMinor = discount;
+        discountMinor = Math.min(Math.max(0, discount), subtotalMinor);
+        giftDiscountMinor = Math.min(giftDiscountMinor, discountMinor);
         totalMinor = OrderMoney.totalMinor(subtotalMinor, discountMinor);
     }
 
@@ -97,6 +118,7 @@ public class Order extends OrderPlacement {
         if (giftTier == null) {
             giftTier = other.giftTier;
         }
+        reprice();
     }
 
     // ----- gift case -----

@@ -1,14 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { allowedTargets, canTransition, codMinor, customerCancelMode, isNovaPoshtaTtn, isOrderLimitCode, maxQty, needsTopUp, payableMinor, paymentFirst, paymentState, visiblePaymentOptions } from "./orders";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import type { OrderStatus } from "./types";
+import { STATUS_ORDER, allowedTargets, canTransition, codMinor, customerCancelMode, isNovaPoshtaTtn, isOrderLimitCode, maxQty, needsTopUp, payableMinor, paymentFirst, paymentState, visiblePaymentOptions } from "./orders";
 
 describe("status transitions mirror the backend", () => {
   it("allows the forward path and rejection, never back to NEW or out of REJECTED", () => {
     expect(canTransition("NEW", "APPROVED")).toBe(true);
     expect(canTransition("NEW", "SHIPPED")).toBe(true);
-    expect(canTransition("DELIVERED", "REJECTED")).toBe(true);
+    expect(canTransition("DELIVERED", "REJECTED")).toBe(false);
     expect(canTransition("APPROVED", "NEW")).toBe(false);
     expect(canTransition("NEW", "NEW")).toBe(false);
     expect(allowedTargets("REJECTED")).toEqual([]);
+  });
+});
+
+describe("status transitions against the shared vectors", () => {
+  const file = fileURLToPath(new URL("../../../backend/src/test/resources/order/transition-vectors.json", import.meta.url));
+  const { statuses, allowed } = JSON.parse(readFileSync(file, "utf8")) as { statuses: OrderStatus[]; allowed: Record<string, OrderStatus[]> };
+
+  it("lists the same statuses as the code", () => {
+    expect([...statuses].sort()).toEqual([...STATUS_ORDER].sort());
+  });
+
+  it.each(statuses.flatMap((from) => statuses.map((to) => ({ from, to }))))("$from -> $to", ({ from, to }) => {
+    expect(canTransition(from, to)).toBe(allowed[from].includes(to));
   });
 });
 

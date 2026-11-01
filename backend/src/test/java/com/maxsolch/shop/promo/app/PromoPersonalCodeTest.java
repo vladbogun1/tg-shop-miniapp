@@ -1,5 +1,7 @@
 package com.maxsolch.shop.promo.app;
 
+import static com.maxsolch.shop.promo.domain.PromoCodes.with;
+import static com.maxsolch.shop.promo.domain.PromoCodes.promo;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
@@ -51,14 +53,7 @@ class PromoPersonalCodeTest {
     }
 
     private static PromoCode personal(Instant expiresAt) {
-        PromoCode p = new PromoCode();
-        p.setId(UuidUtil.randomBytes());
-        p.setCode("THANKS-ABCDEF");
-        p.setDiscountPercent(5);
-        p.setMaxUses(1);
-        p.setOwnerUserId(OWNER);
-        p.setExpiresAt(expiresAt);
-        p.setSource(PromoCode.SOURCE_REVIEW_BONUS);
+        PromoCode p = promo().id(UuidUtil.randomBytes()).code("THANKS-ABCDEF").discountPercent(5).maxUses(1).ownerUserId(OWNER).expiresAt(expiresAt).source(PromoCode.SOURCE_REVIEW_BONUS).build();
         return p;
     }
 
@@ -76,7 +71,7 @@ class PromoPersonalCodeTest {
     @Test
     void reviewBonusCeilingInPreviewAndHold() {
         PromoCode p = personal(Instant.now().plus(Duration.ofDays(10)));
-        p.setMaxDiscountMinor(10_000); // −5 % (до 100 ₴)
+        with(p, b -> b.maxDiscountMinor(10_000)); // −5 % (до 100 ₴)
         when(promoCodeRepository.findByCodeAndActiveTrue("THANKS-ABCDEF")).thenReturn(Optional.of(p));
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("THANKS-ABCDEF")).thenReturn(Optional.of(p));
 
@@ -128,8 +123,7 @@ class PromoPersonalCodeTest {
 
     @Test
     void ordinaryCodesAreUnaffected() {
-        PromoCode p = new PromoCode();
-        p.setCode("SALE");
+        PromoCode p = promo().code("SALE").build();
         assertThat(PromoService.personalRejection(p, null, Instant.now())).isNull();
         assertThat(PromoService.personalRejection(p, OTHER, Instant.now())).isNull();
     }

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift.domain;
 
+import com.maxsolch.shop.platform.util.Money;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -61,7 +62,7 @@ public class GiftCaseTier {
     private int lowMarginProductPercent = 10;
 
     public long thresholdMinor() {
-        return thresholdUah * 100L;
+        return Money.fromUah(thresholdUah);
     }
 
     /** The guaranteed discount for an order total (minor units): whole hryvnias, within the cap. */
@@ -75,7 +76,7 @@ public class GiftCaseTier {
         }
         long d = totalMinor * Math.min(100, percent) / 100 / 100 * 100;
         if (maxUah > 0) {
-            d = Math.min(d, maxUah * 100L);
+            d = Math.min(d, Money.fromUah(maxUah));
         }
         return Math.max(0, Math.min(d, totalMinor));
     }

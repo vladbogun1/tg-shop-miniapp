@@ -1,5 +1,6 @@
 package com.maxsolch.shop.gift.app;
 
+import com.maxsolch.shop.platform.util.Money;
 import com.maxsolch.shop.gift.domain.GiftError;
 import com.maxsolch.shop.gift.domain.GiftLine;
 import com.maxsolch.shop.gift.domain.GiftPerson;
@@ -87,7 +88,7 @@ public class GiftRegistryService {
 
     /** The monthly limit per person, kopecks; 0 = no limit. */
     public long limitMinor() {
-        return Math.max(0, settings.getInt(GiftSettings.GIFT_MONTHLY_LIMIT_UAH)) * 100L;
+        return Money.fromUah(Math.max(0, settings.getInt(GiftSettings.GIFT_MONTHLY_LIMIT_UAH)));
     }
 
     /**

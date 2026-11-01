@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import static com.maxsolch.shop.promo.domain.PromoCodes.promo;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
@@ -47,9 +48,7 @@ class OrderEditingTest extends OrderScenarioTestBase {
         OrderFixtures.set(o, "promoCode", "SAVE10");
         OrderFixtures.set(o, "discountMinor", 1_000);
         OrderFixtures.set(o, "totalMinor", 9_000);
-        PromoCode code = new PromoCode();
-        code.setCode("SAVE10");
-        code.setUsesCount(3);
+        PromoCode code = promo().code("SAVE10").usesCount(3).build();
         when(promoCodeRepository.findByCodeForUpdate("SAVE10")).thenReturn(Optional.of(code));
 
         app.editing().applyDiscount(o.getId(), null, null, null, true, false);
@@ -63,11 +62,7 @@ class OrderEditingTest extends OrderScenarioTestBase {
     @Test
     void applyDiscount_realCodeCountsOneUseAndGivesItsDiscount_shippedOrderIsRefused() {
         Order o = orderWithOneLine(OrderStatus.NEW, 10_000, 1);
-        PromoCode code = new PromoCode();
-        code.setCode("TEN");
-        code.setActive(true);
-        code.setDiscountPercent(10);
-        code.setUsesCount(0);
+        PromoCode code = promo().code("TEN").active(true).discountPercent(10).usesCount(0).build();
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("TEN")).thenReturn(Optional.of(code));
 
         app.editing().applyDiscount(o.getId(), "TEN", null, null, false, false);

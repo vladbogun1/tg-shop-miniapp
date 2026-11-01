@@ -53,19 +53,10 @@ public class ReviewBonus {
         if (!orderMarks.claimBonus(review.getOrderId(), now)) {
             return null;
         }
-        PromoCode promo = new PromoCode();
-        promo.setCode(uniqueCode());
-        promo.setDiscountPercent(Math.min(100, percent));
-        promo.setDiscountAmountMinor(0);
-        promo.setMaxDiscountMinor(ReviewRules.bonusMaxMinor(settings.get(ReviewSettings.REVIEWS_BONUS_MAX_UAH, 100)));
-        promo.setMaxUses(1);
-        promo.setUsesCount(0);
-        promo.setActive(true);
-        promo.setOwnerUserId(review.getUserId());
-        promo.setExpiresAt(ReviewRules.bonusExpiry(now, settings.get(ReviewSettings.REVIEWS_BONUS_VALID_DAYS, 60)));
-        promo.setSource(PromoCode.SOURCE_REVIEW_BONUS);
-        promo.setSourceOrderId(review.getOrderId());
-        PromoCode saved = promoCodes.save(promo);
+        PromoCode saved = promoCodes.save(PromoCode.personalOneTime(uniqueCode(), review.getUserId(), percent, 0,
+                ReviewRules.bonusMaxMinor(settings.get(ReviewSettings.REVIEWS_BONUS_MAX_UAH, 100)),
+                ReviewRules.bonusExpiry(now, settings.get(ReviewSettings.REVIEWS_BONUS_VALID_DAYS, 60)),
+                PromoCode.SOURCE_REVIEW_BONUS, review.getOrderId()));
         Long chat = review.getTgUserId() != null ? review.getTgUserId() : review.getUserId();
         String code = saved.getCode();
         int pc = saved.getDiscountPercent();

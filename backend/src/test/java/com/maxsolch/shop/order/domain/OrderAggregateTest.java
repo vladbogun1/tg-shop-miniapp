@@ -23,6 +23,60 @@ class OrderAggregateTest {
         return o;
     }
 
+    private static void assertConsistent(Order o) {
+        assertThat(o.getSubtotalMinor()).isEqualTo(OrderMoney.subtotalMinor(o));
+        assertThat(o.getDiscountMinor()).isBetween(0L, o.getSubtotalMinor());
+        assertThat(o.getGiftDiscountMinor()).isLessThanOrEqualTo(o.getDiscountMinor());
+        assertThat(o.getTotalMinor()).isEqualTo(o.getSubtotalMinor() - o.getDiscountMinor());
+    }
+
+    @Test
+    void everyMutatorLeavesTheTotalConsistent_withoutAnOutsideRecount() {
+        Order o = order();
+        assertConsistent(o);
+        o.applyDiscount(20_000);
+        assertConsistent(o);
+        OrderItem a = o.getItems().get(0);
+        o.changeQuantity(a, 5);
+        assertConsistent(o);
+        o.addToLine(a, 2);
+        assertConsistent(o);
+        o.addLine(OrderItem.sold(o, UuidUtil.randomBytes(), "C", 10_000, 1));
+        assertConsistent(o);
+        Order other = order();
+        other.applyDiscount(50_000);
+        o.absorbDiscountsOf(other, "X");
+        assertConsistent(o);
+        o.removeLine(a);
+        assertConsistent(o);
+        o.removeLine(o.getItems().get(0));
+        o.removeLine(o.getItems().get(0));
+        assertThat(o.getDiscountMinor()).isZero();
+        assertThat(o.getTotalMinor()).isZero();
+    }
+
+    @Test
+    void aLineQuantityMustStayPositive() {
+        Order o = order();
+        OrderItem a = o.getItems().get(0);
+        assertThatThrownBy(() -> o.changeQuantity(a, 0)).isInstanceOf(DomainException.BadRequest.class);
+        assertThatThrownBy(() -> o.changeQuantity(a, -1)).isInstanceOf(DomainException.BadRequest.class);
+        assertThatThrownBy(() -> o.addToLine(a, 0)).isInstanceOf(DomainException.BadRequest.class);
+        assertThat(a.getQuantity()).isEqualTo(2);
+        assertConsistent(o);
+    }
+
+    @Test
+    void priceWithCapsTheDiscountBySubtotalAndNeverGoesNegative() {
+        Order o = order();
+        o.priceWith(999_999);
+        assertThat(o.getDiscountMinor()).isEqualTo(130_000);
+        assertThat(o.getTotalMinor()).isZero();
+        o.priceWith(-5);
+        assertThat(o.getDiscountMinor()).isZero();
+        assertThat(o.getTotalMinor()).isEqualTo(130_000);
+    }
+
     @Test
     void linesAreReadOnlyOutsideTheAggregate() {
         Order o = order();

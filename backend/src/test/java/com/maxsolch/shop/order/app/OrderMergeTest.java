@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderStates;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
@@ -37,6 +38,7 @@ class OrderMergeTest {
     private OrderOps ops;
     private MoneyLedger ledger;
     private OrderMerge service;
+    private OrderOnlinePayments payments;
 
     @BeforeEach
     void setUp() {
@@ -44,7 +46,8 @@ class OrderMergeTest {
         ops = mock(OrderOps.class);
         when(ops.now()).thenAnswer(inv -> Instant.now());
         ledger = mock(MoneyLedger.class);
-        service = new OrderMerge(orders, ops, mock(DomainEvents.class), ledger);
+        payments = mock(OrderOnlinePayments.class);
+        service = new OrderMerge(orders, ops, mock(DomainEvents.class), ledger, payments);
         when(orders.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
         // The real recompute: subtotal from the lines, the absolute discount capped at it.
         doAnswer(inv -> {
@@ -54,7 +57,7 @@ class OrderMergeTest {
             OrderFixtures.set(o, "discountMinor", Math.min(o.getDiscountMinor(), sub));
             OrderFixtures.set(o, "totalMinor", sub - o.getDiscountMinor());
             return null;
-        }).when(ops).recomputeTotals(any());
+        }).when(ops).settleIfFree(any());
     }
 
     private Order order(OrderStatus status, long tgUserId, OrderItem... items) {
@@ -87,6 +90,20 @@ class OrderMergeTest {
         OrderFixtures.set(i, "priceMinorSnapshot", price);
         OrderFixtures.set(i, "quantity", qty);
         return i;
+    }
+
+    @Test
+    void merge_withAPaymentInFlightOnEitherOrder_isRefusedUnderTheLockAndChangesNothing() {
+        Order a = order(OrderStatus.APPROVED, 42, item("A", 10_000, 1));
+        Order b = order(OrderStatus.APPROVED, 42, item("B", 5_000, 1));
+        when(payments.hasPaymentInFlight(argThat(b.getId()))).thenReturn(true);
+
+        assertThatThrownBy(() -> service.merge(a.getId(), b.getId(), false, false, null, "admin"))
+                .isInstanceOfSatisfying(DomainException.BadRequest.class,
+                        e -> assertThat(e.getCode()).isEqualTo(OrderError.ONE_ORDER_PAYMENT_PENDING.code()));
+        assertThat(a.getItems()).hasSize(1);
+        assertThat(b.getStatus()).isEqualTo(OrderStatus.APPROVED);
+        verify(ops, org.mockito.Mockito.atLeastOnce()).lock(any());
     }
 
     /** The real case of 25.10: a mouse with 100 ₴ prepaid + glides fully covered by a case prize code. */

@@ -1,5 +1,7 @@
 package com.maxsolch.shop.review.app;
 
+import static com.maxsolch.shop.promo.domain.PromoCodes.with;
+import static com.maxsolch.shop.promo.domain.PromoCodes.promo;
 import com.maxsolch.shop.review.domain.ReviewError;
 import com.maxsolch.shop.review.domain.ProductReview;
 import com.maxsolch.shop.review.domain.ReviewRules;
@@ -306,14 +308,10 @@ class ReviewServiceTest {
 
     @Test
     void bonusStates() {
-        PromoCode p = new PromoCode();
-        p.setCode("THANKS-ABCDEF");
-        p.setDiscountPercent(5);
-        p.setMaxUses(1);
-        p.setExpiresAt(NOW.plus(Duration.ofDays(1)));
+        PromoCode p = promo().code("THANKS-ABCDEF").discountPercent(5).maxUses(1).expiresAt(NOW.plus(Duration.ofDays(1))).build();
         assertThat(ReviewBonus.toBonus(p, NOW).state()).isEqualTo("ACTIVE");
         assertThat(ReviewBonus.toBonus(p, NOW.plus(Duration.ofDays(2))).state()).isEqualTo("EXPIRED");
-        p.setUsesCount(1);
+        with(p, b -> b.usesCount(1));
         assertThat(ReviewBonus.toBonus(p, NOW).state()).isEqualTo("USED");
     }
 

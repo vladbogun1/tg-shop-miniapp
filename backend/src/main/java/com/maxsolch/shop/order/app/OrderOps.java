@@ -99,9 +99,8 @@ class OrderOps {
         return afterTransition(order);
     }
 
-    /** Recompute subtotal from items; keep the stored (absolute) discount capped at subtotal. */
-    void recomputeTotals(Order order) {
-        order.reprice();
+    /** After the lines or discounts changed (the order has already recounted itself): a free order is settled. */
+    void settleIfFree(Order order) {
         order.settleIfFree(now());
     }
 

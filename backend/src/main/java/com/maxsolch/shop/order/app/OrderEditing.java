@@ -88,7 +88,7 @@ public class OrderEditing {
                 : OrderItem.sold(order, product.getId(), product.getTitle(), product.getPriceMinor(), qty);
         shelf.reserve(product, variant, qty, item);
         if (existing != null) {
-            existing.addQuantity(qty);
+            order.addToLine(existing, qty);
         } else {
             if (variant != null) {
                 item.withVariant(variant.getId(), variant.getName());
@@ -96,7 +96,7 @@ public class OrderEditing {
             order.addLine(item);
         }
         productRepository.save(product);
-        ops.recomputeTotals(order);
+        ops.settleIfFree(order);
         Order saved = orderRepository.save(order);
         events.publish(new OrderEvents.Edited(
                 saved.getId(),
@@ -124,7 +124,7 @@ public class OrderEditing {
             order.dropGiftCase();
             gifts.deleteCase(order.getId());
         }
-        ops.recomputeTotals(order);
+        ops.settleIfFree(order);
         Order saved = orderRepository.save(order);
         events.publish(OrderEvents.Edited.silent(saved.getId()));
         return saved;
@@ -146,8 +146,8 @@ public class OrderEditing {
         if (delta != 0) {
             stock.resizeLine(item, delta);
         }
-        item.changeQuantity(newQty);
-        ops.recomputeTotals(order);
+        order.changeQuantity(item, newQty);
+        ops.settleIfFree(order);
         Order saved = orderRepository.save(order);
         events.publish(OrderEvents.Edited.of(
                 saved.getId(), OrderEvents.EditKind.COMPOSITION, notifyCustomer));

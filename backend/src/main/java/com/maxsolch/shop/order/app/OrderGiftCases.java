@@ -93,7 +93,7 @@ public class OrderGiftCases {
         OrderItem item = GiftCaseRules.casePrizeLine(order).orElseThrow();
         stock.restoreLine(item);
         order.removeLine(item);
-        ops.recomputeTotals(order);
+        ops.settleIfFree(order);
         Order saved = orderRepository.save(order);
         events.publish(OrderEvents.Edited.silent(saved.getId()));
         return saved;
@@ -188,7 +188,7 @@ public class OrderGiftCases {
             throw new DomainException.BadRequest(OrderError.PRIZE_SOLD_OUT);
         }
         productRepository.saveAll(toSave);
-        ops.recomputeTotals(order);
+        ops.settleIfFree(order);
         Order saved = orderRepository.save(order);
         record.accept(saved.getId());
         events.publish(new OrderEvents.Edited(saved.getId(), OrderEvents.EditKind.GIFT_CASE, notifyCustomer,

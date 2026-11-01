@@ -216,9 +216,9 @@ class OrderQueryServiceGoldenTest {
         item(free, 41, "Мышь Lamzu Atlantis", "Чёрная", 50000, 1);
         Order blocked = baseOrder(5, OrderStatus.APPROVED);
         OrderFixtures.set(blocked, "receivedMinor", -5);
-        OrderFixtures.set(blocked, "totalMinor", 30000);
         OrderItem gift = item(blocked, 51, "Коврик", null, 0, 2);
         OrderFixtures.set(gift, "gift", true);
+        OrderFixtures.set(blocked, "totalMinor", 30000); // after the lines: adding a line recounts the total
         List<OrderMerge.Candidate> found = List.of(
                 new OrderMerge.Candidate(free, null, 80000, 50000, 10000, 20000),
                 new OrderMerge.Candidate(blocked, "Заказ уже отправлен", 30000, 0, 0, 30000));

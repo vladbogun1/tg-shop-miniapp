@@ -95,21 +95,6 @@ class AdminOrdersTest {
     }
 
     @Test
-    void merge_refusedWhileTheBankIsProcessingAPayment_changesNothing() {
-        Order source = new Order();
-        OrderFixtures.set(source, "id", UuidUtil.randomBytes());
-        String sourceId = UuidUtil.toString(source.getId());
-        when(queries.load(sourceId)).thenReturn(source);
-        when(payments.hasPaymentInFlight(source.getId())).thenReturn(true);
-
-        assertThatThrownBy(() -> orders.merge(id, sourceId, false, true, null))
-                .isInstanceOf(DomainException.BadRequest.class);
-
-        verifyNoInteractions(merges);
-        verify(audit, never()).record(any(), any(), any(), any());
-    }
-
-    @Test
     void sendMessage_isSignedWithTheActingAdmin() {
         when(actor.userId()).thenReturn(42L);
         SendMessageRequest req = new SendMessageRequest("привет", "TEXT", null, null, null, null);

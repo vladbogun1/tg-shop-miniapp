@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import static com.maxsolch.shop.promo.domain.PromoCodes.promo;
 import org.springframework.test.util.ReflectionTestUtils;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderStates;
@@ -190,11 +191,7 @@ abstract class OrderScenarioTestBase {
     }
 
     PromoCode casePromo(String code, int percent) {
-        PromoCode promo = new PromoCode();
-        promo.setCode(code);
-        promo.setDiscountPercent(percent);
-        promo.setActive(true);
-        promo.setSource(com.maxsolch.shop.promo.domain.PromoCode.SOURCE_GIFT_CASE);
+        PromoCode promo = promo().code(code).discountPercent(percent).active(true).source(com.maxsolch.shop.promo.domain.PromoCode.SOURCE_GIFT_CASE).build();
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate(code)).thenReturn(Optional.of(promo));
         return promo;
     }

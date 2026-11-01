@@ -48,8 +48,7 @@ public class PromoAdminService {
         if (promoCodeRepository.findByCode(code).isPresent()) {
             throw new DomainException.BadRequest(PromoError.CODE_TAKEN);
         }
-        PromoCode p = new PromoCode();
-        p.setCode(code);
+        PromoCode p = PromoCode.named(code);
         apply(p, req);
         return promoCodeRepository.save(p);
     }
@@ -76,7 +75,7 @@ public class PromoAdminService {
                     .ifPresent(other -> {
                         throw new DomainException.BadRequest(PromoError.CODE_TAKEN);
                     });
-            p.setCode(code);
+            p.rename(code);
         }
         apply(p, req);
         return new Updated(promoCodeRepository.save(p), previousCode);
@@ -98,15 +97,7 @@ public class PromoAdminService {
         if (req.discountPercent() <= 0 && req.discountAmountMinor() <= 0) {
             throw new DomainException.BadRequest(PromoError.DISCOUNT_REQUIRED);
         }
-        p.setDiscountPercent(req.discountPercent());
-        p.setDiscountAmountMinor(req.discountAmountMinor());
-        p.setMaxUses(req.maxUses());
-        if (req.maxDiscountMinor() != null) {
-            p.setMaxDiscountMinor(req.maxDiscountMinor());
-        }
-        if (req.active() != null) {
-            p.setActive(req.active());
-        }
+        p.edit(req.discountPercent(), req.discountAmountMinor(), req.maxUses(), req.maxDiscountMinor(), req.active());
     }
 
     private static byte[] toBytes(String id) {

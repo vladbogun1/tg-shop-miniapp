@@ -102,16 +102,17 @@ export const ORDER_STATUS_COLOR: Record<OrderStatus, string> = {
 export const ORDER_TIMELINE: OrderStatus[] = ["NEW", "APPROVED", "SHIPPED", "DELIVERED"];
 
 /**
- * Allowed transitions — mirrors OrderService on the backend.
+ * Allowed transitions — mirrors OrderTransitions on the backend; both are checked against the same vectors
+ * (backend/src/test/resources/order/transition-vectors.json).
  *
- * <p>NEW → SHIPPED is permitted (the server allows shipping straight away), REJECTED is terminal,
- * and DELIVERED can still be rejected to handle a Nova Poshta return. There is no way back to NEW.
+ * <p>NEW → SHIPPED is permitted (the server allows shipping straight away), REJECTED is terminal, and so is
+ * DELIVERED: a delivered order is not rejected, it is handled with a return («Возврат»). No way back to NEW.
  */
 const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   NEW: ["APPROVED", "SHIPPED", "REJECTED"],
   APPROVED: ["SHIPPED", "REJECTED"],
   SHIPPED: ["DELIVERED", "REJECTED"],
-  DELIVERED: ["REJECTED"],
+  DELIVERED: [],
   REJECTED: [],
 };
 

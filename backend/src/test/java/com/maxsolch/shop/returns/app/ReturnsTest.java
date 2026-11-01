@@ -313,11 +313,11 @@ class ReturnsTest extends ReturnsTestBase {
     void wizard_partialPickupWithADiscount_refusingALineInStepsNeverExceedsItsPaidAmount() {
         // 3333 x 3 with 10 ₴ off: the line cost 89.99 (total), not 90.00.
         Order o = order(OrderStatus.SHIPPED);
+        OrderItem line = item(o, product(0), 1L, 3);
+        OrderFixtures.set(line, "priceMinorSnapshot", 3_333);
         OrderFixtures.set(o, "subtotalMinor", 9_999);
         OrderFixtures.set(o, "discountMinor", 1_000);
         OrderFixtures.set(o, "totalMinor", 8_999);
-        OrderItem line = item(o, product(0), 1L, 3);
-        OrderFixtures.set(line, "priceMinorSnapshot", 3_333);
         List<WizardLine> one =
                 List.of(new WizardLine(1L, 1, LineOutcome.IN_TRANSIT));
 
