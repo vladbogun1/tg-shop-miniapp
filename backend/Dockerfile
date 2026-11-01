@@ -39,5 +39,9 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /build/target/app.jar /app/app.jar
 COPY --from=geoip /geoip /app/geoip
+# Not root: the app writes nothing to disk (no volumes; /tmp is world-writable), only reads the
+# jar and the GeoIP base, both world-readable. Port 8080 is unprivileged.
+RUN useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin app
+USER app
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

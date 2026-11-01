@@ -18,28 +18,48 @@
 #    docker compose -f docker-compose.yml -f docker-compose.public.yml -f docker-compose.prod.yml \
 #                   up -d --no-build \
 #                   mysql minio imgproxy nginx backend \
-#                   frontend-public gateway frontend-admin-public gateway-admin caddy
+#                   frontend-public gateway frontend-admin-public gateway-admin \
+#                   site-public gateway-site caddy
+#  ALWAYS list the services: the base file also has dev-only frontend, frontend-admin, site and the
+#  one-shot minio-init; a bare `up -d` would start them too (docs/DEPLOY-SERVER.md section 2).
 #
 #  PROD_CERT_DIR must point at the certbot-managed maxsolkh.shop certs (live/maxsolkh.shop/…),
 #  used only by the legacy :666/:667 redirects in `caddy`.
 # ==========================================================
 
+# Docker rotates container logs itself only if the daemon is configured so (it is on the server,
+# /etc/docker/daemon.json) — pin it here too so a new server cannot grow logs without a bound.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+# Memory limits are sized against the server (11.9 GB shared with other projects, see
+# docs/DEPLOY-SERVER.md §4): about 2x of what each container uses at rest. Without a limit one
+# leaking JVM could make the kernel OOM-killer shoot a neighbour project.
 services:
   # Image-cache nginx is internal-only in prod (gateway proxies /img -> nginx:80).
   # Drop the host publish (8082 is taken by portainer on the server).
   nginx:
     ports: !override []
+    logging: *logging
+    mem_limit: 128m
 
   # SECURITY: the base compose publishes MySQL on 3341 for local tooling. On a
   # public server that is an internet-reachable database — keep it internal-only.
   mysql:
     ports: !override []
+    logging: *logging
+    mem_limit: 1536m
 
   # SECURITY: same for MinIO — the S3 API (9002) and, worse, the admin console
   # (9003) must never be reachable from the internet. imgproxy/backend talk to
   # it over the compose network as http://minio:9000.
   minio:
     ports: !override []
+    logging: *logging
+    mem_limit: 512m
 
   # SECURITY: the public overlay publishes the single-origin gateways on 8090/8091 so a local
   # tunnel (cloudflared/ngrok) can reach them. On the server that made the entire API and the
@@ -50,16 +70,22 @@ services:
   gateway:
     ports: !override
       - "127.0.0.1:8090:80"
+    logging: *logging
+    mem_limit: 128m
 
   gateway-admin:
     ports: !override
       - "127.0.0.1:8091:80"
+    logging: *logging
+    mem_limit: 128m
 
   # Public website gateway: loopback only; the host's edge Caddy (80/443) serves
   # https://chisetup.com.ua and reaches it over the compose network.
   gateway-site:
     ports: !override
       - "127.0.0.1:8092:80"
+    logging: *logging
+    mem_limit: 128m
 
   # Pin to pre-built registry images (override the build: from base/public).
   backend:
@@ -71,25 +97,38 @@ services:
       SPRING_PROFILES_ACTIVE: prod
       # Shown in the admin «Настройки → Система» block.
       APP_VERSION: ${IMAGE_TAG:-latest}
+      # Heap = 65% of the container limit; the rest is metaspace, threads, direct buffers. Without
+      # the limit the JVM sized itself from the 11.9 GB of the whole host.
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=65 -XX:+ExitOnOutOfMemoryError"
+    logging: *logging
+    mem_limit: 1536m
     # Internal-only in prod (gateways reach it as backend:8080; host 8080 is taken).
     ports: !override []
 
   frontend-public:
     image: ${DOCKERHUB_USERNAME:-vladbogun1}/maxsolch2-frontend:${IMAGE_TAG:-latest}
     pull_policy: always
+    logging: *logging
+    mem_limit: 512m
 
   frontend-admin-public:
     image: ${DOCKERHUB_USERNAME:-vladbogun1}/maxsolch2-admin:${IMAGE_TAG:-latest}
     pull_policy: always
+    logging: *logging
+    mem_limit: 512m
 
   site-public:
     image: ${DOCKERHUB_USERNAME:-vladbogun1}/maxsolch2-site:${IMAGE_TAG:-latest}
     pull_policy: always
+    logging: *logging
+    mem_limit: 512m
 
   caddy:
     image: caddy:2.8
     container_name: tgshop_v2_caddy
     restart: unless-stopped
+    logging: *logging
+    mem_limit: 128m
     depends_on:
       - gateway
       - gateway-admin
@@ -103,6 +142,11 @@ services:
       - tgshop_v2_caddy_config:/config
     networks:
       - tgshop
+
+  # imgproxy keeps the base image; only its limits live here.
+  imgproxy:
+    logging: *logging
+    mem_limit: 768m
 
 volumes:
   tgshop_v2_caddy_data:

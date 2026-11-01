@@ -26,19 +26,24 @@ services:
     container_name: tgshop_v2_frontend_public
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - tgshop
 
   gateway:
-    image: nginx:alpine
+    image: nginx:alpine@sha256:d565d19ef132a5834f5897f602831ad2e40a36c26c625f2f94f9b3fdf0ed292d
     container_name: tgshop_v2_gateway
     restart: unless-stopped
     depends_on:
-      - frontend-public
-      - backend
-      - imgproxy
-      - nginx
+      frontend-public:
+        condition: service_started
+      backend:
+        condition: service_healthy
+      imgproxy:
+        condition: service_started
+      nginx:
+        condition: service_started
     volumes:
       - ./infra/gateway.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
@@ -58,19 +63,24 @@ services:
     container_name: tgshop_v2_frontend_admin_public
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - tgshop
 
   gateway-admin:
-    image: nginx:alpine
+    image: nginx:alpine@sha256:d565d19ef132a5834f5897f602831ad2e40a36c26c625f2f94f9b3fdf0ed292d
     container_name: tgshop_v2_gateway_admin
     restart: unless-stopped
     depends_on:
-      - frontend-admin-public
-      - backend
-      - imgproxy
-      - nginx
+      frontend-admin-public:
+        condition: service_started
+      backend:
+        condition: service_healthy
+      imgproxy:
+        condition: service_started
+      nginx:
+        condition: service_started
     volumes:
       - ./infra/gateway-admin.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
@@ -91,7 +101,8 @@ services:
     container_name: tgshop_v2_site_public
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     environment:
       INTERNAL_API_BASE: http://backend:8080
       SITE_INDEXABLE: ${SITE_INDEXABLE:-false}
@@ -104,14 +115,18 @@ services:
       - tgshop
 
   gateway-site:
-    image: nginx:alpine
+    image: nginx:alpine@sha256:d565d19ef132a5834f5897f602831ad2e40a36c26c625f2f94f9b3fdf0ed292d
     container_name: tgshop_v2_gateway_site
     restart: unless-stopped
     depends_on:
-      - site-public
-      - backend
-      - imgproxy
-      - nginx
+      site-public:
+        condition: service_started
+      backend:
+        condition: service_healthy
+      imgproxy:
+        condition: service_started
+      nginx:
+        condition: service_started
     volumes:
       - ./infra/gateway-site.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
