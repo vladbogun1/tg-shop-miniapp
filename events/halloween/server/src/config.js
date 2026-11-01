@@ -65,6 +65,8 @@ export const config = {
   excludeIds: (env.HW_EXCLUDE_IDS || "9000000000000001").split(",").map((s) => s.trim()).filter(Boolean),
   /** Bot DMs "you got a ticket": the shop bot token (send only, no polling — no 409 with the backend). */
   botToken: env.HW_BOT_TOKEN || "",
+  /** Minutes the winner card promises when the stage countdown for that round is not running. */
+  replyMinutes: num("HW_REPLY_MIN", 3),
   notify: env.HW_NOTIFY === "1",
   /** Comma list: notify only these Telegram ids (demo/stand testing). Empty = everyone. */
   notifyOnly: (env.HW_NOTIFY_ONLY || "").split(",").map((s) => s.trim()).filter(Boolean),

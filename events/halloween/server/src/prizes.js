@@ -38,13 +38,41 @@ if (!db.prepare("SELECT name FROM pragma_table_info('prizes')").all().some((c) =
   db.exec("ALTER TABLE prizes ADD COLUMN images TEXT NOT NULL DEFAULT '[]'");
 }
 
-export const DEFAULT_TEMPLATE = `Привіт, {name}! 🎃
+// 01.11: the winner card goes straight from the bot (the support chat DM squashed it into a one-paragraph
+// preview) and says how long we wait; a reroll edits it into "time is up" (contact.js).
+if (!db.prepare("SELECT name FROM pragma_table_info('contacts')").all().some((c) => c.name === "tg_msg_id")) {
+  db.exec("ALTER TABLE contacts ADD COLUMN tg_msg_id INTEGER");
+  db.exec("ALTER TABLE contacts ADD COLUMN ref TEXT");
+  db.exec("ALTER TABLE contacts ADD COLUMN expired_at INTEGER");
+}
+
+/** The template before 01.11: a saved copy of it counts as "not customised". */
+const OLD_DEFAULT = `Привіт, {name}! 🎃
 
 Ти виграв у Хелловін-розіграші ChiSetup на стрімі ({draw}, раунд {round}).
 Твій приз: {prize}
 {items}
 
 Напиши тут, у цьому чаті, куди надіслати приз: ПІБ, телефон і місто з відділенням Нової пошти. Вітаємо!`;
+
+export const DEFAULT_TEMPLATE = `🎃 {name}, вітаємо! Ти виграв!
+
+Хелловін-розіграш ChiSetup на стрімі
+{draw}, раунд {round}
+
+🎁 Твій приз: {prize}
+{items}
+
+⏳ Відповідь чекаємо до {deadline} за Києвом ({minutes} хв). Якщо не встигнеш, приз розіграємо ще раз і він піде іншому учаснику.
+
+✍️ Наступним повідомленням прийде чат підтримки з кнопкою «Відкрити переписку». Напиши туди:
+• ПІБ
+• телефон
+• місто і відділення Нової пошти`;
+
+/** Goes into the shop support chat: short, its bot DM shows it as a one-paragraph preview. */
+export const CHAT_TEMPLATE =
+  "🎃 Перемога в Хелловін-розіграші ({draw}, раунд {round}). Напиши сюди ПІБ, телефон, місто і відділення Нової пошти до {deadline} за Києвом.";
 
 const q = {
   list: db.prepare("SELECT id, name, items, images FROM prizes ORDER BY id"),
@@ -59,7 +87,9 @@ const q = {
   getSetting: db.prepare("SELECT value FROM settings WHERE key = ?"),
   setSetting: db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"),
   contactsFor: db.prepare("SELECT draw_id, thread_id, sent_at FROM contacts WHERE draw_id IS NOT NULL ORDER BY id"),
-  addContact: db.prepare("INSERT INTO contacts (draw_id, tg_id, thread_id, text, sent_at, sent_by) VALUES (?, ?, ?, ?, ?, ?)"),
+  addContact: db.prepare("INSERT INTO contacts (draw_id, tg_id, thread_id, text, sent_at, sent_by, tg_msg_id, ref) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"),
+  liveFor: db.prepare("SELECT id, tg_id, thread_id, tg_msg_id FROM contacts WHERE ref = ? AND expired_at IS NULL"),
+  expire: db.prepare("UPDATE contacts SET expired_at = ? WHERE id = ?"),
 };
 
 const row = (r) => (r ? { id: r.id, name: r.name, items: JSON.parse(r.items), images: JSON.parse(r.images || "[]") } : null);
@@ -119,7 +149,8 @@ export function assign(pool, round, prizeId) {
 }
 
 export function template() {
-  return q.getSetting.get("template")?.value || DEFAULT_TEMPLATE;
+  const t = q.getSetting.get("template")?.value;
+  return !t || t === OLD_DEFAULT ? DEFAULT_TEMPLATE : t;
 }
 
 export function setTemplate(pool, text) {
@@ -135,14 +166,26 @@ export function prizeFor(pool, round) {
   return p ? { name: p.name, items: p.items } : null;
 }
 
-export function render(tpl, { name, round, prize, pool }) {
+/** "21:47" in Kyiv. */
+export function kyivTime(ms) {
+  return new Intl.DateTimeFormat("uk-UA", { timeZone: "Europe/Kyiv", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(ms));
+}
+
+/** deadline = { at: ms, minutes }: until when we wait for the winner's answer. */
+export function render(tpl, { name, round, prize, pool, deadline }) {
   const items = prize?.items?.length ? prize.items.map((s) => `• ${s}`).join("\n") : "";
-  return tpl
+  // A customised template without the deadline still gets it: the winner has to know.
+  const body = deadline && !tpl.includes("{deadline}")
+    ? `${tpl}\n\n⏳ Відповідь чекаємо до {deadline} за Києвом ({minutes} хв). Якщо не встигнеш, приз розіграємо ще раз.`
+    : tpl;
+  return body
     .replaceAll("{name}", name || "друже")
     .replaceAll("{round}", String(round))
     .replaceAll("{draw}", DRAW_NAMES[pool] || "розіграш")
     .replaceAll("{prize}", prize?.name || "приз від ChiSetup")
     .replaceAll("{items}", items)
+    .replaceAll("{deadline}", deadline ? kyivTime(deadline.at) : "")
+    .replaceAll("{minutes}", deadline ? String(Math.round(deadline.minutes * 10) / 10).replace(".", ",") : "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
@@ -154,19 +197,14 @@ export function contacted() {
   return m;
 }
 
-/**
- * Opens a support chat with the customer and posts the text there, as the admin calling us (their
- * token goes on to the shop backend, which checks it and writes the admin's name on the message).
- */
-export async function send({ token, by, tgId, drawId, pool, round, text }) {
-  const res = await fetch(`${config.backendUrl}/api/admin/support/threads`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ userId: Number(tgId), subject: `Хелловін: ${DRAW_NAMES[pool] || "розіграш"}, раунд ${round}`, text }),
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!res.ok) throw new Error(`Чат не відкрився: ${res.status} ${(await res.text()).slice(0, 200)}`);
-  const t = await res.json();
-  q.addContact.run(drawId ?? null, String(tgId), t.id || null, text, Date.now(), by);
-  return { threadId: t.id || null };
+/** One row per winner card + support chat; ref = "live|test:<pool>:<round>", what a reroll looks up. */
+export function addContact({ drawId, tgId, threadId, text, by, msgId, ref }) {
+  q.addContact.run(drawId ?? null, String(tgId), threadId || null, text, Date.now(), by, msgId ?? null, ref);
+}
+
+/** The round's messages not voided yet, marked voided now (a reroll is drawing that round again). */
+export function takeLive(ref) {
+  const rows = q.liveFor.all(ref);
+  for (const r of rows) q.expire.run(Date.now(), r.id);
+  return rows;
 }

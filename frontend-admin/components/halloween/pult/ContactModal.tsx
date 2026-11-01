@@ -62,7 +62,7 @@ export function ContactModal({ target, test, onClose }: { target: { pool: HwPool
           {pv.test && <p className="text-[var(--warn)]">Тестовый режим: сообщение придёт вам в чат магазина, а не этому человеку.</p>}
           {pv.sent && <p className="text-[var(--warn)]">Уже писали {new Date(pv.sent.sentAt).toLocaleString("ru-RU")}. Ещё одно сообщение откроет новый чат.</p>}
           <Textarea rows={11} value={text} onChange={(e) => setText(e.target.value)} />
-          <p className="text-[12px] text-[var(--text-muted)]">Человек получит сообщение от бота с кнопкой в чат. Ответ придёт в «Поддержку».</p>
+          <p className="text-[12px] text-[var(--text-muted)]">Этот текст бот пришлёт отдельным сообщением, как есть, с пустыми строками. Следом придёт короткое сообщение чата поддержки с кнопкой — ответ будет в «Поддержке». Срок берётся из отсчёта «Ждём ответа» этого раунда, если он идёт, иначе 3 минуты. «Перекрутить» сам исправит это сообщение на «время вышло» и напишет об этом в чат.</p>
         </div>
       )}
     </Modal>

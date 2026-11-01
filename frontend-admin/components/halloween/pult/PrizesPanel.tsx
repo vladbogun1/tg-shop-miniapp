@@ -85,7 +85,7 @@ function TemplateCard() {
   return (
     <div className="panel flex flex-col gap-3 p-4">
       <h3 className="section-title">Сообщение победителю</h3>
-      <p className="text-[12px] text-[var(--text-muted)]">Подстановки: {"{name}"} — имя, {"{draw}"} — розыгрыш, {"{round}"} — раунд, {"{prize}"} — приз, {"{items}"} — что внутри. Пустой — шаблон по умолчанию.</p>
+      <p className="text-[12px] text-[var(--text-muted)]">Подстановки: {"{name}"} — имя, {"{draw}"} — розыгрыш, {"{round}"} — раунд, {"{prize}"} — приз, {"{items}"} — что внутри, {"{deadline}"} — до скольки ждём ответ (по Киеву), {"{minutes}"} — сколько минут. Без {"{deadline}"} строка про срок добавится сама. Пустой — шаблон по умолчанию.</p>
       <Textarea rows={9} value={text} onChange={(e) => setText(e.target.value)} />
       <div><Button variant="accent" loading={busy} disabled={text === saved} onClick={save}>Сохранить шаблон</Button></div>
     </div>

@@ -16,6 +16,7 @@ import * as draw from "./draw.js";
 import * as adminPeople from "./admin-people.js";
 import * as rehearsal from "./test-draw.js";
 import * as prizes from "./prizes.js";
+import * as contact from "./contact.js";
 import { db } from "./db.js";
 import { poolOf, liveEntries } from "./pools.js";
 import * as notify from "./notify.js";
@@ -40,6 +41,9 @@ const TYPES = {
 };
 
 // ---------- tiny helpers ----------
+/** The admin's token as is: «Написати переможцю» passes it on to the shop backend. */
+const bearer = (req) => (req.headers.authorization || "").slice(7).trim();
+
 function send(res, status, body, headers = {}) {
   const json = typeof body === "string" ? body : JSON.stringify(body);
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...headers });
@@ -165,6 +169,7 @@ async function adminApi(req, res, path, query) {
     if ((path === "test/draw" || path === "test/reroll") && req.method === "POST") {
       const r = await rehearsal.drawRound(pool, path === "test/reroll", b.round);
       show.rolled(pool, true, r, b.visual);
+      if (path === "test/reroll") contact.expire({ token: bearer(req), pool, round: r.round, test: true }).catch((e) => console.error("[hw] expire:", e.message));
       return send(res, 200, r);
     }
     if (path === "participants" && req.method === "GET") return send(res, 200, await draw.screen(pool));
@@ -176,6 +181,7 @@ async function adminApi(req, res, path, query) {
       const r = await draw.drawRound(pool, who.tgId, path === "reroll", b.round);
       const out = { round: r.round, attempt: r.attempt, winner: draw.publicId(r.winnerTgId), totalTickets: r.totalTickets };
       show.rolled(pool, false, out, b.visual);
+      if (path === "reroll") contact.expire({ token: bearer(req), pool, round: r.round, test: false }).catch((e) => console.error("[hw] expire:", e.message));
       return send(res, 200, out);
     }
     if (path === "winners" && req.method === "GET") {
@@ -198,14 +204,15 @@ async function adminApi(req, res, path, query) {
       const prize = prizes.prizeFor(pool, round);
       if (path === "contact/preview") {
         const drawSent = w.drawId ? prizes.contacted().get(w.drawId) : null;
-        return send(res, 200, { round, to: { name: w.name, username: w.username }, prize, text: prizes.render(prizes.template(), { name: w.name, round, prize, pool }), sent: drawSent || null, test: Boolean(b.test) });
+        const deadline = contact.deadlineFor(pool, round, b.test);
+        return send(res, 200, { round, to: { name: w.name, username: w.username }, prize, text: prizes.render(prizes.template(), { name: w.name, round, prize, pool, deadline }), sent: drawSent || null, test: Boolean(b.test) });
       }
       const text = String(b.text || "").trim().slice(0, 3500);
       if (!text) return send(res, 400, { error: "Порожнє повідомлення" });
-      const token = (req.headers.authorization || "").slice(7).trim();
-      const r = b.test
-        ? await prizes.send({ token, by: who.tgId, tgId: who.tgId, drawId: null, pool, round, text: `[ТЕСТ: справжньому переможцю це не пішло]\n\n${text}` })
-        : await prizes.send({ token, by: who.tgId, tgId: w.tgId, drawId: w.drawId, pool, round, text });
+      const r = await contact.send({
+        token: bearer(req), by: who.tgId, tgId: b.test ? who.tgId : w.tgId, drawId: w.drawId, pool, round,
+        test: Boolean(b.test), text, deadline: contact.deadlineFor(pool, round, b.test),
+      });
       return send(res, 200, { ok: true, threadId: r.threadId, to: b.test ? "you" : "winner" });
     }
     if (path === "proof" && req.method === "GET") return send(res, 200, draw.proof(pool) || {});
