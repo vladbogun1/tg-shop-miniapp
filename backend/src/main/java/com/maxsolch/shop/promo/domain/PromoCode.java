@@ -34,6 +34,14 @@ public class PromoCode {
     @Column(name = "max_discount_minor", nullable = false)
     private long maxDiscountMinor = 0;
 
+    /** The kind of discount this code gives (see {@link DiscountKind}). */
+    public DiscountKind kind() {
+        if (discountAmountMinor > 0) {
+            return DiscountKind.FIXED;
+        }
+        return discountPercent > 0 ? DiscountKind.PERCENT : DiscountKind.NONE;
+    }
+
     @Column(name = "max_uses")
     private Integer maxUses;
 

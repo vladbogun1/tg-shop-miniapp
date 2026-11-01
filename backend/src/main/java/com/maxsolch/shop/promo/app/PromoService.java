@@ -136,8 +136,8 @@ public class PromoService {
             return invalid(subtotal, messages.current("api.promo.expired"));
         }
         long excluded = excludedFor(promo, items);
-        if (excluded > 0 && subtotal - excluded <= 0) {
-            return invalid(subtotal, messages.current("api.promo.caseExcluded"));
+        if (PromoDiscount.apply(promo, subtotal, excluded).rejected()) {
+            return invalid(subtotal, messages.current(PromoRejection.CASE_EXCLUDED.messageKey()));
         }
         if (promo.getMaxUses() == null) {
             return valid(promo, subtotal, null, excluded);
@@ -243,11 +243,7 @@ public class PromoService {
     }
 
     private PromoPreviewDto checked(PromoCode promo, long subtotal, Instant reservedUntil, Map<String, Integer> items) {
-        long excluded = excludedFor(promo, items);
-        if (excluded > 0 && subtotal - excluded <= 0) {
-            return invalid(subtotal, messages.current("api.promo.caseExcluded"));
-        }
-        return valid(promo, subtotal, reservedUntil, excluded);
+        return valid(promo, subtotal, reservedUntil, excludedFor(promo, items));
     }
 
     /** The low-margin part of the cart («Упор на скидки»): no promo code applies to it. */
@@ -260,7 +256,11 @@ public class PromoService {
 
     /** A valid code; the message says the discount skips some items («Упор на скидки»), if it does. */
     private PromoPreviewDto valid(PromoCode promo, long subtotal, Instant reservedUntil, long excludedMinor) {
-        long discount = PromoDiscount.discountFor(promo, subtotal, excludedMinor);
+        PromoDiscount.Applied applied = PromoDiscount.apply(promo, subtotal, excludedMinor);
+        if (applied.rejected()) {
+            return invalid(subtotal, messages.current(applied.rejection().messageKey()));
+        }
+        long discount = applied.discountMinor();
         String note = excludedMinor > 0 ? messages.current("api.promo.partlyExcluded") : null;
         return new PromoPreviewDto(true, discount, subtotal - discount, note, reservedUntil);
     }

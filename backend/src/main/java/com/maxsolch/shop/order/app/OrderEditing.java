@@ -173,7 +173,7 @@ public class OrderEditing {
             // holds do not stand in their way, only the code own usage limit does.
             // The order customer is passed for the owner check of personal codes (V44).
             PromoCode p = promos.resolve(promoCode, order.getUserId(), false);
-            discount = PromoDiscount.discountFor(p, subtotal, promos.excluded(p, promos.lowMarginMinor(order), subtotal));
+            discount = promos.discountFor(p, order, promos.lowMarginMinor(order));
             promos.countUse(p);
             order.labelPromo(p.getCode());
         } else if (amountMinor != null && amountMinor > 0) {
