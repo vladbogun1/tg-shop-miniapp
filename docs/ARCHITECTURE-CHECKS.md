@@ -10,29 +10,27 @@
 `com.maxsolch.shop.<модуль>.{api,app,domain,infra}` и `platform` и применяются ко **всему** коду без заморозки по файлам:
 вместо списка исключений — число нарушений на каждое правило и модуль.
 
-- Модуль класса: `platform` (весь пакет), `<модуль>` (если класс лежит в `<модуль>.api|app|domain|infra`), иначе **`legacy`** —
-  старые `service`, `web`, `domain`, `repository`, `tg`, плоские пакеты `catalog`, `gift`, … Для слоёв `legacy`-класс получает
-  «подразумеваемый» слой по имени/аннотациям/старому пакету (контроллер и `web.*` — api, `repository`/`*Store` — infra, `domain`/`@Entity` — domain,
-  остальное — app), поэтому сервис, возвращающий web-DTO, считается нарушением «app → api» ещё до переноса.
+- Модуль класса: `platform` (весь пакет), `<модуль>` (если класс лежит в `<модуль>.api|app|domain|infra`), иначе **`bootstrap`** —
+  точка входа в корневом пакете (`Placement.BOOTSTRAP`). Старых пакетов `service`, `web`, `repository` больше нет (переезд завершён); для слоёв класс получает слой по пакету `api|app|domain|infra`.
 - Тест считает **различные пары** «класс → деталь» на каждое правило и модуль и сравнивает с
   `backend/src/test/resources/architecture/v2-baseline.txt` (`<правило> <модуль> <число>`, нули не пишутся). **Число выросло — тест падает**
   и показывает первые нарушения. Число уменьшилось — тест проходит и пишет подсказку «baseline можно понизить».
 - Правила (id в колонках сводки): L1 api не лезет в infra; L2 app/domain не знают api; L3 domain без web/Jdbc/HTTP/стереотипов Spring;
   L4 infra знает только domain; M1 чужой модуль — только через его app; M2 нет зависимостей против направления модулей (раздел 2.2);
-  P1 platform не знает бизнес-модулей; P2 в platform нет `@RestController` и `@Entity`; E1 ошибки — `DomainException` с `ErrorCode`; E2 причина ошибки — только константа enum (класс/лямбда, реализующие `ErrorCode`, вне `platform.error` запрещены; `ErrorCode.of("...")` удалён), текст — в бандлах, их полноту проверяет `ErrorCatalogTest`; T1 после коммита — только событие
+  P1 platform не знает бизнес-модулей; P2 в platform нет `@RestController` и `@Entity`; E1 ошибки — `DomainException` с `ErrorCode`; E2 причина ошибки — только константа enum (класс/лямбда, реализующие `ErrorCode`, вне `platform.error` запрещены; фабрики `ErrorCode.of("...")` в коде нет), текст — в бандлах, их полноту проверяет `ErrorCatalogTest`; T1 после коммита — только событие
   (`DomainEvents` + `@OnCommitted`); T2 `@Transactional` только на публичных методах app; A1 `CurrentActor` вместо `SecurityUtil`;
   A2 контроллеры не пишут ни аудит, ни журнал активности (это сценарий в app); A3 права аннотациями (`AdminAccess.require*` не вызывают ни api, ни app); N1 Telegram/push только из `notification` и четырёх названных классов (`V2Rules.TELEGRAM_USERS`; по суффиксу `Notifier` больше нельзя); K1 нет замков в памяти;
   C1 время через `Clock`/`ShopZone`; V1 нет `@Value`; V2 `@ConfigurationProperties` с `@Validated`; CA кэш только Spring Cache;
   J1 `@Scheduled` только в `*Job(s)` и с `@SchedulerLock`; H1 внешний HTTP через `platform.http`; W1 зависимости только конструктором;
   S1 `JdbcTemplate`/`NamedParameterJdbcTemplate` и `EntityManager.createQuery/createNativeQuery/createNamedQuery` только в слое infra (по слою, не по имени класса); M3 SQL/JPQL модуля трогает только его таблицы и сущности; L5 app не знает `org.springframework.web.*` и `jakarta.servlet.*`; O1 `setStatus` заказа не снаружи. Полный текст — в `V2Rules.RULES`.
 - **Как читать сводку.** Каждый прогон печатает таблицу (и кладёт её в `backend/target/architecture-v2-summary.txt`): строки — модули
-  (целевые сверху вниз, `platform`, `legacy`), колонки — правила, `.` = ноль, плюс «migrated classes: N of M». Это мерило прогресса:
-  шаг миграции модуля считается сделанным, когда его строка пустая, а число классов `legacy` упало на столько, сколько перенесли.
+  (целевые сверху вниз, `platform`, `bootstrap`), колонки — правила, `.` = ноль, плюс «migrated classes: N of M». Это мерило прогресса:
+  строки пустые, «migrated classes» = все классы.
   Команда: `cd backend && mvn -B -ntp test -Dtest=ArchitectureV2Test`.
 - **Как обновлять baseline — только вниз.** Исправили нарушения → `mvn -B -ntp test -Dtest=ArchitectureV2Test -Darchitecture.v2.update=true`
   → `git diff v2-baseline.txt` должен показать только уменьшения → закоммитить вместе с исправлением. Режим обновления сам падает, если
   **сумма по правилу** выросла.
-  Перенос класса из `legacy` в модуль может сместить счёт между строками (в обычном прогоне CI строка по-прежнему не должна расти,
+  Перенос класса между модулями может сместить счёт между строками (в обычном прогоне CI строка по-прежнему не должна расти,
   поэтому baseline переписывается в том же коммите, что и перенос), но сумма по правилу по всем модулям расти не может.
   Правило, которое выросло **осознанно** (оно стало измеримым, как M1/M2 после появления модулей, или класс переклассифицирован:
   `*Queries`, который оказался сервисом, перестал быть «infra»), называется явно:
@@ -41,7 +39,7 @@
 - Сами правила проверены на миниатюрном «целевом» проекте `com.maxsolch.shopfixture` (`V2RulesTest`): меняя правило, меняйте и фикстуру.
 - **Статус: бэкенд завершён (шаг 8).** Храповик стоит на нуле: `v2-baseline.txt` без записей, любое нарушение любого правила в любом модуле
   валит тест. Старые заморозки (`FreezingArchRule`, `archunit_store`, `large-classes.txt`) удалены, их правила покрыты v2
-  (контроллеры не лезут в репозитории — L1/A1, циклы между модулями — M2, `setStatus` — O1). В классе **`legacy`** остался только `TgShopApplication` (точка входа в корневом пакете).
+  (контроллеры не лезут в репозитории — L1/A1, циклы между модулями — M2, `setStatus` — O1). В классе **`bootstrap`** — только `TgShopApplication` (точка входа в корневом пакете).
 - **Размер файла** — `architecture/ClassSizeTest`: ни один файл в `src/main/java` не длиннее 400 строк, без списка исключений; `architecture/MethodSizeTest` — ни один метод не длиннее 80 строк.
   Растёт класс — выносить логику в отдельный по смыслу, а не поднимать лимит.
 - **Шаги 9а/9б: правила по сути, а не по имени.** W1 ловит и `@PersistenceContext`; K1 — замки и конкурентные коллекции (`Concurrent*`, `CopyOnWrite*`)
@@ -70,7 +68,6 @@
   `platform.config.WebSocketConfig` (ARCHITECTURE.md, раздел 6); E1 — `payment.domain.MonobankGateway` (`MonobankException` — сбой порта, всегда перехватывается
   в `payment.app` и превращается в `DomainException`); C1 — `platform.time.TimeConfig` (создаёт системный `Clock` и `ShopZone`), `platform.time.ShopZone`
   (единственное место разбора id пояса), `platform.jobs.DbLocks` (`System.nanoTime` — монотонный дедлайн ожидания замка БД, не дата).
-  Остаток для 9г: `ErrorCode.of` и фабрики `*Errors` остаются как есть.
 - **Что исключено из правил осознанно.** S1 исключений не имеет: провайдер замков ShedLock строит `platform.infra.LockProviderConfig` (слой infra).
   T1: `@OnCompleted` (AFTER_COMPLETION, срабатывает и при откате) — единственный способ сбросить снимок настроек и после отката.
   Что остаётся в памяти и почему — [ARCHITECTURE.md](ARCHITECTURE.md), раздел 6 «Что остаётся в памяти».
@@ -104,9 +101,9 @@
   `npm run check:golden-schema` (`scripts/check-golden-schema.mjs`) сверяет настоящие ответы заказа (golden-JSON) со схемами:
   лишний ключ, пропавший required, null в non-nullable, не тот вид значения, значение не из enum. Три устаревших значения в синтетических
   фикстурах (`rejectReasonCode: UNPAID`, `movements.kind: RECEIVED`, `movements.channel: MONOBANK`) пропускаются явно (`STALE_ENUM_PATHS`).
-- **Правило.** `scripts/check-api-types.mjs` (в `arch:front`): в пилотных модулях order и catalog нельзя объявлять руками типы ответов
-  из списка `GENERATED_ONLY`; в `frontend-admin/lib/orders-api.ts` ручные интерфейсы — только тела запросов.
-  Переезжает ещё модуль — добавь его имена в список.
+- **Правило.** `scripts/check-api-types.mjs` (в `arch:front`): нельзя объявлять руками типы ответов
+  из списка `GENERATED_ONLY` (покрыто ~15 модулей); в `frontend-admin/features/*/api.ts` ручные интерфейсы — только тела запросов и фильтры (`ADMIN_API_ALLOWED`).
+  Добавляется модуль — добавь его имена в список.
 
 Заменил `check-dto-drift.mjs` (сверял TS-типы с golden-образцами): теперь сверяется сама схема, а TS-типы сгенерированы из неё.
 
@@ -131,11 +128,11 @@
   `stale-time-literal`, `refetch-interval-literal`, `money-div-mul-100`, `to-fixed`, `time-new-date`, `time-date-now`, `time-to-locale`, `time-intl-datetimeformat`,
   `cyrillic-literal` (только Mini App и сайт; словари `i18n/**` не считаются), плюс `react-hooks/exhaustive-deps`, `max-lines`, `max-lines-per-function` (200), `complexity`, `max-depth`.
   `scripts/check-front-ratchet.mjs` запускает ESLint с `--no-inline-config` (то есть `eslint-disable` не прячет долг), печатает сводку «правило × приложение» и сравнивает
-  с `scripts/frontend-baseline.txt` (`<правило> <приложение> <число>`). Рост — падение; снижение — подсказка; понизить: `node scripts/check-front-ratchet.mjs --update`
+  с `scripts/frontend-baseline.txt` (`<правило> <приложение> <число>`; сейчас файл содержит только комментарий — **все 18 правил на нуле**, долга нет). Рост — падение; снижение — подсказка; понизить: `node scripts/check-front-ratchet.mjs --update`
   (рост без `--allow-growth=<правила>` команда не запишет; причину роста — в сообщение коммита). По правилу ноль → переключить в error и убрать строки из baseline.
-  Исключения у правил — только файлы, ради которых правило есть (`shared/src/http.ts` для `fetch`, `shared/src/money.ts`/`format.ts`, `site/lib/server-api.ts`).
+  Исключения у правил — только файлы, ради которых правило есть (`packages/core/src/http.ts` для `fetch`, `packages/core/src/money.ts`/`format.ts`; список — в `packages/core/eslint/front-rules.mjs`).
 - **Запреты совместимости (error, `docs/BROWSER-SUPPORT.md`).** Lookbehind (литерал и `new RegExp("…")`), флаг `v`, `static {}`, `toSorted/toReversed/toSpliced`, `Set#isSubsetOf…`,
-  `Object/Map.groupBy`, `Promise.withResolvers`, `Array.fromAsync` — в Mini App, сайте и `shared`; в админке (десктоп) не действуют; `site/lib/feeds.ts` (XML рендерит сервер) — исключение.
+  `Object/Map.groupBy`, `Promise.withResolvers`, `Array.fromAsync` — в Mini App, сайте и `packages/`; в админке (десктоп) не действуют; `site/features/feeds/server` (XML рендерит сервер) — исключение.
 - **dependency-cruiser.** Правила — `.dependency-cruiser.cjs` (циклы, чужое приложение, ядро без React, `components → app`, WebSocket только из `realtime.ts`, границы будущих `features/*`).
   `scripts/check-arch-front.mjs`: новое нарушение, которого нет в `known-violations.json`, — падение; стало меньше — `node scripts/check-arch-front.mjs --update`.
 - **Инварианты** `scripts/check-invariants.mjs`: `CHUNK_RECOVERY_SCRIPT` первым в `<head>` обоих layout, `no-cache` для HTML в `infra/gateway.conf` и `gateway-site.conf`, нет lookbehind.
@@ -144,7 +141,7 @@
 
 ### Как читать вывод фронтовых проверок (итог шага 8)
 
-- `npm run arch:front` = invariants → depcruise → ESLint-храповик → api-types → i18n. Падение одной не скрывает остальные; в конце «arch:front OK/УПАЛ».
+- `npm run arch:front` = invariants → depcruise → ESLint-храповик → api-types → i18n → `check-locales-sync` (6 шагов). Падение одной не скрывает остальные; в конце «arch:front OK/УПАЛ».
 - **Храповик** (`check-front-ratchet.mjs`): таблица «правило × приложение». «Рост» — чинить код. «Упало» — `--update`. По размеру и сложности baseline пуст — любое нарушение сразу error в `npm run lint`.
   Остаток baseline — счётные правила (ключи запросов, кириллица, `to-fixed`…), их числа только падают.
 - **depcruise** (`check-arch-front.mjs`): в `known-violations.json` 4 записи `ws-only-from-realtime`; новое нарушение — падение. Правила: циклы, чужое приложение, `core` без React, `features-via-index`

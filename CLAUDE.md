@@ -22,8 +22,7 @@
   настройки — `@ConfigurationProperties` (не `@Value`); фоновая задача — `@Scheduled` + `@SchedulerLock`;
   внешний HTTP — через `platform.http` (таймауты обязательны, ретрай только идемпотентных).
 - Статус заказа — только методами `Order`; деньги — minor-единицы, формулы в `OrderMoney`.
-- Не дописывать в `NotificationService`, `AdminOrderController`:
-  новая логика — отдельный класс в модуле. Контроллеры тонкие.
+- Новый эндпоинт админки: новый `Admin<Что>Controller` в `<модуль>/api` (тонкий) + новый класс-сценарий в `<модуль>/app`; в большие `AdminOrderController`/`Checkout` не дописываем. Пошаговый рецепт (контракт `-Dopenapi.update=true` → `npm run gen:api` → админка → тесты) — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), раздел 7.
 - Нарушений ноль, исключений нет: `v2-baseline.txt` пустой, файл ≤ 400 строк, метод ≤ 80. Упала проверка — чинить код, а не записывать в baseline.
 - Замок, защищающий деньги/данные от двойного выполнения, — только в БД (`platform.jobs.DbLocks`, `@SchedulerLock`); `synchronized` и карты замков запрещены (K1).
   `spring.jpa.open-in-view: false`: то, что рендерит контроллер, загружается внутри транзакции app (fetch join / read-модель).
