@@ -12,7 +12,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { catalogKeys } from "@shop/customer/catalog/keys";
 import { STALE_TIME } from "@shop/core/query";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { Link2, Loader2, Scale, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { compareGroupOf } from "@shop/core/compare";
@@ -43,7 +43,7 @@ export function CompareModal() {
     <AnimatePresence>
       {open && (
         <>
-          <motion.div
+          <m.div
             key="cmp-backdrop"
             {...noFadeFlash}
             initial={{ opacity: 0 }}
@@ -53,7 +53,7 @@ export function CompareModal() {
             className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-[6px]"
             aria-hidden
           />
-          <motion.div
+          <m.div
             key="cmp-panel"
             role="dialog"
             aria-modal="true"
@@ -65,7 +65,7 @@ export function CompareModal() {
             className="fixed inset-0 z-[70] flex flex-col overflow-hidden bg-[var(--bg)] md:inset-x-6 md:inset-y-[4vh] md:mx-auto md:max-w-[1240px] md:rounded-[16px] md:border md:border-[var(--line-strong)] md:shadow-[0_40px_120px_-30px_rgba(0,0,0,.9)]"
           >
             <Body onClose={close} />
-          </motion.div>
+          </m.div>
         </>
       )}
     </AnimatePresence>

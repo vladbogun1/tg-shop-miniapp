@@ -6,7 +6,7 @@
  * (picker or paste). Same endpoints; the WebSocket authenticates with the `access` cookie.
  */
 import { useQuery } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { ImagePlus, Send, WifiOff, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { hasUnreadFromShop } from "@shop/customer/chat/model";
@@ -152,7 +152,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
 
       <AnimatePresence>
         {lightbox && (
-          <motion.div
+          <m.div
             role="dialog"
             aria-modal="true"
             aria-label={t("chat.attachmentAlt")}
@@ -175,7 +175,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
             <div onClick={(e) => e.stopPropagation()} className="max-w-[min(92vw,1100px)]">
               <Image src={lightbox} alt={t("chat.attachmentAlt")} size={1600} fit className="max-h-[86dvh] max-w-full rounded-[var(--r-card)] border border-[var(--line)]" />
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </section>

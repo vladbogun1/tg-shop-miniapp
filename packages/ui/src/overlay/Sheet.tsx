@@ -5,11 +5,12 @@
  * Участвует в общем стеке оверлеев (Esc закрывает только верхний, прокрутка страницы под ним заблокирована) и,
  * если задан `backClose`, закрывается кнопкой «Назад». Тело и его отступы — забота вызывающего.
  */
-import { AnimatePresence, motion, type Variants } from "framer-motion";
+import { AnimatePresence, m, type Variants } from "framer-motion";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useOverlayLayer } from "./overlay-stack";
+import { useDialogFocus } from "./use-dialog-focus";
 import { useBackToClose } from "./use-back-close";
 
 const sheetVariants: Variants = {
@@ -50,13 +51,14 @@ export function Sheet({
 }) {
   const close = useBackToClose(open && !!backClose, onClose, { marker: backClose });
   useOverlayLayer(open, close);
+  const focusRef = useDialogFocus();
 
   // In a portal: opened from a screen's own layer the sheet must still cover the tab bar.
   if (typeof document === "undefined") return null;
   return createPortal(
     <AnimatePresence>
       {open && (
-        <motion.div
+        <m.div
           variants={backdropVariants}
           initial="initial"
           animate="animate"
@@ -64,7 +66,8 @@ export function Sheet({
           onClick={close}
           className={`fixed inset-0 flex items-end justify-center bg-black/65 ${zClass}`}
         >
-          <motion.div
+          <m.div
+            ref={focusRef}
             role="dialog"
             aria-modal="true"
             aria-label={ariaLabel}
@@ -95,8 +98,8 @@ export function Sheet({
               </button>
             </div>
             {children}
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       )}
     </AnimatePresence>,
     document.body,

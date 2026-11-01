@@ -91,6 +91,7 @@ export function ArriveModal({ open, onClose, batch }: { open: boolean; onClose: 
 
   return (
     <Modal
+      dirty={form.formState.isDirty}
       open={open}
       onClose={onClose}
       size="lg"

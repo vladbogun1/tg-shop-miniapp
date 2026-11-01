@@ -3,6 +3,7 @@
 import { makeQueryClient } from "@shop/core/query";
 import { AdminConfirmHost } from "@shop/ui/confirm/admin";
 import { UiLookProvider } from "@shop/ui/look";
+import { MotionProvider } from "@shop/ui/motion-provider";
 import { Toaster } from "@shop/ui/toast";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
@@ -18,9 +19,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={client}>
       <PwaBoot />
       <UiLookProvider look="admin">
+      <MotionProvider>
         <AuthGate>{children}</AuthGate>
         <Toaster />
         <AdminConfirmHost />
+      </MotionProvider>
       </UiLookProvider>
     </QueryClientProvider>
   );

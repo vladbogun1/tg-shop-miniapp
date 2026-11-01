@@ -260,13 +260,13 @@ export const ru = {
   "reviews.account.bonuses": "Мои бонусы",
 
   // ── payment return page (opened in a browser, outside Telegram) ──────────
-  "payReturn.title": "Спасибо! Оплата принята в обработку",
-  "payReturn.text": "Сейчас вернём вас в магазин в Telegram — статус оплаты обновится сам, а бот пришлёт сообщение.",
+  "payReturn.title": "Возвращаем вас в магазин",
+  "payReturn.text": "Статус оплаты покажем в заказе — он обновится сам, а бот пришлёт сообщение. Если оплата не прошла, её можно повторить из заказа.",
   "payReturn.order": "Заказ {id}",
   "payReturn.back": "Вернуться в магазин",
   "payReturn.closeHint": "Не перебросило? Нажмите «Вернуться в магазин» или просто закройте браузер.",
-  "payReturn.embedded": "Оплата принята в обработку…",
-  "payReturn.embeddedText": "Возвращаемся к заказу",
+  "payReturn.embedded": "Проверяем оплату…",
+  "payReturn.embeddedText": "Возвращаемся к заказу — статус будет там",
   // ---- comparison ----
   "compare.tab": "Сравнить",
   // ---- gift for the order sum / gift case (docs/GIFT-CASE.md) ----

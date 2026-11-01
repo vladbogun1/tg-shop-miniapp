@@ -17,7 +17,7 @@
  * that is PromoService), so the discount promised here does not disappear between the cart and the
  * order. Clearing the field gives the hold back instead of sitting on it until it expires.
  */
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Check, Loader2, Ticket, X } from "lucide-react";
 import { bonusKind } from "@shop/core/bonuses";
 import { useT } from "@/i18n/context";
@@ -90,7 +90,7 @@ export function PromoField({
           <Check className="h-5 w-5 shrink-0 text-[var(--ok)]" strokeWidth={2.5} />
         )}
         {trimmed.length > 0 && (
-          <motion.button
+          <m.button
             type="button"
             aria-label={t("promo.clear")}
             whileTap={{ scale: 0.88 }}
@@ -98,7 +98,7 @@ export function PromoField({
             className="-mr-1 grid h-8 w-8 min-h-0 min-w-0 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-3)] text-[var(--ink)] transition-transform active:scale-[.96]"
           >
             <X className="h-4 w-4" strokeWidth={2.5} />
-          </motion.button>
+          </m.button>
         )}
       </div>
 

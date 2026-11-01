@@ -83,6 +83,12 @@ export function CheckoutScreen() {
     trackCheckoutStart();
   }, [lines.length]);
 
+  // A field the server rejected: back to the step that has it.
+  const rejected = place.fieldError;
+  useEffect(() => {
+    if (rejected) setStep(rejected === "comment" ? 1 : 0);
+  }, [rejected]);
+
   function next() {
     setTouched(true);
     if (!stepOk) return;
@@ -131,6 +137,8 @@ export function CheckoutScreen() {
       <CheckoutSteps
         step={step}
         touched={touched}
+        serverField={place.fieldError}
+        onFieldEdit={place.clearFieldError}
         form={form}
         order={order}
         promoCode={promoCode}

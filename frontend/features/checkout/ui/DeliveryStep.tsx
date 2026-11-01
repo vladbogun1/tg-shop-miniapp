@@ -144,6 +144,7 @@ export function DeliveryStep({
         onChange={(e) => setComment(e.target.value)}
         placeholder={t("checkout.delivery.comment")}
         rows={3}
+        maxLength={1000}
         className="tap mt-1 w-full resize-none rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] px-4 py-3 text-[15px] font-medium text-[var(--ink)] outline-none transition-[border-color,box-shadow] placeholder:text-[var(--faint)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)]"
       />
     </div>

@@ -19,6 +19,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Toaster } from "@shop/ui/toast";
 import { UiLookProvider } from "@shop/ui/look";
+import { MotionProvider } from "@shop/ui/motion-provider";
 import { I18nProvider } from "@/i18n/context";
 import { startAnalytics, track } from "@/lib/analytics";
 import { authWithTelegram } from "@/lib/api";
@@ -134,8 +135,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       <UiLookProvider look="miniapp">
+      <MotionProvider>
         <I18nProvider>{children}</I18nProvider>
         <Toaster />
+      </MotionProvider>
       </UiLookProvider>
     </QueryClientProvider>
   );

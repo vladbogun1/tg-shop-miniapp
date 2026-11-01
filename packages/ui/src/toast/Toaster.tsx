@@ -5,7 +5,7 @@
  *  - admin: карточка с цветной полоской, стопка в правом нижнем углу (на телефоне — над таб-баром);
  *  - miniapp / site: «таблетка» по центру снизу, один тост за раз (новый заменяет старый).
  */
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from "lucide-react";
 import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { useUiLook, type UiLook } from "../look";
@@ -79,7 +79,7 @@ function AdminToasts({ items }: { items: readonly ToastItem[] }) {
     >
       <AnimatePresence>
         {items.map((t) => (
-          <motion.div
+          <m.div
             key={t.id}
             layout
             initial={{ opacity: 0, x: 40, scale: 0.9 }}
@@ -110,7 +110,7 @@ function AdminToasts({ items }: { items: readonly ToastItem[] }) {
             >
               <X className="h-3.5 w-3.5" />
             </button>
-          </motion.div>
+          </m.div>
         ))}
       </AnimatePresence>
     </div>
@@ -139,7 +139,7 @@ function CustomerToast({ items, look }: { items: readonly ToastItem[]; look: "mi
           // One element for as long as toasts keep coming: re-keying it per message made the old one
           // slide out NEXT to the new one in this flex row, so a quick second add made it jump sideways.
           // A new message only swaps the text (with a small pop) and restarts the timer.
-          <motion.div
+          <m.div
             key="toast"
             {...noFadeFlash}
             initial={{ opacity: 0, y: 24, scale: 0.96 }}
@@ -174,7 +174,7 @@ function CustomerToast({ items, look }: { items: readonly ToastItem[]; look: "mi
                 {current.action.label}
               </button>
             )}
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>
