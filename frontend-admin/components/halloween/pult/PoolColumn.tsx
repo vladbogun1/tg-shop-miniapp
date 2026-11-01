@@ -2,7 +2,7 @@
 
 /**
  * One draw on the remote (pumpkins or purchases): its stats, the list lock and a card per round.
- * A tap on a card asks once and rolls that round on the OBS scene. Rounds can go in any order;
+ * A tap on a card picks the visual and puts the round on the OBS scene; «Начать» then rolls it. Rounds can go in any order;
  * the draw stays fair because each pick depends only on the seed and the round number.
  */
 import { useQuery } from "@tanstack/react-query";
@@ -19,7 +19,10 @@ export const POOL_TITLE: Record<HwPool, string> = { pumpkins: "🎃 Розыгр
 
 /** What a draw action needs from the page: it asks, sends and refreshes. */
 export interface PoolActions {
-  roll: (round: number, visual: string, superPrize: boolean, prizeName: string) => void;
+  /** Opens the visual picker; `visual` is preselected there. */
+  pick: (round: number, visual: string, superPrize: boolean, prizeName: string) => void;
+  start: (round: number, visual: string) => void;
+  cancel: () => void;
   reroll: (round: number, visual: string) => void;
   lock: () => void;
   resetRounds: (played: number) => void;
@@ -34,10 +37,10 @@ export const usePoolData = (pool: HwPool, test: boolean) => ({
 
 const prizeOf = (pz: HwPrizes | undefined, round: number) => pz?.prizes.find((p) => p.id === pz.rounds[round]) ?? null;
 
-function stateOf(d: HwScreen, round: number, rolling: boolean): RoundState {
+function stateOf(d: HwScreen, round: number, rolling: boolean, announced: string | null): RoundState {
   if (rolling) return { kind: "rolling" };
   const win = d.winners.find((w) => w.round === round);
-  if (!win) return { kind: "free" };
+  if (!win) return announced ? { kind: "announced", visual: announced } : { kind: "free" };
   const who = d.participants.find((p) => p.id === win.participantId);
   return { kind: "won", winner: who?.name ?? "победитель", canReroll: d.winners[d.winners.length - 1]?.round === round };
 }
@@ -77,6 +80,8 @@ export function PoolColumn({ pool, test, show, visual, busy, actions }: {
   const d = screen.data;
   const rolling = playingRoll(show, pool, test);
   const anyRolling = Boolean(show && (playingRoll(show, "pumpkins", test) || playingRoll(show, "orders", test)));
+  const a = show?.announce;
+  const announcedHere = a && a.pool === pool && a.test === test ? a : null;
   const blocked = busy || anyRolling || !d?.participants.some((p) => !p.won);
 
   return (
@@ -93,11 +98,13 @@ export function PoolColumn({ pool, test, show, visual, busy, actions }: {
             {Array.from({ length: d.rounds }, (_, i) => i + 1).map((round) => {
               const prize = prizeOf(prizes.data, round);
               const superPrize = round === d.rounds || /суперприз/i.test(prize?.name ?? "");
-              const v = superPrize ? HW_SUPER_VISUAL : visual;
+              const on = announcedHere?.round === round ? announcedHere.visual : null;
+              const v = on ?? (superPrize ? HW_SUPER_VISUAL : visual);
               return (
                 <RoundCard key={round} round={round} prize={prize} superPrize={superPrize}
-                  state={stateOf(d, round, rolling?.round === round)} disabled={blocked}
-                  onRoll={() => actions.roll(round, v, superPrize, prize?.name ?? "")}
+                  state={stateOf(d, round, rolling?.round === round, on)} disabled={blocked}
+                  onRoll={() => actions.pick(round, v, superPrize, prize?.name ?? "")}
+                  onStart={() => actions.start(round, v)} onCancel={actions.cancel}
                   onReroll={() => actions.reroll(round, v)} onContact={() => actions.contact(round)} />
               );
             })}

@@ -6,7 +6,7 @@
 import { VISUALS } from "./visuals/registry.js";
 import { makeSound, prizeOf, visualCtx, mountVisual } from "./screen-kit.js";
 import { packOf } from "./stage-common.js";
-import { playIntro } from "./stage-intro.js";
+import { dropLot, playIntro, showLot } from "./stage-intro.js";
 import { setLang, t } from "./lang.js";
 import { makePause } from "./stage-pause.js";
 import { makeWait } from "./stage-wait.js";
@@ -16,12 +16,14 @@ const $ = (id) => document.getElementById(id);
 const prefs = { avatars: true, sound: true };
 const sound = makeSound(prefs);
 const PLAY_WINDOW_MS = 5 * 60_000; // a scene (re)opened later than this after a roll does not replay it
+const ANNOUNCE_FRESH_MS = 20_000; // a scene opened later than this after an announcement skips the lot card
 
 let data = null; // stage/screen: participants, winners, prizes, rounds, seedHash
 let visual = null;
 let mounted = ""; // visual id + avatars the visual was mounted with
 let rev = -1;
 let playedId = 0;
+let lotId = 0; // the announcement whose lot card was shown
 let latest = null; // the newest show state; older ones are skipped while a roll plays
 let busy = false;
 let pauseRev = -1; // the rev the pause screen was drawn for
@@ -59,7 +61,7 @@ async function play(r) {
   visual.reset?.();
   paint();
   const shown = prefs.avatars ? winner : { ...winner, avatar: null };
-  await playIntro($("intro"), { pool: r.pool, round: r.round, total: data.rounds, pack: packOf(data.prizes, r.round), sound });
+  await playIntro($("intro"), { lotShown: r.announced, pool: r.pool, round: r.round, total: data.rounds, pack: packOf(data.prizes, r.round), sound });
   await visual.roll(shown, { round: r.round, totalRounds: data.rounds, totalTickets: r.totalTickets, seedHash: data.seedHash, prize: prizeOf(data.prizes, r.round) });
   data.winners.push({ round: r.round, participantId: winner.id });
   winner.won = true;
@@ -98,8 +100,24 @@ async function apply(s) {
   } else if (r) {
     playedId = Math.max(playedId, r.id); // seen: never replay an old roll after a reconnect
   }
+  if (!fresh) syncLot(s);
   await syncPause(s, fresh);
   await syncWait(s, fresh);
+}
+
+/**
+ * Step one of a round: Maxim picked the visual on the remote, the lot is shown once and the visual waits for
+ * «Начать». Not awaited, so a roll right after it takes the overlay over. A late or reloaded stage skips the card.
+ */
+function syncLot(s) {
+  const a = s.announce;
+  if (!a || a.pool !== s.pool || a.test !== s.test) return dropLot($("intro"));
+  if (a.id === lotId) return;
+  lotId = a.id;
+  if ((s.now ?? Date.now()) - a.at > ANNOUNCE_FRESH_MS) return;
+  pause.hide();
+  waitScr.hide();
+  showLot($("intro"), { pool: a.pool, round: a.round, total: data.rounds, pack: packOf(data.prizes, a.round), sound });
 }
 
 /** The countdown while Maxim waits for the winner's answer (stage-wait.js). */

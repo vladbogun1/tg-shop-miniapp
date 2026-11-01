@@ -55,6 +55,9 @@ body.test #test-badge {
   background: var(--ink); opacity: 0; transition: opacity .45s steps(5);
 }
 #intro.on { opacity: 1; }
+/* the lot was announced before: the 3-2-1 runs over the chosen visual */
+#intro.count-only { background: #0e0e1073; }
+#intro.count-only::after { display: none; }
 /* the stage art is busy: darken it under the card (stepped bands, not a soft gradient) */
 #intro::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;

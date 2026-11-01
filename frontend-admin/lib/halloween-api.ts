@@ -154,7 +154,10 @@ export interface HwShow {
   /** The between-rounds screen is on. */
   pause: boolean;
   rev: number;
-  roll: { id: number; pool: HwPool; test: boolean; round: number; attempt: number; winnerId: string; totalTickets: number; at: number; revealedAt: number } | null;
+  /** `announced` — the round was put on the scene first, so the scene only counts down before it. */
+  roll: { id: number; pool: HwPool; test: boolean; round: number; attempt: number; winnerId: string; totalTickets: number; at: number; revealedAt: number; announced: boolean } | null;
+  /** Step one of a round: the lot and the chosen visual are on the scene, nothing is drawn until «Начать». */
+  announce: { id: number; pool: HwPool; test: boolean; round: number; visual: string; at: number } | null;
   /** «Ждём ответа»: the scene counts down to endsAt (server clock, see `now`) for the winner of the last roll. */
   wait: { pool: HwPool; test: boolean; round: number; winnerId: string; minutes: number; startedAt: number; endsAt: number; answeredAt: number } | null;
   /** OBS scenes connected right now */
@@ -183,7 +186,9 @@ export const HW_VISUALS = [
   { value: "casino", label: "Рулетка казино" },
 ] as const;
 export type HwVisual = (typeof HW_VISUALS)[number]["value"];
-/** The super prize always plays the knights. */
+/** A still of each visual for the mode picker (made from the draw stand, draw/assets/previews). */
+export const hwVisualPreview = (v: string) => `/hw/draw/assets/previews/${v}.webp`;
+/** The super prize plays the knights unless Maxim picks another visual. */
 export const HW_SUPER_VISUAL: HwVisual = "wild-3-royale3d";
 
 const q = (pool: HwPool) => `?pool=${pool}`;
@@ -204,6 +209,8 @@ export const hwDraw = {
   testReset: (pool: HwPool) => apiPost<HwScreen>(`${P}/test/reset${q(pool)}`, {}),
   show: () => apiGet<HwShow & { key: string }>(`${P}/show`),
   setShow: (patch: Partial<Pick<HwShow, "test" | "visual" | "lang" | "avatars" | "sound" | "blackout" | "hidden" | "pause">>) => apiPost<HwShow>(`${P}/show`, patch),
+  /** Puts the round's lot and the visual on the scene without drawing; `cancel` takes it off. */
+  announce: (b: { pool: HwPool; test: boolean; round: number; visual: string } | { cancel: true }) => apiPost<HwShow>(`${P}/show/announce`, b),
   /** The countdown on the scene for the winner of the last revealed roll. */
   wait: (b: { action: "start" | "add"; minutes: number } | { action: "answered" | "stop" }) => apiPost<HwShow>(`${P}/show/wait`, b),
   savePrize: (p: { id?: number; name: string; items: string[]; images: string[] }) => apiPost<HwPrizes>(`${P}/prizes${q("pumpkins")}`, p),

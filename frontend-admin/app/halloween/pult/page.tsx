@@ -2,7 +2,8 @@
 
 /**
  * Пульт розыгрыша Halloween 2026 — the stream remote inside the admin panel. Two draws side by side,
- * a card per round with the prize photos; a tap rolls that round on the OBS scene (/hw/draw/stage.html,
+ * a card per round with the prize photos; a tap picks the visual and shows the round on the OBS scene,
+ * «Начать» rolls it there (/hw/draw/stage.html,
  * a browser source with no buttons, following the event service over SSE). «Призы» sets the packs.
  * Data and draws are the event service's (lib/halloween-api); remove the page with the event.
  */
@@ -20,6 +21,7 @@ import { PoolColumn, POOL_TITLE, type PoolActions } from "@/components/halloween
 import { SceneBar } from "@/components/halloween/pult/SceneBar";
 import { ContactModal } from "@/components/halloween/pult/ContactModal";
 import { PrizesPanel } from "@/components/halloween/pult/PrizesPanel";
+import { VisualPicker, type PickTarget } from "@/components/halloween/pult/VisualPicker";
 
 const VISUAL_KEY = "hw-pult-visual";
 const POOLS: HwPool[] = ["pumpkins", "orders"];
@@ -33,8 +35,10 @@ function savedVisual(): HwVisual {
   }
 }
 
-/** Draw actions of one pool: each irreversible one asks first, then refreshes the pult data. */
-function usePoolActions(test: boolean, setBusy: (b: boolean) => void, setContact: (c: { pool: HwPool; round: number }) => void) {
+type Pick = PickTarget & { pool: HwPool };
+
+/** Draw actions of one pool: each irreversible one asks first (a roll: the visual picker), then refreshes the pult data. */
+function usePoolActions(test: boolean, setBusy: (b: boolean) => void, setContact: (c: { pool: HwPool; round: number }) => void, setPick: (p: Pick) => void) {
   const qc = useQueryClient();
   const { push } = useToast();
   const [confirm, confirmNode] = useConfirm();
@@ -52,10 +56,9 @@ function usePoolActions(test: boolean, setBusy: (b: boolean) => void, setContact
   }, [qc, push, setBusy]);
 
   const forPool = (pool: HwPool): PoolActions => ({
-    async roll(round, visual, superPrize, prizeName) {
-      const ok = await confirm({ title: `Крутить раунд ${round}?`, message: `${POOL_TITLE[pool]}${prizeName ? ` · ${prizeName}` : ""}${superPrize ? " · сцена с рыцарями" : ""}`, confirmLabel: "Крутить" });
-      if (ok) await run(() => hwDraw.draw(pool, test, round, visual));
-    },
+    pick: (round, visual, superPrize, prizeName) => setPick({ pool, round, prizeName, superPrize, current: visual }),
+    start: (round, visual) => void run(() => hwDraw.draw(pool, test, round, visual)),
+    cancel: () => void run(() => hwDraw.announce({ cancel: true })),
     async reroll(round, visual) {
       const ok = test || (await confirm({ title: `Перекрутить раунд ${round}?`, message: "Текущий победитель аннулируется (останется в журнале доказательства) и больше не участвует.", confirmLabel: "Перекрутить", danger: true }));
       if (ok) await run(() => hwDraw.reroll(pool, test, visual));
@@ -73,7 +76,8 @@ function usePoolActions(test: boolean, setBusy: (b: boolean) => void, setContact
     testReset: () => void run(() => hwDraw.testReset(pool)),
     contact: (round) => setContact({ pool, round }),
   });
-  return { forPool, confirmNode };
+  const announce = (p: Pick, visual: string) => run(() => hwDraw.announce({ pool: p.pool, test, round: p.round, visual }));
+  return { forPool, announce, confirmNode };
 }
 
 function Pult() {
@@ -84,8 +88,10 @@ function Pult() {
   const [busy, setBusy] = useState(false);
   const [pool, setPool] = useState<HwPool>("pumpkins");
   const [contact, setContact] = useState<{ pool: HwPool; round: number } | null>(null);
-  const { forPool, confirmNode } = usePoolActions(test, setBusy, setContact);
+  const [pick, setPick] = useState<Pick | null>(null);
+  const { forPool, announce, confirmNode } = usePoolActions(test, setBusy, setContact, setPick);
   const closeContact = useCallback(() => setContact(null), []);
+  const closePick = useCallback(() => setPick(null), []);
 
   useEffect(() => setVisual(savedVisual()), []);
   // The scene follows the remote's mode (rehearsal or the real draw).
@@ -112,6 +118,8 @@ function Pult() {
           </div>
         ))}
       </div>
+      <VisualPicker target={pick} busy={busy} onClose={closePick}
+        onPick={(v) => { if (pick) void announce(pick, v).then(closePick); }} />
       <ContactModal target={contact} test={test} onClose={closeContact} />
       {confirmNode}
     </div>
@@ -122,7 +130,7 @@ export default function HalloweenPultPage() {
   const [tab, setTab] = useState<"pult" | "prizes">("pult");
   return (
     <div className="flex min-w-0 flex-col gap-5">
-      <PageHeader title="Пульт розыгрыша 🎃" subtitle="Стрим 1 ноября: нажмите раунд — он крутится на сцене OBS. Суперприз играет сцена с рыцарями." />
+      <PageHeader title="Пульт розыгрыша 🎃" subtitle="Стрим 1 ноября: «Крутить» → режим (сцена покажет приз) → «Начать»: отсчёт и крутка на сцене OBS." />
       <Tabs value={tab} onChange={setTab} items={[{ value: "pult", label: "Пульт" }, { value: "prizes", label: "Призы" }]} />
       {tab === "pult" ? <Pult /> : <PrizesPanel />}
     </div>

@@ -25,7 +25,11 @@ const state = {
   pause: false,
   /** Bumped when the list, the winners or the prizes changed: scenes reload their data. */
   rev: 0,
-  /** The last roll: { id, pool, test, round, attempt, winnerId, totalTickets, at, revealedAt } */
+  /** The round Maxim is about to roll: the scene shows its lot and its visual and waits for «Начать».
+   *  { id, pool, test, round, visual, at } */
+  announce: null,
+  /** The last roll: { id, pool, test, round, attempt, winnerId, totalTickets, at, revealedAt, announced }
+   *  announced — its lot was already on screen, the scene goes straight to the 3-2-1. */
   roll: null,
   /** «Чекаємо відповідь»: Maxim wrote to the winner of the last roll, the scene counts down to endsAt.
    *  { pool, test, round, winnerId, minutes, startedAt, endsAt, answeredAt } */
@@ -33,6 +37,7 @@ const state = {
 };
 const clients = new Set(); // { res, role }
 let rollSeq = 0;
+let announceSeq = 0;
 
 export function key() {
   return createHmac("sha256", config.jwtSecret || "dev").update("hw-stage-v1").digest("hex").slice(0, 24);
@@ -75,16 +80,37 @@ export function changed() {
 
 /** visual: the remote picks it per round (the super prize plays the knights); empty = keep the current one. */
 export function rolled(pool, test, r, visual) {
+  const a = state.announce;
+  const announced = Boolean(a && a.pool === pool && a.test === Boolean(test) && a.round === r.round);
+  state.announce = null;
   state.pool = pool;
   if (typeof visual === "string" && visual && SETTINGS.visual.test(visual)) state.visual = visual;
   state.test = Boolean(test);
-  state.roll = { id: ++rollSeq, pool, test: state.test, round: r.round, attempt: r.attempt ?? 1, winnerId: r.winner, totalTickets: r.totalTickets, at: Date.now(), revealedAt: 0 };
+  state.roll = { id: ++rollSeq, pool, test: state.test, round: r.round, attempt: r.attempt ?? 1, winnerId: r.winner, totalTickets: r.totalTickets, at: Date.now(), revealedAt: 0, announced };
   state.blackout = false;
   state.hidden = false;
   state.pause = false;
   state.wait = null;
   state.rev++;
   push();
+}
+
+/** Step one of a round: its lot and visual go on the scene, nothing is drawn yet. { cancel: true } takes it off. */
+export function announce(b) {
+  if (b.cancel) {
+    state.announce = null;
+  } else {
+    if (!SETTINGS.pool.includes(b.pool)) throw new Error("Неизвестный розыгрыш");
+    const round = Number(b.round);
+    if (!Number.isInteger(round) || round < 1) throw new Error("Неверный раунд");
+    if (typeof b.visual !== "string" || !b.visual || !SETTINGS.visual.test(b.visual)) throw new Error("Неизвестный визуал");
+    const test = Boolean(b.test);
+    state.announce = { id: ++announceSeq, pool: b.pool, test, round, visual: b.visual, at: Date.now() };
+    Object.assign(state, { pool: b.pool, test, visual: b.visual, blackout: false, hidden: false, pause: false, wait: null });
+  }
+  state.rev++;
+  push();
+  return snapshot();
 }
 
 const MAX_WAIT_MIN = 30;
@@ -117,6 +143,7 @@ export function waitFor(b) {
 
 /** The rounds of a pool were reset: a roll of it on screen is history now. */
 export function cleared(pool, test) {
+  if (state.announce && state.announce.pool === pool && state.announce.test === Boolean(test)) state.announce = null;
   if (state.roll && state.roll.pool === pool && state.roll.test === Boolean(test)) state.roll = null;
   if (state.wait && state.wait.pool === pool && state.wait.test === Boolean(test)) state.wait = null;
   changed();
