@@ -38,7 +38,8 @@ import java.util.UUID;
 @SpringBootTest(properties = {
         // StartupSecurityCheck refuses the public placeholder of application.yml. A throw-away test value:
         "app.security.jwt-secret=dGVzdC1vbmx5LWp3dC1zZWNyZXQtZm9yLWludGVncmF0aW9uLXRlc3Rz",
-        "app.geoip.enabled=false"
+        "app.geoip.enabled=false",
+        "app.order-notify.async=false"
 })
 public abstract class AbstractMysqlIT {
 
