@@ -399,12 +399,7 @@ class CheckoutTest extends OrderScenarioTestBase {
     void createOrder_promoWithNoUsesLeft_isRefusedAsTaken_andNotCounted() {
         Product p = simpleProduct(10, 10_000);
         lenient().when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
-        PromoCode promo = new PromoCode();
-        promo.setCode("ONCE");
-        promo.setDiscountPercent(10);
-        promo.setActive(true);
-        promo.setMaxUses(1);
-        promo.setUsesCount(1);
+        PromoCode promo = promoCode("ONCE", 10, 1, 1, true);
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("ONCE")).thenReturn(Optional.of(promo));
         // Holds of other customers are PromoServiceTest's concern; here they eat the last use.
         when(promoService.remainingUses(any(), any())).thenReturn(0L);
@@ -423,12 +418,7 @@ class CheckoutTest extends OrderScenarioTestBase {
     void createOrder_promoWithOneUseLeft_goesThrough() {
         Product p = simpleProduct(10, 10_000);
         when(productRepository.findByIdForUpdate(any())).thenReturn(Optional.of(p));
-        PromoCode promo = new PromoCode();
-        promo.setCode("ONCE");
-        promo.setDiscountPercent(10);
-        promo.setActive(true);
-        promo.setMaxUses(1);
-        promo.setUsesCount(0);
+        PromoCode promo = promoCode("ONCE", 10, 1, 0, true);
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("ONCE")).thenReturn(Optional.of(promo));
         when(promoService.remainingUses(any(), any())).thenReturn(1L);
 
@@ -520,5 +510,15 @@ class CheckoutTest extends OrderScenarioTestBase {
         when(paymentOptionRepository.findByActiveTrueOrderBySortOrderAsc()).thenReturn(List.of());
         assertThatThrownBy(() -> service.exchangePaymentOptionId(gone)).isInstanceOf(DomainException.BadRequest.class)
                 .hasMessage("нет активного способа оплаты для нового заказа");
+    }
+
+    /** A code as the promo module would build it; {@code used} uses already counted. */
+    private static PromoCode promoCode(String code, int percent, Integer maxUses, int used, boolean active) {
+        PromoCode p = PromoCode.named(code);
+        p.edit(percent, 0, maxUses, null, active);
+        for (int i = 0; i < used; i++) {
+            p.countUse();
+        }
+        return p;
     }
 }

@@ -62,12 +62,7 @@ class OrderEditingTest extends OrderScenarioTestBase {
     @Test
     void applyDiscount_codeWithNoUsesLeft_isRefusedAndNotCounted_lastUseGoesThrough() {
         Order o = orderWithOneLine(OrderStatus.NEW, 10_000, 1);
-        PromoCode spent = new PromoCode();
-        spent.setCode("ONCE");
-        spent.setActive(true);
-        spent.setDiscountPercent(10);
-        spent.setMaxUses(1);
-        spent.setUsesCount(1); // exactly used up: left == 0
+        PromoCode spent = promoCode("ONCE", 10, 1, 1, true);
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("ONCE")).thenReturn(Optional.of(spent));
 
         assertThatThrownBy(() -> app.editing().applyDiscount(o.getId(), "ONCE", null, null, false, false))
@@ -76,12 +71,7 @@ class OrderEditingTest extends OrderScenarioTestBase {
                 .isEqualTo(com.maxsolch.shop.order.domain.OrderError.PROMO_REJECTED_TAKEN);
         assertThat(spent.getUsesCount()).isEqualTo(1);
 
-        PromoCode last = new PromoCode();
-        last.setCode("LAST");
-        last.setActive(true);
-        last.setDiscountPercent(10);
-        last.setMaxUses(2);
-        last.setUsesCount(1); // one use left
+        PromoCode last = promoCode("LAST", 10, 2, 1, true);
         when(promoCodeRepository.findByCodeAndActiveTrueForUpdate("LAST")).thenReturn(Optional.of(last));
 
         app.editing().applyDiscount(o.getId(), "LAST", null, null, false, false);
@@ -106,5 +96,15 @@ class OrderEditingTest extends OrderScenarioTestBase {
         assertThatThrownBy(() -> app.editing().applyDiscount(shipped.getId(), null, 100L, null, false, false))
                 .isInstanceOf(DomainException.BadRequest.class)
                 .hasMessage("заказ можно менять только в статусе «Новый» или «Одобрен»");
+    }
+
+    /** A code as the promo module would build it; {@code used} uses already counted. */
+    private static PromoCode promoCode(String code, int percent, Integer maxUses, int used, boolean active) {
+        PromoCode p = PromoCode.named(code);
+        p.edit(percent, 0, maxUses, null, active);
+        for (int i = 0; i < used; i++) {
+            p.countUse();
+        }
+        return p;
     }
 }
