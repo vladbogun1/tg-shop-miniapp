@@ -72,12 +72,15 @@ public class NovaPoshtaHttpClient implements NovaPoshtaApi {
 
         HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString(), true);
         if (response.statusCode() != 200) {
-            log.warn("Nova Poshta API returned status {}", response.statusCode());
-            return List.of();
+            throw new NovaPoshtaApi.ApiException("API Новой Почты ответил HTTP " + response.statusCode());
         }
-        JsonNode data = mapper.readTree(response.body()).get("data");
+        JsonNode body = mapper.readTree(response.body());
+        if (body == null || !body.path("success").asBoolean(true)) {
+            throw new NovaPoshtaApi.ApiException("API Новой Почты: success=false" + errorsOf(body));
+        }
+        JsonNode data = body.get("data");
         if (data == null || !data.isArray()) {
-            return List.of();
+            throw new NovaPoshtaApi.ApiException("API Новой Почты вернул ответ без списка отделений");
         }
         List<ApiWarehouse> out = new ArrayList<>(data.size());
         for (JsonNode w : data) {
@@ -86,6 +89,16 @@ public class NovaPoshtaHttpClient implements NovaPoshtaApi {
                     text(w, "Latitude"), text(w, "Longitude"), text(w, "SettlementAreaDescription")));
         }
         return out;
+    }
+
+    private static String errorsOf(JsonNode body) {
+        JsonNode errors = body == null ? null : body.get("errors");
+        if (errors == null || !errors.isArray() || errors.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        errors.forEach(e -> sb.append(sb.length() == 0 ? "" : "; ").append(e.asText()));
+        return ": " + (sb.length() > 300 ? sb.substring(0, 300) : sb);
     }
 
     private static String text(JsonNode node, String field) {
