@@ -43,9 +43,4 @@ public class MetricsFactsLoader {
         memo.put(AnalyticsReadCaches.KEY, fresh);
         return fresh;
     }
-
-    /** Whether {@code orders.<column>} exists (cached; columns only appear with a redeploy). */
-    boolean hasOrderColumn(String column) {
-        return queries.hasOrderColumn(column);
-    }
 }

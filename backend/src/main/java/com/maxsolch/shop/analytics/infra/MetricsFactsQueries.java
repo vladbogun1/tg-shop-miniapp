@@ -47,17 +47,6 @@ public class MetricsFactsQueries {
         return known;
     }
 
-    /** Whether {@code orders.<column>} exists (cached; columns only appear with a redeploy). */
-    public boolean hasOrderColumn(String column) {
-        return schemaFact("column:" + column, () -> {
-            Integer n = jdbc.queryForObject(
-                    "select count(*) from information_schema.columns "
-                            + "where table_schema = database() and table_name = 'orders' and column_name = ?",
-                    Integer.class, column);
-            return n != null && n > 0;
-        });
-    }
-
     /** Whether {@code payment_invoices} exists (V39, online payments). */
     public boolean hasInvoices() {
         return schemaFact("table:payment_invoices", () -> {
@@ -70,12 +59,6 @@ public class MetricsFactsQueries {
     }
 
     public List<MetricsFacts.OrderFact> loadOrders() {
-        String refunded = hasOrderColumn("refunded_minor") ? "o.refunded_minor" : "0";
-        String returnedAt = hasOrderColumn("returned_at") ? "o.returned_at" : "null";
-        String reasonCode = hasOrderColumn("reject_reason_code") ? "o.reject_reason_code" : "null";
-        String prepayment = hasOrderColumn("prepayment_minor") ? "o.prepayment_minor" : "0";
-        String dueAt = hasOrderColumn("payment_due_at") ? "o.payment_due_at" : "null";
-        String uncollected = hasOrderColumn("uncollected_minor") ? "o.uncollected_minor" : "0";
         boolean invoices = hasInvoices();
         // Credited monobank invoices per order: how much came online, when, and the last refund.
         String online = invoices
@@ -84,19 +67,18 @@ public class MetricsFactsQueries {
                 + "from payment_invoices where applied_at is not null group by order_id) pi on pi.order_id = o.id "
                 : "";
         String sql = "select bin_to_uuid(o.id) id, o.status, o.source, o.total_minor, o.subtotal_minor, "
-                + "o.discount_minor, o.received_minor, " + refunded + " refunded_minor, "
+                + "o.discount_minor, o.received_minor, o.refunded_minor, "
                 + "o.created_at, o.approved_at, o.shipped_at, o.delivered_at, o.rejected_at, o.paid_at, "
-                + returnedAt + " returned_at, o.paid, o.tg_user_id, o.customer_name, "
+                + "o.returned_at, o.paid, o.tg_user_id, o.customer_name, "
                 + "o.tg_username, o.delivery_method, o.payment_option_title, o.promo_code, o.reject_reason, "
-                + reasonCode + " reject_reason_code, " + prepayment + " prepayment_minor, "
-                + dueAt + " payment_due_at, "
+                + "o.reject_reason_code, o.prepayment_minor, o.payment_due_at, "
                 + (invoices ? "coalesce(pi.online_paid_minor, 0)" : "0") + " online_paid_minor, "
                 + (invoices ? "pi.online_paid_at" : "null") + " online_paid_at, "
                 + (invoices ? "pi.online_refund_at" : "null") + " online_refund_at, "
-                + uncollected + " uncollected_minor "
+                + "o.uncollected_minor "
                 + "from orders o " + online
                 // A merged order (V71) is not an order of its own: its lines live on in the one it joined.
-                + (hasOrderColumn("reject_reason_code") ? "where coalesce(o.reject_reason_code, '') <> 'MERGED' " : "")
+                + "where coalesce(o.reject_reason_code, '') <> 'MERGED' "
                 + "order by o.created_at";
         return jdbc.query(sql, (rs, i) -> new MetricsFacts.OrderFact(
                 rs.getString("id"),

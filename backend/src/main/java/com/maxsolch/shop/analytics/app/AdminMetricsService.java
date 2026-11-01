@@ -92,7 +92,7 @@ public class AdminMetricsService {
                 .map(r -> new ErrorRow((String) r[0], (Long) r[1], (Long) r[2]))
                 .toList();
         return new OperationsCalculator().compute(loader.load(), period, channel,
-                loader.hasOrderColumn("reject_reason_code"), errors);
+                true, errors);
     }
 
     public MetricsDtos.Forecast forecast(ChannelFilter channel) {
