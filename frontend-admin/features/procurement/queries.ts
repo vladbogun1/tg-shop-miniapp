@@ -10,7 +10,7 @@ import { isAuthenticated } from "@/lib/session";
 import { costingApi, preordersApi } from "./api";
 import { procurementKeys } from "./keys";
 import { releaseSummary, sumReleases } from "./model/demand";
-import type { Batch, BatchRequest, Demand, Supplier } from "./model/types";
+import type { Batch, BatchRequest, Demand, ProductCost, Supplier } from "./model/types";
 
 const DEMAND_STALE_MS = 60_000;
 
@@ -23,6 +23,19 @@ export function useDemand(enabled = true) {
     staleTime: DEMAND_STALE_MS,
     retry: false,
   });
+}
+
+/** Себестоимость товара; undefined — нет права «Финансы», не загружено или не нужно (новый товар). */
+export function useProductCost(productId: string | null | undefined, enabled = true): ProductCost | undefined {
+  const finance = useFinanceAccess();
+  const q = useQuery({
+    queryKey: procurementKeys.product(productId as string),
+    queryFn: () => costingApi.product(productId as string),
+    enabled: finance && enabled && !!productId,
+    staleTime: QUERY_PRESETS.list.staleTime,
+    retry: false,
+  });
+  return finance ? q.data : undefined;
 }
 
 /** May the caller see money. Until the answer arrives (or on error) — no: money blocks stay hidden. */

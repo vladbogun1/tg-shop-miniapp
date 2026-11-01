@@ -1,18 +1,18 @@
 package com.maxsolch.shop.inventory.app;
 
-import com.maxsolch.shop.platform.time.TimeRange;
-import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.inventory.domain.StockWriteoff;
 import com.maxsolch.shop.inventory.infra.StockWriteoffRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
+import com.maxsolch.shop.platform.time.TimeRange;
+import com.maxsolch.shop.platform.util.UuidUtil;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.lang.Nullable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /** «Списания»: stock that left the shelf without a sale, for a period, with totals per reason. */
 @Service
@@ -22,9 +22,9 @@ public class StockWriteoffReportService {
      * One write-off line; {@code valueMinor} = units still written off × unit value ({@code undoneQty}
      * went back on the shelf or into the order, V70).
      */
-    public record Line(long id, Instant createdAt, String productId, String variantId, String title, int quantity,
-                       String reason, String note, String orderId, String orderShortId, long unitValueMinor,
-                       long valueMinor, String adminName, int undoneQty, String undoneNote) {
+    public record Line(long id, Instant createdAt, String productId, @Nullable String variantId, String title, int quantity,
+                       String reason, @Nullable String note, @Nullable String orderId, @Nullable String orderShortId, long unitValueMinor,
+                       long valueMinor, @Nullable String adminName, int undoneQty, @Nullable String undoneNote) {
     }
 
     /** Totals of one reason. */

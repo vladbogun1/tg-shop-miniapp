@@ -7,7 +7,7 @@
  */
 import { UserRound } from "lucide-react";
 import { useState } from "react";
-import { UserProfileDrawer, customerApi, type UserCardDto } from "@/features/customer";
+import { UserProfileDrawer, customerApi, stubUserCard, type UserCardDto } from "@/features/customer";
 import { Drawer, useBackToClose } from "@shop/ui/overlay";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ApiError } from "@shop/core/errors";
@@ -42,15 +42,7 @@ export function SupportThreadDrawer({
     try {
       const found = await customerApi.findUser(tgId);
       setProfile(
-        found ?? {
-          telegramUserId: tgId,
-          username: null,
-          firstName: thread.customerName ?? null,
-          premium: false,
-          botBlocked: false,
-          ordersCount: 0,
-          totalSpentMinor: 0,
-        }
+        found ?? stubUserCard({ telegramUserId: tgId, username: null, firstName: thread.customerName ?? null })
       );
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "Не удалось открыть профиль");

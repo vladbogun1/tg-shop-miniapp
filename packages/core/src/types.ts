@@ -7,7 +7,8 @@
  * payload whose field is actually `userId`, so it was always `undefined`.
  */
 
-export type OrderStatus = "NEW" | "APPROVED" | "SHIPPED" | "DELIVERED" | "REJECTED";
+/** Order status: the union generated from the backend enum, so a new status breaks typecheck wherever it is tabulated. */
+export type OrderStatus = Schemas["OrderCardDto"]["status"];
 export type DeliveryMethod = "NOVA_POSHTA" | "PICKUP";
 export type SenderType = "CUSTOMER" | "ADMIN" | "SYSTEM";
 export type MessageType = "TEXT" | "PHOTO" | "FILE" | "SYSTEM";
@@ -62,104 +63,31 @@ export interface Product extends CatalogFields {
 
 // ---- reviews (V44) ------------------------------------------------------------
 
-export type ReviewStatus = "PENDING" | "PUBLISHED" | "HIDDEN";
+export type ReviewStatus = Schemas["MyReview"]["status"];
 
 /** Rating summary; `distribution[0]` = number of 1★ reviews … `[4]` = 5★. */
-export interface ReviewSummary {
-  avg: number | null;
-  count: number;
-  distribution: number[];
-}
+export type ReviewSummary = Schemas["ReviewSummary"];
 
 /** A published review. Empty `author` = show a localized "Customer". */
-export interface PublicReview {
-  id: number;
-  author: string;
-  rating: number;
-  text: string;
-  variantName?: string | null;
-  createdAt: string;
-  publishedAt?: string | null;
-  adminReply?: string | null;
-  adminReplyAt?: string | null;
-}
+export type PublicReview = Schemas["PublicReview"];
 
 /** One quote of the site's home-page reviews ribbon: the review plus the product it is about. */
-export interface FeedReview {
-  id: number;
-  author: string;
-  rating: number;
-  text: string;
-  publishedAt?: string | null;
-  productTitle: string;
-  /** null — the product is sold out and hidden: show the quote without a link. */
-  productSlug: string | null;
-  imageUrl?: string | null;
-}
+export type FeedReview = Schemas["FeedReview"];
 
 /** `GET /api/public/reviews/latest?size=` — shop-wide summary and the newest reviews with a text. */
-export interface ReviewFeed {
-  summary: ReviewSummary;
-  items: FeedReview[];
-}
+export type ReviewFeed = Schemas["ReviewFeed"];
 
 /** `GET /api/public/products/{idOrSlug}/reviews?page=&size=` (page is 0-based). */
-export interface ReviewPage {
-  productId: string;
-  summary: ReviewSummary;
-  items: PublicReview[];
-  page: number;
-  size: number;
-  totalPages: number;
-  total: number;
-}
+export type ReviewPage = Schemas["ReviewPage"];
 
 /** `GET /api/me/reviews/pending[?orderId=]` — a delivered order line still waiting for a review. */
-export interface PendingReviewLine {
-  orderItemId: number;
-  orderId: string;
-  productId: string;
-  productSlug?: string | null;
-  title: string;
-  variantName?: string | null;
-  imageUrl?: string | null;
-  deliveredAt?: string | null;
-}
+export type PendingReviewLine = Schemas["PendingLine"];
 
 /** `GET /api/me/reviews` — one of my reviews. `editable` = still PENDING (may be re-submitted). */
-export interface MyReview {
-  id: number;
-  orderItemId: number;
-  orderId?: string | null;
-  productId: string;
-  productSlug?: string | null;
-  title: string;
-  variantName?: string | null;
-  imageUrl?: string | null;
-  rating: number;
-  text: string;
-  status: ReviewStatus;
-  editable: boolean;
-  adminReply?: string | null;
-  createdAt: string;
-  publishedAt?: string | null;
-}
+export type MyReview = Schemas["MyReview"];
 
-/** `GET /api/me/bonuses` — a personal promo code (review bonus). */
-export interface BonusCode {
-  code: string;
-  percent: number;
-  expiresAt?: string | null;
-  state: "ACTIVE" | "USED" | "EXPIRED";
-  orderId?: string | null;
-  createdAt?: string | null;
-  /** REVIEW_BONUS (for a review) | GIFT_CASE (a case prize, docs/GIFT-CASE.md). */
-  source?: string | null;
-  /** A fixed discount (kopecks) when `percent` is 0 — case prizes only. */
-  amountMinor?: number;
-  /** Ceiling of the discount (kopecks, V63): "−5% (до 100 ₴)"; 0 / absent = none. */
-  maxDiscountMinor?: number;
-}
+/** `GET /api/me/bonuses` — a personal promo code (review bonus or a case prize). */
+export type BonusCode = Schemas["Bonus"];
 
 /** `POST /api/me/reviews` body. */
 export interface SubmitReviewRequest {
@@ -175,37 +103,8 @@ export interface SubmitReviewResult {
 }
 
 /** Admin `GET /api/admin/reviews?status=&productId=&page=&size=` row. */
-export interface AdminReview {
-  id: number;
-  status: ReviewStatus;
-  rating: number;
-  text: string;
-  author: string;
-  productId: string;
-  productTitle?: string | null;
-  productSlug?: string | null;
-  variantName?: string | null;
-  orderId?: string | null;
-  orderShortId?: string | null;
-  userId?: number | null;
-  customerName?: string | null;
-  adminReply?: string | null;
-  adminReplyAt?: string | null;
-  createdAt: string;
-  updatedAt?: string | null;
-  publishedAt?: string | null;
-}
-
-export interface AdminReviewPage {
-  items: AdminReview[];
-  page: number;
-  size: number;
-  totalPages: number;
-  total: number;
-  pendingCount: number;
-  publishedCount: number;
-  hiddenCount: number;
-}
+export type AdminReview = Schemas["AdminReview"];
+export type AdminReviewPage = Schemas["AdminPage"];
 
 // ---- orders -----------------------------------------------------------------
 
@@ -213,53 +112,19 @@ export interface AdminReviewPage {
 export type OrderItem = Schemas["OrderItemDto"];
 
 /** Latest monobank invoice state: "none" = the customer never opened the payment page. */
-export type OnlinePaymentStatus =
-  | "none"
-  | "created"
-  | "processing"
-  | "hold"
-  | "success"
-  | "failure"
-  | "reversed"
-  | "expired";
+export type OnlinePaymentStatus = Schemas["AdminInvoiceDto"]["status"];
 
 /** Онлайн-оплата (monobank) заказа — OrderDetail.payment. */
 export type OnlinePayment = Schemas["OnlinePaymentDto"];
 
 /** POST /api/me/orders/{id}/payment — send the customer to pageUrl. */
-export interface PaymentStart {
-  invoiceId: string;
-  pageUrl: string;
-  amountMinor: number;
-  expiresAt: string;
-}
+export type PaymentStart = Schemas["PaymentStartResponse"];
 
 /** POST /api/orders: дальше старт оплаты для orderId. */
 export type CreateOrderResult = Schemas["CreateOrderResponse"];
 
 /** GET /api/admin/orders/{id}/payments — one monobank invoice. */
-export interface AdminInvoice {
-  invoiceId: string;
-  status: OnlinePaymentStatus;
-  amountMinor: number;
-  finalAmountMinor?: number | null;
-  refundedMinor: number;
-  pageUrl?: string | null;
-  expiresAt?: string | null;
-  maskedPan?: string | null;
-  paymentMethod?: string | null;
-  paymentSystem?: string | null;
-  rrn?: string | null;
-  approvalCode?: string | null;
-  feeMinor?: number | null;
-  failureReason?: string | null;
-  errCode?: string | null;
-  /** When the payment was credited to the order. */
-  appliedAt?: string | null;
-  refundPending: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+export type AdminInvoice = Schemas["AdminInvoiceDto"];
 
 /** Заказ в списке покупателя (GET /api/me/orders). */
 export type OrderSummary = Schemas["OrderSummaryDto"];

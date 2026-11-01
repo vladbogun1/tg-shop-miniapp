@@ -99,7 +99,7 @@ public final class CatalogDtos {
     // ------------------------------------------------------------------ admin: brands
 
     public record AdminBrandDto(String id, String name, String slug, List<String> aliases, @Nullable String website,
-                                int sortOrder, long productCount, @Nullable String logoUrl, @Schema(allowableValues = {"MONO", "ORIGINAL"}) @Nullable String logoMode) {
+                                int sortOrder, long productCount, @Nullable String logoUrl, @Schema(allowableValues = {"MONO", "ORIGINAL"}) String logoMode) {
     }
 
     /**

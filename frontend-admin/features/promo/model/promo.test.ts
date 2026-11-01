@@ -7,11 +7,10 @@ const code = (o: Partial<PromoCode>): PromoCode => ({ id: "1", code: "AAA", acti
 const NOW = Date.parse("2026-10-31T12:00:00Z");
 
 describe("promoOrigin", () => {
-  it("поле бэкенда важнее; для старого бэкенда — по источнику и владельцу", () => {
+  it("берёт поле бэкенда как есть", () => {
     expect(promoOrigin(code({ origin: "REVIEW" }))).toBe("REVIEW");
-    expect(promoOrigin(code({ source: "REVIEW_BONUS" }))).toBe("REVIEW");
-    expect(promoOrigin(code({ ownerUserId: 5 }))).toBe("PERSONAL");
-    expect(promoOrigin(code({}))).toBe("OURS");
+    expect(promoOrigin(code({ origin: "PERSONAL" }))).toBe("PERSONAL");
+    expect(promoOrigin(code({ origin: "OURS" }))).toBe("OURS");
   });
 });
 
@@ -28,8 +27,8 @@ describe("isLive", () => {
 
 describe("вкладки и фильтры", () => {
   const list = [
-    code({ id: "a", code: "SUMMER" }),
-    code({ id: "b", code: "PERS", ownerUserId: 777 }),
+    code({ id: "a", code: "SUMMER", origin: "OURS" }),
+    code({ id: "b", code: "PERS", ownerUserId: 777, origin: "PERSONAL" }),
     code({ id: "c", code: "REV", origin: "REVIEW", active: false }),
   ];
   it("groupByTab", () => {

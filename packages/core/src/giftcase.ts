@@ -26,25 +26,12 @@ import { MINOR_PER_MAJOR } from "./money";
 import { PERCENT_BASE } from "./percent";
 import type { Product } from "./types";
 
-export type CaseRarity = "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD";
-export type CaseTier = "BRONZE" | "SILVER" | "GOLD";
-export type CasePrizeKind = "PRODUCT" | "DISCOUNT";
+export type CaseRarity = Schemas["CaseItemDto"]["rarity"];
+export type CaseTier = Schemas["TierAdminDto"]["tier"];
+export type CasePrizeKind = Schemas["CaseItemDto"]["kind"];
 
-export interface CaseItem {
-  /** Stable key: «p<productId>» / «d<id>». */
-  key: string;
-  kind: CasePrizeKind;
-  productId: string | null;
-  /** Product title (PRODUCT); null for a discount — show it with {@link caseDiscountText}. */
-  title: string | null;
-  imageUrl: string | null;
-  priceMinor: number;
-  rarity: CaseRarity;
-  /** DISCOUNT: % off the next order (0 → see discountAmountMinor). */
-  discountPercent: number;
-  /** DISCOUNT: fixed amount off the next order. */
-  discountAmountMinor: number;
-}
+/** A prize of a case as the storefront and the opening screen read it (`key`: «p<productId>» / «d<id>»). */
+export type CaseItem = Schemas["CaseItemDto"];
 
 /** A case tier as the storefront sees it. */
 export interface GiftTierInfo {

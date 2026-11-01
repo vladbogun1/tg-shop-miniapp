@@ -1,5 +1,6 @@
 package com.maxsolch.shop.support.app;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -39,6 +40,7 @@ public final class ReplyTemplateDtos {
      *
      * @param locale the language the text was taken in (uk / ru / en)
      */
-    public record RenderedTemplateDto(Long id, String title, String text, String locale) {
+    public record RenderedTemplateDto(Long id, String title, String text,
+                                       @Schema(allowableValues = {"uk", "ru", "en"}) String locale) {
     }
 }

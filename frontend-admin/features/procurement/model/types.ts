@@ -1,50 +1,25 @@
 import type { Schemas } from "@shop/core/api/schemas";
 
 /**
- * Типы «Поставок» и «Денег закупки». Ответы — из OpenAPI (Schemas): генерация считает все поля обязательными,
- * строки — `string`, а бэкенд шлёт `null` и конечные наборы значений, поэтому здесь они уточнены (Omit + &).
- * Тела запросов — вручную.
+ * Типы «Поставок» и «Денег закупки». Ответы — из OpenAPI (Schemas): пустые поля и конечные наборы значений
+ * описаны в самой схеме (`@Nullable`, `allowableValues` в DTO бэкенда). Тела запросов — вручную.
  */
 
-export type BatchStatus = "ORDERED" | "IN_TRANSIT" | "CUSTOMS" | "ARRIVED" | "CANCELLED";
-export type EtaMode = "DATE" | "RANGE" | "APPROX" | "HIDDEN";
-export type Distribution = "QUEUE_HOLD" | "ALL_AT_ONCE";
+export type BatchStatus = Schemas["BatchDto"]["status"];
+export type EtaMode = Schemas["BatchDto"]["etaMode"];
+export type Distribution = Schemas["BatchDto"]["distribution"];
 export type BatchFilter = "open" | "arrived" | "cancelled" | "all";
-export type SubStatus = "WAITING" | "HELD" | "NOTIFIED" | "BOUGHT" | "EXPIRED" | "CANCELLED";
-export type Allocation = "BY_VALUE" | "BY_QTY" | "BY_WEIGHT" | "MANUAL";
-export type ExpenseKind = "FREIGHT" | "CUSTOMS" | "BROKER" | "DOMESTIC" | "BANK" | "OTHER";
-export type LotKind = "OPENING" | "BATCH" | "MANUAL";
-
-type Nullable<T, K extends keyof T> = Omit<T, K> & { [P in K]: T[P] | null };
+export type SubStatus = Schemas["SubscriberDto"]["status"];
+export type Allocation = Schemas["BatchMoneyDto"]["allocation"];
+export type ExpenseKind = Schemas["ExpenseDto"]["kind"];
+export type LotKind = Schemas["LotDto"]["kind"];
 
 // ---- поставки ---------------------------------------------------------------------
-export type Supplier = Nullable<Schemas["SupplierDto"], "note">;
-
-export type BatchSummary = Omit<Schemas["BatchSummaryDto"], "status" | "etaMode" | "supplierName" | "etaFrom" | "etaTo" | "arrivedAt"> & {
-  status: BatchStatus;
-  etaMode: EtaMode;
-  supplierName: string | null;
-  etaFrom: string | null;
-  etaTo: string | null;
-  arrivedAt: string | null;
-};
-
+export type Supplier = Schemas["SupplierDto"];
+export type BatchSummary = Schemas["BatchSummaryDto"];
 /** Центы валюты поставки в `unitPriceFx`: null — нет доступа или не внесена. */
-export type BatchItem = Omit<Schemas["ItemDto"], "variantId" | "variantName" | "imageUrl" | "qtyArrived" | "unitPriceFx"> & {
-  variantId: string | null;
-  variantName: string | null;
-  imageUrl: string | null;
-  qtyArrived: number | null;
-  unitPriceFx: number | null;
-};
-
-type BatchNullable = "supplierId" | "supplierName" | "privateNote" | "publicNote" | "etaFrom" | "etaTo" | "currency" | "fxRate" | "createdBy" | "inTransitAt" | "arrivedAt" | "cancelledAt";
-export type Batch = Omit<Schemas["BatchDto"], BatchNullable | "status" | "etaMode" | "distribution" | "items" | "eta"> & {
-  status: BatchStatus;
-  etaMode: EtaMode;
-  distribution: Distribution;
-  items: BatchItem[];
-} & { [K in BatchNullable]: Schemas["BatchDto"][K] | null };
+export type BatchItem = Schemas["ItemDto"];
+export type Batch = Schemas["BatchDto"];
 
 export interface ItemRequest {
   id: number | null;
@@ -83,47 +58,19 @@ export interface ArriveBody {
   holdHours: number;
   items: ArriveLineReq[];
 }
-export type ArriveLineResult = Nullable<Schemas["ArriveLineResult"], "variantName">;
-export type ArriveResult = Omit<Schemas["ArriveResult"], "distribution" | "lines"> & { distribution: Distribution; lines: ArriveLineResult[] };
-
-type SubscriberNullable = "name" | "username" | "variantId" | "variantName" | "position" | "holdUntil" | "source" | "closedAt" | "closeReason";
-export type Subscriber = Omit<Schemas["SubscriberDto"], SubscriberNullable | "status"> & {
-  status: SubStatus;
-} & { [K in SubscriberNullable]: Schemas["SubscriberDto"][K] | null };
-
-/** «Чего ждут». `productPeople` — разных людей на любой вариант товара; нет у старого бэкенда. */
-export type Demand = Omit<Schemas["DemandDto"], "variantId" | "variantName" | "imageUrl" | "productPeople" | "openBatchId" | "openBatchTitle"> & {
-  variantId: string | null;
-  variantName: string | null;
-  imageUrl: string | null;
-  productPeople?: number;
-  openBatchId: number | null;
-  openBatchTitle: string | null;
-};
+export type ArriveLineResult = Schemas["ArriveLineResult"];
+export type ArriveResult = Schemas["ArriveResult"];
+export type Subscriber = Schemas["SubscriberDto"];
+/** «Чего ждут». `productPeople` — разных людей на любой вариант товара. */
+export type Demand = Schemas["DemandDto"];
 
 export type ReleaseResult = Schemas["ReleaseResult"];
 
 // ---- деньги закупки ---------------------------------------------------------------
-export type ExpenseFile = Nullable<Schemas["ExpenseFileDto"], "contentType">;
-
-type ExpenseNullable = "itemId" | "fxRate" | "spentOn" | "note" | "createdBy";
-export type Expense = Omit<Schemas["ExpenseDto"], ExpenseNullable | "kind" | "files"> & {
-  kind: ExpenseKind;
-  files: ExpenseFile[];
-} & { [K in ExpenseNullable]: Schemas["ExpenseDto"][K] | null };
-
-type MoneyLineNullable =
-  | "variantId" | "variantName" | "imageUrl" | "qtyArrived" | "unitPriceFx" | "weightG" | "manualExtraMinor"
-  | "purchaseUnitMinor" | "purchaseLineMinor" | "costUnitMinor" | "marginUnitMinor" | "marginPct";
-export type BatchMoneyLine = Omit<Schemas["MoneyLineDto"], MoneyLineNullable> & { [K in MoneyLineNullable]: Schemas["MoneyLineDto"][K] | null };
-
-export type BatchMoney = Omit<Schemas["BatchMoneyDto"], "fxRate" | "expensesPct" | "allocation" | "lines" | "expenses"> & {
-  fxRate: number | null;
-  expensesPct: number | null;
-  allocation: Allocation;
-  lines: BatchMoneyLine[];
-  expenses: Expense[];
-};
+export type ExpenseFile = Schemas["ExpenseFileDto"];
+export type Expense = Schemas["ExpenseDto"];
+export type BatchMoneyLine = Schemas["MoneyLineDto"];
+export type BatchMoney = Schemas["BatchMoneyDto"];
 
 export interface MoneyRequest {
   currency: string;
@@ -143,34 +90,14 @@ export interface ExpenseRequest {
   note: string | null;
 }
 
-type SalesLineNullable = "variantName" | "costUnitMinor";
-export type BatchSalesLine = Omit<Schemas["BatchSalesLineDto"], SalesLineNullable> & { [K in SalesLineNullable]: Schemas["BatchSalesLineDto"][K] | null };
-
-type SalesNullable = "marginPct" | "arrivedAt" | "soldOutAt" | "daysToSellOut";
-export type BatchSales = Omit<Schemas["BatchSalesDto"], SalesNullable | "lines"> & {
-  lines: BatchSalesLine[];
-} & { [K in SalesNullable]: Schemas["BatchSalesDto"][K] | null };
-
-export type Lot = Omit<Schemas["LotDto"], "variantId" | "variantName" | "batchId" | "batchTitle" | "unitCostMinor" | "kind"> & {
-  kind: LotKind;
-  variantId: string | null;
-  variantName: string | null;
-  batchId: number | null;
-  batchTitle: string | null;
-  unitCostMinor: number | null;
-};
-
-type ProductCostNullable = "currentCostMinor" | "currentPreliminary" | "marginMinor" | "marginPct" | "markupPct";
-export type ProductCost = Omit<Schemas["ProductCostDto"], ProductCostNullable | "lots"> & {
-  lots: Lot[];
-} & { [K in ProductCostNullable]: Schemas["ProductCostDto"][K] | null };
-
-type OpeningNullable = "variantId" | "variantName" | "imageUrl" | "unitCostMinor";
-export type OpeningRow = Omit<Schemas["OpeningRowDto"], OpeningNullable> & { [K in OpeningNullable]: Schemas["OpeningRowDto"][K] | null };
-
+export type BatchSalesLine = Schemas["BatchSalesLineDto"];
+export type BatchSales = Schemas["BatchSalesDto"];
+export type Lot = Schemas["LotDto"];
+export type ProductCost = Schemas["ProductCostDto"];
+export type OpeningRow = Schemas["OpeningRowDto"];
 export type Reconcile = Schemas["ReconcileDto"];
-export type OrderLineCost = Nullable<Schemas["OrderLineCostDto"], "variantName">;
-export type OrderProfit = Omit<Schemas["OrderProfitDto"], "marginPct" | "lines"> & { marginPct: number | null; lines: OrderLineCost[] };
+export type OrderLineCost = Schemas["OrderLineCostDto"];
+export type OrderProfit = Schemas["OrderProfitDto"];
 
 export interface OpeningBody {
   productId: string;

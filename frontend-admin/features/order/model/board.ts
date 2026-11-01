@@ -5,15 +5,12 @@
 import { payableMinor } from "@shop/core/orders";
 import type { OrderStatus } from "@shop/core/types";
 import type { AdminBoard, AdminOrderCard } from "../api";
-import { BOARD_ORDER, CLOSED_STATUSES, DELIVERED_REJECT_HINT, RETURNING, STATUS_ORDER, canTransition, returningMinor, type BoardKey } from "./status";
+import { BOARD_ORDER, CLOSED_STATUSES, DELIVERED_REJECT_HINT, RETURNING, STATUS_ORDER, canTransition, needsModal, returningMinor, type BoardKey } from "./status";
 
 /** Cards per closed column before "Показать ещё". */
 export const CLOSED_PAGE = 20;
 /** Бэкенд режет закрытую колонку на CLOSED_MAX карточек; дальше «Показать ещё» ничего не даст. */
 export const CLOSED_MAX = 300;
-
-/** Transitions that need a modal before they are applied. */
-export const NEEDS_MODAL: OrderStatus[] = ["SHIPPED", "REJECTED", "DELIVERED"];
 
 /** Закрытая колонка («Доставлен» / «Отклонён»): к ней применяется период и «Показать ещё». */
 export function isClosedColumn(s: BoardKey): boolean {
@@ -52,7 +49,7 @@ export function moveVerdict(from: OrderStatus, to: OrderStatus): MoveVerdict {
   if (!canTransition(from, to)) {
     return { kind: "refuse", text: from === "DELIVERED" && to === "REJECTED" ? DELIVERED_REJECT_HINT : "Недопустимый переход статуса" };
   }
-  return NEEDS_MODAL.includes(to) ? { kind: "modal" } : { kind: "commit" };
+  return needsModal(to) ? { kind: "modal" } : { kind: "commit" };
 }
 
 /** Карточка, брошенная на «Едет назад»: что из этого выйдет. */

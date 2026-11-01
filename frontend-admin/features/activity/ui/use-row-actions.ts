@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ApiError } from "@shop/core/errors";
 import { toast } from "@shop/ui/toast";
-import { customerApi, type UserCardDto } from "@/features/customer";
+import { customerApi, stubUserCard, type UserCardDto } from "@/features/customer";
 import { customerLabel } from "../model/labels";
 import type { ActivityRow } from "../model/types";
 
@@ -21,15 +21,7 @@ export interface CustomerFilter {
 
 /** Профиль без карточки в базе: показываем то, что знает журнал. */
 function fallbackCard(r: ActivityRow, tgId: number): UserCardDto {
-  return {
-    telegramUserId: tgId,
-    username: r.customerUsername ?? null,
-    firstName: r.customerName ?? null,
-    premium: false,
-    botBlocked: false,
-    ordersCount: 0,
-    totalSpentMinor: 0,
-  };
+  return stubUserCard({ telegramUserId: tgId, username: r.customerUsername, firstName: r.customerName });
 }
 
 /**

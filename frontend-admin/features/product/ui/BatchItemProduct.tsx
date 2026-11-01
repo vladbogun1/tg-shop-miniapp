@@ -6,14 +6,15 @@
  * Новые позиции поставки часто — только что заведённые скрытые черновики, их здесь и доводят.
  */
 import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Eye, EyeOff, ImageOff, Pencil } from "lucide-react";
 import { ApiError } from "@shop/core/errors";
-import { productApi } from "../api";
 import type { AdminProduct } from "../model/types";
 import { usePublishGate } from "./PublishGate";
 import { ProductModal } from "./modal/ProductModal";
 import { productKeys } from "../keys";
+import { productApi } from "../api";
+import { useProductsQuery } from "../queries";
 import { invalidateCards } from "@/features/cards";
 import { money } from "@/lib/money";
 import { Image, resolveImageSrc } from "@/lib/image";
@@ -31,10 +32,7 @@ export function useBatchProducts(ids: string[]): {
   byId: Map<string, AdminProduct>;
   loading: boolean;
 } {
-  const q = useQuery({
-    queryKey: productKeys.list(false),
-    queryFn: () => productApi.list(),
-  });
+  const q = useProductsQuery();
   const key = ids.join(",");
   const byId = useMemo(() => {
     const want = new Set(key.split(","));

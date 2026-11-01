@@ -1,20 +1,21 @@
 package com.maxsolch.shop.customer.domain;
 
 import java.time.Instant;
+import org.springframework.lang.Nullable;
 
 /** A row in the admin "Users" table. */
 public record UserCardDto(
         long telegramUserId,
-        String username,
-        String firstName,
-        String lastName,
-        String languageCode,
+        @Nullable String username,
+        @Nullable String firstName,
+        @Nullable String lastName,
+        @Nullable String languageCode,
         boolean premium,
         boolean botBlocked,
         long ordersCount,
         long totalSpentMinor,
-        Instant createdAt,
-        Instant lastSeenAt,
+        @Nullable Instant createdAt,
+        @Nullable Instant lastSeenAt,
         /** uk | ru | en chosen in the shop (users.locale, V17); null = never chose. */
-        String locale) {
+        @Nullable String locale) {
 }

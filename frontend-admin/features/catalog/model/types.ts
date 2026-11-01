@@ -5,12 +5,12 @@
 import type { SpecType } from "@shop/core/catalog";
 import type { Schemas } from "@shop/core/api/schemas";
 
-export type BrandLogoMode = "MONO" | "ORIGINAL";
+export type BrandLogoMode = Schemas["AdminBrandDto"]["logoMode"];
 
 /** Категория 2-уровневого дерева (productCount — всё поддерево, productCountDirect — прямо в ней). */
 export type AdminCategory = Omit<Schemas["AdminCategoryDto"], "depth" | "leaf">;
 
-export type AdminBrand = Omit<Schemas["AdminBrandDto"], "logoMode"> & { logoMode: BrandLogoMode };
+export type AdminBrand = Schemas["AdminBrandDto"];
 
 export type AdminSpecOption = Omit<Schemas["AdminOptionDto"], "sort" | "usedCount"> & {
   id?: string;

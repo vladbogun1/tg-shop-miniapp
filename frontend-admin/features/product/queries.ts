@@ -15,13 +15,19 @@ interface ProductsQueryOpts {
   archived?: boolean;
   /** Не задан — по умолчанию приложения. */
   staleTime?: number;
+  /** false — не грузить (окно выбора закрыто). */
+  enabled?: boolean;
 }
 
-export function useProductsQuery({ archived, staleTime }: ProductsQueryOpts = {}) {
+/** Список товаров для выбора (окно «Выбор товара», форма поставки) свежий минуту: каталог меняется редко. */
+export const PICK_PRODUCTS_STALE_MS = QUERY_PRESETS.list.staleTime * 2;
+
+export function useProductsQuery({ archived, staleTime, enabled }: ProductsQueryOpts = {}) {
   return useQuery({
     queryKey: productKeys.list(archived),
     queryFn: archived ? productApi.listArchived : productApi.list,
     ...(staleTime !== undefined ? { staleTime } : {}),
+    ...(enabled !== undefined ? { enabled } : {}),
   });
 }
 

@@ -16,6 +16,11 @@ export const STATUS_ORDER: OrderStatus[] = [
   "REJECTED",
 ];
 
+/** Is this string one of the order statuses the backend knows. */
+export function isOrderStatus(value: string): value is OrderStatus {
+  return (STATUS_ORDER as string[]).includes(value);
+}
+
 /** Labels as the customer sees them (singular, about their own order). */
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   NEW: "Новый",

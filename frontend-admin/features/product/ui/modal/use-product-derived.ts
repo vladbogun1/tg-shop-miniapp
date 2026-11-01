@@ -25,7 +25,8 @@ import {
 } from "../../model/form";
 import type { AdminProduct } from "../../model/types";
 import { useTranslatedTexts } from "../../queries";
-import { marginHint, useProductCost } from "./ProductCostBlock";
+import { useProductCost } from "@/features/procurement";
+import { marginHint } from "./ProductCostBlock";
 
 type Brands = ReturnType<typeof useBrandsQuery>["data"];
 

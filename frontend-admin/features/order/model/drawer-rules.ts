@@ -6,19 +6,14 @@ import type { OrderStatus } from "@shop/core/types";
 import type { AdminOrderDetail } from "../api";
 import { allowedTargets } from "./status";
 
+export { needsModal } from "./status";
+
 /** The one big button on a phone: the next step of the happy path. */
 export const PRIMARY_TARGET: Partial<Record<OrderStatus, OrderStatus>> = {
   NEW: "APPROVED",
   APPROVED: "SHIPPED",
   SHIPPED: "DELIVERED",
 };
-
-/** Transitions that open a modal (extra input or an explicit confirmation). */
-const NEEDS_MODAL: OrderStatus[] = ["SHIPPED", "REJECTED", "DELIVERED"];
-
-export function needsModal(target: OrderStatus): boolean {
-  return NEEDS_MODAL.includes(target);
-}
 
 export type RuleOrder = Pick<AdminOrderDetail, "status" | "receivedMinor" | "refundedMinor" | "totalMinor" | "admin" | "items">;
 

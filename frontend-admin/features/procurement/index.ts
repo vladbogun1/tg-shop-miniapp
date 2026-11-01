@@ -25,7 +25,7 @@ export {
 export { demandOfProduct, demandRowsOfProduct, peopleOfRows, releaseSummary, sumReleases } from "./model/demand";
 export type { PickedProduct, SeedLine } from "./model/batch-form";
 export type * from "./model/types";
-export { useDemand, useFinanceAccess } from "./queries";
+export { useDemand, useFinanceAccess, useProductCost } from "./queries";
 export { openExpenseFile, downloadSubscribersCsv } from "./files";
 export { BatchFormModal, type ProductPicker } from "./ui/BatchFormModal";
 export { CsvButton } from "./ui/CsvButton";

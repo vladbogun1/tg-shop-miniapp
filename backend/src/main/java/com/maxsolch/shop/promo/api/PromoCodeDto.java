@@ -1,6 +1,8 @@
 package com.maxsolch.shop.promo.api;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
+import org.springframework.lang.Nullable;
 
 public record PromoCodeDto(
         String id,
@@ -9,7 +11,7 @@ public record PromoCodeDto(
         long discountAmountMinor,
         /** Ceiling of the discount in kopecks (V63); 0 = none. */
         long maxDiscountMinor,
-        Integer maxUses,
+        @Nullable Integer maxUses,
         int usesCount,
         boolean active,
         /**
@@ -18,11 +20,11 @@ public record PromoCodeDto(
          */
         long reservedCount,
         /** Personal code (V44): the only customer allowed to use it; null = anyone. */
-        Long ownerUserId,
+        @Nullable Long ownerUserId,
         /** Last moment the code is valid (V44); null = no expiry. */
-        Instant expiresAt,
+        @Nullable Instant expiresAt,
         /** {@code REVIEW_BONUS} for a review bonus; null = made by an admin. */
-        String source,
+        @Nullable @Schema(allowableValues = {"REVIEW_BONUS"}) String source,
         /** {@code OURS} | {@code PERSONAL} | {@code REVIEW} — see {@link com.maxsolch.shop.promo.domain.PromoOrigin}. */
-        String origin) {
+        @Schema(allowableValues = {"OURS", "PERSONAL", "REVIEW"}) String origin) {
 }

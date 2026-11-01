@@ -1,6 +1,22 @@
 import { LANG_LABEL, LANG_SHORT, type ShopLang } from "@/lib/shop-lang";
 import type { UserCardDto } from "./types";
 
+/** Карточка для покупателя, которого ещё нет в базе (журнал, чат поддержки, заказ): известно только то, что знает экран. */
+export function stubUserCard(known: { telegramUserId: number; username: string | null; firstName: string | null }): UserCardDto {
+  return {
+    ...known,
+    lastName: null,
+    languageCode: null,
+    locale: null,
+    createdAt: null,
+    lastSeenAt: null,
+    premium: false,
+    botBlocked: false,
+    ordersCount: 0,
+    totalSpentMinor: 0,
+  };
+}
+
 export function displayName(u: UserCardDto): string {
   const full = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
   if (full) return full;

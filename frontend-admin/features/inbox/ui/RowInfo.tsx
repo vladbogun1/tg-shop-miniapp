@@ -1,10 +1,8 @@
 import { StatusBadge } from "@/components/ui/Badge";
 import { money } from "@shop/core/money";
-import type { OrderStatus } from "@shop/core/types";
+import { isOrderStatus } from "@shop/core/orders";
 import type { InboxItem } from "../model/types";
 import { WaitChip } from "./WaitChip";
-
-const ORDER_STATUSES = new Set(["NEW", "APPROVED", "SHIPPED", "DELIVERED", "REJECTED"]);
 
 function RowBadges({ item }: { item: InboxItem }) {
   return (
@@ -14,7 +12,7 @@ function RowBadges({ item }: { item: InboxItem }) {
           #{item.shortId}
         </span>
       )}
-      {item.status && ORDER_STATUSES.has(item.status) && <StatusBadge status={item.status as OrderStatus} />}
+      {item.status && isOrderStatus(item.status) && <StatusBadge status={item.status} />}
       {item.since && <WaitChip minutes={item.waitMinutes} overdue={item.overdue} />}
       {item.unread != null && item.unread > 0 && (
         <span className="count-badge" title="Непрочитанные сообщения">

@@ -8,6 +8,7 @@ export { productKeys } from "./keys";
 export {
   invalidateProductDerived,
   isDoubleSubmit,
+  PICK_PRODUCTS_STALE_MS,
   useProductsQuery,
   useSetCardStatus,
   useSetProductActive,

@@ -9,8 +9,52 @@ export { codMinor, isNovaPoshtaTtn, ORDER_STATUS_COLOR as STATUS_VAR, REJECT_REA
 export { DELIVERY_LABEL } from "@/lib/delivery";
 export { shortOrderId as shortId } from "@shop/core/format";
 
-import { allowedTargets as sharedAllowedTargets, canTransition as sharedCanTransition, ORDER_STATUS_COLOR, STATUS_COLUMN_LABEL } from "@shop/core/orders";
+import { allowedTargets as sharedAllowedTargets, canTransition as sharedCanTransition, ORDER_STATUS_COLOR, STATUS_COLUMN_LABEL, STATUS_ORDER, isOrderStatus } from "@shop/core/orders";
 import { type OrderStatus } from "@shop/core/types";
+
+/** The field of the order card that holds the moment the order entered a status. */
+type StatusTimestampKey = "createdAt" | "approvedAt" | "shippedAt" | "deliveredAt" | "rejectedAt";
+
+interface StatusMeta {
+  /** Step in the happy-path timeline (0 = first); null — a branch off it («Отклонён»). */
+  step: number | null;
+  /** A closed status: the period filter and «Показать ещё» apply to its column. */
+  closed: boolean;
+  /** Moving an order here opens a modal (extra input or an explicit confirmation). */
+  needsModal: boolean;
+  /** Field of the order card with the time of entering the status. */
+  at: StatusTimestampKey;
+}
+
+/**
+ * Everything the admin knows about an order status besides its label and colour (those come from
+ * @shop/core/orders). `Record<OrderStatus, …>`: a new status in OpenAPI fails typecheck right here,
+ * not as a forgotten `if` in the timeline or the inbox.
+ */
+export const STATUS_META: Record<OrderStatus, StatusMeta> = {
+  NEW: { step: 0, closed: false, needsModal: false, at: "createdAt" },
+  APPROVED: { step: 1, closed: false, needsModal: false, at: "approvedAt" },
+  SHIPPED: { step: 2, closed: false, needsModal: true, at: "shippedAt" },
+  DELIVERED: { step: 3, closed: true, needsModal: true, at: "deliveredAt" },
+  REJECTED: { step: null, closed: true, needsModal: true, at: "rejectedAt" },
+};
+
+export { isOrderStatus };
+
+/** Happy-path statuses in timeline order. */
+export const TIMELINE_STATUSES: OrderStatus[] = STATUS_ORDER.filter((s) => STATUS_META[s].step !== null).sort(
+  (a, b) => (STATUS_META[a].step ?? 0) - (STATUS_META[b].step ?? 0)
+);
+
+/** When the order entered `status`. */
+export function statusTimestamp(order: Record<StatusTimestampKey, string | null | undefined>, status: OrderStatus): string | null | undefined {
+  return order[STATUS_META[status].at];
+}
+
+/** Does moving an order to `target` open a modal? */
+export function needsModal(target: OrderStatus): boolean {
+  return STATUS_META[target].needsModal;
+}
 
 /**
  * «Едет назад» (V68) — a board column, not a status: a refused parcel (REJECTED) or the returned
@@ -46,4 +90,4 @@ export const DELIVERED_REJECT_HINT =
   "Доставленный заказ не отклоняют — оформите «Возврат» в карточке заказа";
 
 /** Closed columns: the period filter and the short "20 + ещё" list apply only to them. */
-export const CLOSED_STATUSES: OrderStatus[] = ["DELIVERED", "REJECTED"];
+export const CLOSED_STATUSES: OrderStatus[] = STATUS_ORDER.filter((s) => STATUS_META[s].closed);

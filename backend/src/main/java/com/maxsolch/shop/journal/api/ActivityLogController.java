@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.maxsolch.shop.platform.time.ShopZone;
+import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -65,7 +66,15 @@ public class ActivityLogController {
     }
 
     /** A page of the feed; {@code totals} (by result, whole filter) only on the first page. */
-    public record Page(List<ActivityFeed.Row> items, Map<String, Long> totals) {
+    public record Page(List<ActivityFeed.Row> items, @Nullable Map<String, Long> totals) {
+    }
+
+    /** One (source, type) pair seen in the journal, for the type dropdown. */
+    public record TypeFacet(String source, String type) {
+    }
+
+    /** What the filter dropdowns offer. */
+    public record Facets(List<TypeFacet> types, List<String> errorCodes, int retentionDays) {
     }
 
     @GetMapping
@@ -95,14 +104,9 @@ public class ActivityLogController {
 
     @GetMapping("/facets")
     @Operation(summary = "Event types (per source) and failure reasons seen, for the filter dropdowns")
-    public Map<String, Object> facets() {
-        List<Map<String, String>> types = store.sourceTypes().stream()
-                .map(r -> Map.of("source", r[0], "type", r[1]))
-                .toList();
-        return Map.of(
-                "types", types,
-                "errorCodes", store.errorCodes(),
-                "retentionDays", retention.retentionDays());
+    public Facets facets() {
+        List<TypeFacet> types = store.sourceTypes().stream().map(r -> new TypeFacet(r[0], r[1])).toList();
+        return new Facets(types, store.errorCodes(), retention.retentionDays());
     }
 
     @GetMapping("/stats")

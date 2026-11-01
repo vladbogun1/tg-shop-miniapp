@@ -1,7 +1,9 @@
 package com.maxsolch.shop.review.app;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.lang.Nullable;
 
 /** Wire shapes of the reviews API (public, customer, admin). Ids of products/orders are UUID strings. */
 public final class ReviewDtos {
@@ -16,12 +18,12 @@ public final class ReviewDtos {
      *
      * @param distribution counts of 1★..5★, index 0 = 1★
      */
-    public record Summary(Double avg, long count, List<Long> distribution) {
+    public record Summary(@Nullable Double avg, long count, List<Long> distribution) {
     }
 
     /** A published review as everybody sees it. {@code author} empty = "a customer". */
-    public record PublicReview(long id, String author, int rating, String text, String variantName,
-                               Instant createdAt, Instant publishedAt, String adminReply, Instant adminReplyAt) {
+    public record PublicReview(long id, String author, int rating, String text, @Nullable String variantName,
+                               Instant createdAt, @Nullable Instant publishedAt, @Nullable String adminReply, @Nullable Instant adminReplyAt) {
     }
 
     /** {@code GET /api/public/products/{idOrSlug}/reviews}. */
@@ -30,8 +32,8 @@ public final class ReviewDtos {
     }
 
     /** One quote of the site's home-page reviews ribbon: the review plus the product it is about. */
-    public record FeedReview(long id, String author, int rating, String text, Instant publishedAt,
-                             String productTitle, String productSlug, String imageUrl) {
+    public record FeedReview(long id, String author, int rating, String text, @Nullable Instant publishedAt,
+                             String productTitle, @Nullable String productSlug, @Nullable String imageUrl) {
     }
 
     /** {@code GET /api/public/reviews/latest}: shop-wide summary and the newest quotes. */
@@ -45,15 +47,15 @@ public final class ReviewDtos {
     }
 
     /** A line of a delivered order still waiting for a review. */
-    public record PendingLine(long orderItemId, String orderId, String productId, String productSlug,
-                              String title, String variantName, String imageUrl, Instant deliveredAt) {
+    public record PendingLine(long orderItemId, String orderId, String productId, @Nullable String productSlug,
+                              String title, @Nullable String variantName, @Nullable String imageUrl, @Nullable Instant deliveredAt) {
     }
 
     /** One of my reviews, with its moderation status. */
-    public record MyReview(long id, long orderItemId, String orderId, String productId, String productSlug,
-                           String title, String variantName, String imageUrl, int rating, String text,
-                           String status, boolean editable, String adminReply, Instant createdAt,
-                           Instant publishedAt) {
+    public record MyReview(long id, long orderItemId, @Nullable String orderId, String productId, @Nullable String productSlug,
+                           String title, @Nullable String variantName, @Nullable String imageUrl, int rating, String text,
+                           @Schema(allowableValues = {"PENDING", "PUBLISHED", "HIDDEN"}) String status, boolean editable, @Nullable String adminReply, Instant createdAt,
+                           @Nullable Instant publishedAt) {
     }
 
     /** {@code POST /api/me/reviews} answer: the review, and the bonus code if this publish earned one. */
@@ -70,18 +72,20 @@ public final class ReviewDtos {
      * docs/GIFT-CASE.md); {@code amountMinor} — a fixed discount when {@code percent} is 0;
      * {@code maxDiscountMinor} — the ceiling of the discount (V63, "−5% (до 100 ₴)"), 0 = none.
      */
-    public record Bonus(String code, int percent, Instant expiresAt, String state, String orderId,
-                        Instant createdAt, String source, long amountMinor, long maxDiscountMinor) {
+    public record Bonus(String code, int percent, @Nullable Instant expiresAt, @Schema(allowableValues = {"ACTIVE", "USED", "EXPIRED"}) String state, @Nullable String orderId,
+                        @Nullable Instant createdAt, @Nullable String source, long amountMinor, long maxDiscountMinor) {
     }
 
     // ------------------------------------------------------------------ admin
 
     /** A review row in the admin «Отзывы» list. */
-    public record AdminReview(long id, String status, int rating, String text, String author,
-                              String productId, String productTitle, String productSlug, String variantName,
-                              String orderId, String orderShortId, Long userId, String customerName,
-                              String adminReply, Instant adminReplyAt, Instant createdAt, Instant updatedAt,
-                              Instant publishedAt) {
+    public record AdminReview(long id, @Schema(allowableValues = {"PENDING", "PUBLISHED", "HIDDEN"}) String status,
+                              int rating, String text, String author,
+                              String productId, @Nullable String productTitle, @Nullable String productSlug,
+                              @Nullable String variantName, @Nullable String orderId, @Nullable String orderShortId,
+                              @Nullable Long userId, @Nullable String customerName,
+                              @Nullable String adminReply, @Nullable Instant adminReplyAt, Instant createdAt,
+                              @Nullable Instant updatedAt, @Nullable Instant publishedAt) {
     }
 
     /** Page of the admin list with per-status counts (the filter chips). */

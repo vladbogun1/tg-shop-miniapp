@@ -4600,8 +4600,8 @@ export interface components {
         AdminBrandDto: {
             aliases: string[];
             id: string;
-            /** @enum {string|null} */
-            logoMode: "MONO" | "ORIGINAL" | null;
+            /** @enum {string} */
+            logoMode: "MONO" | "ORIGINAL";
             logoUrl: string | null;
             name: string;
             /** Format: int64 */
@@ -4686,28 +4686,29 @@ export interface components {
             /** Format: int64 */
             amountMinor: number;
             /** Format: date-time */
-            appliedAt: string;
-            approvalCode: string;
+            appliedAt: string | null;
+            approvalCode: string | null;
             /** Format: date-time */
             createdAt: string;
-            errCode: string;
+            errCode: string | null;
             /** Format: date-time */
-            expiresAt: string;
-            failureReason: string;
+            expiresAt: string | null;
+            failureReason: string | null;
             /** Format: int64 */
-            feeMinor: number;
+            feeMinor: number | null;
             /** Format: int64 */
-            finalAmountMinor: number;
+            finalAmountMinor: number | null;
             invoiceId: string;
-            maskedPan: string;
-            pageUrl: string;
-            paymentMethod: string;
-            paymentSystem: string;
+            maskedPan: string | null;
+            pageUrl: string | null;
+            paymentMethod: string | null;
+            paymentSystem: string | null;
             refundPending: boolean;
             /** Format: int64 */
             refundedMinor: number;
-            rrn: string;
-            status: string;
+            rrn: string | null;
+            /** @enum {string} */
+            status: "none" | "created" | "processing" | "hold" | "success" | "failure" | "reversed" | "expired";
             /** Format: date-time */
             updatedAt: string;
         };
@@ -4810,31 +4811,32 @@ export interface components {
             waitingQty: number;
         };
         AdminReview: {
-            adminReply: string;
+            adminReply: string | null;
             /** Format: date-time */
-            adminReplyAt: string;
+            adminReplyAt: string | null;
             author: string;
             /** Format: date-time */
             createdAt: string;
-            customerName: string;
+            customerName: string | null;
             /** Format: int64 */
             id: number;
-            orderId: string;
-            orderShortId: string;
+            orderId: string | null;
+            orderShortId: string | null;
             productId: string;
-            productSlug: string;
-            productTitle: string;
+            productSlug: string | null;
+            productTitle: string | null;
             /** Format: date-time */
-            publishedAt: string;
+            publishedAt: string | null;
             /** Format: int32 */
             rating: number;
-            status: string;
+            /** @enum {string} */
+            status: "PENDING" | "PUBLISHED" | "HIDDEN";
             text: string;
             /** Format: date-time */
-            updatedAt: string;
+            updatedAt: string | null;
             /** Format: int64 */
-            userId: number;
-            variantName: string;
+            userId: number | null;
+            variantName: string | null;
         };
         AdminRow: {
             active: boolean;
@@ -5016,7 +5018,7 @@ export interface components {
             /** Format: int32 */
             stockAfter: number;
             title: string;
-            variantName: string;
+            variantName: string | null;
         };
         ArriveRequest: {
             distribution?: string;
@@ -5026,7 +5028,8 @@ export interface components {
             items?: components["schemas"]["ArriveLine"][];
         };
         ArriveResult: {
-            distribution: string;
+            /** @enum {string} */
+            distribution: "QUEUE_HOLD" | "ALL_AT_ONCE";
             dryRun: boolean;
             /** Format: int32 */
             holdHours: number;
@@ -5067,7 +5070,8 @@ export interface components {
             marginMinor: number;
             /** Format: int64 */
             targetCostMinor: number;
-            tier: string;
+            /** @enum {string} */
+            tier: "BRONZE" | "SILVER" | "GOLD";
             warnings: string[];
         };
         AutofillRequest: {
@@ -5091,40 +5095,44 @@ export interface components {
         };
         BatchDto: {
             /** Format: date-time */
-            arrivedAt: string;
+            arrivedAt: string | null;
             /** Format: date-time */
-            cancelledAt: string;
+            cancelledAt: string | null;
             /** Format: date-time */
             createdAt: string;
-            createdBy: string;
-            currency: string;
-            distribution: string;
+            createdBy: string | null;
+            currency: string | null;
+            /** @enum {string} */
+            distribution: "QUEUE_HOLD" | "ALL_AT_ONCE";
             eta: components["schemas"]["EtaDto"];
             /** Format: date */
-            etaFrom: string;
-            etaMode: string;
+            etaFrom: string | null;
+            /** @enum {string} */
+            etaMode: "DATE" | "RANGE" | "APPROX" | "HIDDEN";
             /** Format: date */
-            etaTo: string;
-            fxRate: number;
+            etaTo: string | null;
+            fxRate: number | null;
             /** Format: int32 */
             holdHours: number;
             /** Format: int64 */
             id: number;
             /** Format: date-time */
-            inTransitAt: string;
+            inTransitAt: string | null;
             items: components["schemas"]["ItemDto"][];
             moneyVisible: boolean;
             preorderOpen: boolean;
-            privateNote: string;
-            publicNote: string;
-            status: string;
+            privateNote: string | null;
+            publicNote: string | null;
+            /** @enum {string} */
+            status: "ORDERED" | "IN_TRANSIT" | "CUSTOMS" | "ARRIVED" | "CANCELLED";
             /** Format: int64 */
-            supplierId: number;
-            supplierName: string;
+            supplierId: number | null;
+            supplierName: string | null;
             title: string;
         };
         BatchMoneyDto: {
-            allocation: string;
+            /** @enum {string} */
+            allocation: "BY_VALUE" | "BY_QTY" | "BY_WEIGHT" | "MANUAL";
             /** Format: int64 */
             batchId: number;
             costsFinal: boolean;
@@ -5133,8 +5141,8 @@ export interface components {
             /** Format: int64 */
             expensesMinor: number;
             /** Format: double */
-            expensesPct: number;
-            fxRate: number;
+            expensesPct: number | null;
+            fxRate: number | null;
             lines: components["schemas"]["MoneyLineDto"][];
             preliminary: boolean;
             problems: string[];
@@ -5170,20 +5178,20 @@ export interface components {
             /** Format: int32 */
             arrived: number;
             /** Format: date-time */
-            arrivedAt: string;
+            arrivedAt: string | null;
             /** Format: int64 */
             batchId: number;
             /** Format: int64 */
             costOfSoldMinor: number;
             /** Format: int32 */
-            daysToSellOut: number;
+            daysToSellOut: number | null;
             /** Format: int32 */
             left: number;
             /** Format: int64 */
             leftValueMinor: number;
             lines: components["schemas"]["BatchSalesLineDto"][];
             /** Format: double */
-            marginPct: number;
+            marginPct: number | null;
             preliminary: boolean;
             /** Format: int64 */
             profitMinor: number;
@@ -5194,7 +5202,7 @@ export interface components {
             /** Format: int32 */
             sold: number;
             /** Format: date-time */
-            soldOutAt: string;
+            soldOutAt: string | null;
             /** Format: int64 */
             spentMinor: number;
         };
@@ -5204,7 +5212,7 @@ export interface components {
             /** Format: int64 */
             costMinor: number;
             /** Format: int64 */
-            costUnitMinor: number;
+            costUnitMinor: number | null;
             /** Format: int64 */
             itemId: number;
             /** Format: int32 */
@@ -5218,18 +5226,19 @@ export interface components {
             /** Format: int32 */
             sold: number;
             title: string;
-            variantName: string;
+            variantName: string | null;
         };
         BatchSummaryDto: {
             /** Format: date-time */
-            arrivedAt: string;
+            arrivedAt: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date */
-            etaFrom: string;
-            etaMode: string;
+            etaFrom: string | null;
+            /** @enum {string} */
+            etaMode: "DATE" | "RANGE" | "APPROX" | "HIDDEN";
             /** Format: date */
-            etaTo: string;
+            etaTo: string | null;
             /** Format: int64 */
             id: number;
             /** Format: int32 */
@@ -5237,8 +5246,9 @@ export interface components {
             preorderOpen: boolean;
             /** Format: int32 */
             qtyOrdered: number;
-            status: string;
-            supplierName: string;
+            /** @enum {string} */
+            status: "ORDERED" | "IN_TRANSIT" | "CUSTOMS" | "ARRIVED" | "CANCELLED";
+            supplierName: string | null;
             title: string;
             /** Format: int64 */
             waitingPeople: number;
@@ -5250,16 +5260,17 @@ export interface components {
             amountMinor: number;
             code: string;
             /** Format: date-time */
-            createdAt: string;
+            createdAt: string | null;
             /** Format: date-time */
-            expiresAt: string;
+            expiresAt: string | null;
             /** Format: int64 */
             maxDiscountMinor: number;
-            orderId: string;
+            orderId: string | null;
             /** Format: int32 */
             percent: number;
-            source: string;
-            state: string;
+            source: string | null;
+            /** @enum {string} */
+            state: "ACTIVE" | "USED" | "EXPIRED";
         };
         BooleanFlagRequest: {
             active?: boolean;
@@ -5567,9 +5578,11 @@ export interface components {
             discountUah?: number;
             /** Format: int64 */
             id?: number;
-            kind?: string;
+            /** @enum {string} */
+            kind?: "PRODUCT" | "DISCOUNT";
             productId?: string;
-            rarity?: string;
+            /** @enum {string} */
+            rarity?: "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD";
             /** Format: int32 */
             weight?: number;
         };
@@ -5586,18 +5599,21 @@ export interface components {
             discountUah: number;
             /** Format: int64 */
             id: number;
-            imageUrl: string;
-            kind: string;
+            imageUrl: string | null;
+            /** @enum {string} */
+            kind: "PRODUCT" | "DISCOUNT";
             /** Format: int64 */
             priceMinor: number;
             productActive: boolean;
-            productId: string;
-            rarity: string;
+            productId: string | null;
+            /** @enum {string} */
+            rarity: "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD";
             /** Format: int32 */
             sortOrder: number;
             /** Format: int32 */
             stock: number;
-            tier: string;
+            /** @enum {string} */
+            tier: "BRONZE" | "SILVER" | "GOLD";
             title: string;
             /** Format: int32 */
             weight: number;
@@ -5952,12 +5968,12 @@ export interface components {
         DemandDto: {
             /** Format: date-time */
             firstAt: string;
-            imageUrl: string;
+            imageUrl: string | null;
             /** Format: int64 */
             newLast7d: number;
             /** Format: int64 */
-            openBatchId: number;
-            openBatchTitle: string;
+            openBatchId: number | null;
+            openBatchTitle: string | null;
             /** Format: int64 */
             people: number;
             /** Format: int64 */
@@ -5970,8 +5986,8 @@ export interface components {
             title: string;
             /** Format: int64 */
             units: number;
-            variantId: string;
-            variantName: string;
+            variantId: string | null;
+            variantName: string | null;
         };
         DemandRow: {
             /** Format: int64 */
@@ -6039,20 +6055,22 @@ export interface components {
         };
         DraftItemDto: {
             active: boolean;
-            category: string;
+            category: string | null;
             /** Format: int32 */
             discountPercent: number;
             /** Format: int32 */
             discountUah: number;
             /** Format: int64 */
-            id: number;
-            imageUrl: string;
-            kind: string;
+            id: number | null;
+            imageUrl: string | null;
+            /** @enum {string} */
+            kind: "PRODUCT" | "DISCOUNT";
             /** Format: int64 */
             priceMinor: number;
             productActive: boolean;
-            productId: string;
-            rarity: string;
+            productId: string | null;
+            /** @enum {string} */
+            rarity: "COMMON" | "RARE" | "EPIC" | "LEGENDARY" | "GOLD";
             /** Format: int32 */
             stock: number;
             title: string;
@@ -6109,21 +6127,22 @@ export interface components {
             amountUahMinor: number;
             /** Format: date-time */
             createdAt: string;
-            createdBy: string;
+            createdBy: string | null;
             currency: string;
             files: components["schemas"]["ExpenseFileDto"][];
-            fxRate: number;
+            fxRate: number | null;
             /** Format: int64 */
             id: number;
             /** Format: int64 */
-            itemId: number;
-            kind: string;
-            note: string;
+            itemId: number | null;
+            /** @enum {string} */
+            kind: "FREIGHT" | "CUSTOMS" | "BROKER" | "DOMESTIC" | "BANK" | "OTHER";
+            note: string | null;
             /** Format: date */
-            spentOn: string;
+            spentOn: string | null;
         };
         ExpenseFileDto: {
-            contentType: string;
+            contentType: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: int64 */
@@ -6166,15 +6185,21 @@ export interface components {
             /** Format: double */
             min: number | null;
         };
+        Facets: {
+            errorCodes: string[];
+            /** Format: int32 */
+            retentionDays: number;
+            types: components["schemas"]["TypeFacet"][];
+        };
         FeedReview: {
             author: string;
             /** Format: int64 */
             id: number;
-            imageUrl: string;
-            productSlug: string;
+            imageUrl: string | null;
+            productSlug: string | null;
             productTitle: string;
             /** Format: date-time */
-            publishedAt: string;
+            publishedAt: string | null;
             /** Format: int32 */
             rating: number;
             text: string;
@@ -6264,7 +6289,7 @@ export interface components {
             createdAt: string;
             customerName: string;
             /** Format: date-time */
-            deliveredAt: string;
+            deliveredAt: string | null;
             month: string;
             /** Format: int64 */
             monthTotalMinor: number;
@@ -6274,16 +6299,18 @@ export interface components {
             phone: string;
             /** Format: int32 */
             quantity: number;
-            source: string;
+            /** @enum {string} */
+            source: "CASE" | "THRESHOLD" | "ADMIN";
             status: string;
-            tgUsername: string;
-            tier: string;
+            tgUsername: string | null;
+            /** @enum {string|null} */
+            tier: "BRONZE" | "SILVER" | "GOLD" | null;
             title: string;
             /** Format: int64 */
             unitMinor: number;
             /** Format: int64 */
             valueMinor: number;
-            variant: string;
+            variant: string | null;
         };
         GiftResponse: {
             gift: components["schemas"]["GiftInfoDto"];
@@ -6435,27 +6462,27 @@ export interface components {
             views: number;
         };
         InventoryStockWriteoffReportServiceLine: {
-            adminName: string;
+            adminName: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: int64 */
             id: number;
-            note: string;
-            orderId: string;
-            orderShortId: string;
+            note: string | null;
+            orderId: string | null;
+            orderShortId: string | null;
             productId: string;
             /** Format: int32 */
             quantity: number;
             reason: string;
             title: string;
-            undoneNote: string;
+            undoneNote: string | null;
             /** Format: int32 */
             undoneQty: number;
             /** Format: int64 */
             unitValueMinor: number;
             /** Format: int64 */
             valueMinor: number;
-            variantId: string;
+            variantId: string | null;
         };
         InviteAcceptRequest: {
             password?: string;
@@ -6525,21 +6552,21 @@ export interface components {
         ItemDto: {
             /** Format: int64 */
             id: number;
-            imageUrl: string;
+            imageUrl: string | null;
             /** Format: int64 */
             priceMinor: number;
             productId: string;
             /** Format: int32 */
-            qtyArrived: number;
+            qtyArrived: number | null;
             /** Format: int32 */
             qtyOrdered: number;
             /** Format: int32 */
             stock: number;
             title: string;
             /** Format: int64 */
-            unitPriceFx: number;
-            variantId: string;
-            variantName: string;
+            unitPriceFx: number | null;
+            variantId: string | null;
+            variantName: string | null;
             /** Format: int64 */
             waitingPeople: number;
             /** Format: int64 */
@@ -6557,24 +6584,26 @@ export interface components {
         };
         JournalActivityFeedRow: {
             /** Format: int64 */
-            chatId: number;
+            chatId: number | null;
             /** Format: date-time */
             createdAt: string;
-            customerName: string;
-            customerUsername: string;
-            details: string;
-            error: string;
-            errorCode: string;
-            groupId: string;
+            customerName: string | null;
+            customerUsername: string | null;
+            details: string | null;
+            error: string | null;
+            errorCode: string | null;
+            groupId: string | null;
             /** Format: int64 */
             id: number;
-            orderId: string;
-            recipient: string;
-            result: string;
-            source: string;
-            summary: string;
+            orderId: string | null;
+            recipient: string | null;
+            /** @enum {string} */
+            result: "OK" | "FAILED" | "SKIPPED";
+            /** @enum {string} */
+            source: "BOT" | "SITE" | "MINIAPP" | "PAYMENT" | "SYSTEM";
+            summary: string | null;
             /** Format: int64 */
-            tgUserId: number;
+            tgUserId: number | null;
             type: string;
         };
         JsonNode: unknown;
@@ -6644,22 +6673,23 @@ export interface components {
         };
         LotDto: {
             /** Format: int64 */
-            batchId: number;
-            batchTitle: string;
+            batchId: number | null;
+            batchTitle: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: int64 */
             id: number;
-            kind: string;
+            /** @enum {string} */
+            kind: "OPENING" | "BATCH" | "MANUAL";
             preliminary: boolean;
             /** Format: int32 */
             qtyIn: number;
             /** Format: int32 */
             qtyLeft: number;
             /** Format: int64 */
-            unitCostMinor: number;
-            variantId: string;
-            variantName: string;
+            unitCostMinor: number | null;
+            variantId: string | null;
+            variantName: string | null;
         };
         LowMarginBrandDto: {
             name: string;
@@ -6675,7 +6705,7 @@ export interface components {
         };
         LowMarginProductDto: {
             id: string;
-            imageUrl: string;
+            imageUrl: string | null;
             /** Format: int64 */
             priceMinor: number;
             title: string;
@@ -6687,11 +6717,11 @@ export interface components {
         ManualDiscountDto: {
             /** Format: date-time */
             createdAt: string;
-            customerName: string;
+            customerName: string | null;
             /** Format: int64 */
             discountMinor: number;
             id: string;
-            label: string | null;
+            label: string;
             status: string;
             /** Format: int64 */
             tgUserId: number | null;
@@ -6808,40 +6838,40 @@ export interface components {
         };
         MoneyLineDto: {
             /** Format: int64 */
-            costUnitMinor: number;
+            costUnitMinor: number | null;
             /** Format: int64 */
             extraLineMinor: number;
             /** Format: int64 */
             extraUnitMinor: number;
-            imageUrl: string;
+            imageUrl: string | null;
             /** Format: int64 */
             itemId: number;
             /** Format: int64 */
-            manualExtraMinor: number;
+            manualExtraMinor: number | null;
             /** Format: double */
-            marginPct: number;
+            marginPct: number | null;
             /** Format: int64 */
-            marginUnitMinor: number;
+            marginUnitMinor: number | null;
             /** Format: int64 */
             priceMinor: number;
             productId: string;
             /** Format: int64 */
-            purchaseLineMinor: number;
+            purchaseLineMinor: number | null;
             /** Format: int64 */
-            purchaseUnitMinor: number;
+            purchaseUnitMinor: number | null;
             /** Format: int32 */
             qty: number;
             /** Format: int32 */
-            qtyArrived: number;
+            qtyArrived: number | null;
             /** Format: int32 */
             qtyOrdered: number;
             title: string;
             /** Format: int64 */
-            unitPriceFx: number;
-            variantId: string;
-            variantName: string;
+            unitPriceFx: number | null;
+            variantId: string | null;
+            variantName: string | null;
             /** Format: int32 */
-            weightG: number;
+            weightG: number | null;
         };
         MoneyLineRequest: {
             /** Format: int64 */
@@ -6937,26 +6967,27 @@ export interface components {
             variantName: string;
         };
         MyReview: {
-            adminReply: string;
+            adminReply: string | null;
             /** Format: date-time */
             createdAt: string;
             editable: boolean;
             /** Format: int64 */
             id: number;
-            imageUrl: string;
-            orderId: string;
+            imageUrl: string | null;
+            orderId: string | null;
             /** Format: int64 */
             orderItemId: number;
             productId: string;
-            productSlug: string;
+            productSlug: string | null;
             /** Format: date-time */
-            publishedAt: string;
+            publishedAt: string | null;
             /** Format: int32 */
             rating: number;
-            status: string;
+            /** @enum {string} */
+            status: "PENDING" | "PUBLISHED" | "HIDDEN";
             text: string;
             title: string;
-            variantName: string;
+            variantName: string | null;
         };
         NotificationAdminPushControllerSubscribeRequest: {
             endpoint: string;
@@ -7055,17 +7086,17 @@ export interface components {
             variantId?: string;
         };
         OpeningRowDto: {
-            imageUrl: string;
+            imageUrl: string | null;
             /** Format: int64 */
             priceMinor: number;
             productId: string;
             title: string;
             /** Format: int64 */
-            unitCostMinor: number;
+            unitCostMinor: number | null;
             /** Format: int32 */
             units: number;
-            variantId: string;
-            variantName: string;
+            variantId: string | null;
+            variantName: string | null;
         };
         Operations: {
             approvedNotShipped: components["schemas"]["AnalyticsViolation"][];
@@ -7286,7 +7317,7 @@ export interface components {
             units: number;
             /** Format: int32 */
             unknownUnits: number;
-            variantName: string;
+            variantName: string | null;
         };
         OrderMessageDto: {
             attachmentUrl: string | null;
@@ -7317,7 +7348,7 @@ export interface components {
             feeMinor: number;
             lines: components["schemas"]["OrderLineCostDto"][];
             /** Format: double */
-            marginPct: number;
+            marginPct: number | null;
             orderId: string;
             preliminary: boolean;
             /** Format: int64 */
@@ -7356,7 +7387,7 @@ export interface components {
             items: components["schemas"]["JournalActivityFeedRow"][];
             totals: {
                 [key: string]: number;
-            };
+            } | null;
         };
         PaymentOptionDto: {
             description: string;
@@ -7376,15 +7407,15 @@ export interface components {
         };
         PendingLine: {
             /** Format: date-time */
-            deliveredAt: string;
-            imageUrl: string;
+            deliveredAt: string | null;
+            imageUrl: string | null;
             orderId: string;
             /** Format: int64 */
             orderItemId: number;
             productId: string;
-            productSlug: string;
+            productSlug: string | null;
             title: string;
-            variantName: string;
+            variantName: string | null;
         };
         PeriodInfo: {
             channel: string;
@@ -7434,7 +7465,8 @@ export interface components {
             users: components["schemas"]["PointUser"][];
         };
         PointUser: {
-            channel: string;
+            /** @enum {string} */
+            channel: "MINIAPP" | "WEB";
             city: string;
             country: string;
             ip: string;
@@ -7453,15 +7485,15 @@ export interface components {
         };
         ProductCostDto: {
             /** Format: int64 */
-            currentCostMinor: number;
-            currentPreliminary: boolean;
+            currentCostMinor: number | null;
+            currentPreliminary: boolean | null;
             lots: components["schemas"]["LotDto"][];
             /** Format: int64 */
-            marginMinor: number;
+            marginMinor: number | null;
             /** Format: double */
-            marginPct: number;
+            marginPct: number | null;
             /** Format: double */
-            markupPct: number;
+            markupPct: number | null;
             /** Format: int32 */
             onLots: number;
             /** Format: int64 */
@@ -7589,18 +7621,20 @@ export interface components {
             /** Format: int32 */
             discountPercent: number;
             /** Format: date-time */
-            expiresAt: string;
+            expiresAt: string | null;
             id: string;
             /** Format: int64 */
             maxDiscountMinor: number;
             /** Format: int32 */
-            maxUses: number;
-            origin: string;
+            maxUses: number | null;
+            /** @enum {string} */
+            origin: "OURS" | "PERSONAL" | "REVIEW";
             /** Format: int64 */
-            ownerUserId: number;
+            ownerUserId: number | null;
             /** Format: int64 */
             reservedCount: number;
-            source: string;
+            /** @enum {string|null} */
+            source: "REVIEW_BONUS" | null;
             /** Format: int32 */
             usesCount: number;
         };
@@ -7661,20 +7695,20 @@ export interface components {
             soldMinor: number;
         };
         PublicReview: {
-            adminReply: string;
+            adminReply: string | null;
             /** Format: date-time */
-            adminReplyAt: string;
+            adminReplyAt: string | null;
             author: string;
             /** Format: date-time */
             createdAt: string;
             /** Format: int64 */
             id: number;
             /** Format: date-time */
-            publishedAt: string;
+            publishedAt: string | null;
             /** Format: int32 */
             rating: number;
             text: string;
-            variantName: string;
+            variantName: string | null;
         };
         PushConfig: {
             /** Format: int32 */
@@ -7796,7 +7830,8 @@ export interface components {
         RenderedTemplateDto: {
             /** Format: int64 */
             id: number;
-            locale: string;
+            /** @enum {string} */
+            locale: "uk" | "ru" | "en";
             text: string;
             title: string;
         };
@@ -7976,7 +8011,7 @@ export interface components {
         };
         ReviewSummary: {
             /** Format: double */
-            avg: number;
+            avg: number | null;
             /** Format: int64 */
             count: number;
             distribution: number[];
@@ -8048,7 +8083,8 @@ export interface components {
             min: number;
             options: components["schemas"]["SettingsSettingDefinitionOption"][];
             overridden: boolean;
-            type: string;
+            /** @enum {string} */
+            type: "INT" | "BOOL" | "STRING" | "TEXT" | "SELECT";
             unit: string;
             /** Format: date-time */
             updatedAt: string;
@@ -8292,37 +8328,38 @@ export interface components {
         };
         SubscriberDto: {
             botBlocked: boolean;
-            closeReason: string;
+            closeReason: string | null;
             /** Format: date-time */
-            closedAt: string;
+            closedAt: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: int32 */
             heldQty: number;
             /** Format: date-time */
-            holdUntil: string;
+            holdUntil: string | null;
             /** Format: int64 */
             id: number;
-            name: string;
+            name: string | null;
             /** Format: int32 */
-            position: number;
+            position: number | null;
             productId: string;
             productTitle: string;
             /** Format: int32 */
             qty: number;
-            source: string;
-            status: string;
+            source: string | null;
+            /** @enum {string} */
+            status: "WAITING" | "HELD" | "NOTIFIED" | "BOUGHT" | "EXPIRED" | "CANCELLED";
             /** Format: int64 */
             userId: number;
-            username: string;
-            variantId: string;
-            variantName: string;
+            username: string | null;
+            variantId: string | null;
+            variantName: string | null;
         };
         SupplierDto: {
             /** Format: int64 */
             id: number;
             name: string;
-            note: string;
+            note: string | null;
         };
         SupplierRequest: {
             name?: string;
@@ -8409,7 +8446,8 @@ export interface components {
             drops: components["schemas"]["CaseItemDto"][];
             hits: components["schemas"]["TestHitDto"][];
             reel: components["schemas"]["CaseItemDto"][];
-            tier: string;
+            /** @enum {string} */
+            tier: "BRONZE" | "SILVER" | "GOLD";
             won: components["schemas"]["CaseItemDto"];
         };
         TestHitDto: {
@@ -8481,7 +8519,8 @@ export interface components {
             swapPercent: number;
             /** Format: int32 */
             thresholdUah: number;
-            tier: string;
+            /** @enum {string} */
+            tier: "BRONZE" | "SILVER" | "GOLD";
         };
         TierInfoDto: {
             /** Format: int64 */
@@ -8520,7 +8559,8 @@ export interface components {
             guaranteed: number;
             /** Format: int64 */
             opened: number;
-            tier: string;
+            /** @enum {string} */
+            tier: "BRONZE" | "SILVER" | "GOLD";
         };
         Today: {
             /** Format: int64 */
@@ -8599,6 +8639,10 @@ export interface components {
             otpauthUri: string;
             secret: string;
         };
+        TypeFacet: {
+            source: string;
+            type: string;
+        };
         UpdateDeliveryRequest: {
             customerName?: string;
             npCityName?: string;
@@ -8631,13 +8675,13 @@ export interface components {
         UserCardDto: {
             botBlocked: boolean;
             /** Format: date-time */
-            createdAt: string;
-            firstName: string;
-            languageCode: string;
-            lastName: string;
+            createdAt: string | null;
+            firstName: string | null;
+            languageCode: string | null;
+            lastName: string | null;
             /** Format: date-time */
-            lastSeenAt: string;
-            locale: string;
+            lastSeenAt: string | null;
+            locale: string | null;
             /** Format: int64 */
             ordersCount: number;
             premium: boolean;
@@ -8645,7 +8689,7 @@ export interface components {
             telegramUserId: number;
             /** Format: int64 */
             totalSpentMinor: number;
-            username: string;
+            username: string | null;
         };
         UserMetricsDto: {
             /** Format: int64 */
@@ -8923,9 +8967,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: Record<string, never>;
-                    };
+                    "*/*": components["schemas"]["Facets"];
                 };
             };
         };

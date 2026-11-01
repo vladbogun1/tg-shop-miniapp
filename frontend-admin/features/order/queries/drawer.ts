@@ -7,7 +7,7 @@ import { toast } from "@shop/ui/toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { productApi, type AdminProduct } from "@/features/product";
-import { customerApi, type UserCardDto } from "@/features/customer";
+import { customerApi, stubUserCard, type UserCardDto } from "@/features/customer";
 import { orderApi, type AdminOrderDetail } from "../api";
 import { orderKeys } from "../keys";
 
@@ -129,15 +129,12 @@ export function useOpenCustomerMutation(onFound: (u: UserCardDto) => void) {
       const tgId = order.tgUserId as number;
       const found = await customerApi.findUser(tgId);
       return (
-        found ?? {
+        found ??
+        stubUserCard({
           telegramUserId: tgId,
           username: order.tgUsername?.replace(/^@/, "") ?? null,
           firstName: order.customerName,
-          premium: false,
-          botBlocked: false,
-          ordersCount: 0,
-          totalSpentMinor: 0,
-        }
+        })
       );
     },
     errorFallback: "Не удалось открыть профиль",

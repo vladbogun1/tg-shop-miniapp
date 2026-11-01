@@ -5,9 +5,10 @@ import com.maxsolch.shop.order.app.OrderGiftDtos.CaseItemDto;
 import com.maxsolch.shop.order.app.OrderGiftDtos.PromoDto;
 import com.maxsolch.shop.order.app.OrderGiftDtos.SizeDto;
 import com.maxsolch.shop.order.app.OrderGiftDtos.SwapDto;
-
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.lang.Nullable;
 
 /** API of the gift for the order sum and the gift cases (docs/GIFT-CASE.md). */
 public final class GiftDtos {
@@ -62,7 +63,7 @@ public final class GiftDtos {
      * @param monthlyOrders  orders per month whose total falls into this tier (last 90 days) — expected cases
      * @param lowMarginProductPercent share of product prizes in an order with a low-margin product, %
      */
-    public record TierAdminDto(String tier, boolean enabled, int thresholdUah, int guaranteedPercent,
+    public record TierAdminDto(@Schema(allowableValues = {"BRONZE", "SILVER", "GOLD"}) String tier, boolean enabled, int thresholdUah, int guaranteedPercent,
                                int guaranteedMaxUah, int swapPercent, int promoValidDays, int prizes,
                                int livePrizes, long avgPrizeMinor, int marginPercent, double monthlyOrders,
                                int lowMarginProductPercent) {
@@ -78,7 +79,7 @@ public final class GiftDtos {
     public record LowMarginBrandDto(String slug, String name, long productCount) {
     }
 
-    public record LowMarginProductDto(String id, String title, String imageUrl, long priceMinor) {
+    public record LowMarginProductDto(String id, String title, @Nullable String imageUrl, long priceMinor) {
     }
 
     /** PUT /api/admin/gift/low-margin: the whole lists (brand slugs, product ids). */
@@ -90,8 +91,8 @@ public final class GiftDtos {
      * test draws from and what «Автособрать» proposes. {@code id} — an existing gift_case_items row (kept
      * on publish), null for a new prize.
      */
-    public record CaseDraftItem(Long id, String kind, String productId, Integer discountPercent, Integer discountUah,
-                                String rarity, Integer weight, Boolean active) {
+    public record CaseDraftItem(@Nullable Long id, @Schema(allowableValues = {"PRODUCT", "DISCOUNT"}) String kind, @Nullable String productId, Integer discountPercent, Integer discountUah,
+                                @Schema(allowableValues = {"COMMON", "RARE", "EPIC", "LEGENDARY", "GOLD"}) String rarity, Integer weight, Boolean active) {
     }
 
     /** PUT /api/admin/gift/tiers/{tier}/items, POST …/test-draw (optional body). */
@@ -120,9 +121,9 @@ public final class GiftDtos {
     }
 
     /** A prize of a draft with what the admin shows; {@code id} null = new. */
-    public record DraftItemDto(Long id, String kind, String productId, String title, String imageUrl, long priceMinor,
-                               int stock, boolean productActive, String category, int discountPercent,
-                               int discountUah, String rarity, int weight, boolean active) {
+    public record DraftItemDto(@Nullable Long id, @Schema(allowableValues = {"PRODUCT", "DISCOUNT"}) String kind, @Nullable String productId, String title, @Nullable String imageUrl, long priceMinor,
+                               int stock, boolean productActive, @Nullable String category, int discountPercent,
+                               int discountUah, @Schema(allowableValues = {"COMMON", "RARE", "EPIC", "LEGENDARY", "GOLD"}) String rarity, int weight, boolean active) {
     }
 
     /**
@@ -134,7 +135,7 @@ public final class GiftDtos {
      * @param targetCostMinor what the average cost aimed at
      * @param warnings        what did not fit (few products in a price range, a prize runs out…)
      */
-    public record AutofillDto(String tier, List<DraftItemDto> items, long avgPrizeMinor, long avgCostMinor,
+    public record AutofillDto(@Schema(allowableValues = {"BRONZE", "SILVER", "GOLD"}) String tier, List<DraftItemDto> items, long avgPrizeMinor, long avgCostMinor,
                               long marginMinor, long targetCostMinor, List<String> warnings) {
     }
 
@@ -143,9 +144,9 @@ public final class GiftDtos {
                               Integer lowMarginProductPercent) {
     }
 
-    public record CaseItemAdminDto(long id, String tier, String kind, String productId, String title, String imageUrl,
+    public record CaseItemAdminDto(long id, @Schema(allowableValues = {"BRONZE", "SILVER", "GOLD"}) String tier, @Schema(allowableValues = {"PRODUCT", "DISCOUNT"}) String kind, @Nullable String productId, String title, @Nullable String imageUrl,
                                    long priceMinor, int stock, boolean productActive, int discountPercent,
-                                   int discountUah, String rarity, int weight, double chancePercent, int sortOrder,
+                                   int discountUah, @Schema(allowableValues = {"COMMON", "RARE", "EPIC", "LEGENDARY", "GOLD"}) String rarity, int weight, double chancePercent, int sortOrder,
                                    boolean active) {
     }
 
@@ -163,7 +164,7 @@ public final class GiftDtos {
                                List<TierStatsDto> tiers) {
     }
 
-    public record TierStatsDto(String tier, long cases, long opened, long guaranteed) {
+    public record TierStatsDto(@Schema(allowableValues = {"BRONZE", "SILVER", "GOLD"}) String tier, long cases, long opened, long guaranteed) {
     }
 
     /**
@@ -175,7 +176,7 @@ public final class GiftDtos {
      * @param reel  the tier's prizes that can drop now, for the reel of the opening screen
      * @param hits  how often each prize of the pool dropped, with its real chance (% of the pool)
      */
-    public record TestDrawDto(String tier, int count, CaseItemDto won, List<CaseItemDto> drops,
+    public record TestDrawDto(@Schema(allowableValues = {"BRONZE", "SILVER", "GOLD"}) String tier, int count, CaseItemDto won, List<CaseItemDto> drops,
                               List<CaseItemDto> reel, List<TestHitDto> hits) {
     }
 
@@ -211,10 +212,10 @@ public final class GiftDtos {
      *
      * @param source CASE (a case prize), THRESHOLD (the gift for the order sum), ADMIN (added by an admin)
      */
-    public record GiftRegistryRowDto(String orderId, Instant createdAt, Instant deliveredAt, String status,
-                                     String customerName, String phone, String tgUsername, String person,
-                                     String title, String variant, int quantity, long unitMinor, long valueMinor,
-                                     String source, String tier, String month, long monthTotalMinor,
+    public record GiftRegistryRowDto(String orderId, Instant createdAt, @Nullable Instant deliveredAt, String status,
+                                     String customerName, String phone, @Nullable String tgUsername, String person,
+                                     String title, @Nullable String variant, int quantity, long unitMinor, long valueMinor,
+                                     @Schema(allowableValues = {"CASE", "THRESHOLD", "ADMIN"}) String source, @Nullable @Schema(allowableValues = {"BRONZE", "SILVER", "GOLD"}) String tier, String month, long monthTotalMinor,
                                      boolean overLimit) {
     }
 }
