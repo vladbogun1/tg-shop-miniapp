@@ -4,6 +4,7 @@
  * `/api/auth/admin/**`; ответы — типы из OpenAPI.
  */
 import type { Schemas } from "@shop/core/api/schemas";
+import { createHttpClient } from "@shop/core/http";
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@/lib/http";
 import { dropSession, setAccessToken } from "@/lib/session";
 import type { AdminRoleCode } from "./model/roles";
@@ -142,3 +143,13 @@ export const incidentApi = {
   resolve: (id: number, resolution: string) => apiPost<Incident>(`/api/admin/incidents/${id}/resolve`, { resolution }),
   reopen: (id: number) => apiPost<Incident>(`/api/admin/incidents/${id}/reopen`, {}),
 };
+
+/**
+ * Локальный стенд: вход без пароля и кода (`next dev` + DEV_ADMIN_CREDS, см. app/dev-login/route.ts).
+ * Тот же origin, что и админка, а не бэкенд; таймаут с запасом — маршрут может ждать следующий 30-с шаг кода.
+ */
+const sameOrigin = createHttpClient({ baseUrl: "", getToken: () => null, timeoutMs: 45_000 });
+
+export function devSignIn(fresh: boolean): Promise<{ accessToken?: string }> {
+  return sameOrigin.get(fresh ? "/dev-login?fresh=1" : "/dev-login");
+}

@@ -14,6 +14,7 @@ import type { AdminLoginResult } from "../../api";
 import { CodeStep } from "./CodeStep";
 import { CredentialsStep } from "./CredentialsStep";
 import { SetupStep } from "./SetupStep";
+import { useDevAutoLogin } from "./useDevAutoLogin";
 
 type Step =
   | { kind: "credentials" }
@@ -41,6 +42,8 @@ export function Login({ onSuccess, initial }: { onSuccess: () => void; initial?:
     toast.success("Вход выполнен");
     onSuccess();
   }, [onSuccess]);
+
+  useDevAutoLogin(done);
 
   return (
     <div className="relative grid min-h-dvh place-items-center px-4 py-8 sm:py-10">
