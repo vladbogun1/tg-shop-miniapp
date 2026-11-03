@@ -238,7 +238,8 @@ jobs:
   # Chromium. Production builds of copies of frontend/ and site/ are made by e2e/scripts/run.mjs --suite=customer.
   e2e-customer:
     name: Customer e2e (Playwright)
-    runs-on: ubuntu-latest
+    # 24.04: ubuntu-latest moved to 26.04 (03.11.2026) and the WebKit build of our Playwright needs libicu74 from 24.04
+    runs-on: ubuntu-24.04
     needs: backend
     timeout-minutes: 40
     services:
