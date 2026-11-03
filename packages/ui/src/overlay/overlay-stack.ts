@@ -41,16 +41,24 @@ function ensureListener() {
   listening = true;
 }
 
-function lockScroll() {
-  if (typeof document === "undefined") return;
-  if (scrollLocks === 0) document.body.style.overflow = "hidden";
-  scrollLocks++;
-}
+type ScrollDoc = { body: { style: { overflow: string } } };
 
-function unlockScroll() {
-  if (typeof document === "undefined") return;
-  scrollLocks = Math.max(0, scrollLocks - 1);
-  if (scrollLocks === 0) document.body.style.overflow = "";
+/**
+ * Locks page scroll until the returned release is called; the page scrolls again only when the
+ * last lock is released, in any order. Every overlay that locks the page goes through here: the
+ * Mini App's product view and comparison used to save/restore `overflow` themselves, and when
+ * the product view finished fading out after the comparison had opened, the comparison restored
+ * "hidden" on close — the catalogue stopped scrolling (iPhone, 02.11.2026).
+ */
+export function lockPageScroll(doc: ScrollDoc | undefined = typeof document === "undefined" ? undefined : document): () => void {
+  if (!doc) return () => {};
+  if (scrollLocks++ === 0) doc.body.style.overflow = "hidden";
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    if (--scrollLocks === 0) doc.body.style.overflow = "";
+  };
 }
 
 /** True when the layer with this id is the topmost open overlay. */
@@ -80,11 +88,11 @@ export function useOverlayLayer(
     ensureListener();
     const layer: Layer = { id, onEscape: () => handler.current(), passEscape };
     stack.push(layer);
-    if (lock) lockScroll();
+    const unlock = lock ? lockPageScroll() : undefined;
     return () => {
       const i = stack.lastIndexOf(layer);
       if (i >= 0) stack.splice(i, 1);
-      if (lock) unlockScroll();
+      unlock?.();
     };
   }, [open, id, lock, passEscape]);
 

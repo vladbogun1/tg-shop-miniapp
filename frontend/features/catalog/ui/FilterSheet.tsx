@@ -21,6 +21,7 @@ import { useI18n } from "@/i18n/context";
 import { EMPTY_FILTER } from "@shop/customer/catalog/model/filter";
 import { type EngineItem } from "@/features/catalog/state";
 import { backdrop, sheetVariants } from "@/lib/motion";
+import { lockPageScroll } from "@shop/ui/overlay";
 import { haptic, useBackButton } from "@/platform/telegram";
 
 export function FilterSheet({
@@ -79,14 +80,7 @@ function SheetBody({
   useBackButton(true, close);
 
   // Page under the sheet stays put.
-  useEffect(() => {
-    const body = document.body.style;
-    const prev = body.overflow;
-    body.overflow = "hidden";
-    return () => {
-      body.overflow = prev;
-    };
-  }, []);
+  useEffect(() => lockPageScroll(), []);
 
   const toggle = (key: string, value: string) => {
     haptic();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { lockSheet } from "@/lib/scroll-lock";
 
 /**
  * Chrome of a fullscreen overlay: body-scroll lock, Esc closes, the tab bar comes back under the sheet's
@@ -8,17 +9,14 @@ import { useEffect, useRef, useState } from "react";
  */
 export function useSheetChrome(onClose: () => void) {
   useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     // the tab bar (which may have slid away in the catalogue) comes back under the sheet's action bar
-    document.documentElement.setAttribute("data-sheet", "");
+    const unlock = lockSheet();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = prev;
-      document.documentElement.removeAttribute("data-sheet");
+      unlock();
       window.removeEventListener("keydown", onKey);
     };
   }, [onClose]);

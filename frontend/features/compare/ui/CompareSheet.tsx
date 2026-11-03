@@ -23,6 +23,7 @@ import { productInStock } from "@shop/customer/catalog/model/stock";
 import type { CatalogSchema } from "@shop/core/catalog";
 import { useCompare } from "@/features/compare/store";
 import { money } from "@/lib/money";
+import { lockSheet } from "@/lib/scroll-lock";
 import { backdrop, overlayRise } from "@/lib/motion";
 import { haptic, useBackButton } from "@/platform/telegram";
 
@@ -57,18 +58,15 @@ function Body({
   const productsQ = useQuery({ queryKey: catalogKeys.products, queryFn: () => customerApi.getProducts() });
 
   useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     // like the product view: the tab bar stays over the sheet (and does not slide away), so the
     // cart is one tap from the comparison; the table scrolls past it
-    document.documentElement.setAttribute("data-sheet", "");
+    const unlock = lockSheet();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = prev;
-      document.documentElement.removeAttribute("data-sheet");
+      unlock();
       window.removeEventListener("keydown", onKey);
     };
   }, [onClose]);
