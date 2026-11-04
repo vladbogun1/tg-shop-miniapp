@@ -2,9 +2,10 @@
 
 /** Состояние экрана «Карточки»: вкладка, фильтры, выбор строк, открытая панель, окна «Оформить с ИИ». */
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { assignCardIds } from "../../model/item";
-import { defaultTab, listForTab, pruneSelection, tabCounts, wizardLabel } from "../../model/screen";
+import { CARDS_IDS_PARAM, defaultTab, idsFromParam, listForTab, pruneSelection, tabCounts, wizardLabel } from "../../model/screen";
 import { bulkAcceptable, matchesVitrine, missingCount, tabOf, type CardTab, type Vitrine } from "../../model/view";
 import { cardsKeys } from "../../keys";
 import { invalidateCards, useCardItems, useCardSchema } from "../../queries";
@@ -62,6 +63,17 @@ export function useCardsScreen() {
     if (!wizardIds.length) return;
     setWizard({ open: true, preselect: wizardIds, label: wizardLabel(selected.size, wizardIds.length, current) });
   }
+
+  // «/cards?ids=…» (from a supply): open the wizard with those products once, then drop the param.
+  const router = useRouter();
+  const deepIds = useSearchParams()?.get(CARDS_IDS_PARAM) ?? null;
+  const schemaReady = !!schemaQ.data;
+  useEffect(() => {
+    if (!deepIds || !itemsQ.data || !schemaReady) return;
+    router.replace("/cards");
+    const pre = idsFromParam(deepIds, itemsQ.data);
+    if (pre.length) setWizard({ open: true, preselect: pre, label: `новые из поставки: ${pre.length}` });
+  }, [deepIds, itemsQ.data, schemaReady, router]);
 
   // ---- panel navigation: by the list as it is now ----------------------------------
   const index = openId ? list.findIndex((i) => i.id === openId) : -1;

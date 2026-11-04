@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { item } from "./fixtures";
-import { defaultTab, listForTab, pruneSelection, tabCounts, wizardLabel } from "./screen";
+import { cardsWizardHref, defaultTab, idsFromParam, listForTab, pruneSelection, tabCounts, unfinishedOf, wizardLabel } from "./screen";
 
 const A = item({ id: "a", title: "Альфа", cardStatus: "AI_FILLED", active: true, cardConfidence: 50 });
 const B = item({ id: "b", title: "Бета", cardStatus: "DRAFT", active: true });
@@ -33,5 +33,17 @@ describe("экран карточек", () => {
   it("wizardLabel", () => {
     expect(wizardLabel(2, 2, "draft")).toBe("отмеченные: 2");
     expect(wizardLabel(0, 5, "review")).toBe("вкладка «Проверить»: 5");
+  });
+});
+
+describe("ссылка на мастер из поставки", () => {
+  it("cardsWizardHref ↔ idsFromParam: только известные, без повторов", () => {
+    expect(cardsWizardHref(["b", "a"])).toBe("/cards?ids=b,a");
+    expect(idsFromParam("b, a,zz,b", [A, B, C])).toEqual(["b", "a"]);
+    expect(idsFromParam(null, [A])).toEqual([]);
+  });
+
+  it("unfinishedOf — только «Оформить» (ИИ не заполнял)", () => {
+    expect(unfinishedOf(["a", "b", "c", "b", "zz"], [A, B, C, D])).toEqual(["b"]);
   });
 });

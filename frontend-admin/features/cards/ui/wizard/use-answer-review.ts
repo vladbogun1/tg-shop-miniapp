@@ -13,6 +13,8 @@ import { autoReady, buildImportItem, mergeSel, type ProductSel } from "../../mod
 import type { CardImportItem } from "../../model/wire";
 import { cardsApi, type CardImportResult } from "../../api";
 import { invalidateCards } from "../../queries";
+import type { PhotoJob } from "../../model/photos";
+import { usePhotoImport } from "./use-photo-import";
 
 export type ReviewFilter = "all" | "ok" | "warn" | "error";
 
@@ -34,6 +36,8 @@ interface SendVars {
   payload: CardImportItem[];
   replaceSpecs: boolean;
   titles: Map<string, string>;
+  /** Photos to download once the cards are saved (taken before the saved cards leave the list). */
+  photoJobs: PhotoJob[];
 }
 
 export function useAnswerReview({ items, schema, ids, batchPids }: Args) {
@@ -107,6 +111,12 @@ export function useAnswerReview({ items, schema, ids, batchPids }: Args) {
     .map((r) => buildImportItem(r, sel.get(r.id), { markReady: autoMark && autoReady(r, sel.get(r.id)), model }))
     .filter((x): x is CardImportItem => !!x);
   const toReady = payload.filter((p) => p.markReady).length;
+  const photos = usePhotoImport();
+  // In review order, each product's photos in the order the admin ticked them.
+  const photoJobs: PhotoJob[] = (reviews ?? []).flatMap((r) => {
+    const s = sel.get(r.id);
+    return s?.on && r.level !== "error" ? s.photos.map((url) => ({ productId: r.item.id, title: r.item.title, url })) : [];
+  });
 
   function patchSel(id: string, patch: Partial<ProductSel>) {
     setSel((prev) => {
@@ -136,19 +146,26 @@ export function useAnswerReview({ items, schema, ids, batchPids }: Args) {
       setReviews((prev) => (prev ?? []).filter((r) => !sent.has(r.item.id)));
       (result.rejected.length ? toast.error : toast.success)(`Сохранено карточек: ${result.applied}${result.rejected.length ? `, отклонено: ${result.rejected.length}` : ""}`);
       invalidateCards(qc);
+      void photos.run(vars.photoJobs.filter((j) => !rejected.has(j.productId)));
     },
   });
 
   function send() {
-    if (!reviews || !payload.length) return;
-    importMutation.mutate({ payload, replaceSpecs, titles: new Map(reviews.map((r) => [r.item.id, r.item.title])) });
+    if (!reviews || (!payload.length && !photoJobs.length)) return;
+    if (!payload.length) {
+      // only photos were chosen — nothing to write to the cards
+      void photos.run(photoJobs);
+      return;
+    }
+    importMutation.mutate({ payload, replaceSpecs, titles: new Map(reviews.map((r) => [r.item.id, r.item.title])), photoJobs });
   }
 
   return {
     answer, setAnswer, model, setModel, parseErrors, notes, unknown, invalid, missing, reviews, setReviews, sel, summary,
     check, clearAnswer,
     reviewFilter, setReviewFilter, replaceSpecs, setReplaceSpecs, autoMark, setAutoMark, addOption, setAddOption,
-    counts, visibleReviews, payload, toReady, patchSel, bulk, send, sending: importMutation.isPending,
+    counts, visibleReviews, payload, toReady, patchSel, bulk, send, sending: importMutation.isPending || photos.running,
+    photoJobs, photos,
     invalidateWithSchema: () => invalidateCards(qc, true),
   };
 }

@@ -20,6 +20,8 @@ import { fetchWithTimeout } from "./fetch-timeout";
 export const REQUEST_TIMEOUT_MS = 15_000;
 export const CHECKOUT_TIMEOUT_MS = 45_000;
 export const UPLOAD_TIMEOUT_MS = 60_000;
+/** The server downloads and renders something before it answers (photo import by link). */
+export const SLOW_TIMEOUT_MS = 60_000;
 
 /**
  * Wording the client produces itself, when there is no response to read one from.
@@ -78,7 +80,8 @@ export interface HttpClientOptions {
 export interface HttpClient {
   readonly baseUrl: string;
   get<T>(path: string): Promise<T>;
-  post<T>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T>;
+  /** {@code timeoutMs} — for a call known to be slow (a server-side download, a render); default {@link REQUEST_TIMEOUT_MS}. */
+  post<T>(path: string, body?: unknown, headers?: Record<string, string>, timeoutMs?: number): Promise<T>;
   patch<T>(path: string, body?: unknown): Promise<T>;
   put<T>(path: string, body?: unknown): Promise<T>;
   del<T>(path: string): Promise<T>;
@@ -182,12 +185,10 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
   return {
     baseUrl,
     get: <T,>(path: string) => request<T>(path, { method: "GET" }),
-    post: <T,>(path: string, body?: unknown, headers?: Record<string, string>) =>
-      request<T>(
-        path,
-        { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) },
-        headers
-      ),
+    post: <T,>(path: string, body?: unknown, headers?: Record<string, string>, timeoutMs?: number) =>
+      timeoutMs === undefined
+        ? request<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) }, headers)
+        : request<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) }, headers, timeoutMs),
     patch: <T,>(path: string, body?: unknown) =>
       request<T>(path, {
         method: "PATCH",

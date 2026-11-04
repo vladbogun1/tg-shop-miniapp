@@ -8,17 +8,25 @@ import { productsWord } from "../../model";
 import { AUTO_READY_OVERALL, RED_FIELD } from "../../model/selection";
 import type { AnswerReview } from "./use-answer-review";
 
+/** «Сохранить 3 товара + 5 фото» / «Добавить 5 фото» / "" (nothing chosen). */
+function saveLabel(cards: number, photos: number): string {
+  const p = photos ? `${photos} фото` : "";
+  if (!cards) return p ? `Добавить ${p}` : "";
+  return `Сохранить ${cards} ${productsWord(cards)}${p ? ` + ${p}` : ""}`;
+}
+
 /** Липкая панель сохранения: кнопка, «Заменить характеристики целиком», «Уверенные — сразу в „Готово“», пояснения. */
 export function SaveBar({ a }: { a: AnswerReview }) {
-  const { payload, sending, send, replaceSpecs, setReplaceSpecs, autoMark, setAutoMark, toReady } = a;
+  const { payload, sending, send, replaceSpecs, setReplaceSpecs, autoMark, setAutoMark, toReady, photoJobs } = a;
+  const label = saveLabel(payload.length, photoJobs.length);
   return (
     <>
       <div
         style={{ bottom: "var(--bottom-nav)" }}
         className="sticky z-10 -mx-4 mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-[var(--line)] bg-[var(--surface)] px-4 py-3 sm:-mx-5 sm:px-5"
       >
-        <Button variant="accent" chamfer size="lg" icon={<Save className="h-4 w-4" />} loading={sending} disabled={payload.length === 0} onClick={send}>
-          Сохранить {payload.length} {productsWord(payload.length)}
+        <Button variant="accent" chamfer size="lg" icon={<Save className="h-4 w-4" />} loading={sending} disabled={!label} onClick={send}>
+          {label || "Нечего сохранять"}
         </Button>
         <div className="min-w-[220px]">
           <Toggle checked={replaceSpecs} onChange={setReplaceSpecs} label="Заменить характеристики целиком" />

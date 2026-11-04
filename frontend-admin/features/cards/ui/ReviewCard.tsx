@@ -7,6 +7,7 @@ import type { ProductSel } from "../model/selection";
 import { cn } from "@/lib/cn";
 import { CardIssues } from "./shared";
 import { FieldsTable, ProposalsBox, ReviewCardHeader, ScalarChanges, SourcesBox } from "./ReviewCardParts";
+import { PhotoPicks } from "./PhotoPicks";
 import { TextsBlock } from "./TextsBlock";
 
 const STRIPE = { ok: "var(--ok)", warn: "var(--warn)", error: "var(--danger)" } as const;
@@ -45,6 +46,7 @@ export function ReviewCard({
           <FieldsTable r={r} sel={sel} onSel={onSel} />
           {/* title / description / condition note in ru·uk·en */}
           {Object.keys(r.texts).length > 0 && <TextsBlock review={r} sel={sel} onSel={onSel} onEditText={onEditText} />}
+          <PhotoPicks r={r} sel={sel} onSel={onSel} />
           <ProposalsBox proposals={r.proposals} onAddOption={onAddOption} />
           <SourcesBox r={r} />
           {r.issues.length > 0 && (

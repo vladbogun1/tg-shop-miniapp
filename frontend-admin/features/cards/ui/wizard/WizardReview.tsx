@@ -8,6 +8,7 @@ import { defaultSel, RED_FIELD } from "../../model/selection";
 import { ReviewCard } from "../ReviewCard";
 import { Step } from "../shared";
 import { SaveBar } from "./SaveBar";
+import { PhotoSummary } from "./PhotoSummary";
 import { SummaryView } from "./SummaryView";
 import type { AnswerReview, ReviewFilter } from "./use-answer-review";
 
@@ -80,6 +81,7 @@ export function WizardReview({ a, schema }: { a: AnswerReview; schema: CardSchem
       )}
       <SaveBar a={a} />
       {summary && <SummaryView summary={summary} />}
+      <PhotoSummary photos={a.photos} />
     </Step>
   );
 }

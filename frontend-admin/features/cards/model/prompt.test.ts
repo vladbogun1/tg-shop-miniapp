@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SCHEMA, SCHEMA_RAW, item } from "./fixtures";
 import { assignCardIds, priceUah, splitIntoBatches, variantNames } from "./item";
-import { buildCardPrompt, productInput, schemaSection } from "./prompt";
+import { buildCardPrompt, NO_PHOTOS_HINT, productInput, schemaSection } from "./prompt";
 import { attributesForCategory, categoryPathName, isLeafCategory, leafCategories, leavesUnder, normalizeSchema } from "./schema";
 
 describe("схема", () => {
@@ -82,6 +82,7 @@ describe("запрос к ИИ", () => {
       category: null,
       description: "",
       specs: {},
+      photos: NO_PHOTOS_HINT,
     });
     expect(
       productInput(
@@ -93,6 +94,7 @@ describe("запрос к ИИ", () => {
           priceMinor: 100000,
           specs: { weight_g: 50 },
           missingRequired: ["dpi"],
+          imageUrl: "products/x/photo.webp",
         }),
         SCHEMA
       )

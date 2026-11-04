@@ -211,6 +211,13 @@ export function stringList(v: unknown): string[] {
     .filter(Boolean);
 }
 
+/** Ссылки на фото из ответа: только http(s), без повторов, не больше 8 (столько админ ещё просматривает глазами). */
+export function photoLinks(v: unknown): string[] {
+  const out: string[] = [];
+  for (const s of stringList(v)) if (/^https?:\/\/\S+$/i.test(s) && !out.includes(s) && out.length < 8) out.push(s);
+  return out;
+}
+
 /** Непустая строка без пробелов по краям или null. */
 export function trimmedOrNull(v: unknown): string | null {
   return typeof v === "string" && v.trim() ? v.trim() : null;

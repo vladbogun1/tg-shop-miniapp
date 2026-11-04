@@ -7,6 +7,7 @@
  * «Принять уверенные» — массовое принятие. Черновик не выкладывается без явного «Выложить без оформления».
  */
 import { RefreshCw, Sparkles } from "lucide-react";
+import { Suspense } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@shop/ui/admin-button";
 import { TAB_LABEL } from "../../model/view";
@@ -78,6 +79,15 @@ function Layers({ s }: { s: CardsScreenState }) {
 }
 
 export function CardsScreen() {
+  // useSearchParams («?ids=» from a supply) needs a Suspense boundary in the App Router.
+  return (
+    <Suspense fallback={null}>
+      <CardsScreenBody />
+    </Suspense>
+  );
+}
+
+function CardsScreenBody() {
   const s = useCardsScreen();
   return (
     <div>

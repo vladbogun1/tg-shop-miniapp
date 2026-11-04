@@ -19,6 +19,7 @@ import { BatchMainTab } from "./BatchMainTab";
 import { BatchMoneyTab } from "./BatchMoneyTab";
 import { BatchSalesTab } from "./BatchSalesTab";
 import { CancelBatchModal } from "./CancelBatchModal";
+import { NewCardsBanner } from "./NewCardsBanner";
 
 export function BatchScreen() {
   const params = useParams<{ id: string }>();
@@ -58,6 +59,7 @@ function BatchView({ batch }: { batch: Batch }) {
         onCancel={() => setCancelling(true)}
       />
 
+      <NewCardsBanner batch={batch} />
       {finance && (
         <Tabs
           className="mb-4"

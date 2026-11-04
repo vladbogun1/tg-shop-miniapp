@@ -17,6 +17,8 @@ export interface ProductSel {
   brand: boolean;
   /** Save uk/en of the final Russian texts. */
   translations: boolean;
+  /** Found photo links to download and add to the product (in this order). */
+  photos: string[];
 }
 
 /**
@@ -38,7 +40,13 @@ export function defaultSel(r: ProductReview, opts: { created?: boolean } = {}): 
     category: !!r.category?.valid,
     brand: !!r.brand?.valid,
     translations: true,
+    photos: defaultPhotos(r),
   };
+}
+
+/** A product without photos gets the first 3 found by default; one that has photos — none (the admin adds by hand). */
+export function defaultPhotos(r: ProductReview): string[] {
+  return r.item.imageUrl ? [] : r.photos.slice(0, 3);
 }
 
 /** Keeps the admin's choice after a re-check, letting newly valid fields in. */
@@ -46,7 +54,7 @@ export function mergeSel(old: ProductSel | undefined, r: ProductReview, opts: { 
   const def = defaultSel(r, opts);
   if (!old) return def;
   const valid = (k: string) => r.fields.some((f) => f.key === k && f.value !== undefined);
-  return { ...old, fields: new Set([...old.fields, ...def.fields].filter(valid)) };
+  return { ...old, fields: new Set([...old.fields, ...def.fields].filter(valid)), photos: (old.photos ?? def.photos).filter((p) => r.photos.includes(p)) };
 }
 
 /** Overall confidence from which a card goes straight to «Готово» (READY) on import. */

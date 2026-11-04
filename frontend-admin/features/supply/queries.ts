@@ -5,6 +5,7 @@ import { toMinor } from "@shop/core/money";
 import { toast } from "@shop/ui/toast";
 import { useApiMutation } from "@shop/ui/mutation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { cardsKeys } from "@/features/cards";
 import { catalogKeys } from "@/features/catalog";
 import {
   costingApi,
@@ -293,7 +294,7 @@ export function useApplySupplyAi() {
       if (sid != null && resolved.length > 0) await preordersApi.saveAliases(sid, aliasesOf(resolved));
       return { supplierId: sid, lines: mergeLines(resolved), created };
     },
-    invalidate: [catalogKeys.productsRoot(), procurementKeys.preordersRoot()],
+    invalidate: [catalogKeys.productsRoot(), procurementKeys.preordersRoot(), cardsKeys.export(), cardsKeys.stats()],
     errorFallback: "Не удалось подготовить поставку",
   });
 }

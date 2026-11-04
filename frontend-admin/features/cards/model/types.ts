@@ -100,6 +100,8 @@ export interface ProductReview {
   texts: Partial<Record<TextField, TextReview>>;
   overall: number | null;
   sources: string[];
+  /** Photo links the AI found (pictures or product pages), http(s), deduplicated, at most 8. */
+  photos: string[];
   notes: string | null;
   proposals: Proposal[];
   model: string | null;

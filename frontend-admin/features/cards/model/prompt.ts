@@ -13,7 +13,7 @@
  * Answer format:
  *   ```json
  *   { "p0a1b2c3d": { "category", "brand", "specs", "confidence", "overall", "title"{ru,uk,en}, "description"{ru,uk,en}, "conditionNote"?,
- *                    "proposals", "sources", "notes" } }
+ *                    "proposals", "sources", "photos", "notes" } }
  *   ```
  *   Keys are "p" + the first 8 hex chars of the product UUID (without dashes), lengthened when
  *   two products of the set share a prefix — stable across reloads and batches, so an old answer
@@ -59,6 +59,7 @@ ChiSetup — украинский магазин игровой перифери
 4. Название "title": "ru" — наше чистое название: родовое слово + бренд + модель + цвет / вариант, как товар ищут в интернете («Мышь VGN Dragonfly F2 Ultra+ белая», «Коврик Attack Shark CM05 XL черный»); бренд и модель — латиницей, как у производителя. Если текущее название уже нормальное — верни его без изменений. "uk" и "en" — переводы этого ru.
 5. Описание "description": "ru" — 1–3 коротких абзаца, деловой тон, чем товар хорош и для кого, без маркетинговой воды и без списка характеристик (характеристики показываются таблицей отдельно). Обязательно сохрани из текущего описания все оговорки: уценка / б/у / дефекты / вскрытая упаковка / комплектация / размеры одежды и любые важные для покупателя условия. Ничего не выдумывай. "uk" и "en" — переводы этого ru. Если хорошего текста не получается — не возвращай "description" вовсе.
 6. Только если у товара есть "conditionNote" (причина уценки / состояние б/у): верни "conditionNote" — "ru" как есть (символ в символ), "uk" и "en" — переводы.
+7. Фото "photos": товара у нас ещё нет на руках, поэтому найди до 6 фото ИМЕННО этой модели и этого цвета / варианта — официальный сайт и пресс-кит производителя первыми, затем крупные магазины (Amazon, Rozetka и т. п.). Нужны прямые ссылки на файлы картинок в наибольшем разрешении (https://…/….jpg|png|webp; у Shopify — без параметров размера вроде _600x), не превью; если прямую ссылку не достать — ссылка на страницу товара, мы возьмём её главное фото. Первым — фото товара целиком на однотонном фоне, дальше — другие ракурсы. Не бери фото с водяными знаками магазинов, коллажи, баннеры, фото другого цвета. Не уверен, что это та модель, — лучше меньше фото.
 ${partLine}
 
 ## Жёсткие правила
@@ -72,7 +73,7 @@ ${partLine}
 8. Товар no-name / неизвестная модель / нет информации в интернете: заполни только то, что явно видно из названия, описания и вариантов (цвет, размер, тип подключения), уверенность низкая; остальное пропусти и напиши об этом в "notes".
 9. Категорию и бренд не меняй без явной причины — причину в "notes".
 10. Уценка / б/у: характеристики — как у нового товара этой модели; оговорку о состоянии — в описании.
-11. "sources" — ссылки на страницы, откуда реально взяты данные (официальный сайт первым). Без выдуманных ссылок.
+11. "sources" — ссылки на страницы, откуда реально взяты данные (официальный сайт первым). Без выдуманных ссылок. То же для "photos": только ссылки, которые ты действительно видел.
 12. "specs" не переводятся: значения опций — латинские коды из схемы, text — названия моделей как у производителя.
 
 ## Переводы (uk, en) — правила
@@ -104,6 +105,7 @@ ${GLOSSARY}
 - "conditionNote" — { "ru", "uk", "en" }, только если у товара есть conditionNote;
 - "proposals" — [{ "key", "value", "why" }] — значения, которых нет в списке опций, необязательно;
 - "sources" — [ссылки];
+- "photos" — [ссылки на фото этой модели и цвета], до 6, необязательно;
 - "field_sources" — { ключ: ссылка } — откуда взято значение поля, если не с первой ссылки "sources", необязательно;
 - "notes" — заметки для админа (что не нашлось, сомнения), необязательно.
 Кавычки внутри текста экранируй (\\"). Без комментариев и без висячих запятых. Пример (условный — ключи и опции бери только из схемы ниже):
@@ -120,6 +122,7 @@ ${GLOSSARY}
     "conditionNote": { "ru": "вскрыта упаковка", "uk": "відкрита упаковка", "en": "opened box" },
     "proposals": [ { "key": "sensor", "value": "PAW3950 Ultra", "why": "нет в списке" } ],
     "sources": ["https://vgnlab.com/products/f2-ultra-plus"],
+    "photos": ["https://vgnlab.com/cdn/shop/files/f2-ultra-plus-white-1.png", "https://vgnlab.com/cdn/shop/files/f2-ultra-plus-white-2.png"],
     "notes": "Вес указан без кабеля."
   }
 }
@@ -229,7 +232,16 @@ export function productInput(item: CardItem, schema: CardSchema): Record<string,
   if (uah !== null) o.priceUah = uah;
   o.description = item.description ?? "";
   o.specs = (item.specs && Object.keys(item.specs).length ? item.specs : null) ?? {};
+  return Object.assign(o, gaps(item));
+}
+
+export const NO_PHOTOS_HINT = "у товара нет ни одного фото — найди обязательно";
+
+/** What the card still lacks: required characteristics, photos. */
+function gaps(item: CardItem): Record<string, unknown> {
+  const o: Record<string, unknown> = {};
   if (item.missingRequired?.length) o.missingRequired = item.missingRequired;
+  if (!item.imageUrl) o.photos = NO_PHOTOS_HINT;
   return o;
 }
 

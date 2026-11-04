@@ -41,3 +41,23 @@ export function pruneSelection(prev: Set<string>, visible: CardItem[]): Set<stri
 export function wizardLabel(selectedCount: number, total: number, tab: CardTab): string {
   return selectedCount ? `отмеченные: ${total}` : `вкладка «${TAB_LABEL[tab]}»: ${total}`;
 }
+
+/** Ссылка «оформить эти товары с ИИ» из других экранов (поставка): `/cards?ids=a,b,c` открывает мастер с ними. */
+export const CARDS_IDS_PARAM = "ids";
+
+export function cardsWizardHref(productIds: string[]): string {
+  return `/cards?${CARDS_IDS_PARAM}=${productIds.map(encodeURIComponent).join(",")}`;
+}
+
+/** Из ссылки — только товары, которые есть в выгрузке, без повторов, в порядке ссылки. */
+export function idsFromParam(raw: string | null, items: CardItem[]): string[] {
+  if (!raw) return [];
+  const known = new Set(items.map((i) => i.id));
+  return [...new Set(raw.split(",").map((x) => x.trim()).filter((x) => known.has(x)))];
+}
+
+/** Товары, у которых карточку ещё оформлять (вкладка «Оформить»): ИИ их не заполнял. */
+export function unfinishedOf(productIds: string[], items: CardItem[]): string[] {
+  const draft = new Set(items.filter((i) => tabOf(i) === "draft").map((i) => i.id));
+  return [...new Set(productIds)].filter((id) => draft.has(id));
+}

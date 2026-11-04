@@ -5,7 +5,8 @@
  * его форма описана в `model/meta.ts`.
  */
 import type { Schemas } from "@shop/core/api/schemas";
-import { apiGet, apiPatch, apiPut } from "@/lib/http";
+import { SLOW_TIMEOUT_MS } from "@shop/core/http";
+import { apiGet, apiPatch, apiPost, apiPut } from "@/lib/http";
 import type { CardItem, CardStatusCode } from "./model/item";
 import type { CardLast, CardReviewData } from "./model/meta";
 import { normalizeSchema, type CardSchema } from "./model/schema";
@@ -16,6 +17,9 @@ export type CardStats = Schemas["CardsStats"];
 export type CardImportItemResult = Schemas["CardItemResult"] & { missing?: string[] | null; message?: string | null };
 export type CardImportResult = Omit<Schemas["CardsImportResult"], "items"> & { items: CardImportItemResult[] };
 
+/** Итог «Фото по ссылке»: ключ нового фото, откуда взято, все фото товара по порядку. */
+export type PhotoImportResult = Schemas["CatalogProductPhotoImportResult"];
+
 export type CardExportStatus = "draft" | "ai_filled" | "incomplete" | "unfinished" | "all";
 
 
@@ -24,6 +28,10 @@ const toItem = (d: Schemas["CardExportItem"]): CardItem => d;
 
 export const cardsApi = {
   stats: (): Promise<CardStats> => apiGet<CardStats>("/api/admin/cards/stats"),
+
+  /** Скачать фото по ссылке (картинка или страница товара), привести к квадрату 1600 и добавить товару последним. */
+  importPhoto: (productId: string, url: string): Promise<PhotoImportResult> =>
+    apiPost<PhotoImportResult>(`/api/admin/products/${productId}/photos/import`, { url } satisfies Schemas["PhotoImportRequest"], undefined, SLOW_TIMEOUT_MS),
 
   async export(status: CardExportStatus = "all", ids?: string[]): Promise<CardItem[]> {
     const qs = new URLSearchParams({ status });

@@ -11,6 +11,7 @@ import { invalidateTranslations } from "@/features/translation";
 import { catalogKeys } from "@/features/catalog";
 import { cardsApi, type CardStats } from "./api";
 import { cardsKeys } from "./keys";
+import { unfinishedOf } from "./model/screen";
 
 /** Опрос счётчиков «Карточек»: 2 минуты, как было. */
 const STATS_REFETCH_MS = QUERY_PRESETS.live.refetchInterval * 4;
@@ -29,6 +30,12 @@ export function useCardStats() {
 /** Every product with its card data (the catalog is small — filtered on the client). */
 export function useCardItems() {
   return useQuery({ queryKey: cardsKeys.export(), queryFn: () => cardsApi.export("all"), staleTime: QUERY_PRESETS.list.staleTime });
+}
+
+/** Which of these products still need a card (tab «Оформить») — for «Оформить с ИИ» on other screens. */
+export function useUnfinishedCards(productIds: string[]): string[] {
+  const q = useCardItems();
+  return q.data ? unfinishedOf(productIds, q.data) : [];
 }
 
 /** Схема каталога в виде «Карточек» (5 минут, как было). */

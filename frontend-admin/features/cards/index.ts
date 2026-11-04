@@ -2,5 +2,6 @@
 export { CardsScreen } from "./ui/screen/CardsScreen";
 export { CardCompletionModal, type CardCompletionResult } from "./ui/completion/CardCompletionModal";
 export { cardsKeys } from "./keys";
-export { invalidateCards, pendingCards, useCardItems, useCardSchema, useCardStats } from "./queries";
+export { invalidateCards, pendingCards, useCardItems, useUnfinishedCards, useCardSchema, useCardStats } from "./queries";
 export type { CardStats } from "./api";
+export { cardsWizardHref } from "./model/screen";
