@@ -2505,6 +2505,23 @@ export interface paths {
         patch: operations["AdminCatalogController_cardStatus"];
         trace?: never;
     };
+    "/api/admin/products/{id}/photos/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Download a photo by link, square it to 1600 px WebP on its own edge colour and add it last */
+        post: operations["AdminProductPhotoController_importPhoto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/promocodes": {
         parameters: {
             query?: never;
@@ -5769,6 +5786,11 @@ export interface components {
             /** Format: int32 */
             sortOrder: number;
         };
+        CatalogProductPhotoImportResult: {
+            imageKeys: string[];
+            key: string;
+            source: string;
+        };
         CatalogSchemaDto: {
             attributes: components["schemas"]["SpecAttributeDto"][];
             brands: components["schemas"]["CatalogBrandDto"][];
@@ -7494,6 +7516,9 @@ export interface components {
             /** Format: date-time */
             to: string;
             token: string;
+        };
+        PhotoImportRequest: {
+            url: string;
         };
         Point: {
             /** Format: int64 */
@@ -12805,6 +12830,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AdminProductDto"];
+                };
+            };
+        };
+    };
+    AdminProductPhotoController_importPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhotoImportRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CatalogProductPhotoImportResult"];
                 };
             };
         };

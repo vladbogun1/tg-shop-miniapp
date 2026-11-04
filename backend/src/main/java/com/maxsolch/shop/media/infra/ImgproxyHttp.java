@@ -15,8 +15,8 @@ import java.time.Duration;
 
 /**
  * imgproxy over HTTP, from inside the compose network (its public path has no authorisation, so the call is made only
- * after the app accepted a signed link). 3 s to connect, 15 s for a render; a GET, but no retry is configured: the
- * caller falls back to the original.
+ * after the app accepted a signed link). 3 s to connect, 15 s for a render (30 s for the square: trim + enlarge of a
+ * big original); a GET, but no retry is configured: the caller falls back or reports the failure.
  */
 @Slf4j
 @Component
@@ -24,6 +24,9 @@ public class ImgproxyHttp implements Imgproxy {
 
     private static final HttpClientSettings HTTP = HttpClientSettings.defaults("imgproxy")
             .withTimeouts(Duration.ofSeconds(3), Duration.ofSeconds(15));
+    private static final Duration SQUARE_TIMEOUT = Duration.ofSeconds(30);
+    /** Colour distance for trim: JPEG noise around a flat background stays under it, a product's edge does not. */
+    private static final int TRIM_THRESHOLD = 12;
 
     private final ResilientHttp http;
     private final String imgproxyUrl;
@@ -38,23 +41,42 @@ public class ImgproxyHttp implements Imgproxy {
 
     @Override
     public Rendered fit(String objectKey, int width) {
+        // rs:fit keeps the whole picture readable; cropping it to a square could cut off exactly
+        // the part the shop needs to see.
+        return get(objectKey, "rs:fit:" + width + ":" + width, "webp", Duration.ofSeconds(15));
+    }
+
+    @Override
+    public Rendered preview(String objectKey, int width) {
+        return get(objectKey, "rs:fit:" + width + ":" + width, "png", Duration.ofSeconds(15));
+    }
+
+    @Override
+    public Rendered square(String objectKey, int size, int padding, Rgb bg) {
+        int inner = size - 2 * padding;
+        // t = trim the flat margins (colour taken from the top-left pixel), rs:fit:W:H:enlarge:extend = fit into the
+        // inner square, enlarging small pictures, and extend the canvas to it; bg fills the extension and any
+        // transparency; pd adds the even margin on every side. imgproxy strips metadata by default.
+        String options = "t:" + TRIM_THRESHOLD + "/rs:fit:" + inner + ":" + inner + ":1:1/g:ce"
+                + "/bg:" + bg.r() + ":" + bg.g() + ":" + bg.b() + "/pd:" + padding + "/q:90";
+        return get(objectKey, options, "webp", SQUARE_TIMEOUT);
+    }
+
+    private Rendered get(String objectKey, String options, String format, Duration timeout) {
         if (imgproxyUrl.isBlank()) {
             return null;
         }
-        // rs:fit keeps the whole picture readable; cropping it to a square could cut off exactly
-        // the part the shop needs to see.
-        String url = imgproxyUrl + "/insecure/rs:fit:" + width + ":" + width
-                + "/plain/s3://" + bucket + "/" + objectKey + "@webp";
+        String url = imgproxyUrl + "/insecure/" + options + "/plain/s3://" + bucket + "/" + objectKey + "@" + format;
         try {
             HttpResponse<InputStream> response = http.send(
-                    HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(15)).GET().build(),
+                    HttpRequest.newBuilder(URI.create(url)).timeout(timeout).GET().build(),
                     HttpResponse.BodyHandlers.ofInputStream());
             if (response.statusCode() != 200) {
                 response.body().close();
                 log.debug("imgproxy returned {} for {}", response.statusCode(), objectKey);
                 return null;
             }
-            String contentType = response.headers().firstValue("Content-Type").orElse("image/webp");
+            String contentType = response.headers().firstValue("Content-Type").orElse("image/" + format);
             return new Rendered(response.body(), contentType);
         } catch (Exception e) {
             // Falling back to the original is slow but correct; failing the request is neither.

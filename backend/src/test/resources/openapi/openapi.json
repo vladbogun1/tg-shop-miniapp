@@ -3890,6 +3890,28 @@
         ],
         "type" : "object"
       },
+      "CatalogProductPhotoImportResult" : {
+        "properties" : {
+          "imageKeys" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "key" : {
+            "type" : "string"
+          },
+          "source" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "imageKeys",
+          "key",
+          "source"
+        ],
+        "type" : "object"
+      },
       "CatalogSchemaDto" : {
         "properties" : {
           "attributes" : {
@@ -9764,6 +9786,19 @@
           "prevTo",
           "to",
           "token"
+        ],
+        "type" : "object"
+      },
+      "PhotoImportRequest" : {
+        "properties" : {
+          "url" : {
+            "maxLength" : 2048,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "url"
         ],
         "type" : "object"
       },
@@ -21134,6 +21169,52 @@
         "summary" : "Card status DRAFT | AI_FILLED | READY («Проверено»)",
         "tags" : [
           "Admin Catalog"
+        ]
+      }
+    },
+    "/api/admin/products/{id}/photos/import" : {
+      "post" : {
+        "operationId" : "AdminProductPhotoController_importPhoto",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PhotoImportRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CatalogProductPhotoImportResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Download a photo by link, square it to 1600 px WebP on its own edge colour and add it last",
+        "tags" : [
+          "Admin Products"
         ]
       }
     },

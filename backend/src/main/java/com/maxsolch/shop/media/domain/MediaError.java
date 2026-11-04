@@ -11,7 +11,19 @@ public enum MediaError implements ErrorCode {
     FILE_TOO_BIG,
     BAD_FILE_TYPE,
     NO_FILE,
-    BAD_EXTENSION;
+    BAD_EXTENSION,
+    /** Import by link: not an http(s) address on the standard port. */
+    IMAGE_URL_BAD,
+    /** Import by link: the address is internal (loopback, private network, metadata). */
+    IMAGE_URL_BLOCKED,
+    /** Import by link: the site did not give the file ({0} = status or reason). */
+    IMAGE_FETCH_FAILED,
+    /** Import by link: a page without a picture in og:image / ld+json. */
+    IMAGE_NOT_ON_PAGE,
+    /** Import by link: the picture is smaller than {0} px on its longer side. */
+    IMAGE_TOO_SMALL,
+    /** Import by link: imgproxy could not render the square. */
+    IMAGE_PROCESSING_FAILED;
 
     private final String code;
 
