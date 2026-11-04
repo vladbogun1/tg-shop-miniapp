@@ -28,6 +28,8 @@ export type CardLine = Schemas["CardLine"];
 export type MergeCandidate = Schemas["MergeCandidateDto"];
 /** POST …/cancel-request/approve — что стало с деньгами. */
 export type CancelApproveResult = Schemas["ApproveResponse"];
+/** Способ доплаты: ONLINE — кнопка у покупателя, ON_DELIVERY — наложкой, WAIVE — скидкой за счёт магазина. */
+export type TopUpMode = Schemas["TopUpRequest"]["mode"];
 /** Строка списка «Отправка». */
 export type AdminDispatchOrder = Schemas["DispatchOrderDto"];
 export type OrderMessage = Schemas["OrderMessageDto"];
@@ -188,6 +190,8 @@ export const orderApi = {
   removeItem: (id: string, itemId: number) => apiDelete<AdminOrderDetail>(`/api/admin/orders/${id}/items/${itemId}`),
   /** Скидка: промокод, ручная сумма/процент или сброс. */
   applyDiscount: (id: string, body: DiscountBody) => apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/discount`, body),
+  /** Как берём доплату оплаченного заказа: онлайн (по умолчанию), наложкой при получении или за счёт магазина. */
+  chooseTopUp: (id: string, mode: TopUpMode) => apiPost<AdminOrderDetail>(`/api/admin/orders/${id}/top-up`, { mode }),
 
   /** Запрос отмены от покупателя: отмена (CHANGED_MIND) + возврат на склад + полный возврат monobank. */
   approveCancelRequest: (id: string, comment?: string) =>

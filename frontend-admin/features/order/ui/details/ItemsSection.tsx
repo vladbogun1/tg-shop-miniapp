@@ -1,12 +1,13 @@
 "use client";
 
-/** «Состав»: позиции, приз кейса, итоги и кнопки правки заказа. */
+/** «Состав»: позиции, приз кейса, итоги, доплата и кнопки правки заказа. */
 import type { AdminOrderDetail } from "../../api";
 import type { DetailHandlers } from "./types";
 import { CaseGiftNotes } from "./CaseGiftNotes";
 import { ItemsActions } from "./ItemsActions";
 import { OrderItemRow } from "./OrderItemRow";
 import { Section } from "./section";
+import { TopUpBlock } from "./TopUpBlock";
 import { TotalsBlock } from "./TotalsBlock";
 
 export function ItemsSection({ order, h }: { order: AdminOrderDetail; h: DetailHandlers }) {
@@ -19,6 +20,7 @@ export function ItemsSection({ order, h }: { order: AdminOrderDetail; h: DetailH
         <CaseGiftNotes order={order} />
       </div>
       <TotalsBlock order={order} />
+      <TopUpBlock order={order} onChanged={h.onPaymentChanged} />
       <ItemsActions order={order} h={h} />
     </Section>
   );

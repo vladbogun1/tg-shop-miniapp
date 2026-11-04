@@ -6,7 +6,7 @@ import { useApiMutation } from "@shop/ui/mutation";
 import { useQuery } from "@tanstack/react-query";
 import { costingApi, procurementKeys } from "@/features/procurement";
 import { paymentApi, paymentKeys } from "@/features/payment";
-import { orderApi, type AdminOrderDetail, type CancelApproveResult } from "../api";
+import { orderApi, type AdminOrderDetail, type CancelApproveResult, type TopUpMode } from "../api";
 import { orderKeys } from "../keys";
 
 export function useOrderAuditQuery(orderId: string) {
@@ -73,3 +73,19 @@ export function useDeclineCancelMutation(order: Pick<AdminOrderDetail, "id">, cb
     },
   });
 }
+
+/** «Доплата»: способ, которым берём разницу; текст тоста — по выбранному способу. */
+export function useTopUpModeMutation(orderId: string, onDone?: () => void) {
+  return useApiMutation<AdminOrderDetail, TopUpMode>({
+    mutationFn: (mode) => orderApi.chooseTopUp(orderId, mode),
+    success: (_o, mode) => TOP_UP_DONE[mode],
+    errorFallback: "Не удалось изменить способ доплаты",
+    onSuccess: () => onDone?.(),
+  });
+}
+
+const TOP_UP_DONE: Record<TopUpMode, string> = {
+  ONLINE: "Доплата снова онлайн — у покупателя кнопка «Доплатити»",
+  ON_DELIVERY: "Доплата наложкой — заказ можно отправлять",
+  WAIVE: "Доплата снята, разница — скидкой за счёт магазина",
+};

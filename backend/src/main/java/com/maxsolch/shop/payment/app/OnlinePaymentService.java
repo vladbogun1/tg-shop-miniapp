@@ -172,7 +172,8 @@ public class OnlinePaymentService {
         }
         long validity = Math.max(60, Duration.between(now, expiresAt).toSeconds());
         String shortId = key.substring(0, 8);
-        List<MonobankGateway.BasketItem> basket = PaymentBasket.of(order, amount, shortId, taxCodes());
+        List<MonobankGateway.BasketItem> basket = PaymentBasket.of(order, amount, shortId, taxCodes(),
+                invoices.findByOrderIdOrderByCreatedAtDesc(orderId));
         MonobankGateway.CreatedInvoice created = createInvoice(new MonobankGateway.CreateInvoice(
                 amount,
                 key,
@@ -186,10 +187,9 @@ public class OnlinePaymentService {
                 PaymentBasket.toJson(basket), now.plusSeconds(validity));
         invoices.save(inv);
         log.info("monobank invoice {} for order {}: {} kop", created.invoiceId(), key, amount);
-        journal(ActivityLog.Entry.of(ActivityLog.PAYMENT,
-                        "INVOICE_CREATED").order(orderId)
-                .text("Счёт monobank на " + MoneyFormat.amount(amount) + " грн"
-                        + (amount < order.getTotalMinor() ? " (предоплата)" : "")
+        journal(ActivityLog.Entry.of(ActivityLog.PAYMENT, "INVOICE_CREATED").order(orderId)
+                .text("Счёт monobank на " + MoneyFormat.amount(amount) + " грн" + (order.getReceivedMinor() > 0
+                        ? " (доплата)" : amount < order.getTotalMinor() ? " (предоплата)" : "")
                         + " · " + (returnTo == ReturnTo.SITE ? "сайт" : "Mini App")
                         + (embedded ? ", в окне" : ""))
                 .detail("invoice", created.invoiceId())

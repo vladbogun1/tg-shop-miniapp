@@ -200,7 +200,7 @@ public final class InboxRules {
      */
     static boolean isApprovedUnpaid(InboxOrderRow o) {
         return o.status() == OrderStatus.APPROVED && o.paymentDueAt() != null && onlineDue(o) > 0
-                && !isCancelRequested(o);
+                && !(o.paid() && o.balanceOnDelivery()) && !isCancelRequested(o);
     }
 
     /** What is still to pay online; the formula lives in {@link OrderMoney#amountDueMinor(long, long, long)}. */

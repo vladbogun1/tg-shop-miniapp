@@ -52,6 +52,19 @@ public abstract class OrderPlacement extends OrderHousekeeping {
         prepaymentMinor = 0;
     }
 
+    /**
+     * Where the rest of a paid online order is paid: {@code true} — наложкой on delivery (shipping is not blocked,
+     * the customer may still pay online), {@code false} — online before shipping, as the order was placed.
+     */
+    public void collectBalanceOnDelivery(boolean onDelivery) {
+        balanceOnDelivery = onDelivery;
+    }
+
+    /** The bot told the customer about this top-up ({@link OrderMoney#topUpNotice}). */
+    public void markTopUpNotice(String notice) {
+        topupNotice = notice;
+    }
+
     /** No deadline to pay (an admin sale, a fully covered or merged order). */
     public void dropPaymentDeadline() {
         paymentDueAt = null;

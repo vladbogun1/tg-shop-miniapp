@@ -2023,6 +2023,23 @@ export interface paths {
         patch: operations["AdminOrderController_updateStatus"];
         trace?: never;
     };
+    "/api/admin/orders/{id}/top-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** ONLINE — the customer pays in the order (default); ON_DELIVERY — наложкой; WAIVE — a discount for it */
+        post: operations["AdminOrderTopUpController_choose"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/orders/{id}/tracking": {
         parameters: {
             query?: never;
@@ -7210,6 +7227,7 @@ export interface components {
             amountDueMinor: number;
             /** Format: date-time */
             approvedAt: string | null;
+            balanceOnDelivery: boolean;
             cancelRequestAdminComment: string | null;
             cancelRequestReason: string | null;
             /** Format: date-time */
@@ -7279,6 +7297,7 @@ export interface components {
             /** Format: int64 */
             tgUserId: number | null;
             tgUsername: string | null;
+            topUpNotified: boolean;
             /** Format: int64 */
             totalMinor: number;
             trackingNumber: string | null;
@@ -8628,6 +8647,10 @@ export interface components {
             title: string;
             /** Format: int64 */
             units: number;
+        };
+        TopUpRequest: {
+            /** @enum {string} */
+            mode: "ONLINE" | "ON_DELIVERY" | "WAIVE";
         };
         TotpCodeRequest: {
             code: string;
@@ -11947,6 +11970,32 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateOrderStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["OrderDetailDto"];
+                };
+            };
+        };
+    };
+    AdminOrderTopUpController_choose: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TopUpRequest"];
             };
         };
         responses: {

@@ -44,7 +44,7 @@ public class InboxStore {
         String sql = "select bin_to_uuid(o.id) id, o.status, o.customer_name, o.total_minor, o.received_minor, "
                 + "o.prepayment_minor, o.refunded_minor, o.created_at, o.approved_at, o.shipped_at, o.rejected_at, "
                 + "o.returned_at, o.paid, o.paid_at, o.reject_reason, o.reject_reason_code, "
-                + "o.cancel_request_status, o.cancel_request_reason, o.cancel_requested_at, o.payment_due_at, "
+                + "o.cancel_request_status, o.cancel_request_reason, o.cancel_requested_at, o.payment_due_at, o.balance_on_delivery, "
                 + "exists (select 1 from payment_invoices pi where pi.order_id = o.id "
                 + "and pi.applied_at is not null) paid_online "
                 + "from orders o "
@@ -79,7 +79,8 @@ public class InboxStore {
                         rs.getString("cancel_request_status"),
                         rs.getString("cancel_request_reason"),
                         ts(rs, "cancel_requested_at"),
-                        ts(rs, "payment_due_at")),
+                        ts(rs, "payment_due_at"),
+                        rs.getBoolean("balance_on_delivery")),
                 Timestamp.from(newCutoff), Timestamp.from(approvedCutoff),
                 Timestamp.from(returnsSince), Timestamp.from(returnsSince));
     }

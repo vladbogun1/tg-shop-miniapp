@@ -173,7 +173,9 @@ class OrderDetailView {
                 .giftCaseOpenable(GiftCaseRules.giftCaseOpenable(o))
                 .giftDiscountMinor(o.getGiftDiscountMinor())
                 .exchangeOfId(o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()))
-                .uncollectedMinor(pay.uncollectedMinor());
+                .uncollectedMinor(pay.uncollectedMinor())
+                .balanceOnDelivery(o.isBalanceOnDelivery())
+                .topUpNotified(o.getTopupNotice() != null && o.getTopupNotice().equals(OrderMoney.topUpNotice(o)));
     }
 
     private OrderDetailDto.AdminExtras adminExtras(Order o) {

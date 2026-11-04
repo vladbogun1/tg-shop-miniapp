@@ -8835,6 +8835,9 @@
             "nullable" : true,
             "type" : "string"
           },
+          "balanceOnDelivery" : {
+            "type" : "boolean"
+          },
           "cancelRequestAdminComment" : {
             "nullable" : true,
             "type" : "string"
@@ -9065,6 +9068,9 @@
             "nullable" : true,
             "type" : "string"
           },
+          "topUpNotified" : {
+            "type" : "boolean"
+          },
           "totalMinor" : {
             "format" : "int64",
             "type" : "integer"
@@ -9082,6 +9088,7 @@
           "admin",
           "amountDueMinor",
           "approvedAt",
+          "balanceOnDelivery",
           "cancelRequestAdminComment",
           "cancelRequestReason",
           "cancelRequestResolvedAt",
@@ -9128,6 +9135,7 @@
           "subtotalMinor",
           "tgUserId",
           "tgUsername",
+          "topUpNotified",
           "totalMinor",
           "trackingNumber",
           "uncollectedMinor"
@@ -13592,6 +13600,22 @@
           "stock",
           "title",
           "units"
+        ],
+        "type" : "object"
+      },
+      "TopUpRequest" : {
+        "properties" : {
+          "mode" : {
+            "enum" : [
+              "ONLINE",
+              "ON_DELIVERY",
+              "WAIVE"
+            ],
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "mode"
         ],
         "type" : "object"
       },
@@ -19719,6 +19743,52 @@
         "summary" : "Change order status",
         "tags" : [
           "Admin Orders"
+        ]
+      }
+    },
+    "/api/admin/orders/{id}/top-up" : {
+      "post" : {
+        "operationId" : "AdminOrderTopUpController_choose",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TopUpRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OrderDetailDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "ONLINE — the customer pays in the order (default); ON_DELIVERY — наложкой; WAIVE — a discount for it",
+        "tags" : [
+          "Admin Order Top-up"
         ]
       }
     },
@@ -26236,6 +26306,10 @@
     {
       "description" : "The signed-in admin's own account: password, 2FA, sign-ins, devices",
       "name" : "Admin Account"
+    },
+    {
+      "description" : "The rest of a paid order that got more expensive after the payment",
+      "name" : "Admin Order Top-up"
     },
     {
       "description" : "Public site revalidation",

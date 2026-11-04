@@ -3,6 +3,7 @@ package com.maxsolch.shop.order.app;
 import com.maxsolch.shop.order.domain.OrderEvents;
 
 import com.maxsolch.shop.order.domain.Order;
+import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.jobs.Workers;
@@ -205,7 +206,12 @@ public class OrderNotificationListener {
                     customer.notifyCustomerDiscount(order);
                 }
             };
-            case COMPOSITION -> () -> customer.notifyCustomerOrderChanged(order);
+            // A paid order that now costs more: TopUpNoticeJobs sends «Потрібна доплата» once the edits are over.
+            case COMPOSITION -> () -> {
+                if (OrderMoney.topUpNotice(order) == null) {
+                    customer.notifyCustomerOrderChanged(order);
+                }
+            };
             case TRACKING -> () -> customer.notifyCustomerTracking(order);
             // dispatch card refresh only
             case DETAILS, SILENT -> () -> { };

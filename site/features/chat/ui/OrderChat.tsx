@@ -12,7 +12,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { hasUnreadFromShop } from "@shop/customer/chat/model";
 import { useThread } from "@shop/customer/chat/use-thread";
 import { orderKeys } from "@shop/customer/order/keys";
-import { type Message, type SendMessageRequest } from "@shop/core/types";
+import { type Message, type OrderDetail, type SendMessageRequest } from "@shop/core/types";
 import { noFadeFlash } from "@shop/ui/motion";
 import { Button } from "@shop/ui/primitives";
 import { useT } from "@/i18n/context";
@@ -21,9 +21,11 @@ import { useEscape } from "@/lib/hooks";
 import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
 import { connectOrderChat } from "@/lib/ws";
+import { ChatTopUpBanner } from "./ChatTopUpBanner";
 import { MessageBubble } from "./MessageBubble";
 
-export function OrderChat({ orderId }: { orderId: string }) {
+/** `order` — для плашки «Потрібна доплата» над перепиской. */
+export function OrderChat({ orderId, order }: { orderId: string; order?: OrderDetail }) {
   const t = useT();
   const fmt = useFmt();
   const [connected, setConnected] = useState(false);
@@ -88,6 +90,8 @@ export function OrderChat({ orderId }: { orderId: string }) {
           {connected ? t("chat.online") : t("chat.connecting")}
         </p>
       </header>
+
+      {order && <ChatTopUpBanner order={order} />}
 
       <div
         ref={scrollRef}

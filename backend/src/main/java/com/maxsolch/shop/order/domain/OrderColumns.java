@@ -101,6 +101,14 @@ public abstract class OrderColumns {
     @Column(name = "uncollected_minor", nullable = false)
     protected long uncollectedMinor = 0;
 
+    /** V80: the rest of a paid online order may be collected наложкой (the admin allowed it); shipping is not blocked. */
+    @Column(name = "balance_on_delivery", nullable = false)
+    protected boolean balanceOnDelivery = false;
+
+    /** V80: which top-up the bot already told the customer about («15000:ONLINE»); null = none yet. */
+    @Column(name = "topup_notice", length = 32)
+    protected String topupNotice;
+
     /** When the latest return was registered. */
     @Column(name = "returned_at")
     protected Instant returnedAt;

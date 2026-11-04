@@ -95,6 +95,8 @@
     "giftDiscountMinor" : 0,
     "exchangeOfId" : null,
     "uncollectedMinor" : 0,
+    "balanceOnDelivery" : false,
+    "topUpNotified" : false,
     "admin" : null
   },
   "customerDetail_ru" : {
@@ -193,6 +195,8 @@
     "giftDiscountMinor" : 0,
     "exchangeOfId" : null,
     "uncollectedMinor" : 0,
+    "balanceOnDelivery" : false,
+    "topUpNotified" : false,
     "admin" : null
   },
   "customerDetail_en" : {
@@ -291,6 +295,8 @@
     "giftDiscountMinor" : 0,
     "exchangeOfId" : null,
     "uncollectedMinor" : 0,
+    "balanceOnDelivery" : false,
+    "topUpNotified" : false,
     "admin" : null
   },
   "adminDetail" : {
@@ -389,6 +395,8 @@
     "giftDiscountMinor" : 0,
     "exchangeOfId" : null,
     "uncollectedMinor" : 0,
+    "balanceOnDelivery" : false,
+    "topUpNotified" : false,
     "admin" : {
       "archivedAt" : null,
       "archivedBy" : null,

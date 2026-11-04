@@ -35,6 +35,7 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   ORDER_GIFT: "Подарок в заказ",
   ORDER_ITEM_ADD: "Позиция добавлена",
   ORDER_ITEM_QTY: "Количество позиции",
+  ORDER_TOPUP: "Как берём доплату",
   ORDER_ITEM_REMOVE: "Позиция удалена",
   ORDER_EXCHANGE: "Обмен товара",
   ORDER_MERGE: "Объединение заказов",

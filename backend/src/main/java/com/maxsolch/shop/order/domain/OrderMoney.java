@@ -57,9 +57,35 @@ public final class OrderMoney {
         return Math.max(0, dueOnlineMinor(totalMinor, prepaymentMinor) - Math.max(0, receivedMinor));
     }
 
-    /** Онлайн-заказ (у него есть срок оплаты), у которого онлайн-часть ещё не пришла. */
+    /**
+     * Онлайн-заказ (у него есть срок оплаты), у которого онлайн-часть ещё не пришла. Остаток, который админ
+     * разрешил забрать наложкой (V80), отправку не блокирует.
+     */
     public static boolean onlinePaymentMissing(Order order) {
-        return order.getPaymentDueAt() != null && amountDueMinor(order) > 0;
+        return order.getPaymentDueAt() != null && amountDueMinor(order) > 0
+                && !(order.isBalanceOnDelivery() && order.isPaid());
+    }
+
+    /**
+     * Доплата: оплаченный онлайн-заказ, который ещё можно менять (NEW / APPROVED), подорожал после оплаты
+     * (админ добавил товар) — сколько покупателю доплатить. Замена по обмену не в счёт: у неё свой текст.
+     */
+    public static long topUpDueMinor(Order order) {
+        boolean open = order.getStatus() == OrderStatus.NEW || order.getStatus() == OrderStatus.APPROVED;
+        if (!open || !order.isPaid() || order.getReceivedMinor() <= 0 || order.getPaymentDueAt() == null
+                || order.getExchangeOfOrderId() != null) {
+            return 0;
+        }
+        return amountDueMinor(order);
+    }
+
+    /**
+     * О какой доплате говорить покупателю: «15000:ONLINE» / «15000:COD»; null — доплаты нет. Бот пишет, когда
+     * это значение отличается от {@code topupNotice} заказа (о той же доплате второй раз не пишет).
+     */
+    public static String topUpNotice(Order order) {
+        long due = topUpDueMinor(order);
+        return due <= 0 ? null : due + (order.isBalanceOnDelivery() ? ":COD" : ":ONLINE");
     }
 
     /** Фактически полученное по заказу, не больше итога и не меньше нуля. */

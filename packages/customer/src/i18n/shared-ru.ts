@@ -38,6 +38,8 @@ export const sharedRu = {
   "chat.attachmentAlt": "Вложение",
   "chat.attach": "Прикрепить изображение",
   "chat.send": "Отправить",
+  "chat.topUp": "В заказ добавили товар — нужна доплата {amount}.",
+  "chat.topUpCod": "Можно доплатить онлайн или при получении на почте.",
   // ── product ───────────────────────────────────────────────────────────────
   "product.inStock": "В наличии",
   "product.outOfStock": "Нет в наличии",

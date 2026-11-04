@@ -10,7 +10,19 @@ public record InboxOrderRow(String id, OrderStatus status, String customerName, 
                        Instant shippedAt, Instant rejectedAt, Instant returnedAt, boolean paid,
                        Instant paidAt, boolean paidOnline, String rejectReason, String rejectReasonCode,
                        String cancelRequestStatus, String cancelRequestReason, Instant cancelRequestedAt,
-                       Instant paymentDueAt) {
+                       Instant paymentDueAt, boolean balanceOnDelivery) {
+
+    /** Without the наложка-for-the-rest flag (V80; older callers / tests): the rest is paid online. */
+    public InboxOrderRow(String id, OrderStatus status, String customerName, long totalMinor, long receivedMinor,
+                    long prepaymentMinor, long refundedMinor, Instant createdAt, Instant approvedAt,
+                    Instant shippedAt, Instant rejectedAt, Instant returnedAt, boolean paid,
+                    Instant paidAt, boolean paidOnline, String rejectReason, String rejectReasonCode,
+                    String cancelRequestStatus, String cancelRequestReason, Instant cancelRequestedAt,
+                    Instant paymentDueAt) {
+        this(id, status, customerName, totalMinor, receivedMinor, prepaymentMinor, refundedMinor, createdAt,
+                approvedAt, shippedAt, rejectedAt, returnedAt, paid, paidAt, paidOnline, rejectReason,
+                rejectReasonCode, cancelRequestStatus, cancelRequestReason, cancelRequestedAt, paymentDueAt, false);
+    }
 
     /** Without the online payment deadline (older callers / tests): not an online-payment order. */
     public InboxOrderRow(String id, OrderStatus status, String customerName, long totalMinor, long receivedMinor,

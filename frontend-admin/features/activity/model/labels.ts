@@ -40,6 +40,7 @@ export const TYPE_LABEL: Record<string, string> = {
   ORDER_GIFT: "Подарок в заказе",
   ORDER_DISCOUNT: "Скидка в заказе",
   ORDER_CHANGED: "Заказ изменён",
+  ORDER_TOPUP: "Нужна доплата",
   ORDER_TRACKING: "Новая ТТН",
   ORDER_EXCHANGE: "Обмен оформлен",
   ORDER_MERGE: "Заказы объединены",

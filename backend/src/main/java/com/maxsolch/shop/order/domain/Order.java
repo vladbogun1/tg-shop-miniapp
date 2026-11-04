@@ -102,6 +102,18 @@ public class Order extends OrderPlacement {
         totalMinor = OrderMoney.totalMinor(subtotal, discountMinor);
     }
 
+    /**
+     * The shop does not take the top-up: {@code amountMinor} more off the order as a discount (a promo code label
+     * stays, otherwise «Ручная скидка»). {@link #reprice} keeps it when the lines change later.
+     */
+    public void waiveBalance(long amountMinor) {
+        if (promoCode == null || promoCode.isBlank()) {
+            promoCode = "Ручная скидка";
+        }
+        discountMinor = Math.min(subtotalMinor, discountMinor + Math.max(0, amountMinor));
+        totalMinor = OrderMoney.totalMinor(subtotalMinor, discountMinor);
+    }
+
     /** The tier's guaranteed discount, chosen instead of a case: comes off the order and is remembered. */
     public void grantGiftDiscount(String tier, long amountMinor) {
         giftTier = tier;

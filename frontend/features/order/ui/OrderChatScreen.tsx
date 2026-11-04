@@ -26,6 +26,7 @@ import { hasUnreadFromShop } from "@shop/customer/chat/model";
 import { useThread } from "@shop/customer/chat/use-thread";
 import { orderKeys } from "@shop/customer/order/keys";
 import { connectOrderChat } from "@/lib/ws";
+import { ChatTopUpBanner } from "./ChatTopUpBanner";
 import { ChatComposer, ChatFrame, ChatHeader, ChatLightbox, ChatMessages, useChatToken } from "@/features/chat";
 
 export function OrderChatScreen() {
@@ -116,6 +117,8 @@ export function OrderChatScreen() {
 
         {order && <StatusChip status={order.status} label={t(`status.${order.status}`)} />}
       </ChatHeader>
+
+      <ChatTopUpBanner order={order} onPay={() => router.push(`/account/orders/${id}`)} />
 
       <ChatMessages
         scrollRef={scrollRef}

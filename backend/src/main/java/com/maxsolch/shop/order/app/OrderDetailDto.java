@@ -78,6 +78,10 @@ public record OrderDetailDto(
         @Nullable String exchangeOfId,
         /** Paid value of the units refused at the branch (partial pickup, V72): not part of наложка. */
         long uncollectedMinor,
+        /** V80: the rest of the paid order (a top-up) may be paid наложкой on delivery — the admin allowed it. */
+        boolean balanceOnDelivery,
+        /** V80: the bot already told the customer about the current top-up (amountDueMinor of a paid order). */
+        boolean topUpNotified,
         /** Admin only (V68): archive, money journal, write-offs, the parcel coming back; null for customers. */
         @Nullable AdminExtras admin) {
 

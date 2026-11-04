@@ -30,6 +30,8 @@ export const sharedEn: SharedDictionary = {
   "chat.attachmentAlt": "Attachment",
   "chat.attach": "Attach an image",
   "chat.send": "Send",
+  "chat.topUp": "An item was added to your order — {amount} left to pay.",
+  "chat.topUpCod": "You can pay online or on delivery at the post office.",
   // ── product ───────────────────────────────────────────────────────────────
   "product.inStock": "In stock",
   "product.outOfStock": "Out of stock",

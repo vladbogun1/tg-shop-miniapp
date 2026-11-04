@@ -95,6 +95,8 @@
     "giftDiscountMinor" : 0,
     "exchangeOfId" : "00000000-0000-4000-8000-000000000030",
     "uncollectedMinor" : 0,
+    "balanceOnDelivery" : false,
+    "topUpNotified" : false,
     "admin" : null
   },
   "adminDetail" : {
@@ -206,6 +208,8 @@
     "giftDiscountMinor" : 0,
     "exchangeOfId" : "00000000-0000-4000-8000-000000000030",
     "uncollectedMinor" : 0,
+    "balanceOnDelivery" : false,
+    "topUpNotified" : false,
     "admin" : {
       "archivedAt" : "2026-10-20T12:00:00Z",
       "archivedBy" : "claude-tech",

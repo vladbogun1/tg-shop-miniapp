@@ -30,6 +30,8 @@ export const sharedUk: SharedDictionary = {
   "chat.attachmentAlt": "Вкладення",
   "chat.attach": "Прикріпити зображення",
   "chat.send": "Надіслати",
+  "chat.topUp": "До замовлення додали товар — потрібна доплата {amount}.",
+  "chat.topUpCod": "Можна доплатити онлайн або при отриманні на пошті.",
   // ── product ───────────────────────────────────────────────────────────────
   "product.inStock": "В наявності",
   "product.outOfStock": "Немає в наявності",

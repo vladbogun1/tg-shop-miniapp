@@ -50,7 +50,10 @@ export function OrderDetailView({ id }: { id: string }) {
 
   return (
     <div>
-      <Link href={href("/account")} className="mb-4 inline-flex items-center gap-1.5 font-display text-[13px] font-semibold uppercase tracking-[.08em] text-[var(--muted)] transition-colors hover:text-[var(--accent-hi)]">
+      <Link
+        href={href("/account")}
+        className="mb-4 inline-flex items-center gap-1.5 font-display text-[13px] font-semibold uppercase tracking-[.08em] text-[var(--muted)] transition-colors hover:text-[var(--accent-hi)]"
+      >
         <ArrowLeft className="h-4 w-4" strokeWidth={2.5} /> {t("order.back")}
       </Link>
       {isLoading && (
@@ -64,7 +67,9 @@ export function OrderDetailView({ id }: { id: string }) {
         <div className="nb flex flex-col items-start gap-3 p-6">
           <WifiOff className="h-7 w-7 text-[var(--muted)]" strokeWidth={2.5} />
           <p className="text-[15px] font-medium text-[var(--muted)]">
-            {error instanceof ApiError && error.status === 404 ? t("order.notFound") : t("order.error")}
+            {error instanceof ApiError && error.status === 404
+              ? t("order.notFound")
+              : t("order.error")}
           </p>
           <Button variant="accent" size="sm" onClick={() => void refetch()}>
             {t("common.retry")}
@@ -76,7 +81,13 @@ export function OrderDetailView({ id }: { id: string }) {
   );
 }
 
-function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => void }) {
+function OrderBody({
+  order,
+  onChange,
+}: {
+  order: OrderDetail;
+  onChange: () => void;
+}) {
   const { t, href } = useI18n();
   const fmt = useFmt();
   const qc = useQueryClient();
@@ -105,7 +116,14 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
   const cancelRef = useRef<HTMLDivElement>(null);
   function openCancel() {
     setCancelOpen(true);
-    window.setTimeout(() => cancelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+    window.setTimeout(
+      () =>
+        cancelRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        }),
+      50,
+    );
   }
 
   return (
@@ -125,12 +143,14 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
       {giftCase.overlay}
 
       {/* payment comes first: while it is due, it is the one thing to do on this page */}
-      <OrderPayment
-        order={order}
-        onRefetch={refresh}
-        created={created}
-        onCancel={cancelMode === "CANCEL" ? openCancel : undefined}
-      />
+      <div id="order-pay" className="scroll-mt-24">
+        <OrderPayment
+          order={order}
+          onRefetch={refresh}
+          created={created}
+          onCancel={cancelMode === "CANCEL" ? openCancel : undefined}
+        />
+      </div>
 
       <OrderReceipts order={order} />
 
@@ -141,21 +161,33 @@ function OrderBody({ order, onChange }: { order: OrderDetail; onChange: () => vo
       <section className="nb p-5">
         <h3 className="eyebrow mb-4 text-[11px]">{t("order.status")}</h3>
         <StatusTimeline order={order} />
-        {order.status === "REJECTED" && order.rejectReason && !isPaymentTimeout(order) && (
-          <div className="mt-4 rounded-[var(--r)] border border-[color-mix(in_srgb,var(--danger)_45%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,var(--surface))] px-4 py-3">
-            <p className="nb-up text-[11px] font-semibold text-[var(--danger)]">{t("order.rejectReason")}</p>
-            <p className="mt-1 text-[14px] font-semibold text-[var(--ink)]">{order.rejectReason}</p>
-          </div>
-        )}
+        {order.status === "REJECTED" &&
+          order.rejectReason &&
+          !isPaymentTimeout(order) && (
+            <div className="mt-4 rounded-[var(--r)] border border-[color-mix(in_srgb,var(--danger)_45%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,var(--surface))] px-4 py-3">
+              <p className="nb-up text-[11px] font-semibold text-[var(--danger)]">
+                {t("order.rejectReason")}
+              </p>
+              <p className="mt-1 text-[14px] font-semibold text-[var(--ink)]">
+                {order.rejectReason}
+              </p>
+            </div>
+          )}
       </section>
 
       <OrderItemsCard order={order} uncollected={uncollected} />
 
       <div ref={cancelRef}>
-        <Cancellation order={order} mode={cancelMode} open={cancelOpen} setOpen={setCancelOpen} onDone={refresh} />
+        <Cancellation
+          order={order}
+          mode={cancelMode}
+          open={cancelOpen}
+          setOpen={setCancelOpen}
+          onDone={refresh}
+        />
       </div>
 
-      <OrderChat orderId={order.id} />
+      <OrderChat orderId={order.id} order={order} />
     </div>
   );
 }

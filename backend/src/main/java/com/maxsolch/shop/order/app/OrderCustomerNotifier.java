@@ -270,13 +270,25 @@ public class OrderCustomerNotifier {
         });
     }
 
+    /** A paid online order got more expensive (V80) → «Потрібна доплата N» with «Доплатити» to the order page. */
+    public void notifyCustomerTopUp(Order order, long dueMinor) {
+        String amount = money(dueMinor) + " " + nz(order.getCurrency());
+        send("notifyCustomerTopUp", "ORDER_TOPUP", order, locale -> new CustomerBot.Dm(
+                messages.get(locale, "bot.topUp.title") + "\n"
+                        + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
+                        + messages.get(locale, order.isBalanceOnDelivery() ? "bot.topUp.cod" : "bot.topUp.online", amount),
+                customerBot.miniAppButton(messages.get(locale, "bot.topUp.button", amount), "view_" + idStr(order))));
+    }
+
     /** Money arrived online (monobank) → DM the customer that the payment went through. */
     public void onPaymentReceived(Order order, long amountMinor) {
         String cur = nz(order.getCurrency());
+        // A top-up of an order that had been paid before: nothing left to check, it is paid in full.
+        boolean topUp = order.getReceivedMinor() > amountMinor && OrderMoney.amountDueMinor(order) == 0;
         send("onPaymentReceived (customer)", "PAYMENT_RECEIVED", order, locale -> {
             String text = messages.get(locale, "bot.paid.title") + "\n"
                     + messages.get(locale, "bot.order") + " <b>#" + shortId(order) + "</b>\n"
-                    + messages.get(locale, "bot.paid.body", money(amountMinor) + " " + cur);
+                    + messages.get(locale, topUp ? "bot.paid.topUp" : "bot.paid.body", money(amountMinor) + " " + cur);
             return new CustomerBot.Dm(text, orderButton(order, locale));
         });
     }

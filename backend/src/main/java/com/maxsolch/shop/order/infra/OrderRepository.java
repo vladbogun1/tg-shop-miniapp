@@ -60,6 +60,22 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
             + "and o.paymentDueAt is not null and o.paymentDueAt < :now")
     List<byte[]> findOverdueUnpaidIds(@Param("now") java.time.Instant now);
 
+    /**
+     * Top-up candidates (V80): paid online orders, still NEW / APPROVED, that cost more than what arrived and have
+     * not changed since {@code quietSince} (a series of «+» is over). Older than {@code since} — not any more.
+     */
+    @Query("select o.id from Order o where o.status in (com.maxsolch.shop.order.domain.OrderStatus.NEW, "
+            + "com.maxsolch.shop.order.domain.OrderStatus.APPROVED) and o.paid = true and o.receivedMinor > 0 "
+            + "and o.receivedMinor < o.totalMinor and o.paymentDueAt is not null and o.exchangeOfOrderId is null "
+            + "and o.updatedAt < :quietSince and o.updatedAt > :since")
+    List<byte[]> findTopUpCandidateIds(@Param("quietSince") java.time.Instant quietSince,
+                                       @Param("since") java.time.Instant since);
+
+    /** Remembers which top-up the bot told the customer about (V80); a targeted UPDATE. */
+    @Modifying
+    @Query("update Order o set o.topupNotice = :notice where o.id = :id")
+    int updateTopUpNotice(@Param("id") byte[] id, @Param("notice") String notice);
+
     /** Writes back the dispatch card's message id; the caller opens the (short) transaction. */
     @Modifying
     @Query("update Order o set o.dispatchMessageId = :messageId where o.id = :id")
