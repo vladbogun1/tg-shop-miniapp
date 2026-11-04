@@ -2384,6 +2384,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/preorders/suppliers/{supplierId}/aliases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Supplier memory: line text → product */
+        get: operations["AdminSupplierAliasController_aliases"];
+        /** Remember confirmed lines of a supplier (insert or overwrite) */
+        put: operations["AdminSupplierAliasController_save"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/products": {
         parameters: {
             query?: never;
@@ -4931,6 +4949,14 @@ export interface components {
         };
         AdminTelegramAuthRequest: {
             initData: string;
+        };
+        AliasDto: {
+            productId: string;
+            sourceKey: string;
+            variantId: string | null;
+        };
+        AliasesRequest: {
+            aliases?: components["schemas"]["AliasDto"][];
         };
         AnalyticsChannelRow: {
             /** Format: int64 */
@@ -12557,6 +12583,54 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["SupplierDto"];
+                };
+            };
+        };
+    };
+    AdminSupplierAliasController_aliases: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplierId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AliasDto"][];
+                };
+            };
+        };
+    };
+    AdminSupplierAliasController_save: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplierId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AliasesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AliasDto"][];
                 };
             };
         };

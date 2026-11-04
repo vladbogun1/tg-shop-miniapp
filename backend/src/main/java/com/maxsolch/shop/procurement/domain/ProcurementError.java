@@ -48,7 +48,8 @@ public enum ProcurementError implements ErrorCode {
     BAD_NAME("BAD_NAME"),
     PRODUCT_ID_REQUIRED,
     INVALID_ID,
-    NBU_UNAVAILABLE("NBU_UNAVAILABLE");
+    NBU_UNAVAILABLE("NBU_UNAVAILABLE"),
+    BAD_ALIAS("BAD_ALIAS");
 
     private final String code;
 

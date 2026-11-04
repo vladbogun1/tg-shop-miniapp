@@ -7,6 +7,7 @@
 export type ServerErrorCode =
   | "ATTRIBUTE_IN_USE"
   | "ATTRIBUTE_KEY_TAKEN"
+  | "BAD_ALIAS"
   | "BAD_ALLOCATION"
   | "BAD_AMOUNT"
   | "BAD_CODE"

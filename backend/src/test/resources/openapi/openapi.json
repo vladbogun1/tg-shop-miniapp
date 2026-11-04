@@ -1241,6 +1241,37 @@
         ],
         "type" : "object"
       },
+      "AliasDto" : {
+        "properties" : {
+          "productId" : {
+            "type" : "string"
+          },
+          "sourceKey" : {
+            "type" : "string"
+          },
+          "variantId" : {
+            "nullable" : true,
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "productId",
+          "sourceKey",
+          "variantId"
+        ],
+        "type" : "object"
+      },
+      "AliasesRequest" : {
+        "properties" : {
+          "aliases" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AliasDto"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "AnalyticsChannelRow" : {
         "properties" : {
           "aovMinor" : {
@@ -20711,6 +20742,94 @@
           }
         ],
         "summary" : "New supplier",
+        "tags" : [
+          "Admin Preorders"
+        ]
+      }
+    },
+    "/api/admin/preorders/suppliers/{supplierId}/aliases" : {
+      "get" : {
+        "operationId" : "AdminSupplierAliasController_aliases",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "supplierId",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/AliasDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Supplier memory: line text → product",
+        "tags" : [
+          "Admin Preorders"
+        ]
+      },
+      "put" : {
+        "operationId" : "AdminSupplierAliasController_save",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "supplierId",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AliasesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/AliasDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Remember confirmed lines of a supplier (insert or overwrite)",
         "tags" : [
           "Admin Preorders"
         ]

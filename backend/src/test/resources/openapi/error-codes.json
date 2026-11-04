@@ -107,6 +107,7 @@
       "VARIANT_GONE" : "VARIANT_GONE"
     },
     "ProcurementError" : {
+      "BAD_ALIAS" : "BAD_ALIAS",
       "BAD_ALLOCATION" : "BAD_ALLOCATION",
       "BAD_AMOUNT" : "BAD_AMOUNT",
       "BAD_COST" : "BAD_COST",
@@ -188,6 +189,7 @@
   "codes" : [
     "ATTRIBUTE_IN_USE",
     "ATTRIBUTE_KEY_TAKEN",
+    "BAD_ALIAS",
     "BAD_ALLOCATION",
     "BAD_AMOUNT",
     "BAD_CODE",
