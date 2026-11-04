@@ -27,6 +27,7 @@ import {
   toBatchRequest,
   validateBatchForm,
   type BatchFormValues,
+  type BatchPreset,
   type PickedProduct,
   type SeedLine,
 } from "../model/batch-form";
@@ -47,6 +48,7 @@ export function BatchFormModal({
   onClose,
   batch,
   seed,
+  preset,
   onSaved,
   ProductPicker,
 }: {
@@ -56,6 +58,8 @@ export function BatchFormModal({
   batch?: Batch | null;
   /** Позиции для новой поставки («Заказать у завода»); при правке — добавляются к существующим. */
   seed?: SeedLine[];
+  /** Готовые поля новой поставки (только при создании). */
+  preset?: BatchPreset;
   onSaved?: (b: Batch) => void;
   ProductPicker: ProductPicker;
 }) {
@@ -65,7 +69,7 @@ export function BatchFormModal({
   const itemsLocked = !!batch && !isOpenStatus(batch.status);
   const suppliersQ = useSuppliers(open);
 
-  const form = useForm<BatchFormValues>({ defaultValues: initialValues(batch, seed, defHold) });
+  const form = useForm<BatchFormValues>({ defaultValues: initialValues(batch, seed, defHold, preset) });
   const v = form.watch();
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,14 +95,15 @@ export function BatchFormModal({
     if (sessionKey == null) return;
     setError(null);
     setDirty(false);
-    const values = initialValues(batch, seed, defHold);
+    const values = initialValues(batch, seed, defHold, preset);
+    if (preset) setDirty(true);
     if (batch) {
       const extra = extraSeedLines(batch, seed);
       values.lines = [...values.lines, ...extra];
       if (extra.length > 0) setDirty(true);
     }
     form.reset(values);
-  }, [sessionKey, batch, seed, defHold, form]);
+  }, [sessionKey, batch, seed, preset, defHold, form]);
 
   function addLine(p: PickedProduct, variantId: string | null, variantName: string | null) {
     if (v.lines.some((l) => l.productId === p.id && l.variantId === variantId)) return;

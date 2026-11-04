@@ -25,6 +25,7 @@ import type {
   ReleaseResult,
   Subscriber,
   Supplier,
+  SupplierAlias,
 } from "./model/types";
 
 const PRE = "/api/admin/preorders";
@@ -46,6 +47,10 @@ export const preordersApi = {
   release: (productId: string, variantId: string | null) => apiPost<ReleaseResult>(`${PRE}/demand/release`, { productId, variantId }),
   suppliers: () => apiGet<Supplier[]>(`${PRE}/suppliers`),
   createSupplier: (body: { name: string; note: string | null }) => apiPost<Supplier>(`${PRE}/suppliers`, body),
+  /** Память поставщика «Поставки с ИИ»: строка его документа → наш товар. */
+  aliases: (supplierId: number) => apiGet<SupplierAlias[]>(`${PRE}/suppliers/${supplierId}/aliases`),
+  saveAliases: (supplierId: number, aliases: SupplierAlias[]) =>
+    apiPut<SupplierAlias[]>(`${PRE}/suppliers/${supplierId}/aliases`, { aliases }),
 };
 
 export const costingApi = {

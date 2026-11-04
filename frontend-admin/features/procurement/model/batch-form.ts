@@ -9,7 +9,12 @@ export interface SeedLine {
   variantName: string | null;
   imageUrl: string | null;
   qty?: number;
+  /** Закупочная цена за штуку в валюте поставки («Поставка с ИИ»). */
+  price?: number | null;
 }
+
+/** Готовые поля новой поставки («Поставка с ИИ»): название, поставщик, заметка, валюта, курс. */
+export type BatchPreset = Partial<Pick<BatchFormValues, "title" | "supplierId" | "privateNote" | "currency" | "fxRate">>;
 
 /** Товар из выбора: ровно то, что форме нужно от товара (без зависимости от фичи «товар»). */
 export interface PickedProduct {
@@ -61,16 +66,22 @@ export function seedToLine(s: SeedLine): FormLine {
     variantName: s.variantName,
     imageUrl: s.imageUrl,
     qty: String(s.qty ?? 1),
-    price: "",
+    price: s.price != null ? String(s.price) : "",
   };
 }
 
 /** Начальные значения: правка поставки или пустая форма с позициями из `seed`. */
-export function initialValues(batch: Batch | null | undefined, seed: SeedLine[] | undefined, defHold: number): BatchFormValues {
+export function initialValues(
+  batch: Batch | null | undefined,
+  seed: SeedLine[] | undefined,
+  defHold: number,
+  preset?: BatchPreset,
+): BatchFormValues {
   if (!batch) {
     return {
       title: "", supplierId: "", privateNote: "", publicNote: "", etaMode: "APPROX", etaFrom: "", etaTo: "", weeks: "3",
       holdHours: String(defHold), distribution: "QUEUE_HOLD", preorderOpen: true, currency: "USD", fxRate: "",
+      ...preset,
       lines: (seed ?? []).map(seedToLine),
     };
   }

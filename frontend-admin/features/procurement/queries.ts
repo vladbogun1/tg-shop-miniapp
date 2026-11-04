@@ -54,6 +54,16 @@ export function useSuppliers(enabled = true) {
   return useQuery({ queryKey: procurementKeys.suppliers(), queryFn: preordersApi.suppliers, enabled });
 }
 
+/** Память поставщика «Поставки с ИИ»; без поставщика — пусто. */
+export function useSupplierAliases(supplierId: number | null) {
+  return useQuery({
+    queryKey: procurementKeys.aliases(supplierId ?? 0),
+    queryFn: () => preordersApi.aliases(supplierId as number),
+    enabled: supplierId != null,
+    retry: false,
+  });
+}
+
 /** Очередь по товару (все варианты). */
 export function useProductSubscribers(productId: string, enabled: boolean) {
   return useQuery({

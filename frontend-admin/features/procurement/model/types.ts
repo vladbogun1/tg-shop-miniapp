@@ -16,6 +16,7 @@ export type LotKind = Schemas["LotDto"]["kind"];
 
 // ---- поставки ---------------------------------------------------------------------
 export type Supplier = Schemas["SupplierDto"];
+export type SupplierAlias = Schemas["AliasDto"];
 export type BatchSummary = Schemas["BatchSummaryDto"];
 /** Центы валюты поставки в `unitPriceFx`: null — нет доступа или не внесена. */
 export type BatchItem = Schemas["ItemDto"];

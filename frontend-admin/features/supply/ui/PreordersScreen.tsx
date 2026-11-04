@@ -6,15 +6,16 @@
  * `?newProduct=<id>` открывает форму новой поставки с этим товаром (из карточки товара и «Ждут»).
  */
 import { Button } from "@shop/ui/admin-button";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Tabs } from "@/components/ui/Tabs";
-import { BatchFormModal, SupplierModal, useDemand, type Demand, type SeedLine } from "@/features/procurement";
+import { BatchFormModal, SupplierModal, useDemand, type BatchPreset, type Demand, type SeedLine } from "@/features/procurement";
 import { PICK_PRODUCTS_STALE_MS, ProductPickModal, useProductsQuery } from "@/features/product";
 import { BatchList } from "./BatchList";
 import { DemandList } from "./DemandList";
+import { SupplyAiModal } from "./ai/SupplyAiModal";
 import { SuppliersList } from "./SuppliersList";
 
 type TabKey = "open" | "arrived" | "cancelled" | "demand" | "suppliers";
@@ -42,7 +43,8 @@ function PreordersBody() {
   const router = useRouter();
   const params = useSearchParams();
   const [tab, setTab] = useState<TabKey>(params.get("tab") === "demand" ? "demand" : "open");
-  const [form, setForm] = useState<{ seed: SeedLine[] } | null>(null);
+  const [form, setForm] = useState<{ seed: SeedLine[]; preset?: BatchPreset } | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
   const [supplierModal, setSupplierModal] = useState(false);
 
   const demandQ = useDemand();
@@ -100,9 +102,14 @@ function PreordersBody() {
               Поставщик
             </Button>
           ) : (
-            <Button variant="accent" icon={<Plus className="h-4 w-4" />} onClick={() => setForm({ seed: [] })}>
-              Новая поставка
-            </Button>
+            <>
+              <Button variant="outline" icon={<Sparkles className="h-4 w-4" />} onClick={() => setAiOpen(true)}>
+                С ИИ
+              </Button>
+              <Button variant="accent" icon={<Plus className="h-4 w-4" />} onClick={() => setForm({ seed: [] })}>
+                Новая поставка
+              </Button>
+            </>
           )
         }
       />
@@ -116,10 +123,19 @@ function PreordersBody() {
         open={!!form}
         onClose={() => setForm(null)}
         seed={form?.seed}
+        preset={form?.preset}
         onSaved={(b) => router.push(`/preorders/${b.id}`)}
         ProductPicker={ProductPickModal}
       />
       <SupplierModal open={supplierModal} onClose={() => setSupplierModal(false)} />
+      <SupplyAiModal
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        onReady={(r) => {
+          setAiOpen(false);
+          setForm(r);
+        }}
+      />
     </div>
   );
 }

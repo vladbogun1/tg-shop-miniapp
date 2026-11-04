@@ -14,6 +14,7 @@ export const procurementKeys = {
   batchSubs: (id: number) => [...PREORDERS, "batch-subs", id] as const,
   productSubs: (productId: string) => [...PREORDERS, "product-subs", productId] as const,
   suppliers: () => [...PREORDERS, "suppliers"] as const,
+  aliases: (supplierId: number) => [...PREORDERS, "aliases", supplierId] as const,
   demand: () => [...PREORDERS, "demand"] as const,
 
   costingRoot: () => COSTING,

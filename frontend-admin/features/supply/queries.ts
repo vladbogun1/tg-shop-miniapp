@@ -1,6 +1,7 @@
 "use client";
 
 import { errorMessage } from "@shop/core/errors";
+import { toMinor } from "@shop/core/money";
 import { toast } from "@shop/ui/toast";
 import { useApiMutation } from "@shop/ui/mutation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,6 +19,9 @@ import {
   type MoneyRequest,
   type OpeningBody,
 } from "@/features/procurement";
+import { productApi } from "@/features/product";
+import { aliasesOf, mergeLines, resolvedLines, type Created, type NewProductPlan } from "./model/ai/plan";
+import type { ReviewRow } from "./model/ai/types";
 
 export function useBatchesList(filter: BatchFilter) {
   return useQuery({
@@ -239,5 +243,57 @@ export function useCancelBatch(batchId: number, onDone: () => void) {
     success: "Поставка отменена",
     errorFallback: "Не удалось отменить",
     onSuccess: onDone,
+  });
+}
+
+// ---- «Поставка с ИИ» ----------------------------------------------------------------
+
+export interface SupplyAiApplyInput {
+  supplierId: string;
+  /** Нет поставщика в списке — завести с этим названием. */
+  supplierName: string | null;
+  plans: NewProductPlan[];
+  rows: ReviewRow[];
+  /** Уже созданные на прошлой попытке (по draftKey) — второй раз не создаём. */
+  created: Map<string, Created>;
+  onCreated: (key: string, c: Created) => void;
+}
+
+/**
+ * Новые товары скрытыми черновиками (остаток 0), поставщик при необходимости и память поставщика. Поставку создаёт
+ * обычная форма поставки, которую экран открывает с этими позициями. Создание по одному: упавший товар не
+ * откатывает созданные — повтор их пропустит.
+ */
+export function useApplySupplyAi() {
+  return useApiMutation({
+    mutationFn: async (input: SupplyAiApplyInput) => {
+      let sid = input.supplierId ? Number(input.supplierId) : null;
+      if (sid == null && input.supplierName) sid = (await preordersApi.createSupplier({ name: input.supplierName, note: "Создан «Поставкой с ИИ»" })).id;
+      const created = new Map(input.created);
+      for (const p of input.plans) {
+        if (created.has(p.key)) continue;
+        const saved = await productApi.create({
+          title: p.title,
+          priceMinor: toMinor(p.priceUah ?? 0),
+          currency: "UAH",
+          stock: 0,
+          active: false,
+          imageKeys: [],
+          categoryId: p.categoryId,
+          ...(p.brand ? { brandName: p.brand } : {}),
+          condition: "NEW",
+          cardStatus: "DRAFT",
+          variants: p.variants.map((name) => ({ name, stock: 0 })),
+        });
+        const c = { productId: saved.id, variants: (saved.variants ?? []).map((v) => ({ id: v.id ?? "", name: v.name })) };
+        created.set(p.key, c);
+        input.onCreated(p.key, c);
+      }
+      const resolved = resolvedLines(input.rows, created);
+      if (sid != null && resolved.length > 0) await preordersApi.saveAliases(sid, aliasesOf(resolved));
+      return { supplierId: sid, lines: mergeLines(resolved), created };
+    },
+    invalidate: [catalogKeys.productsRoot(), procurementKeys.preordersRoot()],
+    errorFallback: "Не удалось подготовить поставку",
   });
 }
