@@ -152,14 +152,14 @@ function StatusSteps({ batch }: { batch: Batch }) {
   }
   const at = STEPS.findIndex((s) => s.status === batch.status);
   return (
-    <ol className="mb-3 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[12.5px]" aria-label="Статус поставки">
+    <ol className="mb-3 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1 text-[11.5px] sm:gap-x-1.5 sm:text-[12.5px]" aria-label="Статус поставки">
       {STEPS.map((s, i) => (
         <li key={s.status} className="flex items-center gap-1.5">
-          {i > 0 && <span className={cn("h-px w-4 sm:w-6", i <= at ? "bg-[var(--accent)]" : "bg-[var(--line-strong)]")} />}
+          {i > 0 && <span className={cn("h-px w-2 sm:w-6", i <= at ? "bg-[var(--accent)]" : "bg-[var(--line-strong)]")} />}
           <span
             aria-current={i === at ? "step" : undefined}
             className={cn(
-              "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 font-semibold",
+              "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-1 font-semibold sm:px-2.5",
               i < at && "text-[var(--text-muted)]",
               i === at && "bg-[var(--accent)] text-[var(--accent-ink)]",
               i > at && "border border-[var(--line)] text-[var(--text-faint)]",

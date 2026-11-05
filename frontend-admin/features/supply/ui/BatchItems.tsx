@@ -1,21 +1,28 @@
 "use client";
 
 import { Button } from "@shop/ui/admin-button";
-import { Pencil } from "lucide-react";
+import { ChevronDown, Pencil } from "lucide-react";
+import { useState } from "react";
 import { Toggle } from "@/components/ui/Toggle";
 import { costUahMinor, fxToInput, lineTitle, type Batch } from "@/features/procurement";
 import { ProductStateChips, useBatchProductTools, useBatchProducts } from "@/features/product";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 
+const COLLAPSE_OVER = 8;
+const COLLAPSED = 5;
+
 /** Позиции поставки: заказано / пришло / ждут / остаток / цены, быстрый просмотр и правка товара. */
 export function BatchItems({ batch, open }: { batch: Batch; open: boolean }) {
   const products = useBatchProducts(batch.items.map((i) => i.productId));
   const tools = useBatchProductTools();
+  // Длинная поставка (20+ позиций) на телефоне — это метры прокрутки до «Кто ждёт»: показываем первые, остальное — по кнопке.
+  const [all, setAll] = useState(batch.items.length <= COLLAPSE_OVER);
+  const shown = all ? batch.items : batch.items.slice(0, COLLAPSED);
   return (
     <>
       <div className="mb-5 flex min-w-0 flex-col gap-2">
-        {batch.items.map((i) => {
+        {shown.map((i) => {
           const cost = batch.moneyVisible ? costUahMinor(i.unitPriceFx, batch.fxRate) : null;
           const enough = i.waitingQty <= i.qtyOrdered;
           const p = products.byId.get(i.productId);
@@ -76,6 +83,11 @@ export function BatchItems({ batch, open }: { batch: Batch; open: boolean }) {
             </div>
           );
         })}
+        {!all && (
+          <Button variant="ghost" size="sm" className="self-start" icon={<ChevronDown className="h-4 w-4" />} onClick={() => setAll(true)}>
+            Показать все {batch.items.length}
+          </Button>
+        )}
       </div>
       {tools.ui}
     </>
