@@ -61,8 +61,8 @@ C="-f docker-compose.yml -f docker-compose.public.yml -f docker-compose.prod.yml
 # у них в compose стоит pull_policy: missing, и они берутся из уже скачанного на сервере образа.
 # Голый `docker compose $C pull` на них упадёт — не запускать его без списка сервисов.
 git pull \
-  && docker compose $C pull backend frontend-public frontend-admin-public site-public \
-  && docker compose $C up -d --no-build mysql minio imgproxy nginx backend \
+  && docker compose $C pull backend cutout frontend-public frontend-admin-public site-public \
+  && docker compose $C up -d --no-build mysql minio imgproxy cutout nginx backend \
        frontend-public gateway frontend-admin-public gateway-admin site-public gateway-site caddy
 # Список сервисов ОБЯЗАТЕЛЕН: в базовом compose есть dev-сервисы (frontend, frontend-admin, site, minio-init),
 # голый `up -d` запустил бы их. backend теперь имеет healthcheck: `docker compose ps` покажет (healthy)
@@ -149,6 +149,7 @@ web.push.apple.com, updates.push.services.mozilla.com.
 | backend | 780 МБ | 1536 МБ (куча ≈ 1 ГБ) |
 | mysql | 575 МБ | 1536 МБ |
 | imgproxy | 57 МБ | 768 МБ (всплески при ресайзе больших фото) |
+| cutout (вырезка товара для «фото по ссылке») | ~360 МБ, после вырезки ~700 МБ | 2 ГБ (пик ~1,3 ГБ на фото, режет по одному) |
 | minio | 152 МБ | 512 МБ |
 | frontend-public / frontend-admin-public / site-public | 53 / 68 / 228 МБ | 512 МБ |
 | gateway ×3, nginx, caddy | < 50 МБ | 128 МБ |

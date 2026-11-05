@@ -21,7 +21,7 @@ public class FakeImgproxy implements Imgproxy {
         return this;
     }
 
-    /** The calls so far, as {@code key@width} (fit), {@code preview:key@width}, {@code square:key@size/pad/r,g,b}. */
+    /** The calls so far, as {@code key@width} (fit), {@code preview:key@width}, {@code square:key@size/pad/r,g,b[/untrimmed]}. */
     public List<String> asked() {
         return asked;
     }
@@ -41,8 +41,9 @@ public class FakeImgproxy implements Imgproxy {
     }
 
     @Override
-    public Rendered square(String objectKey, int size, int padding, Rgb bg) {
-        asked.add("square:" + objectKey + "@" + size + "/" + padding + "/" + bg.r() + "," + bg.g() + "," + bg.b());
+    public Rendered square(String objectKey, int size, int padding, Rgb bg, boolean trim) {
+        asked.add("square:" + objectKey + "@" + size + "/" + padding + "/" + bg.r() + "," + bg.g() + "," + bg.b()
+                + (trim ? "" : "/untrimmed"));
         return available
                 ? new Rendered(new ByteArrayInputStream(("sq:" + objectKey).getBytes()), "image/webp")
                 : null;

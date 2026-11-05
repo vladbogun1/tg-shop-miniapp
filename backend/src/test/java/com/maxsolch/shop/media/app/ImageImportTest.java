@@ -1,5 +1,6 @@
 package com.maxsolch.shop.media.app;
 
+import com.maxsolch.shop.media.domain.Cutout;
 import com.maxsolch.shop.media.domain.FakeImgproxy;
 import com.maxsolch.shop.media.domain.Imgproxy;
 import com.maxsolch.shop.media.domain.InMemoryObjectStore;
@@ -27,6 +28,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ImageImportTest {
 
     private static final UUID ID = UUID.fromString("11111111-2222-3333-4444-555555555555");
+    /** The cut-out service is off or found nothing to cut. */
+    private static final Cutout NO_CUTOUT = (image, type) -> null;
 
     /** Serves fixed bodies per URL, like a tiny internet. */
     private static final class FakeRemote implements RemoteImages {
@@ -75,12 +78,43 @@ class ImageImportTest {
         FakeRemote remote = new FakeRemote().with("https://brand.example.com/m.png", png(800, 600, Color.WHITE, Color.BLACK), "image/png");
         FakeImgproxy imgproxy = new FakeImgproxy(true).withPreview(png(64, 48, new Color(240, 238, 236), Color.BLACK));
 
-        ImageImport.Imported got = new ImageImport(remote, store, imgproxy, () -> ID).importFrom("https://brand.example.com/m.png");
+        ImageImport.Imported got = new ImageImport(remote, store, imgproxy, NO_CUTOUT, () -> ID).importFrom("https://brand.example.com/m.png");
 
         assertThat(got.key()).isEqualTo("products/" + ID + "/photo.webp");
         assertThat(store.contains(got.key())).isTrue();
         assertThat(store.contains("products/_import/" + ID + "/source.png")).as("original removed").isFalse();
         assertThat(imgproxy.asked()).contains("square:products/_import/" + ID + "/source.png@1600/80/240,238,236");
+    }
+
+    @Test
+    void aCutOutProductIsSquaredOnTheShopDarkWithoutTrimming() throws IOException {
+        byte[] photo = png(800, 600, Color.WHITE, Color.BLACK);
+        byte[] cut = png(400, 300, new Color(0, 0, 0, 0), Color.BLACK);
+        FakeRemote remote = new FakeRemote().with("https://brand.example.com/m.png", photo, "image/png");
+        FakeImgproxy imgproxy = new FakeImgproxy(true);
+        byte[][] sent = new byte[1][];
+        Cutout cutout = (image, type) -> {
+            sent[0] = image;
+            return cut;
+        };
+
+        ImageImport.Imported got = new ImageImport(remote, store, imgproxy, cutout, () -> ID).importFrom("https://brand.example.com/m.png");
+
+        assertThat(sent[0]).isEqualTo(photo);
+        assertThat(store.contains(got.key())).isTrue();
+        // already cropped to the product: trimming by the corner pixel would eat into it
+        assertThat(imgproxy.asked()).containsExactly("square:products/_import/" + ID + "/cutout.png@1600/80/26,26,26/untrimmed");
+        assertThat(store.size()).as("only the photo is left").isEqualTo(1);
+    }
+
+    @Test
+    void withoutACutOutThePhotoIsSquaredOnItsOwnEdgeColour() throws IOException {
+        FakeRemote remote = new FakeRemote().with("https://brand.example.com/m.png", png(800, 600, Color.WHITE, Color.BLACK), "image/png");
+        FakeImgproxy imgproxy = new FakeImgproxy(true).withPreview(png(64, 48, Color.WHITE, Color.BLACK));
+
+        new ImageImport(remote, store, imgproxy, NO_CUTOUT, () -> ID).importFrom("https://brand.example.com/m.png");
+
+        assertThat(imgproxy.asked()).contains("square:products/_import/" + ID + "/source.png@1600/80/255,255,255");
     }
 
     @Test
@@ -91,7 +125,7 @@ class ImageImportTest {
                 .with("https://cdn.example.com/p/1.jpg?v=2&w=1200", png(1200, 1200, Color.WHITE, Color.RED), "image/jpeg");
         FakeImgproxy imgproxy = new FakeImgproxy(true).withPreview(png(64, 64, Color.WHITE, null));
 
-        ImageImport.Imported got = new ImageImport(remote, store, imgproxy, () -> ID).importFrom("https://shop.example.com/products/mouse");
+        ImageImport.Imported got = new ImageImport(remote, store, imgproxy, NO_CUTOUT, () -> ID).importFrom("https://shop.example.com/products/mouse");
 
         assertThat(got.source()).isEqualTo("https://cdn.example.com/p/1.jpg?v=2&w=1200");
         // the real type comes from the bytes, not the site's Content-Type
@@ -102,7 +136,7 @@ class ImageImportTest {
     void refusesTinyPictures() throws IOException {
         FakeRemote remote = new FakeRemote().with("https://x.example.com/t.png", png(300, 200, Color.WHITE, Color.BLACK), "image/png");
 
-        assertThatThrownBy(() -> new ImageImport(remote, store, new FakeImgproxy(true), () -> ID).importFrom("https://x.example.com/t.png"))
+        assertThatThrownBy(() -> new ImageImport(remote, store, new FakeImgproxy(true), NO_CUTOUT, () -> ID).importFrom("https://x.example.com/t.png"))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class,
                         e -> assertThat(e.errorCode()).isEqualTo(MediaError.IMAGE_TOO_SMALL));
         assertThat(store.size()).isZero();
@@ -113,7 +147,7 @@ class ImageImportTest {
         FakeRemote remote = new FakeRemote().with("https://x.example.com/a.svg",
                 "<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>".getBytes(StandardCharsets.UTF_8), "image/svg+xml");
 
-        assertThatThrownBy(() -> new ImageImport(remote, store, new FakeImgproxy(true), () -> ID).importFrom("https://x.example.com/a.svg"))
+        assertThatThrownBy(() -> new ImageImport(remote, store, new FakeImgproxy(true), NO_CUTOUT, () -> ID).importFrom("https://x.example.com/a.svg"))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class,
                         e -> assertThat(e.errorCode()).isEqualTo(MediaError.BAD_FILE_TYPE));
     }
@@ -123,7 +157,7 @@ class ImageImportTest {
         FakeRemote remote = new FakeRemote().with("https://x.example.com/p",
                 "<html><head><title>x</title></head></html>".getBytes(StandardCharsets.UTF_8), "text/html");
 
-        assertThatThrownBy(() -> new ImageImport(remote, store, new FakeImgproxy(true), () -> ID).importFrom("https://x.example.com/p"))
+        assertThatThrownBy(() -> new ImageImport(remote, store, new FakeImgproxy(true), NO_CUTOUT, () -> ID).importFrom("https://x.example.com/p"))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class,
                         e -> assertThat(e.errorCode()).isEqualTo(MediaError.IMAGE_NOT_ON_PAGE));
     }
@@ -135,7 +169,7 @@ class ImageImportTest {
         FakeRemote remote = new FakeRemote().redirect("https://x.example.com/products/gone", "https://x.example.com/",
                 home.getBytes(StandardCharsets.UTF_8), "text/html");
 
-        assertThatThrownBy(() -> new ImageImport(remote, store, new FakeImgproxy(true), () -> ID).importFrom("https://x.example.com/products/gone"))
+        assertThatThrownBy(() -> new ImageImport(remote, store, new FakeImgproxy(true), NO_CUTOUT, () -> ID).importFrom("https://x.example.com/products/gone"))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class,
                         e -> assertThat(e.errorCode()).isEqualTo(MediaError.IMAGE_NOT_ON_PAGE));
     }
@@ -144,7 +178,7 @@ class ImageImportTest {
     void whenImgproxyFailsNothingStaysInStorage() throws IOException {
         FakeRemote remote = new FakeRemote().with("https://x.example.com/m.png", png(800, 800, Color.WHITE, Color.BLACK), "image/png");
 
-        assertThatThrownBy(() -> new ImageImport(remote, store, new FakeImgproxy(false), () -> ID).importFrom("https://x.example.com/m.png"))
+        assertThatThrownBy(() -> new ImageImport(remote, store, new FakeImgproxy(false), NO_CUTOUT, () -> ID).importFrom("https://x.example.com/m.png"))
                 .isInstanceOfSatisfying(DomainException.BadRequest.class,
                         e -> assertThat(e.errorCode()).isEqualTo(MediaError.IMAGE_PROCESSING_FAILED));
         assertThat(store.size()).isZero();

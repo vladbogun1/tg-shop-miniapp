@@ -13,7 +13,7 @@ name: Publish images
 #      результата ci.yml через API, а не workflow_call: CI уже отработал на ветке до тега, повторный прогон ~20 минут
 #      ничего бы не добавил, а тег на красном коммите отсекается так же надёжно. Нет прогона CI на коммите = отказ.
 #   2. smoke: собранный backend-образ поднимается с MySQL и профилем prod и должен ответить UP на /actuator/health.
-#   3. :latest двигается последним, отдельным шагом, и только после того, как все четыре версионных образа в реестре.
+#   3. :latest двигается последним, отдельным шагом, и только после того, как все пять версионных образов в реестре.
 #
 # A PRE-RELEASE tag (v3.7.0-rc1, -beta, -alpha) does NOT move :latest. Those builds are for
 # trying a branch on the server without merging it, and the whole point is that :latest keeps
@@ -39,6 +39,7 @@ env:
   FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-frontend
   ADMIN_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-admin
   SITE_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-site
+  CUTOUT_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/maxsolch2-cutout
 
 jobs:
   gate:
@@ -164,7 +165,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Дальше пушатся только версионные теги: :latest не трогаем, пока все четыре образа не легли в реестр.
+      # Дальше пушатся только версионные теги: :latest не трогаем, пока все пять образов не легли в реестр.
       - name: Push backend
         uses: docker/build-push-action@v6
         with:
@@ -214,10 +215,19 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build & push product cut-out
+        uses: docker/build-push-action@v6
+        with:
+          context: ./cutout
+          push: true
+          tags: ${{ env.CUTOUT_IMAGE }}:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       # Последний шаг: :latest переезжает на уже опубликованные версионные образы (без пересборки).
       - name: Move :latest (releases only, after everything above)
         if: steps.meta.outputs.promote == 'true'
         run: |
-          for image in "$BACKEND_IMAGE" "$FRONTEND_IMAGE" "$ADMIN_IMAGE" "$SITE_IMAGE"; do
+          for image in "$BACKEND_IMAGE" "$FRONTEND_IMAGE" "$ADMIN_IMAGE" "$SITE_IMAGE" "$CUTOUT_IMAGE"; do
             docker buildx imagetools create -t "$image:latest" "$image:${{ steps.meta.outputs.tag }}"
           done

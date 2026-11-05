@@ -17,7 +17,7 @@
 #    docker compose -f docker-compose.yml -f docker-compose.public.yml -f docker-compose.prod.yml pull
 #    docker compose -f docker-compose.yml -f docker-compose.public.yml -f docker-compose.prod.yml \
 #                   up -d --no-build \
-#                   mysql minio imgproxy nginx backend \
+#                   mysql minio imgproxy cutout nginx backend \
 #                   frontend-public gateway frontend-admin-public gateway-admin \
 #                   site-public gateway-site caddy
 #  ALWAYS list the services: the base file also has dev-only frontend, frontend-admin, site and the
@@ -142,6 +142,13 @@ services:
       - tgshop_v2_caddy_config:/config
     networks:
       - tgshop
+
+  # Cut-out: a pre-built image like the backend. Peak ~1.3 GB during a cut (one at a time), less at rest.
+  cutout:
+    image: ${DOCKERHUB_USERNAME:-vladbogun1}/maxsolch2-cutout:${IMAGE_TAG:-latest}
+    pull_policy: always
+    logging: *logging
+    mem_limit: 2g
 
   # imgproxy keeps the base image; only its limits live here.
   imgproxy:

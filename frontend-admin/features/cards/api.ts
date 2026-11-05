@@ -5,7 +5,11 @@
  * его форма описана в `model/meta.ts`.
  */
 import type { Schemas } from "@shop/core/api/schemas";
-import { SLOW_TIMEOUT_MS } from "@shop/core/http";
+/**
+ * Фото по ссылке: скачать (до ~20 с), вырезать товар (~11 с, сервис режет по одному — второе фото ждёт первое),
+ * отрендерить квадрат. Шлюз админки ждёт бэкенд 120 с — столько же и здесь.
+ */
+const PHOTO_IMPORT_TIMEOUT_MS = 120_000;
 import { apiGet, apiPatch, apiPost, apiPut } from "@/lib/http";
 import type { CardItem, CardStatusCode } from "./model/item";
 import type { CardLast, CardReviewData } from "./model/meta";
@@ -29,9 +33,9 @@ const toItem = (d: Schemas["CardExportItem"]): CardItem => d;
 export const cardsApi = {
   stats: (): Promise<CardStats> => apiGet<CardStats>("/api/admin/cards/stats"),
 
-  /** Скачать фото по ссылке (картинка или страница товара), привести к квадрату 1600 и добавить товару последним. */
+  /** Скачать фото по ссылке (картинка или страница товара), вырезать товар на #1a1a1a в квадрат 1600 и добавить товару последним. */
   importPhoto: (productId: string, url: string): Promise<PhotoImportResult> =>
-    apiPost<PhotoImportResult>(`/api/admin/products/${productId}/photos/import`, { url } satisfies Schemas["PhotoImportRequest"], undefined, SLOW_TIMEOUT_MS),
+    apiPost<PhotoImportResult>(`/api/admin/products/${productId}/photos/import`, { url } satisfies Schemas["PhotoImportRequest"], undefined, PHOTO_IMPORT_TIMEOUT_MS),
 
   async export(status: CardExportStatus = "all", ids?: string[]): Promise<CardItem[]> {
     const qs = new URLSearchParams({ status });

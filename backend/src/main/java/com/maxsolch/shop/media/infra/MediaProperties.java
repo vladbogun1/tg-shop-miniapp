@@ -34,6 +34,8 @@ public class MediaProperties {
     public static class Media {
         /** imgproxy base URL; blank = thumbnails off and callers fall back to the original. */
         private String imgproxyUrl = "http://imgproxy:8080";
+        /** Product cut-out service base URL; blank = off, imported photos are squared on their own edge colour. */
+        private String cutoutUrl = "";
     }
 
     @Getter

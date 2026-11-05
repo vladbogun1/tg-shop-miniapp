@@ -52,12 +52,12 @@ public class ImgproxyHttp implements Imgproxy {
     }
 
     @Override
-    public Rendered square(String objectKey, int size, int padding, Rgb bg) {
+    public Rendered square(String objectKey, int size, int padding, Rgb bg, boolean trim) {
         int inner = size - 2 * padding;
         // t = trim the flat margins (colour taken from the top-left pixel), rs:fit:W:H:enlarge:extend = fit into the
         // inner square, enlarging small pictures, and extend the canvas to it; bg fills the extension and any
         // transparency; pd adds the even margin on every side. imgproxy strips metadata by default.
-        String options = "t:" + TRIM_THRESHOLD + "/rs:fit:" + inner + ":" + inner + ":1:1/g:ce"
+        String options = (trim ? "t:" + TRIM_THRESHOLD + "/" : "") + "rs:fit:" + inner + ":" + inner + ":1:1/g:ce"
                 + "/bg:" + bg.r() + ":" + bg.g() + ":" + bg.b() + "/pd:" + padding + "/q:90";
         return get(objectKey, options, "webp", SQUARE_TIMEOUT);
     }

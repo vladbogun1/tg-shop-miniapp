@@ -2,8 +2,8 @@
 
 /**
  * Photos the AI found for a product: previews straight from the source (the admin's browser loads them, without a
- * referrer), a checkbox each; the order of ticking is the order they are added in. The server squares them to
- * 1600 px on their own edge colour when saving.
+ * referrer), a checkbox each; the order of ticking is the order they are added in. When saving, the server cuts
+ * the product out onto the shop's #1a1a1a in a 1600 px square (a photo with nothing to cut stays on its own background).
  */
 import { ExternalLink, ImageOff } from "lucide-react";
 import { useState } from "react";
@@ -37,7 +37,7 @@ export function PhotoPicks({ r, sel, onSel }: { r: ProductReview; sel: ProductSe
       <div className="field-label mb-1 flex flex-wrap items-center gap-x-2 !text-[11px] !text-[var(--text-faint)]">
         <span>Фото из интернета — отмечено {sel.photos.length} из {r.photos.length}</span>
         <span className="font-normal normal-case tracking-normal">
-          {r.item.imageUrl ? "у товара уже есть фото — новые встанут после них" : "станут фото товара в этом порядке"} · квадрат 1600, фон по краю фото
+          {r.item.imageUrl ? "у товара уже есть фото — новые встанут после них" : "станут фото товара в этом порядке"} · товар вырежется на тёмный фон, квадрат 1600
         </span>
       </div>
       <ul className="flex flex-wrap gap-2">

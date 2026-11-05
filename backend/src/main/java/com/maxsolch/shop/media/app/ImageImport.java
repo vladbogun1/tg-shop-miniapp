@@ -1,5 +1,6 @@
 package com.maxsolch.shop.media.app;
 
+import com.maxsolch.shop.media.domain.Cutout;
 import com.maxsolch.shop.media.domain.Imgproxy;
 import com.maxsolch.shop.media.domain.MediaError;
 import com.maxsolch.shop.media.domain.ObjectStore;
@@ -18,8 +19,11 @@ import java.util.function.Supplier;
 
 /**
  * A product photo from a link (the AI finds them while the product is not in hand yet), brought to the shop's one
- * format: a {@value #SIZE}×{@value #SIZE} WebP, margins trimmed, the product centred on the colour of its own edges
- * with an even {@value #PADDING} px border, metadata stripped.
+ * format: a {@value #SIZE}×{@value #SIZE} WebP, the product cut out of its background and centred on the shop's
+ * #1a1a1a with an even {@value #PADDING} px border, metadata stripped (owner, 2026-11-05).
+ *
+ * <p>When the cut-out finds nothing to cut (a photo without a background around the product) or is off, the photo is
+ * squared as it is: margins trimmed, on the colour of its own edges.
  *
  * <p>The link may be the picture or the product page (then og:image / JSON-LD is taken). The original is kept in
  * storage only while imgproxy renders it (imgproxy reads {@code products/} only) and is deleted afterwards.
@@ -33,6 +37,8 @@ public class ImageImport {
     static final int MIN_SIDE = 500;
     static final long MAX_BYTES = 15L * 1024 * 1024;
     private static final String KINDS = "jpg, png, webp, gif, avif";
+    /** The shop's photo background (product cards, the site's dark theme). */
+    static final Imgproxy.Rgb DARK = new Imgproxy.Rgb(0x1a, 0x1a, 0x1a);
 
     /** The stored photo and where it was finally taken from (after redirects / the page's og:image). */
     public record Imported(String key, String source) {
@@ -41,17 +47,19 @@ public class ImageImport {
     private final RemoteImages remote;
     private final ObjectStore store;
     private final Imgproxy imgproxy;
+    private final Cutout cutout;
     private final Supplier<UUID> ids;
 
     @Autowired
-    public ImageImport(RemoteImages remote, ObjectStore store, Imgproxy imgproxy) {
-        this(remote, store, imgproxy, UUID::randomUUID);
+    public ImageImport(RemoteImages remote, ObjectStore store, Imgproxy imgproxy, Cutout cutout) {
+        this(remote, store, imgproxy, cutout, UUID::randomUUID);
     }
 
-    ImageImport(RemoteImages remote, ObjectStore store, Imgproxy imgproxy, Supplier<UUID> ids) {
+    ImageImport(RemoteImages remote, ObjectStore store, Imgproxy imgproxy, Cutout cutout, Supplier<UUID> ids) {
         this.remote = remote;
         this.store = store;
         this.imgproxy = imgproxy;
+        this.cutout = cutout;
         this.ids = ids;
     }
 
@@ -76,10 +84,13 @@ public class ImageImport {
             throw new DomainException.BadRequest(MediaError.IMAGE_TOO_SMALL, MIN_SIDE);
         }
         UUID id = ids.get();
-        String source = "products/_import/" + id + "/source." + header.extension();
-        store.put(source, new ByteArrayInputStream(fetched.bytes()), fetched.bytes().length, header.contentType());
+        byte[] cut = cutout.cut(fetched.bytes(), header.contentType());
+        String source = cut != null ? "products/_import/" + id + "/cutout.png"
+                : "products/_import/" + id + "/source." + header.extension();
+        byte[] original = cut != null ? cut : fetched.bytes();
+        store.put(source, new ByteArrayInputStream(original), original.length, cut != null ? "image/png" : header.contentType());
         try {
-            byte[] square = render(source);
+            byte[] square = cut != null ? squared(imgproxy.square(source, SIZE, PADDING, DARK, false)) : render(source);
             String key = "products/" + id + "/photo.webp";
             store.put(key, new ByteArrayInputStream(square), square.length, "image/webp");
             return new Imported(key, fetched.finalUrl().toString());
@@ -88,9 +99,14 @@ public class ImageImport {
         }
     }
 
+    /** The photo as it is: margins trimmed, on the colour of its own edges. */
     private byte[] render(String source) {
         Imgproxy.Rgb background = EdgeColor.ofPng(bytes(imgproxy.preview(source, 64)));
-        byte[] square = bytes(imgproxy.square(source, SIZE, PADDING, background));
+        return squared(imgproxy.square(source, SIZE, PADDING, background, true));
+    }
+
+    private static byte[] squared(Imgproxy.Rendered rendered) {
+        byte[] square = bytes(rendered);
         if (square == null || square.length == 0) {
             throw new DomainException.BadRequest(MediaError.IMAGE_PROCESSING_FAILED);
         }
