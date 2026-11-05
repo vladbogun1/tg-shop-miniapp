@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Карточка поставки (route "/preorders/{id}"): позиции (заказано / пришло / ждут / остаток / цена),
- * очередь подписчиков, кнопки «В пути» · «На таможне» · «Приехала» · «Отменить», правка.
+ * Карточка поставки (route "/preorders/{id}") — одна страница блоками, без вкладок: шапка со статусом и одной главной
+ * кнопкой, итог (если приехала), «Что в поставке», «Кто ждёт», «Закупка и расходы» и «Продажи» (с правом «Финансы»).
  */
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -10,14 +10,16 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { ProductPickModal } from "@/features/product";
 import { QueryState } from "@/components/ui/QueryState";
-import { Tabs } from "@/components/ui/Tabs";
 import { BatchFormModal, isOpenStatus, useFinanceAccess, type Batch } from "@/features/procurement";
 import { useBatch, useSetBatchStatus } from "../queries";
 import { ArriveModal } from "./ArriveModal";
 import { BatchHeader } from "./BatchHeader";
-import { BatchMainTab } from "./BatchMainTab";
+import { BatchItems } from "./BatchItems";
 import { BatchMoneyTab } from "./BatchMoneyTab";
+import { BatchQueue } from "./BatchQueue";
+import { BatchResult } from "./BatchResult";
 import { BatchSalesTab } from "./BatchSalesTab";
+import { BatchJumps, BatchSection } from "./BatchSection";
 import { CancelBatchModal } from "./CancelBatchModal";
 import { NewCardsBanner } from "./NewCardsBanner";
 
@@ -36,17 +38,20 @@ export function BatchScreen() {
   );
 }
 
-type TabKey = "main" | "money" | "sales";
-
 function BatchView({ batch }: { batch: Batch }) {
   const [editing, setEditing] = useState(false);
   const [arriving, setArriving] = useState(false);
   const [cancelling, setCancelling] = useState(false);
-  const [tab, setTab] = useState<TabKey>("main");
   const finance = useFinanceAccess();
-  const shownTab = finance ? tab : "main";
   const setStatus = useSetBatchStatus(batch.id);
   const waiting = batch.items.reduce((n, i) => n + i.waitingPeople, 0);
+  const arrived = batch.status === "ARRIVED";
+  const jumps = [
+    { id: "items", label: "Что в поставке" },
+    { id: "queue", label: waiting ? `Кто ждёт · ${waiting}` : "Кто ждёт" },
+    ...(finance ? [{ id: "money", label: "Закупка и расходы" }] : []),
+    ...(finance && arrived ? [{ id: "sales", label: "Продажи" }] : []),
+  ];
 
   return (
     <>
@@ -58,23 +63,34 @@ function BatchView({ batch }: { batch: Batch }) {
         onArrive={() => setArriving(true)}
         onCancel={() => setCancelling(true)}
       />
-
       <NewCardsBanner batch={batch} />
+      {finance && arrived && <BatchResult batchId={batch.id} />}
+      <BatchJumps items={jumps} />
+
+      <BatchSection id="items" title="Что в поставке">
+        <BatchItems batch={batch} open={isOpenStatus(batch.status)} />
+      </BatchSection>
+      <BatchSection
+        id="queue"
+        title="Кто ждёт"
+        hint="Покупатели, которые нажали «Сообщить о поступлении» или заказали заранее. Когда поставка приедет, бот им напишет."
+      >
+        <BatchQueue batch={batch} />
+      </BatchSection>
       {finance && (
-        <Tabs
-          className="mb-4"
-          value={shownTab}
-          onChange={setTab}
-          items={[
-            { value: "main", label: "Позиции и очередь" },
-            { value: "money", label: "Деньги" },
-            { value: "sales", label: "Продажи" },
-          ]}
-        />
+        <BatchSection
+          id="money"
+          title="Закупка и расходы"
+          hint="Почём купили и сколько ушло на доставку — отсюда считается, во сколько обошлась 1 шт."
+        >
+          <BatchMoneyTab batchId={batch.id} />
+        </BatchSection>
       )}
-      {shownTab === "money" && <BatchMoneyTab batchId={batch.id} />}
-      {shownTab === "sales" && <BatchSalesTab batchId={batch.id} />}
-      {shownTab === "main" && <BatchMainTab batch={batch} />}
+      {finance && arrived && (
+        <BatchSection id="sales" title="Продажи по товарам">
+          <BatchSalesTab batchId={batch.id} />
+        </BatchSection>
+      )}
 
       <BatchFormModal open={editing} onClose={() => setEditing(false)} batch={batch} ProductPicker={ProductPickModal} />
       {isOpenStatus(batch.status) && <ArriveModal open={arriving} onClose={() => setArriving(false)} batch={batch} />}

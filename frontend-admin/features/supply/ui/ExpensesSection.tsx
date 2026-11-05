@@ -32,7 +32,7 @@ export function ExpensesSection({
   async function remove(e: Expense) {
     const ok = await confirm({
       title: "Удалить расход?",
-      message: `${expenseKindLabel(e.kind)} · ${money(e.amountUahMinor)}. Себестоимость пересчитается.`,
+      message: `${expenseKindLabel(e.kind)} · ${money(e.amountUahMinor)}. Цена 1 шт пересчитается.`,
       confirmLabel: "Удалить",
       danger: true,
     });

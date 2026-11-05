@@ -35,24 +35,31 @@ export function BatchItems({ batch, open }: { batch: Batch; open: boolean }) {
                   className="h-12 w-12 shrink-0 rounded-[var(--r-md)] border border-[var(--line)] transition group-enabled:group-hover:border-[var(--accent)]"
                 />
                 <span className="flex min-w-0 flex-col gap-1">
-                  <span className="line-clamp-2 break-words text-[14px] font-semibold leading-snug text-[var(--text)] group-enabled:group-hover:text-[var(--accent-hi)]">
+                  <span className="break-words text-[14px] font-semibold leading-snug text-[var(--text)] group-enabled:group-hover:text-[var(--accent-hi)]">
                     {lineTitle(i.title, i.variantName)}
                   </span>
                   <ProductStateChips p={p} loading={products.loading} />
                 </span>
               </button>
-              <Cell label="Заказано" value={`${i.qtyOrdered}`} />
-              <Cell label="Пришло" value={i.qtyArrived != null ? `${i.qtyArrived}` : "—"} />
-              <Cell label="Ждут" value={`${i.waitingPeople} чел / ${i.waitingQty} шт`} warn={open && !enough} accent={i.waitingPeople > 0} />
-              <Cell label="На складе" value={`${i.stock}`} />
-              <Cell label="Цена продажи" value={money(i.priceMinor)} />
-              {batch.moneyVisible && (
+              <div className="grid w-full grid-cols-3 gap-x-3 gap-y-2 sm:flex sm:w-auto sm:flex-wrap sm:gap-x-4">
+                <Cell label="Заказано" value={`${i.qtyOrdered}`} />
+                <Cell label="Пришло" value={i.qtyArrived != null ? `${i.qtyArrived}` : "—"} />
                 <Cell
-                  label="Закупка"
-                  value={i.unitPriceFx != null ? `${fxToInput(i.unitPriceFx)} ${batch.currency ?? ""}` : "—"}
-                  sub={cost != null ? `≈ ${money(cost)}/шт` : undefined}
+                  label={open && !enough ? "Ждут — не хватит" : "Ждут"}
+                  value={i.waitingPeople ? `${i.waitingPeople} чел · ${i.waitingQty} шт` : "—"}
+                  warn={open && !enough}
+                  accent={i.waitingPeople > 0}
                 />
-              )}
+                <Cell label="На складе" value={`${i.stock}`} />
+                <Cell label="Продаём по" value={money(i.priceMinor)} />
+                {batch.moneyVisible && (
+                  <Cell
+                    label="Закупка"
+                    value={i.unitPriceFx != null ? `${fxToInput(i.unitPriceFx)} ${batch.currency ?? ""}` : "—"}
+                    sub={cost != null ? `≈ ${money(cost)}/шт` : undefined}
+                  />
+                )}
+              </div>
               {p && (
                 <div className="flex items-center gap-3">
                   <Toggle checked={!!p.active} disabled={tools.busy === p.id} onChange={(v) => tools.setActive(p, v)} label="Показывать" />
@@ -77,7 +84,7 @@ export function BatchItems({ batch, open }: { batch: Batch; open: boolean }) {
 
 function Cell({ label, value, sub, accent, warn }: { label: string; value: string; sub?: string; accent?: boolean; warn?: boolean }) {
   return (
-    <div className="min-w-[5.5rem]">
+    <div className="min-w-0 sm:min-w-[5.5rem]">
       <div className="text-[11px] text-[var(--text-faint)]">{label}</div>
       <div
         className={

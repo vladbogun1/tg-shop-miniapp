@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Карточка поставки → «Деньги»: валюта и курс (кнопка «Курс НБУ»), способ распределения расходов, цена закупки
- * по позициям и вес/ручная доля, итоговая себестоимость и маржа за штуку; расходы партии (доставка, растаможка…).
- * Только для тех, у кого есть право «Финансы» — страница не рендерит вкладку без него.
+ * Блок «Закупка и расходы»: валюта и курс (кнопка «Курс НБУ»), цена закупки по товарам, во сколько обошлась 1 шт
+ * и прибыль с неё; расходы партии (доставка, растаможка…). Как делить расходы — в «Дополнительно».
+ * Только для тех, у кого есть право «Финансы» — страница не рендерит блок без него.
  */
 import { Button } from "@shop/ui/admin-button";
 import { useForm } from "@shop/ui/form";
@@ -110,21 +110,25 @@ function MoneyBody({ data, updatedAt }: { data: BatchMoney; updatedAt: number })
           )}
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <span className="field-label">Как делить расходы по позициям</span>
-          <SegmentedControl
-            className="self-start"
-            options={ALLOCATIONS.map((a) => ({
-              value: a.value,
-              label: a.label,
-            }))}
-            value={v.allocation}
-            onChange={(a: Allocation) => set("allocation", a)}
-          />
-          {alloc && <span className="text-[12px] text-[var(--text-faint)]">{alloc.hint}</span>}
-        </div>
+        <details className="group">
+          <summary className="cursor-pointer select-none text-[13px] font-semibold text-[var(--text-muted)] hover:text-[var(--text)]">
+            Дополнительно: как делить доставку между товарами — сейчас «{alloc?.label ?? v.allocation}»
+          </summary>
+          <div className="mt-2 flex flex-col gap-1.5">
+            <SegmentedControl
+              className="self-start"
+              options={ALLOCATIONS.map((a) => ({
+                value: a.value,
+                label: a.label,
+              }))}
+              value={v.allocation}
+              onChange={(a: Allocation) => set("allocation", a)}
+            />
+            {alloc && <span className="text-[12px] text-[var(--text-faint)]">{alloc.hint}</span>}
+          </div>
+        </details>
 
-        <Toggle checked={v.costsFinal} onChange={(x) => set("costsFinal", x)} label="Все расходы внесены (себестоимость окончательная)" />
+        <Toggle checked={v.costsFinal} onChange={(x) => set("costsFinal", x)} label="Все расходы внесены — цифры окончательные" />
       </section>
 
       <MoneyLinesTable lines={data.lines} drafts={v.lines} allocation={v.allocation} currency={v.currency} onChange={setLine} />
@@ -139,19 +143,23 @@ function MoneyBody({ data, updatedAt }: { data: BatchMoney; updatedAt: number })
         >
           Сохранить
         </Button>
-        {dirty && <span className="text-[12.5px] text-[var(--text-muted)]">Себестоимость и маржа в таблице пересчитаются после сохранения.</span>}
+        {dirty && <span className="text-[12.5px] text-[var(--text-muted)]">«Обошлась 1 шт» и прибыль пересчитаются после сохранения.</span>}
         {!dirty && incomplete && <span className="text-[12.5px] text-[var(--warn)]">Не у всех позиций внесена цена закупки.</span>}
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Total label="Закупка" value={money(data.purchaseMinor)} />
-        <Total label="Расходы" value={money(data.expensesMinor)} sub={data.expensesPct != null ? `${pct(data.expensesPct)} от закупки` : undefined} />
-        <Total label="Всего" value={money(data.totalMinor)} />
+        <Total label="Закупка товара" value={money(data.purchaseMinor)} />
         <Total
-          label="Не распределено"
+          label="Доставка и прочее"
+          value={money(data.expensesMinor)}
+          sub={data.expensesPct != null ? `${pct(data.expensesPct)} от закупки` : undefined}
+        />
+        <Total label="Всего потратили" value={money(data.totalMinor)} />
+        <Total
+          label="Не разнесено по товарам"
           value={money(data.unassignedMinor)}
           warn={data.unassignedMinor !== 0}
-          sub={data.unassignedMinor !== 0 ? "расходы без позиции, куда их отнести" : undefined}
+          sub={data.unassignedMinor !== 0 ? "эти расходы не вошли в цену 1 шт — проверьте предупреждения выше" : "всё разнесено"}
         />
       </div>
 
@@ -179,14 +187,16 @@ function CostsState({ final, data }: { final: boolean; data: BatchMoney }) {
     <>
       {final ? (
         <Badge tone="ok" dot>
-          себестоимость окончательная
+          цифры окончательные
         </Badge>
       ) : (
         <Badge tone="warn" dot>
-          себестоимость предварительная
+          цифры предварительные
         </Badge>
       )}
-      {data.preliminary && !data.costsFinal && <span className="text-[12.5px] text-[var(--text-muted)]">пока не отмечено «Все расходы внесены»</span>}
+      {data.preliminary && !data.costsFinal && (
+        <span className="text-[12.5px] text-[var(--text-muted)]">пока не отмечено «Все расходы внесены» — цена 1 шт ещё может вырасти</span>
+      )}
     </>
   );
 }

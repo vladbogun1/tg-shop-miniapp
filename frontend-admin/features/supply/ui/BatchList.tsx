@@ -14,9 +14,10 @@ import { Stat } from "./BatchStat";
 export function BatchList({ filter, onCreate }: { filter: BatchFilter; onCreate: () => void }) {
   const q = useBatchesList(filter);
   const empty = {
-    open: "Открытых поставок нет",
+    open: "Сейчас ничего не едет",
     arrived: "Приехавших поставок пока нет",
     cancelled: "Отменённых поставок нет",
+    all: "Поставок пока нет",
   } as Record<string, string>;
   return (
     <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Загрузка поставок">
@@ -25,10 +26,12 @@ export function BatchList({ filter, onCreate }: { filter: BatchFilter; onCreate:
           icon={Truck}
           title={empty[filter]}
           description={
-            filter === "open" ? "Создайте поставку, когда закажете партию у завода: покупатели увидят срок и смогут встать в очередь." : undefined
+            filter === "open" || filter === "all"
+              ? "Создайте поставку, когда закажете партию у завода: покупатели увидят срок и смогут встать в очередь."
+              : undefined
           }
           action={
-            filter === "open" ? (
+            filter === "open" || filter === "all" ? (
               <Button variant="accent" icon={<Plus className="h-4 w-4" />} onClick={onCreate}>
                 Новая поставка
               </Button>
@@ -55,16 +58,18 @@ function BatchRow({ b }: { b: BatchSummary }) {
           <Badge tone={BATCH_STATUS_TONE[b.status]} dot>
             {BATCH_STATUS_LABEL[b.status]}
           </Badge>
-          {!b.preorderOpen && b.status !== "ARRIVED" && b.status !== "CANCELLED" && <Badge>закупка без предзаказа</Badge>}
+          {!b.preorderOpen && b.status !== "ARRIVED" && b.status !== "CANCELLED" && <Badge>заранее не заказывают</Badge>}
         </div>
         <div className="mt-1 text-[12.5px] text-[var(--text-muted)]">
           {b.supplierName ?? "без поставщика"}
-          {b.arrivedAt ? ` · приехала ${formatDateTime(b.arrivedAt)}` : ` · срок: ${etaText(b)}`}
+          {b.arrivedAt ? ` · приехала ${formatDateTime(b.arrivedAt)}` : b.status === "CANCELLED" ? "" : ` · ожидаем: ${etaText(b)}`}
         </div>
       </div>
-      <Stat label="Позиций" value={`${b.itemsCount}`} />
-      <Stat label="Заказано" value={`${b.qtyOrdered} шт`} />
-      <Stat label="Ждут" value={`${b.waitingPeople} чел / ${b.waitingQty} шт`} accent={b.waitingPeople > 0} />
+      <div className="grid w-full grid-cols-3 gap-3 sm:flex sm:w-auto sm:gap-4">
+        <Stat label="Товаров" value={`${b.itemsCount}`} />
+        <Stat label="Заказано" value={`${b.qtyOrdered} шт`} />
+        <Stat label="Ждут" value={b.waitingPeople ? `${b.waitingPeople} чел · ${b.waitingQty} шт` : "—"} accent={b.waitingPeople > 0} />
+      </div>
     </Link>
   );
 }
