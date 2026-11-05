@@ -90,6 +90,41 @@ class BatchCostTest {
         assertThat(r.problems()).anyMatch(p -> p.contains("нет курса")).anyMatch(p -> p.contains("нет закупочной"));
     }
 
+
+    @Test
+    void aDirectExpenseOnALineThatArrivedZeroGoesToUnassignedNotLost() {
+        List<BatchCost.Expense> ex = List.of(new BatchCost.Expense(2L, 70000, "UAH", null));
+        BatchCost.Result r = BatchCost.compute("UAH", null, BatchCost.Allocation.BY_QTY,
+                List.of(new BatchCost.Line(1, 10, 100000L, null, null), new BatchCost.Line(2, 0, 30000L, null, null)),
+                ex);
+
+        assertThat(r.expensesMinor()).isEqualTo(70000);
+        assertThat(r.unassignedMinor()).isEqualTo(70000);
+        assertThat(r.byLine().get(1L).extraLineMinor()).isZero();
+        assertThat(r.problems()).anyMatch(p -> p.contains("пришло 0"));
+        long inLines = r.lines().stream().mapToLong(BatchCost.LineCost::extraLineMinor).sum();
+        assertThat(inLines + r.unassignedMinor()).as("every expense is somewhere").isEqualTo(r.expensesMinor());
+    }
+
+    @Test
+    void costPerUnitTimesQtyIsWithinHalfAKopeckPerUnitOfTheLineTotal() {
+        BatchCost.Result r = BatchCost.compute("USD", USD, BatchCost.Allocation.BY_VALUE, lines(), expenses());
+
+        for (BatchCost.LineCost l : r.lines()) {
+            long total = l.purchaseLineMinor() + l.extraLineMinor();
+            assertThat(Math.abs(l.costUnitMinor() * l.qty() - total)).isLessThanOrEqualTo(l.qty() / 2 + 1);
+            assertThat(l.costUnitMinor()).isEqualTo(l.purchaseUnitMinor() + l.extraUnitMinor());
+        }
+    }
+
+    @Test
+    void anAbsurdPurchaseDoesNotBlowUpTheScreen() {
+        BatchCost.Result r = BatchCost.compute("USD", new BigDecimal("10000"), BatchCost.Allocation.BY_QTY,
+                List.of(new BatchCost.Line(1, 2_000_000_000, BatchLimits.MAX_MINOR, null, null)), List.of());
+
+        assertThat(r.byLine().get(1L).costUnitMinor()).isNull();
+        assertThat(r.problems()).anyMatch(p -> p.contains("слишком"));
+    }
     @Test
     void splitIsExactForAwkwardNumbers() {
         Map<Long, Long> parts = BatchCost.split(100, Map.of(1L, 1L, 2L, 1L, 3L, 1L));

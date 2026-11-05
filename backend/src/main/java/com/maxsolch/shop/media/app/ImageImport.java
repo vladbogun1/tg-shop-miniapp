@@ -41,7 +41,7 @@ public class ImageImport {
     static final Imgproxy.Rgb DARK = new Imgproxy.Rgb(0x1a, 0x1a, 0x1a);
 
     /** The stored photo and where it was finally taken from (after redirects / the page's og:image). */
-    public record Imported(String key, String source) {
+    public record Imported(String key, String source, boolean cutOut) {
     }
 
     private final RemoteImages remote;
@@ -84,7 +84,7 @@ public class ImageImport {
             throw new DomainException.BadRequest(MediaError.IMAGE_TOO_SMALL, MIN_SIDE);
         }
         UUID id = ids.get();
-        byte[] cut = cutout.cut(fetched.bytes(), header.contentType());
+        byte[] cut = usable(cutout.cut(fetched.bytes(), header.contentType()));
         String source = cut != null ? "products/_import/" + id + "/cutout.png"
                 : "products/_import/" + id + "/source." + header.extension();
         byte[] original = cut != null ? cut : fetched.bytes();
@@ -93,10 +93,25 @@ public class ImageImport {
             byte[] square = cut != null ? squared(imgproxy.square(source, SIZE, PADDING, DARK, false)) : render(source);
             String key = "products/" + id + "/photo.webp";
             store.put(key, new ByteArrayInputStream(square), square.length, "image/webp");
-            return new Imported(key, fetched.finalUrl().toString());
+            return new Imported(key, fetched.finalUrl().toString(), cut != null);
         } finally {
             store.removeQuietly(source);
         }
+    }
+
+    /**
+     * The cut-out only when it is a real picture of at least {@link #MIN_SIDE} px: a small product in a big photo
+     * would be enlarged into mush, and a 200 with a broken body must not fail the import. Null = square the original.
+     */
+    private static byte[] usable(byte[] cut) {
+        if (cut == null || cut.length == 0) {
+            return null;
+        }
+        ImageHeader h = ImageHeader.of(cut);
+        if (h == null || (h.sizeKnown() && Math.max(h.width(), h.height()) < MIN_SIDE)) {
+            return null;
+        }
+        return cut;
     }
 
     /** The photo as it is: margins trimmed, on the colour of its own edges. */

@@ -107,6 +107,7 @@
       "VARIANT_GONE" : "VARIANT_GONE"
     },
     "ProcurementError" : {
+      "AMOUNT_TOO_BIG" : "BAD_AMOUNT",
       "BAD_ALIAS" : "BAD_ALIAS",
       "BAD_ALLOCATION" : "BAD_ALLOCATION",
       "BAD_AMOUNT" : "BAD_AMOUNT",
@@ -119,6 +120,7 @@
       "BAD_ITEM" : "BAD_ITEM",
       "BAD_ITEM_UNNAMED" : "BAD_ITEM",
       "BAD_KIND" : "BAD_KIND",
+      "BAD_MANUAL_EXTRA" : "BAD_COST",
       "BAD_NAME" : "BAD_NAME",
       "BAD_PRICE" : "BAD_PRICE",
       "BAD_PRICE_NOT_POSITIVE" : "BAD_PRICE",
@@ -126,7 +128,6 @@
       "BAD_QTY" : "BAD_QTY",
       "BAD_QTY_ORDERED" : "BAD_QTY",
       "BAD_RATE" : "BAD_RATE",
-      "BAD_RATE_NOT_POSITIVE" : "BAD_RATE",
       "BAD_STATUS" : "BAD_STATUS",
       "BAD_SUPPLIER" : "BAD_SUPPLIER",
       "BAD_VARIANT" : "BAD_VARIANT",
@@ -136,6 +137,7 @@
       "DUPLICATE_LINE" : "DUPLICATE_LINE",
       "NBU_UNAVAILABLE" : "NBU_UNAVAILABLE",
       "NO_ITEMS" : "NO_ITEMS",
+      "PRICE_TOO_BIG" : "BAD_PRICE",
       "PRODUCT_GONE" : "PRODUCT_GONE",
       "VARIANT_GONE" : "VARIANT_GONE",
       "VARIANT_REQUIRED" : "VARIANT_REQUIRED"

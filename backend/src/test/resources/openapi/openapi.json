@@ -3892,6 +3892,9 @@
       },
       "CatalogProductPhotoImportResult" : {
         "properties" : {
+          "cutOut" : {
+            "type" : "boolean"
+          },
           "imageKeys" : {
             "items" : {
               "type" : "string"
@@ -3906,6 +3909,7 @@
           }
         },
         "required" : [
+          "cutOut",
           "imageKeys",
           "key",
           "source"

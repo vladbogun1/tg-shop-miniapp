@@ -131,17 +131,41 @@ const parseFx = (s: string) => Number(s.replace(",", "."));
 function etaError(v: BatchFormValues): string | null {
   if (v.etaMode === "DATE" && !v.etaFrom) return "Укажите дату";
   if (v.etaMode === "RANGE" && (!v.etaFrom || !v.etaTo || v.etaTo < v.etaFrom)) return "Диапазон: «с» не позже «по»";
-  if (v.etaMode === "APPROX" && !(Number(v.weeks) >= 0)) return "Укажите, через сколько недель";
+  if (v.etaMode === "APPROX" && !intIn(v.weeks, 1, 52)) return "Через сколько недель приедет — целое число от 1 до 52";
   return null;
+}
+
+/** Строка — целое в [min, max]. Пустое поле — не 0, а ошибка. */
+function intIn(s: string, min: number, max: number): boolean {
+  const t = s.trim();
+  if (!/^\d+$/.test(t)) return false;
+  const n = Number(t);
+  return n >= min && n <= max;
+}
+
+/** Сервер: до 100 000 шт на позицию, бронь 1–168 ч, цена закупки — до 10 млн за штуку. */
+export const MAX_QTY = 100_000;
+export const MAX_HOLD_HOURS = 168;
+const MAX_UNIT_PRICE = 10_000_000;
+
+function priceError(price: string): string | null {
+  if (!price.trim()) return null;
+  const n = Number(price.trim().replace(",", "."));
+  return Number.isFinite(n) && n >= 0 && n <= MAX_UNIT_PRICE ? null : "Цена закупки — число от 0 до 10 000 000";
 }
 
 /** Текст первой ошибки или null. */
 export function validateBatchForm(v: BatchFormValues, itemsLocked: boolean, money: boolean): string | null {
   if (!itemsLocked && v.lines.length === 0) return "Добавьте хотя бы одну позицию";
-  if (!itemsLocked && v.lines.some((l) => !(Number(l.qty) >= 1))) return "Сколько заказано — от 1 у каждой позиции";
+  if (!itemsLocked && v.lines.some((l) => !intIn(l.qty, 1, MAX_QTY))) return "Сколько заказано — целое число от 1 до 100 000 у каждой позиции";
   const eta = etaError(v);
   if (eta) return eta;
-  if (money && v.fxRate.trim() && !(parseFx(v.fxRate) > 0)) return "Курс должен быть больше нуля";
+  if (v.distribution === "QUEUE_HOLD" && !intIn(v.holdHours, 1, MAX_HOLD_HOURS)) return "Бронь — от 1 до 168 часов";
+  if (money && v.fxRate.trim() && !(parseFx(v.fxRate) > 0 && parseFx(v.fxRate) <= 10_000)) return "Курс — больше нуля и не больше 10 000";
+  if (money && !itemsLocked) {
+    const bad = v.lines.map((l) => priceError(l.price)).find(Boolean);
+    if (bad) return bad;
+  }
   return null;
 }
 

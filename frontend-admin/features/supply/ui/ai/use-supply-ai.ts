@@ -5,23 +5,16 @@
  * Решения, принятые вручную или ИИ, при смене поставщика не перетираются; пересчитываются только автоматические.
  */
 import { useEffect, useMemo, useState } from "react";
-import { useSupplierAliases, useSuppliers, type Supplier } from "@/features/procurement";
+import { useSupplierAliases, useSuppliers } from "@/features/procurement";
 import { lineProblem, likelyRepeats, totalProblem } from "../../model/ai/checks";
 import { autoMatch } from "../../model/ai/match";
 import { parseMatch, type LeafCategory } from "../../model/ai/match-prompt";
 import { parseExtract, type ParsedExtract } from "../../model/ai/parse";
 import { draftKey, draftPriceUah, newProducts, planProblems } from "../../model/ai/plan";
+import { supplierByName } from "../../model/ai/supplier";
 import type { CatalogItem, LineDecision, NewProductDraft, ReviewRow } from "../../model/ai/types";
 
 const isAuto = (d: LineDecision) => d.kind === "open" || (d.kind === "match" && (d.by === "search" || d.by === "memory"));
-
-function supplierByName(list: Supplier[] | undefined, name: string | null): string {
-  if (!list || !name) return "";
-  const n = name.trim().toLowerCase();
-  // «Zpmax准枪电竞外设企业店» из скрина = наш «Taobao Zpmax准枪电竞外设企业店».
-  const hit = list.find((s) => s.name.trim().toLowerCase() === n) ?? list.find((s) => s.name.toLowerCase().includes(n) || n.includes(s.name.toLowerCase()));
-  return hit ? String(hit.id) : "";
-}
 
 /** Пустой черновик нового товара из строки: бренд + модель + цвет, как прочитал ИИ. */
 export function blankDraft(r: ReviewRow): NewProductDraft {
@@ -34,7 +27,13 @@ export function useSupplyAi(catalog: CatalogItem[], categories: LeafCategory[], 
   const [answer, setAnswer] = useState("");
   const [parsed, setParsed] = useState<ParsedExtract | null>(null);
   const [rows, setRows] = useState<ReviewRow[]>([]);
-  const [supplierId, setSupplierId] = useState("");
+  const [supplierId, setSupplierIdRaw] = useState("");
+  // Выбран админом — держим; найден по названию — для следующего документа ищем заново.
+  const [supplierManual, setSupplierManual] = useState(false);
+  const setSupplierId = (id: string) => {
+    setSupplierIdRaw(id);
+    setSupplierManual(true);
+  };
   const [helpErrors, setHelpErrors] = useState<string[]>([]);
   const [prices, setPrices] = useState<Record<string, string>>({});
   const suppliersQ = useSuppliers();
@@ -59,8 +58,8 @@ export function useSupplyAi(catalog: CatalogItem[], categories: LeafCategory[], 
       setRows([]);
       return p;
     }
-    const sid = supplierId || supplierByName(suppliersQ.data, p.doc.supplier);
-    setSupplierId(sid);
+    const sid = supplierManual ? supplierId : supplierByName(suppliersQ.data, p.doc.supplier);
+    setSupplierIdRaw(sid);
     const mem = sid === supplierId ? memory : [];
     setRows(p.doc.lines.map((line) => ({ line, ...autoMatch(line, catalog, mem) })));
     return p;
@@ -120,6 +119,8 @@ export function useSupplyAi(catalog: CatalogItem[], categories: LeafCategory[], 
       setRows([]);
       setHelpErrors([]);
       setPrices({});
+      setSupplierIdRaw("");
+      setSupplierManual(false);
     },
   };
 }

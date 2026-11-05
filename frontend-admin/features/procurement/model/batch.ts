@@ -123,3 +123,19 @@ export function costUahMinor(unitFx: number | null | undefined, rate: number | n
   if (unitFx == null || rate == null || rate <= 0) return null;
   return Math.round(unitFx * rate);
 }
+
+const SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL"];
+
+/** Ранг размера: «2XL» = «XXL»; не размер — null. */
+function sizeRank(name: string): number | null {
+  const n = name.trim().toUpperCase().replace(/^([2-4])XL$/, (_, k: string) => "X".repeat(Number(k)) + "L");
+  const i = SIZES.indexOf(n);
+  return i >= 0 ? i : null;
+}
+
+/** Варианты по размеру (S, M, L, XL, 2XL), если все они — размеры; иначе порядок не меняется. */
+export function sortBySize<T extends { name: string }>(list: readonly T[]): T[] {
+  const ranks = list.map((v) => sizeRank(v.name));
+  if (ranks.some((r) => r == null)) return [...list];
+  return list.map((v, i) => ({ v, r: ranks[i] as number })).sort((a, b) => a.r - b.r).map((x) => x.v);
+}

@@ -71,12 +71,15 @@ public final class BatchCost {
         List<LineCost> out = new ArrayList<>();
         for (Line l : lines) {
             long extra = shares.share().getOrDefault(l.id(), 0L) + spent.direct().getOrDefault(l.id(), 0L);
-            long extraUnit = l.qty() > 0 ? Money.quotient(extra, l.qty()) : 0;
             Long pu = purchases.unit().get(l.id());
-            out.add(new LineCost(l.id(), l.qty(), pu, purchases.line().get(l.id()), extra, extraUnit,
-                    pu == null ? null : pu + extraUnit));
+            Long pl = purchases.line().get(l.id());
+            // A lot keeps one cost per unit, so the line total (purchase + extra) is divided once: qty × cost is off
+            // by at most half a kopeck per unit. (Rounding the purchase and the extra apart added up to a kopeck.)
+            Long costUnit = pu == null ? null : l.qty() > 0 ? Money.quotient(pl + extra, l.qty()) : pu;
+            long extraUnit = costUnit != null ? costUnit - pu : l.qty() > 0 ? Money.quotient(extra, l.qty()) : 0;
+            out.add(new LineCost(l.id(), l.qty(), pu, pl, extra, extraUnit, costUnit));
         }
-        return new Result(out, purchases.total(), spent.total(), shares.unassigned(), problems);
+        return new Result(out, purchases.total(), spent.total(), shares.unassigned() + spent.lost(), problems);
     }
 
     /** Purchase in UAH per unit and per line (only lines with a price, and only when the rate is known). */
@@ -95,8 +98,16 @@ public final class BatchCost {
             if (rate == null) {
                 continue;
             }
-            purchaseUnit.put(l.id(), toUah(l.unitPriceFx(), rate));
-            long line = toUah(l.unitPriceFx() * (long) l.qty(), rate);
+            long unit;
+            long line;
+            try {
+                unit = toUah(l.unitPriceFx(), rate);
+                line = toUah(Math.multiplyExact(l.unitPriceFx(), (long) l.qty()), rate);
+            } catch (ArithmeticException e) {
+                problems.add("сумма закупки слишком велика у позиции " + l.id());
+                continue;
+            }
+            purchaseUnit.put(l.id(), unit);
             purchaseLine.put(l.id(), line);
             purchaseTotal += line;
         }
@@ -104,12 +115,19 @@ public final class BatchCost {
     }
 
     /** Expenses in UAH: per line, and the pool shared by the whole batch. */
-    private record Expenses(Map<Long, Long> direct, long pool, long total) {
+    private record Expenses(Map<Long, Long> direct, long pool, long lost, long total) {
     }
 
+    /**
+     * {@code lost}: direct expenses of a line that arrived 0 units — there is no unit to carry them, so they stay in
+     * the unassigned sum (with a problem for the admin) instead of vanishing or silently moving to other products.
+     */
     private static Expenses expenses(List<Line> lines, List<Expense> expenses, List<String> problems) {
         Map<Long, Long> direct = new HashMap<>();
+        Map<Long, Line> byId = new HashMap<>();
+        lines.forEach(l -> byId.put(l.id(), l));
         long pool = 0;
+        long lost = 0;
         long expensesTotal = 0;
         for (Expense e : expenses) {
             BigDecimal r = rateOf(e.currency(), e.fxRate());
@@ -119,13 +137,17 @@ public final class BatchCost {
             }
             long uah = toUah(e.amountMinor(), r);
             expensesTotal += uah;
-            if (e.lineId() != null && lines.stream().anyMatch(l -> l.id() == e.lineId())) {
+            Line line = e.lineId() == null ? null : byId.get(e.lineId());
+            if (line == null) {
+                pool += uah;
+            } else if (line.qty() > 0) {
                 direct.merge(e.lineId(), uah, Long::sum);
             } else {
-                pool += uah;
+                lost += uah;
+                problems.add("расход на позицию " + line.id() + ", которой пришло 0 шт, не распределён");
             }
         }
-        return new Expenses(direct, pool, expensesTotal);
+        return new Expenses(direct, pool, lost, expensesTotal);
     }
 
     /** Each line's share of the pool, and what of the pool no line took. */

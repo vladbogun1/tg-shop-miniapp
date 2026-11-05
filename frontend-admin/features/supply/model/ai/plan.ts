@@ -46,6 +46,26 @@ export function planProblems(rows: ReviewRow[], plans: NewProductPlan[]): string
     if (!p.categoryId) out.push(`«${p.title}»: выберите категорию`);
     if (!(p.priceUah != null && p.priceUah > 0)) out.push(`«${p.title}»: черновая цена продажи`);
     if (p.lineIds.length > 1 && p.variants.length === 0) out.push(`«${p.title}»: несколько строк без вариантов — разведите названия или задайте варианты`);
+    if (p.variants.length > 0) {
+      for (const id of p.lineIds) {
+        const d = rows.find((r) => r.line.id === id)?.decision;
+        if (d?.kind === "new" && !d.draft.variant) out.push(`«${p.title}»: у строки ${id} не указан вариант (у товара есть варианты ${p.variants.join(", ")})`);
+      }
+    }
+  }
+  return out;
+}
+
+/** Товар уже создан на прошлой попытке, а варианты с тех пор поменяли: строки не найдут свой вариант. */
+export function variantSetProblems(plans: NewProductPlan[], created: Map<string, Created>): string[] {
+  const out: string[] = [];
+  for (const p of plans) {
+    const c = created.get(p.key);
+    if (!c) continue;
+    const missing = p.variants.filter((v) => !c.variants.some((x) => x.name === v));
+    if (missing.length === 0) continue;
+    const had = c.variants.map((v) => v.name).join(", ") || "без вариантов";
+    out.push(`«${p.title}» уже создан с вариантами ${had} — нет варианта ${missing.join(", ")}. Верните варианты или закройте окно и начните заново`);
   }
   return out;
 }
@@ -84,7 +104,10 @@ export interface MergedLine {
   unitPrice: number | null;
 }
 
-/** Позиции поставки: одинаковый товар+вариант — одна позиция; цена — средняя по количеству. */
+/**
+ * Позиции поставки: одинаковый товар+вариант — одна позиция; цена — средняя по количеству. Если хоть у одной строки
+ * цены нет, цены у позиции нет: админ впишет её в форме, а не получит чужую цену на все штуки.
+ */
 export function mergeLines(resolved: Resolved[]): MergedLine[] {
   const out = new Map<string, MergedLine & { paid: number; priced: number }>();
   for (const r of resolved) {
@@ -95,7 +118,7 @@ export function mergeLines(resolved: Resolved[]): MergedLine[] {
       m.paid += r.line.unitPrice * r.line.qty;
       m.priced += r.line.qty;
     }
-    m.unitPrice = m.priced ? round2(m.paid / m.priced) : null;
+    m.unitPrice = m.priced && m.priced === m.qty ? round2(m.paid / m.priced) : null;
     out.set(k, m);
   }
   return [...out.values()].map(({ productId, variantId, qty, unitPrice }) => ({ productId, variantId, qty, unitPrice }));

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { expenseKindLabel, lineTitle, openExpenseFile, type BatchMoney, type Expense, type ExpenseFile } from "@/features/procurement";
 import { cn } from "@/lib/cn";
 import { money } from "@/lib/money";
+import { dayOf } from "../model/format";
 import { fileSize } from "../model/money-form";
 import { useAttachExpenseFiles, useDeleteExpense, useDeleteExpenseFile } from "../queries";
 
@@ -81,7 +82,7 @@ export function ExpensesSection({
                 </div>
                 <div className="text-[12px] text-[var(--text-faint)]">
                   {e.itemId != null ? (itemName.get(e.itemId) ?? "позиция") : "на всю поставку"}
-                  {e.spentOn ? ` · ${e.spentOn}` : ""}
+                  {e.spentOn ? ` · ${dayOf(e.spentOn)}` : ""}
                   {e.createdBy ? ` · ${e.createdBy}` : ""}
                 </div>
                 {e.note && <div className="break-words text-[12.5px] text-[var(--text-muted)]">{e.note}</div>}

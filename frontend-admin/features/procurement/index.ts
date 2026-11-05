@@ -19,6 +19,7 @@ export {
   isOpenStatus,
   isoInDays,
   lineTitle,
+  sortBySize,
   sourceLabel,
   weeksUntil,
 } from "./model/batch";

@@ -2,7 +2,7 @@
 
 /**
  * «Приехала»: по каждой позиции «пришло» и цена продажи; режим раздачи и часы брони.
- * «Посчитать» — предпросмотр (dryRun), «Подтвердить» — настоящий приход: остаток, цены, брони, рассылка.
+ * Одна главная кнопка: сначала «Проверить» (dryRun — ничего не меняется), потом «Принять товар» — остаток, цены, брони, рассылка.
  */
 import { Button } from "@shop/ui/admin-button";
 import { useForm } from "@shop/ui/form";
@@ -31,6 +31,8 @@ export function ArriveModal({ open, onClose, batch }: { open: boolean; onClose: 
   const { rows, distribution, holdHours } = form.watch();
   const [preview, setPreview] = useState<ArriveResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // setValue без shouldDirty не помечает форму — считаем правки сами, чтобы Esc спрашивал «закрыть без сохранения?».
+  const [touched, setTouched] = useState(false);
   // Себестоимость штуки из этой поставки — только с правом «Финансы»; без права (или 403/404) молча не показываем.
   const finance = useFinanceAccess();
   const moneyQ = useBatchCosting(batch.id, open && finance);
@@ -44,6 +46,7 @@ export function ArriveModal({ open, onClose, batch }: { open: boolean; onClose: 
     });
     setPreview(null);
     setError(null);
+    setTouched(false);
   }, [open, batch, form]);
 
   const body = useMemo(
@@ -79,8 +82,18 @@ export function ArriveModal({ open, onClose, batch }: { open: boolean; onClose: 
       price: String(toMajor(i.priceMinor)),
     };
     form.setValue("rows", { ...rows, [id]: { ...cur, ...patch } });
-    setPreview(null); // цифры поменялись — прежний расчёт устарел
+    changed();
   }
+
+  /** Цифры поменялись — прежняя проверка устарела. */
+  function changed() {
+    setPreview(null);
+    setError(null);
+    setTouched(true);
+  }
+
+  const checking = run.isPending && run.variables?.dryRun === true;
+  const applying = run.isPending && run.variables?.dryRun === false;
 
   const totals = preview
     ? {
@@ -91,7 +104,7 @@ export function ArriveModal({ open, onClose, batch }: { open: boolean; onClose: 
 
   return (
     <Modal
-      dirty={form.formState.isDirty}
+      dirty={touched || preview != null}
       open={open}
       onClose={onClose}
       size="lg"
@@ -101,31 +114,28 @@ export function ArriveModal({ open, onClose, batch }: { open: boolean; onClose: 
         <>
           {error && <p className="mr-auto min-w-0 text-[13px] text-[var(--danger-ink)]">{error}</p>}
           <ModalCancel />
-          <Button variant="outline" loading={run.isPending && run.variables?.dryRun === true} onClick={() => run.mutate({ dryRun: true, body })}>
-            Посчитать
-          </Button>
-          <Button
-            variant="accent"
-            disabled={!preview}
-            loading={run.isPending && run.variables?.dryRun === false}
-            onClick={() => run.mutate({ dryRun: false, body })}
-          >
-            Подтвердить
-          </Button>
+          {preview ? (
+            <Button variant="accent" loading={applying} onClick={() => run.mutate({ dryRun: false, body })}>
+              Принять товар
+            </Button>
+          ) : (
+            <Button variant="accent" loading={checking} onClick={() => run.mutate({ dryRun: true, body })}>
+              Проверить
+            </Button>
+          )}
         </>
       }
     >
       <div className="flex min-w-0 flex-col gap-4">
         <p className="text-[13px] text-[var(--text-muted)]">
-          Укажите, сколько приехало и по какой цене продаём. После «Подтвердить» остаток пополнится, цена обновится, а ждущие получат сообщение от
-          бота.
+          Укажите, сколько приехало и по какой цене продаём. «Проверить» покажет, кто получит бронь, — ничего ещё не изменится. После «Принять
+          товар» остаток пополнится, цена обновится, а ждущие получат сообщение от бота.
         </p>
 
         <div className="flex flex-col gap-2">
           {batch.items.map((i) => (
             <ArriveLine
               key={i.id}
-              batch={batch}
               item={i}
               row={
                 rows[i.id] ?? {
@@ -134,7 +144,7 @@ export function ArriveModal({ open, onClose, batch }: { open: boolean; onClose: 
                 }
               }
               res={preview?.lines.find((l) => l.itemId === i.id)}
-              unitCost={moneyQ.data?.lines.find((l) => l.itemId === i.id)?.costUnitMinor ?? null}
+              cost={moneyQ.data?.lines.find((l) => l.itemId === i.id) ?? null}
               onEdit={(patch) => edit(i.id, patch, i)}
             />
           ))}
@@ -147,16 +157,17 @@ export function ArriveModal({ open, onClose, batch }: { open: boolean; onClose: 
             options={DISTRIBUTIONS}
             onChange={(v) => {
               form.setValue("distribution", v as Distribution);
-              setPreview(null);
+              changed();
             }}
           />
           <Input
+            id="arrive-hold-hours"
             label="Бронь, часов"
             inputMode="numeric"
             value={holdHours}
             onChange={(e) => {
               form.setValue("holdHours", e.target.value.replace(/[^\d]/g, ""));
-              setPreview(null);
+              changed();
             }}
             disabled={distribution === "ALL_AT_ONCE"}
           />
@@ -171,7 +182,7 @@ export function ArriveModal({ open, onClose, batch }: { open: boolean; onClose: 
           >
             {totals.short > 0 ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />}
             <span>
-              Итого: бронь получат {totals.held} чел, не хватит {totals.short} чел. Проверьте и нажмите «Подтвердить» — рассылка пойдёт сразу.
+              Итого: бронь получат {totals.held} чел, не хватит {totals.short} чел. Всё верно — нажмите «Принять товар»: сообщения уйдут сразу.
             </span>
           </div>
         )}

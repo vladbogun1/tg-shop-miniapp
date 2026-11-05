@@ -19,16 +19,43 @@ function str(v: unknown): string | null {
   return s && s.toLowerCase() !== "null" ? s : null;
 }
 
-/** Число из числа или строки «¥1 234,50» / «$42.50». */
+// Валюта по краям числа: символ или код. Остальной текст («12 pcs x2») — не число, а не «122».
+const MONEY_TOKENS = /^(?:[¥$€₴]|zł|rmb|cny|usd|eur|uah|pln|грн\.?)\s*|\s*(?:[¥$€₴]|zł|rmb|cny|usd|eur|uah|pln|грн\.?)$/gi;
+
+/** Без разделителей тысяч: последний из «.»/«,» — десятичный; один разделитель с ровно тремя цифрами после — тысячи. */
+function decimalOf(s: string): string | null {
+  const dot = s.lastIndexOf(".");
+  const comma = s.lastIndexOf(",");
+  if (dot >= 0 && comma >= 0) {
+    const dec = dot > comma ? "." : ",";
+    const thousands = dec === "." ? "," : ".";
+    const [int, frac, ...rest] = s.split(dec);
+    if (rest.length || frac.includes(thousands)) return null;
+    return `${int.split(thousands).join("")}.${frac}`;
+  }
+  const sep = dot >= 0 ? "." : comma >= 0 ? "," : null;
+  if (!sep) return s;
+  const parts = s.split(sep);
+  const thousands = parts.length > 2 || (parts[1].length === 3 && /[1-9]/.test(parts[0]));
+  if (thousands) return parts.every((p, i) => (i === 0 ? p.length >= 1 && p.length <= 3 : p.length === 3)) ? parts.join("") : null;
+  return parts.join(".");
+}
+
+/** Число из числа или строки «¥1 234,50» / «$42.50» / «1,234.50» / «10 zł». */
 export function num(v: unknown): number | null {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
   if (typeof v !== "string") return null;
-  const cleaned = v.replace(/[^\d.,-]/g, "").replace(",", ".");
-  const n = cleaned ? Number(cleaned) : NaN;
+  const bare = v.trim().replace(MONEY_TOKENS, "").replace(/[\s  ']/g, "");
+  if (!/^-?\d[\d.,]*$/.test(bare)) return null;
+  const dec = decimalOf(bare);
+  const n = dec == null ? NaN : Number(dec);
   return Number.isFinite(n) ? n : null;
 }
 
-const CURRENCY: Record<string, string> = { "¥": "CNY", RMB: "CNY", "$": "USD", "€": "EUR", "₴": "UAH", UAH: "UAH", USD: "USD", EUR: "EUR", CNY: "CNY" };
+const CURRENCY: Record<string, string> = {
+  "¥": "CNY", RMB: "CNY", CNY: "CNY", "$": "USD", USD: "USD", "€": "EUR", EUR: "EUR",
+  "₴": "UAH", UAH: "UAH", "ГРН": "UAH", "ГРН.": "UAH", PLN: "PLN", "ZŁ": "PLN",
+};
 
 function currencyOf(v: unknown): string | null {
   const s = str(v)?.toUpperCase();

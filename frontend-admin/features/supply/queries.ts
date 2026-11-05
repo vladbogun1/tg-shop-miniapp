@@ -258,6 +258,8 @@ export interface SupplyAiApplyInput {
   /** Уже созданные на прошлой попытке (по draftKey) — второй раз не создаём. */
   created: Map<string, Created>;
   onCreated: (key: string, c: Created) => void;
+  /** Поставщик заведён — запомнить до конца, чтобы повтор после сбоя не завёл второго. */
+  onSupplier: (id: number) => void;
 }
 
 /**
@@ -269,7 +271,10 @@ export function useApplySupplyAi() {
   return useApiMutation({
     mutationFn: async (input: SupplyAiApplyInput) => {
       let sid = input.supplierId ? Number(input.supplierId) : null;
-      if (sid == null && input.supplierName) sid = (await preordersApi.createSupplier({ name: input.supplierName, note: "Создан «Поставкой с ИИ»" })).id;
+      if (sid == null && input.supplierName) {
+        sid = (await preordersApi.createSupplier({ name: input.supplierName, note: "Создан «Поставкой с ИИ»" })).id;
+        input.onSupplier(sid);
+      }
       const created = new Map(input.created);
       for (const p of input.plans) {
         if (created.has(p.key)) continue;

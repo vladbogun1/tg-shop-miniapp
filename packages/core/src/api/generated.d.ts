@@ -5787,6 +5787,7 @@ export interface components {
             sortOrder: number;
         };
         CatalogProductPhotoImportResult: {
+            cutOut: boolean;
             imageKeys: string[];
             key: string;
             source: string;

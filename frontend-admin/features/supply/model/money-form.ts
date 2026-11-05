@@ -86,6 +86,9 @@ export function toMoneyRequest(data: BatchMoney, v: MoneyFormValues): MoneyReque
 
 // ---- расход -----------------------------------------------------------------------
 
+/** Как на бэкенде (BatchLimits): |сумма| ≤ 100 000 000,00. */
+const MAX_EXPENSE_MINOR = 10_000_000_000;
+
 export interface ExpenseFormValues {
   kind: ExpenseKind;
   amount: string;
@@ -118,6 +121,7 @@ export function expenseFormValues(edit: Expense | null, defaultCurrency: string,
 export function toExpenseRequest(v: ExpenseFormValues): { body: ExpenseRequest } | { error: string } {
   const amountMinor = inputToMinor(v.amount);
   if (amountMinor == null || amountMinor === 0) return { error: "Введите сумму (отрицательная — компенсация)" };
+  if (Math.abs(amountMinor) > MAX_EXPENSE_MINOR) return { error: "Сумма расхода — не больше 100 000 000" };
   const foreign = v.currency !== "UAH";
   const fxRate = foreign ? parseRate(v.rate) : null;
   if (foreign && fxRate == null) return { error: "Укажите курс к гривне" };

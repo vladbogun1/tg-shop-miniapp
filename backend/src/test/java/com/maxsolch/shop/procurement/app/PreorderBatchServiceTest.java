@@ -56,6 +56,7 @@ class PreorderBatchServiceTest {
     @Mock PreorderBatchRepository batches;
     @Mock PreorderBatchItemRepository items;
     @Mock SupplierRepository suppliers;
+    @Mock com.maxsolch.shop.procurement.infra.BatchExpenseRepository expenses;
     @Mock ProductRepository products;
     @Mock BatchQueue queue;
     @Mock LineProducts lineProducts;
@@ -75,7 +76,7 @@ class PreorderBatchServiceTest {
         service = new PreorderBatchService(batches, items, suppliers, productsApp, queue, lineProducts, settings,
                 new com.maxsolch.shop.inventory.app.Stock(productsApp, org.mockito.Mockito.mock(com.maxsolch.shop.platform.i18n.Messages.class), ledger,
                         org.mockito.Mockito.mock(com.maxsolch.shop.inventory.domain.StockHolds.class)),
-                revalidator, clock, zone, new BatchEditor(suppliers, productsApp, items, clock, zone));
+                revalidator, clock, zone, new BatchEditor(suppliers, productsApp, items, expenses, clock, zone));
         batch = new PreorderBatch();
         batch.setId(5L);
         batch.setTitle("Lamzu, ноябрь");
@@ -213,6 +214,24 @@ class PreorderBatchServiceTest {
         service.cancel(5L, null, false);
 
         verify(queue).onBatchCancelled(any(), eq(true), eq(NOW));
+    }
+
+    @Test
+    void removingALineMakesItsExpensesCommonToTheBatch() {
+        PreorderBatchItem kept = line(11, null, 5);
+        PreorderBatchItem removed = line(12, null, 5);
+        when(items.findByBatchIdOrderByIdAsc(5L)).thenReturn(List.of(kept, removed));
+        com.maxsolch.shop.procurement.domain.BatchExpense onRemoved = new com.maxsolch.shop.procurement.domain.BatchExpense();
+        onRemoved.setBatchItemId(12L);
+        when(expenses.findByBatchItemIdIn(List.of(12L))).thenReturn(List.of(onRemoved));
+
+        service.update(5L, new com.maxsolch.shop.procurement.app.BatchDtos.BatchRequest(null, null, null, null, null, null, null,
+                null, null, null, null, null, List.of(new com.maxsolch.shop.procurement.app.BatchDtos.ItemRequest(
+                11L, UuidUtil.toString(product.getId()), null, 5, null))), false);
+
+        verify(items).deleteAll(org.mockito.ArgumentMatchers.argThat((java.lang.Iterable<PreorderBatchItem> c) -> c.iterator().next() == removed));
+        assertThat(onRemoved.getBatchItemId()).as("the expense is the batch's now").isNull();
+        verify(expenses).saveAll(List.of(onRemoved));
     }
 
     @Test

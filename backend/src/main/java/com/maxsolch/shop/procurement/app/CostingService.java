@@ -6,6 +6,7 @@ import com.maxsolch.shop.inventory.domain.StockLot;
 import com.maxsolch.shop.procurement.domain.BatchCost;
 import com.maxsolch.shop.procurement.domain.BatchExpense;
 import com.maxsolch.shop.procurement.domain.BatchExpenseFile;
+import com.maxsolch.shop.procurement.domain.BatchLimits;
 import com.maxsolch.shop.procurement.infra.BatchExpenseFileRepository;
 import com.maxsolch.shop.procurement.infra.BatchExpenseRepository;
 import com.maxsolch.shop.platform.util.UuidUtil;
@@ -188,9 +189,8 @@ public class CostingService {
                 if (i == null) {
                     throw new DomainException.BadRequest(ProcurementError.BAD_ITEM, String.valueOf(l.itemId()));
                 }
-                if (l.unitPriceFx() != null && l.unitPriceFx() < 0) {
-                    throw new DomainException.BadRequest(ProcurementError.BAD_PRICE);
-                }
+                BatchLimits.unitPrice(l.unitPriceFx());
+                BatchLimits.manualExtra(l.manualExtraMinor());
                 if (l.weightG() != null && l.weightG() < 0) {
                     throw new DomainException.BadRequest(ProcurementError.BAD_WEIGHT);
                 }
@@ -265,9 +265,10 @@ public class CostingService {
     }
 
     private void applyExpense(BatchExpense e, ExpenseRequest req) {
-        if (req == null || req.amountMinor() == null || req.amountMinor() == 0) {
+        if (req == null) {
             throw new DomainException.BadRequest(ProcurementError.BAD_AMOUNT);
         }
+        long amount = BatchLimits.expense(req.amountMinor());
         String kind = req.kind() == null ? "OTHER" : req.kind().trim().toUpperCase(Locale.ROOT);
         try {
             BatchExpense.Kind.valueOf(kind);
@@ -284,7 +285,7 @@ public class CostingService {
         }
         e.setBatchItemId(req.itemId());
         e.setKind(kind);
-        e.setAmountMinor(req.amountMinor());
+        e.setAmountMinor(amount);
         e.setCurrency(currency);
         e.setFxRate("UAH".equals(currency) ? null : req.fxRate() == null ? null : rate(req.fxRate()));
         e.setSpentOn(req.spentOn());
@@ -325,10 +326,7 @@ public class CostingService {
     }
 
     private static BigDecimal rate(BigDecimal r) {
-        if (r.signum() <= 0 || r.compareTo(BigDecimal.valueOf(100000)) > 0) {
-            throw new DomainException.BadRequest(ProcurementError.BAD_RATE);
-        }
-        return r;
+        return BatchLimits.rate(r);
     }
 
     public static Double pct(long part, long whole) {

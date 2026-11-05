@@ -127,6 +127,21 @@ export function useAnswerReview({ items, schema, ids, batchPids }: Args) {
     });
   }
 
+  // Сохранённые карточки уходят из списка раньше, чем докачаются их фото — товар строки берём отсюда.
+  const seenReviews = useRef(new Map<string, ProductReview>());
+  for (const r of reviews ?? []) seenReviews.current.set(r.id, r);
+
+  /** Добавленное фото больше не выбрано: «Добавить N фото» второй раз не пошлёт его снова. */
+  function dropPhoto(j: PhotoJob) {
+    setSel((prev) => {
+      const n = new Map(prev);
+      for (const [id, s] of n) {
+        if (s.photos.includes(j.url) && seenReviews.current.get(id)?.item.id === j.productId) n.set(id, { ...s, photos: s.photos.filter((u) => u !== j.url) });
+      }
+      return n;
+    });
+  }
+
   function bulk(kind: BulkKind) {
     setSel((prev) => new Map([...prev, ...(reviews ?? []).map((r): [string, ProductSel] => [r.id, bulkSelection(kind, r, prev.get(r.id))])]));
   }
@@ -146,7 +161,7 @@ export function useAnswerReview({ items, schema, ids, batchPids }: Args) {
       setReviews((prev) => (prev ?? []).filter((r) => !sent.has(r.item.id)));
       (result.rejected.length ? toast.error : toast.success)(`Сохранено карточек: ${result.applied}${result.rejected.length ? `, отклонено: ${result.rejected.length}` : ""}`);
       invalidateCards(qc);
-      void photos.run(vars.photoJobs.filter((j) => !rejected.has(j.productId)));
+      void photos.run(vars.photoJobs.filter((j) => !rejected.has(j.productId)), dropPhoto);
     },
   });
 
@@ -154,7 +169,7 @@ export function useAnswerReview({ items, schema, ids, batchPids }: Args) {
     if (!reviews || (!payload.length && !photoJobs.length)) return;
     if (!payload.length) {
       // only photos were chosen — nothing to write to the cards
-      void photos.run(photoJobs);
+      void photos.run(photoJobs, dropPhoto);
       return;
     }
     importMutation.mutate({ payload, replaceSpecs, titles: new Map(reviews.map((r) => [r.item.id, r.item.title])), photoJobs });

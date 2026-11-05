@@ -13,7 +13,7 @@ import { useFinanceAccess, type BatchPreset, type SeedLine } from "@/features/pr
 import { PICK_PRODUCTS_STALE_MS, ProductPickModal, useProductsQuery } from "@/features/product";
 import { pickVariant } from "../../model/ai/match";
 import type { LeafCategory } from "../../model/ai/match-prompt";
-import type { Created, MergedLine } from "../../model/ai/plan";
+import { variantSetProblems, type Created, type MergedLine } from "../../model/ai/plan";
 import type { CatalogItem } from "../../model/ai/types";
 import { useApplySupplyAi, useNbuRate } from "../../queries";
 import { DocSummary } from "./DocSummary";
@@ -76,23 +76,52 @@ export function SupplyAiModal({ open, onClose, onReady }: { open: boolean; onClo
   const nbu = useNbuRate(setFxRate, false);
   const [pickFor, setPickFor] = useState<string | null>(null);
   const created = useRef(new Map<string, Created>());
+  // Поставщик, заведённый на упавшей попытке: повтор берёт его, а не заводит второго такого же.
+  const createdSupplier = useRef<number | null>(null);
   const apply = useApplySupplyAi();
   const byId = useMemo(() => new Map(catalog.map((p) => [p.id, p])), [catalog]);
-  const currency = ai.doc?.currency ?? "USD";
+  // Валюта: из документа или выбранная админом; курс всегда принадлежит текущей валюте.
+  const [pickedCurrency, setPickedCurrency] = useState<string | null>(null);
+  const rateFor = useRef<string | null>(null);
+  const currency = pickedCurrency ?? ai.doc?.currency ?? null;
+
+  function takeRateOf(cur: string | null) {
+    if (cur === rateFor.current) return;
+    rateFor.current = cur;
+    setFxRate(cur === "UAH" ? "1" : "");
+    if (finance && cur && cur !== "UAH") nbu.mutate({ currency: cur });
+  }
 
   function check(text?: string) {
     const parsed = ai.check(text);
-    if (finance && !fxRate && parsed.doc) nbu.mutate({ currency: parsed.doc.currency ?? "USD" });
+    setPickedCurrency(null);
+    if (parsed.doc) takeRateOf(parsed.doc.currency);
     return parsed;
+  }
+
+  function pickCurrency(cur: string) {
+    setPickedCurrency(cur);
+    takeRateOf(cur);
+  }
+
+  function resetAll() {
+    created.current = new Map();
+    createdSupplier.current = null;
+    rateFor.current = null;
+    setFxRate("");
+    setPickedCurrency(null);
+    ai.reset();
   }
 
   function finish() {
     const doc = ai.doc;
-    if (!doc) return;
+    if (!doc || !currency) return;
+    const supplierId = ai.supplierId || (createdSupplier.current != null ? String(createdSupplier.current) : "");
     apply.mutate(
       {
-        supplierId: ai.supplierId,
-        supplierName: ai.supplierId ? null : doc.supplier,
+        supplierId,
+        supplierName: supplierId ? null : doc.supplier,
+        onSupplier: (id) => (createdSupplier.current = id),
         plans: ai.plans,
         rows: ai.rows,
         created: created.current,
@@ -111,14 +140,18 @@ export function SupplyAiModal({ open, onClose, onReady }: { open: boolean; onClo
               ...(fxRate ? { fxRate } : {}),
             },
           });
-          created.current = new Map();
-          ai.reset();
+          resetAll();
         },
       },
     );
   }
 
-  const ready = ai.rows.length > 0 && ai.problems.length === 0;
+  const problems = [
+    ...(ai.doc && !currency ? ["Выберите валюту документа — ИИ её не понял"] : []),
+    ...ai.problems,
+    ...variantSetProblems(ai.plans, created.current),
+  ];
+  const ready = ai.rows.length > 0 && problems.length === 0;
   return (
     <>
       <Modal
@@ -130,7 +163,7 @@ export function SupplyAiModal({ open, onClose, onReady }: { open: boolean; onClo
         title="Поставка с ИИ"
         footer={
           <>
-            {ai.rows.length > 0 && ai.problems.length > 0 && <p className="mr-auto min-w-0 text-[13px] text-[var(--danger-ink)]">{ai.problems[0]}</p>}
+            {ai.rows.length > 0 && problems.length > 0 && <p className="mr-auto min-w-0 text-[13px] text-[var(--danger-ink)]">{problems[0]}</p>}
             <ModalCancel />
             <Button variant="accent" disabled={!ready} loading={apply.isPending} onClick={finish}>
               Дальше — форма поставки
@@ -145,16 +178,16 @@ export function SupplyAiModal({ open, onClose, onReady }: { open: boolean; onClo
             <ReadStep ai={{ ...ai, check }} />
             {ai.doc && (
               <>
-                <DocSummary ai={ai} fxRate={fxRate} setFxRate={setFxRate} finance={finance} />
+                <DocSummary ai={ai} currency={currency} onCurrency={pickCurrency} fxRate={fxRate} setFxRate={setFxRate} finance={finance} />
                 <HelpPanel ai={ai} catalog={catalog} categories={categories} />
                 <div>
                   <div className="field-label mb-1">Строки документа: {ai.rows.length}</div>
                   {ai.rows.map((r) => (
-                    <LineRow key={r.line.id} r={r} ai={ai} byId={byId} currency={currency} onPick={() => setPickFor(r.line.id)} />
+                    <LineRow key={r.line.id} r={r} ai={ai} byId={byId} currency={currency ?? ""} onPick={() => setPickFor(r.line.id)} />
                   ))}
                 </div>
                 <NewProductsPanel ai={ai} categories={categories} />
-                {ai.problems.length > 1 && <Messages errors={ai.problems} />}
+                {problems.length > 1 && <Messages errors={problems} />}
               </>
             )}
           </div>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fileSize } from "./money-form";
-import { decimal1, marginPercent } from "./format";
+import { arrivedUnitCost, decimal1, marginPercent } from "./format";
 
 // Сверка со старыми формулами: .toFixed(1).replace(".", ",") и ((p - c) / p) * 100.
 describe("decimal1", () => {
@@ -26,5 +26,15 @@ describe("marginPercent", () => {
     for (const [p, c] of [[10000, 6000], [9999, 3333], [100, 0], [100, 150], [12345, 6789], [1, 1]] as const) {
       expect(marginPercent(p, c)).toBe(((p - c) / p) * 100);
     }
+  });
+});
+
+describe("себестоимость при частичном приходе", () => {
+  it("расходы строки делятся на пришедшие штуки", () => {
+    // закупка 200 ₴/шт, расходы на строку 1 000 ₴: пришло 10 → 300 ₴, пришло 5 → 400 ₴
+    expect(arrivedUnitCost(20_000, 100_000, 10)).toBe(30_000);
+    expect(arrivedUnitCost(20_000, 100_000, 5)).toBe(40_000);
+    expect(arrivedUnitCost(20_000, 100_000, 0)).toBeNull();
+    expect(arrivedUnitCost(null, 100_000, 5)).toBeNull();
   });
 });

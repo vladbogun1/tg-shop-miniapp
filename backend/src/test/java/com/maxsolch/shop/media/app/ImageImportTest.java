@@ -89,7 +89,7 @@ class ImageImportTest {
     @Test
     void aCutOutProductIsSquaredOnTheShopDarkWithoutTrimming() throws IOException {
         byte[] photo = png(800, 600, Color.WHITE, Color.BLACK);
-        byte[] cut = png(400, 300, new Color(0, 0, 0, 0), Color.BLACK);
+        byte[] cut = png(700, 500, new Color(0, 0, 0, 0), Color.BLACK);
         FakeRemote remote = new FakeRemote().with("https://brand.example.com/m.png", photo, "image/png");
         FakeImgproxy imgproxy = new FakeImgproxy(true);
         byte[][] sent = new byte[1][];
@@ -101,6 +101,7 @@ class ImageImportTest {
         ImageImport.Imported got = new ImageImport(remote, store, imgproxy, cutout, () -> ID).importFrom("https://brand.example.com/m.png");
 
         assertThat(sent[0]).isEqualTo(photo);
+        assertThat(got.cutOut()).isTrue();
         assertThat(store.contains(got.key())).isTrue();
         // already cropped to the product: trimming by the corner pixel would eat into it
         assertThat(imgproxy.asked()).containsExactly("square:products/_import/" + ID + "/cutout.png@1600/80/26,26,26/untrimmed");
@@ -112,9 +113,38 @@ class ImageImportTest {
         FakeRemote remote = new FakeRemote().with("https://brand.example.com/m.png", png(800, 600, Color.WHITE, Color.BLACK), "image/png");
         FakeImgproxy imgproxy = new FakeImgproxy(true).withPreview(png(64, 48, Color.WHITE, Color.BLACK));
 
-        new ImageImport(remote, store, imgproxy, NO_CUTOUT, () -> ID).importFrom("https://brand.example.com/m.png");
+        ImageImport.Imported got = new ImageImport(remote, store, imgproxy, NO_CUTOUT, () -> ID).importFrom("https://brand.example.com/m.png");
 
         assertThat(imgproxy.asked()).contains("square:products/_import/" + ID + "/source.png@1600/80/255,255,255");
+        assertThat(got.cutOut()).isFalse();
+    }
+
+    private void assertSquaredAsItIs(Cutout cutout) throws IOException {
+        FakeRemote remote = new FakeRemote().with("https://brand.example.com/m.png", png(800, 600, Color.WHITE, Color.BLACK), "image/png");
+        FakeImgproxy imgproxy = new FakeImgproxy(true).withPreview(png(64, 48, Color.WHITE, Color.BLACK));
+
+        ImageImport.Imported got = new ImageImport(remote, store, imgproxy, cutout, () -> ID).importFrom("https://brand.example.com/m.png");
+
+        assertThat(got.cutOut()).isFalse();
+        assertThat(store.contains(got.key())).isTrue();
+        assertThat(imgproxy.asked()).contains("square:products/_import/" + ID + "/source.png@1600/80/255,255,255");
+        assertThat(store.size()).as("only the photo is left").isEqualTo(1);
+    }
+
+    @Test
+    void aCutOutSmallerThanTheMinimumIsNotUsed() throws IOException {
+        byte[] tiny = png(480, 300, new Color(0, 0, 0, 0), Color.BLACK); // the product was a small part of the photo
+        assertSquaredAsItIs((image, type) -> tiny);
+    }
+
+    @Test
+    void aCutOutThatIsNotAPictureFallsBackToTheOldSquare() throws IOException {
+        assertSquaredAsItIs((image, type) -> "<html>oops</html>".getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void anEmptyCutOutFallsBackToTheOldSquare() throws IOException {
+        assertSquaredAsItIs((image, type) -> new byte[0]);
     }
 
     @Test

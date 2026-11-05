@@ -18,7 +18,6 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { Toggle } from "@/components/ui/Toggle";
 import { useShopSetting } from "@/features/settings";
-import { useIsSuperAdmin } from "@/features/staff";
 import { CURRENCIES, DISTRIBUTIONS, isOpenStatus } from "../model/batch";
 import {
   extraSeedLines,
@@ -32,7 +31,7 @@ import {
   type SeedLine,
 } from "../model/batch-form";
 import type { Batch, Distribution } from "../model/types";
-import { useSaveBatch, useSuppliers } from "../queries";
+import { useFinanceAccess, useSaveBatch, useSuppliers } from "../queries";
 import { BatchEtaFields } from "./BatchEtaFields";
 import { BatchLines } from "./BatchLines";
 import { SupplierModal } from "./SupplierModal";
@@ -63,9 +62,10 @@ export function BatchFormModal({
   onSaved?: (b: Batch) => void;
   ProductPicker: ProductPicker;
 }) {
-  const isSuper = useIsSuperAdmin();
+  const finance = useFinanceAccess();
   const defHold = useShopSetting("preorder.holdHours", 24);
-  const money = batch ? batch.moneyVisible : !!isSuper;
+  // Закупочные цены и курс видит тот, у кого право «Финансы» (как на вкладке «Деньги»).
+  const money = batch ? batch.moneyVisible : finance;
   const itemsLocked = !!batch && !isOpenStatus(batch.status);
   const suppliersQ = useSuppliers(open);
 
@@ -81,6 +81,7 @@ export function BatchFormModal({
     <K extends keyof BatchFormValues>(key: K, value: BatchFormValues[K]) => {
       form.setValue(key, value as never);
       setDirty(true);
+      setError(null);
     },
     [form],
   );

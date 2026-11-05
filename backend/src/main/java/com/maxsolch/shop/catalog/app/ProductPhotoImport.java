@@ -28,8 +28,8 @@ import java.util.List;
 @Service
 public class ProductPhotoImport {
 
-    /** The new photo's key, where it came from, and all the product's photo keys in order after the append. */
-    public record Result(String key, String source, List<String> imageKeys) {
+    /** The new photo key, where it came from, whether the product was cut out (else only squared), and all the product's photo keys in order after the append. */
+    public record Result(String key, String source, boolean cutOut, List<String> imageKeys) {
     }
 
     private final ImageImport imageImport;
@@ -57,7 +57,7 @@ public class ProductPhotoImport {
         ImageImport.Imported photo = imageImport.importFrom(url);
         try {
             List<String> keys = tx.execute(status -> append(id, photo.key()));
-            return new Result(photo.key(), photo.source(), keys);
+            return new Result(photo.key(), photo.source(), photo.cutOut(), keys);
         } catch (RuntimeException e) {
             storage.deleteQuietly(photo.key());
             throw e;

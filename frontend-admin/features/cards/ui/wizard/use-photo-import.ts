@@ -12,7 +12,8 @@ import { cardsApi } from "../../api";
 import { groupByProduct, type PhotoJob } from "../../model/photos";
 import { invalidateCards } from "../../queries";
 
-export type PhotoJobState = { status: "wait" | "run" | "ok" } | { status: "error"; error: string };
+/** `cutOut: false` — фон не вырезан (сервис занят или не справился): фото взято как есть, на цвете своих краёв. */
+export type PhotoJobState = { status: "wait" | "run" } | { status: "ok"; cutOut: boolean } | { status: "error"; error: string };
 
 const PARALLEL = 2;
 
@@ -26,26 +27,28 @@ export function usePhotoImport() {
 
   const mark = (j: PhotoJob, s: PhotoJobState) => setState((prev) => new Map(prev).set(keyOf(j), s));
 
-  async function runGroup(group: PhotoJob[]) {
+  async function runGroup(group: PhotoJob[], onAdded: (j: PhotoJob) => void) {
     for (const j of group) {
       mark(j, { status: "run" });
       try {
-        await cardsApi.importPhoto(j.productId, j.url);
-        mark(j, { status: "ok" });
+        const res = await cardsApi.importPhoto(j.productId, j.url);
+        mark(j, { status: "ok", cutOut: res.cutOut !== false });
+        onAdded(j);
       } catch (e) {
         mark(j, { status: "error", error: errorMessage(e, undefined, "ошибка сети") });
       }
     }
   }
 
-  async function run(next: PhotoJob[]) {
+  /** `onAdded` — фото уже у товара: вызывающий убирает ссылку из выбора, чтобы повторный запуск её не добавил ещё раз. */
+  async function run(next: PhotoJob[], onAdded: (j: PhotoJob) => void = () => {}) {
     if (!next.length || running) return;
     setJobs(next);
     setState(new Map(next.map((j) => [keyOf(j), { status: "wait" }])));
     setRunning(true);
     const queue = groupByProduct(next);
     const worker = async () => {
-      for (let g = queue.shift(); g; g = queue.shift()) await runGroup(g);
+      for (let g = queue.shift(); g; g = queue.shift()) await runGroup(g, onAdded);
     };
     try {
       await Promise.all(Array.from({ length: Math.min(PARALLEL, queue.length) }, worker));

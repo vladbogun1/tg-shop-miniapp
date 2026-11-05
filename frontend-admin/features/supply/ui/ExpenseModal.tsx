@@ -31,7 +31,7 @@ export function ExpenseModal({
     defaultValues: expenseFormValues(edit, defaultCurrency, defaultRate),
   });
   const v = form.watch();
-  const set = <K extends keyof ExpenseFormValues>(key: K, value: ExpenseFormValues[K]) => form.setValue(key, value as never);
+  const set = <K extends keyof ExpenseFormValues>(key: K, value: ExpenseFormValues[K]) => form.setValue(key, value as never, { shouldDirty: true });
   const [error, setError] = useState<string | null>(null);
   const foreign = v.currency !== "UAH";
 

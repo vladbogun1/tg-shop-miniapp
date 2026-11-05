@@ -72,14 +72,32 @@ describe("форма поставки: проверка", () => {
 
   it("нужна позиция и количество от 1", () => {
     expect(validateBatchForm({ ...base, lines: [] }, false, false)).toBe("Добавьте хотя бы одну позицию");
-    expect(validateBatchForm({ ...base, lines: [{ ...base.lines[0], qty: "0" }] }, false, false)).toBe("Сколько заказано — от 1 у каждой позиции");
+    expect(validateBatchForm({ ...base, lines: [{ ...base.lines[0], qty: "0" }] }, false, false)).toBe("Сколько заказано — целое число от 1 до 100 000 у каждой позиции");
+    expect(validateBatchForm({ ...base, lines: [{ ...base.lines[0], qty: "100001" }] }, false, false)).toBe("Сколько заказано — целое число от 1 до 100 000 у каждой позиции");
     expect(validateBatchForm({ ...base, lines: [] }, true, false)).toBeNull();
   });
 
   it("срок и курс", () => {
     expect(validateBatchForm({ ...base, etaMode: "DATE" }, false, false)).toBe("Укажите дату");
     expect(validateBatchForm({ ...base, etaMode: "RANGE", etaFrom: "2026-10-10", etaTo: "2026-10-01" }, false, false)).toBe("Диапазон: «с» не позже «по»");
-    expect(validateBatchForm({ ...base, fxRate: "0" }, false, true)).toBe("Курс должен быть больше нуля");
+    expect(validateBatchForm({ ...base, fxRate: "0" }, false, true)).toBe("Курс — больше нуля и не больше 10 000");
     expect(validateBatchForm({ ...base, fxRate: "41,5" }, false, true)).toBeNull();
+  });
+
+  it("«Примерно»: пустое поле недель — ошибка, а не «сегодня»", () => {
+    const approx = { ...base, etaMode: "APPROX" } as BatchFormValues;
+    const msg = "Через сколько недель приедет — целое число от 1 до 52";
+    expect(validateBatchForm({ ...approx, weeks: "" }, false, false)).toBe(msg);
+    expect(validateBatchForm({ ...approx, weeks: "0" }, false, false)).toBe(msg);
+    expect(validateBatchForm({ ...approx, weeks: "3" }, false, false)).toBeNull();
+  });
+
+  it("бронь 1–168 ч только для очереди с бронью; цена закупки — число", () => {
+    const hold = { ...base, distribution: "QUEUE_HOLD" } as BatchFormValues;
+    expect(validateBatchForm({ ...hold, holdHours: "0" }, false, false)).toBe("Бронь — от 1 до 168 часов");
+    expect(validateBatchForm({ ...hold, holdHours: "24" }, false, false)).toBeNull();
+    expect(validateBatchForm({ ...base, distribution: "ALL_AT_ONCE", holdHours: "0" } as BatchFormValues, false, false)).toBeNull();
+    expect(validateBatchForm({ ...base, lines: [{ ...base.lines[0], price: "-1" }] }, false, true)).toBe("Цена закупки — число от 0 до 10 000 000");
+    expect(validateBatchForm({ ...base, lines: [{ ...base.lines[0], price: "29,90" }] }, false, true)).toBeNull();
   });
 });

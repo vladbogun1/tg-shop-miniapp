@@ -10,12 +10,15 @@ import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.time.ShopZone;
 import com.maxsolch.shop.procurement.app.BatchDtos.BatchRequest;
 import com.maxsolch.shop.procurement.app.BatchDtos.ItemRequest;
+import com.maxsolch.shop.procurement.domain.BatchExpense;
+import com.maxsolch.shop.procurement.domain.BatchLimits;
 import com.maxsolch.shop.procurement.domain.Lines;
 import com.maxsolch.shop.procurement.domain.PreorderBatch;
 import com.maxsolch.shop.procurement.domain.PreorderBatch.Distribution;
 import com.maxsolch.shop.procurement.domain.PreorderBatch.EtaMode;
 import com.maxsolch.shop.procurement.domain.PreorderBatchItem;
 import com.maxsolch.shop.procurement.domain.ProcurementError;
+import com.maxsolch.shop.procurement.infra.BatchExpenseRepository;
 import com.maxsolch.shop.procurement.infra.PreorderBatchItemRepository;
 import com.maxsolch.shop.procurement.infra.SupplierRepository;
 import org.springframework.stereotype.Component;
@@ -48,11 +51,13 @@ class BatchEditor {
     private final SupplierRepository suppliers;
     private final Products products;
     private final PreorderBatchItemRepository items;
+    private final BatchExpenseRepository expenses;
     private final Clock clock;
     private final ShopZone shopZone;
 
-    BatchEditor(SupplierRepository suppliers, Products products, PreorderBatchItemRepository items, Clock clock,
-                ShopZone shopZone) {
+    BatchEditor(SupplierRepository suppliers, Products products, PreorderBatchItemRepository items,
+                BatchExpenseRepository expenses, Clock clock, ShopZone shopZone) {
+        this.expenses = expenses;
         this.suppliers = suppliers;
         this.products = products;
         this.items = items;
@@ -123,10 +128,7 @@ class BatchEditor {
                 }
                 b.setCurrency(c);
             }
-            if (req.fxRate() != null && req.fxRate().signum() <= 0) {
-                throw new DomainException.BadRequest(ProcurementError.BAD_RATE_NOT_POSITIVE);
-            }
-            b.setFxRate(req.fxRate());
+            b.setFxRate(req.fxRate() == null ? null : BatchLimits.rate(req.fxRate()));
         }
     }
 
@@ -167,15 +169,24 @@ class BatchEditor {
             i.setVariantId(variantId);
             i.setQtyOrdered(qty);
             if (money) {
-                if (r.unitPriceFx() != null && r.unitPriceFx() < 0) {
-                    throw new DomainException.BadRequest(ProcurementError.BAD_PRICE);
-                }
-                i.setUnitPriceFx(r.unitPriceFx());
+                i.setUnitPriceFx(BatchLimits.unitPrice(r.unitPriceFx()));
             }
             keep.add(i);
         }
+        releaseExpenses(byId.values());
         items.deleteAll(byId.values());
         items.saveAll(keep);
+    }
+
+    /** Expenses of a line that is being removed become the batch's common ones (a line-less expense is spread over all). */
+    private void releaseExpenses(java.util.Collection<PreorderBatchItem> removed) {
+        List<Long> ids = removed.stream().map(PreorderBatchItem::getId).filter(java.util.Objects::nonNull).toList();
+        if (ids.isEmpty()) {
+            return;
+        }
+        List<BatchExpense> bound = expenses.findByBatchItemIdIn(ids);
+        bound.forEach(e -> e.setBatchItemId(null));
+        expenses.saveAll(bound);
     }
 
     static int clampHold(int hours) {
