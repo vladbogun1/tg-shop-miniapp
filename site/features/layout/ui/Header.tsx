@@ -17,7 +17,7 @@ import { CompareButton, CartButton, AccountButton } from "./HeaderButtons";
 import { MobileMenu } from "./MobileMenu";
 import { CatalogMenu, NavLink } from "./CatalogMenu";
 
-export function Header({ tree, hasComing = false }: { tree: MenuNode[]; /** Open pre-order batches exist: «Скоро в наявності» is in the menus. */ hasComing?: boolean }) {
+export function Header({ tree, hasComing = false }: { tree: MenuNode[]; /** Open pre-order batches exist: «Скоро в наявності» is in the burger menu (not the top bar — it squeezed the search). */ hasComing?: boolean }) {
   const { t, href } = useI18n();
   const pathname = stripLocale(usePathname() ?? "/");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -78,11 +78,6 @@ export function Header({ tree, hasComing = false }: { tree: MenuNode[]; /** Open
         </div>
         <nav aria-label={t("header.nav")} className="ml-3 hidden shrink-0 items-center gap-1 lg:flex">
           <CatalogMenu tree={tree} active={pathname === "/catalog" || !!activeSlug} activeSlug={activeSlug} activeRoot={activeRoot} />
-          {hasComing && (
-            <NavLink href={href("/coming-soon")} active={pathname === "/coming-soon"} className="hidden xl:inline-flex">
-              {t("preorder.coming.title")}
-            </NavLink>
-          )}
           <NavLink href={href("/delivery")} active={pathname === "/delivery"} className="hidden xl:inline-flex">
             {t("header.nav.delivery")}
           </NavLink>

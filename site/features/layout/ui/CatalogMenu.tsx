@@ -168,6 +168,8 @@ export function NavLink({
 }: {
   href: string;
   active: boolean;
+  /** Display classes («hidden xl:inline-flex»); without them — inline-flex. Passed instead of it, not on top:
+   *  a base inline-flex outranked «hidden» and the xl-only links showed from lg, squeezing the search. */
   className?: string;
   children: React.ReactNode;
 }) {
@@ -175,9 +177,9 @@ export function NavLink({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`relative inline-flex h-11 items-center gap-2 rounded-[var(--r)] px-3 font-display text-[13px] font-semibold uppercase tracking-[.1em] transition-colors ${
+      className={`relative h-11 items-center gap-2 rounded-[var(--r)] px-3 font-display text-[13px] font-semibold uppercase tracking-[.1em] transition-colors ${
         active ? "text-[var(--ink)]" : "text-[var(--muted)] hover:text-[var(--ink)]"
-      } ${className}`}
+      } ${className || "inline-flex"}`}
     >
       {children}
       {active && (
