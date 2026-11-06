@@ -60,7 +60,7 @@ test("поставка создаётся из админки: товар без
   batchId = Number(new URL(page.url()).pathname.split("/").pop());
 
   await expect(page.getByRole("heading", { name: TITLE, level: 1 })).toBeVisible();
-  await expect(page.getByText("предзаказ открыт")).toBeVisible();
+  await expect(page.getByText("можно заказать заранее")).toBeVisible();
   await expect(page.getByText("Заказана", { exact: true })).toBeVisible();
 
   const { status, body } = await api.raw("get", `/api/admin/preorders/batches/${batchId}`);
@@ -72,7 +72,7 @@ test("поставка создаётся из админки: товар без
   expect(batch.items[0].unitPriceFx).toBe(PRICE_FX_CENTS);
 });
 
-test("покупатель встал в очередь: «ждут 1» в списке, в карточке, в «Чего ждут», CSV со списком", async ({ page }) => {
+test("покупатель встал в очередь: «ждут 1» в списке, в карточке, в «Что заказать», CSV со списком", async ({ page }) => {
   const customer = await CustomerApi.create(PREORDER.customer.id);
   try {
     const sub = await customer.subscribe(PREORDER.product, 1);
@@ -83,16 +83,16 @@ test("покупатель встал в очередь: «ждут 1» в сп�
 
   // The list card of the batch.
   await page.goto("/preorders");
-  const row = page.getByRole("link", { name: new RegExp(TITLE) });
+  const row = page.getByRole("link", { name: new RegExp(`^${TITLE}`) });
   await expect(row).toBeVisible();
-  await expect(row.getByText("1 чел / 1 шт")).toBeVisible();
+  await expect(row.getByText("1 чел · 1 шт")).toBeVisible();
 
   // The batch: queue with the customer, counters.
   await row.click();
   await expect(page.getByRole("heading", { name: TITLE, level: 1 })).toBeVisible();
   await expect(page.getByText(PREORDER.customer.name)).toBeVisible();
   await expect(page.getByText(`@${PREORDER.customer.username}`)).toBeVisible();
-  await expect(page.getByText("ждут 1 чел / 1 шт")).toBeVisible();
+  await expect(page.getByText("ждут 1 чел. — 1 шт")).toBeVisible();
 
   // CSV of the queue (UTF-8 + BOM, «;»).
   const downloading = page.waitForEvent("download");
@@ -103,11 +103,12 @@ test("покупатель встал в очередь: «ждут 1» в сп�
   expect(csv).toContain(PREORDER.customer.name);
   expect(csv).toContain(PREORDER.customer.username);
 
-  // «Чего ждут»: the product is there and says the batch already brings it.
+  // «Что заказать» above the list: the product is there and says the batch already brings it.
   await page.goto("/preorders?tab=demand");
-  await expect(page.getByRole("tab", { name: /Чего ждут/ })).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByText(PREORDER.productTitle).first()).toBeVisible();
-  await expect(page.getByText("1 чел / 1 шт").first()).toBeVisible();
+  const demand = page.locator("#demand");
+  await expect(demand.getByRole("heading", { name: "Что заказать" })).toBeVisible();
+  await expect(demand.getByText(PREORDER.productTitle).first()).toBeVisible();
+  await expect(demand.getByText("ждут 1 чел. · 1 шт").first()).toBeVisible();
   await expect(page.getByRole("link", { name: new RegExp(`уже едет: ${TITLE}`) })).toBeVisible();
 
   // The home widget «Хотят купить».
@@ -117,19 +118,19 @@ test("покупатель встал в очередь: «ждут 1» в сп�
 
 test("«Приехала»: пришло 2, цена продажи — бронь у ждущего, остаток пополнен", async ({ page, api }) => {
   await page.goto(`/preorders/${batchId}`);
-  await page.getByRole("button", { name: "Приехала", exact: true }).click();
+  await page.getByRole("button", { name: "Приехала — принять товар" }).click();
 
   const modal = dialog(page, `Приехала: ${TITLE}`);
   await expect(modal.getByLabel("Пришло, шт")).toHaveValue("2");
-  await modal.getByLabel("Цена продажи, ₴").fill(String(SALE_PRICE_MINOR / 100));
+  await modal.getByLabel("Продаём по, ₴").fill(String(SALE_PRICE_MINOR / 100));
 
-  // «Подтвердить» is locked until the preview is calculated.
-  await expect(modal.getByRole("button", { name: "Подтвердить" })).toBeDisabled();
-  await modal.getByRole("button", { name: "Посчитать" }).click();
+  // «Принять товар» appears only after «Проверить» has calculated who gets a hold.
+  await expect(modal.getByRole("button", { name: "Принять товар" })).toHaveCount(0);
+  await modal.getByRole("button", { name: "Проверить" }).click();
   await expect(modal.getByText("бронь получат 1 чел (1 шт)")).toBeVisible();
-  await expect(modal.getByText("не хватит 0 чел", { exact: true })).toBeVisible();
-  await expect(modal.getByText("свободно в продажу 1 шт", { exact: true })).toBeVisible();
-  await modal.getByRole("button", { name: "Подтвердить" }).click();
+  await expect(modal.getByText(/не хватит 0 чел/)).toBeVisible();
+  await expect(modal.getByText("в свободную продажу 1 шт", { exact: true })).toBeVisible();
+  await modal.getByRole("button", { name: "Принять товар" }).click();
 
   await expect(toast(page, "Приход проведён. Бронь получили 1 чел.")).toBeVisible();
   await expect(modal).toBeHidden();
@@ -151,16 +152,17 @@ test("«Приехала»: пришло 2, цена продажи — брон
   expect(mine?.heldQty).toBe(1);
 });
 
-test("вкладка «Деньги»: расход партии, себестоимость штуки, «Все расходы внесены»", async ({ page, api }) => {
+test("блок «Закупка и расходы»: расход партии, себестоимость штуки, «Все расходы внесены»", async ({ page, api }) => {
   await page.goto(`/preorders/${batchId}`);
-  await page.getByRole("tab", { name: "Деньги" }).click();
-  await expect(page.getByText("себестоимость предварительная", { exact: true })).toBeVisible();
+  const costs = page.locator("#money");
+  await expect(costs.getByRole("heading", { name: "Закупка и расходы" })).toBeVisible();
+  await expect(costs.getByText("цифры предварительные", { exact: true })).toBeVisible();
 
   // Purchase only so far: 50 $ × 40 = 2 000 ₴ per unit, no expenses.
-  await expect(page.getByRole("cell", { name: money(PRICE_FX_CENTS * FX_RATE) }).first()).toBeVisible();
-  await expect(page.getByText("Расходов пока нет")).toBeVisible();
+  await expect(costs.getByRole("cell", { name: money(PRICE_FX_CENTS * FX_RATE) }).first()).toBeVisible();
+  await expect(costs.getByText("Расходов пока нет")).toBeVisible();
 
-  await page.getByRole("button", { name: "Добавить расход" }).click();
+  await costs.getByRole("button", { name: "Добавить расход" }).click();
   const modal = dialog(page, "Добавить расход");
   await modal.getByPlaceholder("напр. 120.00").fill(String(EXPENSE_USD));
   await modal.getByPlaceholder("напр. 41.5").fill(String(FX_RATE));
@@ -169,15 +171,15 @@ test("вкладка «Деньги»: расход партии, себесто
   await expect(toast(page, "Расход добавлен")).toBeVisible();
   await expect(modal).toBeHidden();
 
-  await expect(page.getByText("DHL e2e")).toBeVisible();
+  await expect(costs.getByText("DHL e2e")).toBeVisible();
   // 400 ₴ of expenses spread over 2 units: unit cost 2 200 ₴, margin against the 3 499 ₴ price.
-  await expect(page.getByRole("cell", { name: money(UNIT_COST_MINOR), exact: true })).toBeVisible();
-  await expect(page.getByRole("cell", { name: money(SALE_PRICE_MINOR - UNIT_COST_MINOR), exact: true }).first()).toBeVisible();
+  await expect(costs.getByRole("cell", { name: money(UNIT_COST_MINOR), exact: true })).toBeVisible();
+  await expect(costs.getByRole("cell", { name: `${money(SALE_PRICE_MINOR - UNIT_COST_MINOR)} ·` }).first()).toBeVisible();
 
-  await page.getByRole("switch", { name: /Все расходы внесены/ }).click();
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await costs.getByRole("switch", { name: /Все расходы внесены/ }).click();
+  await costs.getByRole("button", { name: "Сохранить", exact: true }).click();
   await expect(toast(page, "Деньги поставки сохранены")).toBeVisible();
-  await expect(page.getByText("себестоимость окончательная", { exact: true })).toBeVisible();
+  await expect(costs.getByText("цифры окончательные", { exact: true })).toBeVisible();
 
   const costing = (await api.raw("get", `/api/admin/costing/batches/${batchId}`)).body as unknown as {
     costsFinal: boolean;
@@ -222,14 +224,15 @@ test("покупатель покупает из брони: очередь за
   expect(profit.costMinor).toBe(UNIT_COST_MINOR);
   expect(profit.complete).toBe(true);
 
-  // The batch's «Продажи» tab counts the sale.
+  // The batch's «Продажи по товарам» block counts the sale.
   await page.goto(`/preorders/${batchId}`);
-  await page.getByRole("tab", { name: "Продажи" }).click();
-  await expect(page.getByText("Прибыль").first()).toBeVisible();
+  const sales = page.locator("#sales");
+  await expect(sales.getByRole("heading", { name: "Продажи по товарам" })).toBeVisible();
+  await expect(sales.getByRole("columnheader", { name: "Заработали" })).toBeVisible();
   await expect(page.getByText("Не удалось загрузить")).toHaveCount(0);
 });
 
-test("«Метрики → Предзаказы» и «Чего ждут» открываются без ошибок", async ({ page, api }) => {
+test("«Метрики → Предзаказы» и «Что заказать» открываются без ошибок", async ({ page, api }) => {
   const failed: string[] = [];
   page.on("response", (r) => {
     if (r.url().includes("/api/") && r.status() >= 400) failed.push(`${r.status()} ${r.url()}`);
@@ -248,12 +251,13 @@ test("«Метрики → Предзаказы» и «Чего ждут» от�
   const { body } = await api.raw("get", `/api/admin/preorders/metrics?from=${today.slice(0, 8)}01&to=${today}`);
   expect((body as unknown as { subscriptions: number }).subscriptions).toBeGreaterThanOrEqual(1);
 
-  // Nobody waits any more (the only queue entry was bought): the tab says so.
+  // Nobody waits any more (the only queue entry was bought): the «Что заказать» block is gone.
   await page.goto("/preorders?tab=demand");
-  await expect(page.getByText("Пока никто не ждёт")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Поставки", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Что заказать" })).toHaveCount(0);
 
   // The finished batch sits under «Приехали».
-  await page.getByRole("tab", { name: "Приехали" }).click();
-  await expect(page.getByRole("link", { name: new RegExp(TITLE) })).toBeVisible();
+  await page.getByRole("button", { name: "Приехали", exact: true }).click();
+  await expect(page.getByRole("link", { name: new RegExp(`^${TITLE}`) })).toBeVisible();
   expect(failed).toEqual([]);
 });
