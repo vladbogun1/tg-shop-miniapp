@@ -53,6 +53,7 @@ const REACTIONS: Record<CategoryKind, Reaction[]> = {
   cable: [WAVE, { peek: ["smile"] }],
   desk: [{ peek: ["thumb"] }, { peek: ["smile"] }],
   sale: [{ peek: ["oh", "thumb"], ms: 1500 }],
+  accessories: [{ peek: ["wink"] }, { peek: ["smile"] }],
 };
 
 const sceneSrc = (s: Scene) => (s === "discord" ? "/mascot/banner/discord.webp" : `/mascot/scenes/${s}.webp`);
