@@ -1,13 +1,14 @@
 "use client";
 
-import { Check, Loader2, X } from "lucide-react";
+import { Check, Loader2, RotateCcw, X } from "lucide-react";
+import { Button } from "@shop/ui/admin-button";
 import { Badge } from "@/components/ui/Badge";
 import { host } from "../shared";
 import type { PhotoImport } from "./use-photo-import";
 
-/** Progress and result of «Фото по ссылке»: per link — waiting, downloading, added or why not. */
+/** Progress and result of «Фото по ссылке»: per link — waiting, downloading, added or why not; failed ones can be repeated. */
 export function PhotoSummary({ photos }: { photos: PhotoImport }) {
-  const { jobs, running, stateOf } = photos;
+  const { jobs, running, stateOf, retry } = photos;
   if (!jobs.length) return null;
   const states = jobs.map(stateOf);
   const ok = states.filter((s) => s.status === "ok").length;
@@ -21,6 +22,17 @@ export function PhotoSummary({ photos }: { photos: PhotoImport }) {
         {ok > 0 && <Badge tone="ok">добавлено {ok}</Badge>}
         {failed > 0 && <Badge tone="danger">не удалось {failed}</Badge>}
         {uncut > 0 && <Badge tone="warn">без вырезки фона {uncut}</Badge>}
+        {!running && failed > 0 && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="ml-auto normal-case"
+            icon={<RotateCcw className="h-3.5 w-3.5" />}
+            onClick={() => void retry()}
+          >
+            {failed > 1 ? `Повторить неудачные (${failed})` : "Повторить"}
+          </Button>
+        )}
       </div>
       <ul className="flex flex-col gap-1 text-[12.5px]">
         {jobs.map((j, i) => {
@@ -36,7 +48,16 @@ export function PhotoSummary({ photos }: { photos: PhotoImport }) {
               <span className="min-w-0 flex-1">
                 <span className="font-semibold">{j.title}</span>
                 <span className="text-[var(--text-muted)]"> · {host(j.url)}</span>
-                {s.status === "error" && <span className="block font-semibold text-[var(--danger-ink)]">{s.error}</span>}
+                {s.status === "error" && (
+                  <span className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="font-semibold text-[var(--danger-ink)]">{s.error}</span>
+                    {!running && failed > 1 && (
+                      <button type="button" className="text-[var(--accent)] underline-offset-2 hover:underline" onClick={() => void retry([j])}>
+                        повторить эту
+                      </button>
+                    )}
+                  </span>
+                )}
                 {s.status === "ok" && !s.cutOut && (
                   <span className="block text-[var(--warn)]">фон не вырезан — фото как есть; можно заменить в карточке товара</span>
                 )}

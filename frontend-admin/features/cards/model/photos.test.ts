@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupByProduct } from "./photos";
+import { groupByProduct, isTransientError } from "./photos";
 import { SCHEMA, item } from "./fixtures";
 import { reviewProduct } from "./review";
 import { defaultSel, mergeSel } from "./selection";
@@ -54,5 +54,16 @@ describe("фото из ответа ИИ", () => {
       { productId: "a", title: "A", url: "3" },
     ];
     expect(groupByProduct(jobs).map((g) => g.map((j) => j.url))).toEqual([["1", "3"], ["2"]]);
+  });
+});
+
+describe("isTransientError — что повторить молча", () => {
+  it("обрыв связи и 5xx — да, ответ сайта 4xx и не-HTTP ошибки — нет", () => {
+    expect(isTransientError({ status: 0 })).toBe(true);
+    expect(isTransientError({ status: 502 })).toBe(true);
+    expect(isTransientError({ status: 422 })).toBe(false);
+    expect(isTransientError({ status: 404 })).toBe(false);
+    expect(isTransientError(new Error("x"))).toBe(false);
+    expect(isTransientError(null)).toBe(false);
   });
 });

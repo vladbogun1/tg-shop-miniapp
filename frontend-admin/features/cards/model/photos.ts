@@ -12,3 +12,13 @@ export function groupByProduct(jobs: PhotoJob[]): PhotoJob[][] {
   for (const j of jobs) by.set(j.productId, [...(by.get(j.productId) ?? []), j]);
   return Array.from(by.values());
 }
+
+/**
+ * Worth one quiet repeat: the browser lost the connection (status 0 — «Не удалось связаться с сервером») or the server
+ * was briefly unavailable (5xx). A site that answered «нет такого файла» (4xx) will say the same again. A repeat is safe:
+ * the server does not add the same link to the same product twice.
+ */
+export function isTransientError(e: unknown): boolean {
+  const status = (e as { status?: unknown } | null)?.status;
+  return typeof status === "number" && (status === 0 || status >= 500);
+}
