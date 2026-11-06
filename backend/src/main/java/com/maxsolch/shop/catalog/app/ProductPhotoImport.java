@@ -24,6 +24,10 @@ import java.util.List;
  *
  * <p>The download and render run outside a transaction (up to ~40 s of network); only the append takes the product's
  * row lock. If the product vanished meanwhile, the stored photo is deleted again.
+ *
+ * <p>A link the product already has a photo from is not added twice: the browser may drop the connection while the
+ * server still finishes, and the admin presses «Повторить». The check runs under the same row lock as the append, so
+ * two parallel repeats also end with one photo; the second one's fresh file is deleted and the existing photo returned.
  */
 @Service
 public class ProductPhotoImport {
@@ -54,30 +58,50 @@ public class ProductPhotoImport {
         if (!products.existsById(id)) {
             throw new DomainException.NotFound(CatalogError.PRODUCT_NOT_FOUND);
         }
-        ImageImport.Imported photo = imageImport.importFrom(url);
+        String sourceUrl = url.trim();
+        ImageImport.Imported photo = imageImport.importFrom(sourceUrl);
+        Appended appended;
         try {
-            List<String> keys = tx.execute(status -> append(id, photo.key()));
-            return new Result(photo.key(), photo.source(), photo.cutOut(), keys);
+            appended = tx.execute(status -> append(id, photo.key(), sourceUrl));
         } catch (RuntimeException e) {
             storage.deleteQuietly(photo.key());
             throw e;
         }
+        if (!appended.key().equals(photo.key())) {
+            storage.deleteQuietly(photo.key());
+        }
+        return new Result(appended.key(), photo.source(), photo.cutOut(), appended.keys());
     }
 
-    private List<String> append(byte[] id, String key) {
+    /** The photo the link ended up as (the new one, or the one already added from the same link) and all keys in order. */
+    private record Appended(String key, List<String> keys) {
+    }
+
+    private Appended append(byte[] id, String key, String sourceUrl) {
         Product p = products.findByIdForUpdate(id)
                 .orElseThrow(() -> new DomainException.NotFound(CatalogError.PRODUCT_NOT_FOUND));
+        String kept = p.getImages().stream()
+                .filter(img -> sourceUrl.equals(img.getSourceUrl()))
+                .map(ProductImage::getUrl)
+                .findFirst()
+                .orElseGet(() -> addLast(p, key, sourceUrl));
+        List<String> keys = p.getImages().stream()
+                .sorted(Comparator.comparingInt(ProductImage::getSortOrder))
+                .map(ProductImage::getUrl)
+                .toList();
+        return new Appended(kept, keys);
+    }
+
+    private String addLast(Product p, String key, String sourceUrl) {
         int next = p.getImages().stream().mapToInt(ProductImage::getSortOrder).max().orElse(-1) + 1;
         ProductImage img = new ProductImage();
         img.setProduct(p);
         img.setUrl(key);
+        img.setSourceUrl(sourceUrl);
         img.setSortOrder(next);
         p.getImages().add(img);
         products.save(p);
-        return p.getImages().stream()
-                .sorted(Comparator.comparingInt(ProductImage::getSortOrder))
-                .map(ProductImage::getUrl)
-                .toList();
+        return key;
     }
 
     private static byte[] toBytes(String id) {

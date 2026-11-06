@@ -30,6 +30,10 @@ public class ProductImage {
     @Column(name = "url", nullable = false, length = 2048)
     private String url;
 
+    /** The link «Фото по ссылке» downloaded this photo from; null for uploaded files and photos from before V82. */
+    @Column(name = "source_url", length = 2048)
+    private String sourceUrl;
+
     @Column(name = "sort_order", nullable = false)
     private int sortOrder = 0;
 }
