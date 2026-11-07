@@ -79,7 +79,7 @@ export function ItemPicker({ open, orderId, defaultGift = false, onClose, onDone
       dirty={!!selected}
       title="Добавить в заказ"
       footer={
-        <div className="flex w-full items-center justify-between gap-2">
+        <div className="flex w-full flex-wrap items-center justify-between gap-2">
           <Toggle checked={notify} onChange={setNotify} label="Уведомить клиента" />
           <Button
             variant="accent"

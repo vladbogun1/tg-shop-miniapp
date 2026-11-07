@@ -29,8 +29,9 @@ export function PromoControls({ tab, onTab, counts, query, onQuery, state, onSta
   const labels = wide ? TAB_LABEL : TAB_LABEL_SHORT;
   return (
     <div className="sticky top-[calc(var(--safe-top)+58px)] z-20 -mx-4 mb-3 flex flex-col gap-2 bg-[var(--bg)]/90 px-4 py-2 backdrop-blur lg:top-[61px] lg:-mx-7 lg:px-7">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="min-w-0 max-w-full overflow-x-auto">
+      {/* One row: on a phone «+» used to wrap onto a line of its own; now the tabs scroll (with a fade) instead. */}
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
           <SegmentedControl<PromoOrigin>
             size={wide ? "md" : "sm"}
             value={tab}
@@ -40,7 +41,7 @@ export function PromoControls({ tab, onTab, counts, query, onQuery, state, onSta
         </div>
         <Button
           variant="accent"
-          className="ml-auto"
+          className="shrink-0"
           icon={<Plus className="h-4 w-4" />}
           onClick={onCreate}
           aria-label="Новый промокод"

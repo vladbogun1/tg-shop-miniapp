@@ -14,7 +14,7 @@ const CHIP_ON = "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--acce
 
 function SearchBox({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3 transition-[border-color,box-shadow] focus-within:border-[var(--accent)] focus-within:shadow-[var(--ring-accent)] sm:w-[260px] sm:flex-none pointer-coarse:h-11">
+    <div className="flex h-10 min-w-0 flex-1 items-center gap-2 max-sm:basis-full rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3 transition-[border-color,box-shadow] focus-within:border-[var(--accent)] focus-within:shadow-[var(--ring-accent)] sm:w-[260px] sm:flex-none pointer-coarse:h-11">
       <Search className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />
       <input
         value={value}

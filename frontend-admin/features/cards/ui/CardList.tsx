@@ -19,7 +19,8 @@ import { cn } from "@/lib/cn";
 import { Check, ConfidencePill, fmtDate, Thumb } from "./shared";
 
 /** Ширины колонок таблицы: одни и те же в шапке и в строке. */
-const COL = { vis: "w-[104px]", cat: "w-[190px]", ai: "w-[112px]", miss: "w-[96px]", date: "w-[84px]" } as const;
+// «НОВЫЙ, СКРЫТ» is ~118 px: at 104 the badge ran into the category text.
+const COL = { vis: "w-[124px]", cat: "w-[176px]", ai: "w-[112px]", miss: "w-[96px]", date: "w-[84px]" } as const;
 const HEAD = "field-label !text-[10.5px]";
 
 export function CardList({
@@ -156,14 +157,16 @@ function Row({
             {it.brand ? ` · ${it.brand}` : ""}
             {when ? (tab === "ready" ? ` · проверено ${when}` : ` · от ИИ ${when}`) : ""}
           </span>
-          {/* Badges under the title on a phone, on the right from sm up. */}
-          <span className="mt-1 flex flex-wrap items-center gap-1.5 sm:hidden">
+          {/* Badges under the title on a phone and next to the open panel (on the right they ate the whole title). */}
+          <span className={cn("mt-1 flex flex-wrap items-center gap-1.5", !compact && "sm:hidden")}>
             <Badges it={it} schema={schema} missing={missing} />
           </span>
         </span>
-        <span className={cn("hidden shrink-0 flex-wrap items-center justify-end gap-1.5 sm:flex", wide && "lg:hidden")}>
-          <Badges it={it} schema={schema} missing={missing} />
-        </span>
+        {wide && (
+          <span className="hidden max-w-[50%] shrink-0 flex-wrap items-center justify-end gap-1.5 sm:flex lg:hidden">
+            <Badges it={it} schema={schema} missing={missing} />
+          </span>
+        )}
         {wide && <TableCells it={it} schema={schema} missing={missing} category={category} tab={tab} when={when} />}
         <ChevronRight
           className={cn(

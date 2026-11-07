@@ -113,7 +113,8 @@ export function BroadcastsScreen() {
           )}
           {tab === "history" && history}
 
-          <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-[var(--line)] bg-[var(--bg)] px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+          {/* Above the tab bar (it is fixed at the bottom too and wins by z-index); the safe area is its job. */}
+          <div className="fixed inset-x-0 bottom-[var(--bottom-nav)] z-30 flex items-center gap-2 border-t border-[var(--line)] bg-[var(--bg)] px-4 py-3">
             <Button variant="surface" aria-label="Предпросмотр" icon={<Eye className="h-4 w-4" />} onClick={() => setPreviewOpen(true)} />
             <div className="min-w-0 flex-1">
               <SendButton className="w-full" count={audienceCount} reason={reason} running={running} starting={startM.isPending} onClick={requestBroadcast} />

@@ -36,7 +36,7 @@ export function BatchItemsTable({ batch, items, open, products, tools }: { batch
             <th className={cn(th, "text-right")}>На складе</th>
             <th className={cn(th, "text-right")}>Продаём по</th>
             {money$ && <th className={cn(th, "text-right")}>Закупка</th>}
-            <th className={th} />
+            <th className={cn(th, "text-right")}>Витрина</th>
           </tr>
         </thead>
         <tbody>
@@ -108,7 +108,8 @@ function CostCell({ batch, i }: { batch: Batch; i: Batch["items"][number] }) {
 function ProductActions({ p, tools }: { p: NonNullable<ReturnType<Products["byId"]["get"]>>; tools: Tools }) {
   return (
     <div className="flex items-center justify-end gap-2">
-      <Toggle checked={!!p.active} disabled={tools.busy === p.id} onChange={(v) => tools.setActive(p, v)} label="Показывать" />
+      {/* No visible label: «Показывать» in every row pushed the table past a 1280 screen; the header says «Витрина». */}
+      <Toggle checked={!!p.active} disabled={tools.busy === p.id} onChange={(v) => tools.setActive(p, v)} ariaLabel={`Показывать на витрине: ${p.title}`} />
       <Button
         variant="ghost"
         size="icon"

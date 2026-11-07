@@ -36,7 +36,7 @@ export function OrderProfitBlock({ orderId }: { orderId: string }) {
         </div>
       )}
 
-      <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-[13.5px]">
+      <dl className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 text-[13.5px]">
         <dt className="text-[var(--text-muted)]">Выручка</dt>
         <dd className="tabular text-right">{money(p.revenueMinor)}</dd>
         <dt className="text-[var(--text-muted)]">Себестоимость</dt>
@@ -65,7 +65,7 @@ export function OrderProfitBlock({ orderId }: { orderId: string }) {
                 {l.gift && <span className="text-[var(--text-faint)]"> · подарок</span>}
                 {l.preliminary && <span className="text-[var(--warn)]"> · предв.</span>}
               </span>
-              <span className="tabular text-[var(--text-muted)]">
+              <span className="tabular min-w-0 break-words text-[var(--text-muted)]">
                 {money(l.revenueMinor)} − {money(l.costMinor)}
                 {l.unknownUnits > 0 && <span className="text-[var(--warn)]"> · без себестоимости {l.unknownUnits} шт.</span>}
               </span>

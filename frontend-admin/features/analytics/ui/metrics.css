@@ -56,5 +56,6 @@
   vertical-align: middle;
 }
 .mx-table tr:last-child td { border-bottom: 0; }
-.mx-table td.r, .mx-table th.r { text-align: right; font-variant-numeric: tabular-nums; }
+/* Numbers never break: «2 450 ₴» used to wrap into two lines in narrow money columns. */
+.mx-table td.r, .mx-table th.r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mx-table tbody tr:hover td { background: var(--surface-hover); }

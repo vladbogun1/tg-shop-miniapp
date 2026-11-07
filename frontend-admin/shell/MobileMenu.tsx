@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { X } from "lucide-react";
+import { useOverlayLayer } from "@shop/ui/overlay";
 import { cn } from "@/lib/cn";
 import { SidebarInner } from "./Sidebar";
 
@@ -12,6 +13,8 @@ import { SidebarInner } from "./Sidebar";
  * the closed state is pointer-events:none + inert regardless of where the animation is.
  */
 export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
+  // Esc closes it and the page under it does not scroll, like every other overlay.
+  useOverlayLayer(open, onClose);
   return (
     <>
       <motion.div
@@ -30,6 +33,8 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
         onClick={() => onClose()}
       />
       <motion.aside
+        role="dialog"
+        aria-modal={open || undefined}
         aria-label="Все разделы"
         aria-hidden={!open}
         inert={!open}

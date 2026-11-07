@@ -35,7 +35,9 @@ export function OrdersTableDesktop({ rows, archived, fetching, sortBy, sortDir, 
             <th>Оплата</th>
             <th className="!text-center">Платёж</th>
             <th className="!text-center">Чат</th>
-            <th className="r">Действие</th>
+            <th className="r">
+              <span className="sr-only">Действие</span>
+            </th>
           </tr>
         </thead>
         <tbody>

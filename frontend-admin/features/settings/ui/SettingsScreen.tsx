@@ -17,7 +17,6 @@ import { PanelHeader } from "@/components/ui/PanelHeader";
 import { QueryState } from "@/components/ui/QueryState";
 import { SitePanel } from "@/features/site";
 import { ease } from "@/lib/motion";
-import { useIsDesktop } from "@/lib/use-media";
 import { useUnsavedGuard } from "@/lib/use-unsaved-guard";
 import type { SettingItem, SettingValue } from "../api";
 import { initialDraft, isDirty, parse, toRaw, validate, type Draft, type DraftEntry } from "../model/draft";
@@ -44,7 +43,6 @@ const GROUP_ICON: Record<string, LucideIcon> = {
 export function SettingsScreen() {
   const q = useSettingsQuery();
   // «Приложение и уведомления»: на телефоне первым, на компьютере — сверху боковой колонки.
-  const isDesktop = useIsDesktop();
   const save = useSaveSettings();
   const [query, setQuery] = useState("");
 
@@ -95,7 +93,6 @@ export function SettingsScreen() {
       <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Загрузка настроек">
         <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
           <div className="flex min-w-0 flex-col gap-6">
-            {!isDesktop && <DevicePanel />}
             <SettingsToolbar query={query} onQuery={setQuery} groups={visibleGroups.filter((g) => g.id !== "gift")} />
             {query.trim() !== "" && visibleGroups.length === 0 && (
               <p className="panel p-5 text-[13px] text-[var(--text-muted)]">По запросу «{query.trim()}» настроек нет.</p>
@@ -126,7 +123,8 @@ export function SettingsScreen() {
           </div>
 
           <div className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-[88px]">
-            {isDesktop && <DevicePanel />}
+            {/* On a phone this column stacks under the settings: the tall device card used to push them a screen down. */}
+            <DevicePanel />
             <SitePanel />
             <SystemPanel />
           </div>

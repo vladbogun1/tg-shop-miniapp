@@ -63,7 +63,7 @@ export function ProductsHeaderRow({
   return (
     <div
       className={cn(
-        "sticky top-[calc(var(--hdr-h,61px)+var(--products-strip-h,0px))] z-10 hidden items-center gap-x-3 border-b border-[var(--line)] bg-[var(--bg)]/90 px-3 py-2 backdrop-blur lg:grid",
+        "sticky top-[calc(var(--hdr-h,61px)+var(--products-strip-h,0px))] z-10 hidden items-center gap-x-3 border-b border-[var(--line)] bg-[var(--bg)] px-3 py-2 lg:grid",
         ROW_GRID
       )}
     >

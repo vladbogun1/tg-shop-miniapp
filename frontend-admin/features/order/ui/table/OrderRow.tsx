@@ -2,7 +2,7 @@
 
 import { ExternalLink, MessageCircle } from "lucide-react";
 import { payableMinor } from "@shop/core/orders";
-import { formatDateTime } from "@shop/core/time";
+import { formatMoment, formatTime } from "@shop/core/time";
 import { PaymentBadge } from "@/features/payment";
 import { ReturnBadge } from "@/features/returns";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
@@ -25,7 +25,11 @@ function UnreadCell({ count }: { count: number }) {
 export function OrderRow({ order: o, onOpen }: { order: AdminOrderCard; onOpen: (id: string) => void }) {
   return (
     <tr onClick={() => onOpen(o.id)} className="cursor-pointer">
-      <td className="tabular whitespace-nowrap !text-[var(--text-faint)]">{formatDateTime(o.createdAt)}</td>
+      {/* Date over time: on a 1440 screen the one-line «05.11.2026, 23:55» pushed «Действие» out of the card. */}
+      <td className="tabular whitespace-nowrap !text-[var(--text-faint)]">
+        <span className="block">{formatMoment(o.createdAt, { day: "2-digit", month: "2-digit", year: "numeric" })}</span>
+        <span className="block text-[12px]">{formatTime(o.createdAt)}</span>
+      </td>
       <td className="font-display tabular whitespace-nowrap font-semibold tracking-[0.02em] !text-[var(--text-muted)]">{shortId(o.id)}</td>
       <td className="font-semibold">
         {/* The name never breaks; the «Сайт» chip drops under it when the column is tight. */}
@@ -42,7 +46,7 @@ export function OrderRow({ order: o, onOpen }: { order: AdminOrderCard; onOpen: 
         </span>
       </td>
       <td className="whitespace-nowrap !text-[var(--text-muted)]">{o.deliveryMethod ? DELIVERY_LABEL[o.deliveryMethod] : undefined}</td>
-      <td className="!text-[var(--text-muted)]">{o.paymentOptionTitle || "—"}</td>
+      <td className="min-w-[150px] !text-[var(--text-muted)]">{o.paymentOptionTitle || "—"}</td>
       <td className="text-center">
         <PaymentBadge order={o} icon={false} />
       </td>
@@ -55,10 +59,12 @@ export function OrderRow({ order: o, onOpen }: { order: AdminOrderCard; onOpen: 
             e.stopPropagation();
             onOpen(o.id);
           }}
+          aria-label="Открыть"
           className="nb-press font-display inline-flex h-7 items-center gap-1.5 rounded-[var(--r-sm)] border border-[var(--border-2)] bg-[var(--surface-2)] px-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text)] transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-3)]"
         >
           <ExternalLink className="h-3.5 w-3.5" />
-          Открыть
+          {/* Up to 1600 px just the icon: the whole row opens the order anyway. */}
+          <span className="max-[1599px]:hidden">Открыть</span>
         </button>
       </td>
     </tr>

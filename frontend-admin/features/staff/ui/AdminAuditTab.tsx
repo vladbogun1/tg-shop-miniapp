@@ -1,18 +1,32 @@
 "use client";
 
 import { Button } from "@shop/ui/admin-button";
-import { RotateCcw, ScrollText, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { RotateCcw, ScrollText, Search, SlidersHorizontal } from "lucide-react";
+import { type ReactNode, useMemo, useState } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Input";
 import { QueryState } from "@/components/ui/QueryState";
 import { Select } from "@/components/ui/Select";
 import { formatDateTime } from "@shop/core/time";
+import { cn } from "@/lib/cn";
 import { useDebounced } from "@/lib/use-debounced";
 import type { AuditFilter } from "../api";
 import { auditActionLabel, auditEntityLabel, readableAuditDetails } from "../model/audit-labels";
 import { useAuditFacets, useAuditLog } from "../queries";
 import { ActionBadge, auditWho, EntityCell } from "./AuditCells";
+
+/** Phone: six fields took the whole screen before the first entry — they fold behind «Фильтры (N)». */
+function FoldOnPhone({ count, children }: { count: number; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="surface" icon={<SlidersHorizontal className="h-4 w-4" />} aria-expanded={open} onClick={() => setOpen((v) => !v)} className="mb-3 w-full sm:hidden">
+        Фильтры{count > 0 ? ` (${count})` : ""}
+      </Button>
+      <div className={cn("card mb-5 grid min-w-0 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6", !open && "max-sm:hidden")}>{children}</div>
+    </>
+  );
+}
 
 /** Фильтры: действие, объект, id объекта, админ, период (календарные дни по поясу магазина). Новые сверху, «Ещё» — следующая страница. */
 export function AdminAuditTab() {
@@ -35,7 +49,8 @@ export function AdminAuditTab() {
     }),
     [action, entityType, entityId, adminId, from, to],
   );
-  const filtered = Object.values(filter).some((v) => v !== undefined);
+  const activeCount = Object.values(filter).filter((v) => v !== undefined).length;
+  const filtered = activeCount > 0;
 
   const facetsQ = useAuditFacets();
   const { q: logQ, rows } = useAuditLog(filter);
@@ -52,7 +67,7 @@ export function AdminAuditTab() {
   const facets = facetsQ.data;
   return (
     <div className="min-w-0">
-      <div className="card mb-5 grid min-w-0 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <FoldOnPhone count={activeCount}>
         <Select
           label="Действие"
           value={action}
@@ -84,7 +99,7 @@ export function AdminAuditTab() {
             </Button>
           </div>
         )}
-      </div>
+      </FoldOnPhone>
 
       <QueryState isLoading={logQ.isLoading} isError={logQ.isError} error={logQ.error} refetch={() => logQ.refetch()} loadingLabel="Загружаем журнал">
         {rows.length === 0 ? (

@@ -170,7 +170,9 @@ export function ProductRow(props: RowProps) {
 
       <div className="min-w-0">
         <div className="flex items-start gap-2">
-          <h3 className="line-clamp-2 min-w-0 break-words text-[14px] font-semibold leading-snug text-[var(--text)] sm:line-clamp-1">{p.title}</h3>
+          <h3 className="line-clamp-3 min-w-0 break-words text-[14px] font-semibold leading-snug text-[var(--text)] sm:line-clamp-1" title={p.title}>
+            {p.title}
+          </h3>
           {!p.active && editable && <Badge tone="warn">скрыт</Badge>}
         </div>
         <RowMeta p={p} missing={missing} />
