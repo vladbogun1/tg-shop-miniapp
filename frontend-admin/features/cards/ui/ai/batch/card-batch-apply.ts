@@ -3,7 +3,7 @@
  * «Принять безопасное» (только пустые характеристики и пустое описание, в рамке begin/finish сервера).
  * Запись — тем же импортом карточки, что у обычного экрана проверки; отчёт о счётчиках уходит в `outcome`.
  */
-import { aiApi, batchApi, initialSelection, isSafeKey, outcomeCounts, type AiBatch, type AiJob, type AiSafeApplied, type ReviewField } from "@/features/ai";
+import { aiApi, batchApi, initialSelection, isSafeKey, outcomeCounts, type AiBatch, type AiBatchRow, type AiJob, type AiSafeApplied, type ReviewField } from "@/features/ai";
 import { cardsApi } from "../../../api";
 import { CARD_PROMPT_VERSION, cardVersion, toProductSel } from "../../../model/ai-card";
 import { assignCardIds, type CardItem } from "../../../model/item";
@@ -72,6 +72,14 @@ async function save(plan: JobPlan, selected: ReadonlySet<string>, opts: { transl
 
 /** «Принять» в ленте: то же, что кнопка «Применить» на экране проверки с выбором по умолчанию. */
 export const acceptPlan = (plan: JobPlan): Promise<void> => save(plan, plan.selected, { translations: true, markReady: true });
+
+/** «Принять» строку ленты пакета: ответ задачи и свежая карточка с сервера → разбор → запись с выбором по умолчанию. */
+export async function acceptRow(row: AiBatchRow, schema: CardSchema | undefined): Promise<void> {
+  const [job, found] = await Promise.all([aiApi.job(row.id), cardsApi.export("all", [row.subjectId])]);
+  const plan = planOf(job, found[0] ?? null, schema, undefined);
+  if (!plan) throw new Error("Ответ ИИ не разобрался: откройте «Править»");
+  await acceptPlan(plan);
+}
 
 /** Одна карточка «безопасно»: сервер снимает значения до записи и сверяет после; нарушение он возвращает сам. */
 export async function applySafe(plan: JobPlan): Promise<AiSafeApplied> {

@@ -5,13 +5,12 @@
  * того, что ИИ не сделал («Оформить N вручную»). Ставится один раз
  * в оболочке админки, чтобы ход пакета был виден на любом экране. Нет пакетов — ничего не рисует.
  */
-import { aiApi, BatchPanel, invalidateAfterBatch, QuickReviewFeed, useAiBatches, type AiBatchRow } from "@/features/ai";
+import { BatchPanel, invalidateAfterBatch, QuickReviewFeed, useAiBatches, type AiBatchRow } from "@/features/ai";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { cardsApi } from "../../../api";
 import { invalidateCards, useCardItems, useCardSchema } from "../../../queries";
-import { acceptPlan, planOf } from "./card-batch-apply";
+import { acceptRow } from "./card-batch-apply";
 import { ManualFromBatch, useManualOpener } from "../../manual/ManualBatchEntry";
 import { CardFeedItem } from "./CardFeedItem";
 import { SafeAcceptButton } from "./SafeAcceptButton";
@@ -28,10 +27,7 @@ export function CardBatchHost() {
   const rows = (batches.data?.find((b) => b.id === feedId)?.jobs ?? []).filter((r) => r.status === "DONE" && !r.outcome);
 
   async function accept(row: AiBatchRow): Promise<void> {
-    const [job, found] = await Promise.all([aiApi.job(row.id), cardsApi.export("all", [row.subjectId])]);
-    const plan = planOf(job, found[0] ?? null, schema.data, undefined);
-    if (!plan) throw new Error("Ответ ИИ не разобрался: откройте «Править»");
-    await acceptPlan(plan);
+    await acceptRow(row, schema.data);
     invalidateCards(qc);
     invalidateAfterBatch.forEach((key) => void qc.invalidateQueries({ queryKey: key }));
   }

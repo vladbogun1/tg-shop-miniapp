@@ -8,7 +8,7 @@ import { defaultSel, RED_FIELD } from "../../model/selection";
 import { ReviewCard } from "../ReviewCard";
 import { Step } from "../shared";
 import { SaveBar } from "./SaveBar";
-import { PhotoSummary } from "./PhotoSummary";
+import { PhotoSummary } from "../photos/PhotoSummary";
 import { SummaryView } from "./SummaryView";
 import type { AnswerReview, ReviewFilter } from "./use-answer-review";
 

@@ -18,7 +18,7 @@ import { autoReady, buildImportItem } from "../../model/selection";
 import type { ProductReview } from "../../model/types";
 import { priceToMinor } from "../completion/use-card-completion";
 import { useCompletionSave, type CardCompletionResult } from "../completion/use-completion-save";
-import { usePhotoImport } from "../wizard/use-photo-import";
+import { usePhotoImport } from "../photos/use-photo-import";
 
 export interface ReviewApplyArgs {
   item: CardItem;

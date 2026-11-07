@@ -15,7 +15,7 @@ import type { CardImportItem } from "../../model/wire";
 import { cardsApi, type CardImportResult } from "../../api";
 import { invalidateCards } from "../../queries";
 import type { PhotoJob } from "../../model/photos";
-import { usePhotoImport } from "./use-photo-import";
+import { usePhotoImport } from "../photos/use-photo-import";
 
 export type ReviewFilter = "all" | "ok" | "warn" | "error";
 

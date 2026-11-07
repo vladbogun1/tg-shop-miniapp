@@ -14,8 +14,8 @@ import { PhotoPicks } from "../PhotoPicks";
 import { ProposalsBox, SourcesBox } from "../ReviewCardParts";
 import { CardIssues } from "../shared";
 import { TextsBlock } from "../TextsBlock";
-import { PhotoSummary } from "../wizard/PhotoSummary";
-import type { PhotoImport } from "../wizard/use-photo-import";
+import { PhotoSummary } from "../photos/PhotoSummary";
+import type { PhotoImport } from "../photos/use-photo-import";
 import type { TranslatedLocale } from "@shop/core/i18n";
 
 const TRANSLATED: readonly TextLang[] = ["uk", "en"];
