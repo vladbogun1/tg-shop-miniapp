@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PanelHeader } from "@/components/ui/PanelHeader";
 import { QueryState } from "@/components/ui/QueryState";
+import { AI_GROUP, AiSettingsPanel } from "@/features/ai";
 import { SitePanel } from "@/features/site";
 import { ease } from "@/lib/motion";
 import { useIsDesktop } from "@/lib/use-media";
@@ -114,11 +115,24 @@ export function SettingsScreen() {
                   transition={{ ...ease, delay: i * 0.04 }}
                   className="panel min-w-0 scroll-mt-[88px] p-3 sm:p-5"
                 >
-                  <PanelHeader icon={GROUP_ICON[g.id] ?? SlidersHorizontal} title={g.title} description={g.description} />
-                  {g.id === "bot" ? (
-                    <BotTexts items={groupItems} draft={draft} onChange={change} onReset={reset} />
+                  {g.id === AI_GROUP ? (
+                    <AiSettingsPanel
+                      title={g.title}
+                      description={g.description}
+                      keys={groupItems.map((it) => it.key)}
+                      renderFields={(keys) => (
+                        <GroupFields items={groupItems.filter((it) => keys.includes(it.key))} draft={draft} onChange={change} onReset={reset} />
+                      )}
+                    />
                   ) : (
-                    <GroupFields items={groupItems} draft={draft} onChange={change} onReset={reset} />
+                    <>
+                      <PanelHeader icon={GROUP_ICON[g.id] ?? SlidersHorizontal} title={g.title} description={g.description} />
+                      {g.id === "bot" ? (
+                        <BotTexts items={groupItems} draft={draft} onChange={change} onReset={reset} />
+                      ) : (
+                        <GroupFields items={groupItems} draft={draft} onChange={change} onReset={reset} />
+                      )}
+                    </>
                   )}
                 </motion.section>
               );

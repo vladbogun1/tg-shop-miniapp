@@ -4,6 +4,13 @@ AdminPushNotifier.onChatMessage(ChatMessagePosted) phase=AFTER_COMMIT fallback=t
 AdminPushNotifier.onCreated(Created) phase=AFTER_COMMIT fallback=true
 AdminPushNotifier.onPaymentReceived(PaymentReceived) phase=AFTER_COMMIT fallback=true
 AdminPushNotifier.onSiteFailed(SiteRevalidationFailed) phase=AFTER_COMMIT fallback=true
+AiJobWorker.start(ApplicationReadyEvent) immediately
+AiNotifier.onBatch(BatchStopped) phase=AFTER_COMMIT fallback=true
+AiNotifier.onFreeSearch(FreeSearchWarning) phase=AFTER_COMMIT fallback=true
+AiNotifier.onKey(KeyRejected) phase=AFTER_COMMIT fallback=true
+AiNotifier.onLimit(LimitReached) phase=AFTER_COMMIT fallback=true
+AiNotifier.onSearchDown(SearchDown) phase=AFTER_COMMIT fallback=true
+AiNotifier.onSpend(SpendWarning) phase=AFTER_COMMIT fallback=true
 AnalyticsAggregationService.onStartup(ApplicationReadyEvent) immediately
 BotTexts.onTranslationsChanged(TranslationsChanged) phase=AFTER_COMMIT fallback=true
 BroadcastService.closeInterrupted(ApplicationReadyEvent) immediately tx=REQUIRED
