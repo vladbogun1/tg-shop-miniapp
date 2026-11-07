@@ -9,6 +9,7 @@
 import { nowMs } from "./time";
 import { ApiError, type ErrorParams } from "./errors";
 import { fetchWithTimeout } from "./fetch-timeout";
+import { asResponse, xhrSend } from "./xhr-upload";
 
 /**
  * Сколько ждём ответа. Обычный запрос — 15 с: дольше человек уже не ждёт, а «нет связи / повторить»
@@ -85,7 +86,11 @@ export interface HttpClient {
   patch<T>(path: string, body?: unknown): Promise<T>;
   put<T>(path: string, body?: unknown): Promise<T>;
   del<T>(path: string): Promise<T>;
-  upload<T>(path: string, file: File): Promise<T>;
+  /**
+   * Multipart upload of one file. With {@code onProgress} (share sent, 0…1) it goes through XMLHttpRequest — fetch has
+   * no upload progress; without it, or where XHR is missing, through fetch. Errors are the same either way.
+   */
+  upload<T>(path: string, file: File, onProgress?: (sent: number) => void): Promise<T>;
   /**
    * Last-chance PUT while the page is hidden or closed: `keepalive` lets the request outlive the page.
    * Fire and forget — no 401 handling, no retry (there is no page left to react), errors are swallowed.
@@ -157,17 +162,42 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
 
     // The timer also covers reading the body: a response that stalls half-way is a hang too.
     try {
-      await throwIfFailed(timed.res);
-      if (timed.res.status === 204) return undefined as T;
-      const text = await timed.res.text();
+      return await readResponse<T>(timed.res);
+    } finally {
+      timed.done();
+    }
+  }
+
+  /** Errors (401/403 → onUnauthorized) and the JSON body of an answer, the same for fetch and XHR. */
+  async function readResponse<T>(res: Response): Promise<T> {
+    try {
+      await throwIfFailed(res);
+      if (res.status === 204) return undefined as T;
+      const text = await res.text();
       if (!text) return undefined as T;
       return JSON.parse(text) as T;
     } catch (e) {
       if (e instanceof ApiError || e instanceof SyntaxError) throw e;
       throw new ApiError(texts.offline(), 0); // aborted mid-body
-    } finally {
-      timed.done();
     }
+  }
+
+  /** Upload with a progress callback: XHR, the same headers, timeout and error handling as {@link request}. */
+  async function uploadTracked<T>(path: string, form: FormData, onProgress: (sent: number) => void): Promise<T> {
+    let answer: { status: number; text: string };
+    try {
+      answer = await xhrSend({
+        url: `${baseUrl}${path}`,
+        body: form,
+        headers: buildHeaders({ body: form }),
+        withCredentials: credentials === "include",
+        timeoutMs: UPLOAD_TIMEOUT_MS,
+        onProgress,
+      });
+    } catch {
+      throw new ApiError(texts.offline(), 0);
+    }
+    return readResponse<T>(asResponse(answer.status, answer.text));
   }
 
   async function failureOf(
@@ -200,10 +230,11 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
         body: body === undefined ? undefined : JSON.stringify(body),
       }),
     del: <T,>(path: string) => request<T>(path, { method: "DELETE" }),
-    upload: <T,>(path: string, file: File) => {
+    upload: <T,>(path: string, file: File, onProgress?: (sent: number) => void) => {
       const form = new FormData();
       form.append("file", file);
       // Content-Type is intentionally not set: the browser adds the multipart boundary.
+      if (onProgress && typeof XMLHttpRequest !== "undefined") return uploadTracked<T>(path, form, onProgress);
       return request<T>(path, { method: "POST", body: form }, undefined, UPLOAD_TIMEOUT_MS);
     },
     putOnUnload: (path, body) => {
