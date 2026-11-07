@@ -114,7 +114,7 @@ public class AiSafeAccept {
     }
 
     private Begun start(AiJob job, AiApplyLog.Kind kind) {
-        Map<String, String> before = subjects.of(job.getSubjectType()).snapshot(job.getSubjectId());
+        Map<String, String> before = subjects.of(job.getSubjectType()).applySnapshot(job.getSubjectId());
         AiApplyLog log = logs.save(AiApplyLog.begin(job, actor.userId(), kind, write(before), clock.instant()));
         return new Begun(log.getId());
     }
@@ -134,7 +134,8 @@ public class AiSafeAccept {
             return answer(log, List.of());
         }
         SubjectFields port = subjects.of(log.getSubjectType());
-        Map<String, FieldChange> changes = ApplyDiff.diff(read(log.getSnapshot()), port.snapshot(log.getSubjectId()));
+        Map<String, FieldChange> changes = ApplyDiff.diff(read(log.getSnapshot()),
+                port.applySnapshot(log.getSubjectId()));
         Map<String, FieldChange> bad = log.getKind() == AiApplyLog.Kind.SAFE ? ApplyDiff.violations(changes) : Map.of();
         log.finish(write(changes), clock.instant());
         if (!bad.isEmpty()) {

@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.ai.app.AiApplySteps;
 import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductImage;
@@ -28,6 +29,10 @@ import java.util.List;
  * <p>A link the product already has a photo from is not added twice: the browser may drop the connection while the
  * server still finishes, and the admin presses «Повторить». The check runs under the same row lock as the append, so
  * two parallel repeats also end with one photo; the second one's fresh file is deleted and the existing photo returned.
+ *
+ * <p>A photo of an applied AI answer names its application ({@code applyId}): the append is then a step of that
+ * application ({@link AiApplySteps}) — recorded in its journal, so «Отменить применение» removes it again, and refused
+ * once the application was undone.
  */
 @Service
 public class ProductPhotoImport {
@@ -40,20 +45,32 @@ public class ProductPhotoImport {
     private final ImageStorageService storage;
     private final ProductRepository products;
     private final TransactionTemplate tx;
+    private final AiApplySteps applySteps;
 
     public ProductPhotoImport(ImageImport imageImport, ImageStorageService storage, ProductRepository products,
-                              PlatformTransactionManager txManager) {
+                              PlatformTransactionManager txManager, AiApplySteps applySteps) {
         this.imageImport = imageImport;
         this.storage = storage;
         this.products = products;
         this.tx = new TransactionTemplate(txManager);
+        this.applySteps = applySteps;
     }
 
+    /** A photo that belongs to no application. */
     @Caching(evict = {
             @CacheEvict(value = "products", allEntries = true),
             @CacheEvict(value = "productById", allEntries = true)
     })
     public Result importPhoto(String productId, String url) {
+        return importPhoto(productId, url, null);
+    }
+
+    /** @param applyId the application of an AI answer the photo belongs to, or null */
+    @Caching(evict = {
+            @CacheEvict(value = "products", allEntries = true),
+            @CacheEvict(value = "productById", allEntries = true)
+    })
+    public Result importPhoto(String productId, String url, Long applyId) {
         byte[] id = toBytes(productId);
         if (!products.existsById(id)) {
             throw new DomainException.NotFound(CatalogError.PRODUCT_NOT_FOUND);
@@ -62,7 +79,8 @@ public class ProductPhotoImport {
         ImageImport.Imported photo = imageImport.importFrom(sourceUrl);
         Appended appended;
         try {
-            appended = tx.execute(status -> append(id, photo.key(), sourceUrl));
+            appended = tx.execute(status -> applySteps.within(applyId, CardAiJobs.SUBJECT, productId,
+                    () -> append(id, photo.key(), sourceUrl)));
         } catch (RuntimeException e) {
             storage.deleteQuietly(photo.key());
             throw e;

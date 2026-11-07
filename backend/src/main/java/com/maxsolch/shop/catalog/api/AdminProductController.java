@@ -79,13 +79,15 @@ public class AdminProductController {
 
     @PatchMapping("/products/{id}/active")
     @Operation(summary = "Toggle product active (publishing a DRAFT card: 409 CARD_NOT_READY unless force=1; "
-            + "no price/category: 409 PRODUCT_NOT_PUBLISHABLE {missing})")
+            + "no price/category: 409 PRODUCT_NOT_PUBLISHABLE {missing}); applyId — a step of that application of an AI "
+            + "answer («Отменить применение» hides it again)")
     public AdminProductDto active(@PathVariable String id, @RequestBody BooleanFlagRequest body,
-                                  @RequestParam(required = false) String force) {
+                                  @RequestParam(required = false) String force,
+                                  @RequestParam(required = false) Long applyId) {
         if (body.active() == null) {
             throw new DomainException.BadRequest(CatalogError.ACTIVE_REQUIRED);
         }
-        return products.setActive(id, body.active(), flag(force));
+        return products.setActive(id, body.active(), flag(force), applyId);
     }
 
     @PatchMapping("/products/{id}/archived")

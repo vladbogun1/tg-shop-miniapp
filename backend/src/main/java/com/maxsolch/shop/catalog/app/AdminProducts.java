@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.ai.app.AiApplySteps;
 import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 import org.springframework.stereotype.Service;
@@ -20,13 +21,15 @@ public class AdminProducts {
     private final ProductQuickEdit quickEdit;
     private final AdminAuditService audit;
     private final SiteRevalidator siteRevalidator;
+    private final AiApplySteps applySteps;
 
     public AdminProducts(AdminProductService products, ProductQuickEdit quickEdit, AdminAuditService audit,
-                         SiteRevalidator siteRevalidator) {
+                         SiteRevalidator siteRevalidator, AiApplySteps applySteps) {
         this.products = products;
         this.quickEdit = quickEdit;
         this.audit = audit;
         this.siteRevalidator = siteRevalidator;
+        this.applySteps = applySteps;
     }
 
     public AdminProductDto create(ProductUpsertRequest req) {
@@ -58,7 +61,16 @@ public class AdminProducts {
     }
 
     public AdminProductDto setActive(String id, boolean active, boolean force) {
-        AdminProductDto saved = products.setActive(id, active, force);
+        return setActive(id, active, force, null);
+    }
+
+    /**
+     * {@code applyId}: «Сохранить цену и выложить» after an AI answer was applied — publishing is then a step of that
+     * application ({@link AiApplySteps}), and «Отменить применение» hides the product again.
+     */
+    public AdminProductDto setActive(String id, boolean active, boolean force, Long applyId) {
+        AdminProductDto saved = applySteps.within(applyId, CardAiJobs.SUBJECT, id,
+                () -> products.setActive(id, active, force));
         // Journal after the fact: a 404 must not leave a "показан" entry for something that never happened.
         audit.record("PRODUCT_ACTIVE", "PRODUCT", id, active ? "показан" : "скрыт");
         return revalidated(saved, null);

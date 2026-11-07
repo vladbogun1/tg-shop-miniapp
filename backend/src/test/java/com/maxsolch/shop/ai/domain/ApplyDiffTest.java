@@ -55,4 +55,26 @@ class ApplyDiffTest {
 
         assertThat(ApplyDiff.revertable(changes, current)).containsOnlyKeys("spec:weight");
     }
+
+    @Test
+    void theStatusConfidenceAndJournalOfTheCardAreBookkeepingNotABrokenPromise() {
+        Map<String, FieldChange> changes = Map.of("status", new FieldChange("READY", "AI_FILLED"),
+                "meta", new FieldChange(null, "{}"), "confidence", new FieldChange("40", "80"),
+                "active", new FieldChange(null, "true"), "tr:uk:title", new FieldChange(null, "{}"));
+
+        assertThat(ApplyDiff.violations(changes)).containsOnlyKeys("active", "tr:uk:title");
+    }
+
+    @Test
+    void aLaterStepKeepsTheFirstBeforeAndDropsWhatWentBack() {
+        Map<String, FieldChange> recorded = Map.of("active", new FieldChange(null, "true"),
+                "status", new FieldChange("DRAFT", "READY"));
+        Map<String, FieldChange> step = Map.of("photo:k1", new FieldChange(null, "k1"),
+                "status", new FieldChange("READY", "AI_FILLED"), "active", new FieldChange("true", null));
+
+        Map<String, FieldChange> merged = ApplyDiff.merge(recorded, step);
+
+        assertThat(merged).containsOnlyKeys("photo:k1", "status");
+        assertThat(merged.get("status")).isEqualTo(new FieldChange("DRAFT", "AI_FILLED"));
+    }
 }

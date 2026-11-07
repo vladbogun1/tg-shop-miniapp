@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.ai.app.AiApplySteps;
 import com.maxsolch.shop.catalog.domain.CatalogError;
 import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.error.DomainException;
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -26,7 +28,15 @@ class AdminProductsTest {
     ProductQuickEdit quick = mock(ProductQuickEdit.class);
     AdminAuditService audit = mock(AdminAuditService.class);
     SiteRevalidator revalidator = mock(SiteRevalidator.class);
-    AdminProducts admin = new AdminProducts(service, quick, audit, revalidator);
+    AiApplySteps steps = stepsRunningInPlace();
+    AdminProducts admin = new AdminProducts(service, quick, audit, revalidator, steps);
+
+    /** Without an application id the step simply runs. */
+    private static AiApplySteps stepsRunningInPlace() {
+        AiApplySteps steps = mock(AiApplySteps.class);
+        when(steps.within(any(), any(), any(), any())).thenAnswer(inv -> inv.<Supplier<?>>getArgument(3).get());
+        return steps;
+    }
 
     private static AdminProductDto product(boolean active, String condition) {
         AdminProductDto p = mock(AdminProductDto.class);

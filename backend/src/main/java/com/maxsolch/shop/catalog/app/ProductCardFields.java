@@ -10,6 +10,8 @@ import com.maxsolch.shop.catalog.infra.ProductRepository;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.site.app.SiteRevalidator;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +26,9 @@ import java.util.Optional;
  * The card of a product as the AI sees it for «Принять безопасное» and its undo ({@link SubjectFields}): the fields are
  * {@code title}, {@code description}, {@code category}, {@code brand} and {@code spec:<key>} for every characteristic
  * (the value is its JSON text, an empty field is absent). Giving back a field also removes its confidence mark from
- * {@code card_meta}, so the card does not keep a source for a value that is gone.
+ * {@code card_meta}, so the card does not keep a source for a value that is gone. For the journal of applications the
+ * card also shows what an application writes beside the fields ({@link CardApplyExtras}: photos, translations, card
+ * status, confidence and journal, storefront); when the journal itself is given back whole, the marks go with it.
  */
 @Component
 public class ProductCardFields implements SubjectFields {
@@ -34,11 +38,14 @@ public class ProductCardFields implements SubjectFields {
     private final ProductRepository products;
     private final CatalogDirectory directory;
     private final SiteRevalidator site;
+    private final CardApplyExtras extras;
 
-    public ProductCardFields(ProductRepository products, CatalogDirectory directory, SiteRevalidator site) {
+    public ProductCardFields(ProductRepository products, CatalogDirectory directory, SiteRevalidator site,
+                             CardApplyExtras extras) {
         this.products = products;
         this.directory = directory;
         this.site = site;
+        this.extras = extras;
     }
 
     @Override
@@ -56,6 +63,14 @@ public class ProductCardFields implements SubjectFields {
 
     @Override
     @Transactional(readOnly = true)
+    public Map<String, String> applySnapshot(String subjectId) {
+        Product p = products.findById(UuidUtil.toBytes(subjectId))
+                .orElseThrow(() -> new DomainException.NotFound(CatalogError.PRODUCT_NOT_FOUND));
+        return applyFields(p);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<Map<String, String>> find(String subjectId) {
         byte[] id;
         try {
@@ -68,32 +83,59 @@ public class ProductCardFields implements SubjectFields {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "products", allEntries = true),
+            @CacheEvict(value = "productById", allEntries = true)
+    })
     public Reverted revertUnchanged(String subjectId, Map<String, FieldChange> changes) {
         Product p = products.findByIdForUpdate(UuidUtil.toBytes(subjectId)).orElse(null);
         if (p == null) {
             return new Reverted(List.of(), List.copyOf(changes.keySet()));
         }
-        Map<String, String> now = fields(p);
+        Map<String, String> now = applyFields(p);
         List<String> reverted = new ArrayList<>();
         List<String> skipped = new ArrayList<>();
         Map<String, Object> specs = SpecsJson.readMap(p.getSpecsJson());
         Map<String, Object> meta = SpecsJson.readMap(p.getCardMetaJson());
+        CardApplyExtras.Undo undo = new CardApplyExtras.Undo();
+        FieldChange wholeMeta = null;
+        boolean plain = false;
         for (Map.Entry<String, FieldChange> e : changes.entrySet()) {
-            if (Objects.equals(now.get(e.getKey()), e.getValue().after())) {
-                putBack(p, specs, meta, e.getKey(), e.getValue().before());
-                reverted.add(e.getKey());
-            } else {
-                skipped.add(e.getKey());
+            String key = e.getKey();
+            String before = e.getValue().before();
+            boolean unchanged = Objects.equals(now.get(key), e.getValue().after());
+            if (unchanged && key.equals(CardApplyExtras.META)) {
+                wholeMeta = e.getValue();
+            } else if (unchanged && CardApplyExtras.handles(key)) {
+                unchanged = extras.putBack(p, key, before, undo);
+            } else if (unchanged) {
+                putBack(p, specs, meta, key, before);
+                plain = true;
             }
+            (unchanged ? reverted : skipped).add(key);
         }
         if (!reverted.isEmpty()) {
-            p.changeSpecs(SpecsJson.write(specs));
-            p.recordCardMeta(SpecsJson.write(meta));
+            if (plain) {
+                p.changeSpecs(SpecsJson.write(specs));
+            }
+            // The journal given back whole already has the marks of the given-back characteristics as they were.
+            if (wholeMeta != null) {
+                p.recordCardMeta(wholeMeta.before());
+            } else if (plain) {
+                p.recordCardMeta(SpecsJson.write(meta));
+            }
             products.save(p);
+            extras.finish(undo);
             directory.evictAll();
             site.allChanged();
         }
         return new Reverted(reverted, skipped);
+    }
+
+    private Map<String, String> applyFields(Product p) {
+        Map<String, String> out = fields(p);
+        extras.read(p, out);
+        return out;
     }
 
     private static Map<String, String> fields(Product p) {

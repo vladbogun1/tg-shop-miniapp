@@ -92,6 +92,11 @@ public class AiApplyLog {
         this.appliedAt = now;
     }
 
+    /** A later step of the application (photos, publishing) added to what it changed. */
+    public void record(String changesJson) {
+        this.changes = changesJson;
+    }
+
     public boolean finished() {
         return appliedAt != null;
     }

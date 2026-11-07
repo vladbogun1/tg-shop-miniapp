@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.lang.Nullable;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,8 +22,11 @@ import org.springframework.web.bind.annotation.RestController;
 @SecurityRequirement(name = "bearer-jwt")
 public class AdminProductPhotoController {
 
-    /** A picture's or product page's link. */
-    public record PhotoImportRequest(@NotBlank @Size(max = 2048) String url) {
+    /**
+     * A picture's or product page's link; {@code applyId} — the application of an AI answer the photo belongs to
+     * (then «Отменить применение» removes it again).
+     */
+    public record PhotoImportRequest(@NotBlank @Size(max = 2048) String url, @Nullable Long applyId) {
     }
 
     private final ProductPhotoImport photoImport;
@@ -34,6 +38,6 @@ public class AdminProductPhotoController {
     @PostMapping("/{id}/photos/import")
     @Operation(summary = "Download a photo by link, square it to 1600 px WebP on its own edge colour and add it last")
     public ProductPhotoImport.Result importPhoto(@PathVariable String id, @Valid @RequestBody PhotoImportRequest req) {
-        return photoImport.importPhoto(id, req.url());
+        return photoImport.importPhoto(id, req.url(), req.applyId());
     }
 }

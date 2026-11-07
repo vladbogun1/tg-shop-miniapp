@@ -30,7 +30,9 @@ import java.util.Map;
  * alone and counted as skipped. The object is changed through {@link SubjectFields} (the catalog implements it) under
  * its own lock, and the log row is locked here, so a second click undoes nothing twice. Both kinds are undone (the
  * safe acceptance and an ordinary application); after an undo the job waits for a review again ({@link AiJob#reopen}),
- * so its row is back in the feed. Characteristics the application removed come back too.
+ * so its row is back in the feed. Characteristics the application removed come back too, and so does what the
+ * application wrote beside the fields (see {@link SubjectFields#applySnapshot}: photos, translations, card status,
+ * storefront). The answer names the keys given back and the ones left because somebody changed them by hand.
  */
 @Service
 public class AiApplyUndo {
@@ -38,12 +40,20 @@ public class AiApplyUndo {
     private static final TypeReference<Map<String, FieldChange>> CHANGES = new TypeReference<>() {
     };
 
-    /** @param reverted fields given back; @param skipped fields left because they were edited since */
-    public record Result(int applications, int reverted, int skipped) {
+    /**
+     * @param reverted fields given back; @param skipped fields left because they were edited since;
+     * @param revertedFields / @param skippedFields their keys ({@code description}, {@code spec:dpi},
+     *        {@code photo:<key>}, {@code tr:uk:title}, {@code status}, {@code active}, …), distinct over a batch
+     */
+    public record Result(int applications, int reverted, int skipped, List<String> revertedFields,
+                         List<String> skippedFields) {
     }
 
-    /** The application of a job that can still be undone; both null when there is none. */
-    public record Live(Long id, Instant undoUntil) {
+    /**
+     * The application of a job that can still be undone; id and undoUntil null when there is none. {@code changed} —
+     * the keys it wrote (with the later steps: photos, publishing), for «what comes back» on the screen.
+     */
+    public record Live(Long id, Instant undoUntil, List<String> changed) {
     }
 
     private final AiApplyLogRepository logs;
@@ -79,7 +89,8 @@ public class AiApplyUndo {
         }
         Result r = revert(log);
         audit.record("AI_APPLY_UNDO", log.getSubjectType(), log.getSubjectId(),
-                "ИИ: отмена применения, возвращено полей " + r.reverted() + ", оставлено (правили руками) " + r.skipped());
+                "ИИ: отмена применения, возвращено полей " + r.reverted() + ", оставлено (правили руками) " + r.skipped()
+                        + (r.skippedFields().isEmpty() ? "" : ": " + String.join(", ", r.skippedFields())));
         return r;
     }
 
@@ -88,24 +99,19 @@ public class AiApplyUndo {
     public Result undoBatch(long batchId) {
         AiBatch b = batches.findById(batchId).orElseThrow(() -> new DomainException.NotFound(AiError.BATCH_NOT_FOUND));
         checkOwner(b.getAdminId());
-        int apps = 0;
-        int reverted = 0;
-        int skipped = 0;
+        Result sum = new Result(0, 0, 0, List.of(), List.of());
         for (AiApplyLog l : logs.findByBatchIdOrderByIdAsc(batchId)) {
             AiApplyLog locked = logs.lockById(l.getId()).orElseThrow();
             if (locked.undoable(clock.instant())) {
-                Result r = revert(locked);
-                apps++;
-                reverted += r.reverted();
-                skipped += r.skipped();
+                sum = plus(sum, revert(locked));
             }
         }
-        if (apps == 0) {
+        if (sum.applications() == 0) {
             throw new DomainException.Conflict(AiError.UNDO_CLOSED);
         }
-        audit.record("AI_APPLY_UNDO", "AI_BATCH", String.valueOf(batchId),
-                "ИИ: отмена применений пакета, карточек " + apps + ", полей " + reverted + ", оставлено " + skipped);
-        return new Result(apps, reverted, skipped);
+        audit.record("AI_APPLY_UNDO", "AI_BATCH", String.valueOf(batchId), "ИИ: отмена применений пакета, карточек "
+                + sum.applications() + ", полей " + sum.reverted() + ", оставлено " + sum.skipped());
+        return sum;
     }
 
     /** The live application of a job, for «Отменить применение» on its review screen. */
@@ -114,10 +120,10 @@ public class AiApplyUndo {
         Instant now = clock.instant();
         AiApplyLog live = logs.findByJobIdOrderByIdDesc(jobId).stream().filter(l -> l.undoable(now)).findFirst().orElse(null);
         if (live == null) {
-            return new Live(null, null);
+            return new Live(null, null, List.of());
         }
         checkOwner(live.getAdminId());
-        return new Live(live.getId(), live.undoUntil());
+        return new Live(live.getId(), live.undoUntil(), keys(readChanges(live.getChanges())));
     }
 
     /**
@@ -129,7 +135,17 @@ public class AiApplyUndo {
         SubjectFields.Reverted done = subjects.of(log.getSubjectType()).revertUnchanged(log.getSubjectId(), changes);
         log.undone(done.reverted().size(), done.skipped().size(), clock.instant());
         jobs.findById(log.getJobId()).ifPresent(AiJob::reopen);
-        return new Result(1, done.reverted().size(), done.skipped().size());
+        return new Result(1, done.reverted().size(), done.skipped().size(), List.copyOf(done.reverted()),
+                List.copyOf(done.skipped()));
+    }
+
+    private static Result plus(Result a, Result b) {
+        return new Result(a.applications() + b.applications(), a.reverted() + b.reverted(), a.skipped() + b.skipped(),
+                distinct(a.revertedFields(), b.revertedFields()), distinct(a.skippedFields(), b.skippedFields()));
+    }
+
+    private static List<String> distinct(List<String> a, List<String> b) {
+        return java.util.stream.Stream.concat(a.stream(), b.stream()).distinct().toList();
     }
 
     Map<String, FieldChange> readChanges(String raw) {

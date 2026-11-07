@@ -1,5 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
+import com.maxsolch.shop.ai.app.AiApplySteps;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.catalog.domain.ProductImage;
 import com.maxsolch.shop.catalog.infra.ProductRepository;
@@ -12,6 +13,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,7 +40,9 @@ class ProductPhotoImportTest {
 
     @BeforeEach
     void setUp() {
-        service = new ProductPhotoImport(imageImport, storage, products, mock(PlatformTransactionManager.class));
+        AiApplySteps steps = mock(AiApplySteps.class);
+        when(steps.within(any(), any(), any(), any())).thenAnswer(inv -> inv.<Supplier<?>>getArgument(3).get());
+        service = new ProductPhotoImport(imageImport, storage, products, mock(PlatformTransactionManager.class), steps);
         id = UUID.randomUUID().toString();
         byte[] bytes = UuidUtil.toBytes(id);
         product = new Product();
