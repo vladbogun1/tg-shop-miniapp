@@ -2,6 +2,7 @@
 # Выкатка магазина без даунтайма (сервер прода, каталог проекта ~/TELEGRAM_BOTS/maxsolch-v2).
 #
 #   bash infra/deploy/deploy.sh v3.50.0          релиз или откат на тег: образы, дамп БД, переключение
+#                                                (откат с подтверждением — infra/rollback.sh <тег>)
 #   bash infra/deploy/deploy.sh --rollout [svc…] только перекатить сервисы на образы, которые уже есть
 #                                                (стенд: собрал `compose build` — и перекатил)
 # Опции: --no-backup (без дампа), --force (пересоздать, даже если образ тот же).
@@ -32,7 +33,7 @@ while [ $# -gt 0 ]; do
     --rollout)   mode=rollout ;;
     --no-backup) backup="" ;;
     --force)     force=1 ;;
-    -h|--help)   sed -n '2,12p' "$0"; return 0 ;;
+    -h|--help)   sed -n '2,13p' "$0"; return 0 ;;
     v[0-9]*)     tag="$1" ;;
     -*)          die "неизвестная опция $1" ;;
     *)           services="$services $1" ;;
@@ -79,11 +80,10 @@ fi
 if [ -n "$backup" ]; then
   local b
   b=~/BACKUPS/maxsolch-pre-$tag-$(date +%Y%m%d-%H%M%S)
-  mkdir -p "$b"
   log "дамп БД → $b"
-  dc exec -T mysql sh -c 'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction --routines "$MYSQL_DATABASE" 2>/dev/null' \
-    </dev/null | gzip > "$b/tgshop_v2.sql.gz"
-  zcat "$b/tgshop_v2.sql.gz" | tail -1 | grep -q "Dump completed" || { git checkout -qf "$prev_ref"; die "дамп неполный ($b) — ничего не переключал"; }
+  if ! BACKUP_DIR="$b" PROJECT_DIR="$(pwd)" bash infra/backup.sh </dev/null; then
+    git checkout -qf "$prev_ref"; die "дамп не снят — ничего не переключал (или --no-backup)"
+  fi
   cp .env "$b/.env"; chmod 600 "$b/.env"
 fi
 
@@ -91,8 +91,7 @@ sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$tag/" .env
 for s in $services; do rollout_one "$s" "$force"; done
 refresh_infra "$prev_ref" "$tag"
 
-if [ -n "$cur" ] && [ "$cur" != "$tag" ]; then write_rollback "$cur" "$tag"; fi
-log "ГОТОВО: прод на $tag. Откат: ./rollback.sh (→ $cur)"
+log "ГОТОВО: прод на $tag. Откат: infra/rollback.sh ${cur:-<прежний тег>}"
 }
 
 # ───────────────────────────── helpers ─────────────────────────────
@@ -204,23 +203,6 @@ refresh_infra() {
     log "$svc: поменялся $file — пересоздаю (≈1 с без ответа)"
     dc up -d --no-deps --no-build --pull never --force-recreate "$svc" </dev/null
   done
-}
-
-write_rollback() {
-  local to="$1" from="$2" dir
-  dir=$(pwd)
-  if [ -f rollback.sh ]; then mv rollback.sh "rollback.sh.before-$from-$(date +%Y%m%d-%H%M%S)"; fi
-  cat > rollback.sh <<EOF
-#!/usr/bin/env bash
-# Откат прода с $from на $to — образы, без даунтайма (создан infra/deploy/deploy.sh $(date -u +%F)).
-# Миграции $from остаются в базе; разрушающие (drop/rename) — откат только с дампом ~/BACKUPS/maxsolch-pre-$from-*.
-set -euo pipefail
-cd "$dir"
-read -r -p "Откатить прод с $from на $to? (yes/no) " a; [ "\$a" = yes ] || exit 1
-git show $from:infra/deploy/deploy.sh > /tmp/maxsolch-deploy.sh
-exec bash /tmp/maxsolch-deploy.sh --no-backup $to
-EOF
-  chmod +x rollback.sh
 }
 
 main "$@"; exit $?
