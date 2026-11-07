@@ -50,6 +50,17 @@ public class Workers implements DisposableBean {
         return register(new ThreadPoolExecutor(1, 1, 0, TimeUnit.MILLISECONDS, queue, daemon(name), onFull), drainOnStop);
     }
 
+    /**
+     * {@code threads} threads ({@code name-1}…) and a queue of {@code capacity}, for slow independent calls that may
+     * overlap (AI requests of a minute each); interrupted on stop — the work is repeatable, not drained.
+     */
+    public ExecutorService pool(String name, int threads, int capacity, RejectedExecutionHandler onFull) {
+        java.util.concurrent.atomic.AtomicInteger n = new java.util.concurrent.atomic.AtomicInteger();
+        ThreadFactory numbered = r -> daemon(name + "-" + n.incrementAndGet()).newThread(r);
+        return register(new ThreadPoolExecutor(threads, threads, 0, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(capacity), numbered, onFull), Duration.ZERO);
+    }
+
     /** One thread that also runs delayed tasks; interrupted on stop. */
     public ScheduledExecutorService scheduled(String name) {
         return register(new ScheduledThreadPoolExecutor(1, daemon(name)), Duration.ZERO);
