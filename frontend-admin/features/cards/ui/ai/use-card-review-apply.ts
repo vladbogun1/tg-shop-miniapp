@@ -2,8 +2,9 @@
 
 /**
  * Применение проверенного ответа ИИ по карточке — одно для встроенного ИИ и ручного пути через ChatGPT: тот же
- * импорт карточки (`useCompletionSave`: характеристики, тексты, переводы, источники и заметки, модель, статус
- * «Готово»/«Проверить», «выложить»), затем фото по ссылкам (`usePhotoImport`, как у мастера). Счётчики исхода
+ * импорт карточки (`useCompletionSave`: характеристики и подтверждённые без изменений, тексты, переводы, источники
+ * и заметки, модель, статус «Готово»/«Проверить», «выложить»), затем фото по ссылкам (`usePhotoImport`, как у
+ * мастера). Счётчики исхода
  * (принято / с правками / отклонено / под замком) уходят вызывающему: встроенный ИИ отчитывается по задаче, ручной
  * путь ставит метку MANUAL.
  */
@@ -61,10 +62,11 @@ export function useCardReviewApply(a: ReviewApplyArgs) {
       finish();
       a.onSaved?.(published);
     },
-    onPublished: () => undefined,
+    // «Сохранить цену и выложить» после записи: окно должно знать, что товар уже на витрине.
+    onPublished: () => a.onSaved?.(true),
   });
 
-  const sel = a.review ? toProductSel(a.review, a.selected, { translations: a.translations, photos: a.photos }) : null;
+  const sel = a.review ? toProductSel(a.review, a.selected, { translations: a.translations, photos: a.photos, confirmed: true }) : null;
   const sure = !!a.review && !!sel && autoReady(a.review, sel);
 
   function apply() {
@@ -87,6 +89,7 @@ export function useCardReviewApply(a: ReviewApplyArgs) {
     priceMinor: minor,
     savePrice: () => minor !== null && save.savePrice.mutate({ item: a.item, priceMinor: minor }),
     applied,
+    sel,
     sure,
     photoImport: photos,
   };

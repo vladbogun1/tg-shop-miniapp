@@ -4,7 +4,8 @@
  * Title / description / condition note of one reviewed product in RU · UA · EN: the AI answer
  * gives the whole card in three languages, so no separate trip to «Переводы». Russian shows the
  * word diff against the current text with «accept» checkboxes; every language is editable inline
- * (the checks of «Переводы» re-run on each keystroke).
+ * (the checks of «Переводы» re-run on each keystroke). `langs` without ru — only the translations (the review
+ * screen shared with the built-in AI shows the Russian texts as its own rows).
  */
 import { Languages, PencilLine } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -29,13 +30,15 @@ export function TextsBlock({
   sel,
   onSel,
   onEditText,
+  langs = LANGS,
 }: {
   review: ProductReview;
   sel: ProductSel;
   onSel: (patch: Partial<ProductSel>) => void;
   onEditText: (field: TextField, lang: TextLang, value: string) => void;
+  langs?: readonly TextLang[];
 }) {
-  const [lang, setLang] = useState<TextLang>("ru");
+  const [lang, setLang] = useState<TextLang>(langs[0]);
   const texts = (["title", "description", "conditionNote"] as const).map((f) => r.texts[f]).filter((t): t is TextReview => !!t);
   const count = (l: TextLang) => texts.reduce((n, t) => n + problemCount(t.issues[l]), 0) || undefined;
   const hasTranslations = texts.some((t) => t.uk.trim() || t.en.trim());
@@ -44,12 +47,12 @@ export function TextsBlock({
     <div className="mt-3 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--bg-2)] p-2.5">
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Languages className="h-4 w-4 text-[var(--text-faint)]" />
-        <span className="field-label !text-[11px]">Тексты</span>
+        <span className="field-label !text-[11px]">{langs.includes("ru") ? "Тексты" : "Переводы"}</span>
         <SegmentedControl<TextLang>
           size="sm"
           value={lang}
           onChange={setLang}
-          options={LANGS.map((l) => ({ value: l, label: LANG_LABEL[l], count: count(l) }))}
+          options={langs.map((l) => ({ value: l, label: LANG_LABEL[l], count: count(l) }))}
         />
         {hasTranslations && (
           <label className="ml-auto flex cursor-pointer items-center gap-2 text-[12.5px] font-semibold text-[var(--text-muted)]">
@@ -155,7 +158,14 @@ function LangText({ t, lang, sel, onEdit }: { t: TextReview; lang: TranslatedLoc
     <div>
       <div className="mb-1 flex flex-wrap items-center gap-2">
         <span className="text-[12.5px] font-semibold text-[var(--text)]">{TEXT_LABEL[t.field]}</span>
-        {sendable ? <Badge tone="ok">сохранится</Badge> : <Badge tone="neutral">не сохранится — {why}</Badge>}
+        {sendable ? (
+          <Badge tone="ok">сохранится</Badge>
+        ) : (
+          // длинная причина на телефоне переносится, а не вылезает за карточку
+          <Badge tone="neutral" className="max-w-full whitespace-normal rounded-[var(--r-sm)]">
+            не сохранится — {why}
+          </Badge>
+        )}
       </div>
       <div className={cn(!sendable && "opacity-70")}>
         <InlineText

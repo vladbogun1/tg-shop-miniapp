@@ -195,12 +195,30 @@ export function editReviewValue(r: ProductReview, key: string, value: string): {
   return { review: r, error: "Это поле здесь не правится" };
 }
 
-/** Выбор на экране → выбор записи тем же `buildImportItem`, что у ручного пути; фото — отмеченные в ревью. */
-export function toProductSel(r: ProductReview, keys: ReadonlySet<string>, opts: { translations: boolean; photos?: string[] }): ProductSel {
+/**
+ * Характеристики, которые ИИ подтвердил тем же значением и которые уже записаны ИИ (есть метка в журнале): с записью
+ * обновится их уверенность — как «Без изменений… уверенность запишется» у прежней проверки ручного пути. Значения,
+ * вписанные человеком, не трогаем: метка ИИ сняла бы с них замок.
+ */
+export function confirmedSpecKeys(r: ProductReview): string[] {
+  const meta = metaOf(r.item).fields ?? {};
+  return r.fields.filter((f) => f.value !== undefined && !f.changed && f.preselect && !!meta[f.key]).map((f) => f.key);
+}
+
+/**
+ * Выбор на экране → выбор записи тем же `buildImportItem`, что у ручного пути; фото — отмеченные в ревью;
+ * `confirmed` — ещё и подтверждённые без изменений (`confirmedSpecKeys`; только проверка одной карточки, не пакет).
+ */
+export function toProductSel(
+  r: ProductReview,
+  keys: ReadonlySet<string>,
+  opts: { translations: boolean; photos?: string[]; confirmed?: boolean },
+): ProductSel {
+  const specs = [...keys].filter((k) => k.startsWith(SPEC)).map((k) => k.slice(SPEC.length));
   return {
     ...defaultSel(r),
     on: true,
-    fields: new Set([...keys].filter((k) => k.startsWith(SPEC)).map((k) => k.slice(SPEC.length))),
+    fields: new Set([...specs, ...(opts.confirmed ? confirmedSpecKeys(r) : [])]),
     title: keys.has("title"),
     description: keys.has("description"),
     category: keys.has("category"),

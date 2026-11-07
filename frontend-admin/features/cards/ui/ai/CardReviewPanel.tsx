@@ -9,7 +9,7 @@
 import { AiReview, initialSelection, type AiMenuItem, type OutcomeCounts, outcomeCounts } from "@/features/ai";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type ReactNode } from "react";
-import { extraInitialKeys, reviewRows, type FieldContext } from "../../model/ai-card";
+import { confirmedSpecKeys, extraInitialKeys, reviewRows, type FieldContext } from "../../model/ai-card";
 import type { Proposal } from "../../model";
 import type { CardItem } from "../../model/item";
 import type { ProductReview } from "../../model/types";
@@ -108,17 +108,20 @@ export function CardReviewPanel(p: CardReviewPanelProps) {
           <CardReviewExtras
             item={p.item}
             review={draft.review ?? p.review}
+            sel={act.sel}
             finished={finished}
             photos={draft.photos}
             setPhotos={draft.setPhotos}
             photoImport={act.photoImport}
             translations={translations}
             setTranslations={setTranslations}
+            onEditTranslation={draft.editTranslation}
             publish={publish}
             setPublish={setPublish}
             markReady={draft.markReady}
             setMarkReady={draft.setMarkReady}
             sure={act.sure}
+            confirmed={confirmedSpecKeys(draft.review ?? p.review).length}
             onAddOption={setAddOption}
           />
         }

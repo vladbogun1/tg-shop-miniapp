@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardVersion, editReviewValue, extraInitialKeys, reviewRows, toProductSel, valuesOf } from "./ai-card";
+import { cardVersion, confirmedSpecKeys, editReviewValue, extraInitialKeys, reviewRows, toProductSel, valuesOf } from "./ai-card";
 import { cardChanges } from "./ai-conflict";
 import { SCHEMA, item } from "./fixtures";
 import { reviewProduct } from "./review";
@@ -74,6 +74,20 @@ describe("выбор → запись", () => {
     expect(Object.keys(out?.specs ?? {})).toEqual(["sensor"]);
     const none = buildImportItem(r, toProductSel(r, new Set(), { translations: false }), { markReady: false });
     expect(Object.keys(none?.specs ?? {})).toEqual([]);
+  });
+
+  it("подтверждённое без изменений: уверенность обновится только у значений ИИ, ручное не получает метку ИИ", () => {
+    const it2 = item({ specs: { weight_g: 60, sensor: "PAW3395" }, cardMeta: { fields: { weight_g: { c: 50 } } } });
+    const r = review({ specs: { weight_g: 60, sensor: "PAW3395", dpi: 1600 }, confidence: { weight_g: 95, sensor: 95, dpi: 90 }, overall: 90 }, it2);
+    const rows = reviewRows(r, ctxOf());
+    expect(rows.map((x) => x.key)).toEqual(["spec:dpi"]);
+    expect(confirmedSpecKeys(r)).toEqual(["weight_g"]);
+    const keys = new Set(["spec:dpi"]);
+    const out = buildImportItem(r, toProductSel(r, keys, { translations: true, confirmed: true }), { markReady: false })!;
+    expect(Object.keys(out.specs).sort()).toEqual(["dpi", "weight_g"]);
+    expect(out.confidence).toEqual({ weight_g: 95, dpi: 90 });
+    // пакет и прежние вызовы — без подтверждений
+    expect(Object.keys(buildImportItem(r, toProductSel(r, keys, { translations: true }), { markReady: false })!.specs)).toEqual(["dpi"]);
   });
 });
 

@@ -2,33 +2,44 @@
 
 /**
  * Под группами ревью карточки — всё, что ручной путь применял сверх полей: фото из ответа (отметить, порядок),
- * «Сразу в «Готово»» (по умолчанию — как решит уверенность ИИ), переводы, «выложить», новые опции для схемы,
- * источники и заметки ИИ. После применения — ход загрузки фото.
+ * переводы uk/en (посмотреть, поправить, сохранять ли), «Сразу в «Готово»» (по умолчанию — как решит уверенность ИИ),
+ * «выложить», новые опции для схемы, что из ответа не применится и почему, источники и заметки ИИ.
+ * После применения — ход загрузки фото.
  */
-import type { Proposal } from "../../model";
-import { AUTO_READY_OVERALL, RED_FIELD } from "../../model/selection";
+import type { Proposal, TextField, TextLang } from "../../model";
+import { AUTO_READY_OVERALL, RED_FIELD, type ProductSel } from "../../model/selection";
 import type { CardItem } from "../../model/item";
 import type { ProductReview } from "../../model/types";
 import { PhotoPicks } from "../PhotoPicks";
 import { ProposalsBox, SourcesBox } from "../ReviewCardParts";
+import { CardIssues } from "../shared";
+import { TextsBlock } from "../TextsBlock";
 import { PhotoSummary } from "../wizard/PhotoSummary";
 import type { PhotoImport } from "../wizard/use-photo-import";
+import type { TranslatedLocale } from "@shop/core/i18n";
+
+const TRANSLATED: readonly TextLang[] = ["uk", "en"];
 
 export interface ExtrasProps {
   item: CardItem;
   review: ProductReview;
+  /** Что уйдёт в запись при текущем выборе (для «сохранится / не сохранится» у переводов). */
+  sel: ProductSel | null;
   finished: boolean;
   photos: string[];
   setPhotos: (next: string[]) => void;
   photoImport: PhotoImport;
   translations: boolean;
   setTranslations: (v: boolean) => void;
+  onEditTranslation: (field: TextField, lang: TranslatedLocale, value: string) => void;
   publish: boolean;
   setPublish: (v: boolean) => void;
   /** Ручной выбор статуса; null — автоматически. */
   markReady: boolean | null;
   setMarkReady: (v: boolean) => void;
   sure: boolean;
+  /** Сколько характеристик ИИ подтвердил без изменений (уверенность обновится). */
+  confirmed: number;
   onAddOption: (p: Proposal) => void;
 }
 
@@ -37,8 +48,10 @@ export function CardReviewExtras(p: ExtrasProps) {
   return (
     <div className="flex flex-col gap-3">
       <PhotoBlock review={p.review} photos={p.photos} setPhotos={p.setPhotos} />
+      <Translations {...p} />
       <ApplyOptions {...p} />
       <ProposalsBox proposals={p.review.proposals} onAddOption={p.onAddOption} />
+      <NotApplied review={p.review} confirmed={p.confirmed} />
       <SourcesBox r={p.review} />
     </div>
   );
@@ -50,6 +63,24 @@ function PhotoBlock({ review, photos, setPhotos }: { review: ProductReview; phot
     <section className="rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface)] px-3 pb-3" data-testid="ai-review-photos">
       <PhotoPicks r={review} sel={{ photos }} onSel={(patch) => setPhotos(patch.photos)} />
     </section>
+  );
+}
+
+/** uk/en названия, описания и заметки о состоянии — как в прежней проверке: видно, что сохранится, можно поправить. */
+function Translations(p: ExtrasProps) {
+  const has = Object.values(p.review.texts).some((t) => !!t && (!!t.uk.trim() || !!t.en.trim()));
+  if (!has || !p.sel) return null;
+  const sel = { ...p.sel, translations: p.translations };
+  return (
+    <div className="-mt-3" data-testid="ai-review-translations">
+      <TextsBlock
+        review={p.review}
+        sel={sel}
+        langs={TRANSLATED}
+        onSel={(patch) => patch.translations !== undefined && p.setTranslations(patch.translations)}
+        onEditText={(field, lang, value) => lang !== "ru" && p.onEditTranslation(field, lang, value)}
+      />
+    </div>
   );
 }
 
@@ -65,10 +96,6 @@ function ApplyOptions(p: ExtrasProps) {
           {p.markReady === null && <span className="text-[var(--text-faint)]"> · {p.sure ? "ИИ уверен" : "ИИ не уверен — уйдёт в «Проверить»"}</span>}
         </span>
       </label>
-      <label className="flex items-center gap-2">
-        <input type="checkbox" checked={p.translations} onChange={(e) => p.setTranslations(e.target.checked)} className="h-4 w-4 shrink-0 accent-[var(--accent)]" />
-        Сохранить переводы на украинский и английский
-      </label>
       {p.item.active !== true && (
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={p.publish} onChange={(e) => p.setPublish(e.target.checked)} className="h-4 w-4 shrink-0 accent-[var(--accent)]" />
@@ -76,5 +103,29 @@ function ApplyOptions(p: ExtrasProps) {
         </label>
       )}
     </div>
+  );
+}
+
+/**
+ * Что из ответа не попадёт в карточку и почему (нет такой характеристики, опции, не число…) и замечания к ответу в
+ * целом; плюс подтверждённое без изменений — его уверенность обновится.
+ */
+function NotApplied({ review, confirmed }: { review: ProductReview; confirmed: number }) {
+  const dropped = review.fields.filter((f) => f.value === undefined);
+  const issues = review.issues.filter((i) => i.level !== "info");
+  if (!dropped.length && !issues.length && !confirmed) return null;
+  return (
+    <section className="flex flex-col gap-1.5 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface)] p-3 text-[13px]" data-testid="ai-review-skipped">
+      {dropped.length > 0 && <div className="field-label !text-[11px]">Не применится</div>}
+      {dropped.map((f) => (
+        <div key={f.key} className="min-w-0">
+          <span className="font-semibold text-[var(--text)]">{f.label}</span>
+          <span className="break-all font-mono text-[12px] text-[var(--text-muted)]"> {JSON.stringify(f.raw)}</span>
+          <CardIssues issues={f.issues} />
+        </div>
+      ))}
+      <CardIssues issues={issues} />
+      {confirmed > 0 && <p className="text-[12.5px] text-[var(--text-muted)]">Без изменений: {confirmed} — ИИ подтвердил прежние значения, их уверенность обновится</p>}
+    </section>
   );
 }

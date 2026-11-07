@@ -82,8 +82,12 @@ export function AiReview(p: AiReviewProps) {
       {p.extra}
       <div
         className={cn(
-          "sticky bottom-0 z-20 -mx-4 border-t border-[var(--line)] bg-[rgba(14,14,16,.94)] px-4 pb-[calc(12px+var(--safe-bottom))] pt-3 backdrop-blur-md",
-          p.embedded ? "-mb-4 sm:-mx-5 sm:px-5 sm:pb-3" : "lg:-mx-7 lg:px-7",
+          "sticky z-20 -mx-4 border-t border-[var(--line)] bg-[rgba(14,14,16,.94)] px-4 pb-[calc(12px+var(--safe-bottom))] pt-3 backdrop-blur-md",
+          // В окне подвал перекрывает и нижний отступ тела окна (16 px + safe-area на телефоне): иначе под ним
+          // просвечивает прокручиваемое содержимое.
+          p.embedded
+            ? "bottom-[calc(-16px-var(--safe-bottom))] mb-[calc(-16px-var(--safe-bottom))] sm:-bottom-4 sm:-mx-5 sm:-mb-4 sm:px-5 sm:pb-3"
+            : "bottom-0 lg:-mx-7 lg:px-7",
         )}
       >
         <div className="mx-auto flex w-full max-w-3xl items-center gap-2">

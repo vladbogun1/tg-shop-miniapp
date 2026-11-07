@@ -2,13 +2,15 @@
 
 /**
  * Черновик проверки ответа ИИ по одной карточке — общий для встроенного ИИ и ручного пути через ChatGPT: значения,
- * поправленные человеком (и какие именно строки), отмеченные фото и ручной выбор «Сразу в «Готово»». Новый разбор
+ * поправленные человеком (и какие именно строки), поправленные переводы uk/en, отмеченные фото и ручной выбор «Сразу в «Готово»». Новый разбор
  * ответа (другой ответ, обновилась схема) начинает черновик заново.
  */
 import { useState } from "react";
 import { editReviewValue } from "../../model/ai-card";
 import { defaultPhotos } from "../../model/selection";
-import type { ProductReview } from "../../model/types";
+import { editText } from "../../model/review";
+import type { ProductReview, TextField } from "../../model/types";
+import type { TranslatedLocale } from "@shop/core/i18n";
 
 interface Edits {
   base: ProductReview | null;
@@ -38,9 +40,14 @@ export function useCardReviewDraft(base: ProductReview | null) {
     return null;
   }
 
+  /** Правка перевода uk/en (те же проверки, что в «Переводах»): строкой ревью не считается — это не значение поля. */
+  function editTranslation(field: TextField, lang: TranslatedLocale, value: string) {
+    if (cur.review) setSt({ ...cur, review: editText(cur.review, field, lang, value) });
+  }
+
   const found = cur.review?.photos ?? [];
   const chosen = (photos ?? (cur.review ? defaultPhotos(cur.review) : [])).filter((u) => found.includes(u));
-  return { review: cur.review, edited: cur.edited, edit, photos: chosen, setPhotos, markReady, setMarkReady };
+  return { review: cur.review, edited: cur.edited, edit, editTranslation, photos: chosen, setPhotos, markReady, setMarkReady };
 }
 
 export type CardReviewDraft = ReturnType<typeof useCardReviewDraft>;
