@@ -9,7 +9,7 @@ import { CARDS_IDS_PARAM, defaultTab, type CardSort, idsFromParam, listForTab, p
 import { bulkAcceptable, matchesVitrine, missingCount, tabOf, type CardTab, type Vitrine } from "../../model/view";
 import { cardsKeys } from "../../keys";
 import { invalidateCards, useCardItems, useCardSchema } from "../../queries";
-import { useManualStart } from "../manual/ManualBatchEntry";
+import { useManualStart } from "../manual/use-manual-start";
 import { useBulkAccept } from "./use-bulk-accept";
 
 export const PAGE = 100;
