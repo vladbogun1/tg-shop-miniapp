@@ -1,6 +1,7 @@
 package com.maxsolch.shop.ai.app;
 
 import com.maxsolch.shop.ai.domain.AiFeature;
+import com.maxsolch.shop.ai.domain.AiScope;
 import com.maxsolch.shop.ai.domain.AiUsage;
 import com.maxsolch.shop.ai.domain.SearchEngine;
 import com.maxsolch.shop.ai.domain.SearchEngine.Hit;
@@ -37,7 +38,7 @@ class WebSearchTest {
         Engine free = new Engine("searxng", 10, 0, Outcome.found(List.of(RAZER)));
         Engine paid = new Engine("serper", 20, 1000, Outcome.found(List.of(RAZER)));
 
-        WebSearch.Found found = chain(paid, free).search(AiFeature.CARD, "viper v3 pro", 8);
+        WebSearch.Found found = chain(paid, free).search(AiScope.of(AiFeature.CARD), "viper v3 pro", 8);
 
         assertThat(found.provider()).isEqualTo("searxng");
         assertThat(found.costMicroUsd()).isZero();
@@ -49,13 +50,13 @@ class WebSearchTest {
         Engine free = new Engine("searxng", 10, 0, Outcome.found(List.of(OURS)));
         Engine paid = new Engine("serper", 20, 1000, Outcome.found(List.of(RAZER)));
 
-        WebSearch.Found found = chain(free, paid).search(AiFeature.CARD, "viper", 8);
+        WebSearch.Found found = chain(free, paid).search(AiScope.of(AiFeature.CARD), "viper", 8);
 
         assertThat(found.hits()).containsExactly(RAZER);
         assertThat(found.costMicroUsd()).isEqualTo(1000);
-        verify(usage).call(eq(AiFeature.CARD), eq(AiUsage.Kind.SEARCH), eq("searxng"), eq(AiUsage.Result.EMPTY), eq(0L),
+        verify(usage).call(eq(AiScope.of(AiFeature.CARD)), eq(AiUsage.Kind.SEARCH), eq("searxng"), eq(AiUsage.Result.EMPTY), eq(0L),
                 anyLong(), any());
-        verify(usage).call(eq(AiFeature.CARD), eq(AiUsage.Kind.SEARCH), eq("serper"), eq(AiUsage.Result.OK), eq(1000L),
+        verify(usage).call(eq(AiScope.of(AiFeature.CARD)), eq(AiUsage.Kind.SEARCH), eq("serper"), eq(AiUsage.Result.OK), eq(1000L),
                 anyLong(), any());
     }
 
@@ -65,8 +66,8 @@ class WebSearchTest {
         Engine paid = new Engine("serper", 20, 1000, Outcome.found(List.of(RAZER)), Outcome.found(List.of(RAZER)));
         WebSearch search = chain(free, paid);
 
-        search.search(AiFeature.CARD, "q1", 8);
-        WebSearch.Found second = search.search(AiFeature.CARD, "q2", 8);
+        search.search(AiScope.of(AiFeature.CARD), "q1", 8);
+        WebSearch.Found second = search.search(AiScope.of(AiFeature.CARD), "q2", 8);
 
         assertThat(free.asked).isEqualTo(1);
         assertThat(second.provider()).isEqualTo("serper");
@@ -78,8 +79,8 @@ class WebSearchTest {
         Engine free = new Engine("searxng", 10, 0, Outcome.failure("engines down"), Outcome.found(List.of(RAZER)));
         WebSearch search = chain(free);
 
-        search.search(AiFeature.CARD, "q1", 8);
-        WebSearch.Found second = search.search(AiFeature.CARD, "q2", 8);
+        search.search(AiScope.of(AiFeature.CARD), "q1", 8);
+        WebSearch.Found second = search.search(AiScope.of(AiFeature.CARD), "q2", 8);
 
         assertThat(free.asked).isEqualTo(2);
         assertThat(second.hits()).containsExactly(RAZER);
@@ -88,10 +89,10 @@ class WebSearchTest {
 
     @Test
     void noProviderConfiguredIsJournalledAsAFailedSearch() {
-        WebSearch.Found found = new WebSearch(List.of(), usage, caches, clock).search(AiFeature.CARD, "q", 8);
+        WebSearch.Found found = new WebSearch(List.of(), usage, caches, clock).search(AiScope.of(AiFeature.CARD), "q", 8);
 
         assertThat(found.empty()).isTrue();
-        verify(usage).call(eq(AiFeature.CARD), eq(AiUsage.Kind.SEARCH), eq("none"), eq(AiUsage.Result.FAILED), eq(0L),
+        verify(usage).call(eq(AiScope.of(AiFeature.CARD)), eq(AiUsage.Kind.SEARCH), eq("none"), eq(AiUsage.Result.FAILED), eq(0L),
                 anyLong(), any());
     }
 
@@ -99,7 +100,7 @@ class WebSearchTest {
     void allProvidersDownGivesAnEmptyAnswerNotAnError() {
         Engine free = new Engine("searxng", 10, 0, Outcome.failure("HTTP 502"));
 
-        assertThat(chain(free).search(AiFeature.CARD, "q", 8).empty()).isTrue();
+        assertThat(chain(free).search(AiScope.of(AiFeature.CARD), "q", 8).empty()).isTrue();
     }
 
     @Test

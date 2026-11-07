@@ -1,6 +1,7 @@
 package com.maxsolch.shop.ai.app;
 
 import com.maxsolch.shop.ai.domain.AiFeature;
+import com.maxsolch.shop.ai.domain.AiScope;
 import com.maxsolch.shop.ai.domain.AiError;
 import com.maxsolch.shop.ai.domain.ChatModel;
 import com.maxsolch.shop.platform.error.DomainException;
@@ -41,6 +42,6 @@ public class AiStatusReport {
         if (query == null || query.isBlank() || query.length() > 300) {
             throw new DomainException.BadRequest(AiError.BAD_REQUEST, "query");
         }
-        return search.search(AiFeature.SEARCH_TEST, query.trim(), ResearchTools.HITS);
+        return search.search(AiScope.of(AiFeature.SEARCH_TEST), query.trim(), ResearchTools.HITS);
     }
 }

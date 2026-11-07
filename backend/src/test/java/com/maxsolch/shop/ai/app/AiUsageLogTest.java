@@ -2,6 +2,7 @@ package com.maxsolch.shop.ai.app;
 
 import com.maxsolch.shop.ai.domain.AiError;
 import com.maxsolch.shop.ai.domain.AiFeature;
+import com.maxsolch.shop.ai.domain.AiScope;
 import com.maxsolch.shop.ai.domain.TokenUsage;
 import com.maxsolch.shop.ai.infra.AiProperties;
 import com.maxsolch.shop.ai.infra.AiUsageRepository;
@@ -72,7 +73,7 @@ class AiUsageLogTest {
         when(repo.save(any())).thenThrow(new IllegalStateException("db down"));
         when(repo.spentSince(any())).thenReturn(9_000_000L);
 
-        long cost = log.model(AiFeature.CARD, new TokenUsage(0, 0, 2_000_000), 10, null);
+        long cost = log.model(AiScope.of(AiFeature.CARD), new TokenUsage(0, 0, 2_000_000), 10, null);
 
         assertThat(cost).isPositive();
         assertThat(log.month().lostRows()).isEqualTo(1);

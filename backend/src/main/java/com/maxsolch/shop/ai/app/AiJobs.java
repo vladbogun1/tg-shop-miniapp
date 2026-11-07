@@ -60,7 +60,7 @@ public class AiJobs {
         if (!agent.configured()) {
             throw new DomainException.Unavailable(AiError.NOT_CONFIGURED);
         }
-        JobView view = new JobView(UUID.randomUUID().toString(), ask.feature(), Status.RUNNING, clock.instant(), null);
+        JobView view = new JobView(UUID.randomUUID().toString(), ask.scope().feature(), Status.RUNNING, clock.instant(), null);
         jobs.put(view.id(), new Job(view, null));
         try {
             pool.execute(() -> run(view, ask));
@@ -90,7 +90,7 @@ public class AiJobs {
         } catch (DomainException e) {
             jobs.put(started.id(), new Job(with(started, Status.FAILED, null), e));
         } catch (RuntimeException e) {
-            log.warn("ai job {} ({}) failed", started.id(), ask.feature(), e);
+            log.warn("ai job {} ({}) failed", started.id(), ask.scope(), e);
             jobs.put(started.id(), new Job(with(started, Status.FAILED, null),
                     new DomainException.Unavailable(AiError.MODEL_FAILED, e.getClass().getSimpleName())));
         }
@@ -101,7 +101,7 @@ public class AiJobs {
     }
 
     static void validate(AiAgent.Ask ask) {
-        if (ask.feature() == null) {
+        if (ask.scope() == null || ask.scope().feature() == null) {
             throw new DomainException.BadRequest(AiError.BAD_REQUEST, "feature");
         }
         if (ask.prompt() == null || ask.prompt().isBlank() || ask.prompt().length() > MAX_PROMPT) {

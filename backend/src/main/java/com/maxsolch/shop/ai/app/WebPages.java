@@ -1,6 +1,6 @@
 package com.maxsolch.shop.ai.app;
 
-import com.maxsolch.shop.ai.domain.AiFeature;
+import com.maxsolch.shop.ai.domain.AiScope;
 import com.maxsolch.shop.ai.domain.AiUsage;
 import com.maxsolch.shop.ai.domain.PageText;
 import com.maxsolch.shop.ai.domain.ReaderProxy;
@@ -45,7 +45,7 @@ public class WebPages {
     }
 
     /** What the model reads: the page, or one line saying why there is none (the model then tries another link). */
-    public String open(AiFeature feature, String url) {
+    public String open(AiScope feature, String url) {
         URI uri;
         try {
             uri = URI.create(url.trim());
@@ -79,7 +79,7 @@ public class WebPages {
         return viaReader(feature, url, why);
     }
 
-    private String viaReader(AiFeature feature, String url, String directFailure) {
+    private String viaReader(AiScope feature, String url, String directFailure) {
         if (!reader.enabled()) {
             return "Страница не открылась (" + directFailure + "). Попробуй другую ссылку.";
         }

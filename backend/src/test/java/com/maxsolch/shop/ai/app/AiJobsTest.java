@@ -2,6 +2,7 @@ package com.maxsolch.shop.ai.app;
 
 import com.maxsolch.shop.ai.domain.AiError;
 import com.maxsolch.shop.ai.domain.AiFeature;
+import com.maxsolch.shop.ai.domain.AiScope;
 import com.maxsolch.shop.ai.domain.TokenUsage;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.jobs.Workers;
@@ -32,7 +33,7 @@ class AiJobsTest {
     private final Clock clock = Clock.fixed(Instant.parse("2026-11-07T10:00:00Z"), ZoneOffset.UTC);
     private final AiJobs jobs = new AiJobs(agent, new ConcurrentMapCacheManager(AiCaches.JOBS.name()), workers, clock);
 
-    private static final AiAgent.Ask ASK = new AiAgent.Ask(AiFeature.CARD, "Q", "low", 0);
+    private static final AiAgent.Ask ASK = new AiAgent.Ask(AiScope.of(AiFeature.CARD), "Q", "low", 0);
     private static final AiAgent.Answer ANSWER = new AiAgent.Answer("A", "m", 10, TokenUsage.NONE, 1, 0, 0, false, 5);
 
     @AfterEach

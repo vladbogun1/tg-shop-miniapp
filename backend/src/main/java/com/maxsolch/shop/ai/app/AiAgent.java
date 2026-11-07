@@ -1,6 +1,6 @@
 package com.maxsolch.shop.ai.app;
 
-import com.maxsolch.shop.ai.domain.AiFeature;
+import com.maxsolch.shop.ai.domain.AiScope;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.ai.domain.AiError;
 import com.maxsolch.shop.ai.domain.ChatModel;
@@ -42,7 +42,7 @@ public class AiAgent {
     /**
      * @param researchItems how many products the prompt is about (scales the search budget); 0 = no tools
      */
-    public record Ask(AiFeature feature, String prompt, String effort, int researchItems) {
+    public record Ask(AiScope scope, String prompt, String effort, int researchItems) {
     }
 
     public record Answer(String text, String model, long costMicroUsd, TokenUsage tokens, int modelCalls, int searches,
@@ -147,7 +147,7 @@ public class AiAgent {
 
         Run(Ask ask) {
             this.ask = ask;
-            this.tools = ask.researchItems() > 0 ? new ResearchTools(ask.feature(), ask.researchItems(), search, pages)
+            this.tools = ask.researchItems() > 0 ? new ResearchTools(ask.scope(), ask.researchItems(), search, pages)
                     : null;
         }
 
@@ -167,10 +167,10 @@ public class AiAgent {
                 Reply r = model.send(request);
                 calls++;
                 tokens = tokens.plus(r.tokens());
-                cost += usage.model(ask.feature(), r.tokens(), clock.millis() - t0, null);
+                cost += usage.model(ask.scope(), r.tokens(), clock.millis() - t0, null);
                 return r;
             } catch (DomainException e) {
-                usage.model(ask.feature(), TokenUsage.NONE, clock.millis() - t0, java.util.Arrays.toString(e.args()));
+                usage.model(ask.scope(), TokenUsage.NONE, clock.millis() - t0, java.util.Arrays.toString(e.args()));
                 throw e;
             }
         }

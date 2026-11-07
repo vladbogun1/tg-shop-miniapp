@@ -1,6 +1,6 @@
 package com.maxsolch.shop.ai.app;
 
-import com.maxsolch.shop.ai.domain.AiFeature;
+import com.maxsolch.shop.ai.domain.AiScope;
 import com.maxsolch.shop.ai.domain.AiError;
 import com.maxsolch.shop.ai.domain.AiUsage;
 import com.maxsolch.shop.ai.domain.TokenUsage;
@@ -44,16 +44,16 @@ public class AiUsageLog {
     }
 
     /** Writes the model call and returns its cost, micro-USD. */
-    public long model(AiFeature feature, TokenUsage tokens, long ms, String failure) {
+    public long model(AiScope scope, TokenUsage tokens, long ms, String failure) {
         AiProperties.Model m = props.getModel();
         long cost = tokens.costMicroUsd(m.getInputPerM(), m.getCachedPerM(), m.getOutputPerM());
-        save(AiUsage.model(clock.instant(), feature, m.getName(), tokens, cost, ms, failure));
+        save(AiUsage.model(clock.instant(), scope, m.getName(), tokens, cost, ms, failure));
         return cost;
     }
 
-    public void call(AiFeature feature, AiUsage.Kind kind, String provider, AiUsage.Result result, long costMicroUsd,
+    public void call(AiScope scope, AiUsage.Kind kind, String provider, AiUsage.Result result, long costMicroUsd,
                      long ms, String note) {
-        save(AiUsage.call(clock.instant(), feature, kind, provider, result, costMicroUsd, ms, note));
+        save(AiUsage.call(clock.instant(), scope, kind, provider, result, costMicroUsd, ms, note));
     }
 
     /** Throws when this month's spend has reached the limit; called before every model request. */

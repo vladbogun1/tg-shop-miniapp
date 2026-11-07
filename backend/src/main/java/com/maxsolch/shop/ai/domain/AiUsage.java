@@ -72,25 +72,25 @@ public class AiUsage {
     @Column(name = "note", length = 255)
     private String note;
 
-    public static AiUsage model(Instant at, AiFeature feature, String model, TokenUsage tokens, long costMicroUsd, long ms,
+    public static AiUsage model(Instant at, AiScope scope, String model, TokenUsage tokens, long costMicroUsd, long ms,
                                 String note) {
-        AiUsage u = base(at, feature, Kind.MODEL, model, note == null ? Result.OK : Result.FAILED, costMicroUsd, ms, note);
+        AiUsage u = base(at, scope, Kind.MODEL, model, note == null ? Result.OK : Result.FAILED, costMicroUsd, ms, note);
         u.inputTokens = tokens.input();
         u.cachedTokens = tokens.cached();
         u.outputTokens = tokens.output();
         return u;
     }
 
-    public static AiUsage call(Instant at, AiFeature feature, Kind kind, String provider, Result result, long costMicroUsd,
+    public static AiUsage call(Instant at, AiScope scope, Kind kind, String provider, Result result, long costMicroUsd,
                                long ms, String note) {
-        return base(at, feature, kind, provider, result, costMicroUsd, ms, note);
+        return base(at, scope, kind, provider, result, costMicroUsd, ms, note);
     }
 
-    private static AiUsage base(Instant at, AiFeature feature, Kind kind, String provider, Result result, long cost,
+    private static AiUsage base(Instant at, AiScope scope, Kind kind, String provider, Result result, long cost,
                                 long ms, String note) {
         AiUsage u = new AiUsage();
         u.createdAt = at;
-        u.feature = feature;
+        u.feature = scope.feature();
         u.kind = kind;
         u.provider = provider;
         u.result = result;

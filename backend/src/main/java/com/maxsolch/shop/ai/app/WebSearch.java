@@ -1,6 +1,6 @@
 package com.maxsolch.shop.ai.app;
 
-import com.maxsolch.shop.ai.domain.AiFeature;
+import com.maxsolch.shop.ai.domain.AiScope;
 import com.maxsolch.shop.ai.domain.AiUsage;
 import com.maxsolch.shop.ai.domain.SearchEngine;
 import com.maxsolch.shop.ai.domain.SearchEngine.Hit;
@@ -57,7 +57,7 @@ public class WebSearch {
      * resting: then they are asked anyway (a single SearXNG with one bad minute must not leave the model blind for
      * ten). No provider configured at all is a FAILED line «none», so the empty-search counter sees it too.
      */
-    public Found search(AiFeature feature, String query, int limit) {
+    public Found search(AiScope feature, String query, int limit) {
         long cost = 0;
         boolean asked = false;
         for (boolean resting : new boolean[]{false, true}) {
@@ -80,7 +80,7 @@ public class WebSearch {
         return new Found(List.of(), null, 0);
     }
 
-    private Found ask(AiFeature feature, SearchEngine engine, String query, int limit) {
+    private Found ask(AiScope feature, SearchEngine engine, String query, int limit) {
         long t0 = clock.millis();
         SearchEngine.Outcome out = engine.search(query, limit + SKIPPED_HOSTS.size());
         long ms = clock.millis() - t0;
