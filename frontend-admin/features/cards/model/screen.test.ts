@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { item } from "./fixtures";
-import { cardsWizardHref, defaultTab, idsFromParam, listForTab, sortCards, pruneSelection, tabCounts, unfinishedOf, wizardLabel } from "./screen";
+import { cardsWizardHref, defaultTab, idsFromParam, listForTab, sortCards, pruneSelection, tabCounts, unfinishedOf } from "./screen";
 
 const A = item({ id: "a", title: "Альфа", cardStatus: "AI_FILLED", active: true, cardConfidence: 50 });
 const B = item({ id: "b", title: "Бета", cardStatus: "DRAFT", active: true });
@@ -29,10 +29,6 @@ describe("экран карточек", () => {
     expect([...pruneSelection(s, [A])]).toEqual(["a"]);
     const e = new Set<string>();
     expect(pruneSelection(e, [])).toBe(e);
-  });
-  it("wizardLabel", () => {
-    expect(wizardLabel(2, 2, "draft")).toBe("отмеченные: 2");
-    expect(wizardLabel(0, 5, "review")).toBe("вкладка «Проверить»: 5");
   });
 });
 

@@ -2,7 +2,6 @@
 export * from "./check-value";
 export * from "./screen";
 export * from "./option";
-export * from "./wizard";
 export * from "./completion";
 export * from "./item";
 export * from "./level";

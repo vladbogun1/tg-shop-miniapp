@@ -1,6 +1,6 @@
 /** Экран «Карточки»: счётчики вкладок, вкладка по умолчанию, список вкладки, выбор в пределах списка. Чистая логика. */
 import type { CardItem } from "./item";
-import { matchesQuery, matchesVitrine, missingCount, sortForTab, tabOf, TAB_LABEL, type CardTab, type Vitrine } from "./view";
+import { matchesQuery, matchesVitrine, missingCount, sortForTab, tabOf, type CardTab, type Vitrine } from "./view";
 
 export function tabCounts(items: CardItem[]): Record<CardTab, number> {
   const c: Record<CardTab, number> = { draft: 0, review: 0, ready: 0 };
@@ -66,12 +66,7 @@ export function pruneSelection(prev: Set<string>, visible: CardItem[]): Set<stri
   return next.size === prev.size ? prev : next;
 }
 
-/** Подпись «откуда выбор» для мастера. */
-export function wizardLabel(selectedCount: number, total: number, tab: CardTab): string {
-  return selectedCount ? `отмеченные: ${total}` : `вкладка «${TAB_LABEL[tab]}»: ${total}`;
-}
-
-/** Ссылка «оформить эти товары с ИИ» из других экранов (поставка): `/cards?ids=a,b,c` открывает мастер с ними. */
+/** Ссылка «оформить эти товары» из других экранов (поставка): `/cards?ids=a,b,c` открывает ручной пакет с ними. */
 export const CARDS_IDS_PARAM = "ids";
 
 export function cardsWizardHref(productIds: string[]): string {

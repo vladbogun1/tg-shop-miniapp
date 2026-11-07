@@ -8,7 +8,7 @@ import { cardVersion } from "./ai-card";
 import { assignCardIds, splitIntoBatches, type CardItem } from "./item";
 import { parseCardAnswer, type ParsedCardAnswer } from "./parse";
 import { buildCardReview } from "./review";
-import type { CardSchema } from "./schema";
+import { categoryPathName, type CardSchema } from "./schema";
 import type { ProductReview } from "./types";
 
 /** Товаров в части: на 4 ChatGPT отвечает целиком; 8 — быстрее, но ответ чаще обрывается. */
@@ -34,6 +34,12 @@ export interface ManualDraft {
 }
 
 export const isPartSize = (n: unknown): n is ManualPartSize => n === 4 || n === 8;
+
+/** Товары пакета по категории и названию (без категории — в конце): соседние в части — похожие. */
+export function sortForBatch(items: CardItem[], schema: CardSchema): CardItem[] {
+  const key = new Map(items.map((it) => [it.id, `${categoryPathName(schema, it.categorySlug) || "я"}\u0000${it.title}`]));
+  return [...items].sort((a, b) => key.get(a.id)!.localeCompare(key.get(b.id)!, "ru"));
+}
 
 export function partsOf<T>(ids: readonly T[], size: number): T[][] {
   return splitIntoBatches([...ids], size);

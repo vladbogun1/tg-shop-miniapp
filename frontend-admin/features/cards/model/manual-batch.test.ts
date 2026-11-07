@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { cardVersion } from "./ai-card";
 import { item, SCHEMA } from "./fixtures";
 import { assignCardIds, type CardItem } from "./item";
-import { checkPart, freshDraft, partAnswers, partRange, partsOf, pendingCount, progressText, readDraft, resize, resumeText, sameProducts, unansweredOf } from "./manual-batch";
+import { checkPart, freshDraft, partAnswers, partRange, partsOf, pendingCount, progressText, readDraft, resize, resumeText, sameProducts, sortForBatch, unansweredOf } from "./manual-batch";
 import { parseCardAnswer } from "./parse";
 import { buildCardReview } from "./review";
 
@@ -13,6 +13,10 @@ const entry = { specs: { weight_g: 50 }, confidence: { weight_g: 90 }, overall: 
 const answerFor = (list: CardItem[]) => "```json\n" + JSON.stringify(Object.fromEntries(list.map((i) => [ids.get(i.id), entry]))) + "\n```";
 
 describe("manual batch: parts and draft", () => {
+  it("orders the products by category and title, without a category last", () => {
+    const list = [item({ id: "1", title: "Б", categorySlug: null }), item({ id: "2", title: "Я", categorySlug: "kovriki" }), item({ id: "3", title: "А", categorySlug: "kovriki" })];
+    expect(sortForBatch(list, SCHEMA).map((i) => i.id)).toEqual(["3", "2", "1"]);
+  });
   it("cuts the products into parts and names the range", () => {
     expect(partsOf(items.map((i) => i.id), 4).map((p) => p.length)).toEqual([4, 4, 2]);
     expect(partsOf(items.map((i) => i.id), 8).map((p) => p.length)).toEqual([8, 2]);

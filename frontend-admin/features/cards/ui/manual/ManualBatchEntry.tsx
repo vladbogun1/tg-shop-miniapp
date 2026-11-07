@@ -17,9 +17,8 @@ import { useState } from "react";
 import { manualApi, type ManualBatch } from "../../api-manual";
 import { cardVersion } from "../../model/ai-card";
 import type { CardItem } from "../../model/item";
-import { freshDraft, MANUAL_PART_SIZE, resumeText, sameProducts } from "../../model/manual-batch";
+import { freshDraft, MANUAL_PART_SIZE, resumeText, sameProducts, sortForBatch } from "../../model/manual-batch";
 import type { CardSchema } from "../../model/schema";
-import { sortForWizard } from "../../model/wizard";
 import { useCardItems, useCardSchema } from "../../queries";
 import { ManualBatchLayer } from "./ManualBatchLayer";
 import { openManualLayer, useManualLayerOpen } from "./manual-layer";
@@ -35,10 +34,10 @@ export const manualLabel = (n: number) => `Оформить ${n} вручную 
 
 const productsLine = (n: number) => `${n} ${plural(n, "товар", "товара", "товаров")}`;
 
-/** Товары пакета в порядке мастера (по категории и названию), не больше `MANUAL_MAX`. */
+/** Товары пакета по категории и названию, не больше `MANUAL_MAX`. */
 function pick(productIds: string[], items: CardItem[], schema: CardSchema): CardItem[] {
   const wanted = new Set(productIds);
-  const chosen = sortForWizard(items.filter((i) => wanted.has(i.id)), schema);
+  const chosen = sortForBatch(items.filter((i) => wanted.has(i.id)), schema);
   if (chosen.length > MANUAL_MAX) toast.info(`В ручной пакет взяты первые ${MANUAL_MAX} из ${chosen.length}: остальные — следующим пакетом`);
   return chosen.slice(0, MANUAL_MAX);
 }
