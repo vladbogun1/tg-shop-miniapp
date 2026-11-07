@@ -22,6 +22,10 @@ export function loadSnapshot(productId: string): CardSnapshot | null {
   return localStore.getJson<CardSnapshot>(snapKey(productId));
 }
 
+export function saveSnapshot(productId: string, snap: CardSnapshot): void {
+  localStore.setJson(snapKey(productId), snap);
+}
+
 /** Товар свежим запросом при каждом открытии: отпечаток по устаревшему кэшу дал бы ложный конфликт. */
 export function useCardSubject(productId: string, enabled = true) {
   const schemaQ = useCardSchema();
@@ -44,6 +48,6 @@ export async function startCardJob(args: { item: CardItem; schema: CardSchema; c
     { productId: item.id, created, subjectVersion: snap.version, prompt, promptVersion: CARD_PROMPT_VERSION },
     idemKey,
   );
-  localStore.setJson(snapKey(item.id), snap);
+  saveSnapshot(item.id, snap);
   return job;
 }

@@ -37,21 +37,29 @@ function neighborsOf(items: CardItem[] | undefined, item: CardItem) {
   };
 }
 
+/** Разбор ответа задачи по товару в строки проверки. Чистое вычисление: годится и для экрана, и для пакета. */
+export function computeCardAiReview(
+  job: AiJob | undefined,
+  item: CardItem | null,
+  schema: CardSchema | undefined,
+  all: CardItem[] | undefined,
+): CardAiReviewData {
+  const empty: CardAiReviewData = { review: null, rows: [], initial: new Set(), versionChanged: false, problems: [] };
+  if (!job || !item || !schema || !job.answer) return empty;
+  const out = reviewAnswer(job.answer, { schema, items: [item], ids: assignCardIds([item.id]) }, item.id);
+  if (!out.product) return { ...empty, problems: out.errors.length ? out.errors : ["В ответе нет данных по этому товару."] };
+  const snap = loadSnapshot(item.id);
+  const versionChanged = !!job.subjectVersion && cardVersion(item) !== job.subjectVersion;
+  const rows = reviewRows(out.product, {
+    snapshot: snap && snap.version === job.subjectVersion ? snap : null,
+    versionChanged,
+    neighbors: neighborsOf(all, item),
+  });
+  const initial = new Set([...initialSelection(rows), ...extraInitialKeys(out.product, rows, item.unfinished === true)]);
+  return { review: out.product, rows, initial, versionChanged, problems: out.errors };
+}
+
 export function useCardAiReview(job: AiJob | undefined, item: CardItem | null, schema: CardSchema | undefined): CardAiReviewData {
   const all = useCardItems();
-  return useMemo(() => {
-    const empty: CardAiReviewData = { review: null, rows: [], initial: new Set(), versionChanged: false, problems: [] };
-    if (!job || !item || !schema || !job.answer) return empty;
-    const out = reviewAnswer(job.answer, { schema, items: [item], ids: assignCardIds([item.id]) }, item.id);
-    if (!out.product) return { ...empty, problems: out.errors.length ? out.errors : ["В ответе нет данных по этому товару."] };
-    const snap = loadSnapshot(item.id);
-    const versionChanged = !!job.subjectVersion && cardVersion(item) !== job.subjectVersion;
-    const rows = reviewRows(out.product, {
-      snapshot: snap && snap.version === job.subjectVersion ? snap : null,
-      versionChanged,
-      neighbors: neighborsOf(all.data, item),
-    });
-    const initial = new Set([...initialSelection(rows), ...extraInitialKeys(out.product, rows, item.unfinished === true)]);
-    return { review: out.product, rows, initial, versionChanged, problems: out.errors };
-  }, [job, item, schema, all.data]);
+  return useMemo(() => computeCardAiReview(job, item, schema, all.data), [job, item, schema, all.data]);
 }
