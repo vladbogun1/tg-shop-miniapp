@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AiJob, AiTaskRow } from "../api";
-import { EMPTY_TEXT, isStale, problemText, reviewHref, tabCount, taskRowView, taskTitle } from "./task-center";
+import { defaultTab, EMPTY_HINT, EMPTY_TEXT, isStale, problemText, reviewHref, tabCount, taskRowView, taskTitle } from "./task-center";
 
 const NOW = Date.parse("2026-11-07T12:00:00Z");
 
@@ -59,7 +59,21 @@ describe("центр задач", () => {
     expect(tabCount("active", undefined)).toBeUndefined();
   });
 
-  it("у каждой вкладки есть слова для пустого списка", () => {
+  it("у каждой вкладки есть слова для пустого списка; «Идут» — как в макете 09", () => {
     expect(Object.keys(EMPTY_TEXT).sort()).toEqual(["active", "history", "problems", "review"]);
+    expect(EMPTY_TEXT.active).toBe("Задач пока нет");
+    expect(EMPTY_HINT.active).toBe("Запустите «Заполнить с ИИ» в карточке товара.");
+  });
+
+  it("при входе — «Проверить», если там что-то есть, иначе «Идут»", () => {
+    expect(defaultTab(3)).toBe("review");
+    expect(defaultTab(0)).toBe("active");
+    expect(defaultTab(undefined)).toBe("active");
+  });
+
+  it("идущая задача показывает шаг вместо времени", () => {
+    expect(taskRowView(row({ status: "RUNNING", finishedAt: undefined, step: "Ищу: viper" }), NOW).stepText).toBe("шаг «Ищу в интернете»");
+    expect(taskRowView(row({ status: "QUEUED", finishedAt: undefined }), NOW).stepText).toBe("в очереди");
+    expect(taskRowView(row(), NOW).stepText).toBeNull();
   });
 });

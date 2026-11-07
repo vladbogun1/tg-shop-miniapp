@@ -17,23 +17,32 @@ import { Tabs } from "@/components/ui/Tabs";
 import { useIsDesktop } from "@/lib/use-media";
 import { nowMs } from "@shop/core/time";
 import type { AiTaskTab } from "../api";
-import { EMPTY_TEXT, TASK_TABS, tabCount, taskRowView } from "../model/task-center";
+import { defaultTab, EMPTY_HINT, EMPTY_TEXT, TASK_TABS, tabCount, taskRowView } from "../model/task-center";
+import { useAiSummary } from "../queries";
 import { TASKS_PAGE_SIZE, useAiTasks } from "../queries-center";
 import { AiTaskDetail } from "./AiTaskDetail";
 import { AiTaskRow } from "./AiTaskRow";
 
+/** Вкладка при входе по сводке (макет 06); пока сводка не пришла — null, чтобы «Идут» не мигнула перед «Проверить». */
+function useEntryTab() {
+  const summary = useAiSummary();
+  const [picked, setPicked] = useState<AiTaskTab | null>(null);
+  const tab = picked ?? (summary.isLoading ? null : defaultTab(summary.data?.review));
+  return { tab, shown: tab ?? "review", pick: setPicked };
+}
+
 export function AiTaskCenter() {
-  const [tab, setTab] = useState<AiTaskTab>("active");
+  const { tab, shown, pick } = useEntryTab();
   const [page, setPage] = useState(0);
   const [openId, setOpenId] = useState<number | null>(null);
   const desktop = useIsDesktop();
-  const q = useAiTasks(tab, page);
+  const q = useAiTasks(shown, page, tab !== null);
   const items = (q.data?.items ?? []).map((r) => taskRowView(r, nowMs()));
   const open = items.find((v) => v.id === openId) ?? null;
   const pages = Math.max(1, Math.ceil((q.data?.total ?? 0) / TASKS_PAGE_SIZE));
 
   function changeTab(next: AiTaskTab) {
-    setTab(next);
+    pick(next);
     setPage(0);
     setOpenId(null);
   }
@@ -43,13 +52,13 @@ export function AiTaskCenter() {
       <PageHeader title="ИИ-задачи" subtitle="Что ИИ делает сейчас, что ждёт вашей проверки и где он не справился" />
       <Tabs
         className="mb-4"
-        value={tab}
+        value={shown}
         onChange={changeTab}
         items={TASK_TABS.map((t) => ({ ...t, count: tabCount(t.value, q.data?.counts) }))}
       />
-      <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Загружаем задачи…">
+      <QueryState isLoading={tab === null || q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Загружаем задачи…">
         {items.length === 0 ? (
-          <EmptyState icon={Sparkles} title={EMPTY_TEXT[tab]} />
+          <EmptyState icon={Sparkles} title={EMPTY_TEXT[shown]} description={EMPTY_HINT[shown]} />
         ) : (
           <div className="flex flex-col gap-2" data-testid="ai-task-list">
             {items.map((v) => (
@@ -57,19 +66,7 @@ export function AiTaskCenter() {
             ))}
           </div>
         )}
-        {pages > 1 && (
-          <div className="mt-4 flex items-center justify-between gap-3 text-[12.5px] text-[var(--text-muted)]">
-            <Button variant="surface" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)}>
-              Назад
-            </Button>
-            <span>
-              Страница {page + 1} из {pages}
-            </span>
-            <Button variant="surface" size="sm" disabled={page + 1 >= pages} onClick={() => setPage(page + 1)}>
-              Дальше
-            </Button>
-          </div>
-        )}
+        {pages > 1 && <Pager page={page} pages={pages} onPage={setPage} />}
       </QueryState>
       {desktop ? (
         <Drawer open={!!open} onClose={() => setOpenId(null)} title="Задача ИИ" width="max-w-md">
@@ -80,6 +77,22 @@ export function AiTaskCenter() {
           {open && <AiTaskDetail view={open} onDone={() => setOpenId(null)} />}
         </ActionSheet>
       )}
+    </div>
+  );
+}
+
+function Pager({ page, pages, onPage }: { page: number; pages: number; onPage: (p: number) => void }) {
+  return (
+    <div className="mt-4 flex items-center justify-between gap-3 text-[12.5px] text-[var(--text-muted)]">
+      <Button variant="surface" size="sm" disabled={page === 0} onClick={() => onPage(page - 1)}>
+        Назад
+      </Button>
+      <span>
+        Страница {page + 1} из {pages}
+      </span>
+      <Button variant="surface" size="sm" disabled={page + 1 >= pages} onClick={() => onPage(page + 1)}>
+        Дальше
+      </Button>
     </div>
   );
 }

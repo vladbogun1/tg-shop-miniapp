@@ -22,7 +22,7 @@ export function AiTaskRow({ view, selected, onOpen }: { view: TaskRowView; selec
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="truncate text-[14px] font-semibold text-[var(--ink)]">{view.title}</span>
         <span className="truncate text-[12px] text-[var(--text-muted)]">
-          {view.admin} · {timeAgo(view.when)}
+          {view.admin} · {view.stepText ?? timeAgo(view.when)}
           {view.stale && <span className="text-[var(--warn)]"> · может устареть</span>}
         </span>
       </span>

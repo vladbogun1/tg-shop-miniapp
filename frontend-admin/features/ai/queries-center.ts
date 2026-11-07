@@ -15,10 +15,11 @@ import { JOB_POLL_MS } from "./model/job-state";
 export const TASKS_PAGE_SIZE = 20;
 
 /** Список задач одной вкладки; «Идут» обновляется сам, пока открыта страница. */
-export function useAiTasks(tab: AiTaskTab, page: number) {
+export function useAiTasks(tab: AiTaskTab, page: number, enabled = true) {
   return useQuery({
     queryKey: aiKeys.tasks(tab, page),
     queryFn: () => aiApi.tasks(tab, page, TASKS_PAGE_SIZE),
+    enabled,
     placeholderData: keepPreviousData,
     ...QUERY_PRESETS.live,
     refetchInterval: tab === "active" ? JOB_POLL_MS : false,

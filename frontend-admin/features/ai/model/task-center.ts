@@ -1,5 +1,6 @@
 import type { AiFeature, AiJob, AiTaskRow, AiTaskTab } from "../api";
 import { reviewState, reviewStateLabel, statusTone, type AiTone, type ReviewState } from "./job-state";
+import { activeStepText } from "./job-steps";
 
 /** Центр ИИ-задач: вкладки, строки, подписи. Чистая логика, без React. */
 
@@ -46,6 +47,8 @@ export interface TaskRowView {
   /** Сумма в копейках: только у финансиста, у остальных поля нет. */
   costMinor: number | null;
   when: string;
+  /** Задача идёт: «шаг «Ищу в интернете»» или «в очереди» вместо времени; иначе null. */
+  stepText: string | null;
 }
 
 export function taskTitle(row: Pick<AiTaskRow, "job" | "subjectLabel">): string {
@@ -71,6 +74,7 @@ export function taskRowView(row: AiTaskRow, nowMs: number): TaskRowView {
     reviewHref: reviewHref(row.job),
     costMinor: row.job.costMinor ?? null,
     when: row.job.finishedAt || row.job.createdAt,
+    stepText: activeStepText(row.job),
   };
 }
 
@@ -87,13 +91,24 @@ export function problemText(job: Pick<AiJob, "status" | "errorCode">): string {
   return (job.errorCode && ERROR_TEXT[job.errorCode]) || "Сбой при работе ИИ";
 }
 
-/** Пустая вкладка: что сказать. */
+/** Пустая вкладка: что сказать (макет 09: «Задач пока нет · Запустите «Заполнить с ИИ» в карточке товара»). */
 export const EMPTY_TEXT: Record<AiTaskTab, string> = {
-  active: "Сейчас ИИ ничего не делает",
+  active: "Задач пока нет",
   review: "Нечего проверять",
   problems: "Проблем за неделю не было",
   history: "Задач ИИ пока не было",
 };
+
+/** Подсказка под пустой вкладкой, где задачу можно запустить; у «Проверить» и «Проблем» её нет. */
+export const EMPTY_HINT: Partial<Record<AiTaskTab, string>> = {
+  active: "Запустите «Заполнить с ИИ» в карточке товара.",
+  history: "Запустите «Заполнить с ИИ» в карточке товара.",
+};
+
+/** Вкладка при входе (макет 06): «Проверить», если там что-то есть, иначе «Идут». */
+export function defaultTab(review: number | undefined): AiTaskTab {
+  return review && review > 0 ? "review" : "active";
+}
 
 export function tabCount(
   tab: AiTaskTab,
