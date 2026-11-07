@@ -5307,7 +5307,8 @@ export interface components {
         };
         Ask: {
             effort?: string;
-            feature?: string;
+            /** @enum {string} */
+            feature?: "CARD" | "COMPLETION" | "TRANSLATION" | "SUPPLY_EXTRACT" | "SUPPLY_MATCH" | "SEARCH_TEST";
             prompt?: string;
             /** Format: int32 */
             researchItems?: number;
@@ -6895,7 +6896,8 @@ export interface components {
         };
         JobView: {
             answer: components["schemas"]["Answer"];
-            feature: string;
+            /** @enum {string} */
+            feature: "CARD" | "COMPLETION" | "TRANSLATION" | "SUPPLY_EXTRACT" | "SUPPLY_MATCH" | "SEARCH_TEST";
             id: string;
             /** Format: date-time */
             startedAt: string;
@@ -7253,6 +7255,8 @@ export interface components {
             /** Format: int64 */
             limitMicroUsd: number;
             lines: components["schemas"]["UsageLine"][];
+            /** Format: int64 */
+            lostRows: number;
             /** Format: int64 */
             spentMicroUsd: number;
         };

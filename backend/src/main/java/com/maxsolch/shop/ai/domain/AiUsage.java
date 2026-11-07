@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 import java.time.Instant;
 
 /**
- * One external call the AI module made (V83): a model request, a web search or a page read — what it cost and whether
+ * One external call the AI module made (V86): a model request, a web search or a page read — what it cost and whether
  * it worked. The month's spend and the limit are summed from here; the empty/failed searches per provider show when
  * a search engine started blocking us. Written once, never changed.
  */
@@ -36,9 +36,10 @@ public class AiUsage {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    /** What the call served: {@code cards}, {@code supply}, {@code translation}, {@code check}. */
+    /** What the call served. */
+    @Enumerated(EnumType.STRING)
     @Column(name = "feature", nullable = false, length = 32)
-    private String feature;
+    private AiFeature feature;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "kind", nullable = false, length = 16)
@@ -71,7 +72,7 @@ public class AiUsage {
     @Column(name = "note", length = 255)
     private String note;
 
-    public static AiUsage model(Instant at, String feature, String model, TokenUsage tokens, long costMicroUsd, long ms,
+    public static AiUsage model(Instant at, AiFeature feature, String model, TokenUsage tokens, long costMicroUsd, long ms,
                                 String note) {
         AiUsage u = base(at, feature, Kind.MODEL, model, note == null ? Result.OK : Result.FAILED, costMicroUsd, ms, note);
         u.inputTokens = tokens.input();
@@ -80,12 +81,12 @@ public class AiUsage {
         return u;
     }
 
-    public static AiUsage call(Instant at, String feature, Kind kind, String provider, Result result, long costMicroUsd,
+    public static AiUsage call(Instant at, AiFeature feature, Kind kind, String provider, Result result, long costMicroUsd,
                                long ms, String note) {
         return base(at, feature, kind, provider, result, costMicroUsd, ms, note);
     }
 
-    private static AiUsage base(Instant at, String feature, Kind kind, String provider, Result result, long cost,
+    private static AiUsage base(Instant at, AiFeature feature, Kind kind, String provider, Result result, long cost,
                                 long ms, String note) {
         AiUsage u = new AiUsage();
         u.createdAt = at;

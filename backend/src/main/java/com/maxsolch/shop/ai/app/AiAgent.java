@@ -1,5 +1,6 @@
 package com.maxsolch.shop.ai.app;
 
+import com.maxsolch.shop.ai.domain.AiFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.ai.domain.AiError;
 import com.maxsolch.shop.ai.domain.ChatModel;
@@ -41,7 +42,7 @@ public class AiAgent {
     /**
      * @param researchItems how many products the prompt is about (scales the search budget); 0 = no tools
      */
-    public record Ask(String feature, String prompt, String effort, int researchItems) {
+    public record Ask(AiFeature feature, String prompt, String effort, int researchItems) {
     }
 
     public record Answer(String text, String model, long costMicroUsd, TokenUsage tokens, int modelCalls, int searches,

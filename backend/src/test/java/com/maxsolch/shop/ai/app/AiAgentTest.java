@@ -1,5 +1,6 @@
 package com.maxsolch.shop.ai.app;
 
+import com.maxsolch.shop.ai.domain.AiFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.maxsolch.shop.ai.domain.AiError;
 import com.maxsolch.shop.ai.domain.ChatModel;
@@ -50,7 +51,7 @@ class AiAgentTest {
     void plainQuestionIsOneCallWithoutTools() {
         model.answers(text("Привет"));
 
-        AiAgent.Answer a = agent.ask(new AiAgent.Ask("supply", "Скажи привет", "low", 0));
+        AiAgent.Answer a = agent.ask(new AiAgent.Ask(AiFeature.SUPPLY_EXTRACT, "Скажи привет", "low", 0));
 
         assertThat(a.text()).isEqualTo("Привет");
         assertThat(a.modelCalls()).isEqualTo(1);
@@ -59,14 +60,14 @@ class AiAgentTest {
 
     @Test
     void researchRunsTheToolsAndHandsTheResultsBack() {
-        when(search.search(eq("cards"), eq("viper specs"), anyInt()))
+        when(search.search(eq(AiFeature.CARD), eq("viper specs"), anyInt()))
                 .thenReturn(new WebSearch.Found(List.of(new Hit("Viper", "https://razer.com/v3", "54 g")), "serper", 1000));
-        when(pages.open("cards", "https://razer.com/v3")).thenReturn("Weight 54 g");
+        when(pages.open(AiFeature.CARD, "https://razer.com/v3")).thenReturn("Weight 54 g");
         model.answers(tool("t1", "search", "query", "viper specs"), tool("t2", "open_page", "url", "https://razer.com/v3"),
                 text("```json\n{\"weight\":54}\n```"));
-        when(usage.model(anyString(), any(), anyLong(), any())).thenReturn(200L);
+        when(usage.model(any(), any(), anyLong(), any())).thenReturn(200L);
 
-        AiAgent.Answer a = agent.ask(new AiAgent.Ask("cards", JSON_PROMPT, "medium", 1));
+        AiAgent.Answer a = agent.ask(new AiAgent.Ask(AiFeature.CARD, JSON_PROMPT, "medium", 1));
 
         assertThat(a.searches()).isEqualTo(1);
         assertThat(a.pages()).isEqualTo(1);
@@ -81,7 +82,7 @@ class AiAgentTest {
 
     @Test
     void askingBeyondTheBudgetIsRefusedAndTheNextTurnMustAnswer() {
-        when(search.search(anyString(), anyString(), anyInt())).thenReturn(new WebSearch.Found(List.of(), null, 0));
+        when(search.search(any(), anyString(), anyInt())).thenReturn(new WebSearch.Found(List.of(), null, 0));
         List<Reply> script = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
             script.add(tool("s" + i, "search", "query", "q" + i));
@@ -89,9 +90,9 @@ class AiAgentTest {
         script.add(text("Не нашёл"));
         model.answers(script.toArray(Reply[]::new));
 
-        agent.ask(new AiAgent.Ask("cards", "Найди", "low", 1));
+        agent.ask(new AiAgent.Ask(AiFeature.CARD, "Найди", "low", 1));
 
-        verify(search, times(3)).search(anyString(), anyString(), anyInt());
+        verify(search, times(3)).search(any(), anyString(), anyInt());
         assertThat(lastResult(model.requests.get(4))).contains("Лимит поисков исчерпан");
         assertThat(model.requests.get(3).toolsOff()).isFalse();
         assertThat(model.requests.get(4).toolsOff()).isTrue();
@@ -101,7 +102,7 @@ class AiAgentTest {
     void brokenJsonGetsOneRepairTurnWithoutTools() {
         model.answers(text("```json\n{\"weight\": 54,,}\n```"), text("```json\n{\"weight\":54}\n```"));
 
-        AiAgent.Answer a = agent.ask(new AiAgent.Ask("cards", JSON_PROMPT, "medium", 0));
+        AiAgent.Answer a = agent.ask(new AiAgent.Ask(AiFeature.CARD, JSON_PROMPT, "medium", 0));
 
         assertThat(a.repaired()).isTrue();
         assertThat(a.text()).contains("{\"weight\":54}");
@@ -115,36 +116,36 @@ class AiAgentTest {
     void answerWithoutJsonIsFineWhenThePromptDidNotAskForIt() {
         model.answers(text("Просто текст"));
 
-        assertThat(agent.ask(new AiAgent.Ask("supply", "Опиши", "low", 0)).repaired()).isFalse();
+        assertThat(agent.ask(new AiAgent.Ask(AiFeature.SUPPLY_EXTRACT, "Опиши", "low", 0)).repaired()).isFalse();
     }
 
     @Test
     void monthLimitStopsBeforeTheModelIsCalled() {
         doThrow(new DomainException.Conflict(AiError.MONTH_LIMIT, "10.00", "10.00")).when(usage).ensureWithinLimit();
 
-        assertThatThrownBy(() -> agent.ask(new AiAgent.Ask("cards", "Q", "low", 0)))
+        assertThatThrownBy(() -> agent.ask(new AiAgent.Ask(AiFeature.CARD, "Q", "low", 0)))
                 .isInstanceOf(DomainException.Conflict.class);
         assertThat(model.requests).isEmpty();
-        verify(usage, never()).model(anyString(), any(), anyLong(), any());
+        verify(usage, never()).model(any(), any(), anyLong(), any());
     }
 
     @Test
     void noKeyMeansNotConfigured() {
         model.configured = false;
 
-        assertThatThrownBy(() -> agent.ask(new AiAgent.Ask("cards", "Q", "low", 0)))
+        assertThatThrownBy(() -> agent.ask(new AiAgent.Ask(AiFeature.CARD, "Q", "low", 0)))
                 .isInstanceOfSatisfying(DomainException.class, e -> assertThat(e.errorCode()).isEqualTo(AiError.NOT_CONFIGURED));
     }
 
     @Test
     void jobRequestsAreValidatedBeforeAnyMoneyIsSpent() {
-        assertThatThrownBy(() -> AiJobs.validate(new AiAgent.Ask("Cards!", "Q", "low", 0)))
+        assertThatThrownBy(() -> AiJobs.validate(new AiAgent.Ask(null, "Q", "low", 0)))
                 .isInstanceOf(DomainException.BadRequest.class);
-        assertThatThrownBy(() -> AiJobs.validate(new AiAgent.Ask("cards", "Q", "max", 0)))
+        assertThatThrownBy(() -> AiJobs.validate(new AiAgent.Ask(AiFeature.CARD, "Q", "max", 0)))
                 .isInstanceOf(DomainException.BadRequest.class);
-        assertThatThrownBy(() -> AiJobs.validate(new AiAgent.Ask("cards", "Q", "low", 11)))
+        assertThatThrownBy(() -> AiJobs.validate(new AiAgent.Ask(AiFeature.CARD, "Q", "low", 11)))
                 .isInstanceOf(DomainException.BadRequest.class);
-        AiJobs.validate(new AiAgent.Ask("cards", "Q", "medium", 3));
+        AiJobs.validate(new AiAgent.Ask(AiFeature.CARD, "Q", "medium", 3));
     }
 
     private static String lastResult(Request r) {

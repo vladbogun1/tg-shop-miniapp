@@ -1,6 +1,7 @@
 package com.maxsolch.shop.ai.app;
 
 import com.maxsolch.shop.ai.domain.AiError;
+import com.maxsolch.shop.ai.domain.AiFeature;
 import com.maxsolch.shop.platform.cache.CacheConfig;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.jobs.Workers;
@@ -16,7 +17,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.regex.Pattern;
 
 /**
  * AI questions run in the background: a researched card takes about a minute, longer than a request should hang
@@ -33,12 +33,11 @@ public class AiJobs {
     static final int MAX_PROMPT = 200_000;
     static final int MAX_ITEMS = 10;
     private static final Set<String> EFFORTS = Set.of("low", "medium", "high");
-    private static final Pattern FEATURE = Pattern.compile("[a-z0-9-]{1,40}");
 
     public enum Status { RUNNING, DONE, FAILED }
 
     /** What the admin sees; {@code answer} is set when DONE. A FAILED job answers with its error instead. */
-    public record JobView(String id, String feature, Status status, Instant startedAt, AiAgent.Answer answer) {
+    public record JobView(String id, AiFeature feature, Status status, Instant startedAt, AiAgent.Answer answer) {
     }
 
     private record Job(JobView view, DomainException error) {
@@ -102,7 +101,7 @@ public class AiJobs {
     }
 
     static void validate(AiAgent.Ask ask) {
-        if (ask.feature() == null || !FEATURE.matcher(ask.feature()).matches()) {
+        if (ask.feature() == null) {
             throw new DomainException.BadRequest(AiError.BAD_REQUEST, "feature");
         }
         if (ask.prompt() == null || ask.prompt().isBlank() || ask.prompt().length() > MAX_PROMPT) {

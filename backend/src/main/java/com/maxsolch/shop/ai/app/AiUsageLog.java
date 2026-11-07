@@ -1,5 +1,6 @@
 package com.maxsolch.shop.ai.app;
 
+import com.maxsolch.shop.ai.domain.AiFeature;
 import com.maxsolch.shop.ai.domain.AiError;
 import com.maxsolch.shop.ai.domain.AiUsage;
 import com.maxsolch.shop.ai.domain.TokenUsage;
@@ -15,11 +16,13 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * The journal of external calls (table {@code ai_usage}) and the monthly limit. A row is written right after the call,
- * outside any business transaction: the money is spent whether or not the caller's work succeeds. A failed write is
- * logged and swallowed — losing one journal line must not lose the answer the admin waited a minute for.
+ * outside any business transaction: the money is spent whether or not the caller's work succeeds. A failed write does
+ * not fail the call (the answer the admin waited a minute for is not thrown away), but it is not silent either: a WARN
+ * with the sum, and the lost money is counted in memory and added to the month's spend, so the limit is not understated.
  */
 @Slf4j
 @Service
@@ -29,6 +32,9 @@ public class AiUsageLog {
     private final AiProperties props;
     private final Clock clock;
     private final ShopZone zone;
+    /** Rows that could not be written since start, and their cost: shown on the status screen, counted in the limit. */
+    private final AtomicLong lostRows = new AtomicLong();
+    private final AtomicLong lostMicroUsd = new AtomicLong();
 
     public AiUsageLog(AiUsageRepository repo, AiProperties props, Clock clock, ShopZone zone) {
         this.repo = repo;
@@ -38,14 +44,14 @@ public class AiUsageLog {
     }
 
     /** Writes the model call and returns its cost, micro-USD. */
-    public long model(String feature, TokenUsage tokens, long ms, String failure) {
+    public long model(AiFeature feature, TokenUsage tokens, long ms, String failure) {
         AiProperties.Model m = props.getModel();
         long cost = tokens.costMicroUsd(m.getInputPerM(), m.getCachedPerM(), m.getOutputPerM());
         save(AiUsage.model(clock.instant(), feature, m.getName(), tokens, cost, ms, failure));
         return cost;
     }
 
-    public void call(String feature, AiUsage.Kind kind, String provider, AiUsage.Result result, long costMicroUsd,
+    public void call(AiFeature feature, AiUsage.Kind kind, String provider, AiUsage.Result result, long costMicroUsd,
                      long ms, String note) {
         save(AiUsage.call(clock.instant(), feature, kind, provider, result, costMicroUsd, ms, note));
     }
@@ -56,19 +62,20 @@ public class AiUsageLog {
         if (limitMicro <= 0) {
             return;
         }
-        long spent = repo.spentSince(monthStart());
+        long spent = repo.spentSince(monthStart()) + lostMicroUsd.get();
         if (spent >= limitMicro) {
             throw new DomainException.Conflict(AiError.MONTH_LIMIT, usd(spent), usd(limitMicro));
         }
     }
 
-    public record MonthSummary(Instant from, long spentMicroUsd, long limitMicroUsd, List<UsageLine> lines) {
+    public record MonthSummary(Instant from, long spentMicroUsd, long limitMicroUsd, List<UsageLine> lines,
+                               long lostRows) {
     }
 
     public MonthSummary month() {
         Instant from = monthStart();
-        return new MonthSummary(from, repo.spentSince(from), props.getMonthLimitCents() * 10_000,
-                repo.summarySince(from));
+        return new MonthSummary(from, repo.spentSince(from) + lostMicroUsd.get(), props.getMonthLimitCents() * 10_000,
+                repo.summarySince(from), lostRows.get());
     }
 
     private Instant monthStart() {
@@ -83,7 +90,10 @@ public class AiUsageLog {
         try {
             repo.save(row);
         } catch (RuntimeException e) {
-            log.warn("ai_usage row lost ({} {}): {}", row.getKind(), row.getProvider(), e.toString());
+            lostRows.incrementAndGet();
+            lostMicroUsd.addAndGet(row.getCostMicroUsd());
+            log.warn("ai_usage row lost ({} {} {}, {} micro-USD): {}", row.getFeature(), row.getKind(),
+                    row.getProvider(), row.getCostMicroUsd(), e.toString());
         }
     }
 }

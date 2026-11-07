@@ -1795,6 +1795,14 @@
             "type" : "string"
           },
           "feature" : {
+            "enum" : [
+              "CARD",
+              "COMPLETION",
+              "TRANSLATION",
+              "SUPPLY_EXTRACT",
+              "SUPPLY_MATCH",
+              "SEARCH_TEST"
+            ],
             "type" : "string"
           },
           "prompt" : {
@@ -7057,6 +7065,14 @@
             "$ref" : "#/components/schemas/Answer"
           },
           "feature" : {
+            "enum" : [
+              "CARD",
+              "COMPLETION",
+              "TRANSLATION",
+              "SUPPLY_EXTRACT",
+              "SUPPLY_MATCH",
+              "SEARCH_TEST"
+            ],
             "type" : "string"
           },
           "id" : {
@@ -8221,6 +8237,10 @@
             },
             "type" : "array"
           },
+          "lostRows" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
           "spentMicroUsd" : {
             "format" : "int64",
             "type" : "integer"
@@ -8230,6 +8250,7 @@
           "from",
           "limitMicroUsd",
           "lines",
+          "lostRows",
           "spentMicroUsd"
         ],
         "type" : "object"

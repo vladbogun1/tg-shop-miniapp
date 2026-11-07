@@ -1,5 +1,6 @@
 package com.maxsolch.shop.ai.app;
 
+import com.maxsolch.shop.ai.domain.AiFeature;
 import com.maxsolch.shop.ai.domain.ChatModel.Tool;
 import com.maxsolch.shop.ai.domain.ChatModel.ToolCall;
 import com.maxsolch.shop.ai.domain.SearchEngine.Hit;
@@ -26,7 +27,7 @@ final class ResearchTools {
                     + "(og:image). Открывай официальный сайт и страницы с таблицей характеристик.",
                     schema("url")));
 
-    private final String feature;
+    private final AiFeature feature;
     private final WebSearch search;
     private final WebPages pages;
     private final int maxSearches;
@@ -37,7 +38,7 @@ final class ResearchTools {
     private boolean refused;
     private long costMicroUsd;
 
-    ResearchTools(String feature, int items, WebSearch search, WebPages pages) {
+    ResearchTools(AiFeature feature, int items, WebSearch search, WebPages pages) {
         this.feature = feature;
         this.search = search;
         this.pages = pages;
