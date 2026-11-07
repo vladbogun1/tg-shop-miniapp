@@ -84,7 +84,7 @@ function newestMtime(dir) {
 
 // ---- 1. database ------------------------------------------------------------------------------
 if (!externalDb) {
-  must("docker", [...COMPOSE, "up", "-d", "--wait", "mysql"], {
+  must("docker", [...COMPOSE, "up", "-d", "--wait", "mysql", "minio"], {
     env: { ...process.env, E2E_MYSQL_PORT: String(DB.port) },
   });
 }

@@ -24,3 +24,21 @@ services:
       interval: 2s
       timeout: 5s
       retries: 60
+
+  # S3 for AI files (stage E6): the image already on the host (the minio images are no longer published).
+  minio:
+    image: quay.io/minio/minio:latest
+    pull_policy: missing
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: e2eminio
+      MINIO_ROOT_PASSWORD: e2e-minio-pass
+    ports:
+      - "${E2E_MINIO_PORT:-19010}:9000"
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 2s
+      timeout: 5s
+      retries: 30

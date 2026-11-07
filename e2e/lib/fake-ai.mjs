@@ -56,6 +56,7 @@ function translationAnswer(text) {
 }
 
 function answerFor(text) {
+  if (text.includes("помощник закупщика")) return supplyAnswer();
   if (text.includes("Строки для перевода")) return translationAnswer(text);
   const id = /"(p[0-9a-f]{8,32})"\s*:/.exec(text)?.[1] ?? null;
   const d = state.description;
@@ -66,6 +67,21 @@ function answerFor(text) {
     notes: "e2e",
   };
   return { id, text: "```json\n" + JSON.stringify({ [id ?? "p00000000"]: card }, null, 2) + "\n```" };
+}
+
+/** The supply prompt (Э6): a screenshot of an order with six lines; the sum of the lines equals the total. */
+function supplyAnswer() {
+  const lines = [
+    { text: "Коврик для мыши XL", qty: 1, unitPrice: 12.5 },
+    { text: "Кабель USB-C 1м", qty: 2, unitPrice: 3 },
+    { text: "Глайды для мыши", qty: 3, unitPrice: 2 },
+    { text: "Грипсы чёрные", qty: 1, unitPrice: 4.5 },
+    { text: "Кейкапы PBT", qty: 1, unitPrice: 18 },
+    { text: "Переключатели 70 шт", qty: 1, unitPrice: 21 },
+  ];
+  const total = lines.reduce((a, l) => a + l.qty * l.unitPrice, 0);
+  const doc = { supplier: "E2E Shop", currency: "CNY", total, lines };
+  return { id: "supply", text: "```json\n" + JSON.stringify(doc, null, 2) + "\n```" };
 }
 
 function reply(res, status, obj) {
