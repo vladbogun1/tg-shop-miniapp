@@ -56,7 +56,7 @@ public class AiSettings implements SettingsContribution {
     public List<SettingGroup> groups() {
         return List.of(new SettingGroup(GROUP, "ИИ",
                 "Встроенный ИИ для карточек, переводов и поставок: выключатели, лимиты расхода, поиск и предупреждения. "
-                        + "Только для владельца: ключи и модель задаются на сервере.", true));
+                        + "Видят админы с доступом к финансам; ключи и модель задаются на сервере.", true));
     }
 
     @Override
