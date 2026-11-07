@@ -3,7 +3,7 @@
 /** Все окна над карточкой заказа: листок «⋯», подтверждения, формы, подбор товара, профиль покупателя. */
 import { ExchangeModal, ReturnModal, ReturnReceivedModal } from "@/features/returns";
 import { PaymentModal } from "@/features/payment";
-import { ActionSheet, type SheetAction } from "@/components/ui/ActionSheet";
+import { ActionSheet } from "@/components/ui/ActionSheet";
 import { UserProfileDrawer } from "@/features/customer";
 import type { AdminOrderDetail } from "../../api";
 import { shortId } from "../../model/status";
@@ -12,6 +12,8 @@ import { ArchiveModal } from "../modals/ArchiveModal";
 import { DeliveryEditModal } from "../modals/DeliveryEditModal";
 import { DiscountModal } from "../modals/DiscountModal";
 import { GiftCaseModal } from "../modals/GiftCaseModal";
+import { MenuGroups } from "./MoreMenu";
+import type { MenuGroup } from "./sheet-actions";
 import { MergeModal } from "../modals/MergeModal";
 import { StatusChangeModal } from "../modals/StatusChangeModal";
 import { TrackingModal } from "../modals/TrackingModal";
@@ -27,7 +29,7 @@ interface Props {
   modals: Modals;
   actions: ReturnType<typeof useOrderActions>;
   flows: ReturnType<typeof useFlowActions>;
-  sheetActions: SheetAction[];
+  menuGroups: MenuGroup[];
   restockUnits: number | undefined;
   refreshLists: () => void;
 }
@@ -40,7 +42,7 @@ export function DrawerModals({
   modals,
   actions,
   flows,
-  sheetActions,
+  menuGroups,
   restockUnits,
   refreshLists,
 }: Props) {
@@ -48,12 +50,17 @@ export function DrawerModals({
   const o = order ?? null;
   return (
     <>
-      <ActionSheet
-        open={open.more && !isDesktop}
-        title={order ? `Заказ ${shortId(order.id)}` : undefined}
-        actions={sheetActions}
-        onClose={() => hide("more")}
-      />
+      <ActionSheet open={open.more && !isDesktop} title={order ? `Заказ ${shortId(order.id)}` : undefined} onClose={() => hide("more")}>
+        <MenuGroups
+          role="button"
+          groups={menuGroups}
+          busyKey={busyKey}
+          onPick={(run) => {
+            hide("more");
+            run();
+          }}
+        />
+      </ActionSheet>
 
       <StatusChangeModal
         open={pendingTarget !== null}

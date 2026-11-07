@@ -11,7 +11,7 @@ import "./users-map.css";
 import dynamic from "next/dynamic";
 import { useCallback, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Globe2 } from "lucide-react";
+import { ChevronUp, Globe2 } from "lucide-react";
 import { riseItem } from "@/lib/motion";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -26,7 +26,7 @@ const UsersMap = dynamic(() => import("./UsersMap"), {
   loading: () => <Skeleton className="h-full w-full rounded-[8px]" />,
 });
 
-function OnlinePill() {
+export function OnlinePill() {
   const { data } = useGeoOnline();
   return (
     <div
@@ -61,7 +61,7 @@ function MapNotice({ isError, geoAvailable }: { isError: boolean; geoAvailable: 
   );
 }
 
-export function UsersMapBlock({ onOpenUser }: { onOpenUser: (u: UserCardDto) => void }) {
+export function UsersMapBlock({ onOpenUser, onCollapse }: { onOpenUser: (u: UserCardDto) => void; onCollapse?: () => void }) {
   const [days, setDays] = useState<GeoDaysOption>("30");
   const [active, setActive] = useState<GeoPoint | null>(null);
   const [resetKey, setResetKey] = useState(0);
@@ -80,7 +80,18 @@ export function UsersMapBlock({ onOpenUser }: { onOpenUser: (u: UserCardDto) => 
           <span aria-hidden className="h-3.5 w-[2px] rounded-full bg-[var(--accent)] shadow-[var(--glow-sm)]" />
           Карта пользователей
         </h3>
-        <OnlinePill />
+        <div className="flex flex-wrap items-center gap-2">
+          <OnlinePill />
+          {onCollapse && (
+            <button
+              type="button"
+              onClick={onCollapse}
+              className="focusable hit inline-flex h-8 items-center gap-1 rounded-[var(--r-md)] border border-[var(--line)] px-2.5 text-[12px] font-semibold text-[var(--text-muted)] hover:text-[var(--text)] pointer-coarse:h-11"
+            >
+              <ChevronUp className="h-3.5 w-3.5" /> Свернуть
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

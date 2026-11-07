@@ -13,7 +13,7 @@
  *  - Draft kept per order across tab switches; ⚡ reply templates in the customer's language.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Paperclip, Send, Zap } from "lucide-react";
+import { ArrowDown, Paperclip, Send, Zap } from "lucide-react";
 import { CHAT_PAGE, type OrderMessage } from "../../api";
 import { useCoarsePointer } from "@/lib/use-media";
 import { toast } from "@shop/ui/toast";
@@ -29,10 +29,14 @@ import {
   useSendPhotoMutation,
 } from "../../queries/chat";
 import { Bubble } from "@/components/ui/Bubble";
+import { useRenderedTemplatesQuery } from "../../queries/templates";
+import { QuickTemplates } from "./QuickTemplates";
 import { TemplatePicker } from "./ReplyTemplates";
 
-
 const messageTime = (m: { createdAt: string }) => m.createdAt;
+
+/** Прокручено выше этого расстояния от низа — новое сообщение не уводит ленту, а показывает «↓ Новое сообщение». */
+const STICK_PX = 80;
 
 export function OrderChat({ orderId }: { orderId: string }) {
   const coarse = useCoarsePointer();
@@ -40,10 +44,13 @@ export function OrderChat({ orderId }: { orderId: string }) {
   const [older, setOlder] = useState<OrderMessage[]>([]);
   const [olderExhausted, setOlderExhausted] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const templates = useRenderedTemplatesQuery(orderId, true);
   const fileRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [unseenNew, setUnseenNew] = useState(false);
+  const firstScroll = useRef(true);
   const sendM = useSendMessageMutation(orderId);
   const photoM = useSendPhotoMutation(orderId);
   const olderM = useOlderMessagesMutation(orderId);
@@ -56,7 +63,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
       setTextState(v);
       saveDraft(orderId, v);
     },
-    [orderId]
+    [orderId],
   );
 
   const { data: latest = [] } = useOrderMessagesQuery(orderId);
@@ -70,9 +77,30 @@ export function OrderChat({ orderId }: { orderId: string }) {
 
   // Stick to the bottom when a new message arrives at the END (not when older ones are prepended).
   const lastId = messages.length ? messages[messages.length - 1].id : null;
+  // Scrolled up to read old messages → do not jump; offer the «↓ Новое сообщение» pill instead.
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+    const box = scrollRef.current;
+    if (!box) return;
+    const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight <= STICK_PX;
+    if (firstScroll.current || nearBottom) {
+      firstScroll.current = false;
+      box.scrollTo({ top: box.scrollHeight });
+      setUnseenNew(false);
+    } else {
+      setUnseenNew(true);
+    }
   }, [lastId]);
+
+  function onScroll() {
+    const box = scrollRef.current;
+    if (box && box.scrollHeight - box.scrollTop - box.clientHeight <= STICK_PX) setUnseenNew(false);
+  }
+
+  function jumpToNew() {
+    const box = scrollRef.current;
+    box?.scrollTo({ top: box.scrollHeight, behavior: "smooth" });
+    setUnseenNew(false);
+  }
 
   function loadOlder() {
     const first = messages[0];
@@ -132,31 +160,44 @@ export function OrderChat({ orderId }: { orderId: string }) {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
-      <div ref={scrollRef} className="thin-scroll flex flex-1 flex-col gap-2 overflow-y-auto p-1">
-        {canLoadOlder && (
-          <div className="flex justify-center">
-            <Button size="sm" variant="ghost" loading={loadingOlder} onClick={loadOlder}>
-              Загрузить ранее
-            </Button>
-          </div>
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div ref={scrollRef} onScroll={onScroll} className="thin-scroll flex flex-1 flex-col gap-2 overflow-y-auto p-1">
+          {canLoadOlder && (
+            <div className="flex justify-center">
+              <Button size="sm" variant="ghost" loading={loadingOlder} onClick={loadOlder}>
+                Загрузить ранее
+              </Button>
+            </div>
+          )}
+          {messages.length === 0 && (
+            <div className="font-display my-auto text-center text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--text-faint)]">
+              Сообщений пока нет
+            </div>
+          )}
+          {days.map((day) => (
+            <ChatDaySection key={day.key} label={day.label}>
+              {day.items.map((m) => (
+                <Bubble key={m.id} m={m} onOpenImage={setLightbox} />
+              ))}
+            </ChatDaySection>
+          ))}
+        </div>
+        {unseenNew && (
+          <button
+            type="button"
+            onClick={jumpToNew}
+            className="nb-press elevated font-display absolute bottom-3 left-1/2 flex h-9 -translate-x-1/2 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--accent-hi)] pointer-coarse:h-11"
+          >
+            <ArrowDown className="h-3.5 w-3.5" /> Новое сообщение
+          </button>
         )}
-        {messages.length === 0 && (
-          <div className="font-display my-auto text-center text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--text-faint)]">
-            Сообщений пока нет
-          </div>
-        )}
-        {days.map((day) => (
-          <ChatDaySection key={day.key} label={day.label}>
-            {day.items.map((m) => (
-              <Bubble key={m.id} m={m} onOpenImage={setLightbox} />
-            ))}
-          </ChatDaySection>
-        ))}
       </div>
 
       <Lightbox src={lightbox} onClose={() => setLightbox(null)} />
 
-      <div className="mt-2 flex items-end gap-2">
+      <QuickTemplates templates={templates} onPick={insertTemplate} onAll={() => setTemplatesOpen(true)} />
+
+      <div className="mt-1 flex items-end gap-2">
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
         <button
           onClick={() => fileRef.current?.click()}
@@ -188,9 +229,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
             }
           }}
           rows={coarse ? 2 : 1}
-          placeholder={
-            coarse ? "Сообщение клиенту…" : "Сообщение клиенту… (Shift+Enter — новая строка, можно вставить фото)"
-          }
+          placeholder={coarse ? "Сообщение клиенту…" : "Сообщение клиенту… (Shift+Enter — новая строка, можно вставить фото)"}
           className="thin-scroll max-h-32 min-h-11 min-w-0 flex-1 resize-none rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-[11px] text-[14px] leading-5 text-[var(--text)] outline-none transition-[border-color,box-shadow] placeholder:truncate placeholder:text-[13px] placeholder:text-[var(--text-faint)] hover:border-[var(--border-2)] focus:border-[var(--accent)] focus:shadow-[var(--ring-accent)]"
         />
         <Button
@@ -203,12 +242,7 @@ export function OrderChat({ orderId }: { orderId: string }) {
         />
       </div>
 
-      <TemplatePicker
-        open={templatesOpen}
-        orderId={orderId}
-        onClose={() => setTemplatesOpen(false)}
-        onPick={insertTemplate}
-      />
+      <TemplatePicker open={templatesOpen} templates={templates} onClose={() => setTemplatesOpen(false)} onPick={insertTemplate} />
     </div>
   );
 }

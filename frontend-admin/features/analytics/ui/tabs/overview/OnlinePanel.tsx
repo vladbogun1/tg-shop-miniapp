@@ -5,11 +5,14 @@ import type { OnlinePayments } from "../../../model/types";
 import { Empty, Panel } from "../../kit";
 import { Row } from "./Row";
 
-export function OnlinePanel({ p }: { p: OnlinePayments }) {
+export function OnlinePanel({ p, compact }: { p: OnlinePayments; compact?: boolean }) {
   return (
     <Panel
       title="Онлайн-оплата (monobank)"
       icon={CreditCard}
+      collapsible={compact}
+      defaultOpen={!compact}
+      summary={p.since == null ? "Онлайн-заказов ещё не было" : `оплатили ${p.conversionPct != null ? pct(p.conversionPct) : "—"} · ждут ${num(p.awaiting)} · не оплатили за сутки ${num(p.timedOut)}`}
       hint="После оплаты статус не меняется — заказ подтверждает админ. Не оплаченный за 24 ч отменяется автоматически."
     >
       {p.since == null ? (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPaymentValid, parseMinor, partialRefundError, paymentAmount } from "./amounts";
+import { halfOf, isPaymentValid, parseMinor, partialRefundError, paymentAmount } from "./amounts";
 
 const order = { prepaymentMinor: 10_000, totalMinor: 50_000 };
 const fmt = (m: number) => `${m / 100} ₴`;
@@ -41,5 +41,14 @@ describe("partialRefundError", () => {
     expect(partialRefundError("0", 0, 1000, fmt)).toBe("Введите сумму больше нуля");
     expect(partialRefundError("11", 1100, 1000, fmt)).toBe("Не больше 10 ₴ — столько осталось по этому платежу");
     expect(partialRefundError("10", 1000, 1000, fmt)).toBeUndefined();
+  });
+});
+
+describe("halfOf", () => {
+  it("половина остатка вниз до копейки", () => {
+    expect(halfOf(1000)).toBe(500);
+    expect(halfOf(1001)).toBe(500);
+    expect(halfOf(0)).toBe(0);
+    expect(halfOf(-5)).toBe(0);
   });
 });

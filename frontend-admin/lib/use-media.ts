@@ -2,7 +2,7 @@
 
 import { useMediaQuery } from "@shop/ui/use-media";
 
-/** Tailwind `lg` breakpoint — where the board switches from the mobile list to the kanban. */
+/** Tailwind `lg` breakpoint (the orders board itself switches at `md`: see features/order/ui/use-is-kanban). */
 export function useIsDesktop(): boolean {
   return useMediaQuery("(min-width: 1024px)", true);
 }

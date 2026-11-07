@@ -20,12 +20,15 @@ export interface SheetAction {
 export function ActionSheet({
   open,
   title,
-  actions,
+  actions = [],
+  children,
   onClose,
 }: {
   open: boolean;
   title?: ReactNode;
-  actions: SheetAction[];
+  actions?: SheetAction[];
+  /** Free content under the title (a list that is not a row of buttons), before the actions. */
+  children?: ReactNode;
   onClose: () => void;
 }) {
   useOverlayLayer(open, onClose);
@@ -56,6 +59,7 @@ export function ActionSheet({
             {title && (
               <h3 className="font-display mb-3 truncate text-[15px] font-bold uppercase tracking-[0.04em] text-[var(--ink)]">{title}</h3>
             )}
+            {children}
             <div className="flex flex-col gap-2">
               {actions.map((a) => (
                 <Button

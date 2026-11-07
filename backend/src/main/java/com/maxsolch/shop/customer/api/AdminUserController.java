@@ -3,6 +3,7 @@ package com.maxsolch.shop.customer.api;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import com.maxsolch.shop.platform.time.TimeRange;
 import com.maxsolch.shop.customer.app.UserAdminService;
+import com.maxsolch.shop.customer.app.UserListFilter;
 import com.maxsolch.shop.customer.domain.UserCardDto;
 import com.maxsolch.shop.customer.app.UserMetricsDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,15 +30,17 @@ public class AdminUserController {
     }
 
     @GetMapping
-    @Operation(summary = "Paged/searchable/sortable list of bot users")
+    @Operation(summary = "Paged/searchable/sortable list of bot users; filters (all combine): blockedOnly, premiumOnly, hasOrders=true|false (any order status)")
     public List<UserCardDto> list(
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "false") boolean blockedOnly,
+            @RequestParam(defaultValue = "false") boolean premiumOnly,
+            @RequestParam(required = false) Boolean hasOrders,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "30") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
-        return userAdminService.list(q, blockedOnly, page, size, sortBy, sortDir);
+        return userAdminService.list(new UserListFilter(q, blockedOnly, premiumOnly, hasOrders), page, size, sortBy, sortDir);
     }
 
     @GetMapping("/metrics")

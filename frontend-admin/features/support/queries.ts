@@ -53,6 +53,14 @@ export function useSupportMessages(threadId: string) {
   });
 }
 
+/** Шаблоны ответов ⚡ для этого вопроса: язык клиента, {name} и {product} уже подставлены. */
+export function useThreadTemplatesQuery(threadId: string) {
+  return useQuery({
+    queryKey: supportKeys.replyTemplates(threadId),
+    queryFn: () => supportApi.renderedTemplates(threadId),
+  });
+}
+
 /** Страница старее `beforeId` (для «Загрузить ранее»); состояние страниц держит экран чата. */
 export const fetchOlderMessages = (threadId: string, beforeId: number) => supportApi.messages(threadId, beforeId);
 

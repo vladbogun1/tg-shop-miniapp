@@ -25,7 +25,7 @@ export function Act({
       aria-expanded={expanded}
       disabled={disabled}
       onClick={onClick}
-      className="focusable grid h-8 w-8 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] transition-colors enabled:hover:bg-[var(--surface-3)] enabled:hover:text-[var(--text)] disabled:opacity-25 pointer-coarse:h-10 pointer-coarse:w-10"
+      className="focusable grid h-8 w-8 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] transition-colors enabled:hover:bg-[var(--surface-3)] enabled:hover:text-[var(--text)] disabled:opacity-25 pointer-coarse:h-11 pointer-coarse:w-11"
     >
       {children}
     </button>

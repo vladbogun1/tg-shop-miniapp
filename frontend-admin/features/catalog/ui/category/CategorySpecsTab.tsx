@@ -4,13 +4,18 @@ import { Layers, Plus, Settings2, SlidersHorizontal } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@shop/ui/admin-button";
 import { Spinner } from "@/components/ui/Spinner";
+import { Input } from "@/components/ui/Input";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { groupAttributes } from "../../model/attributes";
+import { normText } from "../../model/search";
 import type { AdminCategory, AdminSpecAttribute } from "../../model/types";
 import { useRemoveAttribute, useSpecAttributesQuery, useSpecGroupsQuery, useSwapAttributes } from "../../queries";
 import { AttributeDialog } from "../attribute/AttributeDialog";
 import { GroupsDialog } from "../GroupsDialog";
 import { AttributeRow } from "./AttributeRow";
 import { Note } from "./parts";
+
+type SpecView = "own" | "inherited" | "all";
 
 /** «Характеристики»: схема категории — унаследованные серым, свои с порядком; сохраняется сразу. */
 export function CategorySpecsTab({
@@ -29,6 +34,8 @@ export function CategorySpecsTab({
   const [attrOpen, setAttrOpen] = useState(false);
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [busyAttr, setBusyAttr] = useState<string | null>(null);
+  const [view, setView] = useState<SpecView | null>(null);
+  const [query, setQuery] = useState("");
   const swap = useSwapAttributes();
   const removeAttribute = useRemoveAttribute();
 
@@ -43,7 +50,16 @@ export function CategorySpecsTab({
   }, [attrsQ.data, category]);
   const isOwn = (a: AdminSpecAttribute) => !a.inherited && a.categoryId === category?.id;
   const own = attrs.filter(isOwn);
-  const grouped = groupAttributes(attrs, groups);
+  const inheritedCount = attrs.length - own.length;
+  // По умолчанию — свои; если своих нет, сразу все (иначе список пустой).
+  const activeView: SpecView = view ?? (own.length > 0 ? "own" : "all");
+  const nq = normText(query);
+  const shown = attrs.filter(
+    (a) =>
+      (activeView === "all" || (activeView === "own" ? isOwn(a) : !isOwn(a))) &&
+      (!nq || normText(a.labelRu).includes(nq) || a.key.includes(nq))
+  );
+  const grouped = groupAttributes(shown, groups);
   const highlightOthers = attrs.filter((a) => a.highlight && a.id !== attrEditing?.id).length;
 
   const edit = (a: AdminSpecAttribute | null) => {
@@ -107,6 +123,24 @@ export function CategorySpecsTab({
           </div>
         </div>
   
+        {attrs.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <SegmentedControl<SpecView>
+              size="sm"
+              value={activeView}
+              onChange={setView}
+              options={[
+                { value: "own", label: "Свои", count: own.length },
+                { value: "inherited", label: "Унаследованные", count: inheritedCount },
+                { value: "all", label: "Все", count: attrs.length },
+              ]}
+            />
+            <div className="min-w-[160px] flex-1">
+              <Input aria-label="Поиск характеристики" placeholder="Название или ключ…" value={query} onChange={(e) => setQuery(e.target.value)} />
+            </div>
+          </div>
+        )}
+
         {attrsQ.isLoading ? (
           <div className="grid place-items-center py-10">
             <Spinner />
@@ -126,6 +160,8 @@ export function CategorySpecsTab({
               Добавьте вес, сенсор, подключение… — по ним появятся фильтры на витрине и форма в карточке товара.
             </p>
           </div>
+        ) : shown.length === 0 ? (
+          <p className="py-6 text-center text-[13px] text-[var(--text-muted)]">Ничего не найдено — смените вкладку или поиск.</p>
         ) : (
         grouped.map((g) => (
           <div key={g.key} className="overflow-hidden rounded-[var(--r-lg)] border border-[var(--line)]">

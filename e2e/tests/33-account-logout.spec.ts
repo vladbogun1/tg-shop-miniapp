@@ -2,7 +2,7 @@
  * «Мой аккаунт» (desktop) and signing out everywhere.
  *  - Profile, password form checks (in Russian), the devices panel; «Выйти на всех устройствах» asks
  *    first and «Отмена» keeps the session. All as the main e2e admin, without changing anything.
- *  - «Выйти везде» (sidebar) as a separate throwaway admin «e2e-exit» (id 5, set up here through
+ *  - «Выйти везде» («Мой аккаунт» → «Выйти на всех устройствах») as a separate throwaway admin «e2e-exit» (id 5, set up here through
  *    SQL): after it, this browser is back at the form, a second open session is thrown out and its
  *    token gets 401. (Doing it as the main admin would kill the token every other spec uses.)
  */
@@ -103,7 +103,7 @@ test("«Мой аккаунт»: профиль, проверки формы п�
   await expect(page.getByRole("heading", { name: "Мой аккаунт", level: 1 })).toBeVisible();
 });
 
-test("«Выйти везде» в меню: это устройство и второе открытое — на форму входа, старый токен 401", async ({ browser }) => {
+test("«Выйти везде» в «Аккаунте»: это устройство и второе открытое — на форму входа, старый токен 401", async ({ browser }) => {
   await setUpExitAdmin();
   const tokenA = await signIn();
   const tokenB = await signIn();
@@ -117,22 +117,23 @@ test("«Выйти везде» в меню: это устройство и вт
     await b.goto("/");
     await expect(b.getByRole("heading", { name: "Заказы", level: 1 })).toBeVisible();
 
-    const button = a.getByRole("complementary").first().getByRole("button", { name: "Выйти везде" });
+    // The owner's decision: «Выйти везде» lives only in «Мой аккаунт», behind a confirmation (not in the menu).
+    await expect(a.getByRole("complementary").first().getByRole("button", { name: "Выйти везде" })).toHaveCount(0);
+    await a.goto("/account");
+    await expect(a.getByRole("heading", { name: "Мой аккаунт", level: 1 })).toBeVisible();
+    const button = a.getByRole("button", { name: "Выйти на всех устройствах" });
     await expect(button).toBeVisible();
-    // It is one line next to «Выйти» (not wrapped).
-    const box = await button.boundingBox();
-    expect(box!.height).toBeLessThan(48);
 
     // First a «no» in the confirm dialog: nothing happens.
     await button.click();
     const ask = dialog(a, "Выйти на всех устройствах?");
     await ask.getByRole("button", { name: "Отмена" }).click();
     await expect(ask).toBeHidden();
-    await expect(a.getByRole("heading", { name: "Заказы", level: 1 })).toBeVisible();
+    await expect(a.getByRole("heading", { name: "Мой аккаунт", level: 1 })).toBeVisible();
     expect(await apiStatus(tokenA)).toBe(200);
 
     await button.click();
-    await dialog(a, "Выйти на всех устройствах?").getByRole("button", { name: "Выйти", exact: true }).click();
+    await dialog(a, "Выйти на всех устройствах?").getByRole("button", { name: "Выйти везде", exact: true }).click();
     await expect(a.getByRole("button", { name: "Войти" })).toBeVisible();
     expect(await a.evaluate(() => localStorage.getItem("tgshop_admin_jwt"))).toBeNull();
 

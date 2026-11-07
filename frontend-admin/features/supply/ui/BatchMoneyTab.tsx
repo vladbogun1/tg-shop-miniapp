@@ -70,6 +70,7 @@ function MoneyBody({ data, updatedAt }: { data: BatchMoney; updatedAt: number })
 
   const alloc = ALLOCATIONS.find((a) => a.value === v.allocation);
   const needsRate = v.currency !== "UAH";
+  const blocked = data.problems.length > 0 && !v.costsFinal;
   const incomplete = data.lines.some((l) => !v.lines[l.itemId]?.price.trim());
 
   return (
@@ -128,12 +129,15 @@ function MoneyBody({ data, updatedAt }: { data: BatchMoney; updatedAt: number })
           </div>
         </details>
 
-        <Toggle checked={v.costsFinal} onChange={(x) => set("costsFinal", x)} label="Все расходы внесены — цифры окончательные" />
+        <FinalToggle checked={v.costsFinal} blocked={blocked} onChange={(x) => set("costsFinal", x)} />
       </section>
 
       <MoneyLinesTable lines={data.lines} drafts={v.lines} allocation={v.allocation} currency={v.currency} onChange={setLine} />
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="elevated sticky bottom-[calc(var(--tabbar-h,0px)+8px)] z-10 flex flex-wrap items-center gap-x-4 gap-y-2 p-3">
+        <div className="tabular min-w-0 text-[13px] text-[var(--text-muted)]">
+          Всего потратили <b className="font-display text-[16px] text-[var(--ink)]">{money(data.totalMinor)}</b>
+        </div>
         <Button
           variant="accent"
           icon={<Save className="h-4 w-4" />}
@@ -143,8 +147,7 @@ function MoneyBody({ data, updatedAt }: { data: BatchMoney; updatedAt: number })
         >
           Сохранить
         </Button>
-        {dirty && <span className="text-[12.5px] text-[var(--text-muted)]">«Обошлась 1 шт» и прибыль пересчитаются после сохранения.</span>}
-        {!dirty && incomplete && <span className="text-[12.5px] text-[var(--warn)]">Не у всех позиций внесена цена закупки.</span>}
+        <SaveHint dirty={dirty} incomplete={incomplete} />
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -178,6 +181,21 @@ function MoneyBody({ data, updatedAt }: { data: BatchMoney; updatedAt: number })
           onClose={() => setExpense(null)}
         />
       )}
+    </div>
+  );
+}
+
+function SaveHint({ dirty, incomplete }: { dirty: boolean; incomplete: boolean }) {
+  if (dirty) return <span className="text-[12.5px] text-[var(--text-muted)]">«Обошлась 1 шт» и прибыль пересчитаются после сохранения.</span>;
+  if (incomplete) return <span className="text-[12.5px] text-[var(--warn)]">Не у всех позиций внесена цена закупки.</span>;
+  return null;
+}
+
+function FinalToggle({ checked, blocked, onChange }: { checked: boolean; blocked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Toggle checked={checked} disabled={blocked} onChange={onChange} label="Все расходы внесены — цифры окончательные" />
+      {blocked && <span className="text-[12px] text-[var(--warn)]">Сначала закройте предупреждения выше — пока они есть, расходы закрыть нельзя.</span>}
     </div>
   );
 }

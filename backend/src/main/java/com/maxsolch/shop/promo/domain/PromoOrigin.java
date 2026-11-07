@@ -5,6 +5,7 @@ package com.maxsolch.shop.promo.domain;
  * «Скидка» picker. Derived from existing columns, no own column:
  * <ul>
  *   <li>{@link #REVIEW} — {@code source = REVIEW_BONUS}: issued automatically for a review (V49);</li>
+ *   <li>{@link #CASE} — {@code source = GIFT_CASE}: a prize of the gift case (a discount prize or a swapped product);</li>
  *   <li>{@link #PERSONAL} — any other code with an {@code owner_user_id}: meant for one customer;</li>
  *   <li>{@link #OURS} — no source, no owner: a shared code an admin made on the «Промокоды» page.</li>
  * </ul>
@@ -12,7 +13,7 @@ package com.maxsolch.shop.promo.domain;
  * lives only in {@code orders.promo_code} as a label starting with {@link #MANUAL_DISCOUNT_LABEL}.
  */
 public enum PromoOrigin {
-    OURS, PERSONAL, REVIEW;
+    OURS, PERSONAL, REVIEW, CASE;
 
     /** Prefix of {@code orders.promo_code} written by an admin's manual amount/percent discount. */
     public static final String MANUAL_DISCOUNT_LABEL = "Ручная скидка";
@@ -20,6 +21,9 @@ public enum PromoOrigin {
     public static PromoOrigin of(String source, Long ownerUserId) {
         if (PromoCode.SOURCE_REVIEW_BONUS.equals(source)) {
             return REVIEW;
+        }
+        if (PromoCode.SOURCE_GIFT_CASE.equals(source)) {
+            return CASE;
         }
         if (ownerUserId != null || source != null) {
             // An unknown future source is a generated code too — never mix it into «Наши».

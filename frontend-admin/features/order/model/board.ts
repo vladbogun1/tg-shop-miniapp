@@ -93,16 +93,18 @@ export function moveCard(prev: AdminBoard, id: string, to: OrderStatus): AdminBo
   return next;
 }
 
-/** «Сегодня» ведёт на /?status=NEW или /?payment=paid. */
+/**
+ * «Сегодня» ведёт на /?status=NEW или /?payment=paid. «Оплаченные новые» живут только в «Новом»,
+ * поэтому ?payment=paid без статуса открывает «Новый» (на телефоне иначе фильтр был бы не виден).
+ */
 export function parseBoardLink(search: string): { tab?: BoardKey; paidNewOnly: boolean } {
   const params = new URLSearchParams(search);
   const status = params.get("status") as BoardKey | null;
   // "claimed" = an old bookmark from the manual-transfer days; the closest thing now is the same.
   const payment = params.get("payment");
-  return {
-    tab: status && BOARD_ORDER.includes(status) ? status : undefined,
-    paidNewOnly: payment === "paid" || payment === "claimed",
-  };
+  const paidNewOnly = payment === "paid" || payment === "claimed";
+  const tab = status && BOARD_ORDER.includes(status) ? status : undefined;
+  return { tab: tab ?? (paidNewOnly ? "NEW" : undefined), paidNewOnly };
 }
 
 /** Итоги колонки «Едет назад»: единицы и сумма в пути. */

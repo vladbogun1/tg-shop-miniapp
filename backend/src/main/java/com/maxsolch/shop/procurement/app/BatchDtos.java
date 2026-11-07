@@ -53,13 +53,15 @@ public final class BatchDtos {
                            @Nullable String publicNote, @Schema(allowableValues = {"ORDERED", "IN_TRANSIT", "CUSTOMS", "ARRIVED", "CANCELLED"}) String status, @Schema(allowableValues = {"DATE", "RANGE", "APPROX", "HIDDEN"}) String etaMode, @Nullable LocalDate etaFrom, @Nullable LocalDate etaTo,
                            EtaDto eta, int holdHours, @Schema(allowableValues = {"QUEUE_HOLD", "ALL_AT_ONCE"}) String distribution, boolean preorderOpen, @Nullable String currency,
                            @Nullable BigDecimal fxRate, boolean moneyVisible, List<ItemDto> items, @Nullable String createdBy,
-                           Instant createdAt, @Nullable Instant inTransitAt, @Nullable Instant arrivedAt, @Nullable Instant cancelledAt) {
+                           Instant createdAt, @Nullable Instant inTransitAt, @Nullable Instant arrivedAt, @Nullable Instant cancelledAt,
+                           @Nullable String cancelReason) {
     }
 
     public record StatusRequest(String status) {
     }
 
-    public record CancelRequest(Boolean closeQueue, String note) {
+    /** {@code reason} — optional, up to 500 chars; shown in the batch and the audit log. */
+    public record CancelRequest(Boolean closeQueue, String reason) {
     }
 
     /** {@code priceMinor} — the new selling price, null = keep. */

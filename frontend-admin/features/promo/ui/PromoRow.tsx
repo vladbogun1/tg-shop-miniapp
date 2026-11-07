@@ -1,167 +1,157 @@
 "use client";
 
-import { Button } from "@shop/ui/admin-button";
-import { nowMs } from "@shop/core/time";
-import { motion } from "framer-motion";
-import { ChevronDown, Pencil, Percent, Ticket, Trash2, Wallet } from "lucide-react";
-import { useState } from "react";
-import { Badge, StatusBadge } from "@/components/ui/Badge";
-import type { OrderStatus } from "@shop/core/types";
-import { riseItem } from "@/lib/motion";
+import { nowMs, formatDateTime } from "@shop/core/time";
+import { useConfirm } from "@shop/ui/confirm";
+import { toast } from "@shop/ui/toast";
+import { Copy, ListOrdered, Pencil, Percent, Trash2, Wallet } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
+import { copyText } from "@/components/ui/CopyButton";
+import { Toggle } from "@/components/ui/Toggle";
+import { cn } from "@/lib/cn";
 import { money } from "@/lib/money";
-import { formatDateTime } from "@shop/core/time";
-import { shortOrderId as shortId } from "@shop/core/format";
-import { promoOrigin, usesOf } from "../model/promo";
-import type { PromoCode } from "../model/types";
-import { usePromoOrders } from "../queries";
+import { mainStatus, promoOrigin, ratioPercent, usesOf, type MainStatus } from "../model/promo";
+import type { PromoCode, PromoOrigin } from "../model/types";
+import { useTogglePromo } from "../queries";
+import { RowMenu, type MenuItem } from "./RowMenu";
 
 interface Props {
   p: PromoCode;
   onEdit: () => void;
   onDelete: () => void;
-  onOpenOrder: (id: string) => void;
+  onOrders: () => void;
 }
 
-function Badges({ p, exhausted, heldByReserve }: { p: PromoCode; exhausted: boolean; heldByReserve: boolean }) {
-  const origin = promoOrigin(p);
-  const expired = !!p.expiresAt && new Date(p.expiresAt).getTime() < nowMs();
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="font-mono text-[15px] font-semibold tracking-wide text-[var(--ink)]">{p.code}</span>
-      <Badge tone={p.active ? "ok" : "neutral"} dot>
-        {p.active ? "активен" : "выключен"}
-      </Badge>
-      {exhausted && <Badge tone="warn">лимит исчерпан</Badge>}
-      {heldByReserve && <Badge tone="info">слоты в резерве</Badge>}
-      {origin !== "OURS" && (
-        <Badge tone="accent">
-          {origin === "REVIEW" ? "бонус за отзыв" : "личный"}
-          {p.ownerUserId != null ? ` · tg ${p.ownerUserId}` : ""}
-        </Badge>
-      )}
-      {p.expiresAt && (
-        <Badge tone={expired ? "warn" : "neutral"}>
-          {expired ? "истёк" : "до"} {formatDateTime(p.expiresAt)}
-        </Badge>
-      )}
-    </div>
-  );
-}
+const STATUS_BADGE: Record<MainStatus, { tone: "ok" | "neutral" | "warn" | "info"; label: string }> = {
+  live: { tone: "ok", label: "активен" },
+  off: { tone: "neutral", label: "выключен" },
+  exhausted: { tone: "warn", label: "лимит исчерпан" },
+  expired: { tone: "warn", label: "истёк" },
+  reserve: { tone: "info", label: "слоты в резерве" },
+};
+
+const ORIGIN_LABEL: Record<Exclude<PromoOrigin, "OURS">, string> = {
+  REVIEW: "бонус за отзыв",
+  PERSONAL: "личный",
+  CASE: "приз кейса",
+};
 
 function Discount({ p }: { p: PromoCode }) {
   if (p.discountAmountMinor) {
     return (
-      <span className="inline-flex items-center gap-1">
+      <span className="inline-flex items-center gap-1 font-semibold text-[var(--text)]">
         <Wallet className="h-3.5 w-3.5 text-[var(--text-faint)]" />−{money(p.discountAmountMinor)}
       </span>
     );
   }
   if (p.discountPercent) {
     return (
-      <span className="inline-flex items-center gap-1">
+      <span className="inline-flex flex-wrap items-center gap-x-1 font-semibold text-[var(--text)]">
         <Percent className="h-3.5 w-3.5 text-[var(--text-faint)]" />
         {p.discountPercent}% скидка
-        {p.maxDiscountMinor ? `, не больше ${money(p.maxDiscountMinor)}` : ""}
+        {p.maxDiscountMinor ? (
+          <span className="font-normal text-[var(--text-muted)]">, не больше {money(p.maxDiscountMinor)}</span>
+        ) : null}
       </span>
     );
   }
   return null;
 }
 
-function OrdersList({ id, onOpenOrder }: { id: string; onOpenOrder: (id: string) => void }) {
-  const ordersQ = usePromoOrders(id, true);
-  const rows = ordersQ.data ?? [];
-  if (ordersQ.isLoading) return <span className="text-[12px] text-[var(--text-faint)]">Загружаем…</span>;
-  if (ordersQ.isError) return <span className="text-[12px] text-[var(--danger-ink)]">Не удалось загрузить заказы</span>;
-  if (rows.length === 0) {
-    return (
-      <span className="text-[12px] text-[var(--text-faint)]">
-        Заказов с этим кодом нет (возможно, их удалили или код переименовали).
-      </span>
-    );
-  }
+/** «Использовано 3 / 10» с мини-полосой; резерв — в той же подписи. */
+function Usage({ p }: { p: PromoCode }) {
+  const used = usesOf(p);
+  const reserved = p.reservedCount ?? 0;
+  const max = p.maxUses ?? 0;
   return (
-    <>
-      {rows.map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          onClick={() => onOpenOrder(o.id)}
-          className="card-2 flex flex-wrap items-center gap-2 rounded-[var(--r-sm)] px-3 py-2 text-left text-[12.5px] hover:bg-[var(--surface-hover)]"
-        >
-          <span className="font-mono font-semibold text-[var(--text)]">{shortId(o.id)}</span>
-          <StatusBadge status={o.status as OrderStatus} />
-          <span className="min-w-0 flex-1 truncate text-[var(--text-muted)]">{o.customerName ?? "—"}</span>
-          <span className="tabular font-semibold text-[var(--text)]">{money(o.totalMinor)}</span>
-          <span className="text-[var(--ok)]">−{money(o.discountMinor)}</span>
-          <span className="text-[var(--text-faint)]">{formatDateTime(o.createdAt)}</span>
-        </button>
-      ))}
-    </>
+    <div className="min-w-0 text-[12.5px] text-[var(--text-faint)]">
+      {max ? `Использовано ${used} / ${max}` : `Использовано ${used} · без лимита`}
+      {reserved > 0 ? ` · резерв ${reserved}` : ""}
+      {max > 0 && (
+        <div className="mt-1 h-1 w-full max-w-[140px] overflow-hidden rounded-full bg-[var(--surface-3)]" aria-hidden>
+          <div
+            className={cn("h-full rounded-full", used >= max ? "bg-[var(--warn)]" : "bg-[var(--accent)]")}
+            style={{ width: `${ratioPercent(used, max)}%` }}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
-export function PromoRow({ p, onEdit, onDelete, onOpenOrder }: Props) {
-  const [showOrders, setShowOrders] = useState(false);
-  const limited = !!p.maxUses;
+export function PromoRow({ p, onEdit, onDelete, onOrders }: Props) {
+  const confirm = useConfirm();
+  const toggleM = useTogglePromo();
+  const status = STATUS_BADGE[mainStatus(p, nowMs())];
+  const origin = promoOrigin(p);
   const used = usesOf(p);
   const reserved = p.reservedCount ?? 0;
-  const exhausted = limited && used >= (p.maxUses ?? 0);
-  const heldByReserve = limited && !exhausted && used + reserved >= (p.maxUses ?? 0);
+
+  async function toggle(active: boolean) {
+    if (!active && reserved > 0) {
+      const ok = await confirm({
+        title: "Выключить код?",
+        message: `Клиентов, которые держат этот код в корзине (резерв на 30 минут): ${reserved}. При оформлении у них код перестанет работать.`,
+        confirmLabel: "Выключить",
+      });
+      if (!ok) return;
+    }
+    toggleM.mutate({ p, active });
+  }
+
+  const items: MenuItem[] = [
+    { key: "edit", label: "Редактировать", icon: <Pencil className="h-4 w-4" />, onSelect: onEdit },
+    ...(used > 0 ? [{ key: "orders", label: "Заказы с кодом", icon: <ListOrdered className="h-4 w-4" />, onSelect: onOrders }] : []),
+    {
+      key: "copy",
+      label: "Копировать код",
+      icon: <Copy className="h-4 w-4" />,
+      onSelect: () => void copyText(p.code).then((ok) => (ok ? toast.success("Код скопирован") : toast.error("Не удалось скопировать"))),
+    },
+    {
+      key: "delete",
+      label: "Удалить",
+      icon: <Trash2 className="h-4 w-4" />,
+      danger: true,
+      disabled: used > 0,
+      hint: used > 0 ? `Код уже использован ${used} раз — можно только выключить` : undefined,
+      onSelect: onDelete,
+    },
+  ];
 
   return (
-    <motion.div variants={riseItem} className="card card-hover flex flex-col gap-3 px-4 py-3.5">
-      <div className="flex items-center gap-4">
-        <div className="accent-tint grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-md)]">
-          <Ticket className="h-5 w-5" />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <Badges p={p} exhausted={exhausted} heldByReserve={heldByReserve} />
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-[var(--text-muted)]">
-            <Discount p={p} />
-            <span className="text-[var(--text-faint)]">
-              {limited ? `Использовано ${used} / ${p.maxUses}` : `Использовано ${used} · без лимита`}
-              {reserved > 0 ? ` · резерв ${reserved}` : ""}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-1.5">
-          <Button variant="ghost" size="icon" aria-label="Редактировать" onClick={onEdit}>
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Удалить"
-            className="hover:text-[var(--danger-ink)]"
-            disabled={used > 0}
-            title={used > 0 ? "Промокод уже использовали — его можно только выключить" : undefined}
-            onClick={onDelete}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
+    <div
+      data-testid="promo-row"
+      className={cn(
+        "flex min-h-[56px] flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 pointer-coarse:min-h-[64px] sm:px-4",
+        "lg:grid lg:grid-cols-[minmax(170px,1.3fr)_minmax(180px,1.2fr)_minmax(150px,1fr)_auto] lg:gap-x-4",
+        !p.active && "opacity-80"
+      )}
+    >
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 lg:flex-none">
+        <span className="font-mono text-[15px] font-semibold tracking-wide text-[var(--ink)]">{p.code}</span>
+        <Badge tone={status.tone} dot>
+          {status.label}
+        </Badge>
+        {origin !== "OURS" && (
+          <Badge tone="accent">
+            {ORIGIN_LABEL[origin]}
+            {p.ownerUserId != null ? ` · tg ${p.ownerUserId}` : ""}
+          </Badge>
+        )}
+        {p.expiresAt && <span className="text-[12px] text-[var(--text-faint)]">до {formatDateTime(p.expiresAt)}</span>}
       </div>
 
-      {used > 0 && (
-        <div>
-          <button
-            type="button"
-            onClick={() => setShowOrders((v) => !v)}
-            className="hit inline-flex items-center gap-1 font-display text-[11.5px] font-bold uppercase tracking-[0.06em] text-[var(--accent-hi)] hover:underline"
-          >
-            Заказы с кодом
-            <ChevronDown className={showOrders ? "h-3.5 w-3.5 rotate-180" : "h-3.5 w-3.5"} />
-          </button>
-          {showOrders && (
-            <div className="mt-2 flex flex-col gap-1.5">
-              <OrdersList id={p.id} onOpenOrder={onOpenOrder} />
-            </div>
-          )}
-        </div>
-      )}
-    </motion.div>
+      <div className="order-3 w-full text-[12.5px] text-[var(--text-muted)] lg:order-none lg:w-auto">
+        <Discount p={p} />
+      </div>
+      <div className="order-4 w-full lg:order-none lg:w-auto">
+        <Usage p={p} />
+      </div>
+
+      <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0">
+        <Toggle checked={p.active} disabled={toggleM.isPending} onChange={(on) => void toggle(on)} />
+        <RowMenu title={p.code} items={items} />
+      </div>
+    </div>
   );
 }

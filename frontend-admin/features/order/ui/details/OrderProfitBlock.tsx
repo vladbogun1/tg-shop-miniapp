@@ -10,6 +10,7 @@ import { money } from "@/lib/money";
 import { cn } from "@/lib/cn";
 import { pct } from "@/features/analytics";
 import { Badge } from "@/components/ui/Badge";
+import { Fold } from "@/features/returns";
 
 export function OrderProfitBlock({ orderId }: { orderId: string }) {
   const finance = useFinanceAccess();
@@ -20,18 +21,30 @@ export function OrderProfitBlock({ orderId }: { orderId: string }) {
   const tone = p.profitMinor < 0 ? "text-[#F87171]" : "text-[var(--ok)]";
 
   return (
-    <section className="card p-4">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h3 className="section-title !text-[12px] !text-[var(--text-muted)]">Прибыль</h3>
-        {p.preliminary && <Badge tone="warn">предварительно</Badge>}
-      </div>
+    <Fold
+      title="Прибыль"
+      summary={
+        <>
+          {money(p.profitMinor)} · {pct(p.marginPct)}
+          {(p.preliminary || !p.complete) && <span className="text-[var(--warn)]"> · {p.complete ? "предв." : "нет себестоимости"}</span>}
+        </>
+      }
+    >
+      {p.preliminary && (
+        <div className="mb-2">
+          <Badge tone="warn">предварительно</Badge>
+        </div>
+      )}
 
       <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-[13.5px]">
         <dt className="text-[var(--text-muted)]">Выручка</dt>
         <dd className="tabular text-right">{money(p.revenueMinor)}</dd>
         <dt className="text-[var(--text-muted)]">Себестоимость</dt>
         <dd className="tabular text-right">− {money(p.costMinor)}</dd>
-        <dt className="text-[var(--text-muted)]">Комиссия эквайринга{p.feeEstimated && <span className="text-[var(--text-faint)]"> (оценка 1,3 %)</span>}</dt>
+        <dt className="text-[var(--text-muted)]">
+          Комиссия эквайринга
+          {p.feeEstimated && <span className="text-[var(--text-faint)]"> (оценка 1,3 %)</span>}
+        </dt>
         <dd className="tabular text-right">− {money(p.feeMinor)}</dd>
         <dt className="font-semibold text-[var(--text)]">Прибыль</dt>
         <dd className={cn("tabular text-right font-display text-[16px] font-bold", tone)}>
@@ -60,6 +73,6 @@ export function OrderProfitBlock({ orderId }: { orderId: string }) {
           ))}
         </div>
       )}
-    </section>
+    </Fold>
   );
 }

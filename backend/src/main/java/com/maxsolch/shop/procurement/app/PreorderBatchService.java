@@ -1,6 +1,7 @@
 package com.maxsolch.shop.procurement.app;
 
 import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.procurement.domain.BatchLimits;
 import com.maxsolch.shop.procurement.domain.ProcurementError;
 import com.maxsolch.shop.procurement.infra.SupplierRepository;
 import com.maxsolch.shop.procurement.domain.PreorderBatch;
@@ -278,10 +279,7 @@ public class PreorderBatchService {
         Instant now = clock.instant();
         b.moveTo(PreorderBatch.Status.CANCELLED);
         b.setCancelledAt(now);
-        if (req != null && req.note() != null && !req.note().isBlank()) {
-            String old = b.getPrivateNote() == null ? "" : b.getPrivateNote() + "\n";
-            b.setPrivateNote(old + "Отменена: " + req.note().trim());
-        }
+        b.setCancelReason(BatchLimits.cancelReason(req == null ? null : req.reason()));
         boolean close = (req != null && Boolean.TRUE.equals(req.closeQueue()))
                 || !settings.getBool(ProcurementSettings.PREORDER_ANY_PRODUCT);
         queue.onBatchCancelled(items.findByBatchIdOrderByIdAsc(id).stream()
@@ -310,7 +308,8 @@ public class PreorderBatchService {
                 b.getPrivateNote(), b.getPublicNote(), b.getStatus().name(), b.getEtaMode(), b.getEtaFrom(), b.getEtaTo(),
                 b.getStatus().open() ? BatchCatalog.eta(b, shopZone.today(clock)) : null, b.getHoldHours(), b.getDistribution(),
                 b.isPreorderOpen(), b.getCurrency(), money ? b.getFxRate() : null, money, itemDtos,
-                b.getCreatedBy(), b.getCreatedAt(), b.getInTransitAt(), b.getArrivedAt(), b.getCancelledAt());
+                b.getCreatedBy(), b.getCreatedAt(), b.getInTransitAt(), b.getArrivedAt(), b.getCancelledAt(),
+                b.getCancelReason());
     }
 
     private Map<Long, String> supplierNames() {

@@ -67,12 +67,15 @@ function BatchView({ batch }: { batch: Batch }) {
       {finance && arrived && <BatchResult batchId={batch.id} />}
       <BatchJumps items={jumps} />
 
-      <BatchSection id="items" title="Что в поставке">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-x-6">
+
+      <BatchSection id="items" title="Что в поставке" className="lg:col-start-1">
         <BatchItems batch={batch} open={isOpenStatus(batch.status)} />
       </BatchSection>
       <BatchSection
         id="queue"
         title="Кто ждёт"
+        className="lg:sticky lg:top-4 lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto"
         hint="Покупатели, которые нажали «Сообщить о поступлении» или заказали заранее. Когда поставка приедет, бот им напишет."
       >
         <BatchQueue batch={batch} />
@@ -81,16 +84,19 @@ function BatchView({ batch }: { batch: Batch }) {
         <BatchSection
           id="money"
           title="Закупка и расходы"
+          className="lg:col-start-1"
           hint="Почём купили и сколько ушло на доставку — отсюда считается, во сколько обошлась 1 шт."
         >
           <BatchMoneyTab batchId={batch.id} />
         </BatchSection>
       )}
       {finance && arrived && (
-        <BatchSection id="sales" title="Продажи по товарам">
+        <BatchSection id="sales" title="Продажи по товарам" className="lg:col-start-1">
           <BatchSalesTab batchId={batch.id} />
         </BatchSection>
       )}
+
+      </div>
 
       <BatchFormModal open={editing} onClose={() => setEditing(false)} batch={batch} ProductPicker={ProductPickModal} />
       {isOpenStatus(batch.status) && <ArriveModal open={arriving} onClose={() => setArriving(false)} batch={batch} />}

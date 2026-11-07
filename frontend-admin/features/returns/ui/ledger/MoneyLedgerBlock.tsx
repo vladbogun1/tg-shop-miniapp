@@ -9,6 +9,7 @@ import { useState } from "react";
 import { money } from "@/lib/money";
 import { ledgerTotals } from "../../model/ledger";
 import type { ReturnOrder } from "../../model/types";
+import { Fold } from "../Fold";
 import { RestoreWriteoffModal } from "../RestoreWriteoffModal";
 import { LedgerRows } from "./LedgerRows";
 import { WriteoffList } from "./WriteoffList";
@@ -28,11 +29,7 @@ export function MoneyLedgerBlock({ order, onChanged }: { order: ReturnOrder; onC
   const { paid, refunded, retained } = ledgerTotals(rows, order);
 
   return (
-    <section className="card p-4">
-      <div className="mb-3 flex min-h-7 items-center">
-        <h3 className="section-title !text-[12px] !text-[var(--text-muted)]">Деньги по заказу</h3>
-      </div>
-
+    <Fold title="Журнал денег" summary={rows.length > 0 ? `${rows.length} ${rows.length === 1 ? "запись" : "записей"}` : "списано как брак"}>
       {rows.length > 0 && <LedgerRows rows={rows} cur={cur} />}
 
       {rows.length > 0 && (
@@ -54,6 +51,6 @@ export function MoneyLedgerBlock({ order, onChanged }: { order: ReturnOrder; onC
 
       {writeoffs.length > 0 && <WriteoffList writeoffs={writeoffs} cur={cur} onRestore={setRestoring} />}
       <RestoreWriteoffModal writeoff={restoring} onClose={() => setRestoring(null)} onDone={() => onChanged?.()} />
-    </section>
+    </Fold>
   );
 }

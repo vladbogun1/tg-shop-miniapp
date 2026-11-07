@@ -12,4 +12,6 @@ export const supportKeys = {
   threads: (filter: SupportFilter, q: string) => [...ROOT, "threads", filter, q] as const,
   thread: (id: string | null) => [...ROOT, "thread", id] as const,
   messages: (id: string) => [...ROOT, "messages", id] as const,
+  /** Под общим корнем шаблонов: правка списка в «Управлять шаблонами» обновляет и этот кэш. */
+  replyTemplates: (id: string) => ["reply-templates", "thread", id] as const,
 };

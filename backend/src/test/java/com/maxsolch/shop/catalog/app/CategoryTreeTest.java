@@ -101,6 +101,23 @@ class CategoryTreeTest {
     }
 
     @Test
+    void reorderRefusesTheSameCategoryTwice() {
+        assertThatThrownBy(() -> service.reorder(List.of(new ReorderItem(id(mice), null, 10), new ReorderItem(id(mice), null, 20))))
+                .isInstanceOf(DomainException.BadRequest.class);
+        assertThat(mice.getSortOrder()).isZero();
+    }
+
+    @Test
+    void reorderMovesASubcategoryToTheTopAndSiblingsKeepTheGivenOrder() {
+        Category wired = db.category("klv-provodnye", "Проводные", keyboards);
+        service.reorder(List.of(new ReorderItem(id(wired), id(keyboards), 10), new ReorderItem(id(magnetic), id(keyboards), 20),
+                new ReorderItem(id(mice), null, 30), new ReorderItem(id(keyboards), null, 40)));
+        assertThat(wired.getSortOrder()).isLessThan(magnetic.getSortOrder());
+        assertThat(mice.getSortOrder()).isLessThan(keyboards.getSortOrder());
+        assertThat(magnetic.getParentId()).isEqualTo(keyboards.getId());
+    }
+
+    @Test
     void keysMustBeUniqueAlongAPath() {
         CatalogSnapshot ok = CatalogFixtures.snapshot();
         CategoryRules.checkKeys(ok);

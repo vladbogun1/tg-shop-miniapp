@@ -17,5 +17,7 @@ public record UserCardDto(
         @Nullable Instant createdAt,
         @Nullable Instant lastSeenAt,
         /** uk | ru | en chosen in the shop (users.locale, V17); null = never chose. */
-        @Nullable String locale) {
+        @Nullable String locale,
+        /** When the customer's latest order (any status) was placed; null = never ordered. */
+        @Nullable Instant lastOrderAt) {
 }

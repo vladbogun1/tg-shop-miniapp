@@ -84,11 +84,11 @@ test("создать, изменить, найти по алиасу, объед
   // --- merge into the seeded brand ---
   await row.getByRole("button", { name: "Объединить с…" }).click();
   dlg = dialog(page, "Объединить «E2E Лоджитек»");
-  const merge = dlg.getByRole("button", { name: "Объединить", exact: true });
+  const merge = dlg.getByRole("button", { name: /^Объединить/ }).last();
   await expect(merge).toBeDisabled();
   await dlg.getByRole("combobox").fill("E2E Logi");
   await page.getByRole("option", { name: new RegExp(SEEDED_BRAND.name) }).click();
-  await expect(dlg).toContainText(`«${SEEDED_BRAND.name}»`);
+  await expect(dlg).toContainText(SEEDED_BRAND.name);
   await merge.click();
   await expect(toast(page, `«E2E Лоджитек» объединён с «${SEEDED_BRAND.name}»`)).toBeVisible();
   await expect(row).toHaveCount(0);

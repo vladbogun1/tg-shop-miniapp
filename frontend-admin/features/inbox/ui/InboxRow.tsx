@@ -1,36 +1,25 @@
 "use client";
 
 /**
- * One row of «Внимание»: what, which order/product, how long it waits, the main action and
- * «Отложить» (+ «Разобрано» for informational rows).
+ * One row of «Внимание» on a laptop / tablet: two lines of text, the main action and «⋯»
+ * («Отложить» presets + «Разобрано» for informational rows).
  */
-import { motion } from "framer-motion";
 import { cn } from "@/lib/cn";
-import { DesktopActions, PhoneActions, type RowActionsProps } from "./RowActions";
+import { DesktopActions, type RowActionsProps } from "./RowActions";
 import { RowInfo } from "./RowInfo";
 
-export function InboxRow({ isDesktop, ...actions }: RowActionsProps & { isDesktop: boolean }) {
-  const { item, onPrimary } = actions;
+export function InboxRow(props: RowActionsProps) {
+  const { item, onPrimary } = props;
   return (
-    <motion.li
-      layout
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: 40, transition: { duration: 0.18 } }}
-      transition={{ type: "spring", stiffness: 420, damping: 36 }}
-      className="list-none"
+    <li
+      className={cn(
+        "card card-hover flex min-h-[56px] list-none items-center gap-3 px-3 py-2.5",
+        // Overdue: a 2px red stripe inside the card + a reddish hairline.
+        item.overdue && "border-[color-mix(in_srgb,var(--danger)_35%,transparent)] shadow-[inset_2px_0_0_var(--danger),var(--shadow-1)]"
+      )}
     >
-      <div
-        className={cn(
-          "card card-hover flex flex-col gap-3 p-3 lg:flex-row lg:items-center lg:gap-4 lg:p-3.5",
-          // Overdue: a 2px red stripe inside the card + a reddish hairline.
-          item.overdue &&
-            "border-[color-mix(in_srgb,var(--danger)_35%,transparent)] pl-4 shadow-[inset_2px_0_0_var(--danger),var(--shadow-1)] lg:pl-5"
-        )}
-      >
-        <RowInfo item={item} onPrimary={onPrimary} />
-        {isDesktop ? <DesktopActions {...actions} /> : <PhoneActions {...actions} />}
-      </div>
-    </motion.li>
+      <RowInfo item={item} onPrimary={onPrimary} />
+      <DesktopActions {...props} />
+    </li>
   );
 }

@@ -67,7 +67,7 @@ public class UserGeo {
             return new UserGeoDtos.PointUser(
                     new UserCardDto(r.telegramUserId(), r.username(), r.firstName(), r.lastName(), r.languageCode(),
                             r.premium(), r.botBlocked(), t.ordersCount(), t.spentMinor(), r.createdAt(), r.lastSeenAt(),
-                            r.locale()),
+                            r.locale(), t.lastOrderAt()),
                     r.ip(), r.channel(), r.city(), r.country(), r.seenAt());
         }).toList();
         List<UserGeoDtos.PointAnon> anon = map.anonymousAt(lat, lon, d).stream()

@@ -1,7 +1,7 @@
 import type { Schemas } from "@shop/core/api/schemas";
 
 /** Токен периода метрик (бэкенд режет периоды по календарным дням Киева). */
-export type PeriodToken = "today" | "7d" | "month" | "prevmonth" | "90d" | "year" | "custom";
+export type PeriodToken = "today" | "yesterday" | "7d" | "30d" | "month" | "prevmonth" | "quarter" | "90d" | "year" | "custom";
 export type Channel = "all" | "miniapp" | "web";
 
 export interface PeriodParams {

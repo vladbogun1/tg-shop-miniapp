@@ -58,7 +58,10 @@ export function PhotoField({
           {/* eslint-disable-next-line @next/next/no-img-element -- local object URL, not a site image */}
           <img src={value.previewUrl} alt="" className="h-16 w-16 rounded-[var(--r-md)] object-cover" />
           <span className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--text-muted)]">{value.name}</span>
-          <Button variant="surface" size="sm" icon={<X className="h-4 w-4" />} onClick={() => onChange(null)}>
+          <Button variant="surface" size="sm" loading={busy} icon={<ImagePlus className="h-4 w-4" />} onClick={() => input.current?.click()}>
+            Заменить
+          </Button>
+          <Button variant="ghost" size="sm" icon={<X className="h-4 w-4" />} onClick={() => onChange(null)}>
             Убрать
           </Button>
         </div>
@@ -70,7 +73,7 @@ export function PhotoField({
         </div>
       )}
       <p className="text-[11px] text-[var(--text-faint)]">
-        JPG, PNG или WebP до 5 МБ. С картинкой текст до {CAPTION_LIMIT} символов уходит подписью под ней; длиннее —
+        Форматы JPG, PNG, WebP, размер до 5 МБ. С картинкой текст до {CAPTION_LIMIT} символов уходит подписью под ней; длиннее —
         картинкой, а следом отдельным сообщением с текстом и кнопкой.
       </p>
     </div>

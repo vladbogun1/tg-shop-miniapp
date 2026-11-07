@@ -49,3 +49,8 @@ export function typeOptions(facets: ActivityFacets | undefined, source: string):
   }
   return out.sort((a, b) => a.label.localeCompare(b.label, "ru"));
 }
+
+/** Сколько полей фильтра задано (для кнопки «Фильтры (N)»); покупатель из «Все события покупателя» тоже считается. */
+export function activeFilterCount(filter: ActivityFilter): number {
+  return Object.values(filter).filter((v) => v !== undefined).length;
+}

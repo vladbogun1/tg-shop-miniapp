@@ -46,6 +46,12 @@ public class ProductBriefStore {
         return out;
     }
 
+    /** Ids of the products whose title matches the LIKE pattern (backslash escape), at most {@code limit}. */
+    public List<byte[]> idsByTitleLike(String like, int limit) {
+        return jdbc.query("select id from products where lower(title) like ? limit ?",
+                (rs, i) -> rs.getBytes(1), like, limit);
+    }
+
     /** Writes the rating aggregate of a product (avg null = no reviews). */
     public void setRating(byte[] productId, int count, BigDecimal avg) {
         jdbc.update("update products set rating_count = ?, rating_avg = ? where id = ?", count, avg, productId);

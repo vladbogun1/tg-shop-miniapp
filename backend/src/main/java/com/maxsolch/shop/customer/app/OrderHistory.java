@@ -12,9 +12,12 @@ import java.util.Set;
  */
 public interface OrderHistory {
 
-    /** Orders of one customer: how many (any status) and how much was spent (everything but REJECTED). */
-    record Totals(long ordersCount, long spentMinor) {
-        public static final Totals NONE = new Totals(0, 0);
+    /**
+     * Orders of one customer: how many (any status), how much was spent (everything but REJECTED) and when the latest
+     * order (any status) was placed.
+     */
+    record Totals(long ordersCount, long spentMinor, java.time.Instant lastOrderAt) {
+        public static final Totals NONE = new Totals(0, 0, null);
     }
 
     /** Totals of the given customers; a customer without orders is absent from the map. */

@@ -2,7 +2,8 @@
 
 import type { UseQueryResult } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { History } from "lucide-react";
+import { ChevronDown, History } from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { LANG_LABEL } from "@/lib/shop-lang";
 import { riseItem } from "@/lib/motion";
@@ -12,11 +13,27 @@ import type { BroadcastHistoryItem } from "../model/types";
 
 function StatusBadge({ status }: { status: BroadcastHistoryItem["status"] }) {
   if (status === "RUNNING") return <Badge tone="info">идёт</Badge>;
+  if (status === "STOPPED") return <Badge tone="warn">остановлена</Badge>;
   if (status === "INTERRUPTED") return <Badge tone="warn">прервана</Badge>;
   return <Badge tone="ok">готово</Badge>;
 }
 
+function FullTexts({ h }: { h: BroadcastHistoryItem }) {
+  const parts: [string, string | null | undefined][] = [["Основной", h.text], ["UK", h.textUk], ["RU", h.textRu], ["EN", h.textEn]];
+  return (
+    <div className="flex flex-col gap-2 border-t border-[var(--line)] pt-2">
+      {parts.filter(([, t]) => t).map(([k, t]) => (
+        <div key={k}>
+          <div className="field-label">{k}</div>
+          <p className="whitespace-pre-wrap break-words text-[13px] text-[var(--text)]">{plainText(t ?? "")}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function HistoryRow({ h, onReuse }: { h: BroadcastHistoryItem; onReuse: () => void }) {
+  const [open, setOpen] = useState(false);
   const versions = [h.textUk && "UA", h.textRu && "RU", h.textEn && "EN"].filter(Boolean);
   return (
     <div className="card-2 flex min-w-0 flex-col gap-1.5 rounded-[var(--r-md)] p-3">
@@ -30,13 +47,23 @@ function HistoryRow({ h, onReuse }: { h: BroadcastHistoryItem; onReuse: () => vo
         </span>
         {h.adminName && <span className="text-[var(--text-faint)]">· {h.adminName}</span>}
       </div>
-      <p className="line-clamp-2 break-words text-[13px] text-[var(--text)]">{plainText(h.text)}</p>
+      {open ? <FullTexts h={h} /> : <p className="line-clamp-2 break-words text-[13px] text-[var(--text)]">{plainText(h.text)}</p>}
       <div className="flex flex-wrap items-center justify-between gap-2 text-[12px]">
         <span className="flex flex-wrap gap-3">
           <span className="text-[var(--ok)]">✓ {h.sent}</span>
           <span className="text-[var(--danger-ink)]">✕ {h.failed}</span>
           <span className="text-[var(--warn)]">⊘ {h.blocked}</span>
           <span className="text-[var(--text-muted)]">из {h.total}</span>
+          {h.status === "STOPPED" && (
+            <span className="text-[var(--warn)]">
+              не отправлено {h.remaining}
+              {h.stoppedByName ? ` · остановил(а): ${h.stoppedByName}` : ""}
+            </span>
+          )}
+          <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)} className="hit inline-flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text)]">
+            {open ? "Свернуть" : "Подробнее"}
+            <ChevronDown className={open ? "h-3.5 w-3.5 rotate-180" : "h-3.5 w-3.5"} />
+          </button>
         </span>
         <button
           type="button"
@@ -81,7 +108,7 @@ function HistoryBody({ q, onReuse }: { q: UseQueryResult<BroadcastHistoryItem[]>
 /** Карточка «Прошлые рассылки». */
 export function HistoryCard({ q, onReuse }: { q: UseQueryResult<BroadcastHistoryItem[]>; onReuse: (h: BroadcastHistoryItem) => void }) {
   return (
-    <motion.div variants={riseItem} className="card mt-4 flex min-w-0 flex-col gap-3 p-5">
+    <motion.div variants={riseItem} className="card flex min-w-0 flex-col gap-3 p-5">
       <div className="section-title flex flex-wrap items-center gap-x-2 gap-y-0.5">
         <History className="h-4 w-4 text-[var(--accent)]" />
         Прошлые рассылки

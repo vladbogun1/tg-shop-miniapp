@@ -22,7 +22,16 @@ import { useSupportChat } from "./use-support-chat";
 
 const messageTime = (m: SupportMessage) => m.createdAt;
 
-export function SupportChat({ threadId, closed }: { threadId: string; closed?: boolean }) {
+export function SupportChat({
+  threadId,
+  closed,
+  onSendAndClose,
+}: {
+  threadId: string;
+  closed?: boolean;
+  /** Есть у открытого вопроса: «Отправить и закрыть» (после ответа закрывает его). */
+  onSendAndClose?: () => void;
+}) {
   const [lightbox, setLightbox] = useState<string | null>(null);
   const chat = useSupportChat(threadId);
   const days = useChatDays(chat.messages, messageTime);
@@ -57,7 +66,7 @@ export function SupportChat({ threadId, closed }: { threadId: string; closed?: b
         <p className="mt-2 text-center text-[12px] text-[var(--text-faint)]">Вопрос закрыт. Ответ откроет его снова.</p>
       )}
 
-      <Composer threadId={threadId} />
+      <Composer threadId={threadId} onSendAndClose={onSendAndClose} />
     </div>
   );
 }

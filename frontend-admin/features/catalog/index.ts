@@ -3,6 +3,7 @@ export { CategoriesScreen } from "./ui/categories/CategoriesScreen";
 export { BrandsScreen } from "./ui/brands/BrandsScreen";
 export { BrandCombobox, type BrandValue } from "./ui/BrandCombobox";
 export { CardStatusBadge, ConditionBadge, ConfidenceDot } from "./ui/CardBits";
+export { BulkBar, FilterChip, RowCheck, StickyToolbar } from "./ui/BulkBar";
 export { CategoryTreeSelect } from "./ui/CategoryTreeSelect";
 export { SpecsForm } from "./ui/SpecsForm";
 

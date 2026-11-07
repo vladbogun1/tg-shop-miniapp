@@ -8,6 +8,8 @@
  */
 import { RefreshCw, Sparkles } from "lucide-react";
 import { Suspense } from "react";
+import { useMediaQuery } from "@shop/ui/use-media";
+import { cn } from "@/lib/cn";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@shop/ui/admin-button";
 import { TAB_LABEL } from "../../model/view";
@@ -21,6 +23,8 @@ import { useCardsScreen, type CardsScreenState } from "./use-cards-screen";
 
 function HeaderActions({ s }: { s: CardsScreenState }) {
   const fetching = s.itemsQ.isFetching || s.schemaQ.isFetching;
+  // Пока что-то отмечено, «Оформить с ИИ (N)» живёт в панели выбора — вторую такую же кнопку не держим.
+  const showWizard = s.selected.size === 0;
   return (
     <>
       <Button
@@ -34,17 +38,36 @@ function HeaderActions({ s }: { s: CardsScreenState }) {
           s.schemaQ.refetch();
         }}
       />
-      <Button
-        variant="accent"
-        chamfer
-        icon={<Sparkles className="h-4 w-4" />}
-        disabled={!s.wizardIds.length || !s.schema}
-        onClick={s.openWizard}
-        title={s.selected.size ? "Оформить отмеченные товары" : `Оформить все товары вкладки «${TAB_LABEL[s.current]}»`}
-      >
-        Оформить с ИИ ({s.wizardIds.length})
-      </Button>
+      {showWizard && (
+        <Button
+          variant="accent"
+          chamfer
+          icon={<Sparkles className="h-4 w-4" />}
+          disabled={!s.wizardIds.length || !s.schema}
+          onClick={s.openWizard}
+          title={`Оформить все товары вкладки «${TAB_LABEL[s.current]}»`}
+        >
+          Оформить с ИИ ({s.wizardIds.length})
+        </Button>
+      )}
     </>
+  );
+}
+
+/** Панель проверки: рядом со списком на ≥ 1280 px (master-detail), поверх него — на планшете и телефоне. */
+function Panel({ s, docked }: { s: CardsScreenState; docked: boolean }) {
+  return (
+    <ReviewPanel
+      docked={docked}
+      item={s.completing ? null : s.openItem}
+      schema={s.schema}
+      position={{ index: s.index + 1, total: s.list.length }}
+      onPrev={s.neighbour(-1)}
+      onNext={s.neighbour(1)}
+      onClose={() => s.setOpenId(null)}
+      onDone={s.afterDone}
+      onReAi={(id) => s.setCompleting(id)}
+    />
   );
 }
 
@@ -52,16 +75,6 @@ function Layers({ s }: { s: CardsScreenState }) {
   const { schema, wizard } = s;
   return (
     <>
-      <ReviewPanel
-        item={s.completing ? null : s.openItem}
-        schema={schema}
-        position={{ index: s.index + 1, total: s.list.length }}
-        onPrev={s.neighbour(-1)}
-        onNext={s.neighbour(1)}
-        onClose={() => s.setOpenId(null)}
-        onDone={s.afterDone}
-        onReAi={(id) => s.setCompleting(id)}
-      />
       {s.completing && <CardCompletionModal productId={s.completing} open reason="manual" onClose={s.closeCompletion} />}
       {wizard && schema && (
         <AiWizardLayer
@@ -89,16 +102,27 @@ export function CardsScreen() {
 
 function CardsScreenBody() {
   const s = useCardsScreen();
+  const docked = useMediaQuery("(min-width: 1280px)", false);
+  const split = docked && !!s.openItem && !s.completing;
   return (
     <div>
       <PageHeader
         title="Карточки"
-        subtitle="Характеристики, бренд, категория и тексты товаров — их заполняет ИИ с поиском в интернете, вы проверяете. Черновик не выкладывается на витрину без явного «Выложить без оформления»."
+        subtitle="ИИ заполняет, вы проверяете. Черновик не уходит на витрину без «Выложить без оформления»."
         actions={<HeaderActions s={s} />}
       />
-      <CardsToolbar s={s} />
-      <CardsBulkBar s={s} />
-      <CardsBody s={s} />
+      <div className={cn(split && "grid grid-cols-[minmax(420px,1fr)_minmax(560px,720px)] items-start gap-4")}>
+        <div className="min-w-0">
+          {/* Одна липкая полоса под шапкой: вкладки, поиск, фильтры и панель выбора. */}
+          <div className={cn("sticky top-[var(--hdr-h,61px)] z-20 mb-3 bg-[var(--bg)] pb-2 pt-1", !split && "-mx-4 px-4 lg:-mx-7 lg:px-7")}>
+            <CardsToolbar s={s} />
+            <CardsBulkBar s={s} />
+          </div>
+          <CardsBody s={s} compact={split} />
+        </div>
+        {docked && <Panel s={s} docked />}
+      </div>
+      {!docked && <Panel s={s} docked={false} />}
       <Layers s={s} />
     </div>
   );

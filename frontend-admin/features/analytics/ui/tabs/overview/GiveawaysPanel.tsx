@@ -4,7 +4,7 @@ import type { Overview } from "../../../model/types";
 import { Panel } from "../../kit";
 import { Row } from "./Row";
 
-export function GiveawaysPanel({ giveaways }: { giveaways: Overview["giveaways"] }) {
+export function GiveawaysPanel({ giveaways, compact }: { giveaways: Overview["giveaways"]; compact?: boolean }) {
   return (
     <Panel title="Отданная выручка" icon={Gift} hint="Сколько денег ушло на скидки и подарки за период">
       <div className="flex flex-col gap-3 text-[13px]">

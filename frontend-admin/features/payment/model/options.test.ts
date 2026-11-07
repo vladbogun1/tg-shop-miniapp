@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { moveRow, newRow, optionsSnapshot, prepayMinor, saveBlocker, toPayload, toRows, type OptionRow } from "./options";
+import { firstProblemKey, moveRow, newRow, optionsSnapshot, prepayMinor, saveBlocker, toPayload, toRows, type OptionRow } from "./options";
 
 const row = (over: Partial<OptionRow>): OptionRow => ({ ...newRow(), title: "Онлайн", ...over });
 
@@ -47,5 +47,15 @@ describe("moveRow / snapshot / toRows", () => {
   it("toRows: выключенный и предоплата", () => {
     const [r] = toRows([{ id: "x", title: "T", description: "", requiresPrepayment: true, prepaymentMinor: 10050, active: false, sortOrder: 0 }]);
     expect(r).toMatchObject({ id: "x", prepaymentMajor: "100.5", active: false, key: "x" });
+  });
+});
+
+describe("firstProblemKey", () => {
+  it("находит строку без названия и строку без суммы предоплаты", () => {
+    const blank = row({ title: "", id: "a" });
+    const noSum = row({ requiresPrepayment: true });
+    expect(firstProblemKey([row({}), blank, noSum])).toBe(blank.key);
+    expect(firstProblemKey([row({}), noSum])).toBe(noSum.key);
+    expect(firstProblemKey([row({}), row({ title: "" })])).toBeNull();
   });
 });

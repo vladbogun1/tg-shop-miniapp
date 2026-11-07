@@ -5,7 +5,7 @@
  *  - roots in menu order, subcategories indented under a guide line; a root without children is
  *    itself a leaf (products lie in it);
  *  - counters: products of the subtree / lying right in the category, «скрыта из меню»;
- *  - ↑↓ reorder within siblings (saved at once), «Переместить в…» (another root or to the top level),
+ *  - ↑↓ and drag by the grip reorder within siblings (saved at once), «Переместить в…» (another root or to the top level),
  *    add a root / a subcategory, delete with the server's guards explained;
  *  - the dialog edits the basics, SEO and the characteristics schema (see CategoryDialog).
  * Deep link "/categories?edit=<id>" opens a category (the audit log links here).
@@ -18,13 +18,16 @@ import { QueryState } from "@/components/ui/QueryState";
 import { Button } from "@shop/ui/admin-button";
 import { normText } from "../../model/search";
 import { buildTree } from "../../model/tree";
+import { filterCounts, filterTreeByChips } from "../../model/tree-filter";
 import { attributeCounts, filterTree, treeStats } from "../../model/tree-view";
 import type { AdminCategory } from "../../model/types";
 import { useCatalogSchemaQuery, useCategoriesQuery, useSpecGroupsQuery } from "../../queries";
 import { CategoryDialog, type CategoryTab } from "../category/CategoryDialog";
 import { GroupsDialog } from "../GroupsDialog";
 import { CategoriesToolbar } from "./CategoriesToolbar";
+import { CategoriesBulkBar } from "./CategoriesBulkBar";
 import { CategoryTree } from "./CategoryTree";
+import { useTreeControls } from "./use-tree-controls";
 import { MoveCategoryModal } from "./MoveCategoryModal";
 import { useCategoryActions } from "./use-category-actions";
 
@@ -56,13 +59,21 @@ export function CategoriesScreen() {
   const [search, setSearch] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [dialog, setDialog] = useState<DialogState | null>(null);
-  const [moving, setMoving] = useState<AdminCategory | null>(null);
+  const [moving, setMoving] = useState<AdminCategory[] | null>(null);
+  const ctl = useTreeControls();
+  const { filters, selected } = ctl;
   const [groupsOpen, setGroupsOpen] = useState(false);
 
   const tree = useMemo(() => buildTree(categories), [categories]);
   const nq = normText(search);
-  const visibleTree = useMemo(() => filterTree(tree, nq), [tree, nq]);
   const attrCount = useMemo(() => attributeCounts(schemaQ.data?.attributes ?? []), [schemaQ.data]);
+  const visibleTree = useMemo(() => filterTreeByChips(filterTree(tree, nq), filters, attrCount), [tree, nq, filters, attrCount]);
+  const counts = useMemo(() => filterCounts(categories, attrCount), [categories, attrCount]);
+  const foldable = useMemo(() => tree.filter((n) => n.children.length > 0).map((n) => n.cat.id), [tree]);
+  const allCollapsed = foldable.length > 0 && foldable.every((id) => collapsed.has(id));
+  const chosen = useMemo(() => categories.filter((c) => selected.has(c.id)), [categories, selected]);
+  // Порядок меняется только в полном списке: при поиске или чипах строки не все.
+  const narrowed = !!nq || filters.size > 0;
   const stats = useMemo(() => treeStats(tree, categories), [tree, categories]);
   useEditDeepLink(q.data, setDialog);
 
@@ -106,24 +117,37 @@ export function CategoriesScreen() {
           />
         ) : (
           <>
-            <CategoriesToolbar search={search} onSearch={setSearch} stats={stats} />
+            <CategoriesToolbar
+              search={search}
+              onSearch={setSearch}
+              stats={stats}
+              filters={filters}
+              counts={counts}
+              onFilter={ctl.toggleFilter}
+              allCollapsed={allCollapsed}
+              onCollapseAll={() => setCollapsed(allCollapsed ? new Set() : new Set(foldable))}
+              selectMode={ctl.selectMode}
+              onSelectMode={ctl.toggleSelectMode}
+            />
             {visibleTree.length === 0 ? (
-              <EmptyState icon={Search} title="Ничего не найдено" description="Проверьте написание или очистите поиск." />
+              <EmptyState icon={Search} title="Ничего не найдено" description="Проверьте написание, очистите поиск или снимите чипы-фильтры." />
             ) : (
               <CategoryTree
                 tree={tree}
                 visibleTree={visibleTree}
                 categories={categories}
-                searching={!!nq}
+                searching={narrowed}
+                selection={ctl.selection}
                 collapsed={collapsed}
                 onToggle={toggle}
                 attrCount={attrCount}
                 busyId={actions.busyId}
                 actions={{
                   shift: actions.shift,
+                  reorder: actions.reorderSiblings,
                   edit: (c, tab) => setDialog({ category: c, parentId: c.parentId, tab }),
                   addChild: openNew,
-                  startMove: setMoving,
+                  startMove: (c) => setMoving([c]),
                   remove: actions.remove,
                 }}
               />
@@ -145,13 +169,16 @@ export function CategoriesScreen() {
         onClose={() => setDialog(null)}
       />
 
+      <CategoriesBulkBar chosen={chosen} onClear={ctl.clearSelected} onMove={() => setMoving(chosen)} />
+
       <MoveCategoryModal
         moving={moving}
         categories={categories}
         onClose={() => setMoving(null)}
         onMove={(m, parentId) => {
           setMoving(null);
-          actions.reparent(m, parentId);
+          ctl.clearSelected();
+          actions.reparentMany(m, parentId);
         }}
       />
 

@@ -1,6 +1,8 @@
 package com.maxsolch.shop.review.api;
 
 import com.maxsolch.shop.review.app.AdminReviews;
+import com.maxsolch.shop.review.app.ReviewListing;
+import java.util.List;
 import com.maxsolch.shop.review.app.ReviewDtos.AdminPage;
 import com.maxsolch.shop.review.app.ReviewDtos.AdminReview;
 import com.maxsolch.shop.review.app.ReviewDtos.ReplyRequest;
@@ -34,12 +36,17 @@ public class AdminReviewController {
     }
 
     @GetMapping
-    @Operation(summary = "Reviews, newest first; status = PENDING | PUBLISHED | HIDDEN | ALL, optional productId")
+    @Operation(summary = "Reviews, newest first; status = PENDING | PUBLISHED | HIDDEN | ALL, optional productId, "
+            + "q (text, author, customer, product, order id), ratings (1..5, repeatable), unanswered (no shop reply). "
+            + "Status counters are counted under all filters except the status.")
     public AdminPage list(@RequestParam(required = false) String status,
                           @RequestParam(required = false) String productId,
+                          @RequestParam(required = false) String q,
+                          @RequestParam(required = false) List<Integer> ratings,
+                          @RequestParam(defaultValue = "false") boolean unanswered,
                           @RequestParam(defaultValue = "0") int page,
                           @RequestParam(defaultValue = "30") int size) {
-        return reviews.list(status, productId, page, size);
+        return reviews.list(new ReviewListing.Query(status, productId, q, ratings, unanswered, page, size));
     }
 
     @PostMapping("/{id}/publish")

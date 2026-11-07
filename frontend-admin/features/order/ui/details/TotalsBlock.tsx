@@ -5,10 +5,12 @@ import { CASE_TIER_LABEL } from "@/features/gift";
 import { money } from "@/lib/money";
 import { payableMinor } from "@shop/core/orders";
 import type { AdminOrderDetail } from "../../api";
+import { codMinor } from "../../model/status";
 
 export function TotalsBlock({ order }: { order: AdminOrderDetail }) {
   const gift = order.gift ?? null;
   const giftDiscount = order.giftDiscountMinor ?? 0;
+  const cod = codMinor(order);
   return (
     <div className="tabular mt-4 space-y-1 border-t border-[var(--line)] pt-3 text-[13px]">
       <div className="flex justify-between text-[var(--text-muted)]">
@@ -45,6 +47,18 @@ export function TotalsBlock({ order }: { order: AdminOrderDetail }) {
             <span>{money(payableMinor(order), order.currency)}</span>
           </div>
         </>
+      )}
+      {order.receivedMinor > 0 && (
+        <div className="flex justify-between text-[var(--text-muted)]">
+          <span>Получено</span>
+          <span>{money(order.receivedMinor, order.currency)}</span>
+        </div>
+      )}
+      {order.deliveryMethod === "NOVA_POSHTA" && cod > 0 && (
+        <div className="flex justify-between font-semibold text-[var(--danger-ink)]">
+          <span>Наложка</span>
+          <span>{money(cod, order.currency)}</span>
+        </div>
       )}
     </div>
   );

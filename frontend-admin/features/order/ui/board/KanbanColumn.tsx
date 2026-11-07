@@ -6,11 +6,12 @@
  * total of the column (from the server — it used to add up only the loaded cards, at most 300 of
  * them). Closed columns load a short list with "Показать ещё". Highlights when a valid drag hovers;
  * dims when it can't land.
- * Width: the columns share the board (232–340px each) so six of them fit a 1920 screen without a
- * sideways scroll; an empty «Едет назад» folds into a 44px rail and opens while a card that may
- * land there is dragged.
+ * Width: the columns share the board (232–360px each, up to 420px on very wide screens); where six
+ * do not fit, the board scrolls sideways and snaps to a column. The head is one sticky line and the
+ * column has no scroll of its own (overflow-clip, not hidden: hidden would break the sticky head).
+ * An empty «Едет назад» folds into a 44px rail and opens while a card that may land there is dragged.
  */
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { Inbox } from "lucide-react";
 import { Button } from "@shop/ui/admin-button";
@@ -36,6 +37,8 @@ interface Props {
   /** Load more cards (closed columns). */
   onMore?: () => void;
   loadingMore?: boolean;
+  /** Touch screens: the button in a card's header («Переместить» / «Посылка вернулась»). */
+  cardAction?: (order: AdminOrderCard) => ReactNode;
 }
 
 const tint = (accent: string, pct: number) => `color-mix(in srgb, ${accent} ${pct}%, transparent)`;
@@ -59,40 +62,58 @@ function Rail({ status, accent, dim, setNodeRef }: { status: BoardKey; accent: s
   );
 }
 
-function Head({ status, orders, count, sum, accent }: { status: BoardKey; orders: AdminOrderCard[]; count: number; sum?: number; accent: string }) {
+interface HeadProps {
+  status: BoardKey;
+  orders: AdminOrderCard[];
+  count: number;
+  sum?: number;
+  accent: string;
+  /** Closed columns: «ещё» right in the sticky head, so a long column does not need scrolling to its end. */
+  onMore?: () => void;
+  loadingMore?: boolean;
+}
+
+function Head({ status, orders, count, sum, accent, onMore, loadingMore }: HeadProps) {
   const back = returningTotals(orders);
-  const summary =
-    status === RETURNING
-      ? `${back.units} шт. в пути на склад${back.minor > 0 ? ` · ${money(back.minor, "UAH")}` : ""}`
-      : money(columnTotal(orders, sum), "UAH");
+  const returning = status === RETURNING;
+  const shown = orders.length < count ? `Показано ${orders.length} из ${count}` : undefined;
   return (
-    // A <header> (not a div) keeps the column itself the innermost div holding title + total
-    // + body, which is what the e2e locator expects.
-    <header className="shrink-0 border-b border-[var(--line)] bg-[var(--surface)]">
-      <div aria-hidden className="h-0.5 w-full" style={{ background: accent }} />
-      <div className="flex items-center justify-between gap-2 px-3.5 pt-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: accent, boxShadow: `0 0 8px ${tint(accent, 55)}` }} />
-          <span className="section-title truncate leading-none">{BOARD_LABEL[status]}</span>
-        </div>
-        <span className="count-badge" style={{ background: tint(accent, 18), color: accent }}>
+    // The column is a named region (<section aria-label>), so screen readers and the e2e find it by its
+    // status name. Sticky: it stays under the top bar while the
+    // whole board scrolls (the board is the scroll container, columns do not scroll on their own).
+    <header className="sticky top-0 z-10 shrink-0 border-b border-[var(--line)] bg-[var(--surface)]" style={{ boxShadow: `inset 0 2px 0 ${accent}` }}>
+      <div className="flex h-11 items-center gap-2 px-3 pt-0.5">
+        <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: accent, boxShadow: `0 0 8px ${tint(accent, 55)}` }} />
+        <span className="section-title truncate leading-none">{BOARD_LABEL[status]}</span>
+        <span className="count-badge shrink-0" style={{ background: tint(accent, 18), color: accent }}>
           {count}
         </span>
-      </div>
-
-      <div className="tabular px-3.5 pb-3 pt-1.5 text-[12px] font-semibold text-[var(--text-muted)]">
-        {summary}
-        {orders.length < count && (
-          <span className="ml-2 font-normal text-[var(--text-faint)]">
-            · показано {orders.length} из {count}
+        {!returning && (
+          <span title={shown} className="tabular ml-auto min-w-0 truncate text-[12px] font-semibold text-[var(--text-muted)]">
+            {money(columnTotal(orders, sum), "UAH")}
           </span>
         )}
       </div>
+      {returning && (
+        <div className="tabular px-3 pb-2 text-[12px] font-semibold text-[var(--text-muted)]">
+          {`${back.units} шт. в пути на склад${back.minor > 0 ? ` · ${money(back.minor, "UAH")}` : ""}`}
+        </div>
+      )}
+      {shown && (
+        <div className="flex items-center justify-between gap-2 px-3 pb-1.5 text-[11px] text-[var(--text-faint)]">
+          <span className="min-w-0 truncate">{shown}</span>
+          {onMore && (
+            <button type="button" onClick={onMore} disabled={loadingMore} className="hit shrink-0 font-semibold text-[var(--accent)] disabled:opacity-50">
+              {loadingMore ? "Загрузка…" : "Показать ещё"}
+            </button>
+          )}
+        </div>
+      )}
     </header>
   );
 }
 
-export function KanbanColumn({ status, orders, count, sum, onCardClick, validTarget, dragActive, onMore, loadingMore }: Props) {
+export function KanbanColumn({ status, orders, count, sum, onCardClick, validTarget, dragActive, onMore, loadingMore, cardAction }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const returning = status === RETURNING;
   const accent = BOARD_VAR[status];
@@ -108,19 +129,20 @@ export function KanbanColumn({ status, orders, count, sum, onCardClick, validTar
   if (rail) return <Rail status={status} accent={accent} dim={dim} setNodeRef={setNodeRef} />;
 
   return (
-    <div
+    <section
       ref={setNodeRef}
+      aria-label={BOARD_LABEL[status]}
       className={cn(
-        "flex min-h-0 min-w-[232px] max-w-[340px] flex-1 basis-0 flex-col overflow-hidden rounded-[var(--r-lg)] border border-[var(--line)] bg-[var(--bg-2)] transition-[opacity,border-color,box-shadow] duration-150",
+        "flex min-w-[232px] max-w-[360px] flex-1 basis-0 snap-start flex-col overflow-clip rounded-[var(--r-lg)] min-[2200px]:max-w-[420px] border border-[var(--line)] bg-[var(--bg-2)] transition-[opacity,border-color,box-shadow] duration-150",
         dim && "opacity-40",
         validTarget && dragActive && !lit && "border-[var(--line-strong)]"
       )}
       style={litStyle}
     >
-      <Head status={status} orders={orders} count={count} sum={sum} accent={accent} />
+      <Head status={status} orders={orders} count={count} sum={sum} accent={accent} onMore={onMore} loadingMore={loadingMore} />
 
-      {/* Fills the column; scrolling stops at its ends instead of carrying the page along. */}
-      <div className="thin-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain p-2.5">
+      {/* Grows with its cards; the board around the columns scrolls, not the column. */}
+      <div className="flex flex-1 flex-col gap-2 p-2.5">
         {orders.length === 0 ? (
           <div className="font-display flex flex-col items-center gap-1.5 rounded-[var(--r-md)] border border-[var(--line)] px-3 py-8 text-center text-[11.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-faint)]">
             <Inbox className="h-5 w-5 opacity-60" />
@@ -129,9 +151,9 @@ export function KanbanColumn({ status, orders, count, sum, onCardClick, validTar
         ) : (
           orders.map((o) =>
             returning ? (
-              <OrderCard key={o.id} order={o} returning onClick={() => onCardClick(o.id)} />
+              <OrderCard key={o.id} order={o} returning onClick={() => onCardClick(o.id)} headerAction={cardAction?.(o)} />
             ) : (
-              <DraggableOrderCard key={o.id} order={o} onClick={() => onCardClick(o.id)} />
+              <DraggableOrderCard key={o.id} order={o} onClick={() => onCardClick(o.id)} headerAction={cardAction?.(o)} />
             )
           )
         )}
@@ -141,6 +163,6 @@ export function KanbanColumn({ status, orders, count, sum, onCardClick, validTar
           </Button>
         )}
       </div>
-    </div>
+    </section>
   );
 }

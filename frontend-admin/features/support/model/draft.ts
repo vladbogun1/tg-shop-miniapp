@@ -22,3 +22,8 @@ export function saveDraft(id: string, text: string) {
     // storage unavailable — the in-memory copy still survives closing the drawer
   }
 }
+
+/** Текст шаблона в поле ответа: в пустое поле — как есть, иначе с новой строки после уже набранного. */
+export function withTemplate(text: string, template: string): string {
+  return text.trim() ? `${text.replace(/\s+$/, "")}\n${template}` : template;
+}

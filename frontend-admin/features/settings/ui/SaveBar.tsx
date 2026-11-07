@@ -10,10 +10,11 @@ interface Props {
   saving: boolean;
   onDiscard: () => void;
   onSave: () => void;
+  onShow: () => void;
 }
 
 /** Панель сохранения — только пока есть что сохранять. */
-export function SaveBar({ count, invalid, saving, onDiscard, onSave }: Props) {
+export function SaveBar({ count, invalid, saving, onDiscard, onSave, onShow }: Props) {
   return (
     <AnimatePresence>
       {count > 0 && (
@@ -30,6 +31,9 @@ export function SaveBar({ count, invalid, saving, onDiscard, onSave }: Props) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0 text-[13px] font-semibold text-[var(--text)]">
               Несохранённых изменений: {count}
+              <button type="button" onClick={onShow} className="focusable ml-2 text-[12px] font-semibold text-[var(--accent)] underline-offset-2 hover:underline pointer-coarse:min-h-11">
+                Показать
+              </button>
               {invalid && <span className="block text-[12px] font-semibold text-[var(--danger-ink)]">Исправьте поля с ошибками</span>}
             </div>
             <div className="flex flex-1 justify-end gap-2 sm:flex-none">

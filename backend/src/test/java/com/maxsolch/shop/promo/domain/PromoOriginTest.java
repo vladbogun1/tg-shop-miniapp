@@ -27,6 +27,9 @@ class PromoOriginTest {
         // A review bonus stays a review bonus even if the owner was cleared.
         assertThat(PromoOrigin.of(PromoCode.SOURCE_REVIEW_BONUS, null)).isEqualTo(PromoOrigin.REVIEW);
         assertThat(PromoOrigin.of(null, 42L)).isEqualTo(PromoOrigin.PERSONAL);
+        // A case prize has its own tab, with or without an owner.
+        assertThat(PromoOrigin.of(PromoCode.SOURCE_GIFT_CASE, 42L)).isEqualTo(PromoOrigin.CASE);
+        assertThat(PromoOrigin.of(PromoCode.SOURCE_GIFT_CASE, null)).isEqualTo(PromoOrigin.CASE);
         // An unknown generated source is never mixed into the shared codes.
         assertThat(PromoOrigin.of("SOMETHING_NEW", null)).isEqualTo(PromoOrigin.PERSONAL);
     }
@@ -36,6 +39,7 @@ class PromoOriginTest {
         assertThat(PromoOrigin.parse(null)).isNull();
         assertThat(PromoOrigin.parse(" ")).isNull();
         assertThat(PromoOrigin.parse("review")).isEqualTo(PromoOrigin.REVIEW);
+        assertThat(PromoOrigin.parse("case")).isEqualTo(PromoOrigin.CASE);
         assertThatThrownBy(() -> PromoOrigin.parse("all")).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -47,15 +51,17 @@ class PromoOriginTest {
         when(service.list()).thenReturn(List.of(
                 code("SUMMER", null, null),
                 code("THANKS-AAA", PromoCode.SOURCE_REVIEW_BONUS, 7L),
-                code("VIP-7", null, 7L)));
+                code("VIP-7", null, 7L),
+                code("CASE-1", PromoCode.SOURCE_GIFT_CASE, 7L)));
         AdminPromoController controller = new AdminPromoController(new com.maxsolch.shop.promo.app.AdminPromos(service, reservations,
                 mock(AdminAuditService.class), java.time.Clock.systemUTC()));
 
         assertThat(controller.list(null)).extracting(PromoCodeDto::origin)
-                .containsExactly("OURS", "REVIEW", "PERSONAL");
+                .containsExactly("OURS", "REVIEW", "PERSONAL", "CASE");
         assertThat(controller.list("ours")).extracting(PromoCodeDto::code).containsExactly("SUMMER");
         assertThat(controller.list("REVIEW")).extracting(PromoCodeDto::code).containsExactly("THANKS-AAA");
         assertThat(controller.list("personal")).extracting(PromoCodeDto::code).containsExactly("VIP-7");
+        assertThat(controller.list("case")).extracting(PromoCodeDto::code).containsExactly("CASE-1");
         assertThatThrownBy(() -> controller.list("nope")).isInstanceOf(DomainException.BadRequest.class);
     }
 

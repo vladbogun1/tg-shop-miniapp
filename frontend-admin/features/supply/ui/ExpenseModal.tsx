@@ -4,7 +4,7 @@ import { Button } from "@shop/ui/admin-button";
 import { useForm } from "@shop/ui/form";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { CloudDownload } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { CURRENCIES, EXPENSE_KINDS, type Expense } from "@/features/procurement";
@@ -36,7 +36,22 @@ export function ExpenseModal({
   const foreign = v.currency !== "UAH";
 
   const save = useSaveExpense(batchId, { onSaved: onClose, onError: setError });
+  // Курс НБУ подставляется сам по валюте и дате расхода (подпись «по НБУ на дату»); ручная правка снимает подпись.
+  const [nbuDate, setNbuDate] = useState<string | null>(null);
   const rate = useNbuRate((r) => set("rate", r), false);
+  const askedKey = useRef(edit ? `${v.currency}|${v.spentOn}` : "");
+  const fetchRate = (currency: string, date: string) => {
+    setNbuDate(date || "сегодня");
+    rate.mutate({ currency, date: date || undefined });
+  };
+  const mutateRate = rate.mutate;
+  useEffect(() => {
+    const key = `${v.currency}|${v.spentOn}`;
+    if (!foreign || askedKey.current === key) return;
+    askedKey.current = key;
+    setNbuDate(v.spentOn || "сегодня");
+    mutateRate({ currency: v.currency, date: v.spentOn || undefined });
+  }, [v.currency, v.spentOn, foreign, mutateRate]);
 
   function submit() {
     const res = toExpenseRequest(v);
@@ -77,17 +92,22 @@ export function ExpenseModal({
         </div>
         {foreign && (
           <div className="grid items-end gap-3 sm:grid-cols-[1fr_auto]">
-            <Input label="Курс к гривне" inputMode="decimal" value={v.rate} onChange={(e) => set("rate", e.target.value)} placeholder="напр. 41.5" />
+            <Input
+              label="Курс к гривне"
+              inputMode="decimal"
+              value={v.rate}
+              onChange={(e) => {
+                setNbuDate(null);
+                set("rate", e.target.value);
+              }}
+              placeholder="напр. 41.5"
+              hint={nbuDate ? `по НБУ на ${nbuDate}` : undefined}
+            />
             <Button
               variant="outline"
               icon={<CloudDownload className="h-4 w-4" />}
               loading={rate.isPending}
-              onClick={() =>
-                rate.mutate({
-                  currency: v.currency,
-                  date: v.spentOn || undefined,
-                })
-              }
+              onClick={() => fetchRate(v.currency, v.spentOn)}
               className="sm:mb-[2px]"
             >
               Курс НБУ

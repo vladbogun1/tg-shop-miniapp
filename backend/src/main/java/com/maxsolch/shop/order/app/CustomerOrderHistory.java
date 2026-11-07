@@ -60,7 +60,8 @@ public class CustomerOrderHistory implements OrderHistory {
     private static Map<Long, Totals> totals(List<Object[]> rows) {
         Map<Long, Totals> out = new HashMap<>();
         for (Object[] r : rows) {
-            out.put(((Number) r[0]).longValue(), new Totals(((Number) r[1]).longValue(), ((Number) r[2]).longValue()));
+            out.put(((Number) r[0]).longValue(), new Totals(((Number) r[1]).longValue(), ((Number) r[2]).longValue(),
+                    (java.time.Instant) r[3]));
         }
         return out;
     }

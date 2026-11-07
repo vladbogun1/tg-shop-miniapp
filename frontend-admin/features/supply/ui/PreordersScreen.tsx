@@ -1,30 +1,32 @@
 "use client";
 
 /**
- * «Поставки» (route "/preorders"): сверху «Что заказать» (чего ждут покупатели), ниже — поставки с фильтром
- * «Едут · Приехали · Все». «Поставщики» — отдельный вид по ссылке. `?tab=demand` раскрывает «Что заказать».
+ * «Поставки» (route "/preorders", вариант B макета): слева колонка входов — статусы поставок, «Что заказать» (чего ждут
+ * покупатели), «Поставщики» — со счётчиками; на телефоне это лента чипов. `?tab=demand` открывает «Что заказать».
  * `?newProduct=<id>` открывает форму новой поставки с этим товаром (из карточки товара и «Ждут»).
  */
 import { Button } from "@shop/ui/admin-button";
-import { ArrowLeft, Factory, Plus, Sparkles } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { BatchFormModal, SupplierModal, useDemand, type BatchPreset, type Demand, type SeedLine } from "@/features/procurement";
+import {
+  BatchFormModal,
+  SupplierModal,
+  isOpenStatus,
+  useDemand,
+  type BatchFilter,
+  type BatchPreset,
+  type Demand,
+  type SeedLine,
+} from "@/features/procurement";
 import { PICK_PRODUCTS_STALE_MS, ProductPickModal, useProductsQuery } from "@/features/product";
+import { useBatchesList, useSuppliersList } from "../queries";
 import { BatchList } from "./BatchList";
+import { BatchRail, type RailItem, type SupplyView } from "./BatchRail";
 import { DemandList } from "./DemandList";
 import { SupplyAiModal } from "./ai/SupplyAiModal";
 import { SuppliersList } from "./SuppliersList";
-
-type Shown = "open" | "arrived" | "all";
-
-const FILTERS: { value: Shown; label: string }[] = [
-  { value: "open", label: "Едут" },
-  { value: "arrived", label: "Приехали" },
-  { value: "all", label: "Все" },
-];
 
 function seedOf(d: Demand): SeedLine {
   return {
@@ -48,9 +50,11 @@ export function PreordersScreen() {
 function PreordersBody() {
   const router = useRouter();
   const params = useSearchParams();
-  const [shown, setShown] = useState<Shown>("open");
-  const [suppliers, setSuppliers] = useState(false);
-  const demandFirst = params.get("tab") === "demand";
+  const demandTab = params.get("tab") === "demand";
+  const [view, setView] = useState<SupplyView>(demandTab ? "demand" : "open");
+  useEffect(() => {
+    if (demandTab) setView("demand");
+  }, [demandTab]);
   const [form, setForm] = useState<{
     seed: SeedLine[];
     preset?: BatchPreset;
@@ -59,7 +63,19 @@ function PreordersBody() {
   const [supplierModal, setSupplierModal] = useState(false);
 
   const demandQ = useDemand();
+  const allQ = useBatchesList("all");
+  const suppliersQ = useSuppliersList();
   const productsQ = useProductsQuery({ staleTime: PICK_PRODUCTS_STALE_MS });
+
+  const batches = allQ.data ?? [];
+  const rail: RailItem[] = [
+    { value: "open", label: "Едут", count: batches.filter((b) => isOpenStatus(b.status)).length },
+    { value: "arrived", label: "Приехали", count: batches.filter((b) => b.status === "ARRIVED").length },
+    { value: "cancelled", label: "Отменены", count: batches.filter((b) => b.status === "CANCELLED").length },
+    { value: "all", label: "Все", count: batches.length },
+    { value: "demand", label: "Что заказать", count: demandQ.data?.length ?? 0, hot: true },
+    { value: "suppliers", label: "Поставщики", count: suppliersQ.data?.length },
+  ];
 
   // Глубокая ссылка «?newProduct=id»: открыть форму с этим товаром, один раз.
   const newProduct = params.get("newProduct");
@@ -94,60 +110,40 @@ function PreordersBody() {
 
   return (
     <div className="min-w-0">
-      {suppliers ? (
-        <>
-          <button
-            type="button"
-            onClick={() => setSuppliers(false)}
-            className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-[var(--text-muted)] hover:text-[var(--text)]"
-          >
-            <ArrowLeft className="h-4 w-4" /> Все поставки
-          </button>
-          <PageHeader
-            title="Поставщики"
-            subtitle="Заводы и продавцы, у которых заказываете."
-            actions={
-              <Button variant="accent" icon={<Plus className="h-4 w-4" />} onClick={() => setSupplierModal(true)}>
-                Добавить поставщика
-              </Button>
-            }
-          />
-          <SuppliersList />
-        </>
-      ) : (
-        <>
-          <PageHeader
-            title="Поставки"
-            subtitle="Что заказали у заводов, что едет и кто его ждёт."
-            actions={
-              <>
-                <Button variant="outline" icon={<Sparkles className="h-4 w-4" />} onClick={() => setAiOpen(true)}>
-                  Из накладной (ИИ)
+      <PageHeader
+        title="Поставки"
+        subtitle="Что заказали у заводов, что едет и кто его ждёт."
+        actions={
+          <>
+            <Button variant="outline" icon={<Sparkles className="h-4 w-4" />} onClick={() => setAiOpen(true)}>
+              Из накладной (ИИ)
+            </Button>
+            <Button variant="accent" icon={<Plus className="h-4 w-4" />} onClick={create}>
+              Новая поставка
+            </Button>
+          </>
+        }
+      />
+      <div className="lg:flex lg:items-start lg:gap-6">
+        <BatchRail items={rail} value={view} onChange={setView} />
+        <div className="min-w-0 flex-1">
+          {view === "demand" ? (
+            <DemandList q={demandQ} onOrder={(rows) => setForm({ seed: rows.map(seedOf) })} />
+          ) : view === "suppliers" ? (
+            <>
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <span className="min-w-0 flex-1 text-[13px] text-[var(--text-muted)]">Заводы и продавцы, у которых заказываете.</span>
+                <Button variant="accent" icon={<Plus className="h-4 w-4" />} onClick={() => setSupplierModal(true)}>
+                  Добавить поставщика
                 </Button>
-                <Button variant="accent" icon={<Plus className="h-4 w-4" />} onClick={create}>
-                  Новая поставка
-                </Button>
-              </>
-            }
-          />
-          <DemandList q={demandQ} expanded={demandFirst} onOrder={(d) => setForm({ seed: [seedOf(d)] })} />
-
-          <section className="min-w-0">
-            <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-              <h2 className="font-display text-[15px] font-bold uppercase tracking-[0.05em] text-[var(--ink)]">Поставки</h2>
-              <SegmentedControl options={FILTERS} value={shown} onChange={setShown} />
-              <button
-                type="button"
-                onClick={() => setSuppliers(true)}
-                className="ml-auto inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--accent-hi)] hover:underline"
-              >
-                <Factory className="h-4 w-4" /> Поставщики
-              </button>
-            </div>
-            <BatchList filter={shown} onCreate={create} />
-          </section>
-        </>
-      )}
+              </div>
+              <SuppliersList />
+            </>
+          ) : (
+            <BatchList filter={view satisfies BatchFilter} onCreate={create} />
+          )}
+        </div>
+      </div>
 
       <BatchFormModal
         open={!!form}

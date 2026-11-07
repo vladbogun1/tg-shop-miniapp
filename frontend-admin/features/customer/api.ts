@@ -24,6 +24,8 @@ export const customerApi = {
     const sp = new URLSearchParams();
     if (params.q) sp.set("q", params.q);
     if (params.blockedOnly) sp.set("blockedOnly", "true");
+    if (params.premiumOnly) sp.set("premiumOnly", "true");
+    if (params.hasOrders !== undefined) sp.set("hasOrders", String(params.hasOrders));
     sp.set("page", String(params.page ?? 0));
     sp.set("size", String(params.size ?? 30));
     if (params.sortBy) sp.set("sortBy", params.sortBy);

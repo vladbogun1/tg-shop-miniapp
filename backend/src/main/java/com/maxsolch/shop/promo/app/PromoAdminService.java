@@ -5,10 +5,17 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.promo.domain.PromoCode;
 import com.maxsolch.shop.promo.infra.PromoCodeRepository;
 import com.maxsolch.shop.platform.error.DomainException;
-import com.maxsolch.shop.platform.error.ErrorCode;
+import com.maxsolch.shop.platform.time.ShopZone;
+import com.maxsolch.shop.promo.domain.PromoOrigin;
+import com.maxsolch.shop.promo.infra.PromoSpecs;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -24,10 +31,14 @@ public class PromoAdminService {
 
     private final PromoCodeRepository promoCodeRepository;
     private final PromoUsage usage;
+    private final Clock clock;
+    private final ShopZone zone;
 
-    public PromoAdminService(PromoCodeRepository promoCodeRepository, PromoUsage usage) {
+    public PromoAdminService(PromoCodeRepository promoCodeRepository, PromoUsage usage, Clock clock, ShopZone zone) {
         this.promoCodeRepository = promoCodeRepository;
         this.usage = usage;
+        this.clock = clock;
+        this.zone = zone;
     }
 
     /** The code of the URL: 400 for a malformed id, 404 for an unknown one. */
@@ -42,6 +53,20 @@ public class PromoAdminService {
         return promoCodeRepository.findAllByOrderByCreatedAtDesc();
     }
 
+    /** One page of codes, newest first; filters are applied by the database ({@link PromoSpecs}). */
+    @Transactional(readOnly = true)
+    public Page<PromoCode> page(PromoOrigin origin, String search, String state, int page, int size) {
+        var spec = PromoSpecs.origin(origin).and(PromoSpecs.search(search)).and(PromoSpecs.state(state, clock.instant()));
+        return promoCodeRepository.findAll(spec, PageRequest.of(page, size,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id"))));
+    }
+
+    /** How many codes the origin has, ignoring search and state (the tab counter). */
+    @Transactional(readOnly = true)
+    public long countOrigin(PromoOrigin origin) {
+        return promoCodeRepository.count(PromoSpecs.origin(origin));
+    }
+
     @Transactional
     public PromoCode create(PromoCodeUpsertRequest req) {
         String code = req.code().trim();
@@ -50,6 +75,7 @@ public class PromoAdminService {
         }
         PromoCode p = PromoCode.named(code);
         apply(p, req);
+        applyExpiry(p, req);
         return promoCodeRepository.save(p);
     }
 
@@ -78,6 +104,7 @@ public class PromoAdminService {
             p.rename(code);
         }
         apply(p, req);
+        applyExpiry(p, req);
         return new Updated(promoCodeRepository.save(p), previousCode);
     }
 
@@ -98,6 +125,29 @@ public class PromoAdminService {
             throw new DomainException.BadRequest(PromoError.DISCOUNT_REQUIRED);
         }
         p.edit(req.discountPercent(), req.discountAmountMinor(), req.maxUses(), req.maxDiscountMinor(), req.active());
+    }
+
+    /**
+     * The expiry of the form: {@code noExpiry} removes it, {@code expiresOn} sets the end of that shop day, nothing
+     * leaves it as it was. A day that already passed is refused — unless it is the day the code already has (an
+     * expired code can still be edited without touching its date).
+     */
+    private void applyExpiry(PromoCode p, PromoCodeUpsertRequest req) {
+        if (Boolean.TRUE.equals(req.noExpiry())) {
+            p.expireAt(null);
+            return;
+        }
+        if (req.expiresOn() == null || req.expiresOn().isBlank()) {
+            return;
+        }
+        Instant end = zone.day(req.expiresOn(), true).minusSeconds(1);
+        if (end.equals(p.getExpiresAt())) {
+            return;
+        }
+        if (!end.isAfter(clock.instant())) {
+            throw new DomainException.BadRequest(PromoError.EXPIRY_IN_PAST);
+        }
+        p.expireAt(end);
     }
 
     private static byte[] toBytes(String id) {

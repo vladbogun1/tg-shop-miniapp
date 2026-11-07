@@ -17,11 +17,14 @@ import java.util.Set;
 public class AdminProducts {
 
     private final AdminProductService products;
+    private final ProductQuickEdit quickEdit;
     private final AdminAuditService audit;
     private final SiteRevalidator siteRevalidator;
 
-    public AdminProducts(AdminProductService products, AdminAuditService audit, SiteRevalidator siteRevalidator) {
+    public AdminProducts(AdminProductService products, ProductQuickEdit quickEdit, AdminAuditService audit,
+                         SiteRevalidator siteRevalidator) {
         this.products = products;
+        this.quickEdit = quickEdit;
         this.audit = audit;
         this.siteRevalidator = siteRevalidator;
     }
@@ -41,6 +44,16 @@ public class AdminProducts {
                 + ProductChangeSummary.catalog(before, updated)
                 + ProductChangeSummary.writeoff(before, updated, req)
                 + (force && !before.active() && updated.active() ? ", выложен без оформления" : ""));
+        return revalidated(updated, before);
+    }
+
+    /** Price and/or stock from the list: the same journal words as a full save, marked as a quick edit. */
+    public AdminProductDto quickEdit(String id, ProductQuickEditRequest req) {
+        AdminProductDto before = products.get(id);
+        AdminProductDto updated = quickEdit.apply(id, req);
+        audit.record("PRODUCT_UPDATE", "PRODUCT", id, ProductChangeSummary.changes(before, updated)
+                + ProductChangeSummary.writeoff(before, updated, req.stockReason(), req.stockNote())
+                + ", быстрая правка в списке");
         return revalidated(updated, before);
     }
 

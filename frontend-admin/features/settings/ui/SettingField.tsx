@@ -29,7 +29,7 @@ function SettingControl({
       return <IntControl item={item} entry={entry} error={error} onChange={onChange} />;
     case "SELECT":
       return (
-        <div className="w-full max-w-[260px]">
+        <div className="w-full">
           <Select<string> label={item.label} value={String(entry.raw)} onChange={(v) => onChange(v)} options={item.options ?? []} />
         </div>
       );
@@ -48,7 +48,7 @@ type ControlProps = Parameters<typeof SettingControl>[0];
 
 function IntControl({ item, entry, error, onChange }: ControlProps) {
   return (
-    <div className="w-full max-w-[220px]">
+    <div className="w-full">
       <Input
         aria-label={item.label}
         inputMode="numeric"
@@ -87,9 +87,16 @@ function TextControl({ item, entry, error, onChange }: ControlProps) {
   );
 }
 
+/** Длинные значения (текст, строка) занимают всю ширину строки; числа, переключатели и списки — колонку справа. */
+export function isWide(item: SettingItem): boolean {
+  return item.type === "TEXT" || item.type === "STRING";
+}
+
 /**
- * One setting: label + hint, the control for its type, "по умолчанию: …" with a reset button,
- * and who changed it last. `labelOverride` lets a grouped editor (bot texts) show a shorter title.
+ * Одна настройка — плотная строка: подпись и описание слева, контроль справа (на телефоне — под подписью),
+ * «По умолчанию: …» с «Сбросить» и «изменено <дата>, <кто>». Две метки: «Не сохранено» (правка в форме)
+ * и «изменено» (значение отличается от стандартного на сервере). `labelOverride` — короткий заголовок в сгруппированном
+ * редакторе (тексты бота). id `setting-<ключ>` нужен «Показать» в панели сохранения и поиску.
  */
 export function SettingField({
   item,
@@ -108,25 +115,29 @@ export function SettingField({
   const dirty = isDirty(item, entry);
   const atDefault = isDefault(item, entry);
   const changedAt = item.overridden ? formatIsoOrNull(item.updatedAt) : null;
+  const wide = isWide(item);
 
   return (
     <div
+      id={`setting-${item.key}`}
       className={cn(
-        "card-2 flex min-w-0 flex-col gap-3 rounded-[var(--r-md)] p-4 transition-colors",
+        "card-2 min-w-0 scroll-mt-[96px] rounded-[var(--r-md)] p-3 transition-colors sm:p-4",
         dirty && "border-[rgba(255,102,0,.45)] shadow-[inset_2px_0_0_var(--accent)]"
       )}
     >
-      <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="text-[14px] font-semibold text-[var(--text)]">{labelOverride ?? item.label}</div>
+      <div className={cn("grid min-w-0 gap-3", !wide && "sm:grid-cols-[minmax(0,1fr)_minmax(180px,260px)] sm:items-start sm:gap-x-6")}>
+        <div className="min-w-0">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span className="text-[14px] font-semibold text-[var(--text)]">{labelOverride ?? item.label}</span>
+            {dirty && <Badge tone="accent">Не сохранено</Badge>}
+            {!dirty && item.overridden && <Badge tone="neutral">Изменено</Badge>}
+          </div>
           <p className="mt-1 text-[12px] leading-snug text-[var(--text-muted)]">{item.description}</p>
         </div>
-        {dirty && <Badge tone="accent">Не сохранено</Badge>}
+        <SettingControl item={item} entry={entry} error={error} onChange={onChange} />
       </div>
 
-      <SettingControl item={item} entry={entry} error={error} onChange={onChange} />
-
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 text-[12px] text-[var(--text-faint)]">
+      <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2 text-[12px] text-[var(--text-faint)]">
         <span className="min-w-0">
           По умолчанию: <b className="text-[var(--text-muted)]">{formatValue(item, item.defaultValue)}</b>
           {changedAt && !dirty && (

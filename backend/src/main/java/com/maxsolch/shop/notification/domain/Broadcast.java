@@ -22,6 +22,8 @@ public class Broadcast {
     public static final String DONE = "DONE";
     /** The backend restarted mid-send: the counters are what was reached before that. */
     public static final String INTERRUPTED = "INTERRUPTED";
+    /** An admin pressed «Остановить»: what was not sent yet never goes out (V84). */
+    public static final String STOPPED = "STOPPED";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -75,4 +77,17 @@ public class Broadcast {
 
     @Column(name = "finished_at")
     private Instant finishedAt;
+
+    /**
+     * Stop flag (V84). Written only by a direct UPDATE in {@code BroadcastRepository.requestStop}, never by
+     * {@code save}: the sending thread keeps a stale copy of this row and would otherwise wipe the flag.
+     */
+    @Column(name = "stop_requested_at", insertable = false, updatable = false)
+    private Instant stopRequestedAt;
+
+    @Column(name = "stopped_by_id", insertable = false, updatable = false)
+    private Long stoppedById;
+
+    @Column(name = "stopped_by_name", length = 255, insertable = false, updatable = false)
+    private String stoppedByName;
 }

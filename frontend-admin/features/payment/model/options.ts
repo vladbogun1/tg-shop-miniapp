@@ -83,3 +83,11 @@ export function moveRow(rows: OptionRow[], key: string, delta: -1 | 1): OptionRo
   [next[i], next[j]] = [next[j], next[i]];
   return next;
 }
+
+/** Ключ первой строки, из-за которой нельзя сохранить (пустое название / нет суммы предоплаты): «Показать» ведёт к ней. */
+export function firstProblemKey(options: OptionRow[]): string | null {
+  const blank = options.find((o) => !o.title.trim() && (o.description.trim() || o.id));
+  if (blank) return blank.key;
+  const noAmount = options.find((o) => o.title.trim() && o.requiresPrepayment && prepayMinor(o) <= 0);
+  return noAmount?.key ?? null;
+}

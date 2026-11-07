@@ -18,7 +18,7 @@ test("частичный возврат одной позиции: сумма в
   const scarfBefore = (await api.product(PRODUCT.scarf)).stock;
 
   const drawer = await openOrderFromBoard(page, p.orderId, p.buyerName);
-  await drawer.getByRole("button", { name: "Возврат", exact: true }).click();
+  await drawer.getByRole("button", { name: "Оформить возврат" }).click();
   const modal = dialog(page, "↩️ Возврат");
   const next = modal.getByRole("button", { name: "Далее" });
   await modal.getByRole("button", { name: "Уже у нас" }).click();
@@ -48,8 +48,9 @@ test("частичный возврат одной позиции: сумма в
   expect((await api.product(PRODUCT.socks)).stock).toBe(socksBefore + 1);
   expect((await api.product(PRODUCT.scarf)).stock).toBe(scarfBefore);
 
-  // The journal on the card shows the same figures.
-  const ledger = drawer.locator("section").filter({ hasText: "Деньги по заказу" });
+  // The journal on the card (a fold, closed by default) shows the same figures.
+  const ledger = drawer.locator("details").filter({ hasText: "Журнал денег" });
+  await ledger.locator("summary").click();
   await expect(ledger).toContainText(`Получено ${money(59800)}`);
   await expect(ledger).toContainText(`Возвращено ${money(9900)}`);
 });

@@ -49,7 +49,7 @@ class CardsServiceTest {
         db = new InMemoryCatalog();
         ImageStorageService storage = mock(ImageStorageService.class);
         BrandAdminService brands = new BrandAdminService(db.brandRepository, db.productRepository, db.directory,
-                db.events(storage));
+                db.events(storage), mock(BrandSlugHistory.class));
         admins = mock(AdminDirectory.class);
         service = new CardsService(db.productRepository, db.directory, db.storedTranslations, admins);
         importer = new CardsImporter(db.productRepository, db.directory, brands, db.storedTranslations,

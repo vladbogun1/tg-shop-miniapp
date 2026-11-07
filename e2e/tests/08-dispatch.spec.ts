@@ -22,7 +22,7 @@ test("ТТН и «Отправлено» прямо в карточке", async 
 
   const c = card(page, ORDER.dispatch);
   await expect(c).toContainText(CUSTOMER.dispatch);
-  await expect(c).toContainText("Наложка: 0"); // paid in full
+  await expect(c).toContainText("Оплачено, без наложки"); // paid in full: a green chip, no COD
   const ttn = c.getByRole("textbox", { name: "Номер ТТН" });
   const ship = c.getByRole("button", { name: "Отправлено" });
   await expect(ship).toBeDisabled();
@@ -40,7 +40,7 @@ test("ТТН и «Отправлено» прямо в карточке", async 
 
 test("новый заказ без онлайн-предоплаты отправить нельзя", async ({ page, api }) => {
   await page.goto("/dispatch");
-  await expect(page.getByRole("heading", { name: /^Новые — можно отправить сразу · \d+$/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Не оплачено — не отправляйте без проверки · \d+$/ })).toBeVisible();
 
   const c = card(page, ORDER.awaiting);
   await expect(c).toContainText("Ждём онлайн-предоплату 150 ₴");

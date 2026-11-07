@@ -34,7 +34,7 @@ function EmptyList({ s }: { s: CardsScreenState }) {
   );
 }
 
-function Rows({ s }: { s: CardsScreenState }) {
+function Rows({ s, compact }: { s: CardsScreenState; compact: boolean }) {
   const { list, limit } = s;
   return (
     <>
@@ -47,6 +47,7 @@ function Rows({ s }: { s: CardsScreenState }) {
         activeId={s.openId}
         onOpen={s.setOpenId}
         limit={limit}
+        compact={compact}
       />
       {list.length > limit && (
         <div className="mt-3 flex justify-center">
@@ -64,7 +65,7 @@ function Rows({ s }: { s: CardsScreenState }) {
 }
 
 /** Загрузка, ошибка, пусто или список с «Показать ещё». */
-export function CardsBody({ s }: { s: CardsScreenState }) {
+export function CardsBody({ s, compact = false }: { s: CardsScreenState; compact?: boolean }) {
   if (s.itemsQ.isLoading || s.schemaQ.isLoading) {
     return (
       <div className="flex flex-col gap-2">
@@ -88,5 +89,5 @@ export function CardsBody({ s }: { s: CardsScreenState }) {
       />
     );
   }
-  return s.list.length === 0 ? <EmptyList s={s} /> : <Rows s={s} />;
+  return s.list.length === 0 ? <EmptyList s={s} /> : <Rows s={s} compact={compact} />;
 }

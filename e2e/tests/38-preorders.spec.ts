@@ -106,14 +106,16 @@ test("покупатель встал в очередь: «ждут 1» в сп�
   // «Что заказать» above the list: the product is there and says the batch already brings it.
   await page.goto("/preorders?tab=demand");
   const demand = page.locator("#demand");
-  await expect(demand.getByRole("heading", { name: "Что заказать" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Что заказать/ })).toHaveAttribute("aria-current", "page");
   await expect(demand.getByText(PREORDER.productTitle).first()).toBeVisible();
   await expect(demand.getByText("ждут 1 чел. · 1 шт").first()).toBeVisible();
   await expect(page.getByRole("link", { name: new RegExp(`уже едет: ${TITLE}`) })).toBeVisible();
 
   // The home widget «Хотят купить».
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Хотят купить" })).toBeVisible();
+  // A chip in the «Сегодня» line now (it was a block with a heading); the popover lists the products.
+  await page.getByRole("button", { name: /Хотят купить/ }).click();
+  await expect(page.getByRole("dialog", { name: "Хотят купить" }).getByText(PREORDER.productTitle).first()).toBeVisible();
 });
 
 test("«Приехала»: пришло 2, цена продажи — бронь у ждущего, остаток пополнен", async ({ page, api }) => {
@@ -211,7 +213,10 @@ test("покупатель покупает из брони: очередь за
 
   // Order card: profit of the order from the batch's unit cost (FIFO lot).
   const drawer = await openOrderFromBoard(page, orderId, PREORDER.customer.name);
-  await expect(drawer.getByRole("heading", { name: "Прибыль", level: 3 })).toBeVisible();
+  const profitFold = drawer.getByRole("heading", { name: "Прибыль", level: 3 });
+  await expect(profitFold).toBeVisible();
+  // «Прибыль» is a fold (collapsed, its summary shows the profit): open it to see the cost breakdown.
+  await profitFold.click();
   await expect(drawer.getByText("Себестоимость", { exact: true })).toBeVisible();
   await expect(drawer.getByText(money(UNIT_COST_MINOR)).first()).toBeVisible();
 
@@ -251,13 +256,13 @@ test("«Метрики → Предзаказы» и «Что заказать»
   const { body } = await api.raw("get", `/api/admin/preorders/metrics?from=${today.slice(0, 8)}01&to=${today}`);
   expect((body as unknown as { subscriptions: number }).subscriptions).toBeGreaterThanOrEqual(1);
 
-  // Nobody waits any more (the only queue entry was bought): the «Что заказать» block is gone.
+  // Nobody waits any more (the only queue entry was bought): «Что заказать» is empty.
   await page.goto("/preorders?tab=demand");
   await expect(page.getByRole("heading", { name: "Поставки", level: 1 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Что заказать" })).toHaveCount(0);
+  await expect(page.getByText("Сейчас никто не ждёт товар")).toBeVisible();
 
   // The finished batch sits under «Приехали».
-  await page.getByRole("button", { name: "Приехали", exact: true }).click();
+  await page.getByRole("button", { name: /^Приехали/ }).click();
   await expect(page.getByRole("link", { name: new RegExp(`^${TITLE}`) })).toBeVisible();
   expect(failed).toEqual([]);
 });

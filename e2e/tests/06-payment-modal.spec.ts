@@ -9,7 +9,7 @@
  */
 import type { Page } from "@playwright/test";
 import { CUSTOMER, ORDER, money } from "../lib/seed";
-import { dialog, expect, openOrderFromBoard, test, toast } from "../lib/test";
+import { pickFromMoreMenu, dialog, expect, openOrderFromBoard, test, toast } from "../lib/test";
 
 const TOTAL = 94800;
 const PREPAY = 15000;
@@ -88,7 +88,7 @@ test("ждёт онлайн-оплату: срок «Оплатить до», с
 
 test("ручная корректировка: по умолчанию «Предоплата», подтверждение суммы", async ({ page, api }) => {
   const drawer = await openOrderFromBoard(page, ORDER.prepay, CUSTOMER.prepay);
-  await drawer.getByRole("button", { name: "Скорректировать оплату" }).click();
+  await pickFromMoreMenu(page, drawer, "Скорректировать оплату");
 
   const modal = dialog(page, "Корректировка оплаты");
   await expect(modal).toBeVisible();
@@ -115,5 +115,6 @@ test("ручная корректировка: по умолчанию «Пре�
   const order = await api.order(ORDER.prepay);
   expect(order.receivedMinor).toBe(PREPAY);
   // The same entry point stays for further corrections.
-  await expect(drawer.getByRole("button", { name: "Скорректировать оплату" })).toBeVisible();
+  await drawer.getByRole("button", { name: "Другие действия" }).click();
+  await expect(page.getByRole("menuitem", { name: "Скорректировать оплату" })).toBeVisible();
 });

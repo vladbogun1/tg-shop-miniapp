@@ -5,29 +5,30 @@
  *
  *  - A code is EITHER a percent OR a fixed amount (the «% / ₴» switch); percent is 1–100. A percent
  *    code may have a ceiling in ₴ («не больше», V63) — review bonuses get one from the settings.
- *  - The list shows uses, live reservations («резерв N» — customers holding the code in the cart
- *    for 30 min, which also take limited slots) and, on demand, the orders placed with the code
- *    (each opens over the page).
+ *  - One sticky control row (tabs, search, state filter, «+ Новый»); the list is one panel of compact
+ *    rows with a quick on/off switch and a «⋯» menu (edit, orders, copy, delete).
+ *  - The orders placed with a code open in a side panel (a full-width one on a phone); an order opens over it.
  *  - Editing a code that was already used warns what that means for existing orders.
- *  - Three tabs, so the owner's codes are not buried under generated ones (`?tab=` keeps it):
+ *  - Four tabs, so the owner's codes are not buried under generated ones (`?tab=` keeps it):
  *    «Наши» — shared codes made here (default); «Персональные скидки» — codes for one customer plus
  *    orders with a manual amount/percent discount («Ручная скидка», not a code); «За отзывы» —
- *    automatic review bonuses. Search and the status filter work inside the open tab.
+ *    automatic review bonuses; «Из кейса» — prizes of the gift case (hundreds of codes: a server-side page
+ *    with search, status filter and paging). Search and the status filter work inside the open tab.
+ *  - «Срок до» in the form (date + 7/30/90 дн./«Без срока»); the quick on/off switch never touches it.
  */
-import { Button } from "@shop/ui/admin-button";
-import { nowMs } from "@shop/core/time";
-import { Plus } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { useState, type ReactNode } from "react";
 import { QueryState } from "@/components/ui/QueryState";
-import { filterCodes, filterManual, groupByTab, usesOf, type StateFilter } from "../model/promo";
-import type { PromoCode, PromoOrigin } from "../model/types";
-import { useManualDiscounts, usePromocodes } from "../queries";
+import { usesOf, type StateFilter } from "../model/promo";
+import type { PromoCode } from "../model/types";
 import { DeletePromoModal } from "./DeletePromoModal";
-import { PromoFilters, PromoTabs } from "./PromoFilters";
+import { PromoControls } from "./PromoFilters";
 import { PromoFormModal } from "./PromoFormModal";
 import { PromoList } from "./PromoList";
+import { PromoOrdersPanel } from "./PromoOrdersPanel";
+import { PromoPager } from "./PromoPager";
+import { PromoSummary } from "./PromoSummary";
 import { usePromoTab } from "./use-promo-tabs";
+import { usePromoView } from "./use-promo-view";
 
 export function PromocodesScreen({
   renderOrderDrawer,
@@ -37,26 +38,16 @@ export function PromocodesScreen({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PromoCode | null>(null);
   const [confirming, setConfirming] = useState<PromoCode | null>(null);
+  const [ordersOf, setOrdersOf] = useState<PromoCode | null>(null);
   const [openOrderId, setOpenOrderId] = useState<string | null>(null);
   const { tab, setTab, ready } = usePromoTab();
   const [query, setQuery] = useState("");
   const [stateFilter, setStateFilter] = useState<StateFilter>("all");
 
-  const promosQ = usePromocodes();
-  const promos = useMemo(() => promosQ.data ?? [], [promosQ.data]);
-  const manualQ = useManualDiscounts();
-  const manual = useMemo(() => manualQ.data ?? [], [manualQ.data]);
-
-  const byTab = useMemo(() => groupByTab(promos), [promos]);
-  const counts: Record<PromoOrigin, number> = {
-    OURS: byTab.OURS.length,
-    PERSONAL: byTab.PERSONAL.length + manual.length,
-    REVIEW: byTab.REVIEW.length,
-  };
-  const shown = filterCodes(byTab[tab], query, stateFilter, nowMs());
-  const shownManual = filterManual(manual, tab, query, stateFilter);
+  const view = usePromoView(tab, query, stateFilter);
+  const { byTab, shown, shownManual } = view;
   const filtering = !!query.trim() || stateFilter !== "all";
-  const reviewUsed = byTab.REVIEW.filter((p) => usesOf(p) > 0).length;
+  const review = tab === "REVIEW" ? { issued: byTab.REVIEW.length, used: byTab.REVIEW.filter((p) => usesOf(p) > 0).length } : null;
 
   function openForm(p: PromoCode | null) {
     setEditing(p);
@@ -64,31 +55,25 @@ export function PromocodesScreen({
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <PageHeader
-        title="Промокоды"
-        subtitle="Скидки для клиентов — процент или фиксированная сумма"
-        actions={
-          <Button variant="accent" icon={<Plus className="h-4 w-4" />} onClick={() => openForm(null)}>
-            Новый промокод
-          </Button>
-        }
+    <div className="mx-auto min-w-0 max-w-[1200px]">
+      <h1 className="sr-only">Промокоды</h1>
+      <PromoControls
+        tab={tab}
+        onTab={setTab}
+        counts={view.countsReady ? view.counts : undefined}
+        query={query}
+        onQuery={setQuery}
+        state={stateFilter}
+        onState={setStateFilter}
+        onCreate={() => openForm(null)}
       />
-
-      <PromoTabs tab={tab} onTab={setTab} counts={promosQ.isSuccess ? counts : undefined} />
-      <PromoFilters tab={tab} query={query} onQuery={setQuery} state={stateFilter} onState={setStateFilter} />
-      {tab === "REVIEW" && byTab.REVIEW.length > 0 && (
-        <p className="mb-3 text-[12.5px] text-[var(--text-muted)]">
-          Выдаются автоматически за отзыв о заказе — личные, на один раз. Выдано {byTab.REVIEW.length}, использовано{" "}
-          {reviewUsed}.
-        </p>
-      )}
+      <PromoSummary list={byTab[tab]} review={review} now={view.now} />
 
       <QueryState
-        isLoading={promosQ.isLoading || !ready}
-        isError={promosQ.isError}
-        error={promosQ.error}
-        refetch={() => promosQ.refetch()}
+        isLoading={view.isLoading || !ready}
+        isError={view.isError}
+        error={view.error}
+        refetch={view.refetch}
         loadingLabel="Загрузка промокодов"
       >
         <PromoList
@@ -103,8 +88,10 @@ export function PromocodesScreen({
           onCreate={() => openForm(null)}
           onEdit={openForm}
           onDelete={setConfirming}
+          onOrders={setOrdersOf}
           onOpenOrder={setOpenOrderId}
         />
+        {view.pager && <PromoPager {...view.pager} />}
       </QueryState>
 
       <PromoFormModal
@@ -115,6 +102,7 @@ export function PromocodesScreen({
         onSaved={(created) => created && setTab("OURS")}
       />
       <DeletePromoModal promo={confirming} onClose={() => setConfirming(null)} />
+      <PromoOrdersPanel promo={ordersOf} onClose={() => setOrdersOf(null)} onOpenOrder={setOpenOrderId} />
       {renderOrderDrawer(openOrderId, () => setOpenOrderId(null))}
     </div>
   );

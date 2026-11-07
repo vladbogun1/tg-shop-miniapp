@@ -3,10 +3,20 @@
 import { useState } from "react";
 import { Button } from "@shop/ui/admin-button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { CHANNEL_OPTIONS, PERIOD_OPTIONS, todayIso } from "../model/period";
+import { CHANNEL_OPTIONS, PERIOD_OPTIONS, PREV_LABEL, rangeLabel, todayIso } from "../model/period";
 import type { PeriodParams, PeriodToken } from "../model/types";
+import { ScopeBadge } from "./kit";
 
-export function PeriodPicker({ params, onChange }: { params: PeriodParams; onChange: (p: PeriodParams) => void }) {
+export function PeriodPicker({
+  params,
+  onChange,
+  channelApplies = true,
+}: {
+  params: PeriodParams;
+  onChange: (p: PeriodParams) => void;
+  /** Вкладки Маржа и Предзаказы отчёт по каналу не режут: сегмент канала заменяется пометкой. */
+  channelApplies?: boolean;
+}) {
   const [from, setFrom] = useState(params.from ?? "");
   const [to, setTo] = useState(params.to ?? "");
   // The remembered period arrives from localStorage after the first render: refill the fields then.
@@ -38,12 +48,19 @@ export function PeriodPicker({ params, onChange }: { params: PeriodParams; onCha
         <div className="thin-scroll -mx-1 max-w-full overflow-x-auto overflow-y-hidden px-1">
           <SegmentedControl size="sm" options={PERIOD_OPTIONS} value={showCustom ? "custom" : params.period} onChange={pick} />
         </div>
-        <SegmentedControl
-          size="sm"
-          options={CHANNEL_OPTIONS}
-          value={params.channel}
-          onChange={(channel) => onChange({ ...params, channel })}
-        />
+        {channelApplies ? (
+          <SegmentedControl
+            size="sm"
+            options={CHANNEL_OPTIONS}
+            value={params.channel}
+            onChange={(channel) => onChange({ ...params, channel })}
+          />
+        ) : (
+          <ScopeBadge>канал не учитывается — все каналы</ScopeBadge>
+        )}
+        <span className="text-[12px] text-[var(--text-faint)]">
+          {rangeLabel(params)} · {PREV_LABEL[params.period]}
+        </span>
       </div>
       {showCustom && (
         <div className="flex flex-wrap items-center gap-2 text-[13px] text-[var(--text-muted)]">

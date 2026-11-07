@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, MonitorX, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
+import { LogOut, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoMark, Wordmark } from "@/components/brand/Logo";
@@ -42,30 +42,6 @@ function AccountLink({
       />
       <span className={cn(collapsed && "sr-only")}>Мой аккаунт</span>
     </Link>
-  );
-}
-
-/** Revokes every token of this admin — for a lost phone or a session left open somewhere. */
-function LogoutEverywhereButton() {
-  const collapsed = false;
-  const logoutAll = useLogoutEverywhere();
-
-  return (
-    <button
-      onClick={() => void logoutAll.run()}
-      disabled={logoutAll.busy}
-      title="Выйти на всех устройствах — отозвать вход везде, включая это устройство"
-      className={cn(
-        "flex min-h-11 w-full items-center gap-3 whitespace-nowrap rounded-[var(--r-md)] py-2 text-left text-[12.5px] font-medium text-[var(--text-faint)] transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] hover:text-[var(--danger-ink)] disabled:opacity-60 lg:min-h-9",
-        collapsed ? "justify-center px-0" : "px-3",
-      )}
-    >
-      {/* 18px slot: the label lines up with «Мой аккаунт» / «Выйти» above. */}
-      <span className="grid w-[18px] shrink-0 place-items-center">
-        <MonitorX className="h-[16px] w-[16px]" />
-      </span>
-      <span className={cn("truncate", collapsed && "sr-only")}>Выйти везде</span>
-    </button>
   );
 }
 
@@ -151,7 +127,6 @@ export function SidebarInner({
           <LogOut className="h-[18px] w-[18px] shrink-0" />
           <span className={cn(collapsed && "sr-only")}>Выйти</span>
         </button>
-        {!collapsed && <LogoutEverywhereButton />}
         {onToggleCollapsed && (
           <button
             type="button"

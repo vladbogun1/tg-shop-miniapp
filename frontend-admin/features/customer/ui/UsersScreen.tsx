@@ -10,6 +10,12 @@
  * A row opens the UserProfileDrawer; an order in it opens the OrderDrawer ON TOP, so closing it
  * returns to the profile and the list with its search and page intact.
  *
+ * The list stays mounted (hidden) while «Аналитика» is open and under the drawers, so the loaded
+ * «Показать ещё» portions, the search, the filter and the scroll position survive.
+ *
+ * The list stays mounted (hidden) while «Аналитика» is open and under the drawers, so the loaded
+ * «Показать ещё» portions, the search, the filter and the scroll position survive.
+ *
  * The OrderDrawer itself comes from the page (`renderOrderDrawer`): it opens the customer profile
  * in turn, and a direct import would close a cycle customer → orders → customer.
  */
@@ -27,8 +33,11 @@ type Tab = "list" | "analytics";
 
 export function UsersScreen({
   renderOrderDrawer,
+  onWrite,
 }: {
   renderOrderDrawer: (orderId: string | null, onClose: () => void) => ReactNode;
+  /** «Написать» в профиле (окно нового вопроса поддержки рисует страница: из клиентов в поддержку импорта нет). */
+  onWrite?: (user: UserCardDto) => void;
 }) {
   const [range, setRange] = useTimeRange();
   const [tab, setTab] = useState<Tab>("list");
@@ -53,13 +62,17 @@ export function UsersScreen({
         )}
       </div>
 
-      {tab === "list" ? (
+      <div hidden={tab !== "list"}>
         <UsersTable onOpenUser={setProfileUser} />
-      ) : (
-        <UserMetrics range={range} onOpenUser={setProfileUser} />
-      )}
+      </div>
+      {tab === "analytics" && <UserMetrics range={range} onOpenUser={setProfileUser} />}
 
-      <UserProfileDrawer user={profileUser} onClose={() => setProfileUser(null)} onOpenOrder={setOpenOrderId} />
+      <UserProfileDrawer
+        user={profileUser}
+        onClose={() => setProfileUser(null)}
+        onOpenOrder={setOpenOrderId}
+        onWrite={onWrite}
+      />
       {/* Mounted after the profile drawer, so it stacks above it (same z-index, later in the DOM). */}
       {renderOrderDrawer(openOrderId, () => setOpenOrderId(null))}
     </div>

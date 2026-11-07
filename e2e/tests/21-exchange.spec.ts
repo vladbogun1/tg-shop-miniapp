@@ -4,13 +4,13 @@
  * what the cap was paid for counts towards the new order, the rest is наложка.
  */
 import { CUSTOMER, ORDER, PRODUCT, money } from "../lib/seed";
-import { dialog, expect, openOrderFromBoard, test, toast } from "../lib/test";
+import { pickFromMoreMenu, dialog, expect, openOrderFromBoard, test, toast } from "../lib/test";
 
 test("обмен: кепка уже у нас, взамен рюкзак отдельным заказом, исходный остаётся «Доставлен»", async ({ page, api }) => {
   const capBefore = (await api.product(PRODUCT.cap)).stock;
   const bagBefore = (await api.product(PRODUCT.bag)).stock;
   const drawer = await openOrderFromBoard(page, ORDER.exchange, CUSTOMER.exchange);
-  await drawer.getByRole("button", { name: "Обмен", exact: true }).click();
+  await pickFromMoreMenu(page, drawer, "Обмен");
 
   const modal = dialog(page, "Что вернул покупатель");
   const submit = modal.getByRole("button", { name: "Оформить обмен" });

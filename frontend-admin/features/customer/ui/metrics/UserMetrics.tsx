@@ -11,7 +11,7 @@ import { staggerContainer } from "@/lib/motion";
 import { languageSlices, topCustomerBars } from "../../model/metrics";
 import type { UserCardDto, UserMetricsDto } from "../../model/types";
 import { useUserMetrics } from "../../queries";
-import { UsersMapBlock } from "../map/UsersMapBlock";
+import { UsersMapSection } from "../map/UsersMapSection";
 import { LanguageChart, SignupsChart, TopCustomersChart } from "./charts";
 
 function MetricsSkeleton() {
@@ -67,8 +67,8 @@ export function UserMetrics({ range, onOpenUser }: { range: TimeRange; onOpenUse
 
   return (
     <div className="flex flex-col gap-6">
-      <UsersMapBlock onOpenUser={onOpenUser} />
       <KpiCards m={m} />
+      <UsersMapSection onOpenUser={onOpenUser} />
       <div className="grid gap-4 lg:grid-cols-2">
         <SignupsChart data={m.newUsersByDay} />
         <LanguageChart data={langData} />

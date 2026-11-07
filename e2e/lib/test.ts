@@ -44,9 +44,9 @@ export function orderDrawer(page: Page, orderId: string): Locator {
   return page.getByRole("dialog").filter({ hasText: shortId(orderId) }).first();
 }
 
-/** Board search box. */
+/** Board search box (the placeholder is shorter on a phone, the accessible name is the same). */
 export function boardSearch(page: Page): Locator {
-  return page.getByPlaceholder("Поиск: имя, телефон, товар, ТТН, №…");
+  return page.getByRole("textbox", { name: "Поиск заказов" });
 }
 
 /**
@@ -71,4 +71,11 @@ export function containerOf(scope: Page | Locator, ...parts: Locator[]): Locator
   let loc = scope.locator("div");
   for (const p of parts) loc = loc.filter({ has: p });
   return loc.last();
+}
+
+/** Пункт меню «Ещё» карточки заказа: открыть меню и выбрать пункт (на ПК — menuitem, на телефоне — кнопка листа). */
+export async function pickFromMoreMenu(page: Page, drawer: Locator, name: string | RegExp): Promise<void> {
+  await drawer.getByRole("button", { name: "Другие действия" }).click();
+  const item = page.getByRole("menuitem", { name }).or(page.getByRole("dialog").getByRole("button", { name, exact: typeof name === "string" }));
+  await item.first().click();
 }

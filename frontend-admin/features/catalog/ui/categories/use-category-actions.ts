@@ -2,7 +2,8 @@
 
 import { useConfirm } from "@shop/ui/confirm";
 import { childrenOf } from "../../model/tree";
-import { planReparent, planShift } from "../../model/tree-view";
+import { planReorder, planReparent, planShift } from "../../model/tree-view";
+import { planReparentMany } from "../../model/tree-filter";
 import type { AdminCategory } from "../../model/types";
 import { plural, productsWord } from "../../model/words";
 import { useDeleteCategory, useReorderCategories } from "../../queries";
@@ -18,11 +19,26 @@ export function useCategoryActions(categories: AdminCategory[]) {
     if (plan) reorder.mutate(plan);
   }
 
+  /** Перетаскивание: новый порядок соседей одного родителя одним запросом. */
+  function reorderSiblings(parentId: string | null, orderedIds: string[]) {
+    const plan = planReorder(categories, parentId, orderedIds);
+    if (plan) reorder.mutate(plan);
+  }
+
   function reparent(moving: AdminCategory, parentId: string | null) {
     const target = categories.find((c) => c.id === parentId);
     reorder.mutate({
       ...planReparent(categories, moving, parentId),
       message: target ? `«${moving.name}» теперь в «${target.name}»` : `«${moving.name}» — корневая категория`,
+    });
+  }
+
+  /** Перенос нескольких категорий к одному родителю одним запросом порядка. */
+  function reparentMany(moving: AdminCategory[], parentId: string | null) {
+    const target = categories.find((c) => c.id === parentId);
+    reorder.mutate({
+      ...planReparentMany(categories, moving, parentId),
+      message: `${moving.length === 1 ? `«${moving[0].name}»` : `Категорий: ${moving.length}`} — ${target ? `теперь в «${target.name}»` : "на верхнем уровне"}`,
     });
   }
 
@@ -53,5 +69,5 @@ export function useCategoryActions(categories: AdminCategory[]) {
     if (ok) del.mutate(c.id);
   }
 
-  return { shift, reparent, remove, busyId: del.isPending ? del.variables : undefined };
+  return { shift, reorderSiblings, reparent, reparentMany, remove, busyId: del.isPending ? del.variables : undefined };
 }

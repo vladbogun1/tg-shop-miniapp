@@ -9,24 +9,24 @@ import { Settings2, Zap } from "lucide-react";
 import { Modal } from "@shop/ui/overlay";
 import { Button } from "@shop/ui/admin-button";
 import { QueryState } from "@/components/ui/QueryState";
-import { useRenderedTemplatesQuery } from "../../queries/templates";
+import type { UseQueryResult } from "@tanstack/react-query";
+import type { RenderedTemplate } from "../../api";
 import { LOCALE_LABEL } from "./template-meta";
 import { TemplatesManager } from "./TemplatesManager";
 
-/** ⚡ — list of templates rendered for this order; choosing one hands its text to the chat input. */
+/** ⚡ — templates already filled in for this chat (order or support thread); choosing one hands its text to the chat input. */
 export function TemplatePicker({
   open,
-  orderId,
+  templates: q,
   onClose,
   onPick,
 }: {
   open: boolean;
-  orderId: string;
+  templates: UseQueryResult<RenderedTemplate[]>;
   onClose: () => void;
   onPick: (text: string) => void;
 }) {
   const [manage, setManage] = useState(false);
-  const q = useRenderedTemplatesQuery(orderId, open);
 
   return (
     <>

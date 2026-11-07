@@ -633,6 +633,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/broadcast/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop the running broadcast: sent ones stay, unsent ones are not sent; idempotent; 409 when nothing is running */
+        post: operations["AdminBroadcastStopController_stop"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/broadcast/test": {
         parameters: {
             query?: never;
@@ -2590,6 +2607,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/products/{id}/quick": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Quick edit from the list: price and/or stock only. 409 STOCK_CONFLICT / PRICE_CONFLICT when the stored value is no longer the expected one; 400 STOCK_REASON_REQUIRED when the stock goes down; 400 QUICK_STOCK_HAS_VARIANTS for a product with variants */
+        patch: operations["AdminProductQuickEditController_quick"];
+        trace?: never;
+    };
     "/api/admin/promocodes": {
         parameters: {
             query?: never;
@@ -2597,7 +2631,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List promo codes (with live reservations); origin=OURS|PERSONAL|REVIEW narrows the list */
+        /** List promo codes (with live reservations); origin=OURS|PERSONAL|REVIEW|CASE narrows the list */
         get: operations["AdminPromoController_list"];
         put?: never;
         /** Create promo code */
@@ -2617,6 +2651,23 @@ export interface paths {
         };
         /** Orders with a manual amount/percent discount, newest first (max 200) */
         get: operations["AdminPromoOrdersController_manualDiscounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/promocodes/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Promo codes page: origin=OURS|PERSONAL|REVIEW|CASE, q (code or owner id), state=live|off, page from 0, size up to 100 */
+        get: operations["AdminPromoController_page"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2771,7 +2822,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Reviews, newest first; status = PENDING | PUBLISHED | HIDDEN | ALL, optional productId */
+        /** Reviews, newest first; status = PENDING | PUBLISHED | HIDDEN | ALL, optional productId, q (text, author, customer, product, order id), ratings (1..5, repeatable), unanswered (no shop reply). Status counters are counted under all filters except the status. */
         get: operations["AdminReviewController_list"];
         put?: never;
         post?: never;
@@ -2843,6 +2894,23 @@ export interface paths {
         put?: never;
         /** Public reply of the shop; blank text removes it */
         post: operations["AdminReviewController_reply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Up to 5 orders (number, phone, name), products (title, article) and customers (name, @username, phone) for the term; fewer than 2 characters give empty groups */
+        get: operations["AdminSearchController_search"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3142,6 +3210,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/support/threads/{id}/reply-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reply templates filled in for this thread, in the customer's language */
+        get: operations["AdminSupportController_replyTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/support/unread-count": {
         parameters: {
             query?: never;
@@ -3302,7 +3387,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Paged/searchable/sortable list of bot users */
+        /** Paged/searchable/sortable list of bot users; filters (all combine): blockedOnly, premiumOnly, hasOrders=true|false (any order status) */
         get: operations["AdminUserController_list"];
         put?: never;
         post?: never;
@@ -4459,6 +4544,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/brands/redirects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Of the comma-separated brand slugs, those that are old ones: {oldSlug: currentSlug} */
+        get: operations["PublicBrandRedirectController_redirects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/catalog/schema": {
         parameters: {
             query?: never;
@@ -5271,6 +5373,7 @@ export interface components {
         BatchDto: {
             /** Format: date-time */
             arrivedAt: string | null;
+            cancelReason: string | null;
             /** Format: date-time */
             cancelledAt: string | null;
             /** Format: date-time */
@@ -5479,10 +5582,14 @@ export interface components {
             id: number;
             lang: string;
             /** Format: int32 */
+            remaining: number;
+            /** Format: int32 */
             sent: number;
             /** Format: date-time */
             startedAt: string;
             status: string;
+            stopRequested: boolean;
+            stoppedByName: string;
             text: string;
             textEn: string;
             textRu: string;
@@ -5518,6 +5625,9 @@ export interface components {
             sent: number;
             /** Format: date-time */
             startedAt: string;
+            stopRequested: boolean;
+            stopped: boolean;
+            stoppedBy: string;
             /** Format: int32 */
             total: number;
         };
@@ -5543,7 +5653,7 @@ export interface components {
         };
         CancelRequest: {
             closeQueue?: boolean;
-            note?: string;
+            reason?: string;
         };
         CancelReturnRequest: {
             money?: string;
@@ -6071,6 +6181,13 @@ export interface components {
             subject?: string;
             text?: string;
             type?: string;
+        };
+        CustomerHit: {
+            name: string;
+            phone: string;
+            /** Format: int64 */
+            telegramUserId: number;
+            username: string;
         };
         CustomerKpis: {
             /** Format: double */
@@ -7493,6 +7610,17 @@ export interface components {
             /** @enum {string|null} */
             tier: "BRONZE" | "SILVER" | "GOLD" | null;
         };
+        OrderHit: {
+            /** Format: date-time */
+            createdAt: string;
+            customerName: string;
+            id: string;
+            phone: string;
+            shortId: string;
+            status: string;
+            /** Format: int64 */
+            totalMinor: number;
+        };
         OrderItemDto: {
             autoGift: boolean;
             /** @enum {string|null} */
@@ -7756,6 +7884,17 @@ export interface components {
             title: string;
             variants: components["schemas"]["ProductVariantDto"][] | null;
         };
+        ProductHit: {
+            active: boolean;
+            currency: string;
+            id: string;
+            /** Format: int64 */
+            priceMinor: number;
+            sku: string;
+            /** Format: int32 */
+            stock: number;
+            title: string;
+        };
         ProductImageDto: {
             /** Format: int64 */
             id: number | null;
@@ -7772,6 +7911,18 @@ export interface components {
             productId: string;
             /** Format: int32 */
             waitingCount: number;
+        };
+        ProductQuickEditRequest: {
+            /** Format: int64 */
+            expectedPriceMinor?: number;
+            /** Format: int32 */
+            expectedStock?: number;
+            /** Format: int64 */
+            priceMinor?: number;
+            /** Format: int32 */
+            stock?: number;
+            stockNote?: string;
+            stockReason?: string;
         };
         ProductUpsertRequest: {
             active?: boolean;
@@ -7845,15 +7996,26 @@ export interface components {
             /** Format: int32 */
             maxUses: number | null;
             /** @enum {string} */
-            origin: "OURS" | "PERSONAL" | "REVIEW";
+            origin: "OURS" | "PERSONAL" | "REVIEW" | "CASE";
             /** Format: int64 */
             ownerUserId: number | null;
             /** Format: int64 */
             reservedCount: number;
             /** @enum {string|null} */
-            source: "REVIEW_BONUS" | null;
+            source: "REVIEW_BONUS" | "GIFT_CASE" | null;
             /** Format: int32 */
             usesCount: number;
+        };
+        PromoCodePageDto: {
+            items: components["schemas"]["PromoCodeDto"][];
+            /** Format: int64 */
+            originTotal: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            total: number;
         };
         PromoCodeUpsertRequest: {
             active?: boolean;
@@ -7862,10 +8024,12 @@ export interface components {
             discountAmountMinor?: number;
             /** Format: int32 */
             discountPercent?: number;
+            expiresOn?: string;
             /** Format: int64 */
             maxDiscountMinor?: number;
             /** Format: int32 */
             maxUses?: number;
+            noExpiry?: boolean;
         };
         PromoDto: {
             /** Format: int64 */
@@ -8257,6 +8421,11 @@ export interface components {
             /** Format: int64 */
             timedOut: number;
         };
+        SearchResults: {
+            customers: components["schemas"]["CustomerHit"][];
+            orders: components["schemas"]["OrderHit"][];
+            products: components["schemas"]["ProductHit"][];
+        };
         SearchTestRequest: {
             query?: string;
         };
@@ -8571,6 +8740,8 @@ export interface components {
             /** Format: int64 */
             id: number;
             name: string | null;
+            orderId: string | null;
+            orderNo: string | null;
             /** Format: int32 */
             position: number | null;
             productId: string;
@@ -8939,6 +9110,8 @@ export interface components {
             firstName: string | null;
             languageCode: string | null;
             lastName: string | null;
+            /** Format: date-time */
+            lastOrderAt: string | null;
             /** Format: date-time */
             lastSeenAt: string | null;
             locale: string | null;
@@ -9934,6 +10107,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["BroadcastStatus"];
+                };
+            };
+        };
+    };
+    AdminBroadcastStopController_stop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BroadcastHistoryDto"];
                 };
             };
         };
@@ -13110,6 +13303,32 @@ export interface operations {
             };
         };
     };
+    AdminProductQuickEditController_quick: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductQuickEditRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdminProductDto"];
+                };
+            };
+        };
+    };
     AdminPromoController_list: {
         parameters: {
             query?: {
@@ -13172,6 +13391,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ManualDiscountDto"][];
+                };
+            };
+        };
+    };
+    AdminPromoController_page: {
+        parameters: {
+            query?: {
+                origin?: string;
+                q?: string;
+                state?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PromoCodePageDto"];
                 };
             };
         };
@@ -13429,6 +13674,9 @@ export interface operations {
             query?: {
                 status?: string;
                 productId?: string;
+                q?: string;
+                ratings?: number[];
+                unanswered?: boolean;
                 page?: number;
                 size?: number;
             };
@@ -13535,6 +13783,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AdminReview"];
+                };
+            };
+        };
+    };
+    AdminSearchController_search: {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SearchResults"];
                 };
             };
         };
@@ -14073,6 +14343,28 @@ export interface operations {
             };
         };
     };
+    AdminSupportController_replyTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RenderedTemplateDto"][];
+                };
+            };
+        };
+    };
     AdminSupportController_unreadCount: {
         parameters: {
             query?: never;
@@ -14286,6 +14578,8 @@ export interface operations {
             query?: {
                 q?: string;
                 blockedOnly?: boolean;
+                premiumOnly?: boolean;
+                hasOrders?: boolean;
                 page?: number;
                 size?: number;
                 sortBy?: string;
@@ -15986,6 +16280,30 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    PublicBrandRedirectController_redirects: {
+        parameters: {
+            query: {
+                slugs: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: string;
+                    };
+                };
             };
         };
     };

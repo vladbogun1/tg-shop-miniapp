@@ -14,6 +14,7 @@ export function stubUserCard(known: { telegramUserId: number; username: string |
     botBlocked: false,
     ordersCount: 0,
     totalSpentMinor: 0,
+    lastOrderAt: null,
   };
 }
 
@@ -47,4 +48,16 @@ export function languageLine(u: UserCardDto): string {
 
 export function telegramHref(u: UserCardDto): string {
   return u.username ? `https://t.me/${u.username}` : `tg://user?id=${u.telegramUserId}`;
+}
+
+/** Средний чек в minor-единицах; 0, пока заказов нет. */
+export function avgCheckMinor(u: Pick<UserCardDto, "ordersCount" | "totalSpentMinor">): number {
+  return u.ordersCount > 0 ? Math.round(u.totalSpentMinor / u.ordersCount) : 0;
+}
+
+/** «UA (из Telegram, в магазине не выбран)» для вкладки «Данные» профиля. */
+export function languageDetail(u: UserCardDto): string {
+  const l = userLang(u);
+  if (l.label === "—") return "не определён";
+  return l.fromTelegram ? `${l.label} (из Telegram, в магазине не выбран)` : `${l.label} (выбран в магазине)`;
 }

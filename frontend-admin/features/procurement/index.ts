@@ -23,6 +23,7 @@ export {
   sourceLabel,
   weeksUntil,
 } from "./model/batch";
+export { CANCEL_REASON_MAX, cancelBody, cancelReasonTooLong, type CancelBatchInput } from "./model/cancel";
 export { demandOfProduct, demandRowsOfProduct, peopleOfRows, releaseSummary, sumReleases } from "./model/demand";
 export type { BatchPreset, PickedProduct, SeedLine } from "./model/batch-form";
 export type * from "./model/types";

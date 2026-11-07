@@ -218,7 +218,12 @@ public class ReplyTemplateService {
         Order order = orders.find(orderId)
                 .orElseThrow(() -> new DomainException.NotFound(SupportError.ORDER_NOT_FOUND_EN));
         Locale locale = messages.localeOf(order.getTgUserId());
-        Map<String, String> vars = variables(order, locale);
+        return renderAll(variables(order, locale), locale);
+    }
+
+    /** Every template with {@code vars} filled in, in {@code locale}: the part shared by order and thread chats. */
+    @Transactional(readOnly = true)
+    public List<RenderedTemplateDto> renderAll(Map<String, String> vars, Locale locale) {
         Map<String, ContentTranslation> rows = translations();
         List<RenderedTemplateDto> out = new ArrayList<>();
         for (ReplyTemplate t : repository.findAllByOrderBySortAscIdAsc()) {

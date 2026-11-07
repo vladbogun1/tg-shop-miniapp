@@ -100,7 +100,9 @@ test("карточки: ответ ИИ → проверка → сохране�
   await expect(row).toHaveCount(1);
   await expect(row).toContainText("ИИ");
   await row.getByRole("button", { name: new RegExp(doubtful.title) }).click();
-  const panel = page.getByRole("dialog", { name: `Проверка карточки: ${doubtful.title}` });
+  // От 1280 px панель стоит рядом со списком (aside), уже — поверх него (dialog).
+  const panelName = `Проверка карточки: ${doubtful.title}`;
+  const panel = page.getByRole("complementary", { name: panelName }).or(page.getByRole("dialog", { name: panelName }));
   await expect(panel).toBeVisible();
   await panel.getByRole("button", { name: /^Принять/ }).click();
 

@@ -3,6 +3,8 @@ package com.maxsolch.shop.support.api;
 import com.maxsolch.shop.support.app.SupportService;
 
 import com.maxsolch.shop.support.app.AdminSupport;
+import com.maxsolch.shop.support.app.ReplyTemplateDtos.RenderedTemplateDto;
+import com.maxsolch.shop.support.app.SupportReplyTemplates;
 import com.maxsolch.shop.media.app.ImageStorageService;
 import com.maxsolch.shop.media.app.UploadValidator;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
@@ -39,13 +41,16 @@ public class AdminSupportController {
 
     private final SupportService support;
     private final AdminSupport adminSupport;
+    private final SupportReplyTemplates replyTemplates;
     private final ImageStorageService imageStorageService;
     private final UploadValidator uploadValidator;
 
     public AdminSupportController(SupportService support, AdminSupport adminSupport,
+                                  SupportReplyTemplates replyTemplates,
                                   ImageStorageService imageStorageService, UploadValidator uploadValidator) {
         this.support = support;
         this.adminSupport = adminSupport;
+        this.replyTemplates = replyTemplates;
         this.imageStorageService = imageStorageService;
         this.uploadValidator = uploadValidator;
     }
@@ -76,6 +81,12 @@ public class AdminSupportController {
                                      @RequestParam(required = false) Long before,
                                      @RequestParam(required = false) Integer limit) {
         return support.adminMessages(id, before, limit);
+    }
+
+    @GetMapping("/threads/{id}/reply-templates")
+    @Operation(summary = "Reply templates filled in for this thread, in the customer's language")
+    public List<RenderedTemplateDto> replyTemplates(@PathVariable String id) {
+        return replyTemplates.forThread(id);
     }
 
     @PostMapping("/threads")

@@ -10,7 +10,7 @@ import type { InboxOrderSlot } from "../model/order-slot";
 import type { InboxGroup } from "../model/types";
 
 const LINK_CLASS =
-  "focusable font-display inline-flex h-8 items-center gap-1.5 rounded-[var(--r-sm)] px-2.5 text-[11.5px] font-bold uppercase tracking-[0.06em] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)] pointer-coarse:h-9";
+  "focusable font-display inline-flex h-8 items-center gap-1.5 rounded-[var(--r-sm)] px-2.5 text-[11.5px] font-bold uppercase tracking-[0.06em] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)] pointer-coarse:h-11";
 
 function ReadAllChats({ order }: { order: InboxOrderSlot }) {
   const qc = useQueryClient();

@@ -37,7 +37,7 @@ export function CardsBulkBar({ s }: { s: CardsScreenState }) {
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6, transition: { duration: 0.12 } }}
-          className="sticky top-2 z-20 mb-3 flex flex-wrap items-center gap-2 rounded-[var(--r-lg)] border border-[rgba(255,102,0,.35)] bg-[color-mix(in_srgb,var(--accent)_10%,var(--surface))] px-3 py-2 shadow-[var(--shadow-2)] backdrop-blur"
+          className="mt-2 flex flex-wrap items-center gap-2 rounded-[var(--r-lg)] border border-[rgba(255,102,0,.35)] bg-[color-mix(in_srgb,var(--accent)_10%,var(--surface))] px-3 py-2 shadow-[var(--shadow-2)] backdrop-blur"
         >
           <span className="text-[13px] font-semibold text-[var(--text)]">
             Выбрано {count} {productsWord(count)}

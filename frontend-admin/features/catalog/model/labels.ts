@@ -27,6 +27,7 @@ export const ART_KINDS: { value: string; label: string }[] = [
   { value: "mouse", label: "Мышь" },
   { value: "keyboard", label: "Клавиатура" },
   { value: "keycaps", label: "Кейкапы" },
+  { value: "accessories", label: "Аксессуары" },
   { value: "pad", label: "Коврик" },
   { value: "glass", label: "Стеклянный коврик" },
   { value: "glides", label: "Глайды" },

@@ -78,7 +78,8 @@ public class AdminBatches {
     public BatchDto cancel(long id, CancelRequest req, boolean money) {
         BatchDto dto = batches.cancel(id, req, money);
         audit.record("PREORDER_BATCH_CANCEL", "PREORDER_BATCH", String.valueOf(id),
-                req != null && Boolean.TRUE.equals(req.closeQueue()) ? "с закрытием очереди" : "очередь оставлена");
+                (req != null && Boolean.TRUE.equals(req.closeQueue()) ? "с закрытием очереди" : "очередь оставлена")
+                        + (dto.cancelReason() == null ? "" : ": " + dto.cancelReason()));
         return dto;
     }
 

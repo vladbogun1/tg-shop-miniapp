@@ -59,7 +59,11 @@ export function CasePanel({ reminderDays }: { reminderDays: number | null }) {
   async function publish() {
     const draft = board.draft;
     if (!draft) return;
-    if (draft.length > 0 && sum.live === 0) {
+    if (draft.length === 0) {
+      toast.error("Кейс пуст — добавьте призы или выключите уровень");
+      return;
+    }
+    if (sum.live === 0) {
       toast.error("Ни один приз черновика не может выпасть — проверьте наличие и шансы");
       return;
     }
@@ -114,6 +118,7 @@ export function CasePanel({ reminderDays }: { reminderDays: number | null }) {
       </QueryState>
 
       <DraftBar
+        sum={sum}
         changed={board.changed}
         hasDraft={board.hasDraft}
         total={rows.length}

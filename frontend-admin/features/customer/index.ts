@@ -2,5 +2,5 @@
 export { UsersScreen } from "./ui/UsersScreen";
 export { UserProfileDrawer } from "./ui/profile/UserProfileDrawer";
 export { customerApi } from "./api";
-export { stubUserCard } from "./model/user";
+export { stubUserCard, displayName } from "./model/user";
 export type { UserCardDto, UserSortBy, UserMetricsDto, UsersTableQuery } from "./model/types";

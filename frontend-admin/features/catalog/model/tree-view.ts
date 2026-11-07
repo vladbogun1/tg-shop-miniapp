@@ -50,7 +50,14 @@ export function planShift(categories: AdminCategory[], c: AdminCategory, dir: -1
   if (j < 0 || j >= siblings.length) return null;
   const next = [...siblings];
   [next[i], next[j]] = [next[j], next[i]];
-  const rows = next.map((s, k) => ({ id: s.id, parentId: s.parentId ?? null, sortOrder: (k + 1) * 10 }));
+  return planReorder(categories, c.parentId ?? null, next.map((s) => s.id));
+}
+
+/** Новый порядок соседей одного родителя (после перетаскивания): sortOrder 10, 20, 30…; null, если ничего не изменилось. */
+export function planReorder(categories: AdminCategory[], parentId: string | null, orderedIds: string[]): ReorderPlan | null {
+  const current = childrenOf(categories, parentId).map((s) => s.id);
+  if (orderedIds.length !== current.length || orderedIds.every((id, k) => id === current[k])) return null;
+  const rows = orderedIds.map((id, k) => ({ id, parentId, sortOrder: (k + 1) * 10 }));
   const order = new Map(rows.map((r) => [r.id, r.sortOrder]));
   return { rows, optimistic: categories.map((x) => (order.has(x.id) ? { ...x, sortOrder: order.get(x.id)! } : x)) };
 }

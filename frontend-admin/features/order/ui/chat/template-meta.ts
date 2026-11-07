@@ -8,4 +8,5 @@ export const PLACEHOLDERS: { key: string; hint: string }[] = [
   { key: "{cod}", hint: "наложка" },
   { key: "{ttn}", hint: "ТТН" },
   { key: "{warehouse}", hint: "город и отделение" },
+  { key: "{product}", hint: "товар из вопроса (только в поддержке)" },
 ];

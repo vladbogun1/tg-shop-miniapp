@@ -7,7 +7,7 @@ const SOURCE_LABEL: Record<string, string> = { MINIAPP: "Mini App", WEB: "Сай
 
 export function ChannelsPanel({ channels }: { channels: Overview["channels"] }) {
   return (
-    <Panel title="Mini App и сайт" icon={Split} hint="Сравнение каналов за период (фильтр канала здесь не действует)">
+    <Panel title="Mini App и сайт" icon={Split} scope="все каналы" hint="Сравнение каналов за период (фильтр канала здесь не действует)">
       <TableWrap>
         <table className="mx-table">
           <thead>

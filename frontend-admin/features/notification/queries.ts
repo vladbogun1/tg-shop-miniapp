@@ -5,6 +5,7 @@ import { toast } from "@shop/ui/toast";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { ApiError } from "@shop/core/errors";
+import { useConfirm } from "@shop/ui/confirm";
 import { broadcastApi } from "./api";
 import { notificationKeys } from "./keys";
 import type { BroadcastStartBody, BroadcastTestBody, ShopLang } from "./model/types";
@@ -55,6 +56,28 @@ export function useStartBroadcast(onStarted: () => void) {
     errorFallback: "Не удалось запустить",
     onSuccess: onStarted,
   });
+}
+
+/** «Остановить»: подтверждение, затем стоп; статус и история обновляются, повторное нажатие безопасно. */
+export function useStopBroadcast() {
+  const confirm = useConfirm();
+  const m = useApiMutation({
+    mutationFn: () => broadcastApi.stop(),
+    invalidate: [notificationKeys.status(), notificationKeys.history()],
+    success: "Рассылка останавливается — уже отправленное останется",
+    errorFallback: "Не удалось остановить",
+  });
+  async function requestStop() {
+    if (m.isPending) return;
+    const ok = await confirm({
+      title: "Остановить рассылку?",
+      message: "Уже отправленные сообщения останутся у получателей, неотправленные не уйдут. Продолжить рассылку потом нельзя — только начать заново.",
+      confirmLabel: "Остановить",
+      danger: true,
+    });
+    if (ok) m.mutate(undefined);
+  }
+  return { requestStop, stopping: m.isPending };
 }
 
 /** Тестовая отправка: ответ `ok:false` — тоже тост-ошибка с текстом сервера. */

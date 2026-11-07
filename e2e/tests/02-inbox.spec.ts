@@ -34,7 +34,7 @@ test("группы и счётчики совпадают с сервером", 
       page.getByRole("heading", { level: 2, name: new RegExp(`^${escapeRe(g.title)}\\s*${g.count}$`) })
     ).toBeVisible();
     // Up to five rows per group are rendered before «Показать ещё».
-    await expect(group(page, g.title).getByRole("listitem")).toHaveCount(Math.min(5, g.items.length));
+    await expect(group(page, g.title).getByRole("listitem")).toHaveCount(g.items.length <= 9 ? g.items.length : 8);
   }
   // The menu badge shows the same total.
   await expect(page.getByLabel(`Требует внимания: ${inbox.total}`).first()).toBeVisible();
@@ -84,7 +84,8 @@ test("«Разобрано» прячет строку, «Отменить» в 
   await expect(target).toBeVisible();
   await expect(target).toContainText("Юрій Відмовник");
 
-  await target.getByRole("button", { name: "Разобрано" }).click();
+  await target.getByRole("button", { name: "Отложить" }).click();
+  await page.getByRole("menuitem", { name: "Разобрано" }).click();
   await expect(target).toHaveCount(0);
   await expect(toast(page, "Разобрано")).toBeVisible();
   expect((await api.inbox()).groups.find((g) => g.id === "RETURN")!.items.map((i) => i.entityId)).not.toContain(

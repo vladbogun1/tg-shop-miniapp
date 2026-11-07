@@ -2,20 +2,21 @@
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useApiMutation } from "@shop/ui/mutation";
+import { toast } from "@shop/ui/toast";
 import { isAuthenticated } from "@/lib/session";
 import { inboxKeys } from "@/features/inbox";
 import { reviewsApi } from "./api";
 import { reviewKeys } from "./keys";
 import { publishedToast, REVIEWS_PAGE_SIZE } from "./model/filters";
-import type { AdminReview, ReviewAction, ReviewFilter } from "./model/types";
+import type { AdminReview, ReviewAction, ReviewListParams } from "./model/types";
 
 /** Бейдж меню опрашивает раз в минуту (не пресет live: счётчик, а не очередь). */
 const PENDING_POLL_MS = 60_000;
 
-export function useReviewsList(status: ReviewFilter, productId: string | null, page: number, enabled: boolean) {
+export function useReviewsList(params: ReviewListParams, enabled: boolean) {
   return useQuery({
-    queryKey: reviewKeys.list(status, productId, page),
-    queryFn: () => reviewsApi.list({ status, productId, page, size: REVIEWS_PAGE_SIZE }),
+    queryKey: reviewKeys.list(params),
+    queryFn: () => reviewsApi.list({ ...params, size: REVIEWS_PAGE_SIZE }),
     enabled,
     placeholderData: keepPreviousData,
     refetchOnWindowFocus: true,
@@ -81,5 +82,12 @@ export function useReviewActions() {
   const busy = m.isPending && m.variables ? { id: m.variables.review.id, action: m.variables.action } : null;
   /** true — действие прошло (редактор ответа тогда закрывается). */
   const run = (v: ReviewActionVars): Promise<boolean> => m.mutateAsync(v).then(() => true, () => false);
-  return { busy, run };
+  /** «Ответить и опубликовать»: два запроса подряд (не атомарно) — сначала ответ, потом публикация. */
+  const replyAndPublish = async (review: AdminReview, text: string): Promise<boolean> => {
+    if (!(await run({ review, action: "reply", text }))) return false;
+    const ok = await run({ review, action: "publish" });
+    if (!ok) toast.error("Ответ сохранён, публикация не прошла — нажмите «Опубликовать» ещё раз");
+    return ok;
+  };
+  return { busy, run, replyAndPublish };
 }

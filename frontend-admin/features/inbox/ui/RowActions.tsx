@@ -1,19 +1,20 @@
 "use client";
 
-import { Check, Clock, MoreHorizontal } from "lucide-react";
+import { Check, Clock } from "lucide-react";
 import { useState } from "react";
 import { ActionSheet, type SheetAction } from "@/components/ui/ActionSheet";
 import { Button } from "@shop/ui/admin-button";
 import { cn } from "@/lib/cn";
 import { SNOOZE_OPTIONS, type InboxItem, type SnoozePreset } from "../model/types";
 import { primaryOf } from "./group-style";
-import { SnoozeMenu } from "./SnoozeMenu";
+import { RowMenu } from "./RowMenu";
 
 /**
  * The row's main action: orange TINT (accent-soft + orange hairline + orange text), not solid —
  * a list of rows would otherwise be a column of solid-orange buttons (v3: one solid CTA per view).
  */
-const SOFT_ACCENT = "!border-[rgba(255,102,0,.45)] !bg-[var(--accent-soft)] !text-[var(--accent-hi)] hover:!border-[var(--accent)] hover:!bg-[var(--accent-soft-2)]";
+export const SOFT_ACCENT =
+  "!border-[rgba(255,102,0,.45)] !bg-[var(--accent-soft)] !text-[var(--accent-hi)] hover:!border-[var(--accent)] hover:!bg-[var(--accent-soft-2)]";
 
 export interface RowActionsProps {
   item: InboxItem;
@@ -25,7 +26,7 @@ export interface RowActionsProps {
   onDismiss: (item: InboxItem) => void;
 }
 
-/** Desktop: actions inline on the right, «Отложить ▾» opens a small menu. */
+/** Laptop / tablet: the main action + one «⋯» (snooze presets and «Разобрано»). */
 export function DesktopActions({ item, dismissible, busy, onPrimary, onSnooze, onDismiss }: RowActionsProps) {
   const primary = primaryOf(item);
   const PrimaryIcon = primary.icon;
@@ -41,17 +42,15 @@ export function DesktopActions({ item, dismissible, busy, onPrimary, onSnooze, o
       >
         {primary.label}
       </Button>
-      <SnoozeMenu onPick={(p) => onSnooze(item, p)} />
-      {dismissible && (
-        <Button variant="outline" size="md" icon={<Check className="h-4 w-4" />} onClick={() => onDismiss(item)}>
-          Разобрано
-        </Button>
-      )}
+      <RowMenu dismissible={dismissible} onSnooze={(p) => onSnooze(item, p)} onDismiss={() => onDismiss(item)} />
     </div>
   );
 }
 
-/** Phone: the main action full width + «⋯» (bottom sheet with the snooze options) — 44 px targets. */
+/**
+ * Phone card actions: the main action full width, «Разобрано» (✓, informational rows only) and «Отложить»
+ * (a bottom sheet with the presets) — 44 px targets.
+ */
 export function PhoneActions({ item, dismissible, busy, onPrimary, onSnooze, onDismiss }: RowActionsProps) {
   const [sheet, setSheet] = useState(false);
   const primary = primaryOf(item);
@@ -60,25 +59,12 @@ export function PhoneActions({ item, dismissible, busy, onPrimary, onSnooze, onD
   const sheetActions: SheetAction[] = [
     ...SNOOZE_OPTIONS.map((o) => ({
       key: o.value,
-      label: `Отложить: ${o.label.toLowerCase()}`,
+      label: o.label,
       icon: <Clock className="h-4 w-4" />,
-      onSelect: () => {
-        setSheet(false);
-        onSnooze(item, o.value);
-      },
+      onSelect: () => onSnooze(item, o.value),
     })),
     ...(dismissible
-      ? [
-          {
-            key: "dismiss",
-            label: "Разобрано",
-            icon: <Check className="h-4 w-4" />,
-            onSelect: () => {
-              setSheet(false);
-              onDismiss(item);
-            },
-          },
-        ]
+      ? [{ key: "dismiss", label: "Разобрано", icon: <Check className="h-4 w-4 text-[var(--ok)]" />, onSelect: () => onDismiss(item) }]
       : []),
   ];
 
@@ -101,7 +87,7 @@ export function PhoneActions({ item, dismissible, busy, onPrimary, onSnooze, onD
           className="w-12 shrink-0 px-0"
           aria-label="Разобрано"
           title="Разобрано"
-          icon={<Check className="h-5 w-5" />}
+          icon={<Check className="h-5 w-5 text-[var(--ok)]" />}
           onClick={() => onDismiss(item)}
         />
       )}
@@ -111,10 +97,17 @@ export function PhoneActions({ item, dismissible, busy, onPrimary, onSnooze, onD
         className="w-12 shrink-0 px-0"
         aria-label="Отложить"
         title="Отложить"
-        icon={<MoreHorizontal className="h-5 w-5" />}
+        icon={<Clock className="h-5 w-5" />}
         onClick={() => setSheet(true)}
       />
-      <ActionSheet open={sheet} title={item.title} actions={sheetActions} onClose={() => setSheet(false)} />
+      <ActionSheet
+        open={sheet}
+        title="Отложить"
+        actions={sheetActions}
+        onClose={() => setSheet(false)}
+      >
+        <p className="mb-3 -mt-1 truncate text-[13px] text-[var(--text-muted)]">{item.title}</p>
+      </ActionSheet>
     </div>
   );
 }

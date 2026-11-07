@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 import { productStock } from "@/lib/stock";
+import { giftWarnings } from "../model/gift-warnings";
 import { GIFT_STALE_MS } from "../queries";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@shop/ui/admin-button";
@@ -82,33 +83,15 @@ function ProductLine({ product }: { product: AdminProduct }) {
 }
 
 function ProductWarnings({ product, productId, on, isCase }: { product: AdminProduct | null; productId: string; on: boolean; isCase: boolean }) {
-  const variants = product?.variants ?? [];
-  const best = variants.length ? [...variants].sort((a, b) => (b.stock ?? 0) - (a.stock ?? 0))[0] : null;
   return (
     <>
-      {product && on && productStock(product) <= 0 && <Warn>Подарка нет на складе — покупатели его не увидят, пока не появится.</Warn>}
-      {product && (product.archived || product.active === false) && <Warn>Товар скрыт из каталога — проверьте, что это нужный товар.</Warn>}
-      {product && best && (
-        <Warn tone="info">
-          У товара есть варианты — в заказ попадёт тот, которого больше всего на складе
-          {best.stock ? ` (сейчас «${best.name}», ${best.stock} шт)` : ""}.
+      {giftWarnings({ product, productId, on, isCase }).map((w) => (
+        <Warn key={w.text} tone={w.tone}>
+          {w.text}
         </Warn>
-      )}
-      <ModeWarnings productId={productId} on={on} isCase={isCase} />
+      ))}
     </>
   );
-}
-
-function ModeWarnings({ productId, on, isCase }: { productId: string; on: boolean; isCase: boolean }) {
-  if (isCase) {
-    return (
-      <Warn tone="info">
-        Кладётся от своего порога, если ни один кейс разыграть нельзя (выключены или нет призов)
-        {productId ? "" : " — сейчас не выбран, тогда подарка не будет"}.
-      </Warn>
-    );
-  }
-  return on && !productId ? <Warn>Подарок включён, но товар не выбран — подарка не будет.</Warn> : null;
 }
 
 function Warn({ children, tone = "warn" }: { children: React.ReactNode; tone?: "warn" | "info" }) {

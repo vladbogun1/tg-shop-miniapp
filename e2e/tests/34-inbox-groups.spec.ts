@@ -48,11 +48,12 @@ test("«Вопросы в поддержку» и «Отзывы на модер
     await expect(page.getByRole("heading", { level: 2, name: new RegExp(`^${support.title}\\s*${support.count}$`) })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: new RegExp(`^${review.title}\\s*${review.count}$`) })).toBeVisible();
 
-    // Support row → the thread drawer.
+    // Support row → the thread panel.
     const sRow = group(page, support.title).getByRole("listitem").filter({ hasText: METRICS_USER.zinoviy.name });
     await sRow.getByRole("button", { name: "Ответить" }).click();
     await expect(page).toHaveURL(/\/support/);
-    await expect(page.getByRole("dialog").filter({ hasText: "E2E: питання з «Уваги»" }).last()).toBeVisible();
+    // ПК: вопрос открывается в панели справа от списка (мастер-деталь), а не в шторке.
+    await expect(page.getByTestId("support-detail").filter({ hasText: "E2E: питання з «Уваги»" })).toBeVisible();
 
     // Review row → «Отзывы», «На модерации».
     await page.goto("/inbox");

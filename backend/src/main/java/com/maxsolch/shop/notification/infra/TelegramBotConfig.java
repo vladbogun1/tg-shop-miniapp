@@ -33,6 +33,11 @@ public class TelegramBotConfig {
             log.info("Telegram bot token is blank — bot not registered (notifications disabled).");
             return;
         }
+        if (!props.getTelegram().isPolling()) {
+            // The temporary copy of a zero-downtime deploy: the running backend keeps taking the updates.
+            log.info("Telegram polling is off (TELEGRAM_POLLING=false) — the bot only sends messages here.");
+            return;
+        }
         try {
             TelegramBotsApi api = new TelegramBotsApi(DefaultBotSession.class);
             session = api.registerBot(shopBot);

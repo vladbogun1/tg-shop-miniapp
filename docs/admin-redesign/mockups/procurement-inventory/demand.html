@@ -1,0 +1,210 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=1500"><title>2. «Что заказать» и модалка «Ждут» — макет</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0E0E10;--bg2:#131315;--s:#1A1A1A;--s2:#222;--s3:#2A2A2D;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.16);--tx:#F4F4F5;--mu:#A1A1AA;--fa:#8A8A93;--ac:#FF6600;--ach:#FF8533;--acs:rgba(255,102,0,.12);--acs2:rgba(255,102,0,.22);--ok:#22C55E;--warn:#F59E0B;--dg:#EF4444;--dgi:#FCA5A5;--bl:#3F8CF5;--vi:#9B6BFF;--pk:#F472B6}
+html{background:#060607}
+body{font:14px/1.4 "Inter","Segoe UI",system-ui,sans-serif;color:var(--tx);padding:28px 32px 80px;min-width:1500px}
+a{color:inherit;text-decoration:none}
+.ex{font-family:"Exo 2","Segoe UI",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.02em}
+.pg h1{font:700 28px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;text-transform:uppercase;margin-bottom:6px}
+.pg .lead{color:var(--mu);max-width:900px;margin-bottom:8px}
+.pg .nav0{margin-bottom:18px;color:var(--ach)}
+.var{margin:34px 0 10px;padding-top:22px;border-top:1px solid var(--line2)}
+.vh{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
+.vl{font:800 22px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;background:var(--ac);color:#0E0E10;border-radius:8px;padding:0 12px;line-height:34px}
+.vi2{font:600 18px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;color:var(--tx)}
+.vd{color:var(--mu);margin-bottom:18px;max-width:1000px}
+.h2{font:700 20px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;text-transform:uppercase;margin:44px 0 0;color:var(--ach)}
+.frames{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start}
+figure.fg{display:flex;flex-direction:column;gap:10px}
+figcaption{color:var(--fa);font-size:12px}
+.dev{position:relative;background:var(--bg);overflow:hidden;color:var(--tx);font-size:14px;flex:none}
+.phone{width:390px;height:800px;border-radius:30px;box-shadow:0 0 0 6px #26262a,0 0 0 7px #3a3a3f}
+.tablet{width:820px;height:1000px;border-radius:18px;box-shadow:0 0 0 6px #26262a,0 0 0 7px #3a3a3f}
+.desk{width:1440px;height:900px;border-radius:10px;box-shadow:0 0 0 1px var(--line2)}
+.desk.short{height:640px}
+.scr{display:flex;flex-direction:column;height:100%}
+.sb{height:26px;flex:none;display:flex;justify-content:space-between;align-items:flex-end;padding:0 22px 2px;font-size:11px;font-weight:600;color:var(--mu)}
+.top{display:flex;align-items:center;gap:4px;height:52px;padding:0 6px 0 4px;border-bottom:1px solid var(--line);flex:none}
+.top h1{font:700 17px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;text-transform:uppercase;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:8px}
+.top h1.c{text-align:center;padding:0}
+.ib{width:44px;height:44px;display:grid;place-items:center;border-radius:12px;color:var(--mu);font-size:22px;flex:none}
+.pbody{flex:1;overflow:hidden;position:relative;min-height:0}
+.pad{padding:14px}
+.px{padding:0 14px}
+.tabbar{height:62px;flex:none;display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--line);background:var(--s)}
+.tabbar div{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;color:var(--fa)}
+.tabbar div i{font-style:normal;font-size:19px}
+.tabbar .on{color:var(--ach)}
+.pbar{flex:none;background:var(--s);border-top:1px solid var(--line2);padding:10px 14px;display:flex;gap:10px;align-items:center}
+.pbar .sum{flex:1;min-width:0;line-height:1.25}
+.pbar .sum b{display:block;font-size:15px}
+.pbar .sum span{font-size:11.5px;color:var(--mu)}
+.dsh{display:grid;grid-template-columns:232px 1fr;height:100%}
+.dsh.rail{grid-template-columns:64px 1fr}
+.side{background:var(--s);border-right:1px solid var(--line);padding:16px 10px;display:flex;flex-direction:column;gap:2px}
+.side .logo{font:800 17px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;color:var(--ac);padding:0 10px 14px;letter-spacing:.04em}
+.side a{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:10px;color:var(--mu);font-size:13.5px}
+.side a.on{background:var(--acs);color:var(--ach);font-weight:600}
+.side .gl{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--fa);padding:12px 10px 4px}
+.rail .side{padding:14px 8px;align-items:center}.rail .side a{width:44px;justify-content:center;padding:0}.rail .side .logo{padding:0 0 12px;font-size:14px}
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.dtop{height:60px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--line);gap:16px}
+.dtop h1{font:700 21px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;text-transform:uppercase}
+.dtop .sub{color:var(--fa);font-size:12px;margin-left:12px;font-weight:400}
+.dtop .acts{display:flex;gap:8px;align-items:center}
+.dbody{flex:1;overflow:hidden;padding:20px 24px;min-height:0;position:relative}
+.wrap{margin:0 auto}
+.btn{height:36px;padding:0 14px;border-radius:10px;border:1px solid var(--line2);background:var(--s2);color:var(--tx);font:600 13px "Inter","Segoe UI",sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;flex:none}
+.btn.pri{background:var(--ac);color:#0E0E10;border-color:var(--ac)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--mu)}
+.btn.out{background:transparent}
+.btn.dg{background:rgba(239,68,68,.14);color:var(--dgi);border-color:rgba(239,68,68,.45)}
+.btn.lg{height:48px;font-size:15px;border-radius:12px;padding:0 20px}
+.btn.sm{height:30px;font-size:12px;padding:0 10px;border-radius:8px}
+.btn.blk{width:100%}
+.btn.sq{width:44px;padding:0;font-size:18px}
+.btn[disabled],.btn.off{opacity:.45}
+.badge{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 9px;border-radius:999px;font:600 11px "Inter","Segoe UI",sans-serif;background:var(--s3);color:var(--mu);white-space:nowrap;flex:none}
+.badge.ok{background:rgba(34,197,94,.14);color:#6EE7A0}.badge.warn{background:rgba(245,158,11,.15);color:#FBBF24}.badge.dg{background:rgba(239,68,68,.15);color:var(--dgi)}.badge.ac{background:var(--acs);color:var(--ach)}.badge.bl{background:rgba(63,140,245,.16);color:#8DB9FA}.badge.vi{background:rgba(155,107,255,.16);color:#C4A8FF}
+.card{background:var(--s);border:1px solid var(--line);border-radius:14px}
+.card.pd{padding:14px}
+.card.sel{border-color:rgba(255,102,0,.55);background:linear-gradient(0deg,var(--acs),var(--acs)),var(--s)}
+.chips{display:flex;gap:8px;overflow:hidden}
+.chip{height:36px;padding:0 14px;border-radius:999px;background:var(--s2);border:1px solid var(--line);display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mu);white-space:nowrap;flex:none}
+.chip.on{background:var(--acs);border-color:rgba(255,102,0,.5);color:var(--ach)}
+.chip b{font-weight:700;color:var(--tx)}.chip.on b{color:var(--ach)}
+.chip.sm{height:30px;font-size:12px;padding:0 11px}
+.seg{display:flex;background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:2px}
+.seg span{flex:1;text-align:center;height:34px;line-height:34px;border-radius:9px;color:var(--mu);font-size:13px;font-weight:600;white-space:nowrap;padding:0 10px}
+.seg span.on{background:var(--s3);color:var(--tx);box-shadow:0 1px 0 var(--line2) inset}
+.seg span b{color:var(--ach);margin-left:4px}
+.seg.fit{display:inline-flex}.seg.fit span{flex:none}
+.inp{height:42px;background:var(--s2);border:1px solid var(--line);border-radius:10px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--tx);font-size:14px;min-width:0}
+.inp.r{justify-content:flex-end;text-align:right}
+.inp small,.unit{color:var(--fa);font-size:12px;flex:none}
+.inp.ph{color:var(--fa)}.inp.focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--acs2)}
+.inp.err{border-color:var(--dg);box-shadow:0 0 0 3px rgba(239,68,68,.18)}
+.inp.s{height:34px;font-size:13px;border-radius:8px}
+.lbl{font-size:12px;color:var(--fa);margin-bottom:5px;display:block}
+.err-t{font-size:12px;color:var(--dgi);margin-top:4px}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.f3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.stack{display:flex;flex-direction:column;gap:10px}.st14{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;align-items:center;gap:10px;min-width:0}.sp{justify-content:space-between}.grow{flex:1;min-width:0}.wr{flex-wrap:wrap}
+.mu{color:var(--mu)}.fa{color:var(--fa)}.sm{font-size:12px}.xs{font-size:11px}.b{font-weight:700}.tr{text-align:right}.nw{white-space:nowrap}.ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ok{color:#6EE7A0}.wn{color:#FBBF24}.dgt{color:var(--dgi)}.ach{color:var(--ach)}.num{font-variant-numeric:tabular-nums}
+.st{font:700 13px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);margin:2px 0 8px}
+table.dt{width:100%;border-collapse:collapse;font-size:13px}
+.dt th{text-align:left;font:600 10.5px "Inter","Segoe UI",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--fa);background:var(--bg2);padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.dt td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.dt td.n,.dt th.n{text-align:right;font-variant-numeric:tabular-nums}
+.dt td.c,.dt th.c{text-align:center}
+.dt tfoot td{font-weight:700;background:var(--bg2);border-top:1px solid var(--line2)}
+.dt tr.hl td{background:var(--acs)}.dt tr.warnr td{background:rgba(245,158,11,.08)}.dt tr.dim td{opacity:.5}
+.tw{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--s)}
+.thumb{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#34343a,#1e1e22);display:grid;place-items:center;color:var(--fa);font-size:17px;flex:none}
+.thumb.s{width:32px;height:32px;font-size:14px;border-radius:8px}.thumb.l{width:56px;height:56px;font-size:24px;border-radius:12px}
+.circ{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font-size:20px;color:#0E0E10;flex:none;font-weight:800}
+.circ.s{width:40px;height:40px;font-size:17px}
+.c-or{background:var(--ac)}.c-bl{background:var(--bl)}.c-vi{background:var(--vi)}.c-ok{background:#22C07D}.c-wn{background:var(--warn)}.c-dg{background:#F0503C}.c-pk{background:var(--pk)}.c-gr{background:#6b6b73;color:#fff}
+.chat{display:flex;gap:12px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)}
+.chat .mid{flex:1;min-width:0}.chat .t1{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.chat .nm{font:700 15px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;text-transform:uppercase}.chat .am{font-size:13px;font-weight:600;white-space:nowrap}
+.chat .pv{color:var(--mu);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.chat .r2{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cnt{min-width:22px;height:22px;border-radius:11px;background:var(--ac);color:#0E0E10;font:700 12px "Inter","Segoe UI",sans-serif;display:inline-grid;place-items:center;padding:0 7px;flex:none}
+.cnt.g{background:var(--s3);color:var(--mu)}
+.progress{height:6px;border-radius:3px;background:var(--s3);overflow:hidden}.progress i{display:block;height:100%;background:var(--ac);border-radius:3px}
+.progress.ok i{background:var(--ok)}.progress.wn i{background:var(--warn)}
+.steps{display:flex;align-items:center;gap:0}
+.steps .s{display:flex;align-items:center;gap:6px;color:var(--fa);font-size:12px;font-weight:600;white-space:nowrap}
+.steps .s i{width:20px;height:20px;border-radius:50%;background:var(--s3);display:grid;place-items:center;font-style:normal;font-size:11px;color:var(--mu)}
+.steps .s.done i{background:var(--ok);color:#0E0E10}.steps .s.cur i{background:var(--ac);color:#0E0E10}.steps .s.cur{color:var(--tx)}.steps .s.done{color:var(--mu)}
+.steps .ln{flex:1;height:2px;background:var(--s3);margin:0 8px;min-width:12px}.steps .ln.done{background:var(--ok)}
+.mini-steps{display:flex;gap:3px}.mini-steps i{flex:1;height:4px;border-radius:2px;background:var(--s3)}.mini-steps i.d{background:var(--ok)}.mini-steps i.c{background:var(--ac)}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.66);z-index:5}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--s);border-radius:20px 20px 0 0;border-top:1px solid var(--line2);display:flex;flex-direction:column;z-index:6;max-height:92%}
+.sheet.full{top:26px;border-radius:20px 20px 0 0;max-height:none}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--s3);margin:8px auto 2px;flex:none}
+.sh{padding:8px 16px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.sh h2,.mh h2{font:700 17px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;text-transform:uppercase}
+.sbody{padding:0 16px 14px;overflow:hidden;flex:1;min-height:0}
+.sfoot{padding:12px 16px 16px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;background:var(--s)}
+.modal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--s);border:1px solid var(--line2);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.6);display:flex;flex-direction:column;max-height:calc(100% - 48px);z-index:6}
+.mh{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.mb{padding:16px 20px;overflow:hidden;flex:1;min-height:0}
+.mf{padding:12px 20px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:space-between;align-items:center}
+.ghostbg{opacity:.5}
+.sk{height:14px;border-radius:6px;background:var(--s3);margin-bottom:10px}
+.kpi{background:var(--s);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.kpi .l{font-size:11.5px;color:var(--fa)}.kpi .v{font:700 22px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;margin-top:2px}.kpi .d{font-size:11.5px;color:var(--mu)}
+.kpi.p{background:var(--acs);border-color:rgba(255,102,0,.4)}
+.det{border:1px solid var(--line);border-radius:12px;background:var(--s2);padding:11px 14px;display:flex;justify-content:space-between;align-items:center;color:var(--mu);font-size:13px}
+.det b{color:var(--tx)}
+.kbd{font:600 11px "Inter","Segoe UI",sans-serif;padding:2px 6px;border-radius:5px;background:var(--s3);color:var(--mu);border:1px solid var(--line2)}
+.note{border-radius:10px;padding:9px 12px;font-size:12.5px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);color:#FBBF24}
+.note.i{background:rgba(63,140,245,.1);border-color:rgba(63,140,245,.35);color:#8DB9FA}
+.note.ok{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.35);color:#6EE7A0}
+.note.dg{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.4);color:var(--dgi)}
+.chk{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--line2);display:inline-grid;place-items:center;flex:none;font-size:13px;color:#0E0E10;font-weight:800}
+.chk.on{background:var(--ac);border-color:var(--ac)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ac);display:inline-block;flex:none}
+.sep{height:1px;background:var(--line);margin:10px 0}
+.dt td:first-child{min-width:230px}.dsh>div:first-child{display:flex}.dsh>div:first-child .side{flex:1;width:100%}
+</style></head><body><div class="pg"><div class="nav0"><a href="index.html">← все экраны</a></div><h1>2. «Что заказать» и модалка «Ждут»</h1><div class="lead">Сейчас: на строке три действия падают под текст, каждая строка создаёт поставку из одной позиции, WaitersModal без поиска и статусов. Нужны: заказ пачкой и один главный CTA.</div><section class="var"><div class="vh"><span class="vl">A</span><span class="vi2">Чекбоксы + липкая панель «Заказать вместе»</span></div><div class="vd">Выбираешь несколько товаров — нижняя панель (над TabBar) собирает их в одну поставку с несколькими seed. Таблица на ноуте с главным действием в строке.</div><div class="frames"><figure class="fg"><div class="dev phone"><div class="scr"><div class="sb"><span>9:41</span><span>▂▄▆ 100%</span></div>
+  <div class="top"><div class="ib">‹</div><h1 class="">Что заказать</h1><div class="ib">⌕</div></div>
+  <div class="pbody"><div class="pad stack" style="gap:8px"><div class="row sp"><span class="sm mu">7 товаров · 21 человек ждут</span><span class="ach sm b">Выбрать все</span></div><div class="card pd row sel" style="gap:10px"><span class="chk on">✓</span><div class="thumb s">🖱</div><div class="grow"><div class="ell b" style="font-size:13.5px">Logitech G Pro X Superlight 2</div><div class="xs mu ell">едет 10 · Taobao №14</div></div><div class="tr"><span class="cnt">6</span></div></div><div class="card pd row sel" style="gap:10px"><span class="chk on">✓</span><div class="thumb s">⌨</div><div class="grow"><div class="ell b" style="font-size:13.5px">Wooting 60HE</div><div class="xs mu ell">в предзаказе · 6 шт</div></div><div class="tr"><span class="cnt">4</span></div></div><div class="card pd row sel" style="gap:10px"><span class="chk on">✓</span><div class="thumb s">🖱</div><div class="grow"><div class="ell b" style="font-size:13.5px">Lamzu Maya X</div><div class="xs mu ell">на складе 1</div></div><div class="tr"><span class="cnt">5</span></div></div><div class="card pd row " style="gap:10px"><span class="chk "></span><div class="thumb s">🖱</div><div class="grow"><div class="ell b" style="font-size:13.5px">VAXEE XE-S</div><div class="xs mu ell">нигде не заказан</div></div><div class="tr"><span class="cnt">3</span></div></div><div class="card pd row " style="gap:10px"><span class="chk "></span><div class="thumb s">🖱</div><div class="grow"><div class="ell b" style="font-size:13.5px">Ninjutso Sora V2</div><div class="xs mu ell">нигде не заказан</div></div><div class="tr"><span class="cnt">2</span></div></div><div class="card pd row " style="gap:10px"><span class="chk "></span><div class="thumb s">🖱</div><div class="grow"><div class="ell b" style="font-size:13.5px">Razer Viper V3 Pro</div><div class="xs mu ell">едет 8 · Taobao №14</div></div><div class="tr"><span class="cnt">3</span></div></div></div></div><div class="pbar"><div class="sum"><b>Выбрано 3 · 15 чел.</b><span>одна поставка, 3 позиции</span></div><span class="btn pri lg">Заказать вместе</span></div>
+  <div class="tabbar"><div class=""><i>▤</i>Заказы</div><div class=""><i>✉</i>Чаты</div><div class=""><i>▦</i>Каталог</div><div class=""><i>◔</i>Метрики</div><div class="on"><i>☰</i>Ещё</div></div></div></div><figcaption>Тел 390 · чекбоксы + нижняя панель</figcaption></figure><figure class="fg"><div class="dev desk"><div class="dsh"><div><div class="side"><div class="logo">CHISETUP</div>
+  <a class=""><span>▤</span>Заказы</a><a class=""><span>✉</span>Чаты</a>
+  <div class="gl">Склад</div>
+  <a class="on"><span>⛟</span>Поставки</a><a class=""><span>⊘</span>Списания</a><a class=""><span>₴</span>Нач. себестоимость</a>
+  <div class="gl">Каталог</div>
+  <a class=""><span>▦</span>Товары</a><a class=""><span>◈</span>Бренды</a>
+  <div class="gl">Бизнес</div>
+  <a class=""><span>◔</span>Метрики</a><a class=""><span>✦</span>Промо</a><a class=""><span>⚙</span>Настройки</a></div></div><div class="main"><div class="dtop"><h1>Что заказать<span class="sub">7 товаров · 21 человек ждут</span></h1><div class="acts"><span class="btn out">Поставщики</span></div></div>
+  <div class="dbody"><div class="wrap" style="max-width:1392px;height:100%"><div class="tw"><table class="dt"><thead><tr><th style="width:40px"></th><th>Товар</th><th class="n">Ждут</th><th class="n">Склад</th><th>Уже едет</th><th>Ждут дольше всех</th><th class="n">Действие</th></tr></thead><tbody>
+  <tr class="hl"><td><span class="chk on">✓</span></td><td><div class="row"><div class="thumb s">🖱</div><div><b>Logitech G Pro X Superlight 2</b><div class="xs mu">Мышь · чёрная</div></div></div></td><td class="n ach b">6</td><td class="n">0</td><td class="mu">едет 10 · Taobao №14</td><td class="mu">6 дн</td><td class="n"><span class="btn out sm">Заказать</span> <span class="btn ghost sm">⋯</span></td></tr><tr class="hl"><td><span class="chk on">✓</span></td><td><div class="row"><div class="thumb s">⌨</div><div><b>Wooting 60HE</b><div class="xs mu">Клавиатура</div></div></div></td><td class="n ach b">4</td><td class="n">0</td><td class="mu">в предзаказе · 6 шт</td><td class="mu">2 дн</td><td class="n"><span class="btn out sm">Заказать</span> <span class="btn ghost sm">⋯</span></td></tr><tr class="hl"><td><span class="chk on">✓</span></td><td><div class="row"><div class="thumb s">🖱</div><div><b>Lamzu Maya X</b><div class="xs mu">Мышь · 8K</div></div></div></td><td class="n ach b">5</td><td class="n">1</td><td class="mu">на складе 1</td><td class="mu">9 дн</td><td class="n"><span class="btn pri sm">Раздать</span> <span class="btn ghost sm">⋯</span></td></tr><tr class=""><td><span class="chk "></span></td><td><div class="row"><div class="thumb s">🖱</div><div><b>VAXEE XE-S</b><div class="xs mu">Мышь · белая</div></div></div></td><td class="n ach b">3</td><td class="n">0</td><td class="mu">нигде не заказан</td><td class="mu">1 дн</td><td class="n"><span class="btn out sm">Заказать</span> <span class="btn ghost sm">⋯</span></td></tr><tr class=""><td><span class="chk "></span></td><td><div class="row"><div class="thumb s">🖱</div><div><b>Ninjutso Sora V2</b><div class="xs mu">Мышь · чёрная</div></div></div></td><td class="n ach b">2</td><td class="n">0</td><td class="mu">нигде не заказан</td><td class="mu">4 дн</td><td class="n"><span class="btn out sm">Заказать</span> <span class="btn ghost sm">⋯</span></td></tr><tr class=""><td><span class="chk "></span></td><td><div class="row"><div class="thumb s">🖱</div><div><b>Razer Viper V3 Pro</b><div class="xs mu">Мышь · белая</div></div></div></td><td class="n ach b">3</td><td class="n">0</td><td class="mu">едет 8 · Taobao №14</td><td class="mu">3 дн</td><td class="n"><span class="btn out sm">Заказать</span> <span class="btn ghost sm">⋯</span></td></tr></tbody></table></div>
+  <div style="position:absolute;left:24px;right:24px;bottom:16px"><div class="card pd row" style="border-color:rgba(255,102,0,.5);background:#2a1a10;box-shadow:0 10px 40px rgba(0,0,0,.6)"><b>Выбрано 3 товара</b><span class="mu sm">Logitech SL2, Wooting 60HE, Lamzu Maya X · 15 человек ждут</span><span class="grow"></span><span class="btn ghost">Сбросить</span><span class="btn pri">Заказать вместе →</span></div></div></div></div></div></div></div><figcaption>Ноут 1440 · таблица + липкая панель выбора</figcaption></figure></div></section><section class="var"><div class="vh"><span class="vl">B</span><span class="vi2">Группы по решению: раздать / уже едет / заказать</span></div><div class="vd">Экран сам решает, что делать с каждой позицией; одна кнопка на группу («Заказать все 3 одной поставкой»). На ноуте — master-detail, справа сразу видно, кто ждёт товар.</div><div class="frames"><figure class="fg"><div class="dev phone"><div class="scr"><div class="sb"><span>9:41</span><span>▂▄▆ 100%</span></div>
+  <div class="top"><div class="ib">‹</div><h1 class="">Что заказать</h1></div>
+  <div class="pbody"><div class="pad stack" style="gap:14px">
+  <div><div class="st">Раздать сейчас · есть на складе</div><div class="card pd row"><div class="thumb s">🖱</div><div class="grow"><b class="ell" style="display:block">Lamzu Maya X</b><span class="xs mu">на складе 1 · ждут 5</span></div><span class="btn pri">Раздать 1</span></div></div>
+  <div><div class="row sp"><div class="st" style="margin:0">Уже едет · ничего делать не нужно</div><span class="cnt g">2</span></div><div class="card" style="margin-top:8px"><div class="chat" style="padding:10px 12px"><div class="thumb s">🖱</div><div class="mid"><div class="b ell" style="font-size:13.5px">Logitech G Pro X Superlight 2</div><div class="xs mu">ждут 6 · приедет 18 ноя</div></div><span class="mu">›</span></div><div class="chat" style="padding:10px 12px;border:0"><div class="thumb s">🖱</div><div class="mid"><div class="b ell" style="font-size:13.5px">Razer Viper V3 Pro</div><div class="xs mu">ждут 3 · приедет 18 ноя</div></div><span class="mu">›</span></div></div></div>
+  <div><div class="row sp"><div class="st" style="margin:0">Нужно заказать · 3 товара</div><span class="cnt">3</span></div><div class="card pd stack" style="margin-top:8px;gap:8px"><div class="row sp"><span>VAXEE XE-S · 3</span><span class="fa xs">ждут давно</span></div><div class="row sp"><span>Ninjutso Sora V2 · 2</span><span class="fa xs">ждут давно</span></div><div class="row sp"><span>Wooting 60HE · 4</span><span class="fa xs">ждут давно</span></div><span class="btn pri lg blk">Заказать все 3 одной поставкой</span></div></div></div></div>
+  <div class="tabbar"><div class=""><i>▤</i>Заказы</div><div class=""><i>✉</i>Чаты</div><div class=""><i>▦</i>Каталог</div><div class=""><i>◔</i>Метрики</div><div class="on"><i>☰</i>Ещё</div></div></div></div><figcaption>Тел 390 · группы по решению: одна главная кнопка на группу</figcaption></figure><figure class="fg"><div class="dev desk"><div class="dsh"><div><div class="side"><div class="logo">CHISETUP</div>
+  <a class=""><span>▤</span>Заказы</a><a class=""><span>✉</span>Чаты</a>
+  <div class="gl">Склад</div>
+  <a class="on"><span>⛟</span>Поставки</a><a class=""><span>⊘</span>Списания</a><a class=""><span>₴</span>Нач. себестоимость</a>
+  <div class="gl">Каталог</div>
+  <a class=""><span>▦</span>Товары</a><a class=""><span>◈</span>Бренды</a>
+  <div class="gl">Бизнес</div>
+  <a class=""><span>◔</span>Метрики</a><a class=""><span>✦</span>Промо</a><a class=""><span>⚙</span>Настройки</a></div></div><div class="main"><div class="dtop"><h1>Что заказать<span class="sub">выберите товар — справа видно, кто ждёт</span></h1><div class="acts"><span class="btn out">Поставщики</span></div></div>
+  <div class="dbody"><div class="wrap" style="max-width:1392px;height:100%"><div style="display:grid;grid-template-columns:minmax(0,1fr) 520px;gap:20px;height:100%"><div class="stack" style="gap:14px">
+  <div class="card pd row" style="gap:16px"><span class="circ s c-ok">⇄</span><div class="grow"><b>Раздать со склада</b><div class="sm mu">Lamzu Maya X — на складе 1, ждут 5</div></div><span class="btn pri">Раздать 1</span></div>
+  <div class="card pd row" style="gap:16px"><span class="circ s c-bl">⛟</span><div class="grow"><b>Уже едет · 2 товара</b><div class="sm mu">Logitech SL2, Razer Viper V3 Pro — Taobao №14, срок 18 ноя</div></div><span class="btn out">Открыть поставку</span></div>
+  <div class="card pd" style="border-color:rgba(255,102,0,.4)"><div class="row sp" style="margin-bottom:10px"><b>Нужно заказать · 3 товара · 9 человек</b><span class="btn pri">Заказать все 3 →</span></div><div class="row" style="padding:8px 0;border-top:1px solid var(--line);background:var(--acs);margin:0 -14px;padding:8px 14px"><div class="thumb s">🖱</div><div class="grow"><b>VAXEE XE-S</b><div class="xs mu">нигде не заказан</div></div><span class="cnt">3</span><span class="btn ghost sm">Заказать</span></div><div class="row" style="padding:8px 0;border-top:1px solid var(--line);"><div class="thumb s">🖱</div><div class="grow"><b>Ninjutso Sora V2</b><div class="xs mu">нигде не заказан</div></div><span class="cnt">2</span><span class="btn ghost sm">Заказать</span></div><div class="row" style="padding:8px 0;border-top:1px solid var(--line);"><div class="thumb s">🖱</div><div class="grow"><b>Wooting 60HE</b><div class="xs mu">в предзаказе 6 шт</div></div><span class="cnt">4</span><span class="btn ghost sm">Заказать</span></div></div></div>
+  <div class="card pd stack" style="gap:10px;align-self:start"><div class="row sp"><div class="row"><div class="thumb s">🖱</div><div><b>VAXEE XE-S</b><div class="xs mu">ждут 3 · с 28 окт</div></div></div><span class="btn pri sm">Заказать</span></div>
+  <div class="chips"><span class="chip sm on">Ждёт <b>2</b></span><span class="chip sm">Бронь <b>1</b></span><span class="chip sm">Не хватило <b>0</b></span></div>
+  <div class="row" style="padding:8px 0;border-top:1px solid var(--line)"><span class="xs fa" style="width:44px">#4821</span><div class="grow"><div>Андрей К. <span class="mu xs">@andrii_k</span></div></div><span class="xs mu">ждёт · 9 дн</span></div><div class="row" style="padding:8px 0;border-top:1px solid var(--line)"><span class="xs fa" style="width:44px">#4833</span><div class="grow"><div>Максим Р. <span class="mu xs">@maxr</span></div></div><span class="xs mu">ждёт · 4 дн</span></div><div class="row" style="padding:8px 0;border-top:1px solid var(--line)"><span class="xs fa" style="width:44px">#4840</span><div class="grow"><div>Ольга Т. <span class="mu xs">@olgat</span></div></div><span class="xs mu">бронь до 12 ноя</span></div></div></div></div></div></div></div></div><figcaption>Ноут 1440 · master-detail: слева решение, справа кто ждёт</figcaption></figure></div></section><div class="h2">Модалка «Ждут» (WaitersModal)</div><section class="var"><div class="vh"><span class="vl">A</span><span class="vi2">Поиск + чипы статусов + таблица</span></div><div class="vd">Привычный список с поиском по имени/@username/#заказу и фильтром статусов; на ноуте таблица с сортировкой по времени ожидания.</div><div class="frames"><figure class="fg"><div class="dev phone"><div class="scr"><div class="sb"><span>9:41</span><span>▂▄▆ 100%</span></div>
+  <div class="top"><h1 class="">Ждут</h1></div>
+  <div class="pbody"><div class="ghostbg pad"><div class="sk"></div><div class="sk" style="width:70%"></div></div></div>
+  </div><div class="scrim"></div><div class="sheet full"><div class="grab"></div><div class="sh"><h2>Ждут · Logitech SL2 · 6</h2><div class="ib" style="width:36px;height:36px;font-size:18px">✕</div></div><div class="sbody"><div class="stack" style="gap:10px"><div class="inp s"><span class="fa">⌕ Имя, @username, #заказ</span></div><div class="chips"><span class="chip sm on">Все <b>5</b></span><span class="chip sm">Ждёт <b>3</b></span><span class="chip sm">Бронь <b>1</b></span><span class="chip sm">Не хватило <b>1</b></span></div>
+  <div class="row" style="padding:8px 0;border-top:1px solid var(--line)"><div class="grow"><div class="row"><b>Андрей К.</b><span class="badge warn">ждёт</span></div><div class="xs mu ell">@andrii_k · #4821 · 2 шт · 9 дн</div></div><span class="ib" style="width:44px;height:44px">⋯</span></div><div class="row" style="padding:8px 0;border-top:1px solid var(--line)"><div class="grow"><div class="row"><b>Максим Р.</b><span class="badge warn">ждёт</span></div><div class="xs mu ell">@maxr · #4833 · 1 шт · 4 дн</div></div><span class="ib" style="width:44px;height:44px">⋯</span></div><div class="row" style="padding:8px 0;border-top:1px solid var(--line)"><div class="grow"><div class="row"><b>Ольга Т.</b><span class="badge ok">бронь до 12 ноя</span></div><div class="xs mu ell">@olgat · #4840 · 1 шт · 2 дн</div></div><span class="ib" style="width:44px;height:44px">⋯</span></div><div class="row" style="padding:8px 0;border-top:1px solid var(--line)"><div class="grow"><div class="row"><b>Dmytro_V</b><span class="badge dg">не хватило</span></div><div class="xs mu ell">@dmytro_v · #4852 · 1 шт · 1 дн</div></div><span class="ib" style="width:44px;height:44px">⋯</span></div><div class="row" style="padding:8px 0;border-top:1px solid var(--line)"><div class="grow"><div class="row"><b>Ярослав Н.</b><span class="badge warn">ждёт</span></div><div class="xs mu ell">@yar_n · #4859 · 2 шт · 1 дн</div></div><span class="ib" style="width:44px;height:44px">⋯</span></div></div></div></div></div><figcaption>Тел 390 · Вариант A: поиск + чипы статусов + полное имя в 2 строки</figcaption></figure><figure class="fg"><div class="dev desk"><div class="dsh"><div><div class="side"><div class="logo">CHISETUP</div>
+  <a class=""><span>▤</span>Заказы</a><a class=""><span>✉</span>Чаты</a>
+  <div class="gl">Склад</div>
+  <a class="on"><span>⛟</span>Поставки</a><a class=""><span>⊘</span>Списания</a><a class=""><span>₴</span>Нач. себестоимость</a>
+  <div class="gl">Каталог</div>
+  <a class=""><span>▦</span>Товары</a><a class=""><span>◈</span>Бренды</a>
+  <div class="gl">Бизнес</div>
+  <a class=""><span>◔</span>Метрики</a><a class=""><span>✦</span>Промо</a><a class=""><span>⚙</span>Настройки</a></div></div><div class="main"><div class="dtop"><h1>Что заказать<span class="sub"></span></h1><div class="acts"></div></div>
+  <div class="dbody"><div class="wrap" style="max-width:1392px;height:100%"><div class="ghostbg"><div class="sk"></div><div class="sk" style="width:60%"></div></div></div></div></div></div><div class="scrim"></div><div class="modal" style="width:820px;"><div class="mh"><h2>Ждут · Logitech G Pro X Superlight 2</h2><div class="ib" style="width:34px;height:34px;font-size:18px">✕</div></div><div class="mb"><div class="row sp" style="margin-bottom:12px"><div class="inp s" style="width:300px"><span class="fa">⌕ Имя, @username, #заказ</span></div><div class="chips"><span class="chip sm on">Все <b>5</b></span><span class="chip sm">Ждёт <b>3</b></span><span class="chip sm">Бронь <b>1</b></span><span class="chip sm">Не хватило <b>1</b></span></div></div>
+  <div class="tw"><table class="dt"><thead><tr><th>Заказ</th><th>Покупатель</th><th class="n">Шт</th><th>Статус</th><th class="n">Ждёт</th><th></th></tr></thead><tbody><tr><td class="ach">#4821</td><td>Андрей К. <span class="mu xs">@andrii_k</span></td><td class="n">2</td><td><span class="badge warn">ждёт</span></td><td class="n mu">9 дн</td><td class="n"><span class="btn ghost sm">Убрать</span></td></tr><tr><td class="ach">#4833</td><td>Максим Р. <span class="mu xs">@maxr</span></td><td class="n">1</td><td><span class="badge warn">ждёт</span></td><td class="n mu">4 дн</td><td class="n"><span class="btn ghost sm">Убрать</span></td></tr><tr><td class="ach">#4840</td><td>Ольга Т. <span class="mu xs">@olgat</span></td><td class="n">1</td><td><span class="badge ok">бронь до 12 ноя</span></td><td class="n mu">2 дн</td><td class="n"><span class="btn ghost sm">Убрать</span></td></tr><tr><td class="ach">#4852</td><td>Dmytro_V <span class="mu xs">@dmytro_v</span></td><td class="n">1</td><td><span class="badge dg">не хватило</span></td><td class="n mu">1 дн</td><td class="n"><span class="btn ghost sm">Убрать</span></td></tr><tr><td class="ach">#4859</td><td>Ярослав Н. <span class="mu xs">@yar_n</span></td><td class="n">2</td><td><span class="badge warn">ждёт</span></td><td class="n mu">1 дн</td><td class="n"><span class="btn ghost sm">Убрать</span></td></tr></tbody></table></div></div><div class="mf"><span class="sm mu">Всего ждут 7 шт</span><span class="btn out">Закрыть</span></div></div></div><figcaption>Ноут 1440 · таблица с сортировкой по ожиданию</figcaption></figure></div></section><section class="var"><div class="vh"><span class="vl">B</span><span class="vi2">Секции по статусам («не хватило» первыми)</span></div><div class="vd">Без поиска: ждущих обычно единицы, важнее сразу увидеть проблемных. На ноуте — три колонки как на доске.</div><div class="frames"><figure class="fg"><div class="dev phone"><div class="scr"><div class="sb"><span>9:41</span><span>▂▄▆ 100%</span></div>
+  <div class="top"><h1 class="">Ждут</h1></div>
+  <div class="pbody"><div class="ghostbg pad"><div class="sk"></div></div></div>
+  </div><div class="scrim"></div><div class="sheet full"><div class="grab"></div><div class="sh"><h2>Ждут · Logitech SL2</h2><div class="ib" style="width:36px;height:36px;font-size:18px">✕</div></div><div class="sbody"><div class="stack" style="gap:12px"><div><div class="row sp" style="margin-bottom:4px"><span class="st" style="margin:0">Не хватило · 1</span><span class="badge dg">●</span></div><div class="chat" style="padding:8px 0"><span class="circ s c-gr" style="font-size:14px">D</span><div class="mid"><div class="b">Dmytro_V</div><div class="xs mu">@dmytro_v · #4852 · 1 шт</div></div><span class="xs mu">1 дн</span></div></div><div><div class="row sp" style="margin-bottom:4px"><span class="st" style="margin:0">Бронь · 1</span><span class="badge ok">●</span></div><div class="chat" style="padding:8px 0"><span class="circ s c-gr" style="font-size:14px">О</span><div class="mid"><div class="b">Ольга Т.</div><div class="xs mu">@olgat · #4840 · 1 шт</div></div><span class="xs mu">2 дн</span></div></div><div><div class="row sp" style="margin-bottom:4px"><span class="st" style="margin:0">Ждут · 3</span><span class="badge warn">●</span></div><div class="chat" style="padding:8px 0"><span class="circ s c-gr" style="font-size:14px">А</span><div class="mid"><div class="b">Андрей К.</div><div class="xs mu">@andrii_k · #4821 · 2 шт</div></div><span class="xs mu">9 дн</span></div><div class="chat" style="padding:8px 0"><span class="circ s c-gr" style="font-size:14px">М</span><div class="mid"><div class="b">Максим Р.</div><div class="xs mu">@maxr · #4833 · 1 шт</div></div><span class="xs mu">4 дн</span></div><div class="chat" style="padding:8px 0"><span class="circ s c-gr" style="font-size:14px">Я</span><div class="mid"><div class="b">Ярослав Н.</div><div class="xs mu">@yar_n · #4859 · 2 шт</div></div><span class="xs mu">1 дн</span></div></div></div></div><div class="sfoot"><span class="btn pri lg blk">Раздать брони</span></div></div></div><figcaption>Тел 390 · Вариант B: секции по статусам, без поиска (их мало)</figcaption></figure><figure class="fg"><div class="dev desk"><div class="dsh"><div><div class="side"><div class="logo">CHISETUP</div>
+  <a class=""><span>▤</span>Заказы</a><a class=""><span>✉</span>Чаты</a>
+  <div class="gl">Склад</div>
+  <a class="on"><span>⛟</span>Поставки</a><a class=""><span>⊘</span>Списания</a><a class=""><span>₴</span>Нач. себестоимость</a>
+  <div class="gl">Каталог</div>
+  <a class=""><span>▦</span>Товары</a><a class=""><span>◈</span>Бренды</a>
+  <div class="gl">Бизнес</div>
+  <a class=""><span>◔</span>Метрики</a><a class=""><span>✦</span>Промо</a><a class=""><span>⚙</span>Настройки</a></div></div><div class="main"><div class="dtop"><h1>Что заказать<span class="sub"></span></h1><div class="acts"></div></div>
+  <div class="dbody"><div class="wrap" style="max-width:1392px;height:100%"><div class="ghostbg"><div class="sk"></div></div></div></div></div></div><div class="scrim"></div><div class="modal" style="width:900px;"><div class="mh"><h2>Ждут · Logitech G Pro X Superlight 2</h2><div class="ib" style="width:34px;height:34px;font-size:18px">✕</div></div><div class="mb"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px"><div class="card pd"><div class="row sp" style="margin-bottom:8px"><b>Не хватило</b><span class="cnt g">1</span></div><div style="padding:8px 0;border-top:1px solid var(--line)"><div class="b">Dmytro_V <span class="xs mu">@dmytro_v</span></div><div class="xs mu">#4852 · 1 шт · 1 дн</div></div></div><div class="card pd"><div class="row sp" style="margin-bottom:8px"><b>Бронь</b><span class="cnt g">1</span></div><div style="padding:8px 0;border-top:1px solid var(--line)"><div class="b">Ольга Т. <span class="xs mu">@olgat</span></div><div class="xs mu">#4840 · 1 шт · 2 дн</div></div></div><div class="card pd"><div class="row sp" style="margin-bottom:8px"><b>Ждут</b><span class="cnt ">3</span></div><div style="padding:8px 0;border-top:1px solid var(--line)"><div class="b">Андрей К. <span class="xs mu">@andrii_k</span></div><div class="xs mu">#4821 · 2 шт · 9 дн</div></div><div style="padding:8px 0;border-top:1px solid var(--line)"><div class="b">Максим Р. <span class="xs mu">@maxr</span></div><div class="xs mu">#4833 · 1 шт · 4 дн</div></div><div style="padding:8px 0;border-top:1px solid var(--line)"><div class="b">Ярослав Н. <span class="xs mu">@yar_n</span></div><div class="xs mu">#4859 · 2 шт · 1 дн</div></div></div></div></div><div class="mf"><span class="sm mu">Колонки как на доске заказов</span><span class="btn out">Закрыть</span></div></div></div><figcaption>Ноут 1440 · три колонки статусов</figcaption></figure></div></section></div></body></html>

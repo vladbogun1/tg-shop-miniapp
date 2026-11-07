@@ -80,3 +80,27 @@ describe("черновик и история", () => {
     expect(plainText("<b>a</b> b")).toBe("a b");
   });
 });
+
+describe("blockReason / counterTone / problemByKey", () => {
+  const ok = { main: "hi", uk: "", ru: "", en: "" };
+  it("причины блокировки по порядку", async () => {
+    const { blockReason } = await import("./compose");
+    expect(blockReason({ texts: ok, audienceCount: 5, running: true })).toBe("Уже идёт рассылка");
+    expect(blockReason({ texts: { ...ok, main: "" }, audienceCount: 5, running: false })).toBe("Нет основного текста");
+    expect(blockReason({ texts: { ...ok, uk: "<b>x" }, audienceCount: 5, running: false })).toMatch(/^Ошибка в UK: /);
+    expect(blockReason({ texts: ok, audienceCount: 0, running: false })).toBe("Аудитория пуста");
+    expect(blockReason({ texts: ok, audienceCount: 5, running: false })).toBe("");
+  });
+  it("счётчик краснеет с 90 %", async () => {
+    const { counterTone, counterLimit } = await import("./compose");
+    expect(counterTone(100, 4096)).toBe("ok");
+    expect(counterTone(3700, 4096)).toBe("warn");
+    expect(counterTone(4097, 4096)).toBe("danger");
+    expect(counterLimit(true)).toBe(1024);
+    expect(counterLimit(false)).toBe(4096);
+  });
+  it("проблема помечает свою вкладку", async () => {
+    const { problemByKey } = await import("./compose");
+    expect(Object.keys(problemByKey({ ...ok, ru: "<b>x" }))).toEqual(["ru"]);
+  });
+});

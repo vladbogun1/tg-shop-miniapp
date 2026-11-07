@@ -1,8 +1,11 @@
 "use client";
 
+import { Button } from "@shop/ui/admin-button";
 import { motion } from "framer-motion";
+import { Square } from "lucide-react";
 import { spring } from "@/lib/motion";
-import { progressPercent } from "../model/progress";
+import { progressPercent, progressTitle, stoppedSummary } from "../model/progress";
+import { useStopBroadcast } from "../queries";
 
 interface Props {
   running: boolean;
@@ -10,9 +13,15 @@ interface Props {
   sent: number;
   failed: number;
   blocked: number;
+  /** «Остановить» нажата, поток дозавершается. */
+  stopRequested?: boolean;
+  /** Закончилась остановкой: остальное не отправлено. */
+  stopped?: boolean;
+  stoppedBy?: string | null;
 }
 
-export function BroadcastProgress({ running, total, sent, failed, blocked }: Props) {
+export function BroadcastProgress({ running, total, sent, failed, blocked, stopRequested = false, stopped = false, stoppedBy }: Props) {
+  const { requestStop, stopping } = useStopBroadcast();
   const done = sent + failed + blocked;
   const pct = progressPercent(done, total);
   return (
@@ -24,7 +33,7 @@ export function BroadcastProgress({ running, total, sent, failed, blocked }: Pro
     >
       <div className="flex items-center justify-between text-[13px]">
         <span className="section-title">
-          {running ? "Идёт рассылка…" : "Рассылка завершена"}
+          {progressTitle({ running, stopRequested, stopped })}
         </span>
         <span className="tabular font-semibold text-[var(--text-muted)]">
           {done} / {total} ({pct}%)
@@ -38,10 +47,21 @@ export function BroadcastProgress({ running, total, sent, failed, blocked }: Pro
           transition={{ type: "spring", stiffness: 120, damping: 24 }}
         />
       </div>
-      <div className="flex flex-wrap gap-4 text-[12px]">
+      {stopped && (
+        <p className="text-[12px] font-semibold text-[var(--warn)]">
+          {stoppedSummary(done, total, sent)}
+          {stoppedBy ? ` · остановил(а): ${stoppedBy}` : ""}
+        </p>
+      )}
+      <div className="flex flex-wrap items-center gap-4 text-[12px]">
         <span className="text-[var(--ok)]">✓ Доставлено: {sent}</span>
         <span className="text-[var(--danger-ink)]">✕ Ошибок: {failed}</span>
         <span className="text-[var(--warn)]">⊘ Заблокировали: {blocked}</span>
+        {running && (
+          <Button variant="danger" size="sm" className="ml-auto" loading={stopping} disabled={stopRequested} icon={<Square className="h-3.5 w-3.5" />} onClick={requestStop}>
+            {stopRequested ? "Останавливаем…" : "Остановить"}
+          </Button>
+        )}
       </div>
     </motion.div>
   );

@@ -13,6 +13,7 @@ public final class BatchLimits {
 
     public static final long MAX_MINOR = 10_000_000_000L;
     public static final BigDecimal MAX_RATE = BigDecimal.valueOf(10_000);
+    public static final int CANCEL_REASON_MAX = 500;
     private static final String MAX_MINOR_TEXT = "100 000 000";
 
     private BatchLimits() {
@@ -46,6 +47,18 @@ public final class BatchLimits {
             throw new DomainException.BadRequest(ProcurementError.BAD_MANUAL_EXTRA, MAX_MINOR_TEXT);
         }
         return minor;
+    }
+
+    /** Why a batch was cancelled: null/blank gives null, otherwise trimmed, at most {@link #CANCEL_REASON_MAX} chars. */
+    public static String cancelReason(String reason) {
+        if (reason == null || reason.isBlank()) {
+            return null;
+        }
+        String r = reason.trim();
+        if (r.length() > CANCEL_REASON_MAX) {
+            throw new DomainException.BadRequest(ProcurementError.CANCEL_REASON_TOO_LONG, String.valueOf(CANCEL_REASON_MAX));
+        }
+        return r;
     }
 
     /** UAH per unit of the currency: above 0 and not above {@link #MAX_RATE}. */

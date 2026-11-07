@@ -1,0 +1,180 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Фильтры и сортировка товаров — макеты</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0E0E10;--bg2:#131315;--s:#1A1A1A;--s2:#222;--s3:#2A2A2D;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.16);--t:#F4F4F5;--m:#A1A1AA;--f:#8A8A93;--a:#FF6600;--ah:#FF8533;--soft:rgba(255,102,0,.12);--soft2:rgba(255,102,0,.22);--ok:#34d399;--warn:#fbbf24;--err:#f87171;--info:#60a5fa}
+body{background:#08080a;color:var(--t);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px 28px 60px}
+.pg h1{font:700 22px 'Exo 2',Bahnschrift,'Arial Narrow',sans-serif;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.pg .lead{color:var(--m);max-width:900px;margin-bottom:8px}
+.pg .back{color:var(--ah);text-decoration:none;font-size:13px}
+.var{margin-top:34px;border-top:1px solid var(--line);padding-top:18px}
+.var h2{font:700 17px 'Exo 2',Bahnschrift,sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--ah)}
+.var .idea{color:var(--t);margin:4px 0 16px;max-width:900px}
+.devs{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.dv .cap{font-size:12px;color:var(--f);margin-bottom:6px}
+.fr{border:1px solid var(--line2);border-radius:14px;overflow:hidden;position:relative;background:var(--bg)}
+.sc{transform-origin:0 0;position:relative}
+.app{font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--t);background:var(--bg);width:100%;height:100%;display:flex;position:relative;overflow:hidden}
+.exo{font-family:'Exo 2',Bahnschrift,'Arial Narrow',sans-serif;text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.side{width:208px;flex:none;background:var(--s);border-right:1px solid var(--line);padding:14px 10px;display:flex;flex-direction:column;gap:2px}
+.side .logo{padding:4px 10px 14px;font-size:16px;color:var(--t)}.side .logo b{color:var(--a)}
+.nv{padding:8px 10px;border-radius:8px;color:var(--m);font-size:13px;display:flex;gap:10px;align-items:center}
+.nv.on{background:var(--soft);color:var(--ah)}.nv i{font-style:normal;width:16px;text-align:center}
+.nv em{margin-left:auto;font-style:normal;font-size:11px;background:var(--s3);padding:1px 6px;border-radius:9px;color:var(--m)}
+.main{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
+.mh{padding:16px 22px 0;display:flex;align-items:center;gap:12px}
+.mh h1{font-size:20px}.mh .sp{flex:1}
+.mb{flex:1;min-height:0;overflow:hidden;padding:0 22px 0;display:flex;flex-direction:column}
+.ph{flex-direction:column}
+.top{height:50px;flex:none;display:flex;align-items:center;gap:8px;padding:0 10px 0 14px;border-bottom:1px solid var(--line);background:var(--bg)}
+.top .ttl{flex:1;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .bk{color:var(--ah);font-size:26px;line-height:1;padding:0 6px 3px 0}
+.pbody{flex:1;min-height:0;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.tabbar{height:58px;flex:none;border-top:1px solid var(--line);background:var(--s);display:flex}
+.tabbar div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;color:var(--f);gap:1px}
+.tabbar div i{font-style:normal;font-size:18px}.tabbar .on{color:var(--ah)}
+.btn{height:36px;padding:0 14px;border-radius:9px;border:1px solid var(--line2);background:var(--s2);color:var(--t);font-size:13px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex:none;font-weight:500}
+.btn.pri{background:var(--a);border-color:var(--a);color:#0E0E10;font-weight:700}
+.btn.ghost{background:transparent}.btn.dng{color:var(--err);border-color:rgba(248,113,113,.35)}
+.btn.lg{height:46px;font-size:15px;border-radius:11px;justify-content:center}.btn.blk{width:100%;justify-content:center}
+.ic{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:var(--s);display:inline-flex;align-items:center;justify-content:center;color:var(--m);flex:none;font-size:16px}
+.ic.b{width:44px;height:44px}
+.inp{height:36px;border-radius:9px;border:1px solid var(--line2);background:var(--s2);padding:0 12px;display:flex;align-items:center;color:var(--f);font-size:13px;gap:8px;min-width:0}
+.inp.v{color:var(--t)}.inp.lg{height:46px;font-size:15px}.inp.err{border-color:var(--err)}
+.inp.foc{border-color:var(--a);box-shadow:0 0 0 3px var(--soft2);color:var(--t)}
+.ta{min-height:76px;align-items:flex-start;padding-top:9px;line-height:1.4}
+.lbl{font-size:11.5px;color:var(--m);margin-bottom:4px;display:flex;gap:6px;align-items:center}
+.fld{display:flex;flex-direction:column;min-width:0}
+.chips{display:flex;gap:6px;overflow:hidden;flex:none}
+.chip{height:32px;padding:0 12px;border-radius:16px;border:1px solid var(--line);background:var(--s);color:var(--m);font-size:12.5px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex:none}
+.chip b{font-weight:600;color:var(--t);font-size:12px}
+.chip.on{background:var(--soft);border-color:rgba(255,102,0,.5);color:var(--ah)}.chip.on b{color:var(--ah)}
+.chip.x{background:var(--s3);color:var(--t);height:26px;font-size:12px;padding:0 8px 0 10px}
+.chip.x u{text-decoration:none;color:var(--f)}
+.badge{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:10px;font-size:11px;font-weight:600;background:var(--s3);color:var(--m);white-space:nowrap;flex:none}
+.badge.ok{background:rgba(52,211,153,.14);color:var(--ok)}.badge.warn{background:rgba(251,191,36,.14);color:var(--warn)}
+.badge.err{background:rgba(248,113,113,.15);color:var(--err)}.badge.info{background:rgba(96,165,250,.15);color:var(--info)}
+.badge.ac{background:var(--soft);color:var(--ah)}
+.tog{width:40px;height:22px;border-radius:11px;background:var(--s3);position:relative;flex:none;border:1px solid var(--line2)}
+.tog::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--m)}
+.tog.on{background:var(--a);border-color:var(--a)}.tog.on::after{left:20px;background:#0E0E10}
+.tog.lgt{width:48px;height:28px;border-radius:14px}.tog.lgt::after{width:22px;height:22px}.tog.lgt.on::after{left:22px}
+.pillb{height:30px;padding:0 10px;border-radius:8px;background:var(--s2);border:1px dashed var(--line2);font-size:13px;display:inline-flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pillb small{color:var(--f);font-size:11px}.pillb.low{border-color:rgba(251,191,36,.5);color:var(--warn)}.pillb.zero{border-color:rgba(248,113,113,.5);color:var(--err)}
+.pillb.edit{border:1px solid var(--a);box-shadow:0 0 0 3px var(--soft2);background:var(--s)}
+.th{width:44px;height:44px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;font-size:20px;border:1px solid var(--line);background:linear-gradient(135deg,#2a2a2e,#1c1c1e)}
+.th.s{width:36px;height:36px;font-size:16px}.th.l{width:56px;height:56px;font-size:26px}.th.xl{width:110px;height:110px;font-size:46px;border-radius:12px}
+.th.c1{background:linear-gradient(135deg,#3a2a1c,#1c1c1e)}.th.c2{background:linear-gradient(135deg,#1c2a3a,#1c1c1e)}.th.c3{background:linear-gradient(135deg,#2a1c3a,#1c1c1e)}.th.c4{background:linear-gradient(135deg,#1c3a2c,#1c1c1e)}
+.card{background:var(--s);border:1px solid var(--line);border-radius:12px;padding:14px}
+.ct{font-size:12px;color:var(--m);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:8px}
+.row{display:flex;align-items:center;gap:10px;min-width:0}.col{display:flex;flex-direction:column;min-width:0}.sp{flex:1}
+.g4{gap:4px}.g6{gap:6px}.g8{gap:8px}.g12{gap:12px}.g16{gap:16px}
+.mut{color:var(--m)}.fnt{color:var(--f)}.sm{font-size:12px}.xs{font-size:11px}.num{font-variant-numeric:tabular-nums}.b6{font-weight:600}
+.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.two{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.err{color:var(--err)}.ac{color:var(--ah)}
+.sticky{flex:none;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 0;display:flex;flex-direction:column;gap:8px}
+.tbl{display:flex;flex-direction:column}
+.tbl .h,.tbl .r{display:grid;align-items:center;gap:12px;padding:0 12px}
+.tbl .h{height:34px;font-size:11px;color:var(--f);text-transform:uppercase;letter-spacing:.06em;background:var(--bg2);border-bottom:1px solid var(--line)}
+.tbl .h b{color:var(--ah);font-weight:600}
+.tbl .r{height:64px;border-bottom:1px solid var(--line)}
+.tbl .r.sel{background:var(--soft);box-shadow:inset 3px 0 var(--a)}
+.cb{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--line2);flex:none;display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:#0E0E10}
+.cb.on{background:var(--a);border-color:var(--a)}
+.pr{display:flex;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);align-items:flex-start}
+.chat{display:flex;gap:12px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)}
+.chat .av{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex:none}
+.chat .tx{flex:1;min-width:0}.chat .l1{display:flex;justify-content:space-between;gap:8px;font-weight:600}.chat .l2{font-size:12.5px;color:var(--m);display:flex;justify-content:space-between;gap:8px;margin-top:2px}
+.cnt{min-width:22px;height:22px;border-radius:11px;background:var(--a);color:#0E0E10;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}
+.cnt.g{background:var(--s3);color:var(--m)}
+.av.o{background:rgba(255,102,0,.18)}.av.g{background:rgba(52,211,153,.16)}.av.r{background:rgba(248,113,113,.16)}.av.b{background:rgba(96,165,250,.16)}.av.y{background:rgba(251,191,36,.16)}.av.p{background:rgba(167,139,250,.16)}.av.n{background:var(--s3)}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.6);z-index:5}
+.scrim.l{background:rgba(0,0,0,.35)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--s);border-radius:18px 18px 0 0;border:1px solid var(--line2);border-bottom:0;z-index:6;padding:8px 16px 16px;display:flex;flex-direction:column;gap:12px}
+.sheet .grab{width:38px;height:4px;border-radius:2px;background:var(--line2);margin:0 auto 2px;flex:none}
+.sheet .hd{display:flex;align-items:center;gap:10px}.sheet .hd h3{font-size:16px;flex:1}
+.full{position:absolute;inset:0;background:var(--bg);z-index:6;display:flex;flex-direction:column}
+.modal{position:absolute;z-index:6;background:var(--s);border:1px solid var(--line2);border-radius:14px;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden}
+.modal .mh2{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex:none}.modal .mh2 h3{flex:1;font-size:16px}
+.modal .mbd{padding:16px 20px;flex:1;min-height:0;overflow:hidden}
+.modal .mft{padding:12px 20px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;background:var(--s);flex:none}
+.drawer{position:absolute;top:0;bottom:0;right:0;background:var(--bg);border-left:1px solid var(--line2);z-index:6;display:flex;flex-direction:column;box-shadow:-20px 0 50px rgba(0,0,0,.5)}
+.pop{position:absolute;z-index:7;background:var(--s);border:1px solid var(--line2);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.6);padding:12px}
+.toast{position:absolute;z-index:9;left:50%;transform:translateX(-50%);background:#2b2b2f;border:1px solid var(--line2);border-radius:10px;padding:9px 14px;font-size:13px;display:flex;gap:14px;align-items:center;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.toast b{color:var(--ah);font-weight:600}
+.bulk{display:flex;align-items:center;gap:8px;background:var(--s);border:1px solid rgba(255,102,0,.4);border-radius:12px;padding:8px 10px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.bar{height:6px;border-radius:3px;background:var(--s3);overflow:hidden;flex:none}.bar i{display:block;height:100%;border-radius:3px;background:var(--ok)}
+.bar.w i{background:var(--warn)}.bar.e i{background:var(--err)}
+.sec{border-top:1px solid var(--line);padding:14px 0}
+.hr{height:1px;background:var(--line);flex:none}
+.kbd{border:1px solid var(--line2);border-bottom-width:2px;border-radius:5px;padding:0 5px;font-size:11px;color:var(--m);background:var(--s2)}
+.seg{display:flex;background:var(--s2);border:1px solid var(--line);border-radius:10px;padding:2px;gap:2px}.seg span{flex:1;text-align:center;padding:6px 10px;border-radius:8px;font-size:12.5px;color:var(--m);white-space:nowrap}.seg span.on{background:var(--s3);color:var(--t)}
+.dots{letter-spacing:2px;color:var(--m)}
+.line-red{border-left:3px solid var(--err);background:rgba(248,113,113,.07);border-radius:0 8px 8px 0;padding:8px 10px}
+.line-chg{border-left:3px solid var(--warn);background:rgba(251,191,36,.07);border-radius:0 8px 8px 0;padding:8px 10px}
+.line-ok{border-left:3px solid transparent;padding:8px 10px}
+.stp{display:flex;align-items:center;gap:0}.stp div{flex:1;display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--f)}
+.stp div i{font-style:normal;width:22px;height:22px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--m)}
+.stp div.on{color:var(--t)}.stp div.on i{background:var(--a);color:#0E0E10;font-weight:700}.stp div.dn i{background:rgba(52,211,153,.2);color:var(--ok)}
+code.pr1{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:block;font:12px/1.5 ui-monospace,Consolas,monospace;color:var(--m);overflow:hidden}
+</style></head><body><div class="pg"><a class="back" href="index.html">‹ Все экраны</a><h1 style="margin-top:10px">Фильтры и сортировка товаров</h1><p class="lead">4 селекта сейчас всегда на виду. Предлагается убрать их за кнопку «Фильтры (N)»; активные фильтры — чипами с «×» под полосой.</p></div><section class="var"><h2>Вариант A</h2><div class="idea">Одна форма фильтров: на телефоне нижняя шторка с полями и кнопкой «Показать 34 товара», на ПК — popover под кнопкой. Привычно, всё видно сразу.</div><div class="devs"><div class="dv"><div class="cap">Телефон 390 — шторка</div><div class="fr" style="width:390px;height:800px"><div class="sc" style="width:390px;height:800px;transform:scale(1)"><div class="app ph"><div class="top"><div class="ttl exo">Товары</div></div><div class="pbody"><div class="sticky" style="padding:10px 12px"><div class="row g8"><div class="inp sp">⌕ Поиск</div><span class="btn">⚙ <span class="badge ac">2</span></span></div></div><div class="pr"><div><div class="th  c1">🖱</div></div><div class="col g6 sp"><div class="row"><div class="b6 two sp" style="font-size:13.5px">Мышь Lamzu Maya X 8K</div><span class="tog on"></span></div><div class="row g6"><span class="pillb ">5 490 ₴</span><span class="pillb  ">12<small>шт</small></span><span class="badge ok">Готово</span><span class="sp"></span><span class="dots">⋯</span></div></div></div><div class="pr"><div><div class="th  c2">⌨</div></div><div class="col g6 sp"><div class="row"><div class="b6 two sp" style="font-size:13.5px">Клавиатура Ajazz AK820 Pro</div><span class="tog on"></span></div><div class="row g6"><span class="pillb ">3 290 ₴</span><span class="pillb  ">4<small>шт</small></span><span class="badge ok">Готово</span><span class="sp"></span><span class="dots">⋯</span></div></div></div><div class="pr"><div><div class="th  c3">🖱</div></div><div class="col g6 sp"><div class="row"><div class="b6 two sp" style="font-size:13.5px">VGN Dragonfly F1 Moba</div><span class="tog on"></span></div><div class="row g6"><span class="pillb ">2 190 ₴</span><span class="pillb zero ">0<small>шт</small></span><span class="badge warn">Проверить</span><span class="sp"></span><span class="dots">⋯</span></div></div></div><div class="pr"><div><div class="th  c4">▭</div></div><div class="col g6 sp"><div class="row"><div class="b6 two sp" style="font-size:13.5px">Коврик Artisan Zero Soft XL</div><span class="tog on"></span></div><div class="row g6"><span class="pillb ">1 890 ₴</span><span class="pillb  ">6<small>шт</small></span><span class="badge ok">Готово</span><span class="sp"></span><span class="dots">⋯</span></div></div></div></div><div class="tabbar"><div class=""><i>☰</i>Заказы</div><div class="on"><i>◧</i>Товары</div><div class=""><i>✦</i>Карточки</div><div class=""><i>✉</i>Чаты</div><div class=""><i>≡</i>Ещё</div></div><div class="scrim"></div><div class="sheet" style="max-height:78%"><div class="grab"></div><div class="hd"><h3 class="exo">Фильтры</h3><span class="xs ac">Сбросить</span><span class="ic">✕</span></div>
+  <div class="col g12"><div class="fld"><div class="lbl">Сортировка</div><div class="seg"><span class="on">Название</span><span>Цена</span><span>Остаток</span><span>Продано</span></div></div>
+  <div class="fld"><div class="lbl">Категория</div><div class="inp v">Мыши <span class="sp"></span>▾</div></div><div class="fld"><div class="lbl">Бренд</div><div class="inp v">Lamzu <span class="sp"></span>▾</div></div>
+  <div class="fld"><div class="lbl">Карточка</div><div class="chips"><span class="chip on">Любая</span><span class="chip">Готово</span><span class="chip">Проверить</span><span class="chip">Неполная</span></div></div>
+  <div class="fld"><div class="lbl">Состояние</div><div class="chips"><span class="chip on">Любое</span><span class="chip">С вариантами</span><span class="chip">Без фото</span></div></div></div>
+  <div class="btn pri lg blk">Показать 34 товара</div></div></div></div></div></div><div class="dv"><div class="cap">Десктоп 1440 — popover</div><div class="fr" style="width:936px;height:494px"><div class="sc" style="width:1440px;height:760px;transform:scale(0.65)"><div class="app"><div class="side"><div class="logo exo">Chi<b>Setup</b></div><div class="nv "><i>▦</i>Дашборд</div><div class="nv "><i>☰</i>Заказы<em>3</em></div><div class="nv on"><i>◧</i>Товары</div><div class="nv "><i>✦</i>Карточки<em>14</em></div><div class="nv "><i>⇅</i>Поставки</div><div class="nv "><i>☺</i>Клиенты</div><div class="nv "><i>✉</i>Чаты<em>2</em></div><div class="nv "><i>⚙</i>Настройки</div></div><div class="main"><div class="mh"><h1 class="exo">Товары</h1><span class="sp"></span><span class="btn pri">＋ Новый товар</span></div><div class="mb"><div class="sticky" style="padding-top:14px"><div class="row g8"><div class="inp" style="width:300px">⌕ Поиск</div><div class="chips"><span class="chip on">Все <b>218</b></span><span class="chip ">На витрине <b>199</b></span><span class="chip ">Скрытые <b>12</b></span><span class="chip ">Закончились <b>7</b></span><span class="chip ">Архив <b>31</b></span></div><span class="sp"></span><span class="btn">⚙ Фильтры <span class="badge ac">2</span></span></div></div><div class="tbl" style=""><div class="r " style="grid-template-columns:22px 56px minmax(0,1fr) 110px 110px 64px 40px"><span class="cb "></span><div class="th l c1">🖱</div>
+  <div class="col g4"><div class="b6 ell">Мышь Lamzu Maya X 8K</div><div class="row g6 xs fnt"><span>Lamzu</span><span>·</span><span>Мыши</span><span class="badge ok">Готово</span></div></div>
+  <span class="pillb ">5 490 ₴</span>
+  <span class="pillb  ">12<small>шт</small></span>
+  <span class="tog on"></span><span class="ic" style="border:0;background:none">⋯</span></div><div class="r " style="grid-template-columns:22px 56px minmax(0,1fr) 110px 110px 64px 40px"><span class="cb "></span><div class="th l c2">⌨</div>
+  <div class="col g4"><div class="b6 ell">Клавиатура Ajazz AK820 Pro</div><div class="row g6 xs fnt"><span>Ajazz</span><span>·</span><span>Клавиатуры</span><span class="badge ok">Готово</span></div></div>
+  <span class="pillb ">3 290 ₴</span>
+  <span class="pillb  ">4<small>шт</small></span>
+  <span class="tog on"></span><span class="ic" style="border:0;background:none">⋯</span></div><div class="r " style="grid-template-columns:22px 56px minmax(0,1fr) 110px 110px 64px 40px"><span class="cb "></span><div class="th l c3">🖱</div>
+  <div class="col g4"><div class="b6 ell">VGN Dragonfly F1 Moba</div><div class="row g6 xs fnt"><span>VGN</span><span>·</span><span>Мыши</span><span class="badge warn">Проверить</span></div></div>
+  <span class="pillb ">2 190 ₴</span>
+  <span class="pillb zero ">0<small>шт</small></span>
+  <span class="tog on"></span><span class="ic" style="border:0;background:none">⋯</span></div><div class="r " style="grid-template-columns:22px 56px minmax(0,1fr) 110px 110px 64px 40px"><span class="cb "></span><div class="th l c4">▭</div>
+  <div class="col g4"><div class="b6 ell">Коврик Artisan Zero Soft XL</div><div class="row g6 xs fnt"><span>Artisan</span><span>·</span><span>Коврики</span><span class="badge ok">Готово</span><span class="badge info">3 вар.</span></div></div>
+  <span class="pillb ">1 890 ₴</span>
+  <span class="pillb" style="border-style:solid;color:var(--m)" title="сумма">6<small>шт · сумма</small></span>
+  <span class="tog on"></span><span class="ic" style="border:0;background:none">⋯</span></div><div class="r " style="grid-template-columns:22px 56px minmax(0,1fr) 110px 110px 64px 40px"><span class="cb "></span><div class="th l c1">🖱</div>
+  <div class="col g4"><div class="b6 ell">Мышь Pulsar X2V2 Mini</div><div class="row g6 xs fnt"><span>Pulsar</span><span>·</span><span>Мыши</span><span class="badge err">Неполная</span></div></div>
+  <span class="pillb ">4 790 ₴</span>
+  <span class="pillb  ">9<small>шт</small></span>
+  <span class="tog on"></span><span class="ic" style="border:0;background:none">⋯</span></div><div class="r " style="grid-template-columns:22px 56px minmax(0,1fr) 110px 110px 64px 40px"><span class="cb "></span><div class="th l c2">🎧</div>
+  <div class="col g4"><div class="b6 ell">Наушники HyperX Cloud III</div><div class="row g6 xs fnt"><span>HyperX</span><span>·</span><span>Наушники</span><span class="badge ok">Готово</span></div></div>
+  <span class="pillb ">4 290 ₴</span>
+  <span class="pillb low ">3<small>шт</small></span>
+  <span class="tog on"></span><span class="ic" style="border:0;background:none">⋯</span></div><div class="r " style="grid-template-columns:22px 56px minmax(0,1fr) 110px 110px 64px 40px"><span class="cb "></span><div class="th l c3">🖱</div>
+  <div class="col g4"><div class="b6 ell">Мышь Razer Viper V3 Pro</div><div class="row g6 xs fnt"><span>Razer</span><span>·</span><span>Мыши</span><span class="badge ok">Готово</span></div></div>
+  <span class="pillb ">6 990 ₴</span>
+  <span class="pillb low ">2<small>шт</small></span>
+  <span class="tog on"></span><span class="ic" style="border:0;background:none">⋯</span></div></div></div></div><div class="pop" style="right:200px;top:118px;width:340px"><div class="col g12"><div class="row"><span class="b6">Фильтры</span><span class="sp"></span><span class="xs ac">Сбросить</span></div><div class="fld"><div class="lbl">Сортировка</div><div class="seg"><span class="on">Название</span><span>Цена</span><span>Остаток</span><span>Продано</span></div></div><div class="fld"><div class="lbl">Категория</div><div class="inp v">Мыши ▾</div></div><div class="fld"><div class="lbl">Бренд</div><div class="inp v">Lamzu ▾</div></div><div class="fld"><div class="lbl">Карточка</div><div class="chips"><span class="chip on">Любая</span><span class="chip">Готово</span><span class="chip">Проверить</span></div></div></div></div></div></div></div></div></div></section><section class="var"><h2>Вариант B</h2><div class="idea">Каждый фильтр — отдельный вход-строка (как чаты): тап по «Бренд» открывает экран выбора с поиском. Нет длинной формы и клавиатуры поверх неё. На ≥1536 фильтры живут постоянной левой колонкой.</div><div class="devs"><div class="dv"><div class="cap">Телефон 390 — список фильтров</div><div class="fr" style="width:390px;height:800px"><div class="sc" style="width:390px;height:800px;transform:scale(1)"><div class="app ph"><div class="top"><span class="bk">‹</span><div class="ttl exo">Фильтры</div></div><div class="pbody"><div class="chat" style="padding:13px 14px"><div class="tx"><div class="l1"><span>Сортировка</span></div></div><span class="fnt sm">Название</span><span class="mut">›</span></div><div class="chat" style="padding:13px 14px"><div class="tx"><div class="l1"><span>Категория</span></div></div><span class="ac sm">Мыши</span><span class="mut">›</span></div><div class="chat" style="padding:13px 14px"><div class="tx"><div class="l1"><span>Бренд</span></div></div><span class="ac sm">Lamzu</span><span class="mut">›</span></div><div class="chat" style="padding:13px 14px"><div class="tx"><div class="l1"><span>Карточка</span></div></div><span class="fnt sm">Любая</span><span class="mut">›</span></div><div class="chat" style="padding:13px 14px"><div class="tx"><div class="l1"><span>Состояние</span></div></div><span class="fnt sm">Любое</span><span class="mut">›</span></div><div style="padding:14px"><div class="btn pri lg blk">Показать 34 товара</div><div class="sm mut" style="text-align:center;margin-top:10px">Сбросить всё</div></div></div></div></div></div></div><div class="dv"><div class="cap">Телефон 390 — экран «Бренд»</div><div class="fr" style="width:390px;height:800px"><div class="sc" style="width:390px;height:800px;transform:scale(1)"><div class="app ph"><div class="top"><span class="bk">‹</span><div class="ttl exo">Бренд</div></div><div class="pbody"><div style="padding:10px 12px"><div class="inp foc">⌕ La</div></div><div class="chat"><div class="tx"><div class="l1"><span>Lamzu</span><span class="ac">✓</span></div><div class="l2"><span>34 товара</span></div></div></div><div class="chat"><div class="tx"><div class="l1"><span>Lamzu Esports</span></div><div class="l2"><span>2 товара</span></div></div></div><div class="chat"><div class="tx"><div class="l1"><span>Laptop Stand Co</span></div><div class="l2"><span>1 товар</span></div></div></div></div></div></div></div></div><div class="dv"><div class="cap">Десктоп 1440 — постоянная колонка</div><div class="fr" style="width:936px;height:494px"><div class="sc" style="width:1440px;height:760px;transform:scale(0.65)"><div class="app"><div class="side"><div class="logo exo">Chi<b>Setup</b></div><div class="nv "><i>▦</i>Дашборд</div><div class="nv "><i>☰</i>Заказы<em>3</em></div><div class="nv on"><i>◧</i>Товары</div><div class="nv "><i>✦</i>Карточки<em>14</em></div><div class="nv "><i>⇅</i>Поставки</div><div class="nv "><i>☺</i>Клиенты</div><div class="nv "><i>✉</i>Чаты<em>2</em></div><div class="nv "><i>⚙</i>Настройки</div></div><div class="main"><div class="mh"><h1 class="exo">Товары</h1><span class="sp"></span><span class="btn pri">＋ Новый товар</span></div><div class="mb"><div class="sticky" style="padding-top:14px"><div class="row g8"><div class="inp" style="width:300px">⌕ Поиск</div><div class="chips"><span class="chip on">Все <b>218</b></span><span class="chip ">На витрине <b>199</b></span><span class="chip ">Скрытые <b>12</b></span><span class="chip ">Закончились <b>7</b></span><span class="chip ">Архив <b>31</b></span></div><span class="sp"></span><span class="btn">⚙ Фильтры <span class="badge ac">2</span></span></div></div><div class="tbl" style="margin-left:250px"><div class="r " style="grid-template-columns:22px 56px minmax(0,1fr) 110px 110px 64px 40px"><span class="cb "></span><div class="th l c1">🖱</div>
+  <div class="col g4"><div class="b6 ell">Мышь Lamzu Maya X 8K</div><div class="row g6 xs fnt"><span>Lamzu</span><span>·</span><span>Мыши</span><span class="badge ok">Готово</span></div></div>
+  <span class="pillb ">5 490 ₴</span>
+  <span class="pillb  ">12<small>шт</small></span>
+  <span class="tog on"></span><span class="ic" style="border:0;background:none">⋯</span></div><div class="r " style="grid-template-columns:22px 56px minmax(0,1fr) 110px 110px 64px 40px"><span class="cb "></span><div class="th l c2">⌨</div>
+  <div class="col g4"><div class="b6 ell">Клавиатура Ajazz AK820 Pro</div><div class="row g6 xs fnt"><span>Ajazz</span><span>·</span><span>Клавиатуры</span><span class="badge ok">Готово</span></div></div>
+  <span class="pillb ">3 290 ₴</span>
+  <span class="pillb  ">4<small>шт</small></span>
+  <span class="tog on"></span><span class="ic" style="border:0;background:none">⋯</span></div><div class="r " style="grid-template-columns:22px 56px minmax(0,1fr) 110px 110px 64px 40px"><span class="cb "></span><div class="th l c3">🖱</div>
+  <div class="col g4"><div class="b6 ell">VGN Dragonfly F1 Moba</div><div class="row g6 xs fnt"><span>VGN</span><span>·</span><span>Мыши</span><span class="badge warn">Проверить</span></div></div>
+  <span class="pillb ">2 190 ₴</span>
+  <span class="pillb zero ">0<small>шт</small></span>
+  <span class="tog on"></span><span class="ic" style="border:0;background:none">⋯</span></div><div class="r " style="grid-template-columns:22px 56px minmax(0,1fr) 110px 110px 64px 40px"><span class="cb "></span><div class="th l c4">▭</div>
+  <div class="col g4"><div class="b6 ell">Коврик Artisan Zero Soft XL</div><div class="row g6 xs fnt"><span>Artisan</span><span>·</span><span>Коврики</span><span class="badge ok">Готово</span><span class="badge info">3 вар.</span></div></div>
+  <span class="pillb ">1 890 ₴</span>
+  <span class="pillb" style="border-style:solid;color:var(--m)" title="сумма">6<small>шт · сумма</small></span>
+  <span class="tog on"></span><span class="ic" style="border:0;background:none">⋯</span></div><div class="r " style="grid-template-columns:22px 56px minmax(0,1fr) 110px 110px 64px 40px"><span class="cb "></span><div class="th l c1">🖱</div>
+  <div class="col g4"><div class="b6 ell">Мышь Pulsar X2V2 Mini</div><div class="row g6 xs fnt"><span>Pulsar</span><span>·</span><span>Мыши</span><span class="badge err">Неполная</span></div></div>
+  <span class="pillb ">4 790 ₴</span>
+  <span class="pillb  ">9<small>шт</small></span>
+  <span class="tog on"></span><span class="ic" style="border:0;background:none">⋯</span></div><div class="r " style="grid-template-columns:22px 56px minmax(0,1fr) 110px 110px 64px 40px"><span class="cb "></span><div class="th l c2">🎧</div>
+  <div class="col g4"><div class="b6 ell">Наушники HyperX Cloud III</div><div class="row g6 xs fnt"><span>HyperX</span><span>·</span><span>Наушники</span><span class="badge ok">Готово</span></div></div>
+  <span class="pillb ">4 290 ₴</span>
+  <span class="pillb low ">3<small>шт</small></span>
+  <span class="tog on"></span><span class="ic" style="border:0;background:none">⋯</span></div><div class="r " style="grid-template-columns:22px 56px minmax(0,1fr) 110px 110px 64px 40px"><span class="cb "></span><div class="th l c3">🖱</div>
+  <div class="col g4"><div class="b6 ell">Мышь Razer Viper V3 Pro</div><div class="row g6 xs fnt"><span>Razer</span><span>·</span><span>Мыши</span><span class="badge ok">Готово</span></div></div>
+  <span class="pillb ">6 990 ₴</span>
+  <span class="pillb low ">2<small>шт</small></span>
+  <span class="tog on"></span><span class="ic" style="border:0;background:none">⋯</span></div></div></div></div><div class="card col g12" style="width:260px;position:absolute;left:230px;top:80px;bottom:20px;z-index:3"><div class="row"><span class="b6">Фильтры</span><span class="sp"></span><span class="xs ac">Сбросить</span></div><div class="fld"><div class="lbl">Категория</div><div class="inp v">Мыши ▾</div></div><div class="fld"><div class="lbl">Бренд</div><div class="inp v">Lamzu ▾</div></div><div class="fld"><div class="lbl">Карточка</div><div class="col g6"><span class="row g8"><span class="cb on">✓</span>Любая</span><span class="row g8"><span class="cb"></span>Готово</span><span class="row g8"><span class="cb"></span>Проверить</span></div></div><div class="fld"><div class="lbl">Цена, ₴</div><div class="row g6"><div class="inp sp v">от 1 000</div><div class="inp sp v">до 8 000</div></div></div></div></div></div></div></div></div></section></body></html>

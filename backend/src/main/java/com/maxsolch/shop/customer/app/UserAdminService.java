@@ -16,6 +16,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.stream.Stream;
 
 /** Admin-facing user list + user analytics. */
 @Service
@@ -70,7 +71,12 @@ public class UserAdminService {
 
     @Transactional(readOnly = true)
     public List<UserCardDto> list(String q, boolean blockedOnly, int page, int size, String sortBy, String sortDir) {
-        String like = searchPattern(q);
+        return list(UserListFilter.of(q, blockedOnly), page, size, sortBy, sortDir);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserCardDto> list(UserListFilter f, int page, int size, String sortBy, String sortDir) {
+        String like = searchPattern(f.q());
         boolean hasQ = like != null;
         if (like == null) {
             like = "";
@@ -78,37 +84,47 @@ public class UserAdminService {
         boolean asc = "asc".equalsIgnoreCase(sortDir);
         int sz = Math.max(1, Math.min(size, 100));
         int off = Math.max(0, page) * sz;
+        Column column = SORT_COLUMNS.getOrDefault(sortBy, Column.CREATED_AT);
 
-        if (ORDER_SORTS.contains(sortBy)) {
-            return sortedByOrders(hasQ, like, blockedOnly, "ordersCount".equals(sortBy), asc, sz, off);
+        if (ORDER_SORTS.contains(sortBy) || f.hasOrders() != null) {
+            return cutHere(f, hasQ, like, column, sortBy, asc, sz, off);
         }
-        List<UserRow> rows = users.page(hasQ, like, blockedOnly, SORT_COLUMNS.getOrDefault(sortBy, Column.CREATED_AT), asc, sz, off);
+        List<UserRow> rows = users.page(hasQ, like, f.blockedOnly(), f.premiumOnly(), column, asc, sz, off);
         Map<Long, OrderHistory.Totals> totals = orders.totalsOf(rows.stream().map(UserRow::telegramUserId).toList());
         return rows.stream().map(r -> toCard(r, totals)).toList();
     }
 
     /**
-     * Sorting by the number of orders or the money spent: the totals come from the owner of the orders, so the order is
-     * made here (ties: the newest Telegram id first, as in the other sorts) and only the page is read from the users table.
+     * The page cannot be cut in SQL: the filter «with / without orders» or the sort by orders / money needs what the owner
+     * of the orders knows. The ids come from the users table in the order of the column (ties: the newest Telegram id
+     * first, as in the other sorts), the rest is made here, and only the page is read back from the users table.
      */
-    private List<UserCardDto> sortedByOrders(boolean hasQ, String like, boolean blockedOnly, boolean byCount, boolean asc,
-                                             int size, int offset) {
+    private List<UserCardDto> cutHere(UserListFilter f, boolean hasQ, String like, Column column, String sortBy,
+                                      boolean asc, int size, int offset) {
         Map<Long, OrderHistory.Totals> totals = orders.totalsOfAll();
-        java.util.function.ToLongFunction<Long> value = id -> {
-            OrderHistory.Totals t = totals.getOrDefault(id, OrderHistory.Totals.NONE);
-            return byCount ? t.ordersCount() : t.spentMinor();
-        };
-        java.util.Comparator<Long> byValue = java.util.Comparator.comparingLong(value::applyAsLong);
-        List<Long> ids = users.matchingIds(hasQ, like, blockedOnly).stream()
-                .sorted((asc ? byValue : byValue.reversed()).thenComparing(java.util.Comparator.<Long>reverseOrder()))
-                .skip(offset).limit(size).toList();
-        return users.byIds(ids).stream().map(r -> toCard(r, totals)).toList();
+        Stream<Long> ids = users.matchingIds(hasQ, like, f.blockedOnly(), f.premiumOnly(), column, asc).stream();
+        if (f.hasOrders() != null) {
+            boolean wanted = f.hasOrders();
+            ids = ids.filter(id -> totals.containsKey(id) == wanted);
+        }
+        if (ORDER_SORTS.contains(sortBy)) {
+            boolean byCount = "ordersCount".equals(sortBy);
+            java.util.function.ToLongFunction<Long> value = id -> {
+                OrderHistory.Totals t = totals.getOrDefault(id, OrderHistory.Totals.NONE);
+                return byCount ? t.ordersCount() : t.spentMinor();
+            };
+            java.util.Comparator<Long> byValue = java.util.Comparator.comparingLong(value::applyAsLong);
+            ids = ids.sorted((asc ? byValue : byValue.reversed()).thenComparing(java.util.Comparator.<Long>reverseOrder()));
+        }
+        List<Long> page = ids.skip(offset).limit(size).toList();
+        return users.byIds(page).stream().map(r -> toCard(r, totals)).toList();
     }
 
     private static UserCardDto toCard(UserRow r, Map<Long, OrderHistory.Totals> totals) {
         OrderHistory.Totals t = totals.getOrDefault(r.telegramUserId(), OrderHistory.Totals.NONE);
         return new UserCardDto(r.telegramUserId(), r.username(), r.firstName(), r.lastName(), r.languageCode(),
-                r.premium(), r.botBlocked(), t.ordersCount(), t.spentMinor(), r.createdAt(), r.lastSeenAt(), r.locale());
+                r.premium(), r.botBlocked(), t.ordersCount(), t.spentMinor(), r.createdAt(), r.lastSeenAt(), r.locale(),
+                t.lastOrderAt());
     }
 
     @Transactional(readOnly = true)

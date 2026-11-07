@@ -1,26 +1,29 @@
 "use client";
 
 import { Inbox } from "lucide-react";
+import { Button } from "@shop/ui/admin-button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { QueryState } from "@/components/ui/QueryState";
+import { hasFilters } from "../../model/filters";
 import type { UserCardDto } from "../../model/types";
 import { UsersDesktopTable } from "./UsersDesktopTable";
+import { UsersLoadMore } from "./UsersLoadMore";
 import { UsersMobileCards } from "./UsersMobileCards";
-import { UsersPager } from "./UsersPager";
 import { UsersToolbar } from "./UsersToolbar";
 import { useUsersTableState } from "./use-users-table";
 
 export function UsersTable({ onOpenUser }: { onOpenUser: (u: UserCardDto) => void }) {
   const t = useUsersTableState();
-  const { data, isLoading, isFetching, isError, error, refetch } = t.query;
+  const { data, isLoading, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = t.query;
+  const filtered = !!t.search || hasFilters(t.filters);
 
   return (
-    <div className="panel overflow-hidden">
+    <div className="panel">
       <UsersToolbar
         search={t.search}
         onSearch={t.setSearch}
-        blockedOnly={t.blockedOnly}
-        onToggleBlocked={t.toggleBlockedOnly}
+        filters={t.filters}
+        onFilters={t.setFilters}
         sorting={t.sorting}
         onSorting={t.setSorting}
       />
@@ -46,11 +49,27 @@ export function UsersTable({ onOpenUser }: { onOpenUser: (u: UserCardDto) => voi
 
       {!isLoading && !isError && t.rows.length === 0 && (
         <div className="p-6">
-          <EmptyState icon={Inbox} title="Ничего не найдено" description="Попробуйте изменить запрос или сбросить фильтр." />
+          <EmptyState
+            icon={Inbox}
+            title="Ничего не найдено"
+            description="Попробуйте изменить запрос или сбросить фильтр."
+            action={
+              filtered ? (
+                <Button variant="surface" size="sm" onClick={t.reset}>
+                  Сбросить
+                </Button>
+              ) : undefined
+            }
+          />
         </div>
       )}
 
-      <UsersPager page={t.page} fetching={isFetching} hasNext={t.hasNext} onPage={t.setPage} />
+      <UsersLoadMore
+        count={t.rows.length}
+        hasMore={!!hasNextPage}
+        loading={isFetchingNextPage}
+        onMore={() => void fetchNextPage()}
+      />
     </div>
   );
 }

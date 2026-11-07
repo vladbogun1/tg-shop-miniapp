@@ -70,3 +70,30 @@ export function formatWait(minutes: number): string {
 export function hasGroupAction(group: Pick<InboxGroup, "id" | "items">): boolean {
   return (group.id === "CHAT" && group.items.length > 1) || group.id === "LOW_STOCK" || group.id === "SITE_ERROR";
 }
+
+/** Rows shown per group before «Показать все N»: a laptop fits more than a phone. */
+export function rowLimit(phone: boolean): number {
+  return phone ? 5 : 8;
+}
+
+/** Whether «Показать все N» is needed: a hidden tail of at least two rows (one hidden row is shown instead). */
+export function visibleRows(items: InboxItem[], limit: number, expanded: boolean): InboxItem[] {
+  if (expanded || items.length <= limit + 1) return items;
+  return items.slice(0, limit);
+}
+
+/** What the phone's group list shows under the group name: the first row, the longest wait, any overdue row. */
+export function groupPreview(group: Pick<InboxGroup, "items">): { line: string; waitMinutes: number; overdue: boolean } {
+  const first = group.items[0];
+  const line = first ? [first.shortId ? `#${first.shortId}` : null, first.title].filter(Boolean).join(" ") : "";
+  return {
+    line,
+    waitMinutes: group.items.reduce((m, it) => Math.max(m, it.waitMinutes ?? 0), 0),
+    overdue: group.items.some((it) => it.overdue),
+  };
+}
+
+/** Group counters in the toolbar chips: the sum of all groups, as the menu badge shows. */
+export function groupsTotal(groups: Pick<InboxGroup, "count">[]): number {
+  return groups.reduce((n, g) => n + g.count, 0);
+}

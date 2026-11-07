@@ -8,23 +8,24 @@
  *    stats — /api/admin/gift/*: CasePanel, the case builder (prizes in a draft, «Опубликовать»), full width
  *    under the settings.
  */
-import { useEffect, useMemo } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { FileSpreadsheet, Save, Undo2 } from "lucide-react";
+import { FileSpreadsheet } from "lucide-react";
 import { useForm } from "@shop/ui/form";
 import { initialDraft, isDirty, parse, validate, type Draft, type SettingValue } from "@/features/settings";
 import { useUnsavedGuard } from "@/lib/use-unsaved-guard";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Button } from "@shop/ui/admin-button";
 import { QueryState } from "@/components/ui/QueryState";
 import { GIFT_GROUP } from "../model/labels";
 import { GIFT_SETTING } from "../model/settings-keys";
 import { useGiftSettingsQuery, useSaveGiftSettings } from "../queries";
 import { CasePanel } from "./case/CasePanel";
+import { GiftSaveBar } from "./GiftSaveBar";
 import { GiftSection } from "./GiftSection";
+import { GiftSummaryBar } from "./GiftSummaryBar";
 import { LowMarginPanel } from "./LowMarginPanel";
 import { StatsStrip } from "./StatsStrip";
+import { useGiftProblem } from "./use-gift-problem";
 
 const EMPTY_DRAFT: Draft = {};
 
@@ -39,7 +40,10 @@ export function GiftScreen() {
   const draft = form.watch("entries") ?? EMPTY_DRAFT;
   const { reset: resetForm } = form;
   useEffect(() => {
-    if (q.data) resetForm({ entries: initialDraft(q.data.items.filter((it) => it.group === GIFT_GROUP)) });
+    if (q.data)
+      resetForm({
+        entries: initialDraft(q.data.items.filter((it) => it.group === GIFT_GROUP)),
+      });
   }, [q.data, resetForm]);
 
   const dirtyItems = useMemo(() => items.filter((it) => isDirty(it, draft[it.key])), [items, draft]);
@@ -48,7 +52,10 @@ export function GiftScreen() {
   useUnsavedGuard(dirty);
 
   const change = (key: string, raw: string | boolean) =>
-    form.setValue("entries", { ...form.getValues("entries"), [key]: { raw, reset: false } });
+    form.setValue("entries", {
+      ...form.getValues("entries"),
+      [key]: { raw, reset: false },
+    });
   const discard = () => resetForm({ entries: initialDraft(items) });
 
   function submit() {
@@ -68,6 +75,10 @@ export function GiftScreen() {
     return item && entry ? { item, entry } : null;
   };
   const productItem = byKey.get(GIFT_SETTING.giftProduct);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const productId = String(draft[GIFT_SETTING.giftProduct]?.raw ?? "");
+  const giftOn = Boolean(draft[GIFT_SETTING.giftEnabled]?.raw);
+  const problem = useGiftProblem(productId, giftOn, isCase);
 
   return (
     <div className="min-w-0">
@@ -89,23 +100,35 @@ export function GiftScreen() {
 
       <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Загрузка настроек">
         {items.length === 0 ? (
-          <p className="panel p-4 text-[13px] text-[var(--text-muted)]">
-            Сервер не отдал настройки подарка — обновите бэкенд.
-          </p>
+          <p className="panel p-4 text-[13px] text-[var(--text-muted)]">Сервер не отдал настройки подарка — обновите бэкенд.</p>
         ) : (
-          <div className="min-w-0 max-w-3xl">
-            <GiftSection
-              enabled={field(GIFT_SETTING.giftEnabled)}
-              threshold={field(GIFT_SETTING.giftThreshold)}
-              caseMode={field(GIFT_SETTING.giftCase)}
-              productId={String(draft[GIFT_SETTING.giftProduct]?.raw ?? "")}
-              productDirty={!!productItem && isDirty(productItem, draft[GIFT_SETTING.giftProduct])}
-              reminder={field(GIFT_SETTING.promoReminder)}
-              margin={field(GIFT_SETTING.margin)}
-              monthlyLimit={field(GIFT_SETTING.monthlyLimit)}
-              onChange={change}
+          <>
+            <GiftSummaryBar
+              on={giftOn}
+              isCase={isCase}
+              threshold={draft[GIFT_SETTING.giftThreshold]?.raw}
+              monthlyLimit={draft[GIFT_SETTING.monthlyLimit]?.raw}
+              problem={problem}
+              dirtyCount={dirtyItems.length}
+              open={settingsOpen}
+              onToggle={() => setSettingsOpen((v) => !v)}
             />
-          </div>
+            {settingsOpen && (
+              <div className="min-w-0 max-w-3xl">
+                <GiftSection
+                  enabled={field(GIFT_SETTING.giftEnabled)}
+                  threshold={field(GIFT_SETTING.giftThreshold)}
+                  caseMode={field(GIFT_SETTING.giftCase)}
+                  productId={productId}
+                  productDirty={!!productItem && isDirty(productItem, draft[GIFT_SETTING.giftProduct])}
+                  reminder={field(GIFT_SETTING.promoReminder)}
+                  margin={field(GIFT_SETTING.margin)}
+                  monthlyLimit={field(GIFT_SETTING.monthlyLimit)}
+                  onChange={change}
+                />
+              </div>
+            )}
+          </>
         )}
         {isCase && (
           <section className="panel mt-4 min-w-0 p-4 sm:p-5">
@@ -115,33 +138,7 @@ export function GiftScreen() {
         {isCase && <LowMarginPanel />}
       </QueryState>
 
-      <AnimatePresence>
-        {dirty && (
-          <motion.div
-            initial={{ y: 80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 80, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 380, damping: 32 }}
-            style={{ bottom: "calc(var(--bottom-nav) + 12px)" }}
-            className="elevated sticky z-[55] mt-6 px-4 py-3"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="min-w-0 text-[13px] font-semibold text-[var(--text)]">
-                Несохранённых изменений: {dirtyItems.length}
-                {invalid && <span className="block text-[12px] font-semibold text-[var(--danger-ink)]">Исправьте поля с ошибками</span>}
-              </div>
-              <div className="flex flex-1 justify-end gap-2 sm:flex-none">
-                <Button variant="outline" icon={<Undo2 className="h-4 w-4" />} onClick={discard} disabled={save.isPending}>
-                  Отменить
-                </Button>
-                <Button variant="accent" icon={<Save className="h-4 w-4" />} loading={save.isPending} disabled={invalid} onClick={submit}>
-                  Сохранить
-                </Button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <GiftSaveBar count={dirtyItems.length} invalid={invalid} saving={save.isPending} onDiscard={discard} onSave={submit} />
     </div>
   );
 }

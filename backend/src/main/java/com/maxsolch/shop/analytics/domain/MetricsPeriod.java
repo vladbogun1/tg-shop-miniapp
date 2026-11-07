@@ -18,7 +18,10 @@ import java.time.temporal.ChronoUnit;
  * comparison at all, while the owner thinks in calendar months. Here:
  * <ul>
  *   <li>{@code today} — since local midnight; compared with yesterday up to the same time</li>
- *   <li>{@code 7d}, {@code 90d} — the last N whole days including today; compared with the N before, up to the
+ *   <li>{@code yesterday} — the whole previous day; compared with the day before it</li>
+ *   <li>{@code quarter} — this calendar quarter (Jan/Apr/Jul/Oct start) to now; compared with the same
+ *       elapsed span of the previous quarter, capped at its end (like {@code month})</li>
+ *   <li>{@code 7d}, {@code 30d}, {@code 90d} — the last N whole days including today; compared with the N before, up to the
  *       same time of day (today is not over yet)</li>
  *   <li>{@code month} — this calendar month to now; compared with the same number of days of the
  *       previous month (month-to-date vs month-to-date, so a half-month is not set against a full one)</li>
@@ -57,7 +60,17 @@ public record MetricsPeriod(String token,
                 yield new MetricsPeriod(t, todayStart, now, yStart,
                         yStart.plus(Duration.between(todayStart, now)), Granularity.HOUR);
             }
+            case "yesterday" -> {
+                Instant yStart = today.minusDays(1).atStartOfDay(zone).toInstant();
+                yield new MetricsPeriod(t, yStart, todayStart,
+                        today.minusDays(2).atStartOfDay(zone).toInstant(), yStart, Granularity.HOUR);
+            }
             case "7d" -> lastDays(t, 7, today, zone, tomorrowStart, nowZ);
+            case "30d" -> lastDays(t, 30, today, zone, tomorrowStart, nowZ);
+            case "quarter" -> {
+                LocalDate first = today.withMonth((today.getMonthValue() - 1) / 3 * 3 + 1).withDayOfMonth(1);
+                yield toDate(t, first, first.minusMonths(3), zone, now);
+            }
             case "90d" -> lastDays(t, 90, today, zone, tomorrowStart, nowZ);
             case "prevmonth" -> {
                 LocalDate first = today.withDayOfMonth(1).minusMonths(1);
@@ -78,17 +91,24 @@ public record MetricsPeriod(String token,
             case "custom" -> custom(fromDate, toDate, zone, now);
             default -> { // "month"
                 LocalDate first = today.withDayOfMonth(1);
-                Instant start = first.atStartOfDay(zone).toInstant();
-                ZonedDateTime prevStart = first.minusMonths(1).atStartOfDay(zone);
-                // Same elapsed time into the previous month, capped at its end.
-                Instant prevEndCap = first.atStartOfDay(zone).toInstant();
-                Instant prevEnd = prevStart.toInstant().plus(Duration.between(start, now));
-                if (prevEnd.isAfter(prevEndCap)) {
-                    prevEnd = prevEndCap;
-                }
-                yield new MetricsPeriod("month", start, now, prevStart.toInstant(), prevEnd, Granularity.DAY);
+                yield toDate("month", first, first.minusMonths(1), zone, now);
             }
         };
+    }
+
+    /**
+     * Calendar period {@code first}..now, compared with the same elapsed time into the period that
+     * starts at {@code prevFirst}, capped at that period's end (= {@code first}).
+     */
+    private static MetricsPeriod toDate(String token, LocalDate first, LocalDate prevFirst, ZoneId zone,
+                                        Instant now) {
+        Instant start = first.atStartOfDay(zone).toInstant();
+        Instant prevStart = prevFirst.atStartOfDay(zone).toInstant();
+        Instant prevEnd = prevStart.plus(Duration.between(start, now));
+        if (prevEnd.isAfter(start)) {
+            prevEnd = start;
+        }
+        return new MetricsPeriod(token, start, now, prevStart, prevEnd, Granularity.DAY);
     }
 
     private static MetricsPeriod lastDays(String token, int days, LocalDate today, ZoneId zone, Instant end,

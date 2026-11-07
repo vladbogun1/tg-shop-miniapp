@@ -24,7 +24,7 @@ interface Gate {
 }
 
 /** «price,category» / «нет цены» → Russian names of what blocks publishing. */
-function missingOf(message: string): string[] {
+export function missingOf(message: string): string[] {
   const m = message.toLowerCase();
   const out: string[] = [];
   if (/price|цен/.test(m)) out.push("цена");

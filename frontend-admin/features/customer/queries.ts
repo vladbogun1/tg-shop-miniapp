@@ -2,11 +2,12 @@
 
 import { QUERY_PRESETS } from "@shop/core/query";
 import type { TimeRange } from "@shop/core/types";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type { SortDir } from "@/lib/sort";
 import { customerApi, geoApi } from "./api";
 import { customerKeys } from "./keys";
-import { USERS_PAGE_SIZE } from "./model/table";
+import type { UserFilters } from "./model/filters";
+import { hasNextPage, USERS_PAGE_SIZE } from "./model/table";
 import type { UserSortBy } from "./model/types";
 
 /** Метрики и карта обновляются раз в 2 минуты (не пресет live: статистика, а не очередь). */
@@ -14,24 +15,29 @@ const SLOW_POLL_MS = 120_000;
 
 export interface UsersTableParams {
   q: string;
-  blockedOnly: boolean;
-  page: number;
+  filters: UserFilters;
   sortBy: UserSortBy;
   sortDir: SortDir;
 }
 
+/** «Показать ещё»: порции по 30 копятся в кэше, смена поиска/фильтра/сортировки начинает с первой. */
 export function useUsersTable(p: UsersTableParams) {
-  return useQuery({
-    queryKey: customerKeys.table(p.q, p.blockedOnly, p.page, p.sortBy, p.sortDir),
-    queryFn: () =>
+  return useInfiniteQuery({
+    queryKey: customerKeys.table(p.q, p.filters, p.sortBy, p.sortDir),
+    queryFn: ({ pageParam }) =>
       customerApi.users({
         q: p.q || undefined,
-        blockedOnly: p.blockedOnly,
-        page: p.page,
+        blockedOnly: p.filters.blockedOnly,
+        premiumOnly: p.filters.premiumOnly,
+        hasOrders: p.filters.hasOrders,
+        page: pageParam,
         size: USERS_PAGE_SIZE,
         sortBy: p.sortBy,
         sortDir: p.sortDir,
       }),
+    initialPageParam: 0,
+    // Сервер не отдаёт общее число: полная порция — значит, дальше, возможно, есть.
+    getNextPageParam: (last, all) => (hasNextPage(last.length) ? all.length : undefined),
     placeholderData: keepPreviousData,
   });
 }

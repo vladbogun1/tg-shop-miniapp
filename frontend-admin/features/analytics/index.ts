@@ -5,3 +5,4 @@ export { todayIso } from "./model/period";
 export type { Channel, PeriodParams, PeriodToken } from "./model/types";
 export { MetricsScreen } from "./ui/MetricsScreen";
 export { TodayStrip } from "./ui/TodayStrip";
+export { CHIP_CLASS, TodayChips } from "./ui/TodayChips";

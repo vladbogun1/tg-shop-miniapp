@@ -100,6 +100,9 @@ services:
       # Heap = 65% of the container limit; the rest is metaspace, threads, direct buffers. Without
       # the limit the JVM sized itself from the 11.9 GB of the whole host.
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=65 -XX:+ExitOnOutOfMemoryError"
+    # Spring finishes in-flight requests for up to 30 s on SIGTERM (server.shutdown: graceful);
+    # compose's default 10 s would SIGKILL a slow one mid-way during a deploy.
+    stop_grace_period: 35s
     logging: *logging
     mem_limit: 1536m
     # Internal-only in prod (gateways reach it as backend:8080; host 8080 is taken).

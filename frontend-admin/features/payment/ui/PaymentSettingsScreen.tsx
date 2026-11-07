@@ -8,51 +8,52 @@
  *    in checkout order). Every option is paid ONLINE through monobank: the whole amount, or a
  *    prepayment now + the rest cash on delivery (наложка). The customer has 24 h to pay, then the
  *    order is cancelled automatically. Each option can be switched off (kept for old orders) and
- *    moved up/down.
+ *    moved up/down. Rows are compact; the editor opens in the row (laptop) or in a sheet (phone).
  *
  * Nothing can be saved until the options loaded (A7: a failed load used to leave an empty form
  * whose «Сохранить» switched every payment option off). Leaving with unsaved edits asks first.
  */
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { CreditCard, Plus, Save, Wallet } from "lucide-react";
+import { CircleHelp, Plus, Wallet } from "lucide-react";
 import { useUnsavedGuard } from "@/lib/use-unsaved-guard";
-import { cn } from "@/lib/cn";
-import { ease } from "@/lib/motion";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@shop/ui/admin-button";
+import { useMediaQuery } from "@shop/ui/use-media";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@shop/ui/overlay";
 import { QueryState } from "@/components/ui/QueryState";
 import { Toggle } from "@/components/ui/Toggle";
 import { toast } from "@shop/ui/toast";
-import { moveRow, newRow, optionsSnapshot, saveBlocker, toPayload, toRows, type OptionRow } from "../model/options";
+import { firstProblemKey, newRow, optionsSnapshot, saveBlocker, toPayload, toRows, type OptionRow } from "../model/options";
 import { useMonobankStatusQuery, usePaymentOptionsQuery, useSavePaymentOptions } from "../queries";
 import { HowItWorks } from "./HowItWorks";
 import { MonobankCard } from "./MonobankCard";
-import { OptionCard } from "./OptionCard";
+import { OptionsList } from "./OptionsList";
+import { PaymentSaveBar } from "./PaymentSaveBar";
 
 export function PaymentSettingsScreen() {
   const optionsQ = usePaymentOptionsQuery("all");
   const monoQ = useMonobankStatusQuery();
+  const wide = useMediaQuery("(min-width: 1536px)");
 
   const [options, setOptions] = useState<OptionRow[]>([]);
+  const [baseRows, setBaseRows] = useState<OptionRow[]>([]);
   const [baseOptions, setBaseOptions] = useState("");
   const [showHidden, setShowHidden] = useState(true);
   const [toDelete, setToDelete] = useState<OptionRow | null>(null);
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [help, setHelp] = useState(false);
 
-  const saveMut = useSavePaymentOptions((saved) => {
-    const rows = toRows(saved);
+  const fill = (rows: OptionRow[]) => {
     setOptions(rows);
+    setBaseRows(rows);
     setBaseOptions(optionsSnapshot(rows));
-  });
+  };
+  const saveMut = useSavePaymentOptions((saved) => fill(toRows(saved)));
 
   // Fill the form only from a successful load — never from the empty initial state.
   useEffect(() => {
-    if (!optionsQ.data) return;
-    const rows = toRows(optionsQ.data);
-    setOptions(rows);
-    setBaseOptions(optionsSnapshot(rows));
+    if (optionsQ.data) fill(toRows(optionsQ.data));
   }, [optionsQ.data]);
 
   const loaded = !!optionsQ.data;
@@ -61,14 +62,13 @@ export function PaymentSettingsScreen() {
 
   const activeCount = options.filter((o) => o.title.trim() && o.active).length;
   const blocker = saveBlocker(options, loaded);
-
-  function patchOption(key: string, patch: Partial<OptionRow>) {
-    setOptions((prev) => prev.map((o) => (o.key === key ? { ...o, ...patch } : o)));
-  }
+  const problemKey = dirty && blocker ? firstProblemKey(options) : null;
 
   function addOption() {
+    const row = newRow();
     setShowHidden(true);
-    setOptions((p) => [...p, newRow()]);
+    setOptions((p) => [...p, row]);
+    setOpenKey(row.key);
   }
 
   function save() {
@@ -77,6 +77,19 @@ export function PaymentSettingsScreen() {
       return;
     }
     saveMut.mutate(toPayload(options));
+  }
+
+  function remove(o: OptionRow) {
+    if (o.id) setToDelete(o);
+    else {
+      setOptions((p) => p.filter((x) => x.key !== o.key));
+      setOpenKey(null);
+    }
+  }
+
+  function showProblem() {
+    setShowHidden(true);
+    setOpenKey(problemKey);
   }
 
   const visible = useMemo(() => options.filter((o) => showHidden || o.active || !o.id), [options, showHidden]);
@@ -104,38 +117,36 @@ export function PaymentSettingsScreen() {
         refetch={() => optionsQ.refetch()}
         loadingLabel="Загрузка настроек оплаты"
       >
-        <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-          {/* ===================== Payment options ===================== */}
-          <motion.section
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={ease}
-            className="panel min-w-0 p-5"
-          >
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="accent-tint grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-md)]">
-                  <CreditCard className="h-5 w-5" />
-                </span>
-                <div className="min-w-0">
-                  <h2 className="section-title !text-[15px] text-[var(--ink)]">Способы оплаты</h2>
-                  <p className="mt-0.5 text-[12px] leading-snug text-[var(--text-muted)]">
-                    Покупатель выбирает один из них; каждый оплачивается онлайн. Порядок — как в оформлении.
-                  </p>
-                </div>
+        <div className="grid min-w-0 items-start gap-4 2xl:grid-cols-[minmax(0,1fr)_340px]">
+          <section className="panel min-w-0 p-4 sm:p-5" aria-label="Способы оплаты">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
+                <h2 className="section-title !text-[15px] text-[var(--ink)]">Способы оплаты · {options.length}</h2>
+                <p className="mt-0.5 text-[12px] leading-snug text-[var(--text-muted)]">
+                  Покупатель выбирает один из них; каждый оплачивается онлайн. Порядок — как в оформлении.
+                </p>
               </div>
-              <Button size="sm" variant="surface" icon={<Plus className="h-4 w-4" />} onClick={addOption}>
-                Добавить
-              </Button>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {!wide && (
+                  <Button size="sm" variant="ghost" icon={<CircleHelp className="h-4 w-4" />} aria-expanded={help} onClick={() => setHelp((v) => !v)}>
+                    Как это работает
+                  </Button>
+                )}
+                <Button size="sm" variant="surface" icon={<Plus className="h-4 w-4" />} onClick={addOption}>
+                  Способ оплаты
+                </Button>
+              </div>
             </div>
+
+            {help && !wide && (
+              <div className="mb-3">
+                <HowItWorks />
+              </div>
+            )}
 
             {hiddenCount > 0 && (
               <div className="mb-3">
-                <Toggle
-                  checked={showHidden}
-                  onChange={setShowHidden}
-                  label={`Показывать выключенные (${hiddenCount})`}
-                />
+                <Toggle checked={showHidden} onChange={setShowHidden} label={`Показывать выключенные (${hiddenCount})`} />
               </div>
             )}
 
@@ -151,53 +162,37 @@ export function PaymentSettingsScreen() {
                 }
               />
             ) : (
-              <div className="flex min-w-0 flex-col gap-3">
-                {visible.map((o) => (
-                  <OptionCard
-                    key={o.key}
-                    o={o}
-                    index={options.indexOf(o)}
-                    count={options.length}
-                    onPatch={(patch) => patchOption(o.key, patch)}
-                    onMove={(delta) => setOptions((prev) => moveRow(prev, o.key, delta))}
-                    onRemove={() => (o.id ? setToDelete(o) : setOptions((p) => p.filter((x) => x.key !== o.key)))}
-                  />
-                ))}
-              </div>
+              <OptionsList
+                all={options}
+                visible={visible}
+                openKey={openKey}
+                problemKey={problemKey}
+                setOptions={setOptions}
+                onOpen={setOpenKey}
+                onRemove={remove}
+              />
             )}
             {activeCount === 0 && options.length > 0 && (
               <p className="mt-3 text-[13px] font-semibold text-[var(--danger-ink)]">
                 Все способы выключены — оформить заказ будет нельзя.
               </p>
             )}
-          </motion.section>
+          </section>
 
-          {/* ===================== How it works ===================== */}
-          <HowItWorks />
+          {wide && <HowItWorks />}
         </div>
 
-        {/* One save for the whole page, pinned so it is reachable on a phone. */}
-        <div style={{ bottom: "calc(var(--bottom-nav) + 12px)" }} className="elevated sticky z-20 mt-6 px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span
-              className={cn(
-                "text-[13px] font-semibold",
-                blocker && dirty ? "text-[var(--danger-ink)]" : "text-[var(--text-muted)]"
-              )}
-            >
-              {dirty ? (blocker ?? "Есть несохранённые изменения") : "Все изменения сохранены"}
-            </span>
-            <Button
-              variant="accent"
-              loading={saveMut.isPending}
-              disabled={!dirty || !!blocker}
-              icon={<Save className="h-4 w-4" />}
-              onClick={save}
-            >
-              Сохранить
-            </Button>
-          </div>
-        </div>
+        <PaymentSaveBar
+          dirty={dirty}
+          blocker={blocker}
+          saving={saveMut.isPending}
+          onShow={problemKey ? showProblem : null}
+          onDiscard={() => {
+            setOptions(baseRows);
+            setOpenKey(null);
+          }}
+          onSave={save}
+        />
       </QueryState>
 
       <DeleteOptionModal
@@ -207,21 +202,14 @@ export function PaymentSettingsScreen() {
           const k = toDelete?.key;
           setOptions((p) => p.filter((x) => x.key !== k));
           setToDelete(null);
+          setOpenKey(null);
         }}
       />
     </div>
   );
 }
 
-function DeleteOptionModal({
-  option,
-  onClose,
-  onConfirm,
-}: {
-  option: OptionRow | null;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
+function DeleteOptionModal({ option, onClose, onConfirm }: { option: OptionRow | null; onClose: () => void; onConfirm: () => void }) {
   return (
     <Modal
       open={!!option}

@@ -125,6 +125,11 @@ public class PromoCode {
         }
     }
 
+    /** An admin sets or moves the expiry; {@code null} makes the code unlimited in time. */
+    public void expireAt(Instant expiresAt) {
+        this.expiresAt = expiresAt;
+    }
+
     public void rename(String newCode) {
         this.code = newCode;
     }

@@ -1,26 +1,23 @@
 "use client";
 
 /**
- * MobileBoard — the board on a phone: status tabs + a vertical list of compact cards.
+ * MobileBoard — one status of the board on a phone: a vertical list of compact cards.
  * Status changes go through a "Переместить в…" bottom sheet (⇄ sits in the card header, next to
  * the time instead of on top of it). Closed tabs show a short list with "Показать ещё".
  * The active tab is owned by the page (the period control is shown only for closed tabs).
  */
 import { useState } from "react";
-import { ArrowRightLeft, Inbox, PackageCheck } from "lucide-react";
+import { Inbox } from "lucide-react";
 import type { OrderStatus } from "@shop/core/types";
 import type { AdminBoard } from "../../api";
-import { money } from "@/lib/money";
-import { BOARD_LABEL, BOARD_ORDER, RETURNING, STATUS_VAR, STATUS_ACTION_LABEL, allowedTargets, returningMinor, type BoardKey } from "../../model/status";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { RETURNING, type BoardKey } from "../../model/status";
 import { Button } from "@shop/ui/admin-button";
 import { OrderCard } from "./OrderCard";
-import { ActionSheet } from "@/components/ui/ActionSheet";
+import { CardAction, MoveSheet, type MoveFor } from "./CardActions";
 
 interface Props {
   board: AdminBoard;
   active: BoardKey;
-  onActiveChange: (s: BoardKey) => void;
   onOpen: (id: string) => void;
   /** «Посылка вернулась» for a card of «Едет назад». */
   onReceived: (id: string) => void;
@@ -29,9 +26,6 @@ interface Props {
   onMore?: () => void;
   loadingMore?: boolean;
 }
-
-const ACTION_BTN =
-  "nb-press hit -my-1 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r-md)] border border-[var(--border-2)] bg-[var(--surface-2)] text-[var(--text-muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text)]";
 
 function EmptyColumn() {
   return (
@@ -42,85 +36,23 @@ function EmptyColumn() {
   );
 }
 
-function Summary({ orders, returning, count, sum }: { orders: AdminBoard["columns"][OrderStatus]; returning: boolean; count: number; sum?: number }) {
-  const cls = "tabular mb-2 px-0.5 text-[12px] font-semibold text-[var(--text-muted)]";
-  if (returning) {
-    if (orders.length === 0) return null;
-    return (
-      <div className={cls}>
-        {orders.reduce((acc, o) => acc + (o.returningUnits ?? 0), 0)} шт. в пути на склад ·{" "}
-        {money(orders.reduce((acc, o) => acc + returningMinor(o), 0), "UAH")}
-      </div>
-    );
-  }
-  if (sum == null || count === 0) return null;
-  return (
-    <div className={cls}>
-      {count} шт. · {money(sum, "UAH")}
-    </div>
-  );
+/** The count and the sum of a status are in the screen's StatusHeader; only the units on the way back are extra. */
+function Summary({ orders, returning }: { orders: AdminBoard["columns"][OrderStatus]; returning: boolean }) {
+  if (!returning || orders.length === 0) return null;
+  return <div className="tabular mb-2 px-0.5 text-[12px] font-semibold text-[var(--text-muted)]">{orders.reduce((acc, o) => acc + (o.returningUnits ?? 0), 0)} шт. в пути на склад</div>;
 }
 
-interface CardActionProps {
-  order: AdminBoard["columns"][OrderStatus][number];
-  returning: boolean;
-  onReceived: (id: string) => void;
-  onMoveFor: (m: { id: string; from: OrderStatus; label: string }) => void;
-}
-
-/** Кнопка в шапке карточки: «Посылка вернулась» в «Едет назад», иначе «Переместить». */
-function CardAction({ order, returning, onReceived, onMoveFor }: CardActionProps) {
-  if (returning) {
-    return (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onReceived(order.id);
-        }}
-        className={ACTION_BTN}
-        aria-label="Посылка вернулась"
-        title="Посылка вернулась"
-      >
-        <PackageCheck className="h-4 w-4" />
-      </button>
-    );
-  }
-  if (allowedTargets(order.status).length === 0) return null;
-  return (
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        onMoveFor({ id: order.id, from: order.status, label: order.customerName });
-      }}
-      className={ACTION_BTN}
-      aria-label="Переместить"
-    >
-      <ArrowRightLeft className="h-4 w-4" />
-    </button>
-  );
-}
-
-export function MobileBoard({ board, active, onActiveChange, onOpen, onReceived, onMove, onMore, loadingMore }: Props) {
-  const [moveFor, setMoveFor] = useState<{ id: string; from: OrderStatus; label: string } | null>(null);
+export function MobileBoard({ board, active, onOpen, onReceived, onMove, onMore, loadingMore }: Props) {
+  const [moveFor, setMoveFor] = useState<MoveFor | null>(null);
 
   const orders = board.columns[active] ?? [];
   const count = board.counts?.[active] ?? orders.length;
   const returning = active === RETURNING;
-  const sum = returning ? undefined : board.sums?.[active];
-
-  const segOptions = BOARD_ORDER.map((s) => ({
-    value: s,
-    label: BOARD_LABEL[s],
-    count: board.counts?.[s] ?? board.columns[s]?.length ?? 0,
-  }));
 
   return (
     <div>
-      {/* Status tabs */}
-      <div className="thin-scroll -mx-1 mb-2 overflow-x-auto px-1 pb-1">
-        <SegmentedControl options={segOptions} value={active} onChange={onActiveChange} />
-      </div>
-      <Summary orders={orders} returning={returning} count={count} sum={sum} />
+      {/* The status name, count and sum are in the screen's sticky panel (StatusHeader). */}
+      <Summary orders={orders} returning={returning} />
 
       <div className="flex flex-col gap-2">
         {orders.length === 0 ? (
@@ -143,22 +75,7 @@ export function MobileBoard({ board, active, onActiveChange, onOpen, onReceived,
         )}
       </div>
 
-      <ActionSheet
-        open={!!moveFor}
-        title={moveFor ? `Переместить · ${moveFor.label}` : undefined}
-        onClose={() => setMoveFor(null)}
-        actions={
-          moveFor
-            ? allowedTargets(moveFor.from).map((t) => ({
-                key: t,
-                label: STATUS_ACTION_LABEL[t],
-                icon: <span aria-hidden className="mx-1 block h-2 w-2 rounded-full" style={{ background: STATUS_VAR[t] }} />,
-                danger: t === "REJECTED",
-                onSelect: () => onMove(moveFor.id, moveFor.from, t),
-              }))
-            : []
-        }
-      />
+      <MoveSheet moveFor={moveFor} onClose={() => setMoveFor(null)} onMove={onMove} />
     </div>
   );
 }

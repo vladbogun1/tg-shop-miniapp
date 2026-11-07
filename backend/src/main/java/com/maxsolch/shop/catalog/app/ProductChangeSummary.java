@@ -92,12 +92,15 @@ final class ProductChangeSummary {
 
     /** ", причина списания: брак (текст)" when the save lowered the product's or a variant's stock. */
     static String writeoff(AdminProductDto before, AdminProductDto after, ProductUpsertRequest req) {
-        if (req.stockReason() == null || !stockDropped(before, after)) {
+        return writeoff(before, after, req.stockReason(), req.stockNote());
+    }
+
+    static String writeoff(AdminProductDto before, AdminProductDto after, String stockReason, String stockNote) {
+        if (stockReason == null || !stockDropped(before, after)) {
             return "";
         }
-        String label = WRITEOFF_LABELS.getOrDefault(req.stockReason().trim().toUpperCase(Locale.ROOT),
-                req.stockReason());
-        String note = req.stockNote() == null || req.stockNote().isBlank() ? "" : " (" + req.stockNote().trim() + ")";
+        String label = WRITEOFF_LABELS.getOrDefault(stockReason.trim().toUpperCase(Locale.ROOT), stockReason);
+        String note = stockNote == null || stockNote.isBlank() ? "" : " (" + stockNote.trim() + ")";
         return ", причина списания: " + label + note;
     }
 

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Toggle } from "@/components/ui/Toggle";
 import { costUahMinor, fxToInput, lineTitle, type Batch } from "@/features/procurement";
 import { ProductStateChips, useBatchProductTools, useBatchProducts } from "@/features/product";
+import { BatchItemsTable, shortageOf } from "./BatchItemsTable";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 
@@ -21,7 +22,8 @@ export function BatchItems({ batch, open }: { batch: Batch; open: boolean }) {
   const shown = all ? batch.items : batch.items.slice(0, COLLAPSED);
   return (
     <>
-      <div className="mb-5 flex min-w-0 flex-col gap-2">
+      <BatchItemsTable batch={batch} items={batch.items} open={open} products={products} tools={tools} />
+      <div className="mb-5 flex min-w-0 flex-col gap-2 lg:hidden">
         {shown.map((i) => {
           const cost = batch.moneyVisible ? costUahMinor(i.unitPriceFx, batch.fxRate) : null;
           const enough = i.waitingQty <= i.qtyOrdered;
@@ -50,7 +52,7 @@ export function BatchItems({ batch, open }: { batch: Batch; open: boolean }) {
               </button>
               <div className="grid w-full grid-cols-3 gap-x-3 gap-y-2 sm:flex sm:w-auto sm:flex-wrap sm:gap-x-4">
                 <Cell label="Заказано" value={`${i.qtyOrdered}`} />
-                <Cell label="Пришло" value={i.qtyArrived != null ? `${i.qtyArrived}` : "—"} />
+                <Cell label="Пришло" value={i.qtyArrived != null ? `${i.qtyArrived}` : "—"} sub={shortageOf(i) > 0 ? `не хватило ${shortageOf(i)}` : undefined} warn={shortageOf(i) > 0} />
                 <Cell
                   label={open && !enough ? "Ждут — не хватит" : "Ждут"}
                   value={i.waitingPeople ? `${i.waitingPeople} чел · ${i.waitingQty} шт` : "—"}

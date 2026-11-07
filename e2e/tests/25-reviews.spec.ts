@@ -30,8 +30,21 @@ async function adminReviews(api: Api, status = "ALL"): Promise<AdminPage> {
   return res.body as unknown as AdminPage;
 }
 
+/** A row of the queue (left column). */
 function card(page: Page, text: string): Locator {
   return page.getByRole("listitem").filter({ hasText: text });
+}
+
+/** The open review (right panel on a laptop): its text, reply field and the actions. */
+function detail(page: Page): Locator {
+  return page.getByRole("region", { name: "Открытый отзыв" });
+}
+
+/** Picks a review in the queue and waits until its panel shows it. */
+async function open(page: Page, text: string): Promise<Locator> {
+  await card(page, text).click();
+  await expect(detail(page)).toContainText(text);
+  return detail(page);
 }
 
 /** A filter chip of the segmented control: «На модерации 3». */
@@ -61,24 +74,27 @@ test("модерация: опубликовать, скрыть, удалить
   await expect(card(page, "E2E: чудова футболка").getByLabel("Оценка 5 из 5")).toBeVisible();
 
   // Publish.
-  await card(page, "E2E: чудова футболка").getByRole("button", { name: "Опубликовать" }).click();
+  let d = await open(page, "E2E: чудова футболка");
+  await d.getByRole("button", { name: /^Опубликовать/ }).click();
   await expect(toast(page, "Отзыв опубликован")).toBeVisible();
   await expect(card(page, "E2E: чудова футболка")).toHaveCount(0);
   await expectCounters(page, api, 2);
   await expect(chip(page, "Опубликованы")).toHaveText(new RegExp(`${before.publishedCount + 1}$`));
 
   // Hide.
-  await card(page, "E2E: кепка маломірить").getByRole("button", { name: "Скрыть" }).click();
+  d = await open(page, "E2E: кепка маломірить");
+  await d.getByRole("button", { name: /^Скрыть/ }).click();
   await expect(toast(page, "Отзыв скрыт с витрины")).toBeVisible();
   await expect(card(page, "E2E: кепка маломірить")).toHaveCount(0);
   await expectCounters(page, api, 1);
 
   // Delete asks first; «Отмена» keeps it.
-  await card(page, "E2E: рюкзак нормальний").getByRole("button", { name: "Удалить" }).click();
+  d = await open(page, "E2E: рюкзак нормальний");
+  await d.getByRole("button", { name: /^Удалить/ }).click();
   let confirm = dialog(page, "Удалить отзыв?");
   await confirm.getByRole("button", { name: "Отмена" }).click();
   await expect(card(page, "E2E: рюкзак нормальний")).toBeVisible();
-  await card(page, "E2E: рюкзак нормальний").getByRole("button", { name: "Удалить" }).click();
+  await d.getByRole("button", { name: /^Удалить/ }).click();
   confirm = dialog(page, "Удалить отзыв?");
   await confirm.getByRole("button", { name: "Удалить" }).click();
   await expect(toast(page, "Отзыв удалён")).toBeVisible();
@@ -94,34 +110,30 @@ test("модерация: опубликовать, скрыть, удалить
   // «Скрытые» lists the hidden one, with «Опубликовать» but no «Скрыть».
   await chip(page, "Скрытые").click();
   await expect(page).toHaveURL(/status=HIDDEN/);
-  const hidden = card(page, "E2E: кепка маломірить");
-  await expect(hidden).toBeVisible();
-  await expect(hidden.getByRole("button", { name: "Скрыть" })).toHaveCount(0);
-  await expect(hidden.getByRole("button", { name: "Опубликовать" })).toBeVisible();
+  await expect(card(page, "E2E: кепка маломірить")).toBeVisible();
+  d = await open(page, "E2E: кепка маломірить");
+  await expect(d.getByRole("button", { name: /^Скрыть/ })).toHaveCount(0);
+  await expect(d.getByRole("button", { name: /^Опубликовать/ })).toBeVisible();
 });
 
 test("ответ магазина: сохранить, изменить, убрать", async ({ page, api }) => {
   await page.goto("/reviews?status=PUBLISHED");
-  const c = card(page, "E2E: вже опублікований відгук");
-  await expect(c).toBeVisible();
+  await expect(card(page, "E2E: вже опублікований відгук")).toBeVisible();
+  const c = await open(page, "E2E: вже опублікований відгук");
 
-  await c.getByRole("button", { name: "Ответить" }).click();
-  const field = c.getByLabel("Публичный ответ магазина");
-  await expect(c.getByRole("button", { name: "Сохранить" })).toBeDisabled();
+  const field = c.getByLabel(/^Публичный ответ магазина/);
+  await expect(c.getByRole("button", { name: "Сохранить", exact: true })).toBeDisabled();
   await field.fill("Дякуємо за відгук!");
   await c.getByRole("button", { name: "Сохранить" }).click();
   await expect(toast(page, "Ответ сохранён")).toBeVisible();
-  await expect(c).toContainText("Ответ магазина");
-  await expect(c).toContainText("Дякуємо за відгук!");
+  await expect(c.getByLabel(/^Публичный ответ магазина/)).toHaveValue("Дякуємо за відгук!");
   let r = (await adminReviews(api, "PUBLISHED")).items.find((x) => x.id === REVIEW.published)!;
   expect(r.adminReply).toBe("Дякуємо за відгук!");
 
-  await c.getByRole("button", { name: "Изменить ответ" }).click();
-  await expect(c.getByLabel("Публичный ответ магазина")).toHaveValue("Дякуємо за відгук!");
+  await expect(c.getByLabel(/^Публичный ответ магазина/)).toHaveValue("Дякуємо за відгук!");
   await c.getByRole("button", { name: "Убрать ответ" }).click();
   await expect(toast(page, "Ответ убран")).toBeVisible();
-  await expect(c).not.toContainText("Ответ магазина");
-  await expect(c.getByRole("button", { name: "Ответить" })).toBeVisible();
+  await expect(c.getByLabel(/^Публичный ответ магазина/)).toHaveValue("");
   r = (await adminReviews(api, "PUBLISHED")).items.find((x) => x.id === REVIEW.published)!;
   expect(r.adminReply ?? null).toBeNull();
 });

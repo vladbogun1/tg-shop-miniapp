@@ -87,6 +87,76 @@ class MetricsPeriodTest {
     }
 
     @Test
+    void yesterday_isTheWholePreviousDay_comparedWithTheDayBefore() {
+        MetricsPeriod p = MetricsPeriod.parse("yesterday", null, null, KYIV, now);
+
+        assertThat(p.from()).isEqualTo(kyiv("2026-10-03T00:00:00"));
+        assertThat(p.to()).isEqualTo(kyiv("2026-10-04T00:00:00"));
+        assertThat(p.prevFrom()).isEqualTo(kyiv("2026-10-02T00:00:00"));
+        assertThat(p.prevTo()).isEqualTo(kyiv("2026-10-03T00:00:00"));
+        assertThat(p.granularity()).isEqualTo(MetricsPeriod.Granularity.HOUR);
+    }
+
+    @Test
+    void yesterday_acrossNewYear() {
+        MetricsPeriod p = MetricsPeriod.parse("yesterday", null, null, KYIV, kyiv("2027-01-01T09:00:00"));
+
+        assertThat(p.from()).isEqualTo(kyiv("2026-12-31T00:00:00"));
+        assertThat(p.to()).isEqualTo(kyiv("2027-01-01T00:00:00"));
+        assertThat(p.prevFrom()).isEqualTo(kyiv("2026-12-30T00:00:00"));
+    }
+
+    @Test
+    void thirtyDays_includesTodayAndComparesWithTheThirtyBefore() {
+        MetricsPeriod p = MetricsPeriod.parse("30d", null, null, KYIV, now);
+
+        assertThat(p.from()).isEqualTo(kyiv("2026-09-05T00:00:00"));
+        assertThat(p.to()).isEqualTo(kyiv("2026-10-05T00:00:00"));
+        assertThat(p.prevFrom()).isEqualTo(kyiv("2026-08-06T00:00:00"));
+        assertThat(p.prevTo()).isEqualTo(kyiv("2026-09-04T15:00:00"));
+        assertThat(p.granularity()).isEqualTo(MetricsPeriod.Granularity.DAY);
+    }
+
+    @Test
+    void quarter_isQuarterToDate_comparedWithSameSpanOfPreviousQuarter() {
+        MetricsPeriod p = MetricsPeriod.parse("quarter", null, null, KYIV, now);
+
+        assertThat(p.token()).isEqualTo("quarter");
+        assertThat(p.from()).isEqualTo(kyiv("2026-10-01T00:00:00"));
+        assertThat(p.to()).isEqualTo(now);
+        assertThat(p.prevFrom()).isEqualTo(kyiv("2026-07-01T00:00:00"));
+        assertThat(p.prevTo()).isEqualTo(kyiv("2026-07-04T15:00:00"));
+        assertThat(p.granularity()).isEqualTo(MetricsPeriod.Granularity.DAY);
+    }
+
+    @Test
+    void quarter_midQuarterStartsOnTheQuarterBoundary() {
+        MetricsPeriod p = MetricsPeriod.parse("quarter", null, null, KYIV, kyiv("2026-08-20T10:00:00"));
+
+        assertThat(p.from()).isEqualTo(kyiv("2026-07-01T00:00:00"));
+        assertThat(p.prevFrom()).isEqualTo(kyiv("2026-04-01T00:00:00"));
+        assertThat(p.prevTo()).isEqualTo(kyiv("2026-05-21T10:00:00"));
+    }
+
+    @Test
+    void quarter_firstQuarterComparesWithLastQuarterOfPreviousYear() {
+        MetricsPeriod p = MetricsPeriod.parse("quarter", null, null, KYIV, kyiv("2027-01-20T12:00:00"));
+
+        assertThat(p.from()).isEqualTo(kyiv("2027-01-01T00:00:00"));
+        assertThat(p.prevFrom()).isEqualTo(kyiv("2026-10-01T00:00:00"));
+        assertThat(p.prevTo()).isEqualTo(kyiv("2026-10-20T12:00:00"));
+    }
+
+    @Test
+    void quarter_previousSpanIsCappedAtTheEndOfAShorterQuarter() {
+        // Q2 (91 days) late on its last day vs Q1 (90 days): capped at the end of Q1.
+        MetricsPeriod p = MetricsPeriod.parse("quarter", null, null, KYIV, kyiv("2026-06-30T23:00:00"));
+
+        assertThat(p.prevFrom()).isEqualTo(kyiv("2026-01-01T00:00:00"));
+        assertThat(p.prevTo()).isEqualTo(kyiv("2026-04-01T00:00:00"));
+    }
+
+    @Test
     void custom_runningPastNow_comparesTheSameElapsedSpan() {
         // "1–31 October" asked on Oct 4 at 15:00: 3 days 15 h of data, not a whole month vs 3 days.
         MetricsPeriod p = MetricsPeriod.parse("custom", "2026-10-01", "2026-10-31", KYIV, now);

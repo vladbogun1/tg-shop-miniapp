@@ -27,6 +27,8 @@ public class NotificationProperties {
     public static class Telegram {
         private String botToken;
         private String botUsername;
+        /** false = send-only: the bot is not registered for getUpdates (temporary deploy copy, see infra/deploy/deploy.sh). */
+        private boolean polling = true;
         /** Numeric chat id ("-100...") OR public channel username ("@maxsolch_chat"). */
         private String notifyChatId;
         private int notifyTopicNew;

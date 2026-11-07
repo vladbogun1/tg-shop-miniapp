@@ -11,7 +11,7 @@ import { useForm } from "@shop/ui/form";
 import { motion } from "framer-motion";
 import { Bell, BellRing, Bot, Boxes, ChevronRight, Gift, LifeBuoy, ShieldAlert, SlidersHorizontal, Ticket, Truck, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PanelHeader } from "@/components/ui/PanelHeader";
 import { QueryState } from "@/components/ui/QueryState";
@@ -26,6 +26,7 @@ import { DevicePanel } from "./DevicePanel";
 import { SaveBar } from "./SaveBar";
 import { BotTexts, GroupFields } from "./SettingGroups";
 import { SystemPanel } from "./SystemPanel";
+import { matchesQuery, SettingsToolbar } from "./SettingsToolbar";
 
 const EMPTY_DRAFT: Draft = {};
 
@@ -45,6 +46,7 @@ export function SettingsScreen() {
   // «Приложение и уведомления»: на телефоне первым, на компьютере — сверху боковой колонки.
   const isDesktop = useIsDesktop();
   const save = useSaveSettings();
+  const [query, setQuery] = useState("");
 
   // Правки живут в форме (поле `entries`); заново заполняется, когда меняется копия сервера.
   const form = useForm<{ entries: Draft }>({ defaultValues: { entries: {} } });
@@ -58,6 +60,10 @@ export function SettingsScreen() {
   const dirtyItems = useMemo(() => items.filter((it) => isDirty(it, draft[it.key])), [items, draft]);
   const invalid = dirtyItems.some((it) => !draft[it.key].reset && validate(it, draft[it.key].raw));
   const dirty = dirtyItems.length > 0;
+  // Поиск скрывает несовпавшие настройки; правки в скрытых полях остаются в форме и сохраняются.
+  const shown = useMemo(() => items.filter((it) => matchesQuery([it.label, it.description, it.key], query)), [items, query]);
+  const visibleGroups = (q.data?.groups ?? []).filter((g) => shown.some((it) => it.group === g.id));
+  const showFirstDirty = () => document.getElementById("setting-" + dirtyItems[0]?.key)?.scrollIntoView({ block: "center", behavior: "smooth" });
 
   // Уход со страницы с несохранёнными правками их теряет — спросить (закрытие вкладки и ссылки меню).
   useUnsavedGuard(dirty);
@@ -90,18 +96,23 @@ export function SettingsScreen() {
         <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
           <div className="flex min-w-0 flex-col gap-6">
             {!isDesktop && <DevicePanel />}
-            {(q.data?.groups ?? []).map((g, i) => {
-              const groupItems = items.filter((it) => it.group === g.id);
+            <SettingsToolbar query={query} onQuery={setQuery} groups={visibleGroups.filter((g) => g.id !== "gift")} />
+            {query.trim() !== "" && visibleGroups.length === 0 && (
+              <p className="panel p-5 text-[13px] text-[var(--text-muted)]">По запросу «{query.trim()}» настроек нет.</p>
+            )}
+            {visibleGroups.map((g, i) => {
+              const groupItems = shown.filter((it) => it.group === g.id);
               if (groupItems.length === 0) return null;
               // Редактируется на своей странице (подарок — вместе с призами кейса).
               if (g.id === "gift") return <GiftLink key={g.id} title={g.title} />;
               return (
                 <motion.section
                   key={g.id}
+                  id={"group-" + g.id}
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ ...ease, delay: i * 0.04 }}
-                  className="panel min-w-0 p-5"
+                  className="panel min-w-0 scroll-mt-[88px] p-3 sm:p-5"
                 >
                   <PanelHeader icon={GROUP_ICON[g.id] ?? SlidersHorizontal} title={g.title} description={g.description} />
                   {g.id === "bot" ? (
@@ -122,7 +133,7 @@ export function SettingsScreen() {
         </div>
       </QueryState>
 
-      <SaveBar count={dirtyItems.length} invalid={invalid} saving={save.isPending} onDiscard={discard} onSave={submit} />
+      <SaveBar count={dirtyItems.length} invalid={invalid} saving={save.isPending} onDiscard={discard} onSave={submit} onShow={showFirstDirty} />
     </div>
   );
 }

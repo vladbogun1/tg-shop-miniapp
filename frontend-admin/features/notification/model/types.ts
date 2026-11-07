@@ -11,16 +11,17 @@ export type BroadcastAudience = "all" | "active" | "inactive" | "premium";
  */
 export type BroadcastHistoryItem = Omit<
   Schemas["BroadcastHistoryDto"],
-  "audience" | "lang" | "status" | "adminName" | "textUk" | "textRu" | "textEn" | "finishedAt"
+  "audience" | "lang" | "status" | "adminName" | "textUk" | "textRu" | "textEn" | "finishedAt" | "stoppedByName"
 > & {
   audience: BroadcastAudience;
   lang?: ShopLang | null;
-  status: "RUNNING" | "DONE" | "INTERRUPTED";
+  status: "RUNNING" | "DONE" | "INTERRUPTED" | "STOPPED";
   adminName?: string | null;
   textUk?: string | null;
   textRu?: string | null;
   textEn?: string | null;
   finishedAt?: string | null;
+  stoppedByName?: string | null;
 };
 
 export interface BroadcastStartBody {

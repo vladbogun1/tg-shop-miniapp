@@ -76,18 +76,18 @@ export function MonobankCard({
       animate={{ opacity: 1, y: 0 }}
       transition={ease}
       aria-label="Эквайринг monobank"
-      className="panel mb-6 min-w-0 p-4 sm:p-5"
+      className="panel mb-4 min-w-0 p-3 sm:p-4"
     >
       <div className="flex flex-wrap items-start gap-3">
         <span
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r-md)] border"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--r-md)] border"
           style={{
             color: toneVar,
             background: `color-mix(in srgb, ${toneVar} 14%, transparent)`,
             borderColor: `color-mix(in srgb, ${toneVar} 30%, transparent)`,
           }}
         >
-          <Wallet className="h-5 w-5" />
+          <Wallet className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1 basis-64">
           <div className="flex flex-wrap items-center gap-2">

@@ -2,10 +2,10 @@
 
 /**
  * The board half of the orders screen.
- *  - Desktop (lg+): kanban with dnd-kit drag-between-columns -> PATCH status.
+ *  - Tablet and up (md+): kanban with dnd-kit drag-between-columns -> PATCH status.
  *    SHIPPED prompts ТТН, REJECTED a reason, DELIVERED a confirmation. Transitions validated.
  *    Optimistic update + rollback on error.
- *  - Phone: status tabs + list with a "Переместить в…" sheet (MobileBoard).
+ *  - Phone: a list of statuses (StatusList); a tap opens the status — cards with a "Переместить в…" sheet (MobileBoard).
  *    Only ONE of the two is mounted (matchMedia) — both used to render, hidden by CSS.
  *  - The period applies to the closed columns (Доставлен / Отклонён) only: an active order is never
  *    hidden by it. Closed columns load 20 cards + "Показать ещё".
@@ -16,9 +16,9 @@ import { useMemo } from "react";
 import { X } from "lucide-react";
 import { Button } from "@shop/ui/admin-button";
 import { QueryState } from "@/components/ui/QueryState";
-import { TodayStrip } from "@/features/analytics";
+import { CHIP_CLASS, TodayChips } from "@/features/analytics";
 import { WantedWidget } from "@/features/procurement";
-import { useIsDesktop } from "@/lib/use-media";
+import { useIsKanban } from "../use-is-kanban";
 import type { AdminBoard } from "../../api";
 import { CLOSED_MAX, CLOSED_PAGE, isClosedColumn, onlyPaidNew } from "../../model/board";
 import type { OrdersPeriod } from "../../model/period";
@@ -27,6 +27,7 @@ import { boardKey, type BoardQuery } from "../../queries/board";
 import { StatusMoveModal } from "./StatusMoveModal";
 import { DesktopBoard } from "./DesktopBoard";
 import { MobileBoard } from "./MobileBoard";
+import { StatusList } from "./StatusList";
 import { useBoardMoves, type OpenAction } from "./use-board-moves";
 
 interface Props {
@@ -37,8 +38,9 @@ interface Props {
   closedLimit: number;
   onClosedLimit: (n: number) => void;
   period: OrdersPeriod;
-  mobileTab: BoardKey;
-  onMobileTab: (s: BoardKey) => void;
+  /** Phone: the open status; null — the list of statuses. */
+  mobileTab: BoardKey | null;
+  onPickStatus: (s: BoardKey) => void;
   /** «Сегодня» link: only paid NEW orders, waiting to be approved. */
   paidNewOnly: boolean;
   onClearPaidNew: () => void;
@@ -56,8 +58,8 @@ function PaidNewNotice({ onClear }: { onClear: () => void }) {
   );
 }
 
-export function BoardView({ search, boardQ, closedLimit, onClosedLimit, period, mobileTab, onMobileTab, paidNewOnly, onClearPaidNew, onOpen }: Props) {
-  const isDesktop = useIsDesktop();
+export function BoardView({ search, boardQ, closedLimit, onClosedLimit, period, mobileTab, onPickStatus, paidNewOnly, onClearPaidNew, onOpen }: Props) {
+  const kanban = useIsKanban();
 
   const queryKey = boardKey(search, period, closedLimit);
 
@@ -73,8 +75,7 @@ export function BoardView({ search, boardQ, closedLimit, onClosedLimit, period, 
 
   return (
     <>
-      <TodayStrip />
-      <WantedWidget />
+      {(kanban || mobileTab === null) && <TodayChips trailing={<WantedWidget chipClass={CHIP_CLASS} />} />}
       {paidNewOnly && <PaidNewNotice onClear={onClearPaidNew} />}
       <QueryState
         isLoading={boardQ.isLoading || (!board && !boardQ.isError)}
@@ -84,7 +85,7 @@ export function BoardView({ search, boardQ, closedLimit, onClosedLimit, period, 
         loadingLabel="Загружаем доску…"
       >
         {board &&
-          (isDesktop ? (
+          (kanban ? (
             <DesktopBoard
               board={board}
               activeId={moves.activeId}
@@ -95,12 +96,15 @@ export function BoardView({ search, boardQ, closedLimit, onClosedLimit, period, 
               onDragStart={moves.onDragStart}
               onDragEnd={moves.onDragEnd}
               onDragCancel={moves.onDragCancel}
+              onReceived={(id) => onOpen(id, "received")}
+              onMove={moves.requestMove}
             />
+          ) : mobileTab === null ? (
+            <StatusList board={board} onPick={onPickStatus} />
           ) : (
             <MobileBoard
               board={board}
               active={mobileTab}
-              onActiveChange={onMobileTab}
               onOpen={(id) => onOpen(id)}
               onReceived={(id) => onOpen(id, "received")}
               onMove={moves.requestMove}

@@ -36,7 +36,7 @@ export function TodayStrip() {
   return <Strip t={q.data} />;
 }
 
-function Strip({ t }: { t: Today }) {
+export function Strip({ t }: { t: Today }) {
   // "Running out" is counted with the setting metrics.lowStockDays — the text must say the same.
   const lowStockDays = useShopSetting("metrics.lowStockDays", 14);
   const soonTitles = t.reorderTop.map((r) => (r.variantName ? `${r.title} (${r.variantName})` : r.title)).join(", ");
@@ -97,7 +97,7 @@ function Strip({ t }: { t: Today }) {
   );
 }
 
-function Compare({ now, then, label }: { now: number; then: number; label: string }) {
+export function Compare({ now, then, label }: { now: number; then: number; label: string }) {
   if (then <= 0) return <>{label}</>;
   const up = now >= then;
   const Icon = up ? ArrowUpRight : ArrowDownRight;

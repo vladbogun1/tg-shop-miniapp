@@ -9,9 +9,11 @@
  *  POST /api/admin/support/threads/{id}/messages   → SupportMessage
  *  POST /api/admin/support/threads                 → SupportThread (admin writes first: { userId, subject?, text })
  *  POST /api/admin/support/threads/{id}/attachments (multipart) → { key }
+ *  GET  /api/admin/support/threads/{id}/reply-templates → RenderedTemplate[] (шаблоны ⚡ на языке клиента, {name}/{product} подставлены)
  *  POST /api/admin/support/threads/{id}/read | close | reopen
  */
 import { apiGet, apiPost, uploadFile } from "@/lib/http";
+import type { RenderedTemplate } from "@/features/order/view/ReplyTemplates";
 import type { SendMessageRequest } from "@shop/core/types";
 import { SUPPORT_CHAT_PAGE } from "./model/chat";
 import type { StartThreadBody, SupportMessage, SupportThread, SupportThreadsQuery } from "./model/types";
@@ -45,6 +47,8 @@ export const supportApi = {
 
   /** Picture or PDF → { key }, stored privately under chat/ (signed links). */
   uploadAttachment: (id: string, file: File) => uploadFile(`${thread(id)}/attachments`, file),
+
+  renderedTemplates: (id: string) => apiGet<RenderedTemplate[]>(`${thread(id)}/reply-templates`),
 
   markRead: (id: string) => apiPost<void>(`${thread(id)}/read`),
 
