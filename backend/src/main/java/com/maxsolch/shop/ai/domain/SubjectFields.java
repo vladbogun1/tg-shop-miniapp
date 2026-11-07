@@ -2,6 +2,7 @@ package com.maxsolch.shop.ai.domain;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * The port through which the AI module reads and gives back the fields of the object a task is about (a product card):
@@ -15,6 +16,12 @@ public interface SubjectFields {
 
     /** The fields of the object as they are now. */
     Map<String, String> snapshot(String subjectId);
+
+    /**
+     * The same, or empty when there is no such object (a deleted one, a malformed id): it throws nothing, so it can be
+     * read inside the transaction that creates a job without marking it for rollback.
+     */
+    Optional<Map<String, String>> find(String subjectId);
 
     /**
      * Undo: in one transaction, under a lock on the object, puts {@code before} back into every field whose current

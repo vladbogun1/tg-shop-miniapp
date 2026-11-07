@@ -21,13 +21,13 @@ class AiJobReadsTest {
 
     private final AiJobRepository jobs = mock(AiJobRepository.class);
     private final AiJobBodyRepository bodies = mock(AiJobBodyRepository.class);
-    private final AiJobReads reads = new AiJobReads(jobs, bodies);
+    private final AiJobReads reads = new AiJobReads(jobs, bodies, mock(AiSubjectChanges.class));
 
     private void stored(AiFeature feature, long id) {
         AiJob job = AiJob.queued(new AiJob.Spec(feature, 7L, "X", "1", null, JobMode.NORMAL, "low", 1, null, null, null),
                 Instant.parse("2026-11-07T10:00:00Z"));
         ReflectionTestUtils.setField(job, "id", id);
-        AiJobBody body = AiJobBody.of(id, "закупка 120 USD", Instant.parse("2026-11-07T10:00:00Z"));
+        AiJobBody body = AiJobBody.of(id, "закупка 120 USD", null, Instant.parse("2026-11-07T10:00:00Z"));
         body.answered("{\"lines\":[{\"price\":120}]}");
         when(jobs.findById(id)).thenReturn(Optional.of(job));
         when(bodies.findById(id)).thenReturn(Optional.of(body));

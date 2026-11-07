@@ -1,12 +1,16 @@
 package com.maxsolch.shop.catalog.app;
 
 import com.maxsolch.shop.catalog.app.CatalogDtos.CardAcceptRequest;
+import com.maxsolch.shop.catalog.app.CatalogDtos.CardImportItem;
 import com.maxsolch.shop.catalog.app.CatalogDtos.CardsImportRequest;
 import com.maxsolch.shop.catalog.app.CatalogDtos.CardsImportResult;
 import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Objects;
 
 /**
  * What the admin does in «Карточки»: applies an AI answer, accepts a card after review, sets a card status. Runs the
@@ -34,7 +38,7 @@ public class AdminCards {
     public CardsImportResult importCards(CardsImportRequest body) {
         CardsImportResult r = importer.importCards(body, actorId());
         long published = r.items().stream().filter(i -> i.published()).count();
-        audit.record("CARDS_IMPORT", "PRODUCT", null, "применено " + r.applied() + ", отклонено "
+        audit.record("CARDS_IMPORT", "PRODUCT", onlyProduct(body), "применено " + r.applied() + ", отклонено "
                 + r.rejected().size() + ", замечаний " + r.issues().size()
                 + (r.createdBrands().isEmpty() ? "" : ", новые бренды: " + String.join(", ", r.createdBrands()))
                 + ", на витрине " + published);
@@ -58,6 +62,19 @@ public class AdminCards {
         AdminProductDto p = products.setCardStatus(id, status, actorId());
         audit.record("PRODUCT_CARD_STATUS", "PRODUCT", id, p.title() + ": " + p.cardStatus());
         return p;
+    }
+
+    /**
+     * The product of a one-card import (the card screen, the AI review): the entry then shows in the product's history
+     * and names the editor in an AI review. An import of several cards stays one entry without a product.
+     */
+    static String onlyProduct(CardsImportRequest body) {
+        if (body == null || body.items() == null) {
+            return null;
+        }
+        List<String> ids = body.items().stream().filter(Objects::nonNull).map(CardImportItem::productId)
+                .filter(Objects::nonNull).distinct().toList();
+        return ids.size() == 1 ? ids.get(0) : null;
     }
 
     private Long actorId() {

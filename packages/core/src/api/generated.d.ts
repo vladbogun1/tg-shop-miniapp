@@ -5818,6 +5818,8 @@ export interface components {
             startedAt: string;
             /** @enum {string} */
             status: "QUEUED" | "RUNNING" | "DONE" | "EMPTY" | "BAD_ANSWER" | "FAILED" | "CANCELED";
+            step?: string;
+            subjectChanges?: components["schemas"]["SubjectChanges"];
             subjectId: string;
             subjectType: string;
             subjectVersion: string;
@@ -6797,6 +6799,11 @@ export interface components {
             /** Format: int32 */
             sortOrder?: number;
         };
+        Change: {
+            after: string;
+            before: string;
+            key: string;
+        };
         ChangeItemQtyRequest: {
             notifyCustomer?: boolean;
             /** Format: int32 */
@@ -7129,6 +7136,11 @@ export interface components {
             p90Minor: number;
             /** Format: int64 */
             roomMinor: number;
+        };
+        Editor: {
+            /** Format: date-time */
+            at: string;
+            name: string;
         };
         EndpointRequest: {
             endpoint?: string;
@@ -9553,6 +9565,10 @@ export interface components {
             stockUnits: number;
             /** Format: int64 */
             stockValueMinor: number;
+        };
+        SubjectChanges: {
+            editors: components["schemas"]["Editor"][];
+            fields: components["schemas"]["Change"][];
         };
         SubmitRequest: {
             /** Format: int64 */

@@ -79,7 +79,8 @@ public class AiJobRunner {
             // for an invoice «researchItems» counts pictures (the price grows with them): no web research there
             int research = pictures.isEmpty() ? job.getResearchItems() : 0;
             AiAgent.Ask ask = new AiAgent.Ask(AiScope.job(job.getFeature(), id, job.getAdminId()), claimed.prompt(),
-                    job.getEffort(), research, () -> beforeTurn(job), pictures);
+                    job.getEffort(), research, () -> beforeTurn(job), pictures,
+                    new AiJobSteps(step -> lifecycle.step(id, worker, step), clock));
             AiAgent.Answer answer = agent.ask(ask);
             JobStatus verdict = check.check(answer.text(), 1);
             ResultWriter.Written written = verdict == JobStatus.DONE ? write(job, claimed.prompt(), answer.text()) : null;

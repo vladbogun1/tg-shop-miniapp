@@ -1806,6 +1806,12 @@
             ],
             "type" : "string"
           },
+          "step" : {
+            "type" : "string"
+          },
+          "subjectChanges" : {
+            "$ref" : "#/components/schemas/SubjectChanges"
+          },
           "subjectId" : {
             "type" : "string"
           },
@@ -5016,6 +5022,25 @@
         },
         "type" : "object"
       },
+      "Change" : {
+        "properties" : {
+          "after" : {
+            "type" : "string"
+          },
+          "before" : {
+            "type" : "string"
+          },
+          "key" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "after",
+          "before",
+          "key"
+        ],
+        "type" : "object"
+      },
       "ChangeItemQtyRequest" : {
         "properties" : {
           "notifyCustomer" : {
@@ -6122,6 +6147,22 @@
           "p50Minor",
           "p90Minor",
           "roomMinor"
+        ],
+        "type" : "object"
+      },
+      "Editor" : {
+        "properties" : {
+          "at" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "at",
+          "name"
         ],
         "type" : "object"
       },
@@ -14254,6 +14295,27 @@
           "runningOutProducts",
           "stockUnits",
           "stockValueMinor"
+        ],
+        "type" : "object"
+      },
+      "SubjectChanges" : {
+        "properties" : {
+          "editors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Editor"
+            },
+            "type" : "array"
+          },
+          "fields" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Change"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [
+          "editors",
+          "fields"
         ],
         "type" : "object"
       },

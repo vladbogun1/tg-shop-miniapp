@@ -43,16 +43,33 @@ public class AiAgent {
      * @param researchItems how many products the prompt is about (scales the search budget); 0 = no tools
      */
     public record Ask(AiScope scope, String prompt, String effort, int researchItems, Gate gate,
-                      List<ChatModel.ImagePart> images) {
+                      List<ChatModel.ImagePart> images, Progress progress) {
 
         public Ask(AiScope scope, String prompt, String effort, int researchItems) {
-            this(scope, prompt, effort, researchItems, Gate.OPEN, List.of());
+            this(scope, prompt, effort, researchItems, Gate.OPEN, List.of(), Progress.NONE);
         }
 
         public Ask(AiScope scope, String prompt, String effort, int researchItems, Gate gate) {
-            this(scope, prompt, effort, researchItems, gate, List.of());
+            this(scope, prompt, effort, researchItems, gate, List.of(), Progress.NONE);
         }
     }
+
+    /**
+     * What the run is doing now, for the progress sheet. {@code frequent} marks the steps of the tools (one per search
+     * or page, several a turn): the receiver may drop some of them; a turn of the model is reported always.
+     */
+    @FunctionalInterface
+    public interface Progress {
+        Progress NONE = (text, frequent) -> {
+        };
+
+        void step(String text, boolean frequent);
+    }
+
+    static final String STEP_READING = "Читаю задание";
+    static final String STEP_THINKING = "Разбираю найденное";
+    static final String STEP_WRITING = "Пишу ответ";
+    static final String STEP_REPAIRING = "Исправляю ответ";
 
     /** Asked before every model turn: throws to stop the run (canceled, switched off, over a limit or a deadline). */
     @FunctionalInterface
@@ -94,8 +111,13 @@ public class AiAgent {
         }
         long t0 = clock.millis();
         Run run = new Run(ask);
-        String text = ask.researchItems() > 0 ? research(run) : run.call(List.of(Message.user(ask.images(), ask.prompt())), false)
-                .text();
+        String text;
+        if (ask.researchItems() > 0) {
+            text = research(run);
+        } else {
+            ask.progress().step(STEP_WRITING, false);
+            text = run.call(List.of(Message.user(ask.images(), ask.prompt())), false).text();
+        }
         boolean repaired = false;
         String broken = ask.prompt().contains("```json") ? jsonProblem(text) : null;
         if (broken != null) {
@@ -103,6 +125,7 @@ public class AiAgent {
                     Message.assistant(List.of(new Text(text.isBlank() ? "(пусто)" : text))),
                     Message.user("JSON не читается: " + broken + ". Больше ничего не ищи — пришли исправленный ответ "
                             + "целиком одним блоком ```json."));
+            ask.progress().step(STEP_REPAIRING, false);
             text = run.repair(fix).text();
             repaired = true;
         }
@@ -117,13 +140,16 @@ public class AiAgent {
         convo.add(Message.user(run.ask.prompt() + run.tools.rules()));
         boolean force = false;
         for (int turn = 0; turn < MAX_TURNS; turn++) {
-            Reply r = run.call(convo, force || turn == MAX_TURNS - 1);
+            boolean last = force || turn == MAX_TURNS - 1;
+            run.ask.progress().step(turn == 0 ? STEP_READING : last ? STEP_WRITING : STEP_THINKING, false);
+            Reply r = run.call(convo, last);
             if (!r.wantsTools()) {
                 return r.text();
             }
             convo.add(Message.assistant(r.content()));
             List<Block> results = new ArrayList<>();
             for (ToolCall c : r.toolCalls()) {
+                run.ask.progress().step(ResearchTools.describe(c), true);
                 results.add(new ToolResult(c.id(), run.tools.run(c)));
             }
             convo.add(new Message("user", results));

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /** The objects an AI task can be about, by kind: every module that has such objects supplies a {@link SubjectFields}. */
 @Service
@@ -17,6 +18,11 @@ public class AiSubjects {
 
     public AiSubjects(List<SubjectFields> ports) {
         ports.forEach(p -> byType.put(p.subjectType(), p));
+    }
+
+    /** The port of the kind, or empty when no module serves it (a translation batch, an invoice). */
+    public Optional<SubjectFields> find(String subjectType) {
+        return Optional.ofNullable(byType.get(subjectType));
     }
 
     public SubjectFields of(String subjectType) {

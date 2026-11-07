@@ -5,6 +5,7 @@ import com.maxsolch.shop.ai.domain.ChatModel.Tool;
 import com.maxsolch.shop.ai.domain.ChatModel.ToolCall;
 import com.maxsolch.shop.ai.domain.SearchEngine.Hit;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
@@ -72,6 +73,27 @@ final class ResearchTools {
             case "open_page" -> open(call.arg("url"));
             default -> "Нет такого инструмента: " + call.name();
         };
+    }
+
+    /** The step of the progress sheet for a tool call: «Ищу: razer viper specs», «Читаю страницу razer.com». */
+    static String describe(ToolCall call) {
+        return switch (call.name()) {
+            case "search" -> "Ищу: " + call.arg("query").trim();
+            case "open_page" -> "Читаю страницу " + host(call.arg("url").trim());
+            default -> AiAgent.STEP_THINKING;
+        };
+    }
+
+    private static String host(String url) {
+        try {
+            String h = URI.create(url).getHost();
+            if (h != null && !h.isBlank()) {
+                return h.startsWith("www.") ? h.substring(4) : h;
+            }
+        } catch (IllegalArgumentException e) {
+            // not a link: shown as given
+        }
+        return url.length() > 60 ? url.substring(0, 60) + "…" : url;
     }
 
     /** Both budgets spent, or the model already asked beyond one: the next turn must be the answer. */

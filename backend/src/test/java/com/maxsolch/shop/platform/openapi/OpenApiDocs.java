@@ -54,7 +54,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 final class OpenApiDocs {
 
     /** Schemas whose keys are omitted when null on purpose ({@code @JsonInclude(NON_NULL)}), or {@code Schema.property}. */
-    static final Set<String> OPTIONAL_ON_PURPOSE = new HashSet<>(List.of("AdminLoginResponse", "InviteAcceptResponse", "InviteCreated","AiJobDto.prompt","AiJobDto.costMicroUsd","AiJobDto.costMinor","AiJobDto.rateMilli","AiJobDto.inputTokens","AiJobDto.cachedTokens","AiJobDto.outputTokens","AiJobDto.modelCalls","AiJobDto.searches","AiJobDto.pages","AiJobDto.repaired","AiJobDto.promptVersion","AiBatchDto.spentMinor","AiBatchDto.undoUntil","AiJobDto.errorNote","AiJobDto.answer","AiRow.kind","AiSummary.perAcceptedMinor","MonthSpend.forecastMinor","Widget.monthLimitMinor","Widget.monthSpentMinor"));
+    static final Set<String> OPTIONAL_ON_PURPOSE = new HashSet<>(List.of("AdminLoginResponse", "InviteAcceptResponse", "InviteCreated","AiJobDto.prompt","AiJobDto.costMicroUsd","AiJobDto.costMinor","AiJobDto.rateMilli","AiJobDto.inputTokens","AiJobDto.cachedTokens","AiJobDto.outputTokens","AiJobDto.modelCalls","AiJobDto.searches","AiJobDto.pages","AiJobDto.repaired","AiJobDto.promptVersion","AiBatchDto.spentMinor","AiBatchDto.undoUntil","AiJobDto.errorNote","AiJobDto.answer","AiJobDto.step","AiJobDto.subjectChanges","AiRow.kind","AiSummary.perAcceptedMinor","MonthSpend.forecastMinor","Widget.monthLimitMinor","Widget.monthSpentMinor"));
 
     private static final String BASE = "com.maxsolch.shop";
 

@@ -19,10 +19,12 @@ public class AiJobReads {
 
     private final AiJobRepository jobs;
     private final AiJobBodyRepository bodies;
+    private final AiSubjectChanges changes;
 
-    public AiJobReads(AiJobRepository jobs, AiJobBodyRepository bodies) {
+    public AiJobReads(AiJobRepository jobs, AiJobBodyRepository bodies, AiSubjectChanges changes) {
         this.jobs = jobs;
         this.bodies = bodies;
+        this.changes = changes;
     }
 
     /** What a retry starts from: the job and the prompt it was given (empty once the prompt is purged). */
@@ -31,7 +33,11 @@ public class AiJobReads {
 
     @Transactional(readOnly = true)
     public Optional<AiJobDto> read(long id, boolean finance) {
-        return jobs.findById(id).map(j -> AiJobDto.of(j, body(j, finance), finance));
+        return jobs.findById(id).map(j -> {
+            Optional<AiJobBody> b = bodies.findById(id);
+            return AiJobDto.of(j, body(j, b, finance), finance,
+                    changes.since(j, b.map(AiJobBody::getSubjectSnapshot).orElse(null)));
+        });
     }
 
     /** Active jobs, newest first, without texts: the screens ask for them to show "already running" and to resume. */
@@ -61,11 +67,10 @@ public class AiJobReads {
     }
 
     /** The invoice text is purchase data: only an admin with the finance right gets the answer of a supply job. */
-    private AiJobDto.Body body(AiJob job, boolean finance) {
+    private static AiJobDto.Body body(AiJob job, Optional<AiJobBody> body, boolean finance) {
         if (!finance && job.getFeature().purchaseData()) {
             return new AiJobDto.Body(null, null);
         }
-        return bodies.findById(job.getId()).map(b -> new AiJobDto.Body(b.getPrompt(), b.getAnswer()))
-                .orElse(new AiJobDto.Body(null, null));
+        return body.map(b -> new AiJobDto.Body(b.getPrompt(), b.getAnswer())).orElse(new AiJobDto.Body(null, null));
     }
 }

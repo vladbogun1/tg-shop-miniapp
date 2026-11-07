@@ -179,6 +179,13 @@ public class AiJob {
     @Column(name = "locked_by", length = 64)
     private String lockedBy;
 
+    /** What a running job is doing now (V92): written only by {@code AiJobRepository.step}, never by the entity. */
+    @Column(name = "step", length = 160, insertable = false, updatable = false)
+    private String step;
+
+    @Column(name = "step_at", insertable = false, updatable = false)
+    private Instant stepAt;
+
     public static AiJob queued(Spec spec, Instant now) {
         AiJob j = new AiJob();
         j.feature = spec.feature();
@@ -306,6 +313,12 @@ public class AiJob {
         outcomeIgnored = o.ignoredLocked();
         outcomeAt = now;
         return true;
+    }
+
+    /** The step of the current run; null when the job does not run or this run has not reported one yet. */
+    public String currentStep() {
+        boolean thisRun = stepAt != null && startedAt != null && !stepAt.isBefore(startedAt);
+        return status == JobStatus.RUNNING && thisRun ? step : null;
     }
 
     /** A running job whose worker has been silent for longer than {@code silence}: its instance is gone. */

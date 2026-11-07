@@ -140,6 +140,35 @@ class AiAgentTest {
                 .isInstanceOfSatisfying(DomainException.class, e -> assertThat(e.errorCode()).isEqualTo(AiError.NOT_CONFIGURED));
     }
 
+    @Test
+    void theRunReportsItsStepsForTheProgressSheet() {
+        when(search.search(any(), anyString(), anyInt()))
+                .thenReturn(new WebSearch.Found(List.of(new Hit("Viper", "https://razer.com/v3", "54 g")), "serper", 0));
+        when(pages.open(any(), anyString())).thenReturn("Weight 54 g");
+        model.answers(tool("t1", "search", "query", " viper v3 specs "),
+                tool("t2", "open_page", "url", "https://www.razer.com/gaming-mice/viper-v3"), text("не json"),
+                text("```json\n{\"weight\":54}\n```"));
+        List<String> steps = new ArrayList<>();
+        AiAgent.Progress progress = (text, frequent) -> steps.add(text + (frequent ? " ~" : ""));
+
+        agent.ask(new AiAgent.Ask(AiScope.of(AiFeature.CARD), JSON_PROMPT, "medium", 1, AiAgent.Gate.OPEN, List.of(),
+                progress));
+
+        assertThat(steps).containsExactly("Читаю задание", "Ищу: viper v3 specs ~", "Разбираю найденное",
+                "Читаю страницу razer.com ~", "Разбираю найденное", "Исправляю ответ");
+    }
+
+    @Test
+    void aQuestionWithoutResearchIsOneStep() {
+        model.answers(text("Привет"));
+        List<String> steps = new ArrayList<>();
+
+        agent.ask(new AiAgent.Ask(AiScope.of(AiFeature.SUPPLY_EXTRACT), "Скажи привет", "low", 0, AiAgent.Gate.OPEN,
+                List.of(), (text, frequent) -> steps.add(text)));
+
+        assertThat(steps).containsExactly("Пишу ответ");
+    }
+
     private static String lastResult(Request r) {
         List<Block> last = r.messages().get(r.messages().size() - 1).content();
         return ((ToolResult) last.get(last.size() - 1)).content();

@@ -50,6 +50,13 @@ public interface AiJobRepository extends JpaRepository<AiJob, Long> {
     @Query("update AiJob j set j.heartbeatAt = :now where j.lockedBy = :worker and j.status = com.maxsolch.shop.ai.domain.JobStatus.RUNNING")
     int heartbeat(@Param("worker") String worker, @Param("now") Instant now);
 
+    /** The current step of a running job, only while this worker still holds it (V92; the entity never writes it). */
+    @Modifying
+    @Query(value = "update ai_jobs set step = :step, step_at = :now where id = :id and locked_by = :worker "
+            + "and status = 'RUNNING'", nativeQuery = true)
+    int step(@Param("id") long id, @Param("worker") String worker, @Param("step") String step,
+             @Param("now") Instant now);
+
     // ---- the task center: the lists of the four tabs (the AI's own jobs, not the marks of the manual way) ----
 
     Page<AiJob> findByPathOrderByIdDesc(JobPath path, Pageable page);

@@ -33,6 +33,7 @@ public class AiJobLifecycle {
     /** Silence of a worker after which its jobs are taken from it (the heartbeat goes every 15 seconds). */
     public static final Duration SILENCE = Duration.ofSeconds(60);
     static final int MAX_ATTEMPTS = 2;
+    static final int STEP_LENGTH = 160;
 
     /** What a run needs, copied out of the transaction. */
     public record Claimed(AiJob job, String prompt) {
@@ -48,25 +49,33 @@ public class AiJobLifecycle {
     private final AiUsageQueries usage;
     private final AiPolicy policy;
     private final AiBatchRunner batchRunner;
+    private final AiSubjectChanges changes;
     private final Clock clock;
 
     public AiJobLifecycle(AiJobRepository jobs, AiJobBodyRepository bodies, AiJobClaims claims, AiUsageQueries usage,
-                          AiPolicy policy, AiBatchRunner batchRunner, Clock clock) {
+                          AiPolicy policy, AiBatchRunner batchRunner, AiSubjectChanges changes, Clock clock) {
         this.jobs = jobs;
         this.bodies = bodies;
         this.claims = claims;
         this.usage = usage;
         this.policy = policy;
         this.batchRunner = batchRunner;
+        this.changes = changes;
         this.clock = clock;
     }
 
-    /** A new job with its prompt. The database refuses a second active job for the object and a repeated key. */
+    /**
+     * A new job with its prompt and the snapshot of its object. The database refuses a second active job for the object
+     * and a repeated key. A retry keeps the snapshot of the job it repeats: its prompt was built from that state.
+     */
     @Transactional
     public AiJob insert(AiJob.Spec spec, String prompt) {
         Instant now = clock.instant();
+        String snapshot = spec.retryOf() != null
+                ? bodies.findById(spec.retryOf()).map(AiJobBody::getSubjectSnapshot).orElse(null)
+                : changes.snapshot(spec.subjectType(), spec.subjectId());
         AiJob job = jobs.saveAndFlush(AiJob.queued(spec, now));
-        bodies.save(AiJobBody.of(job.getId(), prompt, now));
+        bodies.save(AiJobBody.of(job.getId(), prompt, snapshot, now));
         return job;
     }
 
@@ -111,6 +120,13 @@ public class AiJobLifecycle {
     @Transactional
     public void heartbeat(String worker) {
         jobs.heartbeat(worker, clock.instant());
+    }
+
+    /** What the run is doing now («Ищу: …»); a job this worker no longer holds is left alone. */
+    @Transactional
+    public void step(long jobId, String worker, String text) {
+        String t = text.length() > STEP_LENGTH ? text.substring(0, STEP_LENGTH - 1) + "…" : text;
+        jobs.step(jobId, worker, t, clock.instant());
     }
 
     /** The run ended with an answer: the verdict of the structural check, the totals from the journal. */

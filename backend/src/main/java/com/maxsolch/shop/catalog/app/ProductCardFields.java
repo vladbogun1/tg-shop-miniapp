@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * The card of a product as the AI sees it for «Принять безопасное» and its undo ({@link SubjectFields}): the fields are
@@ -51,6 +52,18 @@ public class ProductCardFields implements SubjectFields {
         Product p = products.findById(UuidUtil.toBytes(subjectId))
                 .orElseThrow(() -> new DomainException.NotFound(CatalogError.PRODUCT_NOT_FOUND));
         return fields(p);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Map<String, String>> find(String subjectId) {
+        byte[] id;
+        try {
+            id = UuidUtil.toBytes(subjectId);
+        } catch (IllegalArgumentException e) {
+            return Optional.empty();
+        }
+        return products.findById(id).map(ProductCardFields::fields);
     }
 
     @Override
