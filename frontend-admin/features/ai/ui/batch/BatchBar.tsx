@@ -9,9 +9,9 @@ import { useCancelBatch, usePauseBatch, useResumeBatch } from "../../queries-bat
 
 /**
  * Полоса идущего пакета над страницей: «Идёт пакет: 12 из 30 · Остановить». На паузе — причина, «Продолжить» и
- * «Закончить» (то, что готово, остаётся на проверку). Только ход; итог и действия с результатом — в `BatchSummary`.
+ * «Закончить» (то, что готово, остаётся на проверку), а также ручной путь для оставшегося (`manual`). Только ход; итог и действия с результатом — в `BatchSummary`.
  */
-export function BatchBar({ batch, onReview }: { batch: AiBatch; onReview?: () => void }) {
+export function BatchBar({ batch, onReview, manual }: { batch: AiBatch; onReview?: () => void; manual?: React.ReactNode }) {
   const pause = usePauseBatch();
   const resume = useResumeBatch();
   const cancel = useCancelBatch();
@@ -50,6 +50,7 @@ export function BatchBar({ batch, onReview }: { batch: AiBatch; onReview?: () =>
             Продолжить
           </Button>
         )}
+        {paused && manual}
         {paused && (
           <Button size="sm" variant="ghost" loading={cancel.isPending} onClick={() => cancel.mutate(batch.id)} data-testid="batch-cancel">
             Закончить

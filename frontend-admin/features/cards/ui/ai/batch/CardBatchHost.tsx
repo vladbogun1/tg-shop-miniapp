@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Пакеты карточек на странице: полоса хода/итога, лента быстрой проверки и «Принять безопасное». Ставится один раз
+ * Пакеты карточек на странице: полоса хода/итога, лента быстрой проверки, «Принять безопасное» и ручной путь для
+ * того, что ИИ не сделал («Оформить N вручную»). Ставится один раз
  * в оболочке админки, чтобы ход пакета был виден на любом экране. Нет пакетов — ничего не рисует.
  */
 import { aiApi, BatchPanel, invalidateAfterBatch, QuickReviewFeed, useAiBatches, type AiBatchRow } from "@/features/ai";
@@ -11,6 +12,7 @@ import { useState } from "react";
 import { cardsApi } from "../../../api";
 import { invalidateCards, useCardItems, useCardSchema } from "../../../queries";
 import { acceptPlan, planOf } from "./card-batch-apply";
+import { ManualFromBatch, useManualOpener } from "../../manual/ManualBatchEntry";
 import { CardFeedItem } from "./CardFeedItem";
 import { SafeAcceptButton } from "./SafeAcceptButton";
 
@@ -21,6 +23,7 @@ export function CardBatchHost() {
   const schema = useCardSchema();
   const batches = useAiBatches();
   const [feedId, setFeedId] = useState<number | null>(null);
+  const manual = useManualOpener();
   // Строки берём из живого списка пакетов: принятая карточка уходит из ленты сама.
   const rows = (batches.data?.find((b) => b.id === feedId)?.jobs ?? []).filter((r) => r.status === "DONE" && !r.outcome);
 
@@ -38,7 +41,9 @@ export function CardBatchHost() {
       <BatchPanel
         onReview={(b) => setFeedId(b.id)}
         skipSummary={(b) => b.feature === "TRANSLATION"}
+        manual={(b) => (b.feature === "COMPLETION" ? <ManualFromBatch batch={b} opener={manual} /> : null)}
         acceptSafe={(b) => <SafeAcceptButton batch={b} items={items.data} schema={schema.data} />} />
+      {manual.layer}
       {feedId !== null && (
         <QuickReviewFeed
           open

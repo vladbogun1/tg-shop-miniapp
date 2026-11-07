@@ -9,11 +9,12 @@ import { Sparkles } from "lucide-react";
 import { useRef, useState } from "react";
 import { cardsApi } from "../../../api";
 import { invalidateCards, useCardSchema } from "../../../queries";
+import { ManualBatchButton } from "../../manual/ManualBatchEntry";
 import { startCardBatch } from "./card-batch-apply";
 
 /**
  * «Заполнить с ИИ (N)» для выбранных товаров: подтверждение (минуты, у финансиста ещё и деньги) → пакет.
- * Скрыта, пока ИИ не настроен или выключен. Свежую выгрузку берём при запуске: отпечаток карточки считается по ней.
+ * Пока ИИ не настроен или выключен — вместо неё ручной пакет по частям. Свежую выгрузку берём при запуске: отпечаток карточки считается по ней.
  */
 export function CardBatchButton({ productIds, onStarted }: { productIds: string[]; onStarted?: () => void }) {
   const qc = useQueryClient();
@@ -24,7 +25,9 @@ export function CardBatchButton({ productIds, onStarted }: { productIds: string[
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const key = useRef(newIdemKey());
-  if (!summary?.enabled || !summary.configured || productIds.length === 0) return null;
+  if (!summary || productIds.length === 0) return null;
+  // ИИ выключен или не настроен: тот же выбор уходит в ручной пакет по частям через ChatGPT.
+  if (!summary.enabled || !summary.configured) return <ManualBatchButton productIds={productIds} label={`Оформить вручную (${productIds.length})`} />;
 
   async function start() {
     if (!schema) return;

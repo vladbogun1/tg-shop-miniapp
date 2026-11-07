@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AiBatch } from "../api-batch";
-import { barText, canResume, confirmView, finishedCount, isSafeKey, minutesText, moneyRange, pauseText, safeTotals, summaryText, undoLeft } from "./batch-view";
+import { barText, canResume, confirmView, finishedCount, isSafeKey, manualSubjects, minutesText, moneyRange, pauseText, safeTotals, summaryText, undoLeft } from "./batch-view";
 
 const batch = (o: Partial<AiBatch> = {}): AiBatch =>
   ({ id: 1, total: 30, queued: 15, running: 3, done: 10, empty: 1, badAnswer: 0, failed: 1, canceled: 0, status: "RUNNING", ...o }) as AiBatch;
@@ -83,5 +83,19 @@ describe("полоска хода", () => {
     const { progressPercent } = await import("./batch-view");
     expect(progressPercent({ total: 30, queued: 15, running: 3 })).toBe(40);
     expect(progressPercent({ total: 0, queued: 0, running: 0 })).toBe(0);
+  });
+});
+
+describe("what is left for the manual path", () => {
+  const row = (subjectId: string, status: AiBatch["jobs"][number]["status"]) => ({ id: 1, subjectId, status }) as AiBatch["jobs"][number];
+  const jobs = [row("a", "DONE"), row("b", "QUEUED"), row("c", "FAILED"), row("d", "EMPTY"), row("e", "BAD_ANSWER"), row("f", "CANCELED"), row("g", "RUNNING")];
+
+  it("paused or finished: everything the AI did not and will not do itself", () => {
+    expect(manualSubjects({ status: "PAUSED", jobs })).toEqual(["b", "c", "d", "e", "f"]);
+    expect(manualSubjects({ status: "DONE", jobs: [row("a", "DONE")] })).toEqual([]);
+  });
+
+  it("a running batch offers nothing: the queue is still the AI's", () => {
+    expect(manualSubjects({ status: "RUNNING", jobs })).toEqual([]);
   });
 });

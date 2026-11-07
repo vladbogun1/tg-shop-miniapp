@@ -15,7 +15,7 @@ const TONE = { ok: "text-[var(--ok)]", muted: "text-[var(--text-muted)]", bad: "
  * «Проверить (N)», «Принять безопасное», «Повторить неудачные (N)» и «Отменить применение» (пока идут 24 часа).
  * «Принять безопасное» зависит от предмета пакета (карточки), поэтому его кнопку приносит вызывающий в `acceptSafe`.
  */
-export function BatchSummary({ batch, onReview, acceptSafe }: { batch: AiBatch; onReview: () => void; acceptSafe?: React.ReactNode }) {
+export function BatchSummary({ batch, onReview, acceptSafe, manual }: { batch: AiBatch; onReview: () => void; acceptSafe?: React.ReactNode; manual?: React.ReactNode }) {
   const retry = useRetryFailedBatch();
   const undo = useUndoBatch();
   const parts = summaryParts(batch);
@@ -49,6 +49,7 @@ export function BatchSummary({ batch, onReview, acceptSafe }: { batch: AiBatch; 
             Повторить неудачные ({batch.retryable})
           </Button>
         )}
+        {manual}
         {left && (
           <Button size="sm" variant="ghost" loading={undo.isPending} onClick={() => undo.mutate(batch.id)} data-testid="batch-undo">
             Отменить применение ({batch.undoable}, ещё {left})

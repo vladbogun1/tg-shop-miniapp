@@ -5,6 +5,7 @@ export { CardAiReviewScreen } from "./ui/ai/CardAiReviewScreen";
 export { CardAiEntry } from "./ui/ai/CardAiEntry";
 export { CardBatchButton } from "./ui/ai/batch/CardBatchButton";
 export { CardBatchHost } from "./ui/ai/batch/CardBatchHost";
+export { ManualResumeBar } from "./ui/manual/ManualBatchEntry";
 export { cardsKeys } from "./keys";
 export { invalidateCards, pendingCards, useCardItems, useUnfinishedCards, useCardSchema, useCardStats } from "./queries";
 export type { CardStats } from "./api";

@@ -60,6 +60,15 @@ export function summaryParts(b: AiBatch): SummaryPart[] {
   return parts.filter((p) => p.n > 0);
 }
 
+/** Задачи, которые встроенный ИИ не сделал и сам уже не сделает (стоят в паузе, сбой, пусто, отменены): их оформляют вручную. */
+const LEFT_FOR_MANUAL = new Set<string>(["QUEUED", "EMPTY", "BAD_ANSWER", "FAILED", "CANCELED"]);
+
+/** Предметы задач для ручного пути; у идущего пакета — ничего (очередь ещё разберёт ИИ). */
+export function manualSubjects(b: Pick<AiBatch, "status" | "jobs">): string[] {
+  if (b.status === "RUNNING") return [];
+  return b.jobs.filter((j) => LEFT_FOR_MANUAL.has(j.status)).map((j) => j.subjectId);
+}
+
 export const summaryText = (b: AiBatch): string => summaryParts(b).map((p) => `${p.label} ${p.n}`).join(" · ");
 
 export function minutesText(minutes: number): string {

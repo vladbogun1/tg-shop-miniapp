@@ -15,10 +15,13 @@ import { BatchSummary } from "./BatchSummary";
 export function BatchPanel({
   onReview,
   acceptSafe,
+  manual,
   skipSummary,
 }: {
   onReview: (batch: AiBatch) => void;
   acceptSafe: (batch: AiBatch) => ReactNode;
+  /** Кнопка ручного пути для того, что ИИ не сделал (пакет на паузе или закончился); её знает предмет пакета. */
+  manual?: (batch: AiBatch) => ReactNode;
   /** Итог такого пакета рисует его экран сам (переводы): здесь остаётся только полоса хода. */
   skipSummary?: (batch: AiBatch) => boolean;
 }) {
@@ -28,9 +31,9 @@ export function BatchPanel({
     <div className="flex flex-col gap-2" data-testid="batch-panel">
       {data.map((b) =>
         isOpen(b) ? (
-          <BatchBar key={b.id} batch={b} onReview={() => onReview(b)} />
+          <BatchBar key={b.id} batch={b} onReview={() => onReview(b)} manual={manual?.(b)} />
         ) : skipSummary?.(b) ? null : (
-          <BatchSummary key={b.id} batch={b} onReview={() => onReview(b)} acceptSafe={acceptSafe(b)} />
+          <BatchSummary key={b.id} batch={b} onReview={() => onReview(b)} acceptSafe={acceptSafe(b)} manual={manual?.(b)} />
         ),
       )}
     </div>
