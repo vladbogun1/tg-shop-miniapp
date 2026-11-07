@@ -387,6 +387,7 @@ test("«Отменить применение» возвращает фото, �
   const was = await cardState();
   const wasTr = await trRows();
   const photo = "https://example.com/e2e-scarf-undo.jpg";
+  let jobId = 0;
   try {
     // Новый черновик («Незавершённые»: скрыт, ни разу не выложен), без переводов: применение поставит «Готово»,
     // выложит (снимет «Незавершённые») и запишет uk/en.
@@ -403,7 +404,7 @@ test("«Отменить применение» возвращает фото, �
     await expect(page.getByText("Готово — проверьте, что предложил ИИ")).toBeVisible({ timeout: 30_000 });
     await page.getByRole("button", { name: "Открыть проверку" }).click();
     await expect(page).toHaveURL(/\/cards\/ai-review\/\d+$/);
-    const jobId = Number(new URL(page.url()).pathname.split("/").pop());
+    jobId = Number(new URL(page.url()).pathname.split("/").pop());
 
     const box = page.getByLabel("Применить: Описание");
     if (!(await box.isVisible())) await page.getByRole("button", { name: /Заменит значение/ }).click();
@@ -473,6 +474,12 @@ test("«Отменить применение» возвращает фото, �
         "INSERT INTO content_translations (entity_type, entity_id, field, locale, text, source_hash, origin, updated_by) VALUES ('PRODUCT', UUID_TO_BIN(?), ?, ?, ?, ?, ?, ?)",
         [PRODUCT.scarf, r.field, r.locale, r.text, r.source_hash, r.origin, r.updated_by],
       );
+    }
+    // Отменённая задача снова ждёт проверки — убрать её, чтобы центр задач (e2e 41) видел только свои.
+    if (jobId) {
+      await query("DELETE FROM ai_apply_log WHERE job_id = ?", [jobId]);
+      await query("DELETE FROM ai_job_bodies WHERE job_id = ?", [jobId]);
+      await query("DELETE FROM ai_jobs WHERE id = ?", [jobId]);
     }
   }
 });
