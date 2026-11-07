@@ -81,15 +81,27 @@ public class TranslationImport {
         TranslationOrigin origin = parseOrigin(req.origin());
         boolean force = Boolean.TRUE.equals(req.force());
         List<ImportItem> items = req.items() == null ? List.of() : req.items();
+        return doImport(new ImportRun(locale, origin, force, adminId, false), items);
+    }
+
+    /**
+     * The same import for the translations the built-in AI wrote on the server: AI origin, never over a MANUAL row,
+     * and the rows carry the mark of the built-in AI ({@link ContentTranslation#markBuiltinAi}) for the filter of «Проверить ИИ».
+     */
+    @Transactional
+    public ImportResult importBuiltinAi(String locale, List<ImportItem> items, long adminId) {
+        return doImport(new ImportRun(TranslationRows.requireLocale(locale), TranslationOrigin.AI, false, adminId, true),
+                items == null ? List.of() : items);
+    }
+
+    private ImportResult doImport(ImportRun run, List<ImportItem> items) {
         if (items.size() > TranslationLimits.MAX_ITEMS) {
             throw new DomainException.BadRequest(TranslationError.TOO_MANY_ITEMS, String.valueOf(TranslationLimits.MAX_ITEMS));
         }
-
-        ImportRun run = new ImportRun(locale, origin, force, adminId, store.sources(), store.existing(locale));
+        run.load(store.sources(), store.existing(run.locale));
         for (ImportItem item : items) {
             importOne(run, item);
         }
-
         if (!run.toSave.isEmpty()) {
             repository.saveAll(run.toSave.values());
             store.invalidate();
@@ -103,8 +115,9 @@ public class TranslationImport {
         final TranslationOrigin origin;
         final boolean force;
         final Long adminId;
-        final Map<Key, Field> sources;
-        final Map<Key, ContentTranslation> rows;
+        final boolean builtin;
+        Map<Key, Field> sources;
+        Map<Key, ContentTranslation> rows;
         final Map<String, String> hashCache = new HashMap<>();
         final Map<Key, ContentTranslation> toSave = new LinkedHashMap<>();
         final List<Rejected> rejected = new ArrayList<>();
@@ -114,12 +127,15 @@ public class TranslationImport {
         int notFound;
         int invalid;
 
-        ImportRun(String locale, TranslationOrigin origin, boolean force, Long adminId, Map<Key, Field> sources,
-                  Map<Key, ContentTranslation> rows) {
+        ImportRun(String locale, TranslationOrigin origin, boolean force, Long adminId, boolean builtin) {
             this.locale = locale;
             this.origin = origin;
             this.force = force;
             this.adminId = adminId;
+            this.builtin = builtin;
+        }
+
+        void load(Map<Key, Field> sources, Map<Key, ContentTranslation> rows) {
             this.sources = sources;
             this.rows = rows;
         }
@@ -176,6 +192,9 @@ public class TranslationImport {
         // The admin's own text is checked by definition; AI output waits in «Проверить ИИ».
         row.setReviewedAt(run.origin == TranslationOrigin.MANUAL ? clock.instant() : null);
         row.setUpdatedBy(run.adminId);
+        if (run.builtin) {
+            row.markBuiltinAi(run.adminId);
+        }
         run.toSave.put(key, row);
         run.applied++;
     }

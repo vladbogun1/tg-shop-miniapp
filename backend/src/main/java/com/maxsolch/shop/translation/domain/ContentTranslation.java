@@ -72,6 +72,22 @@ public class ContentTranslation implements Persistable<ContentTranslationId> {
         this.sourceText = source;
     }
 
+    /**
+     * Written by the built-in AI (a task on the server) at the request of {@code adminId}: the admin id is stored
+     * negated in {@code updated_by}. There is no column for the source of a translation ({@code origin} is an ENUM of
+     * AI / MANUAL and this stage has no migration), and nothing reads {@code updated_by} as a person, so the sign is
+     * the mark. A later migration may move it into a column of its own.
+     */
+    public void markBuiltinAi(long adminId) {
+        this.origin = TranslationOrigin.AI;
+        this.updatedBy = -Math.abs(adminId);
+    }
+
+    /** The text came from the built-in AI (see {@link #markBuiltinAi}), not from ChatGPT pasted by hand. */
+    public boolean isBuiltinAi() {
+        return origin == TranslationOrigin.AI && updatedBy != null && updatedBy < 0;
+    }
+
     @Override
     public boolean isNew() {
         return fresh;

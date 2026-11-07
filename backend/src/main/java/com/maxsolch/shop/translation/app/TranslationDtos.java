@@ -29,10 +29,12 @@ public final class TranslationDtos {
      * {@code prevSource}: for STALE — the Russian text the translation was made from (V56), so the
      * screen can show what changed; null when unknown or not stale.
      * {@code reviewed}: a person accepted the text (MANUAL rows always; AI rows after «Принять»).
+     * {@code builtinAi}: the text was written by the built-in AI (filter «Встроенный ИИ» of «Проверить ИИ»).
      */
     public record ExportItem(String entityType, String entityId, String field, String source,
                              String sourceHash, String status, String text, String origin,
-                             String productId, String productTitle, String prevSource, boolean reviewed) {
+                             String productId, String productTitle, String prevSource, boolean reviewed,
+                             boolean builtinAi) {
     }
 
     public record ImportItem(String entityType, String entityId, String field, String sourceHash, String text) {

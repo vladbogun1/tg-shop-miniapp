@@ -75,7 +75,7 @@ public class TranslationReport {
         String l = TranslationRows.requireLocale(locale);
         Status wanted = parseStatus(status);
         TranslationEntityType type = TranslationRows.parseTypeOrNull(entityType);
-        Map<Key, ContentTranslation> rows = withBuiltinBotTexts(store.existing(l), l);
+        Map<Key, ContentTranslation> rows = rowsOf(l);
 
         List<ExportItem> out = new ArrayList<>();
         for (Map.Entry<Key, Field> e : store.sources().entrySet()) {
@@ -95,7 +95,7 @@ public class TranslationReport {
                     row == null ? null : row.getOrigin().name(),
                     src.ownerId(), src.ownerTitle(),
                     st == Status.STALE ? row.getSourceText() : null,
-                    row != null && isReviewed(row)));
+                    row != null && isReviewed(row), row != null && row.isBuiltinAi()));
         }
         out.sort(EXPORT_ORDER);
         return out;
@@ -158,7 +158,12 @@ public class TranslationReport {
         return row.getOrigin() == TranslationOrigin.MANUAL || row.getReviewedAt() != null;
     }
 
-    private static Status statusOf(ContentTranslation row, String currentHash) {
+    /** The stored rows of a language as the screen sees them (shipped bot phrases count as translated). */
+    Map<Key, ContentTranslation> rowsOf(String locale) {
+        return withBuiltinBotTexts(store.existing(locale), locale);
+    }
+
+    static Status statusOf(ContentTranslation row, String currentHash) {
         if (row == null) {
             return Status.MISSING;
         }

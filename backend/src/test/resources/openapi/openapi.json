@@ -1265,6 +1265,10 @@
       },
       "AiAiBatchDtoRow" : {
         "properties" : {
+          "applied" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
           "errorCode" : {
             "type" : "string"
           },
@@ -1272,8 +1276,16 @@
             "format" : "int64",
             "type" : "integer"
           },
+          "ignored" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
           "outcome" : {
             "type" : "string"
+          },
+          "rejected" : {
+            "format" : "int32",
+            "type" : "integer"
           },
           "searched" : {
             "type" : "boolean"
@@ -1295,9 +1307,12 @@
           }
         },
         "required" : [
+          "applied",
           "errorCode",
           "id",
+          "ignored",
           "outcome",
+          "rejected",
           "searched",
           "status",
           "subjectId"
@@ -6404,6 +6419,9 @@
       },
       "ExportItem" : {
         "properties" : {
+          "builtinAi" : {
+            "type" : "boolean"
+          },
           "entityId" : {
             "type" : "string"
           },
@@ -6442,6 +6460,7 @@
           }
         },
         "required" : [
+          "builtinAi",
           "entityId",
           "entityType",
           "field",
@@ -10790,6 +10809,18 @@
           "items",
           "totals"
         ],
+        "type" : "object"
+      },
+      "Part" : {
+        "properties" : {
+          "part" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "prompt" : {
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "PaymentOptionDto" : {
@@ -15188,6 +15219,20 @@
         ],
         "type" : "object"
       },
+      "TranslationAiTranslationJobsStart" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Part"
+            },
+            "type" : "array"
+          },
+          "promptVersion" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "TranslationCounts" : {
         "properties" : {
           "missing" : {
@@ -17739,6 +17784,52 @@
         "summary" : "For the chip and the entry buttons, no money: key set, AI and features on, a used-up limit, running / waiting for review / problem counts",
         "tags" : [
           "Admin AI"
+        ]
+      }
+    },
+    "/api/admin/ai/translation-batches" : {
+      "post" : {
+        "operationId" : "AdminTranslationAiController_start",
+        "parameters" : [
+          {
+            "in" : "header",
+            "name" : "Idempotency-Key",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TranslationAiTranslationJobsStart"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AiBatchDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Translate rows with the built-in AI: one task per part of at most 60 strings, medium effort. The result is written as drafts of the AI (a manual translation is never replaced). 409 AI_JOB_ACTIVE (subjects) for a part that is already running, AI_BATCHES_OFF when batches are switched off; the same Idempotency-Key returns the first batch",
+        "tags" : [
+          "Admin Translations AI"
         ]
       }
     },
@@ -29396,6 +29487,10 @@
     {
       "description" : "Public promo preview",
       "name" : "Public"
+    },
+    {
+      "description" : "Start the AI translation of rows of the translations screen",
+      "name" : "Admin Translations AI"
     },
     {
       "description" : "Catalog for the public website: filters, slugs, sitemap",
