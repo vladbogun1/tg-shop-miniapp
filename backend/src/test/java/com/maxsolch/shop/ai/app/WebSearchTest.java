@@ -8,7 +8,7 @@ import com.maxsolch.shop.ai.domain.SearchEngine.Hit;
 import com.maxsolch.shop.ai.domain.SearchEngine.Outcome;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.junit.jupiter.api.Test;
-import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
+import com.maxsolch.shop.ai.infra.AiSearchPaceStore;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -28,7 +28,7 @@ import static org.mockito.Mockito.verify;
 class WebSearchTest {
 
     private final AiUsageLog usage = mock(AiUsageLog.class);
-    private final ConcurrentMapCacheManager caches = new ConcurrentMapCacheManager(AiCaches.SEARCH_COOLDOWN.name());
+    private final MemoryStore store = new MemoryStore();
     private final Clock clock = Clock.fixed(Instant.parse("2026-11-07T10:00:00Z"), ZoneOffset.UTC);
     private final AiPolicy policy = mock(AiPolicy.class);
     private final DomainEvents events = mock(DomainEvents.class);
@@ -96,7 +96,7 @@ class WebSearchTest {
 
     @Test
     void noProviderConfiguredIsJournalledAsAFailedSearch() {
-        WebSearch.Found found = new WebSearch(List.of(), usage, caches, clock, policy, events).search(AiScope.of(AiFeature.CARD), "q", 8);
+        WebSearch.Found found = new WebSearch(List.of(), usage, pacer(), clock, policy, events).search(AiScope.of(AiFeature.CARD), "q", 8);
 
         assertThat(found.empty()).isTrue();
         verify(usage).call(eq(AiScope.of(AiFeature.CARD)), eq(AiUsage.Kind.SEARCH), eq("none"), eq(AiUsage.Result.FAILED), eq(0L),
@@ -118,8 +118,41 @@ class WebSearchTest {
         assertThat(WebSearch.skipped("https://razer.com/v3")).isFalse();
     }
 
+    private AiSearchPacer pacer() {
+        return new AiSearchPacer(store, policy, clock, d -> { });
+    }
+
+    /** The database of the pacer, in memory: no requests in the window, rests remembered. */
+    private static final class MemoryStore extends AiSearchPaceStore {
+        private final java.util.Map<String, Instant> rests = new java.util.HashMap<>();
+
+        MemoryStore() {
+            super(null);
+        }
+
+        @Override
+        public int requestsSince(Instant since) {
+            return 0;
+        }
+
+        @Override
+        public java.util.Optional<Instant> restUntil(String provider) {
+            return java.util.Optional.ofNullable(rests.get(provider));
+        }
+
+        @Override
+        public void rest(String provider, Instant until, String reason) {
+            rests.put(provider, until);
+        }
+
+        @Override
+        public void clear(String provider) {
+            rests.remove(provider);
+        }
+    }
+
     private WebSearch chain(SearchEngine... engines) {
-        return new WebSearch(List.of(engines), usage, caches, clock, policy, events);
+        return new WebSearch(List.of(engines), usage, pacer(), clock, policy, events);
     }
 
     private static final class Engine implements SearchEngine {

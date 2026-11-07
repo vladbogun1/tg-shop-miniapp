@@ -32,6 +32,8 @@ public class AiSettings implements SettingsContribution {
     public static final String FEATURE_COMPLETION = "ai.feature.completion";
     public static final String FEATURE_TRANSLATION = "ai.feature.translation";
     public static final String FEATURE_SUPPLY = "ai.feature.supply";
+    public static final String FEATURE_BATCH = "ai.feature.batch";
+    public static final String SEARCH_PACE = "ai.searchPace";
     public static final String MONTH_LIMIT_CENTS = "ai.monthLimitCents";
     public static final String DAY_LIMIT_CENTS = "ai.dayLimitCents";
     public static final String BATCH_SIZE = "ai.batchSize";
@@ -72,6 +74,8 @@ public class AiSettings implements SettingsContribution {
                     "Перевод названий и описаний на украинский и английский.", false),
             boolSetting(FEATURE_SUPPLY, GROUP, "Поставки",
                     "Чтение накладной со скриншотов и PDF.", false),
+            boolSetting(FEATURE_BATCH, GROUP, "Пакеты",
+                    "Кнопка «Заполнить с ИИ (N)» в списке товаров: до 30 товаров за раз, лента быстрой проверки и «Принять безопасное».", false),
             intSetting(MONTH_LIMIT_CENTS, GROUP, "Лимит в месяц",
                     "Сколько можно потратить на ИИ за календарный месяц (модель и платный поиск вместе). "
                             + "0 — без лимита. Начальное значение берётся из переменной AI_MONTH_LIMIT_CENTS.",
@@ -79,8 +83,11 @@ public class AiSettings implements SettingsContribution {
             intSetting(DAY_LIMIT_CENTS, GROUP, "Лимит в день",
                     "Сколько можно потратить за день по времени магазина. 0 — без лимита.",
                     100, 0, 10_000_000, "цент $"),
-            intSetting(BATCH_SIZE, GROUP, "Размер пачки",
-                    "Сколько товаров ИИ берёт за один запуск пачкой (работает с этапа «Пачка»).", 30, 1, 100, "шт"),
+            intSetting(BATCH_SIZE, GROUP, "Максимум пакета",
+                    "Сколько товаров можно отдать ИИ за один запуск. Больше 30 нельзя: разбейте на два пакета.", 30, 1, 30, "шт"),
+            intSetting(SEARCH_PACE, GROUP, "Темп поиска",
+                    "Сколько поисковых запросов ИИ делает за 5 минут на все задачи вместе: берегает свой поиск от блокировки. "
+                            + "0 — без ограничения.", 40, 0, 200, "запр."),
             intSetting(RATE_KOPECKS, GROUP, "Курс доллара",
                     "Только для показа сумм в гривнах: копеек за один доллар (42,00 грн = 4200). "
                             + "Сумма задачи запоминается по курсу на момент её завершения.", 4200, 100, 100_000, "коп."),

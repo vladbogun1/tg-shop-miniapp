@@ -30,6 +30,11 @@ public interface AiJobRepository extends JpaRepository<AiJob, Long> {
 
     boolean existsByRetryOf(long retryOf);
 
+    List<AiJob> findByBatchIdOrderByIdAsc(long batchId);
+
+    /** The newest ended jobs of a batch, for the «three failures in a row» rule. */
+    List<AiJob> findTop3ByBatchIdAndFinishedAtIsNotNullOrderByFinishedAtDescIdDesc(long batchId);
+
     long countByStatus(JobStatus status);
 
     /** Ready results nobody has decided on yet (the chip and the badge: "waiting for review"). */

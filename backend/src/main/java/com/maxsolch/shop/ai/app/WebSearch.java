@@ -6,9 +6,6 @@ import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.ai.domain.AiUsage;
 import com.maxsolch.shop.ai.domain.SearchEngine;
 import com.maxsolch.shop.ai.domain.SearchEngine.Hit;
-import com.maxsolch.shop.platform.cache.CacheConfig;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -23,7 +20,7 @@ import java.util.Set;
  * (Google by API, $0.001) — asked only when the one before failed or found nothing.
  *
  * <p>A provider that failed (HTTP error, timeout, SearXNG with every engine suspended) leaves the chain for 10 minutes
- * ({@link AiCaches#SEARCH_COOLDOWN}) instead of being asked and failing on every query of a 24-card run. Every query
+ * ({@link AiSearchPacer}, kept in the database) instead of being asked and failing on every query of a 24-card run. Every query
  * of every provider is a line in {@code ai_usage}: OK, EMPTY or FAILED — the «empty searches» counter of a provider.
  * When the chain has nothing, the caller gets an empty list and tells the model so; the model must not guess URLs.
  */
@@ -44,18 +41,18 @@ public class WebSearch {
 
     private final List<SearchEngine> engines;
     private final AiUsageLog usage;
-    private final Cache cooldown;
+    private final AiSearchPacer pacer;
     private final Clock clock;
     private final AiPolicy policy;
     private final DomainEvents events;
 
-    public WebSearch(List<SearchEngine> engines, AiUsageLog usage, CacheManager caches, Clock clock, AiPolicy policy,
+    public WebSearch(List<SearchEngine> engines, AiUsageLog usage, AiSearchPacer pacer, Clock clock, AiPolicy policy,
                      DomainEvents events) {
         this.engines = engines.stream().sorted(Comparator.comparingInt(SearchEngine::order)).toList();
         this.policy = policy;
         this.events = events;
         this.usage = usage;
-        this.cooldown = CacheConfig.require(caches, AiCaches.SEARCH_COOLDOWN.name());
+        this.pacer = pacer;
         this.clock = clock;
     }
 
@@ -69,7 +66,7 @@ public class WebSearch {
         boolean asked = false;
         for (boolean resting : new boolean[]{false, true}) {
             for (SearchEngine engine : engines) {
-                if (!engine.enabled() || (cooldown.get(engine.name()) != null) != resting
+                if (!engine.enabled() || pacer.resting(engine.name()) != resting
                         || !policy.searchProviderAllowed(engine.name())) {
                     continue;
                 }
@@ -92,17 +89,18 @@ public class WebSearch {
     }
 
     private Found ask(AiScope feature, SearchEngine engine, String query, int limit) {
+        pacer.acquire();
         long t0 = clock.millis();
         SearchEngine.Outcome out = engine.search(query, limit + SKIPPED_HOSTS.size());
         long ms = clock.millis() - t0;
         if (out.failed()) {
-            cooldown.put(engine.name(), Boolean.TRUE);
+            pacer.rest(engine.name(), out.reason());
             usage.call(feature, AiUsage.Kind.SEARCH, engine.name(), AiUsage.Result.FAILED, 0, ms, out.reason());
             return new Found(List.of(), engine.name(), 0);
         }
         List<Hit> hits = usable(out.hits(), limit);
-        if (cooldown.get(engine.name()) != null && !hits.isEmpty()) {
-            cooldown.evict(engine.name());
+        if (!hits.isEmpty()) {
+            pacer.wake(engine.name());
         }
         usage.call(feature, AiUsage.Kind.SEARCH, engine.name(),
                 hits.isEmpty() ? AiUsage.Result.EMPTY : AiUsage.Result.OK, engine.costMicroUsd(), ms, null);
@@ -112,7 +110,7 @@ public class WebSearch {
     /** Every provider that may be asked is resting after a failure: the model is blind, the owner must hear it. */
     private boolean allResting() {
         return engines.stream().filter(e -> e.enabled() && policy.searchProviderAllowed(e.name()))
-                .allMatch(e -> cooldown.get(e.name()) != null);
+                .allMatch(e -> pacer.resting(e.name()));
     }
 
     /** Providers in chain order with whether each is configured and whether it is resting after a failure. */
@@ -121,7 +119,7 @@ public class WebSearch {
 
     public List<ProviderState> providers() {
         return engines.stream()
-                .map(e -> new ProviderState(e.name(), e.enabled(), cooldown.get(e.name()) != null))
+                .map(e -> new ProviderState(e.name(), e.enabled(), pacer.resting(e.name())))
                 .toList();
     }
 

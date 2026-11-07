@@ -5,11 +5,12 @@
 export const AI_GROUP = "ai";
 
 export const AI_BLOCKS = {
-  functions: ["ai.enabled", "ai.feature.card", "ai.feature.completion", "ai.feature.translation", "ai.feature.supply"],
+  functions: ["ai.enabled", "ai.feature.card", "ai.feature.completion", "ai.feature.translation", "ai.feature.supply", "ai.feature.batch"],
   limits: [
     "ai.monthLimitCents",
     "ai.dayLimitCents",
     "ai.batchSize",
+    "ai.searchPace",
     "ai.usdRateKopecks",
     "ai.jobCeilingFactor",
     "ai.deadlineMinutes",

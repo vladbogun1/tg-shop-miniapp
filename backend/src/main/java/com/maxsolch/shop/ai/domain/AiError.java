@@ -34,7 +34,17 @@ public enum AiError implements ErrorCode {
     /** The object of a task (a product) is gone or never existed. */
     SUBJECT_NOT_FOUND("AI_SUBJECT_NOT_FOUND"),
     /** An admin without the finance right stops only the tasks he started himself. */
-    NOT_YOUR_JOB("AI_NOT_YOUR_JOB");
+    NOT_YOUR_JOB("AI_NOT_YOUR_JOB"),
+    /** More products than the batch maximum, or none. */
+    BATCH_SIZE("AI_BATCH_SIZE"),
+    BATCH_NOT_FOUND("AI_BATCH_NOT_FOUND"),
+    /** The owner switched «Пакеты» off. */
+    BATCHES_OFF("AI_BATCHES_OFF"),
+    APPLY_NOT_FOUND("AI_APPLY_NOT_FOUND"),
+    /** The 24 hours of the undo are over, or it was undone already. */
+    UNDO_CLOSED("AI_UNDO_CLOSED"),
+    /** The result is not eligible for the safe acceptance (no search, no source, already decided). */
+    NOT_SAFE("AI_NOT_SAFE");
 
     private final String code;
 

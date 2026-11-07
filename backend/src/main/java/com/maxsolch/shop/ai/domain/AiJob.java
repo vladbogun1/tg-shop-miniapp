@@ -32,7 +32,14 @@ public class AiJob {
     /** What the creator decides; everything else is fixed by the job itself. */
     public record Spec(AiFeature feature, long adminId, String subjectType, String subjectId, String subjectVersion,
                        JobMode mode, String effort, int researchItems, String promptVersion, String idemKey,
-                       Long retryOf) {
+                       Long retryOf, Long batchId) {
+
+        public Spec(AiFeature feature, long adminId, String subjectType, String subjectId, String subjectVersion,
+                    JobMode mode, String effort, int researchItems, String promptVersion, String idemKey,
+                    Long retryOf) {
+            this(feature, adminId, subjectType, subjectId, subjectVersion, mode, effort, researchItems, promptVersion,
+                    idemKey, retryOf, null);
+        }
     }
 
     /** What the admin did with the result: counts of fields, as the review screen reports them. */
@@ -88,6 +95,10 @@ public class AiJob {
 
     @Column(name = "retry_of")
     private Long retryOf;
+
+    /** The batch this job belongs to (V90); null for a single task. */
+    @Column(name = "batch_id")
+    private Long batchId;
 
     @Column(name = "cancel_requested", nullable = false)
     private boolean cancelRequested;
@@ -182,6 +193,7 @@ public class AiJob {
         j.promptVersion = spec.promptVersion();
         j.idemKey = spec.idemKey();
         j.retryOf = spec.retryOf();
+        j.batchId = spec.batchId();
         j.createdAt = now;
         return j;
     }
@@ -268,6 +280,17 @@ public class AiJob {
         heartbeatAt = null;
         deadlineAt = null;
         cancelRequested = false;
+    }
+
+    /**
+     * The batch stopped on a limit while this job ran or waited: it goes back to the queue and the attempt is not
+     * counted (the job did nothing wrong; the batch will not take it until a person continues).
+     */
+    public void returnToQueue() {
+        requeue();
+        if (attempts > 0) {
+            attempts--;
+        }
     }
 
     /** What the admin did with the result. The first report stays: a repeated call changes nothing. Returns true if recorded. */

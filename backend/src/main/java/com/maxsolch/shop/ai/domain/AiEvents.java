@@ -31,7 +31,15 @@ public final class AiEvents {
     public record FreeSearchWarning(int used, int total) {
     }
 
-    /** A batch stopped because of the limit (batches arrive in a later stage; the push is ready for them). */
+    /** A batch stopped because of the limit. */
     public record BatchStopped(int done, int total, Period period) {
+    }
+
+    /** A batch stopped for another reason than a limit: three failures in a row, or the search is blind. */
+    public record BatchProblem(long batchId, PauseReason reason, int done, int total) {
+    }
+
+    /** The last job of a batch ended: one push to the admin who started it. */
+    public record BatchFinished(long batchId, long adminId, int done, int total) {
     }
 }

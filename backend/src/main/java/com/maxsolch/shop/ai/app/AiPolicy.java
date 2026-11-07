@@ -47,6 +47,21 @@ public class AiPolicy {
         return key == null || settings.getBool(key);
     }
 
+    /** The owner's switch «Пакеты». */
+    public boolean batchesOn() {
+        return settings.getBool(AiSettings.FEATURE_BATCH);
+    }
+
+    /** The most products one batch may hold (never above 30, whatever is stored). */
+    public int batchMax() {
+        return Math.max(1, Math.min(30, settings.getInt(AiSettings.BATCH_SIZE)));
+    }
+
+    /** Search requests allowed per five minutes for all tasks together; 0 = no pace. */
+    public int searchPace() {
+        return settings.getInt(AiSettings.SEARCH_PACE);
+    }
+
     public long monthLimitMicro() {
         return AiMoney.microFromCents(settings.getInt(AiSettings.MONTH_LIMIT_CENTS));
     }
