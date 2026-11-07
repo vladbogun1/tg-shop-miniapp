@@ -2,8 +2,10 @@
 
 /**
  * Две записи окна оформления: «Сохранить» (ответ ИИ → импорт, при необходимости выложить) и
- * «Сохранить цену и выложить». Ошибки показываем в самом окне (`problem`), а не тостом.
+ * «Сохранить цену и выложить». Ошибки показываем в самом окне (`problem`), а не тостом. Ответ ИИ, у которого есть
+ * задача, пишется в рамке журнала применений (`inApplyLog`): его можно отменить 24 часа.
  */
+import { inApplyLog } from "@/features/ai";
 import { useQueryClient } from "@tanstack/react-query";
 import { errorMessage } from "@shop/core/errors";
 import { useApiMutation } from "@shop/ui/mutation";
@@ -23,6 +25,10 @@ interface SaveVars {
   payload: CardImportItem;
   publish: boolean;
   item: CardItem;
+  /** «Заменить характеристики целиком»: чего нет в записи, удаляется. */
+  replaceSpecs?: boolean;
+  /** Задача ответа (null — её нет или она не записалась): запись идёт в журнал применений. */
+  jobId?: () => Promise<number | null>;
 }
 
 interface SaveOutcome {
@@ -33,8 +39,10 @@ interface SaveOutcome {
   note: string;
 }
 
-async function saveCard({ payload, publish, item }: SaveVars): Promise<SaveOutcome> {
-  const res = await cardsApi.import({ items: [payload], replaceSpecs: false });
+async function saveCard({ payload, publish, item, replaceSpecs, jobId }: SaveVars): Promise<SaveOutcome> {
+  const write = () => cardsApi.import({ items: [payload], replaceSpecs: replaceSpecs === true });
+  const job = jobId ? await jobId() : null;
+  const res = job === null ? await write() : (await inApplyLog(job, "SINGLE", write)).value;
   const rejected = res.rejected.find((x) => x.productId === item.id);
   if (rejected) return { rejected: rejected.reason, problem: null, published: false, note: "" };
   const one = res.items.find((x) => x.productId === item.id);

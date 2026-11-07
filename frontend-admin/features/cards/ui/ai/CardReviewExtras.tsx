@@ -8,6 +8,7 @@
  */
 import type { Proposal, TextField, TextLang } from "../../model";
 import { AUTO_READY_OVERALL, RED_FIELD, type ProductSel } from "../../model/selection";
+import type { RemovedSpec } from "../../model/spec-replace";
 import type { CardItem } from "../../model/item";
 import type { ProductReview } from "../../model/types";
 import { PhotoPicks } from "../PhotoPicks";
@@ -41,6 +42,10 @@ export interface ExtrasProps {
   /** Сколько характеристик ИИ подтвердил без изменений (уверенность обновится). */
   confirmed: number;
   onAddOption: (p: Proposal) => void;
+  /** «Заменить характеристики целиком» и что тогда удалится (заполненное в карточке, чего нет в ответе). */
+  replace: boolean;
+  setReplace: (v: boolean) => void;
+  removed: RemovedSpec[];
 }
 
 export function CardReviewExtras(p: ExtrasProps) {
@@ -102,7 +107,25 @@ function ApplyOptions(p: ExtrasProps) {
           Выложить на витрину, если карточка готова
         </label>
       )}
+      <ReplaceSpecs {...p} />
     </div>
+  );
+}
+
+/** Переключатель замены — только когда есть что удалить; список удаляемого виден до записи. */
+function ReplaceSpecs({ replace, setReplace, removed }: ExtrasProps) {
+  if (removed.length === 0) return null;
+  const names = removed.map((r) => r.label).join(", ");
+  return (
+    <label className="flex items-start gap-2" data-testid="replace-specs">
+      <input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]" data-testid="replace-specs-toggle" />
+      <span className="min-w-0">
+        Заменить характеристики целиком
+        <span className={`block text-[12px] ${replace ? "text-[var(--danger-ink)]" : "text-[var(--text-faint)]"}`} data-testid="replace-specs-removed">
+          {replace ? "Будут удалены" : "Выключено. Если включить, удалятся"} характеристики, которых нет в ответе: {names}
+        </span>
+      </span>
+    </label>
   );
 }
 

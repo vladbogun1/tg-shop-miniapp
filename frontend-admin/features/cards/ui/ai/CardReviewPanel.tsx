@@ -15,6 +15,7 @@ import type { Proposal } from "../../model";
 import type { CardItem } from "../../model/item";
 import type { ProductReview } from "../../model/types";
 import type { ReviewChoices } from "../../model/review-choice";
+import { removedByReplace } from "../../model/spec-replace";
 import { invalidateCards, useCardSchema } from "../../queries";
 import { AddOptionModal } from "../AddOptionModal";
 import { ProblemBox } from "../completion/ProblemBox";
@@ -41,6 +42,8 @@ export interface CardReviewPanelProps {
   onBack: () => void;
   /** Пункты «⋯»; \`rejectCounts\` — исход «отклонено всё» по текущим строкам. */
   menu: (rejectCounts: () => OutcomeCounts) => AiMenuItem[];
+  /** Задача ответа: применение пишется в её журнал (отмена 24 часа); null — без журнала. */
+  jobId: () => Promise<number | null>;
   onApplied: (counts: OutcomeCounts) => void;
   onSaved?: (published: boolean) => void;
   onClose?: (result: CardCompletionResult) => void;
@@ -60,6 +63,7 @@ export function CardReviewPanel(p: CardReviewPanelProps) {
   const [picked, setPicked] = useState<Set<string> | null>(null);
   const [translations, setTranslations] = useState(true);
   const [publish, setPublish] = useState(p.item.active !== true);
+  const [replace, setReplace] = useState(false);
   const [addOption, setAddOption] = useState<Proposal | null>(null);
 
   const ctx = useMemo(() => ({ ...p.ctx, choices }), [p.ctx, choices]);
@@ -70,6 +74,7 @@ export function CardReviewPanel(p: CardReviewPanelProps) {
   );
   const rows = useMemo(() => (draft.review ? reviewRows(draft.review, { ...ctx, edited: draft.edited }) : baseRows), [draft.review, draft.edited, ctx, baseRows]);
   const selected = picked ?? initial;
+  const removed = useMemo(() => removedByReplace(draft.review ?? p.review, choices?.schema), [draft.review, p.review, choices]);
 
   const act = useCardReviewApply({
     item: p.item,
@@ -81,6 +86,8 @@ export function CardReviewPanel(p: CardReviewPanelProps) {
     photos: draft.photos,
     markReady: draft.markReady,
     model: p.model,
+    replace: replace && removed.length > 0,
+    jobId: p.jobId,
     onApplied: p.onApplied,
     onSaved: p.onSaved,
     onClose: p.onClose,
@@ -134,6 +141,9 @@ export function CardReviewPanel(p: CardReviewPanelProps) {
             setMarkReady={draft.setMarkReady}
             sure={act.sure}
             confirmed={confirmedSpecKeys(draft.review ?? p.review).length}
+            replace={replace}
+            setReplace={setReplace}
+            removed={removed}
             onAddOption={setAddOption}
           />
         }

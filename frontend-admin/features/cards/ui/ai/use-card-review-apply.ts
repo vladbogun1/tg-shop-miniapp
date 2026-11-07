@@ -15,6 +15,7 @@ import type { PublishProblem } from "../../model/completion";
 import type { CardItem } from "../../model/item";
 import type { PhotoJob } from "../../model/photos";
 import { autoReady, buildImportItem } from "../../model/selection";
+import { replacingImport } from "../../model/spec-replace";
 import type { ProductReview } from "../../model/types";
 import { priceToMinor } from "../completion/use-card-completion";
 import { useCompletionSave, type CardCompletionResult } from "../completion/use-completion-save";
@@ -33,6 +34,10 @@ export interface ReviewApplyArgs {
   markReady: boolean | null;
   /** Модель, которую назвал человек (ручной путь); ответ ИИ может назвать свою — она важнее. */
   model?: string;
+  /** «Заменить характеристики целиком»: чего нет в ответе, удалится. */
+  replace: boolean;
+  /** Задача ответа: запись идёт в журнал применений (отмена 24 часа); null — без журнала. */
+  jobId: () => Promise<number | null>;
   onApplied: (counts: OutcomeCounts) => void;
   onSaved?: (published: boolean) => void;
   /** Запись прошла и закрыть можно (выложено или выкладывать не просили); пока грузятся фото — не зовётся. */
@@ -71,11 +76,12 @@ export function useCardReviewApply(a: ReviewApplyArgs) {
 
   function apply() {
     if (!a.review || !sel || save.saving || applied) return;
-    const payload = buildImportItem(a.review, sel, { markReady: a.markReady ?? sure, model: a.model, publish: wantsPublish });
+    const chosen = buildImportItem(a.review, sel, { markReady: a.markReady ?? sure, model: a.model, publish: wantsPublish });
+    const payload = a.replace ? replacingImport(a.review, chosen) : chosen;
     counts.current = outcomeCounts(a.rows, a.selected);
     photoJobs.current = sel.photos.map((url) => ({ productId: a.item.id, title: a.item.title, url }));
     setProblem(null);
-    if (payload) save.save.mutate({ payload, publish: wantsPublish, item: a.item });
+    if (payload) save.save.mutate({ payload, publish: wantsPublish, item: a.item, replaceSpecs: a.replace, jobId: a.jobId });
     else if (photoJobs.current.length) finish();
   }
 

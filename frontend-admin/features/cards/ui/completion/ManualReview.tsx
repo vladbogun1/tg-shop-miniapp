@@ -35,6 +35,7 @@ export function ManualReview({ c, onBackToAi }: { c: CardCompletion; onBackToAi?
       model={c.model}
       onBack={c.backToAnswer}
       menu={menu}
+      jobId={c.jobId}
       onApplied={c.onApplied}
       onSaved={c.onSaved}
       onClose={c.onClose}

@@ -12,10 +12,24 @@ const TONE = { ok: "text-[var(--ok)]", muted: "text-[var(--text-muted)]", bad: "
 
 /**
  * Итог пакета, когда он закончился или есть что сделать: «Готово N · Не нашёл данных N · Сбой N», затем
- * «Проверить (N)», «Принять безопасное», «Повторить неудачные (N)» и «Отменить применение» (пока идут 24 часа).
+ * «Проверить (N)», «Принять безопасное», «Повторить неудачные (N)» и «Отменить применение» (всё, что применено по
+ * пакету и ещё не отменено, пока идут 24 часа); под ними — «Подробно» с итогом по предметам (`report`).
  * «Принять безопасное» зависит от предмета пакета (карточки), поэтому его кнопку приносит вызывающий в `acceptSafe`.
  */
-export function BatchSummary({ batch, onReview, acceptSafe, manual }: { batch: AiBatch; onReview: () => void; acceptSafe?: React.ReactNode; manual?: React.ReactNode }) {
+export function BatchSummary({
+  batch,
+  onReview,
+  acceptSafe,
+  manual,
+  report,
+}: {
+  batch: AiBatch;
+  onReview: () => void;
+  acceptSafe?: React.ReactNode;
+  manual?: React.ReactNode;
+  /** Подробный итог по предметам: под сводкой, раскрывается по «Подробно». */
+  report?: React.ReactNode;
+}) {
   const retry = useRetryFailedBatch();
   const undo = useUndoBatch();
   const parts = summaryParts(batch);
@@ -56,6 +70,12 @@ export function BatchSummary({ batch, onReview, acceptSafe, manual }: { batch: A
           </Button>
         )}
       </div>
+      {report && (
+        <details className="min-w-0" data-testid="batch-report-toggle">
+          <summary className="cursor-pointer select-none text-[12.5px] font-semibold text-[var(--text-muted)]">Подробно</summary>
+          <div className="pt-2">{report}</div>
+        </details>
+      )}
     </div>
   );
 }

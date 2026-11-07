@@ -16,12 +16,15 @@ export function BatchPanel({
   onReview,
   acceptSafe,
   manual,
+  report,
   skipSummary,
 }: {
   onReview: (batch: AiBatch) => void;
   acceptSafe: (batch: AiBatch) => ReactNode;
   /** Кнопка ручного пути для того, что ИИ не сделал (пакет на паузе или закончился); её знает предмет пакета. */
   manual?: (batch: AiBatch) => ReactNode;
+  /** Подробный итог закончившегося пакета по предметам (раскрывается под сводкой). */
+  report?: (batch: AiBatch) => ReactNode;
   /** Итог такого пакета рисует его экран сам (переводы): здесь остаётся только полоса хода. */
   skipSummary?: (batch: AiBatch) => boolean;
 }) {
@@ -35,7 +38,7 @@ export function BatchPanel({
         isOpen(b) ? (
           <BatchBar key={b.id} batch={b} onReview={() => onReview(b)} manual={manual?.(b)} />
         ) : skipSummary?.(b) ? null : (
-          <BatchSummary key={b.id} batch={b} onReview={() => onReview(b)} acceptSafe={acceptSafe(b)} manual={manual?.(b)} />
+          <BatchSummary key={b.id} batch={b} onReview={() => onReview(b)} acceptSafe={acceptSafe(b)} manual={manual?.(b)} report={report?.(b)} />
         ),
       )}
     </div>

@@ -9,13 +9,18 @@ import { useApiMutation } from "@shop/ui/mutation";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/http";
 import { isAuthenticated } from "@/lib/session";
-import { batchApi, type AiBatch } from "./api-batch";
+import { batchApi, type AiBatch, type AiUndoResult } from "./api-batch";
 import type { AiFeature } from "./api";
 import { aiKeys } from "./keys";
 import { isOpen } from "./model/batch-view";
 import { JOB_POLL_HIDDEN_MS, JOB_POLL_MS } from "./model/job-state";
 
 const AFTER_BATCH = [aiKeys.batches(), aiKeys.active(), aiKeys.summary(), aiKeys.tasksAll(), aiKeys.widget()];
+/** После отмены применения задача снова ждёт проверки: и пакеты, и сама задача, и её «живое» применение. */
+const AFTER_UNDO = [...AFTER_BATCH, aiKeys.jobsAll(), aiKeys.applyLiveAll()];
+
+const undoneText = (r: AiUndoResult) =>
+  `Применение отменено: возвращено полей — ${r.reverted}${r.skipped > 0 ? `, оставлено (правили вручную) — ${r.skipped}` : ""}`;
 
 /** Пакеты, о которых полосе есть что сказать. Опрос частый, пока хоть один идёт. */
 export function useAiBatches() {
@@ -83,13 +88,53 @@ export function useRetryFailedBatch() {
 export function useUndoBatch() {
   return useApiMutation({
     mutationFn: (id: number) => batchApi.undoBatch(id),
-    invalidate: AFTER_BATCH,
-    success: (r) => `Применение отменено: возвращено полей — ${r.reverted}${r.skipped > 0 ? `, оставлено (правили вручную) — ${r.skipped}` : ""}`,
+    invalidate: AFTER_UNDO,
+    success: undoneText,
     errorFallback: "Не удалось отменить применение",
   });
 }
 
 export const invalidateAfterBatch = AFTER_BATCH;
+export const invalidateAfterUndo = AFTER_UNDO;
+
+/** Неотменённое применение задачи (экран проверки: «Отменить применение»). */
+export function useApplyLive(jobId: number | null) {
+  return useQuery({
+    queryKey: aiKeys.applyLive(jobId ?? 0),
+    queryFn: () => batchApi.applyLive(jobId ?? 0),
+    enabled: jobId !== null && isAuthenticated(),
+    staleTime: STALE_TIME.quick,
+  });
+}
+
+/** Отменить несколько применений (свои из окна «Принять безопасное»), по одному; итог — сумма. */
+export function useUndoApplications() {
+  return useApiMutation({
+    mutationFn: async (ids: readonly number[]): Promise<AiUndoResult> => {
+      const sum: AiUndoResult = { applications: 0, reverted: 0, skipped: 0 };
+      for (const id of ids) {
+        const r = await batchApi.undoOne(id);
+        sum.applications += r.applications;
+        sum.reverted += r.reverted;
+        sum.skipped += r.skipped;
+      }
+      return sum;
+    },
+    invalidate: AFTER_UNDO,
+    success: undoneText,
+    errorFallback: "Не удалось отменить применение",
+  });
+}
+
+/** Отменить одно применение: поля вернутся, задача снова на проверке. */
+export function useUndoApplication() {
+  return useApiMutation({
+    mutationFn: (applyId: number) => batchApi.undoOne(applyId),
+    invalidate: AFTER_UNDO,
+    success: undoneText,
+    errorFallback: "Не удалось отменить применение",
+  });
+}
 
 /**
  * Видит ли админ деньги (финансист). Тот же запрос, что у `useFinanceAccess` в «Закупке»: фича `ai` не

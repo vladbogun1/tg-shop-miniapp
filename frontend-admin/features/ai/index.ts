@@ -54,13 +54,27 @@ export { useAiMetrics, useAiTasks, useAiWidget, useMarkManual } from "./queries-
 export type { AiTaskTab, AiTaskRow, AiTaskPage, AiWidgetData, AiMetricsSummary } from "./api";
 
 // Этап Э4: пакеты.
-export { batchApi } from "./api-batch";
-export type { AiBatch, AiBatchRow, AiSafeApplied } from "./api-batch";
+export { batchApi, inApplyLog } from "./api-batch";
+export type { AiApplyKind, AiApplyLive, AiBatch, AiBatchRow, AiSafeApplied } from "./api-batch";
 export { BatchGate, BatchPanel } from "./ui/batch/BatchPanel";
 export { BatchConfirm } from "./ui/batch/BatchConfirm";
 export { QuickReviewDeck, QuickReviewFeed, type FeedRow } from "./ui/batch/QuickReviewFeed";
 export { AcceptSafeDialog } from "./ui/batch/AcceptSafeDialog";
-export { useAiBatches, useAiBatchById, useAiFinanceFlag, useCancelBatch, useRetryFailedBatch, hasOpenBatch, invalidateAfterBatch } from "./queries-batch";
+export {
+  useAiBatches,
+  useAiBatchById,
+  useAiFinanceFlag,
+  useApplyLive,
+  useCancelBatch,
+  useRetryFailedBatch,
+  useUndoApplication,
+  hasOpenBatch,
+  invalidateAfterBatch,
+  invalidateAfterUndo,
+} from "./queries-batch";
 export { aboutDuration, unavailableReason } from "./model/availability";
 export { isOpen as isBatchOpen } from "./model/batch-view";
 export { isSafeKey, manualSubjects } from "./model/batch-view";
+export { batchReport, type BatchReport, type ReportLine as BatchReportLine } from "./model/batch-report";
+export type { FeedAccepted } from "./ui/batch/QuickReviewFeed";
+export { ApplyUndoBar } from "./ui/ApplyUndoBar";

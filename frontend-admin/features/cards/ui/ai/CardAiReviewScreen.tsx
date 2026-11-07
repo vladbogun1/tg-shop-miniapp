@@ -6,6 +6,7 @@
  * есть только у задачи: конфликт правок, «Повторить», «Отклонить», ответ и промпт, отчёт серверу о счётчиках исхода.
  */
 import {
+  ApplyUndoBar,
   AiJobFailure,
   AiJobProgress,
   AiReview,
@@ -13,6 +14,7 @@ import {
   editedBanner,
   mostlyConflicted,
   useAiJob,
+  useApplyLive,
   useCancelJob,
   useJobOutcome,
   useRetryJob,
@@ -89,7 +91,10 @@ function ReviewBody(p: { job: AiJob; item: Subject; schema: Schema; onManual: ()
   const data = useCardAiReview(job, item, schema);
   const retry = useRetryJob();
   const outcome = useJobOutcome();
+  const live = useApplyLive(job.id);
   const [appliedNow, setAppliedNow] = useState(false);
+  // После отмены применения ревью начинается заново: новый ключ — свежий выбор и правки.
+  const [round, setRound] = useState(0);
   const [dialog, setDialog] = useState<"answer" | "prompt" | null>(null);
   const { mostly, edited, finished, doneText } = statusOf(job, data, appliedNow);
   // Ответ, вставленный из ChatGPT вручную: повторять встроенным ИИ нечего, его вставляют заново.
@@ -111,18 +116,29 @@ function ReviewBody(p: { job: AiJob; item: Subject; schema: Schema; onManual: ()
       onPrompt: job.prompt ? () => setDialog("prompt") : null,
     });
   const notices = (
-    <ReviewNotices
-      problems={data.problems}
-      edited={edited}
-      mostly={mostly}
-      onFresh={pasted ? undefined : () => void startCardJob({ item, schema, created: false, idemKey: `fresh-${job.id}` }).then((j) => p.toJob(j.id))}
-    />
+    <>
+      <ApplyUndoBar
+        jobId={job.id}
+        note={UNDO_NOTE}
+        onUndone={() => {
+          setAppliedNow(false);
+          setRound((r) => r + 1);
+        }}
+      />
+      <ReviewNotices
+        problems={data.problems}
+        edited={edited}
+        mostly={mostly}
+        onFresh={pasted ? undefined : () => void startCardJob({ item, schema, created: false, idemKey: `fresh-${job.id}` }).then((j) => p.toJob(j.id))}
+      />
+    </>
   );
 
   return (
     <>
       {data.review && data.ctx ? (
         <CardReviewPanel
+          key={round}
           item={item}
           review={data.review}
           ctx={data.ctx}
@@ -133,9 +149,11 @@ function ReviewBody(p: { job: AiJob; item: Subject; schema: Schema; onManual: ()
           notices={notices}
           onBack={() => router.back()}
           menu={menu}
+          jobId={() => Promise.resolve(job.id)}
           onApplied={(o) => {
             setAppliedNow(true);
             report(o);
+            void live.refetch();
           }}
         />
       ) : (
@@ -146,6 +164,9 @@ function ReviewBody(p: { job: AiJob; item: Subject; schema: Schema; onManual: ()
     </>
   );
 }
+
+/** Что вернёт отмена применения (поля журнала у карточки) и что нет. */
+const UNDO_NOTE = "Вернутся характеристики (и удалённые заменой), название, описание, категория и бренд; фото, переводы, статус и витрина останутся как есть.";
 
 /** Что показать над ревью и в подвале: заметно ли изменилась карточка, применён ли результат уже. */
 function statusOf(job: AiJob, data: ReturnType<typeof useCardAiReview>, appliedNow: boolean) {

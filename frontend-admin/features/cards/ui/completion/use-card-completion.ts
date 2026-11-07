@@ -131,6 +131,8 @@ export function useCardCompletion({ productId, open, reason, onClose }: Args) {
 
   /** «Назад» из проверки: ответ остаётся в поле — его можно поправить и проверить снова. */
   const backToAnswer = () => setReview(null);
+  /** Задача ответа для журнала применений (пока ответ пишется на сервер — ждём его). */
+  const jobId = () => task.current;
 
   function clearAnswer() {
     setAnswer("");
@@ -144,7 +146,7 @@ export function useCardCompletion({ productId, open, reason, onClose }: Args) {
     copied, setCopied, preview, setPreview,
     answer, setAnswer, model, setModel, errors, notes,
     review, saved, published,
-    check, close, clearAnswer, backToAnswer, onApplied, onSaved, onClose,
+    check, close, clearAnswer, backToAnswer, onApplied, onSaved, onClose, jobId,
   };
 }
 
