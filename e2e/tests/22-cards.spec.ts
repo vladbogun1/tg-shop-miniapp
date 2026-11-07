@@ -6,7 +6,7 @@
  * description they had before, emptied first so that it is «заполнит пустое» — valid whatever schema the stand has).
  */
 import type { Locator, Page } from "@playwright/test";
-import { blankDescriptions } from "../lib/ai-batch";
+import { blankDescriptions, clearBatches } from "../lib/ai-batch";
 import { PRODUCT } from "../lib/seed";
 import { expect, test } from "../lib/test";
 import type { Api } from "../lib/api";
@@ -34,6 +34,12 @@ async function tabCount(page: Page, name: string): Promise<number> {
   const text = (await tab(page, name).innerText()).replace(/\s+/g, " ");
   return Number(text.match(/(\d+)\s*$/)?.[1] ?? NaN);
 }
+
+// Ручной пакет оставляет задачи «ИИ-задач» (путь MANUAL) на шарф и носки: следующие спеки засевают свои
+// задачи на те же товары и ищут строку по названию — убираем пакет и его задачи.
+test.afterAll(async () => {
+  await clearBatches();
+});
 
 test("карточки: ответ ИИ → проверка → сохранение → «Проверено»", async ({ page, api }) => {
   // Seeded storefront products only the product specs touch: both READY in the seed.
