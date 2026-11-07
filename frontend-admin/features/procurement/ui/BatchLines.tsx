@@ -23,7 +23,9 @@ export function BatchLines({
   onChange: (lines: FormLine[]) => void;
   onAdd: () => void;
 }) {
-  const patch = (key: string, p: Partial<FormLine>) => onChange(lines.map((x) => (x.key === key ? { ...x, ...p } : x)));
+  // Любая правка строки — это её проверка: подсветка «из ИИ» гаснет.
+  const patch = (key: string, p: Partial<FormLine>) => onChange(lines.map((x) => (x.key === key ? { ...x, ...p, fromAi: false } : x)));
+  const confirm = (key: string) => onChange(lines.map((x) => (x.key === key ? { ...x, fromAi: false } : x)));
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
@@ -37,10 +39,18 @@ export function BatchLines({
       {locked && <p className="text-[12px] text-[var(--text-faint)]">Позиции можно менять, пока поставка не приехала.</p>}
       {lines.length === 0 && <p className="card-2 p-3 text-[13px] text-[var(--text-faint)]">Пока пусто.</p>}
       {lines.map((l) => (
-        <div key={l.key} className="card-2 flex min-w-0 flex-wrap items-center gap-3 p-2">
+        <div key={l.key} className={`card-2 flex min-w-0 flex-wrap items-center gap-3 p-2 ${l.fromAi ? "ring-1 ring-[var(--warn)]" : ""}`}>
           <Image src={l.imageUrl} alt={l.title} size={96} className="h-11 w-11 shrink-0 rounded-[var(--r-sm)] border border-[var(--line)]" />
           <div className="min-w-0 flex-1 basis-44 text-[13.5px] font-semibold leading-snug text-[var(--text)]">
             <span className="line-clamp-2 break-words">{lineTitle(l.title, l.variantName)}</span>
+            {l.fromAi && !locked && (
+              <span className="mt-0.5 flex flex-wrap items-center gap-2 text-[12px] font-semibold text-[var(--warn)]">
+                из ИИ, проверьте
+                <button type="button" onClick={() => confirm(l.key)} className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline">
+                  Проверено
+                </button>
+              </span>
+            )}
           </div>
           <div className="w-24">
             <Input

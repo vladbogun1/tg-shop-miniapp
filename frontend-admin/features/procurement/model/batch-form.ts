@@ -11,6 +11,8 @@ export interface SeedLine {
   qty?: number;
   /** Закупочная цена за штуку в валюте поставки («Поставка с ИИ»). */
   price?: number | null;
+  /** Строка пришла из «Прочитать с ИИ»: подсвечена «из ИИ, проверьте», пока админ её не подтвердил или не поправил. */
+  fromAi?: boolean;
 }
 
 /** Готовые поля новой поставки («Поставка с ИИ»): название, поставщик, заметка, валюта, курс. */
@@ -34,6 +36,8 @@ export interface FormLine {
   imageUrl: string | null;
   qty: string;
   price: string;
+  /** «Из ИИ, проверьте»: снимается правкой количества / цены или кнопкой «Проверено». */
+  fromAi?: boolean;
 }
 
 export interface BatchFormValues {
@@ -67,6 +71,7 @@ export function seedToLine(s: SeedLine): FormLine {
     imageUrl: s.imageUrl,
     qty: String(s.qty ?? 1),
     price: s.price != null ? String(s.price) : "",
+    ...(s.fromAi ? { fromAi: true } : {}),
   };
 }
 

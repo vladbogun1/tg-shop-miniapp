@@ -1,5 +1,5 @@
 /** Публичный API фичи «Поставки и закупка»: общий слой для экранов поставок, карточки товара и заказа. */
-export { costingApi, preordersApi } from "./api";
+export { costingApi, fetchWithToken, preordersApi } from "./api";
 export { procurementKeys } from "./keys";
 export { ALLOCATIONS, EXPENSE_KINDS, LOT_KIND_LABEL, expenseKindLabel, inputToMinor, minorToInput } from "./model/costing";
 export {
