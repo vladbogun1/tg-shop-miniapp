@@ -173,6 +173,17 @@ test("ИИ выключен: пакет на сервере, продолжен�
       // «Принять» одну — запись и исход задачи.
       await layer(other).getByTestId("feed-accept").click();
       await expect(sub).toHaveText("Ответов 3 из 5 · решено 1 · осталось 2");
+      // «Отменить» в полосе ленты: запись откатилась, карточка снова в ленте; принимаем её ещё раз.
+      const firstId = (await serverBatch()).jobs.find((j) => j.outcome)!.subject_id;
+      expect(await descriptionOf(firstId)).toContain(TEXT);
+      await expect(layer(other).getByTestId("feed-undo-strip")).toContainText("Принято:");
+      await layer(other).getByTestId("feed-undo").click();
+      await expect(sub).toHaveText("Ответов 3 из 5 · решено 0 · осталось 3");
+      await expect(layer(other).getByTestId("feed-undo-strip")).toHaveCount(0);
+      expect(await descriptionOf(firstId)).toBeNull();
+      expect((await serverBatch()).jobs.every((j) => j.outcome === null)).toBe(true);
+      await layer(other).getByTestId("feed-accept").click();
+      await expect(sub).toHaveText("Ответов 3 из 5 · решено 1 · осталось 2");
 
       // «Принять безопасное» для остальных — и «Отменить применение».
       await layer(other).getByTestId("batch-accept-safe").click();
@@ -188,13 +199,30 @@ test("ИИ выключен: пакет на сервере, продолжен�
       await safe.getByTestId("safe-undo").click();
       await expect(safe).toHaveCount(0);
       const back = (await query<{ subject_id: string }>(
-        "SELECT j.subject_id FROM ai_jobs j JOIN ai_apply_log l ON l.job_id = j.id WHERE j.batch_id = ? AND l.undone_at IS NOT NULL",
+        "SELECT j.subject_id FROM ai_jobs j JOIN ai_apply_log l ON l.job_id = j.id WHERE j.batch_id = ? AND l.kind = 'SAFE' AND l.undone_at IS NOT NULL",
         [(await serverBatch()).batch.id],
       )).map((r) => r.subject_id);
       expect(back).toHaveLength(2);
       for (const id of back) expect(await descriptionOf(id)).toBeNull();
 
+      // Отменённые снова ждут проверки — в ленте; принимаем их по одной, и в конце — итог пакета со ссылками.
+      await expect(sub).toHaveText("Ответов 3 из 5 · решено 1 · осталось 2");
+      await layer(other).getByTestId("feed-accept").click();
+      await expect(sub).toHaveText("Ответов 3 из 5 · решено 2 · осталось 1");
+      await layer(other).getByTestId("feed-accept").click();
       await expect(layer(other).getByTestId("manual-finished")).toContainText("Решено по этому пакету: 3. Без ответа осталось 2");
+      const report = layer(other).getByTestId("batch-report");
+      await expect(report.getByTestId("batch-report-counts")).toHaveText("Записано 3 · отклонено 0 · ждут проверки 0 · не получилось 0 · без ответа 2");
+      await expect(report.getByTestId("report-written").getByRole("link")).toHaveCount(3);
+      await expect(report.getByTestId("report-written").getByRole("link").first()).toHaveAttribute("href", /\/cards\/ai-review\/\d+$/);
+      await expect(report.getByTestId("report-unanswered").getByRole("listitem")).toHaveCount(2);
+      // Ссылка итога закрывает слой и ведёт на проверку задачи; к пакету — «Продолжить».
+      await report.getByTestId("report-written").getByRole("link").first().click();
+      await expect(other).toHaveURL(/\/cards\/ai-review\/\d+$/);
+      await expect(layer(other)).toHaveCount(0);
+      await other.goto("/products");
+      await other.getByTestId("manual-resume").getByRole("button", { name: "Продолжить" }).click();
+      await expect(layer(other).getByTestId("manual-finished")).toBeVisible();
       await layer(other).getByTestId("manual-finish").click();
       await expect(layer(other)).toHaveCount(0);
       await expect(other.getByTestId("manual-resume")).toHaveCount(0);
@@ -240,6 +268,8 @@ test("«Править» из ленты: экран проверки задач
     await page.keyboard.press("Escape");
 
     await expect(page.getByText("нет категории «net-takoy-kategorii» — не применится")).toBeVisible();
+    // Бренда из ответа нет в каталоге: строка говорит, что «Применить» его заведёт (если не выбрать существующий).
+    await expect(page.getByText("Бренд «Неведомый бренд» будет создан")).toBeVisible();
     const target = (await placeOf(id)).slug === "e2e-futbolki" ? { slug: "e2e-aksessuary", label: "E2E Аксессуары" } : { slug: "e2e-futbolki", label: "E2E Футболки" };
     const edit = page.getByTestId("ai-review-edit");
     await page.getByRole("button", { name: "Изменить: Категория" }).click();
@@ -293,4 +323,90 @@ test("пакет ИИ на паузе: «Оформить 5 вручную (2 ч
   expect((await serverBatch()).batch.status).toBe("CANCELED");
   await page.goto("/products");
   await expect(page.getByTestId("manual-resume")).toHaveCount(0);
+});
+
+/** Подмена «Фото по ссылке»: сервер не качает адреса тестов; отвечаем успехом и запоминаем присланные ссылки. */
+async function fakePhotoImport(page: Page): Promise<string[]> {
+  const sent: string[] = [];
+  await page.route("**/api/admin/products/*/photos/import", async (route) => {
+    const url = (route.request().postDataJSON() as { url: string }).url;
+    sent.push(url);
+    await route.fulfill({ json: { key: "e2e/photo-by-link.webp", source: url, cutOut: true, imageKeys: ["e2e/photo-by-link.webp"] } });
+  });
+  return sent;
+}
+
+const specsOf = async (id: string) =>
+  (await query<{ specs: Record<string, unknown> | null }>("SELECT specs FROM products WHERE id = UUID_TO_BIN(?)", [id]))[0].specs;
+
+test("лента: новый бренд — на ручную, «Принять» грузит фото, «Заменить целиком» удаляет лишнее, «Отменить» возвращает", async ({ page, api }) => {
+  await setting(api, { "ai.enabled": false });
+  const NEW_BRAND = "E2E Бренд-новичок";
+  const photo = "https://example.com/e2e-feed-photo.jpg";
+  let held = "";
+  // Характеристика из схемы: обычная запись её сохраняет, удаляет только «Заменить характеристики целиком».
+  const attr = await api.raw("post", "/api/admin/spec-attributes", { categoryId: null, key: "e2e_old", labelRu: "E2E Старое", labelUk: "E2E Старе", labelEn: "E2E Old", type: "TEXT", group: "main" });
+  expect(attr.status).toBe(200);
+  try {
+    await selectProducts(page);
+    await page.getByRole("button", { name: "Через ChatGPT вручную (5)" }).click();
+    const part1 = await promptPids(page);
+    const [plain, branded] = [part1[0], part1[1]];
+    held = uuidOf(branded);
+    // У «новичка» есть характеристика, которой нет в ответе: её удалит только «Заменить характеристики целиком».
+    await query("UPDATE products SET specs = JSON_OBJECT('e2e_old', 'было') WHERE id = UUID_TO_BIN(?)", [held]);
+    const brandBefore = (await placeOf(held)).brand;
+    const answerText = fenced({ [plain]: card(plain), [branded]: { ...card(branded), brand: NEW_BRAND, photos: [photo] } });
+    await layer(page).getByLabel("Ответ ChatGPT на часть 1").fill(answerText);
+    await layer(page).getByRole("button", { name: "Дальше: часть 2" }).click();
+    await layer(page).getByRole("button", { name: "К проверке (2)" }).click();
+    const sub = layer(page).getByTestId("manual-review-sub");
+    await expect(sub).toHaveText("Ответов 2 из 5 · решено 0 · осталось 2");
+
+    // «Принять безопасное» не заводит бренд: карточка с новым брендом остаётся человеку.
+    await layer(page).getByTestId("batch-accept-safe").click();
+    const safe = page.getByRole("dialog", { name: "Принять безопасное" });
+    await expect(safe).toContainText("1 полей в 1 карточках");
+    await expect(safe.getByTestId("safe-held")).toContainText("Оставлено на ручную проверку: 1");
+    await safe.getByTestId("safe-go").click();
+    await expect(safe.getByTestId("safe-result")).toHaveText("Записано полей: 1, карточек: 1");
+    await safe.getByRole("button", { name: "Закрыть", exact: true }).last().click();
+    await expect(sub).toHaveText("Ответов 2 из 5 · решено 1 · осталось 1");
+    expect(await descriptionOf(uuidOf(plain))).toContain(TEXT);
+    expect(await descriptionOf(held)).toBeNull();
+
+    // В ленте — что будет: бренда нет в каталоге, фото загрузятся, а с «Заменить целиком» — что удалится.
+    const feed = layer(page).getByTestId("feed-card");
+    await expect(feed.getByTestId("feed-new-brand")).toContainText(`Бренда «${NEW_BRAND}» нет в каталоге`);
+    await expect(feed.getByTestId("feed-photos")).toHaveText("Фото из ответа: 1 — загрузятся после «Принять»");
+    const toggle = feed.getByTestId("feed-replace-toggle");
+    await expect(toggle).not.toBeChecked();
+    await expect(feed.getByTestId("feed-removed")).toHaveCount(0);
+    await toggle.check();
+    await expect(feed.getByTestId("feed-removed")).toHaveText("Удалит характеристики: E2E Старое");
+
+    const sent = await fakePhotoImport(page);
+    await feed.getByTestId("feed-accept").click();
+    await expect(layer(page).getByTestId("manual-finished")).toBeVisible();
+    await expect.poll(() => sent).toEqual([photo]);
+    await expect(layer(page).getByText("добавлено 1")).toBeVisible();
+    expect(await descriptionOf(held)).toContain(TEXT);
+    expect((await specsOf(held))?.e2e_old).toBeUndefined();
+    expect((await placeOf(held)).brand).toBe(brandBefore);
+    expect(await query("SELECT id FROM brands WHERE name = ?", [NEW_BRAND])).toHaveLength(0);
+    const report = layer(page).getByTestId("batch-report");
+    await expect(report.getByTestId("batch-report-counts")).toHaveText("Записано 2 · отклонено 0 · ждут проверки 0 · не получилось 0 · без ответа 3");
+    await expect(report.getByTestId("report-brands")).toHaveCount(0);
+
+    // «Отменить»: описание и удалённая заменой характеристика вернулись, карточка снова в ленте.
+    await layer(page).getByTestId("feed-undo").click();
+    await expect(sub).toHaveText("Ответов 2 из 5 · решено 1 · осталось 1");
+    expect(await descriptionOf(held)).toBeNull();
+    expect(await specsOf(held)).toEqual({ e2e_old: "было" });
+    await expect(feed.getByTestId("feed-new-brand")).toBeVisible();
+  } finally {
+    if (held) await query("UPDATE products SET specs = NULL WHERE id = UUID_TO_BIN(?)", [held]);
+    await api.raw("delete", `/api/admin/spec-attributes/${(attr.body as { id: string }).id}?force=1`);
+    await setting(api, { "ai.enabled": null });
+  }
 });

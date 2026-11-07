@@ -291,3 +291,76 @@ test("ручной путь через ChatGPT: тот же экран пров�
   expect(job[0]).toMatchObject({ path: "MANUAL", pasted: 1, outcome: "APPLIED" });
   expect(job[0].cost ?? 0).toBe(0);
 });
+
+/** Две общие характеристики (TEXT) через API — их и проставим шарфу, а ответ ИИ их не назовёт. */
+async function twoAttributes(api: Api): Promise<string[]> {
+  const ids: string[] = [];
+  for (const [key, ru] of [["e2e_material", "E2E Материал"], ["e2e_length", "E2E Длина"]]) {
+    const res = await api.raw("post", "/api/admin/spec-attributes", { categoryId: null, key, labelRu: ru, labelUk: ru, labelEn: key, type: "TEXT", group: "main" });
+    expect(res.status).toBe(200);
+    ids.push((res.body as { id: string }).id);
+  }
+  return ids;
+}
+
+const specsOf = async () =>
+  (await query<{ specs: Record<string, unknown> | null; description: string | null }>("SELECT specs, description FROM products WHERE id = UUID_TO_BIN(?)", [PRODUCT.scarf]))[0];
+
+test("«Заменить характеристики целиком»: удалит, чего нет в ответе; «Отменить применение» вернёт и снова откроет проверку", async ({ page, api }) => {
+  await feature(api, true);
+  const attrs = await twoAttributes(api);
+  const before = await card(api);
+  const status = (await query<{ s: string }>("SELECT card_status s FROM products WHERE id = UUID_TO_BIN(?)", [PRODUCT.scarf]))[0].s;
+  try {
+    // Прямо в базу: импорт сменил бы статус карточки, а вход в ИИ здесь — со вкладки «Готово».
+    await query("UPDATE products SET specs = JSON_OBJECT('e2e_material', 'Шерсть', 'e2e_length', '180 см') WHERE id = UUID_TO_BIN(?)", [PRODUCT.scarf]);
+    const was = await specsOf();
+    expect(was.specs).toMatchObject({ e2e_material: "Шерсть", e2e_length: "180 см" });
+    // Ответ ИИ — одно описание, характеристик в нём нет.
+    const text = `E2E-ИИ замена ${Date.now()}`;
+    await fake("mode", { mode: "normal", description: text });
+
+    const modal = await openEntry(page, before.title);
+    await modal.getByRole("button", { name: "Заполнить с ИИ", exact: true }).click();
+    await page.getByRole("button", { name: "Запустить" }).click();
+    await expect(page.getByText("Готово — проверьте, что предложил ИИ")).toBeVisible();
+    await page.getByRole("button", { name: "Открыть проверку" }).click();
+    await expect(page).toHaveURL(/\/cards\/ai-review\/\d+$/);
+    const jobId = Number(new URL(page.url()).pathname.split("/").pop());
+
+    // Переключатель по умолчанию выключен и заранее называет, что удалится.
+    const toggle = page.getByTestId("replace-specs-toggle");
+    await expect(toggle).not.toBeChecked();
+    const removed = page.getByTestId("replace-specs-removed");
+    await expect(removed).toHaveText(/^Выключено\. Если включить, удалятся/);
+    for (const label of ["E2E Материал", "E2E Длина"]) await expect(removed).toContainText(label);
+    await toggle.check();
+    await expect(removed).toHaveText(/^Будут удалены характеристики, которых нет в ответе:/);
+    const box = page.getByLabel("Применить: Описание");
+    if (!(await box.isVisible())) await page.getByRole("button", { name: /Заменит значение/ }).click();
+    await box.check();
+    const sent = page.waitForRequest((r) => r.url().endsWith("/api/admin/cards/import") && r.method() === "PUT");
+    await page.getByRole("button", { name: "Применить (1)" }).click();
+    expect((await sent).postDataJSON()).toMatchObject({ replaceSpecs: true });
+    await expect(page.getByText("Результат применён")).toBeVisible();
+    await expect.poll(async () => (await specsOf()).description).toBe(text);
+    const after = await specsOf();
+    expect(after.specs?.e2e_material).toBeUndefined();
+    expect(after.specs?.e2e_length).toBeUndefined();
+
+    // Отмена за 24 часа: характеристики (и удалённые заменой) и описание — как были, задача снова ждёт проверки.
+    const bar = page.getByTestId("apply-undo");
+    await expect(bar).toContainText("Применение можно отменить ещё");
+    await bar.getByTestId("apply-undo-btn").click();
+    await expect(bar).toHaveCount(0);
+    await expect.poll(async () => (await specsOf()).specs).toMatchObject({ e2e_material: "Шерсть", e2e_length: "180 см" });
+    expect((await specsOf()).description).toBe(was.description);
+    expect((await query<{ outcome: string | null }>("SELECT outcome FROM ai_jobs WHERE id = ?", [jobId]))[0].outcome).toBeNull();
+    // Проверка начинается заново: можно применить ещё раз.
+    await expect(page.getByRole("button", { name: /^Применить \(\d+\)/ })).toBeVisible();
+    await expect(page.getByTestId("replace-specs-toggle")).not.toBeChecked();
+  } finally {
+    await query("UPDATE products SET specs = NULL, description = ?, card_status = ? WHERE id = UUID_TO_BIN(?)", [before.description ?? null, status, PRODUCT.scarf]);
+    for (const id of attrs) await api.raw("delete", `/api/admin/spec-attributes/${id}?force=1`);
+  }
+});

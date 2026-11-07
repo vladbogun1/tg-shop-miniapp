@@ -56,6 +56,8 @@ test("карточки: ответ ИИ → проверка → сохране�
   // Default storefront filter is «В работе» (on the storefront or new): both products are counted.
   await expect(tab(page, "Готово")).toBeVisible();
   await expect(page.getByTestId("cards-manual")).toHaveText(/^Через ChatGPT \(\d+\)$/);
+  // Счётчики вкладок приходят отдельным запросом: до него «Готово» показывает 0, а в сиде готовы оба товара.
+  await expect.poll(() => tabCount(page, "Готово")).toBeGreaterThanOrEqual(2);
   const before = { review: await tabCount(page, "Проверить"), ready: await tabCount(page, "Готово") };
 
   // The supply's link opens the manual batch of those products in a full-screen layer over the list.
