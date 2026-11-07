@@ -24,6 +24,21 @@ export function initialDraft(items: SettingItem[]): Draft {
   return d;
 }
 
+/**
+ * New server copy after a save: saved and untouched keys take the server value, while edits not yet saved (dirty
+ * against the previous copy) stay — a switch saved on its own must not wipe a limit being typed next to it.
+ */
+export function rebaseDraft(prev: SettingItem[], draft: Draft, fresh: SettingItem[]): Draft {
+  const before = new Map(prev.map((it) => [it.key, it]));
+  const d = initialDraft(fresh);
+  for (const it of fresh) {
+    const old = before.get(it.key);
+    const entry = draft[it.key];
+    if (old && entry && isDirty(old, entry) && isDirty(it, entry)) d[it.key] = entry;
+  }
+  return d;
+}
+
 function validateInt(item: SettingItem, raw: string | boolean): string | null {
   const s = String(raw).trim();
   if (!/^-?\d+$/.test(s)) return "Нужно целое число";

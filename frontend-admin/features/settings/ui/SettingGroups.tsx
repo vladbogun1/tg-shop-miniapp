@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import type { SettingView } from "@/features/ai";
 import type { SettingItem } from "../api";
 import { isDirty, type Draft } from "../model/draft";
 import { SettingField } from "./SettingField";
@@ -12,14 +13,23 @@ export interface GroupProps {
   draft: Draft;
   onChange: (key: string, raw: string | boolean) => void;
   onReset: (item: SettingItem) => void;
+  /** Числа, которые показываются не в единицах хранения (лимиты ИИ — доллары вместо центов). */
+  views?: Readonly<Record<string, SettingView>>;
 }
 
-export function GroupFields({ items, draft, onChange, onReset }: GroupProps) {
+export function GroupFields({ items, draft, onChange, onReset, views }: GroupProps) {
   return (
     <div className="flex min-w-0 flex-col gap-3">
       {items.map((it) =>
         draft[it.key] ? (
-          <SettingField key={it.key} item={it} entry={draft[it.key]} onChange={(raw) => onChange(it.key, raw)} onReset={() => onReset(it)} />
+          <SettingField
+            key={it.key}
+            item={it}
+            entry={draft[it.key]}
+            view={views?.[it.key]}
+            onChange={(raw) => onChange(it.key, raw)}
+            onReset={() => onReset(it)}
+          />
         ) : null,
       )}
     </div>

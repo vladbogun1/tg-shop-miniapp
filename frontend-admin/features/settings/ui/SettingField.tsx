@@ -1,6 +1,8 @@
 "use client";
 
 import { RotateCcw } from "lucide-react";
+import { useEffect, useState } from "react";
+import type { SettingView } from "@/features/ai";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -15,18 +17,24 @@ function SettingControl({
   item,
   entry,
   error,
+  view,
   onChange,
 }: {
   item: SettingItem;
   entry: DraftEntry;
   error: string | null;
+  view?: SettingView;
   onChange: (raw: string | boolean) => void;
 }) {
   switch (item.type) {
     case "BOOL":
       return <Toggle checked={Boolean(entry.raw)} onChange={onChange} label={entry.raw ? "Включено" : "Выключено"} />;
     case "INT":
-      return <IntControl item={item} entry={entry} error={error} onChange={onChange} />;
+      return view ? (
+        <ViewControl item={item} entry={entry} view={view} onChange={onChange} />
+      ) : (
+        <IntControl item={item} entry={entry} error={error} onChange={onChange} />
+      );
     case "SELECT":
       return (
         <div className="w-full">
@@ -60,6 +68,35 @@ function IntControl({ item, entry, error, onChange }: ControlProps) {
             <span className="font-display text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-faint)]">{item.unit}</span>
           ) : undefined
         }
+      />
+    </div>
+  );
+}
+
+/**
+ * Число в единицах показа (`view`): своё текстовое состояние, чтобы «2,» не превращалось в «2» на ходу; правка
+ * уходит в форму в единицах сервера. Сброс или новая копия сервера заменяют текст.
+ */
+function ViewControl({ item, entry, view, onChange }: { item: SettingItem; entry: DraftEntry; view: SettingView; onChange: (raw: string) => void }) {
+  const raw = String(entry.raw);
+  const [text, setText] = useState(() => view.toView(raw));
+  useEffect(() => {
+    setText((t) => (view.fromView(t) === raw ? t : view.toView(raw)));
+  }, [raw, view]);
+  const error = view.check(text);
+  return (
+    <div className="w-full">
+      <Input
+        aria-label={item.label}
+        inputMode="decimal"
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          onChange(view.fromView(e.target.value));
+        }}
+        error={error ?? undefined}
+        hint={error ? undefined : (view.note(raw) ?? undefined)}
+        rightSlot={<span className="font-display text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-faint)]">{view.unit}</span>}
       />
     </div>
   );
@@ -104,12 +141,14 @@ export function SettingField({
   onChange,
   onReset,
   labelOverride,
+  view,
 }: {
   item: SettingItem;
   entry: DraftEntry;
   onChange: (raw: string | boolean) => void;
   onReset: () => void;
   labelOverride?: string;
+  view?: SettingView;
 }) {
   const error = validate(item, entry.raw);
   const dirty = isDirty(item, entry);
@@ -134,12 +173,15 @@ export function SettingField({
           </div>
           <p className="mt-1 text-[12px] leading-snug text-[var(--text-muted)]">{item.description}</p>
         </div>
-        <SettingControl item={item} entry={entry} error={error} onChange={onChange} />
+        <SettingControl item={item} entry={entry} error={error} view={view} onChange={onChange} />
       </div>
 
       <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2 text-[12px] text-[var(--text-faint)]">
         <span className="min-w-0">
-          По умолчанию: <b className="text-[var(--text-muted)]">{formatValue(item, item.defaultValue)}</b>
+          По умолчанию:{" "}
+          <b className="text-[var(--text-muted)]">
+            {view ? `${view.toView(String(item.defaultValue))} ${view.unit}` : formatValue(item, item.defaultValue)}
+          </b>
           {changedAt && !dirty && (
             <span className="block sm:inline">
               <span className="hidden sm:inline"> · </span>
