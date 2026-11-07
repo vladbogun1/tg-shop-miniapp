@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import java.util.function.LongPredicate;
 
 import static com.maxsolch.shop.platform.util.Texts.ellipsize;
 import static com.maxsolch.shop.platform.util.Texts.nullToEmpty;
@@ -209,12 +210,17 @@ public class AdminPushService {
 
     /** Fire-and-forget to every subscribed device; never throws. */
     public void notifyAdmins(PushMessage message) {
+        notifyAdmins(message, adminId -> true);
+    }
+
+    /** The same, to the devices of the admins the filter accepts (the AI warnings go to those who see the money). */
+    public void notifyAdmins(PushMessage message, LongPredicate admins) {
         if (!enabled()) {
             return;
         }
         executor.execute(() -> {
             try {
-                List<Subscription> subs = store.all();
+                List<Subscription> subs = store.all().stream().filter(s -> admins.test(s.adminId())).toList();
                 if (!subs.isEmpty()) {
                     journal(message, sendTo(subs, message));
                 }

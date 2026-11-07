@@ -6,6 +6,7 @@ import com.maxsolch.shop.ai.domain.AiUsage;
 import com.maxsolch.shop.ai.domain.SearchEngine;
 import com.maxsolch.shop.ai.domain.SearchEngine.Hit;
 import com.maxsolch.shop.ai.domain.SearchEngine.Outcome;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import org.junit.jupiter.api.Test;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 
@@ -29,6 +30,12 @@ class WebSearchTest {
     private final AiUsageLog usage = mock(AiUsageLog.class);
     private final ConcurrentMapCacheManager caches = new ConcurrentMapCacheManager(AiCaches.SEARCH_COOLDOWN.name());
     private final Clock clock = Clock.fixed(Instant.parse("2026-11-07T10:00:00Z"), ZoneOffset.UTC);
+    private final AiPolicy policy = mock(AiPolicy.class);
+    private final DomainEvents events = mock(DomainEvents.class);
+
+    WebSearchTest() {
+        org.mockito.Mockito.when(policy.searchProviderAllowed(any())).thenReturn(true);
+    }
 
     private static final Hit RAZER = new Hit("Viper", "https://razer.com/v3", "54 g");
     private static final Hit OURS = new Hit("Наш магазин", "https://chisetup.com.ua/p/viper", "");
@@ -89,7 +96,7 @@ class WebSearchTest {
 
     @Test
     void noProviderConfiguredIsJournalledAsAFailedSearch() {
-        WebSearch.Found found = new WebSearch(List.of(), usage, caches, clock).search(AiScope.of(AiFeature.CARD), "q", 8);
+        WebSearch.Found found = new WebSearch(List.of(), usage, caches, clock, policy, events).search(AiScope.of(AiFeature.CARD), "q", 8);
 
         assertThat(found.empty()).isTrue();
         verify(usage).call(eq(AiScope.of(AiFeature.CARD)), eq(AiUsage.Kind.SEARCH), eq("none"), eq(AiUsage.Result.FAILED), eq(0L),
@@ -112,7 +119,7 @@ class WebSearchTest {
     }
 
     private WebSearch chain(SearchEngine... engines) {
-        return new WebSearch(List.of(engines), usage, caches, clock);
+        return new WebSearch(List.of(engines), usage, caches, clock, policy, events);
     }
 
     private static final class Engine implements SearchEngine {

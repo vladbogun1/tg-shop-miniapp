@@ -72,6 +72,14 @@ public class AiUsage {
     @Column(name = "note", length = 255)
     private String note;
 
+    /** The job this line belongs to (V88); null for a call outside a job. */
+    @Column(name = "job_id")
+    private Long jobId;
+
+    /** The admin who started that job. */
+    @Column(name = "admin_id")
+    private Long adminId;
+
     public static AiUsage model(Instant at, AiScope scope, String model, TokenUsage tokens, long costMicroUsd, long ms,
                                 String note) {
         AiUsage u = base(at, scope, Kind.MODEL, model, note == null ? Result.OK : Result.FAILED, costMicroUsd, ms, note);
@@ -91,6 +99,8 @@ public class AiUsage {
         AiUsage u = new AiUsage();
         u.createdAt = at;
         u.feature = scope.feature();
+        u.jobId = scope.jobId();
+        u.adminId = scope.adminId();
         u.kind = kind;
         u.provider = provider;
         u.result = result;

@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
  *       are spent (or turns run out) the next call is made with tools off — the model must answer;</li>
  *   <li>when the prompt asks for a {@code ```json} block and the answer has none that parses — one repair turn without
  *       tools (the model gets the parse error and sends the block again);</li>
- *   <li>the monthly limit is checked before every model call; every call is a line in {@code ai_usage}.</li>
+ *   <li>the gate (cancel, switch, limits, ceiling) is asked before every model call; every call is a line in {@code ai_usage}.</li>
  * </ol>
  */
 @Service
@@ -42,7 +42,20 @@ public class AiAgent {
     /**
      * @param researchItems how many products the prompt is about (scales the search budget); 0 = no tools
      */
-    public record Ask(AiScope scope, String prompt, String effort, int researchItems) {
+    public record Ask(AiScope scope, String prompt, String effort, int researchItems, Gate gate) {
+
+        public Ask(AiScope scope, String prompt, String effort, int researchItems) {
+            this(scope, prompt, effort, researchItems, Gate.OPEN);
+        }
+    }
+
+    /** Asked before every model turn: throws to stop the run (canceled, switched off, over a limit or a deadline). */
+    @FunctionalInterface
+    public interface Gate {
+        Gate OPEN = () -> {
+        };
+
+        void beforeTurn();
     }
 
     public record Answer(String text, String model, long costMicroUsd, TokenUsage tokens, int modelCalls, int searches,
@@ -161,7 +174,7 @@ public class AiAgent {
         }
 
         private Reply send(Request request) {
-            usage.ensureWithinLimit();
+            ask.gate().beforeTurn();
             long t0 = clock.millis();
             try {
                 Reply r = model.send(request);

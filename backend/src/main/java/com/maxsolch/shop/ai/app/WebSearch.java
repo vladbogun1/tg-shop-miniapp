@@ -1,6 +1,8 @@
 package com.maxsolch.shop.ai.app;
 
+import com.maxsolch.shop.ai.domain.AiEvents;
 import com.maxsolch.shop.ai.domain.AiScope;
+import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.ai.domain.AiUsage;
 import com.maxsolch.shop.ai.domain.SearchEngine;
 import com.maxsolch.shop.ai.domain.SearchEngine.Hit;
@@ -44,9 +46,14 @@ public class WebSearch {
     private final AiUsageLog usage;
     private final Cache cooldown;
     private final Clock clock;
+    private final AiPolicy policy;
+    private final DomainEvents events;
 
-    public WebSearch(List<SearchEngine> engines, AiUsageLog usage, CacheManager caches, Clock clock) {
+    public WebSearch(List<SearchEngine> engines, AiUsageLog usage, CacheManager caches, Clock clock, AiPolicy policy,
+                     DomainEvents events) {
         this.engines = engines.stream().sorted(Comparator.comparingInt(SearchEngine::order)).toList();
+        this.policy = policy;
+        this.events = events;
         this.usage = usage;
         this.cooldown = CacheConfig.require(caches, AiCaches.SEARCH_COOLDOWN.name());
         this.clock = clock;
@@ -62,7 +69,8 @@ public class WebSearch {
         boolean asked = false;
         for (boolean resting : new boolean[]{false, true}) {
             for (SearchEngine engine : engines) {
-                if (!engine.enabled() || (cooldown.get(engine.name()) != null) != resting) {
+                if (!engine.enabled() || (cooldown.get(engine.name()) != null) != resting
+                        || !policy.searchProviderAllowed(engine.name())) {
                     continue;
                 }
                 asked = true;
@@ -73,6 +81,9 @@ public class WebSearch {
                 }
             }
             if (asked) {
+                if (allResting()) {
+                    events.publish(new AiEvents.SearchDown());
+                }
                 return new Found(List.of(), null, cost);
             }
         }
@@ -96,6 +107,12 @@ public class WebSearch {
         usage.call(feature, AiUsage.Kind.SEARCH, engine.name(),
                 hits.isEmpty() ? AiUsage.Result.EMPTY : AiUsage.Result.OK, engine.costMicroUsd(), ms, null);
         return new Found(hits, engine.name(), engine.costMicroUsd());
+    }
+
+    /** Every provider that may be asked is resting after a failure: the model is blind, the owner must hear it. */
+    private boolean allResting() {
+        return engines.stream().filter(e -> e.enabled() && policy.searchProviderAllowed(e.name()))
+                .allMatch(e -> cooldown.get(e.name()) != null);
     }
 
     /** Providers in chain order with whether each is configured and whether it is resting after a failure. */

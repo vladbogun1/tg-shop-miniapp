@@ -52,7 +52,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(properties = {
         // StartupSecurityCheck refuses the public placeholder of application.yml. A throw-away test value:
         "app.security.jwt-secret=dGVzdC1vbmx5LWp3dC1zZWNyZXQtZm9yLWludGVncmF0aW9uLXRlc3Rz",
-        "app.geoip.enabled=false"
+        "app.geoip.enabled=false",
+        // the AI queue worker is driven by hand in the AI tests (it would take their jobs)
+        "app.ai.worker-enabled=false"
 })
 @Import(AbstractMysqlIT.InlineNotifications.class)
 public abstract class AbstractMysqlIT {

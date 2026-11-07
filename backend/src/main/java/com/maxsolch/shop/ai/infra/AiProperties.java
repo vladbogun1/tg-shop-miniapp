@@ -22,6 +22,8 @@ public class AiProperties {
     /** Spend limit per calendar month (shop time zone), USD cents; 0 = no limit. */
     @Min(0)
     private long monthLimitCents = 1000;
+    /** Whether this instance takes AI jobs from the queue (off in integration tests, which drive the queue by hand). */
+    private boolean workerEnabled = true;
 
     @Getter
     @Setter

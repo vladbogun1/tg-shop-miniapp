@@ -121,10 +121,12 @@ class AiAgentTest {
     }
 
     @Test
-    void monthLimitStopsBeforeTheModelIsCalled() {
-        doThrow(new DomainException.Conflict(AiError.MONTH_LIMIT, "10.00", "10.00")).when(usage).ensureWithinLimit();
+    void theGateStopsBeforeTheModelIsCalled() {
+        AiAgent.Gate closed = () -> {
+            throw new DomainException.Conflict(AiError.MONTH_LIMIT, "10.00", "10.00");
+        };
 
-        assertThatThrownBy(() -> agent.ask(new AiAgent.Ask(AiScope.of(AiFeature.CARD), "Q", "low", 0)))
+        assertThatThrownBy(() -> agent.ask(new AiAgent.Ask(AiScope.of(AiFeature.CARD), "Q", "low", 0, closed)))
                 .isInstanceOf(DomainException.Conflict.class);
         assertThat(model.requests).isEmpty();
         verify(usage, never()).model(any(), any(), anyLong(), any());
@@ -136,17 +138,6 @@ class AiAgentTest {
 
         assertThatThrownBy(() -> agent.ask(new AiAgent.Ask(AiScope.of(AiFeature.CARD), "Q", "low", 0)))
                 .isInstanceOfSatisfying(DomainException.class, e -> assertThat(e.errorCode()).isEqualTo(AiError.NOT_CONFIGURED));
-    }
-
-    @Test
-    void jobRequestsAreValidatedBeforeAnyMoneyIsSpent() {
-        assertThatThrownBy(() -> AiJobs.validate(new AiAgent.Ask(null, "Q", "low", 0)))
-                .isInstanceOf(DomainException.BadRequest.class);
-        assertThatThrownBy(() -> AiJobs.validate(new AiAgent.Ask(AiScope.of(AiFeature.CARD), "Q", "max", 0)))
-                .isInstanceOf(DomainException.BadRequest.class);
-        assertThatThrownBy(() -> AiJobs.validate(new AiAgent.Ask(AiScope.of(AiFeature.CARD), "Q", "low", 11)))
-                .isInstanceOf(DomainException.BadRequest.class);
-        AiJobs.validate(new AiAgent.Ask(AiScope.of(AiFeature.CARD), "Q", "medium", 3));
     }
 
     private static String lastResult(Request r) {

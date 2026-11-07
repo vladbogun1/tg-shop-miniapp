@@ -71,6 +71,9 @@ public class MiniMaxChat implements ChatModel {
                 Thread.sleep(OVERLOAD_PAUSE_MS);
                 res = post(body);
             }
+            if (res.statusCode() == 401 || res.statusCode() == 402 || res.statusCode() == 403) {
+                throw new DomainException.Unavailable(AiError.KEY_REJECTED, "HTTP " + res.statusCode());
+            }
             if (res.statusCode() != 200) {
                 throw failed("HTTP " + res.statusCode() + " " + shorten(res.body()));
             }

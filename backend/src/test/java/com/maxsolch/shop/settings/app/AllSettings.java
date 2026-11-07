@@ -1,5 +1,7 @@
 package com.maxsolch.shop.settings.app;
 
+import com.maxsolch.shop.ai.app.AiSettings;
+import com.maxsolch.shop.ai.infra.AiProperties;
 import com.maxsolch.shop.analytics.app.StockSettings;
 import com.maxsolch.shop.delivery.app.DeliverySettings;
 import com.maxsolch.shop.gift.app.GiftSettings;
@@ -27,7 +29,8 @@ public final class AllSettings {
         return new SettingsCatalog(List.of(new PromoSettings(), new PaymentSettings(), new StockSettings(),
                 new OrderSettings(), new ReviewSettings(), new InboxSettings(), new AntibotSettings(),
                 new SupportSettings(), new BotSettings(), new DeliverySettings(), new GiftSettings(),
-                new PreorderSettings(), new ProcurementSettings()));
+                new PreorderSettings(), new ProcurementSettings(),
+                new AiSettings(new AiProperties())));
     }
 
     public static SettingDefinition def(String key) {
