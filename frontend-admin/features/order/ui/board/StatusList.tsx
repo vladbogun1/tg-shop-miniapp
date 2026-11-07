@@ -9,6 +9,7 @@ import { ChevronRight, CircleCheck, Inbox, Package, Sparkles, Truck, Undo2, X } 
 import type { ComponentType } from "react";
 import { money } from "@/lib/money";
 import type { AdminBoard } from "../../api";
+import { isClosedColumn } from "../../model/board";
 import { BOARD_LABEL, BOARD_ORDER, BOARD_VAR, RETURNING, returningMinor, type BoardKey } from "../../model/status";
 
 const ICON: Record<BoardKey, ComponentType<{ className?: string }>> = {
@@ -34,7 +35,15 @@ function previewOf(board: AdminBoard, key: BoardKey): string {
   return `${first.customerName || "Без имени"}, ${money(minor, first.currency)}`;
 }
 
-function Row({ board, statusKey, onPick }: { board: AdminBoard; statusKey: BoardKey; onPick: (s: BoardKey) => void }) {
+interface RowProps {
+  board: AdminBoard;
+  statusKey: BoardKey;
+  /** Closed statuses count only the chosen period — say which, or «12» reads as all-time. */
+  period: string;
+  onPick: (s: BoardKey) => void;
+}
+
+function Row({ board, statusKey, period, onPick }: RowProps) {
   const Icon = ICON[statusKey] ?? Inbox;
   const count = board.counts?.[statusKey] ?? board.columns[statusKey]?.length ?? 0;
   const sum = sumOf(board, statusKey);
@@ -51,7 +60,10 @@ function Row({ board, statusKey, onPick }: { board: AdminBoard; statusKey: Board
             <span className="text-[15px] font-semibold text-[var(--text)]">{BOARD_LABEL[statusKey]}</span>
             {sum != null && count > 0 && <span className="tabular shrink-0 text-[12px] text-[var(--text-muted)]">{money(sum, "UAH")}</span>}
           </span>
-          <span className="mt-0.5 block truncate text-[12.5px] text-[var(--text-muted)]">{previewOf(board, statusKey)}</span>
+          <span className="mt-0.5 block truncate text-[12.5px] text-[var(--text-muted)]">
+            {isClosedColumn(statusKey) && <span className="text-[var(--text-faint)]">{period} · </span>}
+            {previewOf(board, statusKey)}
+          </span>
         </span>
         <span
           className={
@@ -67,11 +79,11 @@ function Row({ board, statusKey, onPick }: { board: AdminBoard; statusKey: Board
   );
 }
 
-export function StatusList({ board, onPick }: { board: AdminBoard; onPick: (s: BoardKey) => void }) {
+export function StatusList({ board, period, onPick }: { board: AdminBoard; period: string; onPick: (s: BoardKey) => void }) {
   return (
     <ul className="m-0 list-none p-0">
       {BOARD_ORDER.map((s) => (
-        <Row key={s} board={board} statusKey={s} onPick={onPick} />
+        <Row key={s} board={board} statusKey={s} period={period} onPick={onPick} />
       ))}
     </ul>
   );

@@ -229,8 +229,10 @@ export function OrderChat({ orderId }: { orderId: string }) {
             }
           }}
           rows={coarse ? 2 : 1}
-          placeholder={coarse ? "Сообщение клиенту…" : "Сообщение клиенту… (Shift+Enter — новая строка, можно вставить фото)"}
-          className="thin-scroll max-h-32 min-h-11 min-w-0 flex-1 resize-none rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-[11px] text-[14px] leading-5 text-[var(--text)] outline-none transition-[border-color,box-shadow] placeholder:truncate placeholder:text-[13px] placeholder:text-[var(--text-faint)] hover:border-[var(--border-2)] focus:border-[var(--accent)] focus:shadow-[var(--ring-accent)]"
+          // The hint lives in the tooltip: in the narrow two-column card the placeholder was cut mid-word.
+          placeholder="Сообщение клиенту…"
+          title={coarse ? undefined : "Enter — отправить, Shift+Enter — новая строка, можно вставить фото"}
+          className="thin-scroll max-h-32 min-h-11 min-w-0 flex-1 resize-none rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-[11px] text-[14px] leading-5 text-[var(--text)] outline-none transition-[border-color,box-shadow] pointer-fine:placeholder:truncate placeholder:text-[13px] placeholder:text-[var(--text-faint)] hover:border-[var(--border-2)] focus:border-[var(--accent)] focus:shadow-[var(--ring-accent)]"
         />
         <Button
           variant="accent"

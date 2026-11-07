@@ -9,8 +9,9 @@
  *    of the screen as a single scroll container (see DesktopBoard);
  *  - phone: a list of statuses (like a chat list) with a short summary of each; a tap opens the status.
  *    A sticky panel under the top bar holds the search (it folds away while scrolling down and comes
- *    back on the first scroll up) and, inside a status, «‹ name  count · sum»; the period (closed
- *    statuses, table) sits under the panel; board/table and refresh are behind «⋯».
+ *    back on the first scroll up) and, inside a status, «‹ name  count · sum»; the period button
+ *    (status list, closed statuses, table) sits under the panel and opens a sheet like on the metrics
+ *    page; board/table and refresh are behind «⋯».
  */
 import { useIsFetching } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -19,6 +20,7 @@ import { useHideOnScroll } from "@/lib/use-hide-on-scroll";
 import type { AdminBoard } from "../api";
 import { orderKeys } from "../keys";
 import { CLOSED_PAGE, isClosedColumn, onlyPaidNew, parseBoardLink } from "../model/board";
+import type { BoardKey } from "../model/status";
 import type { OrdersView } from "../model/view";
 import { useBoardQuery, useRefreshOrders } from "../queries/board";
 import { BoardView } from "./board/BoardView";
@@ -29,7 +31,7 @@ import { NewOrderModal } from "./new-order/NewOrderModal";
 import { MoreButton, NewOrderButton, OrdersToolbar, RefreshButton } from "./OrdersToolbar";
 import { OrdersMoreSheet } from "./OrdersMoreSheet";
 import { OrdersStickyPanel } from "./OrdersStickyPanel";
-import { OrdersPeriodPicker } from "./OrdersPeriodPicker";
+import { OrdersPeriodButton } from "./OrdersPeriodSheet";
 import { OrdersTable } from "./table/OrdersTable";
 import { useIsKanban } from "./use-is-kanban";
 import { useOrdersPeriod } from "./use-orders-period";
@@ -38,6 +40,18 @@ import { useStatusNav } from "./use-status-nav";
 /** What the status header counts: the same filtered board the cards come from. */
 function shownBoard(board: AdminBoard | undefined, paidNewOnly: boolean): AdminBoard | undefined {
   return board && paidNewOnly ? onlyPaidNew(board) : board;
+}
+
+/**
+ * Where the period control shows. It matters only for the closed columns / the table. Phone: also on
+ * the status list — the closed statuses' counters there depend on the period.
+ */
+function periodPlaces(view: OrdersView, phone: boolean, tab: BoardKey | null) {
+  const table = view === "table";
+  return {
+    showRange: table || !phone || (tab !== null && isClosedColumn(tab)),
+    phonePeriod: phone && (table || tab === null || isClosedColumn(tab)),
+  };
 }
 
 export function OrdersScreen() {
@@ -81,7 +95,7 @@ export function OrdersScreen() {
   }
 
   // The period matters only for the closed columns / the table.
-  const showRange = view === "table" || !phone || (mobileTab !== null && isClosedColumn(mobileTab));
+  const { showRange, phonePeriod } = periodPlaces(view, phone, mobileTab);
   const statusOpen = phone && view === "board" && mobileTab !== null;
 
   const newOrderButton = <NewOrderButton onClick={() => setNewOpen(true)} />;
@@ -123,9 +137,9 @@ export function OrdersScreen() {
         )}
       </OrdersStickyPanel>
 
-      {phone && showRange && (
+      {phonePeriod && (
         <div className="mt-2">
-          <OrdersPeriodPicker value={period} onChange={setPeriod} />
+          <OrdersPeriodButton value={period} onChange={setPeriod} scope={view === "table" ? "все заказы" : "Доставлен и Отклонён"} />
         </div>
       )}
 

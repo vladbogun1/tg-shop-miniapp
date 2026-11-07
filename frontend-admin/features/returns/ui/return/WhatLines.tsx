@@ -42,7 +42,10 @@ export function PaidLineRow({ w, it, cur }: { w: ReturnWizard; it: ReturnOrderIt
       <div className="flex items-center gap-3">
         <Thumb item={it} dim={q === 0} />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[13.5px] font-semibold text-[var(--text)]">{it.title}</div>
+          {/* Two lines, not one: at 320 px the «Вернуть» toggle left room for three letters of the name. */}
+          <div className="line-clamp-2 break-words text-[13.5px] font-semibold text-[var(--text)]" title={it.title}>
+            {it.title}
+          </div>
           <div className="text-[12px] text-[var(--text-faint)]">
             {it.variantName ? `${it.variantName} · ` : ""}
             {money(unitPaid(it), cur)}/шт. · в заказе {max} шт.

@@ -36,11 +36,12 @@ export function CommandPaletteButton() {
         onClick={() => setOpen(true)}
         aria-label="Поиск: разделы, заказы, товары, покупатели"
         title="Поиск (Ctrl+K)"
-        className="nb-press focusable hidden h-10 items-center gap-2 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface)] px-3 text-[13px] text-[var(--text-faint)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text)] lg:flex"
+        className="nb-press focusable flex h-10 items-center gap-2 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface)] px-3 text-[13px] max-lg:w-10 max-lg:justify-center max-lg:px-0 pointer-coarse:h-11 pointer-coarse:max-lg:w-11 text-[var(--text-faint)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--text)] lg:flex"
       >
+        {/* Phone/tablet: just the magnifier — there is no keyboard for Ctrl K, so this is the only way in. */}
         <Search className="h-4 w-4" />
-        <span>Поиск</span>
-        <kbd className="tabular rounded border border-[var(--line)] px-1.5 text-[11px]">Ctrl K</kbd>
+        <span className="max-lg:hidden">Поиск</span>
+        <kbd className="tabular rounded max-lg:hidden border border-[var(--line)] px-1.5 text-[11px]">Ctrl K</kbd>
       </button>
       <PaletteDialog open={open} onClose={() => setOpen(false)} />
     </>

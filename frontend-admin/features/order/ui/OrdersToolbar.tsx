@@ -19,17 +19,17 @@ export function RefreshButton({ spinning, onClick }: { spinning: boolean; onClic
       onClick={onClick}
       aria-label="Обновить"
       title="Обновить"
-      className="max-xl:w-11 max-xl:px-0"
+      compactBelow="xl"
     >
-      <span className="max-xl:hidden">Обновить</span>
+      Обновить
     </Button>
   );
 }
 
 export function NewOrderButton({ onClick }: { onClick: () => void }) {
   return (
-    <Button variant="accent" icon={<Plus className="h-4 w-4" />} onClick={onClick} aria-label="Новый заказ" title="Новый заказ" className="max-xl:w-11 max-xl:px-0">
-      <span className="max-xl:hidden">Новый заказ</span>
+    <Button variant="accent" icon={<Plus className="h-4 w-4" />} onClick={onClick} aria-label="Новый заказ" title="Новый заказ" compactBelow="xl">
+      Новый заказ
     </Button>
   );
 }
@@ -37,7 +37,7 @@ export function NewOrderButton({ onClick }: { onClick: () => void }) {
 /** Phone: «⋯» holds what is rare there — the board/table switch and the refresh; it spins while the board loads. */
 export function MoreButton({ onClick, spinning }: { onClick: () => void; spinning: boolean }) {
   const icon = spinning ? <RefreshCw className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />;
-  return <Button variant="surface" icon={icon} onClick={onClick} aria-label="Ещё" aria-haspopup="dialog" aria-busy={spinning} className="w-11 px-0" />;
+  return <Button variant="surface" icon={icon} onClick={onClick} aria-label="Ещё" aria-haspopup="dialog" aria-busy={spinning} className="aspect-square shrink-0 !px-0" />;
 }
 
 interface Props {

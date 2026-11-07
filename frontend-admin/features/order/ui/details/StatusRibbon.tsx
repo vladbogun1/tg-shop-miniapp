@@ -24,12 +24,16 @@ export function StatusRibbon({ order }: { order: AdminOrderDetail }) {
         {steps.map((s, i) => {
           const done = s === "REJECTED" || i <= reachedIdx;
           const color = STATUS_VAR[s];
+          // Narrow phone: only the current step keeps its word, the rest are dots (full name in the tooltip/tap line).
+          const current = rejected ? s === "REJECTED" : i === reachedIdx;
           return (
-            <li key={s} className="flex min-w-0 flex-1 items-center gap-1">
+            <li key={s} className={cn("flex min-w-0 flex-1 items-center gap-1", current && "max-[479px]:flex-none")}>
               <button
                 type="button"
                 onClick={() => setPicked(picked === s ? null : s)}
                 aria-pressed={picked === s}
+                title={STATUS_LABEL[s]}
+                aria-label={STATUS_LABEL[s]}
                 className={cn(
                   "font-display hit flex min-h-8 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[var(--r-sm)] px-1 text-[11px] font-semibold uppercase tracking-[0.04em] transition-colors pointer-coarse:min-h-11",
                   picked === s && "bg-[var(--surface-3)]",
@@ -44,7 +48,7 @@ export function StatusRibbon({ order }: { order: AdminOrderDetail }) {
                     boxShadow: done ? undefined : "inset 0 0 0 1.5px var(--line-strong)",
                   }}
                 />
-                <span className="truncate">{STATUS_LABEL[s]}</span>
+                <span className={cn("truncate", !current && "max-[479px]:hidden")}>{STATUS_LABEL[s]}</span>
               </button>
               {i < steps.length - 1 && <span aria-hidden className="h-px w-3 shrink-0 bg-[var(--line-strong)]" />}
             </li>

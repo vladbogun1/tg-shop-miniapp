@@ -6,7 +6,8 @@ import { expect, test } from "../lib/test";
 test("телефон: «Ещё» → «Мой аккаунт» — 2FA включена, история входов видна", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Ещё — все разделы" }).click();
-  const menu = page.getByRole("complementary", { name: "Все разделы" });
+  // The phone menu is a modal layer (Esc, focus, scroll lock) — a dialog, not an aside landmark.
+  const menu = page.getByRole("dialog", { name: "Все разделы" });
   await menu.getByRole("link", { name: "Мой аккаунт" }).click();
   await expect(page).toHaveURL(/\/account$/);
 

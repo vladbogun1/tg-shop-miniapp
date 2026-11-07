@@ -17,7 +17,7 @@ import { Drawer } from "@shop/ui/overlay";
 import { Badge } from "@/components/ui/Badge";
 import { Tabs } from "@/components/ui/Tabs";
 import { money } from "@/lib/money";
-import { formatDate, timeAgo } from "@shop/core/time";
+import { formatMoment, timeAgo } from "@shop/core/time";
 import { avgCheckMinor, displayName, initials, telegramHref } from "../../model/user";
 import type { UserCardDto } from "../../model/types";
 import { ProfileData } from "./ProfileData";
@@ -80,7 +80,8 @@ function Summary({ user }: { user: UserCardDto }) {
       <Cell label="Средний чек" value={user.ordersCount > 0 ? money(avgCheckMinor(user)) : "—"} />
       <Cell
         label="Регистрация"
-        value={user.createdAt ? formatDate(user.createdAt) : "—"}
+        // Numeric: «05 ноября 2026 г.» did not fit the 20 px cell and was cut even on a 1440 screen.
+        value={user.createdAt ? formatMoment(user.createdAt, { day: "2-digit", month: "2-digit", year: "numeric" }) : "—"}
         sub={user.lastSeenAt ? `был(а) ${timeAgo(user.lastSeenAt)}` : undefined}
       />
     </div>
@@ -106,10 +107,10 @@ function Actions({ user, onWrite }: { user: UserCardDto; onWrite?: (u: UserCardD
           href={telegramHref(user)}
           target="_blank"
           rel="noreferrer"
-          className="focusable nb-press font-display inline-flex h-10 items-center gap-2 rounded-[var(--r-md)] border border-[var(--border-2)] bg-[var(--surface-2)] px-4 text-[12.5px] font-bold uppercase tracking-[0.06em] text-[var(--text)] transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-3)] pointer-coarse:h-11 max-sm:flex-1 max-sm:justify-center"
+          className="focusable nb-press font-display inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-[var(--r-md)] border border-[var(--border-2)] bg-[var(--surface-2)] px-4 text-[12.5px] font-bold uppercase tracking-[0.06em] text-[var(--text)] transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-3)] pointer-coarse:h-11 max-sm:flex-1 max-sm:justify-center"
         >
           <Send className="h-4 w-4 text-[var(--accent)]" />
-          Открыть в Telegram
+          <span className="max-[359px]:hidden">Открыть в</span> Telegram
         </a>
       </div>
       {user.botBlocked && onWrite && (

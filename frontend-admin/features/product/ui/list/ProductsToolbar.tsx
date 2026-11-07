@@ -113,8 +113,9 @@ export function ProductsToolbar({ s }: { s: ProductsScreenState }) {
   const n = s.activeFilters;
   return (
     <>
-      <div className="flex items-center gap-2">
-        <div className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3 transition-[border-color,box-shadow] focus-within:border-[var(--accent)] focus-within:shadow-[var(--ring-accent)] sm:max-w-[360px] pointer-coarse:h-11">
+      {/* Phone: search on its own row — next to «Фильтры» and the view toggle it was cut to «Поиск п…». */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex h-10 min-w-0 flex-1 items-center gap-2 max-sm:basis-full rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] px-3 transition-[border-color,box-shadow] focus-within:border-[var(--accent)] focus-within:shadow-[var(--ring-accent)] sm:max-w-[360px] pointer-coarse:h-11">
           <Search className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />
           <input
             value={s.search}

@@ -97,7 +97,7 @@ export function BrandsList({
                   </button>
                   {dupes.has(b.id) && <span className="ml-2 rounded-[var(--r-sm)] bg-[color-mix(in_srgb,var(--warn)_18%,transparent)] px-1.5 py-0.5 text-[10.5px] font-semibold text-[var(--warn)]">дубликат?</span>}
                 </td>
-                <td className="font-mono text-[12px] text-[var(--text-muted)]">{b.slug}</td>
+                <td className="whitespace-nowrap font-mono text-[12px] text-[var(--text-muted)]">{b.slug}</td>
                 <td className="hidden xl:table-cell">
                   <SiteLink website={b.website} />
                 </td>

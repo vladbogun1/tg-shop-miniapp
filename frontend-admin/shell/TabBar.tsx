@@ -10,7 +10,7 @@ import { useInbox } from "@/features/inbox";
 import { TABS, isActive } from "./nav-config";
 
 const TAB_CELL =
-  "font-display relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 pt-1 text-[10.5px] font-semibold uppercase leading-none tracking-[0.06em] transition-colors";
+  "font-display relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 pt-1 text-[10.5px] font-semibold uppercase leading-none tracking-[0.06em] transition-colors max-[359px]:tracking-normal";
 
 /** Tab icon box; the active colour comes from the cell (orange icon + label). */
 function TabIcon({ children }: { children: ReactNode }) {

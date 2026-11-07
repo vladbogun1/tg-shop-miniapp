@@ -49,8 +49,13 @@ export function QuickTemplates({
         </button>
       </div>
       {locale !== "ru" && (
-        <span className="chip-tint shrink-0 !bg-[var(--surface-3)] !px-2 !text-[10px]" title="Язык клиента">
-          Ответ уйдёт на: {LOCALE_LABEL[locale] ?? locale}
+        // Phone: just «→ УКР» — the full label ate the row and hid the templates under it.
+        <span className="chip-tint shrink-0 !bg-[var(--surface-3)] !px-2 !text-[10px]" title={`Ответ уйдёт на: ${LOCALE_LABEL[locale] ?? locale}`}>
+          <span className="max-sm:hidden">Ответ уйдёт на: </span>
+          <span className="sm:hidden" aria-hidden>
+            →{" "}
+          </span>
+          {LOCALE_LABEL[locale] ?? locale}
         </span>
       )}
     </div>

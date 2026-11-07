@@ -49,7 +49,7 @@ export function RowMenu({ title, items }: { title: string; items: MenuItem[] }) 
           actions={items.map<SheetAction>((i) => ({
             key: i.key,
             label: i.hint ? (
-              <span className="flex flex-col items-start">
+              <span className="flex min-w-0 flex-col items-start whitespace-normal text-left">
                 {i.label}
                 <span className="text-[11.5px] font-normal opacity-70">{i.hint}</span>
               </span>

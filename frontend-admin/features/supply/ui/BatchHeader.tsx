@@ -167,7 +167,8 @@ function StatusSteps({ batch }: { batch: Batch }) {
             )}
           >
             {i < at && <Check className="h-3.5 w-3.5" />}
-            {s.label}
+            {/* Phone: passed steps are just a tick — four labels wrapped and left «Приехала» alone on a line. */}
+            <span className={cn(i < at && "max-sm:sr-only")}>{s.label}</span>
           </span>
         </li>
       ))}

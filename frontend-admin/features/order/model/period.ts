@@ -35,3 +35,14 @@ export function isValidPeriod(v: unknown): v is OrdersPeriod {
 export function periodQuery(p: OrdersPeriod): Record<string, string> {
   return p.range === "custom" && p.from && p.to ? { range: p.range, from: p.from, to: p.to } : { range: p.range };
 }
+
+/** «01.10» from «2026-10-01». */
+function dayMonth(iso: string): string {
+  return `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
+}
+
+/** Short name of the period for buttons and hints: the preset, or «01.10 – 07.11» for «Свой». */
+export function periodLabel(p: OrdersPeriod): string {
+  if (p.range === "custom" && p.from && p.to) return `${dayMonth(p.from)} – ${dayMonth(p.to)}`;
+  return ORDERS_PERIOD_OPTIONS.find((o) => o.value === p.range)?.label ?? "";
+}

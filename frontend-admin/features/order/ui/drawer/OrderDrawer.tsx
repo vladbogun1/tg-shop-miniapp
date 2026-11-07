@@ -119,7 +119,9 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
         open={!!orderId}
         onClose={onClose}
         header={<DrawerHeader order={order} archived={rules.archived} tabs={hasTabsInHeader ? tabs : undefined} />}
-        width="sm:max-w-[720px] min-[1360px]:max-w-[1040px]"
+        // Disjoint ranges: Tailwind v4 emits arbitrary `min-[1360px]:` BEFORE `sm:`, so `sm:` used to win and the
+        // two-column drawer stayed 720 px wide on a 1440/1920 screen.
+        width="max-[1359px]:sm:max-w-[720px] min-[1360px]:max-w-[1040px]"
         zClass="z-[120]"
         backClose="orderDrawer"
         closeNavigates={closeNavigates}

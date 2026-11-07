@@ -67,15 +67,16 @@ function BatchView({ batch }: { batch: Batch }) {
       {finance && arrived && <BatchResult batchId={batch.id} />}
       <BatchJumps items={jumps} />
 
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-x-6">
+      {/* Two columns only from 1536: at 1024–1440 the 340 px «Кто ждёт» left the items table 526–770 px and it scrolled sideways. */}
+      <div className="2xl:grid 2xl:grid-cols-[minmax(0,1fr)_340px] 2xl:items-start 2xl:gap-x-6">
 
-      <BatchSection id="items" title="Что в поставке" className="lg:col-start-1">
+      <BatchSection id="items" title="Что в поставке" className="2xl:col-start-1">
         <BatchItems batch={batch} open={isOpenStatus(batch.status)} />
       </BatchSection>
       <BatchSection
         id="queue"
         title="Кто ждёт"
-        className="lg:sticky lg:top-4 lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto"
+        className="2xl:sticky 2xl:top-4 2xl:col-start-2 2xl:row-span-3 2xl:row-start-1 2xl:max-h-[calc(100vh-2rem)] 2xl:overflow-y-auto"
         hint="Покупатели, которые нажали «Сообщить о поступлении» или заказали заранее. Когда поставка приедет, бот им напишет."
       >
         <BatchQueue batch={batch} />
@@ -84,14 +85,14 @@ function BatchView({ batch }: { batch: Batch }) {
         <BatchSection
           id="money"
           title="Закупка и расходы"
-          className="lg:col-start-1"
+          className="2xl:col-start-1"
           hint="Почём купили и сколько ушло на доставку — отсюда считается, во сколько обошлась 1 шт."
         >
           <BatchMoneyTab batchId={batch.id} />
         </BatchSection>
       )}
       {finance && arrived && (
-        <BatchSection id="sales" title="Продажи по товарам" className="lg:col-start-1">
+        <BatchSection id="sales" title="Продажи по товарам" className="2xl:col-start-1">
           <BatchSalesTab batchId={batch.id} />
         </BatchSection>
       )}

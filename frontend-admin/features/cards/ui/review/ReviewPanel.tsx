@@ -13,11 +13,12 @@
  * PUT …/accept (edits + READY), PATCH …/card-status (back to «Проверить»).
  */
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CardItem } from "../../model/item";
 import type { CardSchema } from "../../model/schema";
 import { cn } from "@/lib/cn";
+import { useStickyFit } from "@/lib/use-sticky-fit";
 import { backdropVariants, drawerVariants, sheetVariants, useOverlayLayer } from "@shop/ui/overlay";
 import { useMediaQuery } from "@shop/ui/use-media";
 import { useConfirm } from "@shop/ui/confirm";
@@ -54,6 +55,8 @@ export function ReviewPanel({
   const phone = useMediaQuery("(max-width: 639px)", false);
   const confirm = useConfirm();
   const [dirty, setDirty] = useState(false);
+  const asideRef = useRef<HTMLElement>(null);
+  useStickyFit(asideRef, docked && open);
 
   // Leaving with unsaved edits asks first (Esc, ×, backdrop, J/K, the arrows).
   const guarded = useCallback(
@@ -91,6 +94,7 @@ export function ReviewPanel({
     if (!item) return null;
     return (
       <aside
+        ref={asideRef}
         aria-label={`Проверка карточки: ${item.title}`}
         className="sticky top-[calc(var(--hdr-h,61px)+12px)] flex h-[calc(100dvh-var(--hdr-h,61px)-24px)] min-h-[480px] flex-col overflow-hidden rounded-[var(--r-xl)] border border-[var(--line-strong)] bg-[var(--surface)] shadow-[var(--shadow-2)]"
       >

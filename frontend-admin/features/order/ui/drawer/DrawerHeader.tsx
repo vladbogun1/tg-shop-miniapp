@@ -17,7 +17,7 @@ const LINE_TONE = {
 } as const;
 
 /**
- * Шапка в две строки. Первая: `#a1b2c3d4 · Иванов И.` (имя обрезается) и статус справа от него.
+ * Шапка в две строки. Первая: `#a1b2c3d4 · Иванов И.` (имя обрезается) и статус справа от него (на телефоне статус — в начале второй).
  * Вторая — чипы без переноса (оплата, источник, возврат, архив) и срочное про деньги: дедлайн оплаты или наложка.
  * `tabs` — вкладки в той же полосе (на ПК); на телефоне вкладки идут отдельной строкой под шапкой.
  */
@@ -34,11 +34,13 @@ export function DrawerHeader({ order, archived, tabs }: { order: AdminOrderDetai
             · {order.customerName}
           </span>
         )}
-        {order && <StatusBadge status={order.status} className="shrink-0" />}
+        {order && <StatusBadge status={order.status} className="shrink-0 max-sm:hidden" />}
         {tabs && <div className="ml-auto hidden shrink-0 sm:block">{tabs}</div>}
       </div>
       {order && (
-        <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] max-sm:[mask-image:linear-gradient(to_right,#000_85%,transparent)] [&::-webkit-scrollbar]:hidden">
+          {/* Phone: the status starts the second line, so the name in the first one is not cut to two letters. */}
+          <StatusBadge status={order.status} className="shrink-0 sm:hidden" />
           <PaymentBadge order={order} />
           <SourceBadge source={order.source} />
           <ReturnBadge status={order.admin?.returnStatus} />

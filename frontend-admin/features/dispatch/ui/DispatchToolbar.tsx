@@ -108,9 +108,9 @@ export function DispatchToolbar(p: DispatchToolbarProps) {
               icon={<Send className="h-4 w-4" />}
               onClick={p.onBroadcast}
               aria-label="Карточки в Telegram"
-              className="max-xl:w-10 max-xl:px-0"
+              compactBelow="xl"
             >
-              <span className="max-xl:hidden">Карточки в Telegram</span>
+              Карточки в Telegram
             </Button>
           </div>
         )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError } from "@shop/core/errors";
 import { toast } from "@shop/ui/toast";
 import { canLoadOlder, mergeMessages, SUPPORT_CHAT_PAGE } from "../../model/chat";
@@ -12,6 +12,37 @@ import {
   useSupportMessages,
 } from "../../queries";
 import { subscribeSupportThread } from "@/shell/realtime";
+
+/**
+ * Keeps a chat pinned to its last message while the box or its content changes size (photos load, quick
+ * templates and the product strip appear after the first scroll). Pinned = the reader is within 80 px of the end;
+ * scrolling up to read history unpins it.
+ */
+function useStickToBottom(ref: RefObject<HTMLDivElement | null>, key: string) {
+  useEffect(() => {
+    const box = ref.current;
+    if (!box) return;
+    let pinned = true;
+    const onScroll = () => {
+      pinned = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+    };
+    const ro = new ResizeObserver(() => {
+      if (pinned) box.scrollTop = box.scrollHeight;
+    });
+    ro.observe(box);
+    for (const child of Array.from(box.children)) ro.observe(child);
+    const mo = new MutationObserver(() => {
+      for (const child of Array.from(box.children)) ro.observe(child);
+    });
+    mo.observe(box, { childList: true });
+    box.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+      box.removeEventListener("scroll", onScroll);
+    };
+  }, [ref, key]);
+}
 
 /**
  * State of one thread's chat: the latest page (cache), older pages on demand, realtime messages,
@@ -42,6 +73,8 @@ export function useSupportChat(threadId: string) {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [lastId]);
+  // Re-attached when the box appears (after the skeleton) or another thread opens.
+  useStickToBottom(scrollRef, `${threadId}:${isLoading}`);
 
   async function loadOlder() {
     const first = messages[0];

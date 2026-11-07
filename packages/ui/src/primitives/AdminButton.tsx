@@ -37,6 +37,20 @@ const SIZE: Record<Size, string> = {
   icon: "h-10 w-10 rounded-[var(--r-md)]",
 };
 
+type Breakpoint = "sm" | "md" | "lg" | "xl";
+
+/**
+ * Icon-only below a breakpoint: the label leaves the layout and the button turns square.
+ * Hiding a span INSIDE the children is not enough — the label wrapper stays a flex item, the gap
+ * stays, and the icon sits off-centre (the orders «+» on a phone).
+ */
+const COMPACT: Record<Breakpoint, { button: string; label: string }> = {
+  sm: { button: "max-sm:aspect-square max-sm:shrink-0 max-sm:px-0", label: "max-sm:hidden" },
+  md: { button: "max-md:aspect-square max-md:shrink-0 max-md:px-0", label: "max-md:hidden" },
+  lg: { button: "max-lg:aspect-square max-lg:shrink-0 max-lg:px-0", label: "max-lg:hidden" },
+  xl: { button: "max-xl:aspect-square max-xl:shrink-0 max-xl:px-0", label: "max-xl:hidden" },
+};
+
 export interface ButtonProps extends Omit<HTMLMotionProps<"button">, "ref"> {
   variant?: Variant;
   size?: Size;
@@ -46,10 +60,12 @@ export interface ButtonProps extends Omit<HTMLMotionProps<"button">, "ref"> {
   children?: ReactNode;
   /** Chamfered corners (the shop's CTA shape) — for the ONE main action of a screen; accent only. */
   chamfer?: boolean;
+  /** Below this breakpoint only the icon shows — pass `aria-label`, the label is gone there. */
+  compactBelow?: Breakpoint;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = "surface", size = "md", loading, icon, iconRight, className, children, disabled, chamfer, ...rest },
+  { variant = "surface", size = "md", loading, icon, iconRight, className, children, disabled, chamfer, compactBelow, ...rest },
   ref
 ) {
   return (
@@ -62,6 +78,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         VARIANT[variant],
         SIZE[size],
         chamfer && "chamfer rounded-none hover:shadow-none",
+        compactBelow && COMPACT[compactBelow].button,
         className
       )}
       {...rest}
@@ -71,7 +88,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ) : (
         icon && <span className="shrink-0">{icon}</span>
       )}
-      {children && <span className="truncate">{children}</span>}
+      {children && <span className={cn("truncate", compactBelow && COMPACT[compactBelow].label)}>{children}</span>}
       {!loading && iconRight && <span className="shrink-0">{iconRight}</span>}
     </m.button>
   );
