@@ -61,7 +61,12 @@ function StartButton({ files, n, onStarted }: { files: SupplyFiles; n: number; o
         Прочитать с ИИ
       </Button>
       <div className="text-[12px] text-[var(--text-muted)]">
-        {e ? `≈ ${uahFromMinor(e.p50Minor)} · ${readDuration(e.seconds)}, не больше ${uahFromMinor(e.p90Minor)}` : "около 10 секунд"}
+        {/* Цену сервер отдаёт только финансисту; остальным — только время. */}
+        {e?.p50Minor != null && e.p90Minor != null
+          ? `≈ ${uahFromMinor(e.p50Minor)} · ${readDuration(e.seconds)}, не больше ${uahFromMinor(e.p90Minor)}`
+          : e
+            ? readDuration(e.seconds)
+            : "около 10 секунд"}
       </div>
     </div>
   );
@@ -81,8 +86,8 @@ function JobView({ job, onManual, onRetried }: { job: AiJob; onManual: () => voi
 }
 
 /**
- * «Прочитать с ИИ»: файлы → задача → ответ в то же поле, что и при ручном пути. Цена и время — под кнопкой (экран
- * показывается только финансистам). Закрытие окна не останавливает задачу: она остаётся в центре задач.
+ * «Прочитать с ИИ»: файлы → задача → ответ в то же поле, что и при ручном пути. Под кнопкой время, а финансисту ещё и
+ * цена. Закрытие окна не останавливает задачу: она остаётся в центре задач.
  */
 export function ReadWithAi({ files, onAnswer, onManual }: { files: SupplyFiles; onAnswer: (text: string) => void; onManual: () => void }) {
   const reason = useReadReason();

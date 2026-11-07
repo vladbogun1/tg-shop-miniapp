@@ -116,13 +116,13 @@ function ManualPath({ ai, accent }: { ai: SupplyAi; accent: boolean }) {
 }
 
 /**
- * Шаг 1. Финансисту, пока ИИ доступен: файлы → «Прочитать с ИИ»; ручной путь спрятан под кнопкой. Если ИИ недоступен
- * или файлов нет — ручной путь акцентный (загрузка файлов без ИИ не нужна).
+ * Шаг 1. Любому админу поставок, пока ИИ доступен: файлы → «Прочитать с ИИ»; ручной путь спрятан под кнопкой. Если ИИ
+ * недоступен или файлов нет — ручной путь акцентный (загрузка файлов без ИИ не нужна).
  */
-export function ReadStep({ ai, files, finance }: { ai: SupplyAi; files: SupplyFiles; finance: boolean }) {
+export function ReadStep({ ai, files }: { ai: SupplyAi; files: SupplyFiles }) {
   const reason = useReadReason();
   const [manual, setManual] = useState(false);
-  const builtIn = finance && reason === null;
+  const builtIn = reason === null;
   const showManual = !builtIn || files.files.length === 0 || manual || !!ai.answer;
   const onAnswer = (text: string) => {
     ai.setAnswer(text);
@@ -136,7 +136,7 @@ export function ReadStep({ ai, files, finance }: { ai: SupplyAi; files: SupplyFi
           <ReadWithAi files={files} onAnswer={onAnswer} onManual={() => setManual(true)} />
         </>
       )}
-      {finance && reason && <AiUnavailable reason={reason} />}
+      {reason && <AiUnavailable reason={reason} />}
       {!showManual && (
         <div>
           <Button variant="surface" size="sm" onClick={() => setManual(true)}>

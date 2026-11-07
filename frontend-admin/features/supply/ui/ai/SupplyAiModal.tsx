@@ -77,7 +77,7 @@ export function SupplyAiModal({ open, onClose, onReady }: { open: boolean; onClo
   const finance = useFinanceAccess();
   const [fxRate, setFxRate] = useState("");
   const ai = useSupplyAi(catalog, categories, Number(fxRate.replace(",", ".")) || null);
-  const files = useSupplyFiles(finance && open);
+  const files = useSupplyFiles(open);
   const nbu = useNbuRate(setFxRate, false);
   const [pickFor, setPickFor] = useState<string | null>(null);
   const created = useRef(new Map<string, Created>());
@@ -181,7 +181,7 @@ export function SupplyAiModal({ open, onClose, onReady }: { open: boolean; onClo
           <p className="text-[13px] text-[var(--text-muted)]">Загружаю каталог…</p>
         ) : (
           <div className="flex min-w-0 flex-col gap-5">
-            <ReadStep ai={{ ...ai, check }} files={files} finance={finance} />
+            <ReadStep ai={{ ...ai, check }} files={files} />
             {ai.doc && (
               <>
                 <DocSummary ai={ai} currency={currency} onCurrency={pickCurrency} fxRate={fxRate} setFxRate={setFxRate} finance={finance} />
