@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Archive, Eye, EyeOff } from "lucide-react";
 import { Button } from "@shop/ui/admin-button";
+import type { ReactNode } from "react";
 
 /** Панель в липкой полосе, пока что-то отмечено: показать · скрыть · в архив · снять выбор. */
 export function ProductsBulkBar({
@@ -12,6 +13,7 @@ export function ProductsBulkBar({
   onHide,
   onArchive,
   onClear,
+  extra,
 }: {
   count: number;
   busy: boolean;
@@ -19,6 +21,8 @@ export function ProductsBulkBar({
   onHide: () => void;
   onArchive: () => void;
   onClear: () => void;
+  /** Кнопки чужих фич (например, «Заполнить с ИИ») перед «Показать». */
+  extra?: ReactNode;
 }) {
   return (
     <AnimatePresence initial={false}>
@@ -34,6 +38,7 @@ export function ProductsBulkBar({
           <Button size="sm" variant="ghost" onClick={onClear} disabled={busy}>
             Снять
           </Button>
+          {extra}
           <Button size="sm" variant="surface" icon={<Eye className="h-4 w-4" />} loading={busy} onClick={onShow} title="Карточки-черновики и товары без цены сервер не пропустит — они попадут в отчёт">
             Показать
           </Button>

@@ -13,7 +13,7 @@
 import { PackageSearch, Plus } from "lucide-react";
 import { useRef } from "react";
 import { Button } from "@shop/ui/admin-button";
-import { CardCompletionModal } from "@/features/cards";
+import { CardBatchButton, CardCompletionModal } from "@/features/cards";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -145,7 +145,7 @@ export function ProductsScreen() {
 
       <div ref={strip} className={cn("sticky top-[var(--hdr-h,61px)] z-20 -mx-4 mb-2 bg-[var(--bg)] px-4 pb-2 pt-1 lg:-mx-7 lg:px-7")}>
         <ProductsToolbar s={s} />
-        <ProductsBulkBar count={s.selectedList.length} busy={s.bulk.busy} onShow={s.bulk.show} onHide={s.bulk.hide} onArchive={s.bulk.archive} onClear={s.clearSelection} />
+        <ProductsBulkBar count={s.selectedList.length} busy={s.bulk.busy} onShow={s.bulk.show} onHide={s.bulk.hide} onArchive={s.bulk.archive} onClear={s.clearSelection} extra={<CardBatchButton productIds={s.selectedList.map((p) => p.id)} onStarted={s.clearSelection} />} />
       </div>
 
       {isLoading ? (
