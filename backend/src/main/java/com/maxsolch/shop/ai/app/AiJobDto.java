@@ -5,6 +5,7 @@ import com.maxsolch.shop.ai.domain.AiFeature;
 import com.maxsolch.shop.ai.domain.AiJob;
 import com.maxsolch.shop.ai.domain.AiMoney;
 import com.maxsolch.shop.ai.domain.JobMode;
+import com.maxsolch.shop.ai.domain.JobPath;
 import com.maxsolch.shop.ai.domain.JobStatus;
 
 import java.time.Instant;
@@ -16,9 +17,10 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
  * A job as the admin screens get it. The first block is for every admin; the second — the money, the tokens and the
  * prompt, and the provider's error text — only for an admin with the finance right: for the others the server sends none of it (the fields are
  * absent, not hidden by the screen). The answer is part of the work of whoever started the job, so every admin gets it.
+ * {@code path} MANUAL: an answer the admin pasted from ChatGPT (no model call, no money).
  */
 public record AiJobDto(
-        long id, AiFeature feature, JobStatus status, long adminId, String subjectType, String subjectId,
+        long id, AiFeature feature, JobPath path, JobStatus status, long adminId, String subjectType, String subjectId,
         String subjectVersion, JobMode mode, String effort, int researchItems, Long retryOf, boolean cancelRequested,
         int attempts, String errorCode, @JsonInclude(NON_NULL) String errorNote, String outcome, Instant createdAt, Instant startedAt,
         Instant finishedAt, @JsonInclude(NON_NULL) String answer,
@@ -56,7 +58,7 @@ public record AiJobDto(
     }
 
     static AiJobDto of(AiJob j, Body body, boolean finance, SubjectChanges changes) {
-        return new AiJobDto(j.getId(), j.getFeature(), j.getStatus(), j.getAdminId(), j.getSubjectType(),
+        return new AiJobDto(j.getId(), j.getFeature(), j.getPath(), j.getStatus(), j.getAdminId(), j.getSubjectType(),
                 j.getSubjectId(), j.getSubjectVersion(), j.getMode(), j.getEffort(), j.getResearchItems(),
                 j.getRetryOf(), j.isCancelRequested(), j.getAttempts(), j.getErrorCode(), finance ? j.getErrorNote() : null,
                 j.getOutcome(), j.getCreatedAt(), j.getStartedAt(), j.getFinishedAt(),

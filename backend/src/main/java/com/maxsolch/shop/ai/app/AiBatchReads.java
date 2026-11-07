@@ -5,6 +5,7 @@ import com.maxsolch.shop.ai.domain.AiBatch;
 import com.maxsolch.shop.ai.domain.AiJob;
 import com.maxsolch.shop.ai.domain.AiMoney;
 import com.maxsolch.shop.ai.domain.BatchStatus;
+import com.maxsolch.shop.ai.domain.JobPath;
 import com.maxsolch.shop.ai.domain.JobStatus;
 import com.maxsolch.shop.ai.infra.AiApplyLogRepository;
 import com.maxsolch.shop.ai.infra.AiBatchQueries;
@@ -51,13 +52,17 @@ public class AiBatchReads {
         return batches.findById(id).map(b -> dto(b, finance));
     }
 
-    /** Running and paused batches of everybody, plus the finished batches of this admin that still have something to do. */
+    /**
+     * Running and paused batches of everybody, plus the finished batches of this admin that still have something to do.
+     * A manual batch is seen only by its admin: nobody else can paste into it.
+     */
     @Transactional(readOnly = true)
     public List<AiBatchDto> active(long adminId, boolean finance) {
         Instant since = clock.instant().minus(LINGER);
         List<AiBatch> open = batches.findByStatusInOrderByIdDesc(EnumSet.of(BatchStatus.RUNNING, BatchStatus.PAUSED));
         List<AiBatch> mine = batches.findByAdminIdAndFinishedAtAfterOrderByIdDesc(adminId, since);
         return java.util.stream.Stream.concat(open.stream(), mine.stream()).distinct()
+                .filter(b -> b.getPath() == JobPath.BUILTIN || b.getAdminId() == adminId)
                 .sorted(java.util.Comparator.comparing(AiBatch::getId).reversed())
                 .map(b -> dto(b, finance))
                 .filter(d -> d.status().open() || d.ready() > 0 || d.retryable() > 0 || d.undoable() > 0)

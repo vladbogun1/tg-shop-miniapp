@@ -3,6 +3,7 @@ package com.maxsolch.shop.ai.app;
 import com.maxsolch.shop.ai.domain.AiBatch;
 import com.maxsolch.shop.ai.domain.AiError;
 import com.maxsolch.shop.ai.domain.AiJob;
+import com.maxsolch.shop.ai.domain.JobPath;
 import com.maxsolch.shop.ai.domain.JobStatus;
 import com.maxsolch.shop.ai.domain.PauseReason;
 import com.maxsolch.shop.ai.infra.AiBatchRepository;
@@ -127,7 +128,11 @@ public class AiBatchControls {
         return b;
     }
 
+    /** A manual batch has its own buttons ({@link AiManualBatches}): no pause, resume, stop or «Повторить неудачные». */
     private void checkOwner(AiBatch b) {
+        if (b.getPath() == JobPath.MANUAL) {
+            throw new DomainException.Conflict(AiError.BAD_STATE);
+        }
         long adminId = actor.userId();
         if (b.getAdminId() != adminId && !access.canSeeFinance(adminId)) {
             throw new DomainException.Forbidden(AiError.NOT_YOUR_JOB);

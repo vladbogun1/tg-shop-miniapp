@@ -78,7 +78,10 @@ final class AiMetricsCalc {
         return builtin.stream().filter(JobFact::accepted).count();
     }
 
-    /** Applications by the built-in AI against marks of the manual way, and the reasons of the latter. */
+    /**
+     * Applications by the built-in AI against applications of the manual way (a mark, or a pasted answer somebody took),
+     * and the reasons of the latter. A pasted answer not decided on yet, or rejected, is no application.
+     */
     static Share share(List<JobFact> facts) {
         long builtin = facts.stream().filter(f -> f.path() == JobPath.BUILTIN && f.accepted()).count();
         Map<String, Long> by = new LinkedHashMap<>();
@@ -87,7 +90,7 @@ final class AiMetricsCalc {
         }
         long manual = 0;
         for (JobFact f : facts) {
-            if (f.path() == JobPath.MANUAL) {
+            if (f.path() == JobPath.MANUAL && f.accepted()) {
                 manual++;
                 String reason = f.errorCode() != null && by.containsKey(f.errorCode())
                         ? f.errorCode() : ManualReason.CHOICE.name();

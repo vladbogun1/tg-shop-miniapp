@@ -16,6 +16,8 @@ public interface AiApplyLogRepository extends JpaRepository<AiApplyLog, Long> {
 
     List<AiApplyLog> findByJobIdAndKindOrderByIdDesc(long jobId, AiApplyLog.Kind kind);
 
+    boolean existsByJobId(long jobId);
+
     /** Locked until the transaction ends: two clicks on «Отменить применение» undo once. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select l from AiApplyLog l where l.id = :id")

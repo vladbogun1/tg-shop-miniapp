@@ -40,6 +40,8 @@ public enum AiError implements ErrorCode {
     BATCH_NOT_FOUND("AI_BATCH_NOT_FOUND"),
     /** The owner switched «Пакеты» off. */
     BATCHES_OFF("AI_BATCHES_OFF"),
+    /** The admin already has an open manual batch: continue it or discard it first. */
+    MANUAL_BATCH_OPEN("AI_MANUAL_BATCH_OPEN"),
     APPLY_NOT_FOUND("AI_APPLY_NOT_FOUND"),
     /** The 24 hours of the undo are over, or it was undone already. */
     UNDO_CLOSED("AI_UNDO_CLOSED"),

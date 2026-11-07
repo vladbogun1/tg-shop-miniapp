@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 
 /**
  * The lists of the task center «ИИ-задачи»: four tabs (Идут · Проверить · Проблемы · История) over the AI's own jobs
- * (the marks of the manual way are not tasks and never listed), a page at a time. Every admin reads it; the money and
+ * and the answers pasted from ChatGPT by hand (the marks of the manual way are not tasks and never listed), a page at a time. Every admin reads it; the money and
  * the prompt are left out of a row for those without the finance right ({@link AiJobDto}). A row also carries who
  * started the task and a readable name of its object.
  */
@@ -100,16 +100,16 @@ public class AiTaskList {
     private Page<AiJob> find(Tab t, Pageable p) {
         return switch (t) {
             case ACTIVE -> jobs.findByPathAndStatusInOrderByIdDesc(JobPath.BUILTIN, ACTIVE, p);
-            case REVIEW -> jobs.findByPathAndStatusAndOutcomeIsNullOrderByIdDesc(JobPath.BUILTIN, JobStatus.DONE, p);
+            case REVIEW -> jobs.toReview(p);
             case PROBLEMS -> jobs.problems(PROBLEM, clock.instant().minus(PROBLEM_WINDOW), p);
-            case HISTORY -> jobs.findByPathOrderByIdDesc(JobPath.BUILTIN, p);
+            case HISTORY -> jobs.tasks(p);
         };
     }
 
     private Counts counts() {
         Pageable one = PageRequest.of(0, 1);
         return new Counts(jobs.countByPathAndStatusIn(JobPath.BUILTIN, ACTIVE),
-                jobs.countByPathAndStatusAndOutcomeIsNull(JobPath.BUILTIN, JobStatus.DONE),
+                jobs.toReview(one).getTotalElements(),
                 jobs.problems(PROBLEM, clock.instant().minus(PROBLEM_WINDOW), one).getTotalElements());
     }
 

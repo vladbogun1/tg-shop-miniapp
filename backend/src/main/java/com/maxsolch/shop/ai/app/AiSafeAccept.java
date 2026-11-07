@@ -82,7 +82,7 @@ public class AiSafeAccept {
             throw new DomainException.Forbidden(AiError.NOT_YOUR_JOB);
         }
         boolean eligible = job.getBatchId() != null && job.getStatus() == JobStatus.DONE && job.getOutcome() == null
-                && job.getSearches() > 0;
+                && (job.getSearches() > 0 || job.isPasted());
         boolean applied = logs.findByJobIdAndKindOrderByIdDesc(jobId, AiApplyLog.Kind.SAFE).stream()
                 .anyMatch(l -> l.finished() && l.getUndoneAt() == null);
         if (!eligible || applied) {

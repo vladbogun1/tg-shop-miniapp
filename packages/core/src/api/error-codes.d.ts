@@ -27,6 +27,7 @@ export type ServerErrorCode =
   | "AI_JOB_ACTIVE"
   | "AI_JOB_CEILING"
   | "AI_KEY_REJECTED"
+  | "AI_MANUAL_BATCH_OPEN"
   | "AI_MONTH_LIMIT"
   | "AI_NOT_CONFIGURED"
   | "AI_NOT_SAFE"

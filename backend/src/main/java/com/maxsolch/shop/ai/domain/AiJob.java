@@ -110,6 +110,10 @@ public class AiJob {
     @Column(name = "path", nullable = false, length = 12)
     private JobPath path = JobPath.BUILTIN;
 
+    /** A manual task with the answer pasted from ChatGPT (V92), unlike a mere mark of the manual way. */
+    @Column(name = "pasted", nullable = false)
+    private boolean pasted;
+
     @Column(name = "cost_micro_usd", nullable = false)
     private long costMicroUsd;
 
@@ -227,6 +231,34 @@ public class AiJob {
         j.createdAt = now;
         j.finishedAt = now;
         return j;
+    }
+
+    /**
+     * An answer the admin pasted from ChatGPT, registered as a task of the manual way: no model, no money, finished at
+     * once and waiting for the same review as a result of the AI (the outcome comes with «Принять» / «Отклонить»).
+     * The reason of the manual way goes to {@code error_code}, as for a mark.
+     */
+    public static AiJob pasted(Spec spec, ManualReason reason, Instant now) {
+        AiJob j = queued(spec, now);
+        j.status = JobStatus.DONE;
+        j.mode = JobMode.NORMAL;
+        j.effort = "none";
+        j.researchItems = 0;
+        j.path = JobPath.MANUAL;
+        j.pasted = true;
+        j.errorCode = reason.name();
+        j.finishedAt = now;
+        return j;
+    }
+
+    /** A new answer pasted over one nobody has decided on yet; false when it is decided (or not a pasted task). */
+    public boolean repaste(String subjectVersion, Instant now) {
+        if (!pasted || outcome != null) {
+            return false;
+        }
+        this.subjectVersion = subjectVersion;
+        finishedAt = now;
+        return true;
     }
 
     /** A worker takes the job: QUEUED → RUNNING, one more attempt, a deadline for the whole run. */

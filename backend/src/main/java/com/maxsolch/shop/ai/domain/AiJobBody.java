@@ -50,4 +50,10 @@ public class AiJobBody {
     public void answered(String text) {
         this.answer = text;
     }
+
+    /** A pasted answer replaced by a newer one (the manual way): the prompt it answers comes with it; the snapshot stays. */
+    public void repasted(String prompt, String answer) {
+        this.prompt = prompt;
+        this.answer = answer;
+    }
 }

@@ -599,6 +599,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/ai/card-manual-batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a manual batch of the picked products (up to 100, parts of 1–8). 409 AI_MANUAL_BATCH_OPEN (batchId) when the admin already has an open one */
+        post: operations["AdminCardManualController_start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/card-manual-batches/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The admin's open manual batch, to continue it on any device; 204 when there is none */
+        get: operations["AdminCardManualController_current"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/card-manual-batches/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A manual batch: its jobs, products, part size and the screen's draft */
+        get: operations["AdminCardManualController_get"];
+        put?: never;
+        post?: never;
+        /** «Удалить»: the batch is canceled and its undecided answers go away; applied stays applied */
+        delete: operations["AdminCardManualController_discard"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/card-manual-batches/{id}/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The answers of one part become tasks (a pending one gets the newer answer; a decided one stays); the products of the part without an answer lose their pending task */
+        post: operations["AdminCardManualController_answers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/card-manual-batches/{id}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save the screen's draft (JSON, up to 1 MB) of the admin's open manual batch */
+        put: operations["AdminCardManualController_saveDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/card-manual-batches/{id}/finish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** «Закончить»: the batch is done; undecided answers stay in «ИИ-задачи → Проверить» */
+        post: operations["AdminCardManualController_finish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/card-manual-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The answer pasted for one product becomes a task waiting for the review (replaces the admin's undecided answer for the same product) */
+        post: operations["AdminCardManualController_single"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/ai/estimate": {
         parameters: {
             query?: never;
@@ -5746,6 +5866,8 @@ export interface components {
             id: number;
             jobs: components["schemas"]["AiAiBatchDtoRow"][];
             /** @enum {string} */
+            path: "BUILTIN" | "MANUAL";
+            /** @enum {string} */
             pauseReason: "LIMIT_DAY" | "LIMIT_MONTH" | "RESTART" | "FAILURES" | "SEARCH_DOWN" | "MANUAL" | "DISABLED";
             /** Format: int32 */
             queued: number;
@@ -5803,6 +5925,8 @@ export interface components {
             outputTokens?: number;
             /** Format: int32 */
             pages?: number;
+            /** @enum {string} */
+            path: "BUILTIN" | "MANUAL";
             prompt?: string;
             promptVersion?: string;
             /** Format: int32 */
@@ -5822,6 +5946,10 @@ export interface components {
             subjectChanges?: components["schemas"]["SubjectChanges"];
             subjectId: string;
             subjectType: string;
+            subjectVersion: string;
+        };
+        AiManualBatchDtoItem: {
+            subjectId: string;
             subjectVersion: string;
         };
         AiRow: {
@@ -7819,6 +7947,42 @@ export interface components {
             brands?: string[];
             products?: string[];
         };
+        ManualBatchDto: {
+            batch: components["schemas"]["AiBatchDto"];
+            draft: string;
+            items: components["schemas"]["AiManualBatchDtoItem"][];
+            /** Format: int32 */
+            partSize: number;
+        };
+        ManualCardAnswer: {
+            answer?: string;
+            productId?: string;
+            subjectVersion?: string;
+        };
+        ManualCardBatchStart: {
+            draft?: string;
+            items?: components["schemas"]["ManualCardItem"][];
+            /** Format: int32 */
+            partSize?: number;
+        };
+        ManualCardItem: {
+            productId?: string;
+            subjectVersion?: string;
+        };
+        ManualCardPart: {
+            answers?: components["schemas"]["ManualCardAnswer"][];
+            part?: string[];
+            prompt?: string;
+            promptVersion?: string;
+        };
+        ManualCardPaste: {
+            answer?: string;
+            created?: boolean;
+            productId?: string;
+            prompt?: string;
+            promptVersion?: string;
+            subjectVersion?: string;
+        };
         ManualDiscountDto: {
             /** Format: date-time */
             createdAt: string;
@@ -7832,6 +7996,9 @@ export interface components {
             tgUserId: number | null;
             /** Format: int64 */
             totalMinor: number;
+        };
+        ManualDraft: {
+            draft?: string;
         };
         MarginReportDto: {
             byBatch: components["schemas"]["MarginRowDto"][];
@@ -10860,6 +11027,192 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CatalogCardAiJobsStart"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiJobDto"];
+                };
+            };
+        };
+    };
+    AdminCardManualController_start: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualCardBatchStart"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ManualBatchDto"];
+                };
+            };
+        };
+    };
+    AdminCardManualController_current: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ManualBatchDto"];
+                };
+            };
+        };
+    };
+    AdminCardManualController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ManualBatchDto"];
+                };
+            };
+        };
+    };
+    AdminCardManualController_discard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ManualBatchDto"];
+                };
+            };
+        };
+    };
+    AdminCardManualController_answers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualCardPart"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ManualBatchDto"];
+                };
+            };
+        };
+    };
+    AdminCardManualController_saveDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualDraft"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ManualBatchDto"];
+                };
+            };
+        };
+    };
+    AdminCardManualController_finish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ManualBatchDto"];
+                };
+            };
+        };
+    };
+    AdminCardManualController_single: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualCardPaste"];
             };
         };
         responses: {

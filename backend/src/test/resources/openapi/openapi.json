@@ -1597,6 +1597,13 @@
             },
             "type" : "array"
           },
+          "path" : {
+            "enum" : [
+              "BUILTIN",
+              "MANUAL"
+            ],
+            "type" : "string"
+          },
           "pauseReason" : {
             "enum" : [
               "LIMIT_DAY",
@@ -1667,6 +1674,7 @@
           "finishedAt",
           "id",
           "jobs",
+          "path",
           "pauseReason",
           "queued",
           "ready",
@@ -1765,6 +1773,13 @@
             "format" : "int32",
             "type" : "integer"
           },
+          "path" : {
+            "enum" : [
+              "BUILTIN",
+              "MANUAL"
+            ],
+            "type" : "string"
+          },
           "prompt" : {
             "type" : "string"
           },
@@ -1834,12 +1849,28 @@
           "id",
           "mode",
           "outcome",
+          "path",
           "researchItems",
           "retryOf",
           "startedAt",
           "status",
           "subjectId",
           "subjectType",
+          "subjectVersion"
+        ],
+        "type" : "object"
+      },
+      "AiManualBatchDtoItem" : {
+        "properties" : {
+          "subjectId" : {
+            "type" : "string"
+          },
+          "subjectVersion" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "subjectId",
           "subjectVersion"
         ],
         "type" : "object"
@@ -8439,6 +8470,122 @@
         },
         "type" : "object"
       },
+      "ManualBatchDto" : {
+        "properties" : {
+          "batch" : {
+            "$ref" : "#/components/schemas/AiBatchDto"
+          },
+          "draft" : {
+            "type" : "string"
+          },
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AiManualBatchDtoItem"
+            },
+            "type" : "array"
+          },
+          "partSize" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "batch",
+          "draft",
+          "items",
+          "partSize"
+        ],
+        "type" : "object"
+      },
+      "ManualCardAnswer" : {
+        "properties" : {
+          "answer" : {
+            "type" : "string"
+          },
+          "productId" : {
+            "type" : "string"
+          },
+          "subjectVersion" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ManualCardBatchStart" : {
+        "properties" : {
+          "draft" : {
+            "type" : "string"
+          },
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ManualCardItem"
+            },
+            "type" : "array"
+          },
+          "partSize" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ManualCardItem" : {
+        "properties" : {
+          "productId" : {
+            "type" : "string"
+          },
+          "subjectVersion" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ManualCardPart" : {
+        "properties" : {
+          "answers" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ManualCardAnswer"
+            },
+            "type" : "array"
+          },
+          "part" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "prompt" : {
+            "type" : "string"
+          },
+          "promptVersion" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ManualCardPaste" : {
+        "properties" : {
+          "answer" : {
+            "type" : "string"
+          },
+          "created" : {
+            "type" : "boolean"
+          },
+          "productId" : {
+            "type" : "string"
+          },
+          "prompt" : {
+            "type" : "string"
+          },
+          "promptVersion" : {
+            "type" : "string"
+          },
+          "subjectVersion" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ManualDiscountDto" : {
         "properties" : {
           "createdAt" : {
@@ -8482,6 +8629,14 @@
           "tgUserId",
           "totalMinor"
         ],
+        "type" : "object"
+      },
+      "ManualDraft" : {
+        "properties" : {
+          "draft" : {
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "MarginReportDto" : {
@@ -17307,6 +17462,307 @@
         "summary" : "Fill in the card of one product: medium effort and the research budget of one product are fixed here; the same answers as POST /ai/jobs (409 AI_JOB_ACTIVE, Idempotency-Key)",
         "tags" : [
           "Admin Cards AI"
+        ]
+      }
+    },
+    "/api/admin/ai/card-manual-batches" : {
+      "post" : {
+        "operationId" : "AdminCardManualController_start",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ManualCardBatchStart"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ManualBatchDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Start a manual batch of the picked products (up to 100, parts of 1–8). 409 AI_MANUAL_BATCH_OPEN (batchId) when the admin already has an open one",
+        "tags" : [
+          "Admin Cards manual AI"
+        ]
+      }
+    },
+    "/api/admin/ai/card-manual-batches/current" : {
+      "get" : {
+        "operationId" : "AdminCardManualController_current",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ManualBatchDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "The admin's open manual batch, to continue it on any device; 204 when there is none",
+        "tags" : [
+          "Admin Cards manual AI"
+        ]
+      }
+    },
+    "/api/admin/ai/card-manual-batches/{id}" : {
+      "delete" : {
+        "operationId" : "AdminCardManualController_discard",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ManualBatchDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "«Удалить»: the batch is canceled and its undecided answers go away; applied stays applied",
+        "tags" : [
+          "Admin Cards manual AI"
+        ]
+      },
+      "get" : {
+        "operationId" : "AdminCardManualController_get",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ManualBatchDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "A manual batch: its jobs, products, part size and the screen's draft",
+        "tags" : [
+          "Admin Cards manual AI"
+        ]
+      }
+    },
+    "/api/admin/ai/card-manual-batches/{id}/answers" : {
+      "post" : {
+        "operationId" : "AdminCardManualController_answers",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ManualCardPart"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ManualBatchDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "The answers of one part become tasks (a pending one gets the newer answer; a decided one stays); the products of the part without an answer lose their pending task",
+        "tags" : [
+          "Admin Cards manual AI"
+        ]
+      }
+    },
+    "/api/admin/ai/card-manual-batches/{id}/draft" : {
+      "put" : {
+        "operationId" : "AdminCardManualController_saveDraft",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ManualDraft"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ManualBatchDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Save the screen's draft (JSON, up to 1 MB) of the admin's open manual batch",
+        "tags" : [
+          "Admin Cards manual AI"
+        ]
+      }
+    },
+    "/api/admin/ai/card-manual-batches/{id}/finish" : {
+      "post" : {
+        "operationId" : "AdminCardManualController_finish",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ManualBatchDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "«Закончить»: the batch is done; undecided answers stay in «ИИ-задачи → Проверить»",
+        "tags" : [
+          "Admin Cards manual AI"
+        ]
+      }
+    },
+    "/api/admin/ai/card-manual-jobs" : {
+      "post" : {
+        "operationId" : "AdminCardManualController_single",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ManualCardPaste"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AiJobDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "The answer pasted for one product becomes a task waiting for the review (replaces the admin's undecided answer for the same product)",
+        "tags" : [
+          "Admin Cards manual AI"
         ]
       }
     },
@@ -29766,6 +30222,10 @@
     {
       "description" : "Public Nova Poshta directory",
       "name" : "Nova Poshta"
+    },
+    {
+      "description" : "The manual way through ChatGPT for cards, as tasks",
+      "name" : "Admin Cards manual AI"
     },
     {
       "description" : "Support threads (customer questions not tied to an order)",

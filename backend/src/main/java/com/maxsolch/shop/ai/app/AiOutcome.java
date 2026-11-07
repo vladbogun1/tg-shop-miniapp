@@ -36,7 +36,7 @@ public class AiOutcome {
         }
         if (job.recordOutcome(outcome, clock.instant())) {
             audit.record("AI_JOB_OUTCOME", job.getSubjectType(), job.getSubjectId(),
-                    "ИИ: " + job.getOutcome() + " (принято " + outcome.applied() + ", отклонено " + outcome.rejected()
+                    (job.isPasted() ? "Вручную через ChatGPT: " : "ИИ: ") + job.getOutcome() + " (принято " + outcome.applied() + ", отклонено " + outcome.rejected()
                             + ", с правками " + outcome.edited() + ")");
         }
         return job;

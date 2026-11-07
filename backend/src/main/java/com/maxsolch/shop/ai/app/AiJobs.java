@@ -5,6 +5,7 @@ import com.maxsolch.shop.ai.domain.AiFeature;
 import com.maxsolch.shop.ai.domain.AiJob;
 import com.maxsolch.shop.ai.domain.AiMoney;
 import com.maxsolch.shop.ai.domain.JobMode;
+import com.maxsolch.shop.ai.domain.JobPath;
 import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.security.AdminAccess;
@@ -123,14 +124,17 @@ public class AiJobs {
         return get(id);
     }
 
-    /** One more attempt "more thoroughly" (high effort, twice the budget); one per job, unless the owner asks. */
+    /**
+     * One more attempt "more thoroughly" (high effort, twice the budget); one per job, unless the owner asks. Not for an
+     * answer pasted by hand (there is no model run to repeat).
+     */
     public AiJobDto retry(long id) {
         long adminId = actor.userId();
         boolean finance = access.canSeeFinance(adminId);
         AiJobReads.Source src = reads.source(id).orElseThrow(() -> new DomainException.NotFound(AiError.JOB_NOT_FOUND));
         AiJob old = src.job();
         refuseForeignInvoice(old, adminId, finance);
-        if (old.getStatus().active()) {
+        if (old.getStatus().active() || old.getPath() == JobPath.MANUAL) {
             throw new DomainException.Conflict(AiError.BAD_STATE);
         }
         if (src.prompt() == null) {

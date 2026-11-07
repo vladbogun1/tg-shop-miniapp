@@ -58,14 +58,33 @@ public interface AiJobRepository extends JpaRepository<AiJob, Long> {
     int step(@Param("id") long id, @Param("worker") String worker, @Param("step") String step,
              @Param("now") Instant now);
 
-    // ---- the task center: the lists of the four tabs (the AI's own jobs, not the marks of the manual way) ----
+    // ---- the task center: the lists of the four tabs (the AI's own jobs and the pasted answers of the manual way,
+    //      not the marks of the manual way) ----
 
-    Page<AiJob> findByPathOrderByIdDesc(JobPath path, Pageable page);
+    /** Results nobody has decided on, of the AI and pasted from ChatGPT: the tab «Проверить». */
+    @Query(value = "select j from AiJob j where (j.path = com.maxsolch.shop.ai.domain.JobPath.BUILTIN or j.pasted = true) "
+            + "and j.status = com.maxsolch.shop.ai.domain.JobStatus.DONE and j.outcome is null order by j.id desc",
+            countQuery = "select count(j) from AiJob j where (j.path = com.maxsolch.shop.ai.domain.JobPath.BUILTIN "
+                    + "or j.pasted = true) and j.status = com.maxsolch.shop.ai.domain.JobStatus.DONE and j.outcome is null")
+    Page<AiJob> toReview(Pageable page);
+
+    /** Every task, of the AI and pasted from ChatGPT: the tab «История». */
+    @Query(value = "select j from AiJob j where j.path = com.maxsolch.shop.ai.domain.JobPath.BUILTIN or j.pasted = true "
+            + "order by j.id desc",
+            countQuery = "select count(j) from AiJob j where j.path = com.maxsolch.shop.ai.domain.JobPath.BUILTIN "
+                    + "or j.pasted = true")
+    Page<AiJob> tasks(Pageable page);
+
+    /** The jobs of a manual batch for one object (one at most: a newer answer replaces the pending one). */
+    Optional<AiJob> findFirstByBatchIdAndSubjectIdOrderByIdDesc(long batchId, String subjectId);
+
+    /** An answer of one product pasted outside a batch that nobody has decided on: a newer one replaces it. */
+    @Query("select j from AiJob j where j.adminId = :adminId and j.subjectType = :type and j.subjectId = :id "
+            + "and j.pasted = true and j.batchId is null and j.outcome is null order by j.id desc")
+    List<AiJob> pendingPasted(@Param("adminId") long adminId, @Param("type") String subjectType,
+                              @Param("id") String subjectId);
 
     Page<AiJob> findByPathAndStatusInOrderByIdDesc(JobPath path, Collection<JobStatus> statuses, Pageable page);
-
-    /** Ready results nobody has decided on: the tab «Проверить» (any age; the screen marks the old ones). */
-    Page<AiJob> findByPathAndStatusAndOutcomeIsNullOrderByIdDesc(JobPath path, JobStatus status, Pageable page);
 
     /** Failed, unreadable or empty jobs since {@code since} that nobody has asked again: the tab «Проблемы». */
     @Query(value = "select j from AiJob j where j.path = com.maxsolch.shop.ai.domain.JobPath.BUILTIN "
@@ -78,8 +97,6 @@ public interface AiJobRepository extends JpaRepository<AiJob, Long> {
                          Pageable page);
 
     long countByPathAndStatusIn(JobPath path, Collection<JobStatus> statuses);
-
-    long countByPathAndStatusAndOutcomeIsNull(JobPath path, JobStatus status);
 
     /** The latest job of the built-in AI for an object: what a manual application right after it says about «why». */
     Optional<AiJob> findFirstBySubjectTypeAndSubjectIdAndPathOrderByIdDesc(String subjectType, String subjectId,

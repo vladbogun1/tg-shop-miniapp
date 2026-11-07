@@ -60,6 +60,23 @@ class AiMetricsCalcTest {
     }
 
     @Test
+    void aPastedAnswerCountsAsManualOnlyOnceSomebodyTookIt() {
+        List<JobFact> facts = List.of(job(JobStatus.DONE, 1, "APPLIED", 5, 0, 0), pasted("OFF", null),
+                pasted("OFF", "REJECTED"), pasted("OFF", "PARTIAL"), pasted("LIMIT", "APPLIED"));
+
+        var share = AiMetricsCalc.share(facts);
+
+        assertThat(share.manual()).isEqualTo(2);
+        assertThat(share.manualBy()).containsEntry("OFF", 1L).containsEntry("LIMIT", 1L);
+        assertThat(share.builtinPercent()).isEqualTo(33);
+    }
+
+    private static JobFact pasted(String reason, String outcome) {
+        return new JobFact(4, AiFeature.CARD, JobPath.MANUAL, JobStatus.DONE, reason, 0, 0, T0, outcome, 1, 0, 0,
+                outcome == null ? null : T0, false);
+    }
+
+    @Test
     void noManualAndNoBuiltInGivesNoShare() {
         assertThat(AiMetricsCalc.share(List.of()).builtinPercent()).isNull();
     }

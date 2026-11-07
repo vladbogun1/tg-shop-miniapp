@@ -51,13 +51,16 @@ public class AiMetricsQueries {
                 AiMetricsQueries::fact, args.toArray());
     }
 
-    /** Ready results of the built-in AI with no decision yet (any age); {@code staleBefore}: older than this is «stale». */
+    /**
+     * Ready results with no decision yet, of the built-in AI and pasted from ChatGPT (any age); {@code staleBefore}:
+     * older than this is «stale».
+     */
     public Waiting waiting(Instant staleBefore, Long testAdmin) {
         List<Object> args = new ArrayList<>(List.of(Timestamp.from(staleBefore)));
         String skip = skipTest("admin_id", testAdmin, args);
         return jdbc.queryForObject("""
                 select count(*), min(finished_at), coalesce(sum(finished_at < ?), 0)
-                from ai_jobs where path = 'BUILTIN' and status = 'DONE' and outcome is null""" + skip,
+                from ai_jobs where (path = 'BUILTIN' or pasted = 1) and status = 'DONE' and outcome is null""" + skip,
                 (rs, i) -> new Waiting(rs.getLong(1), instant(rs, 2), rs.getLong(3)), args.toArray());
     }
 
