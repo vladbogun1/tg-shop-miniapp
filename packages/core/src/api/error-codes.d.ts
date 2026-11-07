@@ -5,6 +5,11 @@
 
 /** Коды причин, которые бэкенд кладёт в поле `code` тела ошибки. */
 export type ServerErrorCode =
+  | "AI_BAD_REQUEST"
+  | "AI_BUSY"
+  | "AI_FAILED"
+  | "AI_MONTH_LIMIT"
+  | "AI_NOT_CONFIGURED"
   | "ATTRIBUTE_IN_USE"
   | "ATTRIBUTE_KEY_TAKEN"
   | "BAD_ALIAS"

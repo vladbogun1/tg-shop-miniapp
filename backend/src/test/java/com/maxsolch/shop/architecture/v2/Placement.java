@@ -35,7 +35,7 @@ final class Placement {
             List.of("inventory"),
             List.of("catalog"),
             List.of("customer", "staff"),
-            List.of("translation", "media", "site", "notification"),
+            List.of("ai", "translation", "media", "site", "notification"),
             List.of("settings"),
             List.of("audit", "journal"),
             List.of(PLATFORM));

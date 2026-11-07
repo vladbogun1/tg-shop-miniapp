@@ -160,3 +160,11 @@ app:
     api-key: ${NOVAPOSHTA_API_KEY:}
     api-url: ${NOVAPOSHTA_API_URL:https://api.novaposhta.ua/v2.0/json/}
     sync-cron: ${NOVAPOSHTA_SYNC_CRON:0 30 3 * * *}
+  # Built-in AI (docs/AI.md): MiniMax over its Anthropic-compatible API, search SearXNG -> Serper. Empty = off.
+  ai:
+    month-limit-cents: ${AI_MONTH_LIMIT_CENTS:1000}
+    model:
+      api-key: ${AI_MINIMAX_KEY:}
+    search:
+      searxng-url: ${AI_SEARXNG_URL:}
+      serper-key: ${AI_SERPER_KEY:}

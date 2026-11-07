@@ -1241,6 +1241,32 @@
         ],
         "type" : "object"
       },
+      "AiStatus" : {
+        "properties" : {
+          "configured" : {
+            "type" : "boolean"
+          },
+          "model" : {
+            "type" : "string"
+          },
+          "month" : {
+            "$ref" : "#/components/schemas/MonthSummary"
+          },
+          "providers" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ProviderState"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [
+          "configured",
+          "model",
+          "month",
+          "providers"
+        ],
+        "type" : "object"
+      },
       "AliasDto" : {
         "properties" : {
           "productId" : {
@@ -1474,6 +1500,54 @@
           "orderId",
           "since",
           "totalMinor"
+        ],
+        "type" : "object"
+      },
+      "Answer" : {
+        "properties" : {
+          "costMicroUsd" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "model" : {
+            "type" : "string"
+          },
+          "modelCalls" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "ms" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "pages" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "repaired" : {
+            "type" : "boolean"
+          },
+          "searches" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "text" : {
+            "type" : "string"
+          },
+          "tokens" : {
+            "$ref" : "#/components/schemas/TokenUsage"
+          }
+        },
+        "required" : [
+          "costMicroUsd",
+          "model",
+          "modelCalls",
+          "ms",
+          "pages",
+          "repaired",
+          "searches",
+          "text",
+          "tokens"
         ],
         "type" : "object"
       },
@@ -1713,6 +1787,24 @@
           "holdHours",
           "lines"
         ],
+        "type" : "object"
+      },
+      "Ask" : {
+        "properties" : {
+          "effort" : {
+            "type" : "string"
+          },
+          "feature" : {
+            "type" : "string"
+          },
+          "prompt" : {
+            "type" : "string"
+          },
+          "researchItems" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
         "type" : "object"
       },
       "AuditEntryDto" : {
@@ -5740,6 +5832,29 @@
         ],
         "type" : "object"
       },
+      "Found" : {
+        "properties" : {
+          "costMicroUsd" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "hits" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Hit"
+            },
+            "type" : "array"
+          },
+          "provider" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "costMicroUsd",
+          "hits",
+          "provider"
+        ],
+        "type" : "object"
+      },
       "Funnel" : {
         "properties" : {
           "dataSince" : {
@@ -6096,6 +6211,25 @@
           "giftUnits",
           "giftValueMinor",
           "promoOrders"
+        ],
+        "type" : "object"
+      },
+      "Hit" : {
+        "properties" : {
+          "snippet" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "url" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "snippet",
+          "title",
+          "url"
         ],
         "type" : "object"
       },
@@ -6861,6 +6995,39 @@
             "type" : "string"
           }
         },
+        "type" : "object"
+      },
+      "JobView" : {
+        "properties" : {
+          "answer" : {
+            "$ref" : "#/components/schemas/Answer"
+          },
+          "feature" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "startedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [
+              "RUNNING",
+              "DONE",
+              "FAILED"
+            ],
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "answer",
+          "feature",
+          "id",
+          "startedAt",
+          "status"
+        ],
         "type" : "object"
       },
       "JournalActivityFeedRow" : {
@@ -7981,6 +8148,35 @@
           "month",
           "remainingMinor",
           "totalMinor"
+        ],
+        "type" : "object"
+      },
+      "MonthSummary" : {
+        "properties" : {
+          "from" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "limitMicroUsd" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "lines" : {
+            "items" : {
+              "$ref" : "#/components/schemas/UsageLine"
+            },
+            "type" : "array"
+          },
+          "spentMicroUsd" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "from",
+          "limitMicroUsd",
+          "lines",
+          "spentMicroUsd"
         ],
         "type" : "object"
       },
@@ -10701,6 +10897,25 @@
         ],
         "type" : "object"
       },
+      "ProviderState" : {
+        "properties" : {
+          "coolingDown" : {
+            "type" : "boolean"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "coolingDown",
+          "enabled",
+          "name"
+        ],
+        "type" : "object"
+      },
       "PublicReview" : {
         "properties" : {
           "adminReply" : {
@@ -11785,6 +12000,14 @@
           "soldMinor",
           "timedOut"
         ],
+        "type" : "object"
+      },
+      "SearchTestRequest" : {
+        "properties" : {
+          "query" : {
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "SendMessageRequest" : {
@@ -13634,6 +13857,28 @@
         ],
         "type" : "object"
       },
+      "TokenUsage" : {
+        "properties" : {
+          "cached" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "input" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "output" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "cached",
+          "input",
+          "output"
+        ],
+        "type" : "object"
+      },
       "TopProduct" : {
         "properties" : {
           "live" : {
@@ -13929,6 +14174,60 @@
         "required" : [
           "key",
           "url"
+        ],
+        "type" : "object"
+      },
+      "UsageLine" : {
+        "properties" : {
+          "cachedTokens" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "calls" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "costMicroUsd" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "inputTokens" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "kind" : {
+            "enum" : [
+              "MODEL",
+              "SEARCH",
+              "PAGE"
+            ],
+            "type" : "string"
+          },
+          "outputTokens" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "provider" : {
+            "type" : "string"
+          },
+          "result" : {
+            "enum" : [
+              "OK",
+              "EMPTY",
+              "FAILED"
+            ],
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "cachedTokens",
+          "calls",
+          "costMicroUsd",
+          "inputTokens",
+          "kind",
+          "outputTokens",
+          "provider",
+          "result"
         ],
         "type" : "object"
       },
@@ -15118,6 +15417,140 @@
         "summary" : "Unblock",
         "tags" : [
           "Admin Team"
+        ]
+      }
+    },
+    "/api/admin/ai/jobs" : {
+      "post" : {
+        "operationId" : "AdminAiController_start",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Ask"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JobView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Start a question: the prompt as built for copying; researchItems > 0 gives the model search/open_page with a budget per item. Answers at once with a RUNNING job",
+        "tags" : [
+          "Admin AI"
+        ]
+      }
+    },
+    "/api/admin/ai/jobs/{id}" : {
+      "get" : {
+        "operationId" : "AdminAiController_job",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/JobView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "The job: RUNNING, or DONE with the answer; a failed job answers with its error",
+        "tags" : [
+          "Admin AI"
+        ]
+      }
+    },
+    "/api/admin/ai/search-test" : {
+      "post" : {
+        "operationId" : "AdminAiController_searchTest",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SearchTestRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Found"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "One query through the search chain, as the model gets it",
+        "tags" : [
+          "Admin AI"
+        ]
+      }
+    },
+    "/api/admin/ai/status" : {
+      "get" : {
+        "operationId" : "AdminAiController_status",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AiStatus"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Is the model configured, search providers (on / resting after a failure), this month's spend by provider and result (OK / EMPTY / FAILED)",
+        "tags" : [
+          "Admin AI"
         ]
       }
     },
@@ -26319,6 +26752,10 @@
     }
   ],
   "tags" : [
+    {
+      "description" : "Built-in AI: background questions with web research, spend and providers",
+      "name" : "Admin AI"
+    },
     {
       "description" : "Telegram WebApp authentication",
       "name" : "Auth"

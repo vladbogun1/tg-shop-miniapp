@@ -1,5 +1,12 @@
 {
   "byEnum" : {
+    "AiError" : {
+      "BAD_REQUEST" : "AI_BAD_REQUEST",
+      "BUSY" : "AI_BUSY",
+      "MODEL_FAILED" : "AI_FAILED",
+      "MONTH_LIMIT" : "AI_MONTH_LIMIT",
+      "NOT_CONFIGURED" : "AI_NOT_CONFIGURED"
+    },
     "AnalyticsError" : { },
     "CartError" : { },
     "CatalogError" : {
@@ -189,6 +196,11 @@
     "TranslationError" : { }
   },
   "codes" : [
+    "AI_BAD_REQUEST",
+    "AI_BUSY",
+    "AI_FAILED",
+    "AI_MONTH_LIMIT",
+    "AI_NOT_CONFIGURED",
     "ATTRIBUTE_IN_USE",
     "ATTRIBUTE_KEY_TAKEN",
     "BAD_ALIAS",

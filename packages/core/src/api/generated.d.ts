@@ -378,6 +378,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/ai/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a question: the prompt as built for copying; researchItems > 0 gives the model search/open_page with a budget per item. Answers at once with a RUNNING job */
+        post: operations["AdminAiController_start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/jobs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The job: RUNNING, or DONE with the answer; a failed job answers with its error */
+        get: operations["AdminAiController_job"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/search-test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** One query through the search chain, as the model gets it */
+        post: operations["AdminAiController_searchTest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Is the model configured, search providers (on / resting after a failure), this month's spend by provider and result (OK / EMPTY / FAILED) */
+        get: operations["AdminAiController_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/audit": {
         parameters: {
             query?: never;
@@ -4967,6 +5035,12 @@ export interface components {
         AdminTelegramAuthRequest: {
             initData: string;
         };
+        AiStatus: {
+            configured: boolean;
+            model: string;
+            month: components["schemas"]["MonthSummary"];
+            providers: components["schemas"]["ProviderState"][];
+        };
         AliasDto: {
             productId: string;
             sourceKey: string;
@@ -5033,6 +5107,22 @@ export interface components {
             since: string;
             /** Format: int64 */
             totalMinor: number;
+        };
+        Answer: {
+            /** Format: int64 */
+            costMicroUsd: number;
+            model: string;
+            /** Format: int32 */
+            modelCalls: number;
+            /** Format: int64 */
+            ms: number;
+            /** Format: int32 */
+            pages: number;
+            repaired: boolean;
+            /** Format: int32 */
+            searches: number;
+            text: string;
+            tokens: components["schemas"]["TokenUsage"];
         };
         AovBucket: {
             label: string;
@@ -5112,6 +5202,13 @@ export interface components {
             /** Format: int32 */
             holdHours: number;
             lines: components["schemas"]["ArriveLineResult"][];
+        };
+        Ask: {
+            effort?: string;
+            feature?: string;
+            prompt?: string;
+            /** Format: int32 */
+            researchItems?: number;
         };
         AuditEntryDto: {
             action: string;
@@ -6322,6 +6419,12 @@ export interface components {
             /** Format: int64 */
             valueMinor: number;
         };
+        Found: {
+            /** Format: int64 */
+            costMicroUsd: number;
+            hits: components["schemas"]["Hit"][];
+            provider: string;
+        };
         Funnel: {
             dataSince: string;
             lowConversion: components["schemas"]["InterestRow"][];
@@ -6431,6 +6534,11 @@ export interface components {
             giftValueMinor: number;
             /** Format: int64 */
             promoOrders: number;
+        };
+        Hit: {
+            snippet: string;
+            title: string;
+            url: string;
         };
         ImportItem: {
             entityId?: string;
@@ -6667,6 +6775,15 @@ export interface components {
             /** Format: int64 */
             unitPriceFx?: number;
             variantId?: string;
+        };
+        JobView: {
+            answer: components["schemas"]["Answer"];
+            feature: string;
+            id: string;
+            /** Format: date-time */
+            startedAt: string;
+            /** @enum {string} */
+            status: "RUNNING" | "DONE" | "FAILED";
         };
         JournalActivityFeedRow: {
             /** Format: int64 */
@@ -7012,6 +7129,15 @@ export interface components {
             remainingMinor: number;
             /** Format: int64 */
             totalMinor: number;
+        };
+        MonthSummary: {
+            /** Format: date-time */
+            from: string;
+            /** Format: int64 */
+            limitMicroUsd: number;
+            lines: components["schemas"]["UsageLine"][];
+            /** Format: int64 */
+            spentMicroUsd: number;
         };
         MovementDto: {
             adminName: string | null;
@@ -7785,6 +7911,11 @@ export interface components {
             /** Format: int64 */
             soldMinor: number;
         };
+        ProviderState: {
+            coolingDown: boolean;
+            enabled: boolean;
+            name: string;
+        };
         PublicReview: {
             adminReply: string | null;
             /** Format: date-time */
@@ -8125,6 +8256,9 @@ export interface components {
             soldMinor: number;
             /** Format: int64 */
             timedOut: number;
+        };
+        SearchTestRequest: {
+            query?: string;
         };
         SendMessageRequest: {
             attachmentUrl?: string;
@@ -8687,6 +8821,14 @@ export interface components {
             /** Format: int64 */
             toShip: number;
         };
+        TokenUsage: {
+            /** Format: int32 */
+            cached: number;
+            /** Format: int32 */
+            input: number;
+            /** Format: int32 */
+            output: number;
+        };
         TopProduct: {
             live: boolean;
             /** Format: int64 */
@@ -8772,6 +8914,23 @@ export interface components {
         UploadResponse: {
             key: string;
             url: string;
+        };
+        UsageLine: {
+            /** Format: int64 */
+            cachedTokens: number;
+            /** Format: int64 */
+            calls: number;
+            /** Format: int64 */
+            costMicroUsd: number;
+            /** Format: int64 */
+            inputTokens: number;
+            /** @enum {string} */
+            kind: "MODEL" | "SEARCH" | "PAGE";
+            /** Format: int64 */
+            outputTokens: number;
+            provider: string;
+            /** @enum {string} */
+            result: "OK" | "EMPTY" | "FAILED";
         };
         UserCardDto: {
             botBlocked: boolean;
@@ -9376,6 +9535,96 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminAiController_start: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Ask"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["JobView"];
+                };
+            };
+        };
+    };
+    AdminAiController_job: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["JobView"];
+                };
+            };
+        };
+    };
+    AdminAiController_searchTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SearchTestRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Found"];
+                };
+            };
+        };
+    };
+    AdminAiController_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiStatus"];
+                };
             };
         };
     };
