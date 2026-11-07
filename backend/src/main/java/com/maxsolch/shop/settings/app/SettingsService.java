@@ -15,6 +15,7 @@ import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.cache.CacheConfig;
 import com.maxsolch.shop.platform.tx.DomainEvents;
 import com.maxsolch.shop.platform.tx.OnCompleted;
+import com.maxsolch.shop.platform.security.AdminAccess;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
@@ -58,18 +59,20 @@ public class SettingsService {
     private final ShopSettingRepository repository;
     private final AdminAuditService audit;
     private final CurrentActor actor;
+    private final AdminAccess access;
     private final DomainEvents events;
     private final Clock clock;
     private final Cache snapshot;
     private final Cache lastGood;
 
     public SettingsService(SettingsCatalog catalog, ShopSettingRepository repository, AdminAuditService audit, CurrentActor actor,
-                           DomainEvents events, Clock clock, CacheManager caches) {
+                           AdminAccess access, DomainEvents events, Clock clock, CacheManager caches) {
         this.catalog = catalog;
         this.clock = clock;
         this.snapshot = CacheConfig.require(caches, SettingsCaches.SNAPSHOT.name());
         this.lastGood = CacheConfig.require(caches, SettingsCaches.LAST_GOOD.name());
         this.actor = actor;
+        this.access = access;
         this.events = events;
         this.repository = repository;
         this.audit = audit;
@@ -162,10 +165,13 @@ public class SettingsService {
     /** All editable settings with metadata, current and default values. */
     public SettingsResponse list() {
         Map<String, Stored> values = values();
+        boolean finance = canSeeFinanceGroups();
         List<SettingsGroupDto> groups = catalog.groups().stream()
+                .filter(g -> finance || !g.financeOnly())
                 .map(g -> new SettingsGroupDto(g.id(), g.title(), g.description()))
                 .toList();
         List<SettingItemDto> items = catalog.all().stream()
+                .filter(d -> finance || !isFinanceOnly(d))
                 .map(d -> toDto(d, values.get(d.key())))
                 .toList();
         return new SettingsResponse(groups, items);
@@ -186,6 +192,9 @@ public class SettingsService {
         for (Map.Entry<String, Object> e : changes.entrySet()) {
             SettingDefinition def = catalog.find(e.getKey())
                     .orElseThrow(() -> new DomainException.BadRequest(PlatformError.SETTING_UNKNOWN, e.getKey()));
+            if (isFinanceOnly(def) && !canSeeFinanceGroups()) {
+                throw new DomainException.Forbidden(PlatformError.FINANCE_ACCESS_DENIED);
+            }
             normalized.put(def, e.getValue() == null ? null : SettingNormalizer.normalize(def, e.getValue()));
         }
 
@@ -234,6 +243,20 @@ public class SettingsService {
         invalidateAfterCommit();
         // Re-read inside the transaction (JPA flushes first), so the answer shows what was written.
         return list();
+    }
+
+    /**
+     * Boolean read straight from the database, never from the 60-second snapshot: for a switch that must stop work on
+     * every backend instance at once (the AI kill switch), not after the other instance refreshes its copy.
+     */
+    public boolean getBoolFresh(String key) {
+        boolean def = Boolean.parseBoolean(definition(key).defaultValue());
+        try {
+            return repository.findById(key).map(r -> "true".equalsIgnoreCase(r.getValue().trim())).orElse(def);
+        } catch (Exception e) {
+            log.warn("Failed to read setting {} fresh: {}", key, e.getMessage());
+            return def;
+        }
     }
 
     /** Decimal text setting ({@code 1.3}) with the registry default when unset or not a number. */
@@ -326,6 +349,15 @@ public class SettingsService {
                 stored == null ? null : stored.updatedAt(),
                 stored == null ? null : stored.updatedByName(),
                 d.options());
+    }
+
+    private boolean isFinanceOnly(SettingDefinition d) {
+        return catalog.groups().stream().anyMatch(g -> g.id().equals(d.group()) && g.financeOnly());
+    }
+
+    /** Background code (no actor) sees everything; an admin sees the finance-only groups when he has the right. */
+    private boolean canSeeFinanceGroups() {
+        return actor.principalIfPresent().map(access::canSeeFinance).orElse(true);
     }
 
     private Long currentAdminId() {

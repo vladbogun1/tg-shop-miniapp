@@ -54,7 +54,7 @@ class SettingsServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new SettingsService(AllSettings.catalog(), repository, audit, new com.maxsolch.shop.platform.web.CurrentActor(),
+        service = new SettingsService(AllSettings.catalog(), repository, audit, new com.maxsolch.shop.platform.web.CurrentActor(), org.mockito.Mockito.mock(com.maxsolch.shop.platform.security.AdminAccess.class),
                 org.mockito.Mockito.mock(com.maxsolch.shop.platform.tx.DomainEvents.class), java.time.Clock.systemUTC(), new org.springframework.cache.concurrent.ConcurrentMapCacheManager());
         lenient().when(audit.currentAdminName()).thenReturn("Max");
     }
