@@ -12,7 +12,16 @@ import { BatchSummary } from "./BatchSummary";
  * проверить, повторить или отменить, — `BatchSummary`. Что делать с результатом (лента, «Принять безопасное»), знает
  * предмет пакета, поэтому вызывающий отдаёт `onReview` и `acceptSafe`.
  */
-export function BatchPanel({ onReview, acceptSafe }: { onReview: (batch: AiBatch) => void; acceptSafe: (batch: AiBatch) => ReactNode }) {
+export function BatchPanel({
+  onReview,
+  acceptSafe,
+  skipSummary,
+}: {
+  onReview: (batch: AiBatch) => void;
+  acceptSafe: (batch: AiBatch) => ReactNode;
+  /** Итог такого пакета рисует его экран сам (переводы): здесь остаётся только полоса хода. */
+  skipSummary?: (batch: AiBatch) => boolean;
+}) {
   const { data } = useAiBatches();
   if (!data || data.length === 0) return null;
   return (
@@ -20,7 +29,7 @@ export function BatchPanel({ onReview, acceptSafe }: { onReview: (batch: AiBatch
       {data.map((b) =>
         isOpen(b) ? (
           <BatchBar key={b.id} batch={b} onReview={() => onReview(b)} />
-        ) : (
+        ) : skipSummary?.(b) ? null : (
           <BatchSummary key={b.id} batch={b} onReview={() => onReview(b)} acceptSafe={acceptSafe(b)} />
         ),
       )}

@@ -35,7 +35,10 @@ export function CardBatchHost() {
 
   return (
     <>
-      <BatchPanel onReview={(b) => setFeedId(b.id)} acceptSafe={(b) => <SafeAcceptButton batch={b} items={items.data} schema={schema.data} />} />
+      <BatchPanel
+        onReview={(b) => setFeedId(b.id)}
+        skipSummary={(b) => b.feature === "TRANSLATION"}
+        acceptSafe={(b) => <SafeAcceptButton batch={b} items={items.data} schema={schema.data} />} />
       {feedId !== null && (
         <QuickReviewFeed
           open
