@@ -83,6 +83,10 @@ public class AiBatchReads {
 
     private static AiBatchDto.Row row(AiJob j) {
         return new AiBatchDto.Row(j.getId(), j.getSubjectId(), j.getStatus(), j.getOutcome(), j.getErrorCode(),
-                j.getSearches() > 0);
+                j.getSearches() > 0, n(j.getOutcomeApplied()), n(j.getOutcomeRejected()), n(j.getOutcomeIgnored()));
+    }
+
+    private static int n(Integer v) {
+        return v == null ? 0 : v;
     }
 }

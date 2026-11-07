@@ -27,8 +27,10 @@ public record AiBatchDto(
         int undoable, @JsonInclude(NON_NULL) Instant undoUntil, Instant createdAt, Instant finishedAt,
         @JsonInclude(NON_NULL) Long spentMinor, List<Row> jobs) {
 
-    /** One job of the batch. {@code searched}: the job searched the web (a condition of the safe acceptance). */
-    public record Row(long id, String subjectId, JobStatus status, String outcome, String errorCode, boolean searched) {
+    /** One job of the batch. {@code searched}: the job searched the web (a condition of the safe acceptance);
+     * {@code applied/rejected/ignored}: the counts of its outcome (0 until there is one), the translations summary sums them. */
+    public record Row(long id, String subjectId, JobStatus status, String outcome, String errorCode, boolean searched,
+                     int applied, int rejected, int ignored) {
     }
 
     /** The counts by status; a status without jobs is zero. */

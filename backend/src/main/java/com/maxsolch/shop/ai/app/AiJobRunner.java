@@ -4,10 +4,12 @@ import com.maxsolch.shop.ai.app.AiJobLifecycle.Claimed;
 import com.maxsolch.shop.ai.app.AiJobLifecycle.Live;
 import com.maxsolch.shop.ai.domain.AiError;
 import com.maxsolch.shop.ai.domain.AiEvents;
+import com.maxsolch.shop.ai.domain.AiFeature;
 import com.maxsolch.shop.ai.domain.AiJob;
 import com.maxsolch.shop.ai.domain.AiScope;
 import com.maxsolch.shop.ai.domain.JobStatus;
 import com.maxsolch.shop.ai.domain.PauseReason;
+import com.maxsolch.shop.ai.domain.ResultWriter;
 import com.maxsolch.shop.ai.infra.AiAlertStore;
 import com.maxsolch.shop.ai.infra.AiUsageQueries;
 import com.maxsolch.shop.platform.error.DomainException;
@@ -16,6 +18,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -38,12 +43,15 @@ public class AiJobRunner {
     private final AiAlertStore alerts;
     private final AiSpendWatch watch;
     private final AiBatchRunner batches;
+    private final AiOutcome outcomes;
+    private final Map<AiFeature, ResultWriter> writers = new EnumMap<>(AiFeature.class);
     private final DomainEvents events;
     private final Clock clock;
 
     public AiJobRunner(AiAgent agent, AiJobLifecycle lifecycle, AiLimits limits, AiPolicy policy, AiEstimate estimate,
                        AiAnswerCheck check, AiUsageQueries usage, AiAlertStore alerts, AiSpendWatch watch,
-                       AiBatchRunner batches, DomainEvents events, Clock clock) {
+                       AiBatchRunner batches, AiOutcome outcomes, List<ResultWriter> resultWriters, DomainEvents events,
+                       Clock clock) {
         this.agent = agent;
         this.lifecycle = lifecycle;
         this.limits = limits;
@@ -54,6 +62,8 @@ public class AiJobRunner {
         this.alerts = alerts;
         this.watch = watch;
         this.batches = batches;
+        this.outcomes = outcomes;
+        resultWriters.forEach(w -> this.writers.put(w.feature(), w));
         this.events = events;
         this.clock = clock;
     }
@@ -67,7 +77,11 @@ public class AiJobRunner {
                     job.getEffort(), job.getResearchItems(), () -> beforeTurn(job));
             AiAgent.Answer answer = agent.ask(ask);
             JobStatus verdict = check.check(answer.text(), 1);
-            lifecycle.complete(id, worker, verdict, answer.text(), answer.repaired());
+            ResultWriter.Written written = verdict == JobStatus.DONE ? write(job, claimed.prompt(), answer.text()) : null;
+            boolean completed = lifecycle.complete(id, worker, verdict, answer.text(), answer.repaired()).isPresent();
+            if (written != null && completed) {
+                outcomes.record(id, new AiJob.Outcome(written.applied(), written.rejected(), 0, written.ignoredLocked()));
+            }
             alerts.clear("KEY");
         } catch (DomainException e) {
             ended(worker, job, e);
@@ -81,6 +95,12 @@ public class AiJobRunner {
                 batches.jobEnded(job.getBatchId());
             }
         }
+    }
+
+    /** The module that owns the objects writes the result itself (translations); null: the screen applies it. */
+    private ResultWriter.Written write(AiJob job, String prompt, String answer) {
+        ResultWriter writer = writers.get(job.getFeature());
+        return writer == null ? null : writer.write(job, prompt, answer);
     }
 
     private void ended(String worker, AiJob job, DomainException e) {
