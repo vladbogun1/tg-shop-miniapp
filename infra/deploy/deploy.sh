@@ -5,7 +5,9 @@
 #                                                (откат с подтверждением — infra/rollback.sh <тег>)
 #   bash infra/deploy/deploy.sh --rollout [svc…] только перекатить сервисы на образы, которые уже есть
 #                                                (стенд: собрал `compose build` — и перекатил)
-# Опции: --no-backup (без дампа), --force (пересоздать, даже если образ тот же).
+# Опции: --no-backup (без дампа), --force (пересоздать, даже если образ тот же),
+#        --plain (по-старому, без копии: ≈1 мин 502 — для релиза с разрушающей миграцией,
+#        с которой старый бэкенд не проработает и минуты).
 # Окружение: DEPLOY_COMPOSE — аргументы `docker compose` (по умолчанию три файла прода),
 #            DEPLOY_SETTLE — сколько ждать, пока шлюзы увидят новый адрес (с; resolver valid=10s в gateway*.conf).
 #
@@ -28,12 +30,14 @@ DEPLOY_COMPOSE="${DEPLOY_COMPOSE:--f docker-compose.yml -f docker-compose.public
 SETTLE="${DEPLOY_SETTLE:-12}"
 
 local mode=release tag="" backup=1 force="" services=""
+PLAIN=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --rollout)   mode=rollout ;;
     --no-backup) backup="" ;;
     --force)     force=1 ;;
-    -h|--help)   sed -n '2,13p' "$0"; return 0 ;;
+    --plain)     PLAIN=1 ;;
+    -h|--help)   sed -n '2,15p' "$0"; return 0 ;;
     v[0-9]*)     tag="$1" ;;
     -*)          die "неизвестная опция $1" ;;
     *)           services="$services $1" ;;
@@ -158,8 +162,8 @@ rollout_one() {
      && [ "$(docker inspect -f '{{.State.Running}}' "$old")" = true ]; then
     log "$svc: уже на этом образе — пропускаю"; return 0
   fi
-  if [ -z "$old" ] || [ "$(docker inspect -f '{{.State.Running}}' "$old")" != true ]; then
-    log "$svc: старого контейнера нет — просто поднимаю"
+  if [ -n "$PLAIN" ] || [ -z "$old" ] || [ "$(docker inspect -f '{{.State.Running}}' "$old")" != true ]; then
+    log "$svc: пересоздаю без копии${PLAIN:+ (--plain)}"
     dc up -d --no-deps --no-build --pull never "$svc" </dev/null
     wait_ready "$(main_ctr "$svc")" "$svc" || die "$svc не поднялся: docker logs $(main_ctr "$svc")"
     return 0
