@@ -8,7 +8,7 @@ import { attributesForCategory, type CardAttribute, type CardSchema } from "./sc
 import { TEXT_FIELDS, type TextField } from "./types";
 import { metaOf } from "./view";
 import type { CardAcceptBody, CardTextTranslations } from "./wire";
-import { CONTENT_SOURCE_LOCALE, TRANSLATED_LOCALES, type Locale, type TranslatedLocale } from "@shop/core/i18n";
+import { CONTENT_SOURCE_LOCALE, TRANSLATED_LOCALES, type TranslatedLocale } from "@shop/core/i18n";
 
 export type Lang = "ru" | TranslatedLocale;
 export const LANG_LABEL: Record<Lang, string> = { ru: "RU", uk: "UA", en: "EN" };
