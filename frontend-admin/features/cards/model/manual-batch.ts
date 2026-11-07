@@ -31,6 +31,8 @@ export interface ManualDraft {
   stage: ManualStage;
   /** Какая модель отвечала (необязательно): уходит в карточку как происхождение данных. */
   model: string;
+  /** Товары сверх этого пакета (выбрано больше, чем помещается): «Следующий пакет» начнётся с них. */
+  rest: string[];
 }
 
 export const isPartSize = (n: unknown): n is ManualPartSize => n === 4 || n === 8;
@@ -45,9 +47,18 @@ export function partsOf<T>(ids: readonly T[], size: number): T[][] {
   return splitIntoBatches([...ids], size);
 }
 
-export function freshDraft(count: number, size: ManualPartSize = MANUAL_PART_SIZE): ManualDraft {
+export function freshDraft(count: number, size: ManualPartSize = MANUAL_PART_SIZE, rest: string[] = []): ManualDraft {
   const empty = () => Array.from({ length: Math.max(1, Math.ceil(count / size)) }, () => "");
-  return { v: 2, size, part: 0, answers: empty(), sent: empty(), stage: "parts", model: "" };
+  return { v: 2, size, part: 0, answers: empty(), sent: empty(), stage: "parts", model: "", rest };
+}
+
+/**
+ * Выбрано больше, чем помещается в один ручной пакет: сейчас — первые `max`, остальные ждут следующего пакета.
+ * Почему не один большой: черновик хранит вставленный текст всех частей и пишется на сервер целиком при каждой
+ * правке, а пакет на 100 товаров — это 25 частей, один присест работы.
+ */
+export function splitForManual(ids: readonly string[], max: number): { now: string[]; rest: string[]; batches: number } {
+  return { now: ids.slice(0, max), rest: ids.slice(max), batches: Math.max(1, Math.ceil(ids.length / max)) };
 }
 
 function isStrings(x: unknown): x is string[] {
@@ -71,14 +82,15 @@ function fits(d: Partial<ManualDraft> | null, count: number): d is ManualDraft {
 /** Черновик с сервера; негодный (старая версия, другой размер списка) — новый, с размером части пакета. */
 export function readDraft(raw: string | null | undefined, count: number, size: number): ManualDraft {
   const d = raw ? parse(raw) : null;
-  if (!fits(d, count)) return freshDraft(count, isPartSize(size) ? size : MANUAL_PART_SIZE);
+  const rest = d && isStrings(d.rest) ? d.rest : [];
+  if (!fits(d, count)) return freshDraft(count, isPartSize(size) ? size : MANUAL_PART_SIZE, rest);
   const sent = isStrings(d.sent) && d.sent.length === d.answers.length ? d.sent : d.answers.map(() => "");
-  return { ...d, sent, model: typeof d.model === "string" ? d.model : "" };
+  return { ...d, sent, model: typeof d.model === "string" ? d.model : "", rest };
 }
 
 /** Другой размер части — только пока ничего не вставлено: ответы привязаны к частям. */
 export function resize(d: ManualDraft, count: number, size: ManualPartSize): ManualDraft {
-  return [...d.answers, ...d.sent].some((a) => a.trim()) ? d : { ...freshDraft(count, size), model: d.model };
+  return [...d.answers, ...d.sent].some((a) => a.trim()) ? d : { ...freshDraft(count, size, d.rest), model: d.model };
 }
 
 /** «Товары 5–8» (номера по порядку пакета). */

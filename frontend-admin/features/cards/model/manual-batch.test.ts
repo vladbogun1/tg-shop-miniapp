@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { cardVersion } from "./ai-card";
 import { item, SCHEMA } from "./fixtures";
 import { assignCardIds, type CardItem } from "./item";
-import { checkPart, freshDraft, partAnswers, partRange, partsOf, pendingCount, progressText, readDraft, resize, resumeText, sameProducts, sortForBatch, unansweredOf } from "./manual-batch";
+import { checkPart, splitForManual, freshDraft, partAnswers, partRange, partsOf, pendingCount, progressText, readDraft, resize, resumeText, sameProducts, sortForBatch, unansweredOf } from "./manual-batch";
 import { parseCardAnswer } from "./parse";
 import { buildCardReview } from "./review";
 
@@ -115,5 +115,25 @@ describe("manual batch: progress against the server's tasks", () => {
     expect(resumeText(raw, order, 4, jobs)).toBe("часть 2 из 2, вставлено 1 из 4");
     expect(resumeText(JSON.stringify({ ...freshDraft(8, 4), stage: "review" }), order, 4, jobs)).toBe("проверка, осталось 1");
     expect(resumeText(null, order, 8, [])).toBe("часть 1 из 1, вставлено 0 из 8");
+  });
+});
+
+describe("больше 100 товаров — по пакетам", () => {
+  it("первые 100 сейчас, остальные запоминаются в черновике и переживают чтение и смену размера части", () => {
+    const all = Array.from({ length: 230 }, (_, i) => `p${i}`);
+    const s = splitForManual(all, 100);
+    expect(s.now).toHaveLength(100);
+    expect(s.rest).toHaveLength(130);
+    expect(s.batches).toBe(3);
+    const d = freshDraft(100, 4, s.rest);
+    expect(readDraft(JSON.stringify(d), 100, 4).rest).toEqual(s.rest);
+    expect(resize(d, 100, 8).rest).toEqual(s.rest);
+    expect(readDraft(JSON.stringify({ ...d, rest: "x" }), 100, 4).rest).toEqual([]);
+  });
+
+  it("до 100 — один пакет, хвоста нет", () => {
+    const s = splitForManual(["a", "b"], 100);
+    expect(s).toEqual({ now: ["a", "b"], rest: [], batches: 1 });
+    expect(freshDraft(2).rest).toEqual([]);
   });
 });

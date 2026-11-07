@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardVersion, confirmedSpecKeys, editReviewValue, extraInitialKeys, reviewRows, toProductSel, valuesOf } from "./ai-card";
+import { cardVersion, newBrandOf, confirmedSpecKeys, editReviewValue, extraInitialKeys, reviewRows, toProductSel, valuesOf } from "./ai-card";
 import { cardChanges } from "./ai-conflict";
 import { SCHEMA, item } from "./fixtures";
 import { reviewProduct } from "./review";
@@ -123,5 +123,26 @@ describe("правка в ревью", () => {
     expect(editReviewValue(r, "spec:weight_g", "много").review).toBe(r);
     expect(editReviewValue(r, "title", "  ").error).toBeTruthy();
     expect(editReviewValue(r, "category", "x").error).toBeTruthy();
+  });
+});
+
+describe("бренд, которого нет в каталоге", () => {
+  const withChoices = (brands: string[]) => ({ ...ctxOf(), choices: { schema: SCHEMA, brands } });
+  const answer = { brand: "Новый", specs: { sensor: "x" }, confidence: { sensor: 90 }, overall: 90 };
+
+  it("строка предупреждает, что бренд будет создан, и сама не отмечается", () => {
+    const r = review(answer);
+    const row = reviewRows(r, withChoices(["Logitech"])).find((x) => x.key === "brand")!;
+    expect(row.suspicion).toBe("warn");
+    expect(row.reason).toContain("Бренд «Новый» будет создан");
+    expect(initialSelection(reviewRows(r, withChoices(["Logitech"]))).has("brand")).toBe(false);
+    expect(newBrandOf(r, ["Logitech"])).toBe("Новый");
+  });
+
+  it("бренд из каталога (без учёта регистра) — обычная строка", () => {
+    const r = review(answer);
+    const row = reviewRows(r, withChoices(["новый"])).find((x) => x.key === "brand")!;
+    expect(row.suspicion).toBe("none");
+    expect(newBrandOf(r, ["новый"])).toBeNull();
   });
 });

@@ -152,6 +152,25 @@ function choiceOf(key: "category" | "brand", ctx: FieldContext): { list: Choice[
   return { list, label: (v) => (v === null ? null : list.find((c) => c.value === v)?.label ?? v) };
 }
 
+/**
+ * Бренд из ответа, которого нет среди брендов каталога (без учёта регистра): при записи импорт его создаст.
+ * null — бренд есть, ответ бренд не меняет или список брендов ещё не загружен.
+ */
+export function newBrandOf(r: ProductReview, brands: readonly string[] | undefined): string | null {
+  const to = r.brand?.valid ? r.brand.to.trim() : "";
+  if (!to || !brands) return null;
+  const known = brands.some((b) => b.trim().toLocaleLowerCase() === to.toLocaleLowerCase());
+  return known ? null : to;
+}
+
+function doubtOfChange(key: "category" | "brand", r: ProductReview, ctx: FieldContext): Doubt {
+  const c = key === "category" ? r.category : r.brand;
+  if (c && !c.valid) return { suspicion: "bad", reason: c.issues.find((i) => i.level !== "info")?.text ?? "Такой категории нет в каталоге" };
+  const created = key === "brand" ? newBrandOf(r, ctx.choices?.brands) : null;
+  if (created) return { suspicion: "warn", reason: `Бренд «${created}» будет создан — его нет в каталоге. Можно выбрать существующий` };
+  return { suspicion: "none", reason: null };
+}
+
 function changeRows(r: ProductReview, ctx: FieldContext): ReviewField[] {
   const rows: ReviewField[] = [];
   const now = valuesOf(r.item);
@@ -169,8 +188,7 @@ function changeRows(r: ProductReview, ctx: FieldContext): ReviewField[] {
       after: (choice ? choice.label(c.to) : null) ?? c.to,
       confidence: r.overall,
       source: null,
-      suspicion: c.valid ? "none" : "bad",
-      reason: c.valid ? null : c.issues.find((i) => i.level !== "info")?.text ?? "Такой категории нет в каталоге",
+      ...doubtOfChange(key, r, ctx),
       humanLocked: false,
       lockNote: null,
       conflict: conflictOf(ctx, key, label, c.to, now[key] ?? null),
