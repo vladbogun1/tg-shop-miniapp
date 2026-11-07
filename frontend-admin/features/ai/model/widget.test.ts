@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AiWidgetData } from "../api";
-import { widgetHidden, widgetLine } from "./widget";
+import { widgetHidden, widgetLine, widgetShort } from "./widget";
 
 const w = (over: Partial<AiWidgetData> = {}): AiWidgetData => ({
   canRun: true,
@@ -23,6 +23,15 @@ describe("виджет ИИ на дашборде", () => {
 
   it("у админа в строке нет ни одной суммы", () => {
     expect(widgetLine(w({ review: 1 }))).not.toMatch(/₴/);
+  });
+
+  it("на телефоне — короткая строка, которая влезает в 320 px", () => {
+    const owner = widgetShort(w({ monthSpentMinor: 0, monthLimitMinor: 42000, review: 1, problems: 1 }));
+    expect(owner).toMatch(/^0 ₴ из 420 ₴ · ждёт 1 · проблем 1$/);
+    expect(owner.length).toBeLessThanOrEqual(34);
+    expect(widgetShort(w({ review: 12, problems: 3 }))).toBe("ждёт 12 · проблем 3");
+    expect(widgetShort(w())).toBe("ИИ");
+    expect(widgetShort(w({ canRun: false, enabled: false }))).toBe("выключен");
   });
 
   it("не настроенный ИИ без дел не занимает место", () => {
