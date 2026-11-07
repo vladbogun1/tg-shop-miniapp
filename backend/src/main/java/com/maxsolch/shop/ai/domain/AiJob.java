@@ -266,7 +266,7 @@ public class AiJob {
 
     /**
      * The admin pressed «Остановить». A queued job stops at once; a running one gets the flag and stops before its next
-     * turn (the current model call may finish). Returns true when the job is already canceled.
+     * turn or right after the current model call (its answer is not used). Returns true when the job is already canceled.
      */
     public boolean requestCancel(Instant now) {
         if (status == JobStatus.QUEUED) {

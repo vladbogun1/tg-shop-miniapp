@@ -27,7 +27,8 @@ import java.util.Optional;
  * One job from "taken" to "ended": the reserve in the limits, the conversation with the model, the structural check
  * of the answer, the end written to the database. Before every model turn the {@link AiAgent.Gate} looks into the
  * database: stopped by the admin, switched off by the owner, past the deadline, over the ceiling of one job, over a
- * limit. Whatever happens, the reserve is released and the job gets an end (unless the server took it away meanwhile).
+ * limit. A stop pressed during the last model call is seen right after it returns: the job is CANCELED, not
+ * handed to review. Whatever happens, the reserve is released and the job gets an end (unless the server took it away meanwhile).
  */
 @Slf4j
 @Service
@@ -82,6 +83,8 @@ public class AiJobRunner {
                     job.getEffort(), research, () -> beforeTurn(job), pictures,
                     new AiJobSteps(step -> lifecycle.step(id, worker, step), clock));
             AiAgent.Answer answer = agent.ask(ask);
+            // «Остановить» pressed while the model was answering: the answer is not used, the spend stays recorded
+            refuseIfStopped(id);
             JobStatus verdict = check.check(answer.text(), 1);
             ResultWriter.Written written = verdict == JobStatus.DONE ? write(job, claimed.prompt(), answer.text()) : null;
             boolean completed = lifecycle.complete(id, worker, verdict, answer.text(), answer.repaired()).isPresent();
@@ -135,6 +138,14 @@ public class AiJobRunner {
 
     private static boolean pausesBatch(AiError reason) {
         return reason == AiError.DAY_LIMIT || reason == AiError.MONTH_LIMIT || reason == AiError.DISABLED;
+    }
+
+    /** After the model returned: a stop requested meanwhile cancels the job instead of handing the answer to review. */
+    private void refuseIfStopped(long id) {
+        Optional<Live> live = lifecycle.live(id);
+        if (live.isEmpty() || live.get().cancelRequested()) {
+            throw new DomainException.Conflict(AiError.CANCELED);
+        }
     }
 
     /** The gate: reads the job from the database each time, so a stop pressed on another instance counts too. */

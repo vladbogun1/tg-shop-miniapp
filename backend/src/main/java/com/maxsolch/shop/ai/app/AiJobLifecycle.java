@@ -129,13 +129,20 @@ public class AiJobLifecycle {
         jobs.step(jobId, worker, t, clock.instant());
     }
 
-    /** The run ended with an answer: the verdict of the structural check, the totals from the journal. */
+    /**
+     * The run ended with an answer: the verdict of the structural check, the totals from the journal. A stop that came
+     * after the runner's last look cancels the job here, in the same transaction (empty: the answer is not the result).
+     */
     @Transactional
     public Optional<AiJob> complete(long jobId, String worker, JobStatus verdict, String answer, boolean repaired) {
-        return running(jobId, worker).map(job -> {
+        return running(jobId, worker).flatMap(job -> {
+            if (job.isCancelRequested()) {
+                job.cancel(totals(jobId, repaired), clock.instant());
+                return Optional.empty();
+            }
             job.finish(verdict, totals(jobId, repaired), clock.instant());
             bodies.findById(jobId).ifPresent(b -> b.answered(answer));
-            return job;
+            return Optional.of(job);
         });
     }
 
@@ -178,7 +185,7 @@ public class AiJobLifecycle {
         running(jobId, worker).ifPresent(AiJob::returnToQueue);
     }
 
-    /** The admin's "Остановить": a queued job ends at once, a running one stops before its next turn. */
+    /** The admin's "Остановить": a queued job ends at once, a running one stops before its next turn or right after the model call. */
     @Transactional
     public AiJob requestCancel(long jobId) {
         AiJob job = jobs.findById(jobId).orElseThrow(() -> new DomainException.NotFound(AiError.JOB_NOT_FOUND));
