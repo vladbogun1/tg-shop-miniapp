@@ -378,6 +378,210 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/ai/apply/{applyId}/finish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** After the card is saved: the changed fields are compared and checked (only empty characteristics and description filled). A broken promise is given back at once and listed in notSafe */
+        post: operations["AdminAiBatchesController_finish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/apply/{applyId}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Undo one application within 24 hours; fields edited by hand since stay (counted as skipped) */
+        post: operations["AdminAiBatchesController_undoOne"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/batches/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The bar: running and paused batches of everybody, and the finished ones of this admin with something left to do (results to review, failed ones, applications that can be undone) */
+        get: operations["AdminAiBatchesController_active"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/batches/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** How long a batch of N objects takes, and whether the limit left is enough; the money fields only for the finance right */
+        post: operations["AdminAiBatchesController_estimate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/batches/jobs/{jobId}/apply/begin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Before the screen applies the result of a batch job safely: the values of the object are taken; 409 AI_NOT_SAFE when the job is not eligible (no search, already decided or applied) */
+        post: operations["AdminAiBatchesController_begin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/batches/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A batch with the counts and a row per job */
+        get: operations["AdminAiBatchesController_batch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/batches/{id}/accept-safe/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** «Отменить применение»: undo every safe application of the batch that is still inside 24 hours */
+        post: operations["AdminAiBatchesController_undoBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/batches/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop for good: queued jobs end at once, running ones before the next model turn; ready results stay */
+        post: operations["AdminAiBatchesController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/batches/{id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause: queued jobs wait, running ones finish. The one who started it, or the finance right */
+        post: operations["AdminAiBatchesController_pause"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/batches/{id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Continue a paused batch; 409 while a limit is used up or the AI is off */
+        post: operations["AdminAiBatchesController_resume"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/batches/{id}/retry-failed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A new batch for the failed, empty or unreadable jobs not asked again; 409 when there are none */
+        post: operations["AdminAiBatchesController_retryFailed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/card-batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fill in the cards of several products (up to the batch maximum, 30) as one batch: one task per product, medium effort. 409 AI_JOB_ACTIVE (subjects) when a product already has an active task, AI_BATCHES_OFF when the owner switched batches off; the same Idempotency-Key returns the first batch */
+        post: operations["AdminCardAiController_startBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/ai/card-jobs": {
         parameters: {
             query?: never;
@@ -5342,6 +5546,32 @@ export interface components {
         AdminTelegramAuthRequest: {
             initData: string;
         };
+        AiAiApplyUndoResult: {
+            /** Format: int32 */
+            applications: number;
+            /** Format: int32 */
+            reverted: number;
+            /** Format: int32 */
+            skipped: number;
+        };
+        AiAiBatchDtoRow: {
+            errorCode: string;
+            /** Format: int64 */
+            id: number;
+            outcome: string;
+            searched: boolean;
+            /** @enum {string} */
+            status: "QUEUED" | "RUNNING" | "DONE" | "EMPTY" | "BAD_ANSWER" | "FAILED" | "CANCELED";
+            subjectId: string;
+        };
+        AiAiBatchesEstimateRequest: {
+            /** Format: int32 */
+            count?: number;
+            /** @enum {string} */
+            feature?: "CARD" | "COMPLETION" | "TRANSLATION" | "SUPPLY_EXTRACT" | "SUPPLY_MATCH" | "SEARCH_TEST";
+            /** @enum {string} */
+            mode?: "NORMAL" | "THOROUGH";
+        };
         AiAiJobOutcome: {
             /** Format: int32 */
             applied?: number;
@@ -5351,6 +5581,25 @@ export interface components {
             ignoredLocked?: number;
             /** Format: int32 */
             rejected?: number;
+        };
+        AiAiJobsEstimateRequest: {
+            /** @enum {string} */
+            feature?: "CARD" | "COMPLETION" | "TRANSLATION" | "SUPPLY_EXTRACT" | "SUPPLY_MATCH" | "SEARCH_TEST";
+            /** Format: int32 */
+            items?: number;
+            /** @enum {string} */
+            mode?: "NORMAL" | "THOROUGH";
+        };
+        AiAiSafeAcceptApplied: {
+            changed: string[];
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            jobId: number;
+            notSafe: string[];
+            subjectId: string;
+            /** Format: date-time */
+            undoUntil: string;
         };
         AiAiSummarySummary: {
             configured: boolean;
@@ -5376,6 +5625,51 @@ export interface components {
             adminName: string;
             job: components["schemas"]["AiJobDto"];
             subjectLabel: string;
+        };
+        AiBatchDto: {
+            /** Format: int64 */
+            adminId: number;
+            /** Format: int32 */
+            badAnswer: number;
+            /** Format: int32 */
+            canceled: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int32 */
+            done: number;
+            /** Format: int32 */
+            empty: number;
+            /** Format: int32 */
+            failed: number;
+            /** @enum {string} */
+            feature: "CARD" | "COMPLETION" | "TRANSLATION" | "SUPPLY_EXTRACT" | "SUPPLY_MATCH" | "SEARCH_TEST";
+            /** Format: date-time */
+            finishedAt: string;
+            /** Format: int64 */
+            id: number;
+            jobs: components["schemas"]["AiAiBatchDtoRow"][];
+            /** @enum {string} */
+            pauseReason: "LIMIT_DAY" | "LIMIT_MONTH" | "RESTART" | "FAILURES" | "SEARCH_DOWN" | "MANUAL" | "DISABLED";
+            /** Format: int32 */
+            queued: number;
+            /** Format: int32 */
+            ready: number;
+            /** Format: int64 */
+            retryOf: number;
+            /** Format: int32 */
+            retryable: number;
+            /** Format: int32 */
+            running: number;
+            /** Format: int64 */
+            spentMinor?: number;
+            /** @enum {string} */
+            status: "RUNNING" | "PAUSED" | "DONE" | "CANCELED";
+            /** Format: int32 */
+            total: number;
+            /** Format: date-time */
+            undoUntil?: string;
+            /** Format: int32 */
+            undoable: number;
         };
         AiJobDto: {
             /** Format: int64 */
@@ -5853,6 +6147,10 @@ export interface components {
             /** Format: int64 */
             waitingQty: number;
         };
+        Begun: {
+            /** Format: int64 */
+            id: number;
+        };
         Bonus: {
             /** Format: int64 */
             amountMinor: number;
@@ -6277,6 +6575,17 @@ export interface components {
             /** Format: int64 */
             productCount: number;
             slug: string;
+        };
+        CatalogCardAiBatchesStart: {
+            items?: components["schemas"]["Product"][];
+            promptVersion?: string;
+        };
+        CatalogCardAiJobsStart: {
+            created?: boolean;
+            productId?: string;
+            prompt?: string;
+            promptVersion?: string;
+            subjectVersion?: string;
         };
         CatalogCatalogSchemaImporterResult: {
             /** Format: int32 */
@@ -6711,6 +7020,19 @@ export interface components {
             /** Format: int32 */
             weight: number;
         };
+        Dto: {
+            /** Format: int32 */
+            count: number;
+            fits: boolean;
+            /** Format: int32 */
+            minutes: number;
+            /** Format: int64 */
+            p50Minor: number;
+            /** Format: int64 */
+            p90Minor: number;
+            /** Format: int64 */
+            roomMinor: number;
+        };
         EndpointRequest: {
             endpoint?: string;
         };
@@ -6729,14 +7051,6 @@ export interface components {
             p90Minor: number;
             /** Format: int32 */
             seconds: number;
-        };
-        EstimateRequest: {
-            /** @enum {string} */
-            feature?: "CARD" | "COMPLETION" | "TRANSLATION" | "SUPPLY_EXTRACT" | "SUPPLY_MATCH" | "SEARCH_TEST";
-            /** Format: int32 */
-            items?: number;
-            /** @enum {string} */
-            mode?: "NORMAL" | "THOROUGH";
         };
         EtaDto: {
             /** Format: int32 */
@@ -8204,6 +8518,11 @@ export interface components {
             qty?: number;
             variantId?: string;
         };
+        Product: {
+            productId?: string;
+            prompt?: string;
+            subjectVersion?: string;
+        };
         ProductCostDto: {
             /** Format: int64 */
             currentCostMinor: number | null;
@@ -9030,13 +9349,6 @@ export interface components {
         };
         StaffAdminIncidentControllerResolveRequest: {
             resolution?: string;
-        };
-        Start: {
-            created?: boolean;
-            productId?: string;
-            prompt?: string;
-            promptVersion?: string;
-            subjectVersion?: string;
         };
         StartPaymentRequest: {
             display?: string;
@@ -10130,6 +10442,276 @@ export interface operations {
             };
         };
     };
+    AdminAiBatchesController_finish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                applyId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiAiSafeAcceptApplied"];
+                };
+            };
+        };
+    };
+    AdminAiBatchesController_undoOne: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                applyId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiAiApplyUndoResult"];
+                };
+            };
+        };
+    };
+    AdminAiBatchesController_active: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiBatchDto"][];
+                };
+            };
+        };
+    };
+    AdminAiBatchesController_estimate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiAiBatchesEstimateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Dto"];
+                };
+            };
+        };
+    };
+    AdminAiBatchesController_begin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                jobId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Begun"];
+                };
+            };
+        };
+    };
+    AdminAiBatchesController_batch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiBatchDto"];
+                };
+            };
+        };
+    };
+    AdminAiBatchesController_undoBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiAiApplyUndoResult"];
+                };
+            };
+        };
+    };
+    AdminAiBatchesController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiBatchDto"];
+                };
+            };
+        };
+    };
+    AdminAiBatchesController_pause: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiBatchDto"];
+                };
+            };
+        };
+    };
+    AdminAiBatchesController_resume: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiBatchDto"];
+                };
+            };
+        };
+    };
+    AdminAiBatchesController_retryFailed: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiBatchDto"];
+                };
+            };
+        };
+    };
+    AdminCardAiController_startBatch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CatalogCardAiBatchesStart"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiBatchDto"];
+                };
+            };
+        };
+    };
     AdminCardAiController_start: {
         parameters: {
             query?: never;
@@ -10141,7 +10723,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Start"];
+                "application/json": components["schemas"]["CatalogCardAiJobsStart"];
             };
         };
         responses: {
@@ -10165,7 +10747,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["EstimateRequest"];
+                "application/json": components["schemas"]["AiAiJobsEstimateRequest"];
             };
         };
         responses: {

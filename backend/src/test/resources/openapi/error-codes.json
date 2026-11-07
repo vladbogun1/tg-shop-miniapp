@@ -1,8 +1,12 @@
 {
   "byEnum" : {
     "AiError" : {
+      "APPLY_NOT_FOUND" : "AI_APPLY_NOT_FOUND",
       "BAD_REQUEST" : "AI_BAD_REQUEST",
       "BAD_STATE" : "AI_BAD_STATE",
+      "BATCHES_OFF" : "AI_BATCHES_OFF",
+      "BATCH_NOT_FOUND" : "AI_BATCH_NOT_FOUND",
+      "BATCH_SIZE" : "AI_BATCH_SIZE",
       "BUSY" : "AI_BUSY",
       "CANCELED" : "AI_CANCELED",
       "DAY_LIMIT" : "AI_DAY_LIMIT",
@@ -14,11 +18,13 @@
       "MODEL_FAILED" : "AI_FAILED",
       "MONTH_LIMIT" : "AI_MONTH_LIMIT",
       "NOT_CONFIGURED" : "AI_NOT_CONFIGURED",
+      "NOT_SAFE" : "AI_NOT_SAFE",
       "NOT_YOUR_JOB" : "AI_NOT_YOUR_JOB",
       "PROMPT_GONE" : "AI_PROMPT_GONE",
       "RESTARTED" : "AI_RESTARTED",
       "RETRY_LIMIT" : "AI_RETRY_LIMIT",
-      "SUBJECT_NOT_FOUND" : "AI_SUBJECT_NOT_FOUND"
+      "SUBJECT_NOT_FOUND" : "AI_SUBJECT_NOT_FOUND",
+      "UNDO_CLOSED" : "AI_UNDO_CLOSED"
     },
     "AnalyticsError" : { },
     "CartError" : { },
@@ -213,8 +219,12 @@
     "TranslationError" : { }
   },
   "codes" : [
+    "AI_APPLY_NOT_FOUND",
     "AI_BAD_REQUEST",
     "AI_BAD_STATE",
+    "AI_BATCHES_OFF",
+    "AI_BATCH_NOT_FOUND",
+    "AI_BATCH_SIZE",
     "AI_BUSY",
     "AI_CANCELED",
     "AI_DAY_LIMIT",
@@ -226,11 +236,13 @@
     "AI_KEY_REJECTED",
     "AI_MONTH_LIMIT",
     "AI_NOT_CONFIGURED",
+    "AI_NOT_SAFE",
     "AI_NOT_YOUR_JOB",
     "AI_PROMPT_GONE",
     "AI_RESTARTED",
     "AI_RETRY_LIMIT",
     "AI_SUBJECT_NOT_FOUND",
+    "AI_UNDO_CLOSED",
     "ATTRIBUTE_IN_USE",
     "ATTRIBUTE_KEY_TAKEN",
     "BAD_ALIAS",

@@ -1241,6 +1241,96 @@
         ],
         "type" : "object"
       },
+      "AiAiApplyUndoResult" : {
+        "properties" : {
+          "applications" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "reverted" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "skipped" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "applications",
+          "reverted",
+          "skipped"
+        ],
+        "type" : "object"
+      },
+      "AiAiBatchDtoRow" : {
+        "properties" : {
+          "errorCode" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "outcome" : {
+            "type" : "string"
+          },
+          "searched" : {
+            "type" : "boolean"
+          },
+          "status" : {
+            "enum" : [
+              "QUEUED",
+              "RUNNING",
+              "DONE",
+              "EMPTY",
+              "BAD_ANSWER",
+              "FAILED",
+              "CANCELED"
+            ],
+            "type" : "string"
+          },
+          "subjectId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "errorCode",
+          "id",
+          "outcome",
+          "searched",
+          "status",
+          "subjectId"
+        ],
+        "type" : "object"
+      },
+      "AiAiBatchesEstimateRequest" : {
+        "properties" : {
+          "count" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "feature" : {
+            "enum" : [
+              "CARD",
+              "COMPLETION",
+              "TRANSLATION",
+              "SUPPLY_EXTRACT",
+              "SUPPLY_MATCH",
+              "SEARCH_TEST"
+            ],
+            "type" : "string"
+          },
+          "mode" : {
+            "enum" : [
+              "NORMAL",
+              "THOROUGH"
+            ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "AiAiJobOutcome" : {
         "properties" : {
           "applied" : {
@@ -1260,6 +1350,73 @@
             "type" : "integer"
           }
         },
+        "type" : "object"
+      },
+      "AiAiJobsEstimateRequest" : {
+        "properties" : {
+          "feature" : {
+            "enum" : [
+              "CARD",
+              "COMPLETION",
+              "TRANSLATION",
+              "SUPPLY_EXTRACT",
+              "SUPPLY_MATCH",
+              "SEARCH_TEST"
+            ],
+            "type" : "string"
+          },
+          "items" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "mode" : {
+            "enum" : [
+              "NORMAL",
+              "THOROUGH"
+            ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AiAiSafeAcceptApplied" : {
+        "properties" : {
+          "changed" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "jobId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "notSafe" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "subjectId" : {
+            "type" : "string"
+          },
+          "undoUntil" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "changed",
+          "id",
+          "jobId",
+          "notSafe",
+          "subjectId",
+          "undoUntil"
+        ],
         "type" : "object"
       },
       "AiAiSummarySummary" : {
@@ -1349,6 +1506,143 @@
           "adminName",
           "job",
           "subjectLabel"
+        ],
+        "type" : "object"
+      },
+      "AiBatchDto" : {
+        "properties" : {
+          "adminId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "badAnswer" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "canceled" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "done" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "empty" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "failed" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "feature" : {
+            "enum" : [
+              "CARD",
+              "COMPLETION",
+              "TRANSLATION",
+              "SUPPLY_EXTRACT",
+              "SUPPLY_MATCH",
+              "SEARCH_TEST"
+            ],
+            "type" : "string"
+          },
+          "finishedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "jobs" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AiAiBatchDtoRow"
+            },
+            "type" : "array"
+          },
+          "pauseReason" : {
+            "enum" : [
+              "LIMIT_DAY",
+              "LIMIT_MONTH",
+              "RESTART",
+              "FAILURES",
+              "SEARCH_DOWN",
+              "MANUAL",
+              "DISABLED"
+            ],
+            "type" : "string"
+          },
+          "queued" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "ready" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "retryOf" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "retryable" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "running" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "spentMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "status" : {
+            "enum" : [
+              "RUNNING",
+              "PAUSED",
+              "DONE",
+              "CANCELED"
+            ],
+            "type" : "string"
+          },
+          "total" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "undoUntil" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "undoable" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "adminId",
+          "badAnswer",
+          "canceled",
+          "createdAt",
+          "done",
+          "empty",
+          "failed",
+          "feature",
+          "finishedAt",
+          "id",
+          "jobs",
+          "pauseReason",
+          "queued",
+          "ready",
+          "retryOf",
+          "retryable",
+          "running",
+          "status",
+          "total",
+          "undoable"
         ],
         "type" : "object"
       },
@@ -2868,6 +3162,18 @@
         ],
         "type" : "object"
       },
+      "Begun" : {
+        "properties" : {
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "id"
+        ],
+        "type" : "object"
+      },
       "Bonus" : {
         "properties" : {
           "amountMinor" : {
@@ -4243,6 +4549,40 @@
           "productCount",
           "slug"
         ],
+        "type" : "object"
+      },
+      "CatalogCardAiBatchesStart" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Product"
+            },
+            "type" : "array"
+          },
+          "promptVersion" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "CatalogCardAiJobsStart" : {
+        "properties" : {
+          "created" : {
+            "type" : "boolean"
+          },
+          "productId" : {
+            "type" : "string"
+          },
+          "prompt" : {
+            "type" : "string"
+          },
+          "promptVersion" : {
+            "type" : "string"
+          },
+          "subjectVersion" : {
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "CatalogCatalogSchemaImporterResult" : {
@@ -5716,6 +6056,42 @@
         ],
         "type" : "object"
       },
+      "Dto" : {
+        "properties" : {
+          "count" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "fits" : {
+            "type" : "boolean"
+          },
+          "minutes" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "p50Minor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "p90Minor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "roomMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "count",
+          "fits",
+          "minutes",
+          "p50Minor",
+          "p90Minor",
+          "roomMinor"
+        ],
+        "type" : "object"
+      },
       "EndpointRequest" : {
         "properties" : {
           "endpoint" : {
@@ -5771,33 +6147,6 @@
           "p90Minor",
           "seconds"
         ],
-        "type" : "object"
-      },
-      "EstimateRequest" : {
-        "properties" : {
-          "feature" : {
-            "enum" : [
-              "CARD",
-              "COMPLETION",
-              "TRANSLATION",
-              "SUPPLY_EXTRACT",
-              "SUPPLY_MATCH",
-              "SEARCH_TEST"
-            ],
-            "type" : "string"
-          },
-          "items" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "mode" : {
-            "enum" : [
-              "NORMAL",
-              "THOROUGH"
-            ],
-            "type" : "string"
-          }
-        },
         "type" : "object"
       },
       "EtaDto" : {
@@ -10772,6 +11121,20 @@
         },
         "type" : "object"
       },
+      "Product" : {
+        "properties" : {
+          "productId" : {
+            "type" : "string"
+          },
+          "prompt" : {
+            "type" : "string"
+          },
+          "subjectVersion" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ProductCostDto" : {
         "properties" : {
           "currentCostMinor" : {
@@ -13513,26 +13876,6 @@
       "StaffAdminIncidentControllerResolveRequest" : {
         "properties" : {
           "resolution" : {
-            "type" : "string"
-          }
-        },
-        "type" : "object"
-      },
-      "Start" : {
-        "properties" : {
-          "created" : {
-            "type" : "boolean"
-          },
-          "productId" : {
-            "type" : "string"
-          },
-          "prompt" : {
-            "type" : "string"
-          },
-          "promptVersion" : {
-            "type" : "string"
-          },
-          "subjectVersion" : {
             "type" : "string"
           }
         },
@@ -16305,6 +16648,458 @@
         ]
       }
     },
+    "/api/admin/ai/apply/{applyId}/finish" : {
+      "post" : {
+        "operationId" : "AdminAiBatchesController_finish",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "applyId",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AiAiSafeAcceptApplied"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "After the card is saved: the changed fields are compared and checked (only empty characteristics and description filled). A broken promise is given back at once and listed in notSafe",
+        "tags" : [
+          "Admin AI batches"
+        ]
+      }
+    },
+    "/api/admin/ai/apply/{applyId}/undo" : {
+      "post" : {
+        "operationId" : "AdminAiBatchesController_undoOne",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "applyId",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AiAiApplyUndoResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Undo one application within 24 hours; fields edited by hand since stay (counted as skipped)",
+        "tags" : [
+          "Admin AI batches"
+        ]
+      }
+    },
+    "/api/admin/ai/batches/active" : {
+      "get" : {
+        "operationId" : "AdminAiBatchesController_active",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/AiBatchDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "The bar: running and paused batches of everybody, and the finished ones of this admin with something left to do (results to review, failed ones, applications that can be undone)",
+        "tags" : [
+          "Admin AI batches"
+        ]
+      }
+    },
+    "/api/admin/ai/batches/estimate" : {
+      "post" : {
+        "operationId" : "AdminAiBatchesController_estimate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AiAiBatchesEstimateRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Dto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "How long a batch of N objects takes, and whether the limit left is enough; the money fields only for the finance right",
+        "tags" : [
+          "Admin AI batches"
+        ]
+      }
+    },
+    "/api/admin/ai/batches/jobs/{jobId}/apply/begin" : {
+      "post" : {
+        "operationId" : "AdminAiBatchesController_begin",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "jobId",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Begun"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Before the screen applies the result of a batch job safely: the values of the object are taken; 409 AI_NOT_SAFE when the job is not eligible (no search, already decided or applied)",
+        "tags" : [
+          "Admin AI batches"
+        ]
+      }
+    },
+    "/api/admin/ai/batches/{id}" : {
+      "get" : {
+        "operationId" : "AdminAiBatchesController_batch",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AiBatchDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "A batch with the counts and a row per job",
+        "tags" : [
+          "Admin AI batches"
+        ]
+      }
+    },
+    "/api/admin/ai/batches/{id}/accept-safe/undo" : {
+      "post" : {
+        "operationId" : "AdminAiBatchesController_undoBatch",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AiAiApplyUndoResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "«Отменить применение»: undo every safe application of the batch that is still inside 24 hours",
+        "tags" : [
+          "Admin AI batches"
+        ]
+      }
+    },
+    "/api/admin/ai/batches/{id}/cancel" : {
+      "post" : {
+        "operationId" : "AdminAiBatchesController_cancel",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AiBatchDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Stop for good: queued jobs end at once, running ones before the next model turn; ready results stay",
+        "tags" : [
+          "Admin AI batches"
+        ]
+      }
+    },
+    "/api/admin/ai/batches/{id}/pause" : {
+      "post" : {
+        "operationId" : "AdminAiBatchesController_pause",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AiBatchDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Pause: queued jobs wait, running ones finish. The one who started it, or the finance right",
+        "tags" : [
+          "Admin AI batches"
+        ]
+      }
+    },
+    "/api/admin/ai/batches/{id}/resume" : {
+      "post" : {
+        "operationId" : "AdminAiBatchesController_resume",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AiBatchDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Continue a paused batch; 409 while a limit is used up or the AI is off",
+        "tags" : [
+          "Admin AI batches"
+        ]
+      }
+    },
+    "/api/admin/ai/batches/{id}/retry-failed" : {
+      "post" : {
+        "operationId" : "AdminAiBatchesController_retryFailed",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          },
+          {
+            "in" : "header",
+            "name" : "Idempotency-Key",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AiBatchDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "A new batch for the failed, empty or unreadable jobs not asked again; 409 when there are none",
+        "tags" : [
+          "Admin AI batches"
+        ]
+      }
+    },
+    "/api/admin/ai/card-batches" : {
+      "post" : {
+        "operationId" : "AdminCardAiController_startBatch",
+        "parameters" : [
+          {
+            "in" : "header",
+            "name" : "Idempotency-Key",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CatalogCardAiBatchesStart"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AiBatchDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Fill in the cards of several products (up to the batch maximum, 30) as one batch: one task per product, medium effort. 409 AI_JOB_ACTIVE (subjects) when a product already has an active task, AI_BATCHES_OFF when the owner switched batches off; the same Idempotency-Key returns the first batch",
+        "tags" : [
+          "Admin Cards AI"
+        ]
+      }
+    },
     "/api/admin/ai/card-jobs" : {
       "post" : {
         "operationId" : "AdminCardAiController_start",
@@ -16322,7 +17117,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/Start"
+                "$ref" : "#/components/schemas/CatalogCardAiJobsStart"
               }
             }
           },
@@ -16358,7 +17153,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/EstimateRequest"
+                "$ref" : "#/components/schemas/AiAiJobsEstimateRequest"
               }
             }
           },
@@ -28701,6 +29496,10 @@
     {
       "description" : "Admin promo-code management",
       "name" : "Admin Promocodes"
+    },
+    {
+      "description" : "Batches of AI tasks: estimate, bar, pause/continue/stop, retry, safe accept, undo",
+      "name" : "Admin AI batches"
     },
     {
       "description" : "Website event journal (batched)",

@@ -5,8 +5,12 @@
 
 /** Коды причин, которые бэкенд кладёт в поле `code` тела ошибки. */
 export type ServerErrorCode =
+  | "AI_APPLY_NOT_FOUND"
   | "AI_BAD_REQUEST"
   | "AI_BAD_STATE"
+  | "AI_BATCHES_OFF"
+  | "AI_BATCH_NOT_FOUND"
+  | "AI_BATCH_SIZE"
   | "AI_BUSY"
   | "AI_CANCELED"
   | "AI_DAY_LIMIT"
@@ -18,11 +22,13 @@ export type ServerErrorCode =
   | "AI_KEY_REJECTED"
   | "AI_MONTH_LIMIT"
   | "AI_NOT_CONFIGURED"
+  | "AI_NOT_SAFE"
   | "AI_NOT_YOUR_JOB"
   | "AI_PROMPT_GONE"
   | "AI_RESTARTED"
   | "AI_RETRY_LIMIT"
   | "AI_SUBJECT_NOT_FOUND"
+  | "AI_UNDO_CLOSED"
   | "ATTRIBUTE_IN_USE"
   | "ATTRIBUTE_KEY_TAKEN"
   | "BAD_ALIAS"
