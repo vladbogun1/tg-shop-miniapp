@@ -40,6 +40,8 @@ class AiJobsIT extends AbstractMysqlIT {
     AiLimits limits;
     @Autowired
     SettingsService settings;
+    @Autowired
+    AiEstimate estimate;
 
     @BeforeEach
     void switchOn() {
@@ -56,11 +58,30 @@ class AiJobsIT extends AbstractMysqlIT {
     @AfterEach
     void cleanUp() {
         jdbc.update("delete from ai_reserve");
+        jdbc.update("delete from ai_usage where provider = ?", PAD);
         Map<String, Object> reset = new HashMap<>();
         reset.put(AiSettings.FEATURE_CARD, null);
         reset.put(AiSettings.MONTH_LIMIT_CENTS, null);
         reset.put(AiSettings.DAY_LIMIT_CENTS, null);
         settings.update(reset);
+    }
+
+    private static final String PAD = "it-limit-pad";
+
+    /**
+     * Sets the month limit so that exactly one more card fits: room = 1.5 reserves. The reserve is the p90 of the
+     * history in this database (after e2e runs it can be tiny), so the limit is computed, not a constant, and a padding
+     * row in {@code ai_usage} takes up whatever the whole cents leave over.
+     */
+    private void roomForExactlyOneCard() {
+        long reserve = estimate.of(AiFeature.CARD, JobMode.NORMAL, 1).p90MicroUsd();
+        long target = limits.spend().monthMicroUsd() + reserve + reserve / 2;
+        long cents = (target + 9_999) / 10_000;
+        long pad = cents * 10_000 - target;
+        jdbc.update("""
+                insert into ai_usage (created_at, feature, kind, provider, result, cost_micro_usd)
+                values (now(6), 'CARD', 'MODEL', ?, 'OK', ?)""", PAD, pad);
+        settings.update(Map.of(AiSettings.MONTH_LIMIT_CENTS, (int) cents));
     }
 
     private static String subject() {
@@ -91,7 +112,8 @@ class AiJobsIT extends AbstractMysqlIT {
             List<Long> first = fa.get();
             List<Long> second = fb.get();
 
-            assertThat(first).doesNotContainAnyElementsOf(second);
+            // one executor may take all six and the other none: AssertJ refuses an empty list here, so intersect by hand
+            assertThat(first.stream().filter(second::contains).toList()).isEmpty();
             List<Long> all = new ArrayList<>(first);
             all.addAll(second);
             // whatever was queued before this test was cancelled; the six of this test are all running, once each
@@ -141,8 +163,7 @@ class AiJobsIT extends AbstractMysqlIT {
 
     @Test
     void parallelStartsCannotStepOverTheLimit() throws Exception {
-        // 1 cent = 10 000 micro-USD; a card reserves about 9 000 (the p90 constant): room for exactly one at a time
-        settings.update(Map.of(AiSettings.MONTH_LIMIT_CENTS, 1));
+        roomForExactlyOneCard();
         List<AiJob> jobs = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             jobs.add(queue(subject(), 71L, null));
@@ -174,7 +195,7 @@ class AiJobsIT extends AbstractMysqlIT {
 
     @Test
     void releasingTheReserveMakesRoomForTheNextJob() {
-        settings.update(Map.of(AiSettings.MONTH_LIMIT_CENTS, 1));
+        roomForExactlyOneCard();
         AiJob first = queue(subject(), 71L, null);
         AiJob second = queue(subject(), 71L, null);
         limits.reserve(first);
