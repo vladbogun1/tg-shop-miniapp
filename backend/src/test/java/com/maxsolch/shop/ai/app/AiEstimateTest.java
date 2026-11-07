@@ -48,6 +48,19 @@ class AiEstimateTest {
     }
 
     @Test
+    void jobsThatCostNothingAreNotHistory() {
+        // ten jobs that never reached the model (or a fake model in e2e): a p90 of 0 would reserve nothing in the limits
+        List<Long> costs = new java.util.ArrayList<>(java.util.Collections.nCopies(10, 0L));
+        costs.add(7_000L);
+        when(usage.recentCosts(any(), any(), anyInt())).thenReturn(costs);
+
+        AiEstimate.Estimate e = estimate.of(AiFeature.CARD, JobMode.NORMAL, 1);
+
+        assertThat(e.fromHistory()).isFalse();
+        assertThat(e.p90MicroUsd()).isEqualTo(9_000);
+    }
+
+    @Test
     void thoroughCostsTwiceAndSeveralSubjectsCostPerSubject() {
         when(usage.recentCosts(any(), any(), anyInt())).thenReturn(List.of());
 

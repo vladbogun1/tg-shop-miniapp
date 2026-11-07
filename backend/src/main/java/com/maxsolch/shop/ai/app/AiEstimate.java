@@ -34,7 +34,10 @@ public class AiEstimate {
     }
 
     public Estimate of(AiFeature feature, JobMode mode, int items) {
-        List<Long> costs = usage.recentCosts(feature, clock.instant().minus(Duration.ofDays(30)), SAMPLE);
+        // a job that cost nothing never reached the model: it says nothing about the price, and a p90 of 0 would make
+        // the reserve in the limits 0 (parallel starts would then step over the limit)
+        List<Long> costs = usage.recentCosts(feature, clock.instant().minus(Duration.ofDays(30)), SAMPLE).stream()
+                .filter(c -> c > 0).toList();
         boolean history = costs.size() >= MIN_SAMPLE;
         long[] bench = benchmark(feature);
         long p50 = history ? percentile(costs, 50) : bench[0];
