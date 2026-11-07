@@ -32,6 +32,14 @@ class TranslationAnswerJsonTest {
     }
 
     @Test
+    void askedSurvivesAFenceMentionedInTheInstructions() {
+        // «ровно ОДИН блок кода ```json, без текста» in the header shifts the pairing of the fences.
+        String prompt = "Ответ — ровно ОДИН блок кода ```json, без текста.\nПример:\n```json\n{\"t0\": {}}\n```\n"
+                + "## Строки для перевода (JSON)\n```json\n{\"tab\": {\"ru\": \"x\"}, \"tcd\": {\"ru\": \"y\"}}\n```\n";
+        assertThat(TranslationAnswerJson.asked(prompt)).containsExactly("tab", "tcd");
+    }
+
+    @Test
     void garbageGivesNothing() {
         assertThat(TranslationAnswerJson.answers("```json\n{oops\n```")).isEmpty();
         assertThat(TranslationAnswerJson.answers(null)).isEmpty();

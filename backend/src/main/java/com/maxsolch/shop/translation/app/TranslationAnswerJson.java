@@ -47,9 +47,13 @@ final class TranslationAnswerJson {
         return out;
     }
 
+    /** Where the strings start in the prompt of the admin (the instructions above it mention «```json» in a sentence, which breaks the fence pairing). */
+    private static final String INPUT_MARKER = "## Строки для перевода";
+
     /** The ids the prompt asked about: the keys of its input object (the last block of the prompt); null if unreadable. */
     static Set<String> asked(String prompt) {
-        List<JsonNode> blocks = objects(prompt);
+        int at = prompt == null ? -1 : prompt.lastIndexOf(INPUT_MARKER);
+        List<JsonNode> blocks = objects(at >= 0 ? prompt.substring(at) : prompt);
         if (blocks.isEmpty()) {
             return null;
         }
