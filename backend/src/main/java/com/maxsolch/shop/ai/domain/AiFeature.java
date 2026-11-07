@@ -18,7 +18,7 @@ public enum AiFeature {
     /** «Check search» on the AI settings screen. */
     SEARCH_TEST;
 
-    /** Prices and quantities of a supplier invoice: only for an admin with the finance right. */
+    /** Prices and quantities of a supplier invoice: the texts go to the admin who started the job and to finance admins. */
     public boolean purchaseData() {
         return this == SUPPLY_EXTRACT || this == SUPPLY_MATCH;
     }

@@ -81,7 +81,7 @@ class AiJobConflictIT extends AbstractMysqlIT {
                 values (72, 'Анна', 'PRODUCT_ACTIVE', 'PRODUCT', ?, 'показан', now())""", id(p));
         done(job.getId());
 
-        AiJobDto dto = reads.read(job.getId(), true).orElseThrow();
+        AiJobDto dto = reads.read(job.getId(), 0L, true).orElseThrow();
 
         assertThat(dto.subjectChanges().fields()).containsExactly(new AiJobDto.Change("spec:weight", "60", "62"));
         assertThat(dto.subjectChanges().editors()).extracting(AiJobDto.Editor::name).containsExactly("Иван");
@@ -118,15 +118,15 @@ class AiJobConflictIT extends AbstractMysqlIT {
 
         lifecycle.step(job.getId(), "it-step-w", "Ищу: viper v3 pro specs");
         lifecycle.step(job.getId(), "it-other-w", "Чужой шаг");
-        assertThat(reads.read(job.getId(), false).orElseThrow().step()).isEqualTo("Ищу: viper v3 pro specs");
+        assertThat(reads.read(job.getId(), 0L, false).orElseThrow().step()).isEqualTo("Ищу: viper v3 pro specs");
         assertThat(reads.active(false)).filteredOn(j -> j.id() == job.getId())
                 .extracting(AiJobDto::step).containsExactly("Ищу: viper v3 pro specs");
 
         lifecycle.step(job.getId(), "it-step-w", "Пишу ответ " + "x".repeat(300));
-        assertThat(reads.read(job.getId(), false).orElseThrow().step()).hasSize(AiJobLifecycle.STEP_LENGTH)
+        assertThat(reads.read(job.getId(), 0L, false).orElseThrow().step()).hasSize(AiJobLifecycle.STEP_LENGTH)
                 .startsWith("Пишу ответ").endsWith("…");
 
         lifecycle.complete(job.getId(), "it-step-w", JobStatus.EMPTY, "", false);
-        assertThat(reads.read(job.getId(), false).orElseThrow().step()).isNull();
+        assertThat(reads.read(job.getId(), 0L, false).orElseThrow().step()).isNull();
     }
 }

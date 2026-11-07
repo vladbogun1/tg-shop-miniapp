@@ -7,7 +7,6 @@ import com.maxsolch.shop.ai.domain.AiMoney;
 import com.maxsolch.shop.ai.domain.JobMode;
 import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.error.DomainException;
-import com.maxsolch.shop.platform.error.PlatformError;
 import com.maxsolch.shop.platform.security.AdminAccess;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -77,7 +76,6 @@ public class AiJobs {
         long adminId = actor.userId();
         boolean finance = access.canSeeFinance(adminId);
         validate(req, idemKey);
-        refuseWithoutFinance(req.feature(), adminId);
         if (idemKey != null) {
             var same = reads.byKey(adminId, idemKey, finance);
             if (same.isPresent()) {
@@ -99,7 +97,8 @@ public class AiJobs {
     }
 
     public AiJobDto get(long id) {
-        return reads.read(id, access.canSeeFinance(actor.userId()))
+        long viewer = actor.userId();
+        return reads.read(id, viewer, access.canSeeFinance(viewer))
                 .orElseThrow(() -> new DomainException.NotFound(AiError.JOB_NOT_FOUND));
     }
 
@@ -111,7 +110,7 @@ public class AiJobs {
         long adminId = actor.userId();
         if (!access.canSeeFinance(adminId)) {
             // an admin stops his own tasks; the owner stops any
-            AiJobDto job = reads.read(id, false).orElseThrow(() -> new DomainException.NotFound(AiError.JOB_NOT_FOUND));
+            AiJobDto job = reads.read(id, adminId, false).orElseThrow(() -> new DomainException.NotFound(AiError.JOB_NOT_FOUND));
             if (job.adminId() != adminId) {
                 throw new DomainException.Forbidden(AiError.NOT_YOUR_JOB);
             }
@@ -130,7 +129,7 @@ public class AiJobs {
         boolean finance = access.canSeeFinance(adminId);
         AiJobReads.Source src = reads.source(id).orElseThrow(() -> new DomainException.NotFound(AiError.JOB_NOT_FOUND));
         AiJob old = src.job();
-        refuseWithoutFinance(old.getFeature(), adminId);
+        refuseForeignInvoice(old, adminId, finance);
         if (old.getStatus().active()) {
             throw new DomainException.Conflict(AiError.BAD_STATE);
         }
@@ -171,10 +170,13 @@ public class AiJobs {
                 AiMoney.costMinor(e.p90MicroUsd(), rate));
     }
 
-    /** An invoice is purchase data: starting its reading is for an admin who may see purchase prices. */
-    private void refuseWithoutFinance(AiFeature feature, long adminId) {
-        if (feature.purchaseData() && !access.canSeeFinance(adminId)) {
-            throw new DomainException.Forbidden(PlatformError.FINANCE_ACCESS_DENIED);
+    /**
+     * An invoice is purchase data: any admin of the supply reads his own pictures, but repeating another admin's reading
+     * (and so getting its answer) is for an admin with the finance right.
+     */
+    private static void refuseForeignInvoice(AiJob old, long adminId, boolean finance) {
+        if (old.getFeature().purchaseData() && !finance && old.getAdminId() != adminId) {
+            throw new DomainException.Forbidden(AiError.NOT_YOUR_JOB);
         }
     }
 

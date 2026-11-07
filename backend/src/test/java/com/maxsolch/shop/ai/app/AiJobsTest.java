@@ -86,7 +86,7 @@ class AiJobsTest {
     void aGoodRequestMakesAQueuedJobBoundToTheAdminOfTheRequest() {
         AiJob job = saved(11, 7);
         when(lifecycle.insert(any(), eq("Заполни карточку"))).thenReturn(job);
-        when(reads.read(11L, false)).thenReturn(Optional.of(dto(11)));
+        when(reads.read(11L, 7L, false)).thenReturn(Optional.of(dto(11)));
 
         AiJobDto out = jobs.create(request(), null);
 
@@ -170,7 +170,7 @@ class AiJobsTest {
         when(reads.source(9L)).thenReturn(Optional.of(finished(9, "Старый запрос")));
         AiJob fresh = saved(10, 7);
         when(lifecycle.insert(any(), eq("Старый запрос"))).thenReturn(fresh);
-        when(reads.read(10L, false)).thenReturn(Optional.of(dto(10)));
+        when(reads.read(10L, 7L, false)).thenReturn(Optional.of(dto(10)));
 
         jobs.retry(9L);
 
@@ -191,7 +191,7 @@ class AiJobsTest {
 
         when(access.canSeeFinance(7L)).thenReturn(true);
         when(lifecycle.insert(any(), any())).thenReturn(saved(10, 7));
-        when(reads.read(10L, true)).thenReturn(Optional.of(AiJobDto.of(saved(10, 7), null, true)));
+        when(reads.read(10L, 7L, true)).thenReturn(Optional.of(AiJobDto.of(saved(10, 7), null, true)));
         assertThat(jobs.retry(9L).id()).isEqualTo(10);
     }
 
@@ -207,20 +207,20 @@ class AiJobsTest {
     }
 
     @Test
-    void readingAnInvoiceIsRefusedWithoutTheFinanceRightOnTheServer() {
+    void anAdminWithoutFinanceReadsHisOwnInvoiceButDoesNotRepeatAnotherAdminsReading() {
         when(access.canSeeFinance(7L)).thenReturn(false);
         var req = new AiJobs.CreateJob(AiFeature.SUPPLY_EXTRACT, "SUPPLY_FILES", "f1", null, null, "low", 2, "prompt", "supply-1");
-        assertThatThrownBy(() -> jobs.create(req, null)).isInstanceOfSatisfying(DomainException.class,
-                e -> assertThat(e.errorCode()).isEqualTo(com.maxsolch.shop.platform.error.PlatformError.FINANCE_ACCESS_DENIED));
-        verify(lifecycle, never()).insert(any(), any());
+        when(lifecycle.insert(any(), any())).thenReturn(saved(10, 7));
+        when(reads.read(10L, 7L, false)).thenReturn(Optional.of(AiJobDto.of(saved(10, 7), null, false)));
+        assertThat(jobs.create(req, null).id()).isEqualTo(10);
 
-        when(reads.source(9L)).thenReturn(Optional.of(new AiJobReads.Source(supplyJob(9), "prompt")));
+        when(reads.source(9L)).thenReturn(Optional.of(new AiJobReads.Source(supplyJob(9, 8L), "prompt")));
         assertThatThrownBy(() -> jobs.retry(9L)).isInstanceOfSatisfying(DomainException.class,
-                e -> assertThat(e.errorCode()).isEqualTo(com.maxsolch.shop.platform.error.PlatformError.FINANCE_ACCESS_DENIED));
+                e -> assertThat(e.errorCode()).isEqualTo(AiError.NOT_YOUR_JOB));
     }
 
-    private static AiJob supplyJob(long id) {
-        AiJob job = AiJob.queued(new AiJob.Spec(AiFeature.SUPPLY_EXTRACT, 7L, "SUPPLY_FILES", "f1", null, JobMode.NORMAL, "low",
+    private static AiJob supplyJob(long id, long adminId) {
+        AiJob job = AiJob.queued(new AiJob.Spec(AiFeature.SUPPLY_EXTRACT, adminId, "SUPPLY_FILES", "f1", null, JobMode.NORMAL, "low",
                 2, null, null, null), T0);
         ReflectionTestUtils.setField(job, "id", id);
         return job;

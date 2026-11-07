@@ -899,7 +899,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Read my uploaded pictures (1 to 10, ids from POST /files) with the AI: one task, low effort, no web search; the answer is the invoice json of the manual prompt. Only for an admin with the finance right (the answer holds purchase prices). 409 AI_JOB_ACTIVE for the same set, 409 AI_FILES_GONE for expired pictures, 404 AI_FILE_NOT_FOUND for a foreign or used one; the same Idempotency-Key returns the first task */
+        /** Read my uploaded pictures (1 to 10, ids from POST /files) with the AI: one task, low effort, no web search; the answer is the invoice json of the manual prompt. Any admin of the supply; the answer (purchase prices) is shown to the admin who started it and to admins with the finance right, the price of the task only to the latter. 409 AI_JOB_ACTIVE for the same set, 409 AI_FILES_GONE for expired pictures, 404 AI_FILE_NOT_FOUND for a foreign or used one; the same Idempotency-Key returns the first task */
         post: operations["AdminAiSupplyController_start"];
         delete?: never;
         options?: never;

@@ -31,11 +31,12 @@ public class AiJobReads {
     public record Source(AiJob job, String prompt) {
     }
 
+    /** The job as {@code viewerId} sees it: money only with {@code finance}, an invoice's texts also to its starter. */
     @Transactional(readOnly = true)
-    public Optional<AiJobDto> read(long id, boolean finance) {
+    public Optional<AiJobDto> read(long id, long viewerId, boolean finance) {
         return jobs.findById(id).map(j -> {
             Optional<AiJobBody> b = bodies.findById(id);
-            return AiJobDto.of(j, body(j, b, finance), finance,
+            return AiJobDto.of(j, body(j, b, finance || j.getAdminId() == viewerId), finance,
                     changes.since(j, b.map(AiJobBody::getSubjectSnapshot).orElse(null)));
         });
     }
@@ -66,9 +67,12 @@ public class AiJobReads {
         return jobs.existsByRetryOf(id);
     }
 
-    /** The invoice text is purchase data: only an admin with the finance right gets the answer of a supply job. */
-    private static AiJobDto.Body body(AiJob job, Optional<AiJobBody> body, boolean finance) {
-        if (!finance && job.getFeature().purchaseData()) {
+    /**
+     * The invoice text is purchase data: the answer of a supply job goes to the admin who uploaded the pictures (he has
+     * the invoice anyway) and to an admin with the finance right, not to the other admins.
+     */
+    private static AiJobDto.Body body(AiJob job, Optional<AiJobBody> body, boolean mayReadPurchase) {
+        if (!mayReadPurchase && job.getFeature().purchaseData()) {
             return new AiJobDto.Body(null, null);
         }
         return body.map(b -> new AiJobDto.Body(b.getPrompt(), b.getAnswer())).orElse(new AiJobDto.Body(null, null));

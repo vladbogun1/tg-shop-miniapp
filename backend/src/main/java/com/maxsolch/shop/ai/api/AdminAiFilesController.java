@@ -4,7 +4,6 @@ import com.maxsolch.shop.ai.app.AiFiles;
 import com.maxsolch.shop.ai.domain.AiError;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
-import com.maxsolch.shop.platform.security.RequiresFinance;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,13 +23,12 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Pictures of invoices and order screenshots for «Прочитать с ИИ» in the supply. Purchase data, so for an admin with
- * the finance right; every admin sees only his own files. Kept 7 days.
+ * Pictures of invoices and order screenshots for «Прочитать с ИИ» in the supply. Every admin of the supply may upload;
+ * purchase data, so every admin sees only his own files. Kept 7 days.
  */
 @RestController
 @RequestMapping("/api/admin/ai/files")
 @RequiredAdmin
-@RequiresFinance
 @Tag(name = "Admin AI Files", description = "Upload documents for the supply reader (JPEG, PNG, WEBP, PDF), preview, delete")
 @SecurityRequirement(name = "bearer-jwt")
 public class AdminAiFilesController {

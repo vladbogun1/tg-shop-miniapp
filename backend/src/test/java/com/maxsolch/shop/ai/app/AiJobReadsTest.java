@@ -16,7 +16,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/** An invoice's prompt and answer hold purchase prices: only an admin with the finance right gets them. */
+/**
+ * An invoice's answer holds purchase prices: the admin who uploaded the pictures and an admin with the finance right
+ * get it, the other admins do not. The prompt is for the finance admins (like for every feature).
+ */
 class AiJobReadsTest {
 
     private final AiJobRepository jobs = mock(AiJobRepository.class);
@@ -34,18 +37,27 @@ class AiJobReadsTest {
     }
 
     @Test
-    void theInvoiceTextsAreHiddenFromAnAdminWithoutFinance() {
+    void theInvoiceTextsAreHiddenFromAnotherAdminWithoutFinance() {
         stored(AiFeature.SUPPLY_EXTRACT, 1);
-        AiJobDto body = reads.read(1, false).orElseThrow();
+        AiJobDto body = reads.read(1, 8L, false).orElseThrow();
         assertThat(body.prompt()).isNull();
         assertThat(body.answer()).isNull();
     }
 
     @Test
+    void theAdminWhoStartedTheReadingSeesItsAnswerButNotTheMoney() {
+        stored(AiFeature.SUPPLY_EXTRACT, 1);
+        AiJobDto body = reads.read(1, 7L, false).orElseThrow();
+        assertThat(body.answer()).contains("120");
+        assertThat(body.prompt()).isNull();
+        assertThat(body.costMinor()).isNull();
+    }
+
+    @Test
     void theFinanceAdminSeesThemAndOtherFeaturesAreOpen() {
         stored(AiFeature.SUPPLY_EXTRACT, 1);
-        assertThat(reads.read(1, true).orElseThrow().answer()).contains("120");
+        assertThat(reads.read(1, 8L, true).orElseThrow().answer()).contains("120");
         stored(AiFeature.CARD, 2);
-        assertThat(reads.read(2, false).orElseThrow().answer()).contains("120");
+        assertThat(reads.read(2, 8L, false).orElseThrow().answer()).contains("120");
     }
 }
