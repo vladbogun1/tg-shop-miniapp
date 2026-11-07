@@ -140,11 +140,20 @@ wait_ready() {
   done
 }
 
+# The image name of exactly this service (`config --images svc` also lists its depends_on).
+image_of() {
+  dc config --format json </dev/null | python3 -c '
+import json, sys
+cfg = json.load(sys.stdin); svc = sys.argv[1]
+print(cfg["services"][svc].get("image") or "%s-%s" % (cfg["name"], svc))' "$1"
+}
+
 rollout_one() {
   local svc="$1" force="$2" old want name shadow new
   probe_spec "$svc" >/dev/null || die "$svc: сервис не из списка перекатки"
   old=$(main_ctr "$svc")
-  want=$(docker image inspect -f '{{.Id}}' "$(dc config --images "$svc")" 2>/dev/null) || die "$svc: нет образа $(dc config --images "$svc") — сначала pull/build"
+  local img; img=$(image_of "$svc")
+  want=$(docker image inspect -f '{{.Id}}' "$img" 2>/dev/null) || die "$svc: нет образа $img — сначала pull/build"
   if [ -n "$old" ] && [ -z "$force" ] && [ "$(docker inspect -f '{{.Image}}' "$old")" = "$want" ] \
      && [ "$(docker inspect -f '{{.State.Running}}' "$old")" = true ]; then
     log "$svc: уже на этом образе — пропускаю"; return 0
