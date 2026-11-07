@@ -7,20 +7,24 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
 import { REPO_ROOT } from "../env.js";
+import { checkLayout, heightFor, shotWidths } from "../lib/layout-qa";
 import type { Api } from "../lib/api";
 import { withDb } from "../lib/db";
 import { screenshotPng } from "../lib/png";
 import { dialog, expect, test } from "../lib/test";
 
 const SHOTS = path.join(REPO_ROOT, "_shots");
-const WIDTHS = [1440, 375, 320] as const;
+const WIDTHS = shotWidths([1440, 375, 320]);
 
 test.skip(!process.env.FIX2_SHOTS, "только по FIX2_SHOTS=1");
 test.describe.configure({ mode: "serial" });
 test.setTimeout(240_000);
 
-const size = (page: Page, w: number) => page.setViewportSize({ width: w, height: w === 1440 ? 900 : 812 });
-const shot = (page: Page, name: string) => page.screenshot({ path: path.join(SHOTS, `fix2-${name}.png`) });
+const size = (page: Page, w: number) => page.setViewportSize({ width: w, height: heightFor(w) });
+const shot = async (page: Page, name: string) => {
+  await checkLayout(page, `fix2-${name}`);
+  await page.screenshot({ path: path.join(SHOTS, `fix2-${name}.png`) });
+};
 
 async function setting(api: Api, values: Record<string, unknown>) {
   expect((await api.raw("put", "/api/admin/settings", { values })).status).toBe(200);

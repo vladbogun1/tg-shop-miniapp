@@ -8,6 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
 import { REPO_ROOT } from "../env.js";
+import { checkLayout, heightFor, shotWidths } from "../lib/layout-qa";
 import { productTitle } from "../lib/ai-admin";
 import type { Api } from "../lib/api";
 import { blankDescriptions, clearBatches } from "../lib/ai-batch";
@@ -16,20 +17,21 @@ import { PRODUCT } from "../lib/seed";
 import { expect, test } from "../lib/test";
 
 const SHOTS = path.join(REPO_ROOT, "_shots");
-const WIDTHS = [1440, 375, 320] as const;
+const WIDTHS = shotWidths([1440, 375, 320]);
 const IDS = [PRODUCT.tee, PRODUCT.cap, PRODUCT.bag, PRODUCT.socks, PRODUCT.scarf];
 
 test.skip(!process.env.FIX5_SHOTS, "только по FIX5_SHOTS=1");
 test.describe.configure({ mode: "serial" });
 test.setTimeout(300_000);
 
-const size = (page: Page, w: number) => page.setViewportSize({ width: w, height: w === 1440 ? 900 : 812 });
+const size = (page: Page, w: number) => page.setViewportSize({ width: w, height: heightFor(w) });
 
 async function widths(page: Page, name: string, prepare?: () => Promise<void>) {
   for (const w of WIDTHS) {
     await size(page, w);
     await prepare?.();
     await page.waitForTimeout(300);
+    await checkLayout(page, `fix5-${name}-${w}`);
     await page.screenshot({ path: path.join(SHOTS, `fix5-${name}-${w}.png`) });
   }
   await size(page, 1440);

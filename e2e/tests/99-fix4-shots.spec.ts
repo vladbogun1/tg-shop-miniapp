@@ -8,6 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import { REPO_ROOT } from "../env.js";
+import { checkLayout, heightFor, shotWidths } from "../lib/layout-qa";
 import { productTitle } from "../lib/ai-admin";
 import type { Api } from "../lib/api";
 import { blankDescriptions, clearBatches } from "../lib/ai-batch";
@@ -16,15 +17,18 @@ import { PRODUCT } from "../lib/seed";
 import { expect, test } from "../lib/test";
 
 const SHOTS = path.join(REPO_ROOT, "_shots");
-const WIDTHS = [1440, 375, 320] as const;
+const WIDTHS = shotWidths([1440, 375, 320]);
 const IDS = [PRODUCT.tee, PRODUCT.cap, PRODUCT.bag, PRODUCT.socks, PRODUCT.scarf];
 
 test.skip(!process.env.FIX4_SHOTS, "только по FIX4_SHOTS=1");
 test.describe.configure({ mode: "serial" });
 test.setTimeout(300_000);
 
-const size = (page: Page, w: number) => page.setViewportSize({ width: w, height: w === 1440 ? 900 : 812 });
-const shot = (page: Page, name: string) => page.screenshot({ path: path.join(SHOTS, `fix4-${name}.png`) });
+const size = (page: Page, w: number) => page.setViewportSize({ width: w, height: heightFor(w) });
+const shot = async (page: Page, name: string) => {
+  await checkLayout(page, `fix4-${name}`);
+  await page.screenshot({ path: path.join(SHOTS, `fix4-${name}.png`) });
+};
 
 /** Тот же экран на трёх ширинах: `prepare` — то, что надо сделать после смены ширины (раскрыть, прокрутить). */
 async function widths(page: Page, name: string, prepare?: () => Promise<void>) {

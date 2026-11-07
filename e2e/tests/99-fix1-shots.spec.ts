@@ -8,6 +8,7 @@ import path from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import { FAKE_AI_URL, REPO_ROOT } from "../env.js";
 import type { Api } from "../lib/api";
+import { checkLayout } from "../lib/layout-qa";
 import { PRODUCT } from "../lib/seed";
 import { dialog, expect, test } from "../lib/test";
 
@@ -55,7 +56,10 @@ async function openEntry(page: Page, t: string): Promise<Locator> {
   return modal;
 }
 
-const shot = (page: Page, name: string) => page.screenshot({ path: path.join(SHOTS, `fix1-${name}.png`) });
+const shot = async (page: Page, name: string) => {
+  await checkLayout(page, `fix1-${name}`);
+  await page.screenshot({ path: path.join(SHOTS, `fix1-${name}.png`) });
+};
 
 test.skip(!process.env.FIX1_SHOTS, "только по FIX1_SHOTS=1");
 test.describe.configure({ mode: "serial" });
