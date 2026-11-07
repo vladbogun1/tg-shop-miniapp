@@ -8,6 +8,9 @@ export const aiKeys = {
   tasks: (tab: string, page: number) => ["admin", "ai", "tasks", tab, page] as const,
   tasksAll: () => ["admin", "ai", "tasks"] as const,
   widget: () => ["admin", "ai", "widget"] as const,
+  batches: () => ["admin", "ai", "batches"] as const,
+  batch: (id: number) => ["admin", "ai", "batches", id] as const,
+  batchEstimate: (feature: string, count: number) => ["admin", "ai", "batch-estimate", feature, count] as const,
   metrics: (from: string, to: string) => ["admin", "ai", "metrics", from, to] as const,
   series: (group: string, from: string, to: string) => ["admin", "ai", "metrics", "series", group, from, to] as const,
 };

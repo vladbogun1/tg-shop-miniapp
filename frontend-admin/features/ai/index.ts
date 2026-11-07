@@ -49,3 +49,13 @@ export { AiMetrics } from "./ui/AiMetrics";
 export { AiDashboardWidget } from "./ui/AiDashboardWidget";
 export { useAiMetrics, useAiTasks, useAiWidget, useMarkManual } from "./queries-center";
 export type { AiTaskTab, AiTaskRow, AiTaskPage, AiWidgetData, AiMetricsSummary } from "./api";
+
+// Этап Э4: пакеты.
+export { batchApi } from "./api-batch";
+export type { AiBatch, AiBatchRow, AiSafeApplied } from "./api-batch";
+export { BatchGate, BatchPanel } from "./ui/batch/BatchPanel";
+export { BatchConfirm } from "./ui/batch/BatchConfirm";
+export { QuickReviewFeed } from "./ui/batch/QuickReviewFeed";
+export { AcceptSafeDialog } from "./ui/batch/AcceptSafeDialog";
+export { useAiBatches, hasOpenBatch, invalidateAfterBatch } from "./queries-batch";
+export { isSafeKey } from "./model/batch-view";

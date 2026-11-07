@@ -3,6 +3,8 @@ export { CardsScreen } from "./ui/screen/CardsScreen";
 export { CardCompletionModal, type CardCompletionResult } from "./ui/completion/CardCompletionModal";
 export { CardAiReviewScreen } from "./ui/ai/CardAiReviewScreen";
 export { CardAiEntry } from "./ui/ai/CardAiEntry";
+export { CardBatchButton } from "./ui/ai/batch/CardBatchButton";
+export { CardBatchHost } from "./ui/ai/batch/CardBatchHost";
 export { cardsKeys } from "./keys";
 export { invalidateCards, pendingCards, useCardItems, useUnfinishedCards, useCardSchema, useCardStats } from "./queries";
 export type { CardStats } from "./api";

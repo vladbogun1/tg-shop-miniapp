@@ -23,9 +23,13 @@ import { CommandPaletteButton } from "./CommandPalette";
 import { MobileMenu } from "./MobileMenu";
 import { SidebarInner } from "./Sidebar";
 import { TabBar } from "./TabBar";
-import { AiStatusChip } from "@/features/ai";
+import { AiStatusChip, BatchGate } from "@/features/ai";
+import dynamic from "next/dynamic";
 import { isFullscreenPage, pageTitle } from "./nav-config";
 import { useCollapsedSidebar } from "./use-collapsed-sidebar";
+
+// Пакеты ИИ тянут за собой всю фичу «Карточки»: грузим её, только когда пакет есть.
+const CardBatchHost = dynamic(() => import("@/features/cards").then((m) => m.CardBatchHost), { ssr: false });
 
 export function Shell({ children }: { children: ReactNode }) {
   const [drawer, setDrawer] = useState(false);

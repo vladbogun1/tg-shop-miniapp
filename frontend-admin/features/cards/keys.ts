@@ -11,6 +11,7 @@ export const cardsKeys = {
   /** Все товары с данными карточки (список «Карточек»). */
   export: () => catalogKeys.cardsExport(),
   /** Один товар (окно оформления). */
+  aiSafeCount: (batchId: number, ready: number) => [...catalogKeys.cardsExport(), "ai-safe", batchId, ready] as const,
   exportOne: (productId: string) => [...catalogKeys.cardsExport(), "one", productId] as const,
   reviewRoot: () => [...catalogKeys.cardsRoot(), "review"] as const,
   review: (productId: string) => [...catalogKeys.cardsRoot(), "review", productId] as const,

@@ -21,7 +21,7 @@ export type AiMetricsSeries = Schemas["Series"];
 export type AiMetricsGroup = "day" | "feature" | "provider";
 
 /** Запрос карточной задачи: товар, версия карточки и промпт собирает фронт (`features/cards`). */
-export type CardJobStart = Required<Schemas["Start"]>;
+export type CardJobStart = Required<Schemas["CatalogCardAiJobsStart"]>;
 
 /**
  * Задача ИИ. Деньги, токены, промпт и текст ошибки провайдера приходят только админу с доступом к финансам:
@@ -29,7 +29,7 @@ export type CardJobStart = Required<Schemas["Start"]>;
  */
 export type AiJob = Schemas["AiJobDto"];
 export type AiJobStart = Omit<Schemas["CreateJob"], "feature" | "prompt"> & { feature: AiFeature; prompt: string };
-export type AiEstimateRequest = Omit<Schemas["EstimateRequest"], "feature"> & { feature: AiFeature };
+export type AiEstimateRequest = Omit<Schemas["AiAiJobsEstimateRequest"], "feature"> & { feature: AiFeature };
 
 export const aiApi = {
   /** Только для финансового доступа: деньги, лимиты, поиск. */
