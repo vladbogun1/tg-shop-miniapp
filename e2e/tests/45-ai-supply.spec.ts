@@ -6,12 +6,12 @@
  * сценарии загрузки пропускаются. Выключенная функция «Поставки» оставляет только ручной путь.
  */
 import { mkdirSync } from "node:fs";
-import { crc32, deflateSync } from "node:zlib";
 import type { Browser, Page } from "@playwright/test";
 import { FAKE_AI_URL } from "../env.js";
 import { pageAs, removePlainAdmin, signInPlainAdmin } from "../lib/ai-admin";
 import type { Api } from "../lib/api";
 import { query } from "../lib/db";
+import { screenshotPng } from "../lib/png";
 import { PREORDER } from "../lib/seed";
 import { dialog, expect, test, toast } from "../lib/test";
 
@@ -19,32 +19,6 @@ test.describe.configure({ mode: "serial" });
 
 const SHOTS = "_shots";
 const NO_S3 = process.env.E2E_EXTERNAL_DB === "1" && process.env.E2E_MINIO !== "1";
-
-/** Серый PNG 240×320: настоящий файл, чтобы сервер узнал его по содержимому, а не по имени. */
-function screenshotPng(): Buffer {
-  const w = 240;
-  const h = 320;
-  const raw = Buffer.alloc((w + 1) * h, 0xe0);
-  for (let y = 0; y < h; y++) raw[y * (w + 1)] = 0;
-  const chunk = (type: string, data: Buffer) => {
-    const head = Buffer.alloc(8);
-    head.writeUInt32BE(data.length, 0);
-    head.write(type, 4, "ascii");
-    const tail = Buffer.alloc(4);
-    tail.writeUInt32BE(crc32(Buffer.concat([head.subarray(4), data])), 0);
-    return Buffer.concat([head, data, tail]);
-  };
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(w, 0);
-  ihdr.writeUInt32BE(h, 4);
-  ihdr[8] = 8; // bit depth, colour type 0 = grayscale
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk("IHDR", ihdr),
-    chunk("IDAT", deflateSync(raw)),
-    chunk("IEND", Buffer.alloc(0)),
-  ]);
-}
 
 async function fake(path: string, body?: unknown): Promise<void> {
   await fetch(`${FAKE_AI_URL}/__e2e/${path}`, {
