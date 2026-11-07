@@ -185,6 +185,8 @@ jobs:
       # e2e/scripts/run.mjs: use the service DB above and the downloaded jar (no docker, no mvn).
       E2E_EXTERNAL_DB: "1"
       E2E_BACKEND_JAR: ${{ github.workspace }}/backend/target/app.jar
+      # S3 for the AI files (spec 45): the MinIO started below; the backend points at 127.0.0.1:19010 (e2e/env.js).
+      E2E_MINIO: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -196,6 +198,21 @@ jobs:
         with:
           name: backend-jar
           path: backend/target
+      # Services can't pass `server /data`, hence docker run. quay.io/minio/minio (the digest of docker-compose.yml)
+      # is no longer pullable without a login, nor is minio/minio on Docker Hub: this is the community build of the
+      # same server (pgsty/minio), pinned by digest. The keys are the throwaway ones of e2e/env.js; data is in tmpfs.
+      - name: Start MinIO (AI files)
+        run: |
+          docker run -d --name e2e-minio -p 19010:9000 --tmpfs /data \
+            -e MINIO_ROOT_USER=e2eminio -e MINIO_ROOT_PASSWORD=e2e-minio-pass \
+            pgsty/minio:RELEASE.2026-08-04T00-00-00Z@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372 \
+            server /data
+          for i in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://127.0.0.1:19010/minio/health/ready; then echo "MinIO ready"; exit 0; fi
+            sleep 1
+          done
+          docker logs e2e-minio
+          exit 1
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

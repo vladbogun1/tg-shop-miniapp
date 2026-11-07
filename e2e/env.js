@@ -121,7 +121,8 @@ export function backendEnv(opts = {}) {
     SITE_BASE_URL: "",
     SITE_REVALIDATE_URL: "",
     // Nothing listens there: MinIO and Nova Poshta calls fail fast instead of reaching the network.
-    // MinIO of the e2e compose project (AI files); without it (CI) uploads fail and the supply spec skips itself.
+    // MinIO of the e2e compose project (AI files), in CI the one the e2e-admin job starts (E2E_MINIO=1); without
+    // it uploads fail and the supply spec skips its upload scenarios.
     S3_ENDPOINT: `http://127.0.0.1:${process.env.E2E_MINIO_PORT || 19010}`,
     S3_ACCESS_KEY: "e2eminio",
     S3_SECRET_KEY: "e2e-minio-pass",
