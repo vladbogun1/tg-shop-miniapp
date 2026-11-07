@@ -3,11 +3,17 @@
  * Модель здесь — lib/fake-ai.mjs (бэкенд ходит на неё через AI_MINIMAX_BASE_URL), настоящий ИИ не вызывается.
  *
  * Сценарии: нормальный ответ до записи; ИИ выключен — только ручная кнопка; двойной запуск — «Уже идёт»;
- * ответ без данных — «Показать ответ» и ручной путь. Запись проверяется по выгрузке карточки, а не только по экрану.
+ * ответ без данных — «Показать ответ» и ручной путь; ход по шагам с поиском, правка карточки человеком во время
+ * работы (имя и время в ревью), фото из ответа; ручной путь через ChatGPT в том же экране проверки (правка значения,
+ * фото, метка MANUAL). Запись проверяется по выгрузке карточки и базе, а не только по экрану.
+ *
+ * Фото по ссылке сервер скачивает сам, а адреса localhost/частных сетей он не качает (защита от SSRF) — поэтому здесь
+ * подменён только ответ POST …/photos/import: проверяется, что экран отправил именно отмеченные ссылки.
  */
 import type { Locator, Page } from "@playwright/test";
 import { FAKE_AI_URL } from "../env.js";
 import type { Api } from "../lib/api";
+import { query } from "../lib/db";
 import { PRODUCT } from "../lib/seed";
 import { dialog, expect, test } from "../lib/test";
 
@@ -150,4 +156,128 @@ test("двойной запуск: второй не плодит задачу, 
   await expect
     .poll(async () => ((await api.raw("get", `/api/admin/ai/jobs/${jobId}`)).body as { status: string }).status, { timeout: 20_000 })
     .not.toMatch(/^(QUEUED|RUNNING)$/);
+});
+
+/** Подмена «Фото по ссылке»: сервер не качает localhost; отвечаем успехом и запоминаем, какие ссылки прислал экран. */
+async function fakePhotoImport(page: Page): Promise<string[]> {
+  const sent: string[] = [];
+  await page.route("**/api/admin/products/*/photos/import", async (route) => {
+    const url = (route.request().postDataJSON() as { url: string }).url;
+    sent.push(url);
+    await route.fulfill({ json: { key: "e2e/photo-by-link.webp", source: url, cutOut: true, imageKeys: ["e2e/photo-by-link.webp"] } });
+  });
+  return sent;
+}
+
+/** Отметить фото из ответа (у товара без фото первые три отмечены сразу). */
+async function pickPhoto(scope: Locator, url: string) {
+  const pick = scope.locator(`button[title="${url}"]`);
+  await expect(pick).toBeVisible();
+  if ((await pick.getAttribute("aria-pressed")) !== "true") await pick.click();
+  await expect(pick).toHaveAttribute("aria-pressed", "true");
+}
+
+test("ход по шагам, правка карточки во время работы — имя и время, фото из ответа", async ({ page, api }) => {
+  await feature(api, true);
+  const before = await card(api);
+  const photo = "https://example.com/e2e-scarf-step.jpg";
+  await fake("mode", { mode: "research", delayMs: 7000, description: `E2E-ИИ шаги ${Date.now()}`, photos: [photo] });
+
+  const modal = await openEntry(page, before.title);
+  await modal.getByRole("button", { name: "Заполнить с ИИ", exact: true }).click();
+  await page.getByRole("button", { name: "Запустить" }).click();
+  // Ход: поиск уже был («Ищу: …»), ИИ разбирает найденное — этап «Ищу в интернете» и сам шаг строкой.
+  await expect(page.getByTestId("ai-job-step")).toHaveText("Разбираю найденное", { timeout: 15_000 });
+  await expect(page.getByTestId("ai-job-stages").locator('[aria-current="step"]')).toHaveText(/Ищу в интернете/);
+  const calls = (await fake("requests")) as { mode: string }[];
+  expect(calls.map((c) => c.mode)).toEqual(["research:search", "research:answer"]);
+
+  // Пока ИИ работает, человек правит описание (одна карточка — запись в журнале с его именем).
+  const human = `Правка человека ${Date.now()}`;
+  const edit = await api.raw("put", "/api/admin/cards/import", {
+    items: [{ productId: PRODUCT.scarf, specs: {}, confidence: {}, description: human, markReady: true }],
+    replaceSpecs: false,
+  });
+  expect(edit.status).toBe(200);
+
+  await expect(page.getByText("Готово — проверьте, что предложил ИИ")).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "Открыть проверку" }).click();
+  await expect(page).toHaveURL(/\/cards\/ai-review\/\d+$/);
+  const jobId = Number(new URL(page.url()).pathname.split("/").pop());
+  // Кто и когда: в плашке и в строке под замком; применить поле нельзя.
+  await expect(page.getByText(/Пока работал ИИ, карточку правил \S/)).toBeVisible();
+  await page.getByRole("button", { name: /Заполнено не ИИ/ }).click();
+  await expect(page.getByText(/\S изменил «Описание» в \d{1,2}:\d{2}/)).toBeVisible();
+  await expect(page.getByLabel("Применить: Описание")).toHaveCount(0);
+
+  // Фото из ответа применяются тем же «Фото по ссылке», что у мастера.
+  const sent = await fakePhotoImport(page);
+  await pickPhoto(page.getByTestId("ai-review-photos"), photo);
+  await page.getByRole("button", { name: "Применить (0) + 1 фото" }).click();
+  await expect(page.getByText("Результат применён")).toBeVisible();
+  await expect(page.getByText("добавлено 1")).toBeVisible();
+  expect(sent).toEqual([photo]);
+
+  // Описание человека ИИ не заменил; исход по задаче: ничего не принято, одно поле под замком.
+  expect((await card(api)).description).toBe(human);
+  await expect
+    .poll(async () => (await query<{ a: number; i: number }>("SELECT outcome_applied a, outcome_ignored i FROM ai_jobs WHERE id = ?", [jobId]))[0])
+    .toEqual({ a: 0, i: 1 });
+});
+
+test("ручной путь через ChatGPT: тот же экран проверки, переводы, «не применится», правка значения, фото, метка MANUAL", async ({ page, api }) => {
+  await feature(api, true);
+  const before = await card(api);
+  const hex = "p" + PRODUCT.scarf.replace(/-/g, "");
+  const photo = "https://example.com/e2e-scarf-manual.jpg";
+  const proposed = `E2E-ChatGPT ${Date.now()}`;
+  const entry = {
+    overall: 90,
+    description: { ru: proposed, uk: `${proposed} (uk)`, en: `${proposed} (en)` },
+    photos: [photo],
+    sources: ["https://example.com/manual"],
+    // ключа нет в схеме — в карточку не попадёт, а в проверке сказано, что и почему
+    specs: { e2e_no_such_key: 5 },
+  };
+  const answer = "```json\n" + JSON.stringify({ [hex]: entry }, null, 2) + "\n```";
+
+  const modal = await openEntry(page, before.title);
+  await modal.getByRole("button", { name: "Через ChatGPT вручную" }).click();
+  await modal.getByLabel("Ответ ИИ").fill(answer);
+  await modal.getByRole("button", { name: "Проверить", exact: true }).click();
+  // Тот же экран проверки, что у встроенного ИИ: группы, «Выбрано N из M», «Применить (N)».
+  await expect(modal.getByRole("heading", { name: "Проверка ответа" })).toBeVisible();
+  await expect(modal.getByText(/^Выбрано \d+ из \d+$/)).toBeVisible();
+  const box = modal.getByLabel("Применить: Описание");
+  if (!(await box.isVisible())) await modal.getByRole("button", { name: /Заменит значение/ }).click();
+
+  // Всё, что показывала прежняя проверка: переводы uk/en (видно и правится), что не применится и почему.
+  await expect(modal.getByTestId("ai-review-skipped")).toContainText("e2e_no_such_key");
+  await expect(modal.getByTestId("ai-review-skipped")).toContainText("нет такого ключа");
+  const tr = modal.getByTestId("ai-review-translations");
+  await expect(tr.getByLabel("Описание UA")).toHaveValue(`${proposed} (uk)`);
+  await tr.getByLabel("Описание UA").fill(`${proposed} (uk, поправлено)`);
+  await expect(tr.getByLabel("Описание UA")).toHaveValue(`${proposed} (uk, поправлено)`);
+
+  // Правка значения прямо в ревью: строка помечена и сама включается.
+  await modal.getByRole("button", { name: "Изменить: Описание" }).click();
+  const edited = `${proposed} — поправлено`;
+  await modal.getByLabel("Новое значение: Описание").fill(edited);
+  await modal.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await expect(modal.getByText("изменено вами")).toBeVisible();
+  await expect(box).toBeChecked();
+
+  const sent = await fakePhotoImport(page);
+  await pickPhoto(modal, photo);
+  const marked = page.waitForRequest((r) => r.url().endsWith("/api/admin/ai/manual-marks") && r.method() === "POST");
+  await modal.getByRole("button", { name: "Применить (1) + 1 фото" }).click();
+  expect((await marked).postDataJSON()).toEqual({ feature: "CARD", subjectIds: [PRODUCT.scarf] });
+  await expect(modal.getByText("Результат применён")).toBeVisible();
+  await expect(modal.getByText("добавлено 1")).toBeVisible();
+  expect(sent).toEqual([photo]);
+
+  const after = await card(api);
+  expect(after.description).toBe(edited);
+  expect(after.cardMeta?.sources).toContain("https://example.com/manual");
+  expect((await fake("requests")) as unknown[]).toHaveLength(0);
 });

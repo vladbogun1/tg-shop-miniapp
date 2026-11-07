@@ -51,12 +51,15 @@ test("владелец: четыре вкладки раскладывают з�
   await page.goto("/ai-tasks");
   await expect(page.getByRole("heading", { name: "ИИ-задачи" })).toBeVisible();
 
-  await expect(page.getByRole("button", { name: name(titles.running) })).toBeVisible();
-  await expect(page.getByRole("button", { name: name(titles.review) })).toHaveCount(0);
-
-  await openTab(page, "Проверить");
+  // Есть что проверить — при входе сразу «Проверить» (макет 06), а не «Идут».
+  await expect(page.getByRole("tab", { name: /^Проверить/ })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("button", { name: name(titles.review) })).toBeVisible();
   await expect(page.getByRole("button", { name: name(titles.applied) })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: name(titles.running) })).toHaveCount(0);
+
+  await openTab(page, "Идут");
+  await expect(page.getByRole("button", { name: name(titles.running) })).toBeVisible();
+  await expect(page.getByRole("button", { name: name(titles.review) })).toHaveCount(0);
 
   await openTab(page, "Проблемы");
   await expect(page.getByRole("button", { name: name(titles.failed) })).toBeVisible();

@@ -10,10 +10,14 @@
  * A translation prompt (it has «Строки для перевода») is answered with uk/en for every id it asks about.
  *
  * What a test drives (control API, /__e2e/*, JSON):
- *   POST /__e2e/mode {mode: "normal"|"bad"|"error", delayMs?, description?}
+ *   POST /__e2e/mode {mode: "normal"|"bad"|"error"|"research", delayMs?, description?, photos?}
  *        normal — a good answer; bad — text without JSON (the job ends BAD_ANSWER); error — HTTP 500 (FAILED);
+ *        research — the first turn asks for the «search» tool (the job writes the step «Ищу: …», then
+ *        «Разбираю найденное»), the next turn is the good answer plus `photos`; delayMs then holds only that next
+ *        turn, so the progress sheet is caught on the research stage;
  *        delayMs — the answer comes that much later (to catch the job while it runs);
- *        description — the text of the new description (default "E2E-ИИ: описание").
+ *        description — the text of the new description (default "E2E-ИИ: описание");
+ *        photos — links put into the answer's "photos" (research mode only).
  *   GET  /__e2e/requests — how many /v1/messages calls came, and the product ids found in them
  *   POST /__e2e/reset — normal mode, no delay, forgets the requests
  */
@@ -21,10 +25,10 @@ import http from "node:http";
 
 const port = Number(process.env.E2E_FAKE_AI_PORT || 18191);
 
-const state = { mode: "normal", delayMs: 0, description: "E2E-ИИ: описание", calls: [] };
+const state = { mode: "normal", delayMs: 0, description: "E2E-ИИ: описание", photos: [], calls: [] };
 
 function reset() {
-  Object.assign(state, { mode: "normal", delayMs: 0, description: "E2E-ИИ: описание", calls: [] });
+  Object.assign(state, { mode: "normal", delayMs: 0, description: "E2E-ИИ: описание", photos: [], calls: [] });
 }
 
 function promptText(body) {
@@ -109,6 +113,7 @@ async function control(req, res, url) {
     if (b.mode) state.mode = b.mode;
     if (typeof b.delayMs === "number") state.delayMs = b.delayMs;
     if (typeof b.description === "string") state.description = b.description;
+    if (Array.isArray(b.photos)) state.photos = b.photos;
     return reply(res, 200, { ...state, calls: state.calls.length });
   }
   if (req.method === "GET" && url.pathname === "/__e2e/requests") return reply(res, 200, state.calls);
@@ -121,6 +126,7 @@ async function control(req, res, url) {
 
 async function messages(req, res) {
   const body = await readBody(req);
+  if (state.mode === "research") return research(body, res);
   const out = answerFor(promptText(body));
   state.calls.push({ id: out.id, mode: state.mode });
   if (state.delayMs > 0) await new Promise((r) => setTimeout(r, state.delayMs));
@@ -135,6 +141,34 @@ async function messages(req, res) {
     content: [{ type: "text", text }],
     usage: { input_tokens: 1000, output_tokens: 300 },
   });
+}
+
+function modelReply(res, content) {
+  return reply(res, 200, {
+    id: "msg_e2e",
+    type: "message",
+    role: "assistant",
+    model: "e2e",
+    stop_reason: content.some((b) => b.type === "tool_use") ? "tool_use" : "end_turn",
+    content,
+    usage: { input_tokens: 1000, output_tokens: 300 },
+  });
+}
+
+/** «research» mode: the first turn (one message, tools offered) asks to search; the next turn answers with photos. */
+async function research(body, res) {
+  const text = promptText(body);
+  const first = (body?.messages ?? []).length === 1 && (body?.tools ?? []).length > 0;
+  if (first) {
+    state.calls.push({ id: null, mode: "research:search" });
+    return modelReply(res, [{ type: "tool_use", id: "toolu_e2e_1", name: "search", input: { query: "e2e scarf specs" } }]);
+  }
+  const out = answerFor(text);
+  state.calls.push({ id: out.id, mode: "research:answer" });
+  if (state.delayMs > 0) await new Promise((r) => setTimeout(r, state.delayMs));
+  const card = JSON.parse(out.text.slice(out.text.indexOf("{"), out.text.lastIndexOf("}") + 1));
+  for (const v of Object.values(card)) v.photos = state.photos;
+  return modelReply(res, [{ type: "text", text: "```json\n" + JSON.stringify(card, null, 2) + "\n```" }]);
 }
 
 http
