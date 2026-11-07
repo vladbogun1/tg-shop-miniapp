@@ -17,6 +17,8 @@ import {
   BACKEND_JAR,
   BACKEND_PORT,
   E2E_DIR,
+  FAKE_AI_PORT,
+  FAKE_AI_URL,
   REPO_ROOT,
   backendEnv,
 } from "./env.js";
@@ -78,6 +80,14 @@ export default defineConfig({
       url: `${API_URL}/actuator/health`,
       env: backendEnv(),
       timeout: 180_000,
+      reuseExistingServer: !CI,
+    },
+    {
+      name: "fake-ai",
+      command: `node lib/fake-ai.mjs`,
+      cwd: E2E_DIR,
+      url: `${FAKE_AI_URL}/ping`,
+      env: { E2E_FAKE_AI_PORT: String(FAKE_AI_PORT) },
       reuseExistingServer: !CI,
     },
     {

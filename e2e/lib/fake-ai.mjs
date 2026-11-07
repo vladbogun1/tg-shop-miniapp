@@ -1,0 +1,108 @@
+#!/usr/bin/env node
+/**
+ * Stand-in for the model endpoint (MiniMax through its Anthropic-compatible API): the backend's
+ * AI_MINIMAX_BASE_URL points here, so no real model is ever called.
+ *
+ * What the backend sees: POST /v1/messages → an Anthropic-shaped answer. The product id the prompt asks about
+ * is read from the prompt itself (the JSON of the card prompt has a key "p<hex>"), and the answer is a card with a
+ * new Russian description plus its translations, in a ```json block.
+ *
+ * What a test drives (control API, /__e2e/*, JSON):
+ *   POST /__e2e/mode {mode: "normal"|"bad"|"error", delayMs?, description?}
+ *        normal — a good answer; bad — text without JSON (the job ends BAD_ANSWER); error — HTTP 500 (FAILED);
+ *        delayMs — the answer comes that much later (to catch the job while it runs);
+ *        description — the text of the new description (default "E2E-ИИ: описание").
+ *   GET  /__e2e/requests — how many /v1/messages calls came, and the product ids found in them
+ *   POST /__e2e/reset — normal mode, no delay, forgets the requests
+ */
+import http from "node:http";
+
+const port = Number(process.env.E2E_FAKE_AI_PORT || 18191);
+
+const state = { mode: "normal", delayMs: 0, description: "E2E-ИИ: описание", calls: [] };
+
+function reset() {
+  Object.assign(state, { mode: "normal", delayMs: 0, description: "E2E-ИИ: описание", calls: [] });
+}
+
+function promptText(body) {
+  const parts = [];
+  for (const m of body?.messages ?? []) {
+    for (const b of m.content ?? []) if (b?.type === "text") parts.push(b.text);
+  }
+  return parts.join("\n");
+}
+
+function answerFor(text) {
+  const id = /"(p[0-9a-f]{8,32})"\s*:/.exec(text)?.[1] ?? null;
+  const d = state.description;
+  const card = {
+    overall: 90,
+    description: { ru: d, uk: `${d} (uk)`, en: `${d} (en)` },
+    sources: ["https://example.com/spec"],
+    notes: "e2e",
+  };
+  return { id, text: "```json\n" + JSON.stringify({ [id ?? "p00000000"]: card }, null, 2) + "\n```" };
+}
+
+function reply(res, status, obj) {
+  res.writeHead(status, { "content-type": "application/json" });
+  res.end(JSON.stringify(obj));
+}
+
+function readBody(req) {
+  return new Promise((resolve) => {
+    const chunks = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => {
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"));
+      } catch {
+        resolve({});
+      }
+    });
+  });
+}
+
+async function control(req, res, url) {
+  if (req.method === "POST" && url.pathname === "/__e2e/mode") {
+    const b = await readBody(req);
+    if (b.mode) state.mode = b.mode;
+    if (typeof b.delayMs === "number") state.delayMs = b.delayMs;
+    if (typeof b.description === "string") state.description = b.description;
+    return reply(res, 200, { ...state, calls: state.calls.length });
+  }
+  if (req.method === "GET" && url.pathname === "/__e2e/requests") return reply(res, 200, state.calls);
+  if (req.method === "POST" && url.pathname === "/__e2e/reset") {
+    reset();
+    return reply(res, 200, {});
+  }
+  return reply(res, 404, { error: "unknown control call" });
+}
+
+async function messages(req, res) {
+  const body = await readBody(req);
+  const out = answerFor(promptText(body));
+  state.calls.push({ id: out.id, mode: state.mode });
+  if (state.delayMs > 0) await new Promise((r) => setTimeout(r, state.delayMs));
+  if (state.mode === "error") return reply(res, 500, { error: { message: "e2e: model failed" } });
+  const text = state.mode === "bad" ? "Не могу найти эту модель, ответ без данных." : out.text;
+  return reply(res, 200, {
+    id: "msg_e2e",
+    type: "message",
+    role: "assistant",
+    model: "e2e",
+    stop_reason: "end_turn",
+    content: [{ type: "text", text }],
+    usage: { input_tokens: 1000, output_tokens: 300 },
+  });
+}
+
+http
+  .createServer(async (req, res) => {
+    const url = new URL(req.url ?? "/", "http://localhost");
+    if (url.pathname.startsWith("/__e2e/")) return control(req, res, url);
+    if (req.method === "POST" && url.pathname === "/v1/messages") return messages(req, res);
+    return reply(res, 200, {});
+  })
+  .listen(port, () => console.log(`fake-ai on :${port}`));

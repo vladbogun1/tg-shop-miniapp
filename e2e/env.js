@@ -32,6 +32,9 @@ export const MINIAPP_PORT = Number(env("E2E_MINIAPP_PORT", "3106"));
 export const SITE_PORT = Number(env("E2E_SITE_PORT", "3107"));
 export const SITE_APP_PORT = Number(env("E2E_SITE_APP_PORT", "3108"));
 export const FAKE_MONO_PORT = Number(env("E2E_FAKE_MONO_PORT", "18190"));
+/** The model endpoint stand-in (lib/fake-ai.mjs): the backend's AI_MINIMAX_BASE_URL points here. */
+export const FAKE_AI_PORT = Number(env("E2E_FAKE_AI_PORT", "18191"));
+export const FAKE_AI_URL = `http://localhost:${FAKE_AI_PORT}`;
 export const MINIAPP_URL = `http://localhost:${MINIAPP_PORT}`;
 export const SITE_URL = `http://localhost:${SITE_PORT}`;
 export const FAKE_MONO_URL = `http://localhost:${FAKE_MONO_PORT}`;
@@ -122,6 +125,9 @@ export function backendEnv(opts = {}) {
     NOVAPOSHTA_API_KEY: "",
     NOVAPOSHTA_API_URL: "http://127.0.0.1:9/",
     APP_TIMEZONE: "Europe/Kyiv",
+    // A throwaway key + the fake model: the built-in AI works end to end and never leaves the machine.
+    AI_MINIMAX_KEY: "e2e-fake-ai-key",
+    AI_MINIMAX_BASE_URL: FAKE_AI_URL,
     ...(opts.customer ? customerBackendEnv() : {}),
   };
 }
