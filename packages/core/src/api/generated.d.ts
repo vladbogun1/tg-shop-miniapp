@@ -838,6 +838,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/ai/translation-batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Translate rows with the built-in AI: one task per part of at most 60 strings, medium effort. The result is written as drafts of the AI (a manual translation is never replaced). 409 AI_JOB_ACTIVE (subjects) for a part that is already running, AI_BATCHES_OFF when batches are switched off; the same Idempotency-Key returns the first batch */
+        post: operations["AdminTranslationAiController_start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/ai/widget": {
         parameters: {
             query?: never;
@@ -5555,10 +5572,16 @@ export interface components {
             skipped: number;
         };
         AiAiBatchDtoRow: {
+            /** Format: int32 */
+            applied: number;
             errorCode: string;
             /** Format: int64 */
             id: number;
+            /** Format: int32 */
+            ignored: number;
             outcome: string;
+            /** Format: int32 */
+            rejected: number;
             searched: boolean;
             /** @enum {string} */
             status: "QUEUED" | "RUNNING" | "DONE" | "EMPTY" | "BAD_ANSWER" | "FAILED" | "CANCELED";
@@ -7129,6 +7152,7 @@ export interface components {
             spentOn?: string;
         };
         ExportItem: {
+            builtinAi: boolean;
             entityId: string;
             entityType: string;
             field: string;
@@ -8420,6 +8444,11 @@ export interface components {
             totals: {
                 [key: string]: number;
             } | null;
+        };
+        Part: {
+            /** Format: int32 */
+            part?: number;
+            prompt?: string;
         };
         PaymentOptionDto: {
             description: string;
@@ -9757,6 +9786,10 @@ export interface components {
             /** Format: int32 */
             skippedStale: number;
         };
+        TranslationAiTranslationJobsStart: {
+            items?: components["schemas"]["Part"][];
+            promptVersion?: string;
+        };
         TranslationCounts: {
             /** Format: int32 */
             missing: number;
@@ -11081,6 +11114,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AiAiSummarySummary"];
+                };
+            };
+        };
+    };
+    AdminTranslationAiController_start: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TranslationAiTranslationJobsStart"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiBatchDto"];
                 };
             };
         };

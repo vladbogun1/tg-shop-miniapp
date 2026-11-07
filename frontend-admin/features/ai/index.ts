@@ -57,5 +57,7 @@ export { BatchGate, BatchPanel } from "./ui/batch/BatchPanel";
 export { BatchConfirm } from "./ui/batch/BatchConfirm";
 export { QuickReviewFeed } from "./ui/batch/QuickReviewFeed";
 export { AcceptSafeDialog } from "./ui/batch/AcceptSafeDialog";
-export { useAiBatches, hasOpenBatch, invalidateAfterBatch } from "./queries-batch";
+export { useAiBatches, useAiBatchById, useAiFinanceFlag, useRetryFailedBatch, hasOpenBatch, invalidateAfterBatch } from "./queries-batch";
+export { aboutDuration, unavailableReason } from "./model/availability";
+export { isOpen as isBatchOpen } from "./model/batch-view";
 export { isSafeKey } from "./model/batch-view";

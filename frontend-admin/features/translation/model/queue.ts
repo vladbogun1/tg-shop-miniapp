@@ -58,6 +58,11 @@ export function bucketOf(s: UniqueString, langs: TrLocale[]): Bucket {
   return st;
 }
 
+/** The built-in AI wrote one of the translations of this text that still waits for a person (the «Встроенный ИИ» filter). */
+export function hasBuiltinAiDraft(s: UniqueString, langs: TrLocale[]): boolean {
+  return s.fields.some((f) => langs.some((l) => f.builtinAi[l] && fieldState(f, l) === "review"));
+}
+
 /** The text shown for a language: a current translation first, else the outdated one. */
 export function currentText(s: UniqueString, l: TrLocale): string {
   const current = s.fields.find((f) => f.status[l] === "TRANSLATED" && f.text[l]);

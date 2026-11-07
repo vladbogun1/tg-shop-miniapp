@@ -13,13 +13,15 @@
 import { Button } from "@shop/ui/admin-button";
 import { useConfirm } from "@shop/ui/confirm";
 import { Languages, RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CenterSpinner } from "@/components/ui/Spinner";
 import { Tabs } from "@/components/ui/Tabs";
-import { useDebounced } from "@/lib/use-debounced";
 import { plural } from "../model/plural";
-import { BUCKET_LABEL, BUCKETS, langsOf, splitByBucket, type Bucket, type LangScope, type TypeFilter } from "../model/queue";
+import { useBuiltinAiReady } from "./ai/BuiltinAiButton";
+import { BuiltinFilterButton, builtinAiSlot, StartedBatchResult } from "./ai/screen-parts";
+import { useStartedBatch } from "./ai/use-started-batch";
+import { BUCKET_LABEL, BUCKETS, type Bucket } from "../model/queue";
 import { buildWorkSet } from "../model/workset";
 import { useAcceptAll, useTranslationExport, useTranslationStats } from "../queries";
 import { AiTranslate } from "./ai/AiTranslate";
@@ -29,6 +31,7 @@ import { EmptyList, FilterBar, ScreenHeader, SelectControls, TabHint } from "./T
 import { TranslationBulkBar } from "./TranslationBulkBar";
 import { TranslationQueue } from "./TranslationQueue";
 import { useQueueSelection } from "./use-queue-selection";
+import { useTranslationLists } from "./use-translation-lists";
 
 export function TranslationsScreen() {
   const confirm = useConfirm();
@@ -37,30 +40,13 @@ export function TranslationsScreen() {
   const acceptAllM = useAcceptAll();
   const ws = useMemo(() => (exportQ.data ? buildWorkSet(exportQ.data.uk, exportQ.data.en) : null), [exportQ.data]);
 
-  const [tab, setTab] = useState<Bucket | null>(null);
-  const [scope, setScope] = useState<LangScope>("all");
-  const [type, setType] = useState<TypeFilter>("");
-  const [q, setQ] = useState("");
-  const dq = useDebounced(q, 200).trim().toLowerCase();
+  const v = useTranslationLists(ws);
+  const { tab, setTab, scope, setScope, type, setType, q, setQ, langs, byBucket, active, list, filtered } = v;
   const [review, setReview] = useState<{ queue: string[]; start: number; bucket: Bucket } | null>(null);
   const [ai, setAi] = useState<string[] | null>(null);
-  const langs = langsOf(scope);
-  const sel = useQueueSelection(`${tab}|${scope}|${type}|${dq}`);
-
-  const byBucket = useMemo(
-    () => splitByBucket(ws?.strings ?? [], langsOf(scope), type, dq),
-    [ws, scope, type, dq]
-  );
-
-  // First visit: open the first tab that has work.
-  useEffect(() => {
-    if (tab || !ws) return;
-    setTab(BUCKETS.find((b) => byBucket[b].length > 0) ?? "missing");
-  }, [ws, tab, byBucket]);
-
-  const active: Bucket = tab ?? "missing";
-  const list = byBucket[active];
-  const filtered = !!(type || dq);
+  const started = useStartedBatch();
+  const aiReady = useBuiltinAiReady();
+  const sel = useQueueSelection(v.key);
 
   function openReview(start: number, hashes?: string[]) {
     setReview({ queue: hashes ?? list.map((s) => s.sourceHash), start, bucket: active });
@@ -158,13 +144,20 @@ export function TranslationsScreen() {
             onType={setType}
             q={q}
             onQ={setQ}
-            extra={<SelectControls on={sel.selectMode} total={list.length} onToggle={sel.toggleMode} onAll={() => sel.selectAll(list.map((s) => s.sourceHash))} />}
+            extra={
+              <>
+                <BuiltinFilterButton lists={v} />
+                <SelectControls on={sel.selectMode} total={list.length} onToggle={sel.toggleMode} onAll={() => sel.selectAll(list.map((s) => s.sourceHash))} />
+              </>
+            }
           />
         </StickyToolbar>
+        <StartedBatchResult lists={v} started={started} />
         <TabHint
           active={active}
           count={list.length}
           bulkBusy={acceptAllM.isPending}
+          builtinAi={builtinAiSlot(active, aiReady, list, started.remember)}
           onAi={() => setAi(list.map((s) => s.sourceHash))}
           onReview={() => openReview(0)}
           onAcceptAll={() => void acceptEverything()}
@@ -179,7 +172,7 @@ export function TranslationsScreen() {
             }}
           />
         ) : (
-          <TranslationQueue key={`${active}|${scope}|${type}|${dq}`} strings={list} langs={langs} onOpen={openReview} selection={sel.selection} />
+          <TranslationQueue key={v.key} strings={list} langs={langs} onOpen={openReview} selection={sel.selection} />
         )}
         <TranslationBulkBar
           bucket={active}

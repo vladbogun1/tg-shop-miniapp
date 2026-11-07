@@ -20,6 +20,9 @@ export function BatchConfirm(p: {
   onStart: () => void;
   /** Что лежит в пакете, для заголовка: «карточек». */
   noun?: string;
+  /** Заголовок окна и пояснение под ним; по умолчанию — для карточек. */
+  title?: string;
+  description?: string;
   /** Сообщение, если запуск не удался (сервер ответил отказом). */
   error?: string | null;
 }) {
@@ -30,7 +33,7 @@ export function BatchConfirm(p: {
       open={p.open}
       onClose={p.onClose}
       size="sm"
-      title="Заполнить с ИИ пакетом"
+      title={p.title ?? "Заполнить с ИИ пакетом"}
       footer={
         <div className="flex w-full justify-end gap-2">
           <ModalCancel disabled={p.starting} />
@@ -43,8 +46,8 @@ export function BatchConfirm(p: {
       <div className="flex flex-col gap-2 text-[13px]" data-testid="batch-confirm">
         <div className="text-[15px] font-semibold text-[var(--ink)]">{v.lead}</div>
         <p className="leading-snug text-[var(--text-muted)]">
-          ИИ заполнит карточки по очереди, по две-три одновременно. Окно можно закрыть: ход виден в полосе вверху, готовое ждёт проверки. Ничего не
-          сохранится, пока вы не примете результат.
+          {p.description ??
+            "ИИ заполнит карточки по очереди, по две-три одновременно. Окно можно закрыть: ход виден в полосе вверху, готовое ждёт проверки. Ничего не сохранится, пока вы не примете результат."}
         </p>
         {v.money && <p className="tabular-nums text-[var(--text)]">{v.money}</p>}
         {v.warn && <p className="text-[var(--warn)]">{v.warn}</p>}

@@ -3,7 +3,8 @@
  * Ответы — типы из OpenAPI; экспорт приводится к `TrExportItem` (перечисления вместо `string`).
  */
 import type { Schemas } from "@shop/core/api/schemas";
-import { apiDelete, apiGet, apiPut } from "@/lib/http";
+import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/http";
+import type { AiBatch } from "@/features/ai";
 import type { TrAcceptItem, TrEntityType, TrExportItem, TrImportItem, TrLocale, TrOrigin, TrStatus } from "./model/types";
 
 export type TrImportResult = Schemas["ImportResult"];
@@ -13,6 +14,12 @@ export type TrTextCounts = Schemas["TextCounts"];
 export type TrStats = Schemas["Stats"];
 export type TrAcceptResult = Schemas["TranslationAcceptResult"];
 export type TrSourceFixResult = Schemas["SourceFixResult"];
+
+/** Тело «Перевести с ИИ»: части с готовым промптом (их режет и собирает экран, сервер проверяет размер). */
+export interface TrAiBatchBody {
+  items: { part: number; prompt: string }[];
+  promptVersion: string;
+}
 
 export type TrExportFilter = "missing" | "stale" | "translated" | "all";
 
@@ -56,6 +63,9 @@ export const translationApi = {
     apiDelete<Schemas["DeleteResult"]>(
       `/api/admin/translations?locale=${locale}&entityType=${entityType}&entityId=${entityId}&field=${encodeURIComponent(field)}`
     ),
+  /** «Перевести с ИИ»: пакет, по задаче на часть; черновики «ИИ» пишет сервер, ручные переводы не заменяет. */
+  startAiBatch: (body: TrAiBatchBody, idemKey: string) =>
+    apiPost<AiBatch>("/api/admin/ai/translation-batches", body, { "Idempotency-Key": idemKey }),
   /** Proofreading: replace the Russian source (optimistic by sourceHash) + write uk/en of the new text. */
   sourceFix: (body: TrSourceFixBody) => apiPut<TrSourceFixResult>("/api/admin/translations/source-fix", body),
 };

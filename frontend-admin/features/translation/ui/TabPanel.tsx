@@ -88,6 +88,7 @@ export function TabHint({
   active,
   count,
   bulkBusy,
+  builtinAi,
   onAi,
   onReview,
   onAcceptAll,
@@ -95,6 +96,8 @@ export function TabHint({
   active: Bucket;
   count: number;
   bulkBusy: boolean;
+  /** «Перевести с ИИ (N)» встроенным ИИ; нет — ИИ выключен, остаётся ручной путь. */
+  builtinAi?: ReactNode;
   onAi: () => void;
   onReview: () => void;
   onAcceptAll: () => void;
@@ -108,8 +111,9 @@ export function TabHint({
         <div className="flex flex-wrap gap-2">
           {active === "missing" && (
             <>
-              <Button variant="accent" icon={<Sparkles className="h-4 w-4" />} onClick={onAi}>
-                Перевести через ИИ · {count}
+              {builtinAi}
+              <Button variant={builtinAi ? "outline" : "accent"} icon={<Sparkles className="h-4 w-4" />} onClick={onAi}>
+                {builtinAi ? "Через ChatGPT вручную" : "Перевести через ИИ"} · {count}
               </Button>
               <Button variant="outline" icon={<ListChecks className="h-4 w-4" />} onClick={onReview}>
                 Вручную по одному
@@ -121,8 +125,9 @@ export function TabHint({
               <Button variant="accent" icon={<ListChecks className="h-4 w-4" />} onClick={onReview}>
                 Сверить по одному
               </Button>
+              {builtinAi}
               <Button variant="outline" icon={<Sparkles className="h-4 w-4" />} onClick={onAi}>
-                Перевести заново через ИИ · {count}
+                {builtinAi ? "Заново через ChatGPT вручную" : "Перевести заново через ИИ"} · {count}
               </Button>
             </>
           )}

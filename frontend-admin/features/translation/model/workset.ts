@@ -28,6 +28,8 @@ export interface FieldRef {
   prevSource: Record<TrLocale, string | null>;
   /** A person accepted the translation (MANUAL or «Принять»). */
   reviewed: Record<TrLocale, boolean>;
+  /** The translation was written by the built-in AI (a task on the server), not pasted from a chat by hand. */
+  builtinAi: Record<TrLocale, boolean>;
 }
 
 /** One unique Russian string = one id in the prompt, fanned out to all its fields. */
@@ -113,6 +115,7 @@ export function buildWorkSet(uk: TrExportItem[], en: TrExportItem[]): WorkSet {
         origin: { uk: null, en: null },
         prevSource: { uk: null, en: null },
         reviewed: { uk: false, en: false },
+        builtinAi: { uk: false, en: false },
       };
       map.set(key, f);
     }
@@ -121,6 +124,7 @@ export function buildWorkSet(uk: TrExportItem[], en: TrExportItem[]): WorkSet {
     f.origin[locale] = it.origin;
     f.prevSource[locale] = it.prevSource ?? null;
     f.reviewed[locale] = !!it.reviewed;
+    f.builtinAi[locale] = !!it.builtinAi;
   };
   uk.forEach((i) => add("uk", i));
   en.forEach((i) => add("en", i));

@@ -4,9 +4,11 @@
  * Запросы пакетов ИИ. Идущие пакеты — опрос раз в 4 с, пока что-то идёт (пауза и итог ждут не торопясь).
  * Записи (пауза, продолжить, отмена, повтор неудачных, отмена применения) обновляют полосу, сводку и центр задач.
  */
-import { STALE_TIME } from "@shop/core/query";
+import { QUERY_PRESETS, STALE_TIME } from "@shop/core/query";
 import { useApiMutation } from "@shop/ui/mutation";
 import { useQuery } from "@tanstack/react-query";
+import { apiGet } from "@/lib/http";
+import { isAuthenticated } from "@/lib/session";
 import { batchApi, type AiBatch } from "./api-batch";
 import type { AiFeature } from "./api";
 import { aiKeys } from "./keys";
@@ -29,6 +31,18 @@ export function useAiBatches() {
 }
 
 export const hasOpenBatch = (list: readonly AiBatch[] | undefined): boolean => (list ?? []).some(isOpen);
+
+/** Один пакет по номеру (в `active` законченный без дел не попадает): опрос, пока он идёт. `null` — пакета нет. */
+export function useAiBatchById(id: number | null) {
+  return useQuery({
+    queryKey: aiKeys.batch(id ?? 0),
+    queryFn: () => batchApi.get(id ?? 0),
+    enabled: id !== null,
+    retry: false,
+    staleTime: STALE_TIME.quick,
+    refetchInterval: (q) => (q.state.data && isOpen(q.state.data) ? JOB_POLL_MS : false),
+  });
+}
 
 /** Оценка пакета: минуты всем, деньги — только финансисту (сервер сам не отдаёт остальным). */
 export function useBatchEstimate(feature: AiFeature, count: number, enabled: boolean) {
@@ -76,3 +90,18 @@ export function useUndoBatch() {
 }
 
 export const invalidateAfterBatch = AFTER_BATCH;
+
+/**
+ * Видит ли админ деньги (финансист). Тот же запрос, что у `useFinanceAccess` в «Закупке»: фича `ai` не
+ * зависит от `procurement` (иначе замыкается цикл через каталог и переводы).
+ */
+export function useAiFinanceFlag(): boolean {
+  const q = useQuery({
+    queryKey: aiKeys.financeFlag(),
+    queryFn: () => apiGet<{ finance: boolean }>("/api/admin/costing/access"),
+    enabled: isAuthenticated(),
+    staleTime: QUERY_PRESETS.static.staleTime,
+    retry: false,
+  });
+  return q.data?.finance === true;
+}

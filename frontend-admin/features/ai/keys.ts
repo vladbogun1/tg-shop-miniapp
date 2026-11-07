@@ -11,6 +11,7 @@ export const aiKeys = {
   batches: () => ["admin", "ai", "batches"] as const,
   batch: (id: number) => ["admin", "ai", "batches", id] as const,
   batchEstimate: (feature: string, count: number) => ["admin", "ai", "batch-estimate", feature, count] as const,
+  financeFlag: () => ["admin", "ai", "finance-flag"] as const,
   metrics: (from: string, to: string) => ["admin", "ai", "metrics", from, to] as const,
   series: (group: string, from: string, to: string) => ["admin", "ai", "metrics", "series", group, from, to] as const,
 };

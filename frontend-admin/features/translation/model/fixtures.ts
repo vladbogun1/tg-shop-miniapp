@@ -14,6 +14,7 @@ export function item(over: Partial<TrExportItem> & { entityId: string }): TrExpo
     productTitle: "Ковер",
     prevSource: null,
     reviewed: false,
+    builtinAi: false,
     ...over,
   };
 }

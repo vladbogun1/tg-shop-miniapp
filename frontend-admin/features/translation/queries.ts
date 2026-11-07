@@ -8,9 +8,10 @@ import { QUERY_PRESETS } from "@shop/core/query";
 import { useApiMutation } from "@shop/ui/mutation";
 import { toast } from "@shop/ui/toast";
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { invalidateAfterBatch } from "@/features/ai";
 import { isAuthenticated } from "@/lib/session";
 import { acceptAll, acceptText, confirmAsIs, resetMany, resetText, sendAiTranslations, type AcceptOutcome, type ConfirmOutcome } from "./actions";
-import { translationApi } from "./api";
+import { translationApi, type TrAiBatchBody } from "./api";
 import { translationKeys } from "./keys";
 import { summaryApplied, summaryFixed, type AiSendPlan, type SendSummary } from "./model/send";
 import type { TrExportData, TrExportItem, TrLocale, TrOrigin } from "./model/types";
@@ -183,6 +184,19 @@ export function useSendAiTranslations(onDone: (summary: SendSummary) => void) {
         `Сохранено переводов: ${summaryApplied(summary)}${fixed ? `, исправлено оригиналов: ${fixed}` : ""}. Они ждут проверки во вкладке «Проверить ИИ».`
       );
     },
+  });
+}
+
+/**
+ * «Перевести с ИИ (N)»: пакет по частям. Ошибку (лимит, «Пакеты» выключены, часть уже идёт) показывает окно подтверждения,
+ * поэтому тост выключен. После запуска обновляется полоса пакетов и центр задач (`AFTER_BATCH`); списки переводов
+ * обновит экран, когда пакет закончится.
+ */
+export function useStartTranslationBatch() {
+  return useApiMutation({
+    mutationFn: ({ body, idemKey }: { body: TrAiBatchBody; idemKey: string }) => translationApi.startAiBatch(body, idemKey),
+    invalidate: invalidateAfterBatch,
+    toastOnError: false,
   });
 }
 
