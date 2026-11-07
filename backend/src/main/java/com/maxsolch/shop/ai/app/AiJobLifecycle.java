@@ -5,6 +5,7 @@ import com.maxsolch.shop.ai.domain.AiJob;
 import com.maxsolch.shop.ai.domain.AiJobBody;
 import com.maxsolch.shop.ai.domain.JobStatus;
 import com.maxsolch.shop.ai.domain.JobTotals;
+import com.maxsolch.shop.ai.domain.PauseReason;
 import com.maxsolch.shop.ai.infra.AiJobBodyRepository;
 import com.maxsolch.shop.ai.infra.AiJobClaims;
 import com.maxsolch.shop.ai.infra.AiJobRepository;
@@ -46,15 +47,17 @@ public class AiJobLifecycle {
     private final AiJobClaims claims;
     private final AiUsageQueries usage;
     private final AiPolicy policy;
+    private final AiBatchRunner batchRunner;
     private final Clock clock;
 
     public AiJobLifecycle(AiJobRepository jobs, AiJobBodyRepository bodies, AiJobClaims claims, AiUsageQueries usage,
-                          AiPolicy policy, Clock clock) {
+                          AiPolicy policy, AiBatchRunner batchRunner, Clock clock) {
         this.jobs = jobs;
         this.bodies = bodies;
         this.claims = claims;
         this.usage = usage;
         this.policy = policy;
+        this.batchRunner = batchRunner;
         this.clock = clock;
     }
 
@@ -81,6 +84,10 @@ public class AiJobLifecycle {
         for (Long id : claims.lockQueued(max)) {
             AiJob job = jobs.findById(id).orElseThrow();
             if (!policy.featureOn(job.getFeature())) {
+                if (job.getBatchId() != null) {
+                    batchRunner.paused(job.getBatchId(), PauseReason.DISABLED);
+                    continue;
+                }
                 job.fail(AiError.DISABLED.name(), null, JobTotals.NONE, now);
                 continue;
             }
@@ -149,6 +156,12 @@ public class AiJobLifecycle {
         return stale.size();
     }
 
+    /** The batch stopped on a limit under this job: it goes back to the queue (the attempt is not counted). */
+    @Transactional
+    public void returnToQueue(long jobId, String worker) {
+        running(jobId, worker).ifPresent(AiJob::returnToQueue);
+    }
+
     /** The admin's "Остановить": a queued job ends at once, a running one stops before its next turn. */
     @Transactional
     public AiJob requestCancel(long jobId) {
@@ -176,7 +189,11 @@ public class AiJobLifecycle {
     }
 
     private void interrupted(AiJob job) {
-        if (job.getAttempts() >= MAX_ATTEMPTS) {
+        if (job.getBatchId() != null) {
+            // a batch does not go on by itself after a restart: the job waits in the queue, the batch is on pause
+            job.returnToQueue();
+            batchRunner.paused(job.getBatchId(), PauseReason.RESTART);
+        } else if (job.getAttempts() >= MAX_ATTEMPTS) {
             job.fail(AiError.RESTARTED.name(), null, totals(job.getId(), false), clock.instant());
         } else {
             job.requeue();

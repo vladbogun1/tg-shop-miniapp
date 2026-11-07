@@ -49,6 +49,7 @@ public class AiJobs {
     private final AiJobReads reads;
     private final AiOutcome outcome;
     private final AiLimits limits;
+    private final AiBatchRunner batchRunner;
     private final AiPolicy policy;
     private final AiEstimate estimate;
     private final AiAgent agent;
@@ -56,12 +57,13 @@ public class AiJobs {
     private final CurrentActor actor;
     private final AdminAuditService audit;
 
-    public AiJobs(AiJobLifecycle lifecycle, AiJobReads reads, AiOutcome outcome, AiLimits limits, AiPolicy policy,
+    public AiJobs(AiJobLifecycle lifecycle, AiJobReads reads, AiOutcome outcome, AiLimits limits, AiBatchRunner batchRunner, AiPolicy policy,
                   AiEstimate estimate, AiAgent agent, AdminAccess access, CurrentActor actor, AdminAuditService audit) {
         this.lifecycle = lifecycle;
         this.reads = reads;
         this.outcome = outcome;
         this.limits = limits;
+        this.batchRunner = batchRunner;
         this.policy = policy;
         this.estimate = estimate;
         this.agent = agent;
@@ -112,7 +114,10 @@ public class AiJobs {
                 throw new DomainException.Forbidden(AiError.NOT_YOUR_JOB);
             }
         }
-        lifecycle.requestCancel(id);
+        AiJob canceled = lifecycle.requestCancel(id);
+        if (canceled.getBatchId() != null) {
+            batchRunner.jobEnded(canceled.getBatchId());
+        }
         audit.record("AI_JOB_CANCEL", "AI_JOB", String.valueOf(id), "ИИ: остановка задачи");
         return get(id);
     }

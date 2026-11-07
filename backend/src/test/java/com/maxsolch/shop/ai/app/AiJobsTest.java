@@ -46,7 +46,7 @@ class AiJobsTest {
     private final AdminAccess access = mock(AdminAccess.class);
     private final CurrentActor actor = mock(CurrentActor.class);
     private final AdminAuditService audit = mock(AdminAuditService.class);
-    private final AiJobs jobs = new AiJobs(lifecycle, reads, mock(AiOutcome.class), limits, policy,
+    private final AiJobs jobs = new AiJobs(lifecycle, reads, mock(AiOutcome.class), limits, mock(AiBatchRunner.class), policy,
             mock(AiEstimate.class), agent, access, actor, audit);
 
     @BeforeEach

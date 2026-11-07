@@ -3,6 +3,7 @@ package com.maxsolch.shop.ai.app;
 import com.maxsolch.shop.ai.domain.AiEvents;
 import com.maxsolch.shop.ai.domain.AiEvents.Period;
 import com.maxsolch.shop.ai.domain.AiMoney;
+import com.maxsolch.shop.ai.domain.PauseReason;
 import com.maxsolch.shop.ai.infra.AiAlertStore;
 import com.maxsolch.shop.notification.app.AdminPushService;
 import com.maxsolch.shop.notification.app.AdminPushService.PushMessage;
@@ -96,6 +97,36 @@ public class AiNotifier {
         say(period(e.period()), "BATCH_" + e.period(), "Пакет ИИ остановлен",
                 "Пакет остановлен: готово " + e.done() + " из " + e.total() + ", " + why + ". Продолжить кнопкой.",
                 true, TASKS_URL);
+    }
+
+    /** One push to the admin who started the batch (not to the owner): «Готово N карточек». The batch moves to DONE once. */
+    @OnCommitted
+    void onBatchFinished(AiEvents.BatchFinished e) {
+        try {
+            String body = "Готово " + e.done() + " из " + e.total() + ". Откройте очередь, чтобы принять результаты.";
+            push.notifyAdmins(new PushMessage("Готово " + e.done() + " " + cards(e.done()), body, TASKS_URL,
+                    "ai-batch-" + e.batchId(), null, false), id -> id == e.adminId());
+        } catch (RuntimeException ex) {
+            log.warn("ai batch push {} failed: {}", e.batchId(), ex.toString());
+        }
+    }
+
+    /** Three failures in a row, or the search sees nothing: the batch stopped itself and waits for a person. */
+    @OnCommitted
+    void onBatchProblem(AiEvents.BatchProblem e) {
+        String why = e.reason() == PauseReason.SEARCH_DOWN ? "поиск ничего не находит" : "три сбоя подряд";
+        say(period(Period.DAY), "BP_" + e.batchId(), "Пакет ИИ остановлен",
+                "Пакет остановлен: " + why + ", готово " + e.done() + " из " + e.total() + ".", true, TASKS_URL);
+    }
+
+    /** «карточка / карточки / карточек» after a number. */
+    static String cards(int n) {
+        int mod10 = n % 10;
+        int mod100 = n % 100;
+        if (mod10 == 1 && mod100 != 11) {
+            return "карточка";
+        }
+        return mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? "карточки" : "карточек";
     }
 
     private void say(String period, String threshold, String title, String body, boolean urgent, String url) {

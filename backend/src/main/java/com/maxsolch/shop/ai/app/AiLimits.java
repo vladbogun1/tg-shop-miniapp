@@ -94,6 +94,22 @@ public class AiLimits {
         reserves.release(jobId);
     }
 
+    /** Money left under the tightest limit (micro-USD, not below 0), or -1 when no limit is set. For the batch estimate. */
+    public long remainingMicro() {
+        long reserved = reserves.openReserves(null);
+        long lost = log.lostMicroUsd();
+        long left = -1;
+        long[][] limitsAndSpent = {{policy.monthLimitMicro(), spent.spentSince(monthStart())},
+                {policy.dayLimitMicro(), spent.spentSince(dayStart())}};
+        for (long[] p : limitsAndSpent) {
+            if (p[0] > 0) {
+                long room = Math.max(0, p[0] - p[1] - lost - reserved);
+                left = left < 0 ? room : Math.min(left, room);
+            }
+        }
+        return left;
+    }
+
     public Spend spend() {
         long lost = log.lostMicroUsd();
         return new Spend(spent.spentSince(dayStart()) + lost, spent.spentSince(monthStart()) + lost,

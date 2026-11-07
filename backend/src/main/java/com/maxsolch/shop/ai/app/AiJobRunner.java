@@ -7,6 +7,7 @@ import com.maxsolch.shop.ai.domain.AiEvents;
 import com.maxsolch.shop.ai.domain.AiJob;
 import com.maxsolch.shop.ai.domain.AiScope;
 import com.maxsolch.shop.ai.domain.JobStatus;
+import com.maxsolch.shop.ai.domain.PauseReason;
 import com.maxsolch.shop.ai.infra.AiAlertStore;
 import com.maxsolch.shop.ai.infra.AiUsageQueries;
 import com.maxsolch.shop.platform.error.DomainException;
@@ -36,12 +37,13 @@ public class AiJobRunner {
     private final AiUsageQueries usage;
     private final AiAlertStore alerts;
     private final AiSpendWatch watch;
+    private final AiBatchRunner batches;
     private final DomainEvents events;
     private final Clock clock;
 
     public AiJobRunner(AiAgent agent, AiJobLifecycle lifecycle, AiLimits limits, AiPolicy policy, AiEstimate estimate,
                        AiAnswerCheck check, AiUsageQueries usage, AiAlertStore alerts, AiSpendWatch watch,
-                       DomainEvents events, Clock clock) {
+                       AiBatchRunner batches, DomainEvents events, Clock clock) {
         this.agent = agent;
         this.lifecycle = lifecycle;
         this.limits = limits;
@@ -51,6 +53,7 @@ public class AiJobRunner {
         this.usage = usage;
         this.alerts = alerts;
         this.watch = watch;
+        this.batches = batches;
         this.events = events;
         this.clock = clock;
     }
@@ -67,18 +70,32 @@ public class AiJobRunner {
             lifecycle.complete(id, worker, verdict, answer.text(), answer.repaired());
             alerts.clear("KEY");
         } catch (DomainException e) {
-            ended(worker, id, e);
+            ended(worker, job, e);
         } catch (RuntimeException e) {
             log.warn("ai job {} failed", id, e);
             lifecycle.fail(id, worker, AiError.MODEL_FAILED.name(), e.getClass().getSimpleName());
         } finally {
             limits.release(id);
             watch.afterJob();
+            if (job.getBatchId() != null) {
+                batches.jobEnded(job.getBatchId());
+            }
         }
     }
 
-    private void ended(String worker, long id, DomainException e) {
+    private void ended(String worker, AiJob job, DomainException e) {
+        long id = job.getId();
         AiError reason = e.errorCode() instanceof AiError a ? a : AiError.MODEL_FAILED;
+        if (job.getBatchId() != null && pausesBatch(reason)) {
+            // the job did nothing wrong: it waits in the queue, the batch waits for a person
+            lifecycle.returnToQueue(id, worker);
+            switch (reason) {
+                case DAY_LIMIT -> batches.limitHit(job.getBatchId(), false);
+                case MONTH_LIMIT -> batches.limitHit(job.getBatchId(), true);
+                default -> batches.paused(job.getBatchId(), PauseReason.DISABLED);
+            }
+            return;
+        }
         if (reason == AiError.CANCELED) {
             lifecycle.cancel(id, worker);
             return;
@@ -88,6 +105,10 @@ public class AiJobRunner {
         }
         String note = e.args().length > 0 ? String.valueOf(e.args()[0]) : null;
         lifecycle.fail(id, worker, reason.name(), note);
+    }
+
+    private static boolean pausesBatch(AiError reason) {
+        return reason == AiError.DAY_LIMIT || reason == AiError.MONTH_LIMIT || reason == AiError.DISABLED;
     }
 
     /** The gate: reads the job from the database each time, so a stop pressed on another instance counts too. */
