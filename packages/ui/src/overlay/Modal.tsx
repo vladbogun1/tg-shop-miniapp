@@ -132,7 +132,8 @@ function useOpenSession(open: boolean): number {
   return sessionRef.current;
 }
 
-const MODAL_WIDTH = { sm: "sm:max-w-md", md: "sm:max-w-xl", lg: "sm:max-w-3xl" } as const;
+/** `dialog` (520 px) — короткий диалог с текстом и парой кнопок, где 448 px тесно для строк хода (запуск ИИ). */
+const MODAL_WIDTH = { sm: "sm:max-w-md", dialog: "sm:max-w-[520px]", md: "sm:max-w-xl", lg: "sm:max-w-3xl" } as const;
 
 /**
  * Centered dialog.
@@ -159,7 +160,7 @@ export function Modal({
   title?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
-  size?: "sm" | "md" | "lg";
+  size?: keyof typeof MODAL_WIDTH;
   /** false for forms: a stray click outside must not throw away what was typed. */
   closeOnBackdrop?: boolean;
   /** Same height on every step of a wizard, so the footer buttons don't jump under the cursor. */

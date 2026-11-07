@@ -72,7 +72,7 @@ export function AiJobSheet(p: AiJobSheetProps) {
   }, [open, needsConfirm]);
 
   return (
-    <Modal open={open} onClose={onClose} size="sm" title={p.title}>
+    <Modal open={open} onClose={onClose} size="dialog" title={p.title}>
       <SheetBody p={p} phase={phase} setPhase={setPhase} run={run} router={router} />
     </Modal>
   );
