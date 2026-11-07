@@ -17,7 +17,7 @@
 #    docker compose -f docker-compose.yml -f docker-compose.public.yml -f docker-compose.prod.yml pull
 #    docker compose -f docker-compose.yml -f docker-compose.public.yml -f docker-compose.prod.yml \
 #                   up -d --no-build \
-#                   mysql minio imgproxy cutout nginx backend \
+#                   mysql minio imgproxy cutout searxng nginx backend \
 #                   frontend-public gateway frontend-admin-public gateway-admin \
 #                   site-public gateway-site caddy
 #  ALWAYS list the services: the base file also has dev-only frontend, frontend-admin, site and the
@@ -152,6 +152,11 @@ services:
     pull_policy: always
     logging: *logging
     mem_limit: 2g
+
+  # SearXNG for the AI: ~150 MB at rest.
+  searxng:
+    logging: *logging
+    mem_limit: 512m
 
   # imgproxy keeps the base image; only its limits live here.
   imgproxy:

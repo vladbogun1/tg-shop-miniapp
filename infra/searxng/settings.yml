@@ -1,0 +1,31 @@
+# SearXNG for the built-in AI (backend module ai, docs/AI.md): the free first link of the search chain
+# (SearXNG -> Serper). Internal only: no published port, reached as http://searxng:8080 on the tgshop network.
+# The secret key comes from the environment (SEARXNG_SECRET in the server .env), never from this file.
+use_default_settings: true
+
+general:
+  instance_name: "ChiSetup AI search"
+
+server:
+  # The backend is the only client: no rate limiter, no image proxy.
+  limiter: false
+  image_proxy: false
+
+search:
+  formats:
+    - html
+    - json
+
+# Google CSE is suspended after ~70 queries in 5 minutes and Brave/DuckDuckGo block Oracle IPs (measured 2026-11-07);
+# these answer from the server. The default engines stay on too — a dead one only shows in unresponsive_engines.
+engines:
+  - name: mojeek
+    disabled: false
+  - name: startpage
+    disabled: false
+  - name: yahoo
+    disabled: false
+  - name: yandex
+    disabled: false
+  - name: presearch
+    disabled: false

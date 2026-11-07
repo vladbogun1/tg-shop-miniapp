@@ -124,6 +124,20 @@ services:
     networks:
       - tgshop
 
+  # Web search for the built-in AI (infra/searxng): the free first link of the chain SearXNG -> Serper.
+  # Internal only (no ports). Started once by hand (`up -d searxng`), not by deploy.sh: it is not our image.
+  # The backend uses it only when AI_SEARXNG_URL is set (prod: http://searxng:8080).
+  searxng:
+    image: searxng/searxng:2026.10.9-f4822b3fc@sha256:85492ba800a861e3e8ff6014c430e81369fe6ca766a9990595f616d1ce95b272
+    container_name: tgshop_v2_searxng
+    restart: unless-stopped
+    environment:
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-change-me-searxng}
+    volumes:
+      - ./infra/searxng/settings.yml:/etc/searxng/settings.yml:ro
+    networks:
+      - tgshop
+
   nginx:
     image: nginx:alpine@sha256:d565d19ef132a5834f5897f602831ad2e40a36c26c625f2f94f9b3fdf0ed292d
     container_name: tgshop_v2_nginx
