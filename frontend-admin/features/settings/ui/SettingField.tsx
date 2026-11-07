@@ -164,7 +164,8 @@ export function SettingField({
         dirty && "border-[rgba(255,102,0,.45)] shadow-[inset_2px_0_0_var(--accent)]"
       )}
     >
-      <div className={cn("grid min-w-0 gap-3", !wide && "sm:grid-cols-[minmax(0,1fr)_minmax(180px,260px)] sm:items-start sm:gap-x-6")}>
+      {/* minmax(0,1fr): на телефоне колонка не растягивается под ширину поля ввода (вложенные карточки «Дополнительно» на 320). */}
+      <div className={cn("grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3", !wide && "sm:grid-cols-[minmax(0,1fr)_minmax(180px,260px)] sm:items-start sm:gap-x-6")}>
         <div className="min-w-0">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <span className="text-[14px] font-semibold text-[var(--text)]">{labelOverride ?? item.label}</span>

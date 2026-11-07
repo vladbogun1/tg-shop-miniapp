@@ -35,6 +35,8 @@ export function CopyButton({
   variant = "accent",
   onCopied,
   copied: copiedProp,
+  copiedLabel = `${label} ещё раз`,
+  ariaLabel,
 }: {
   text: string;
   label?: string;
@@ -42,11 +44,17 @@ export function CopyButton({
   onCopied?: () => void;
   /** Persistent "already copied" mark (parts the admin has taken). */
   copied?: boolean;
+  /** Label once `copied` (default: «<label> ещё раз»). */
+  copiedLabel?: string;
+  /** Accessible name when the visible label is shortened to fit a phone (e.g. «… части 2»). */
+  ariaLabel?: string;
 }) {
   const [flash, setFlash] = useState(false);
   return (
     <Button
       variant={variant}
+      aria-label={ariaLabel}
+      className="max-w-full"
       icon={flash ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
       onClick={async () => {
         if (await copyText(text)) {
@@ -56,7 +64,7 @@ export function CopyButton({
         }
       }}
     >
-      {flash ? "Скопировано" : copiedProp ? `${label} ещё раз` : label}
+      {flash ? "Скопировано" : copiedProp ? copiedLabel : label}
     </Button>
   );
 }

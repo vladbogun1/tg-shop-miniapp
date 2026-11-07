@@ -92,7 +92,9 @@ export function ManualPartStep({ m }: { m: ManualBatch }) {
         <div className="flex flex-wrap items-center gap-2">
           <CopyButton
             text={m.prompt}
-            label={`Скопировать промпт части ${n}`}
+            label="Скопировать промпт"
+            copiedLabel="Скопировать снова"
+            ariaLabel={`Скопировать промпт части ${n}`}
             variant={copied.has(part) || answer ? "surface" : "accent"}
             copied={copied.has(part)}
             onCopied={() => setCopied(new Set(copied).add(part))}
