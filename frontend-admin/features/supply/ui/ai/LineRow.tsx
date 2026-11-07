@@ -8,7 +8,7 @@ import { round2 } from "../../model/ai/checks";
 import type { CatalogItem, LineDecision, ReviewRow } from "../../model/ai/types";
 import { blankDraft, type SupplyAi } from "./use-supply-ai";
 
-const BY_LABEL = { memory: "из памяти", search: "найден", ai: "ИИ", admin: "вручную" } as const;
+const BY_LABEL = { memory: "Из памяти поставщика", search: "Найден в каталоге", ai: "ИИ", admin: "Выбрано вручную" } as const;
 
 function Source({ r, ai, currency }: { r: ReviewRow; ai: SupplyAi; currency: string }) {
   const l = r.line;
@@ -89,11 +89,11 @@ function Actions({ r, ai, onPick }: { r: ReviewRow; ai: SupplyAi; onPick: () => 
   return (
     <div className="flex flex-wrap gap-1">
       <Button variant="ghost" size="sm" icon={<Search className="h-4 w-4" />} onClick={onPick}>
-        {d.kind === "match" ? "Другой" : "Выбрать"}
+        {d.kind === "match" ? "Другой товар" : "Выбрать товар"}
       </Button>
       {d.kind !== "new" && (
         <Button variant="ghost" size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => ai.decide(r.line.id, { kind: "new", draft: blankDraft(r) })}>
-          Новый
+          Создать новый
         </Button>
       )}
       <Button variant="ghost" size="sm" icon={<SkipForward className="h-4 w-4" />} onClick={() => ai.decide(r.line.id, { kind: "skip" })}>
@@ -121,7 +121,7 @@ function Decision({ r, ai, byId }: { r: ReviewRow; ai: SupplyAi; byId: Map<strin
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-[var(--warn)]">
-        <AlertTriangle className="h-3.5 w-3.5" /> Не сопоставлено — это он?
+        <AlertTriangle className="h-3.5 w-3.5" /> {r.candidates.length > 0 ? "Новый товар?" : "Нет в каталоге"}
       </span>
       <Candidates r={r} ai={ai} byId={byId} />
     </div>

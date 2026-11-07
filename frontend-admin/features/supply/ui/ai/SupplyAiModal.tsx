@@ -20,8 +20,11 @@ import { DocSummary } from "./DocSummary";
 import { HelpPanel } from "./HelpPanel";
 import { LineRow } from "./LineRow";
 import { NewProductsPanel } from "./NewProductsPanel";
+import { ReadBanner } from "./ReadBanner";
 import { Messages, ReadStep } from "./ReadStep";
+import { SourceShots } from "./SourceShots";
 import { useSupplyAi, type SupplyAi } from "./use-supply-ai";
+import { useSupplyFiles } from "./use-supply-files";
 
 export interface SupplyAiResult {
   seed: SeedLine[];
@@ -64,6 +67,7 @@ function seedOf(lines: MergedLine[], catalog: Map<string, CatalogItem>, plans: S
       imageUrl: p?.imageUrl ?? null,
       qty: l.qty,
       price: l.unitPrice,
+      fromAi: true,
     };
   });
 }
@@ -73,6 +77,7 @@ export function SupplyAiModal({ open, onClose, onReady }: { open: boolean; onClo
   const finance = useFinanceAccess();
   const [fxRate, setFxRate] = useState("");
   const ai = useSupplyAi(catalog, categories, Number(fxRate.replace(",", ".")) || null);
+  const files = useSupplyFiles(finance && open);
   const nbu = useNbuRate(setFxRate, false);
   const [pickFor, setPickFor] = useState<string | null>(null);
   const created = useRef(new Map<string, Created>());
@@ -110,6 +115,7 @@ export function SupplyAiModal({ open, onClose, onReady }: { open: boolean; onClo
     rateFor.current = null;
     setFxRate("");
     setPickedCurrency(null);
+    files.clear();
     ai.reset();
   }
 
@@ -175,16 +181,20 @@ export function SupplyAiModal({ open, onClose, onReady }: { open: boolean; onClo
           <p className="text-[13px] text-[var(--text-muted)]">Загружаю каталог…</p>
         ) : (
           <div className="flex min-w-0 flex-col gap-5">
-            <ReadStep ai={{ ...ai, check }} />
+            <ReadStep ai={{ ...ai, check }} files={files} finance={finance} />
             {ai.doc && (
               <>
                 <DocSummary ai={ai} currency={currency} onCurrency={pickCurrency} fxRate={fxRate} setFxRate={setFxRate} finance={finance} />
                 <HelpPanel ai={ai} catalog={catalog} categories={categories} />
-                <div>
-                  <div className="field-label mb-1">Строки документа: {ai.rows.length}</div>
-                  {ai.rows.map((r) => (
-                    <LineRow key={r.line.id} r={r} ai={ai} byId={byId} currency={currency ?? ""} onPick={() => setPickFor(r.line.id)} />
-                  ))}
+                <ReadBanner ai={ai} />
+                <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_200px] lg:gap-5">
+                  <div className="min-w-0">
+                    <div className="field-label mb-1">Строки документа: {ai.rows.length}</div>
+                    {ai.rows.map((r) => (
+                      <LineRow key={r.line.id} r={r} ai={ai} byId={byId} currency={currency ?? ""} onPick={() => setPickFor(r.line.id)} />
+                    ))}
+                  </div>
+                  <SourceShots files={files.files} />
                 </div>
                 <NewProductsPanel ai={ai} categories={categories} />
                 {problems.length > 1 && <Messages errors={problems} />}

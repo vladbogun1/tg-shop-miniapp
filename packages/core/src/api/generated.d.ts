@@ -616,6 +616,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/ai/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My uploaded pictures that no task has taken yet */
+        get: operations["AdminAiFilesController_waiting"];
+        put?: never;
+        /** Upload one file (up to 10 MB; JPEG, PNG, WEBP or PDF of up to 10 pages — the type is read from the bytes). Answers with its pictures: a PDF gives one per page. At most 10 pictures wait per admin. Stored 7 days, re-encoded at 1600 px without metadata */
+        post: operations["AdminAiFilesController_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/files/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a picture (a PDF page deletes the whole PDF) */
+        delete: operations["AdminAiFilesController_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/files/{id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The picture itself (my own files only) */
+        get: operations["AdminAiFilesController_content"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/ai/jobs": {
         parameters: {
             query?: never;
@@ -832,6 +884,23 @@ export interface paths {
         get: operations["AdminAiJobsController_summary"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/supply-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read my uploaded pictures (1 to 10, ids from POST /files) with the AI: one task, low effort, no web search; the answer is the invoice json of the manual prompt. Only for an admin with the finance right (the answer holds purchase prices). 409 AI_JOB_ACTIVE for the same set, 409 AI_FILES_GONE for expired pictures, 404 AI_FILE_NOT_FOUND for a foreign or used one; the same Idempotency-Key returns the first task */
+        post: operations["AdminAiSupplyController_start"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5636,6 +5705,11 @@ export interface components {
             /** Format: int32 */
             running: number;
         };
+        AiAiSupplyJobsStart: {
+            fileIds?: number[];
+            prompt?: string;
+            promptVersion?: string;
+        };
         AiAiTaskListCounts: {
             /** Format: int64 */
             active: number;
@@ -7198,6 +7272,19 @@ export interface components {
             /** Format: int32 */
             rating: number;
             text: string;
+        };
+        FileDto: {
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: int64 */
+            id: number;
+            mime: string;
+            name: string;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            uploadId: string;
         };
         FinanceRequest: {
             code?: string;
@@ -10795,6 +10882,95 @@ export interface operations {
             };
         };
     };
+    AdminAiFilesController_waiting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["FileDto"][];
+                };
+            };
+        };
+    };
+    AdminAiFilesController_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["FileDto"][];
+                };
+            };
+        };
+    };
+    AdminAiFilesController_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminAiFilesController_content: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+        };
+    };
     AdminAiTasksController_list: {
         parameters: {
             query?: {
@@ -11114,6 +11290,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AiAiSummarySummary"];
+                };
+            };
+        };
+    };
+    AdminAiSupplyController_start: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiAiSupplyJobsStart"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiJobDto"];
                 };
             };
         };
