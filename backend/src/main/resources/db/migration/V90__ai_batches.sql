@@ -14,7 +14,7 @@ CREATE TABLE ai_batches (
     admin_id     BIGINT       NOT NULL,
     total        INT          NOT NULL,
     -- сколько задач пакета могут идти одновременно (2 при >= 20 товарах, иначе 3 = все слоты системы)
-    parallel     INT          NOT NULL,
+    parallel_jobs INT         NOT NULL,
     -- LIMIT_DAY, LIMIT_MONTH, RESTART, FAILURES, SEARCH_DOWN, MANUAL, DISABLED; NULL, пока пакет идёт
     pause_reason VARCHAR(16)  NULL,
     idem_key     VARCHAR(64)  NULL,

@@ -6,7 +6,7 @@ name: tgshop_e2e
 
 services:
   mysql:
-    image: mysql:8.4
+    image: mysql:8.4.10  # = прод (docker-compose.yml): в 8.4.10 PARALLEL зарезервировано, в 8.4.11 нет
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci

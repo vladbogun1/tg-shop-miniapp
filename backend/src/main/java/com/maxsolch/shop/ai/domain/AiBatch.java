@@ -49,7 +49,7 @@ public class AiBatch {
     @Column(name = "total", nullable = false)
     private int total;
 
-    @Column(name = "parallel", nullable = false)
+    @Column(name = "parallel_jobs", nullable = false)
     private int parallel;
 
     @Enumerated(EnumType.STRING)

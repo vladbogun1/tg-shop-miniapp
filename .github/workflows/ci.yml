@@ -55,7 +55,7 @@ jobs:
     needs: backend
     services:
       mysql:
-        image: mysql:8.4
+        image: mysql:8.4.10  # = прод (docker-compose.yml): в 8.4.10 PARALLEL зарезервировано, в 8.4.11 нет
         env:
           MYSQL_ROOT_PASSWORD: rootpw
           MYSQL_DATABASE: tgshop_v2
@@ -123,7 +123,7 @@ jobs:
     needs: backend
     services:
       mysql:
-        image: mysql:8.4
+        image: mysql:8.4.10  # = прод (docker-compose.yml): в 8.4.10 PARALLEL зарезервировано, в 8.4.11 нет
         env:
           MYSQL_ROOT_PASSWORD: rootpw
           MYSQL_DATABASE: tgshop_v2
@@ -170,7 +170,7 @@ jobs:
     timeout-minutes: 30
     services:
       mysql:
-        image: mysql:8.4
+        image: mysql:8.4.10  # = прод (docker-compose.yml): в 8.4.10 PARALLEL зарезервировано, в 8.4.11 нет
         env:
           MYSQL_ROOT_PASSWORD: e2e-root-pass
           MYSQL_DATABASE: tgshop_e2e
@@ -261,7 +261,7 @@ jobs:
     timeout-minutes: 40
     services:
       mysql:
-        image: mysql:8.4
+        image: mysql:8.4.10  # = прод (docker-compose.yml): в 8.4.10 PARALLEL зарезервировано, в 8.4.11 нет
         env:
           MYSQL_ROOT_PASSWORD: e2e-root-pass
           MYSQL_DATABASE: tgshop_e2e
@@ -333,7 +333,7 @@ jobs:
     timeout-minutes: 30
     services:
       mysql:
-        image: mysql:8.4
+        image: mysql:8.4.10  # = прод (docker-compose.yml): в 8.4.10 PARALLEL зарезервировано, в 8.4.11 нет
         env:
           MYSQL_ROOT_PASSWORD: e2e-root-pass
           MYSQL_DATABASE: tgshop_e2e

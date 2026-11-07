@@ -35,7 +35,7 @@ public class AiJobClaims {
      */
     public List<Long> lockQueued(int limit) {
         List<Candidate> rows = jdbc.query("""
-                select j.id, j.batch_id, coalesce(b.parallel, 0),
+                select j.id, j.batch_id, coalesce(b.parallel_jobs, 0),
                        (select count(*) from ai_jobs r where r.batch_id = j.batch_id and r.status = 'RUNNING')
                 from ai_jobs j left join ai_batches b on b.id = j.batch_id
                 where j.status = 'QUEUED' and (j.batch_id is null or b.status = 'RUNNING')
