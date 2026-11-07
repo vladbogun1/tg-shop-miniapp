@@ -6,7 +6,7 @@
  * мгновение после правки и сразу — при закрытии; ответ части уходит задачами при уходе с части, «К проверке» и
  * закрытии. Проверка — те же задачи, что у пакета ИИ: «Принять», «Принять безопасное», «Править». Экран — `ManualBatchLayer`.
  */
-import { invalidateAfterBatch, type AiBatchRow } from "@/features/ai";
+import { invalidateAfterBatch } from "@/features/ai";
 import { errorMessage } from "@shop/core/errors";
 import { STALE_TIME } from "@shop/core/query";
 import { toast } from "@shop/ui/toast";
@@ -19,8 +19,7 @@ import { assignCardIds, type CardItem } from "../../model/item";
 import { checkPart, partAnswers, partsOf, pendingCount, readDraft, resize, unansweredOf, type ManualDraft, type ManualPartSize, type PartCheck } from "../../model/manual-batch";
 import { buildCardPrompt } from "../../model/prompt";
 import type { CardSchema } from "../../model/schema";
-import { invalidateCards, useCardItems, useCardSchema } from "../../queries";
-import { acceptRow } from "../ai/batch/card-batch-apply";
+import { useCardItems, useCardSchema } from "../../queries";
 
 const SAVE_DELAY_MS = 700;
 const NO_SAVE = "Не удалось сохранить черновик на сервере — вставленное может пропасть";
@@ -158,17 +157,6 @@ export function useManualBatch(open: boolean) {
       await flush();
     }, "Не удалось отправить ответ части");
 
-  /** «Принять» в ленте; сбой — сообщением, карточка остаётся в ленте. */
-  async function accept(row: AiBatchRow): Promise<void> {
-    try {
-      await acceptRow(row, schema);
-      invalidateCards(qc);
-      if (id !== null) setManualCurrent(qc, await manualApi.get(id));
-    } catch (e) {
-      toast.error(errorMessage(e, undefined, "Не удалось принять карточку"));
-    }
-  }
-
   return {
     batch,
     draft,
@@ -187,7 +175,6 @@ export function useManualBatch(open: boolean) {
     pending: draft ? pendingCount(p.parts, draft, checks, jobs) : 0,
     unanswered: unansweredOf(p.order, jobs),
     decided: jobs.filter((r) => r.outcome).length,
-    accept,
     setAnswer: (text: string) => update((d) => ({ ...d, answers: d.answers.map((a, i) => (i === d.part ? text : a)) })),
     setModel: (model: string) => update((d) => ({ ...d, model })),
     setSize: (size: ManualPartSize) => update((d) => resize(d, batch?.items.length ?? 0, size)),

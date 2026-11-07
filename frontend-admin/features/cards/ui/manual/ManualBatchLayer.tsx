@@ -18,15 +18,16 @@ import { closeManualLayer, useManualLayer } from "./manual-layer";
 import { ManualPartStep } from "./ManualPartStep";
 import { ManualReviewStage } from "./ManualReviewStage";
 import { useManualBatch, type ManualBatchState } from "./use-manual-batch";
+import { useManualStart } from "./use-manual-start";
 
 /** Вставлено или решено ли хоть что-то, что жалко потерять. */
 const hasWork = (m: ManualBatchState) =>
   !!m.draft && (m.draft.answers.some((a) => a.trim()) || (m.batch?.batch.jobs.length ?? 0) > 0);
 
-function Body({ m, onClose, onEdit }: { m: ManualBatchState; onClose: () => void; onEdit: (jobId: number) => void }) {
+function Body({ m, onClose, onNext, onEdit }: { m: ManualBatchState; onClose: () => void; onNext: (() => void) | null; onEdit: (jobId: number) => void }) {
   if (m.loading) return <CenterSpinner label="Загрузка карточек…" />;
   if (!m.batch || !m.draft) return <p className="text-[13px] text-[var(--text-muted)]">Незаконченного ручного пакета нет — выберите товары и начните заново.</p>;
-  return m.draft.stage === "review" ? <ManualReviewStage m={m} onClose={onClose} onEdit={onEdit} /> : <ManualPartStep m={m} />;
+  return m.draft.stage === "review" ? <ManualReviewStage m={m} onClose={onClose} onNext={onNext} onEdit={onEdit} /> : <ManualPartStep m={m} />;
 }
 
 function Header({ onClose }: { onClose: () => void }) {
@@ -59,6 +60,7 @@ function Layer({ open }: { open: boolean }) {
   const m = useManualBatch(open);
   const confirm = useConfirm();
   const router = useRouter();
+  const starter = useManualStart();
 
   async function requestClose() {
     if (!hasWork(m)) {
@@ -89,6 +91,13 @@ function Layer({ open }: { open: boolean }) {
     if (await m.finish()) closeManualLayer();
   }
 
+  /** Выбранное не влезло в один пакет: закончить этот и начать следующий с оставшимися товарами. */
+  const rest = m.draft?.rest ?? [];
+  async function next() {
+    if (!(await m.finish())) return;
+    if (!(await starter.start(rest))) closeManualLayer();
+  }
+
   useOverlayLayer(open, () => void requestClose());
   if (!open || typeof document === "undefined") return null;
   return createPortal(
@@ -103,7 +112,7 @@ function Layer({ open }: { open: boolean }) {
       <Header onClose={() => void requestClose()} />
       <div className="thin-scroll min-h-0 flex-1 overflow-auto overscroll-contain">
         <div className="mx-auto w-full max-w-[880px] px-4 py-5 pb-[calc(20px+var(--safe-bottom))] sm:px-6">
-          <Body m={m} onClose={() => void finished()} onEdit={(id) => void edit(id)} />
+          <Body m={m} onClose={() => void finished()} onNext={rest.length > 0 ? () => void next() : null} onEdit={(id) => void edit(id)} />
         </div>
       </div>
     </div>,

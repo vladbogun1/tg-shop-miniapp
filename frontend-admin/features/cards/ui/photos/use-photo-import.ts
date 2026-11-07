@@ -56,23 +56,41 @@ export function usePhotoImport() {
     }
   }
 
-  async function process(list: PhotoJob[]) {
+  // Одна очередь на хук: `add` дописывает в неё, пока идут прежние ссылки, и не ждёт их.
+  const queue = useRef<PhotoJob[][]>([]);
+  const workers = useRef(0);
+  const idle = useRef<(() => void)[]>([]);
+
+  function pump(): Promise<void> {
+    const done = new Promise<void>((resolve) => idle.current.push(resolve));
+    while (workers.current < PARALLEL && queue.current.length) {
+      workers.current += 1;
+      setRunning(true);
+      void (async () => {
+        try {
+          for (let g = queue.current.shift(); g; g = queue.current.shift()) await runGroup(g);
+        } finally {
+          workers.current -= 1;
+          if (workers.current === 0) {
+            setRunning(false);
+            invalidateCards(qc);
+            idle.current.splice(0).forEach((resolve) => resolve());
+          }
+        }
+      })();
+    }
+    if (workers.current === 0) idle.current.splice(0).forEach((resolve) => resolve());
+    return done;
+  }
+
+  function process(list: PhotoJob[]): Promise<void> {
     setState((prev) => {
       const next = new Map(prev);
       for (const j of list) next.set(keyOf(j), { status: "wait" });
       return next;
     });
-    setRunning(true);
-    const queue = groupByProduct(list);
-    const worker = async () => {
-      for (let g = queue.shift(); g; g = queue.shift()) await runGroup(g);
-    };
-    try {
-      await Promise.all(Array.from({ length: Math.min(PARALLEL, queue.length) }, worker));
-    } finally {
-      setRunning(false);
-      invalidateCards(qc);
-    }
+    queue.current.push(...groupByProduct(list));
+    return pump();
   }
 
   const stateOf = (j: PhotoJob): PhotoJobState => state.get(keyOf(j)) ?? { status: "wait" };
@@ -86,6 +104,18 @@ export function usePhotoImport() {
     await process(next);
   }
 
+  /**
+   * Дописать ссылки к уже идущей загрузке (лента пакета: каждая принятая карточка добавляет свои фото). Прежний
+   * список и его результаты остаются; ссылка, которая уже есть в списке, второй раз не ставится.
+   */
+  function add(more: PhotoJob[]) {
+    const have = new Set(jobs.map(keyOf));
+    const fresh = more.filter((j) => !have.has(keyOf(j)));
+    if (!fresh.length) return;
+    setJobs((prev) => [...prev, ...fresh]);
+    void process(fresh);
+  }
+
   /** Again only the links that failed (all of them, or the given ones); the rest of the list keeps its result. */
   async function retry(only?: PhotoJob[]) {
     if (running) return;
@@ -93,7 +123,7 @@ export function usePhotoImport() {
     if (failed.length) await process(failed);
   }
 
-  return { jobs, run, retry, running, stateOf };
+  return { jobs, run, add, retry, running, stateOf };
 }
 
 export type PhotoImport = ReturnType<typeof usePhotoImport>;

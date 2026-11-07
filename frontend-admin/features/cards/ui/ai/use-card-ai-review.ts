@@ -43,12 +43,16 @@ export function neighborsOf(items: CardItem[] | undefined, item: CardItem) {
   };
 }
 
-/** Разбор ответа задачи по товару в строки проверки. Чистое вычисление: годится и для экрана, и для пакета. */
+/**
+ * Разбор ответа задачи по товару в строки проверки. Чистое вычисление: годится и для экрана, и для пакета.
+ * `brands` — бренды каталога: бренд из ответа, которого среди них нет, помечается «будет создан» и сам не отмечается.
+ */
 export function computeCardAiReview(
   job: AiJob | undefined,
   item: CardItem | null,
   schema: CardSchema | undefined,
   all: CardItem[] | undefined,
+  brands?: readonly string[],
 ): CardAiReviewData {
   const empty: CardAiReviewData = { review: null, rows: [], initial: new Set(), versionChanged: false, changes: null, problems: [], ctx: null };
   if (!job || !item || !schema || !job.answer) return empty;
@@ -57,7 +61,8 @@ export function computeCardAiReview(
   const changes = cardChanges(job.subjectChanges as ServerChanges | undefined, item, schema);
   // Без снимка (задача до V92) признак правок — отпечаток; после разбора результата (outcome) не блокируем ничего.
   const versionChanged = !job.outcome && !!job.subjectVersion && cardVersion(item) !== job.subjectVersion;
-  const ctx: FieldContext = { changes, versionChanged: changes ? false : versionChanged, neighbors: neighborsOf(all, item) };
+  const choices = brands ? { schema, brands } : undefined;
+  const ctx: FieldContext = { changes, versionChanged: changes ? false : versionChanged, neighbors: neighborsOf(all, item), choices };
   const rows = reviewRows(out.product, ctx);
   const initial = initialKeys(out.product, rows, item.unfinished === true);
   return { review: out.product, rows, initial, versionChanged: changes ? Object.keys(changes.fields).length > 0 : versionChanged, changes, problems: out.errors, ctx };
