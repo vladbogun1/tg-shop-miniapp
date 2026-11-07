@@ -18,7 +18,9 @@ import {
   type Entry,
 } from "./review-parts";
 import { attributesForCategory, type CardSchema } from "./schema";
+import { checkValue } from "./check-value";
 import { checkText } from "./text";
+import { sameValue } from "./value";
 import type { CardIssue, CardReview, Level, ProductReview, Proposal, TextField, TextLang, TextReview } from "./types";
 
 /** Product level from all its parts (after the answer or an inline text edit). */
@@ -49,6 +51,21 @@ export function editText(r: ProductReview, field: TextField, lang: TextLang, val
   const next = checkText({ ...t, [lang]: value }, r.item, validSpecsOf(r.fields));
   const out = { ...r, texts: { ...r.texts, [field]: next } };
   return { ...out, level: productLevel(out) };
+}
+
+/**
+ * Правка значения характеристики прямо в ревью — той же проверкой, что ответ ИИ (`checkValue`: «62 г» → 62, подпись
+ * опции → её значение). Не прошло (нет такой опции, не число) — разбор не меняется, `error` говорит почему.
+ * Уверенность ИИ у поля снимается: значение вписал человек, догадкой оно больше не считается.
+ */
+export function editSpec(r: ProductReview, key: string, raw: string): { review: ProductReview; error: string | null } {
+  const f = r.fields.find((x) => x.key === key);
+  if (!f?.attr) return { review: r, error: "Эту характеристику здесь поправить нельзя" };
+  const vc = checkValue(f.attr, raw);
+  if (vc.value === undefined) return { review: r, error: vc.issues.find((i) => i.level === "error")?.text ?? "Значение не подходит" };
+  const next = { ...f, raw, value: vc.value, issues: vc.issues, confidence: null, level: levelOf(vc.issues), changed: !sameValue(vc.value, f.before), preselect: true };
+  const out = { ...r, fields: r.fields.map((x) => (x === f ? next : x)) };
+  return { review: { ...out, level: productLevel(out) }, error: null };
 }
 
 export interface ReviewContext {

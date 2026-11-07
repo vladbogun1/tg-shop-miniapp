@@ -4,14 +4,16 @@ import { Button } from "@shop/ui/admin-button";
 import { CenterSpinner } from "@/components/ui/Spinner";
 import { AnswerStep } from "./AnswerStep";
 import { HiddenNotice } from "./HiddenNotice";
-import { ProblemBox } from "./ProblemBox";
+import { ManualReview } from "./ManualReview";
 import { PromptStep } from "./PromptStep";
-import { ReviewStep } from "./ReviewStep";
 import type { CardCompletion } from "./use-card-completion";
 
-/** Ручной путь («Через ChatGPT вручную»): промпт → ответ → проверка → сохранение; назад — к встроенному ИИ. */
+/**
+ * Ручной путь («Через ChatGPT вручную»): промпт → ответ → проверка в том же экране, что у встроенного ИИ
+ * (`ManualReview`); назад — к встроенному ИИ.
+ */
 export function ManualBody({ c, onBackToAi }: { c: CardCompletion; onBackToAi?: () => void }) {
-  const { item, schema, saved, published, problem } = c;
+  const { item, schema } = c;
   if (c.loading) return <CenterSpinner label="Загрузка товара и схемы…" />;
   if (!item || !schema) {
     return (
@@ -20,19 +22,25 @@ export function ManualBody({ c, onBackToAi }: { c: CardCompletion; onBackToAi?: 
       </div>
     );
   }
+  if (c.review) {
+    return (
+      <div className="flex flex-col gap-3">
+        <HiddenNotice c={c} />
+        <ManualReview c={c} onBackToAi={onBackToAi} />
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-4">
-      {onBackToAi && !saved && (
+      {onBackToAi && (
         <div>
           <Button variant="ghost" size="sm" onClick={onBackToAi}>Вернуться к встроенному ИИ ✦</Button>
         </div>
       )}
       <HiddenNotice c={c} />
       <PromptStep c={c} />
-      {!saved && <AnswerStep c={c} />}
-      <ReviewStep c={c} />
-      {saved && !published && !problem && <div className="text-[13px] font-semibold text-[var(--ok)]">✓ Карточка сохранена.</div>}
-      <ProblemBox c={c} />
+      <AnswerStep c={c} />
+      {c.saved && !c.published && <div className="text-[13px] font-semibold text-[var(--ok)]">✓ Карточка сохранена.</div>}
     </div>
   );
 }

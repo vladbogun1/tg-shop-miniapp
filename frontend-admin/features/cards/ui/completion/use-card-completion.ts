@@ -1,6 +1,10 @@
 "use client";
 
-/** Состояние и действия окна «Оформить с ИИ» для одного товара (экран — `CardCompletionModal`). */
+/**
+ * Ручной путь окна «Оформить с ИИ» для одного товара (экран — `CardCompletionModal`): промпт, вставленный ответ и
+ * его разбор. Проверка и применение — общий со встроенным ИИ `CardReviewPanel`; здесь только то, что после записи
+ * ответ помечается как принесённый из ChatGPT (path=MANUAL) и окно знает, сохранено ли и выложено.
+ */
 import { toMinor } from "@shop/core/money";
 import { QUERY_PRESETS } from "@shop/core/query";
 import { useQuery } from "@tanstack/react-query";
@@ -10,11 +14,10 @@ import { useMarkManual } from "@/features/ai";
 import { cardsApi } from "../../api";
 import { cardsKeys } from "../../keys";
 import { useCardSchema } from "../../queries";
-import { HIDDEN_TOAST, reviewAnswer, type PublishProblem, type ProductReview, type Proposal } from "../../model";
+import { HIDDEN_TOAST, reviewAnswer, type ProductReview } from "../../model";
 import { assignCardIds } from "../../model/item";
 import { buildCardPrompt } from "../../model/prompt";
-import { autoReady, buildImportItem, defaultSel, mergeSel, type ProductSel } from "../../model/selection";
-import { useCompletionSave, type CardCompletionResult } from "./use-completion-save";
+import type { CardCompletionResult } from "./use-completion-save";
 
 export type CompletionReason = "created" | "manual";
 
@@ -56,15 +59,8 @@ export function useCardCompletion({ productId, open, reason, onClose }: Args) {
   const [errors, setErrors] = useState<string[]>([]);
   const [notes, setNotes] = useState<string[]>([]);
   const [review, setReview] = useState<ProductReview | null>(null);
-  const [sel, setSel] = useState<ProductSel | null>(null);
-  const [publish, setPublish] = useState(true);
-  // null = automatic: READY when the AI is sure (see autoReady), else «Проверить».
-  const [markReadyOverride, setMarkReadyOverride] = useState<boolean | null>(null);
   const [saved, setSaved] = useState(false);
   const [published, setPublished] = useState(false);
-  const [problem, setProblem] = useState<PublishProblem | null>(null);
-  const [price, setPrice] = useState("");
-  const [addOption, setAddOption] = useState<Proposal | null>(null);
 
   // Fresh state for every product the modal is opened for.
   useEffect(() => {
@@ -75,73 +71,43 @@ export function useCardCompletion({ productId, open, reason, onClose }: Args) {
     setErrors([]);
     setNotes([]);
     setReview(null);
-    setSel(null);
-    setPublish(true);
-    setMarkReadyOverride(null);
     setSaved(false);
     setPublished(false);
-    setProblem(null);
-    setPrice("");
   }, [open, productId]);
 
-  function check(text = answer, keep = false) {
+  function check(text = answer) {
     if (!item || !schema) return;
     const out = reviewAnswer(text, { schema, items: [item], ids }, productId);
     setErrors(out.errors);
     setNotes(out.notes);
     setReview(out.product);
-    if (out.empty) return;
-    const created = reason === "created";
-    const p = out.product;
-    setSel((prev) => (!p ? null : keep ? mergeSel(prev ?? undefined, p, { created }) : defaultSel(p, { created })));
-    setProblem(null);
   }
 
-  // A fresh schema (an option was added) re-checks the pasted answer, keeping the selection.
+  // A fresh schema (an option was added) re-checks the pasted answer: the review starts over on the new schema.
   const schemaRef = useRef(schema);
   const recheck = useRef(check);
   recheck.current = check;
   useEffect(() => {
     if (schemaRef.current === schema) return;
     schemaRef.current = schema;
-    if (review && answer.trim()) recheck.current(answer, true);
+    if (review && answer.trim()) recheck.current(answer);
   }, [schema, review, answer]);
 
-  const sure = !!review && !!sel && autoReady(review, sel);
-  const markReady = markReadyOverride ?? sure;
-  const payload = review && sel ? buildImportItem(review, sel, { markReady, model, publish }) : null;
-
   const markManual = useMarkManual();
-  const { save, savePrice, saving } = useCompletionSave({
-    onClose,
-    onProblem: setProblem,
-    onSaved: (isPublished) => {
-      // ответ принесли из ChatGPT: без отметки доля встроенного ИИ в метриках всегда 100 %
-      markManual.mutate({ feature: "CARD", subjectIds: [productId] });
-      setSaved(true);
-      setReview(null);
-      setAnswer("");
-      setPublished(isPublished);
-    },
-    onPublished: () => setPublished(true),
-  });
+  /** Ответ принесли из ChatGPT: без отметки доля встроенного ИИ в метриках всегда 100 %. */
+  const onApplied = () => markManual.mutate({ feature: "CARD", subjectIds: [productId] });
+  const onSaved = (isPublished: boolean) => {
+    setSaved(true);
+    setPublished(isPublished);
+  };
 
   function close() {
     if ((!saved || !published) && (reason === "created" || item?.unfinished === true)) toast.info(HIDDEN_TOAST);
     onClose({ saved, published });
   }
 
-  function doSave() {
-    if (!payload || !item || saving) return;
-    setProblem(null);
-    save.mutate({ payload, publish, item });
-  }
-
-  function doSavePrice() {
-    const priceMinor = priceToMinor(price);
-    if (!item || priceMinor === null || saving) return;
-    savePrice.mutate({ item, priceMinor });
-  }
+  /** «Назад» из проверки: ответ остаётся в поле — его можно поправить и проверить снова. */
+  const backToAnswer = () => setReview(null);
 
   function clearAnswer() {
     setAnswer("");
@@ -154,10 +120,8 @@ export function useCardCompletion({ productId, open, reason, onClose }: Args) {
     item, schema, prompt, loading, reason,
     copied, setCopied, preview, setPreview,
     answer, setAnswer, model, setModel, errors, notes,
-    review, setReview, sel, setSel,
-    publish, setPublish, markReady, setMarkReadyOverride, markReadyOverride, sure,
-    saved, published, problem, price, setPrice, addOption, setAddOption,
-    payload, saving, check, close, clearAnswer, save: doSave, savePrice: doSavePrice,
+    review, saved, published,
+    check, close, clearAnswer, backToAnswer, onApplied, onSaved, onClose,
   };
 }
 

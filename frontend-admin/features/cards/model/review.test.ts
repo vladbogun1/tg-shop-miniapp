@@ -5,6 +5,7 @@ import {
   checkText,
   checkValue,
   confidenceColor,
+  editSpec,
   editText,
   finalRu,
   formatValue,
@@ -305,6 +306,18 @@ describe("reviewProduct", () => {
     const e = editText(r, "title", "ru", "Другая");
     expect(e.texts.title).toMatchObject({ ru: "Другая", changed: true });
     expect(editText(r, "description", "ru", "x")).toBe(r);
+  });
+  it("editSpec: та же проверка, что у ответа; не прошло — разбор не меняется и сказано почему", () => {
+    const r = must(reviewProduct("p1", item(), { specs: { weight_g: 55, connectivity: ["wired"] }, confidence: { weight_g: 30 }, overall: 90 }, SCHEMA));
+    const ok = editSpec(r, "weight_g", "62 г");
+    expect(ok.error).toBeNull();
+    expect(ok.review.fields.find((f) => f.key === "weight_g")).toMatchObject({ value: 62, confidence: null, changed: true });
+    const list = editSpec(r, "connectivity", "wired, Bluetooth");
+    expect(list.review.fields.find((f) => f.key === "connectivity")?.value).toEqual(["wired", "bt"]);
+    const bad = editSpec(r, "weight_g", "много");
+    expect(bad.review).toBe(r);
+    expect(bad.error).toBeTruthy();
+    expect(editSpec(r, "nope", "1").error).toBeTruthy();
   });
 });
 

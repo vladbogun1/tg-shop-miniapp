@@ -39,6 +39,7 @@ export {
   outcomeCounts,
   toggled,
   type GroupId,
+  type OutcomeCounts,
   type ReviewField,
 } from "./model/review-model";
 export { plausibility, plausibilityReason } from "./model/plausibility";

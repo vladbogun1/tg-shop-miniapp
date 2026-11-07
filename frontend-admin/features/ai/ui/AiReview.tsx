@@ -1,21 +1,22 @@
 "use client";
 
 /**
- * Экран проверки результата ИИ (полноэкранная страница, на телефоне без нижней навигации): группы полей, «Выбрано N
- * из M» и «Применить (N)» — одно и то же число из `counts()`. Сам экран ничего не знает про товар: поля, применение и
- * пункты «⋯» приходят от фичи-владельца (карточки).
+ * Экран проверки результата ИИ (полноэкранная страница, на телефоне без нижней навигации; `embedded` — внутри окна
+ * ручного пути через ChatGPT): группы полей, «Выбрано N из M» и «Применить (N)» — одно и то же число из `counts()`.
+ * Сам экран ничего не знает про товар: поля, правка значения, применение и пункты «⋯» приходят от фичи-владельца.
  */
 import { ArrowLeft, Check } from "lucide-react";
 import type { ReactNode } from "react";
 import { nowMs } from "@shop/core/time";
 import { Button } from "@shop/ui/admin-button";
-import type { AiJob } from "../api";
+import { cn } from "@/lib/cn";
 import { buildGroups, counts, initialSelection, isStale, selectedByGroup, toggled, applicable, type ReviewField } from "../model/review-model";
 import { ReviewGroup } from "./review/ReviewGroup";
 import { ReviewMenu, type MenuItem } from "./review/ReviewMenu";
 
 export interface AiReviewProps {
-  job: AiJob;
+  /** Когда ИИ закончил (для «результат устарел»); у ручного пути — нет. */
+  finishedAt?: string | null;
   title: string;
   fields: ReviewField[];
   selected: ReadonlySet<string>;
@@ -32,6 +33,12 @@ export interface AiReviewProps {
   extra?: ReactNode;
   /** Подпись на кнопке под «Применить (N)», когда включено 0. */
   emptyHint?: string;
+  /** Правка значения строки: текст ошибки или null; нет — значения не правят. */
+  onEdit?: (key: string, value: string) => string | null;
+  /** Что ещё применится помимо полей («2 фото»): дописывается на кнопку и разрешает её при 0 полей. */
+  applyNote?: string | null;
+  /** Внутри модального окна: подвал прилипает к низу окна, а не страницы. */
+  embedded?: boolean;
 }
 
 export function AiReview(p: AiReviewProps) {
@@ -39,7 +46,7 @@ export function AiReview(p: AiReviewProps) {
   const c = counts(fields, selected);
   const byGroup = selectedByGroup(fields, selected);
   const groups = buildGroups(fields);
-  const stale = isStale(p.job.finishedAt, nowMs());
+  const stale = isStale(p.finishedAt, nowMs());
   const toggle = (f: ReviewField) => p.onSelected(toggled(selected, f));
   const setGroup = (ids: string[], on: boolean) => {
     const next = new Set(selected);
@@ -69,10 +76,16 @@ export function AiReview(p: AiReviewProps) {
           chosenHere={byGroup[g.id]}
           onToggle={toggle}
           onAll={(on) => setGroup(g.fields.filter(applicable).map((f) => f.key), on)}
+          onEdit={p.onEdit && ((f, v) => p.onEdit!(f.key, v))}
         />
       ))}
       {p.extra}
-      <div className="sticky bottom-0 z-20 -mx-4 border-t border-[var(--line)] bg-[rgba(14,14,16,.94)] px-4 pb-[calc(12px+var(--safe-bottom))] pt-3 backdrop-blur-md lg:-mx-7 lg:px-7">
+      <div
+        className={cn(
+          "sticky bottom-0 z-20 -mx-4 border-t border-[var(--line)] bg-[rgba(14,14,16,.94)] px-4 pb-[calc(12px+var(--safe-bottom))] pt-3 backdrop-blur-md",
+          p.embedded ? "-mb-4 sm:-mx-5 sm:px-5 sm:pb-3" : "lg:-mx-7 lg:px-7",
+        )}
+      >
         <div className="mx-auto flex w-full max-w-3xl items-center gap-2">
           {p.doneText ? (
             <div className="flex min-w-0 flex-1 items-center gap-2 text-[13px] font-semibold text-[var(--ok)]">
@@ -80,8 +93,8 @@ export function AiReview(p: AiReviewProps) {
               <span className="truncate">{p.doneText}</span>
             </div>
           ) : (
-            <Button variant="accent" size="lg" className="min-w-0 flex-1" onClick={p.onApply} loading={p.applying} disabled={c.n === 0 || p.applying}>
-              Применить ({c.n})
+            <Button variant="accent" size="lg" className="min-w-0 flex-1" onClick={p.onApply} loading={p.applying} disabled={(c.n === 0 && !p.applyNote) || p.applying}>
+              Применить ({c.n}){p.applyNote ? ` + ${p.applyNote}` : ""}
             </Button>
           )}
           <ReviewMenu items={p.menu} />

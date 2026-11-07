@@ -28,7 +28,7 @@ function Preview({ url }: { url: string }) {
   );
 }
 
-export function PhotoPicks({ r, sel, onSel }: { r: ProductReview; sel: ProductSel; onSel: (patch: Partial<ProductSel>) => void }) {
+export function PhotoPicks({ r, sel, onSel }: { r: ProductReview; sel: Pick<ProductSel, "photos">; onSel: (patch: Pick<ProductSel, "photos">) => void }) {
   if (r.photos.length === 0) return null;
   const toggle = (url: string) =>
     onSel({ photos: sel.photos.includes(url) ? sel.photos.filter((x) => x !== url) : [...sel.photos, url] });

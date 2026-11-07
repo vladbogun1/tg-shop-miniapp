@@ -26,6 +26,10 @@ export interface ReviewField {
   lockNote: string | null;
   /** Карточку изменили, пока работал ИИ: поле заблокировано, текст — что именно изменилось. */
   conflict: string | null;
+  /** Значение можно поправить прямо в ревью: строкой или многострочным текстом; нет — только принять или нет. */
+  editable?: "line" | "text";
+  /** Значение поправил человек в ревью: в исходе оно «принято с правками», а не «принято как есть». */
+  edited?: boolean;
 }
 
 export const GROUP_ORDER: readonly GroupId[] = ["check", "fill", "replace", "locked"];
@@ -116,8 +120,20 @@ export function sortChecks(fields: ReviewField[]): ReviewField[] {
   return [...fields].sort((a, b) => rank(a) - rank(b));
 }
 
-/** Что сообщить серверу после применения: сколько принято, отклонено и сколько осталось под замком. */
-export function outcomeCounts(fields: ReviewField[], selected: ReadonlySet<string>, edited = 0) {
+export interface OutcomeCounts {
+  applied: number;
+  rejected: number;
+  /** Из принятых — сколько человек поправил перед применением (входят и в applied). */
+  edited: number;
+  ignoredLocked: number;
+}
+
+/**
+ * Что сообщить серверу после применения: сколько принято (из них поправлено руками), отклонено и сколько осталось под
+ * замком. «Принято без правок» в метриках = applied − edited, поэтому поправленное считается здесь, а не нулём.
+ */
+export function outcomeCounts(fields: ReviewField[], selected: ReadonlySet<string>): OutcomeCounts {
   const c = counts(fields, selected);
+  const edited = chosen(fields, selected).filter((f) => f.edited).length;
   return { applied: c.n, rejected: c.m - c.n, edited, ignoredLocked: c.locked };
 }

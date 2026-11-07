@@ -1,32 +1,20 @@
 "use client";
 
 /**
- * Completion of ONE product card by any external AI — right after a product is created with only
- * a title (it is saved hidden: active=false, card DRAFT) or from the product list / «Карточки»
- * («Оформить с ИИ»). Same prompt (batch of 1), same check and the same review card as step 3 of
- * «Оформление с ИИ», plus publishing: «Сразу выложить на витрину» sends `publish` with the import;
- * when the backend refuses because the price is missing, the price is asked for inline and the
- * product is published with PATCH …/active.
+ * Completion of ONE product card — right after a product is created with only a title (it is saved hidden:
+ * active=false, card DRAFT) or from the product list / «Карточки» («Оформить с ИИ»). Opens on the built-in AI
+ * (`CardAiEntry`); «Через ChatGPT вручную» gives the same prompt (batch of 1) for any external AI, and the pasted
+ * answer is checked in the same review screen as the built-in AI's result (`CardReviewPanel`), publishing included:
+ * when the backend refuses because the price is missing, the price is asked for inline.
  *
  * Usage: <CardCompletionModal productId={id} open={open} reason="created" onClose={(r) => …} />
  */
 import { Modal } from "@shop/ui/overlay";
-import { CenterSpinner } from "@/components/ui/Spinner";
-import { invalidateCards } from "../../queries";
-import { AddOptionModal } from "../AddOptionModal";
-import { CompletionFooter } from "./CompletionFooter";
-import { AnswerStep } from "./AnswerStep";
-import { HiddenNotice } from "./HiddenNotice";
-import { ProblemBox } from "./ProblemBox";
-import { PromptStep } from "./PromptStep";
-import { ReviewStep } from "./ReviewStep";
+import { useState } from "react";
+import { CardAiEntry } from "../ai/CardAiEntry";
+import { ManualBody } from "./ManualBody";
 import { useCardCompletion } from "./use-card-completion";
 import type { CardCompletionResult } from "./use-completion-save";
-import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { Button } from "@shop/ui/admin-button";
-import { ManualBody } from "./ManualBody";
-import { CardAiEntry } from "../ai/CardAiEntry";
 
 export type { CardCompletionResult };
 
@@ -45,43 +33,29 @@ export function CardCompletionModal({
   manualOnly?: boolean;
 }) {
   const [manual, setManual] = useState(manualOnly);
-  const qc = useQueryClient();
   const c = useCardCompletion({ productId, open, reason, onClose });
-  const { item, saved, answer, addOption, setAddOption } = c;
+  const { item, saved, answer } = c;
 
   return (
-    <>
-      <Modal
-        open={open}
-        onClose={c.close}
-        size="lg"
-        closeOnBackdrop={false}
-        dirty={manual && !!answer.trim() && !saved}
-        dirtyMessage="Ответ ИИ вставлен, но не сохранён. Закрыть без сохранения?"
-        title={item ? `${manual ? "Вручную" : "Заполнить с ИИ"}: ${item.title}` : "Оформить карточку с ИИ"}
-        footer={manual ? <CompletionFooter c={c} /> : undefined}
-      >
-        {!manual ? (
-          <CardAiEntry
-            productId={productId}
-            created={reason === "created"}
-            onManual={() => setManual(true)}
-            onSheetClose={() => onClose({ saved: false, published: false })}
-          />
-        ) : (
-          <ManualBody c={c} onBackToAi={manualOnly ? undefined : () => setManual(false)} />
-        )}
-      </Modal>
-      {addOption && (
-        <AddOptionModal
-          proposal={addOption}
-          onClose={() => setAddOption(null)}
-          onAdded={() => {
-            setAddOption(null);
-            invalidateCards(qc, true);
-          }}
+    <Modal
+      open={open}
+      onClose={c.close}
+      size="lg"
+      closeOnBackdrop={false}
+      dirty={manual && !!answer.trim() && !saved}
+      dirtyMessage="Ответ ИИ вставлен, но не сохранён. Закрыть без сохранения?"
+      title={item ? `${manual ? "Вручную" : "Заполнить с ИИ"}: ${item.title}` : "Оформить карточку с ИИ"}
+    >
+      {!manual ? (
+        <CardAiEntry
+          productId={productId}
+          created={reason === "created"}
+          onManual={() => setManual(true)}
+          onSheetClose={() => onClose({ saved: false, published: false })}
         />
+      ) : (
+        <ManualBody c={c} onBackToAi={manualOnly ? undefined : () => setManual(false)} />
       )}
-    </>
+    </Modal>
   );
 }

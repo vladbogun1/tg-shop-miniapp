@@ -14,6 +14,7 @@ export function ReviewGroup({
   chosenHere,
   onToggle,
   onAll,
+  onEdit,
 }: {
   id: GroupId;
   fields: ReviewField[];
@@ -21,6 +22,7 @@ export function ReviewGroup({
   chosenHere: number;
   onToggle: (f: ReviewField) => void;
   onAll?: (on: boolean) => void;
+  onEdit?: (f: ReviewField, value: string) => string | null;
 }) {
   const [open, setOpen] = useState(groupOpenByDefault(id, fields.length));
   const locked = id === "locked";
@@ -43,7 +45,7 @@ export function ReviewGroup({
       {open && (
         <ul>
           {fields.map((f) => (
-            <ReviewRow key={f.key} field={f} checked={selected.has(f.key)} onToggle={() => onToggle(f)} />
+            <ReviewRow key={f.key} field={f} checked={selected.has(f.key)} onToggle={() => onToggle(f)} onEdit={onEdit && ((v) => onEdit(f, v))} />
           ))}
         </ul>
       )}

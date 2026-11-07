@@ -8,6 +8,7 @@ import { conflictText, conflictWithoutSnapshot, plausibility, plausibilityReason
 import type { CardChanges } from "./ai-conflict";
 import type { CardItem } from "./item";
 import { metaOf } from "./view";
+import { editSpec, editText } from "./review";
 import { defaultSel, renameByDefault, type ProductSel } from "./selection";
 import { formatValue } from "./value";
 import type { FieldReview, ProductReview } from "./types";
@@ -58,6 +59,8 @@ export interface FieldContext {
   versionChanged: boolean;
   /** Значения числовой характеристики у других товаров той же категории. */
   neighbors: (specKeyName: string) => number[];
+  /** Ключи строк, которые человек поправил в ревью (`editReviewValue`). */
+  edited?: ReadonlySet<string>;
 }
 
 type Doubt = Pick<ReviewField, "suspicion" | "reason">;
@@ -102,6 +105,8 @@ function specRows(r: ProductReview, ctx: FieldContext): ReviewField[] {
       ...doubtOf(f, ctx.neighbors(f.key)),
       ...lockOf(r.item, f.key, hasBefore),
       conflict: conflictOf(ctx, key, f.label, proposed, now[key] ?? null),
+      ...(f.attr ? { editable: "line" as const } : {}),
+      edited: ctx.edited?.has(key) ?? false,
     });
   }
   return rows;
@@ -130,6 +135,8 @@ function textRows(r: ProductReview, ctx: FieldContext): ReviewField[] {
       humanLocked: false,
       lockNote: null,
       conflict: conflictOf(ctx, field, label, t.ru.trim(), now[field] ?? null),
+      editable: field === "description" ? "text" : "line",
+      edited: ctx.edited?.has(field) ?? false,
     });
   }
   return rows;
@@ -175,8 +182,21 @@ export function extraInitialKeys(r: ProductReview, rows: ReviewField[], created:
   return title && renameByDefault(r, created) && title.suspicion === "none" && !title.conflict ? ["title"] : [];
 }
 
-/** Выбор на экране → выбор записи тем же `buildImportItem`, что у ручного пути. */
-export function toProductSel(r: ProductReview, keys: ReadonlySet<string>, opts: { translations: boolean }): ProductSel {
+/**
+ * Правка значения строки ревью человеком: название и описание — как правка текста у ручного пути (`editText`,
+ * переводы uk/en после неё сохраняются только если сделаны для итогового русского), характеристика — `editSpec`.
+ */
+export function editReviewValue(r: ProductReview, key: string, value: string): { review: ProductReview; error: string | null } {
+  if (key === "title" || key === "description") {
+    if (!value.trim()) return { review: r, error: "Пустым оставить нельзя" };
+    return { review: editText(r, key, "ru", value), error: null };
+  }
+  if (key.startsWith(SPEC)) return editSpec(r, key.slice(SPEC.length), value);
+  return { review: r, error: "Это поле здесь не правится" };
+}
+
+/** Выбор на экране → выбор записи тем же `buildImportItem`, что у ручного пути; фото — отмеченные в ревью. */
+export function toProductSel(r: ProductReview, keys: ReadonlySet<string>, opts: { translations: boolean; photos?: string[] }): ProductSel {
   return {
     ...defaultSel(r),
     on: true,
@@ -186,6 +206,6 @@ export function toProductSel(r: ProductReview, keys: ReadonlySet<string>, opts: 
     category: keys.has("category"),
     brand: keys.has("brand"),
     translations: opts.translations,
-    photos: [],
+    photos: opts.photos ?? [],
   };
 }

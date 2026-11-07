@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { cardVersion, extraInitialKeys, reviewRows, toProductSel, valuesOf } from "./ai-card";
+import { cardVersion, editReviewValue, extraInitialKeys, reviewRows, toProductSel, valuesOf } from "./ai-card";
 import { cardChanges } from "./ai-conflict";
 import { SCHEMA, item } from "./fixtures";
 import { reviewProduct } from "./review";
 import type { ProductReview } from "./types";
 import { buildImportItem } from "./selection";
-import { counts, initialSelection } from "@/features/ai";
+import { counts, initialSelection, outcomeCounts } from "@/features/ai";
 
 function review(entry: unknown, it = item({ specs: { weight_g: 60 }, cardMeta: { fields: { weight_g: { c: 90 } } } })): ProductReview {
   const r = reviewProduct("p1", it, entry, SCHEMA);
@@ -74,5 +74,40 @@ describe("выбор → запись", () => {
     expect(Object.keys(out?.specs ?? {})).toEqual(["sensor"]);
     const none = buildImportItem(r, toProductSel(r, new Set(), { translations: false }), { markReady: false });
     expect(Object.keys(none?.specs ?? {})).toEqual([]);
+  });
+});
+
+describe("правка в ревью", () => {
+  const entry = { title: { ru: "Мышь X", uk: "Миша X", en: "Mouse X" }, specs: { weight_g: 55, sensor: "PAW3395" }, confidence: { weight_g: 90, sensor: 90 }, overall: 90 };
+
+  it("поправленное значение уходит в запись, строка помечена «с правками», исход считает его edited", () => {
+    const r = review(entry, item({}));
+    const e1 = editReviewValue(r, "spec:weight_g", "62");
+    const e2 = editReviewValue(e1.review, "title", "Мышь X Pro");
+    expect([e1.error, e2.error]).toEqual([null, null]);
+    const edited = new Set(["spec:weight_g", "title"]);
+    const rows = reviewRows(e2.review, { ...ctxOf(), edited });
+    const by = (k: string) => rows.find((x) => x.key === k)!;
+    expect(by("spec:weight_g")).toMatchObject({ after: "62 г", edited: true, editable: "line" });
+    expect(by("title")).toMatchObject({ after: "Мышь X Pro", edited: true });
+    expect(by("spec:sensor").edited).toBe(false);
+
+    const selected = new Set(["spec:weight_g", "spec:sensor"]);
+    expect(outcomeCounts(rows, selected)).toMatchObject({ applied: 2, edited: 1 });
+
+    const sel = toProductSel(e2.review, new Set([...selected, "title"]), { translations: true, photos: ["https://x.test/1.jpg"] });
+    expect(sel.photos).toEqual(["https://x.test/1.jpg"]);
+    const payload = buildImportItem(e2.review, sel, { markReady: false })!;
+    expect(payload.specs).toMatchObject({ weight_g: 62, sensor: "PAW3395" });
+    expect(payload.title).toBe("Мышь X Pro");
+    // перевод делался для «Мышь X», а не для поправленного названия — не сохраняется
+    expect(payload.translations?.uk?.title).toBeUndefined();
+  });
+
+  it("не прошло проверку или пусто — ничего не меняется", () => {
+    const r = review(entry, item({}));
+    expect(editReviewValue(r, "spec:weight_g", "много").review).toBe(r);
+    expect(editReviewValue(r, "title", "  ").error).toBeTruthy();
+    expect(editReviewValue(r, "category", "x").error).toBeTruthy();
   });
 });

@@ -2,8 +2,8 @@
 
 /**
  * Страница проверки результата ИИ по карточке: `/cards/ai-review/[jobId]`. Идёт ли задача, сбой, готово — всё здесь:
- * ссылка из чипа ✦ и из шторки ведёт сюда же. Применение — тем же путём, что у ручного мастера (импорт карточки,
- * метка ИИ в card_meta), затем серверу уходят счётчики исхода.
+ * ссылка из чипа ✦ и из шторки ведёт сюда же. Само ревью — общая с ручным путём `CardReviewPanel`; здесь то, что
+ * есть только у задачи: конфликт правок, «Повторить», «Отклонить», ответ и промпт, отчёт серверу о счётчиках исхода.
  */
 import {
   AiJobFailure,
@@ -14,8 +14,10 @@ import {
   mostlyConflicted,
   useAiJob,
   useCancelJob,
+  useJobOutcome,
   useRetryJob,
   type AiJob,
+  type OutcomeCounts,
 } from "@/features/ai";
 import { CenterSpinner } from "@/components/ui/Spinner";
 import { useFinanceAccess } from "@/features/procurement";
@@ -26,7 +28,7 @@ import { CardCompletionModal } from "../completion/CardCompletionModal";
 import { startCardJob, useCardSubject } from "./card-subject";
 import { ReviewNotices } from "./ReviewNotices";
 import { ReviewTextDialog } from "./ReviewTextDialog";
-import { useCardAiApply } from "./use-card-ai-apply";
+import { CardReviewPanel } from "./CardReviewPanel";
 import { useCardAiReview } from "./use-card-ai-review";
 
 type Subject = NonNullable<ReturnType<typeof useCardSubject>["item"]>;
@@ -86,52 +88,57 @@ function ReviewBody(p: { job: AiJob; item: Subject; schema: Schema; onManual: ()
   const finance = useFinanceAccess();
   const data = useCardAiReview(job, item, schema);
   const retry = useRetryJob();
-  const [picked, setPicked] = useState<Set<string> | null>(null);
-  const [translations, setTranslations] = useState(true);
-  const [publish, setPublish] = useState(item.active !== true);
+  const outcome = useJobOutcome();
+  const [appliedNow, setAppliedNow] = useState(false);
   const [dialog, setDialog] = useState<"answer" | "prompt" | null>(null);
-  const selected = picked ?? data.initial;
-  const act = useCardAiApply({ job, item, review: data.review, rows: data.rows, selected, translations, publish });
-
-  const { mostly, edited, finished, doneText } = statusOf(job, data, act.applied);
+  const { mostly, edited, finished, doneText } = statusOf(job, data, appliedNow);
   const canRetryMore = finance || job.retryOf === 0;
+  const report = (o: OutcomeCounts) => outcome.mutate({ id: job.id, outcome: o });
 
-  const menu = reviewMenu({
-    onManual: p.onManual,
-    onRetry: canRetryMore ? () => retry.mutate(job.id, { onSuccess: (j) => p.toJob(j.id) }) : null,
-    onReject: finished ? null : act.reject,
-    onAnswer: job.answer ? () => setDialog("answer") : null,
-    onPrompt: job.prompt ? () => setDialog("prompt") : null,
-  });
+  const menu = (rejectCounts: () => OutcomeCounts) =>
+    reviewMenu({
+      onManual: p.onManual,
+      onRetry: canRetryMore ? () => retry.mutate(job.id, { onSuccess: (j) => p.toJob(j.id) }) : null,
+      onReject: finished
+        ? null
+        : () => {
+            report(rejectCounts());
+            router.push("/cards");
+          },
+      onAnswer: job.answer ? () => setDialog("answer") : null,
+      onPrompt: job.prompt ? () => setDialog("prompt") : null,
+    });
+  const notices = (
+    <ReviewNotices
+      problems={data.problems}
+      edited={edited}
+      mostly={mostly}
+      onFresh={() => void startCardJob({ item, schema, created: false, idemKey: `fresh-${job.id}` }).then((j) => p.toJob(j.id))}
+    />
+  );
 
   return (
     <>
-      <AiReview
-        job={job}
-        title={item.title}
-        fields={data.rows}
-        selected={selected}
-        onSelected={setPicked}
-        onApply={act.apply}
-        applying={act.saving}
-        doneText={doneText}
-        menu={menu}
-        onBack={() => router.back()}
-        notices={
-          <ReviewNotices
-            problems={data.problems}
-            edited={edited}
-            mostly={mostly}
-            onFresh={() => void startCardJob({ item, schema, created: false, idemKey: `fresh-${job.id}` }).then((j) => p.toJob(j.id))}
-            problem={act.problem}
-            price={act.price}
-            setPrice={act.setPrice}
-            priceOk={act.priceMinor !== null}
-            onSavePrice={act.savePrice}
-          />
-        }
-        extra={finished ? null : <ApplyOptions item={item} translations={translations} setTranslations={setTranslations} publish={publish} setPublish={setPublish} />}
-      />
+      {data.review && data.ctx ? (
+        <CardReviewPanel
+          item={item}
+          review={data.review}
+          ctx={data.ctx}
+          created={item.unfinished === true}
+          title={item.title}
+          finishedAt={job.finishedAt}
+          doneText={doneText}
+          notices={notices}
+          onBack={() => router.back()}
+          menu={menu}
+          onApplied={(o) => {
+            setAppliedNow(true);
+            report(o);
+          }}
+        />
+      ) : (
+        <AiReview finishedAt={job.finishedAt} title={item.title} fields={[]} selected={new Set()} onSelected={() => undefined} onApply={() => undefined} applying={false} doneText={doneText} menu={menu(() => ({ applied: 0, rejected: 0, edited: 0, ignoredLocked: 0 }))} onBack={() => router.back()} notices={notices} />
+      )}
       {dialog && <ReviewTextDialog title={dialog === "answer" ? "Ответ ИИ" : "Промпт"} text={(dialog === "answer" ? job.answer : job.prompt) ?? ""} onClose={() => setDialog(null)} />}
       {p.manualModal}
     </>
@@ -142,10 +149,10 @@ function ReviewBody(p: { job: AiJob; item: Subject; schema: Schema; onManual: ()
 function statusOf(job: AiJob, data: ReturnType<typeof useCardAiReview>, appliedNow: boolean) {
   const conflicted = data.rows.filter((x) => x.conflict).length;
   const finished = appliedNow || !!job.outcome;
-  const text = job.outcome === "REJECTED" ? "Результат отклонён" : "Результат применён";
+  const text = !job.outcome ? null : job.outcome === "REJECTED" ? "Результат отклонён" : "Результат применён";
   const changed = data.versionChanged && !finished;
   const edited = !changed ? null : data.changes ? editedBanner(data.changes.editors, conflicted, data.rows.length) : "Карточку изменили после запуска ИИ — заменять заполненные поля ИИ не будет";
-  return { mostly: changed && mostlyConflicted(conflicted, data.rows.length), edited, finished, doneText: finished ? text : null };
+  return { mostly: changed && mostlyConflicted(conflicted, data.rows.length), edited, finished, doneText: text };
 }
 
 /** Пункты «⋯»: что недоступно (null) — не показываем. */
@@ -158,21 +165,4 @@ function reviewMenu(a: { onManual: () => void; onRetry: (() => void) | null; onR
     a.onPrompt && { label: "Показать промпт", onSelect: a.onPrompt },
   ];
   return items.filter((x): x is MenuItem => x !== null);
-}
-
-function ApplyOptions(p: { item: Subject; translations: boolean; setTranslations: (v: boolean) => void; publish: boolean; setPublish: (v: boolean) => void }) {
-  return (
-    <div className="flex flex-col gap-2 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface)] p-3 text-[13px]">
-      <label className="flex items-center gap-2">
-        <input type="checkbox" checked={p.translations} onChange={(e) => p.setTranslations(e.target.checked)} className="h-4 w-4 accent-[var(--accent)]" />
-        Сохранить переводы на украинский и английский
-      </label>
-      {p.item.active !== true && (
-        <label className="flex items-center gap-2">
-          <input type="checkbox" checked={p.publish} onChange={(e) => p.setPublish(e.target.checked)} className="h-4 w-4 accent-[var(--accent)]" />
-          Выложить на витрину, если карточка готова
-        </label>
-      )}
-    </div>
-  );
 }

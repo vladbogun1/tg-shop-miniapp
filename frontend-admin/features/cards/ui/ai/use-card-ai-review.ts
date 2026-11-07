@@ -7,7 +7,7 @@
  */
 import { initialSelection, type AiJob, type ReviewField } from "@/features/ai";
 import { useMemo } from "react";
-import { cardVersion, extraInitialKeys, reviewRows } from "../../model/ai-card";
+import { cardVersion, extraInitialKeys, reviewRows, type FieldContext } from "../../model/ai-card";
 import { cardChanges, type CardChanges, type ServerChanges } from "../../model/ai-conflict";
 import { reviewAnswer } from "../../model/completion";
 import { assignCardIds, type CardItem } from "../../model/item";
@@ -25,9 +25,12 @@ export interface CardAiReviewData {
   changes: CardChanges | null;
   /** Ответ не разобрался: что сказать человеку. */
   problems: string[];
+  /** Из чего построены строки (конфликт, соседи): экран строит их заново после правок человека. */
+  ctx: FieldContext | null;
 }
 
-function neighborsOf(items: CardItem[] | undefined, item: CardItem) {
+/** Значения числовой характеристики у других товаров той же категории — для «правдоподобно ли число». */
+export function neighborsOf(items: CardItem[] | undefined, item: CardItem) {
   return (key: string): number[] => {
     if (!items) return [];
     const out: number[] = [];
@@ -47,16 +50,17 @@ export function computeCardAiReview(
   schema: CardSchema | undefined,
   all: CardItem[] | undefined,
 ): CardAiReviewData {
-  const empty: CardAiReviewData = { review: null, rows: [], initial: new Set(), versionChanged: false, changes: null, problems: [] };
+  const empty: CardAiReviewData = { review: null, rows: [], initial: new Set(), versionChanged: false, changes: null, problems: [], ctx: null };
   if (!job || !item || !schema || !job.answer) return empty;
   const out = reviewAnswer(job.answer, { schema, items: [item], ids: assignCardIds([item.id]) }, item.id);
   if (!out.product) return { ...empty, problems: out.errors.length ? out.errors : ["В ответе нет данных по этому товару."] };
   const changes = cardChanges(job.subjectChanges as ServerChanges | undefined, item, schema);
   // Без снимка (задача до V92) признак правок — отпечаток; после разбора результата (outcome) не блокируем ничего.
   const versionChanged = !job.outcome && !!job.subjectVersion && cardVersion(item) !== job.subjectVersion;
-  const rows = reviewRows(out.product, { changes, versionChanged: changes ? false : versionChanged, neighbors: neighborsOf(all, item) });
+  const ctx: FieldContext = { changes, versionChanged: changes ? false : versionChanged, neighbors: neighborsOf(all, item) };
+  const rows = reviewRows(out.product, ctx);
   const initial = new Set([...initialSelection(rows), ...extraInitialKeys(out.product, rows, item.unfinished === true)]);
-  return { review: out.product, rows, initial, versionChanged: changes ? Object.keys(changes.fields).length > 0 : versionChanged, changes, problems: out.errors };
+  return { review: out.product, rows, initial, versionChanged: changes ? Object.keys(changes.fields).length > 0 : versionChanged, changes, problems: out.errors, ctx };
 }
 
 export function useCardAiReview(job: AiJob | undefined, item: CardItem | null, schema: CardSchema | undefined): CardAiReviewData {

@@ -100,6 +100,16 @@ describe("счётчик «N из M»", () => {
     const sel = new Set(["weight", "sensor"]);
     expect(outcomeCounts(FIELDS, sel)).toEqual({ applied: 2, rejected: 2, edited: 0, ignoredLocked: 2 });
   });
+
+  it("поправленное в ревью — «с правками»: только из принятых, отклонённая правка не считается", () => {
+    const fields = FIELDS.map((f) => (f.key === "weight" || f.key === "dpi" ? { ...f, edited: true } : f));
+    // weight поправлен и принят, dpi поправлен, но выключен — в edited только weight
+    expect(outcomeCounts(fields, new Set(["weight", "sensor"]))).toEqual({ applied: 2, rejected: 2, edited: 1, ignoredLocked: 2 });
+    expect(outcomeCounts(fields, new Set())).toEqual({ applied: 0, rejected: 4, edited: 0, ignoredLocked: 2 });
+    // правка в поле под замком не применится и не считается
+    const locked = FIELDS.map((f) => (f.humanLocked ? { ...f, edited: true } : f));
+    expect(outcomeCounts(locked, new Set(FIELDS.map((f) => f.key))).edited).toBe(0);
+  });
 });
 
 describe("устаревание", () => {
