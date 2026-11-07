@@ -1,6 +1,7 @@
 /**
  * «Прочитать с ИИ» в поставке: файлы накладной / скринов (`/api/admin/ai/files`) и задача чтения
- * (`/api/admin/ai/supply-jobs`). Только админу с правом «Финансы»: ответ содержит закупочные цены.
+ * (`/api/admin/ai/supply-jobs`). Любому админу поставок: ответ (закупочные цены) сервер отдаёт тому, кто запустил
+ * задачу, и админу с правом «Финансы»; цену задачи — только последнему.
  */
 import type { Schemas } from "@shop/core/api/schemas";
 import type { AiJob } from "@/features/ai";
@@ -15,8 +16,8 @@ export type AiFile = Omit<Schemas["FileDto"], "page"> & { page: number | null };
 export type SupplyJobStart = Required<Schemas["AiAiSupplyJobsStart"]>;
 
 export const supplyAiApi = {
-  /** Один файл → его картинки (PDF даёт по картинке на страницу). */
-  upload: (file: File) => uploadFile<AiFile[]>(FILES, file),
+  /** Один файл → его картинки (PDF даёт по картинке на страницу); `onProgress` — доля отправленного, 0…1. */
+  upload: (file: File, onProgress?: (sent: number) => void) => uploadFile<AiFile[]>(FILES, file, onProgress),
   /** Загруженное, но ещё не прочитанное — после перезагрузки страницы файлы на месте. */
   waiting: () => apiGet<AiFile[]>(FILES),
   remove: (id: number) => apiDelete<void>(`${FILES}/${id}`),

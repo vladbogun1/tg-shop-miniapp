@@ -1,25 +1,30 @@
 "use client";
 
 /**
- * Файлы читаемого документа: загрузка по одному (телефонное фото — несколько мегабайт, параллельно не нужно),
- * список картинок на сервере, удаление. Загрузка идёт через fetch, у него нет байтового прогресса — показываем
- * очередь: что грузится сейчас и что уже на сервере. Файлы живут 7 дней: после перезагрузки страницы
+ * Файлы читаемого документа: загрузка по одному (телефонное фото — несколько мегабайт, параллельно не нужно)
+ * с настоящим прогрессом (XHR), список картинок на сервере, удаление. Лимит 10 картинок проверяется при выборе,
+ * перетаскивании и вставке (`model/ai/files-limit`); что не влезло — тост с именами файлов, а отказ сервера
+ * (например, PDF с лишними страницами) — на плашке файла. Файлы живут 7 дней: после перезагрузки страницы
  * непрочитанные возвращаются из `GET /ai/files`.
  */
 import { errorMessage } from "@shop/core/errors";
 import { toast } from "@shop/ui/toast";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supplyAiApi, type AiFile } from "../../api-ai";
+import { admitFiles, admitMessages } from "../../model/ai/files-limit";
+
+export { MAX_FILE_BYTES, MAX_PICTURES } from "../../model/ai/files-limit";
 
 export interface PendingUpload {
   key: number;
   name: string;
+  /** Доля отправленного, 0…1 (0 — ещё ждёт в очереди). */
+  sent: number;
+  /** Идёт ли сейчас (а не ждёт очереди). */
+  active: boolean;
   failed: string | null;
 }
 
-/** Не больше стольки картинок за раз (страница PDF — одна картинка): столько читает одна задача. */
-export const MAX_PICTURES = 10;
-export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 export const ACCEPT = "image/jpeg,image/png,image/webp,application/pdf";
 
 let seq = 0;
@@ -46,35 +51,37 @@ export function useSupplyFiles(enabled: boolean) {
       .catch(() => undefined);
   }, [enabled]);
 
+  const patch = useCallback((key: number, change: Partial<PendingUpload>) => {
+    if (alive.current) setPending((p) => p.map((x) => (x.key === key ? { ...x, ...change } : x)));
+  }, []);
+
   const pump = useCallback(async () => {
     if (busy.current) return;
     busy.current = true;
     for (let next = queue.current.shift(); next && alive.current; next = queue.current.shift()) {
+      const key = next.key;
+      patch(key, { active: true });
       try {
-        const saved = await supplyAiApi.upload(next.file);
+        const saved = await supplyAiApi.upload(next.file, (sent) => patch(key, { sent }));
         setFiles((prev) => [...prev, ...saved]);
-        setPending((p) => p.filter((x) => x.key !== next!.key));
+        setPending((p) => p.filter((x) => x.key !== key));
       } catch (e) {
-        const text = errorMessage(e, undefined, "Не удалось загрузить файл");
-        setPending((p) => p.map((x) => (x.key === next!.key ? { ...x, failed: text } : x)));
+        patch(key, { active: false, failed: errorMessage(e, undefined, "Не удалось загрузить файл") });
       }
     }
     busy.current = false;
-  }, []);
+  }, [patch]);
 
-  /** Отсеивает слишком большие сразу (сервер всё равно откажет) и ставит остальные в очередь. */
+  /** Отсеивает слишком большие и не влезающие в лимит (тост с именами) и ставит остальные в очередь. */
   const add = useCallback(
     (list: FileList | File[]) => {
-      const picked = Array.from(list);
-      const tooBig = picked.filter((f) => f.size > MAX_FILE_BYTES);
-      if (tooBig.length) toast.info(`Файл больше 10 МБ не загружаю: ${tooBig.map((f) => f.name).join(", ")}`);
-      const ok = picked.filter((f) => f.size <= MAX_FILE_BYTES);
-      const room = Math.max(0, MAX_PICTURES - files.length - queue.current.length);
-      if (ok.length > room) toast.info(`За раз читается не больше ${MAX_PICTURES} картинок (страница PDF — одна картинка)`);
-      const take = ok.slice(0, room);
-      const items = take.map((file) => ({ key: ++seq, file }));
+      const taken = files.length + queue.current.length + (busy.current ? 1 : 0);
+      const admitted = admitFiles(Array.from(list), taken);
+      for (const text of admitMessages(admitted, taken)) toast.info(text);
+      const items = admitted.take.map((file) => ({ key: ++seq, file }));
+      if (!items.length) return;
       queue.current.push(...items);
-      setPending((p) => [...p, ...items.map((i) => ({ key: i.key, name: i.file.name, failed: null }))]);
+      setPending((p) => [...p, ...items.map((i) => ({ key: i.key, name: i.file.name || "картинка", sent: 0, active: false, failed: null }))]);
       void pump();
     },
     [files.length, pump],
@@ -98,7 +105,8 @@ export function useSupplyFiles(enabled: boolean) {
     setPending([]);
   }, []);
 
-  return { files, pending, uploading: pending.some((p) => !p.failed), add, remove, dismiss, clear };
+  const queued = pending.filter((p) => !p.failed).length;
+  return { files, pending, queued, uploading: queued > 0, add, remove, dismiss, clear };
 }
 
 export type SupplyFiles = ReturnType<typeof useSupplyFiles>;

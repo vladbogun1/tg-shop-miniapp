@@ -34,7 +34,10 @@ export const apiPatch = http.patch;
 export const apiPut = http.put;
 export const apiDelete = http.del;
 
-/** Multipart upload -> { key } (POST /api/admin/uploads); `T` — другая форма ответа (рассылка: { photoId }). */
-export function uploadFile<T = { key: string }>(path: string, file: File): Promise<T> {
-  return http.upload<T>(path, file);
+/**
+ * Multipart upload -> { key } (POST /api/admin/uploads); `T` — другая форма ответа (рассылка: { photoId }).
+ * `onProgress` (доля отправленного, 0…1) — для полосы загрузки: тогда запрос идёт через XHR.
+ */
+export function uploadFile<T = { key: string }>(path: string, file: File, onProgress?: (sent: number) => void): Promise<T> {
+  return http.upload<T>(path, file, onProgress);
 }
