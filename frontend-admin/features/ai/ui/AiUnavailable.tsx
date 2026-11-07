@@ -1,8 +1,7 @@
 "use client";
 
-import { Bot, KeyRound, Power } from "lucide-react";
-
-type Reason = "not-configured" | "disabled" | "feature-off";
+import { Bot, Gauge, KeyRound, Power, WifiOff } from "lucide-react";
+import type { Unavailable as Reason } from "../model/availability";
 
 const TEXT: Record<Reason, { title: string; hint: string }> = {
   "not-configured": {
@@ -17,9 +16,28 @@ const TEXT: Record<Reason, { title: string; hint: string }> = {
     title: "Эта функция ИИ выключена",
     hint: "Включить её может владелец в «Настройки» → «ИИ» → «Функции».",
   },
+  "limit-day": {
+    title: "Дневной лимит ИИ израсходован",
+    hint: "Новые задачи начнутся завтра. Сейчас — вручную через ChatGPT или попросите владельца поднять лимит.",
+  },
+  "limit-month": {
+    title: "Месячный лимит ИИ израсходован",
+    hint: "Новые задачи начнутся в следующем месяце. Сейчас — вручную через ChatGPT или попросите владельца поднять лимит.",
+  },
+  "no-connection": {
+    title: "Нет связи с ИИ",
+    hint: "Не удалось узнать состояние ИИ. Проверьте интернет или воспользуйтесь ручным путём.",
+  },
 };
 
-const ICON = { "not-configured": KeyRound, disabled: Power, "feature-off": Power } as const;
+const ICON = {
+  "not-configured": KeyRound,
+  disabled: Power,
+  "feature-off": Power,
+  "limit-day": Gauge,
+  "limit-month": Gauge,
+  "no-connection": WifiOff,
+} as const;
 
 /**
  * Вместо кнопки ИИ, когда ею нельзя пользоваться: нет ключа, выключен общий выключатель или функция. Без денег и

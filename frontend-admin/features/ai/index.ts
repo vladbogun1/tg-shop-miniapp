@@ -4,12 +4,22 @@
  */
 export { AiSettingsPanel } from "./ui/AiSettingsPanel";
 export { AiUnavailable } from "./ui/AiUnavailable";
+export { AiEntryButton } from "./ui/AiEntryButton";
+export { AiJobSheet, type AiJobSheetProps } from "./ui/AiJobSheet";
+export { AiReview, Notice as AiNotice, type AiReviewProps } from "./ui/AiReview";
+export type { MenuItem as AiMenuItem } from "./ui/review/ReviewMenu";
+export { AiStatusChip } from "./ui/AiStatusChip";
+export { JobProgress as AiJobProgress } from "./ui/JobProgress";
+export { JobFailure as AiJobFailure } from "./ui/JobFailure";
+export { newIdemKey } from "./model/idem";
 export { aiApi } from "./api";
 export type {
   AiEstimate,
   AiEstimateRequest,
   AiFeature,
   AiJob,
+  AiSummary,
+  CardJobStart,
   AiJobMode,
   AiJobStart,
   AiJobStatus,
@@ -17,7 +27,20 @@ export type {
   AiState,
 } from "./api";
 export { aiKeys } from "./keys";
-export { useAiJob, useAiJobs, useAiState } from "./queries";
+export { useAiJob, useAiJobs, useAiState, useAiSummary, useCancelJob, useJobOutcome, useRetryJob } from "./queries";
 export { AI_GROUP } from "./model/setting-keys";
 export { canCancel, canRetry, isActive, isDisappointing, pollInterval, statusLabel, statusTone } from "./model/job-state";
 export { uahFromMinor, usdFromCents, usdFromMicro } from "./model/format";
+export {
+  applicable,
+  buildGroups,
+  counts,
+  initialSelection,
+  outcomeCounts,
+  toggled,
+  type GroupId,
+  type ReviewField,
+} from "./model/review-model";
+export { plausibility, plausibilityReason } from "./model/plausibility";
+export { conflictText, mostlyConflicted } from "./model/conflict";
+export { reviewState, reviewStateLabel } from "./model/job-state";

@@ -23,7 +23,8 @@ import { CommandPaletteButton } from "./CommandPalette";
 import { MobileMenu } from "./MobileMenu";
 import { SidebarInner } from "./Sidebar";
 import { TabBar } from "./TabBar";
-import { pageTitle } from "./nav-config";
+import { AiStatusChip } from "@/features/ai";
+import { isFullscreenPage, pageTitle } from "./nav-config";
 import { useCollapsedSidebar } from "./use-collapsed-sidebar";
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -31,6 +32,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const { collapsed, canToggle, toggle: toggleCollapsed } = useCollapsedSidebar();
   const pathname = usePathname();
   const title = pageTitle(pathname);
+  const fullscreen = isFullscreenPage(pathname);
   // Screens with their own sticky bar (orders on a phone) stick right under this one: `--hdr-h`.
   const headerRef = useRef<HTMLElement>(null);
   useCssVarHeight(headerRef, "--hdr-h");
@@ -74,6 +76,7 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-2.5">
             {/* On a phone the «Внимание» tab carries the same badge — no second bell there. */}
+            <AiStatusChip />
             <CommandPaletteButton />
             <div className="hidden lg:block">
               <NotificationsBell />
@@ -81,7 +84,7 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 pb-[calc(var(--bottom-nav)+20px)] pl-[max(16px,var(--safe-left))] pr-[max(16px,var(--safe-right))] pt-4 lg:p-7">
+        <main className={cn("min-w-0 flex-1 pl-[max(16px,var(--safe-left))] pr-[max(16px,var(--safe-right))] pt-4 lg:p-7", fullscreen ? "pb-0 lg:pb-0" : "pb-[calc(var(--bottom-nav)+20px)]")}>
           <InstallBanner />
           <PushOfferBanner />
           <motion.div
@@ -95,7 +98,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      <TabBar menuOpen={drawer} onMenu={() => setDrawer((v) => !v)} />
+      {!fullscreen && <TabBar menuOpen={drawer} onMenu={() => setDrawer((v) => !v)} />}
       <UpdateBanner />
     </div>
   );

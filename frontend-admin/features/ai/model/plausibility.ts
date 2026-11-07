@@ -1,3 +1,4 @@
+import { formatNumber } from "@shop/core/money";
 /**
  * Правдоподобие числа против соседей (других товаров той же категории): модель путает единицы («256 ГБ» → 256000).
  * Чистая логика. Красное нельзя применить, жёлтое — на усмотрение человека.
@@ -35,7 +36,7 @@ export function plausibilityReason(value: number, neighbors: number[]): string |
   if (level === "ok") return null;
   const usable = neighbors.filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
   const typical = median(usable);
-  const shown = (n: number) => String(Math.round(n * 100) / 100);
+  const shown = (n: number) => formatNumber(n, "ru-RU", { maximumFractionDigits: 2 });
   return level === "bad"
     ? `Единицы? У других товаров этой категории около ${shown(typical)}, тут ${shown(value)}`
     : `Сильно отличается от других товаров категории: у них около ${shown(typical)}, тут ${shown(value)}`;

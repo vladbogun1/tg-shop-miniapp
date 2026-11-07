@@ -10,6 +10,10 @@ export type AiSearchFound = Schemas["Found"];
 export type AiSearchProvider = Schemas["ProviderState"];
 export type AiEstimate = Schemas["EstimateDto"];
 export type AiOutcome = Schemas["AiAiJobOutcome"];
+export type AiSummary = Schemas["AiAiSummarySummary"];
+
+/** Запрос карточной задачи: товар, версия карточки и промпт собирает фронт (`features/cards`). */
+export type CardJobStart = Required<Schemas["Start"]>;
 
 /**
  * Задача ИИ. Деньги, токены, промпт и текст ошибки провайдера приходят только админу с доступом к финансам:
@@ -22,11 +26,14 @@ export type AiEstimateRequest = Omit<Schemas["EstimateRequest"], "feature"> & { 
 export const aiApi = {
   /** Только для финансового доступа: деньги, лимиты, поиск. */
   state: () => apiGet<AiState>("/api/admin/ai/state"),
+  /** Лёгкая сводка для всех админов, без денег: чип в шапке и кнопки входа. */
+  summary: () => apiGet<AiSummary>("/api/admin/ai/summary"),
   searchTest: (query: string) => apiPost<AiSearchFound>("/api/admin/ai/search-test", { query }),
   stopRunning: () => apiPost<{ stopped: number }>("/api/admin/ai/stop-running"),
 
   /** `idemKey` — один на нажатие кнопки: повтор того же запроса вернёт ту же задачу, а не вторую. */
   start: (body: AiJobStart, idemKey: string) => apiPost<AiJob>("/api/admin/ai/jobs", body, { "Idempotency-Key": idemKey }),
+  startCard: (body: CardJobStart, idemKey: string) => apiPost<AiJob>("/api/admin/ai/card-jobs", body, { "Idempotency-Key": idemKey }),
   job: (id: number) => apiGet<AiJob>(`/api/admin/ai/jobs/${id}`),
   /** Задачи в очереди и в работе, новые сверху, без текстов. */
   active: () => apiGet<AiJob[]>("/api/admin/ai/jobs/active"),

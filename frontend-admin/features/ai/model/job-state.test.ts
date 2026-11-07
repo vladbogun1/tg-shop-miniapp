@@ -39,13 +39,13 @@ describe("состояния задачи ИИ", () => {
   });
 
   it("статусы глазами админа", () => {
-    expect(reviewState({ status: "RUNNING", outcome: null })).toBe("running");
-    expect(reviewState({ status: "DONE", outcome: null })).toBe("review");
+    expect(reviewState({ status: "RUNNING", outcome: "" })).toBe("running");
+    expect(reviewState({ status: "DONE", outcome: "" })).toBe("review");
     expect(reviewState({ status: "DONE", outcome: "PARTIAL" })).toBe("applied");
     expect(reviewState({ status: "DONE", outcome: "REJECTED" })).toBe("rejected");
-    expect(reviewState({ status: "EMPTY", outcome: null })).toBe("nodata");
-    expect(reviewState({ status: "BAD_ANSWER", outcome: null })).toBe("failed");
-    expect(reviewState({ status: "CANCELED", outcome: null })).toBe("canceled");
+    expect(reviewState({ status: "EMPTY", outcome: "" })).toBe("nodata");
+    expect(reviewState({ status: "BAD_ANSWER", outcome: "" })).toBe("failed");
+    expect(reviewState({ status: "CANCELED", outcome: "" })).toBe("canceled");
     expect(reviewStateLabel("nodata")).toBe("Не нашёл данных");
   });
 

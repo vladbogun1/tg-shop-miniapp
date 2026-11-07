@@ -153,8 +153,13 @@ const TITLE: Record<string, string> = {
 export function pageTitle(pathname: string): string {
   return (
     TITLE[pathname] ??
-    (pathname.startsWith("/orders/") ? "Заказ" : pathname.startsWith("/preorders/") ? "Поставка" : "Панель")
+    (pathname.startsWith("/cards/ai-review/") ? "Проверка ИИ" : pathname.startsWith("/orders/") ? "Заказ" : pathname.startsWith("/preorders/") ? "Поставка" : "Панель")
   );
+}
+
+/** Полноэкранные страницы без нижней навигации (проверка результата ИИ): внизу своя панель «Применить». */
+export function isFullscreenPage(pathname: string): boolean {
+  return pathname.startsWith("/cards/ai-review/");
 }
 
 export function isActive(pathname: string, href: string, exact?: boolean): boolean {

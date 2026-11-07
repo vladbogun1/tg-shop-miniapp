@@ -23,6 +23,10 @@ import { ReviewStep } from "./ReviewStep";
 import { useCardCompletion } from "./use-card-completion";
 import type { CardCompletionResult } from "./use-completion-save";
 import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { Button } from "@shop/ui/admin-button";
+import { ManualBody } from "./ManualBody";
+import { CardAiEntry } from "../ai/CardAiEntry";
 
 export type { CardCompletionResult };
 
@@ -31,15 +35,19 @@ export function CardCompletionModal({
   open,
   onClose,
   reason = "manual",
+  manualOnly = false,
 }: {
   productId: string;
   open: boolean;
   onClose: (result?: CardCompletionResult) => void;
   reason?: "created" | "manual";
+  /** Сразу ручной путь (без входа во встроенный ИИ): его открывают из экрана проверки ИИ. */
+  manualOnly?: boolean;
 }) {
+  const [manual, setManual] = useState(manualOnly);
   const qc = useQueryClient();
   const c = useCardCompletion({ productId, open, reason, onClose });
-  const { item, schema, saved, published, answer, addOption, setAddOption, problem } = c;
+  const { item, saved, answer, addOption, setAddOption } = c;
 
   return (
     <>
@@ -48,26 +56,20 @@ export function CardCompletionModal({
         onClose={c.close}
         size="lg"
         closeOnBackdrop={false}
-        dirty={!!answer.trim() && !saved}
+        dirty={manual && !!answer.trim() && !saved}
         dirtyMessage="Ответ ИИ вставлен, но не сохранён. Закрыть без сохранения?"
-        title={item ? `Оформить с ИИ: ${item.title}` : "Оформить карточку с ИИ"}
-        footer={<CompletionFooter c={c} />}
+        title={item ? `${manual ? "Вручную" : "Заполнить с ИИ"}: ${item.title}` : "Оформить карточку с ИИ"}
+        footer={manual ? <CompletionFooter c={c} /> : undefined}
       >
-        {c.loading ? (
-          <CenterSpinner label="Загрузка товара и схемы…" />
-        ) : !item || !schema ? (
-          <div className="text-[13px] font-semibold text-[var(--danger-ink)]">
-            ✕ {!item ? "Товар не найден." : "Не удалось загрузить схему каталога."}
-          </div>
+        {!manual ? (
+          <CardAiEntry
+            productId={productId}
+            created={reason === "created"}
+            onManual={() => setManual(true)}
+            onSheetClose={() => onClose({ saved: false, published: false })}
+          />
         ) : (
-          <div className="flex flex-col gap-4">
-            <HiddenNotice c={c} />
-            <PromptStep c={c} />
-            {!saved && <AnswerStep c={c} />}
-            <ReviewStep c={c} />
-            {saved && !published && !problem && <div className="text-[13px] font-semibold text-[var(--ok)]">✓ Карточка сохранена.</div>}
-            <ProblemBox c={c} />
-          </div>
+          <ManualBody c={c} onBackToAi={manualOnly ? undefined : () => setManual(false)} />
         )}
       </Modal>
       {addOption && (
