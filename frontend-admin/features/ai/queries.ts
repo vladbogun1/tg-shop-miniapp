@@ -100,7 +100,7 @@ export function useAiEstimate(req: AiEstimateRequest | null) {
   });
 }
 
-const AFTER_JOB = [aiKeys.active(), aiKeys.summary()];
+const AFTER_JOB = [aiKeys.active(), aiKeys.summary(), aiKeys.tasksAll(), aiKeys.widget()];
 
 export function useCancelJob() {
   return useApiMutation({

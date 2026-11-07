@@ -44,3 +44,8 @@ export {
 export { plausibility, plausibilityReason } from "./model/plausibility";
 export { conflictText, mostlyConflicted } from "./model/conflict";
 export { reviewState, reviewStateLabel } from "./model/job-state";
+export { AiTaskCenter } from "./ui/AiTaskCenter";
+export { AiMetrics } from "./ui/AiMetrics";
+export { AiDashboardWidget } from "./ui/AiDashboardWidget";
+export { useAiMetrics, useAiTasks, useAiWidget, useMarkManual } from "./queries-center";
+export type { AiTaskTab, AiTaskRow, AiTaskPage, AiWidgetData, AiMetricsSummary } from "./api";
