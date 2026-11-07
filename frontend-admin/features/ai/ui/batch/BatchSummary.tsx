@@ -22,6 +22,7 @@ export function BatchSummary({
   acceptSafe,
   manual,
   report,
+  onUndone,
 }: {
   batch: AiBatch;
   onReview: () => void;
@@ -29,6 +30,8 @@ export function BatchSummary({
   manual?: React.ReactNode;
   /** Подробный итог по предметам: под сводкой, раскрывается по «Подробно». */
   report?: React.ReactNode;
+  /** После «Отменить применение»: значения предметов вернулись — их кэш сбрасывает предмет пакета. */
+  onUndone?: () => void;
 }) {
   const retry = useRetryFailedBatch();
   const undo = useUndoBatch();
@@ -65,7 +68,7 @@ export function BatchSummary({
         )}
         {manual}
         {left && (
-          <Button size="sm" variant="ghost" loading={undo.isPending} onClick={() => undo.mutate(batch.id)} data-testid="batch-undo">
+          <Button size="sm" variant="ghost" loading={undo.isPending} onClick={() => undo.mutate(batch.id, { onSuccess: () => onUndone?.() })} data-testid="batch-undo">
             Отменить применение ({batch.undoable}, ещё {left})
           </Button>
         )}

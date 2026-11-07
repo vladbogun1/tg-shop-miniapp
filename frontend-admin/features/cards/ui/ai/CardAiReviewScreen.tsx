@@ -24,8 +24,10 @@ import {
 import { CenterSpinner } from "@/components/ui/Spinner";
 import { useFinanceAccess } from "@/features/procurement";
 import { Button } from "@shop/ui/admin-button";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { invalidateCards } from "../../queries";
 import { CardCompletionModal } from "../completion/CardCompletionModal";
 import { startCardJob, useCardSubject } from "./card-subject";
 import { ReviewNotices } from "./ReviewNotices";
@@ -92,6 +94,7 @@ function ReviewBody(p: { job: AiJob; item: Subject; schema: Schema; onManual: ()
   const retry = useRetryJob();
   const outcome = useJobOutcome();
   const live = useApplyLive(job.id);
+  const qc = useQueryClient();
   const [appliedNow, setAppliedNow] = useState(false);
   // После отмены применения ревью начинается заново: новый ключ — свежий выбор и правки.
   const [round, setRound] = useState(0);
@@ -121,6 +124,8 @@ function ReviewBody(p: { job: AiJob; item: Subject; schema: Schema; onManual: ()
         jobId={job.id}
         note={UNDO_NOTE}
         onUndone={() => {
+          // Значения карточки на сервере вернулись: ревью заново — по свежей выгрузке, а не по кэшу после записи.
+          invalidateCards(qc);
           setAppliedNow(false);
           setRound((r) => r + 1);
         }}

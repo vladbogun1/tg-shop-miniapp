@@ -6,9 +6,10 @@
  * один раз в оболочке админки, чтобы ход пакета был виден на любом экране. Нет пакетов — ничего не рисует.
  */
 import { BatchPanel, QuickReviewFeed, useAiBatches, type AiBatch } from "@/features/ai";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useCardItems, useCardSchema } from "../../../queries";
+import { invalidateCards, useCardItems, useCardSchema } from "../../../queries";
 import { PhotoSummary } from "../../photos/PhotoSummary";
 import { ManualFromBatch } from "../../manual/ManualBatchEntry";
 import { ManualBatchLayer } from "../../manual/ManualBatchLayer";
@@ -20,6 +21,7 @@ import { useFeedAccept } from "./use-feed-accept";
 
 export function CardBatchHost() {
   const router = useRouter();
+  const qc = useQueryClient();
   const items = useCardItems();
   const schema = useCardSchema();
   const batches = useAiBatches();
@@ -33,6 +35,7 @@ export function CardBatchHost() {
       <BatchPanel
         onReview={(b) => setFeedId(b.id)}
         skipSummary={(b) => b.feature === "TRANSLATION"}
+        onUndone={() => invalidateCards(qc)}
         manual={(b) => (b.feature === "COMPLETION" ? <ManualFromBatch batch={b} /> : null)}
         acceptSafe={(b) => <SafeAcceptButton batch={b} items={items.data} schema={schema.data} />}
         report={(b: AiBatch) => (b.feature === "COMPLETION" ? <CardBatchReport batch={b} /> : null)}

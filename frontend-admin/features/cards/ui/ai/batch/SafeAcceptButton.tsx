@@ -83,8 +83,10 @@ export function SafeAcceptButton({
   // Окно держит свои числа: после записи у пакета не остаётся «готовых», и кнопка пропадает, а окно с итогом должно остаться.
   const [shown, setShown] = useState<{ cards: number; fields: number; held: number } | null>(null);
   const count = useSafeCount(batch, items, schema, brands).data;
+  // Закрытие — и после «Отменить применение»: значения карточек могли вернуться, кэш карточек — заново.
   const close = () => {
     setShown(null);
+    invalidateCards(qc);
     onChanged?.();
   };
   const dialog = shown && schema && (

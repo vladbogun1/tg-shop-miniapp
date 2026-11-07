@@ -18,16 +18,16 @@ import type { ManualBatchState } from "./use-manual-batch";
  * Всё проверено: итог пакета (как у прежнего мастера — записано, отклонено, без ответа, что сервер отбросил, со
  * ссылками) и дальше — «Закончить» или, если выбранное не влезло в один пакет, «Следующий пакет».
  */
-function Finished({ m, onClose, onNext }: { m: ManualBatchState; onClose: () => void; onNext: (() => void) | null }) {
+function Finished({ m, onClose, onNext, onOpen }: { m: ManualBatchState; onClose: () => void; onNext: (() => void) | null; onOpen: (jobId: number) => void }) {
   const left = m.unanswered.length;
   const rest = m.draft?.rest.length ?? 0;
   return (
     <div className="flex flex-col gap-3" data-testid="manual-finished">
       <p className="text-[14px] text-[var(--text)]">
-        Всё проверено.{left > 0 && ` Без ответа осталось ${left} — их можно дописать в частях.`}
+        Всё проверено. Решено по этому пакету: {m.decided}.{left > 0 && ` Без ответа осталось ${left} — их можно дописать в частях.`}
         {rest > 0 && ` Ещё ${productsLine(rest)} ждут следующего пакета.`}
       </p>
-      {m.batch && <CardBatchReport batch={m.batch.batch} unanswered={m.unanswered} />}
+      {m.batch && <CardBatchReport batch={m.batch.batch} unanswered={m.unanswered} onOpen={onOpen} />}
       <div className="flex flex-wrap gap-2">
         {left > 0 && (
           <Button variant="surface" disabled={m.busy} onClick={() => void m.goPart(m.draft?.part ?? 0)}>
@@ -82,7 +82,7 @@ export function ManualReviewStage({ m, onClose, onNext, onEdit }: { m: ManualBat
           onEdit={(row) => onEdit(row.id)}
           toolbar={<FeedReplaceToggle replace={feed.replace} setReplace={feed.setReplace} />}
           status={<PhotoSummary photos={feed.photos} />}
-          empty={<Finished m={m} onClose={onClose} onNext={onNext} />}
+          empty={<Finished m={m} onClose={onClose} onNext={onNext} onOpen={onEdit} />}
         />
       </section>
     </div>

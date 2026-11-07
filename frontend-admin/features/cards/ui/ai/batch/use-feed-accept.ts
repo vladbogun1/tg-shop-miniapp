@@ -44,7 +44,7 @@ export function useFeedAccept(a: { batchId: number | null; schema: CardSchema | 
       label: done.title,
       undo: async () => {
         await undo.mutateAsync(done.applyId);
-        a.onChanged?.();
+        changed();
       },
     };
   }
