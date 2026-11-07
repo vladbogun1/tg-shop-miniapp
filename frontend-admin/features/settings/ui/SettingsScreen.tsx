@@ -2,7 +2,8 @@
 
 /**
  * Настройки (route "/settings"): бизнес-параметры, которые раньше были константами в коде.
- *  - сгруппированный редактор, одно «Сохранить» на все правки (всё или ничего на сервере);
+ *  - сгруппированный редактор, одно «Сохранить» на все правки (всё или ничего на сервере); в «ИИ» выключатели
+ *    и списки сохраняются сразу, «Сохранить» — только у чисел (макет 07-settings);
  *    «Сбросить» у поля = вернуть значение по умолчанию (сохранённое удаляется);
  *  - «Сайт»: пересобрать ISR; «Система»: факты только для чтения.
  * Секреты и инфраструктура (.env) API не отдаёт вообще.
@@ -11,7 +12,7 @@ import { useForm } from "@shop/ui/form";
 import { motion } from "framer-motion";
 import { Bell, BellRing, Bot, Boxes, ChevronRight, Gift, LifeBuoy, ShieldAlert, SlidersHorizontal, Ticket, Truck, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PanelHeader } from "@/components/ui/PanelHeader";
 import { QueryState } from "@/components/ui/QueryState";
@@ -21,7 +22,7 @@ import { ease } from "@/lib/motion";
 import { useIsDesktop } from "@/lib/use-media";
 import { useUnsavedGuard } from "@/lib/use-unsaved-guard";
 import type { SettingItem, SettingValue } from "../api";
-import { initialDraft, isDirty, parse, toRaw, validate, type Draft, type DraftEntry } from "../model/draft";
+import { initialDraft, isDirty, parse, rebaseDraft, toRaw, validate, type Draft, type DraftEntry } from "../model/draft";
 import { useSaveSettings, useSettingsQuery } from "../queries";
 import { DevicePanel } from "./DevicePanel";
 import { SaveBar } from "./SaveBar";
@@ -49,13 +50,18 @@ export function SettingsScreen() {
   const save = useSaveSettings();
   const [query, setQuery] = useState("");
 
-  // Правки живут в форме (поле `entries`); заново заполняется, когда меняется копия сервера.
+  // Правки живут в форме (поле `entries`); новая копия сервера заменяет сохранённое, а несохранённые правки
+  // остаются (выключатель «ИИ» сохраняется сам и не должен стирать набираемый рядом лимит).
   const form = useForm<{ entries: Draft }>({ defaultValues: { entries: {} } });
   const draft = form.watch("entries") ?? EMPTY_DRAFT;
-  const { reset: resetForm } = form;
+  const { reset: resetForm, getValues } = form;
+  const serverItems = useRef<SettingItem[] | null>(null);
   useEffect(() => {
-    if (q.data) resetForm({ entries: initialDraft(q.data.items) });
-  }, [q.data, resetForm]);
+    if (!q.data) return;
+    const prev = serverItems.current;
+    serverItems.current = q.data.items;
+    resetForm({ entries: prev ? rebaseDraft(prev, getValues("entries"), q.data.items) : initialDraft(q.data.items) });
+  }, [q.data, resetForm, getValues]);
 
   const items = useMemo(() => q.data?.items ?? [], [q.data]);
   const dirtyItems = useMemo(() => items.filter((it) => isDirty(it, draft[it.key])), [items, draft]);
@@ -72,6 +78,12 @@ export function SettingsScreen() {
   const setEntry = (key: string, entry: DraftEntry) => form.setValue("entries", { ...form.getValues("entries"), [key]: entry });
   const change = (key: string, raw: string | boolean) => setEntry(key, { raw, reset: false });
   const reset = (item: SettingItem) => setEntry(item.key, { raw: toRaw(item, item.defaultValue), reset: true });
+  // «ИИ»: выключатель или список — сразу на сервер одним ключом; не сохранилось — правка остаётся в форме.
+  const changeAi = (key: string, raw: string | boolean) => {
+    change(key, raw);
+    const item = items.find((it) => it.key === key);
+    if (item && (item.type === "BOOL" || item.type === "SELECT")) save.mutate({ [key]: parse(item, raw) });
+  };
   const discard = () => {
     if (q.data) resetForm({ entries: initialDraft(q.data.items) });
   };
@@ -120,8 +132,15 @@ export function SettingsScreen() {
                       title={g.title}
                       description={g.description}
                       keys={groupItems.map((it) => it.key)}
-                      renderFields={(keys) => (
-                        <GroupFields items={groupItems.filter((it) => keys.includes(it.key))} draft={draft} onChange={change} onReset={reset} />
+                      labels={groupItems.map((it) => it.label)}
+                      renderFields={(keys, views) => (
+                        <GroupFields
+                          items={keys.flatMap((k) => groupItems.filter((it) => it.key === k))}
+                          draft={draft}
+                          views={views}
+                          onChange={changeAi}
+                          onReset={reset}
+                        />
                       )}
                     />
                   ) : (

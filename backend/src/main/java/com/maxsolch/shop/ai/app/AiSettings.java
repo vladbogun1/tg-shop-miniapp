@@ -73,7 +73,7 @@ public class AiSettings implements SettingsContribution {
             boolSetting(FEATURE_TRANSLATION, GROUP, "Переводы",
                     "Перевод названий и описаний на украинский и английский.", false),
             boolSetting(FEATURE_SUPPLY, GROUP, "Поставки",
-                    "Чтение накладной со скриншотов и PDF.", false),
+                    "Чтение накладной со скриншотов и PDF; нужны файлы на сервере (хранятся 7 дней, удаляются сами).", false),
             boolSetting(FEATURE_BATCH, GROUP, "Пакеты",
                     "Кнопка «Заполнить с ИИ (N)» в списке товаров: до 30 товаров за раз, лента быстрой проверки и «Принять безопасное».", false),
             intSetting(MONTH_LIMIT_CENTS, GROUP, "Лимит в месяц",

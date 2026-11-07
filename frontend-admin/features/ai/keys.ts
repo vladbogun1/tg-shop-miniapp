@@ -3,6 +3,7 @@ export const aiKeys = {
   summary: () => ["admin", "ai", "summary"] as const,
   estimate: (feature: string) => ["admin", "ai", "estimate", feature] as const,
   state: () => ["admin", "ai", "state"] as const,
+  settingsHistory: () => ["admin", "ai", "settings-history"] as const,
   job: (id: number) => ["admin", "ai", "job", id] as const,
   active: () => ["admin", "ai", "active"] as const,
   tasks: (tab: string, page: number) => ["admin", "ai", "tasks", tab, page] as const,

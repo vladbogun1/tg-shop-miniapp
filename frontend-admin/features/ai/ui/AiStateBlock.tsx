@@ -12,7 +12,7 @@ import { useAiState, useStopRunning } from "../queries";
 
 const WARN_AT = 80;
 
-/** «Состояние»: ключ задан, потрачено сегодня и в месяце против лимитов, сколько задач идёт, «Остановить всё». */
+/** «Состояние»: ключ задан, потрачено сегодня и в месяце против лимитов, сколько задач идёт, «Остановить идущие (N)». */
 export function AiStateBlock() {
   const q = useAiState();
   return (
@@ -41,7 +41,7 @@ function StateBody({ s }: { s: AiState }) {
           В журнале расхода есть записи без суммы ({s.lostRows}). Они учтены в лимите по запасу, пока их не разберут.
         </p>
       )}
-      <RunningRow running={s.running} />
+      <RunningRow running={s.running} today={s.day.spentMinor} />
     </div>
   );
 }
@@ -78,23 +78,27 @@ function Meter({ title, money, reserve = 0 }: { title: string; money: AiMoney; r
   );
 }
 
-function RunningRow({ running }: { running: number }) {
+/** Кнопка есть, только пока что-то идёт (макет 07-settings); подтверждение называет число задач и расход за сегодня. */
+function RunningRow({ running, today }: { running: number; today: number }) {
   const confirm = useConfirm();
   const stop = useStopRunning();
   const ask = async () => {
     const ok = await confirm({
-      title: "Остановить все задачи ИИ?",
-      message: "Идущие задачи остановятся перед следующим шагом, ожидающие в очереди будут сняты. Уже потраченное не вернётся.",
-      confirmLabel: "Остановить всё",
+      title: `Остановить задачи ИИ: ${running}?`,
+      message:
+        `Сегодня потрачено ${uahFromMinor(today)}, уже потраченное не вернётся. Идущие задачи остановятся перед следующим шагом, ` +
+        "ожидающие будут сняты, часть результата пропадёт. Админы увидят задачу отменённой.",
+      confirmLabel: "Остановить",
       danger: true,
     });
     if (ok) stop.mutate();
   };
+  if (running === 0) return <span className="text-[13px] text-[var(--text-muted)]">Сейчас задач нет</span>;
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <span className="text-[13px] text-[var(--text-muted)]">{running === 0 ? "Сейчас задач нет" : `Задач в работе: ${running}`}</span>
+      <span className="text-[13px] text-[var(--text-muted)]">Задач в работе: {running}</span>
       <Button variant="danger" size="sm" icon={<OctagonX className="h-4 w-4" />} loading={stop.isPending} onClick={() => void ask()}>
-        Остановить всё
+        Остановить идущие ({running})
       </Button>
     </div>
   );

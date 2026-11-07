@@ -134,3 +134,12 @@ export async function postAs(token: string, path: string): Promise<{ status: num
     await ctx.dispose();
   }
 }
+
+export async function putAs(token: string, path: string, data: unknown): Promise<{ status: number }> {
+  const ctx = await request.newContext({ baseURL: API_URL, extraHTTPHeaders: { Authorization: `Bearer ${token}` } });
+  try {
+    return { status: (await ctx.put(path, { data })).status() };
+  } finally {
+    await ctx.dispose();
+  }
+}

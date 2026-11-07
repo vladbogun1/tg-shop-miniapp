@@ -17,6 +17,11 @@ export function useAiState() {
   return useQuery({ queryKey: aiKeys.state(), queryFn: aiApi.state, staleTime: QUERY_PRESETS.live.staleTime, retry: false });
 }
 
+/** История изменений настроек «ИИ» (панель монтирует её, только когда раскрыли «Историю изменений»). */
+export function useAiSettingsHistory() {
+  return useQuery({ queryKey: aiKeys.settingsHistory(), queryFn: aiApi.settingsHistory, staleTime: QUERY_PRESETS.list.staleTime });
+}
+
 /** Одна проба поиска: результат нужен экрану, поэтому мутация, а не запрос. */
 export function useSearchTest() {
   const qc = useQueryClient();

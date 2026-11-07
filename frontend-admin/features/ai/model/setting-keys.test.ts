@@ -11,4 +11,8 @@ describe("ключи настроек ИИ", () => {
     expect(unlistedKeys(["ai.enabled", "ai.newThing"])).toEqual(["ai.newThing"]);
     expect(unlistedKeys([...blockKeys("limits")])).toEqual([]);
   });
+
+  it("все 16 ключей бэкенда (AiSettings) разложены по блокам", () => {
+    expect(Object.values(AI_BLOCKS).flat()).toHaveLength(16);
+  });
 });

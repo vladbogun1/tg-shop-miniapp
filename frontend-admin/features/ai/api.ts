@@ -19,6 +19,8 @@ export type AiMetricsSummary = Schemas["AiSummary"];
 export type AiMetricsRow = Schemas["AiRow"];
 export type AiMetricsSeries = Schemas["Series"];
 export type AiMetricsGroup = "day" | "feature" | "provider";
+/** Запись журнала админки о сохранении настроек: «details» — ««Подпись»: было → стало» через «; ». */
+export type AiSettingsAudit = Schemas["AuditEntryDto"];
 
 /** Запрос карточной задачи: товар, версия карточки и промпт собирает фронт (`features/cards`). */
 export type CardJobStart = Required<Schemas["CatalogCardAiJobsStart"]>;
@@ -38,6 +40,8 @@ export const aiApi = {
   summary: () => apiGet<AiSummary>("/api/admin/ai/summary"),
   searchTest: (query: string) => apiPost<AiSearchFound>("/api/admin/ai/search-test", { query }),
   stopRunning: () => apiPost<{ stopped: number }>("/api/admin/ai/stop-running"),
+  /** Последние сохранения настроек из журнала админки (все группы: «ИИ» отбирает панель по подписям полей). */
+  settingsHistory: () => apiGet<AiSettingsAudit[]>("/api/admin/audit?action=SETTINGS_UPDATE&entityType=SETTINGS&size=200"),
 
   /** `idemKey` — один на нажатие кнопки: повтор того же запроса вернёт ту же задачу, а не вторую. */
   start: (body: AiJobStart, idemKey: string) => apiPost<AiJob>("/api/admin/ai/jobs", body, { "Idempotency-Key": idemKey }),

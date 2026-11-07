@@ -29,6 +29,7 @@ export type {
 export { aiKeys } from "./keys";
 export { useAiEstimate, useAiJob, useAiJobs, useAiState, useAiSummary, useCancelJob, useJobOutcome, useRetryJob } from "./queries";
 export { AI_GROUP } from "./model/setting-keys";
+export type { SettingView } from "./model/setting-views";
 export { canCancel, canRetry, isActive, isDisappointing, pollInterval, statusLabel, statusTone } from "./model/job-state";
 export { uahFromMinor, usdFromCents, usdFromMicro } from "./model/format";
 export {
