@@ -25,10 +25,10 @@ services:
       timeout: 5s
       retries: 60
 
-  # S3 for AI files (stage E6): the image already on the host (the minio images are no longer published).
+  # S3 for AI files (stage E6). quay.io/minio/minio and minio/minio are no longer pullable without a login, so a
+  # fresh machine could not start the stack: the community build of the same server, pinned by digest, as in CI.
   minio:
-    # same image as the main compose (RELEASE.2025-09-07T16-13-09Z), pinned by digest
-    image: quay.io/minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372
     pull_policy: missing
     command: server /data
     environment:
