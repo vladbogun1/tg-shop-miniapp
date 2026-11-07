@@ -1,0 +1,222 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Единый паттерн ИИ-запуска</title><style>
+:root{--bg:#121212;--bg2:#161616;--sf:#1b1b1b;--sf2:#222;--sf3:#2a2a2d;--ln:#2a2a2a;--ln2:#3a3a3a;--tx:#f4f4f5;--mu:#a1a1aa;--fa:#8a8a93;--ac:#ff6600;--ach:#ff8533;--acs:rgba(255,102,0,.13);--ok:#22c55e;--dg:#ef4444;--wr:#eab308;--bl:#3b82f6;--pu:#a855f7;--cy:#06b6d4}
+*{box-sizing:border-box;margin:0}
+html{background:#0a0a0a}
+body{font:14px/1.45 system-ui,"Segoe UI",Roboto,sans-serif;color:var(--tx);padding:24px 28px 80px;max-width:2100px}
+h1{font:700 22px "Exo 2",Impact,sans-serif;text-transform:uppercase;letter-spacing:.06em}
+h2{font:700 17px "Exo 2",Impact,sans-serif;text-transform:uppercase;letter-spacing:.05em;margin:0}
+.intro{color:var(--mu);max-width:900px;margin:6px 0 4px}
+.nav{margin-bottom:14px;font-size:13px}.nav a{color:var(--ach)}
+.var{margin-top:34px;padding-top:18px;border-top:1px dashed #333}
+.var>.cap{display:flex;gap:12px;align-items:center;margin-bottom:14px}
+.var .L{flex:none;width:34px;height:34px;border-radius:8px;background:var(--ac);color:#111;font:800 18px "Exo 2",sans-serif;display:grid;place-items:center}
+.var .idea{color:var(--tx);font-size:14px}.var .idea b{color:var(--ach)}
+.row-f{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.fig{display:flex;flex-direction:column;gap:6px}.fig>small{color:var(--fa);font-size:12px}
+.scr{position:relative;overflow:hidden;background:var(--bg);border:1px solid #3a3a3a;border-radius:16px;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+.phone{width:390px;height:800px}
+.tab{width:820px;height:1000px;zoom:.7}
+.lap{width:1024px;height:720px;zoom:.72}
+.desk{width:1440px;height:860px;zoom:.6}
+.big{width:1920px;height:1000px;zoom:.45}
+.scr.dsk{flex-direction:row}
+.sbar{flex:none;height:26px;display:flex;justify-content:space-between;align-items:center;padding:0 18px;font-size:11px;color:var(--mu)}
+.ic{flex:none;display:block}
+/* controls */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:0 16px;border-radius:9px;border:1px solid var(--ln2);background:var(--sf2);color:var(--tx);font:600 14px system-ui;white-space:nowrap}
+.btn.acc{background:var(--ac);border-color:var(--ac);color:#0e0e10}
+.btn.gh{background:transparent;border-color:transparent;color:var(--mu)}
+.btn.dg{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.45);color:#fca5a5}
+.btn.dgs{background:var(--dg);border-color:var(--dg);color:#fff}
+.btn.sm{min-height:32px;padding:0 11px;font-size:13px}.btn.lg{min-height:48px;font-size:15px;width:100%}.btn.w{width:100%}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 12px;border-radius:99px;border:1px solid var(--ln2);background:var(--sf);color:var(--mu);font-size:13px;white-space:nowrap}
+.chip.on{background:var(--acs);border-color:rgba(255,102,0,.5);color:var(--ach)}
+.chip b{color:var(--tx)}
+.bdg{display:inline-flex;align-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--ac);color:#111;font:700 11px system-ui;justify-content:center}
+.bdg.mu{background:var(--sf3);color:var(--mu)}
+.tg{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:6px;font-size:11.5px;font-weight:600;background:var(--sf3);color:var(--mu)}
+.tg.ok{background:rgba(34,197,94,.14);color:#86efac}.tg.dg{background:rgba(239,68,68,.15);color:#fca5a5}.tg.wr{background:rgba(234,179,8,.15);color:#fde047}.tg.ac{background:var(--acs);color:var(--ach)}.tg.bl{background:rgba(59,130,246,.15);color:#93c5fd}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ac);display:inline-block}
+.dot.ok{background:var(--ok)}.dot.dg{background:var(--dg)}.dot.wr{background:var(--wr)}
+.inp{display:flex;align-items:center;gap:8px;height:44px;padding:0 12px;border-radius:9px;background:var(--sf2);border:1px solid var(--ln2);color:var(--tx)}
+.inp.f{border-color:var(--ac);box-shadow:0 0 0 3px rgba(255,102,0,.2)}.inp.er{border-color:var(--dg)}
+.inp .ph{color:var(--fa)}.inp .g{flex:1}
+.lbl{font-size:12px;color:var(--mu);margin:0 0 5px;display:block}
+.fld{margin-bottom:12px}
+.card{background:var(--sf);border:1px solid var(--ln);border-radius:12px;padding:14px}
+.mu{color:var(--mu)}.fa{color:var(--fa)}.ac{color:var(--ach)}.sm{font-size:12px}.xs{font-size:11px}.b{font-weight:700}.mono{font-family:ui-monospace,Consolas,monospace}
+.ttl{font:700 16px "Exo 2",sans-serif;text-transform:uppercase;letter-spacing:.04em}
+.up{font:600 11px "Exo 2",sans-serif;text-transform:uppercase;letter-spacing:.14em;color:var(--fa)}
+.fx{display:flex;align-items:center;gap:10px}.fx1{flex:1;min-width:0}.col{display:flex;flex-direction:column}.gap4{gap:4px}.gap8{gap:8px}.gap12{gap:12px}.jb{justify-content:space-between}.wrap{flex-wrap:wrap}
+.tr{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sep{height:1px;background:var(--ln);margin:6px 0}
+.av{flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font:700 13px "Exo 2",sans-serif;color:#111;background:var(--ac)}
+.av.b2{background:#60a5fa}.av.b3{background:#a78bfa}.av.b4{background:#4ade80}.av.b5{background:#f472b6}.av.s{width:28px;height:28px;font-size:11px}.av.l{width:52px;height:52px;font-size:18px}
+.circ{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:#fff}
+.circ.c1{background:#ff6600}.circ.c2{background:#3b82f6}.circ.c3{background:#22c55e}.circ.c4{background:#ef4444}.circ.c5{background:#a855f7}.circ.c6{background:#eab308;color:#111}.circ.c7{background:#06b6d4}.circ.c8{background:#6b7280}.circ.c1,.circ.c6{color:#111}
+.cell{display:flex;align-items:center;gap:12px;padding:10px 14px;min-height:64px;border-bottom:1px solid var(--ln)}
+.cell .t{font-weight:600}.cell .p{color:var(--mu);font-size:13px}
+.ub{position:relative;display:inline-flex}.ub .bdg{position:absolute;top:-7px;right:-9px;min-width:17px;height:17px;font-size:10px;padding:0 4px}
+/* chrome */
+.logo{font:800 15px "Exo 2",sans-serif;letter-spacing:.14em;text-transform:uppercase}.logo i{font-style:normal;color:var(--ac)}
+.hdr{flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;height:52px;border-bottom:1px solid var(--ln);background:rgba(18,18,18,.92)}
+.hdr .h{font:700 16px "Exo 2",sans-serif;text-transform:uppercase;letter-spacing:.05em}
+.ib{flex:none;width:44px;height:44px;border-radius:10px;display:grid;place-items:center;color:var(--mu)}
+.ib.s{width:36px;height:36px}
+.body{flex:1;min-height:0;overflow:hidden;position:relative}
+.tabbar{flex:none;height:64px;display:grid;grid-template-columns:repeat(5,1fr);background:var(--sf);border-top:1px solid var(--ln);padding-bottom:4px}
+.tabbar a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font:600 10.5px "Exo 2",sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--fa)}
+.tabbar a.on{color:var(--ach)}
+.side{flex:none;width:248px;background:var(--sf);border-right:1px solid var(--ln);display:flex;flex-direction:column;padding:12px 10px;gap:2px}
+.side.rail{width:76px;align-items:center;padding:12px 8px}
+.ni{display:flex;align-items:center;gap:11px;height:38px;padding:0 10px;border-radius:9px;color:var(--mu);font-size:14px;position:relative}
+.ni.on{background:var(--acs);color:var(--ach)}.ni .bdg{margin-left:auto}
+.ni.rl{width:56px;height:52px;flex-direction:column;justify-content:center;gap:3px;font-size:10px;padding:0}
+.sec{display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;margin-top:6px;color:var(--fa);font:600 11.5px "Exo 2",sans-serif;letter-spacing:.14em;text-transform:uppercase}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.pad{padding:18px 22px}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.62);z-index:20}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:30;background:var(--sf);border-radius:18px 18px 0 0;border-top:1px solid var(--ln2);display:flex;flex-direction:column}
+.handle{width:40px;height:4px;border-radius:4px;background:#4a4a4a;margin:8px auto 4px;flex:none}
+.modal{position:absolute;z-index:30;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--sf);border:1px solid var(--ln2);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.pop{position:absolute;z-index:30;background:var(--sf2);border:1px solid var(--ln2);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.55);padding:6px}
+.pi{display:flex;align-items:center;gap:10px;min-height:38px;padding:0 10px;border-radius:8px;color:var(--tx);font-size:13.5px}
+.pi.dg{color:#fca5a5}.pi.on{background:var(--acs)}
+.kbd{font:600 11px ui-monospace,Consolas,monospace;border:1px solid var(--ln2);border-bottom-width:2px;border-radius:5px;padding:1px 6px;color:var(--mu);background:var(--sf)}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{text-align:left;font:600 11px "Exo 2",sans-serif;text-transform:uppercase;letter-spacing:.12em;color:var(--fa);padding:10px 12px;background:var(--bg2);border-bottom:1px solid var(--ln)}
+.tbl td{padding:11px 12px;border-bottom:1px solid var(--ln);vertical-align:middle}
+.sw{width:38px;height:22px;border-radius:99px;background:var(--sf3);position:relative;flex:none}.sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#9a9a9a}
+.sw.on{background:var(--ac)}.sw.on::after{left:19px;background:#111}
+.cd{display:flex;gap:7px}.cd span{width:44px;height:52px;border-radius:9px;background:var(--sf2);border:1px solid var(--ln2);display:grid;place-items:center;font:700 22px ui-monospace,Consolas,monospace}.cd span.a{border-color:var(--ac);box-shadow:0 0 0 3px rgba(255,102,0,.2)}
+.sk{height:14px;border-radius:5px;background:var(--sf3)}.sk.w60{width:60%}.sk.w40{width:40%}
+.note{font-size:12.5px;color:var(--mu);background:var(--sf);border:1px dashed #444;border-radius:10px;padding:10px 12px;max-width:560px}
+.sticky{flex:none;padding:10px 14px;border-top:1px solid var(--ln);background:var(--sf)}
+
+/* ===== ИИ-макеты: дополнения к токенам admin-redesign ===== */
+.phone{width:375px;height:780px}
+.dk{width:1280px;height:820px;zoom:.78}
+.dk.tall{height:1000px}
+.tablet{width:768px;height:900px;zoom:.8}
+p.lead{color:var(--mu);max-width:940px;margin:8px 0}
+.pill{display:inline-block;font:600 11px "Exo 2",sans-serif;letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border-radius:6px;background:var(--sf3);color:var(--mu)}
+.pill.ow{background:rgba(168,85,247,.16);color:#d8b4fe}.pill.ad{background:rgba(59,130,246,.15);color:#93c5fd}.pill.e2{background:rgba(234,179,8,.15);color:#fde047}
+/* вход ИИ */
+.btn.ai{gap:9px}
+.hint{font-size:12px;color:var(--fa);text-align:center;margin-top:6px}
+.mlink{display:inline-flex;align-items:center;gap:7px;color:var(--mu);font-size:13.5px;min-height:44px;padding:0 6px;text-decoration:underline;text-decoration-color:#555;text-underline-offset:3px}
+.mlink.acc{color:#111;background:var(--ac);border-radius:9px;text-decoration:none;font-weight:600;padding:0 14px}
+.btn.dis{opacity:.45}
+.aichip{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 11px;border-radius:99px;border:1px solid rgba(255,102,0,.45);background:var(--acs);color:var(--ach);font:700 13px system-ui;flex:none}
+.aichip.idle{border-color:var(--ln2);background:var(--sf);color:var(--mu)}
+.aichip.warn{border-color:rgba(234,179,8,.5);background:rgba(234,179,8,.12);color:#fde047}
+.aichip.off{border-color:var(--ln2);background:var(--sf);color:var(--fa)}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--ac);animation:pl 1.4s ease-in-out infinite}
+@keyframes pl{50%{opacity:.25;transform:scale(.7)}}
+@media (prefers-reduced-motion:reduce){.pulse{animation:none}.sk{animation:none}}
+/* баннеры */
+.bn{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border-radius:11px;border:1px solid var(--ln2);background:var(--sf2);font-size:13px;color:var(--tx)}
+.bn .ic{margin-top:1px;flex:none}
+.bn.wr{background:rgba(234,179,8,.1);border-color:rgba(234,179,8,.4)}.bn.wr .ic{color:var(--wr)}
+.bn.dg{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.4)}.bn.dg .ic{color:#fca5a5}
+.bn.bl{background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.4)}.bn.bl .ic{color:#93c5fd}
+.bn.ok{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.4)}.bn.ok .ic{color:#86efac}
+.bn .mu{font-size:12.5px;margin-top:2px;display:block}
+/* шаги */
+.stp{display:flex;flex-direction:column}
+.st{display:flex;gap:11px;align-items:flex-start;padding:7px 0;color:var(--fa);font-size:13.5px}
+.st .n{flex:none;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--ln2);display:grid;place-items:center;font:700 11px system-ui;background:var(--sf)}
+.st.done{color:var(--mu)}.st.done .n{background:var(--ok);border-color:var(--ok);color:#111}
+.st.now{color:var(--tx);font-weight:600}.st.now .n{border-color:var(--ac);color:var(--ach);box-shadow:0 0 0 3px rgba(255,102,0,.18)}
+.st small{display:block;font-weight:400;color:var(--fa);font-size:12px}
+.prog{height:6px;border-radius:99px;background:var(--sf3);overflow:hidden}.prog>i{display:block;height:100%;background:var(--ac);border-radius:99px}
+.prog.ok>i{background:var(--ok)}.prog.wr>i{background:var(--wr)}.prog.dg>i{background:var(--dg)}
+/* ревью */
+.fr{display:flex;gap:11px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--ln)}
+.fr:last-child{border-bottom:0}
+.cb{flex:none;width:22px;height:22px;border-radius:6px;border:1.5px solid var(--ln2);display:grid;place-items:center;margin-top:1px;background:var(--sf2);color:#111}
+.cb.on{background:var(--ac);border-color:var(--ac)}.cb.lk{opacity:.5}
+.fr .nm{font-weight:600;font-size:14px}.fr .df{font-size:13px;color:var(--mu);margin-top:2px}
+.fr .df b{color:var(--tx);font-weight:600}.fr .df s{color:var(--fa)}
+.fr .mt{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;align-items:center}
+.gh2{font:600 11px "Exo 2",sans-serif;text-transform:uppercase;letter-spacing:.13em;color:var(--fa);padding:12px 0 2px;display:flex;justify-content:space-between;align-items:center}
+.cf{font:700 11px ui-monospace,Consolas,monospace;padding:1px 6px;border-radius:5px}
+.cf.g{background:rgba(34,197,94,.14);color:#86efac}.cf.y{background:rgba(234,179,8,.15);color:#fde047}.cf.r{background:rgba(239,68,68,.15);color:#fca5a5}
+.src{color:#93c5fd;font-size:12px;text-decoration:underline;text-underline-offset:2px}
+.ph{background:repeating-linear-gradient(45deg,#26262a,#26262a 6px,#2d2d31 6px,#2d2d31 12px);border-radius:8px;display:grid;place-items:center;color:var(--fa);font-size:10px;flex:none}
+.ta{background:var(--sf2);border:1px solid var(--ln2);border-radius:9px;padding:10px 12px;font:12.5px/1.5 ui-monospace,Consolas,monospace;color:#c9c9d0;overflow:hidden}
+.ta.f{border-color:var(--ac)}
+/* сегменты и вкладки */
+.seg{display:flex;background:var(--sf2);border:1px solid var(--ln2);border-radius:10px;padding:3px;gap:2px}
+.seg a{flex:1;min-height:36px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:8px;font-size:13px;color:var(--mu);white-space:nowrap;padding:0 8px}
+.seg a.on{background:var(--ac);color:#111;font-weight:700}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--ln);overflow:hidden}
+.tabs a{display:flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;color:var(--mu);font-size:13.5px;border-bottom:2px solid transparent;white-space:nowrap}
+.tabs a.on{color:var(--ach);border-color:var(--ac);font-weight:600}
+/* данные */
+.kpi{background:var(--sf);border:1px solid var(--ln);border-radius:12px;padding:12px 14px;min-width:0}
+.kpi .l{font-size:12px;color:var(--mu)}.kpi .v{font:700 24px "Exo 2",sans-serif;margin:2px 0}.kpi .s{font-size:12px;color:var(--fa)}
+.kpi .v small{font-size:13px;color:var(--mu);font-weight:600}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.panel{background:var(--sf);border:1px solid var(--ln);border-radius:12px;min-width:0}
+.panel>.ph2{padding:12px 14px;border-bottom:1px solid var(--ln);display:flex;align-items:center;gap:8px;justify-content:space-between}
+.panel>.ph2 b{font:700 13px "Exo 2",sans-serif;text-transform:uppercase;letter-spacing:.08em}
+.panel>.pb{padding:12px 14px}
+.hb{display:flex;align-items:center;gap:10px;font-size:13px;margin:7px 0}.hb .lb{width:96px;flex:none;color:var(--mu)}.hb .tk{flex:1;height:10px;background:var(--sf3);border-radius:5px;overflow:hidden}.hb .tk i{display:block;height:100%;background:var(--ac)}.hb .vl{width:74px;text-align:right;flex:none;font-variant-numeric:tabular-nums}
+.chart{display:flex;align-items:flex-end;gap:4px;height:120px;padding-top:6px}
+.chart i{flex:1;background:var(--ac);border-radius:3px 3px 0 0;min-height:2px}
+.chart i.e{background:linear-gradient(var(--dg) var(--eh,10%),var(--ac) var(--eh,10%))}
+.axis{display:flex;justify-content:space-between;font-size:11px;color:var(--fa);margin-top:4px}
+/* задачи */
+.job{display:flex;gap:11px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--ln);min-height:68px}
+.job .jt{font-weight:600;font-size:14px}.job .js{font-size:12.5px;color:var(--mu);margin-top:2px}
+.fi{flex:none;width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:var(--sf3);color:var(--ach)}
+.fi.c2{color:#93c5fd}.fi.c3{color:#86efac}.fi.c4{color:#d8b4fe}
+.sk{animation:sh 1.4s ease-in-out infinite}
+@keyframes sh{50%{opacity:.45}}
+.toast{position:absolute;left:12px;right:12px;z-index:25;background:#2a2a2d;border:1px solid var(--ln2);border-radius:12px;padding:11px 13px;display:flex;gap:10px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.5);font-size:13.5px}
+.opt{display:flex;gap:11px;align-items:flex-start;padding:11px 12px;border:1px solid var(--ln2);border-radius:11px;background:var(--sf2)}
+.opt.on{border-color:var(--ac);background:var(--acs)}
+.rd{flex:none;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--ln2);margin-top:1px;display:grid;place-items:center}.opt.on .rd{border-color:var(--ac)}.opt.on .rd::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--ac)}
+.setrow{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--ln);min-height:56px}
+.setrow:last-child{border-bottom:0}.setrow .st1{font-size:14px}.setrow .st2{font-size:12.5px;color:var(--mu);margin-top:2px}
+.num{display:flex;align-items:center;gap:6px;height:40px;padding:0 12px;border-radius:9px;background:var(--sf2);border:1px solid var(--ln2);min-width:104px;justify-content:flex-end;font-variant-numeric:tabular-nums;flex:none}
+.num span{color:var(--fa);font-size:12px}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.flow .fs{padding:8px 12px;border-radius:10px;border:1px solid var(--ln2);background:var(--sf);font-size:13px}
+.flow .ar{color:var(--fa)}
+.mx{width:100%;border-collapse:collapse;font-size:13px;max-width:1100px}.mx th,.mx td{border:1px solid var(--ln);padding:9px 11px;text-align:left;vertical-align:top}.mx th{background:var(--bg2);font:600 11px "Exo 2",sans-serif;text-transform:uppercase;letter-spacing:.1em;color:var(--fa)}
+.drawer{position:absolute;right:0;top:0;bottom:0;width:440px;background:var(--sf);border-left:1px solid var(--ln2);z-index:30;display:flex;flex-direction:column;box-shadow:-20px 0 50px rgba(0,0,0,.5)}
+.scroll{overflow:hidden;flex:1;min-height:0}
+.xa{display:flex;gap:8px}.xa>*{flex:1}
+.sbar{height:24px}
+.stk{position:absolute;left:0;right:0;bottom:0;z-index:15}
+
+/* ===== v2 (финал): правки после критики ===== */
+.phone{width:375px;height:780px}.phone.n{width:320px;height:700px}
+.btn{min-height:44px}.btn.sm{min-height:44px}
+.chip{min-height:36px}.seg a{min-height:44px}
+.tg{height:24px;font-size:12px}
+:focus-visible{outline:2px solid var(--ach);outline-offset:2px}
+.fa{color:#9a9aa3}
+.fr{min-height:56px;align-items:center;padding:8px 0}
+.fr .df{font-size:14px}.fr .why{font-size:13px;color:#fde047;margin-top:4px}.fr .why.r{color:#fca5a5}
+.fr .dtl{font-size:13px;color:var(--mu);margin-top:4px}
+.cb{width:24px;height:24px;margin-top:0}
+.cv{flex:none;color:var(--mu)}
+.cfd{flex:none;width:10px;height:10px;border-radius:50%;background:var(--ok)}.cfd.y{background:var(--wr)}.cfd.r{background:var(--dg)}
+.grp{display:flex;align-items:center;gap:8px;min-height:48px;padding:0 2px;font:600 12px "Exo 2",sans-serif;text-transform:uppercase;letter-spacing:.1em;color:var(--mu);border-top:1px solid var(--ln)}
+.grp .bdg{margin-left:auto}
+.ft2{flex:none;padding:10px 14px 14px;border-top:1px solid var(--ln);background:var(--sf);display:flex;gap:8px}
+.ft2 .btn.acc{flex:1;min-height:48px;font-size:15px}.ft2 .btn.sq{width:48px;min-height:48px;padding:0}
+.lk2{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--mu)}
+.blk{background:var(--sf2);border:1px dashed var(--ln2);border-radius:10px;padding:10px 12px;font-size:13px}
+.ver{font-size:12px;color:var(--fa);margin:6px 0 0}
+.tag{display:inline-block;font:600 11px "Exo 2",sans-serif;letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border-radius:6px;background:var(--sf3);color:var(--mu)}
+.tag.r{background:rgba(234,179,8,.15);color:#fde047}
+.kpi.big4 .v{font-size:28px}
+.det{border:1px solid var(--ln);border-radius:12px;overflow:hidden}
+.det>summary{display:flex;align-items:center;gap:8px;min-height:48px;padding:0 14px;color:var(--mu);font-size:14px;cursor:pointer;list-style:none}
+.hdr .logo{flex:none}
+.hdr .h{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+</style></head><body><div class="nav"><a href="index.html">‹ Все макеты ИИ</a> · <a href="../04-design-final.md">Спецификация 04-design-final.md</a></div><h1>Единый паттерн ИИ-запуска</h1><p class="intro">Вход, недоступность одним компонентом, чип в шапке на 320 и 375, подтверждение для админа и владельца, двойной запуск. Один паттерн на все функции.</p><div class="var"><div class="cap"><div class="L">A</div><div class="idea">Кнопка-вход: <b>одна главная кнопка</b>, под ней оценка, рядом ссылка ручного пути (44 px). Режима выбора при старте нет.</div></div><div class="row-f"><div class="card" style="width:340px;display:flex;flex-direction:column;gap:8px"><div class="up">Телефон 375 · владелец</div><div class="btn acc ai lg" style=""><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>Заполнить с ИИ</div><div class="hint">≈ 0,2 ₴ · около минуты</div><div style="text-align:center"><span class="mlink"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>Через ChatGPT вручную</span></div></div><div class="card" style="width:340px;display:flex;flex-direction:column;gap:8px"><div class="up">Телефон · админ (денег нет)</div><div class="btn acc ai lg" style=""><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>Заполнить с ИИ</div><div class="hint">около минуты</div><div style="text-align:center"><span class="mlink"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>Через ChatGPT вручную</span></div></div><div class="card" style="width:300px;display:flex;flex-direction:column;gap:8px"><div class="up">Телефон 320</div><div class="btn acc ai lg" style=""><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>Заполнить с ИИ</div><div class="hint">около минуты</div><div style="text-align:center"><span class="mlink"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>Через ChatGPT вручную</span></div></div><div class="card" style="width:560px;display:flex;flex-direction:column;gap:8px"><div class="up">ПК · футер окна</div><div class="fx"><div class="btn acc ai" style="min-width:220px"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>Заполнить с ИИ</div><span class="fa sm">≈ 0,2 ₴ · около минуты</span><span class="fx1"></span><span class="mlink"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>Через ChatGPT вручную</span></div></div><div class="card" style="width:560px;display:flex;flex-direction:column;gap:8px"><div class="up">Панель выбора в списке</div><div class="fx wrap"><b>Выбрано 12</b><span class="fx1"></span><div class="btn acc ai sm"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>Заполнить с ИИ (12)</div><div class="btn sm" aria-label="Ещё" style="min-width:44px"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></div></div><div class="hint">12 товаров · около 8 минут</div></div></div></div><div class="var"><div class="cap"><div class="L">B</div><div class="idea"><b>Недоступность — один компонент:</b> причина, когда продолжится, ручной путь становится акцентным. ИИ-кнопки нет, мёртвой серой кнопки без причины нет.</div></div><div class="row-f"><div class="card" style="width:340px;display:flex;flex-direction:column;gap:10px"><div class="bn wr"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg><div>Лимит ИИ на сегодня исчерпан<span class="mu">Продолжится завтра в 00:00. Осталось примерно 0 карточек.</span></div></div><div class="btn lg dis"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>Заполнить с ИИ — скрыта</div><span class="mlink acc" style="justify-content:center;min-height:48px"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>Скопировать промпт</span></div><div class="card" style="width:340px;display:flex;flex-direction:column;gap:10px"><div class="bn "><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.5"/></svg><div>ИИ отключён владельцем<span class="mu">Можно через ChatGPT вручную.</span></div></div><div class="btn lg dis"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>Заполнить с ИИ — скрыта</div><span class="mlink acc" style="justify-content:center;min-height:48px"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>Скопировать промпт</span></div><div class="card" style="width:340px;display:flex;flex-direction:column;gap:10px"><div class="bn wr"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg><div>Нет связи с сервисом ИИ<span class="mu">Попробуйте через минуту или вручную.</span></div></div><div class="btn lg dis"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>Заполнить с ИИ — скрыта</div><span class="mlink acc" style="justify-content:center;min-height:48px"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>Скопировать промпт</span></div><div class="card" style="width:340px;display:flex;flex-direction:column;gap:10px"><div class="bn wr"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg><div>Поиск сейчас недоступен<span class="mu">Подождать: задача встанет в очередь. Или вручную.</span></div></div><div class="btn lg dis"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>Заполнить с ИИ — скрыта</div><span class="mlink acc" style="justify-content:center;min-height:48px"><svg class="ic" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>Скопировать промпт</span></div><div class="card" style="width:340px;display:flex;flex-direction:column;gap:10px"><div class="bn dg"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg><div>Ключ ИИ не принят провайдером<span class="mu">Проверьте ключ в .env сервера.</span></div></div><div class="xa"><div class="btn">Проверить сейчас</div><div class="btn">Настройки ИИ</div></div><div class="hint">Так видит владелец. Админ видит «Нет связи с сервисом ИИ».</div></div></div></div><div class="var"><div class="cap"><div class="L">C</div><div class="idea"><b>Чип ✦ виден всегда</b>, во всех состояниях, на 320 и 375. Число из одного запроса. Название экрана обрезается, чип не пропадает.</div></div><div class="row-f"><div class="fig"><div class="scr" style="width:320px;height:60px"><div class="hdr"><span class="logo">Chi<i>S</i></span><div class="h fx1 tr">Каталог</div><span class="aichip" role="img" aria-label="ИИ: идёт 2 задачи"><span class="pulse"></span><svg class="ic" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>2</span><span class="ib s"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 21h4"/></svg></span></div></div><small>Идёт 2 · 320</small></div><div class="fig"><div class="scr" style="width:320px;height:60px"><div class="hdr"><span class="logo">Chi<i>S</i></span><div class="h fx1 tr">Каталог</div><span class="aichip" role="img" aria-label="ИИ: 3 ждут проверки"><svg class="ic" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>3</span><span class="ib s"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 21h4"/></svg></span></div></div><small>Ждёт проверки 3 · 320</small></div><div class="fig"><div class="scr" style="width:320px;height:60px"><div class="hdr"><span class="logo">Chi<i>S</i></span><div class="h fx1 tr">Каталог</div><span class="aichip warn" role="img" aria-label="ИИ: есть проблемы"><svg class="ic" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg></span><span class="ib s"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 21h4"/></svg></span></div></div><small>Проблема · 320</small></div><div class="fig"><div class="scr" style="width:320px;height:60px"><div class="hdr"><span class="logo">Chi<i>S</i></span><div class="h fx1 tr">Каталог</div><span class="aichip off" role="img" aria-label="ИИ выключен"><svg class="ic" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>выкл</span><span class="ib s"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 21h4"/></svg></span></div></div><small>Выключен · 320</small></div><div class="fig"><div class="scr" style="width:320px;height:60px"><div class="hdr"><span class="logo">Chi<i>S</i></span><div class="h fx1 tr">Каталог</div><span class="aichip idle" role="img" aria-label="ИИ: задач нет"><svg class="ic" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg></span><span class="ib s"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 21h4"/></svg></span></div></div><small>Задач нет · 320</small></div><div class="fig"><div class="scr" style="width:375px;height:60px"><div class="hdr"><span class="logo">Chi<i>S</i></span><div class="h fx1 tr">Карточка Lamzu Maya X 8K</div><span class="aichip" role="img" aria-label="ИИ: идёт 2 задачи"><span class="pulse"></span><svg class="ic" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>2</span><span class="ib s"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 21h4"/></svg></span></div></div><small>375 · длинное название</small></div></div></div><div class="var"><div class="cap"><div class="L">D</div><div class="idea"><b>Подтверждение.</b> Админу штуки и минуты, без рублей; максимум 30 блокирует запуск. Владельцу диапазон, «хватит ли», сценарий Serper.</div></div><div class="row-f"><div class="scr phone n" aria-label="админ, лимит пакета"><div class="sbar"><span>9:41</span><span>●●● ▮</span></div><div class="body" style="background:var(--bg2)"><div class="dim"></div><div class="sheet" role="dialog" style=""><div class="handle"></div><div style="padding:6px 16px 16px" class="col gap12"><div class="ttl">Запустить пакет?</div><div class="card"><div class="b">38 товаров</div><div class="mu sm">около 25 минут</div></div><div class="bn dg"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg><div>Максимум 30 за раз<span class="mu">Выберите меньше или разбейте на два пакета.</span></div></div><div class="btn lg dis">Запустить</div><div class="btn w">Выбрать меньше</div></div></div></div></div><div class="scr phone n"><div class="sbar"><span>9:41</span><span>●●● ▮</span></div><div class="body" style="background:var(--bg2)"><div class="dim"></div><div class="sheet" role="dialog" style=""><div class="handle"></div><div style="padding:6px 16px 16px" class="col gap12"><div class="ttl">Запустить пакет?</div><div class="card"><div class="b">24 товара · около 16 минут</div><div class="mu sm">2–3 ₴ (обычно 2,2 ₴)</div><div class="sep"></div><div class="sm">Лимит дня: хватит, останется 31 ₴</div><div class="sm fa">Если поиск уйдёт на Serper: до 6 ₴</div></div><div class="sm mu">Можно закрыть экран: задача идёт на сервере.</div><div class="btn acc lg" style=""><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>Запустить</div><div class="btn w">Отмена</div></div></div></div></div></div></div><div class="var"><div class="cap"><div class="L">E</div><div class="idea"><b>Уже идёт</b>: вместо второго платного запуска два действия.</div></div><div class="row-f"><div class="card" style="width:340px;display:flex;flex-direction:column;gap:8px"><div class="up">Двойной запуск</div><div class="bn bl"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.5"/></svg><div>Уже идёт: запустила Анна<span class="mu">1 мин назад, шаг «Читаю страницы»</span></div></div><div class="xa"><div class="btn acc">Смотреть ход</div><div class="btn">Сообщить мне</div></div></div></div></div></body></html>
