@@ -20,7 +20,7 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
  *
  * @param ready      jobs with a result nobody has decided on yet (the quick review feed)
  * @param retryable  ended without a usable result and not asked again: «Повторить неудачные (N)»
- * @param undoable   applications of «Принять безопасное» that can still be undone
+ * @param undoable   applications of the batch (safe acceptance and ordinary ones) that can still be undone
  * @param undoUntil  until when the earliest of them can be undone
  */
 public record AiBatchDto(

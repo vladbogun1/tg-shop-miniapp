@@ -1241,6 +1241,23 @@
         ],
         "type" : "object"
       },
+      "AiAiApplyUndoLive" : {
+        "properties" : {
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "undoUntil" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "id",
+          "undoUntil"
+        ],
+        "type" : "object"
+      },
       "AiAiApplyUndoResult" : {
         "properties" : {
           "applications" : {
@@ -16998,7 +17015,7 @@
             "bearer-jwt" : [ ]
           }
         ],
-        "summary" : "After the card is saved: the changed fields are compared and checked (only empty characteristics and description filled). A broken promise is given back at once and listed in notSafe",
+        "summary" : "After the card is saved: the changed fields are compared; a safe acceptance is also checked (only empty characteristics and description filled), a broken promise is given back at once and listed in notSafe",
         "tags" : [
           "Admin AI batches"
         ]
@@ -17035,7 +17052,7 @@
             "bearer-jwt" : [ ]
           }
         ],
-        "summary" : "Undo one application within 24 hours; fields edited by hand since stay (counted as skipped)",
+        "summary" : "Undo one application within 24 hours; fields edited by hand since stay (counted as skipped), removed characteristics come back, the job waits for a review again",
         "tags" : [
           "Admin AI batches"
         ]
@@ -17211,7 +17228,7 @@
             "bearer-jwt" : [ ]
           }
         ],
-        "summary" : "«Отменить применение»: undo every safe application of the batch that is still inside 24 hours",
+        "summary" : "«Отменить применение»: undo every application of the batch that is still inside 24 hours",
         "tags" : [
           "Admin AI batches"
         ]
@@ -18229,6 +18246,80 @@
         "summary" : "Ask again more thoroughly (high effort); one retry per task for a non-finance admin",
         "tags" : [
           "Admin AI"
+        ]
+      }
+    },
+    "/api/admin/ai/jobs/{jobId}/apply" : {
+      "get" : {
+        "operationId" : "AdminAiBatchesController_live",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "jobId",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AiAiApplyUndoLive"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "The application of the job that can still be undone (id and undoUntil null when none)",
+        "tags" : [
+          "Admin AI batches"
+        ]
+      }
+    },
+    "/api/admin/ai/jobs/{jobId}/apply/begin" : {
+      "post" : {
+        "operationId" : "AdminAiBatchesController_beginSingle",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "jobId",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Begun"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Before an ordinary application of a result (review screen, «Принять» in the feed): the values of the object are taken, so it can be undone for 24 hours; 409 AI_BAD_STATE without a result, 409 AI_ALREADY_APPLIED while an earlier application can still be undone",
+        "tags" : [
+          "Admin AI batches"
         ]
       }
     },

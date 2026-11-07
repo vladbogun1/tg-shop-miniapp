@@ -1,6 +1,7 @@
 {
   "byEnum" : {
     "AiError" : {
+      "ALREADY_APPLIED" : "AI_ALREADY_APPLIED",
       "APPLY_NOT_FOUND" : "AI_APPLY_NOT_FOUND",
       "BAD_REQUEST" : "AI_BAD_REQUEST",
       "BAD_STATE" : "AI_BAD_STATE",
@@ -228,6 +229,7 @@
     "TranslationError" : { }
   },
   "codes" : [
+    "AI_ALREADY_APPLIED",
     "AI_APPLY_NOT_FOUND",
     "AI_BAD_REQUEST",
     "AI_BAD_STATE",

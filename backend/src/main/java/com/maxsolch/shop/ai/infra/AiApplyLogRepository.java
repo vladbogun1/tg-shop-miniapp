@@ -12,9 +12,9 @@ import java.util.Optional;
 
 public interface AiApplyLogRepository extends JpaRepository<AiApplyLog, Long> {
 
-    List<AiApplyLog> findByBatchIdAndKindOrderByIdAsc(long batchId, AiApplyLog.Kind kind);
+    List<AiApplyLog> findByBatchIdOrderByIdAsc(long batchId);
 
-    List<AiApplyLog> findByJobIdAndKindOrderByIdDesc(long jobId, AiApplyLog.Kind kind);
+    List<AiApplyLog> findByJobIdOrderByIdDesc(long jobId);
 
     boolean existsByJobId(long jobId);
 

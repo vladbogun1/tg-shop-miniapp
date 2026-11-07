@@ -47,6 +47,8 @@ public enum AiError implements ErrorCode {
     UNDO_CLOSED("AI_UNDO_CLOSED"),
     /** The result is not eligible for the safe acceptance (no search, no source, already decided). */
     NOT_SAFE("AI_NOT_SAFE"),
+    /** The result has an application that can still be undone: undo it first, then apply again. */
+    ALREADY_APPLIED("AI_ALREADY_APPLIED"),
     /** A file that is not a JPEG, PNG, WEBP or PDF (read from its bytes, not from its name). */
     FILE_TYPE("AI_FILE_TYPE"),
     /** A file over 10 MB. */

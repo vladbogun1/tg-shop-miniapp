@@ -79,7 +79,7 @@ public class AiBatchReads {
         List<AiBatchDto.Row> rows = list.stream().map(AiBatchReads::row).toList();
         int retryable = (int) list.stream().filter(j -> RETRYABLE.contains(j.getStatus()) && !jobs.existsByRetryOf(j.getId())).count();
         Instant now = clock.instant();
-        List<AiApplyLog> live = applies.findByBatchIdAndKindOrderByIdAsc(b.getId(), AiApplyLog.Kind.SAFE).stream()
+        List<AiApplyLog> live = applies.findByBatchIdOrderByIdAsc(b.getId()).stream()
                 .filter(a -> a.undoable(now)).toList();
         Instant until = live.stream().map(AiApplyLog::undoUntil).min(Instant::compareTo).orElse(null);
         Long spent = finance ? AiMoney.costMinor(queries.spentMicro(b.getId()), policy.rateMilli()) : null;

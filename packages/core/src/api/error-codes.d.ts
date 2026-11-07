@@ -5,6 +5,7 @@
 
 /** Коды причин, которые бэкенд кладёт в поле `code` тела ошибки. */
 export type ServerErrorCode =
+  | "AI_ALREADY_APPLIED"
   | "AI_APPLY_NOT_FOUND"
   | "AI_BAD_REQUEST"
   | "AI_BAD_STATE"

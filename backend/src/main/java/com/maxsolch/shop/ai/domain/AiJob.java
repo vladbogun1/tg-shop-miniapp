@@ -347,6 +347,16 @@ public class AiJob {
         return true;
     }
 
+    /** Its application was undone: the result waits for a review again, and the next report is recorded anew. */
+    public void reopen() {
+        outcome = null;
+        outcomeApplied = null;
+        outcomeRejected = null;
+        outcomeEdited = null;
+        outcomeIgnored = null;
+        outcomeAt = null;
+    }
+
     /** The step of the current run; null when the job does not run or this run has not reported one yet. */
     public String currentStep() {
         boolean thisRun = stepAt != null && startedAt != null && !stepAt.isBefore(startedAt);

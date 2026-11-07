@@ -97,21 +97,36 @@ public class AdminAiBatchesController {
         return safe.begin(jobId);
     }
 
+    @PostMapping("/jobs/{jobId}/apply/begin")
+    @Operation(summary = "Before an ordinary application of a result (review screen, «Принять» in the feed): the values "
+            + "of the object are taken, so it can be undone for 24 hours; 409 AI_BAD_STATE without a result, "
+            + "409 AI_ALREADY_APPLIED while an earlier application can still be undone")
+    public AiSafeAccept.Begun beginSingle(@PathVariable long jobId) {
+        return safe.beginSingle(jobId);
+    }
+
+    @GetMapping("/jobs/{jobId}/apply")
+    @Operation(summary = "The application of the job that can still be undone (id and undoUntil null when none)")
+    public AiApplyUndo.Live live(@PathVariable long jobId) {
+        return undo.live(jobId);
+    }
+
     @PostMapping("/apply/{applyId}/finish")
-    @Operation(summary = "After the card is saved: the changed fields are compared and checked (only empty "
-            + "characteristics and description filled). A broken promise is given back at once and listed in notSafe")
+    @Operation(summary = "After the card is saved: the changed fields are compared; a safe acceptance is also checked "
+            + "(only empty characteristics and description filled), a broken promise is given back at once and listed in notSafe")
     public AiSafeAccept.Applied finish(@PathVariable long applyId) {
         return safe.finish(applyId);
     }
 
     @PostMapping("/apply/{applyId}/undo")
-    @Operation(summary = "Undo one application within 24 hours; fields edited by hand since stay (counted as skipped)")
+    @Operation(summary = "Undo one application within 24 hours; fields edited by hand since stay (counted as skipped), "
+            + "removed characteristics come back, the job waits for a review again")
     public AiApplyUndo.Result undoOne(@PathVariable long applyId) {
         return undo.undo(applyId);
     }
 
     @PostMapping("/batches/{id}/accept-safe/undo")
-    @Operation(summary = "«Отменить применение»: undo every safe application of the batch that is still inside 24 hours")
+    @Operation(summary = "«Отменить применение»: undo every application of the batch that is still inside 24 hours")
     public AiApplyUndo.Result undoBatch(@PathVariable long id) {
         return undo.undoBatch(id);
     }

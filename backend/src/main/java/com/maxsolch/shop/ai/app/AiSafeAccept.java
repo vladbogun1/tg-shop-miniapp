@@ -31,6 +31,10 @@ import java.util.Map;
  * the promise — only characteristics and the description, only empty fields filled, nothing replaced. A broken promise
  * is given back at once (the object is back as it was) and reported in {@code notSafe}; a kept one stays undoable for
  * 24 hours ({@link AiApplyUndo}). Only a result of a job that searched the web is eligible.
+ *
+ * <p>An ordinary application (the review screen, «Принять» in the feed) goes through the same log
+ * ({@link #beginSingle}): any job with a result, the promise is not checked (a person chose to replace or remove), and
+ * it is undoable the same way. One live application per job at a time, so an undo gives back the right «before».
  */
 @Service
 public class AiSafeAccept {
@@ -73,27 +77,52 @@ public class AiSafeAccept {
         this.clock = clock;
     }
 
-    /** Before the screen applies the result of a job: the values of the object as they are now. */
+    /** Before the screen applies the result of a batch job safely: the values of the object as they are now. */
     @Transactional
     public Begun begin(long jobId) {
+        AiJob job = ownJob(jobId);
+        boolean eligible = job.getBatchId() != null && job.getStatus() == JobStatus.DONE && job.getOutcome() == null
+                && (job.getSearches() > 0 || job.isPasted());
+        boolean applied = logs.findByJobIdOrderByIdDesc(jobId).stream()
+                .anyMatch(l -> l.finished() && l.getUndoneAt() == null);
+        if (!eligible || applied) {
+            throw new DomainException.Conflict(AiError.NOT_SAFE);
+        }
+        return start(job, AiApplyLog.Kind.SAFE);
+    }
+
+    /** Before an ordinary application of the result: BAD_STATE without a result, ALREADY_APPLIED while one is live. */
+    @Transactional
+    public Begun beginSingle(long jobId) {
+        AiJob job = ownJob(jobId);
+        if (job.getStatus() != JobStatus.DONE) {
+            throw new DomainException.Conflict(AiError.BAD_STATE);
+        }
+        if (logs.findByJobIdOrderByIdDesc(jobId).stream().anyMatch(l -> l.undoable(clock.instant()))) {
+            throw new DomainException.Conflict(AiError.ALREADY_APPLIED);
+        }
+        return start(job, AiApplyLog.Kind.SINGLE);
+    }
+
+    private AiJob ownJob(long jobId) {
         AiJob job = jobs.findById(jobId).orElseThrow(() -> new DomainException.NotFound(AiError.JOB_NOT_FOUND));
         long adminId = actor.userId();
         if (job.getAdminId() != adminId && !access.canSeeFinance(adminId)) {
             throw new DomainException.Forbidden(AiError.NOT_YOUR_JOB);
         }
-        boolean eligible = job.getBatchId() != null && job.getStatus() == JobStatus.DONE && job.getOutcome() == null
-                && (job.getSearches() > 0 || job.isPasted());
-        boolean applied = logs.findByJobIdAndKindOrderByIdDesc(jobId, AiApplyLog.Kind.SAFE).stream()
-                .anyMatch(l -> l.finished() && l.getUndoneAt() == null);
-        if (!eligible || applied) {
-            throw new DomainException.Conflict(AiError.NOT_SAFE);
-        }
+        return job;
+    }
+
+    private Begun start(AiJob job, AiApplyLog.Kind kind) {
         Map<String, String> before = subjects.of(job.getSubjectType()).snapshot(job.getSubjectId());
-        AiApplyLog log = logs.save(AiApplyLog.begin(job, adminId, AiApplyLog.Kind.SAFE, write(before), clock.instant()));
+        AiApplyLog log = logs.save(AiApplyLog.begin(job, actor.userId(), kind, write(before), clock.instant()));
         return new Begun(log.getId());
     }
 
-    /** After the screen saved the card: compare, check the promise, keep or give back. Repeating the call answers the same. */
+    /**
+     * After the screen saved the card: compare, check the promise (safe acceptance only), keep or give back. Repeating
+     * the call answers the same.
+     */
     @Transactional
     public Applied finish(long applyId) {
         AiApplyLog log = logs.lockById(applyId).orElseThrow(() -> new DomainException.NotFound(AiError.APPLY_NOT_FOUND));
@@ -106,7 +135,7 @@ public class AiSafeAccept {
         }
         SubjectFields port = subjects.of(log.getSubjectType());
         Map<String, FieldChange> changes = ApplyDiff.diff(read(log.getSnapshot()), port.snapshot(log.getSubjectId()));
-        Map<String, FieldChange> bad = ApplyDiff.violations(changes);
+        Map<String, FieldChange> bad = log.getKind() == AiApplyLog.Kind.SAFE ? ApplyDiff.violations(changes) : Map.of();
         log.finish(write(changes), clock.instant());
         if (!bad.isEmpty()) {
             undo.revert(log);
@@ -114,8 +143,11 @@ public class AiSafeAccept {
                     "ИИ: применение не было безопасным, возвращено: " + String.join(", ", bad.keySet()));
             return answer(log, undo.keys(bad));
         }
-        audit.record("AI_APPLY_SAFE", log.getSubjectType(), log.getSubjectId(),
-                "ИИ: принято безопасное, полей " + changes.size());
+        if (log.getKind() == AiApplyLog.Kind.SAFE) {
+            audit.record("AI_APPLY_SAFE", log.getSubjectType(), log.getSubjectId(), "ИИ: принято безопасное, полей " + changes.size());
+        } else {
+            audit.record("AI_APPLY", log.getSubjectType(), log.getSubjectId(), "ИИ: применён результат, полей " + changes.size());
+        }
         return answer(log, List.of());
     }
 

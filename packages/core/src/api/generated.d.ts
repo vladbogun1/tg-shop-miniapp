@@ -387,7 +387,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** After the card is saved: the changed fields are compared and checked (only empty characteristics and description filled). A broken promise is given back at once and listed in notSafe */
+        /** After the card is saved: the changed fields are compared; a safe acceptance is also checked (only empty characteristics and description filled), a broken promise is given back at once and listed in notSafe */
         post: operations["AdminAiBatchesController_finish"];
         delete?: never;
         options?: never;
@@ -404,7 +404,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Undo one application within 24 hours; fields edited by hand since stay (counted as skipped) */
+        /** Undo one application within 24 hours; fields edited by hand since stay (counted as skipped), removed characteristics come back, the job waits for a review again */
         post: operations["AdminAiBatchesController_undoOne"];
         delete?: never;
         options?: never;
@@ -489,7 +489,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** «Отменить применение»: undo every safe application of the batch that is still inside 24 hours */
+        /** «Отменить применение»: undo every application of the batch that is still inside 24 hours */
         post: operations["AdminAiBatchesController_undoBatch"];
         delete?: never;
         options?: never;
@@ -885,6 +885,40 @@ export interface paths {
         put?: never;
         /** Ask again more thoroughly (high effort); one retry per task for a non-finance admin */
         post: operations["AdminAiJobsController_retry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/jobs/{jobId}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The application of the job that can still be undone (id and undoUntil null when none) */
+        get: operations["AdminAiBatchesController_live"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/jobs/{jobId}/apply/begin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Before an ordinary application of a result (review screen, «Принять» in the feed): the values of the object are taken, so it can be undone for 24 hours; 409 AI_BAD_STATE without a result, 409 AI_ALREADY_APPLIED while an earlier application can still be undone */
+        post: operations["AdminAiBatchesController_beginSingle"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5751,6 +5785,12 @@ export interface components {
         };
         AdminTelegramAuthRequest: {
             initData: string;
+        };
+        AiAiApplyUndoLive: {
+            /** Format: int64 */
+            id: number;
+            /** Format: date-time */
+            undoUntil: string;
         };
         AiAiApplyUndoResult: {
             /** Format: int32 */
@@ -11498,6 +11538,50 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AiJobDto"];
+                };
+            };
+        };
+    };
+    AdminAiBatchesController_live: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                jobId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiAiApplyUndoLive"];
+                };
+            };
+        };
+    };
+    AdminAiBatchesController_beginSingle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                jobId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Begun"];
                 };
             };
         };
