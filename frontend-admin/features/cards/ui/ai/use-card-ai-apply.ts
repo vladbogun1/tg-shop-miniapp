@@ -36,7 +36,8 @@ export function useCardAiApply(a: Args) {
 
   const report = (o: typeof counts.current) => outcome.mutate({ id: a.job.id, outcome: o });
   const save = useCompletionSave({
-    onClose: () => router.back(),
+    // Остаёмся на странице: внизу видно «Результат применён», вернуться можно стрелкой «Назад».
+    onClose: () => undefined,
     onProblem: setProblem,
     onSaved: () => {
       setApplied(true);
