@@ -104,6 +104,14 @@ public class AiJobs {
     }
 
     public AiJobDto cancel(long id) {
+        long adminId = actor.userId();
+        if (!access.canSeeFinance(adminId)) {
+            // an admin stops his own tasks; the owner stops any
+            AiJobDto job = reads.read(id, false).orElseThrow(() -> new DomainException.NotFound(AiError.JOB_NOT_FOUND));
+            if (job.adminId() != adminId) {
+                throw new DomainException.Forbidden(AiError.NOT_YOUR_JOB);
+            }
+        }
         lifecycle.requestCancel(id);
         audit.record("AI_JOB_CANCEL", "AI_JOB", String.valueOf(id), "ИИ: остановка задачи");
         return get(id);

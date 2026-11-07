@@ -419,7 +419,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** A page of tasks of a tab: active | review | problems | history (newest first), with the counts of the tabs; rows carry who started the task and the name of its object */
+        get: operations["AdminAiTasksController_list"];
         put?: never;
         /** Start a task for an object. Answers at once with a QUEUED job; 409 AI_JOB_ACTIVE (with the current job) when the object already has an active one; the same Idempotency-Key returns the first job */
         post: operations["AdminAiJobsController_start"];
@@ -514,6 +515,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/ai/manual-marks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The manual way applied a result: one mark per product, the server decides the reason */
+        post: operations["AdminAiTasksController_mark"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Breakdown of the period: groupBy = day | feature | provider */
+        get: operations["AdminAiMetricsController_series"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/metrics/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Month against the limit + the period: accepted, spent, built-in share, without edits, waiting, money in vain. from/to are shop days (yyyy-MM-dd), none = the month so far; withTest adds the technical admin */
+        get: operations["AdminAiMetricsController_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/ai/search-test": {
         parameters: {
             query?: never;
@@ -574,6 +626,23 @@ export interface paths {
         };
         /** For the chip and the entry buttons, no money: key set, AI and features on, a used-up limit, running / waiting for review / problem counts */
         get: operations["AdminAiJobsController_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/widget": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The dashboard line: can the AI be started, what waits for review; month money for the finance right */
+        get: operations["AdminAiTasksController_widget"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5295,6 +5364,19 @@ export interface components {
             /** Format: int32 */
             running: number;
         };
+        AiAiTaskListCounts: {
+            /** Format: int64 */
+            active: number;
+            /** Format: int64 */
+            problems: number;
+            /** Format: int64 */
+            review: number;
+        };
+        AiAiTaskListRow: {
+            adminName: string;
+            job: components["schemas"]["AiJobDto"];
+            subjectLabel: string;
+        };
         AiJobDto: {
             /** Format: int64 */
             adminId: number;
@@ -5348,6 +5430,61 @@ export interface components {
             subjectId: string;
             subjectType: string;
             subjectVersion: string;
+        };
+        AiRow: {
+            /** Format: int64 */
+            accepted: number;
+            /** Format: int64 */
+            bad: number;
+            /** Format: int64 */
+            badMinor: number;
+            /** Format: int64 */
+            costMinor: number;
+            /** Format: int64 */
+            count: number;
+            /** Format: int64 */
+            inputTokens: number;
+            key: string;
+            kind?: string;
+            /** Format: int64 */
+            outputTokens: number;
+        };
+        AiShare: {
+            /** Format: int64 */
+            builtin: number;
+            /** Format: int32 */
+            builtinPercent: number;
+            /** Format: int64 */
+            manual: number;
+            manualBy: {
+                [key: string]: number;
+            };
+        };
+        AiSummary: {
+            /** Format: int64 */
+            accepted: number;
+            fastApply: components["schemas"]["FastApply"];
+            from: string;
+            month: components["schemas"]["MonthSpend"];
+            noEdits: components["schemas"]["NoEdits"];
+            /** Format: int64 */
+            perAcceptedMinor?: number;
+            share: components["schemas"]["AiShare"];
+            /** Format: int64 */
+            spentMinor: number;
+            to: string;
+            waiting: components["schemas"]["AiWaiting"];
+            waste: components["schemas"]["WasteRow"][];
+            /** Format: int64 */
+            wastedMinor: number;
+        };
+        AiWaiting: {
+            /** Format: int64 */
+            count: number;
+            /** Format: int32 */
+            oldestDays: number;
+            /** Format: int64 */
+            stale: number;
         };
         AliasDto: {
             productId: string;
@@ -6705,6 +6842,12 @@ export interface components {
             retentionDays: number;
             types: components["schemas"]["TypeFacet"][];
         };
+        FastApply: {
+            /** Format: int64 */
+            count: number;
+            /** Format: int64 */
+            of: number;
+        };
         FeedReview: {
             author: string;
             /** Format: int64 */
@@ -7301,6 +7444,11 @@ export interface components {
             /** Format: int64 */
             unknownRevenueMinor: number;
         };
+        Mark: {
+            /** @enum {string} */
+            feature?: "CARD" | "COMPLETION" | "TRANSLATION" | "SUPPLY_EXTRACT" | "SUPPLY_MATCH" | "SEARCH_TEST";
+            subjectIds?: string[];
+        };
         MeProfileDto: {
             admin: boolean;
             firstName: string;
@@ -7460,6 +7608,20 @@ export interface components {
             /** Format: int64 */
             totalMinor: number;
         };
+        MonthSpend: {
+            /** Format: int64 */
+            forecastMinor?: number;
+            /** Format: int32 */
+            freeSearchTotal: number;
+            /** Format: int32 */
+            freeSearchUsed: number;
+            /** Format: int64 */
+            limitMinor: number;
+            /** Format: int32 */
+            percent: number;
+            /** Format: int64 */
+            spentMinor: number;
+        };
         MovementDto: {
             adminName: string | null;
             /** Format: int64 */
@@ -7521,6 +7683,16 @@ export interface components {
             text: string;
             title: string;
             variantName: string | null;
+        };
+        NoEdits: {
+            /** Format: int32 */
+            cardsPercent: number;
+            /** Format: int64 */
+            decided: number;
+            /** Format: int32 */
+            fieldsPercent: number;
+            /** Format: int64 */
+            notOpened: number;
         };
         NotificationAdminPushControllerSubscribeRequest: {
             endpoint: string;
@@ -8650,6 +8822,10 @@ export interface components {
             /** Format: int32 */
             sent: number;
         };
+        Series: {
+            groupBy: string;
+            rows: components["schemas"]["AiRow"][];
+        };
         SeriesPoint: {
             bucket: string;
             /** Format: int64 */
@@ -9050,6 +9226,16 @@ export interface components {
             /** Format: int32 */
             sortOrder: number;
         };
+        TaskPage: {
+            counts: components["schemas"]["AiAiTaskListCounts"];
+            items: components["schemas"]["AiAiTaskListRow"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            /** Format: int64 */
+            total: number;
+        };
         Team: {
             admins: components["schemas"]["AdminRow"][];
             invites: components["schemas"]["InviteRow"][];
@@ -9361,6 +9547,14 @@ export interface components {
             /** Format: int32 */
             stock?: number;
         };
+        WasteRow: {
+            /** Format: int64 */
+            costMinor: number;
+            counted: boolean;
+            /** Format: int64 */
+            jobs: number;
+            key: string;
+        };
         WebAuthResponse: {
             user: components["schemas"]["AuthUserDto"];
         };
@@ -9378,6 +9572,21 @@ export interface components {
             /** Format: date-time */
             lastUsedAt: string;
             userAgent: string;
+        };
+        Widget: {
+            canRun: boolean;
+            configured: boolean;
+            enabled: boolean;
+            /** Format: int64 */
+            monthLimitMinor?: number;
+            /** Format: int64 */
+            monthSpentMinor?: number;
+            /** Format: int32 */
+            problems: number;
+            /** Format: int32 */
+            review: number;
+            /** Format: int32 */
+            running: number;
         };
         WriteoffDto: {
             adminName: string | null;
@@ -9971,6 +10180,30 @@ export interface operations {
             };
         };
     };
+    AdminAiTasksController_list: {
+        parameters: {
+            query?: {
+                tab?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TaskPage"];
+                };
+            };
+        };
+    };
     AdminAiJobsController_start: {
         parameters: {
             query?: never;
@@ -10109,6 +10342,81 @@ export interface operations {
             };
         };
     };
+    AdminAiTasksController_mark: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Mark"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: number;
+                    };
+                };
+            };
+        };
+    };
+    AdminAiMetricsController_series: {
+        parameters: {
+            query: {
+                groupBy: string;
+                from?: string;
+                to?: string;
+                withTest?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Series"];
+                };
+            };
+        };
+    };
+    AdminAiMetricsController_summary: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                withTest?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiSummary"];
+                };
+            };
+        };
+    };
     AdminAiSettingsController_searchTest: {
         parameters: {
             query?: never;
@@ -10191,6 +10499,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AiAiSummarySummary"];
+                };
+            };
+        };
+    };
+    AdminAiTasksController_widget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Widget"];
                 };
             };
         };

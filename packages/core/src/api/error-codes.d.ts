@@ -18,6 +18,7 @@ export type ServerErrorCode =
   | "AI_KEY_REJECTED"
   | "AI_MONTH_LIMIT"
   | "AI_NOT_CONFIGURED"
+  | "AI_NOT_YOUR_JOB"
   | "AI_PROMPT_GONE"
   | "AI_RESTARTED"
   | "AI_RETRY_LIMIT"

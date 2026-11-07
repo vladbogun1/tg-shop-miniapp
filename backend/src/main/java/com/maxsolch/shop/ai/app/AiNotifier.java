@@ -2,6 +2,7 @@ package com.maxsolch.shop.ai.app;
 
 import com.maxsolch.shop.ai.domain.AiEvents;
 import com.maxsolch.shop.ai.domain.AiEvents.Period;
+import com.maxsolch.shop.ai.domain.AiMoney;
 import com.maxsolch.shop.ai.infra.AiAlertStore;
 import com.maxsolch.shop.notification.app.AdminPushService;
 import com.maxsolch.shop.notification.app.AdminPushService.PushMessage;
@@ -12,21 +13,25 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
-import java.util.Locale;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.function.LongPredicate;
 
 /**
  * The seven push warnings to the owner (admins with the finance right, or only the main ones, as the setting says):
- * a limit reached, 80 % of the month, the key refused, search down, free search running out, a batch stopped.
- * Each is said once per period: the unique row in {@code ai_alerts} decides who sends, so two instances or a hundred
- * refused starts give one push. The key warning repeats only after a job has succeeded again.
+ * a limit reached (day, month), 80 % of the month, the key refused, search down, free search running out, a batch
+ * stopped. The texts are those of docs/ai-admin/04-design-final.md, section 6. Each is said once per period: the
+ * unique row in {@code ai_alerts} decides who sends, so two instances or a hundred refused starts give one push.
+ * The key warning repeats only after a job has succeeded again. A tap leads to the AI block of the settings, or to the
+ * task center for a batch.
  */
 @Slf4j
 @Component
 public class AiNotifier {
 
     static final String KEY = "KEY";
-    private static final String URL = "/settings";
+    private static final String URL = "/settings#group-ai";
+    private static final String TASKS_URL = "/ai-tasks";
 
     private final AiAlertStore alerts;
     private final AdminPushService push;
@@ -47,47 +52,57 @@ public class AiNotifier {
 
     @OnCommitted
     void onLimit(AiEvents.LimitReached e) {
-        String what = e.period() == Period.MONTH ? "месячный" : "дневной";
-        say(period(e.period()), "LIMIT_" + e.period(), "ИИ остановлен: достигнут " + what + " лимит",
-                "Потрачено " + usd(e.spentMicroUsd()) + " из " + usd(e.limitMicroUsd())
-                        + ". Новые задачи не стартуют, пока период не кончится или лимит не поднят.", true);
+        if (e.period() == Period.MONTH) {
+            say(period(Period.MONTH), "LIMIT_MONTH", "ИИ остановлен: месячный лимит",
+                    "ИИ остановлен: месячный лимит исчерпан. Админы работают вручную. Поднять лимит можно в Настройках.",
+                    true, URL);
+        } else {
+            say(period(Period.DAY), "LIMIT_DAY", "ИИ на сегодня остановлен",
+                    "ИИ на сегодня остановлен: лимит дня исчерпан. Завтра в 00:00 продолжится.", true, URL);
+        }
     }
 
     @OnCommitted
     void onSpend(AiEvents.SpendWarning e) {
-        say(period(Period.MONTH), "WARN_80", "ИИ: потрачено 80 % месячного лимита",
-                usd(e.spentMicroUsd()) + " из " + usd(e.limitMicroUsd()) + ".", false);
+        int rate = policy.rateMilli();
+        say(period(Period.MONTH), "WARN_80", "ИИ: 80 % месячного лимита",
+                "ИИ: потрачено 80 % месячного лимита (" + uah(e.spentMicroUsd(), rate) + " из "
+                        + uah(e.limitMicroUsd(), rate) + " ₴). Осталось " + daysLeft() + ".", false, URL);
     }
 
     @OnCommitted
     void onKey(AiEvents.KeyRejected e) {
-        say(KEY, KEY, "ИИ не работает: провайдер отказал",
-                "Ключ отклонён или кончились деньги на счёте провайдера. Проверьте ключ и баланс.", true);
+        say(KEY, KEY, "ИИ не работает",
+                "ИИ не работает: провайдер отклонил ключ. Проверьте ключ или баланс.", true, URL);
     }
 
     @OnCommitted
     void onSearchDown(AiEvents.SearchDown e) {
-        say(period(Period.DAY), "SEARCH_DOWN", "ИИ без поиска",
-                "Все поисковые провайдеры не отвечают, ИИ отвечает без интернета.", false);
+        say(period(Period.DAY), "SEARCH_DOWN", "ИИ: поиск недоступен",
+                "ИИ: поиск недоступен (свой и платный). Карточки приходят пустыми, админам предложен ручной путь.",
+                false, URL);
     }
 
     @OnCommitted
     void onFreeSearch(AiEvents.FreeSearchWarning e) {
         say("SERPER", "SERPER_80", "Бесплатный поиск заканчивается",
-                "Использовано " + e.used() + " из " + e.total() + " бесплатных запросов Serper.", false);
+                "Бесплатные запросы Serper: использовано " + e.used() + " из " + e.total()
+                        + ". Дальше платный поиск выключен.", false, URL);
     }
 
     @OnCommitted
     void onBatch(AiEvents.BatchStopped e) {
-        say(period(e.period()), "BATCH_" + e.period(), "Пачка ИИ остановлена",
-                "Готово " + e.done() + " из " + e.total() + ": упёрлись в лимит.", true);
+        String why = e.period() == Period.MONTH ? "лимит месяца" : "лимит дня";
+        say(period(e.period()), "BATCH_" + e.period(), "Пакет ИИ остановлен",
+                "Пакет остановлен: готово " + e.done() + " из " + e.total() + ", " + why + ". Продолжить кнопкой.",
+                true, TASKS_URL);
     }
 
-    private void say(String period, String threshold, String title, String body, boolean urgent) {
+    private void say(String period, String threshold, String title, String body, boolean urgent, String url) {
         try {
             if (alerts.claim(period, threshold)) {
                 LongPredicate to = policy.alertsToMainOnly() ? access::isSuperAdmin : access::canSeeFinance;
-                push.notifyAdmins(new PushMessage(title, body, URL, "ai-" + threshold, null, urgent), to);
+                push.notifyAdmins(new PushMessage(title, body, url, "ai-" + threshold, null, urgent), to);
             }
         } catch (RuntimeException e) {
             log.warn("ai alert {} failed: {}", threshold, e.toString());
@@ -100,7 +115,22 @@ public class AiNotifier {
         return p == Period.MONTH ? day.substring(0, 7) : day;
     }
 
-    private static String usd(long micro) {
-        return String.format(Locale.ROOT, "$%.2f", micro / 1_000_000.0);
+    /** Whole hryvnias for a sentence ("336 из 420 ₴"). */
+    private static String uah(long micro, int rate) {
+        return String.valueOf(Math.round(AiMoney.costMinor(micro, rate) / 100.0));
+    }
+
+    /** "12 дней" / "1 день" / "последний день": until the end of the month in the shop's time. */
+    String daysLeft() {
+        LocalDate today = zone.today(clock);
+        int left = YearMonth.from(today).lengthOfMonth() - today.getDayOfMonth();
+        if (left == 0) {
+            return "последний день";
+        }
+        int mod10 = left % 10;
+        int mod100 = left % 100;
+        boolean few = mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14);
+        String word = mod10 == 1 && mod100 != 11 ? "день" : few ? "дня" : "дней";
+        return left + " " + word;
     }
 }

@@ -1311,6 +1311,47 @@
         ],
         "type" : "object"
       },
+      "AiAiTaskListCounts" : {
+        "properties" : {
+          "active" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "problems" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "review" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "active",
+          "problems",
+          "review"
+        ],
+        "type" : "object"
+      },
+      "AiAiTaskListRow" : {
+        "properties" : {
+          "adminName" : {
+            "type" : "string"
+          },
+          "job" : {
+            "$ref" : "#/components/schemas/AiJobDto"
+          },
+          "subjectLabel" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "adminName",
+          "job",
+          "subjectLabel"
+        ],
+        "type" : "object"
+      },
       "AiJobDto" : {
         "properties" : {
           "adminId" : {
@@ -1467,6 +1508,168 @@
           "subjectId",
           "subjectType",
           "subjectVersion"
+        ],
+        "type" : "object"
+      },
+      "AiRow" : {
+        "properties" : {
+          "accepted" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "bad" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "badMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "costMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "count" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "inputTokens" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "key" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "outputTokens" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "accepted",
+          "bad",
+          "badMinor",
+          "costMinor",
+          "count",
+          "inputTokens",
+          "key",
+          "outputTokens"
+        ],
+        "type" : "object"
+      },
+      "AiShare" : {
+        "properties" : {
+          "builtin" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "builtinPercent" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "manual" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "manualBy" : {
+            "additionalProperties" : {
+              "format" : "int64",
+              "type" : "integer"
+            },
+            "type" : "object"
+          }
+        },
+        "required" : [
+          "builtin",
+          "builtinPercent",
+          "manual",
+          "manualBy"
+        ],
+        "type" : "object"
+      },
+      "AiSummary" : {
+        "properties" : {
+          "accepted" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "fastApply" : {
+            "$ref" : "#/components/schemas/FastApply"
+          },
+          "from" : {
+            "type" : "string"
+          },
+          "month" : {
+            "$ref" : "#/components/schemas/MonthSpend"
+          },
+          "noEdits" : {
+            "$ref" : "#/components/schemas/NoEdits"
+          },
+          "perAcceptedMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "share" : {
+            "$ref" : "#/components/schemas/AiShare"
+          },
+          "spentMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "to" : {
+            "type" : "string"
+          },
+          "waiting" : {
+            "$ref" : "#/components/schemas/AiWaiting"
+          },
+          "waste" : {
+            "items" : {
+              "$ref" : "#/components/schemas/WasteRow"
+            },
+            "type" : "array"
+          },
+          "wastedMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "accepted",
+          "fastApply",
+          "from",
+          "month",
+          "noEdits",
+          "share",
+          "spentMinor",
+          "to",
+          "waiting",
+          "waste",
+          "wastedMinor"
+        ],
+        "type" : "object"
+      },
+      "AiWaiting" : {
+        "properties" : {
+          "count" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "oldestDays" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "stale" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "count",
+          "oldestDays",
+          "stale"
         ],
         "type" : "object"
       },
@@ -5959,6 +6162,23 @@
         ],
         "type" : "object"
       },
+      "FastApply" : {
+        "properties" : {
+          "count" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "of" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "count",
+          "of"
+        ],
+        "type" : "object"
+      },
       "FeedReview" : {
         "properties" : {
           "author" : {
@@ -7943,6 +8163,28 @@
         ],
         "type" : "object"
       },
+      "Mark" : {
+        "properties" : {
+          "feature" : {
+            "enum" : [
+              "CARD",
+              "COMPLETION",
+              "TRANSLATION",
+              "SUPPLY_EXTRACT",
+              "SUPPLY_MATCH",
+              "SEARCH_TEST"
+            ],
+            "type" : "string"
+          },
+          "subjectIds" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "MeProfileDto" : {
         "properties" : {
           "admin" : {
@@ -8429,6 +8671,42 @@
         ],
         "type" : "object"
       },
+      "MonthSpend" : {
+        "properties" : {
+          "forecastMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "freeSearchTotal" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "freeSearchUsed" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "limitMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "percent" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "spentMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "freeSearchTotal",
+          "freeSearchUsed",
+          "limitMinor",
+          "percent",
+          "spentMinor"
+        ],
+        "type" : "object"
+      },
       "MovementDto" : {
         "properties" : {
           "adminName" : {
@@ -8649,6 +8927,33 @@
           "text",
           "title",
           "variantName"
+        ],
+        "type" : "object"
+      },
+      "NoEdits" : {
+        "properties" : {
+          "cardsPercent" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "decided" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "fieldsPercent" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "notOpened" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "cardsPercent",
+          "decided",
+          "fieldsPercent",
+          "notOpened"
         ],
         "type" : "object"
       },
@@ -12479,6 +12784,24 @@
         ],
         "type" : "object"
       },
+      "Series" : {
+        "properties" : {
+          "groupBy" : {
+            "type" : "string"
+          },
+          "rows" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AiRow"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [
+          "groupBy",
+          "rows"
+        ],
+        "type" : "object"
+      },
       "SeriesPoint" : {
         "properties" : {
           "bucket" : {
@@ -13836,6 +14159,39 @@
         ],
         "type" : "object"
       },
+      "TaskPage" : {
+        "properties" : {
+          "counts" : {
+            "$ref" : "#/components/schemas/AiAiTaskListCounts"
+          },
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AiAiTaskListRow"
+            },
+            "type" : "array"
+          },
+          "page" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "total" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "counts",
+          "items",
+          "page",
+          "size",
+          "total"
+        ],
+        "type" : "object"
+      },
       "Team" : {
         "properties" : {
           "admins" : {
@@ -14850,6 +15206,31 @@
         ],
         "type" : "object"
       },
+      "WasteRow" : {
+        "properties" : {
+          "costMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "counted" : {
+            "type" : "boolean"
+          },
+          "jobs" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "key" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "costMinor",
+          "counted",
+          "jobs",
+          "key"
+        ],
+        "type" : "object"
+      },
       "WebAuthResponse" : {
         "properties" : {
           "user" : {
@@ -14908,6 +15289,48 @@
           "ip",
           "lastUsedAt",
           "userAgent"
+        ],
+        "type" : "object"
+      },
+      "Widget" : {
+        "properties" : {
+          "canRun" : {
+            "type" : "boolean"
+          },
+          "configured" : {
+            "type" : "boolean"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "monthLimitMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "monthSpentMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "problems" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "review" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "running" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "canRun",
+          "configured",
+          "enabled",
+          "problems",
+          "review",
+          "running"
         ],
         "type" : "object"
       },
@@ -15965,6 +16388,61 @@
       }
     },
     "/api/admin/ai/jobs" : {
+      "get" : {
+        "operationId" : "AdminAiTasksController_list",
+        "parameters" : [
+          {
+            "in" : "query",
+            "name" : "tab",
+            "required" : false,
+            "schema" : {
+              "default" : "review",
+              "type" : "string"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "page",
+            "required" : false,
+            "schema" : {
+              "default" : 0,
+              "format" : "int32",
+              "type" : "integer"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "size",
+            "required" : false,
+            "schema" : {
+              "default" : 20,
+              "format" : "int32",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TaskPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "A page of tasks of a tab: active | review | problems | history (newest first), with the counts of the tabs; rows carry who started the task and the name of its object",
+        "tags" : [
+          "Admin AI tasks"
+        ]
+      },
       "post" : {
         "operationId" : "AdminAiJobsController_start",
         "parameters" : [
@@ -16197,6 +16675,160 @@
         ]
       }
     },
+    "/api/admin/ai/manual-marks" : {
+      "post" : {
+        "operationId" : "AdminAiTasksController_mark",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Mark"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "additionalProperties" : {
+                    "format" : "int32",
+                    "type" : "integer"
+                  },
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "The manual way applied a result: one mark per product, the server decides the reason",
+        "tags" : [
+          "Admin AI tasks"
+        ]
+      }
+    },
+    "/api/admin/ai/metrics" : {
+      "get" : {
+        "operationId" : "AdminAiMetricsController_series",
+        "parameters" : [
+          {
+            "in" : "query",
+            "name" : "groupBy",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "from",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "to",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "withTest",
+            "required" : false,
+            "schema" : {
+              "default" : false,
+              "type" : "boolean"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Series"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Breakdown of the period: groupBy = day | feature | provider",
+        "tags" : [
+          "Admin AI metrics"
+        ]
+      }
+    },
+    "/api/admin/ai/metrics/summary" : {
+      "get" : {
+        "operationId" : "AdminAiMetricsController_summary",
+        "parameters" : [
+          {
+            "in" : "query",
+            "name" : "from",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "to",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "withTest",
+            "required" : false,
+            "schema" : {
+              "default" : false,
+              "type" : "boolean"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AiSummary"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Month against the limit + the period: accepted, spent, built-in share, without edits, waiting, money in vain. from/to are shop days (yyyy-MM-dd), none = the month so far; withTest adds the technical admin",
+        "tags" : [
+          "Admin AI metrics"
+        ]
+      }
+    },
     "/api/admin/ai/search-test" : {
       "post" : {
         "operationId" : "AdminAiSettingsController_searchTest",
@@ -16312,6 +16944,32 @@
         "summary" : "For the chip and the entry buttons, no money: key set, AI and features on, a used-up limit, running / waiting for review / problem counts",
         "tags" : [
           "Admin AI"
+        ]
+      }
+    },
+    "/api/admin/ai/widget" : {
+      "get" : {
+        "operationId" : "AdminAiTasksController_widget",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Widget"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "The dashboard line: can the AI be started, what waits for review; month money for the finance right",
+        "tags" : [
+          "Admin AI tasks"
         ]
       }
     },
@@ -27953,6 +28611,10 @@
       "name" : "Admin Users Map"
     },
     {
+      "description" : "AI spend, share of the built-in way, accepted without edits (finance only)",
+      "name" : "Admin AI metrics"
+    },
+    {
       "description" : "Signed access to private chat attachments",
       "name" : "Media"
     },
@@ -28007,6 +28669,10 @@
     {
       "description" : "Public app configuration",
       "name" : "App"
+    },
+    {
+      "description" : "Task center tabs, dashboard widget, mark of the manual way",
+      "name" : "Admin AI tasks"
     },
     {
       "description" : "Admin sign-in with 2FA",

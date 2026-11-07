@@ -89,4 +89,45 @@ class AiNotifierTest {
         assertThat(to.getValue().test(2L)).isTrue();
         assertThat(to.getValue().test(1L)).isFalse();
     }
+
+    @Test
+    void theEightyPercentTextSaysHryvniasAndTheDaysThatAreLeft() {
+        when(alerts.claim(any(), any())).thenReturn(true);
+        when(policy.rateMilli()).thenReturn(42_000);
+        ArgumentCaptor<AdminPushService.PushMessage> msg = ArgumentCaptor.forClass(AdminPushService.PushMessage.class);
+
+        notifier.onSpend(new AiEvents.SpendWarning(8_000_000, 10_000_000));
+
+        verify(push).notifyAdmins(msg.capture(), any(LongPredicate.class));
+        assertThat(msg.getValue().body()).contains("336 из 420 ₴").contains("Осталось 23 дня");
+        assertThat(msg.getValue().url()).isEqualTo("/settings#group-ai");
+    }
+
+    @Test
+    void aStoppedBatchLeadsToTheTaskCenter() {
+        when(alerts.claim(any(), any())).thenReturn(true);
+        ArgumentCaptor<AdminPushService.PushMessage> msg = ArgumentCaptor.forClass(AdminPushService.PushMessage.class);
+
+        notifier.onBatch(new AiEvents.BatchStopped(12, 30, Period.DAY));
+
+        verify(push).notifyAdmins(msg.capture(), any(LongPredicate.class));
+        assertThat(msg.getValue().url()).isEqualTo("/ai-tasks");
+        assertThat(msg.getValue().body()).contains("готово 12 из 30");
+    }
+
+    @Test
+    void daysAreDeclinedLikeRussianNumerals() {
+        // 2026-11-07: 23 left; the 8th gives 22, the 29th gives 1, the 30th is the last day
+        assertThat(at("2026-11-07").daysLeft()).isEqualTo("23 дня");
+        assertThat(at("2026-11-08").daysLeft()).isEqualTo("22 дня");
+        assertThat(at("2026-11-29").daysLeft()).isEqualTo("1 день");
+        assertThat(at("2026-11-30").daysLeft()).isEqualTo("последний день");
+        assertThat(at("2026-11-10").daysLeft()).isEqualTo("20 дней");
+        assertThat(at("2026-11-19").daysLeft()).isEqualTo("11 дней");
+    }
+
+    private AiNotifier at(String day) {
+        return new AiNotifier(alerts, push, access, policy,
+                Clock.fixed(Instant.parse(day + "T10:00:00Z"), ZoneOffset.UTC), new ShopZone("Europe/Kyiv"));
+    }
 }
