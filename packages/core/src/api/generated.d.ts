@@ -378,6 +378,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/ai/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** How long a task will take and, for the finance right, what it will cost */
+        post: operations["AdminAiJobsController_estimate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/ai/jobs": {
         parameters: {
             query?: never;
@@ -387,8 +404,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Start a question: the prompt as built for copying; researchItems > 0 gives the model search/open_page with a budget per item. Answers at once with a RUNNING job */
-        post: operations["AdminAiController_start"];
+        /** Start a task for an object. Answers at once with a QUEUED job; 409 AI_JOB_ACTIVE (with the current job) when the object already has an active one; the same Idempotency-Key returns the first job */
+        post: operations["AdminAiJobsController_start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/jobs/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Queued and running tasks, newest first, without texts */
+        get: operations["AdminAiJobsController_active"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -402,10 +436,61 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The job: RUNNING, or DONE with the answer; a failed job answers with its error */
-        get: operations["AdminAiController_job"];
+        /** The task: status, and the answer when it has one */
+        get: operations["AdminAiJobsController_job"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/jobs/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop: a queued task ends at once, a running one before its next model turn */
+        post: operations["AdminAiJobsController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/jobs/{id}/outcome": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What the admin did with the result (counts of fields); the first report stays */
+        post: operations["AdminAiJobsController_outcome"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/jobs/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask again more thoroughly (high effort); one retry per task for a non-finance admin */
+        post: operations["AdminAiJobsController_retry"];
         delete?: never;
         options?: never;
         head?: never;
@@ -422,24 +507,41 @@ export interface paths {
         get?: never;
         put?: never;
         /** One query through the search chain, as the model gets it */
-        post: operations["AdminAiController_searchTest"];
+        post: operations["AdminAiSettingsController_searchTest"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/admin/ai/status": {
+    "/api/admin/ai/state": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Is the model configured, search providers (on / resting after a failure), this month's spend by provider and result (OK / EMPTY / FAILED) */
-        get: operations["AdminAiController_status"];
+        /** Key set or not, today and this month against the limits, free search left, providers, running jobs */
+        get: operations["AdminAiSettingsController_state"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/stop-running": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop every running task and drop the queued ones */
+        post: operations["AdminAiSettingsController_stopRunning"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5137,11 +5239,69 @@ export interface components {
         AdminTelegramAuthRequest: {
             initData: string;
         };
-        AiStatus: {
-            configured: boolean;
-            model: string;
-            month: components["schemas"]["MonthSummary"];
-            providers: components["schemas"]["ProviderState"][];
+        AiAiJobOutcome: {
+            /** Format: int32 */
+            applied?: number;
+            /** Format: int32 */
+            edited?: number;
+            /** Format: int32 */
+            ignoredLocked?: number;
+            /** Format: int32 */
+            rejected?: number;
+        };
+        AiJobDto: {
+            /** Format: int64 */
+            adminId: number;
+            answer?: string;
+            /** Format: int32 */
+            attempts: number;
+            /** Format: int32 */
+            cachedTokens?: number;
+            cancelRequested: boolean;
+            /** Format: int64 */
+            costMicroUsd?: number;
+            /** Format: int64 */
+            costMinor?: number;
+            /** Format: date-time */
+            createdAt: string;
+            effort: string;
+            errorCode: string;
+            errorNote?: string;
+            /** @enum {string} */
+            feature: "CARD" | "COMPLETION" | "TRANSLATION" | "SUPPLY_EXTRACT" | "SUPPLY_MATCH" | "SEARCH_TEST";
+            /** Format: date-time */
+            finishedAt: string;
+            /** Format: int64 */
+            id: number;
+            /** Format: int32 */
+            inputTokens?: number;
+            /** @enum {string} */
+            mode: "NORMAL" | "THOROUGH";
+            /** Format: int32 */
+            modelCalls?: number;
+            outcome: string;
+            /** Format: int32 */
+            outputTokens?: number;
+            /** Format: int32 */
+            pages?: number;
+            prompt?: string;
+            promptVersion?: string;
+            /** Format: int32 */
+            rateMilli?: number;
+            repaired?: boolean;
+            /** Format: int32 */
+            researchItems: number;
+            /** Format: int64 */
+            retryOf: number;
+            /** Format: int32 */
+            searches?: number;
+            /** Format: date-time */
+            startedAt: string;
+            /** @enum {string} */
+            status: "QUEUED" | "RUNNING" | "DONE" | "EMPTY" | "BAD_ANSWER" | "FAILED" | "CANCELED";
+            subjectId: string;
+            subjectType: string;
+            subjectVersion: string;
         };
         AliasDto: {
             productId: string;
@@ -5209,22 +5369,6 @@ export interface components {
             since: string;
             /** Format: int64 */
             totalMinor: number;
-        };
-        Answer: {
-            /** Format: int64 */
-            costMicroUsd: number;
-            model: string;
-            /** Format: int32 */
-            modelCalls: number;
-            /** Format: int64 */
-            ms: number;
-            /** Format: int32 */
-            pages: number;
-            repaired: boolean;
-            /** Format: int32 */
-            searches: number;
-            text: string;
-            tokens: components["schemas"]["TokenUsage"];
         };
         AovBucket: {
             label: string;
@@ -5304,14 +5448,6 @@ export interface components {
             /** Format: int32 */
             holdHours: number;
             lines: components["schemas"]["ArriveLineResult"][];
-        };
-        Ask: {
-            effort?: string;
-            /** @enum {string} */
-            feature?: "CARD" | "COMPLETION" | "TRANSLATION" | "SUPPLY_EXTRACT" | "SUPPLY_MATCH" | "SEARCH_TEST";
-            prompt?: string;
-            /** Format: int32 */
-            researchItems?: number;
         };
         AuditEntryDto: {
             action: string;
@@ -6155,6 +6291,20 @@ export interface components {
             key: string;
             label: string;
         };
+        CreateJob: {
+            effort?: string;
+            /** @enum {string} */
+            feature?: "CARD" | "COMPLETION" | "TRANSLATION" | "SUPPLY_EXTRACT" | "SUPPLY_MATCH" | "SEARCH_TEST";
+            /** @enum {string} */
+            mode?: "NORMAL" | "THOROUGH";
+            prompt?: string;
+            promptVersion?: string;
+            /** Format: int32 */
+            researchItems?: number;
+            subjectId?: string;
+            subjectType?: string;
+            subjectVersion?: string;
+        };
         CreateOrderRequest: {
             comment?: string;
             customerName: string;
@@ -6387,6 +6537,23 @@ export interface components {
             message: string;
             /** Format: int64 */
             users: number;
+        };
+        EstimateDto: {
+            fromHistory: boolean;
+            /** Format: int64 */
+            p50Minor: number;
+            /** Format: int64 */
+            p90Minor: number;
+            /** Format: int32 */
+            seconds: number;
+        };
+        EstimateRequest: {
+            /** @enum {string} */
+            feature?: "CARD" | "COMPLETION" | "TRANSLATION" | "SUPPLY_EXTRACT" | "SUPPLY_MATCH" | "SEARCH_TEST";
+            /** Format: int32 */
+            items?: number;
+            /** @enum {string} */
+            mode?: "NORMAL" | "THOROUGH";
         };
         EtaDto: {
             /** Format: int32 */
@@ -6894,16 +7061,6 @@ export interface components {
             unitPriceFx?: number;
             variantId?: string;
         };
-        JobView: {
-            answer: components["schemas"]["Answer"];
-            /** @enum {string} */
-            feature: "CARD" | "COMPLETION" | "TRANSLATION" | "SUPPLY_EXTRACT" | "SUPPLY_MATCH" | "SEARCH_TEST";
-            id: string;
-            /** Format: date-time */
-            startedAt: string;
-            /** @enum {string} */
-            status: "RUNNING" | "DONE" | "FAILED";
-        };
         JournalActivityFeedRow: {
             /** Format: int64 */
             chatId: number | null;
@@ -7158,6 +7315,14 @@ export interface components {
             /** Format: int32 */
             subscriptions: number;
         };
+        Money: {
+            /** Format: int64 */
+            limitMicroUsd: number;
+            /** Format: int64 */
+            spentMicroUsd: number;
+            /** Format: int64 */
+            spentMinor: number;
+        };
         MoneyLineDto: {
             /** Format: int64 */
             costUnitMinor: number | null;
@@ -7248,17 +7413,6 @@ export interface components {
             remainingMinor: number;
             /** Format: int64 */
             totalMinor: number;
-        };
-        MonthSummary: {
-            /** Format: date-time */
-            from: string;
-            /** Format: int64 */
-            limitMicroUsd: number;
-            lines: components["schemas"]["UsageLine"][];
-            /** Format: int64 */
-            lostRows: number;
-            /** Format: int64 */
-            spentMicroUsd: number;
         };
         MovementDto: {
             adminName: string | null;
@@ -8461,6 +8615,13 @@ export interface components {
             /** Format: int64 */
             soldMinor: number;
         };
+        SerperState: {
+            /** Format: int32 */
+            free: number;
+            paidAllowed: boolean;
+            /** Format: int32 */
+            used: number;
+        };
         SetPaidRequest: {
             channel?: string;
             note?: string;
@@ -8666,6 +8827,23 @@ export interface components {
             text?: string;
             /** Format: int64 */
             userId: number;
+        };
+        State: {
+            configured: boolean;
+            day: components["schemas"]["Money"];
+            enabled: boolean;
+            /** Format: int64 */
+            lostRows: number;
+            model: string;
+            month: components["schemas"]["Money"];
+            providers: components["schemas"]["ProviderState"][];
+            /** Format: int32 */
+            rateMilli: number;
+            /** Format: int64 */
+            reservesMicroUsd: number;
+            /** Format: int32 */
+            running: number;
+            serper: components["schemas"]["SerperState"];
         };
         Stats: {
             locales: {
@@ -8996,14 +9174,6 @@ export interface components {
             /** Format: int64 */
             toShip: number;
         };
-        TokenUsage: {
-            /** Format: int32 */
-            cached: number;
-            /** Format: int32 */
-            input: number;
-            /** Format: int32 */
-            output: number;
-        };
         TopProduct: {
             live: boolean;
             /** Format: int64 */
@@ -9089,23 +9259,6 @@ export interface components {
         UploadResponse: {
             key: string;
             url: string;
-        };
-        UsageLine: {
-            /** Format: int64 */
-            cachedTokens: number;
-            /** Format: int64 */
-            calls: number;
-            /** Format: int64 */
-            costMicroUsd: number;
-            /** Format: int64 */
-            inputTokens: number;
-            /** @enum {string} */
-            kind: "MODEL" | "SEARCH" | "PAGE";
-            /** Format: int64 */
-            outputTokens: number;
-            provider: string;
-            /** @enum {string} */
-            result: "OK" | "EMPTY" | "FAILED";
         };
         UserCardDto: {
             botBlocked: boolean;
@@ -9715,7 +9868,7 @@ export interface operations {
             };
         };
     };
-    AdminAiController_start: {
+    AdminAiJobsController_estimate: {
         parameters: {
             query?: never;
             header?: never;
@@ -9724,7 +9877,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Ask"];
+                "application/json": components["schemas"]["EstimateRequest"];
             };
         };
         responses: {
@@ -9734,17 +9887,63 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["JobView"];
+                    "*/*": components["schemas"]["EstimateDto"];
                 };
             };
         };
     };
-    AdminAiController_job: {
+    AdminAiJobsController_start: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateJob"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiJobDto"];
+                };
+            };
+        };
+    };
+    AdminAiJobsController_active: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiJobDto"][];
+                };
+            };
+        };
+    };
+    AdminAiJobsController_job: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                id: string;
+                id: number;
             };
             cookie?: never;
         };
@@ -9756,12 +9955,82 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["JobView"];
+                    "*/*": components["schemas"]["AiJobDto"];
                 };
             };
         };
     };
-    AdminAiController_searchTest: {
+    AdminAiJobsController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiJobDto"];
+                };
+            };
+        };
+    };
+    AdminAiJobsController_outcome: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiAiJobOutcome"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiJobDto"];
+                };
+            };
+        };
+    };
+    AdminAiJobsController_retry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiJobDto"];
+                };
+            };
+        };
+    };
+    AdminAiSettingsController_searchTest: {
         parameters: {
             query?: never;
             header?: never;
@@ -9785,7 +10054,7 @@ export interface operations {
             };
         };
     };
-    AdminAiController_status: {
+    AdminAiSettingsController_state: {
         parameters: {
             query?: never;
             header?: never;
@@ -9800,7 +10069,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["AiStatus"];
+                    "*/*": components["schemas"]["State"];
+                };
+            };
+        };
+    };
+    AdminAiSettingsController_stopRunning: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: number;
+                    };
                 };
             };
         };

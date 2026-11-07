@@ -9,21 +9,25 @@ import com.maxsolch.shop.ai.domain.JobStatus;
 
 import java.time.Instant;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 /**
  * A job as the admin screens get it. The first block is for every admin; the second — the money, the tokens and the
  * prompt, and the provider's error text — only for an admin with the finance right: for the others the server sends none of it (the fields are
  * absent, not hidden by the screen). The answer is part of the work of whoever started the job, so every admin gets it.
  */
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public record AiJobDto(
         long id, AiFeature feature, JobStatus status, long adminId, String subjectType, String subjectId,
         String subjectVersion, JobMode mode, String effort, int researchItems, Long retryOf, boolean cancelRequested,
-        int attempts, String errorCode, String errorNote, String outcome, Instant createdAt, Instant startedAt,
-        Instant finishedAt, String answer,
-        // finance only
-        String prompt, Long costMicroUsd, Long costMinor, Integer rateMilli, Integer inputTokens, Integer cachedTokens,
-        Integer outputTokens, Integer modelCalls, Integer searches, Integer pages, Boolean repaired,
-        String promptVersion) {
+        int attempts, String errorCode, @JsonInclude(NON_NULL) String errorNote, String outcome, Instant createdAt, Instant startedAt,
+        Instant finishedAt, @JsonInclude(NON_NULL) String answer,
+        // finance only: the keys are left out of the reply for the others
+        @JsonInclude(NON_NULL) String prompt, @JsonInclude(NON_NULL) Long costMicroUsd,
+        @JsonInclude(NON_NULL) Long costMinor, @JsonInclude(NON_NULL) Integer rateMilli,
+        @JsonInclude(NON_NULL) Integer inputTokens, @JsonInclude(NON_NULL) Integer cachedTokens,
+        @JsonInclude(NON_NULL) Integer outputTokens, @JsonInclude(NON_NULL) Integer modelCalls,
+        @JsonInclude(NON_NULL) Integer searches, @JsonInclude(NON_NULL) Integer pages,
+        @JsonInclude(NON_NULL) Boolean repaired, @JsonInclude(NON_NULL) String promptVersion) {
 
     /** The texts of a job; absent in list rows. */
     public record Body(String prompt, String answer) {
