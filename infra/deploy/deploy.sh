@@ -192,7 +192,9 @@ rollout_one() {
     || die "$svc: основной $name не поднялся. Копия $shadow (новая версия) ОСТАВЛЕНА и отвечает. Смотри docker logs $name"
   sleep "$SETTLE"
 
-  docker stop -t 30 "$shadow" >/dev/null && docker rm "$shadow" >/dev/null
+  # Spring finishes in-flight requests for up to 30 s; the rest exit at once or ignore SIGTERM as PID 1 (cutout).
+  local grace=10; [ "$svc" = backend ] && grace=35
+  docker stop -t "$grace" "$shadow" >/dev/null && docker rm "$shadow" >/dev/null
   log "$svc: готово"
 }
 
