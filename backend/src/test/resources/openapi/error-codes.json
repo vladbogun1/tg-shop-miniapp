@@ -16,7 +16,8 @@
       "NOT_CONFIGURED" : "AI_NOT_CONFIGURED",
       "PROMPT_GONE" : "AI_PROMPT_GONE",
       "RESTARTED" : "AI_RESTARTED",
-      "RETRY_LIMIT" : "AI_RETRY_LIMIT"
+      "RETRY_LIMIT" : "AI_RETRY_LIMIT",
+      "SUBJECT_NOT_FOUND" : "AI_SUBJECT_NOT_FOUND"
     },
     "AnalyticsError" : { },
     "CartError" : { },
@@ -227,6 +228,7 @@
     "AI_PROMPT_GONE",
     "AI_RESTARTED",
     "AI_RETRY_LIMIT",
+    "AI_SUBJECT_NOT_FOUND",
     "ATTRIBUTE_IN_USE",
     "ATTRIBUTE_KEY_TAKEN",
     "BAD_ALIAS",

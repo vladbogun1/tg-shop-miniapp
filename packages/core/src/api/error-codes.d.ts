@@ -21,6 +21,7 @@ export type ServerErrorCode =
   | "AI_PROMPT_GONE"
   | "AI_RESTARTED"
   | "AI_RETRY_LIMIT"
+  | "AI_SUBJECT_NOT_FOUND"
   | "ATTRIBUTE_IN_USE"
   | "ATTRIBUTE_KEY_TAKEN"
   | "BAD_ALIAS"

@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Locale;
+import java.util.Optional;
 
 /**
  * The money guard: the day and the month (shop time zone) each have a limit (0 = none), and a running job counts
@@ -67,6 +68,16 @@ public class AiLimits {
     /** At the start of a request: refuse at once when the expected cost of the job no longer fits (no event, no reserve). */
     public void preflight(AiFeature feature, JobMode mode, int items) {
         check(estimate.of(feature, mode, items).p90MicroUsd(), null, true, false);
+    }
+
+    /** The limit that is used up right now (day or month), if any; no event is published. For the buttons of the screens. */
+    public Optional<AiError> exhausted() {
+        try {
+            check(0, null, false, false);
+            return Optional.empty();
+        } catch (DomainException e) {
+            return Optional.of((AiError) e.errorCode());
+        }
     }
 
     /** A job starts running: check and take the reserve in one step under the lock. */

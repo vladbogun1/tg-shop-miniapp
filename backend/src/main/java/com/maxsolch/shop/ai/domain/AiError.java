@@ -30,7 +30,9 @@ public enum AiError implements ErrorCode {
     /** One strengthened retry per job; further ones are for the owner. */
     RETRY_LIMIT("AI_RETRY_LIMIT"),
     /** The prompt of the job is gone (kept 60 days). */
-    PROMPT_GONE("AI_PROMPT_GONE");
+    PROMPT_GONE("AI_PROMPT_GONE"),
+    /** The object of a task (a product) is gone or never existed. */
+    SUBJECT_NOT_FOUND("AI_SUBJECT_NOT_FOUND");
 
     private final String code;
 

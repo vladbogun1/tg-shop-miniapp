@@ -1262,6 +1262,55 @@
         },
         "type" : "object"
       },
+      "AiAiSummarySummary" : {
+        "properties" : {
+          "configured" : {
+            "type" : "boolean"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "featuresOn" : {
+            "items" : {
+              "enum" : [
+                "CARD",
+                "COMPLETION",
+                "TRANSLATION",
+                "SUPPLY_EXTRACT",
+                "SUPPLY_MATCH",
+                "SEARCH_TEST"
+              ],
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "limit" : {
+            "type" : "string"
+          },
+          "problems" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "review" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "running" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "configured",
+          "enabled",
+          "featuresOn",
+          "limit",
+          "problems",
+          "review",
+          "running"
+        ],
+        "type" : "object"
+      },
       "AiJobDto" : {
         "properties" : {
           "adminId" : {
@@ -13146,6 +13195,26 @@
         },
         "type" : "object"
       },
+      "Start" : {
+        "properties" : {
+          "created" : {
+            "type" : "boolean"
+          },
+          "productId" : {
+            "type" : "string"
+          },
+          "prompt" : {
+            "type" : "string"
+          },
+          "promptVersion" : {
+            "type" : "string"
+          },
+          "subjectVersion" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "StartPaymentRequest" : {
         "properties" : {
           "display" : {
@@ -15813,6 +15882,52 @@
         ]
       }
     },
+    "/api/admin/ai/card-jobs" : {
+      "post" : {
+        "operationId" : "AdminCardAiController_start",
+        "parameters" : [
+          {
+            "in" : "header",
+            "name" : "Idempotency-Key",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Start"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AiJobDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Fill in the card of one product: medium effort and the research budget of one product are fixed here; the same answers as POST /ai/jobs (409 AI_JOB_ACTIVE, Idempotency-Key)",
+        "tags" : [
+          "Admin Cards AI"
+        ]
+      }
+    },
     "/api/admin/ai/estimate" : {
       "post" : {
         "operationId" : "AdminAiJobsController_estimate",
@@ -16171,6 +16286,32 @@
         "summary" : "Stop every running task and drop the queued ones",
         "tags" : [
           "Admin AI settings"
+        ]
+      }
+    },
+    "/api/admin/ai/summary" : {
+      "get" : {
+        "operationId" : "AdminAiJobsController_summary",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AiAiSummarySummary"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "For the chip and the entry buttons, no money: key set, AI and features on, a used-up limit, running / waiting for review / problem counts",
+        "tags" : [
+          "Admin AI"
         ]
       }
     },
@@ -27886,6 +28027,10 @@
     {
       "description" : "Admin-only endpoints (require ROLE_ADMIN)",
       "name" : "Admin"
+    },
+    {
+      "description" : "Start the AI task for the card of one product",
+      "name" : "Admin Cards AI"
     },
     {
       "description" : "Admin promo-code management",

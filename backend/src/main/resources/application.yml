@@ -169,6 +169,7 @@ app:
     month-limit-cents: ${AI_MONTH_LIMIT_CENTS:1000}
     model:
       api-key: ${AI_MINIMAX_KEY:}
+      base-url: ${AI_MINIMAX_BASE_URL:https://api.minimax.io/anthropic}
     search:
       searxng-url: ${AI_SEARXNG_URL:}
       serper-key: ${AI_SERPER_KEY:}

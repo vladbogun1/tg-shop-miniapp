@@ -378,6 +378,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/ai/card-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fill in the card of one product: medium effort and the research budget of one product are fixed here; the same answers as POST /ai/jobs (409 AI_JOB_ACTIVE, Idempotency-Key) */
+        post: operations["AdminCardAiController_start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/ai/estimate": {
         parameters: {
             query?: never;
@@ -542,6 +559,23 @@ export interface paths {
         put?: never;
         /** Stop every running task and drop the queued ones */
         post: operations["AdminAiSettingsController_stopRunning"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/ai/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** For the chip and the entry buttons, no money: key set, AI and features on, a used-up limit, running / waiting for review / problem counts */
+        get: operations["AdminAiJobsController_summary"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5249,6 +5283,18 @@ export interface components {
             /** Format: int32 */
             rejected?: number;
         };
+        AiAiSummarySummary: {
+            configured: boolean;
+            enabled: boolean;
+            featuresOn: ("CARD" | "COMPLETION" | "TRANSLATION" | "SUPPLY_EXTRACT" | "SUPPLY_MATCH" | "SEARCH_TEST")[];
+            limit: string;
+            /** Format: int32 */
+            problems: number;
+            /** Format: int32 */
+            review: number;
+            /** Format: int32 */
+            running: number;
+        };
         AiJobDto: {
             /** Format: int64 */
             adminId: number;
@@ -8809,6 +8855,13 @@ export interface components {
         StaffAdminIncidentControllerResolveRequest: {
             resolution?: string;
         };
+        Start: {
+            created?: boolean;
+            productId?: string;
+            prompt?: string;
+            promptVersion?: string;
+            subjectVersion?: string;
+        };
         StartPaymentRequest: {
             display?: string;
             locale?: string;
@@ -9868,6 +9921,32 @@ export interface operations {
             };
         };
     };
+    AdminCardAiController_start: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Start"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiJobDto"];
+                };
+            };
+        };
+    };
     AdminAiJobsController_estimate: {
         parameters: {
             query?: never;
@@ -10092,6 +10171,26 @@ export interface operations {
                     "*/*": {
                         [key: string]: number;
                     };
+                };
+            };
+        };
+    };
+    AdminAiJobsController_summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AiAiSummarySummary"];
                 };
             };
         };

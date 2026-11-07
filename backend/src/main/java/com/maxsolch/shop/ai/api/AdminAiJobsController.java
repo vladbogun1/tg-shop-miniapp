@@ -2,6 +2,7 @@ package com.maxsolch.shop.ai.api;
 
 import com.maxsolch.shop.ai.app.AiJobDto;
 import com.maxsolch.shop.ai.app.AiJobs;
+import com.maxsolch.shop.ai.app.AiSummary;
 import com.maxsolch.shop.ai.domain.AiJob;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,9 +31,18 @@ import java.util.List;
 public class AdminAiJobsController {
 
     private final AiJobs jobs;
+    private final AiSummary summary;
 
-    public AdminAiJobsController(AiJobs jobs) {
+    public AdminAiJobsController(AiJobs jobs, AiSummary summary) {
         this.jobs = jobs;
+        this.summary = summary;
+    }
+
+    @GetMapping("/summary")
+    @Operation(summary = "For the chip and the entry buttons, no money: key set, AI and features on, a used-up limit, "
+            + "running / waiting for review / problem counts")
+    public AiSummary.Summary summary() {
+        return summary.summary();
     }
 
     @PostMapping("/jobs")
