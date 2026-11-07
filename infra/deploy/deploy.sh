@@ -9,7 +9,7 @@
 #        --plain (по-старому, без копии: ≈1 мин 502 — для релиза с разрушающей миграцией,
 #        с которой старый бэкенд не проработает и минуты).
 # Окружение: DEPLOY_COMPOSE — аргументы `docker compose` (по умолчанию три файла прода),
-#            DEPLOY_SETTLE — сколько ждать, пока шлюзы увидят новый адрес (с; resolver valid=10s в gateway*.conf).
+#            DEPLOY_SETTLE — сколько ждать, пока шлюзы увидят новый адрес (с; resolver valid=5s в gateway*.conf).
 #
 # Как без даунтайма: шлюзы nginx ищут backend / site-public / … через DNS Docker на каждый запрос
 # и при отказе соединения или 404 статики пробуют второй адрес (infra/gateway*.conf). Поэтому для
@@ -27,7 +27,7 @@ DEFAULT_SERVICES="cutout backend site-public frontend-public frontend-admin-publ
 # Инфраструктура, которую трогаем, только если поменялся её конфиг (перезапуск nginx ≈ 1 с).
 INFRA="gateway:infra/gateway.conf gateway-admin:infra/gateway-admin.conf gateway-site:infra/gateway-site.conf nginx:infra/nginx/nginx.conf caddy:infra/Caddyfile.prod"
 DEPLOY_COMPOSE="${DEPLOY_COMPOSE:--f docker-compose.yml -f docker-compose.public.yml -f docker-compose.prod.yml}"
-SETTLE="${DEPLOY_SETTLE:-12}"
+SETTLE="${DEPLOY_SETTLE:-7}"
 
 local mode=release tag="" backup=1 force="" services=""
 PLAIN=""
