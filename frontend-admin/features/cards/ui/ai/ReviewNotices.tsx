@@ -4,10 +4,11 @@ import { AiNotice } from "@/features/ai";
 import { Button } from "@shop/ui/admin-button";
 import type { PublishProblem } from "../../model/completion";
 
-/** Плашки над ревью карточки: ответ не разобрался, карточку изменили, не хватает цены. */
+/** Плашки над ревью карточки: ответ не разобрался, карточку изменили (кто и сколько полей), не хватает цены. */
 export function ReviewNotices(p: {
   problems: string[];
-  versionChanged: boolean;
+  /** «Пока работал ИИ, карточку правил Иван · 2 из 7 полей изменены…»; null — карточку не меняли. */
+  edited: string | null;
   mostly: boolean;
   onFresh: () => void;
   problem: PublishProblem | null;
@@ -21,10 +22,10 @@ export function ReviewNotices(p: {
       {p.problems.map((t) => (
         <AiNotice key={t} tone="warn">{t}</AiNotice>
       ))}
-      {p.versionChanged && !p.mostly && <AiNotice tone="warn">Карточку изменили после запуска ИИ — изменённые поля заблокированы.</AiNotice>}
+      {p.edited && !p.mostly && <AiNotice tone="warn">{p.edited}</AiNotice>}
       {p.mostly && (
         <div className="flex flex-col items-start gap-2 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] p-3 text-[12.5px] text-[var(--warn)]">
-          Карточка заметно изменилась, пока работал ИИ: большая часть предложений заблокирована.
+          {p.edited ?? "Карточка заметно изменилась, пока работал ИИ"}. Большая часть предложений заблокирована.
           <Button size="sm" variant="accent" onClick={p.onFresh}>Повторить на актуальной карточке</Button>
         </div>
       )}

@@ -42,7 +42,8 @@ export {
   type ReviewField,
 } from "./model/review-model";
 export { plausibility, plausibilityReason } from "./model/plausibility";
-export { conflictText, mostlyConflicted } from "./model/conflict";
+export { conflictText, conflictWithoutSnapshot, editedBanner, mostlyConflicted } from "./model/conflict";
+export type { EditorView, FieldChangeView } from "./model/conflict";
 export { reviewState, reviewStateLabel } from "./model/job-state";
 export { AiTaskCenter } from "./ui/AiTaskCenter";
 export { AiMetrics } from "./ui/AiMetrics";

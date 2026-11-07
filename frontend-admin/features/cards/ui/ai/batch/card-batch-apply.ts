@@ -5,13 +5,12 @@
  */
 import { aiApi, batchApi, initialSelection, isSafeKey, outcomeCounts, type AiBatch, type AiJob, type AiSafeApplied, type ReviewField } from "@/features/ai";
 import { cardsApi } from "../../../api";
-import { CARD_PROMPT_VERSION, snapshotOf, toProductSel } from "../../../model/ai-card";
+import { CARD_PROMPT_VERSION, cardVersion, toProductSel } from "../../../model/ai-card";
 import { assignCardIds, type CardItem } from "../../../model/item";
 import { buildCardPrompt } from "../../../model/prompt";
 import type { CardSchema } from "../../../model/schema";
 import { autoReady, buildImportItem } from "../../../model/selection";
 import type { ProductReview } from "../../../model/types";
-import { saveSnapshot } from "../card-subject";
 import { computeCardAiReview } from "../use-card-ai-review";
 
 /** Запустить пакет по выбранным товарам: у каждого свой промпт и отпечаток карточки на момент запуска. */
@@ -21,13 +20,12 @@ export async function startCardBatch(items: CardItem[], schema: CardSchema, idem
       promptVersion: CARD_PROMPT_VERSION,
       items: items.map((item) => ({
         productId: item.id,
-        subjectVersion: snapshotOf(item).version,
+        subjectVersion: cardVersion(item),
         prompt: buildCardPrompt([item], schema, { part: 1, total: 1, ids: assignCardIds([item.id]) }),
       })),
     },
     idemKey,
   );
-  items.forEach((item) => saveSnapshot(item.id, snapshotOf(item)));
   return batch;
 }
 

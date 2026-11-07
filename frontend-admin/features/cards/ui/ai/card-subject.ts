@@ -1,30 +1,19 @@
 "use client";
 
 /**
- * Товар и схема для встроенного ИИ: свежая выгрузка одного товара (версия карточки считается по ней), запуск задачи
- * и снимок значений на старте (в этом браузере — для честного «изменено после запуска»).
+ * Товар и схема для встроенного ИИ: свежая выгрузка одного товара (версия карточки считается по ней) и запуск задачи.
+ * Снимок значений на старте делает сервер при постановке задачи — конфликт правок виден с любого устройства.
  */
 import { aiApi, type AiJob } from "@/features/ai";
-import { localStore } from "@shop/core/storage";
 import { QUERY_PRESETS } from "@shop/core/query";
 import { useQuery } from "@tanstack/react-query";
 import { cardsApi } from "../../api";
 import { cardsKeys } from "../../keys";
-import { CARD_PROMPT_VERSION, snapshotOf, type CardSnapshot } from "../../model/ai-card";
+import { CARD_PROMPT_VERSION, cardVersion } from "../../model/ai-card";
 import { assignCardIds, type CardItem } from "../../model/item";
 import { buildCardPrompt } from "../../model/prompt";
 import type { CardSchema } from "../../model/schema";
 import { useCardSchema } from "../../queries";
-
-const snapKey = (productId: string) => `ai-card-snap-v1:${productId}`;
-
-export function loadSnapshot(productId: string): CardSnapshot | null {
-  return localStore.getJson<CardSnapshot>(snapKey(productId));
-}
-
-export function saveSnapshot(productId: string, snap: CardSnapshot): void {
-  localStore.setJson(snapKey(productId), snap);
-}
 
 /** Товар свежим запросом при каждом открытии: отпечаток по устаревшему кэшу дал бы ложный конфликт. */
 export function useCardSubject(productId: string, enabled = true) {
@@ -43,11 +32,8 @@ export function useCardSubject(productId: string, enabled = true) {
 export async function startCardJob(args: { item: CardItem; schema: CardSchema; created: boolean; idemKey: string }): Promise<AiJob> {
   const { item, schema, created, idemKey } = args;
   const prompt = buildCardPrompt([item], schema, { part: 1, total: 1, ids: assignCardIds([item.id]) });
-  const snap = snapshotOf(item);
-  const job = await aiApi.startCard(
-    { productId: item.id, created, subjectVersion: snap.version, prompt, promptVersion: CARD_PROMPT_VERSION },
+  return aiApi.startCard(
+    { productId: item.id, created, subjectVersion: cardVersion(item), prompt, promptVersion: CARD_PROMPT_VERSION },
     idemKey,
   );
-  saveSnapshot(item.id, snap);
-  return job;
 }

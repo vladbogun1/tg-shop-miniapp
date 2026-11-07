@@ -10,6 +10,7 @@ import {
   AiJobProgress,
   AiReview,
   type AiMenuItem as MenuItem,
+  editedBanner,
   mostlyConflicted,
   useAiJob,
   useCancelJob,
@@ -92,7 +93,7 @@ function ReviewBody(p: { job: AiJob; item: Subject; schema: Schema; onManual: ()
   const selected = picked ?? data.initial;
   const act = useCardAiApply({ job, item, review: data.review, rows: data.rows, selected, translations, publish });
 
-  const { mostly, finished, doneText } = statusOf(job, data, act.applied);
+  const { mostly, edited, finished, doneText } = statusOf(job, data, act.applied);
   const canRetryMore = finance || job.retryOf === 0;
 
   const menu = reviewMenu({
@@ -119,7 +120,7 @@ function ReviewBody(p: { job: AiJob; item: Subject; schema: Schema; onManual: ()
         notices={
           <ReviewNotices
             problems={data.problems}
-            versionChanged={data.versionChanged}
+            edited={edited}
             mostly={mostly}
             onFresh={() => void startCardJob({ item, schema, created: false, idemKey: `fresh-${job.id}` }).then((j) => p.toJob(j.id))}
             problem={act.problem}
@@ -142,7 +143,9 @@ function statusOf(job: AiJob, data: ReturnType<typeof useCardAiReview>, appliedN
   const conflicted = data.rows.filter((x) => x.conflict).length;
   const finished = appliedNow || !!job.outcome;
   const text = job.outcome === "REJECTED" ? "Результат отклонён" : "Результат применён";
-  return { mostly: data.versionChanged && mostlyConflicted(conflicted, data.rows.length), finished, doneText: finished ? text : null };
+  const changed = data.versionChanged && !finished;
+  const edited = !changed ? null : data.changes ? editedBanner(data.changes.editors, conflicted, data.rows.length) : "Карточку изменили после запуска ИИ — заменять заполненные поля ИИ не будет";
+  return { mostly: changed && mostlyConflicted(conflicted, data.rows.length), edited, finished, doneText: finished ? text : null };
 }
 
 /** Пункты «⋯»: что недоступно (null) — не показываем. */

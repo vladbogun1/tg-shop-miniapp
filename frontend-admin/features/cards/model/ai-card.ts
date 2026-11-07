@@ -1,10 +1,11 @@
 /**
  * «Карточки» ↔ встроенный ИИ: адаптер между разбором ответа (`ProductReview`) и общим экраном проверки
- * `features/ai` (`ReviewField[]`). Здесь: отпечаток карточки (версия предмета задачи), снимок значений на старте,
- * перевод разбора в строки с замком/конфликтом/правдоподобием, сборка выбора для записи тем же путём, что у ручного
+ * `features/ai` (`ReviewField[]`). Здесь: отпечаток карточки (версия предмета задачи), перевод разбора в строки
+ * с замком/конфликтом (снимок на старте и правки после него — с сервера, `ai-conflict.ts`)/правдоподобием, сборка выбора для записи тем же путём, что у ручного
  * мастера (`buildImportItem` → `cardsApi.import`, метка ИИ — в `card_meta`). Чистая логика.
  */
-import { conflictText, plausibility, plausibilityReason, type ReviewField } from "@/features/ai";
+import { conflictText, conflictWithoutSnapshot, plausibility, plausibilityReason, type ReviewField } from "@/features/ai";
+import type { CardChanges } from "./ai-conflict";
 import type { CardItem } from "./item";
 import { metaOf } from "./view";
 import { defaultSel, renameByDefault, type ProductSel } from "./selection";
@@ -26,7 +27,7 @@ function stableText(v: unknown): string {
   return JSON.stringify(v ?? null);
 }
 
-/** Значения полей карточки как строки (ключ строки ревью → значение; null — пусто). Общий вид для снимка и сверки. */
+/** Значения полей карточки как строки (ключ строки ревью → значение; null — пусто). Основа отпечатка. */
 export function valuesOf(item: CardItem): Record<string, string | null> {
   const out: Record<string, string | null> = {
     title: item.title?.trim() || null,
@@ -50,24 +51,21 @@ export function cardVersion(item: CardItem): string {
   return `v1-${(h >>> 0).toString(36)}`;
 }
 
-export interface CardSnapshot {
-  version: string;
-  values: Record<string, string | null>;
-}
-
-export function snapshotOf(item: CardItem): CardSnapshot {
-  return { version: cardVersion(item), values: valuesOf(item) };
-}
-
 export interface FieldContext {
-  /** Снимок на старте этой задачи; null — нет (другой браузер) или не от этой версии. */
-  snapshot: CardSnapshot | null;
+  /** Правки после старта по снимку на сервере; null — у задачи снимка нет (поставлена до V92). */
+  changes: CardChanges | null;
+  /** Отпечаток карточки другой, чем при старте: без снимка — единственный признак правок. */
   versionChanged: boolean;
   /** Значения числовой характеристики у других товаров той же категории. */
   neighbors: (specKeyName: string) => number[];
 }
 
 type Doubt = Pick<ReviewField, "suspicion" | "reason">;
+
+function conflictOf(ctx: FieldContext, key: string, label: string, proposed: string, nowValue: string | null): string | null {
+  if (ctx.changes) return conflictText(label, proposed, { change: ctx.changes.fields[key] ?? null, editors: ctx.changes.editors });
+  return conflictWithoutSnapshot(nowValue, ctx.versionChanged);
+}
 
 function doubtOf(f: FieldReview, neighbors: number[]): Doubt {
   if (typeof f.value === "number") {
@@ -103,7 +101,7 @@ function specRows(r: ProductReview, ctx: FieldContext): ReviewField[] {
       source: f.src,
       ...doubtOf(f, ctx.neighbors(f.key)),
       ...lockOf(r.item, f.key, hasBefore),
-      conflict: conflictText(key, now[key] ?? null, proposed, { start: ctx.snapshot?.values ?? null, versionChanged: ctx.versionChanged }),
+      conflict: conflictOf(ctx, key, f.label, proposed, now[key] ?? null),
     });
   }
   return rows;
@@ -131,7 +129,7 @@ function textRows(r: ProductReview, ctx: FieldContext): ReviewField[] {
       reason: error?.text ?? null,
       humanLocked: false,
       lockNote: null,
-      conflict: conflictText(field, now[field] ?? null, t.ru.trim(), { start: ctx.snapshot?.values ?? null, versionChanged: ctx.versionChanged }),
+      conflict: conflictOf(ctx, field, label, t.ru.trim(), now[field] ?? null),
     });
   }
   return rows;
@@ -157,7 +155,7 @@ function changeRows(r: ProductReview, ctx: FieldContext): ReviewField[] {
       reason: c.valid ? null : c.issues.find((i) => i.level !== "info")?.text ?? "Такой категории нет в каталоге",
       humanLocked: false,
       lockNote: null,
-      conflict: conflictText(key, now[key] ?? null, c.to, { start: ctx.snapshot?.values ?? null, versionChanged: ctx.versionChanged }),
+      conflict: conflictOf(ctx, key, label, c.to, now[key] ?? null),
     });
   }
   return rows;
