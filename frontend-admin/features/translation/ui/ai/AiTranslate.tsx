@@ -12,6 +12,7 @@ import { ArrowLeft, Send } from "lucide-react";
 import type { ReactNode } from "react";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { plural } from "../../model/plural";
+import type { TrLocale } from "../../model/types";
 import type { WorkSet } from "../../model/workset";
 import { AiReviewRow } from "./AiReviewRow";
 import { AnswerStep } from "./AnswerStep";
@@ -113,8 +114,8 @@ function ReviewStep({ ai }: { ai: AiSession }) {
   );
 }
 
-export function AiTranslate({ ws, scope, onClose }: { ws: WorkSet; scope: string[]; onClose: () => void }) {
-  const ai = useAiSession(ws, scope, onClose);
+export function AiTranslate({ ws, scope, langs, onClose }: { ws: WorkSet; scope: string[]; langs: readonly TrLocale[]; onClose: () => void }) {
+  const ai = useAiSession(ws, scope, langs, onClose);
   const n = ai.chosen.length;
 
   return (
@@ -124,7 +125,8 @@ export function AiTranslate({ ws, scope, onClose }: { ws: WorkSet; scope: string
           К списку
         </Button>
         <div className="font-display text-[13px] font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
-          Перевод через ИИ · <span className="tabular text-[var(--text)]">{n}</span> {plural(n, "текст", "текста", "текстов")}
+          Перевод через ИИ · <span className="tabular text-[var(--text)]">{n}</span> {plural(n, "текст", "текста", "текстов")} ·{" "}
+          {ai.langs.map((l) => l.toUpperCase()).join(" и ")}
         </div>
       </div>
 

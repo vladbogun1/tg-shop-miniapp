@@ -5,21 +5,23 @@
  * Запись — `useSendAiTranslations`; здесь только подтверждение и обновление списка строк после ответа.
  */
 import { useConfirm } from "@shop/ui/confirm";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useMarkManual } from "@/features/ai";
 import { buildReview, revalidate, type ReviewRow } from "../../model/review";
 import { parseAnswer } from "../../model/parse";
 import { buildPrompt, KIND_LABEL, splitIntoParts, type PromptString } from "../../model/prompt";
 import { plural } from "../../model/plural";
 import { staleManual } from "../../model/queue";
-import { failedFixIds, planSend, type SendSummary } from "../../model/send";
-import { LOCALES, type WorkSet } from "../../model/workset";
+import { failedFixIds, partMarks, planSend, type SendSummary } from "../../model/send";
+import type { TrLocale } from "../../model/types";
+import type { WorkSet } from "../../model/workset";
 import { useSendAiTranslations } from "../../queries";
 
 export type ReviewFilter = "all" | "ok" | "warn" | "error" | "ru";
 
 /** The row would overwrite an outdated translation the admin wrote by hand. */
 export function replacesManual(r: ReviewRow): boolean {
-  return LOCALES.some((l) => staleManual(r.str, l).length > 0);
+  return r.langs.some((l) => staleManual(r.str, l).length > 0);
 }
 
 function toggled(set: Set<string>, id: string, on: boolean): Set<string> {
@@ -30,7 +32,7 @@ function toggled(set: Set<string>, id: string, on: boolean): Set<string> {
 }
 
 /** Части промпта: выбранные тексты списка, разбитые по размеру. */
-function usePromptParts(ws: WorkSet, scope: string[]) {
+function usePromptParts(ws: WorkSet, scope: string[], langs: readonly TrLocale[]) {
   const [frozen] = useState(() => {
     const wanted = new Set(scope);
     const chosen = ws.strings.filter((s) => wanted.has(s.sourceHash));
@@ -45,7 +47,7 @@ function usePromptParts(ws: WorkSet, scope: string[]) {
       chosen,
       parts: split.map((p, i) => ({
         ids: p.map((x) => x.id),
-        text: buildPrompt(p, i + 1, split.length),
+        text: buildPrompt(p, i + 1, split.length, langs),
         chars: p.reduce((n, x) => n + x.ru.length, 0),
       })),
     };
@@ -53,9 +55,12 @@ function usePromptParts(ws: WorkSet, scope: string[]) {
   return frozen;
 }
 
-export function useAiSession(ws: WorkSet, scope: string[], onClose: () => void) {
+export function useAiSession(ws: WorkSet, scope: string[], langs: readonly TrLocale[], onClose: () => void) {
   const confirm = useConfirm();
-  const { chosen, parts } = usePromptParts(ws, scope);
+  const [frozenLangs] = useState(langs);
+  const { chosen, parts } = usePromptParts(ws, scope, frozenLangs);
+  const markManual = useMarkManual();
+  const marked = useRef(new Set<string>());
   const [copied, setCopied] = useState<Set<number>>(new Set());
   const [preview, setPreview] = useState<number | null>(null);
   const fieldCount = chosen.reduce((n, s) => n + s.fields.length, 0);
@@ -83,7 +88,7 @@ export function useAiSession(ws: WorkSet, scope: string[], onClose: () => void) 
       setMissing([]);
       return;
     }
-    const r = buildReview(parsed, ws);
+    const r = buildReview(parsed, ws, frozenLangs);
     setUnknown(r.unknown);
     setInvalid(r.invalid);
     // Missing = ids of every part the answer touched that are not in it.
@@ -133,6 +138,12 @@ export function useAiSession(ws: WorkSet, scope: string[], onClose: () => void) 
     if (result.importErrors.length) return;
     const failed = failedFixIds(result);
     const sentIds = new Set(sendable.filter((r) => !failed.has(r.id)).map((r) => r.id));
+    // в «Метрики ИИ»: доля встроенного ИИ против ручного пути считает и ручные переводы
+    const marks = partMarks(parts, sentIds, marked.current);
+    if (marks.length) {
+      marks.forEach((m) => marked.current.add(m));
+      markManual.mutate({ feature: "TRANSLATION", subjectIds: marks });
+    }
     setRows((prev) => (prev ?? []).filter((r) => !sentIds.has(r.id)));
     setSelected(new Set());
     setApplyFix(new Set());
@@ -187,6 +198,7 @@ export function useAiSession(ws: WorkSet, scope: string[], onClose: () => void) 
   const select = (pick: (r: ReviewRow) => boolean) => setSelected(new Set((rows ?? []).filter(pick).map((r) => r.id)));
 
   return {
+    langs: frozenLangs,
     // шаг 1
     chosen,
     parts,

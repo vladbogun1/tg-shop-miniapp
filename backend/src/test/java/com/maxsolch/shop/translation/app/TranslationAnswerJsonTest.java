@@ -2,6 +2,7 @@ package com.maxsolch.shop.translation.app;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,6 +38,18 @@ class TranslationAnswerJsonTest {
         String prompt = "Ответ — ровно ОДИН блок кода ```json, без текста.\nПример:\n```json\n{\"t0\": {}}\n```\n"
                 + "## Строки для перевода (JSON)\n```json\n{\"tab\": {\"ru\": \"x\"}, \"tcd\": {\"ru\": \"y\"}}\n```\n";
         assertThat(TranslationAnswerJson.asked(prompt)).containsExactly("tab", "tcd");
+    }
+
+    @Test
+    void theLanguagesComeFromTheLineAboveTheStringsAndDefaultToAll() {
+        List<String> both = List.of("uk", "en");
+        String one = "Переведи.\nЯзыки перевода: en\n## Строки для перевода\n```json\n{\"tab\":{\"ru\":\"Языки перевода: uk\"}}\n```";
+        assertThat(TranslationAnswerJson.locales(one, both)).containsExactly("en");
+        assertThat(TranslationAnswerJson.locales("Языки перевода: uk, en\n## Строки для перевода", both))
+                .containsExactly("uk", "en");
+        assertThat(TranslationAnswerJson.locales("старый промпт без строки", both)).containsExactly("uk", "en");
+        assertThat(TranslationAnswerJson.locales("Языки перевода: de\n## Строки для перевода", both))
+                .containsExactly("uk", "en");
     }
 
     @Test

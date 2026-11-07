@@ -50,6 +50,35 @@ final class TranslationAnswerJson {
     /** Where the strings start in the prompt of the admin (the instructions above it mention «```json» in a sentence, which breaks the fence pairing). */
     private static final String INPUT_MARKER = "## Строки для перевода";
 
+    /**
+     * The line of the prompt that names the languages to translate into ({@code model/prompt.ts} writes it above the
+     * strings when the admin works on one language). Only the instructions are searched, not the strings themselves.
+     */
+    private static final Pattern LOCALES_LINE = Pattern.compile("(?m)^Языки перевода:[ \\t]*([a-z ,]+)\\r?$");
+
+    /**
+     * The languages the prompt asked for, of {@code known}, in their order: a prompt without the line (or naming none
+     * of them) asks for all of them — the prompts written before the line existed.
+     */
+    static List<String> locales(String prompt, List<String> known) {
+        String head = prompt == null ? "" : prompt;
+        int at = head.lastIndexOf(INPUT_MARKER);
+        Matcher m = LOCALES_LINE.matcher(at >= 0 ? head.substring(0, at) : head);
+        String named = null;
+        while (m.find()) {
+            named = m.group(1);
+        }
+        if (named == null) {
+            return known;
+        }
+        Set<String> asked = new LinkedHashSet<>();
+        for (String s : named.split(",")) {
+            asked.add(s.trim());
+        }
+        List<String> out = known.stream().filter(asked::contains).toList();
+        return out.isEmpty() ? known : out;
+    }
+
     /** The ids the prompt asked about: the keys of its input object (the last block of the prompt); null if unreadable. */
     static Set<String> asked(String prompt) {
         int at = prompt == null ? -1 : prompt.lastIndexOf(INPUT_MARKER);

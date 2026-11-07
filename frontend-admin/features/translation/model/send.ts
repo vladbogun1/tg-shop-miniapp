@@ -38,7 +38,8 @@ export function planSend(chosenRows: ReviewRow[], applyFix: Set<string>) {
   const forced: Record<TrLocale, TrImportItem[]> = { uk: [], en: [] };
   for (const r of plain) {
     for (const f of r.str.fields) {
-      for (const l of LOCALES) {
+      // only the languages of the session: with the «UK» filter English is not touched
+      for (const l of r.langs) {
         if (f.status[l] === "TRANSLATED") continue;
         const item = { entityType: f.entityType, entityId: f.entityId, field: f.field, sourceHash: f.sourceHash, text: r[l] };
         (f.origin[l] === "MANUAL" ? forced : byLocale)[l].push(item);
@@ -75,4 +76,17 @@ export function summaryFixed(s: SendSummary): number {
 /** Строки, чья правка оригинала не прошла: остаются в проверке для новой попытки. */
 export function failedFixIds(s: SendSummary): Set<string> {
   return new Set(s.fixes.filter((f) => f.error || !f.result?.updated).map((f) => f.id));
+}
+
+/**
+ * Метки ручного пути для метрик: одна на часть промпта, из которой сохранена хоть одна строка (встроенный ИИ тоже
+ * считает по задаче на часть). Номер части и её первая строка — id метки; уже отмеченные части не повторяются.
+ */
+export function partMarks(parts: readonly { ids: string[] }[], savedIds: ReadonlySet<string>, marked: ReadonlySet<string>): string[] {
+  const out: string[] = [];
+  parts.forEach((p, i) => {
+    const id = `p${i + 1}-${p.ids[0] ?? ""}`.slice(0, 64);
+    if (!marked.has(id) && p.ids.some((x) => savedIds.has(x))) out.push(id);
+  });
+  return out;
 }

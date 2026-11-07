@@ -39,7 +39,7 @@ function RowHeader({
       <KindBadge kindKey={s.kindKey} />
       {s.fields.length > 1 && <Badge tone="info">в {s.fields.length} местах</Badge>}
       {row.done && <Badge tone="neutral">уже переведено — пропуск</Badge>}
-      {(["uk", "en"] as const).map((l) => (s.needs[l] ? <StateChip key={l} lang={l} state={langState(s, l)} /> : null))}
+      {row.langs.map((l) => (s.needs[l] ? <StateChip key={l} lang={l} state={langState(s, l)} /> : null))}
       {replacesManual(row) && !row.done && <Badge tone="warn">заменит ваш ручной перевод</Badge>}
       <div className="ml-auto flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
         {products.slice(0, 3).map(([id, title]) => (
@@ -118,7 +118,7 @@ export function AiReviewRow({
       <span className="absolute inset-y-0 left-0 w-[2px]" style={{ backgroundColor: stripe }} aria-hidden />
       <div className="p-3">
         <RowHeader row={row} selected={selected} disabled={disabled} onSelect={onSelect} />
-        <div className="grid gap-3 lg:grid-cols-3">
+        <div className={`grid gap-3 ${row.langs.length === 1 ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
           <div>
             <div className="field-label mb-1 !text-[11px] !text-[var(--text-faint)]">RU · оригинал</div>
             <div className="rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--bg-2)] px-2.5 py-2">
@@ -126,7 +126,7 @@ export function AiReviewRow({
             </div>
             <IssueList issues={byLang("ru")} />
           </div>
-          {(["uk", "en"] as const).map((l) => (
+          {row.langs.map((l) => (
             <div key={l}>
               <div className="field-label mb-1 !text-[11px] !text-[var(--text-faint)]">
                 {l === "uk" ? "UK · українська" : "EN · english"}

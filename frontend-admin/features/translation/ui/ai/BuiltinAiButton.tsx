@@ -13,6 +13,7 @@ import { Sparkles } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { plural } from "../../model/plural";
 import { buildBatchParts, partsCaption, TRANSLATION_PROMPT_VERSION } from "../../model/ai-batch";
+import type { TrLocale } from "../../model/types";
 import type { UniqueString } from "../../model/workset";
 import { useStartTranslationBatch } from "../../queries";
 
@@ -24,17 +25,20 @@ export function useBuiltinAiReady(): boolean {
 
 export function BuiltinAiButton({
   strings,
+  langs,
   onStarted,
   emphasis = true,
 }: {
   strings: UniqueString[];
+  /** Языки фильтра «Язык»: с «UK» сервер запишет только украинский, английский не тронет. */
+  langs: readonly TrLocale[];
   /** Пакет поставлен: экран запоминает его номер, чтобы показать итог. */
   onStarted: (batchId: number) => void;
   /** Главная кнопка вкладки (акцентная) или вторичная. */
   emphasis?: boolean;
 }) {
   const finance = useAiFinanceFlag();
-  const parts = useMemo(() => buildBatchParts(strings), [strings]);
+  const parts = useMemo(() => buildBatchParts(strings, langs), [strings, langs]);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const key = useRef(newIdemKey());
@@ -68,7 +72,7 @@ export function BuiltinAiButton({
         }}
         data-testid="tr-ai-start"
       >
-        Перевести с ИИ ({strings.length})
+        Перевести с ИИ ({strings.length}){langs.length === 1 ? ` · ${langs[0].toUpperCase()}` : ""}
       </Button>
       <span className="text-[12px] leading-tight text-[var(--text-muted)]" data-testid="tr-ai-caption">
         {partsCaption(parts)}

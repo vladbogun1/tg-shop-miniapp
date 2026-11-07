@@ -23,6 +23,7 @@ import java.util.Map;
  * them like any AI text). What is written and what is not is decided by {@link AiTranslationPlan}; the writing itself
  * is the import of this module ({@link TranslationImport#importBuiltinAi}), not a direct write into the table, so the
  * hash of the source is checked again at the moment of writing and a translation a person wrote is never replaced.
+ * When the admin asked for one language (the line «Языки перевода» of the prompt), only that one is written.
  * Runs on the server in the task's thread: the admin who started the task is the job's, not the request's.
  */
 @Service
@@ -57,7 +58,8 @@ public class AiTranslationApply implements ResultWriter {
             Map<String, Map<TranslationService.Key,
                     ContentTranslation>> rows = new HashMap<>();
             ContentLocale.TRANSLATED.forEach(l -> rows.put(l, report.rowsOf(l)));
-            return new AiTranslationPlan(store.sources(), rows)
+            return new AiTranslationPlan(store.sources(), rows,
+                    TranslationAnswerJson.locales(prompt, ContentLocale.TRANSLATED))
                     .plan(TranslationAnswerJson.asked(prompt), TranslationAnswerJson.answers(answer));
         });
         int applied = 0;

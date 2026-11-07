@@ -127,7 +127,7 @@ export function TranslationsScreen() {
       )}
 
       {/* Stays mounted while open: a pasted answer must survive a refetch. */}
-      {ai && !review && <AiTranslate ws={ws} scope={ai} onClose={() => setAi(null)} />}
+      {ai && !review && <AiTranslate ws={ws} scope={ai} langs={langs} onClose={() => setAi(null)} />}
 
       <div hidden={!!review || !!ai}>
         <StickyToolbar>
@@ -157,7 +157,7 @@ export function TranslationsScreen() {
           active={active}
           count={list.length}
           bulkBusy={acceptAllM.isPending}
-          builtinAi={builtinAiSlot(active, aiReady, list, started.remember)}
+          builtinAi={builtinAiSlot(active, aiReady, list, langs, started.remember)}
           onAi={() => setAi(list.map((s) => s.sourceHash))}
           onReview={() => openReview(0)}
           onAcceptAll={() => void acceptEverything()}

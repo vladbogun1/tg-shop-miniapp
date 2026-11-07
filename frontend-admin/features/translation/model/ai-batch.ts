@@ -9,7 +9,7 @@ import type { AiBatch } from "@/features/ai";
 import { aboutDuration } from "@/features/ai";
 import { parseAnswer } from "./parse";
 import { plural } from "./plural";
-import { buildPrompt, KIND_LABEL, PART_MAX_STRINGS, splitIntoParts, type PromptString } from "./prompt";
+import { buildPrompt, KIND_LABEL, PART_MAX_STRINGS, splitIntoParts, type PromptLangs, type PromptString } from "./prompt";
 import type { UniqueString } from "./workset";
 
 /** Одна часть: номер на экране, промпт и сколько в нём строк. */
@@ -27,9 +27,9 @@ function promptStrings(strings: readonly UniqueString[]): PromptString[] {
 }
 
 /** Части по размеру и числу строк (≤ 60, как на ручном пути); порядок списка сохраняется. */
-export function buildBatchParts(strings: readonly UniqueString[]): BatchPart[] {
+export function buildBatchParts(strings: readonly UniqueString[], langs?: PromptLangs): BatchPart[] {
   const split = splitIntoParts(promptStrings(strings));
-  return split.map((p, i) => ({ part: i + 1, prompt: buildPrompt(p, i + 1, split.length), strings: p.length }));
+  return split.map((p, i) => ({ part: i + 1, prompt: buildPrompt(p, i + 1, split.length, langs), strings: p.length }));
 }
 
 /** Адаптер предмета для пакета ИИ и для ручного мастера: промпт частями, разбор ответа, идентификаторы строк. */
@@ -86,4 +86,4 @@ export function resultText(r: BatchResult): string {
 }
 
 /** Версия промпта пакета: пишется в задачу, чтобы по метрикам видеть, какой текст дал какой результат. */
-export const TRANSLATION_PROMPT_VERSION = "translation-v1";
+export const TRANSLATION_PROMPT_VERSION = "translation-v2";

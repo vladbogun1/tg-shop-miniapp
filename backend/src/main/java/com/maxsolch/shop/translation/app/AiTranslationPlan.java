@@ -28,7 +28,8 @@ import java.util.Set;
  *   <li>otherwise written, unless the model did not answer, the id matches no (or several) current texts, or the
  *       translation fails {@link TranslationAnswerCheck}: those are counted as {@code rejected}.</li>
  * </ul>
- * The counts are in places x languages, as the manual screen counts.
+ * Only the languages the prompt asked for are planned (the admin may translate into one of them); the counts are in
+ * places x those languages, as the manual screen counts.
  */
 final class AiTranslationPlan {
 
@@ -43,10 +44,17 @@ final class AiTranslationPlan {
     private final Map<Key, Field> sources;
     private final Map<String, Map<Key, ContentTranslation>> rows;
     private final Map<String, List<Key>> keysByHash = new HashMap<>();
+    private final List<String> locales;
 
     AiTranslationPlan(Map<Key, Field> sources, Map<String, Map<Key, ContentTranslation>> rows) {
+        this(sources, rows, ContentLocale.TRANSLATED);
+    }
+
+    /** @param locales the languages to write, of {@link ContentLocale#TRANSLATED} */
+    AiTranslationPlan(Map<Key, Field> sources, Map<String, Map<Key, ContentTranslation>> rows, List<String> locales) {
         this.sources = sources;
         this.rows = rows;
+        this.locales = locales;
         sources.forEach((key, f) -> {
             if (f.inScope() && !TranslationRows.isBlank(f.text())) {
                 keysByHash.computeIfAbsent(SourceHash.sha256Hex(f.text()), h -> new ArrayList<>()).add(key);
@@ -57,7 +65,7 @@ final class AiTranslationPlan {
     /** @param asked the ids of the prompt; null when it could not be read: then the ids of the answer */
     Result plan(Set<String> asked, Map<String, TranslationAnswerJson.Entry> answers) {
         Map<String, List<ImportItem>> items = new LinkedHashMap<>();
-        ContentLocale.TRANSLATED.forEach(l -> items.put(l, new ArrayList<>()));
+        locales.forEach(l -> items.put(l, new ArrayList<>()));
         int[] counts = new int[2];
         for (String id : asked == null ? answers.keySet() : asked) {
             List<Key> keys = keysOf(id);
@@ -75,7 +83,7 @@ final class AiTranslationPlan {
         for (Key key : keys) {
             String source = sources.get(key).text();
             String hash = SourceHash.sha256Hex(source);
-            for (String locale : ContentLocale.TRANSLATED) {
+            for (String locale : locales) {
                 ContentTranslation row = rows.get(locale).get(key);
                 Status status = TranslationReport.statusOf(row, hash);
                 if (status == Status.TRANSLATED) {

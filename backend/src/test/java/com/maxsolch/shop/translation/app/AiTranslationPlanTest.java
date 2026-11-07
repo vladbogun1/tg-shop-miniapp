@@ -99,6 +99,16 @@ class AiTranslationPlanTest {
     }
 
     @Test
+    void onlyTheAskedLanguageIsWrittenAndCounted() {
+        // the admin translates into Ukrainian only: the model returns no "en", that is not a rejection
+        AiTranslationPlan.Result r = new AiTranslationPlan(sources, rows, java.util.List.of("uk"))
+                .plan(Set.of(id(RU_A)), answers(id(RU_A), UK_A, null));
+        assertThat(r.items()).containsOnlyKeys("uk");
+        assertThat(r.items().get("uk")).hasSize(2);
+        assertThat(r.rejected()).isZero();
+    }
+
+    @Test
     void onlyAskedIdsAreWritten() {
         AiTranslationPlan.Result r = plan(Set.of(id(RU_A)), answers(id(RU_A), UK_A, EN_A,
                 id(RU_B), "Килимок для миші великий", "Large mouse pad"));

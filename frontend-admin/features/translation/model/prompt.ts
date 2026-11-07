@@ -27,6 +27,8 @@
  * 2026-10-04) — keep both in sync.
  */
 
+import type { TrLocale } from "./types";
+
 /** Size of one part: the AI chat must take it in one message and answer without truncation. */
 export const PART_MAX_SOURCE_CHARS = 12_000;
 export const PART_MAX_STRINGS = 60;
@@ -114,22 +116,35 @@ export const GLOSSARY = `
 Новая Почта → uk: Нова Пошта → en: Nova Poshta
 `.trim();
 
+/** Языки, на которые переводим: оба или один выбранный в фильтре «Язык». */
+export type PromptLangs = readonly TrLocale[];
+const BOTH: PromptLangs = ["uk", "en"];
+
+const LANG_TASK: Record<TrLocale, string> = {
+  uk: '- "uk" — перевод на украинский (с исправленного ru).',
+  en: '- "en" — перевод на английский (с исправленного ru).',
+};
+
 /** Everything before the strings. Edit freely — the parser depends only on the answer format. */
-function header(part: number, total: number, count: number): string {
+function header(part: number, total: number, count: number, langs: PromptLangs): string {
   const partLine =
     total > 1
       ? `Это часть ${part} из ${total} (${count} строк). Отвечай только на строки этой части.`
       : `Всего строк: ${count}.`;
+  const one = langs.length === 1;
+  const fields = ["ru", ...langs].map((l) => `"${l}"`).join(", ");
+  const onlyLine = one
+    ? `\nПереводи только на ${langs[0] === "uk" ? "украинский" : "английский"}: поле "${langs[0] === "uk" ? "en" : "uk"}" не возвращай (в примере выше оно показано лишь для образца).`
+    : "";
   return `Ты — профессиональный переводчик-локализатор интернет-магазина.
 
 ## Зачем
 ChiSetup — украинский магазин игровой периферии (мышки, клавиатуры, коврики, глайды, наушники и т. п.). Покупатели — геймеры. Сайт и Telegram-магазин работают на трёх языках: русский (оригинал), украинский и английский. Нужно перевести тексты товаров, вариантов, категорий и способов оплаты. Тон — короткий, деловой, без маркетинговой воды, как в оригинале.
 
 ## Задача
-Для каждой строки ниже верни три текста:
+Для каждой строки ниже верни ${one ? "два текста" : "три текста"}:
 - "ru" — оригинал, ВЫЧИТАННЫЙ: исправь только явные опечатки (орфография, пропущенные/лишние/переставленные буквы). Не меняй смысл, слова, порядок, стиль, пунктуацию «на вкус», е/ё, форматирование и числа. Если ошибок нет — верни оригинал символ в символ.
-- "uk" — перевод на украинский (с исправленного ru).
-- "en" — перевод на английский (с исправленного ru).
+${langs.map((l) => LANG_TASK[l]).join("\n")}
 ${partLine}
 
 ## Жёсткие правила
@@ -148,26 +163,31 @@ ${partLine}
 ${GLOSSARY}
 
 ## Формат ответа — СТРОГО
-Ответ — ровно ОДИН блок кода \`\`\`json, без текста до и после. Внутри — один JSON-объект: ключи — id строк из входных данных (ровно те же, все до одного, без новых), значения — объекты с полями "ru", "uk", "en" (строки). Переносы строк внутри текста — \\n, кавычки внутри текста экранируй (\\"). Без комментариев и без висячих запятых. Пример:
+Ответ — ровно ОДИН блок кода \`\`\`json, без текста до и после. Внутри — один JSON-объект: ключи — id строк из входных данных (ровно те же, все до одного, без новых), значения — объекты с полями ${fields} (строки). Переносы строк внутри текста — \\n, кавычки внутри текста экранируй (\\"). Без комментариев и без висячих запятых. Пример:
 \`\`\`json
 {
   "t0a1b2c": { "ru": "Ковер Attack Shark черный", "uk": "Килимок Attack Shark чорний", "en": "Attack Shark Mouse Pad, Black" },
   "t9f8e7d": { "ru": "Размер: 490 × 420 мм\\nТолщина: 4 мм", "uk": "Розмір: 490 × 420 мм\\nТовщина: 4 мм", "en": "Size: 490 × 420 mm\\nThickness: 4 mm" }
 }
 \`\`\`
-Если ответ не помещается в одно сообщение — не сокращай тексты: остановись на границе строки, а я попрошу продолжить.
+Если ответ не помещается в одно сообщение — не сокращай тексты: остановись на границе строки, а я попрошу продолжить.${onlyLine}
+
+Языки перевода: ${langs.join(", ")}
 
 ## Строки для перевода (JSON: id → { kind, product?, ru })
 `;
 }
 
-/** The full text of one part. */
-export function buildPrompt(strings: PromptString[], part: number, total: number): string {
+/**
+ * The full text of one part. {@code langs} — the languages to translate into (the line «Языки перевода» tells the
+ * server which ones to write; a prompt with one language makes the model skip the other).
+ */
+export function buildPrompt(strings: PromptString[], part: number, total: number, langs: PromptLangs = BOTH): string {
   const input: Record<string, { kind: string; product?: string; ru: string }> = {};
   for (const s of strings) {
     input[s.id] = s.product ? { kind: s.kind, product: s.product, ru: s.ru } : { kind: s.kind, ru: s.ru };
   }
-  return header(part, total, strings.length) + "```json\n" + JSON.stringify(input, null, 2) + "\n```\n";
+  return header(part, total, strings.length, langs) + "```json\n" + JSON.stringify(input, null, 2) + "\n```\n";
 }
 
 /**

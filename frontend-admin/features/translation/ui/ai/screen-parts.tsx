@@ -7,6 +7,7 @@
 import { Button } from "@shop/ui/admin-button";
 import type { ReactNode } from "react";
 import type { Bucket } from "../../model/queue";
+import type { TrLocale } from "../../model/types";
 import type { UniqueString } from "../../model/workset";
 import type { TranslationLists } from "../use-translation-lists";
 import { BatchResult } from "./BatchResult";
@@ -48,7 +49,13 @@ export function StartedBatchResult({ lists, started }: { lists: TranslationLists
 }
 
 /** Кнопка встроенного ИИ для вкладки; нет её (`undefined`) — ИИ недоступен или вкладка не про перевод. */
-export function builtinAiSlot(active: Bucket, ready: boolean, strings: UniqueString[], onStarted: (id: number) => void): ReactNode {
+export function builtinAiSlot(
+  active: Bucket,
+  ready: boolean,
+  strings: UniqueString[],
+  langs: readonly TrLocale[],
+  onStarted: (id: number) => void
+): ReactNode {
   if (!ready || (active !== "missing" && active !== "stale")) return undefined;
-  return <BuiltinAiButton strings={strings} emphasis={active === "missing"} onStarted={onStarted} />;
+  return <BuiltinAiButton strings={strings} langs={langs} emphasis={active === "missing"} onStarted={onStarted} />;
 }
