@@ -5,7 +5,7 @@
  * inline bars. Text always wears text tokens; colour only marks the data.
  */
 import { motion } from "framer-motion";
-import { ArrowDownRight, ArrowUpRight, Info, Minus, type LucideIcon } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, ChevronDown, Info, Minus, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Line, LineChart, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/cn";
@@ -21,6 +21,10 @@ export function Panel({
   actions,
   children,
   className,
+  scope,
+  collapsible,
+  defaultOpen = true,
+  summary,
 }: {
   title: string;
   icon?: LucideIcon;
@@ -28,21 +32,55 @@ export function Panel({
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
+  /** Серый бейдж «сейчас» / «за всё время» / «все каналы»: блок не зависит от периода или канала в шапке. */
+  scope?: string;
+  /** Блок сворачивается по тапу на заголовок; в свёрнутом виде виден `summary`. */
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+  summary?: ReactNode;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const shown = !collapsible || open;
+  const head = (
+    <>
+      <h3 className="section-title flex flex-wrap items-center gap-2">
+        {Icon && <Icon className="h-[17px] w-[17px] shrink-0 text-[var(--accent)]" />}
+        {title}
+        {scope && <ScopeBadge>{scope}</ScopeBadge>}
+      </h3>
+      {hint && shown && <p className="mt-1 text-[12px] leading-snug text-[var(--text-muted)]">{hint}</p>}
+      {!shown && summary && <p className="mt-1 text-[12.5px] leading-snug text-[var(--text-muted)]">{summary}</p>}
+    </>
+  );
   return (
     <motion.section variants={riseItem} className={cn("panel min-w-0 p-4 sm:p-5", className)}>
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className="section-title flex items-center gap-2">
-            {Icon && <Icon className="h-[17px] w-[17px] shrink-0 text-[var(--accent)]" />}
-            {title}
-          </h3>
-          {hint && <p className="mt-1 text-[12px] leading-snug text-[var(--text-muted)]">{hint}</p>}
-        </div>
-        {actions && <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{actions}</div>}
+      <div className={cn("flex flex-wrap items-start justify-between gap-2", shown && "mb-3")}>
+        {collapsible ? (
+          <button
+            type="button"
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+            className="flex min-h-11 min-w-0 flex-1 items-start gap-2 text-left"
+          >
+            <div className="min-w-0 flex-1">{head}</div>
+            <ChevronDown className={cn("mt-0.5 h-4 w-4 shrink-0 text-[var(--text-faint)] transition-transform", open && "rotate-180")} />
+          </button>
+        ) : (
+          <div className="min-w-0">{head}</div>
+        )}
+        {actions && shown && <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{actions}</div>}
       </div>
-      {children}
+      {shown && children}
     </motion.section>
+  );
+}
+
+/** Серая пометка у заголовка: этот блок не зависит от периода/канала в шапке. */
+export function ScopeBadge({ children }: { children: ReactNode }) {
+  return (
+    <span className="whitespace-nowrap rounded-full bg-[var(--surface-3)] px-2 py-0.5 text-[10.5px] font-semibold normal-case tracking-normal text-[var(--text-muted)]">
+      {children}
+    </span>
   );
 }
 

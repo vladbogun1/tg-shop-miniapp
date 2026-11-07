@@ -1,7 +1,9 @@
 "use client";
 
 import { formatDateTime } from "@shop/core/time";
+import { cn } from "@/lib/cn";
 import { money } from "@/lib/money";
+import { leftOf } from "../model/writeoffs";
 import type { WriteoffLine } from "../model/types";
 import { Reason, RestoreButton, Undone } from "./parts";
 
@@ -24,10 +26,10 @@ export function WriteoffTable({ lines, onRestore }: { lines: WriteoffLine[]; onR
         </thead>
         <tbody>
           {lines.map((l) => (
-            <tr key={l.id} className="border-b border-[var(--line)] align-top last:border-0">
+            <tr key={l.id} className={cn("border-b border-[var(--line)] align-top last:border-0", leftOf(l) <= 0 && "opacity-60")}>
               <td className="whitespace-nowrap px-3 py-2">{formatDateTime(l.createdAt)}</td>
               <td className="px-3 py-2">
-                <div className="min-w-0 break-words font-medium text-[var(--text)]">{l.title}</div>
+                <div className={cn("min-w-0 break-words font-medium text-[var(--text)]", leftOf(l) <= 0 && "line-through")}>{l.title}</div>
                 {l.note && <div className="mt-0.5 break-words text-[12px] text-[var(--text-muted)]">{l.note}</div>}
               </td>
               <td className="tabular px-3 py-2 text-right">

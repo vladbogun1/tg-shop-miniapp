@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { broadcastNumbers, broadcastStatus } from "./broadcast";
 import { detailPairs } from "./details";
-import { buildFilter, isFiltered, typeOptions } from "./filter";
+import { activeFilterCount, buildFilter, isFiltered, typeOptions } from "./filter";
 import { customerLabel, errorLabel, recipientText, resultLabel, typeLabel } from "./labels";
 import { resultTone } from "./tone";
 import type { ActivityRow, BroadcastSummary } from "./types";
@@ -109,5 +109,14 @@ describe("recipientText", () => {
     expect(recipientText("CUSTOMER", null)).toBe("покупателю");
     expect(recipientText("ADMINS", "Ann")).toBe("Админам");
     expect(recipientText("X", null)).toBe("X");
+  });
+});
+
+describe("activeFilterCount", () => {
+  it("считает только заданные поля, покупателя тоже", () => {
+    const empty = buildFilter({ source: "", type: "", result: "", recipient: "", errorCode: "", order: "", q: "", from: "", to: "" });
+    expect(activeFilterCount(empty)).toBe(0);
+    const some = buildFilter({ source: "BOT", type: "", result: "FAILED", recipient: "", errorCode: "", order: "", q: "x", from: "", to: "", customerId: 5 });
+    expect(activeFilterCount(some)).toBe(4);
   });
 });

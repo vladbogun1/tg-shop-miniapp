@@ -27,6 +27,7 @@ export function ForecastPanel({ forecast, error }: { forecast?: Forecast; error:
     <Panel
       title="Прогноз выручки"
       icon={TrendingUp}
+      scope="не зависит от периода"
       hint={`Продано (без отказов). ${a.label}${a.mape30 != null ? `: в среднем ошибка ±${pct(a.mape30, 0)} на 30 дней` : ""}.`}
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">

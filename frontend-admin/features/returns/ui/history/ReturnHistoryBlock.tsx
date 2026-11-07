@@ -7,6 +7,7 @@
 import { useState } from "react";
 import type { ReturnOrder, ReturnRecord } from "../../model/types";
 import { useReturnDebtPaid } from "../../queries";
+import { Fold } from "../Fold";
 import { CancelReturnModal } from "./CancelReturnModal";
 import { ReturnRecordCard } from "./ReturnRecordCard";
 
@@ -18,10 +19,8 @@ export function ReturnHistoryBlock({ order, onChanged }: { order: ReturnOrder; o
   const cur = order.currency;
 
   return (
-    <section className="card p-4">
-      <div className="mb-3 flex min-h-7 items-center">
-        <h3 className="section-title !text-[12px] !text-[var(--text-muted)]">Возвраты и обмены</h3>
-      </div>
+    // Open by default: a record can hold a debt («Деньги пришли») or the «Отменить» of the newest one.
+    <Fold title="История возвратов" summary={`${records.length} ${records.length === 1 ? "запись" : "записей"}`} defaultOpen>
       <div className="flex flex-col gap-3">
         {records
           .slice()
@@ -44,6 +43,6 @@ export function ReturnHistoryBlock({ order, onChanged }: { order: ReturnOrder; o
         onClose={() => setCancelling(null)}
         onDone={() => onChanged?.()}
       />
-    </section>
+    </Fold>
   );
 }

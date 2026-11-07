@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildBrandBody, findDuplicate, hostOf, toBrandForm, visibleBrands } from "./brands";
+import { brandSlugChange, buildBrandBody, findDuplicate, hostOf, toBrandForm, visibleBrands } from "./brands";
 import { brand } from "./fixtures";
 
 const brands = [
@@ -35,5 +35,21 @@ describe("hostOf и форма", () => {
   it("buildBrandBody обрезает пробелы", () => {
     const f = { ...toBrandForm(null), name: " A ", slug: " a ", website: " x.com " };
     expect(buildBrandBody(f)).toMatchObject({ name: "A", slug: "a", website: "x.com", logoUrl: "", logoMode: "MONO" });
+  });
+});
+
+describe("brandSlugChange", () => {
+  const lamzu = brand("lz", "Lamzu", { slug: "lamzu" });
+  const form = (slug: string, name = "Lamzu") => ({ ...toBrandForm(lamzu), slug, name });
+
+  it("новый slug у существующего бренда — что было и что станет", () => {
+    expect(brandSlugChange(lamzu, form("Lamzu Gaming"))).toEqual({ from: "lamzu", to: "lamzu-gaming" });
+  });
+  it("пустое поле = slug из названия, как у сервера", () => {
+    expect(brandSlugChange(lamzu, form("", "Lamzu Pro"))).toEqual({ from: "lamzu", to: "lamzu-pro" });
+  });
+  it("тот же адрес и новый бренд — без подсказки", () => {
+    expect(brandSlugChange(lamzu, form("lamzu"))).toBeNull();
+    expect(brandSlugChange(null, form("anything"))).toBeNull();
   });
 });

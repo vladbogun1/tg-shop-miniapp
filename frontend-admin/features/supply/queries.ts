@@ -8,6 +8,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cardsKeys } from "@/features/cards";
 import { catalogKeys } from "@/features/catalog";
 import {
+  cancelBody,
   costingApi,
   preordersApi,
   procurementKeys,
@@ -15,6 +16,7 @@ import {
   type ArriveResult,
   type BatchFilter,
   type BatchMoney,
+  type CancelBatchInput,
   type Expense,
   type ExpenseRequest,
   type MoneyRequest,
@@ -239,7 +241,7 @@ export function useSetBatchStatus(batchId: number) {
 
 export function useCancelBatch(batchId: number, onDone: () => void) {
   return useApiMutation({
-    mutationFn: (closeQueue: boolean) => preordersApi.cancel(batchId, closeQueue),
+    mutationFn: (input: CancelBatchInput) => preordersApi.cancel(batchId, cancelBody(input)),
     invalidate: [procurementKeys.preordersRoot()],
     success: "Поставка отменена",
     errorFallback: "Не удалось отменить",

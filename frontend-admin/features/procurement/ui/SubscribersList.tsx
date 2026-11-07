@@ -3,6 +3,7 @@
 /** Очередь на поставку/товар: кто ждёт, сколько, в каком статусе; «убрать из очереди». */
 import { useConfirm } from "@shop/ui/confirm";
 import { BellOff, X } from "lucide-react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { formatDateTime } from "@shop/core/time";
 import { SUB_STATUS_LABEL, SUB_STATUS_TONE, isLiveSub, lineTitle, sourceLabel } from "../model/batch";
@@ -44,6 +45,14 @@ export function SubscribersList({ subs, showLine }: { subs: Subscriber[]; /** П
             <div className="tabular truncate text-[12px] text-[var(--text-faint)]">
               {showLine && <>{lineTitle(s.productTitle, s.variantName)} · </>}
               встал {formatDateTime(s.createdAt)} · {sourceLabel(s.source)}
+              {s.orderId && (
+                <>
+                  {" · "}
+                  <Link href={`/orders/${s.orderId}`} className="mx-num font-semibold text-[var(--text-muted)] hover:text-[var(--accent-hi)]">
+                    заказ #{s.orderNo}
+                  </Link>
+                </>
+              )}
             </div>
           </div>
           <span className="tabular shrink-0 text-[13px] text-[var(--text)]">{s.qty} шт</span>

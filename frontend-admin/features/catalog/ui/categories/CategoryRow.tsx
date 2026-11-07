@@ -17,6 +17,7 @@ import {
 import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
+import { RowCheck } from "../BulkBar";
 import type { AdminCategory } from "../../model/types";
 import { plural, productsWord } from "../../model/words";
 import type { CategoryTab } from "../category/CategoryDialog";
@@ -25,7 +26,7 @@ import { Act, MenuItem, RowMenu } from "./row-parts";
 function RowToggle({ expanded, onToggle }: { expanded?: boolean; onToggle?: () => void }) {
   if (!onToggle) {
     return (
-      <span className="grid h-8 w-8 shrink-0 place-items-center text-[var(--text-faint)] pointer-coarse:w-10" aria-hidden>
+      <span className="grid h-8 w-8 shrink-0 place-items-center text-[var(--text-faint)] pointer-coarse:w-11" aria-hidden>
         <span className="h-1.5 w-1.5 rounded-full bg-[var(--line-strong)]" />
       </span>
     );
@@ -36,7 +37,7 @@ function RowToggle({ expanded, onToggle }: { expanded?: boolean; onToggle?: () =
       onClick={onToggle}
       aria-label={expanded ? "Свернуть подкатегории" : "Развернуть подкатегории"}
       aria-expanded={expanded}
-      className="focusable grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] hover:bg-[var(--surface-3)] hover:text-[var(--text)] pointer-coarse:h-10 pointer-coarse:w-10"
+      className="focusable grid h-8 w-8 shrink-0 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] hover:bg-[var(--surface-3)] hover:text-[var(--text)] pointer-coarse:h-11 pointer-coarse:w-11"
     >
       <ChevronRight className={cn("h-4 w-4 transition-transform duration-200", expanded && "rotate-90")} />
     </button>
@@ -51,7 +52,7 @@ function RowTitle({ c, depth, onEdit }: { c: AdminCategory; depth: 0 | 1; onEdit
       <button
         type="button"
         onClick={() => onEdit()}
-        className="focusable flex min-w-0 flex-1 flex-col items-start justify-center rounded-[var(--r-sm)] text-left pointer-coarse:min-h-10"
+        className="focusable flex min-w-0 flex-1 flex-col items-start justify-center rounded-[var(--r-sm)] text-left pointer-coarse:min-h-11"
       >
         <span className="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1">
           <span className={cn("truncate font-semibold", depth === 0 ? "text-[15px] text-[var(--ink)]" : "text-[14px] text-[var(--text)]")}>
@@ -81,7 +82,7 @@ function RowStats({ c, childCount, attrCount, onEdit }: { c: AdminCategory; chil
   return (
     <>
       <div className="hidden shrink-0 flex-col items-end text-right md:flex">
-        <span className="tabular text-[13px] font-semibold text-[var(--text)]" title="Активных товаров в категории и подкатегориях">
+        <span className="tabular text-[13px] font-semibold text-[var(--text)]" title="На витрине: активные товары категории и её подкатегорий. «Всего» — все товары, лежащие прямо в ней (в том числе скрытые).">
           {c.productCount} на витрине
         </span>
         <span className="text-[11.5px] text-[var(--text-faint)]">
@@ -123,12 +124,14 @@ function RowActions({ first, last, busy, reorderDisabled, onUp, onDown, onEdit, 
   const [menu, setMenu] = useState(false);
   return (
       <div className="flex shrink-0 items-center gap-0.5">
-        <Act label="Выше" disabled={first || reorderDisabled || busy} onClick={onUp}>
-          <ArrowUp className="h-4 w-4" />
-        </Act>
-        <Act label="Ниже" disabled={last || reorderDisabled || busy} onClick={onDown}>
-          <ArrowDown className="h-4 w-4" />
-        </Act>
+        <span className="hidden items-center gap-0.5 md:flex">
+          <Act label="Выше" disabled={first || reorderDisabled || busy} onClick={onUp}>
+            <ArrowUp className="h-4 w-4" />
+          </Act>
+          <Act label="Ниже" disabled={last || reorderDisabled || busy} onClick={onDown}>
+            <ArrowDown className="h-4 w-4" />
+          </Act>
+        </span>
         <div className="relative">
           <Act label="Действия" onClick={() => setMenu((v) => !v)} expanded={menu}>
             <MoreHorizontal className="h-4 w-4" />
@@ -142,6 +145,20 @@ function RowActions({ first, last, busy, reorderDisabled, onUp, onDown, onEdit, 
                 <MenuItem icon={SlidersHorizontal} onClick={() => (setMenu(false), onEdit("specs"))}>
                   Характеристики
                 </MenuItem>
+                {!first && !reorderDisabled && (
+                  <span className="md:hidden">
+                    <MenuItem icon={ArrowUp} onClick={() => (setMenu(false), onUp())}>
+                      Выше
+                    </MenuItem>
+                  </span>
+                )}
+                {!last && !reorderDisabled && (
+                  <span className="md:hidden">
+                    <MenuItem icon={ArrowDown} onClick={() => (setMenu(false), onDown())}>
+                      Ниже
+                    </MenuItem>
+                  </span>
+                )}
                 {onAddChild && (
                   <MenuItem icon={FolderPlus} onClick={() => (setMenu(false), onAddChild())}>
                     Добавить подкатегорию
@@ -166,6 +183,7 @@ function RowActions({ first, last, busy, reorderDisabled, onUp, onDown, onEdit, 
 export function CategoryRow({
   c,
   depth,
+  dragHandle,
   childCount,
   attrCount,
   expanded,
@@ -180,9 +198,15 @@ export function CategoryRow({
   onAddChild,
   onMove,
   onDelete,
+  selected,
+  onSelect,
 }: {
   c: AdminCategory;
   depth: 0 | 1;
+  /** Ручка перетаскивания (null/нет — перетащить нельзя, например при поиске). */
+  dragHandle?: React.ReactNode;
+  selected?: boolean;
+  onSelect?: (on: boolean) => void;
   childCount: number;
   attrCount?: number;
   expanded?: boolean;
@@ -202,15 +226,20 @@ export function CategoryRow({
   return (
     <div
       className={cn(
-        "group relative flex items-center gap-2 py-2.5 pr-2 transition-colors hover:bg-[var(--surface-hover)] sm:gap-3 sm:pr-3",
-        depth === 0 ? "pl-2 sm:pl-3" : "pl-11 sm:pl-12",
+        "group relative flex items-center gap-1 py-1.5 pr-2 pl-1 transition-colors hover:bg-[var(--surface-hover)] sm:gap-2 sm:pr-3 sm:pl-2",
+        selected && "bg-[var(--accent-soft)]",
         busy && "opacity-60"
       )}
     >
-      {depth === 1 && (
-        <CornerDownRight aria-hidden className="absolute left-[21px] top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-faint)]" />
+      {dragHandle}
+      {onSelect && <RowCheck checked={!!selected} onChange={onSelect} label={`Выбрать «${c.name}»`} />}
+      {depth === 1 ? (
+        <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center text-[var(--text-faint)] pointer-coarse:h-11 pointer-coarse:w-11">
+          <CornerDownRight className="h-3.5 w-3.5" />
+        </span>
+      ) : (
+        <RowToggle expanded={expanded} onToggle={onToggle} />
       )}
-      {depth === 0 && <RowToggle expanded={expanded} onToggle={onToggle} />}
 
       <RowTitle c={c} depth={depth} onEdit={onEdit} />
       <RowStats c={c} childCount={childCount} attrCount={attrCount} onEdit={onEdit} />

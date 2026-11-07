@@ -1,80 +1,101 @@
 "use client";
 
 /**
- * Отправка (route "/dispatch") — the shipping-day workplace.
+ * Отправка (route "/dispatch") — the shipping-day workplace (variant A: a grid of cards).
  *
- * Every order ready to go out, with everything the Nova Poshta form needs (copy buttons for name,
- * phone, city, branch), the cash-on-delivery amount in big letters, and — right on the card — the
- * ТТН field and "Отправлено". Clicking the card opens the full order. NEW orders can be shipped
- * straight away too (NEW → SHIPPED is allowed); those still waiting for a prepayment are flagged.
+ * Every order ready to go out, with everything the Nova Poshta form needs (copy fields for name,
+ * phone, city, branch), the cash-on-delivery amount in big letters right under the name, and — on
+ * the card — the ТТН field and "Отправлено". Clicking the name opens the full order. NEW orders can be
+ * shipped straight away too (NEW → SHIPPED is allowed); those still waiting for a prepayment are flagged.
+ * Sections: unpaid first (never hidden), then approved, then new. A sticky toolbar filters and searches.
  * Refreshes itself; a failed load shows the error, never a fake "нет заказов".
  */
-import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { QueryState } from "@/components/ui/QueryState";
 import { OrderDrawer, orderKeys, type AdminDispatchOrder } from "@/features/order";
-import { cn } from "@/lib/cn";
-import { Button } from "@shop/ui/admin-button";
+import { useIsDesktop } from "@/lib/use-media";
 import { Lightbox } from "@shop/ui/overlay";
 import { useQueryClient } from "@tanstack/react-query";
-import { Package, RefreshCw, Send } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Package, SearchX } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+import { filterCounts, filterOrders, splitOrders, type DispatchFilter } from "../model/dispatch";
 import { useBroadcastDispatch, useDispatchOrders } from "../queries";
 import { DispatchCard } from "./DispatchCard";
-
-function Section({ title, orders, onOpen, onZoom }: { title: string; orders: AdminDispatchOrder[]; onOpen: (id: string) => void; onZoom: (src: string) => void }) {
-  if (orders.length === 0) return null;
-  return (
-    <section className="flex flex-col gap-3">
-      <SectionTitle>{title} · {orders.length}</SectionTitle>
-      {orders.map((o) => (
-        <DispatchCard key={o.id} o={o} onOpen={() => onOpen(o.id)} onZoom={onZoom} />
-      ))}
-    </section>
-  );
-}
+import { DispatchToolbar } from "./DispatchToolbar";
 
 function SectionTitle({ children }: { children: ReactNode }) {
   return <h2 className="section-title !text-[var(--text-muted)]">{children}</h2>;
 }
 
+function Section({
+  title,
+  orders,
+  phone,
+  onOpen,
+  onZoom,
+}: {
+  title: string;
+  orders: AdminDispatchOrder[];
+  phone: boolean;
+  onOpen: (id: string) => void;
+  onZoom: (src: string) => void;
+}) {
+  if (orders.length === 0) return null;
+  return (
+    <section className="flex flex-col gap-3">
+      <SectionTitle>
+        {title} · {orders.length}
+      </SectionTitle>
+      {/* 1 column on a phone / tablet, then as many 420–440 px cards as fit. */}
+      <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-[repeat(auto-fill,minmax(420px,1fr))] 2xl:grid-cols-[repeat(auto-fill,minmax(440px,1fr))]">
+        <AnimatePresence initial={false}>
+          {orders.map((o) => (
+            // A shipped card folds up instead of the list jumping (not on a phone: the page scroll stays calm).
+            <motion.div
+              key={o.id}
+              exit={phone ? undefined : { opacity: 0, height: 0, overflow: "hidden", transition: { duration: 0.2 } }}
+            >
+              <DispatchCard o={o} onOpen={() => onOpen(o.id)} onZoom={onZoom} />
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+    </section>
+  );
+}
+
 export function DispatchScreen() {
   const qc = useQueryClient();
+  const phone = !useIsDesktop();
   const [openId, setOpenId] = useState<string | null>(null);
   const [zoom, setZoom] = useState<string | null>(null);
+  const [filter, setFilter] = useState<DispatchFilter>("all");
+  const [query, setQuery] = useState("");
   const q = useDispatchOrders();
   const broadcast = useBroadcastDispatch();
-  const all = q.data ?? [];
-  const approved = all.filter((o) => o.status !== "NEW");
-  const fresh = all.filter((o) => o.status === "NEW");
+  const all = useMemo(() => q.data ?? [], [q.data]);
+  const counts = useMemo(() => filterCounts(all), [all]);
+  const sections = useMemo(() => splitOrders(filterOrders(all, filter, query)), [all, filter, query]);
+  const shown = sections.unpaid.length + sections.approved.length + sections.fresh.length;
+  const sectionProps = { phone, onOpen: setOpenId, onZoom: setZoom };
 
   return (
     <div>
-      <PageHeader
-        title="Отправка"
-        subtitle="Что отправлять, куда и сколько брать наложкой"
-        // On a phone the title is already in the shell header: keep only the buttons.
-        className="max-lg:mb-3 max-lg:[&_h1]:hidden max-lg:[&_p]:hidden"
-        actions={
-          <>
-            <Button
-              variant="surface"
-              icon={<RefreshCw className={cn("h-4 w-4", q.isFetching && "animate-spin")} />}
-              onClick={() => q.refetch()}
-            >
-              Обновить
-            </Button>
-            <Button
-              variant="outline"
-              loading={broadcast.isPending}
-              icon={<Send className="h-4 w-4" />}
-              onClick={() => broadcast.mutate()}
-              disabled={approved.length === 0}
-            >
-              Карточки в Telegram
-            </Button>
-          </>
-        }
+      {/* The shell's top bar carries the visible title. */}
+      <h1 className="sr-only">Отправка</h1>
+      <DispatchToolbar
+        phone={phone}
+        filter={filter}
+        counts={counts}
+        query={query}
+        fetching={q.isFetching}
+        broadcasting={broadcast.isPending}
+        canBroadcast={all.some((o) => o.status !== "NEW")}
+        onFilter={setFilter}
+        onQuery={setQuery}
+        onRefresh={() => q.refetch()}
+        onBroadcast={() => broadcast.mutate()}
       />
 
       <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Загрузка заказов…">
@@ -84,10 +105,13 @@ export function DispatchScreen() {
             title="Нет заказов к отправке"
             description="Одобренные заказы появятся здесь — со всем, что нужно для отправки."
           />
+        ) : shown === 0 ? (
+          <EmptyState icon={SearchX} title="Ничего не найдено" description="Попробуйте другой запрос или фильтр." />
         ) : (
           <div className="flex flex-col gap-6">
-            <Section title="Одобрены" orders={approved} onOpen={setOpenId} onZoom={setZoom} />
-            <Section title="Новые — можно отправить сразу" orders={fresh} onOpen={setOpenId} onZoom={setZoom} />
+            <Section title="Не оплачено — не отправляйте без проверки" orders={sections.unpaid} {...sectionProps} />
+            <Section title="Одобрены" orders={sections.approved} {...sectionProps} />
+            <Section title="Новые — можно отправить сразу" orders={sections.fresh} {...sectionProps} />
           </div>
         )}
       </QueryState>

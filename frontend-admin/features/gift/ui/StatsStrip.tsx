@@ -1,6 +1,7 @@
 "use client";
 
-import { BarChart3 } from "lucide-react";
+import { useState } from "react";
+import { BarChart3, ChevronDown } from "lucide-react";
 import { CASE_TIER_METAL } from "@shop/core/giftcase";
 import { cn } from "@/lib/cn";
 import { money } from "@/lib/money";
@@ -33,28 +34,47 @@ function tilesOf(s: GiftStats | undefined): Tile[] {
 
 /** The last 30 days: gifts, opened cases, discounts instead of a case, per tier. */
 export function StatsStrip() {
+  const [open, setOpen] = useState(false);
   const q = useGiftStatsQuery();
   const tiles = tilesOf(q.data);
   const tiers = q.data?.tiers?.filter((t) => t.cases + t.guaranteed > 0) ?? [];
   return (
     <section className="mb-4 min-w-0 lg:mb-6" aria-label="Статистика за 30 дней">
-      <div className="mb-2 flex items-center gap-2 text-[var(--text-muted)]">
-        <BarChart3 className="h-4 w-4" />
-        <span className="field-label">Статистика за 30 дней</span>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="focusable hit mb-2 flex w-full min-w-0 items-center gap-2 text-left text-[var(--text-muted)]"
+      >
+        <BarChart3 className="h-4 w-4 shrink-0" />
+        <span className="field-label shrink-0">Статистика за 30 дней</span>
         {q.isError && <span className="text-[12px] text-[var(--danger-ink)]">не загрузилась</span>}
-      </div>
-      <div className="grid min-w-0 grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
-        {tiles.map((t) => (
-          <div key={t.label} className="card-2 min-w-0 px-3 py-2.5">
-            <div className="text-[11.5px] leading-tight text-[var(--text-faint)]">{t.label}</div>
-            <div className={cn("tabular mt-1 break-words font-display text-[18px] font-bold leading-tight text-[var(--ink)]", q.isLoading && "opacity-40")}>
-              {t.value}
+        {!open && q.data && (
+          <span className="tabular min-w-0 truncate text-[12.5px]">
+            · подарков {tiles[0].value} · кейсов открыто {tiles[1].value}
+          </span>
+        )}
+        <ChevronDown className={cn("ml-auto h-4 w-4 shrink-0 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="grid min-w-0 grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
+          {tiles.map((t) => (
+            <div key={t.label} className="card-2 min-w-0 px-3 py-2.5">
+              <div className="text-[11.5px] leading-tight text-[var(--text-faint)]">{t.label}</div>
+              <div
+                className={cn(
+                  "tabular mt-1 break-words font-display text-[18px] font-bold leading-tight text-[var(--ink)]",
+                  q.isLoading && "opacity-40"
+                )}
+              >
+                {t.value}
+              </div>
+              {t.hint && <div className="mt-0.5 text-[11.5px] text-[var(--text-faint)]">{t.hint}</div>}
             </div>
-            {t.hint && <div className="mt-0.5 text-[11.5px] text-[var(--text-faint)]">{t.hint}</div>}
-          </div>
-        ))}
-      </div>
-      {tiers.length > 0 && (
+          ))}
+        </div>
+      )}
+      {open && tiers.length > 0 && (
         <div className="mt-2 flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-[12.5px] text-[var(--text-muted)]">
           {tiers.map((t) => (
             <span key={t.tier} className="tabular">

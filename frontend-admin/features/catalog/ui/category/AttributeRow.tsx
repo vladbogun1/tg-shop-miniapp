@@ -28,7 +28,7 @@ interface Props {
 /** Стрелки порядка, «Изменить», «Удалить» своей характеристики (пока идёт запрос — спиннер). */
 function OwnControls({ busy, idx, ownInGroup, onEdit, onMove, onRemove }: Pick<Props, "busy" | "idx" | "ownInGroup" | "onEdit" | "onMove" | "onRemove">) {
   return (
-    <span className="flex shrink-0 items-center gap-0.5">
+    <span className="ml-auto flex shrink-0 items-center gap-0.5">
       {busy ? (
         <Spinner className="mx-2 h-4 w-4" />
       ) : (
@@ -58,7 +58,7 @@ export function AttributeRow({ a, mine, from, idx, ownInGroup, busy, onEdit, onM
       layout
       key={a.id}
       className={cn(
-        "group flex items-center gap-2 border-t border-[var(--line)] px-3 py-2 first:border-t-0",
+        "group flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-[var(--line)] px-3 py-2 first:border-t-0",
         mine ? "hover:bg-[var(--surface-hover)]" : "bg-[color-mix(in_srgb,var(--bg-2)_60%,transparent)]"
       )}
     >
@@ -66,7 +66,7 @@ export function AttributeRow({ a, mine, from, idx, ownInGroup, busy, onEdit, onM
         type="button"
         disabled={!mine}
         onClick={onEdit}
-        className="focusable flex min-w-0 flex-1 flex-col items-start rounded-[var(--r-sm)] text-left disabled:cursor-default"
+        className="focusable flex min-w-[170px] flex-1 flex-col items-start rounded-[var(--r-sm)] text-left disabled:cursor-default"
       >
         <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
           <span className={cn("truncate text-[14px] font-semibold", mine ? "text-[var(--text)]" : "text-[var(--text-muted)]")}>
@@ -88,7 +88,7 @@ export function AttributeRow({ a, mine, from, idx, ownInGroup, busy, onEdit, onM
           {a.usedCount != null && <span>· {productsWord(a.usedCount)}</span>}
         </span>
       </button>
-      <span className="hidden shrink-0 items-center gap-1 sm:flex">
+      <span className="flex shrink-0 items-center gap-1">
         {a.filterable && <Badge tone="info" className="px-1.5">фильтр</Badge>}
         {a.highlight && <Badge tone="accent" className="px-1.5">карточка</Badge>}
       </span>

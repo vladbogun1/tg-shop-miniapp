@@ -9,7 +9,7 @@ import { useApiMutation } from "@shop/ui/mutation";
 import { toast } from "@shop/ui/toast";
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { isAuthenticated } from "@/lib/session";
-import { acceptAll, acceptText, resetText, sendAiTranslations, type AcceptOutcome } from "./actions";
+import { acceptAll, acceptText, confirmAsIs, resetMany, resetText, sendAiTranslations, type AcceptOutcome, type ConfirmOutcome } from "./actions";
 import { translationApi } from "./api";
 import { translationKeys } from "./keys";
 import { summaryApplied, summaryFixed, type AiSendPlan, type SendSummary } from "./model/send";
@@ -183,5 +183,32 @@ export function useSendAiTranslations(onDone: (summary: SendSummary) => void) {
         `Сохранено переводов: ${summaryApplied(summary)}${fixed ? `, исправлено оригиналов: ${fixed}` : ""}. Они ждут проверки во вкладке «Проверить ИИ».`
       );
     },
+  });
+}
+
+/** «Подтвердить как есть» для выбранных текстов (без правки текста). */
+export function useConfirmAsIs() {
+  const qc = useQueryClient();
+  return useApiMutation<ConfirmOutcome, { strings: UniqueString[]; langs: TrLocale[] }>({
+    mutationFn: (v) => confirmAsIs(v.strings, v.langs),
+    invalidate: [translationKeys.stats(), translationKeys.export()],
+    errorFallback: "Не удалось подтвердить",
+    onSuccess: (r) => {
+      const rest = [r.skipped ? `пропущено ${r.skipped} (перевод разный в разных местах — смотрите по одному)` : "", r.outdated ? `оригинал изменился у ${r.outdated}` : "", r.failed ? `не сохранено ${r.failed}` : ""].filter(Boolean);
+      (rest.length ? toast.info : toast.success)(`Подтверждено: ${r.done}${rest.length ? `; ${rest.join(", ")}` : ""}`);
+    },
+    onError: () => invalidateTranslations(qc),
+  });
+}
+
+/** «Сбросить перевод» для выбранных текстов. */
+export function useResetMany() {
+  const qc = useQueryClient();
+  return useApiMutation<number, { strings: UniqueString[]; langs: TrLocale[] }>({
+    mutationFn: (v) => resetMany(v.strings, v.langs),
+    invalidate: [translationKeys.stats(), translationKeys.export()],
+    success: (n) => `Переводов сброшено: ${n}`,
+    errorFallback: "Не удалось сбросить",
+    onError: () => invalidateTranslations(qc),
   });
 }

@@ -67,6 +67,7 @@ export const TYPE_LABEL: Record<string, string> = {
   REVIEW_BONUS: "Бонус за отзыв",
   BROADCAST: "Рассылка",
   BROADCAST_TEST: "Тест рассылки",
+  BROADCAST_STOP: "Рассылка остановлена",
   LOGIN_PROMPT: "Код входа на сайт",
   LOGIN_DONE: "«Вы вошли на сайт»",
   LOGIN_EXPIRED: "Вход: ссылка устарела",

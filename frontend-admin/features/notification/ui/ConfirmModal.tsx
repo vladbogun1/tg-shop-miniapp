@@ -3,6 +3,7 @@
 import { Button } from "@shop/ui/admin-button";
 import { Modal } from "@shop/ui/overlay";
 import { Send } from "lucide-react";
+import type { ReactNode } from "react";
 import { LANG_LABEL } from "@/lib/shop-lang";
 import { AUDIENCE_LABEL } from "../model/compose";
 import type { BroadcastAudience, ShopLang } from "../model/types";
@@ -14,11 +15,13 @@ interface Props {
   count: number;
   versions: ShopLang[];
   starting: boolean;
+  /** Мини-превью того, что уйдёт. */
+  preview?: ReactNode;
   onClose: () => void;
   onConfirm: () => void;
 }
 
-export function ConfirmModal({ open, audience, lang, count, versions, starting, onClose, onConfirm }: Props) {
+export function ConfirmModal({ open, audience, lang, count, versions, starting, preview, onClose, onConfirm }: Props) {
   return (
     <Modal
       open={open}
@@ -53,6 +56,7 @@ export function ConfirmModal({ open, audience, lang, count, versions, starting, 
           : "Все получат основной текст."}
       </p>
       <p className="mt-2 text-[13px] text-[var(--text-muted)]">Действие нельзя отменить после запуска.</p>
+      {preview && <div className="mt-3">{preview}</div>}
     </Modal>
   );
 }

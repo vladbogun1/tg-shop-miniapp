@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@shop/ui/admin-button";
 import { useForm } from "@shop/ui/form";
 import { Modal } from "@shop/ui/overlay";
-import { buildBrandBody, findDuplicate, toBrandForm, type BrandForm } from "../../model/brands";
+import { brandSlugChange, buildBrandBody, findDuplicate, toBrandForm, type BrandForm } from "../../model/brands";
 import { normText } from "../../model/search";
 import { slugify } from "../../model/slug";
 import type { AdminBrand } from "../../model/types";
@@ -14,6 +14,7 @@ import { productsWord } from "../../model/words";
 import { useSaveBrand } from "../../queries";
 import { BrandLogoField } from "../BrandLogoField";
 import { TagInput } from "../TagInput";
+import { DupNameActions } from "./DupNameActions";
 
 /** Создание / правка бренда: название, slug, сайт, алиасы, логотип. */
 export function BrandFormModal({
@@ -21,12 +22,17 @@ export function BrandFormModal({
   editing,
   brands,
   onClose,
+  onOpenExisting,
+  onMergeExisting,
 }: {
   open: boolean;
   /** null = new brand. */
   editing: AdminBrand | null;
   brands: AdminBrand[];
   onClose: () => void;
+  /** Дубль имени: открыть найденный бренд / объединить с ним (если экран это умеет). */
+  onOpenExisting?: (b: AdminBrand) => void;
+  onMergeExisting?: (b: AdminBrand) => void;
 }) {
   const form = useForm<BrandForm>({ defaultValues: toBrandForm(editing) });
   const v = form.watch() as BrandForm;
@@ -41,6 +47,7 @@ export function BrandFormModal({
 
   const dupName = findDuplicate(brands, editing?.id, v.name);
   const slugPreview = slugify(v.slug.trim() || v.name);
+  const slugChange = brandSlugChange(editing, v);
 
   function save() {
     if (!v.name.trim()) return;
@@ -75,13 +82,18 @@ export function BrandFormModal({
           placeholder="Например, Attack Shark"
           error={dupName ? `Уже есть: «${dupName.name}»${normText(dupName.name) !== normText(v.name) ? " (алиас)" : ""}` : undefined}
         />
+        <DupNameActions dup={dupName} editing={editing} onOpen={onOpenExisting} onMerge={onMergeExisting} />
         <Input
           label="Slug"
           value={v.slug}
           className="font-mono"
           onChange={(e) => set("slug", e.target.value)}
           placeholder={slugify(v.name) || "из названия"}
-          hint={`В адресах фильтров: /catalog?brand=${slugPreview || "…"}`}
+          hint={
+            slugChange
+              ? `Старый адрес /catalog?brand=${slugChange.from} будет перенаправлен (301) на /catalog?brand=${slugChange.to}.`
+              : `В адресах фильтров: /catalog?brand=${slugPreview || "…"}`
+          }
         />
         <Input
           label="Сайт производителя"

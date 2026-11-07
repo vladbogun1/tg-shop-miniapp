@@ -5,11 +5,11 @@
  * the rest is наложка. The newer order closes as «Объединён» and links to the one that stays.
  */
 import { CUSTOMER, ORDER, money, shortId } from "../lib/seed";
-import { dialog, expect, openOrderFromBoard, test, toast } from "../lib/test";
+import { pickFromMoreMenu, dialog, expect, openOrderFromBoard, test, toast } from "../lib/test";
 
 test("объединение: бесплатная кепка уезжает в заказ с рюкзаком, одной посылкой", async ({ page, api }) => {
   const drawer = await openOrderFromBoard(page, ORDER.mergeAway, CUSTOMER.mergeAway);
-  await drawer.getByRole("button", { name: "Объединить", exact: true }).click();
+  await pickFromMoreMenu(page, drawer, "Объединить заказы");
 
   const modal = dialog(page, "Объединить заказы");
   // The only other open order of the customer is picked right away; the older one stays.
@@ -52,5 +52,5 @@ test("кнопки «Объединить» нет, если других зак
   const drawer = await openOrderFromBoard(page, ORDER.prepay, CUSTOMER.prepay);
   await checked;
   await expect(drawer.getByRole("button", { name: "Добавить товар" })).toBeVisible();
-  await expect(drawer.getByRole("button", { name: "Объединить", exact: true })).toHaveCount(0);
+  await expect(drawer.getByRole("button", { name: "Объединить заказы" })).toHaveCount(0);
 });

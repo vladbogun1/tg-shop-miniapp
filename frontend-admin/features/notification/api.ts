@@ -16,6 +16,8 @@ export const broadcastApi = {
   audiences: (lang: ShopLang | "") => apiGet<Record<BroadcastAudience, number>>(`/api/admin/broadcast/audiences${langQuery(lang)}`),
   status: () => apiGet<BroadcastStatus>("/api/admin/broadcast/status"),
   history: (limit: number) => apiGet<BroadcastHistoryItem[]>(`/api/admin/broadcast/history?limit=${limit}`),
+  /** «Остановить» идущую рассылку: отправленное остаётся, неотправленное не уходит; повтор безопасен. */
+  stop: () => apiPost<BroadcastHistoryItem>("/api/admin/broadcast/stop", {}),
   start: (body: BroadcastStartBody) => apiPost<BroadcastStatus>("/api/admin/broadcast", body),
   /** `telegramUserId` не задан — тому админу, кто отправляет («себе»). */
   test: (body: BroadcastTestBody) => apiPost<BroadcastResult>("/api/admin/broadcast/test", body),

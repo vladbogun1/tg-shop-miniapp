@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useMediaQuery } from "@shop/ui/use-media";
 import { Bot } from "lucide-react";
 import { Button } from "@shop/ui/admin-button";
 import { Badge } from "@/components/ui/Badge";
@@ -10,12 +11,15 @@ import { typeOptions } from "../model/filter";
 import { useActivityFacets, useActivityFeed } from "../queries";
 import { EventList } from "./EventList";
 import { FeedFilters } from "./FeedFilters";
+import { FeedFiltersPhone } from "./FeedFiltersPhone";
 import { useFeedFilters, type FeedShared } from "./use-feed-filters";
 import type { RowActions } from "./use-row-actions";
 
 /** Вкладка «Лента событий»: фильтры, итоги по фильтру, страницы событий. */
 export function Feed({ shared, actions }: { shared: FeedShared; actions: RowActions }) {
   const f = useFeedFilters(shared);
+  const phone = useMediaQuery("(max-width: 767px)");
+  const [sheet, setSheet] = useState(false);
   const facetsQ = useActivityFacets();
   const logQ = useActivityFeed(f.filter);
   const rows = useMemo(() => logQ.data?.pages.flatMap((p) => p.items) ?? [], [logQ.data]);
@@ -24,15 +28,30 @@ export function Feed({ shared, actions }: { shared: FeedShared; actions: RowActi
 
   return (
     <>
-      <FeedFilters
-        shared={shared}
-        fields={f.fields}
-        setField={f.setField}
-        facets={facetsQ.data}
-        typeOptions={typeOpts}
-        filtered={f.filtered}
-        onReset={f.reset}
-      />
+      {phone ? (
+        <FeedFiltersPhone
+          shared={shared}
+          fields={f.fields}
+          setField={f.setField}
+          facets={facetsQ.data}
+          typeOptions={typeOpts}
+          filter={f.filter}
+          filtered={f.filtered}
+          onReset={f.reset}
+          open={sheet}
+          setOpen={setSheet}
+        />
+      ) : (
+        <FeedFilters
+          shared={shared}
+          fields={f.fields}
+          setField={f.setField}
+          facets={facetsQ.data}
+          typeOptions={typeOpts}
+          filtered={f.filtered}
+          onReset={f.reset}
+        />
+      )}
 
       {totals && (
         <div className="mb-3 flex flex-wrap items-center gap-2 text-[12px] text-[var(--text-muted)]">

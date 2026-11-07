@@ -30,8 +30,22 @@ test("статус monobank вверху, реквизитов больше не
   await expect(card).toContainText(status.lastWebhookAt ? "Последний вебхук" : "Вебхуков от monobank ещё не было");
 
   // Every option is paid online; the requisites editor is gone (and so is its endpoint).
-  await expect(page.getByText("Вся сумма заказа онлайн через monobank.")).toHaveCount(1);
-  await expect(page.getByText(/остаток — наложкой при получении/)).toHaveCount(2);
+  // Rows are compact: open them one by one (the editor shows how much is paid online).
+  const rows = page.getByRole("button", { name: /^Изменить способ/ });
+  await expect(rows).toHaveCount(3);
+  let wholeOnline = 0;
+  let withPrepay = 0;
+  for (let i = 0; i < 3; i++) {
+    await rows.nth(i).click();
+    await expect(rows.nth(i)).toHaveAttribute("aria-expanded", "true");
+    // The row's own description repeats these words; the open editor's summary is the line that starts with them.
+    // The previous row's editor folds away for a moment: wait until exactly one summary is on screen.
+    const summary = page.getByText(/^(Вся сумма заказа онлайн через monobank\.|Онлайн сейчас:.*остаток — наложкой при получении\.)$/);
+    await expect(summary).toHaveCount(1);
+    if ((await summary.innerText()).startsWith("Вся сумма")) wholeOnline++;
+    else withPrepay++;
+  }
+  expect([wholeOnline, withPrepay]).toEqual([1, 2]);
   await expect(page.getByLabel("Номер карты")).toHaveCount(0);
   await expect(page.getByRole("textbox", { name: /^IBAN/ })).toHaveCount(0);
   expect((await api.raw("get", "/api/admin/payment-requisites")).status).not.toBe(200);
@@ -41,17 +55,18 @@ test("предоплате нужна сумма", async ({ page }) => {
   await page.goto("/payment");
   const save = page.getByRole("button", { name: "Сохранить" });
   const prepay = page.getByRole("switch", { name: "Предоплата + наложка", exact: true });
-  await expect(prepay).toHaveCount(3);
   await expect(page.getByText("Все изменения сохранены")).toBeVisible();
 
   // «Полная оплата онлайн» → prepayment without an amount: cannot be saved.
-  await prepay.nth(2).click();
+  await page.getByRole("button", { name: /^Изменить способ/ }).nth(2).click();
+  await expect(prepay).toHaveCount(1);
+  await prepay.click();
   await expect(
     page.getByText("Укажите сумму предоплаты — её покупатель оплатит онлайн")
   ).toBeVisible();
   await expect(save).toBeDisabled();
 
-  await prepay.nth(2).click();
+  await prepay.click();
   await expect(page.getByText("Все изменения сохранены")).toBeVisible();
 });
 

@@ -97,7 +97,7 @@ describe("onlyPaidNew / findCard / колонки", () => {
 describe("parseBoardLink", () => {
   it("?status=NEW открывает вкладку, ?payment=paid и старое claimed — «оплаченные новые»", () => {
     expect(parseBoardLink("?status=NEW")).toEqual({ tab: "NEW", paidNewOnly: false });
-    expect(parseBoardLink("?payment=paid")).toEqual({ tab: undefined, paidNewOnly: true });
+    expect(parseBoardLink("?payment=paid")).toEqual({ tab: "NEW", paidNewOnly: true });
     expect(parseBoardLink("?payment=claimed&status=SHIPPED")).toEqual({ tab: "SHIPPED", paidNewOnly: true });
   });
 

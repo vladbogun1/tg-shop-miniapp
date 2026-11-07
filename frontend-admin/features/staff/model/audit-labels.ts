@@ -88,6 +88,7 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   PAYMENT_REQUISITES: "Реквизиты оплаты",
   BROADCAST_START: "Рассылка",
   BROADCAST_TEST: "Тест рассылки",
+  BROADCAST_STOP: "Рассылка остановлена",
   TRANSLATIONS_IMPORT: "Импорт переводов",
   TRANSLATIONS_DELETE: "Сброс переводов",
   TRANSLATIONS_SOURCE_FIX: "Правка текста + переводы",

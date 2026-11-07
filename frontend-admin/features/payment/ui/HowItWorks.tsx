@@ -1,11 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { motion } from "framer-motion";
 import { CircleCheck, Clock, CreditCard, Truck } from "lucide-react";
-import { ease } from "@/lib/motion";
 
-/** Static explainer next to the options: the rules every option follows. */
+/**
+ * Справка рядом со способами: правила, общие для всех. На ноутбуке открывается кнопкой «Как это работает»,
+ * на очень широком экране (≥ 1536) стоит колонкой справа. Тексты — из старого кода целиком.
+ */
 export function HowItWorks() {
   const steps: { icon: typeof Clock; text: ReactNode }[] = [
     {
@@ -36,12 +37,7 @@ export function HowItWorks() {
     },
   ];
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ ...ease, delay: 0.06 }}
-      className="panel h-fit min-w-0 p-5"
-    >
+    <section className="panel h-fit min-w-0 p-4 sm:p-5">
       <h2 className="section-title mb-3 !text-[15px] text-[var(--ink)]">Как работает оплата</h2>
       <ul className="flex flex-col gap-3">
         {steps.map(({ icon: Icon, text }, i) => (
@@ -51,6 +47,6 @@ export function HowItWorks() {
           </li>
         ))}
       </ul>
-    </motion.section>
+    </section>
   );
 }

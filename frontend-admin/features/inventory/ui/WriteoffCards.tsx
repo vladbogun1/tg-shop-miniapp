@@ -1,7 +1,9 @@
 "use client";
 
 import { formatDateTime } from "@shop/core/time";
+import { cn } from "@/lib/cn";
 import { money } from "@/lib/money";
+import { leftOf } from "../model/writeoffs";
 import type { WriteoffLine } from "../model/types";
 import { Reason, RestoreButton, Undone } from "./parts";
 
@@ -10,9 +12,9 @@ export function WriteoffCards({ lines, onRestore }: { lines: WriteoffLine[]; onR
   return (
     <div className="grid min-w-0 gap-2 lg:hidden">
       {lines.map((l) => (
-        <div key={l.id} className="card-2 min-w-0 px-3 py-2.5">
+        <div key={l.id} className={cn("card-2 min-w-0 px-3 py-2.5", leftOf(l) <= 0 && "opacity-60")}>
           <div className="flex min-w-0 items-start justify-between gap-2">
-            <div className="min-w-0 break-words font-medium text-[var(--text)]">{l.title}</div>
+            <div className={cn("min-w-0 break-words font-medium text-[var(--text)]", leftOf(l) <= 0 && "line-through")}>{l.title}</div>
             <div className="tabular shrink-0 text-right font-semibold">{money(l.valueMinor)}</div>
           </div>
           <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-[var(--text-muted)]">

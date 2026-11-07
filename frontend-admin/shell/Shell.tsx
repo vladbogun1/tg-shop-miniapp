@@ -12,12 +12,14 @@
  */
 import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCssVarHeight } from "@/lib/use-css-var-height";
 import { AppRuntime } from "@/components/pwa/AppRuntime";
 import { InstallBanner, PushOfferBanner, UpdateBanner } from "@/components/pwa/Banners";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { LogoMark } from "@/components/brand/Logo";
 import { cn } from "@/lib/cn";
+import { CommandPaletteButton } from "./CommandPalette";
 import { MobileMenu } from "./MobileMenu";
 import { SidebarInner } from "./Sidebar";
 import { TabBar } from "./TabBar";
@@ -26,9 +28,12 @@ import { useCollapsedSidebar } from "./use-collapsed-sidebar";
 
 export function Shell({ children }: { children: ReactNode }) {
   const [drawer, setDrawer] = useState(false);
-  const [collapsed, toggleCollapsed] = useCollapsedSidebar();
+  const { collapsed, canToggle, toggle: toggleCollapsed } = useCollapsedSidebar();
   const pathname = usePathname();
   const title = pageTitle(pathname);
+  // Screens with their own sticky bar (orders on a phone) stick right under this one: `--hdr-h`.
+  const headerRef = useRef<HTMLElement>(null);
+  useCssVarHeight(headerRef, "--hdr-h");
 
   // Any navigation (menu link, system back, a tapped notification) closes the menu.
   useEffect(() => {
@@ -48,7 +53,7 @@ export function Shell({ children }: { children: ReactNode }) {
       >
         <SidebarInner
           collapsed={collapsed}
-          onToggleCollapsed={toggleCollapsed}
+          onToggleCollapsed={canToggle ? toggleCollapsed : undefined}
           layoutScope="sidebar"
         />
       </aside>
@@ -59,6 +64,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top bar — on a phone it sits under the status bar of the installed app */}
         <header
+          ref={headerRef}
           data-app-chrome
           className="sticky top-0 z-30 flex items-center gap-3 border-b border-[var(--line)] bg-[rgba(14,14,16,.85)] pb-2.5 pl-[max(16px,var(--safe-left))] pr-[max(16px,var(--safe-right))] pt-[calc(10px+var(--safe-top))] backdrop-blur-md lg:min-h-[61px] lg:px-7 lg:py-2.5"
         >
@@ -68,6 +74,7 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-2.5">
             {/* On a phone the «Внимание» tab carries the same badge — no second bell there. */}
+            <CommandPaletteButton />
             <div className="hidden lg:block">
               <NotificationsBell />
             </div>

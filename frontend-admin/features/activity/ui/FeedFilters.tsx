@@ -14,6 +14,8 @@ interface Props {
   setField: (key: keyof FeedFields, value: string) => void;
   facets: ActivityFacets | undefined;
   typeOptions: { value: string; label: string }[];
+  /** Внутри шторки (телефон): без рамки карточки, поля в один столбец. */
+  bare?: boolean;
   /** Хоть что-то задано — показать «Сбросить». */
   filtered: boolean;
   onReset: () => void;
@@ -32,10 +34,10 @@ const RECIPIENT_OPTIONS = [
   { value: "ADMINS", label: "Админам" },
 ];
 
-export function FeedFilters({ shared, fields, setField, facets, typeOptions, filtered, onReset }: Props) {
+export function FeedFilters({ shared, fields, setField, facets, typeOptions, filtered, onReset, bare }: Props) {
   const { customer, clearCustomer } = shared;
   return (
-    <div className="card mb-4 grid min-w-0 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className={bare ? "grid min-w-0 gap-3" : "card mb-4 grid min-w-0 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4"}>
       <Select
         label="Источник"
         value={shared.source}

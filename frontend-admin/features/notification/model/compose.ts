@@ -116,3 +116,47 @@ export function filledVersions(texts: Texts): ShopLang[] {
 export function plainText(html: string): string {
   return html.replace(/<[^>]+>/g, "");
 }
+
+/** Первая проблема каждой заполненной версии — чтобы пометить вкладку языка. */
+export function problemByKey(texts: Texts): Partial<Record<TextKey, string>> {
+  const out: Partial<Record<TextKey, string>> = {};
+  for (const t of TEXT_TABS) {
+    const v = texts[t.value];
+    if (!v.trim()) continue;
+    const first = v.length > MAX_LEN ? `длиннее ${MAX_LEN} символов (${v.length})` : validateTelegramHtml(v)[0]?.message;
+    if (first) out[t.value] = first;
+  }
+  return out;
+}
+
+/** Доля лимита, с которой счётчик символов начинает «краснеть». */
+const WARN_SHARE = 0.9;
+
+export type CounterTone = "ok" | "warn" | "danger";
+
+export function counterTone(length: number, limit: number): CounterTone {
+  if (length > limit) return "danger";
+  return length >= limit * WARN_SHARE ? "warn" : "ok";
+}
+
+/** Лимит счётчика: с картинкой — подпись, иначе целое сообщение. */
+export function counterLimit(withPhoto: boolean): number {
+  return withPhoto ? CAPTION_LIMIT : MAX_LEN;
+}
+
+export interface BlockInput {
+  texts: Texts;
+  audienceCount: number;
+  running: boolean;
+}
+
+/** Почему «Разослать» неактивна (пусто — можно слать). Порядок: что чинить в первую очередь. */
+export function blockReason({ texts, audienceCount, running }: BlockInput): string {
+  if (running) return "Уже идёт рассылка";
+  if (!texts.main.trim()) return "Нет основного текста";
+  const bad = problemByKey(texts);
+  const key = TEXT_TABS.map((t) => t.value).find((k) => bad[k]);
+  if (key) return key === "main" ? `Ошибка в основном тексте: ${bad[key]}` : `Ошибка в ${key.toUpperCase()}: ${bad[key]}`;
+  if (audienceCount === 0) return "Аудитория пуста";
+  return "";
+}

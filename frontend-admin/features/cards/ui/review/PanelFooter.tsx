@@ -66,6 +66,9 @@ export function PanelFooter(p: FooterProps) {
           <ChevronRight className="h-4 w-4" />
         </NavButton>
       </div>
+      <span className="hidden text-[11px] text-[var(--text-faint)] lg:inline" title="Горячие клавиши панели: J / K — следующая / предыдущая, A — принять, Esc — закрыть (работают и на русской раскладке: О / Л / Ф)">
+        <kbd className="font-mono">J</kbd>/<kbd className="font-mono">K</kbd> · <kbd className="font-mono">A</kbd>
+      </span>
       <span className="flex-1" />
       <Link
         href={editorHref}

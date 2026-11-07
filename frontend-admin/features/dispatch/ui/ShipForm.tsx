@@ -8,7 +8,10 @@ import { Send } from "lucide-react";
 import { awaitingPrepayment } from "../model/dispatch";
 import { useShipOrder } from "../queries";
 
-/** ТТН + "Отправлено" right on the card (NEW/APPROVED → SHIPPED). */
+/**
+ * ТТН + "Отправлено" right on the card (NEW/APPROVED → SHIPPED). A phone keeps the field in the middle
+ * of the screen when the keyboard opens, and the button is full width under it (44 px).
+ */
 export function ShipForm({ o }: { o: AdminDispatchOrder }) {
   const form = useForm<{ ttn: string }>({ defaultValues: { ttn: "" } });
   // The typed number stays in the field on a refusal or an error; only a real shipment clears it.
@@ -21,7 +24,7 @@ export function ShipForm({ o }: { o: AdminDispatchOrder }) {
   };
 
   return (
-    <div className="flex flex-col gap-2 border-t border-[var(--line)] pt-3.5 sm:flex-row sm:items-start">
+    <div className="flex flex-col gap-2 border-t border-[var(--line)] pt-3 sm:flex-row sm:items-start">
       <div className="min-w-0 flex-1">
         <Input
           aria-label="Номер ТТН"
@@ -29,6 +32,11 @@ export function ShipForm({ o }: { o: AdminDispatchOrder }) {
           inputMode="numeric"
           autoComplete="off"
           {...form.register("ttn")}
+          // After the keyboard is up (≈300 ms) so the card is not left under it.
+          onFocus={(e) => {
+            const el = e.currentTarget;
+            if (window.matchMedia("(pointer: coarse)").matches) setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+          }}
           onKeyDown={(e) => e.key === "Enter" && !waitPay && submit()}
           error={wrong ? "Не похоже на ТТН Новой Почты (14 цифр, начало 20/59)" : undefined}
         />
@@ -36,6 +44,7 @@ export function ShipForm({ o }: { o: AdminDispatchOrder }) {
       <Button
         // Orange only once it can be pressed: a list of cards must not be a wall of orange buttons.
         variant={!clean || waitPay ? "surface" : "accent"}
+        className="max-sm:w-full pointer-coarse:min-h-11"
         loading={ship.isPending}
         disabled={!clean || waitPay}
         icon={<Send className="h-4 w-4" />}

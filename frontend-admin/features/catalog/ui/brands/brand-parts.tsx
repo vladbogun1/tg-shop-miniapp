@@ -1,6 +1,8 @@
 "use client";
 
-import { GitMerge, Pencil, Trash2 } from "lucide-react";
+import { GitMerge, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { ActionSheet } from "@/components/ui/ActionSheet";
 import { cn } from "@/lib/cn";
 
 export function Aliases({ list }: { list: string[] }) {
@@ -39,5 +41,32 @@ export function RowActions({ onEdit, onMerge, onDelete }: { onEdit: () => void; 
         <Trash2 className="h-4 w-4" />
       </button>
     </span>
+  );
+}
+
+/** Телефон: одна кнопка «⋯» (44 px) и шторка с действиями. */
+export function PhoneActions({ title, onEdit, onMerge, onDelete }: { title: string; onEdit: () => void; onMerge: () => void; onDelete: () => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={`Действия: ${title}`}
+        onClick={() => setOpen(true)}
+        className="focusable grid h-11 w-11 shrink-0 place-items-center rounded-[var(--r-sm)] text-[var(--text-muted)] hover:bg-[var(--surface-3)]"
+      >
+        <MoreHorizontal className="h-5 w-5" />
+      </button>
+      <ActionSheet
+        open={open}
+        title={title}
+        onClose={() => setOpen(false)}
+        actions={[
+          { key: "edit", label: "Изменить", icon: <Pencil className="h-4 w-4" />, onSelect: onEdit },
+          { key: "merge", label: "Объединить с…", icon: <GitMerge className="h-4 w-4" />, onSelect: onMerge },
+          { key: "delete", label: "Удалить", icon: <Trash2 className="h-4 w-4" />, danger: true, onSelect: onDelete },
+        ]}
+      />
+    </>
   );
 }

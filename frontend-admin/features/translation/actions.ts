@@ -4,7 +4,7 @@
  */
 import { ApiError } from "@shop/core/errors";
 import { translationApi } from "./api";
-import { planAccept } from "./model/queue";
+import { fieldState, langState, planAccept } from "./model/queue";
 import { mergeResults, type AiSendPlan, type SendSummary } from "./model/send";
 import type { TrAcceptItem, TrLocale } from "./model/types";
 import { LOCALES, type UniqueString } from "./model/workset";
@@ -127,4 +127,54 @@ export async function sendAiTranslations(plan: AiSendPlan): Promise<SendSummary>
     }
   }
   return result;
+}
+
+export interface ConfirmOutcome extends AcceptOutcome {
+  /** Тексты и языки, которые не тронули: в разных местах перевод разный или где-то его нет — их смотрят по одному. */
+  skipped: number;
+}
+
+/** У языка есть перевод во всех полях, и он везде одинаковый — такой можно подтвердить пачкой, не глядя на текст. */
+function uniformTranslation(s: UniqueString, l: TrLocale): boolean {
+  const texts = new Set(s.fields.map((f) => (f.status[l] === "MISSING" ? null : f.text[l])));
+  return texts.size === 1 && !texts.has(null);
+}
+
+/**
+ * Массовое «Подтвердить как есть»: текущий (или устаревший) перевод остаётся, помечается проверенным и
+ * привязывается к текущему оригиналу. Текст не меняется. Языки с разными переводами в разных местах
+ * пропускаются и считаются в `skipped`.
+ */
+export async function confirmAsIs(strings: UniqueString[], langs: TrLocale[]): Promise<ConfirmOutcome> {
+  const items: TrAcceptItem[] = [];
+  let skipped = 0;
+  for (const s of strings) {
+    for (const l of langs) {
+      if (langState(s, l) === "done") continue;
+      if (!uniformTranslation(s, l)) {
+        skipped++;
+        continue;
+      }
+      for (const f of s.fields) {
+        if (fieldState(f, l) !== "done") {
+          items.push({ entityType: f.entityType, entityId: f.entityId, field: f.field, sourceHash: f.sourceHash, locale: l });
+        }
+      }
+    }
+  }
+  const out: ConfirmOutcome = { done: 0, outdated: 0, failed: 0, skipped };
+  for (let i = 0; i < items.length; i += CHUNK) {
+    const r = await translationApi.accept(items.slice(i, i + CHUNK));
+    out.done += r.accepted;
+    out.outdated += r.skippedStale;
+    out.failed += r.notFound + r.invalid;
+  }
+  return out;
+}
+
+/** Массовое «Сбросить перевод»: у выбранных текстов в выбранных языках снова показывается русский оригинал. */
+export async function resetMany(strings: UniqueString[], langs: TrLocale[]): Promise<number> {
+  let n = 0;
+  for (const s of strings) for (const l of langs) n += await resetText(s, l);
+  return n;
 }

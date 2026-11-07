@@ -10,7 +10,7 @@ export function Undone({ l }: { l: WriteoffLine }) {
   if (!l.undoneQty) return null;
   return (
     <span className="block text-[11.5px] font-normal text-[var(--ok)]" title={l.undoneNote ?? undefined}>
-      вернули {l.undoneQty}
+      {leftOf(l) <= 0 ? `отменено · вернули ${l.undoneQty}` : `вернули ${l.undoneQty}`}
     </span>
   );
 }

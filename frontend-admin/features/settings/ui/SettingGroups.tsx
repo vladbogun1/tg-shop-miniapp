@@ -55,7 +55,27 @@ export function BotTexts({ items, draft, onChange, onReset }: GroupProps) {
           onReset={() => onReset(item)}
         />
       )}
+      {item && draft[item.key] && <BotBubble text={String(draft[item.key].raw)} />}
       {others.length > 0 && <GroupFields items={others} draft={draft} onChange={onChange} onReset={onReset} />}
+    </div>
+  );
+}
+
+/**
+ * Как приветствие увидит покупатель: пузырь с текстом (обычный текст, без разметки) и кнопка под ним.
+ * Пусто — бот пришлёт текст по умолчанию, поэтому пузырь не рисуем. Кнопка — как в боте, здесь не редактируется.
+ */
+function BotBubble({ text }: { text: string }) {
+  const empty = text.trim() === "";
+  if (empty) return <p className="text-[12px] text-[var(--text-faint)]">Поле пустое — бот использует текст по умолчанию.</p>;
+  return (
+    <div className="min-w-0 max-w-[420px]" aria-label="Предпросмотр приветствия">
+      <div className="whitespace-pre-wrap break-words rounded-[var(--r-md)] rounded-bl-[4px] bg-[var(--surface-3)] px-3 py-2 text-[13px] leading-snug text-[var(--text)]">
+        {text}
+      </div>
+      <div className="mt-1 rounded-[var(--r-sm)] border border-[var(--line)] px-3 py-1.5 text-center text-[12px] text-[var(--text-muted)]">
+        Кнопка магазина — как в боте, не редактируется
+      </div>
     </div>
   );
 }

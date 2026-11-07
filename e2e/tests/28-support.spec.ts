@@ -25,7 +25,8 @@ function threadRow(page: Page, name: string): Locator {
 }
 
 function supportDrawer(page: Page): Locator {
-  return page.getByRole("dialog").filter({ hasText: "Поддержка" }).last();
+  // ПК (1280 px): мастер-деталь — вопрос открывается в панели справа, а не в шторке.
+  return page.getByTestId("support-detail");
 }
 
 test("ответ на вопрос снимает «ждут ответа» везде; закрыть и открыть снова", async ({ page, api }) => {
@@ -67,15 +68,14 @@ test("ответ на вопрос снимает «ждут ответа» ве
   expect((await api.inbox()).groups.find((g) => g.id === "SUPPORT")?.count ?? 0).toBe(0);
 
   // Close, then reopen.
-  await drawer.getByRole("button", { name: "Закрыть", exact: true }).last().click();
+  await drawer.getByRole("button", { name: "Закрыть", exact: true }).click();
   await expect(toast(page, "Вопрос закрыт")).toBeVisible();
   await expect.poll(async () => (await thread(api, SUPPORT_THREAD.waiting)).status).toBe("CLOSED");
   await drawer.getByRole("button", { name: "Открыть снова" }).click();
   await expect(toast(page, "Вопрос открыт снова")).toBeVisible();
   await expect.poll(async () => (await thread(api, SUPPORT_THREAD.waiting)).status).toBe("OPEN");
 
-  // The list shows the last word was ours.
-  await page.keyboard.press("Escape");
+  // The list (still visible next to the panel) shows the last word was ours.
   await expect(row).toContainText("Вы: Так, L буде в понеділок.");
 });
 
@@ -87,6 +87,8 @@ test("фильтры, поиск и ссылка на вопрос", async ({ pa
   await expect(threadRow(page, METRICS_USER.yaryna.name)).toBeVisible();
   await expect(threadRow(page, METRICS_USER.stepan.name)).toBeVisible();
 
+  // Поиск идёт по всем статусам, а не только по выбранному сегменту.
+  await page.getByRole("button", { name: "Закрытые", exact: true }).click();
   await page.getByLabel("Поиск по вопросам").fill("Ярина");
   await expect(threadRow(page, METRICS_USER.stepan.name)).toHaveCount(0);
   await expect(threadRow(page, METRICS_USER.yaryna.name)).toBeVisible();

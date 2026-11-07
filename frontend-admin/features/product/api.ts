@@ -6,6 +6,7 @@ import type { Schemas } from "@shop/core/api/schemas";
 import type { CardStatus } from "@shop/core/catalog";
 import { apiGet, apiPatch, apiPost, uploadFile } from "@/lib/http";
 import { fromAdminProductDto } from "./model/from-dto";
+import type { QuickBody } from "./model/quick-edit";
 import type { AdminProduct, AdminProductDto, AdminProductSaved, ProductWriteRequest } from "./model/types";
 
 const forceQuery = (force: boolean) => (force ? "?force=1" : "");
@@ -20,6 +21,12 @@ export const productApi = {
   /** `force`: выложить (active=true) карточку, которая ещё не оформлена (иначе 409 CARD_NOT_READY). */
   update: async (id: string, body: ProductWriteRequest, force = false): Promise<AdminProductSaved> =>
     fromAdminProductDto(await apiPatch<AdminProductDto>(`/api/admin/products/${id}${forceQuery(force)}`, body)),
+  /**
+   * Быстрая правка цены и/или остатка из списка. 409 STOCK_CONFLICT / PRICE_CONFLICT — значение сдвинулось с тех пор,
+   * как админ его увидел; 400 STOCK_REASON_REQUIRED — остаток уменьшают без причины.
+   */
+  quick: async (id: string, body: QuickBody): Promise<AdminProductSaved> =>
+    fromAdminProductDto(await apiPatch<AdminProductDto>(`/api/admin/products/${id}/quick`, body)),
   /** «Отметить проверенной» / «Вернуть в черновик». */
   setCardStatus: async (id: string, status: CardStatus): Promise<AdminProduct> => {
     const body: Schemas["CardStatusRequest"] = { status };

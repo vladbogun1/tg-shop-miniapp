@@ -35,7 +35,13 @@ function field(scope: Locator, label: string): Locator {
 }
 
 function promoRow(page: Page, code: string): Locator {
-  return page.locator(".card-hover").filter({ has: page.getByText(code, { exact: true }) });
+  return page.getByTestId("promo-row").filter({ has: page.getByText(code, { exact: true }) });
+}
+
+/** The «⋯» menu of a row (a popover on a laptop): pick an item by its name. */
+async function rowAction(page: Page, row: Locator, item: string) {
+  await row.getByRole("button", { name: /^Действия:/ }).click();
+  await page.getByRole("menuitem", { name: item }).click();
 }
 
 test("лимиты и резерв: «слоты в резерве», «лимит исчерпан», заказы с кодом", async ({ page, api }) => {
@@ -49,7 +55,6 @@ test("лимиты и резерв: «слоты в резерве», «лими
   await expect(reserve).toContainText("10% скидка");
   await expect(reserve).toContainText("Использовано 1 / 2 · резерв 1");
   await expect(reserve).toContainText("слоты в резерве");
-  await expect(reserve).toContainText("активен");
   await expect(reserve).not.toContainText("лимит исчерпан");
 
   const full = promoRow(page, PROMO.full.code);
@@ -59,8 +64,9 @@ test("лимиты и резерв: «слоты в резерве», «лими
   await expect(full).not.toContainText("слоты в резерве");
 
   // Orders placed with the code.
-  await reserve.getByRole("button", { name: "Заказы с кодом" }).click();
-  const order = reserve.getByRole("button", { name: new RegExp(shortId(METRICS_ORDER.m3)) });
+  await rowAction(page, reserve, "Заказы с кодом");
+  const panel = page.getByRole("dialog").filter({ hasText: `Заказы с кодом ${PROMO.reserve.code}` });
+  const order = panel.getByRole("button", { name: new RegExp(shortId(METRICS_ORDER.m3)) });
   await expect(order).toContainText(METRICS_USER.stepan.name);
   await expect(order).toContainText(/−70\s₴/);
   await order.click();
@@ -105,7 +111,7 @@ test("создать с проверками, изменить использо�
   expect(created).toMatchObject({ discountPercent: 15, maxUses: 3, usesCount: 0, active: true });
 
   // Fixed amount + switched off.
-  await row.getByRole("button", { name: "Редактировать" }).click();
+  await rowAction(page, row, "Редактировать");
   dlg = dialog(page, "Редактировать промокод");
   await expect(dlg.getByText(/Код уже применили/)).toHaveCount(0);
   await dlg.getByRole("button", { name: "₴ фиксированная" }).click();
@@ -121,7 +127,7 @@ test("создать с проверками, изменить использо�
   expect(created.discountPercent ?? 0).toBe(0);
 
   // A used code warns that old orders keep their discount; a lower limit makes it exhausted.
-  await promoRow(page, PROMO.reserve.code).getByRole("button", { name: "Редактировать" }).click();
+  await rowAction(page, promoRow(page, PROMO.reserve.code), "Редактировать");
   dlg = dialog(page, "Редактировать промокод");
   await expect(dlg).toContainText("Код уже применили 1 раз");
   await field(dlg, "Макс. использований").fill("1");
@@ -132,7 +138,7 @@ test("создать с проверками, изменить использо�
   expect((await promos(api)).find((p) => p.code === PROMO.reserve.code)!.maxUses).toBe(1);
 
   // Delete.
-  await row.getByRole("button", { name: "Удалить" }).click();
+  await rowAction(page, row, "Удалить");
   const confirm = dialog(page, "Удалить промокод?");
   await expect(confirm).toContainText("E2E15");
   await confirm.getByRole("button", { name: "Удалить" }).click();
@@ -207,7 +213,8 @@ test("вкладки «Наши / Персональные скидки / За �
   await tab(page, "За отзывы").click();
   await expect(page).toHaveURL(/tab=review/);
   await expect(promoRow(page, PROMO_OTHER.bonus)).toContainText("бонус за отзыв");
-  await expect(page.getByText(/Выдано 1, использовано 0/)).toBeVisible();
+  await expect(page.getByRole("main")).toContainText(/Выданоs*1/);
+  await expect(page.getByRole("main")).toContainText(/Использованоs*0/);
   await expect(promoRow(page, PROMO.reserve.code)).toHaveCount(0);
 });
 

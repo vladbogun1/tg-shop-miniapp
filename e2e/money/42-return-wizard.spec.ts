@@ -18,7 +18,7 @@ test("частичный возврат одной позиции: сумма в
   const scarfBefore = (await api.product(PRODUCT.scarf)).stock;
 
   const drawer = await openOrderFromBoard(page, p.orderId, p.buyerName);
-  await drawer.getByRole("button", { name: "Возврат", exact: true }).click();
+  await drawer.getByRole("button", { name: "Оформить возврат" }).click();
   const modal = dialog(page, "↩️ Возврат");
   const next = modal.getByRole("button", { name: "Далее" });
   await modal.getByRole("button", { name: "Уже у нас" }).click();

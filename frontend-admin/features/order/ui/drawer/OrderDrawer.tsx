@@ -2,9 +2,10 @@
 
 /**
  * OrderDrawer — order card in the neo `Drawer` shell.
- * Header: short id + status/payment/source badges (they wrap — the × must stay on a phone screen).
- * Tabs: Детали / Чат (unread counter) / История (admin action log).
- * Footer: on desktop every action; on a phone one main action for the status + "⋯" for the rest.
+ * Header: two lines — «#id · имя» + status, then chips and the urgent money line (deadline / наложка).
+ * Tabs: Детали / Чат (unread counter) / История (admin action log); on ≥ sm they sit in the header strip.
+ * From 1360 px the card is wide: details (or history) on the left, the chat always on the right, no «Чат» tab.
+ * Footer: main step + «Отклонить» + «⋯ Ещё» (groups Деньги / Заказ / Архив): popover on desktop, sheet on a phone.
  * Every action has its own spinner; destructive ones ask first (own modal, not window.confirm).
  * The phone/browser "Назад" closes the card instead of leaving the page.
  */
@@ -12,20 +13,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Drawer } from "@shop/ui/overlay";
 import { useBatchProductTools } from "@/features/product";
 import { useIsSuperAdmin } from "@/features/staff";
+import { useMediaQuery } from "@shop/ui/use-media";
 import { useIsDesktop } from "@/lib/use-media";
 import { unreadFromCustomer } from "../../model/chat";
 import { drawerRules } from "../../model/drawer-rules";
 import { useOrderMessagesQuery } from "../../queries/chat";
 import { useOpenCustomerMutation, useOpenProductMutation, useOrderActionRunner, useOrderQuery } from "../../queries/drawer";
 import { useMergeCandidatesQuery } from "../../queries/modals";
-import { OrderChat } from "../chat/OrderChat";
-import { OrderHistory } from "../details/OrderHistory";
 import { buildDetailHandlers } from "./build-detail-handlers";
-import { DetailsPane } from "./DetailsPane";
+import { DrawerBody } from "./DrawerBody";
 import { DrawerHeader } from "./DrawerHeader";
 import { DrawerModals } from "./DrawerModals";
 import { DrawerTabs } from "./DrawerTabs";
-import { buildSheetActions } from "./sheet-actions";
+import { buildMenuGroups } from "./sheet-actions";
 import { useDrawerModals } from "./use-drawer-modals";
 import { useFlowActions } from "./use-flow-actions";
 import { useInitialAction, type InitialAction } from "./use-initial-action";
@@ -51,6 +51,9 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
   useEffect(() => setJumped(null), [propId]);
   const orderId = propId ? (jumped ?? propId) : null;
   const isDesktop = useIsDesktop();
+  const hasTabsInHeader = useMediaQuery("(min-width: 640px)", true);
+  // Wide card: details and chat side by side (the e2e/laptop 1280 keeps tabs).
+  const twoCols = useMediaQuery("(min-width: 1360px)", false);
   const isSuper = useIsSuperAdmin() === true;
   const closeRef = useRef<(() => void) | null>(null);
   const close = useCallback(() => closeRef.current?.(), []);
@@ -62,7 +65,13 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
   const { busyKey, run, refreshLists } = useOrderActionRunner(orderId);
   const actions = useOrderActions({ orderId, run, modals, close });
   const flows = useFlowActions({ orderId, run, modals, jumpTo: setJumped });
-  const paymentRef = useInitialAction({ orderId, order, initialAction, tab, show });
+  const paymentRef = useInitialAction({
+    orderId,
+    order,
+    initialAction,
+    tab,
+    show,
+  });
 
   // Unread customer messages for the "Чат" tab badge (the chat itself shares this cache entry).
   const messagesQ = useOrderMessagesQuery(orderId);
@@ -92,41 +101,50 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
     paymentRef,
   });
   const onUnarchive = () => void actions.applyUnarchive();
-  const sheetActions = buildSheetActions({ rules, canMerge, show, requestStatus: actions.requestStatus, onUnarchive });
+  const menuGroups = buildMenuGroups({
+    rules,
+    canMerge,
+    withReject: true,
+    show,
+    requestStatus: actions.requestStatus,
+    onUnarchive,
+  });
+  // Two columns: «Чат» is not a tab (it is always on the right).
+  const view = twoCols && tab === "chat" ? "details" : tab;
+  const tabs = <DrawerTabs tab={view} onChange={modals.setTab} unread={unread} withChat={!twoCols} inHeader={hasTabsInHeader} />;
 
   return (
     <>
       <Drawer
         open={!!orderId}
         onClose={onClose}
-        header={<DrawerHeader order={order} archived={rules.archived} />}
-        width="max-w-[680px]"
+        header={<DrawerHeader order={order} archived={rules.archived} tabs={hasTabsInHeader ? tabs : undefined} />}
+        width="sm:max-w-[720px] min-[1360px]:max-w-[1040px]"
         zClass="z-[120]"
         backClose="orderDrawer"
         closeNavigates={closeNavigates}
         closeRef={closeRef}
       >
-        <div className="flex h-full min-h-0 flex-col">
-          <DrawerTabs tab={tab} onChange={modals.setTab} unread={unread} />
-
-          {tab === "details" && (
-            <DetailsPane
-              query={orderQ}
-              handlers={handlers}
-              bar={{ rules, busyKey, isDesktop, show, requestStatus: actions.requestStatus, onUnarchive }}
-            />
-          )}
-
-          {tab === "chat" && (
-            <div className="flex min-h-0 flex-1 p-3 pb-[calc(12px+var(--safe-bottom))] sm:p-5 sm:pb-[calc(20px+var(--safe-bottom))]">
-              {orderId && <OrderChat key={orderId} orderId={orderId} />}
-            </div>
-          )}
-
-          {tab === "history" && (
-            <div className="thin-scroll min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">{orderId && <OrderHistory orderId={orderId} />}</div>
-          )}
-        </div>
+        <DrawerBody
+          orderId={orderId}
+          orderQ={orderQ}
+          order={order}
+          view={view}
+          twoCols={twoCols}
+          tabs={hasTabsInHeader ? undefined : tabs}
+          handlers={handlers}
+          bar={{
+            rules,
+            canMerge,
+            busyKey,
+            isDesktop,
+            show,
+            requestStatus: actions.requestStatus,
+            onUnarchive,
+            onChat: () => modals.setTab("chat"),
+          }}
+          setTab={modals.setTab}
+        />
       </Drawer>
 
       <DrawerModals
@@ -137,7 +155,7 @@ export function OrderDrawer({ orderId: propId, onClose, initialTab = "details", 
         modals={modals}
         actions={actions}
         flows={flows}
-        sheetActions={rules.primary ? sheetActions : sheetActions.filter((a) => a.key !== "pay")}
+        menuGroups={menuGroups}
         restockUnits={rules.restockUnits}
         refreshLists={refreshLists}
       />

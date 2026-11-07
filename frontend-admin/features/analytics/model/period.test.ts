@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { isValid, periodRange, todayIso } from "./period";
+import { isValid, periodRange, rangeLabel, todayIso } from "./period";
 
 describe("periodRange", () => {
   beforeEach(() => {
@@ -14,8 +14,26 @@ describe("periodRange", () => {
     expect(periodRange({ period: "today", channel: "all" })).toEqual({ from: "2026-10-15", to: "2026-10-15" });
     expect(periodRange({ period: "7d", channel: "all" })).toEqual({ from: "2026-10-09", to: "2026-10-15" });
     expect(periodRange({ period: "90d", channel: "all" })).toEqual({ from: "2026-07-18", to: "2026-10-15" });
+    expect(periodRange({ period: "30d", channel: "all" })).toEqual({ from: "2026-09-16", to: "2026-10-15" });
     expect(periodRange({ period: "month", channel: "all" })).toEqual({ from: "2026-10-01", to: "2026-10-15" });
     expect(periodRange({ period: "year", channel: "all" })).toEqual({ from: "2026-01-01", to: "2026-10-15" });
+  });
+
+  it("вчера — один календарный день, в том числе на границе месяца и года", () => {
+    expect(periodRange({ period: "yesterday", channel: "all" })).toEqual({ from: "2026-10-14", to: "2026-10-14" });
+    vi.setSystemTime(new Date("2027-01-01T12:00:00Z"));
+    expect(periodRange({ period: "yesterday", channel: "all" })).toEqual({ from: "2026-12-31", to: "2026-12-31" });
+    expect(periodRange({ period: "30d", channel: "all" })).toEqual({ from: "2026-12-03", to: "2027-01-01" });
+  });
+
+  it("квартал — с 1-го числа первого месяца текущего календарного квартала", () => {
+    expect(periodRange({ period: "quarter", channel: "all" })).toEqual({ from: "2026-10-01", to: "2026-10-15" });
+    vi.setSystemTime(new Date("2026-08-20T12:00:00Z"));
+    expect(periodRange({ period: "quarter", channel: "all" })).toEqual({ from: "2026-07-01", to: "2026-08-20" });
+    vi.setSystemTime(new Date("2027-03-31T12:00:00Z"));
+    expect(periodRange({ period: "quarter", channel: "all" })).toEqual({ from: "2027-01-01", to: "2027-03-31" });
+    vi.setSystemTime(new Date("2026-06-30T12:00:00Z"));
+    expect(periodRange({ period: "quarter", channel: "all" })).toEqual({ from: "2026-04-01", to: "2026-06-30" });
   });
 
   it("прошлый месяц — с 1-го по последнее число, в том числе на границе года", () => {
@@ -41,11 +59,30 @@ describe("periodRange", () => {
 describe("isValid", () => {
   it("пропускает только известные период и канал; «свой» — только с датами", () => {
     expect(isValid({ period: "month", channel: "all" })).toBe(true);
+    expect(isValid({ period: "quarter", channel: "all" })).toBe(true);
+    expect(isValid({ period: "yesterday", channel: "all" })).toBe(true);
+    expect(isValid({ period: "30d", channel: "all" })).toBe(true);
+    expect(isValid({ period: "90d", channel: "all" })).toBe(true); // запомненный раньше выбор
     expect(isValid({ period: "custom", channel: "web", from: "2026-08-01", to: "2026-08-09" })).toBe(true);
     expect(isValid({ period: "custom", channel: "web" })).toBe(false);
     expect(isValid({ period: "decade", channel: "all" })).toBe(false);
     expect(isValid({ period: "7d", channel: "tiktok" })).toBe(false);
     expect(isValid(null)).toBe(false);
     expect(isValid("month")).toBe(false);
+  });
+});
+
+describe("rangeLabel", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-15T12:00:00Z"));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("один день и отрезок", () => {
+    expect(rangeLabel({ period: "today", channel: "all" })).toBe("15.10");
+    expect(rangeLabel({ period: "7d", channel: "all" })).toBe("09.10 – 15.10");
+    expect(rangeLabel({ period: "yesterday", channel: "all" })).toBe("14.10");
+    expect(rangeLabel({ period: "quarter", channel: "all" })).toBe("01.10 – 15.10");
   });
 });

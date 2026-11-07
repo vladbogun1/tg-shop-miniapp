@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { assignCardIds } from "../../model/item";
-import { CARDS_IDS_PARAM, defaultTab, idsFromParam, listForTab, pruneSelection, tabCounts, wizardLabel } from "../../model/screen";
+import { CARDS_IDS_PARAM, defaultTab, type CardSort, idsFromParam, listForTab, pruneSelection, tabCounts, wizardLabel } from "../../model/screen";
 import { bulkAcceptable, matchesVitrine, missingCount, tabOf, type CardTab, type Vitrine } from "../../model/view";
 import { cardsKeys } from "../../keys";
 import { invalidateCards, useCardItems, useCardSchema } from "../../queries";
@@ -31,6 +31,7 @@ export function useCardsScreen() {
   const [vitrine, setVitrine] = useState<Vitrine>("work");
   const [query, setQuery] = useState("");
   const [onlyIncomplete, setOnlyIncomplete] = useState(false);
+  const [sort, setSort] = useState<CardSort>("tab");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE);
@@ -39,7 +40,7 @@ export function useCardsScreen() {
 
   const counts = useMemo(() => tabCounts(items.filter((i) => matchesVitrine(i, vitrine))), [items, vitrine]);
   const current: CardTab = tab ?? defaultTab(counts);
-  const list = useMemo(() => listForTab(items, { vitrine, tab: current, query, onlyIncomplete }), [items, vitrine, current, query, onlyIncomplete]);
+  const list = useMemo(() => listForTab(items, { vitrine, tab: current, query, onlyIncomplete, sort }), [items, vitrine, current, query, onlyIncomplete, sort]);
   const incompleteReady = useMemo(
     () => items.filter((i) => matchesVitrine(i, vitrine) && tabOf(i) === "ready" && missingCount(i) > 0).length,
     [items, vitrine]
@@ -101,7 +102,8 @@ export function useCardsScreen() {
     itemsQ, schemaQ, items, schema: schemaQ.data, ids, current, counts, list, incompleteReady,
     query, setQuery: (q: string) => { setQuery(q); setLimit(PAGE); }, clearQuery: () => setQuery(""),
     vitrine, setVitrine: (v: Vitrine) => { setVitrine(v); setLimit(PAGE); },
-    onlyIncomplete, setOnlyIncomplete, resetFilters: () => { setQuery(""); setVitrine("work"); setOnlyIncomplete(false); },
+    onlyIncomplete, setOnlyIncomplete, sort, setSort: (v: CardSort) => { setSort(v); setLimit(PAGE); },
+    resetFilters: () => { setQuery(""); setVitrine("work"); setOnlyIncomplete(false); setSort("tab"); },
     selected, setSelected, selectedItems, bulkOk, wizardIds, bulk,
     toggleRow: (id: string, on: boolean) => setSelected((prev) => { const n = new Set(prev); if (on) n.add(id); else n.delete(id); return n; }),
     toggleAll: (on: boolean) => setSelected(on ? new Set(list.map((i) => i.id)) : new Set()),

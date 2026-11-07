@@ -84,7 +84,7 @@ test("дерево: создать корень и подкатегорию, п�
   await refuse.getByRole("button", { name: "Понятно" }).click();
 
   // --- rename (the address stays) ---
-  await catRow(page, "e2e-periferiya").getByRole("button", { name: /E2E Периферия/ }).click();
+  await catRow(page, "e2e-periferiya").getByRole("button", { name: /^E2E Периферия/ }).click();
   dlg = dialog(page, "Категория · E2E Периферия");
   await dlg.getByLabel("Название").fill("E2E Периферия ПК");
   await dlg.getByRole("button", { name: "Сохранить" }).click();

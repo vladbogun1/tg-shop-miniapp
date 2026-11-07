@@ -16,32 +16,15 @@ import { useTopUpModeMutation } from "../../queries/details";
 
 /** Тот же набор условий, что у сервера (OrderMoney.topUpDueMinor): оплачен онлайн, стал дороже, ещё не отправлен. */
 export function hasTopUp(order: AdminOrderDetail): boolean {
-  return (
-    needsTopUp(order) &&
-    order.paid &&
-    !order.exchangeOfId &&
-    !!order.paymentDueAt
-  );
+  return needsTopUp(order) && order.paid && !order.exchangeOfId && !!order.paymentDueAt;
 }
 
 function NoticeState({ order }: { order: AdminOrderDetail }) {
-  if (order.topUpNotified)
-    return <>Покупателю отправлено сообщение с кнопкой «Доплатити».</>;
-  return (
-    <>
-      Сообщение покупателю уйдёт примерно через 2 минуты после последней правки
-      состава.
-    </>
-  );
+  if (order.topUpNotified) return <>Покупателю отправлено сообщение с кнопкой «Доплатити».</>;
+  return <>Сообщение покупателю уйдёт примерно через 2 минуты после последней правки состава.</>;
 }
 
-export function TopUpBlock({
-  order,
-  onChanged,
-}: {
-  order: AdminOrderDetail;
-  onChanged?: () => void;
-}) {
+export function TopUpBlock({ order, onChanged }: { order: AdminOrderDetail; onChanged?: () => void }) {
   const confirm = useConfirm();
   const m = useTopUpModeMutation(order.id, onChanged);
   if (!hasTopUp(order)) return null;
@@ -52,8 +35,7 @@ export function TopUpBlock({
   async function waive() {
     const ok = await confirm({
       title: `Доплату ${due} — за счёт магазина?`,
-      message:
-        "Разница станет скидкой, итог заказа сравняется с уже оплаченным. Покупатель ничего не доплачивает.",
+      message: "Разница станет скидкой, итог заказа сравняется с уже оплаченным. Покупатель ничего не доплачивает.",
       confirmLabel: "Списать",
       danger: true,
     });
@@ -99,13 +81,7 @@ export function TopUpBlock({
             Наложкой при получении
           </Button>
         )}
-        <Button
-          variant="surface"
-          size="sm"
-          icon={<Gift className="h-4 w-4" />}
-          disabled={m.isPending}
-          onClick={() => void waive()}
-        >
+        <Button variant="surface" size="sm" icon={<Gift className="h-4 w-4" />} disabled={m.isPending} onClick={() => void waive()}>
           За счёт магазина
         </Button>
       </div>

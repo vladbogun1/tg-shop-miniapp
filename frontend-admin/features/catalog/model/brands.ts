@@ -1,8 +1,10 @@
 /** Что экран «Бренды» считает из списка: поиск, сортировка, счётчики, адрес сайта. */
 import { normText } from "./search";
+import { slugify } from "./slug";
 import type { AdminBrand, BrandLogoMode, BrandWriteRequest } from "./types";
 
-export type BrandSort = "name" | "products";
+/** Столбец сортировки таблицы: по товарам (убывание по умолчанию), остальные — по возрастанию. */
+export type BrandSort = "name" | "products" | "slug" | "site";
 
 export function hostOf(url: string): string {
   try {
@@ -12,15 +14,25 @@ export function hostOf(url: string): string {
   }
 }
 
-/** Поиск по названию, slug и алиасам + сортировка («По товарам» или А–Я). */
-export function visibleBrands(brands: AdminBrand[], search: string, sort: BrandSort): AdminBrand[] {
+/** Поиск по названию, slug и алиасам + сортировка; `dir` = -1 переворачивает естественный порядок столбца. */
+export function visibleBrands(brands: AdminBrand[], search: string, sort: BrandSort, dir: 1 | -1 = 1): AdminBrand[] {
   const nq = normText(search);
   const list = brands.filter(
     (b) => !nq || normText(b.name).includes(nq) || b.slug.includes(nq) || b.aliases.some((a) => normText(a).includes(nq))
   );
-  return list.sort((a, b) =>
-    sort === "products" ? b.productCount - a.productCount || a.name.localeCompare(b.name) : a.name.localeCompare(b.name)
-  );
+  const byName = (a: AdminBrand, b: AdminBrand) => a.name.localeCompare(b.name);
+  const natural = (a: AdminBrand, b: AdminBrand): number => {
+    if (sort === "products") return b.productCount - a.productCount || byName(a, b);
+    if (sort === "slug") return a.slug.localeCompare(b.slug);
+    if (sort === "site") {
+      const ha = a.website ? hostOf(a.website) : "";
+      const hb = b.website ? hostOf(b.website) : "";
+      if (!ha !== !hb) return ha ? -1 : 1; // без сайта — в конец
+      return ha.localeCompare(hb) || byName(a, b);
+    }
+    return byName(a, b);
+  };
+  return list.sort((a, b) => natural(a, b) * dir);
 }
 
 /** Другой бренд с таким же названием или алиасом (для подсказки «Уже есть»). */
@@ -57,4 +69,14 @@ export function buildBrandBody(form: BrandForm): BrandWriteRequest {
     logoUrl: form.logoUrl,
     logoMode: form.logoMode,
   };
+}
+
+/**
+ * Смена slug существующего бренда: что было и что станет (null — адрес тот же или бренд новый).
+ * Пустое поле slug сервер заполняет из названия, поэтому сравниваем с тем же правилом, что и он.
+ */
+export function brandSlugChange(editing: AdminBrand | null, form: BrandForm): { from: string; to: string } | null {
+  if (!editing) return null;
+  const to = slugify(form.slug.trim() || form.name);
+  return to && to !== editing.slug ? { from: editing.slug, to } : null;
 }

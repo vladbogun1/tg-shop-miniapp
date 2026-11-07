@@ -10,8 +10,10 @@ import { useIsSuperAdmin } from "@/features/staff";
 import { invalidateTranslations } from "@/features/translation";
 import { brandApi, categoryApi, schemaApi, specApi } from "./api";
 import { catalogKeys } from "./keys";
+import { buildCategoryBody, toForm } from "./model/category-form";
 import { productsWord } from "./model/words";
 import type {
+  AdminBrand,
   AdminSpecAttribute,
   AdminSpecGroup,
   BrandWriteRequest,
@@ -147,6 +149,23 @@ export function useDeleteCategory() {
   });
 }
 
+/** «Показывать в меню» / «Скрыть из меню» для нескольких категорий (остальные поля — как есть). */
+export function useSetMenuVisibility() {
+  const qc = useQueryClient();
+  return useCatalogMutation({
+    mutationFn: async (v: { cats: AdminCategory[]; show: boolean }) => {
+      for (const c of v.cats) {
+        await categoryApi.update(c.id, { ...buildCategoryBody(toForm(c, c.parentId), true), showInMenu: v.show });
+      }
+      return v.cats.length;
+    },
+    success: (n, v) => `${v.show ? "Показываются в меню" : "Скрыты из меню"}: ${n}`,
+    errorFallback: "Не удалось изменить",
+    onError: () => qc.invalidateQueries({ queryKey: catalogKeys.categories() }),
+    invalidate: CATEGORY_KEYS,
+  });
+}
+
 // ---- бренды ----------------------------------------------------------------------------
 
 const BRAND_KEYS = [catalogKeys.brands(), catalogKeys.schema()] as const;
@@ -174,6 +193,37 @@ export function useMergeBrand() {
     mutationFn: (v: { id: string; targetId: string; name: string; targetName: string }) => brandApi.merge(v.id, v.targetId),
     success: (_d, v) => `«${v.name}» объединён с «${v.targetName}»`,
     errorFallback: "Не удалось объединить",
+    invalidate: BRAND_KEYS,
+  });
+}
+
+/** Слияние нескольких брендов в один (группа дубликатов, «Объединить в…»): по одному, сбой останавливает остальные. */
+export function useMergeBrands() {
+  const qc = useQueryClient();
+  return useCatalogMutation({
+    mutationFn: async (v: { sources: AdminBrand[]; target: AdminBrand }) => {
+      for (const s of v.sources) await brandApi.merge(s.id, v.target.id);
+      return v.sources.length;
+    },
+    success: (n, v) => (n === 1 ? `«${v.sources[0].name}» объединён с «${v.target.name}»` : `Объединено брендов: ${n} → «${v.target.name}»`),
+    errorFallback: "Не удалось объединить",
+    // Часть слияний могла пройти до сбоя — список перечитываем в любом случае.
+    onError: () => qc.invalidateQueries({ queryKey: catalogKeys.brands() }),
+    invalidate: BRAND_KEYS,
+  });
+}
+
+/** Удаление нескольких брендов без товаров («Удалить пустые»). */
+export function useDeleteBrands() {
+  const qc = useQueryClient();
+  return useCatalogMutation({
+    mutationFn: async (ids: string[]) => {
+      for (const id of ids) await brandApi.remove(id);
+      return ids.length;
+    },
+    success: (n) => `Удалено брендов: ${n}`,
+    errorFallback: "Не удалось удалить",
+    onError: () => qc.invalidateQueries({ queryKey: catalogKeys.brands() }),
     invalidate: BRAND_KEYS,
   });
 }

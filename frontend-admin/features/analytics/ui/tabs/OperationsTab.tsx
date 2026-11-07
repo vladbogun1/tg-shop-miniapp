@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { AlertTriangle, Bug, CreditCard, Timer, Truck, XCircle } from "lucide-react";
 import { QueryState } from "@/components/ui/QueryState";
 import { REJECT_REASON_LABEL, type RejectReasonCode } from "@shop/core/orders";
@@ -34,6 +35,20 @@ function OperationsBody({ o }: { o: Operations }) {
   const r = o.rejects;
   return (
     <motion.div variants={staggerContainer} initial="initial" animate="animate" className="flex flex-col gap-4">
+      {r.paidNotRefunded > 0 && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-[var(--r-md)] border border-[rgba(248,113,113,.45)] bg-[rgba(248,113,113,.1)] px-3 py-2.5 text-[13px] text-[var(--text)]"
+        >
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#F87171]" />
+          <span>
+            Деньги получены по отклонённым без отметки возврата:{" "}
+            <b className="mx-num">
+              {num(r.paidNotRefunded)} зак. на {uah(r.paidNotRefundedMinor)}
+            </b>
+          </span>
+        </div>
+      )}
       <Panel title="Скорость обработки" icon={Timer} hint="Медиана — типичный заказ; p90 — 9 из 10 заказов укладываются в это время. По заказам, оформленным в периоде.">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {o.speed.map((s) => (
@@ -89,15 +104,6 @@ function OperationsBody({ o }: { o: Operations }) {
             <span>
               Отказ после отправки (вернулся с почты): <b className="text-[var(--text)]">{num(r.afterShipping)}</b>
             </span>
-            {r.paidNotRefunded > 0 && (
-              <span className="inline-flex items-center gap-1">
-                <AlertTriangle className="h-3.5 w-3.5 text-[var(--warn)]" />
-                Деньги получены по отклонённым без отметки возврата:{" "}
-                <b className="text-[var(--text)]">
-                  {num(r.paidNotRefunded)} зак. на {uah(r.paidNotRefundedMinor)}
-                </b>
-              </span>
-            )}
           </div>
         </div>
       </Panel>
@@ -118,7 +124,7 @@ function OperationsBody({ o }: { o: Operations }) {
         </Panel>
       </div>
 
-      <Panel title="Ошибки у покупателей за 7 дней" icon={Bug} hint="Из журнала Mini App и сайта. «Script error.» — ошибка без подробностей (скрипт с другого домена).">
+      <Panel title="Ошибки у покупателей за 7 дней" icon={Bug} scope="всегда 7 дней" hint="Из журнала Mini App и сайта. «Script error.» — ошибка без подробностей (скрипт с другого домена).">
         {o.clientErrors.length === 0 ? (
           <Empty>Ошибок нет</Empty>
         ) : (
@@ -150,7 +156,7 @@ function OperationsBody({ o }: { o: Operations }) {
 
 function ViolationPanel({ title, rows, sinceLabel, empty }: { title: string; rows: Violation[]; sinceLabel: string; empty: string }) {
   return (
-    <Panel title={title} icon={AlertTriangle} hint="Сейчас, независимо от периода">
+    <Panel title={title} icon={AlertTriangle} scope="сейчас" hint="Сейчас, независимо от периода">
       {rows.length === 0 ? (
         <Empty>{empty}</Empty>
       ) : (
@@ -168,7 +174,7 @@ function ViolationPanel({ title, rows, sinceLabel, empty }: { title: string; row
               {rows.map((v) => (
                 <tr key={v.orderId}>
                   <td>
-                    <div className="font-semibold mx-num">#{shortId(v.orderId)}</div>
+                    <Link href={`/orders/${v.orderId}`} className="font-semibold mx-num hover:text-[var(--accent-hi)]">#{shortId(v.orderId)}</Link>
                     <div className="text-[11px] text-[var(--text-faint)]">{v.customerName ?? ""}</div>
                   </td>
                   <td className="mx-num">{dateTime(v.since)}</td>

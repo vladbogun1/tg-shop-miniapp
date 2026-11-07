@@ -6,22 +6,32 @@
  */
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
+import { cn } from "@/lib/cn";
 import type { TrLocale } from "../model/types";
 import type { UniqueString } from "../model/workset";
 import { currentText, langState, placeOf } from "../model/queue";
 import { Button } from "@shop/ui/admin-button";
+import { RowCheck } from "./bulk";
 import { KindBadge, StateChip } from "./shared";
 
 const PAGE = 50;
+
+/** Режим «Выбрать»: отмеченные тексты (по sourceHash) для панели действий. */
+export interface QueueSelection {
+  ids: ReadonlySet<string>;
+  toggle: (hash: string, on: boolean) => void;
+}
 
 export function TranslationQueue({
   strings,
   langs,
   onOpen,
+  selection,
 }: {
   strings: UniqueString[];
   langs: TrLocale[];
   onOpen: (index: number) => void;
+  selection: QueueSelection | null;
 }) {
   const [limit, setLimit] = useState(PAGE);
   return (
@@ -34,11 +44,17 @@ export function TranslationQueue({
           const shown = [...langs].sort((a, b) => order(langState(s, a)) - order(langState(s, b)))[0];
           const tr = currentText(s, shown);
           return (
-            <li key={s.sourceHash}>
+            <li key={s.sourceHash} className="flex items-center gap-1">
+              {selection && (
+                <RowCheck checked={selection.ids.has(s.sourceHash)} onChange={(on) => selection.toggle(s.sourceHash, on)} label="Выбрать текст" />
+              )}
               <button
                 type="button"
                 onClick={() => onOpen(i)}
-                className="card group flex w-full items-stretch gap-3 p-3 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-hover)] focus-visible:border-[var(--accent)] focus-visible:outline-none"
+                className={cn(
+                  "card group flex min-w-0 flex-1 items-stretch gap-3 p-3 text-left transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-hover)] focus-visible:border-[var(--accent)] focus-visible:outline-none",
+                  selection?.ids.has(s.sourceHash) && "border-[var(--accent)]"
+                )}
               >
                 <div className="min-w-0 flex-1">
                   <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">

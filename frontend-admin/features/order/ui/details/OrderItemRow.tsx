@@ -10,7 +10,6 @@ import { Image } from "@/lib/image";
 import { cn } from "@/lib/cn";
 import type { AdminOrderDetail } from "../../api";
 import type { DetailHandlers } from "./types";
-import { QtyBtn } from "./section";
 
 type Item = AdminOrderDetail["items"][number];
 
@@ -68,25 +67,48 @@ function CaseLines({ it, order }: { it: Item; order: AdminOrderDetail }) {
   );
 }
 
+const STEP_BTN =
+  "nb-press grid h-9 w-9 place-items-center text-[16px] font-semibold leading-none text-[var(--text)] transition-colors hover:bg-[var(--surface-3)] disabled:opacity-40 pointer-coarse:h-11 pointer-coarse:w-11";
+
+/**
+ * «− 2 +» одной таблеткой (36 px, на тач 44) и корзина отдельно, с зазором: промах по «−» не нажимает «+» или удаление.
+ * Количество оплаченного заказа запускает доплату — поэтому цели крупные, а удаление всегда через подтверждение.
+ */
 function QtyControls({ it, h }: { it: Item; h: DetailHandlers }) {
   const id = it.id!;
   return (
-    <div className="mt-1.5 flex items-center gap-1.5">
-      <QtyBtn onClick={() => h.onChangeQty(id, it.quantity - 1)} disabled={!!h.busyKey || it.quantity <= 1}>
-        −
-      </QtyBtn>
-      <span className="tabular w-7 text-center text-[13px] font-semibold text-[var(--text)]">{it.quantity}</span>
-      <QtyBtn onClick={() => h.onChangeQty(id, it.quantity + 1)} disabled={!!h.busyKey}>
-        +
-      </QtyBtn>
+    <div className="mt-1.5 flex items-center gap-3">
+      <div className="inline-flex items-center overflow-hidden rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)]">
+        <button
+          type="button"
+          onClick={() => h.onChangeQty(id, it.quantity - 1)}
+          disabled={!!h.busyKey || it.quantity <= 1}
+          className={STEP_BTN}
+          aria-label="Меньше"
+        >
+          −
+        </button>
+        <span className="tabular w-8 text-center text-[13px] font-semibold text-[var(--text)]" aria-live="polite">
+          {it.quantity}
+        </span>
+        <button
+          type="button"
+          onClick={() => h.onChangeQty(id, it.quantity + 1)}
+          disabled={!!h.busyKey}
+          className={STEP_BTN}
+          aria-label="Больше"
+        >
+          +
+        </button>
+      </div>
       <button
         type="button"
         onClick={() => h.onRemoveItem(id, it.title)}
         disabled={!!h.busyKey}
-        className="nb-press hit ml-1 grid h-7 w-7 place-items-center rounded-[var(--r-sm)] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--text-muted)] transition-colors hover:border-[color-mix(in_srgb,var(--danger)_45%,transparent)] hover:bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] hover:text-[var(--danger-ink)] disabled:opacity-40"
+        className="nb-press grid h-9 w-9 place-items-center rounded-[var(--r-md)] border border-transparent text-[var(--text-faint)] transition-colors hover:border-[color-mix(in_srgb,var(--danger)_45%,transparent)] hover:bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] hover:text-[var(--danger-ink)] focus-visible:border-[color-mix(in_srgb,var(--danger)_45%,transparent)] focus-visible:text-[var(--danger-ink)] disabled:opacity-40 pointer-coarse:h-11 pointer-coarse:w-11"
         aria-label="Убрать позицию"
       >
-        <Trash2 className="h-3.5 w-3.5" />
+        <Trash2 className="h-4 w-4" />
       </button>
     </div>
   );

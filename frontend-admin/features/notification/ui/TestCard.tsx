@@ -35,12 +35,12 @@ export function TestCard({ c }: { c: Compose }) {
   }
 
   return (
-    <motion.div variants={riseItem} className="card mt-4 flex flex-col gap-3 p-5">
+    <motion.div variants={riseItem} className="card flex flex-col gap-3 p-5">
       <div className="section-title flex flex-wrap items-center gap-x-2 gap-y-0.5">
         <FlaskConical className="h-4 w-4 text-[var(--accent)]" />
         Тестовая отправка
         <span className="font-[family-name:var(--font-body)] text-[11.5px] font-medium normal-case tracking-normal text-[var(--text-faint)]">
-          — уходит текст открытой вкладки ({TEXT_TABS.find((t) => t.value === c.editing)?.label})
+          — версия: {TEXT_TABS.find((t) => t.value === c.editing)?.label}
         </span>
       </div>
       <div className="flex flex-wrap items-end gap-3">

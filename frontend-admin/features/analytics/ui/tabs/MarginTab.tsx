@@ -1,22 +1,25 @@
 "use client";
 
 /**
- * «Метрики → Маржа» (только с правом «Финансы»): выручка, себестоимость, комиссии, прибыль, стоимость склада
- * и разрезы по товарам / брендам / категориям / поставкам. Суммы — по продажам с известной себестоимостью.
+ * «Метрики → Маржа» (только с правом «Финансы»): плитки выручки/себестоимости/комиссий/прибыли, водопад
+ * «Откуда прибыль», «Где теряю» и таблица по товарам / брендам / категориям / поставкам. Суммы — по
+ * продажам с известной себестоимостью. Канал отчёт не режет (в шапке это помечено).
  */
 import { motion } from "framer-motion";
-import { Percent, Warehouse } from "lucide-react";
+import { Warehouse } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { staggerContainer } from "@/lib/motion";
-import { cn } from "@/lib/cn";
 import type { MarginReport, MarginRow, PeriodParams } from "../../model/types";
 import { useMarginReport } from "../../queries";
 import { num, pct, uah, uahExact } from "../../model/format";
 import { toPercent } from "@shop/core/percent";
-import { Empty, KpiTile, Note, Panel, TableWrap, useLimited } from "../kit";
+import { KpiTile, Note } from "../kit";
+import { MarginLosing } from "./margin/MarginLosing";
+import { MarginTable } from "./margin/MarginTable";
+import { MarginWaterfall } from "./margin/MarginWaterfall";
 
 export function MarginTab({ params }: { params: PeriodParams }) {
   const q = useMarginReport(params);
@@ -38,7 +41,6 @@ type Group = (typeof GROUPS)[number]["value"];
 function MarginBody({ r }: { r: MarginReport }) {
   const [group, setGroup] = useState<Group>("byProduct");
   const rows: MarginRow[] = r[group];
-  const lim = useLimited(rows, 15);
   const noCostRevenue = Math.max(0, r.revenueMinor - r.knownRevenueMinor);
   const label = GROUPS.find((g) => g.value === group)?.label ?? "";
 
@@ -63,9 +65,15 @@ function MarginBody({ r }: { r: MarginReport }) {
         />
       </div>
 
+      {noCostRevenue > 0 && (
+        <Note>
+          Себестоимость известна у {pct(toPercent(r.knownShare))} выручки. По остальным {uah(noCostRevenue)} посчитать прибыль нечем —
+          они не входят в прибыль и маржу.
+        </Note>
+      )}
       {r.stockUnknownUnits > 0 && (
         <Note>
-          У {num(r.stockUnknownUnits)} шт. на складе нет себестоимости (старый остаток). Внесите её в{" "}
+          У {num(r.stockUnknownUnits)} шт. на складе нет себестоимости (старый остаток), поэтому «Склад по себестоимости» занижен. Внесите её в{" "}
           <Link href="/opening-cost" className="font-semibold text-[var(--accent-hi)] hover:underline">
             «Начальной себестоимости»
           </Link>{" "}
@@ -73,48 +81,13 @@ function MarginBody({ r }: { r: MarginReport }) {
         </Note>
       )}
 
-      <Panel
-        title={`Маржа: ${label.toLowerCase()}`}
-        icon={Percent}
-        hint="Выручка с известной себестоимостью, её себестоимость и прибыль. «Без себестоимости» — выручка, по которой посчитать нечем."
+      <MarginWaterfall r={r} />
+      <MarginLosing rows={rows} groupLabel={label} />
+      <MarginTable
+        rows={rows}
+        label={label}
         actions={<SegmentedControl size="sm" options={GROUPS.map((g) => ({ value: g.value, label: g.label }))} value={group} onChange={setGroup} />}
-      >
-        {rows.length === 0 ? (
-          <Empty>Продаж с известной себестоимостью за период нет</Empty>
-        ) : (
-          <>
-            <TableWrap>
-              <table className="mx-table">
-                <thead>
-                  <tr>
-                    <th>{label.replace(/ы$/, "")}</th>
-                    <th className="r">Шт.</th>
-                    <th className="r">Выручка</th>
-                    <th className="r">Себестоимость</th>
-                    <th className="r">Прибыль</th>
-                    <th className="r">Маржа</th>
-                    <th className="r">Без себестоимости</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lim.visible.map((x) => (
-                    <tr key={x.key}>
-                      <td className="font-semibold">{x.label}</td>
-                      <td className="r">{num(x.units)}</td>
-                      <td className="r">{uah(x.revenueMinor)}</td>
-                      <td className="r">{uah(x.costMinor)}</td>
-                      <td className={cn("r font-semibold", x.profitMinor < 0 ? "text-[#F87171]" : "text-[var(--ok)]")}>{uah(x.profitMinor)}</td>
-                      <td className="r">{pct(x.marginPct)}</td>
-                      <td className="r text-[var(--text-muted)]">{x.unknownRevenueMinor > 0 ? uah(x.unknownRevenueMinor) : "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </TableWrap>
-            {lim.toggle}
-          </>
-        )}
-      </Panel>
+      />
 
       <div className="flex flex-wrap items-center gap-3 text-[13px] text-[var(--text-muted)]">
         <Warehouse className="h-4 w-4 shrink-0 text-[var(--text-faint)]" />

@@ -24,15 +24,7 @@ export function Section({ title, action, children }: { title: string; action?: R
   );
 }
 
-export function SectionAction({
-  icon,
-  onClick,
-  children,
-}: {
-  icon: ReactNode;
-  onClick: () => void;
-  children: ReactNode;
-}) {
+export function SectionAction({ icon, onClick, children }: { icon: ReactNode; onClick: () => void; children: ReactNode }) {
   return (
     <button
       type="button"
@@ -45,29 +37,12 @@ export function SectionAction({
   );
 }
 
-export function QtyBtn({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="nb-press hit grid h-7 w-7 place-items-center rounded-[var(--r-sm)] border border-[var(--line)] bg-[var(--surface-2)] text-[16px] font-semibold leading-none text-[var(--text)] transition-colors hover:border-[var(--line-strong)] hover:bg-[var(--surface-3)] disabled:opacity-40"
-    >
-      {children}
-    </button>
-  );
-}
-
 /** «#1a2b3c4d» that opens that order in the same drawer (plain text without a handler). */
 export function OrderLink({ id, onOpen }: { id: string; onOpen?: (id: string) => void }) {
   const label = `#${id.slice(0, 8)}`;
   if (!onOpen) return <span className="tabular font-semibold text-[var(--text)]">{label}</span>;
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(id)}
-      className="tabular hit font-semibold text-[var(--accent-hi)] hover:underline"
-    >
+    <button type="button" onClick={() => onOpen(id)} className="tabular hit font-semibold text-[var(--accent-hi)] hover:underline">
       {label}
     </button>
   );

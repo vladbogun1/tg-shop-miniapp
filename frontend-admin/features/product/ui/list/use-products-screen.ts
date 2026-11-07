@@ -30,6 +30,8 @@ import { STEP_KEYS, type ProductStepKey } from "../../model/steps";
 import type { AdminProduct } from "../../model/types";
 import { invalidateProductDerived, isDoubleSubmit, useProductsQuery, useSetProductActive, useSetProductArchived } from "../../queries";
 import { usePublishGate } from "../PublishGate";
+import { useBulkActions } from "./use-bulk-actions";
+import { useQuickEdit } from "./use-quick-edit";
 
 export interface CompletionTarget {
   id: string;
@@ -59,10 +61,10 @@ function consumeDeepLink(products: AdminProduct[], open: (p: AdminProduct, step:
   window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
 }
 
-/** Состояние и действия экрана «Товары»: фильтры, сортировка, окно товара, показ/скрытие/архив. */
+/** Состояние и действия экрана «Товары»: фильтры, сортировка, выбор строк, окно товара, показ/скрытие/архив. */
 export function useProductsScreen() {
   const qc = useQueryClient();
-  const [archivedView, setArchivedView] = useState(false);
+  const [archivedView, setArchivedViewRaw] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<AdminProduct | null>(null);
   // Шаг ссылки «/products?edit=<id>&step=specs» (из «Карточек»).
@@ -77,6 +79,9 @@ export function useProductsScreen() {
   const [completion, setCompletion] = useState<CompletionTarget | null>(null);
   const [sort, setSort] = useState<SortKey>("smart");
   const [view, setView] = useState<ViewMode>("list");
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  /** Режим «Выбрать» на телефоне и планшете: на них галочки скрыты, пока не включишь. */
+  const [selectMode, setSelectMode] = useState(false);
 
   const { data: products = [], isLoading } = useProductsQuery({ archived: archivedView });
   // «Чего ждут»: по нему сортировка «По спросу» и фильтр «Предзаказ» (клиентские, список целиком в памяти).
@@ -102,7 +107,10 @@ export function useProductsScreen() {
     return m;
   }, [products, schema, categories]);
 
+  const categoryNames = useMemo(() => new Map(categories.map((c) => [c.id, c.name])), [categories]);
+
   const refresh = () => invalidateProductDerived(qc);
+  const quick = useQuickEdit(refresh);
 
   // Ссылка «/products?edit=<id>» (с экрана «Переводы»): открыть редактор товара, как только список загружен,
   // и убрать параметр, чтобы перезагрузка не открывала его снова.
@@ -157,17 +165,41 @@ export function useProductsScreen() {
     return sortProducts(filtered, sort, waitingOf);
   }, [products, search, status, categoryId, categories, brandId, condition, cardFilter, missingOf, sort, archivedView, waitingOf]);
 
+  // Выбранное, что ещё видно в списке: отмеченное и потом отфильтрованное не попадает в массовое действие молча.
+  const selectedList = useMemo(() => visible.filter((p) => selected.has(p.id)), [visible, selected]);
+  const clearSelection = () => {
+    setSelected(new Set());
+    setSelectMode(false);
+  };
+  const bulk = useBulkActions(selectedList, clearSelection, refresh);
+  function toggleSelected(id: string, on: boolean) {
+    setSelected((cur) => {
+      const next = new Set(cur);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+  function selectAll(on: boolean) {
+    setSelected(on ? new Set(visible.map((p) => p.id)) : new Set());
+  }
+  function setArchivedView(v: boolean) {
+    clearSelection();
+    setArchivedViewRaw(v);
+  }
+
   const counts = useMemo(() => countByStatus(products, waitingOf), [products, waitingOf]);
   // Склад по активным (не архивным) товарам: штуки и розничная стоимость.
   const stockSummary = useMemo(() => summarizeStock(products), [products]);
   const statusChips = useMemo(() => statusOptions(counts, status), [counts, status]);
 
-  const activeFilters = [categoryId, brandId, cardFilter, condition].filter(Boolean).length;
+  const activeFilters = [categoryId, brandId, cardFilter, condition].filter(Boolean).length + (sort !== "smart" ? 1 : 0);
   function resetFilters() {
     setCategoryId("");
     setBrandId("");
     setCardFilter("");
     setCondition("");
+    setSort("smart");
   }
 
   function openEditor(p: AdminProduct | null) {
@@ -185,8 +217,12 @@ export function useProductsScreen() {
     search, setSearch, status, setStatus, categoryId, setCategoryId, brandId, setBrandId,
     cardFilter, setCardFilter, condition, setCondition, sort, setSort, view, setView,
     completion, setCompletion,
-    products, isLoading, visible, missingOf, categories, brands,
+    products, isLoading, visible, missingOf, categories, brands, categoryNames,
     statusChips, stockSummary, activeFilters, resetFilters,
+    selected, selectedList, toggleSelected, selectAll, clearSelection, selectMode, setSelectMode, bulk,
+    quick,
     setActive, setArchived, refresh, gateUi,
   };
 }
+
+export type ProductsScreenState = ReturnType<typeof useProductsScreen>;

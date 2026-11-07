@@ -33,3 +33,8 @@ export function partialRefundError(input: string, partialMinor: number, leftMino
   if (partialMinor > leftMinor) return `Не больше ${fmt(leftMinor)} — столько осталось по этому платежу`;
   return undefined;
 }
+
+/** Пресет «50 %» в возврате: половина остатка, округлённая вниз до копейки (не меньше нуля). */
+export function halfOf(leftMinor: number): number {
+  return Math.max(0, Math.floor(leftMinor / 2));
+}

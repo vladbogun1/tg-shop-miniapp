@@ -2,7 +2,7 @@
 
 import { Button } from "@shop/ui/admin-button";
 import { motion } from "framer-motion";
-import { MessageSquareText, RotateCcw } from "lucide-react";
+import { Info, MessageSquareText, RotateCcw } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Textarea } from "@/components/ui/Textarea";
@@ -10,17 +10,34 @@ import { Toggle } from "@/components/ui/Toggle";
 import { cn } from "@/lib/cn";
 import { LANG_LABEL } from "@/lib/shop-lang";
 import { riseItem } from "@/lib/motion";
-import { CAPTION_LIMIT, DEFAULT_BUTTON, hasAnyText, MAX_LEN, TEXT_TABS, type TextKey } from "../model/compose";
+import {
+  CAPTION_LIMIT,
+  counterLimit,
+  counterTone,
+  DEFAULT_BUTTON,
+  hasAnyText,
+  problemByKey,
+  TEXT_TABS,
+  type TextKey,
+} from "../model/compose";
 import { FormatToolbar } from "./FormatToolbar";
 import { PhotoField } from "./PhotoField";
 import type { Compose } from "./use-compose";
 
+const LANG_RULE =
+  "Язык получателя: выбранный в магазине, иначе язык Telegram, иначе украинский. Нет версии на его языке — уходит основной текст.";
+
 function EditHint({ editing }: { editing: TextKey }) {
   return (
-    <p className="text-[11px] text-[var(--text-faint)]">
-      {editing === "main"
-        ? "Основной текст получают все, для чьего языка нет отдельной версии."
-        : `Версия для тех, кто читает магазин на языке «${LANG_LABEL[editing]}». Пусто — получат основной текст.`}
+    <p className="flex items-start gap-1.5 text-[11px] text-[var(--text-faint)]">
+      <span>
+        {editing === "main"
+          ? "Основной текст получают все, для чьего языка нет отдельной версии."
+          : `Версия для тех, кто читает магазин на языке «${LANG_LABEL[editing]}». Пусто — получат основной текст.`}
+      </span>
+      <span title={LANG_RULE} aria-label={LANG_RULE} className="mt-px shrink-0 cursor-help text-[var(--text-muted)]">
+        <Info className="h-3.5 w-3.5" />
+      </span>
     </p>
   );
 }
@@ -37,9 +54,30 @@ function Problems({ problems }: { problems: string[] }) {
   );
 }
 
-/** Карточка «Сообщение»: вкладки языков, разметка, поле текста, счётчик, кнопка под сообщением. */
+const TONE_CLASS = { ok: "text-[var(--text-muted)]", warn: "text-[var(--warn)]", danger: "text-[var(--danger-ink)]" } as const;
+
+/** Счётчик «N / лимит» виден всегда: красный выше лимита, жёлтый с 90 %. */
+function Counter({ c }: { c: Compose }) {
+  const limit = counterLimit(!!c.photo);
+  const len = c.text.length;
+  return (
+    <div className="flex flex-col items-end gap-0.5">
+      <span className={cn("shrink-0 text-[12px] font-semibold tabular-nums", TONE_CLASS[counterTone(len, limit)])}>
+        {len} / {limit}
+      </span>
+      {c.photo && len > CAPTION_LIMIT && (
+        <span className="max-w-[260px] text-right text-[11px] font-semibold text-[var(--text-muted)]">
+          Длиннее {CAPTION_LIMIT}: текст уйдёт отдельным сообщением после картинки, кнопка будет под ним.
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Карточка «Сообщение»: вкладки языков (✓ заполнена, ⚠ ошибка), разметка, поле текста, счётчик, кнопка. */
 export function ComposeCard({ c }: { c: Compose }) {
   const { values, texts, editing, text } = c;
+  const bad = problemByKey(texts);
   return (
     <motion.div variants={riseItem} className="card flex min-w-0 flex-col gap-3 p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -61,7 +99,7 @@ export function ComposeCard({ c }: { c: Compose }) {
           onChange={c.setEditing}
           options={TEXT_TABS.map((t) => ({
             value: t.value,
-            label: t.label + (t.value !== "main" && texts[t.value].trim() ? " ✓" : ""),
+            label: t.label + (bad[t.value] ? " ⚠" : t.value !== "main" && texts[t.value].trim() ? " ✓" : ""),
           }))}
         />
         <EditHint editing={editing} />
@@ -81,20 +119,8 @@ export function ComposeCard({ c }: { c: Compose }) {
           HTML Telegram: &lt;b&gt;, &lt;i&gt;, &lt;u&gt;, &lt;s&gt;, &lt;code&gt;, &lt;a href&gt;, &lt;blockquote&gt;.
           Эмодзи — как есть. Черновик сохраняется автоматически.
         </p>
-        <span
-          className={cn(
-            "shrink-0 text-[12px] font-semibold tabular-nums",
-            text.length > MAX_LEN ? "text-[var(--danger-ink)]" : "text-[var(--text-muted)]"
-          )}
-        >
-          {text.length} / {c.photo ? CAPTION_LIMIT : MAX_LEN}
-        </span>
+        <Counter c={c} />
       </div>
-      {c.photo && text.length > CAPTION_LIMIT && (
-        <p className="text-[11.5px] font-semibold text-[var(--text-muted)]">
-          Длиннее {CAPTION_LIMIT} символов — текст уйдёт отдельным сообщением после картинки (кнопка будет под ним).
-        </p>
-      )}
 
       <PhotoField value={c.photo} onChange={c.setPhoto} />
 

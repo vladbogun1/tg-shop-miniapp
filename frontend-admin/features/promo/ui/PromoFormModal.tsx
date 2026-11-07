@@ -4,23 +4,31 @@ import { Button } from "@shop/ui/admin-button";
 import { useForm } from "@shop/ui/form";
 import { Modal } from "@shop/ui/overlay";
 import { toast } from "@shop/ui/toast";
-import { AlertTriangle, Percent, Ticket, Wallet } from "lucide-react";
+import { AlertTriangle, Dices, Percent, Ticket, Wallet } from "lucide-react";
 import { useEffect } from "react";
 import { Input } from "@/components/ui/Input";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Toggle } from "@/components/ui/Toggle";
+import { cn } from "@/lib/cn";
+import { money } from "@/lib/money";
 import {
   EMPTY_PROMO_FORM,
+  PROMO_PRESETS,
+  applyPreset,
   editWarning,
+  exampleOf,
+  expiryDay,
   firstError,
   initialForm,
   promoBody,
   promoErrors,
+  randomCode,
   type Mode,
   type PromoFormValues,
 } from "../model/form";
 import type { PromoCode } from "../model/types";
 import { useSavePromo } from "../queries";
+import { ExpiryField } from "./ExpiryField";
 
 interface Props {
   open: boolean;
@@ -57,14 +65,16 @@ export function PromoFormModal({ open, editing, onClose, onSaved }: Props) {
     if (open) form.reset(initialForm(editing));
   }, [open, editing, form]);
 
-  const errors = promoErrors(v);
+  const initialDay = expiryDay(editing);
+  const errors = promoErrors(v, initialDay);
   const { uses, renamed } = editWarning(editing, v.code);
+  const example = exampleOf(v, errors);
 
   function save() {
     if (!v.code.trim()) return toast.error("Укажите код");
     const err = firstError(errors);
     if (err) return toast.error(err);
-    saveM.mutate({ id: editing?.id ?? null, body: promoBody(v) });
+    saveM.mutate({ id: editing?.id ?? null, body: promoBody(v, initialDay) });
   }
 
   return (
@@ -95,6 +105,46 @@ export function PromoFormModal({ open, editing, onClose, onSaved }: Props) {
           className="font-mono tracking-wide"
           icon={<Ticket className="h-4 w-4" />}
         />
+        {!editing && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-mt-2 self-start"
+            icon={<Dices className="h-4 w-4" />}
+            onClick={() => set("code", randomCode())}
+          >
+            Сгенерировать код
+          </Button>
+        )}
+        <div className="flex flex-col gap-2">
+          <span className="field-label">Быстрый выбор</span>
+          <div className="flex flex-wrap gap-2">
+            {PROMO_PRESETS.map((p) => {
+              const on = p.mode === v.mode && (p.mode === "percent" ? v.percent === p.value : v.amountMajor === p.value);
+              return (
+                <button
+                  key={p.label}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => {
+                    const next = applyPreset(v, p);
+                    set("mode", next.mode);
+                    set("percent", next.percent);
+                    set("amountMajor", next.amountMajor);
+                  }}
+                  className={cn(
+                    "focusable hit min-h-[36px] rounded-full border px-3.5 text-[13px] font-semibold pointer-coarse:min-h-[44px]",
+                    on
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-hi)]"
+                      : "border-[var(--line)] bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--text)]"
+                  )}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <div className="flex flex-col gap-2">
           <span className="field-label">
             Тип скидки
@@ -146,6 +196,12 @@ export function PromoFormModal({ open, editing, onClose, onSaved }: Props) {
           error={errors.maxUses ?? undefined}
           onChange={(e) => set("maxUses", e.target.value.replace(/[^\d]/g, ""))}
         />
+        <ExpiryField value={v.expiresOn} error={errors.expiresOn ?? undefined} onChange={(d) => set("expiresOn", d)} />
+        {example && (
+          <p className="tabular rounded-[var(--r-md)] bg-[var(--surface-3)] px-3 py-2 text-[13px] text-[var(--text-muted)]">
+            Пример: заказ на {money(example.base)} → скидка <b className="text-[var(--ok)]">−{money(example.discountMinor)}</b>
+          </p>
+        )}
         <div className="card-2 rounded-[var(--r-md)] px-3.5 py-3">
           <Toggle checked={v.active} onChange={(on) => set("active", on)} label="Активен" />
         </div>

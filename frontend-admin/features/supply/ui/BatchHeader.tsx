@@ -147,6 +147,7 @@ function StatusSteps({ batch }: { batch: Batch }) {
           Отменена
           {batch.cancelledAt ? ` ${formatDateTime(batch.cancelledAt)}` : ""}
         </Badge>
+        {batch.cancelReason && <p className="mt-1.5 text-[13px] text-[var(--text-muted)]">Причина: {batch.cancelReason}</p>}
       </div>
     );
   }

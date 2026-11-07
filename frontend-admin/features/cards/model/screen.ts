@@ -13,19 +13,48 @@ export function defaultTab(counts: Record<CardTab, number>): CardTab {
   return counts.review > 0 ? "review" : counts.draft > 0 ? "draft" : "ready";
 }
 
+/** Сортировка списка: «по вкладке» — как считает `sortForTab`; остальные поверх неё. */
+export type CardSort = "tab" | "conf_asc" | "conf_desc" | "missing" | "title";
+
+export const CARD_SORT_OPTIONS: { value: CardSort; label: string }[] = [
+  { value: "tab", label: "По вкладке" },
+  { value: "conf_asc", label: "ИИ % ↑ (сомнительные первыми)" },
+  { value: "conf_desc", label: "ИИ % ↓" },
+  { value: "missing", label: "Не хватает полей ↓" },
+  { value: "title", label: "Название А–Я" },
+];
+
 export interface ListFilter {
   vitrine: Vitrine;
   tab: CardTab;
   query: string;
   /** Только во вкладке «Готово»: проверены, но не хватает обязательных. */
   onlyIncomplete: boolean;
+  /** Не задана — «по вкладке». */
+  sort?: CardSort;
+}
+
+/** Порядок поверх сортировки вкладки (стабильная: равные остаются как в `sortForTab`). */
+export function sortCards(list: CardItem[], sort: CardSort | undefined): CardItem[] {
+  if (!sort || sort === "tab") return list;
+  const conf = (i: CardItem) => i.cardConfidence ?? -1;
+  const cmp: Record<Exclude<CardSort, "tab">, (a: CardItem, b: CardItem) => number> = {
+    conf_asc: (a, b) => conf(a) - conf(b),
+    conf_desc: (a, b) => conf(b) - conf(a),
+    missing: (a, b) => missingCount(b) - missingCount(a),
+    title: (a, b) => a.title.localeCompare(b.title, "ru"),
+  };
+  return [...list].sort(cmp[sort]);
 }
 
 export function listForTab(items: CardItem[], f: ListFilter): CardItem[] {
   const byVitrine = items.filter((i) => matchesVitrine(i, f.vitrine));
-  return sortForTab(
-    byVitrine.filter((i) => tabOf(i) === f.tab && matchesQuery(i, f.query) && (!f.onlyIncomplete || f.tab !== "ready" || missingCount(i) > 0)),
-    f.tab
+  return sortCards(
+    sortForTab(
+      byVitrine.filter((i) => tabOf(i) === f.tab && matchesQuery(i, f.query) && (!f.onlyIncomplete || f.tab !== "ready" || missingCount(i) > 0)),
+      f.tab
+    ),
+    f.sort
   );
 }
 

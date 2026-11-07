@@ -10,7 +10,7 @@ import { money } from "@/lib/money";
 import { decimal1, marginPercent } from "../model/format";
 import { useSetOpeningCost } from "../queries";
 
-export function OpeningLine({ row }: { row: OpeningRow }) {
+export function OpeningLine({ row, selected, onToggle }: { row: OpeningRow; selected: boolean; onToggle: () => void }) {
   const saved = minorToInput(row.unitCostMinor);
   const form = useForm<{ value: string }>({ defaultValues: { value: saved } });
   const value = form.watch("value");
@@ -36,7 +36,16 @@ export function OpeningLine({ row }: { row: OpeningRow }) {
   const margin = minor != null && minor > 0 && row.priceMinor > 0 ? marginPercent(row.priceMinor, minor) : null;
 
   return (
-    <div className="card flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 p-3">
+    <div data-opening-row className="card flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 p-3">
+      <label className="-m-2 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center lg:-m-1 lg:h-8 lg:w-8">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggle}
+          aria-label={`Выбрать: ${lineTitle(row.title, row.variantName)}`}
+          className="h-[18px] w-[18px] accent-[var(--accent)]"
+        />
+      </label>
       <Image src={row.imageUrl} alt={row.title} size={120} className="h-12 w-12 shrink-0 rounded-[var(--r-md)] border border-[var(--line)]" />
       <div className="min-w-0 flex-1 basis-52">
         <div className="line-clamp-2 break-words text-[14px] font-semibold leading-snug text-[var(--text)]">
@@ -55,7 +64,11 @@ export function OpeningLine({ row }: { row: OpeningRow }) {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && changed && !invalid) save.mutate();
+            if (e.key !== "Enter") return;
+            if (changed && !invalid) save.mutate();
+            // Enter ведёт к следующей строке: быстрый ввод столбиком.
+            const next = e.currentTarget.closest("[data-opening-row]")?.nextElementSibling?.querySelector("input[inputmode]");
+            if (next instanceof HTMLInputElement) next.focus();
           }}
           placeholder="₴ за штуку"
           error={invalid ? "Некорректная сумма" : undefined}

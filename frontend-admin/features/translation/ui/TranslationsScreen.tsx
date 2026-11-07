@@ -24,8 +24,11 @@ import { buildWorkSet } from "../model/workset";
 import { useAcceptAll, useTranslationExport, useTranslationStats } from "../queries";
 import { AiTranslate } from "./ai/AiTranslate";
 import { TranslationReview } from "./review/TranslationReview";
-import { EmptyList, FilterBar, ScreenHeader, TabHint } from "./TabPanel";
+import { StickyToolbar } from "./bulk";
+import { EmptyList, FilterBar, ScreenHeader, SelectControls, TabHint } from "./TabPanel";
+import { TranslationBulkBar } from "./TranslationBulkBar";
 import { TranslationQueue } from "./TranslationQueue";
+import { useQueueSelection } from "./use-queue-selection";
 
 export function TranslationsScreen() {
   const confirm = useConfirm();
@@ -42,6 +45,7 @@ export function TranslationsScreen() {
   const [review, setReview] = useState<{ queue: string[]; start: number; bucket: Bucket } | null>(null);
   const [ai, setAi] = useState<string[] | null>(null);
   const langs = langsOf(scope);
+  const sel = useQueueSelection(`${tab}|${scope}|${type}|${dq}`);
 
   const byBucket = useMemo(
     () => splitByBucket(ws?.strings ?? [], langsOf(scope), type, dq),
@@ -58,10 +62,11 @@ export function TranslationsScreen() {
   const list = byBucket[active];
   const filtered = !!(type || dq);
 
-  function openReview(start: number) {
-    setReview({ queue: list.map((s) => s.sourceHash), start, bucket: active });
+  function openReview(start: number, hashes?: string[]) {
+    setReview({ queue: hashes ?? list.map((s) => s.sourceHash), start, bucket: active });
     window.scrollTo({ top: 0 });
   }
+  const chosen = list.filter((s) => sel.ids.has(s.sourceHash));
 
   async function acceptEverything() {
     const n = list.length;
@@ -139,13 +144,23 @@ export function TranslationsScreen() {
       {ai && !review && <AiTranslate ws={ws} scope={ai} onClose={() => setAi(null)} />}
 
       <div hidden={!!review || !!ai}>
-        <Tabs<Bucket>
-          className="mb-4 overflow-y-hidden"
-          value={active}
-          onChange={setTab}
-          items={BUCKETS.map((b) => ({ value: b, label: BUCKET_LABEL[b], count: byBucket[b].length }))}
-        />
-        <FilterBar scope={scope} onScope={setScope} type={type} onType={setType} q={q} onQ={setQ} />
+        <StickyToolbar>
+          <Tabs<Bucket>
+            className="mb-2 overflow-y-hidden"
+            value={active}
+            onChange={setTab}
+            items={BUCKETS.map((b) => ({ value: b, label: BUCKET_LABEL[b], count: byBucket[b].length }))}
+          />
+          <FilterBar
+            scope={scope}
+            onScope={setScope}
+            type={type}
+            onType={setType}
+            q={q}
+            onQ={setQ}
+            extra={<SelectControls on={sel.selectMode} total={list.length} onToggle={sel.toggleMode} onAll={() => sel.selectAll(list.map((s) => s.sourceHash))} />}
+          />
+        </StickyToolbar>
         <TabHint
           active={active}
           count={list.length}
@@ -164,8 +179,16 @@ export function TranslationsScreen() {
             }}
           />
         ) : (
-          <TranslationQueue key={`${active}|${scope}|${type}|${dq}`} strings={list} langs={langs} onOpen={openReview} />
+          <TranslationQueue key={`${active}|${scope}|${type}|${dq}`} strings={list} langs={langs} onOpen={openReview} selection={sel.selection} />
         )}
+        <TranslationBulkBar
+          bucket={active}
+          chosen={chosen}
+          langs={langs}
+          onClear={sel.clear}
+          onAi={setAi}
+          onReview={(hashes) => openReview(0, hashes)}
+        />
       </div>
     </div>
   );

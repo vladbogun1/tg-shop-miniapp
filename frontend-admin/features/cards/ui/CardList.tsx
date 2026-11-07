@@ -4,15 +4,23 @@
  * The list of «Карточки»: one row per product of the current tab, a checkbox per row (+ «выбрать
  * все»), a click opens the review panel. Badges: hidden / new, «ИИ N %» (overall confidence of
  * the AI) and «нет N полей» (required characteristics missing, listed in the tooltip).
+ *
+ * From 1024 px (while the panel is not docked next to the list: `compact` = false) the rows are a table:
+ * title · visibility · category and brand · AI % with a mini-bar · missing · date. Narrower — two lines like on a phone.
  */
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronRight, EyeOff } from "lucide-react";
 import type { CSSProperties } from "react";
 import type { CardItem } from "../model/item";
 import { categoryPathName, type CardSchema } from "../model/schema";
-import { fieldsWord, metaOf, missingCount, missingLabels, tabOf } from "../model/view";
+import { confidenceColor } from "../model";
+import { fieldsWord, metaOf, missingCount, missingLabels, tabOf, type CardTab } from "../model/view";
 import { cn } from "@/lib/cn";
 import { Check, ConfidencePill, fmtDate, Thumb } from "./shared";
+
+/** Ширины колонок таблицы: одни и те же в шапке и в строке. */
+const COL = { vis: "w-[104px]", cat: "w-[190px]", ai: "w-[112px]", miss: "w-[96px]", date: "w-[84px]" } as const;
+const HEAD = "field-label !text-[10.5px]";
 
 export function CardList({
   items,
@@ -23,6 +31,7 @@ export function CardList({
   activeId,
   onOpen,
   limit,
+  compact = false,
 }: {
   items: CardItem[];
   schema: CardSchema | undefined;
@@ -33,6 +42,8 @@ export function CardList({
   activeId: string | null;
   onOpen: (id: string) => void;
   limit: number;
+  /** Панель проверки стоит рядом со списком: колонок таблицы нет, строка из двух линий. */
+  compact?: boolean;
 }) {
   const shown = items.slice(0, limit);
   const allOn = items.length > 0 && items.every((i) => selected.has(i.id));
@@ -52,9 +63,15 @@ export function CardList({
           }}
           onChange={(e) => onToggleAll(e.target.checked)}
         />
-        <span className="field-label !text-[10.5px]">
-          {selected.size > 0 ? `Выбрано ${selected.size}` : `Товаров: ${items.length}`}
-        </span>
+        <span className={cn(HEAD, "min-w-0 flex-1")}>{selected.size > 0 ? `Выбрано ${selected.size}` : `Товаров: ${items.length}`}</span>
+        <div aria-hidden className={cn("hidden items-center gap-3", !compact && "lg:flex")}>
+          <span className={cn(HEAD, COL.vis)}>Витрина</span>
+          <span className={cn(HEAD, COL.cat)}>Категория · бренд</span>
+          <span className={cn(HEAD, COL.ai)}>ИИ</span>
+          <span className={cn(HEAD, COL.miss)}>Не хватает</span>
+          <span className={cn(HEAD, COL.date)}>Дата</span>
+          <span className="w-4" />
+        </div>
       </div>
       <ul>
         <AnimatePresence initial={false}>
@@ -64,11 +81,12 @@ export function CardList({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, transition: { duration: 0.12 } }}
-              className="border-b border-[var(--line)] last:border-b-0"
+              className="border-b border-[var(--line)] last:border-b-0 [content-visibility:auto] [contain-intrinsic-size:auto_61px]"
             >
               <Row
                 it={it}
                 schema={schema}
+                compact={compact}
                 checked={selected.has(it.id)}
                 active={activeId === it.id}
                 onToggle={(on) => onToggle(it.id, on)}
@@ -82,9 +100,19 @@ export function CardList({
   );
 }
 
+/** Вычисляемые поля строки: вкладка, чего не хватает, дата, категория. */
+function rowInfo(it: CardItem, schema: CardSchema | undefined) {
+  const meta = metaOf(it);
+  const tab = tabOf(it);
+  const when = tab === "ready" ? fmtDate(meta.reviewedAt) : tab === "review" ? fmtDate(meta.importedAt) : null;
+  const category = (schema && categoryPathName(schema, it.categorySlug)) || it.categorySlug || "без категории";
+  return { tab, missing: missingCount(it), when, category };
+}
+
 function Row({
   it,
   schema,
+  compact,
   checked,
   active,
   onToggle,
@@ -92,16 +120,14 @@ function Row({
 }: {
   it: CardItem;
   schema: CardSchema | undefined;
+  compact: boolean;
   checked: boolean;
   active: boolean;
   onToggle: (on: boolean) => void;
   onOpen: () => void;
 }) {
-  const meta = metaOf(it);
-  const tab = tabOf(it);
-  const missing = missingCount(it);
-  const when = tab === "ready" ? fmtDate(meta.reviewedAt) : tab === "review" ? fmtDate(meta.importedAt) : null;
-  const category = (schema && categoryPathName(schema, it.categorySlug)) || it.categorySlug || "без категории";
+  const { tab, missing, when, category } = rowInfo(it, schema);
+  const wide = !compact;
   return (
     <div
       className={cn(
@@ -125,7 +151,7 @@ function Row({
           <span className="block truncate text-[13.5px] font-semibold text-[var(--text)]" title={it.title}>
             {it.title}
           </span>
-          <span className="block truncate text-[11.5px] text-[var(--text-faint)]">
+          <span className={cn("block truncate text-[11.5px] text-[var(--text-faint)]", wide && "lg:hidden")}>
             {category}
             {it.brand ? ` · ${it.brand}` : ""}
             {when ? (tab === "ready" ? ` · проверено ${when}` : ` · от ИИ ${when}`) : ""}
@@ -135,9 +161,10 @@ function Row({
             <Badges it={it} schema={schema} missing={missing} />
           </span>
         </span>
-        <span className="hidden shrink-0 flex-wrap items-center justify-end gap-1.5 sm:flex">
+        <span className={cn("hidden shrink-0 flex-wrap items-center justify-end gap-1.5 sm:flex", wide && "lg:hidden")}>
           <Badges it={it} schema={schema} missing={missing} />
         </span>
+        {wide && <TableCells it={it} schema={schema} missing={missing} category={category} tab={tab} when={when} />}
         <ChevronRight
           className={cn(
             "h-4 w-4 shrink-0 text-[var(--text-faint)] transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--text-muted)]",
@@ -149,32 +176,93 @@ function Row({
   );
 }
 
+/** Колонки таблицы (от 1024 px, пока панель не рядом): витрина · категория и бренд · ИИ с полоской · не хватает · дата. */
+function TableCells({
+  it,
+  schema,
+  missing,
+  category,
+  tab,
+  when,
+}: {
+  it: CardItem;
+  schema: CardSchema | undefined;
+  missing: number;
+  category: string;
+  tab: CardTab;
+  when: string | null;
+}) {
+  const conf = it.cardConfidence;
+  const catLine = `${category}${it.brand ? ` · ${it.brand}` : ""}`;
+  return (
+    <span className="hidden shrink-0 items-center gap-3 lg:flex">
+      <span className={cn("flex items-center", COL.vis)}>
+        <VisibilityBadge it={it} />
+      </span>
+      <span className={cn("truncate text-[12px] text-[var(--text-muted)]", COL.cat)} title={catLine}>
+        {catLine}
+      </span>
+      <span className={cn("flex flex-col items-start gap-1", COL.ai)}>
+        {conf != null && tab !== "draft" ? (
+          <>
+            <ConfidencePill value={conf} label="ИИ" />
+            <span aria-hidden className="h-[3px] w-full overflow-hidden rounded-full bg-[var(--surface-3)]">
+              <span className="block h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, conf))}%`, backgroundColor: confidenceColor(conf) }} />
+            </span>
+          </>
+        ) : (
+          <span className="text-[12px] text-[var(--text-faint)]">—</span>
+        )}
+      </span>
+      <span className={cn("flex items-center", COL.miss)}>
+        <MissingBadge it={it} schema={schema} missing={missing} />
+      </span>
+      <span className={cn("tabular truncate text-[11.5px] text-[var(--text-faint)]", COL.date)} title={tab === "ready" ? "Проверено" : tab === "review" ? "Импорт от ИИ" : undefined}>
+        {when ?? ""}
+      </span>
+    </span>
+  );
+}
+
+function VisibilityBadge({ it }: { it: CardItem }) {
+  if (it.unfinished === true)
+    return (
+      <span
+        className="chip-tint !px-2 !text-[10px] !leading-[16px]"
+        style={{ "--chip": "var(--warn)" } as CSSProperties}
+        title="Новый товар: сохранён скрытым, покупатели его не видят, пока карточка не оформлена"
+      >
+        <EyeOff className="h-3 w-3" /> новый, скрыт
+      </span>
+    );
+  if (it.active !== true)
+    return (
+      <span className="chip-tint !bg-[var(--surface-3)] !px-2 !text-[10px] !leading-[16px]" style={{ "--chip": "var(--text-muted)" } as CSSProperties} title="Снят с витрины">
+        <EyeOff className="h-3 w-3" /> скрыт
+      </span>
+    );
+  return null;
+}
+
+function MissingBadge({ it, schema, missing }: { it: CardItem; schema: CardSchema | undefined; missing: number }) {
+  if (missing <= 0) return null;
+  return (
+    <span
+      className="chip-tint !px-2 !text-[10px] !leading-[16px]"
+      style={{ "--chip": "var(--warn)" } as CSSProperties}
+      title={`Не заполнены обязательные характеристики: ${missingLabels(schema, it).join(", ")}`}
+    >
+      нет {missing} {fieldsWord(missing)}
+    </span>
+  );
+}
+
 function Badges({ it, schema, missing }: { it: CardItem; schema: CardSchema | undefined; missing: number }) {
   return (
     <>
-      {it.unfinished === true ? (
-        <span
-          className="chip-tint !px-2 !text-[10px] !leading-[16px]"
-          style={{ "--chip": "var(--warn)" } as CSSProperties}
-          title="Новый товар: сохранён скрытым, покупатели его не видят, пока карточка не оформлена"
-        >
-          <EyeOff className="h-3 w-3" /> новый, скрыт
-        </span>
-      ) : it.active !== true ? (
-        <span className="chip-tint !bg-[var(--surface-3)] !px-2 !text-[10px] !leading-[16px]" style={{ "--chip": "var(--text-muted)" } as CSSProperties} title="Снят с витрины">
-          <EyeOff className="h-3 w-3" /> скрыт
-        </span>
-      ) : null}
+      <VisibilityBadge it={it} />
       {it.cardConfidence != null && tabOf(it) !== "draft" && <ConfidencePill value={it.cardConfidence} label="ИИ" />}
-      {missing > 0 && (
-        <span
-          className="chip-tint !px-2 !text-[10px] !leading-[16px]"
-          style={{ "--chip": "var(--warn)" } as CSSProperties}
-          title={`Не заполнены обязательные характеристики: ${missingLabels(schema, it).join(", ")}`}
-        >
-          нет {missing} {fieldsWord(missing)}
-        </span>
-      )}
+      <MissingBadge it={it} schema={schema} missing={missing} />
     </>
   );
 }

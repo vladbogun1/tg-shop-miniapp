@@ -5,8 +5,13 @@
 export { OrdersScreen } from "./ui/OrdersScreen";
 export { OrderDeepLinkScreen } from "./ui/OrderDeepLinkScreen";
 export { OrderDrawer } from "./ui/drawer/OrderDrawer";
+/** Шаблоны ответов (⚡) — общие для чата заказа и чата поддержки. */
+export { QuickTemplates } from "./ui/chat/QuickTemplates";
+export { TemplatePicker } from "./ui/chat/ReplyTemplates";
+export { useRenderedTemplatesQuery } from "./queries/templates";
 
 export { orderApi, changeStatusConfirmingUnpaid } from "./api";
+export type { RenderedTemplate } from "./api";
 export type { AdminBoard, AdminDispatchOrder, AdminOrderCard, AdminOrderDetail } from "./api";
 export { orderKeys } from "./keys";
 export {

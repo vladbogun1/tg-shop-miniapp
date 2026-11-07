@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { cat } from "./fixtures";
 import { buildTree } from "./tree";
-import { attributeCounts, filterTree, moveOptions, planReparent, planShift, treeStats } from "./tree-view";
+import { attributeCounts, filterTree, moveOptions, planReorder, planReparent, planShift, treeStats } from "./tree-view";
 
 const cats = [
   cat("mice", null, { sortOrder: 10, name: "Мыши", productCount: 5 }),
@@ -49,6 +49,16 @@ describe("перенос и сдвиг", () => {
   it("planShift за край — null", () => {
     expect(planShift(cats, cats[2], -1)).toBeNull();
     expect(planShift(cats, cats[3], 1)).toBeNull();
+  });
+  it("planReorder: новый порядок соседей перенумерован по 10, тот же порядок — null", () => {
+    const plan = planReorder(cats, null, ["pads", "mice"])!;
+    expect(plan.rows).toEqual([
+      { id: "pads", parentId: null, sortOrder: 10 },
+      { id: "mice", parentId: null, sortOrder: 20 },
+    ]);
+    expect(plan.optimistic.find((c) => c.id === "wired")!.sortOrder).toBe(10);
+    expect(planReorder(cats, null, ["mice", "pads"])).toBeNull();
+    expect(planReorder(cats, "mice", ["wireless"])).toBeNull();
   });
   it("planReparent ставит в конец соседей нового родителя", () => {
     const plan = planReparent(cats, cats[1], "mice");

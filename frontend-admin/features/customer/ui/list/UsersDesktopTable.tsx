@@ -30,14 +30,17 @@ export function UsersDesktopTable({
   onOpenUser: (u: UserCardDto) => void;
 }) {
   return (
-    <div className="thin-scroll hidden overflow-x-auto md:block">
-      <table className="data-table [&_td:first-child]:pl-4 [&_th:first-child]:pl-4">
+    // На ПК шапка таблицы липнет под верхней панелью (страница скроллится целиком), на планшете — своя прокрутка.
+    <div className="thin-scroll hidden overflow-x-auto md:block lg:overflow-visible">
+      <table className="data-table [&_td:first-child]:pl-4 [&_th:first-child]:pl-4 lg:[&_th]:sticky lg:[&_th]:top-[var(--hdr-h,61px)] lg:[&_th]:z-10">
         <thead>
           <tr>
             <th>Пользователь</th>
             <th>Язык</th>
             <SortableTh label="Заказы" col="ordersCount" {...{ sortBy, sortDir, toggleSort }} />
             <SortableTh label="Потрачено" col="totalSpentMinor" {...{ sortBy, sortDir, toggleSort }} />
+            {/* From 1280 px: on a 1024 laptop the extra column pushes the table past the edge. */}
+            <th className="hidden xl:table-cell">Последний заказ</th>
             <th>Статус</th>
             <SortableTh label="Регистрация" col="createdAt" {...{ sortBy, sortDir, toggleSort }} />
             <SortableTh label="Был(а)" col="lastSeenAt" {...{ sortBy, sortDir, toggleSort }} />
@@ -47,7 +50,7 @@ export function UsersDesktopTable({
           {loading
             ? Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i}>
-                  <td colSpan={7}>
+                  <td colSpan={8}>
                     <Skeleton className="h-6 w-full rounded-[var(--r-sm)]" />
                   </td>
                 </tr>
@@ -83,6 +86,9 @@ function UserTableRow({ u, onOpen }: { u: UserCardDto; onOpen: () => void }) {
       </td>
       <td className="tabular text-[var(--text-muted)]">{u.ordersCount}</td>
       <td className="tabular font-semibold">{money(u.totalSpentMinor)}</td>
+      <td className="hidden whitespace-nowrap text-[var(--text-muted)] xl:table-cell" title={u.lastOrderAt ? formatDateTime(u.lastOrderAt) : undefined}>
+        {u.lastOrderAt ? timeAgo(u.lastOrderAt) : "—"}
+      </td>
       <td>
         {u.botBlocked ? (
           <Badge tone="danger" dot>

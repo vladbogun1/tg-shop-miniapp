@@ -34,3 +34,12 @@ describe("user model", () => {
     expect(telegramHref(base)).toBe("tg://user?id=123456");
   });
 });
+
+describe("avgCheckMinor / languageDetail", () => {
+  it("средний чек: без заказов 0, иначе округление", async () => {
+    const { avgCheckMinor, languageDetail } = await import("./user");
+    expect(avgCheckMinor({ ordersCount: 0, totalSpentMinor: 500 })).toBe(0);
+    expect(avgCheckMinor({ ordersCount: 3, totalSpentMinor: 1000 })).toBe(333);
+    expect(languageDetail(base)).toBe("не определён");
+  });
+});

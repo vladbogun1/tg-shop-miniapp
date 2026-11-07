@@ -9,6 +9,8 @@ import { useState, type ReactNode } from "react";
 import { todayIso } from "@/features/analytics";
 import { Button } from "@shop/ui/admin-button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { Select } from "@/components/ui/Select";
+import { cn } from "@/lib/cn";
 import { ORDERS_PERIOD_OPTIONS, type OrdersPeriod, type OrdersRange } from "../model/period";
 
 const DATE_INPUT =
@@ -43,9 +45,12 @@ export function OrdersPeriodPicker({
   value,
   onChange,
   label,
+  compact = false,
 }: {
   value: OrdersPeriod;
   onChange: (p: OrdersPeriod) => void;
+  /** Toolbar: a dropdown instead of the segments below 1800 px. */
+  compact?: boolean;
   /** Shown before the presets (the board says what the period applies to). */
   label?: ReactNode;
 }) {
@@ -73,7 +78,7 @@ export function OrdersPeriodPicker({
 
   return (
     <div className="flex min-w-0 max-w-full flex-col gap-2">
-      <div className="thin-scroll flex max-w-full items-center gap-2 overflow-x-auto">
+      <div className={cn("thin-scroll max-w-full items-center gap-2 overflow-x-auto", compact ? "hidden min-[1800px]:flex" : "flex")}>
         {label}
         <SegmentedControl
           options={ORDERS_PERIOD_OPTIONS}
@@ -82,6 +87,12 @@ export function OrdersPeriodPicker({
           className="h-10 shrink-0 pointer-coarse:h-11"
         />
       </div>
+      {compact && (
+        // Below 1800 px the seven segments (≈630 px) would push the toolbar to a second line.
+        <div className="min-[1800px]:hidden">
+          <Select options={ORDERS_PERIOD_OPTIONS} value={showCustom ? "custom" : value.range} onChange={pick} className="w-[170px]" />
+        </div>
+      )}
       {showCustom && (
         <CustomRange value={value} from={from} to={to} onFrom={setFrom} onTo={setTo} onApply={() => onChange({ range: "custom", from, to })} />
       )}

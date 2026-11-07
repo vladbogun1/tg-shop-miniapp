@@ -27,13 +27,16 @@ const REASON_LABEL: Record<string, string> = {
 };
 
 /** Money that went back by the day it went back, what the shop kept on purpose, and write-offs (V68). */
-export function ReturnsPanel({ params }: { params: PeriodParams }) {
+export function ReturnsPanel({ params, compact }: { params: PeriodParams; compact?: boolean }) {
   const q = useReturns(params);
   const r: Returns | undefined = q.data;
   return (
     <Panel
       title="Возвраты и списания"
       icon={Undo2}
+      collapsible={compact}
+      defaultOpen={!compact}
+      summary={r ? `вернули ${uah(r.refundedMinor)} · удержано ${uah(r.retainedMinor)} · списано ${uah(r.writeoffMinor)}` : undefined}
       hint="Возвраты денег — по дню, когда деньги ушли, из журнала денег заказа. Удержано — предоплата, оставленная за доставку при отказе."
     >
       {!r ? (

@@ -2,6 +2,7 @@
 export { ReturnModal } from "./ui/return/ReturnModal";
 export { ReturnReceivedModal } from "./ui/ReturnReceivedModal";
 export { ReturnHistoryBlock } from "./ui/history/ReturnHistoryBlock";
+export { Fold } from "./ui/Fold";
 export { ReturnBadge } from "./ui/ReturnBadge";
 export { ExchangeModal } from "./ui/exchange/ExchangeModal";
 export { MoneyLedgerBlock } from "./ui/ledger/MoneyLedgerBlock";

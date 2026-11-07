@@ -3,15 +3,16 @@
 /**
  * PaymentModal — manual CORRECTION of how much was actually received («Скорректировать оплату»).
  * Online payments (monobank) are credited by the server on their own; this is for the rest:
- * cash on delivery collected, a mistake to fix. Presets: prepayment (if the order has one) /
+ * cash on delivery collected, a mistake to fix. Segments: prepayment (if the order has one) /
  * full / custom amount, plus "Снять оплату".
  *
  * Money safety:
  *  - the choice is reset on every open and for every order (it used to be picked once, when the
  *    drawer mounted with no order yet, so it was stuck on "Полная оплата" — one hasty tap recorded
  *    the full amount on a prepaid order and the parcel left with no COD);
- *  - default is "Предоплата" when the order has one (and nothing has been received yet);
- *  - "Полная оплата" needs a second, explicit confirmation of the amount;
+ *  - default is "Предоплата" when the order has one (and nothing has been received yet), otherwise
+ *    nothing is selected and the button says «Выберите сумму»;
+ *  - "Полная оплата" needs a second, explicit confirmation of the amount (red alert);
  *  - "Снять оплату" asks first.
  */
 import { useLayoutEffect, useState } from "react";
@@ -24,7 +25,6 @@ import { isPaymentValid, parseMinor, paymentAmount, type PaymentMode } from "../
 import type { MovementChannel } from "../model/movements";
 import type { PaymentOrder } from "../model/types";
 import { PaymentFields, type PaymentValues } from "./PaymentFields";
-import { RadioOption } from "./RadioOption";
 
 export function PaymentModal({
   open,
@@ -89,17 +89,10 @@ export function PaymentModal({
     if (ok) await onConfirm(0);
   }
 
-  const opt = (m: PaymentMode, label: string, sub?: string) => (
-    <RadioOption
-      selected={mode === m}
-      label={label}
-      sub={sub}
-      onSelect={() => {
-        form.setValue("mode", m);
-        setConfirmFull(false);
-      }}
-    />
-  );
+  function pick(m: PaymentMode) {
+    form.setValue("mode", m);
+    setConfirmFull(false);
+  }
 
   return (
     <Modal
@@ -110,11 +103,18 @@ export function PaymentModal({
       title="💳 Корректировка оплаты"
       footer={
         <>
-          {order.receivedMinor > 0 && (
-            <Button variant="ghost" onClick={clearPayment} disabled={loading} className="mr-auto">
-              Снять оплату
-            </Button>
-          )}
+          <div className="mr-auto flex min-w-0 flex-col items-start gap-1">
+            {valid && !confirmFull && (
+              <span className="text-[12px] text-[var(--text-muted)]">
+                Наложка после сохранения: <b className="tabular font-semibold text-[var(--text)]">{money(codAfter, cur)}</b>
+              </span>
+            )}
+            {order.receivedMinor > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearPayment} disabled={loading}>
+                Снять оплату
+              </Button>
+            )}
+          </div>
           {confirmFull ? (
             <Button variant="ghost" onClick={() => setConfirmFull(false)}>
               Назад
@@ -128,7 +128,7 @@ export function PaymentModal({
         </>
       }
     >
-      <PaymentFields form={form} order={order} opt={opt} customMinor={customMinor} valid={valid} codAfter={codAfter} confirmFull={confirmFull} />
+      <PaymentFields form={form} order={order} onPick={pick} customMinor={customMinor} confirmFull={confirmFull} />
     </Modal>
   );
 }

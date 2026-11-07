@@ -46,6 +46,8 @@ test("«Карточки»: бейдж = «Оформить» + «Провери
   expect(stats.draft + stats.aiFilled, "API stats = вкладки").toBe(draft + review);
 
   // With «Все, со старыми» the old player appears in «Проверить» — so it is +1 there, not in the badge.
+  // The showcase filter («Витрина») lives in the «Фильтры» panel now.
+  await page.getByRole("button", { name: /^Фильтры/ }).click();
   await page.getByRole("button", { name: "В работе" }).click();
   await page.getByRole("button", { name: "Все, со старыми" }).click();
   await expect.poll(() => counter(tab("Проверить"))).toBe(review + 1);

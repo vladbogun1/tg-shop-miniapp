@@ -4,7 +4,7 @@
  */
 import type { Page } from "@playwright/test";
 import { CUSTOMER, ORDER, money, shortId } from "../lib/seed";
-import { boardSearch, dialog, expect, openOrderFromBoard, orderDrawer, test } from "../lib/test";
+import { pickFromMoreMenu, boardSearch, dialog, expect, openOrderFromBoard, orderDrawer, test } from "../lib/test";
 
 const COLUMNS = [
   ["NEW", "Новый"],
@@ -14,13 +14,9 @@ const COLUMNS = [
   ["REJECTED", "Отклонён"],
 ] as const;
 
-/** A kanban column: the innermost block holding its title and its money total. */
+/** A kanban column: a named region (<section aria-label>) holding the head (title, count, total) and the cards. */
 function column(page: Page, label: string) {
-  return page
-    .locator("div")
-    .filter({ has: page.getByText(label, { exact: true }) })
-    .filter({ hasText: "₴" })
-    .last();
+  return page.getByRole("region", { name: label, exact: true });
 }
 
 test("колонки: количество и сумма совпадают с сервером", async ({ page, api }) => {
@@ -32,13 +28,8 @@ test("колонки: количество и сумма совпадают с �
     const col = column(page, label);
     const count = board.counts[status] ?? 0;
     await expect(col).toContainText(money(board.sums?.[status] ?? 0));
-    // Header = title + count badge (the block with the title but without the total).
-    const header = col
-      .locator("div")
-      .filter({ has: page.getByText(label, { exact: true }) })
-      .filter({ hasNotText: "₴" })
-      .first();
-    await expect(header).toHaveText(new RegExp(`${label}\\s*${count}$`));
+    // Header = title + count badge, the total follows them.
+    await expect(col.locator("header")).toHaveText(new RegExp(`^${label}\\s*${count}`));
     if (count === 0) await expect(col).toContainText("Пусто");
   }
   // The fixture's NEW orders are on the board.
@@ -65,7 +56,9 @@ test("поиск по #короткому-номеру оставляет оди
   await expect(drawer).toBeVisible();
   await expect(drawer).toContainText("59000000000011");
   await expect(drawer.getByRole("button", { name: "Детали", exact: true })).toBeVisible();
-  await expect(drawer.getByRole("button", { name: "Доставлен", exact: true })).toBeVisible();
+  // The status stepper («Ход заказа») shows «Доставлен» too; the next-step action is the last such button.
+  await expect(drawer.getByRole("list", { name: "Ход заказа" }).getByRole("button", { name: "Доставлен" })).toBeVisible();
+  await expect(drawer.getByRole("button", { name: "Доставлен", exact: true }).last()).toBeVisible();
 
   await drawer.getByRole("button", { name: "Закрыть" }).click();
   await expect(drawer).toBeHidden();
@@ -74,7 +67,7 @@ test("поиск по #короткому-номеру оставляет оди
 test("Esc закрывает только верхний слой: сначала корректировку оплаты, потом карточку", async ({ page }) => {
   const drawer = await openOrderFromBoard(page, ORDER.shipped, CUSTOMER.shipped);
 
-  await drawer.getByRole("button", { name: "Скорректировать оплату" }).click();
+  await pickFromMoreMenu(page, drawer, "Скорректировать оплату");
   const pay = dialog(page, "Корректировка оплаты");
   await expect(pay).toBeVisible();
 

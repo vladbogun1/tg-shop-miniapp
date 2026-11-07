@@ -40,7 +40,7 @@ test("отклонение: причина из списка обязатель�
 test("возврат по позиции с суммой", async ({ page, api }) => {
   const capBefore = (await api.product(PRODUCT.cap)).stock;
   const drawer = await openOrderFromBoard(page, ORDER.delivered, CUSTOMER.delivered);
-  await drawer.getByRole("button", { name: "Возврат", exact: true }).click();
+  await drawer.getByRole("button", { name: "Оформить возврат" }).click();
 
   // Step 1 — what came back: one cap, already here, back on the shelf; the t-shirt stays.
   const modal = dialog(page, "↩️ Возврат");

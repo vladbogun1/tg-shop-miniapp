@@ -38,7 +38,7 @@ export const preordersApi = {
   update: (id: number, body: BatchRequest) => apiPut<Batch>(`${PRE}/batches/${id}`, body),
   setStatus: (id: number, status: "ORDERED" | "IN_TRANSIT" | "CUSTOMS") => apiPost<Batch>(`${PRE}/batches/${id}/status`, { status }),
   arrive: (id: number, body: ArriveBody) => apiPost<ArriveResult>(`${PRE}/batches/${id}/arrive`, body),
-  cancel: (id: number, closeQueue: boolean) => apiPost<Batch>(`${PRE}/batches/${id}/cancel`, { closeQueue }),
+  cancel: (id: number, body: { closeQueue: boolean; reason: string | null }) => apiPost<Batch>(`${PRE}/batches/${id}/cancel`, body),
   subscribers: (id: number | string) => apiGet<Subscriber[]>(`${PRE}/batches/${id}/subscribers`),
   productSubscribers: (productId: string) => apiGet<Subscriber[]>(`${PRE}/subscribers?productId=${encodeURIComponent(productId)}`),
   removeSubscriber: (id: number) => apiDelete<void>(`${PRE}/subscriptions/${id}`),

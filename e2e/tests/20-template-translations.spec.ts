@@ -45,7 +45,7 @@ test("шаблон: русский первым, пустые переводы �
   await page.goto("/translations");
   await page.getByRole("tab", { name: /^Нужно перевести/ }).click();
   await expect(page.getByRole("tab", { name: /^Нужно перевести/ })).toHaveAttribute("aria-selected", "true");
-  await page.getByLabel("Поиск").fill("Хорошего дня");
+  await page.getByLabel("Поиск", { exact: true }).fill("Хорошего дня");
   const count = (name: string) => page.getByRole("tab", { name: new RegExp(`^${name}`) }).locator("span").first();
   await expect(count("Нужно перевести")).toHaveText("1");
   await expect(count("Устарели")).toHaveText("0");

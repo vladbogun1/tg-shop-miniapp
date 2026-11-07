@@ -15,7 +15,7 @@ const CATEGORY_SLUG = "e2e-futbolki";
 test("SEO категории: сохраняется из окна категории и отдаётся публичным API", async ({ page, api }) => {
   await page.goto("/categories");
   const tree = page.getByRole("list", { name: "Дерево категорий" });
-  await tree.getByRole("button", { name: new RegExp(CATEGORY_NAME) }).first().click();
+  await tree.getByRole("button", { name: new RegExp(`^${CATEGORY_NAME}`) }).first().click();
 
   const modal = dialog(page, `Категория · ${CATEGORY_NAME}`);
   await modal.getByRole("tab", { name: "SEO" }).click();

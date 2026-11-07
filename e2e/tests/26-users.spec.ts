@@ -63,7 +63,7 @@ test("поиск по имени, @username и ID; фильтр «Заблоки
   await search.fill("");
 
   // Blocked only.
-  const blocked = page.getByRole("button", { name: "Заблокировали бота" });
+  const blocked = page.getByRole("button", { name: /^Заблокировали/ });
   await blocked.click();
   await expect(blocked).toHaveAttribute("aria-pressed", "true");
   const expectedBlocked = await users(api, "blockedOnly=true&size=50");

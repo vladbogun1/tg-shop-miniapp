@@ -9,6 +9,8 @@ export type UserSortBy = "createdAt" | "lastSeenAt" | "username" | "telegramUser
 export interface UsersTableQuery {
   q?: string;
   blockedOnly?: boolean;
+  premiumOnly?: boolean;
+  hasOrders?: boolean;
   page?: number;
   size?: number;
   sortBy?: UserSortBy;

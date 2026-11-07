@@ -1,32 +1,31 @@
 "use client";
 
 /**
- * «Поддержка» (route "/support"): customer questions that are not about an order — about a product
- * before buying it, or a general one.
+ * «Поддержка» (route "/support"): вопросы покупателей, не связанные с заказом — о товаре до покупки или общие.
  *
- *  - GET /api/admin/support/threads?filter=&q= — latest activity first, polled every 15 s.
- *  - A row opens the thread in a drawer (full screen on a phone), like orders do.
- *  - Deep link `/support?thread=<id>` — the Telegram notification, the push and «Внимание» open it.
- *    It is followed while on the page too (a push tapped with the page already open) and removed
- *    from the address right after opening.
+ *  - GET /api/admin/support/threads?filter=&q= — свежая активность сверху, опрос раз в 15 с.
+ *  - ПК (>= 1024): мастер-деталь — очередь слева, вопрос справа. Первый вопрос сам НЕ открывается: открытие
+ *    помечает сообщения прочитанными, а оператор их не видел. Alt+↓ / Alt+↑ — соседний вопрос.
+ *  - Телефон/планшет: строка открывает вопрос в шторке во весь экран.
+ *  - Поиск с непустой строкой идёт по всем статусам («Все»), иначе по выбранному сегменту.
+ *  - Ссылка `/support?thread=<id>` — уведомление в Telegram, push и «Внимание» открывают вопрос, в том числе
+ *    когда страница уже открыта; параметр сразу убирается из адреса.
  */
-import { LifeBuoy, PenSquare, RotateCw, Search, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Button } from "@shop/ui/admin-button";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { Input } from "@/components/ui/Input";
-import { QueryState } from "@/components/ui/QueryState";
-import { SegmentedControl, type SegOption } from "@/components/ui/SegmentedControl";
-import { cn } from "@/lib/cn";
+import type { SegOption } from "@/components/ui/SegmentedControl";
 import { useDebounced } from "@/lib/use-debounced";
-import { awaitingCount, EMPTY_HINT, searchWithoutThread } from "../model/thread";
+import { useFillHeight } from "@/lib/use-fill-height";
+import { useIsDesktop } from "@/lib/use-media";
+import { awaitingCount, neighbourThreadId, searchWithoutThread, sortForFilter } from "../model/thread";
 import type { SupportFilter } from "../model/types";
 import { useSupportThreads, useSupportUnread } from "../queries";
 import { StartThreadModal } from "./StartThreadModal";
+import { SupportList } from "./SupportList";
 import { SupportThreadDrawer } from "./SupportThreadDrawer";
-import { ThreadRow } from "./ThreadRow";
+import { ThreadPane } from "./ThreadPane";
+import { useNowMs } from "./use-now";
 
 export function SupportScreen() {
   // useSearchParams needs a Suspense boundary in the app router.
@@ -40,16 +39,19 @@ export function SupportScreen() {
 function SupportContent() {
   const params = useSearchParams();
   const deepId = params.get("thread");
+  const desktop = useIsDesktop();
   const [openId, setOpenId] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
 
   const [filter, setFilter] = useState<SupportFilter>("open");
   const [search, setSearch] = useState("");
   const q = useDebounced(search.trim(), 350);
+  const effectiveFilter: SupportFilter = q ? "all" : filter;
 
-  const list = useSupportThreads(filter, q);
+  const list = useSupportThreads(effectiveFilter, q);
   const { data: unread } = useSupportUnread();
-  const threads = list.data ?? [];
+  const nowMs = useNowMs();
+  const threads = useMemo(() => sortForFilter(list.data ?? [], effectiveFilter), [list.data, effectiveFilter]);
 
   const options: SegOption<SupportFilter>[] = [
     { value: "awaiting", label: "Ждут ответа", count: awaitingCount(unread) },
@@ -63,81 +65,64 @@ function SupportContent() {
   useEffect(() => {
     if (!deepId) return;
     setOpenId(deepId);
-    window.history.replaceState(
-      window.history.state,
-      "",
-      window.location.pathname + searchWithoutThread(window.location.search)
-    );
+    window.history.replaceState(window.history.state, "", window.location.pathname + searchWithoutThread(window.location.search));
   }, [deepId]);
+
+  // Alt+↓ / Alt+↑ — следующий / предыдущий вопрос очереди (только мастер-деталь).
+  const idsRef = useRef<string[]>([]);
+  const openRef = useRef<string | null>(null);
+  idsRef.current = threads.map((t) => t.id);
+  openRef.current = openId;
+  useEffect(() => {
+    if (!desktop) return;
+    function onKey(e: KeyboardEvent) {
+      if (!e.altKey || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
+      const next = neighbourThreadId(idsRef.current, openRef.current, e.key === "ArrowDown" ? 1 : -1);
+      if (!next) return;
+      e.preventDefault();
+      setOpenId(next);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [desktop]);
+
+  const gridRef = useRef<HTMLDivElement>(null);
+  useFillHeight(gridRef, desktop);
+  const initial = threads.find((t) => t.id === openId);
+
+  const listProps = {
+    list,
+    threads,
+    options,
+    filter: effectiveFilter,
+    onFilter: (f: SupportFilter) => {
+      setSearch("");
+      setFilter(f);
+    },
+    search,
+    onSearch: setSearch,
+    q,
+    openId,
+    nowMs,
+    onOpen: setOpenId,
+    onCompose: () => setComposing(true),
+  };
 
   return (
     <div className="min-w-0">
-      <PageHeader
-        title="Поддержка"
-        subtitle="Вопросы покупателей о товарах и общие вопросы. Обновляется каждые 15 секунд."
-        actions={
-          <>
-          <Button variant="accent" size="sm" icon={<PenSquare className="h-4 w-4" />} onClick={() => setComposing(true)}>
-            Написать клиенту
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            icon={<RotateCw className={cn("h-4 w-4", list.isFetching && "animate-spin")} />}
-            onClick={() => list.refetch()}
-          >
-            Обновить
-          </Button>
-          </>
-        }
-      />
+      <PageHeader title="Поддержка" subtitle="Вопросы покупателей о товарах и общие вопросы. Обновляется каждые 15 секунд." />
 
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">
-        <SegmentedControl options={options} value={filter} onChange={setFilter} />
-        <div className="lg:ml-auto lg:w-80">
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Клиент или товар"
-            aria-label="Поиск по вопросам"
-            icon={<Search className="h-4 w-4" />}
-            rightSlot={
-              search ? (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  aria-label="Очистить поиск"
-                  className="grid h-7 w-7 place-items-center rounded-[var(--r-sm)] text-[var(--text-faint)] hover:text-[var(--text)]"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              ) : undefined
-            }
-          />
+      {desktop ? (
+        <div ref={gridRef} className="grid min-h-0 grid-cols-[minmax(320px,380px)_minmax(0,1fr)] gap-4">
+          <SupportList {...listProps} scrollClass="thin-scroll overflow-y-auto pr-1" />
+          <ThreadPane threadId={openId} initial={initial} />
         </div>
-      </div>
-
-      <QueryState
-        isLoading={list.isLoading}
-        isError={list.isError && !list.data}
-        error={list.error}
-        refetch={list.refetch}
-        loadingLabel="Загружаем вопросы"
-      >
-        {threads.length === 0 ? (
-          <EmptyState
-            icon={LifeBuoy}
-            title={q ? "Ничего не нашлось" : "Вопросов нет"}
-            description={q ? "Ищется по имени клиента и названию товара — попробуйте другое." : EMPTY_HINT[filter]}
-          />
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {threads.map((t, i) => (
-              <ThreadRow key={t.id} thread={t} index={i} active={t.id === openId} onOpen={() => setOpenId(t.id)} />
-            ))}
-          </ul>
-        )}
-      </QueryState>
+      ) : (
+        <>
+          <SupportList {...listProps} />
+          <SupportThreadDrawer threadId={openId} initial={initial} onClose={() => setOpenId(null)} />
+        </>
+      )}
 
       <StartThreadModal
         open={composing}
@@ -146,12 +131,6 @@ function SupportContent() {
           setComposing(false);
           setOpenId(t.id);
         }}
-      />
-
-      <SupportThreadDrawer
-        threadId={openId}
-        initial={threads.find((t) => t.id === openId)}
-        onClose={() => setOpenId(null)}
       />
     </div>
   );

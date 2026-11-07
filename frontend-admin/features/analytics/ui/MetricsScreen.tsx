@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Метрики — five tabs over /api/admin/metrics/*: Обзор · Товары и склад · Покупатели · Воронка ·
- * Операции. Calendar periods (Europe/Kyiv) with a comparison period, a channel filter, and its own
+ * Метрики — вкладки Обзор · Маржа (с правом «Финансы») · Товары и склад · Покупатели · Воронка ·
+ * Операции · Предзаказы. Calendar periods (Europe/Kyiv) with a comparison period, a channel filter, and its own
  * remembered period (no longer shared with the orders board). The tab lives in the URL (?tab=) so
  * the board's "Today" strip can link straight to the stock tab.
  */
@@ -10,9 +10,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import "./metrics.css";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { useFinanceAccess } from "@/features/procurement";
-import { PeriodPicker } from "./PeriodPicker";
+import { MetricsHeader } from "./MetricsHeader";
 import { CustomersTab } from "./tabs/CustomersTab";
 import { FunnelTab } from "./tabs/FunnelTab";
 import { MarginTab } from "./tabs/MarginTab";
@@ -24,12 +23,12 @@ import { useMetricsPeriod } from "./use-metrics-period";
 
 const TABS = [
   { value: "overview", label: "Обзор" },
+  { value: "margin", label: "Маржа" },
   { value: "stock", label: "Товары и склад" },
   { value: "customers", label: "Покупатели" },
   { value: "funnel", label: "Воронка" },
   { value: "operations", label: "Операции" },
   { value: "preorders", label: "Предзаказы" },
-  { value: "margin", label: "Маржа" },
 ] as const;
 type Tab = (typeof TABS)[number]["value"];
 
@@ -60,13 +59,14 @@ function MetricsBody() {
   return (
     <div className="mx-root min-w-0">
       <PageHeader title="Метрики" subtitle="Продажи, деньги, склад, покупатели и прогнозы" />
-
-      <div className="mb-4 flex flex-col gap-3">
-        <PeriodPicker params={params} onChange={setParams} />
-        <div className="thin-scroll -mx-1 overflow-x-auto overflow-y-hidden px-1 pb-1">
-          <SegmentedControl options={tabs.map((t) => ({ value: t.value, label: t.label }))} value={tab} onChange={setTab} />
-        </div>
-      </div>
+      <MetricsHeader
+        params={params}
+        onChange={setParams}
+        tabs={tabs}
+        tab={tab}
+        onTab={setTab}
+        channelApplies={tab !== "margin" && tab !== "preorders"}
+      />
 
       {tab === "overview" && <OverviewTab params={params} />}
       {tab === "stock" && <StockTab params={params} />}

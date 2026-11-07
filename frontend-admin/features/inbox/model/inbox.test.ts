@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatWait, hasGroupAction, isRefundRow, knownType, snoozedTotal, visibleGroups, withoutItem } from "./inbox";
+import { formatWait, groupPreview, groupsTotal, hasGroupAction, isRefundRow, knownType, rowLimit, snoozedTotal, visibleGroups, visibleRows, withoutItem } from "./inbox";
 import type { Inbox, InboxGroup, InboxItem } from "./types";
 
 /** Необязательные поля сервер шлёт как null; в тестах они не нужны. */
@@ -48,5 +48,20 @@ describe("inbox model", () => {
     expect(formatWait(6 * 60 + 5)).toBe("6 ч");
     expect(formatWait(28 * 60)).toBe("1 дн 4 ч");
     expect(formatWait(4 * 24 * 60 + 60)).toBe("4 дн");
+  });
+  it("rowLimit / visibleRows: a single hidden row is shown, not collapsed", () => {
+    expect(rowLimit(true)).toBe(5);
+    expect(rowLimit(false)).toBe(8);
+    const rows = Array.from({ length: 9 }, (_, i) => item(String(i)));
+    expect(visibleRows(rows.slice(0, 6), 5, false)).toHaveLength(6);
+    expect(visibleRows(rows, 5, false)).toHaveLength(5);
+    expect(visibleRows(rows, 5, true)).toHaveLength(9);
+  });
+  it("groupPreview / groupsTotal", () => {
+    const a = { ...item("a"), shortId: "1048", title: "Lamzu", waitMinutes: 5 } as InboxItem;
+    const b = { ...item("b"), waitMinutes: 90, overdue: true } as InboxItem;
+    expect(groupPreview({ items: [a, b] })).toEqual({ line: "#1048 Lamzu", waitMinutes: 90, overdue: true });
+    expect(groupPreview({ items: [] })).toEqual({ line: "", waitMinutes: 0, overdue: false });
+    expect(groupsTotal([group("A", [a]), group("B", [a, b])])).toBe(3);
   });
 });

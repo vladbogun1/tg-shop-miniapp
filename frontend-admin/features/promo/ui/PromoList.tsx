@@ -1,10 +1,8 @@
 "use client";
 
 import { Button } from "@shop/ui/admin-button";
-import { motion } from "framer-motion";
 import { Plus, Search, Ticket } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { riseItem, staggerContainer } from "@/lib/motion";
 import { TAB_EMPTY } from "../model/promo";
 import type { ManualDiscountOrder, PromoCode, PromoOrigin } from "../model/types";
 import { ManualRow } from "./ManualRow";
@@ -19,6 +17,7 @@ interface Props {
   onCreate: () => void;
   onEdit: (p: PromoCode) => void;
   onDelete: (p: PromoCode) => void;
+  onOrders: (p: PromoCode) => void;
   onOpenOrder: (id: string) => void;
 }
 
@@ -53,29 +52,39 @@ function Empty({ tab, filtering, onResetFilters, onCreate }: Pick<Props, "tab" |
   );
 }
 
-/** Коды выбранной вкладки (+ ручные скидки в «Персональных») либо пустое состояние. */
+/** Коды выбранной вкладки одной панелью строк (+ ручные скидки в «Персональных») либо пустое состояние. */
 export function PromoList(p: Props) {
   if (p.shown.length === 0 && p.shownManual.length === 0) return <Empty {...p} />;
   return (
-    <motion.div key={p.tab} variants={staggerContainer} initial="initial" animate="animate" className="flex flex-col gap-3">
-      {p.shown.map((promo) => (
-        <PromoRow key={promo.id} p={promo} onEdit={() => p.onEdit(promo)} onDelete={() => p.onDelete(promo)} onOpenOrder={p.onOpenOrder} />
-      ))}
-      {p.shownManual.length > 0 && (
-        <>
-          <motion.div variants={riseItem} className="mt-2">
-            <h2 className="font-display text-[12px] font-bold uppercase tracking-[0.08em] text-[var(--text-muted)]">
-              Ручные скидки в заказах · {p.shownManual.length}
-            </h2>
-            <p className="mt-0.5 text-[12px] text-[var(--text-faint)]">
-              Сумма или процент, заданные вручную в «Скидке» заказа — это не промокод, повторно не применяется.
-            </p>
-          </motion.div>
-          {p.shownManual.map((o) => (
-            <ManualRow key={o.id} o={o} onOpen={() => p.onOpenOrder(o.id)} />
+    <div className="flex min-w-0 flex-col gap-4">
+      {p.shown.length > 0 && (
+        <div className="panel min-w-0 divide-y divide-[var(--line)] overflow-hidden">
+          {p.shown.map((promo) => (
+            <PromoRow
+              key={promo.id}
+              p={promo}
+              onEdit={() => p.onEdit(promo)}
+              onDelete={() => p.onDelete(promo)}
+              onOrders={() => p.onOrders(promo)}
+            />
           ))}
-        </>
+        </div>
       )}
-    </motion.div>
+      {p.shownManual.length > 0 && (
+        <section>
+          <h2 className="font-display text-[12px] font-bold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+            Ручные скидки в заказах · {p.shownManual.length}
+          </h2>
+          <p className="mb-2 mt-0.5 text-[12px] text-[var(--text-faint)]">
+            Сумма или процент, заданные вручную в «Скидке» заказа — это не промокод, повторно не применяется.
+          </p>
+          <div className="panel min-w-0 divide-y divide-[var(--line)] overflow-hidden">
+            {p.shownManual.map((o) => (
+              <ManualRow key={o.id} o={o} onOpen={() => p.onOpenOrder(o.id)} />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
   );
 }

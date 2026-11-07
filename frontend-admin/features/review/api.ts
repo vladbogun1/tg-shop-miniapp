@@ -6,6 +6,9 @@ function qs(p: ReviewListParams): string {
   const sp = new URLSearchParams();
   sp.set("status", p.status);
   if (p.productId) sp.set("productId", p.productId);
+  if (p.q?.trim()) sp.set("q", p.q.trim());
+  for (const r of p.ratings ?? []) sp.append("ratings", String(r));
+  if (p.unanswered) sp.set("unanswered", "true");
   sp.set("page", String(p.page));
   sp.set("size", String(p.size ?? REVIEWS_PAGE_SIZE));
   return sp.toString();

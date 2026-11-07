@@ -5,10 +5,15 @@ import {
   closedLabel,
   customerOf,
   isWaiting,
+  neighbourThreadId,
   searchWithoutThread,
   siteProductUrl,
+  sortForFilter,
   sourceLabel,
   threadTopic,
+  urgencyOf,
+  waitingLabel,
+  waitingMinutes,
 } from "./thread";
 import type { SupportMessage, SupportThread } from "./types";
 
@@ -85,5 +90,48 @@ describe("support chat helpers", () => {
     expect(canLoadOlder(SUPPORT_CHAT_PAGE, false)).toBe(true);
     expect(canLoadOlder(SUPPORT_CHAT_PAGE - 1, false)).toBe(false);
     expect(canLoadOlder(SUPPORT_CHAT_PAGE, true)).toBe(false);
+  });
+});
+
+describe("очередь поддержки", () => {
+  const NOW = new Date("2026-11-07T12:00:00Z").getTime();
+  const waitingSince = (minAgo: number) => new Date(NOW - minAgo * 60_000).toISOString();
+
+  it("waitingMinutes и срочность по порогам 30 мин / 2 ч", () => {
+    expect(waitingMinutes(thread(), NOW)).toBeNull();
+    expect(waitingMinutes(thread({ awaitingSince: waitingSince(160) }), NOW)).toBe(160);
+    expect(waitingMinutes(thread({ status: "CLOSED", awaitingSince: waitingSince(5) }), NOW)).toBeNull();
+    expect(urgencyOf(null)).toBe("calm");
+    expect(urgencyOf(29)).toBe("calm");
+    expect(urgencyOf(30)).toBe("warn");
+    expect(urgencyOf(119)).toBe("warn");
+    expect(urgencyOf(120)).toBe("danger");
+  });
+
+  it("waitingLabel: минуты, часы, дни", () => {
+    expect(waitingLabel(0)).toBe("ждёт меньше минуты");
+    expect(waitingLabel(12)).toBe("ждёт 12 мин");
+    expect(waitingLabel(160)).toBe("ждёт 2 ч 40 мин");
+    expect(waitingLabel(120)).toBe("ждёт 2 ч");
+    expect(waitingLabel(60 * 28)).toBe("ждёт 1 д 4 ч");
+  });
+
+  it("sortForFilter: «Ждут ответа» — дольше всех ждущие сверху, остальные как есть", () => {
+    const a = thread({ id: "a", awaitingSince: waitingSince(10) });
+    const b = thread({ id: "b", awaitingSince: waitingSince(90) });
+    const c = thread({ id: "c" });
+    expect(sortForFilter([a, c, b], "awaiting").map((t) => t.id)).toEqual(["b", "a", "c"]);
+    const list = [a, c, b];
+    expect(sortForFilter(list, "open")).toBe(list);
+  });
+
+  it("neighbourThreadId: шаг по списку, края не переходятся", () => {
+    const ids = ["a", "b", "c"];
+    expect(neighbourThreadId(ids, "a", 1)).toBe("b");
+    expect(neighbourThreadId(ids, "c", 1)).toBe("c");
+    expect(neighbourThreadId(ids, "a", -1)).toBe("a");
+    expect(neighbourThreadId(ids, null, 1)).toBe("a");
+    expect(neighbourThreadId(ids, "zzz", -1)).toBe("c");
+    expect(neighbourThreadId([], "a", 1)).toBeNull();
   });
 });

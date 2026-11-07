@@ -50,7 +50,8 @@ test("поиск, «на витрине» с отменой, счётчик «С
   await filterChip(page, "Все").click();
 
   // Archive → gone from the active list, present in «Архив», restore brings it back.
-  await row.getByRole("button", { name: "В архив" }).click();
+  await row.getByRole("button", { name: "Действия" }).click();
+  await page.getByRole("menuitem", { name: "В архив" }).click();
   await expect(toast(page, "«E2E Термос» в архиве")).toBeVisible();
   await expect(row).toHaveCount(0);
   const archived = await api.raw("get", "/api/admin/products/archived");
@@ -67,4 +68,24 @@ test("поиск, «на витрине» с отменой, счётчик «С
 
   const actions = (await api.audit(`&entityId=${EXTRA_PRODUCT.thermos}`)).map((e) => e.action);
   expect(actions.length).toBeGreaterThanOrEqual(4);
+});
+
+test("быстрая правка цены в списке: Enter сохраняет, Esc откатывает", async ({ page, api }) => {
+  await page.goto("/products");
+  const row = productRow(page, "E2E Термос");
+  const before = (await api.product(EXTRA_PRODUCT.thermos)).priceMinor;
+
+  // Esc: поле закрывается, цена не меняется.
+  await row.getByRole("button", { name: "Цена: изменить" }).click();
+  await row.getByLabel("Цена", { exact: true }).fill("9999");
+  await page.keyboard.press("Escape");
+  await expect(row.getByLabel("Цена", { exact: true })).toHaveCount(0);
+  expect((await api.product(EXTRA_PRODUCT.thermos)).priceMinor).toBe(before);
+
+  // Enter: сохранено, тост с «Отменить».
+  await row.getByRole("button", { name: "Цена: изменить" }).click();
+  await row.getByLabel("Цена", { exact: true }).fill("777");
+  await page.keyboard.press("Enter");
+  await expect(toast(page, "Цена «E2E Термос»")).toBeVisible();
+  await expect.poll(async () => (await api.product(EXTRA_PRODUCT.thermos)).priceMinor).toBe(77700);
 });

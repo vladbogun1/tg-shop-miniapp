@@ -28,7 +28,7 @@ const TABS = [
   ["Воронка", "Много смотрят — мало покупают"],
   ["Операции", "Скорость обработки"],
 ] as const;
-const PERIODS = ["Сегодня", "7 дн", "Этот месяц", "Прошлый месяц", "90 дн", "Год"] as const;
+const PERIODS = ["Сегодня", "Вчера", "7 дн", "30 дн", "Этот месяц", "Прошлый месяц", "Квартал", "Год"] as const;
 
 function uah(minor: number): RegExp {
   // uahShort below 10 000 ₴: "2 400 ₴" (any space between the groups).
@@ -133,7 +133,7 @@ test("каждая вкладка открывается для каждого �
   test.setTimeout(240_000);
   // API: every tab × period × channel answers 200.
   const endpoints = ["overview", "stock", "customers", "funnel", "operations"];
-  const periods = ["today", "7d", "month", "prevmonth", "90d", "year"];
+  const periods = ["today", "yesterday", "7d", "30d", "month", "prevmonth", "quarter", "90d", "year"];
   for (const ep of endpoints)
     for (const p of periods)
       for (const ch of ["all", "miniapp", "web"]) {

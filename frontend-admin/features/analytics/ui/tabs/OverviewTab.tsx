@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { LineChart as LineIcon, Grid3x3 } from "lucide-react";
 import { useState } from "react";
+import { useMediaQuery } from "@shop/ui/use-media";
 import { QueryState } from "@/components/ui/QueryState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { staggerContainer } from "@/lib/motion";
@@ -41,6 +42,8 @@ function OverviewBody({
   forecast?: Forecast;
   forecastError: boolean;
 }) {
+  // Телефон: второстепенные блоки свёрнуты до строки итога (вариант B), ноутбук — всё развёрнуто.
+  const compact = useMediaQuery("(max-width: 767px)");
   return (
     <motion.div variants={staggerContainer} initial="initial" animate="animate" className="flex flex-col gap-4">
       <OverviewKpis o={o} prevLabel={PREV_LABEL[params.period]} />
@@ -48,7 +51,7 @@ function OverviewBody({
 
       <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
         <SchemesPanel rows={o.schemes} />
-        <OnlinePanel p={o.online} />
+        <OnlinePanel p={o.online} compact={compact} />
       </div>
 
       <ForecastPanel forecast={forecast} error={forecastError} />
@@ -60,13 +63,13 @@ function OverviewBody({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-        <Panel title="Когда приходят заказы" icon={Grid3x3} hint="Все оформленные заказы за период: день недели × час (Киев). Подсказка, когда делать рассылки.">
+        <Panel title="Когда приходят заказы" icon={Grid3x3} collapsible={compact} defaultOpen={!compact} summary="Нажмите, чтобы открыть карту по дням недели и часам" hint="Все оформленные заказы за период: день недели × час (Киев). Подсказка, когда делать рассылки.">
           <Heatmap grid={o.heatmap} />
         </Panel>
-        <GiveawaysPanel giveaways={o.giveaways} />
+        <GiveawaysPanel giveaways={o.giveaways} compact={compact} />
       </div>
 
-      <ReturnsPanel params={params} />
+      <ReturnsPanel params={params} compact={compact} />
     </motion.div>
   );
 }

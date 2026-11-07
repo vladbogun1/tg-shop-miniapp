@@ -1,134 +1,75 @@
 "use client";
 
 /**
- * Нижняя панель карточки заказа: на ПК все действия, на телефоне одно главное по статусу и «⋯».
- * ONE solid-orange action per view: the next happy-path step; the rest are surface/danger.
- * The manual payment correction is never the main action — payments come in online.
+ * Нижняя панель карточки заказа. ПК: главный шаг (accent) + «Отклонить» + «⋯ Ещё» с группами Деньги / Заказ / Архив.
+ * Телефон: главная кнопка на всю ширину + «⋯» (лист с теми же группами). Раскладка — model/action-plan.ts.
+ * Нет шага статуса: «Посылка вернулась» / «Оформить возврат» / «Написать клиенту» (переключает на чат).
+ * ONE solid-orange action per view; ручная корректировка оплаты никогда не главная.
  */
-import { Archive, ArchiveRestore, Ban, Check, MoreHorizontal, PackageCheck, Send, WalletMinimal } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import type { OrderStatus } from "@shop/core/types";
 import { Button } from "@shop/ui/admin-button";
 import { cn } from "@/lib/cn";
+import { actionPlan, type PlanKey } from "../../model/action-plan";
 import type { DrawerRules } from "../../model/drawer-rules";
-import { STATUS_ACTION_LABEL } from "../../model/status";
+import { actionMeta, busyKeyOf } from "./action-meta";
+import { MoreMenu } from "./MoreMenu";
+import { buildMenuGroups, runPlanKey } from "./sheet-actions";
 import type { ModalName } from "./use-drawer-modals";
-
-export const ACTION_ICON: Record<Exclude<OrderStatus, "NEW">, typeof Check> = {
-  APPROVED: Check,
-  SHIPPED: Send,
-  DELIVERED: PackageCheck,
-  REJECTED: Ban,
-};
-
-/** Payments arrive online (monobank); this is only a manual correction (наложка, a mistake). */
-export const PAY_LABEL = "Скорректировать оплату";
 
 export interface ActionBarProps {
   rules: DrawerRules;
+  canMerge: boolean;
   busyKey: string | null;
   isDesktop: boolean;
   show: (name: ModalName) => void;
   requestStatus: (target: OrderStatus) => void;
   onUnarchive: () => void;
+  /** «Написать клиенту» — переключает карточку на чат. */
+  onChat: () => void;
 }
 
-type ButtonsProps = Omit<ActionBarProps, "isDesktop" | "onUnarchive">;
-
-function StatusButton({
-  target,
-  rules,
-  busyKey,
-  requestStatus,
+function PlanButton({
+  planKey,
+  props,
   primary,
   full,
-}: ButtonsProps & { target: OrderStatus; primary?: boolean; full?: boolean }) {
-  const Icon = ACTION_ICON[target as Exclude<OrderStatus, "NEW">];
-  const key = `status:${target}`;
-  return (
-    <Button
-      size={primary ? "md" : "sm"}
-      variant={target === "REJECTED" ? "danger" : primary || rules.primary === target ? "accent" : "surface"}
-      loading={busyKey === key}
-      disabled={!!busyKey && busyKey !== key}
-      icon={<Icon className="h-4 w-4" />}
-      className={cn(full && "flex-1")}
-      onClick={() => requestStatus(target)}
-    >
-      {STATUS_ACTION_LABEL[target]}
-    </Button>
-  );
-}
-
-function PayButton({ busyKey, show, full }: Pick<ButtonsProps, "busyKey" | "show"> & { full?: boolean }) {
+}: {
+  planKey: PlanKey | "chat";
+  props: ActionBarProps;
+  primary?: boolean;
+  full?: boolean;
+}) {
+  const { busyKey, onChat } = props;
+  const meta = actionMeta(planKey);
+  const key = busyKeyOf(planKey);
+  const accent = primary && planKey !== "chat";
   return (
     <Button
       size={full ? "md" : "sm"}
-      variant="surface"
-      loading={busyKey === "pay"}
-      disabled={!!busyKey && busyKey !== "pay"}
+      variant={meta.danger ? "danger" : accent ? "accent" : "surface"}
+      loading={!!key && busyKey === key}
+      disabled={!!busyKey && busyKey !== key}
+      icon={meta.icon}
       className={cn(full && "flex-1")}
-      icon={<WalletMinimal className="h-4 w-4" />}
-      onClick={() => show("pay")}
+      onClick={() => (planKey === "chat" ? onChat() : runPlanKey(planKey, props))}
     >
-      {PAY_LABEL}
+      {meta.label}
     </Button>
-  );
-}
-
-function ArchiveButtons({ rules, busyKey, show, onUnarchive }: Pick<ActionBarProps, "rules" | "busyKey" | "show" | "onUnarchive">) {
-  return (
-    <>
-      {rules.canArchive && (
-        <Button
-          size="sm"
-          variant="surface"
-          className="ml-auto"
-          loading={busyKey === "archive"}
-          disabled={!!busyKey && busyKey !== "archive"}
-          icon={<Archive className="h-4 w-4" />}
-          onClick={() => show("archive")}
-        >
-          В архив
-        </Button>
-      )}
-      {rules.canUnarchive && (
-        <Button
-          size="sm"
-          variant="surface"
-          className="ml-auto"
-          loading={busyKey === "unarchive"}
-          disabled={!!busyKey && busyKey !== "unarchive"}
-          icon={<ArchiveRestore className="h-4 w-4" />}
-          onClick={onUnarchive}
-        >
-          Вернуть из архива
-        </Button>
-      )}
-    </>
   );
 }
 
 export function ActionBar(props: ActionBarProps) {
-  const { rules, busyKey, isDesktop, show, onUnarchive } = props;
+  const { rules, canMerge, busyKey, isDesktop, show } = props;
+  const plan = actionPlan(rules, canMerge);
+
   if (isDesktop) {
+    const groups = buildMenuGroups({ ...props, withReject: false });
     return (
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-[var(--line)] bg-[var(--bg-2)] px-5 py-3.5">
-        <PayButton busyKey={busyKey} show={show} />
-        {rules.targets.map((t) => (
-          <StatusButton key={t} {...props} target={t} />
-        ))}
-        {rules.inTransit && (
-          <Button
-            size="sm"
-            variant="accent"
-            icon={<PackageCheck className="h-4 w-4" />}
-            disabled={!!busyKey}
-            onClick={() => show("received")}
-          >
-            Посылка вернулась
-          </Button>
-        )}
-        <ArchiveButtons rules={rules} busyKey={busyKey} show={show} onUnarchive={onUnarchive} />
+        <PlanButton planKey={plan.primary} props={props} primary />
+        {plan.reject && <PlanButton planKey="status:REJECTED" props={props} />}
+        <MoreMenu groups={groups} busyKey={busyKey} />
       </div>
     );
   }
@@ -137,7 +78,7 @@ export function ActionBar(props: ActionBarProps) {
       className="flex shrink-0 items-center gap-2 border-t border-[var(--line)] bg-[var(--bg-2)] px-4 pt-3"
       style={{ paddingBottom: "calc(12px + var(--safe-bottom, 0px))" }}
     >
-      {rules.primary ? <StatusButton {...props} target={rules.primary} primary full /> : <PayButton busyKey={busyKey} show={show} full />}
+      <PlanButton planKey={plan.primary} props={props} primary full />
       <Button
         size="md"
         variant="surface"

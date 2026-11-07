@@ -34,3 +34,13 @@ export function parseMobileSort(v: string): Sorting {
 export function hasNextPage(rowCount: number): boolean {
   return rowCount >= USERS_PAGE_SIZE;
 }
+
+/** Подпись выбранной сортировки для кнопки на телефоне. */
+export function sortLabel(s: Sorting): string {
+  return MOBILE_SORTS.find((o) => o.value === `${s.sortBy}:${s.sortDir}`)?.label ?? "Сортировка";
+}
+
+/** Подпись под списком: без общего числа от сервера — только сколько загружено. */
+export function shownLabel(count: number, hasMore: boolean): string {
+  return hasMore ? `Показано ${count}` : `Показаны все: ${count}`;
+}
