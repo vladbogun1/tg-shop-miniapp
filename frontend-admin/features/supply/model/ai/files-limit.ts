@@ -49,7 +49,13 @@ export function picturesCounter(onServer: number, queued: number): string {
   return `${onServer + queued} из ${MAX_PICTURES} картинок`;
 }
 
+/** Доля отправленного (0…1) → целые проценты 0…100 (не деньги: шкала полосы загрузки). */
+const WHOLE = 100;
+export function percentOf(sent: number): number {
+  return Math.round(Math.min(1, Math.max(0, sent)) * WHOLE);
+}
+
 /** Доля отправленного → «45 %»; до первого события — «0 %». */
 export function percent(sent: number): string {
-  return `${Math.round(Math.min(1, Math.max(0, sent)) * 100)} %`;
+  return `${percentOf(sent)} %`;
 }

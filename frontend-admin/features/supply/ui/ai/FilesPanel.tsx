@@ -4,7 +4,7 @@ import { Button } from "@shop/ui/admin-button";
 import { Lightbox } from "@shop/ui/overlay";
 import { Camera, FileUp } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { percent, picturesCounter } from "../../model/ai/files-limit";
+import { percent, percentOf, picturesCounter } from "../../model/ai/files-limit";
 import { Thumb } from "./SourceShots";
 import { ACCEPT, MAX_PICTURES, type PendingUpload, type SupplyFiles } from "./use-supply-files";
 
@@ -123,9 +123,9 @@ function PendingTile({ item, onDismiss }: { item: PendingUpload; onDismiss: () =
             aria-label={`Загрузка ${item.name}`}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-valuenow={Math.round(item.sent * 100)}
+            aria-valuenow={percentOf(item.sent)}
           >
-            <div className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-150" style={{ width: `${Math.round(item.sent * 100)}%` }} />
+            <div className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-150" style={{ width: `${percentOf(item.sent)}%` }} />
           </div>
           <span className="tabular-nums text-[var(--text-muted)]">{item.active ? `загружается ${percent(item.sent)}` : "в очереди"}</span>
         </>
