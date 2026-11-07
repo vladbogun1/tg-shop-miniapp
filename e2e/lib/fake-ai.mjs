@@ -7,6 +7,8 @@
  * is read from the prompt itself (the JSON of the card prompt has a key "p<hex>"), and the answer is a card with a
  * new Russian description plus its translations, in a ```json block.
  *
+ * A translation prompt (it has «Строки для перевода») is answered with uk/en for every id it asks about.
+ *
  * What a test drives (control API, /__e2e/*, JSON):
  *   POST /__e2e/mode {mode: "normal"|"bad"|"error", delayMs?, description?}
  *        normal — a good answer; bad — text without JSON (the job ends BAD_ANSWER); error — HTTP 500 (FAILED);
@@ -33,7 +35,28 @@ function promptText(body) {
   return parts.join("\n");
 }
 
+/** The translation prompt (Э5): the strings to translate are the JSON block after «Строки для перевода». */
+function translationAnswer(text) {
+  const tail = text.slice(text.indexOf("Строки для перевода"));
+  const block = /```json\n([\s\S]*?)\n```/.exec(tail)?.[1];
+  let input = {};
+  try {
+    input = JSON.parse(block ?? "{}");
+  } catch {
+    input = {};
+  }
+  const out = {};
+  for (const [id, v] of Object.entries(input)) {
+    const ru = String(v?.ru ?? "");
+    // no ы э ъ ё in the Ukrainian text, or the server check rejects it
+    const uk = "UK: " + ru.replace(/[ыЫ]/g, "и").replace(/[эЭ]/g, "е").replace(/[ёЁ]/g, "е").replace(/[ъЪ]/g, "");
+    out[id] = { ru, uk, en: "EN: " + ru };
+  }
+  return { id: Object.keys(out).join(","), text: "```json\n" + JSON.stringify(out, null, 2) + "\n```" };
+}
+
 function answerFor(text) {
+  if (text.includes("Строки для перевода")) return translationAnswer(text);
   const id = /"(p[0-9a-f]{8,32})"\s*:/.exec(text)?.[1] ?? null;
   const d = state.description;
   const card = {
