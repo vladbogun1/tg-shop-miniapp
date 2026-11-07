@@ -55,6 +55,8 @@ public enum AiError implements ErrorCode {
     FILE_BROKEN("AI_FILE_BROKEN"),
     /** More than 10 pictures for one task. */
     FILES_LIMIT("AI_FILES_LIMIT"),
+    /** An upload that would take the waiting pictures over 10: how many wait and how many the file gives. */
+    FILES_OVER("AI_FILES_OVER"),
     FILE_NOT_FOUND("AI_FILE_NOT_FOUND"),
     /** The files of the task were deleted (kept 7 days) or none were attached. */
     FILES_GONE("AI_FILES_GONE");

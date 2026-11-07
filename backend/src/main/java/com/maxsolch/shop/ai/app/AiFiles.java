@@ -69,7 +69,7 @@ public class AiFiles {
         List<AiImagePrep.Image> images = prep.prepare(content);
         int waiting = files.findByAdminIdAndJobIdIsNullOrderByIdAsc(adminId).size();
         if (waiting + images.size() > MAX_IMAGES) {
-            throw new DomainException.BadRequest(AiError.FILES_LIMIT, MAX_IMAGES);
+            throw new DomainException.BadRequest(AiError.FILES_OVER, MAX_IMAGES, waiting, images.size());
         }
         String uploadId = UUID.randomUUID().toString();
         String label = clean(name);

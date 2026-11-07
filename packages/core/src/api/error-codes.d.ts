@@ -19,6 +19,7 @@ export type ServerErrorCode =
   | "AI_FAILED"
   | "AI_FILES_GONE"
   | "AI_FILES_LIMIT"
+  | "AI_FILES_OVER"
   | "AI_FILE_BROKEN"
   | "AI_FILE_NOT_FOUND"
   | "AI_FILE_TOO_BIG"
