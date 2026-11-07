@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -97,31 +98,49 @@ class AiJobsIT extends AbstractMysqlIT {
         return jdbc.queryForObject("select status from ai_jobs where id = ?", String.class, id);
     }
 
+    /**
+     * Without the claim lock, two claims at the same moment: no job twice, none lost, and neither claim killed as a
+     * deadlock. Twenty rounds, both started together: under repeatable read one round in a few ended in a deadlock.
+     */
     @Test
     void twoExecutorsNeverTakeTheSameJob() throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            for (int round = 0; round < 20; round++) {
+                claimTogether(pool);
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    private void claimTogether(ExecutorService pool) throws Exception {
         List<Long> ids = new ArrayList<>();
         for (int i = 0; i < 6; i++) {
             ids.add(queue(subject(), 71L, null).getId());
         }
-        ExecutorService pool = Executors.newFixedThreadPool(2);
-        try {
-            Callable<List<Long>> a = () -> lifecycle.claimNext("it-w1", 6).stream().map(c -> c.job().getId()).toList();
-            Callable<List<Long>> b = () -> lifecycle.claimNext("it-w2", 6).stream().map(c -> c.job().getId()).toList();
-            Future<List<Long>> fa = pool.submit(a);
-            Future<List<Long>> fb = pool.submit(b);
-            List<Long> first = fa.get();
-            List<Long> second = fb.get();
+        CountDownLatch go = new CountDownLatch(1);
+        Callable<List<Long>> a = () -> {
+            go.await();
+            return lifecycle.claimNext("it-w1", 6).stream().map(c -> c.job().getId()).toList();
+        };
+        Callable<List<Long>> b = () -> {
+            go.await();
+            return lifecycle.claimNext("it-w2", 6).stream().map(c -> c.job().getId()).toList();
+        };
+        Future<List<Long>> fa = pool.submit(a);
+        Future<List<Long>> fb = pool.submit(b);
+        go.countDown();
+        List<Long> first = fa.get();
+        List<Long> second = fb.get();
 
-            // one executor may take all six and the other none: AssertJ refuses an empty list here, so intersect by hand
-            assertThat(first.stream().filter(second::contains).toList()).isEmpty();
-            List<Long> all = new ArrayList<>(first);
-            all.addAll(second);
-            // whatever was queued before this test was cancelled; the six of this test are all running, once each
-            assertThat(all).containsExactlyInAnyOrderElementsOf(ids);
-            assertThat(status(ids.get(0))).isEqualTo("RUNNING");
-        } finally {
-            pool.shutdownNow();
-        }
+        // one executor may take all six and the other none: AssertJ refuses an empty list here, so intersect by hand
+        assertThat(first.stream().filter(second::contains).toList()).isEmpty();
+        List<Long> all = new ArrayList<>(first);
+        all.addAll(second);
+        // whatever was queued before this test was cancelled; the six of this round are all running, once each
+        assertThat(all).containsExactlyInAnyOrderElementsOf(ids);
+        assertThat(status(ids.get(0))).isEqualTo("RUNNING");
     }
 
     @Test

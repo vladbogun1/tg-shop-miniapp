@@ -119,7 +119,9 @@ import static org.assertj.core.api.Assertions.assertThat;
         // a fake token and chat: the notifiers go all the way to the gateway, which is a fake below
         "app.telegram.bot-token=123456:IT-FAKE-TOKEN",
         "app.telegram.bot-username=it_bot",
-        "app.telegram.notify-chat-id=-1001234567890"
+        "app.telegram.notify-chat-id=-1001234567890",
+        // its context stays cached while the AI tests run on the same database: a live worker would take their jobs
+        "app.ai.worker-enabled=false"
 })
 @AutoConfigureMockMvc
 class ClientEndpointsLazyLoadingIT {

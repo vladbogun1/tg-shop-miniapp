@@ -12,6 +12,7 @@ import com.maxsolch.shop.ai.infra.AiJobRepository;
 import com.maxsolch.shop.ai.infra.AiUsageQueries;
 import com.maxsolch.shop.platform.error.DomainException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -82,8 +83,13 @@ public class AiJobLifecycle {
     /**
      * Takes up to {@code max} queued jobs for {@code worker}; the caller holds the claim lock, so the cap on running
      * jobs holds across instances. The ids come back only after the commit.
+     * <p>
+     * Read committed, because the claim must stay safe without that lock too: under repeatable read the
+     * {@code for update skip locked} also takes next-key locks on {@code ix_ai_jobs_status} up to its supremum, and
+     * two claims that then move their rows to RUNNING each wait for the other's gap lock, which InnoDB settles by
+     * killing one of them as a deadlock. Read committed takes no gap locks, so skip locked only skips.
      */
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public List<Claimed> claimNext(String worker, int max) {
         if (max <= 0 || !policy.killSwitchOn()) {
             return List.of();
