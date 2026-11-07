@@ -86,6 +86,8 @@ describe("безопасное применение", () => {
   it("считает карточки, поля и возвращённое", () => {
     const a = (changed: string[], notSafe: string[]) => ({ id: 1, jobId: 1, subjectId: "p", changed, notSafe, undoUntil: "" });
     expect(safeTotals([a(["a", "b"], []), a(["c"], ["title"]), a([], [])])).toEqual({ cards: 2, fields: 3, reverted: 1 });
+    // Статус, уверенность и журнал карточки запись меняет попутно — это не поля.
+    expect(safeTotals([a(["description", "status", "confidence", "meta"], []), a(["meta"], [])])).toEqual({ cards: 1, fields: 1, reverted: 0 });
   });
 });
 

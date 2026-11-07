@@ -8,7 +8,8 @@
  * (принято / с правками / отклонено / под замком) уходят вызывающему: встроенный ИИ отчитывается по задаче, ручной
  * путь ставит метку MANUAL.
  */
-import { outcomeCounts, type OutcomeCounts, type ReviewField } from "@/features/ai";
+import { aiKeys, outcomeCounts, type OutcomeCounts, type ReviewField } from "@/features/ai";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { toProductSel } from "../../model/ai-card";
 import type { PublishProblem } from "../../model/completion";
@@ -46,24 +47,32 @@ export interface ReviewApplyArgs {
 
 export function useCardReviewApply(a: ReviewApplyArgs) {
   const photos = usePhotoImport();
+  const qc = useQueryClient();
   const [problem, setProblem] = useState<PublishProblem | null>(null);
   const [price, setPrice] = useState("");
   const [applied, setApplied] = useState(false);
   const counts = useRef<OutcomeCounts>({ applied: 0, rejected: 0, edited: 0, ignoredLocked: 0 });
   const photoJobs = useRef<PhotoJob[]>([]);
+  // Запись журнала применений: фото и «Сохранить цену и выложить» после записи — её шаги (отменятся вместе с ней).
+  const applyId = useRef<number | null>(null);
   const wantsPublish = a.item.active !== true && a.publish;
 
   const finish = () => {
     setApplied(true);
     a.onApplied(counts.current);
-    void photos.run(photoJobs.current);
+    const id = applyId.current;
+    // Фото — шаги того же применения: когда догрузятся, плашка «Отменить применение» перечитает, что вернётся.
+    void photos.run(photoJobs.current.map((j) => ({ ...j, applyId: id }))).then(() => {
+      if (id !== null) void qc.invalidateQueries({ queryKey: aiKeys.applyLiveAll() });
+    });
   };
   const save = useCompletionSave({
     onClose: (r) => {
       if (!photoJobs.current.length) a.onClose?.(r);
     },
     onProblem: setProblem,
-    onSaved: (published) => {
+    onSaved: (published, id) => {
+      applyId.current = id;
       finish();
       a.onSaved?.(published);
     },
@@ -81,6 +90,7 @@ export function useCardReviewApply(a: ReviewApplyArgs) {
     counts.current = outcomeCounts(a.rows, a.selected);
     photoJobs.current = sel.photos.map((url) => ({ productId: a.item.id, title: a.item.title, url }));
     setProblem(null);
+    applyId.current = null;
     if (payload) save.save.mutate({ payload, publish: wantsPublish, item: a.item, replaceSpecs: a.replace, jobId: a.jobId });
     else if (photoJobs.current.length) finish();
   }
@@ -93,7 +103,7 @@ export function useCardReviewApply(a: ReviewApplyArgs) {
     price,
     setPrice,
     priceMinor: minor,
-    savePrice: () => minor !== null && save.savePrice.mutate({ item: a.item, priceMinor: minor }),
+    savePrice: () => minor !== null && save.savePrice.mutate({ item: a.item, priceMinor: minor, applyId: applyId.current }),
     applied,
     sel,
     sure,

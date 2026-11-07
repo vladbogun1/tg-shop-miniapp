@@ -13,14 +13,13 @@ import { batchApi, type AiBatch, type AiUndoResult } from "./api-batch";
 import type { AiFeature } from "./api";
 import { aiKeys } from "./keys";
 import { isOpen } from "./model/batch-view";
+import { undoneText } from "./model/undo-fields";
 import { JOB_POLL_HIDDEN_MS, JOB_POLL_MS } from "./model/job-state";
 
 const AFTER_BATCH = [aiKeys.batches(), aiKeys.active(), aiKeys.summary(), aiKeys.tasksAll(), aiKeys.widget()];
 /** После отмены применения задача снова ждёт проверки: и пакеты, и сама задача, и её «живое» применение. */
 const AFTER_UNDO = [...AFTER_BATCH, aiKeys.jobsAll(), aiKeys.applyLiveAll()];
 
-const undoneText = (r: AiUndoResult) =>
-  `Применение отменено: возвращено полей — ${r.reverted}${r.skipped > 0 ? `, оставлено (правили вручную) — ${r.skipped}` : ""}`;
 
 /** Пакеты, о которых полосе есть что сказать. Опрос частый, пока хоть один идёт. */
 export function useAiBatches() {
@@ -111,13 +110,8 @@ export function useApplyLive(jobId: number | null) {
 export function useUndoApplications() {
   return useApiMutation({
     mutationFn: async (ids: readonly number[]): Promise<AiUndoResult> => {
-      const sum: AiUndoResult = { applications: 0, reverted: 0, skipped: 0 };
-      for (const id of ids) {
-        const r = await batchApi.undoOne(id);
-        sum.applications += r.applications;
-        sum.reverted += r.reverted;
-        sum.skipped += r.skipped;
-      }
+      let sum: AiUndoResult = { applications: 0, reverted: 0, skipped: 0, revertedFields: [], skippedFields: [] };
+      for (const id of ids) sum = plusUndo(sum, await batchApi.undoOne(id));
       return sum;
     },
     invalidate: AFTER_UNDO,
@@ -126,12 +120,25 @@ export function useUndoApplications() {
   });
 }
 
+const distinct = (a: readonly string[], b: readonly string[]) => [...new Set([...a, ...b])];
+
+function plusUndo(a: AiUndoResult, b: AiUndoResult): AiUndoResult {
+  return {
+    applications: a.applications + b.applications,
+    reverted: a.reverted + b.reverted,
+    skipped: a.skipped + b.skipped,
+    revertedFields: distinct(a.revertedFields, b.revertedFields),
+    skippedFields: distinct(a.skippedFields, b.skippedFields),
+  };
+}
+
 /** Отменить одно применение: поля вернутся, задача снова на проверке. */
-export function useUndoApplication() {
+/** `toast: false` — итог показывает сам экран (`ApplyUndoReport`), тост бы его повторил. */
+export function useUndoApplication(opts: { toast?: boolean } = {}) {
   return useApiMutation({
     mutationFn: (applyId: number) => batchApi.undoOne(applyId),
     invalidate: AFTER_UNDO,
-    success: undoneText,
+    success: opts.toast === false ? undefined : undoneText,
     errorFallback: "Не удалось отменить применение",
   });
 }

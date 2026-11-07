@@ -7,6 +7,7 @@
  */
 import {
   ApplyUndoBar,
+  ApplyUndoReport,
   AiJobFailure,
   AiJobProgress,
   AiReview,
@@ -19,6 +20,7 @@ import {
   useJobOutcome,
   useRetryJob,
   type AiJob,
+  type AiUndoResult,
   type OutcomeCounts,
 } from "@/features/ai";
 import { CenterSpinner } from "@/components/ui/Spinner";
@@ -98,6 +100,7 @@ function ReviewBody(p: { job: AiJob; item: Subject; schema: Schema; onManual: ()
   const [appliedNow, setAppliedNow] = useState(false);
   // После отмены применения ревью начинается заново: новый ключ — свежий выбор и правки.
   const [round, setRound] = useState(0);
+  const [undone, setUndone] = useState<AiUndoResult | null>(null);
   const [dialog, setDialog] = useState<"answer" | "prompt" | null>(null);
   const { mostly, edited, finished, doneText } = statusOf(job, data, appliedNow);
   // Ответ, вставленный из ChatGPT вручную: повторять встроенным ИИ нечего, его вставляют заново.
@@ -122,14 +125,15 @@ function ReviewBody(p: { job: AiJob; item: Subject; schema: Schema; onManual: ()
     <>
       <ApplyUndoBar
         jobId={job.id}
-        note={UNDO_NOTE}
-        onUndone={() => {
+        onUndone={(r) => {
           // Значения карточки на сервере вернулись: ревью заново — по свежей выгрузке, а не по кэшу после записи.
           invalidateCards(qc);
           setAppliedNow(false);
-          setRound((r) => r + 1);
+          setRound((n) => n + 1);
+          setUndone(r);
         }}
       />
+      <ApplyUndoReport result={undone} onClose={() => setUndone(null)} />
       <ReviewNotices
         problems={data.problems}
         edited={edited}
@@ -157,6 +161,7 @@ function ReviewBody(p: { job: AiJob; item: Subject; schema: Schema; onManual: ()
           jobId={() => Promise.resolve(job.id)}
           onApplied={(o) => {
             setAppliedNow(true);
+            setUndone(null);
             report(o);
             void live.refetch();
           }}
@@ -169,9 +174,6 @@ function ReviewBody(p: { job: AiJob; item: Subject; schema: Schema; onManual: ()
     </>
   );
 }
-
-/** Что вернёт отмена применения (поля журнала у карточки) и что нет. */
-const UNDO_NOTE = "Вернутся характеристики (и удалённые заменой), название, описание, категория и бренд; фото, переводы, статус и витрина останутся как есть.";
 
 /** Что показать над ревью и в подвале: заметно ли изменилась карточка, применён ли результат уже. */
 function statusOf(job: AiJob, data: ReturnType<typeof useCardAiReview>, appliedNow: boolean) {

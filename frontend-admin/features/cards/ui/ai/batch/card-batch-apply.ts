@@ -108,7 +108,7 @@ export async function acceptRow(row: AiBatchRow, opts: { schema: CardSchema | un
   return {
     applyId: applied.id,
     title,
-    photos: defaultPhotos(plan.review).map((url) => ({ productId, title, url })),
+    photos: defaultPhotos(plan.review).map((url) => ({ productId, title, url, applyId: applied.id })),
     notes: notesOf(value, job.id, productId),
   };
 }

@@ -4,6 +4,8 @@ export interface PhotoJob {
   productId: string;
   title: string;
   url: string;
+  /** Фото ответа ИИ: запись журнала применений — сервер допишет фото в неё, «Отменить применение» его уберёт. */
+  applyId?: number | null;
 }
 
 /** Jobs of one product run one after another (keeps their order); different products run side by side. */

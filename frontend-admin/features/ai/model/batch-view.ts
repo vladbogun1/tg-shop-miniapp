@@ -4,6 +4,7 @@
  */
 import { toPercent } from "@shop/core/percent";
 import { uahFromMinor } from "./format";
+import { isCardFieldKey } from "./undo-fields";
 import type { AiBatch, AiBatchEstimate, AiBatchPause, AiSafeApplied } from "../api-batch";
 
 const MIN_MS = 60_000;
@@ -126,11 +127,15 @@ export interface SafeTotals {
   reverted: number;
 }
 
-/** Точные числа для окна «Принять безопасное»: сколько карточек и полей записано и что вернули назад. */
+/**
+ * Точные числа для окна «Принять безопасное»: сколько карточек и полей записано и что вернули назад. Статус,
+ * уверенность и журнал карточки, которые запись меняет попутно, полями не считаются (`isCardFieldKey`).
+ */
 export function safeTotals(applied: readonly AiSafeApplied[]): SafeTotals {
+  const fields = (a: AiSafeApplied) => a.changed.filter(isCardFieldKey).length;
   return {
-    cards: applied.filter((a) => a.changed.length > 0).length,
-    fields: applied.reduce((s, a) => s + a.changed.length, 0),
+    cards: applied.filter((a) => fields(a) > 0).length,
+    fields: applied.reduce((s, a) => s + fields(a), 0),
     reverted: applied.filter((a) => a.notSafe.length > 0).length,
   };
 }

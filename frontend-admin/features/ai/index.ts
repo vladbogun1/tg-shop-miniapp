@@ -77,4 +77,5 @@ export { isOpen as isBatchOpen } from "./model/batch-view";
 export { isSafeKey, manualSubjects } from "./model/batch-view";
 export { batchReport, type BatchReport, type ReportLine as BatchReportLine } from "./model/batch-report";
 export type { FeedAccepted } from "./ui/batch/QuickReviewFeed";
-export { ApplyUndoBar } from "./ui/ApplyUndoBar";
+export { ApplyUndoBar, ApplyUndoReport } from "./ui/ApplyUndoBar";
+export type { AiUndoResult } from "./api-batch";

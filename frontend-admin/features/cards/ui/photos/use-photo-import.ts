@@ -26,11 +26,11 @@ const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function importWithOneRetry(j: PhotoJob) {
   try {
-    return await cardsApi.importPhoto(j.productId, j.url);
+    return await cardsApi.importPhoto(j.productId, j.url, j.applyId);
   } catch (e) {
     if (!isTransientError(e)) throw e;
     await pause(AUTO_RETRY_DELAY_MS);
-    return cardsApi.importPhoto(j.productId, j.url);
+    return cardsApi.importPhoto(j.productId, j.url, j.applyId);
   }
 }
 

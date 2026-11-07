@@ -34,8 +34,14 @@ export const cardsApi = {
   stats: (): Promise<CardStats> => apiGet<CardStats>("/api/admin/cards/stats"),
 
   /** Скачать фото по ссылке (картинка или страница товара), вырезать товар на #1a1a1a в квадрат 1600 и добавить товару последним. */
-  importPhoto: (productId: string, url: string): Promise<PhotoImportResult> =>
-    apiPost<PhotoImportResult>(`/api/admin/products/${productId}/photos/import`, { url } satisfies Schemas["PhotoImportRequest"], undefined, PHOTO_IMPORT_TIMEOUT_MS),
+  /** `applyId` — фото ответа ИИ: шаг того применения, «Отменить применение» его уберёт. */
+  importPhoto: (productId: string, url: string, applyId?: number | null): Promise<PhotoImportResult> =>
+    apiPost<PhotoImportResult>(
+      `/api/admin/products/${productId}/photos/import`,
+      { url, ...(applyId != null ? { applyId } : {}) } satisfies Schemas["PhotoImportRequest"],
+      undefined,
+      PHOTO_IMPORT_TIMEOUT_MS,
+    ),
 
   async export(status: CardExportStatus = "all", ids?: string[]): Promise<CardItem[]> {
     const qs = new URLSearchParams({ status });
@@ -68,7 +74,9 @@ export const cardsApi = {
     apiPatch(`/api/admin/products/${productId}/card-status`, { status } satisfies Schemas["CardStatusRequest"]),
 
   /** Storefront visibility (PATCH /api/admin/products/{id}/active). */
-  setActive: (productId: string, active: boolean): Promise<unknown> => apiPatch(`/api/admin/products/${productId}/active`, { active }),
+  /** `applyId` — выкладка как шаг применения ответа ИИ («Отменить применение» снова спрячет товар). */
+  setActive: (productId: string, active: boolean, applyId?: number | null): Promise<unknown> =>
+    apiPatch(`/api/admin/products/${productId}/active${applyId != null ? `?applyId=${applyId}` : ""}`, { active }),
 
   /**
    * Sets the price of a product from the completion modal. PATCH /api/admin/products/{id} is a
