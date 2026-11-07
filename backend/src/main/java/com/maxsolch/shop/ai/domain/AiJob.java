@@ -186,6 +186,30 @@ public class AiJob {
         return j;
     }
 
+    /**
+     * A mark that the admin did a result by hand (the manual way through ChatGPT) and applied it: not a task of the AI,
+     * no money, already finished with the outcome APPLIED. It exists so the metrics can tell the share of the built-in
+     * way from the manual one. The reason goes to {@code error_code}.
+     */
+    public static AiJob manualMark(AiFeature feature, long adminId, String subjectType, String subjectId,
+                                   ManualReason reason, Instant now) {
+        AiJob j = new AiJob();
+        j.feature = feature;
+        j.status = JobStatus.DONE;
+        j.adminId = adminId;
+        j.subjectType = subjectType;
+        j.subjectId = subjectId;
+        j.mode = JobMode.NORMAL;
+        j.effort = "none";
+        j.path = JobPath.MANUAL;
+        j.errorCode = reason.name();
+        j.outcome = "APPLIED";
+        j.outcomeAt = now;
+        j.createdAt = now;
+        j.finishedAt = now;
+        return j;
+    }
+
     /** A worker takes the job: QUEUED → RUNNING, one more attempt, a deadline for the whole run. */
     public void claim(String worker, Instant now, Duration deadline) {
         moveTo(JobStatus.RUNNING);

@@ -32,7 +32,9 @@ public enum AiError implements ErrorCode {
     /** The prompt of the job is gone (kept 60 days). */
     PROMPT_GONE("AI_PROMPT_GONE"),
     /** The object of a task (a product) is gone or never existed. */
-    SUBJECT_NOT_FOUND("AI_SUBJECT_NOT_FOUND");
+    SUBJECT_NOT_FOUND("AI_SUBJECT_NOT_FOUND"),
+    /** An admin without the finance right stops only the tasks he started himself. */
+    NOT_YOUR_JOB("AI_NOT_YOUR_JOB");
 
     private final String code;
 
