@@ -1483,6 +1483,24 @@
         ],
         "type" : "object"
       },
+      "AiAiSupplyJobsStart" : {
+        "properties" : {
+          "fileIds" : {
+            "items" : {
+              "format" : "int64",
+              "type" : "integer"
+            },
+            "type" : "array"
+          },
+          "prompt" : {
+            "type" : "string"
+          },
+          "promptVersion" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "AiAiTaskListCounts" : {
         "properties" : {
           "active" : {
@@ -6589,6 +6607,45 @@
           "publishedAt",
           "rating",
           "text"
+        ],
+        "type" : "object"
+      },
+      "FileDto" : {
+        "properties" : {
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "mime" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "page" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "uploadId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "expiresAt",
+          "id",
+          "mime",
+          "name",
+          "page",
+          "size",
+          "uploadId"
         ],
         "type" : "object"
       },
@@ -17227,6 +17284,148 @@
         ]
       }
     },
+    "/api/admin/ai/files" : {
+      "get" : {
+        "operationId" : "AdminAiFilesController_waiting",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/FileDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "My uploaded pictures that no task has taken yet",
+        "tags" : [
+          "Admin AI Files"
+        ]
+      },
+      "post" : {
+        "operationId" : "AdminAiFilesController_upload",
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "properties" : {
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  }
+                },
+                "required" : [
+                  "file"
+                ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/FileDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Upload one file (up to 10 MB; JPEG, PNG, WEBP or PDF of up to 10 pages — the type is read from the bytes). Answers with its pictures: a PDF gives one per page. At most 10 pictures wait per admin. Stored 7 days, re-encoded at 1600 px without metadata",
+        "tags" : [
+          "Admin AI Files"
+        ]
+      }
+    },
+    "/api/admin/ai/files/{id}" : {
+      "delete" : {
+        "operationId" : "AdminAiFilesController_delete",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Delete a picture (a PDF page deletes the whole PDF)",
+        "tags" : [
+          "Admin AI Files"
+        ]
+      }
+    },
+    "/api/admin/ai/files/{id}/content" : {
+      "get" : {
+        "operationId" : "AdminAiFilesController_content",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "format" : "byte",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "The picture itself (my own files only)",
+        "tags" : [
+          "Admin AI Files"
+        ]
+      }
+    },
     "/api/admin/ai/jobs" : {
       "get" : {
         "operationId" : "AdminAiTasksController_list",
@@ -17784,6 +17983,52 @@
         "summary" : "For the chip and the entry buttons, no money: key set, AI and features on, a used-up limit, running / waiting for review / problem counts",
         "tags" : [
           "Admin AI"
+        ]
+      }
+    },
+    "/api/admin/ai/supply-jobs" : {
+      "post" : {
+        "operationId" : "AdminAiSupplyController_start",
+        "parameters" : [
+          {
+            "in" : "header",
+            "name" : "Idempotency-Key",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AiAiSupplyJobsStart"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AiJobDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Read my uploaded pictures (1 to 10, ids from POST /files) with the AI: one task, low effort, no web search; the answer is the invoice json of the manual prompt. Only for an admin with the finance right (the answer holds purchase prices). 409 AI_JOB_ACTIVE for the same set, 409 AI_FILES_GONE for expired pictures, 404 AI_FILE_NOT_FOUND for a foreign or used one; the same Idempotency-Key returns the first task",
+        "tags" : [
+          "Admin Supply AI"
         ]
       }
     },
@@ -29437,6 +29682,10 @@
       "name" : "Admin AI settings"
     },
     {
+      "description" : "Upload documents for the supply reader (JPEG, PNG, WEBP, PDF), preview, delete",
+      "name" : "Admin AI Files"
+    },
+    {
       "description" : "Canned order-chat replies with order placeholders",
       "name" : "Admin Reply Templates"
     },
@@ -29487,6 +29736,10 @@
     {
       "description" : "Public promo preview",
       "name" : "Public"
+    },
+    {
+      "description" : "Read uploaded invoice pictures with the built-in AI",
+      "name" : "Admin Supply AI"
     },
     {
       "description" : "Start the AI translation of rows of the translations screen",

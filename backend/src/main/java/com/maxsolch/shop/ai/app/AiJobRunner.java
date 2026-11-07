@@ -44,13 +44,14 @@ public class AiJobRunner {
     private final AiSpendWatch watch;
     private final AiBatchRunner batches;
     private final AiOutcome outcomes;
+    private final AiJobImages images;
     private final Map<AiFeature, ResultWriter> writers = new EnumMap<>(AiFeature.class);
     private final DomainEvents events;
     private final Clock clock;
 
     public AiJobRunner(AiAgent agent, AiJobLifecycle lifecycle, AiLimits limits, AiPolicy policy, AiEstimate estimate,
                        AiAnswerCheck check, AiUsageQueries usage, AiAlertStore alerts, AiSpendWatch watch,
-                       AiBatchRunner batches, AiOutcome outcomes, List<ResultWriter> resultWriters, DomainEvents events,
+                       AiBatchRunner batches, AiOutcome outcomes, AiJobImages images, List<ResultWriter> resultWriters, DomainEvents events,
                        Clock clock) {
         this.agent = agent;
         this.lifecycle = lifecycle;
@@ -63,6 +64,7 @@ public class AiJobRunner {
         this.watch = watch;
         this.batches = batches;
         this.outcomes = outcomes;
+        this.images = images;
         resultWriters.forEach(w -> this.writers.put(w.feature(), w));
         this.events = events;
         this.clock = clock;
@@ -72,9 +74,12 @@ public class AiJobRunner {
         AiJob job = claimed.job();
         long id = job.getId();
         try {
+            var pictures = images.of(job);
             limits.reserve(job);
+            // for an invoice «researchItems» counts pictures (the price grows with them): no web research there
+            int research = pictures.isEmpty() ? job.getResearchItems() : 0;
             AiAgent.Ask ask = new AiAgent.Ask(AiScope.job(job.getFeature(), id, job.getAdminId()), claimed.prompt(),
-                    job.getEffort(), job.getResearchItems(), () -> beforeTurn(job));
+                    job.getEffort(), research, () -> beforeTurn(job), pictures);
             AiAgent.Answer answer = agent.ask(ask);
             JobStatus verdict = check.check(answer.text(), 1);
             ResultWriter.Written written = verdict == JobStatus.DONE ? write(job, claimed.prompt(), answer.text()) : null;

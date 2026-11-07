@@ -41,6 +41,12 @@ public class AiEstimate {
         long p90 = history ? percentile(costs, 90) : bench[1];
         int factor = mode == JobMode.THOROUGH ? 2 : 1;
         int n = Math.max(1, items);
+        if (feature == AiFeature.SUPPLY_EXTRACT) {
+            // one job = one invoice of n pictures: every picture is about 2300 input tokens and a few more lines to write,
+            // so the price grows with n; the history of whole jobs does not (it mixes jobs of 1 and of 10 pictures)
+            return new Estimate(Math.max(p50, bench[0] * n) * factor, Math.max(p90, bench[1] * n) * factor,
+                    seconds(feature) * factor, history);
+        }
         return new Estimate(p50 * factor * n, p90 * factor * n, seconds(feature) * factor * n, history);
     }
 
@@ -59,7 +65,7 @@ public class AiEstimate {
         return switch (feature) {
             case CARD, COMPLETION -> new long[]{4_800, 9_000};
             case TRANSLATION -> new long[]{3_000, 6_000};
-            case SUPPLY_EXTRACT -> new long[]{1_900, 4_000};
+            case SUPPLY_EXTRACT -> new long[]{1_000, 2_000}; // per picture (see of())
             case SUPPLY_MATCH -> new long[]{1_000, 2_000};
             case SEARCH_TEST -> new long[]{0, 0};
         };

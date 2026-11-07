@@ -16,5 +16,10 @@ public enum AiFeature {
     /** Matching invoice lines with the catalog. */
     SUPPLY_MATCH,
     /** «Check search» on the AI settings screen. */
-    SEARCH_TEST
+    SEARCH_TEST;
+
+    /** Prices and quantities of a supplier invoice: only for an admin with the finance right. */
+    public boolean purchaseData() {
+        return this == SUPPLY_EXTRACT || this == SUPPLY_MATCH;
+    }
 }

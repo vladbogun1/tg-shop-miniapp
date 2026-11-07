@@ -21,10 +21,17 @@ public interface ChatModel {
     Reply send(Request request);
 
     /** One block of a message. {@link Other} keeps blocks we do not read (thinking) to send them back unchanged. */
-    sealed interface Block permits Text, ToolCall, ToolResult, Other {
+    sealed interface Block permits Text, ImagePart, ToolCall, ToolResult, Other {
     }
 
     record Text(String text) implements Block {
+    }
+
+    /**
+     * A picture the model must look at (an invoice, a screenshot of an order): the bytes of a JPEG or a PNG. A model
+     * that cannot see images would answer without it, so the caller checks that before asking.
+     */
+    record ImagePart(String mediaType, byte[] data) implements Block {
     }
 
     record ToolCall(String id, String name, Map<String, Object> input) implements Block {
@@ -45,6 +52,16 @@ public interface ChatModel {
 
         public static Message user(String text) {
             return new Message("user", List.of(new Text(text)));
+        }
+
+        /** The pictures first, then the question about them (the order the provider recommends). */
+        public static Message user(List<ImagePart> images, String text) {
+            if (images.isEmpty()) {
+                return user(text);
+            }
+            List<Block> blocks = new java.util.ArrayList<>(images);
+            blocks.add(new Text(text));
+            return new Message("user", List.copyOf(blocks));
         }
 
         public static Message assistant(List<Block> content) {

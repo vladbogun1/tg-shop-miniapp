@@ -7,6 +7,7 @@ import com.maxsolch.shop.ai.domain.AiMoney;
 import com.maxsolch.shop.ai.domain.JobMode;
 import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.platform.error.PlatformError;
 import com.maxsolch.shop.platform.security.AdminAccess;
 import com.maxsolch.shop.platform.web.CurrentActor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -76,6 +77,7 @@ public class AiJobs {
         long adminId = actor.userId();
         boolean finance = access.canSeeFinance(adminId);
         validate(req, idemKey);
+        refuseWithoutFinance(req.feature(), adminId);
         if (idemKey != null) {
             var same = reads.byKey(adminId, idemKey, finance);
             if (same.isPresent()) {
@@ -128,6 +130,7 @@ public class AiJobs {
         boolean finance = access.canSeeFinance(adminId);
         AiJobReads.Source src = reads.source(id).orElseThrow(() -> new DomainException.NotFound(AiError.JOB_NOT_FOUND));
         AiJob old = src.job();
+        refuseWithoutFinance(old.getFeature(), adminId);
         if (old.getStatus().active()) {
             throw new DomainException.Conflict(AiError.BAD_STATE);
         }
@@ -166,6 +169,13 @@ public class AiJobs {
         int rate = policy.rateMilli();
         return new EstimateDto(e.seconds(), e.fromHistory(), AiMoney.costMinor(e.p50MicroUsd(), rate),
                 AiMoney.costMinor(e.p90MicroUsd(), rate));
+    }
+
+    /** An invoice is purchase data: starting its reading is for an admin who may see purchase prices. */
+    private void refuseWithoutFinance(AiFeature feature, long adminId) {
+        if (feature.purchaseData() && !access.canSeeFinance(adminId)) {
+            throw new DomainException.Forbidden(PlatformError.FINANCE_ACCESS_DENIED);
+        }
     }
 
     private AiJobDto start(AiJob.Spec spec, String prompt, boolean finance) {

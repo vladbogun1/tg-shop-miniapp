@@ -127,6 +127,12 @@ public class MiniMaxChat implements ChatModel {
         ObjectNode n = mapper.createObjectNode();
         switch (b) {
             case Text t -> n.put("type", "text").put("text", t.text());
+            case ImagePart i -> {
+                n.put("type", "image");
+                ObjectNode src = n.putObject("source");
+                src.put("type", "base64").put("media_type", i.mediaType());
+                src.put("data", java.util.Base64.getEncoder().encodeToString(i.data()));
+            }
             case ToolCall c -> {
                 n.put("type", "tool_use").put("id", c.id()).put("name", c.name());
                 n.set("input", mapper.valueToTree(c.input() == null ? Map.of() : c.input()));

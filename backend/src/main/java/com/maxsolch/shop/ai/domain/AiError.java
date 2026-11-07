@@ -44,7 +44,20 @@ public enum AiError implements ErrorCode {
     /** The 24 hours of the undo are over, or it was undone already. */
     UNDO_CLOSED("AI_UNDO_CLOSED"),
     /** The result is not eligible for the safe acceptance (no search, no source, already decided). */
-    NOT_SAFE("AI_NOT_SAFE");
+    NOT_SAFE("AI_NOT_SAFE"),
+    /** A file that is not a JPEG, PNG, WEBP or PDF (read from its bytes, not from its name). */
+    FILE_TYPE("AI_FILE_TYPE"),
+    /** A file over 10 MB. */
+    FILE_TOO_BIG("AI_FILE_TOO_BIG"),
+    /** A PDF with more than 10 pages. */
+    PDF_PAGES("AI_PDF_PAGES"),
+    /** A file that cannot be read (broken, password-protected, absurd size). */
+    FILE_BROKEN("AI_FILE_BROKEN"),
+    /** More than 10 pictures for one task. */
+    FILES_LIMIT("AI_FILES_LIMIT"),
+    FILE_NOT_FOUND("AI_FILE_NOT_FOUND"),
+    /** The files of the task were deleted (kept 7 days) or none were attached. */
+    FILES_GONE("AI_FILES_GONE");
 
     private final String code;
 

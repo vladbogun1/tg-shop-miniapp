@@ -42,10 +42,15 @@ public class AiAgent {
     /**
      * @param researchItems how many products the prompt is about (scales the search budget); 0 = no tools
      */
-    public record Ask(AiScope scope, String prompt, String effort, int researchItems, Gate gate) {
+    public record Ask(AiScope scope, String prompt, String effort, int researchItems, Gate gate,
+                      List<ChatModel.ImagePart> images) {
 
         public Ask(AiScope scope, String prompt, String effort, int researchItems) {
-            this(scope, prompt, effort, researchItems, Gate.OPEN);
+            this(scope, prompt, effort, researchItems, Gate.OPEN, List.of());
+        }
+
+        public Ask(AiScope scope, String prompt, String effort, int researchItems, Gate gate) {
+            this(scope, prompt, effort, researchItems, gate, List.of());
         }
     }
 
@@ -89,7 +94,7 @@ public class AiAgent {
         }
         long t0 = clock.millis();
         Run run = new Run(ask);
-        String text = ask.researchItems() > 0 ? research(run) : run.call(List.of(Message.user(ask.prompt())), false)
+        String text = ask.researchItems() > 0 ? research(run) : run.call(List.of(Message.user(ask.images(), ask.prompt())), false)
                 .text();
         boolean repaired = false;
         String broken = ask.prompt().contains("```json") ? jsonProblem(text) : null;

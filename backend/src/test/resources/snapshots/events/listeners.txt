@@ -21,6 +21,7 @@ CatalogFileCleanup.onFilesDropped(CatalogFilesDropped) phase=AFTER_COMMIT fallba
 CatalogTranslationListener.onTranslationsChanged(TranslationsChanged) phase=AFTER_COMMIT fallback=true
 HoldsCacheFlush.on(HoldsChanged) phase=AFTER_COMMIT fallback=true
 ImageStorageService.ensureBucket(ApplicationReadyEvent) immediately
+MinioAiFileObjects.onReady(ApplicationReadyEvent) immediately
 NovaPoshtaSyncService.onStartup(ApplicationReadyEvent) immediately
 OrderNotificationListener.onCancelRequestResolved(CancelRequestResolved) phase=AFTER_COMMIT fallback=true
 OrderNotificationListener.onCancelRequested(CancelRequested) phase=AFTER_COMMIT fallback=true

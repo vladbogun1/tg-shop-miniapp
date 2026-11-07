@@ -205,4 +205,24 @@ class AiJobsTest {
         assertThatThrownBy(() -> jobs.retry(8L)).isInstanceOfSatisfying(DomainException.class,
                 e -> assertThat(e.errorCode()).isEqualTo(AiError.BAD_STATE));
     }
+
+    @Test
+    void readingAnInvoiceIsRefusedWithoutTheFinanceRightOnTheServer() {
+        when(access.canSeeFinance(7L)).thenReturn(false);
+        var req = new AiJobs.CreateJob(AiFeature.SUPPLY_EXTRACT, "SUPPLY_FILES", "f1", null, null, "low", 2, "prompt", "supply-1");
+        assertThatThrownBy(() -> jobs.create(req, null)).isInstanceOfSatisfying(DomainException.class,
+                e -> assertThat(e.errorCode()).isEqualTo(com.maxsolch.shop.platform.error.PlatformError.FINANCE_ACCESS_DENIED));
+        verify(lifecycle, never()).insert(any(), any());
+
+        when(reads.source(9L)).thenReturn(Optional.of(new AiJobReads.Source(supplyJob(9), "prompt")));
+        assertThatThrownBy(() -> jobs.retry(9L)).isInstanceOfSatisfying(DomainException.class,
+                e -> assertThat(e.errorCode()).isEqualTo(com.maxsolch.shop.platform.error.PlatformError.FINANCE_ACCESS_DENIED));
+    }
+
+    private static AiJob supplyJob(long id) {
+        AiJob job = AiJob.queued(new AiJob.Spec(AiFeature.SUPPLY_EXTRACT, 7L, "SUPPLY_FILES", "f1", null, JobMode.NORMAL, "low",
+                2, null, null, null), T0);
+        ReflectionTestUtils.setField(job, "id", id);
+        return job;
+    }
 }

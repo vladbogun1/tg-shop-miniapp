@@ -31,7 +31,7 @@ public class AiJobReads {
 
     @Transactional(readOnly = true)
     public Optional<AiJobDto> read(long id, boolean finance) {
-        return jobs.findById(id).map(j -> AiJobDto.of(j, body(id), finance));
+        return jobs.findById(id).map(j -> AiJobDto.of(j, body(j, finance), finance));
     }
 
     /** Active jobs, newest first, without texts: the screens ask for them to show "already running" and to resume. */
@@ -60,8 +60,12 @@ public class AiJobReads {
         return jobs.existsByRetryOf(id);
     }
 
-    private AiJobDto.Body body(long id) {
-        return bodies.findById(id).map(b -> new AiJobDto.Body(b.getPrompt(), b.getAnswer()))
+    /** The invoice text is purchase data: only an admin with the finance right gets the answer of a supply job. */
+    private AiJobDto.Body body(AiJob job, boolean finance) {
+        if (!finance && job.getFeature().purchaseData()) {
+            return new AiJobDto.Body(null, null);
+        }
+        return bodies.findById(job.getId()).map(b -> new AiJobDto.Body(b.getPrompt(), b.getAnswer()))
                 .orElse(new AiJobDto.Body(null, null));
     }
 }
