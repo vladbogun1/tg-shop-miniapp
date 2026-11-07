@@ -1,5 +1,6 @@
 package com.maxsolch.shop.ai.infra;
 
+import com.maxsolch.shop.ai.domain.AiFeature;
 import com.maxsolch.shop.ai.domain.AiJob;
 import com.maxsolch.shop.ai.domain.JobPath;
 import com.maxsolch.shop.ai.domain.JobStatus;
@@ -83,4 +84,7 @@ public interface AiJobRepository extends JpaRepository<AiJob, Long> {
     /** The latest job of the built-in AI for an object: what a manual application right after it says about «why». */
     Optional<AiJob> findFirstBySubjectTypeAndSubjectIdAndPathOrderByIdDesc(String subjectType, String subjectId,
                                                                           JobPath path);
+
+    /** The admin's latest built-in job of a feature whose objects are not products (a part of the translations). */
+    Optional<AiJob> findFirstByFeatureAndAdminIdAndPathOrderByIdDesc(AiFeature feature, long adminId, JobPath path);
 }

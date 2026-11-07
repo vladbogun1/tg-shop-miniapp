@@ -20,6 +20,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -45,26 +46,27 @@ class AiManualMarksTest {
         when(limits.exhausted()).thenReturn(Optional.empty());
         when(jobs.findFirstBySubjectTypeAndSubjectIdAndPathOrderByIdDesc(any(), any(), any()))
                 .thenReturn(Optional.empty());
+        when(jobs.findFirstByFeatureAndAdminIdAndPathOrderByIdDesc(any(), anyLong(), any())).thenReturn(Optional.empty());
     }
 
     @Test
     void whenTheAiWorksTheReasonIsTheAdminsChoice() {
         aiIsOn();
-        assertThat(marks.reason(AiFeature.CARD, "p1", NOW)).isEqualTo(ManualReason.CHOICE);
+        assertThat(marks.reason(AiFeature.CARD, 7L, "p1", NOW)).isEqualTo(ManualReason.CHOICE);
     }
 
     @Test
     void aNotConfiguredOrSwitchedOffAiIsOff() {
         aiIsOn();
         when(agent.configured()).thenReturn(false);
-        assertThat(marks.reason(AiFeature.CARD, "p1", NOW)).isEqualTo(ManualReason.OFF);
+        assertThat(marks.reason(AiFeature.CARD, 7L, "p1", NOW)).isEqualTo(ManualReason.OFF);
     }
 
     @Test
     void aUsedUpLimitIsLimit() {
         aiIsOn();
         when(limits.exhausted()).thenReturn(Optional.of(AiError.MONTH_LIMIT));
-        assertThat(marks.reason(AiFeature.CARD, "p1", NOW)).isEqualTo(ManualReason.LIMIT);
+        assertThat(marks.reason(AiFeature.CARD, 7L, "p1", NOW)).isEqualTo(ManualReason.LIMIT);
     }
 
     @Test
@@ -81,6 +83,27 @@ class AiManualMarksTest {
             assertThat(j.getPath()).isEqualTo(JobPath.MANUAL);
             assertThat(j.getAdminId()).isEqualTo(7L);
         });
+    }
+
+    @Test
+    void aManualTranslationPartIsMarkedAsAPartAndItsFailureIsTheAdminsLastBuiltInTranslation() {
+        aiIsOn();
+        when(actor.userId()).thenReturn(7L);
+        AiJob failed = AiJob.queued(new AiJob.Spec(AiFeature.TRANSLATION, 7L, "TRANSLATION_PART", "1-abc", null,
+                com.maxsolch.shop.ai.domain.JobMode.NORMAL, "low", 0, null, null, null), NOW.minusSeconds(600));
+        failed.claim("w", NOW.minusSeconds(590), java.time.Duration.ofMinutes(5));
+        failed.fail("MODEL_FAILED", null, com.maxsolch.shop.ai.domain.JobTotals.NONE, NOW.minusSeconds(500));
+        when(jobs.findFirstByFeatureAndAdminIdAndPathOrderByIdDesc(AiFeature.TRANSLATION, 7L, JobPath.BUILTIN))
+                .thenReturn(Optional.of(failed));
+
+        marks.record(new AiManualMarks.Mark(AiFeature.TRANSLATION, List.of("m1-p1")));
+
+        ArgumentCaptor<AiJob> saved = ArgumentCaptor.forClass(AiJob.class);
+        verify(jobs).save(saved.capture());
+        assertThat(saved.getValue().getSubjectType()).isEqualTo("TRANSLATION_PART");
+        assertThat(saved.getValue().getFeature()).isEqualTo(AiFeature.TRANSLATION);
+        assertThat(saved.getValue().getErrorCode()).isEqualTo(ManualReason.FAILURE.name());
+        assertThat(saved.getValue().getPath()).isEqualTo(JobPath.MANUAL);
     }
 
     @Test
