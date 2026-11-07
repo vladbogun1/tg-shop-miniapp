@@ -37,7 +37,7 @@ export function BatchSummary({ batch, onReview, acceptSafe }: { batch: AiBatch; 
             Проверить ({batch.ready})
           </Button>
         )}
-        {batch.ready > 0 && acceptSafe}
+        {acceptSafe}
         {batch.retryable > 0 && (
           <Button
             size="sm"

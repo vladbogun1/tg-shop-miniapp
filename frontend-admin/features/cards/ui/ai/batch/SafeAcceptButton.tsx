@@ -49,9 +49,11 @@ async function applyRow(row: AiBatchRow, schema: CardSchema): Promise<AiSafeAppl
 
 export function SafeAcceptButton({ batch, items, schema }: { batch: AiBatch; items: CardItem[] | undefined; schema: CardSchema | undefined }) {
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
+  // Окно держит свои числа: после записи у пакета не остаётся «готовых», и кнопка пропадает, а окно с итогом должно остаться.
+  const [shown, setShown] = useState<{ cards: number; fields: number } | null>(null);
   const count = useSafeCount(batch, items, schema).data;
-  if (!count || count.fields === 0 || !schema) return null;
+  const dialog = shown && schema && <AcceptSafeDialog open onClose={() => setShown(null)} batchId={batch.id} cards={shown.cards} fields={shown.fields} run={run} />;
+  const canAccept = !!count && count.fields > 0 && !!schema;
 
   async function run(): Promise<AiSafeApplied[]> {
     const out: AiSafeApplied[] = [];
@@ -66,10 +68,12 @@ export function SafeAcceptButton({ batch, items, schema }: { batch: AiBatch; ite
 
   return (
     <>
-      <Button size="sm" variant="surface" onClick={() => setOpen(true)} data-testid="batch-accept-safe">
-        Принять безопасное
-      </Button>
-      {open && <AcceptSafeDialog open onClose={() => setOpen(false)} batchId={batch.id} cards={count.cards} fields={count.fields} run={run} />}
+      {canAccept && (
+        <Button size="sm" variant="surface" onClick={() => count && setShown(count)} data-testid="batch-accept-safe">
+          Принять безопасное
+        </Button>
+      )}
+      {dialog}
     </>
   );
 }

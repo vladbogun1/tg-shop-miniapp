@@ -91,6 +91,11 @@ export function Shell({ children }: { children: ReactNode }) {
         <main className={cn("min-w-0 flex-1 pl-[max(16px,var(--safe-left))] pr-[max(16px,var(--safe-right))] pt-4 lg:p-7", fullscreen ? "pb-0 lg:pb-0" : "pb-[calc(var(--bottom-nav)+20px)]")}>
           <InstallBanner />
           <PushOfferBanner />
+          <BatchGate>
+            <div className="mb-3">
+              <CardBatchHost />
+            </div>
+          </BatchGate>
           <motion.div
             key={pathname}
             initial={{ opacity: 0, y: 10 }}
