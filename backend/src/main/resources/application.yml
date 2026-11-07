@@ -110,6 +110,10 @@ app:
   telegram:
     bot-token: ${BOT_TOKEN:}
     bot-username: ${BOT_USERNAME:}
+    # false = the bot only SENDS (notifications) and does not poll getUpdates. Set on the temporary
+    # second backend of a zero-downtime deploy (infra/deploy/deploy.sh): two pollers on one token
+    # make Telegram answer 409 to both and back them off for up to a minute.
+    polling: ${TELEGRAM_POLLING:true}
     init-data-ttl-seconds: ${INITDATA_TTL_SECONDS:86400}
     admin-init-data-ttl-seconds: ${ADMIN_INITDATA_TTL_SECONDS:300}
     allow-unsigned-init-data: ${ALLOW_UNSIGNED_INIT_DATA:false}
