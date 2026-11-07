@@ -3,7 +3,7 @@
 import { Bot, ChevronRight } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { PanelHeader } from "@/components/ui/PanelHeader";
-import { blockKeys, unlistedKeys, type AiBlock } from "../model/setting-keys";
+import { AI_KEYS, blockKeys, unlistedKeys, type AiBlock } from "../model/setting-keys";
 import { aiSettingViews, type SettingView } from "../model/setting-views";
 import { useAiState } from "../queries";
 import { AiSearchBlock } from "./AiSearchBlock";
@@ -69,6 +69,7 @@ export function AiSettingsPanel({ title, description, keys, labels, renderFields
   const of = (block: AiBlock) => blockKeys(block).filter((k) => present.has(k));
   const rateMilli = useAiState().data?.rateMilli;
   const views = useMemo(() => aiSettingViews(rateMilli), [rateMilli]);
+  const moneyLabels = keys.flatMap((k, i) => (k === AI_KEYS.monthLimit || k === AI_KEYS.dayLimit ? [labels[i] ?? k] : []));
   return (
     <div className="flex min-w-0 flex-col gap-5">
       <PanelHeader icon={Bot} title={title} description={description} />
@@ -93,7 +94,7 @@ export function AiSettingsPanel({ title, description, keys, labels, renderFields
           {renderFields([...of("more"), ...unlistedKeys(keys)])}
         </Disclosure>
         <Disclosure title="История изменений" hint="Кто и когда менял лимиты и выключатели">
-          <AiSettingsHistory labels={labels} />
+          <AiSettingsHistory labels={labels} moneyLabels={moneyLabels} rateKopecks={rateMilli ? Math.round(rateMilli / 10) : null} />
         </Disclosure>
       </Section>
     </div>

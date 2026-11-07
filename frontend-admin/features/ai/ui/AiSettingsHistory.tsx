@@ -2,11 +2,19 @@
 
 import { formatDateTime } from "@shop/core/time";
 import { QueryState } from "@/components/ui/QueryState";
-import { aiSettingsChanges } from "../model/settings-history";
+import { aiSettingsChanges, moneyChange } from "../model/settings-history";
 import { useAiSettingsHistory } from "../queries";
 
+interface Props {
+  labels: readonly string[];
+  /** Подписи денежных полей (лимиты): их центы из журнала показываются долларами с гривнами, как в самих полях. */
+  moneyLabels: readonly string[];
+  /** Курс в копейках за доллар; null — только доллары. */
+  rateKopecks: number | null;
+}
+
 /** Последние правки настроек «ИИ» из журнала: когда, кто, что было → что стало. */
-export function AiSettingsHistory({ labels }: { labels: readonly string[] }) {
+export function AiSettingsHistory({ labels, moneyLabels, rateKopecks }: Props) {
   const q = useAiSettingsHistory();
   const rows = q.data ? aiSettingsChanges(q.data, labels) : [];
   return (
@@ -21,7 +29,7 @@ export function AiSettingsHistory({ labels }: { labels: readonly string[] }) {
               </div>
               {r.changes.map((c) => (
                 <div key={c} className="break-words text-[var(--text)]">
-                  {c}
+                  {moneyChange(c, moneyLabels, rateKopecks)}
                 </div>
               ))}
             </li>
