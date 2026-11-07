@@ -7,13 +7,15 @@
  * Что разное, приходит снаружи: плашки (конфликт правок у задачи), пункты «⋯», куда отчитаться об исходе.
  */
 import { AiReview, type AiMenuItem, type OutcomeCounts, outcomeCounts } from "@/features/ai";
+import { useBrandsQuery } from "@/features/catalog";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type ReactNode } from "react";
-import { confirmedSpecKeys, initialKeys, reviewRows, type FieldContext } from "../../model/ai-card";
+import { confirmedSpecKeys, initialKeys, reselectAfterCategory, reviewRows, type FieldContext } from "../../model/ai-card";
 import type { Proposal } from "../../model";
 import type { CardItem } from "../../model/item";
 import type { ProductReview } from "../../model/types";
-import { invalidateCards } from "../../queries";
+import type { ReviewChoices } from "../../model/review-choice";
+import { invalidateCards, useCardSchema } from "../../queries";
 import { AddOptionModal } from "../AddOptionModal";
 import { ProblemBox } from "../completion/ProblemBox";
 import type { CardCompletionResult } from "../completion/use-completion-save";
@@ -44,20 +46,29 @@ export interface CardReviewPanelProps {
   onClose?: (result: CardCompletionResult) => void;
 }
 
+/** Категории и бренды каталога для выбора в проверке; пока что-то не загрузилось — категорию и бренд не правят. */
+function useReviewChoices(): ReviewChoices | undefined {
+  const schema = useCardSchema().data;
+  const brands = useBrandsQuery().data;
+  return useMemo(() => (schema && brands ? { schema, brands: brands.map((b) => b.name) } : undefined), [schema, brands]);
+}
+
 export function CardReviewPanel(p: CardReviewPanelProps) {
   const qc = useQueryClient();
-  const draft = useCardReviewDraft(p.review);
+  const choices = useReviewChoices();
+  const draft = useCardReviewDraft(p.review, choices);
   const [picked, setPicked] = useState<Set<string> | null>(null);
   const [translations, setTranslations] = useState(true);
   const [publish, setPublish] = useState(p.item.active !== true);
   const [addOption, setAddOption] = useState<Proposal | null>(null);
 
-  const baseRows = useMemo(() => reviewRows(p.review, p.ctx), [p.review, p.ctx]);
+  const ctx = useMemo(() => ({ ...p.ctx, choices }), [p.ctx, choices]);
+  const baseRows = useMemo(() => reviewRows(p.review, ctx), [p.review, ctx]);
   const initial = useMemo(
     () => initialKeys(p.review, baseRows, p.created),
     [baseRows, p.review, p.created],
   );
-  const rows = useMemo(() => (draft.review ? reviewRows(draft.review, { ...p.ctx, edited: draft.edited }) : baseRows), [draft.review, draft.edited, p.ctx, baseRows]);
+  const rows = useMemo(() => (draft.review ? reviewRows(draft.review, { ...ctx, edited: draft.edited }) : baseRows), [draft.review, draft.edited, ctx, baseRows]);
   const selected = picked ?? initial;
 
   const act = useCardReviewApply({
@@ -77,9 +88,10 @@ export function CardReviewPanel(p: CardReviewPanelProps) {
   const finished = act.applied || !!p.doneText;
 
   const edit = (key: string, value: string) => {
-    const error = draft.edit(key, value);
-    if (!error) setPicked(new Set(selected).add(key));
-    return error;
+    const out = draft.edit(key, value);
+    if (out.error !== null) return out.error;
+    setPicked(key === "category" ? reselectAfterCategory(selected, reviewRows(out.review, ctx)) : new Set(selected).add(key));
+    return null;
   };
 
   return (

@@ -9,6 +9,7 @@ import type { CardChanges } from "./ai-conflict";
 import type { CardItem } from "./item";
 import { metaOf } from "./view";
 import { editSpec, editText } from "./review";
+import { brandChoices, categoryChoices, editBrand, editCategory, type Choice, type ReviewChoices } from "./review-choice";
 import { defaultSel, renameByDefault, type ProductSel } from "./selection";
 import { formatValue } from "./value";
 import type { FieldReview, ProductReview } from "./types";
@@ -61,6 +62,8 @@ export interface FieldContext {
   neighbors: (specKeyName: string) => number[];
   /** Ключи строк, которые человек поправил в ревью (`editReviewValue`). */
   edited?: ReadonlySet<string>;
+  /** Категории и бренды каталога: есть — категорию и бренд из ответа можно заменить выбором из списка. */
+  choices?: ReviewChoices;
 }
 
 type Doubt = Pick<ReviewField, "suspicion" | "reason">;
@@ -142,6 +145,13 @@ function textRows(r: ProductReview, ctx: FieldContext): ReviewField[] {
   return rows;
 }
 
+/** Список для выбора и подпись значения: категория — путём по дереву, бренд — как есть. */
+function choiceOf(key: "category" | "brand", ctx: FieldContext): { list: Choice[]; label: (v: string | null) => string | null } | null {
+  if (!ctx.choices) return null;
+  const list = key === "category" ? categoryChoices(ctx.choices.schema) : brandChoices(ctx.choices.brands);
+  return { list, label: (v) => (v === null ? null : list.find((c) => c.value === v)?.label ?? v) };
+}
+
 function changeRows(r: ProductReview, ctx: FieldContext): ReviewField[] {
   const rows: ReviewField[] = [];
   const now = valuesOf(r.item);
@@ -151,11 +161,12 @@ function changeRows(r: ProductReview, ctx: FieldContext): ReviewField[] {
   ] as const;
   for (const [key, label, c] of defs) {
     if (!c) continue;
+    const choice = choiceOf(key, ctx);
     rows.push({
       key,
       label,
-      before: c.from,
-      after: c.to,
+      before: choice ? choice.label(c.from) : c.from,
+      after: (choice ? choice.label(c.to) : null) ?? c.to,
       confidence: r.overall,
       source: null,
       suspicion: c.valid ? "none" : "bad",
@@ -163,6 +174,8 @@ function changeRows(r: ProductReview, ctx: FieldContext): ReviewField[] {
       humanLocked: false,
       lockNote: null,
       conflict: conflictOf(ctx, key, label, c.to, now[key] ?? null),
+      ...(choice ? { editable: "choice" as const, choices: choice.list, value: c.to } : {}),
+      edited: ctx.edited?.has(key) ?? false,
     });
   }
   return rows;
@@ -182,6 +195,16 @@ export function extraInitialKeys(r: ProductReview, rows: ReviewField[], created:
   return title && renameByDefault(r, created) && title.suspicion === "none" && !title.conflict ? ["title"] : [];
 }
 
+/**
+ * Выбрана другая категория: характеристики разобраны заново, поэтому их отметки — заново по «Заполнит пустое»;
+ * остальной выбор человека (тексты, бренд) остаётся, сама категория отмечена.
+ */
+export function reselectAfterCategory(selected: ReadonlySet<string>, rows: ReviewField[]): Set<string> {
+  const kept = [...selected].filter((k) => !k.startsWith(SPEC));
+  const specs = [...initialSelection(rows)].filter((k) => k.startsWith(SPEC));
+  return new Set([...kept, ...specs, "category"]);
+}
+
 /** Что отмечено при открытии ревью: «Заполнит пустое» и сверх него `extraInitialKeys`. */
 export function initialKeys(r: ProductReview, rows: ReviewField[], created: boolean): Set<string> {
   return new Set([...initialSelection(rows), ...extraInitialKeys(r, rows, created)]);
@@ -189,9 +212,12 @@ export function initialKeys(r: ProductReview, rows: ReviewField[], created: bool
 
 /**
  * Правка значения строки ревью человеком: название и описание — как правка текста у ручного пути (`editText`,
- * переводы uk/en после неё сохраняются только если сделаны для итогового русского), характеристика — `editSpec`.
+ * переводы uk/en после неё сохраняются только если сделаны для итогового русского), характеристика — `editSpec`,
+ * категория и бренд — выбор из существующих (`review-choice`, нужны `choices`).
  */
-export function editReviewValue(r: ProductReview, key: string, value: string): { review: ProductReview; error: string | null } {
+export function editReviewValue(r: ProductReview, key: string, value: string, choices?: ReviewChoices): { review: ProductReview; error: string | null } {
+  if (key === "category" && choices) return editCategory(r, value, choices.schema);
+  if (key === "brand" && choices) return editBrand(r, value, choices.brands);
   if (key === "title" || key === "description") {
     if (!value.trim()) return { review: r, error: "Пустым оставить нельзя" };
     return { review: editText(r, key, "ru", value), error: null };

@@ -7,6 +7,7 @@
  */
 import { useState } from "react";
 import { editReviewValue } from "../../model/ai-card";
+import type { ReviewChoices } from "../../model/review-choice";
 import { defaultPhotos } from "../../model/selection";
 import { editText } from "../../model/review";
 import type { ProductReview, TextField } from "../../model/types";
@@ -20,7 +21,8 @@ interface Edits {
 
 const fresh = (base: ProductReview | null): Edits => ({ base, review: base, edited: new Set() });
 
-export function useCardReviewDraft(base: ProductReview | null) {
+/** `choices` — категории и бренды каталога для выбора в строках «Категория» и «Бренд» (пока не загружены — не правятся). */
+export function useCardReviewDraft(base: ProductReview | null, choices?: ReviewChoices) {
   const [st, setSt] = useState<Edits>(() => fresh(base));
   const [photos, setPhotos] = useState<string[] | null>(null);
   // null — автоматически: «Готово», если ИИ уверен (autoReady), иначе «Проверить».
@@ -31,13 +33,13 @@ export function useCardReviewDraft(base: ProductReview | null) {
     setSt(cur);
   }
 
-  /** Правка значения строки ревью: текст ошибки или null (принято, строка помечена «изменено вами»). */
-  function edit(key: string, value: string): string | null {
-    if (!cur.review) return "Нет разбора ответа";
-    const out = editReviewValue(cur.review, key, value);
-    if (out.error) return out.error;
+  /** Правка значения строки ревью: текст ошибки или новый разбор (строка помечена «изменено вами»). */
+  function edit(key: string, value: string): { error: string } | { error: null; review: ProductReview } {
+    if (!cur.review) return { error: "Нет разбора ответа" };
+    const out = editReviewValue(cur.review, key, value, choices);
+    if (out.error) return { error: out.error };
     setSt({ base: cur.base, review: out.review, edited: new Set(cur.edited).add(key) });
-    return null;
+    return { error: null, review: out.review };
   }
 
   /** Правка перевода uk/en (те же проверки, что в «Переводах»): строкой ревью не считается — это не значение поля. */
