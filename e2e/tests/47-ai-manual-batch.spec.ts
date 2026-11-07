@@ -325,16 +325,28 @@ test("пакет ИИ на паузе: «Оформить 5 вручную (2 ч
   await expect(page.getByTestId("manual-resume")).toHaveCount(0);
 });
 
-/** Подмена «Фото по ссылке»: сервер не качает адреса тестов; отвечаем успехом и запоминаем присланные ссылки. */
-async function fakePhotoImport(page: Page): Promise<string[]> {
-  const sent: string[] = [];
+/**
+ * Подмена «Фото по ссылке»: сервер не качает адреса тестов; отвечаем успехом и запоминаем присланное — ссылку и
+ * запись журнала применений (`applyId`), шагом которой экран назвал фото.
+ */
+async function fakePhotoImport(page: Page): Promise<{ url: string; applyId?: number }[]> {
+  const sent: { url: string; applyId?: number }[] = [];
   await page.route("**/api/admin/products/*/photos/import", async (route) => {
-    const url = (route.request().postDataJSON() as { url: string }).url;
-    sent.push(url);
-    await route.fulfill({ json: { key: "e2e/photo-by-link.webp", source: url, cutOut: true, imageKeys: ["e2e/photo-by-link.webp"] } });
+    const body = route.request().postDataJSON() as { url: string; applyId?: number };
+    sent.push(body);
+    await route.fulfill({ json: { key: "e2e/photo-by-link.webp", source: body.url, cutOut: true, imageKeys: ["e2e/photo-by-link.webp"] } });
   });
   return sent;
 }
+
+/** Что «Отменить» должно вернуть кроме полей: статус, витрина, uk/en-переводы карточки. */
+const extrasOf = async (id: string) => ({
+  card: (await query("SELECT card_status, active, unfinished, card_confidence FROM products WHERE id = UUID_TO_BIN(?)", [id]))[0],
+  tr: await query(
+    "SELECT field, locale, text, origin FROM content_translations WHERE entity_type = 'PRODUCT' AND entity_id = UUID_TO_BIN(?) ORDER BY field, locale",
+    [id],
+  ),
+});
 
 const specsOf = async (id: string) =>
   (await query<{ specs: Record<string, unknown> | null }>("SELECT specs FROM products WHERE id = UUID_TO_BIN(?)", [id]))[0].specs;
@@ -386,9 +398,17 @@ test("лента: новый бренд — на ручную, «Принять�
     await expect(feed.getByTestId("feed-removed")).toHaveText("Удалит характеристики: E2E Старое");
 
     const sent = await fakePhotoImport(page);
+    const extrasBefore = await extrasOf(held);
     await feed.getByTestId("feed-accept").click();
     await expect(layer(page).getByTestId("manual-finished")).toBeVisible();
-    await expect.poll(() => sent).toEqual([photo]);
+    await expect.poll(() => sent.map((s) => s.url)).toEqual([photo]);
+    // Фото — шаг того же применения: сервер допишет его в журнал, «Отменить» его уберёт.
+    const log = await query<{ id: number }>("SELECT l.id FROM ai_apply_log l JOIN ai_jobs j ON j.id = l.job_id WHERE j.subject_id = ? AND l.undone_at IS NULL ORDER BY l.id DESC LIMIT 1", [held]);
+    expect(sent[0].applyId).toBe(log[0].id);
+    const extrasAfter = await extrasOf(held);
+    expect(extrasAfter.tr.map((r) => `${(r as { locale: string }).locale}:${(r as { field: string }).field}`)).toEqual(
+      expect.arrayContaining(["uk:description", "en:description"]),
+    );
     await expect(layer(page).getByText("добавлено 1")).toBeVisible();
     expect(await descriptionOf(held)).toContain(TEXT);
     expect((await specsOf(held))?.e2e_old).toBeUndefined();
@@ -403,6 +423,8 @@ test("лента: новый бренд — на ручную, «Принять�
     await expect(sub).toHaveText("Ответов 2 из 5 · решено 1 · осталось 1");
     expect(await descriptionOf(held)).toBeNull();
     expect(await specsOf(held)).toEqual({ e2e_old: "было" });
+    // И переводы, статус, витрина — как до «Принять».
+    expect(await extrasOf(held)).toEqual(extrasBefore);
     await expect(feed.getByTestId("feed-new-brand")).toBeVisible();
   } finally {
     if (held) await query("UPDATE products SET specs = NULL WHERE id = UUID_TO_BIN(?)", [held]);

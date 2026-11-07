@@ -5,7 +5,8 @@
  * Сценарии: нормальный ответ до записи; ИИ выключен — только ручная кнопка; двойной запуск — «Уже идёт»;
  * ответ без данных — «Показать ответ» и ручной путь; ход по шагам с поиском, правка карточки человеком во время
  * работы (имя и время в ревью), фото из ответа; ручной путь через ChatGPT в том же экране проверки (правка значения,
- * фото, метка MANUAL). Запись проверяется по выгрузке карточки и базе, а не только по экрану.
+ * фото, метка MANUAL); «Отменить применение» возвращает и фото, переводы, «Готово» и витрину, а правку человека после
+ * применения оставляет и называет. Запись проверяется по выгрузке карточки и базе, а не только по экрану.
  *
  * Фото по ссылке сервер скачивает сам, а адреса localhost/частных сетей он не качает (защита от SSRF) — поэтому здесь
  * подменён только ответ POST …/photos/import: проверяется, что экран отправил именно отмеченные ссылки.
@@ -49,15 +50,15 @@ async function feature(api: Api, on: boolean | null) {
   expect(res.status).toBe(200);
 }
 
-/** Строка карточки в «Карточки» → панель → «Переоформить с ИИ» → окно с входом во встроенный ИИ. */
-async function openEntry(page: Page, title: string): Promise<Locator> {
+/** Строка карточки в «Карточки» (вкладка `tab`) → панель → «(Пере)оформить с ИИ» → окно с входом во встроенный ИИ. */
+async function openEntry(page: Page, title: string, tab: "Готово" | "Оформить" = "Готово"): Promise<Locator> {
   await page.goto("/cards");
-  await page.getByRole("button", { name: /^Готово\s*\d+$/ }).click();
+  await page.getByRole("button", { name: new RegExp(`^${tab}\\s*\\d+$`) }).click();
   await page.getByLabel("Поиск карточек").fill(title);
   const row = page.getByRole("listitem").filter({ hasText: title });
   await expect(row).toHaveCount(1);
   await row.getByRole("button", { name: new RegExp(title) }).click();
-  await page.getByRole("button", { name: "Переоформить с ИИ" }).click();
+  await page.getByRole("button", { name: tab === "Готово" ? "Переоформить с ИИ" : "Оформить с ИИ" }).click();
   const modal = dialog(page, `: ${title}`);
   await expect(modal).toBeVisible();
   return modal;
@@ -362,5 +363,116 @@ test("«Заменить характеристики целиком»: удал
   } finally {
     await query("UPDATE products SET specs = NULL, description = ?, card_status = ? WHERE id = UUID_TO_BIN(?)", [before.description ?? null, status, PRODUCT.scarf]);
     for (const id of attrs) await api.raw("delete", `/api/admin/spec-attributes/${id}?force=1`);
+  }
+});
+
+type CardState = { active: number; card_status: string; unfinished: number; card_confidence: number | null; meta: string | null; description: string | null };
+type TrRow = { field: string; locale: string; text: string; source_hash: string; origin: string; updated_by: number | null };
+
+const cardState = async () =>
+  (
+    await query<CardState>(
+      "SELECT active, card_status, unfinished, card_confidence, CAST(card_meta AS CHAR) meta, description FROM products WHERE id = UUID_TO_BIN(?)",
+      [PRODUCT.scarf],
+    )
+  )[0];
+const trRows = () =>
+  query<TrRow>(
+    "SELECT field, locale, text, source_hash, origin, updated_by FROM content_translations WHERE entity_type = 'PRODUCT' AND entity_id = UUID_TO_BIN(?) ORDER BY field, locale",
+    [PRODUCT.scarf],
+  );
+
+test("«Отменить применение» возвращает фото, переводы, «Готово» и витрину; правку человека после — оставляет и называет", async ({ page, api }) => {
+  await feature(api, true);
+  const was = await cardState();
+  const wasTr = await trRows();
+  const photo = "https://example.com/e2e-scarf-undo.jpg";
+  try {
+    // Новый черновик («Незавершённые»: скрыт, ни разу не выложен), без переводов: применение поставит «Готово»,
+    // выложит (снимет «Незавершённые») и запишет uk/en.
+    await query("UPDATE products SET active = 0, unfinished = 1, card_status = 'DRAFT', card_confidence = NULL, card_meta = NULL WHERE id = UUID_TO_BIN(?)", [PRODUCT.scarf]);
+    await query("DELETE FROM content_translations WHERE entity_type = 'PRODUCT' AND entity_id = UUID_TO_BIN(?)", [PRODUCT.scarf]);
+    const start = await cardState();
+    const text = `E2E-ИИ отмена ${Date.now()}`;
+    await fake("mode", { mode: "research", description: text, photos: [photo] });
+
+    const modal = await openEntry(page, (await card(api)).title, "Оформить");
+    await modal.getByRole("button", { name: "Заполнить с ИИ", exact: true }).click();
+    const confirm = page.getByRole("button", { name: "Запустить" });
+    if (await confirm.isVisible().catch(() => false)) await confirm.click();
+    await expect(page.getByText("Готово — проверьте, что предложил ИИ")).toBeVisible({ timeout: 30_000 });
+    await page.getByRole("button", { name: "Открыть проверку" }).click();
+    await expect(page).toHaveURL(/\/cards\/ai-review\/\d+$/);
+    const jobId = Number(new URL(page.url()).pathname.split("/").pop());
+
+    const box = page.getByLabel("Применить: Описание");
+    if (!(await box.isVisible())) await page.getByRole("button", { name: /Заменит значение/ }).click();
+    await box.check();
+    // «Сразу в «Готово»» и «Выложить на витрину» — явно.
+    const ready = page.getByRole("checkbox", { name: /Сразу в «Готово»/ });
+    if (!(await ready.isChecked())) await ready.check();
+    const publish = page.getByRole("checkbox", { name: /Выложить на витрину/ });
+    if (!(await publish.isChecked())) await publish.check();
+    // Фото по ссылке сервер с localhost не качает — подменяем ответ, но проверяем, что экран назвал применение.
+    const photoBodies: { url: string; applyId?: number }[] = [];
+    await page.route("**/api/admin/products/*/photos/import", async (route) => {
+      photoBodies.push(route.request().postDataJSON() as { url: string; applyId?: number });
+      await route.fulfill({ json: { key: "e2e/photo-by-link.webp", source: photo, cutOut: true, imageKeys: ["e2e/photo-by-link.webp"] } });
+    });
+    await pickPhoto(page.getByTestId("ai-review-photos"), photo);
+    await page.getByRole("button", { name: /^Применить \(\d+\) \+ 1 фото/ }).click();
+    await expect(page.getByText("Результат применён")).toBeVisible();
+    await expect(page.getByText("добавлено 1")).toBeVisible();
+
+    const log = (await query<{ id: number }>("SELECT id FROM ai_apply_log WHERE job_id = ? ORDER BY id DESC LIMIT 1", [jobId]))[0];
+    expect(photoBodies).toEqual([{ url: photo, applyId: log.id }]);
+    const after = await cardState();
+    expect(after).toMatchObject({ active: 1, unfinished: 0, card_status: "READY", description: text });
+    const afterTr = await trRows();
+    expect(afterTr.map((r) => `${r.locale}:${r.field}`)).toEqual(expect.arrayContaining(["uk:description", "en:description"]));
+
+    // Плашка заранее называет, что вернётся и что нет.
+    const bar = page.getByTestId("apply-undo");
+    await expect(bar.getByTestId("apply-undo-back")).toContainText("описание");
+    await expect(bar.getByTestId("apply-undo-back")).toContainText("перевод uk: описание");
+    await expect(bar.getByTestId("apply-undo-back")).toContainText("статус карточки");
+    await expect(bar.getByTestId("apply-undo-back")).toContainText("выкладка на витрину");
+    await expect(bar.getByTestId("apply-undo-back")).toContainText("отметка «Незавершённые»");
+    await expect(bar.getByTestId("apply-undo-stays")).toContainText("цена, введённая при выкладке, останется");
+
+    // Человек после применения поправил uk-описание — отмена его не тронет.
+    const human = `Ручной uk ${Date.now()}`;
+    await query(
+      "UPDATE content_translations SET text = ?, origin = 'MANUAL' WHERE entity_type = 'PRODUCT' AND entity_id = UUID_TO_BIN(?) AND field = 'description' AND locale = 'uk'",
+      [human, PRODUCT.scarf],
+    );
+
+    await bar.getByTestId("apply-undo-btn").click();
+    const report = page.getByTestId("apply-undo-report");
+    await expect(report).toContainText("Применение отменено");
+    await expect(report.getByTestId("apply-undo-kept")).toHaveText("Не отменено — после применения изменили вручную: перевод uk: описание.");
+    await expect(bar).toHaveCount(0);
+
+    // Всё, кроме ручной правки, — как до применения: скрыт, черновик, без переводов ИИ, прежнее описание.
+    await expect
+      .poll(cardState)
+      .toMatchObject({ active: 0, card_status: "DRAFT", unfinished: 1, card_confidence: null, meta: null, description: start.description });
+    const left = await trRows();
+    expect(left.map((r) => ({ key: `${r.locale}:${r.field}`, text: r.text, origin: r.origin }))).toEqual([{ key: "uk:description", text: human, origin: "MANUAL" }]);
+    expect((await query<{ outcome: string | null }>("SELECT outcome FROM ai_jobs WHERE id = ?", [jobId]))[0].outcome).toBeNull();
+    await page.getByTestId("apply-undo-report-close").click();
+    await expect(report).toHaveCount(0);
+  } finally {
+    await query(
+      "UPDATE products SET active = ?, card_status = ?, unfinished = ?, card_confidence = ?, card_meta = CAST(? AS JSON), description = ? WHERE id = UUID_TO_BIN(?)",
+      [was.active, was.card_status, was.unfinished, was.card_confidence, was.meta, was.description, PRODUCT.scarf],
+    );
+    await query("DELETE FROM content_translations WHERE entity_type = 'PRODUCT' AND entity_id = UUID_TO_BIN(?)", [PRODUCT.scarf]);
+    for (const r of wasTr) {
+      await query(
+        "INSERT INTO content_translations (entity_type, entity_id, field, locale, text, source_hash, origin, updated_by) VALUES ('PRODUCT', UUID_TO_BIN(?), ?, ?, ?, ?, ?, ?)",
+        [PRODUCT.scarf, r.field, r.locale, r.text, r.source_hash, r.origin, r.updated_by],
+      );
+    }
   }
 });
