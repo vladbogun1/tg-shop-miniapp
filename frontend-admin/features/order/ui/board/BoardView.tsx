@@ -21,7 +21,7 @@ import { WantedWidget } from "@/features/procurement";
 import { useIsKanban } from "../use-is-kanban";
 import type { AdminBoard } from "../../api";
 import { CLOSED_MAX, CLOSED_PAGE, isClosedColumn, onlyPaidNew } from "../../model/board";
-import type { OrdersPeriod } from "../../model/period";
+import { periodLabel, type OrdersPeriod } from "../../model/period";
 import type { BoardKey } from "../../model/status";
 import { boardKey, type BoardQuery } from "../../queries/board";
 import { StatusMoveModal } from "./StatusMoveModal";
@@ -100,7 +100,7 @@ export function BoardView({ search, boardQ, closedLimit, onClosedLimit, period, 
               onMove={moves.requestMove}
             />
           ) : mobileTab === null ? (
-            <StatusList board={board} onPick={onPickStatus} />
+            <StatusList board={board} period={periodLabel(period)} onPick={onPickStatus} />
           ) : (
             <MobileBoard
               board={board}

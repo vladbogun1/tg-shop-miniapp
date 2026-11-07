@@ -45,8 +45,9 @@ export function PromoControls({ tab, onTab, counts, query, onQuery, state, onSta
           icon={<Plus className="h-4 w-4" />}
           onClick={onCreate}
           aria-label="Новый промокод"
+          compactBelow="sm"
         >
-          <span className="max-sm:hidden">Новый промокод</span>
+          Новый промокод
         </Button>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

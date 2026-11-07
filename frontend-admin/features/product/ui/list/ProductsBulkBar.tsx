@@ -37,14 +37,14 @@ export function ProductsBulkBar({
           <Button size="sm" variant="ghost" onClick={onClear} disabled={busy}>
             Снять
           </Button>
-          <Button size="sm" variant="surface" icon={<Eye className="h-4 w-4" />} loading={busy} onClick={onShow} aria-label="Показать" title="Карточки-черновики и товары без цены сервер не пропустит — они попадут в отчёт">
-            <span className="max-sm:hidden">Показать</span>
+          <Button size="sm" variant="surface" icon={<Eye className="h-4 w-4" />} loading={busy} onClick={onShow} aria-label="Показать" title="Карточки-черновики и товары без цены сервер не пропустит — они попадут в отчёт" compactBelow="sm">
+            Показать
           </Button>
-          <Button size="sm" variant="surface" icon={<EyeOff className="h-4 w-4" />} disabled={busy} onClick={onHide} aria-label="Скрыть">
-            <span className="max-sm:hidden">Скрыть</span>
+          <Button size="sm" variant="surface" icon={<EyeOff className="h-4 w-4" />} disabled={busy} onClick={onHide} aria-label="Скрыть" compactBelow="sm">
+            Скрыть
           </Button>
-          <Button size="sm" variant="surface" icon={<Archive className="h-4 w-4" />} disabled={busy} onClick={onArchive} aria-label="В архив">
-            <span className="max-sm:hidden">В архив</span>
+          <Button size="sm" variant="surface" icon={<Archive className="h-4 w-4" />} disabled={busy} onClick={onArchive} aria-label="В архив" compactBelow="sm">
+            В архив
           </Button>
         </motion.div>
       )}

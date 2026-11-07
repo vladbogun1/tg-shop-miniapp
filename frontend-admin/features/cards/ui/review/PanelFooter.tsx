@@ -85,8 +85,9 @@ export function PanelFooter(p: FooterProps) {
         onClick={onReAi}
         aria-label={tab === "draft" ? "Оформить с ИИ" : "Переоформить с ИИ"}
         title={tab === "draft" ? "Оформить с ИИ" : "Переоформить с ИИ"}
+        compactBelow="sm"
       >
-        <span className="max-sm:hidden">{tab === "draft" ? "Оформить с ИИ" : "Переоформить"}</span>
+        {tab === "draft" ? "Оформить с ИИ" : "Переоформить"}
       </Button>
       <PrimaryAction tab={tab} dirty={p.dirty} busy={p.busy} onAccept={p.onAccept} onSaveEdits={p.onSaveEdits} onSendBack={p.onSendBack} />
     </div>
