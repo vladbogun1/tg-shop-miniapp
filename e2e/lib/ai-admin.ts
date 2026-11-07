@@ -4,7 +4,7 @@
  * 19-admins. Все засеянные строки помечены `error_note = 'e2e-ai'` и удаляются целиком.
  */
 import { request, type Browser, type Page } from "@playwright/test";
-import { ADMIN_2FA_KEY, ADMIN_URL, API_URL, TEAM_ADMIN } from "../env.js";
+import { ADMIN_2FA_KEY, ADMIN_URL, API_URL, PLAIN_ADMIN, TEAM_ADMIN } from "../env.js";
 import { query, withDb } from "./db";
 import { encryptSecret, freshCode } from "./totp";
 
@@ -12,13 +12,8 @@ export const TAG = "e2e-ai";
 /** Технический админ claude-tech: его тестовые запуски метрики по умолчанию не считают. */
 export const TEST_ADMIN_ID = 9_000_000_000_000_001;
 
-/** Обычный админ (роль ADMIN, без «Финансов») со своим ключом 2FA, чтобы не делить шаги кода с другими спеками. */
-export const PLAIN_ADMIN = {
-  id: 9_100_000_000_000_041,
-  login: "e2e-ai-plain",
-  name: "E2E ИИ-админ",
-  totpSecret: "ONSWG4TFOQYTEMZUGU3DOOBZGA4TQNRQ",
-};
+/** Обычный админ (роль ADMIN, без «Финансов») — учётка в env.js рядом с остальными одноразовыми учётками стенда. */
+export { PLAIN_ADMIN };
 
 export interface SeedJob {
   feature?: string;

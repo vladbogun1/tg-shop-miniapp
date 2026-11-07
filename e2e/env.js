@@ -85,6 +85,14 @@ export const TEAM_ADMIN = {
   totpSecret: "MFRGGZDFMZTWQ2LKNNWG23TPOBYXE43U",
 };
 
+/** Ordinary ADMIN (no «Финансы») of the AI specs, with its own 2FA key so it never shares a code step with other specs. */
+export const PLAIN_ADMIN = {
+  id: 9_100_000_000_000_041,
+  login: "e2e-ai-plain",
+  name: "E2E ИИ-админ",
+  totpSecret: "ONSWG4TFOQYTEMZUGU3DOOBZGA4TQNRQ",
+};
+
 /** Telegram ids the «Админы» specs invite (removed again by the global setup). */
 export const INVITED_TG_BASE = 990000;
 
