@@ -16,14 +16,16 @@ public class AdminReviews {
 
     private final ReviewModeration moderation;
     private final AdminAuditService audit;
+    private final ReviewListing listing;
 
-    public AdminReviews(ReviewModeration moderation, AdminAuditService audit) {
+    public AdminReviews(ReviewModeration moderation, AdminAuditService audit, ReviewListing listing) {
         this.moderation = moderation;
         this.audit = audit;
+        this.listing = listing;
     }
 
-    public AdminPage list(String status, String productId, int page, int size) {
-        return moderation.adminList(status, productId, page, size);
+    public AdminPage list(ReviewListing.Query query) {
+        return listing.list(query);
     }
 
     public AdminReview publish(long id) {

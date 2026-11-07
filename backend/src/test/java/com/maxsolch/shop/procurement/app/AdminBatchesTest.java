@@ -4,6 +4,7 @@ import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.procurement.app.BatchDtos.ArriveLineResult;
 import com.maxsolch.shop.procurement.app.BatchDtos.ArriveRequest;
 import com.maxsolch.shop.procurement.app.BatchDtos.ArriveResult;
+import com.maxsolch.shop.procurement.app.BatchDtos.BatchDto;
 import com.maxsolch.shop.procurement.app.BatchDtos.CancelRequest;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
@@ -62,10 +64,22 @@ class AdminBatchesTest {
 
     @Test
     void cancellingSaysWhetherTheQueueWasClosed() {
+        when(batches.cancel(anyLong(), any(), eq(false))).thenReturn(mock(BatchDto.class));
         admin.cancel(5L, new CancelRequest(true, null), false);
         admin.cancel(6L, null, false);
 
         verify(audit).record("PREORDER_BATCH_CANCEL", "PREORDER_BATCH", "5", "с закрытием очереди");
         verify(audit).record("PREORDER_BATCH_CANCEL", "PREORDER_BATCH", "6", "очередь оставлена");
+    }
+
+    @Test
+    void theCancelReasonGoesToTheAuditLog() {
+        BatchDto dto = mock(BatchDto.class);
+        when(dto.cancelReason()).thenReturn("завод закрылся");
+        when(batches.cancel(eq(7L), any(), eq(false))).thenReturn(dto);
+
+        admin.cancel(7L, new CancelRequest(false, "завод закрылся"), false);
+
+        verify(audit).record("PREORDER_BATCH_CANCEL", "PREORDER_BATCH", "7", "очередь оставлена: завод закрылся");
     }
 }

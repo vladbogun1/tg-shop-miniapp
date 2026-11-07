@@ -3,6 +3,7 @@ package com.maxsolch.shop.it;
 import com.maxsolch.shop.catalog.domain.Product;
 import com.maxsolch.shop.customer.app.CustomerAudiences;
 import com.maxsolch.shop.customer.app.UserAdminService;
+import com.maxsolch.shop.customer.app.UserListFilter;
 import com.maxsolch.shop.customer.app.UserMetricsDto;
 import com.maxsolch.shop.customer.domain.UserCardDto;
 import com.maxsolch.shop.order.app.Checkout;
@@ -147,5 +148,59 @@ class UserAdminIT extends AbstractMysqlIT {
         assertThat(m.topCustomers()).extracting(t -> t.totalSpentMinor()).containsExactlyElementsOf(
                 expected.stream().map(r -> (Long) r.get(3)).toList());
         assertThat(m.topCustomers()).hasSize(expected.size());
+    }
+
+    // ---- filters «with orders» / Premium (data: users 1..6; premium 1 and 4; blocked 2 and 5; buyers 1, 2 and 4) ----
+
+    private List<Long> ids(boolean blocked, boolean premium, Boolean hasOrders, int page, int size, String sort, String dir) {
+        return service.list(new UserListFilter("92000000000", blocked, premium, hasOrders), page, size, sort, dir).stream()
+                .map(UserCardDto::telegramUserId).toList();
+    }
+
+    @Test
+    void hasOrdersFilterSplitsBuyersFromTheRest() {
+        assertThat(ids(false, false, true, 0, 100, "telegramUserId", "asc")).containsExactly(BASE + 1, BASE + 2, BASE + 4);
+        assertThat(ids(false, false, false, 0, 100, "telegramUserId", "asc")).containsExactly(BASE + 3, BASE + 5, BASE + 6);
+        assertThat(ids(false, false, null, 0, 100, "telegramUserId", "asc")).hasSize(6);
+    }
+
+    @Test
+    void rejectedOnlyOrderStillCountsAsAnOrderLikeTheColumnAndTheBroadcastAudience() {
+        jdbc.update("UPDATE orders SET status = 'REJECTED' WHERE tg_user_id = ?", BASE + 2);
+        assertThat(ids(false, false, true, 0, 100, "telegramUserId", "asc")).contains(BASE + 2);
+    }
+
+    @Test
+    void premiumFilterAndCombinationsWithBlockedAndOrders() {
+        assertThat(ids(false, true, null, 0, 100, "telegramUserId", "asc")).containsExactly(BASE + 1, BASE + 4);
+        assertThat(ids(false, true, true, 0, 100, "telegramUserId", "asc")).containsExactly(BASE + 1, BASE + 4);
+        assertThat(ids(false, true, false, 0, 100, "telegramUserId", "asc")).isEmpty();
+        assertThat(ids(true, false, true, 0, 100, "telegramUserId", "asc")).containsExactly(BASE + 2);
+        assertThat(ids(true, true, null, 0, 100, "telegramUserId", "asc")).isEmpty();
+    }
+
+    @Test
+    void filteredListPagesAndSortsConsistently() {
+        assertThat(ids(false, false, true, 0, 2, "telegramUserId", "asc")).containsExactly(BASE + 1, BASE + 2);
+        assertThat(ids(false, false, true, 1, 2, "telegramUserId", "asc")).containsExactly(BASE + 4);
+        assertThat(ids(false, false, true, 2, 2, "telegramUserId", "asc")).isEmpty();
+        // by orders: user 4 has 3 orders, user 1 has 2, user 2 has 1
+        assertThat(ids(false, false, true, 0, 100, "ordersCount", "desc")).containsExactly(BASE + 4, BASE + 1, BASE + 2);
+        assertThat(ids(false, false, false, 0, 100, "createdAt", "asc")).containsExactly(BASE + 3, BASE + 5, BASE + 6);
+        assertThat(ids(false, true, null, 0, 100, "ordersCount", "desc")).containsExactly(BASE + 4, BASE + 1);
+    }
+
+    @Test
+    void lastOrderIsTheNewestOrderOfTheCustomerAndNullForNonBuyers() {
+        List<UserCardDto> all = service.list(UserListFilter.of("92000000000", false), 0, 100, "telegramUserId", "asc");
+        java.util.Map<Long, UserCardDto> byId = new java.util.HashMap<>();
+        all.forEach(u -> byId.put(u.telegramUserId(), u));
+        assertThat(byId.get(BASE + 3).lastOrderAt()).isNull();
+        assertThat(byId.get(BASE + 6).lastOrderAt()).isNull();
+        for (long i : new long[]{1, 2, 4}) {
+            java.time.LocalDateTime expected = jdbc.queryForObject("SELECT MAX(created_at) FROM orders WHERE tg_user_id = ?",
+                    java.time.LocalDateTime.class, BASE + i);
+            assertThat(byId.get(BASE + i).lastOrderAt()).isEqualTo(expected.toInstant(java.time.ZoneOffset.UTC));
+        }
     }
 }

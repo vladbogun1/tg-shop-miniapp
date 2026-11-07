@@ -228,11 +228,13 @@ public class PreorderQueueAdmin {
                 position = waitingSeen.merge(Lines.key(s.getProductId(), s.getVariantId()), 1, Integer::sum);
             }
             User u = people.get(s.getUserId());
+            String orderId = s.getOrderId() == null ? null : UuidUtil.toString(s.getOrderId());
             out.add(new SubscriberDto(s.getId(), s.getUserId(), u == null ? null : nameOf(u),
                     u == null ? null : u.getUsername(), u != null && u.isBotBlocked(),
                     UuidUtil.toString(s.getProductId()), s.getVariantId() == null ? null : UuidUtil.toString(s.getVariantId()),
                     p == null ? null : p.getTitle(), v == null ? null : v.getName(), s.getQty(), s.getStatus().name(), position,
-                    s.getHeldQty(), s.getHoldUntil(), s.getSource(), s.getCreatedAt(), s.getClosedAt(), s.getCloseReason()));
+                    s.getHeldQty(), s.getHoldUntil(), s.getSource(), s.getCreatedAt(), s.getClosedAt(), s.getCloseReason(),
+                    orderId, orderId == null ? null : orderId.substring(0, 8)));
         }
         return out;
     }

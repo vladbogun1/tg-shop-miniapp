@@ -118,6 +118,9 @@ public class PreorderBatch {
     @Column(name = "cancelled_at")
     private Instant cancelledAt;
 
+    @Column(name = "cancel_reason", length = 500)
+    private String cancelReason;
+
     /** The batch moves along its way (ordered → in transit → customs) or ends (arrived, cancelled). */
     public void moveTo(Status to) {
         status = to;

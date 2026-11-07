@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Admin analytics: the tabbed metrics page and the board strip. All tab endpoints take
- * {@code period=today|7d|month|prevmonth|90d|year|custom} (+ {@code from}/{@code to} as yyyy-MM-dd for
+ * {@code period=today|yesterday|7d|30d|month|prevmonth|quarter|90d|year|custom} (+ {@code from}/{@code to} as yyyy-MM-dd for
  * custom) and {@code channel=all|miniapp|web}.
  */
 @RestController

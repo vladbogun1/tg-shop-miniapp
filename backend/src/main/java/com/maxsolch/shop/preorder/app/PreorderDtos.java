@@ -53,7 +53,8 @@ public final class PreorderDtos {
     public record SubscriberDto(long id, long userId, @Nullable String name, @Nullable String username, boolean botBlocked,
                                 String productId, @Nullable String variantId, String productTitle, @Nullable String variantName,
                                 int qty, @Schema(allowableValues = {"WAITING", "HELD", "NOTIFIED", "BOUGHT", "EXPIRED", "CANCELLED"}) String status, @Nullable Integer position, int heldQty, @Nullable Instant holdUntil,
-                                @Nullable String source, Instant createdAt, @Nullable Instant closedAt, @Nullable String closeReason) {
+                                @Nullable String source, Instant createdAt, @Nullable Instant closedAt, @Nullable String closeReason,
+                                @Nullable String orderId, @Nullable String orderNo) {
     }
 
     /**

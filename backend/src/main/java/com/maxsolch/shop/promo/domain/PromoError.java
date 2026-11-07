@@ -11,7 +11,8 @@ public enum PromoError implements ErrorCode {
     CODE_ALREADY_USED_RENAME,
     PROMO_USED("PROMO_USED"),
     DISCOUNT_REQUIRED,
-    INVALID_ID;
+    INVALID_ID,
+    EXPIRY_IN_PAST;
 
     private final String code;
 

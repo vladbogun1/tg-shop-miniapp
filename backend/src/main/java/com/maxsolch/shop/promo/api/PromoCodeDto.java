@@ -24,7 +24,7 @@ public record PromoCodeDto(
         /** Last moment the code is valid (V44); null = no expiry. */
         @Nullable Instant expiresAt,
         /** {@code REVIEW_BONUS} for a review bonus; null = made by an admin. */
-        @Nullable @Schema(allowableValues = {"REVIEW_BONUS"}) String source,
-        /** {@code OURS} | {@code PERSONAL} | {@code REVIEW} — see {@link com.maxsolch.shop.promo.domain.PromoOrigin}. */
-        @Schema(allowableValues = {"OURS", "PERSONAL", "REVIEW"}) String origin) {
+        @Nullable @Schema(allowableValues = {"REVIEW_BONUS", "GIFT_CASE"}) String source,
+        /** {@code OURS} | {@code PERSONAL} | {@code REVIEW} | {@code CASE} — see {@link com.maxsolch.shop.promo.domain.PromoOrigin}. */
+        @Schema(allowableValues = {"OURS", "PERSONAL", "REVIEW", "CASE"}) String origin) {
 }

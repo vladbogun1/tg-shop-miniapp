@@ -1910,6 +1910,10 @@
             "nullable" : true,
             "type" : "string"
           },
+          "cancelReason" : {
+            "nullable" : true,
+            "type" : "string"
+          },
           "cancelledAt" : {
             "format" : "date-time",
             "nullable" : true,
@@ -2018,6 +2022,7 @@
         },
         "required" : [
           "arrivedAt",
+          "cancelReason",
           "cancelledAt",
           "createdAt",
           "createdBy",
@@ -2589,6 +2594,10 @@
           "lang" : {
             "type" : "string"
           },
+          "remaining" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
           "sent" : {
             "format" : "int32",
             "type" : "integer"
@@ -2598,6 +2607,12 @@
             "type" : "string"
           },
           "status" : {
+            "type" : "string"
+          },
+          "stopRequested" : {
+            "type" : "boolean"
+          },
+          "stoppedByName" : {
             "type" : "string"
           },
           "text" : {
@@ -2628,9 +2643,12 @@
           "finishedAt",
           "id",
           "lang",
+          "remaining",
           "sent",
           "startedAt",
           "status",
+          "stopRequested",
+          "stoppedByName",
           "text",
           "textEn",
           "textRu",
@@ -2728,6 +2746,15 @@
             "format" : "date-time",
             "type" : "string"
           },
+          "stopRequested" : {
+            "type" : "boolean"
+          },
+          "stopped" : {
+            "type" : "boolean"
+          },
+          "stoppedBy" : {
+            "type" : "string"
+          },
           "total" : {
             "format" : "int32",
             "type" : "integer"
@@ -2740,6 +2767,9 @@
           "running",
           "sent",
           "startedAt",
+          "stopRequested",
+          "stopped",
+          "stoppedBy",
           "total"
         ],
         "type" : "object"
@@ -2815,7 +2845,7 @@
           "closeQueue" : {
             "type" : "boolean"
           },
-          "note" : {
+          "reason" : {
             "type" : "string"
           }
         },
@@ -4554,6 +4584,30 @@
             "type" : "string"
           }
         },
+        "type" : "object"
+      },
+      "CustomerHit" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "phone" : {
+            "type" : "string"
+          },
+          "telegramUserId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "username" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "name",
+          "phone",
+          "telegramUserId",
+          "username"
+        ],
         "type" : "object"
       },
       "CustomerKpis" : {
@@ -9275,6 +9329,43 @@
         ],
         "type" : "object"
       },
+      "OrderHit" : {
+        "properties" : {
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "customerName" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "phone" : {
+            "type" : "string"
+          },
+          "shortId" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "totalMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "createdAt",
+          "customerName",
+          "id",
+          "phone",
+          "shortId",
+          "status",
+          "totalMinor"
+        ],
+        "type" : "object"
+      },
       "OrderItemDto" : {
         "properties" : {
           "autoGift" : {
@@ -10195,6 +10286,43 @@
         ],
         "type" : "object"
       },
+      "ProductHit" : {
+        "properties" : {
+          "active" : {
+            "type" : "boolean"
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "priceMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "sku" : {
+            "type" : "string"
+          },
+          "stock" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "active",
+          "currency",
+          "id",
+          "priceMinor",
+          "sku",
+          "stock",
+          "title"
+        ],
+        "type" : "object"
+      },
       "ProductImageDto" : {
         "properties" : {
           "id" : {
@@ -10255,6 +10383,35 @@
           "productId",
           "waitingCount"
         ],
+        "type" : "object"
+      },
+      "ProductQuickEditRequest" : {
+        "properties" : {
+          "expectedPriceMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "expectedStock" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "priceMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "stock" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "stockNote" : {
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "stockReason" : {
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "ProductUpsertRequest" : {
@@ -10490,7 +10647,8 @@
             "enum" : [
               "OURS",
               "PERSONAL",
-              "REVIEW"
+              "REVIEW",
+              "CASE"
             ],
             "type" : "string"
           },
@@ -10505,7 +10663,8 @@
           },
           "source" : {
             "enum" : [
-              "REVIEW_BONUS"
+              "REVIEW_BONUS",
+              "GIFT_CASE"
             ],
             "nullable" : true,
             "type" : "string"
@@ -10532,6 +10691,40 @@
         ],
         "type" : "object"
       },
+      "PromoCodePageDto" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/PromoCodeDto"
+            },
+            "type" : "array"
+          },
+          "originTotal" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "page" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "size" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "total" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "items",
+          "originTotal",
+          "page",
+          "size",
+          "total"
+        ],
+        "type" : "object"
+      },
       "PromoCodeUpsertRequest" : {
         "properties" : {
           "active" : {
@@ -10554,6 +10747,10 @@
             "minimum" : 0,
             "type" : "integer"
           },
+          "expiresOn" : {
+            "pattern" : "^\\d{4}-\\d{2}-\\d{2}$",
+            "type" : "string"
+          },
           "maxDiscountMinor" : {
             "format" : "int64",
             "minimum" : 0,
@@ -10562,6 +10759,9 @@
           "maxUses" : {
             "format" : "int32",
             "type" : "integer"
+          },
+          "noExpiry" : {
+            "type" : "boolean"
           }
         },
         "required" : [
@@ -11787,6 +11987,34 @@
         ],
         "type" : "object"
       },
+      "SearchResults" : {
+        "properties" : {
+          "customers" : {
+            "items" : {
+              "$ref" : "#/components/schemas/CustomerHit"
+            },
+            "type" : "array"
+          },
+          "orders" : {
+            "items" : {
+              "$ref" : "#/components/schemas/OrderHit"
+            },
+            "type" : "array"
+          },
+          "products" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ProductHit"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [
+          "customers",
+          "orders",
+          "products"
+        ],
+        "type" : "object"
+      },
       "SendMessageRequest" : {
         "properties" : {
           "attachmentUrl" : {
@@ -12824,6 +13052,14 @@
             "nullable" : true,
             "type" : "string"
           },
+          "orderId" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "orderNo" : {
+            "nullable" : true,
+            "type" : "string"
+          },
           "position" : {
             "format" : "int32",
             "nullable" : true,
@@ -12880,6 +13116,8 @@
           "holdUntil",
           "id",
           "name",
+          "orderId",
+          "orderNo",
           "position",
           "productId",
           "productTitle",
@@ -13954,6 +14192,11 @@
             "nullable" : true,
             "type" : "string"
           },
+          "lastOrderAt" : {
+            "format" : "date-time",
+            "nullable" : true,
+            "type" : "string"
+          },
           "lastSeenAt" : {
             "format" : "date-time",
             "nullable" : true,
@@ -13989,6 +14232,7 @@
           "firstName",
           "languageCode",
           "lastName",
+          "lastOrderAt",
           "lastSeenAt",
           "locale",
           "ordersCount",
@@ -15657,6 +15901,32 @@
           }
         ],
         "summary" : "Progress of the running/last broadcast",
+        "tags" : [
+          "Admin Broadcast"
+        ]
+      }
+    },
+    "/api/admin/broadcast/stop" : {
+      "post" : {
+        "operationId" : "AdminBroadcastStopController_stop",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BroadcastHistoryDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Stop the running broadcast: sent ones stay, unsent ones are not sent; idempotent; 409 when nothing is running",
         "tags" : [
           "Admin Broadcast"
         ]
@@ -21222,6 +21492,52 @@
         ]
       }
     },
+    "/api/admin/products/{id}/quick" : {
+      "patch" : {
+        "operationId" : "AdminProductQuickEditController_quick",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProductQuickEditRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminProductDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Quick edit from the list: price and/or stock only. 409 STOCK_CONFLICT / PRICE_CONFLICT when the stored value is no longer the expected one; 400 STOCK_REASON_REQUIRED when the stock goes down; 400 QUICK_STOCK_HAS_VARIANTS for a product with variants",
+        "tags" : [
+          "Admin Products"
+        ]
+      }
+    },
     "/api/admin/promocodes" : {
       "get" : {
         "operationId" : "AdminPromoController_list",
@@ -21255,7 +21571,7 @@
             "bearer-jwt" : [ ]
           }
         ],
-        "summary" : "List promo codes (with live reservations); origin=OURS|PERSONAL|REVIEW narrows the list",
+        "summary" : "List promo codes (with live reservations); origin=OURS|PERSONAL|REVIEW|CASE narrows the list",
         "tags" : [
           "Admin Promocodes"
         ]
@@ -21319,6 +21635,78 @@
           }
         ],
         "summary" : "Orders with a manual amount/percent discount, newest first (max 200)",
+        "tags" : [
+          "Admin Promocodes"
+        ]
+      }
+    },
+    "/api/admin/promocodes/page" : {
+      "get" : {
+        "operationId" : "AdminPromoController_page",
+        "parameters" : [
+          {
+            "in" : "query",
+            "name" : "origin",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "q",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "state",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "page",
+            "required" : false,
+            "schema" : {
+              "default" : 0,
+              "format" : "int32",
+              "type" : "integer"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "size",
+            "required" : false,
+            "schema" : {
+              "default" : 25,
+              "format" : "int32",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PromoCodePageDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Promo codes page: origin=OURS|PERSONAL|REVIEW|CASE, q (code or owner id), state=live|off, page from 0, size up to 100",
         "tags" : [
           "Admin Promocodes"
         ]
@@ -21725,6 +22113,35 @@
           },
           {
             "in" : "query",
+            "name" : "q",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "ratings",
+            "required" : false,
+            "schema" : {
+              "items" : {
+                "format" : "int32",
+                "type" : "integer"
+              },
+              "type" : "array"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "unanswered",
+            "required" : false,
+            "schema" : {
+              "default" : false,
+              "type" : "boolean"
+            }
+          },
+          {
+            "in" : "query",
             "name" : "page",
             "required" : false,
             "schema" : {
@@ -21761,7 +22178,7 @@
             "bearer-jwt" : [ ]
           }
         ],
-        "summary" : "Reviews, newest first; status = PENDING | PUBLISHED | HIDDEN | ALL, optional productId",
+        "summary" : "Reviews, newest first; status = PENDING | PUBLISHED | HIDDEN | ALL, optional productId, q (text, author, customer, product, order id), ratings (1..5, repeatable), unanswered (no shop reply). Status counters are counted under all filters except the status.",
         "tags" : [
           "Admin reviews"
         ]
@@ -21915,6 +22332,42 @@
         "summary" : "Public reply of the shop; blank text removes it",
         "tags" : [
           "Admin reviews"
+        ]
+      }
+    },
+    "/api/admin/search" : {
+      "get" : {
+        "operationId" : "AdminSearchController_search",
+        "parameters" : [
+          {
+            "in" : "query",
+            "name" : "q",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SearchResults"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Up to 5 orders (number, phone, name), products (title, article) and customers (name, @username, phone) for the term; fewer than 2 characters give empty groups",
+        "tags" : [
+          "Admin Search"
         ]
       }
     },
@@ -22800,6 +23253,45 @@
         ]
       }
     },
+    "/api/admin/support/threads/{id}/reply-templates" : {
+      "get" : {
+        "operationId" : "AdminSupportController_replyTemplates",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/RenderedTemplateDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Reply templates filled in for this thread, in the customer's language",
+        "tags" : [
+          "Admin Support"
+        ]
+      }
+    },
     "/api/admin/support/unread-count" : {
       "get" : {
         "operationId" : "AdminSupportController_unreadCount",
@@ -23169,6 +23661,23 @@
           },
           {
             "in" : "query",
+            "name" : "premiumOnly",
+            "required" : false,
+            "schema" : {
+              "default" : false,
+              "type" : "boolean"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "hasOrders",
+            "required" : false,
+            "schema" : {
+              "type" : "boolean"
+            }
+          },
+          {
+            "in" : "query",
             "name" : "page",
             "required" : false,
             "schema" : {
@@ -23226,7 +23735,7 @@
             "bearer-jwt" : [ ]
           }
         ],
-        "summary" : "Paged/searchable/sortable list of bot users",
+        "summary" : "Paged/searchable/sortable list of bot users; filters (all combine): blockedOnly, premiumOnly, hasOrders=true|false (any order status)",
         "tags" : [
           "Admin Users"
         ]
@@ -25818,6 +26327,40 @@
         ]
       }
     },
+    "/api/public/brands/redirects" : {
+      "get" : {
+        "operationId" : "PublicBrandRedirectController_redirects",
+        "parameters" : [
+          {
+            "in" : "query",
+            "name" : "slugs",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "additionalProperties" : {
+                    "type" : "string"
+                  },
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Of the comma-separated brand slugs, those that are old ones: {oldSlug: currentSlug}",
+        "tags" : [
+          "Public site catalog"
+        ]
+      }
+    },
     "/api/public/catalog/schema" : {
       "get" : {
         "operationId" : "PublicCatalogController_schema",
@@ -26386,6 +26929,10 @@
     {
       "description" : "Public payment options",
       "name" : "Public"
+    },
+    {
+      "description" : "The «go to» box of the admin",
+      "name" : "Admin Search"
     },
     {
       "description" : "Canned order-chat replies with order placeholders",

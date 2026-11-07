@@ -203,7 +203,34 @@ class PreorderBatchServiceTest {
         service.cancel(5L, new CancelRequest(true, "завод закрылся"), false);
 
         verify(queue).onBatchCancelled(argThat(lines -> lines.size() == 1), eq(true), eq(NOW));
-        assertThat(batch.getPrivateNote()).contains("завод закрылся");
+        assertThat(batch.getCancelReason()).isEqualTo("завод закрылся");
+    }
+
+    @Test
+    void aBlankReasonIsNoReason() {
+        lineWithQueue();
+
+        service.cancel(5L, new CancelRequest(false, "   "), false);
+
+        assertThat(batch.getCancelReason()).isNull();
+    }
+
+    @Test
+    void aReasonLongerThan500CharsIsRefused() {
+        lineWithQueue();
+        String tooLong = "я".repeat(501);
+
+        assertThatThrownBy(() -> service.cancel(5L, new CancelRequest(false, tooLong), false))
+                .isInstanceOf(DomainException.BadRequest.class);
+    }
+
+    @Test
+    void aReasonOf500CharsIsKeptTrimmed() {
+        lineWithQueue();
+
+        service.cancel(5L, new CancelRequest(false, " " + "я".repeat(500) + " "), false);
+
+        assertThat(batch.getCancelReason()).hasSize(500);
     }
 
     @Test

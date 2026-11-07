@@ -44,7 +44,8 @@ public class UserListQueries {
             + "   OR LOWER(COALESCE(u.first_name, '')) LIKE :like "
             + "   OR LOWER(COALESCE(u.last_name, '')) LIKE :like "
             + "   OR CAST(u.telegram_user_id AS CHAR) LIKE :like)) "
-            + "AND (:blockedOnly = FALSE OR u.bot_blocked = TRUE) ";
+            + "AND (:blockedOnly = FALSE OR u.bot_blocked = TRUE) "
+            + "AND (:premiumOnly = FALSE OR u.is_premium = TRUE) ";
 
     private final EntityManager em;
 
@@ -53,20 +54,25 @@ public class UserListQueries {
     }
 
     /** One page ordered by a user column (ties: the newest Telegram id first). */
-    public List<UserRow> page(boolean hasQ, String like, boolean blockedOnly, Column by, boolean ascending, int limit,
-                              int offset) {
+    public List<UserRow> page(boolean hasQ, String like, boolean blockedOnly, boolean premiumOnly, Column by,
+                              boolean ascending, int limit, int offset) {
         Query query = em.createNativeQuery(SELECT + FILTER + "ORDER BY " + by.sql + " " + (ascending ? "ASC" : "DESC")
                 + ", u.telegram_user_id DESC LIMIT :lim OFFSET :off");
-        filter(query, hasQ, like, blockedOnly);
+        filter(query, hasQ, like, blockedOnly, premiumOnly);
         query.setParameter("lim", limit);
         query.setParameter("off", offset);
         return rows(query);
     }
 
-    /** Telegram ids of everyone the filter matches (to sort by something the users table does not have). */
-    public List<Long> matchingIds(boolean hasQ, String like, boolean blockedOnly) {
-        Query query = em.createNativeQuery("SELECT u.telegram_user_id FROM users u " + FILTER);
-        filter(query, hasQ, like, blockedOnly);
+    /**
+     * Telegram ids of everyone the filter matches, ordered by a user column (ties: the newest Telegram id first). Used when
+     * the page cannot be cut in SQL: the filter or the sort needs what only the owner of the orders knows.
+     */
+    public List<Long> matchingIds(boolean hasQ, String like, boolean blockedOnly, boolean premiumOnly, Column by,
+                                  boolean ascending) {
+        Query query = em.createNativeQuery("SELECT u.telegram_user_id FROM users u " + FILTER + "ORDER BY " + by.sql + " "
+                + (ascending ? "ASC" : "DESC") + ", u.telegram_user_id DESC");
+        filter(query, hasQ, like, blockedOnly, premiumOnly);
         @SuppressWarnings("unchecked")
         List<Object> ids = query.getResultList();
         return ids.stream().map(o -> ((Number) o).longValue()).toList();
@@ -90,10 +96,11 @@ public class UserListQueries {
         return List.copyOf(ordered);
     }
 
-    private static void filter(Query query, boolean hasQ, String like, boolean blockedOnly) {
+    private static void filter(Query query, boolean hasQ, String like, boolean blockedOnly, boolean premiumOnly) {
         query.setParameter("hasQ", hasQ);
         query.setParameter("like", like);
         query.setParameter("blockedOnly", blockedOnly);
+        query.setParameter("premiumOnly", premiumOnly);
     }
 
     private static List<UserRow> rows(Query query) {

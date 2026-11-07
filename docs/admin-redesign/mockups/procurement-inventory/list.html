@@ -1,0 +1,208 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=1500"><title>1. Список поставок — макет</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0E0E10;--bg2:#131315;--s:#1A1A1A;--s2:#222;--s3:#2A2A2D;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.16);--tx:#F4F4F5;--mu:#A1A1AA;--fa:#8A8A93;--ac:#FF6600;--ach:#FF8533;--acs:rgba(255,102,0,.12);--acs2:rgba(255,102,0,.22);--ok:#22C55E;--warn:#F59E0B;--dg:#EF4444;--dgi:#FCA5A5;--bl:#3F8CF5;--vi:#9B6BFF;--pk:#F472B6}
+html{background:#060607}
+body{font:14px/1.4 "Inter","Segoe UI",system-ui,sans-serif;color:var(--tx);padding:28px 32px 80px;min-width:1500px}
+a{color:inherit;text-decoration:none}
+.ex{font-family:"Exo 2","Segoe UI",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.02em}
+.pg h1{font:700 28px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;text-transform:uppercase;margin-bottom:6px}
+.pg .lead{color:var(--mu);max-width:900px;margin-bottom:8px}
+.pg .nav0{margin-bottom:18px;color:var(--ach)}
+.var{margin:34px 0 10px;padding-top:22px;border-top:1px solid var(--line2)}
+.vh{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
+.vl{font:800 22px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;background:var(--ac);color:#0E0E10;border-radius:8px;padding:0 12px;line-height:34px}
+.vi2{font:600 18px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;color:var(--tx)}
+.vd{color:var(--mu);margin-bottom:18px;max-width:1000px}
+.h2{font:700 20px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;text-transform:uppercase;margin:44px 0 0;color:var(--ach)}
+.frames{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start}
+figure.fg{display:flex;flex-direction:column;gap:10px}
+figcaption{color:var(--fa);font-size:12px}
+.dev{position:relative;background:var(--bg);overflow:hidden;color:var(--tx);font-size:14px;flex:none}
+.phone{width:390px;height:800px;border-radius:30px;box-shadow:0 0 0 6px #26262a,0 0 0 7px #3a3a3f}
+.tablet{width:820px;height:1000px;border-radius:18px;box-shadow:0 0 0 6px #26262a,0 0 0 7px #3a3a3f}
+.desk{width:1440px;height:900px;border-radius:10px;box-shadow:0 0 0 1px var(--line2)}
+.desk.short{height:640px}
+.scr{display:flex;flex-direction:column;height:100%}
+.sb{height:26px;flex:none;display:flex;justify-content:space-between;align-items:flex-end;padding:0 22px 2px;font-size:11px;font-weight:600;color:var(--mu)}
+.top{display:flex;align-items:center;gap:4px;height:52px;padding:0 6px 0 4px;border-bottom:1px solid var(--line);flex:none}
+.top h1{font:700 17px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;text-transform:uppercase;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:8px}
+.top h1.c{text-align:center;padding:0}
+.ib{width:44px;height:44px;display:grid;place-items:center;border-radius:12px;color:var(--mu);font-size:22px;flex:none}
+.pbody{flex:1;overflow:hidden;position:relative;min-height:0}
+.pad{padding:14px}
+.px{padding:0 14px}
+.tabbar{height:62px;flex:none;display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--line);background:var(--s)}
+.tabbar div{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;color:var(--fa)}
+.tabbar div i{font-style:normal;font-size:19px}
+.tabbar .on{color:var(--ach)}
+.pbar{flex:none;background:var(--s);border-top:1px solid var(--line2);padding:10px 14px;display:flex;gap:10px;align-items:center}
+.pbar .sum{flex:1;min-width:0;line-height:1.25}
+.pbar .sum b{display:block;font-size:15px}
+.pbar .sum span{font-size:11.5px;color:var(--mu)}
+.dsh{display:grid;grid-template-columns:232px 1fr;height:100%}
+.dsh.rail{grid-template-columns:64px 1fr}
+.side{background:var(--s);border-right:1px solid var(--line);padding:16px 10px;display:flex;flex-direction:column;gap:2px}
+.side .logo{font:800 17px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;color:var(--ac);padding:0 10px 14px;letter-spacing:.04em}
+.side a{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:10px;color:var(--mu);font-size:13.5px}
+.side a.on{background:var(--acs);color:var(--ach);font-weight:600}
+.side .gl{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--fa);padding:12px 10px 4px}
+.rail .side{padding:14px 8px;align-items:center}.rail .side a{width:44px;justify-content:center;padding:0}.rail .side .logo{padding:0 0 12px;font-size:14px}
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.dtop{height:60px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--line);gap:16px}
+.dtop h1{font:700 21px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;text-transform:uppercase}
+.dtop .sub{color:var(--fa);font-size:12px;margin-left:12px;font-weight:400}
+.dtop .acts{display:flex;gap:8px;align-items:center}
+.dbody{flex:1;overflow:hidden;padding:20px 24px;min-height:0;position:relative}
+.wrap{margin:0 auto}
+.btn{height:36px;padding:0 14px;border-radius:10px;border:1px solid var(--line2);background:var(--s2);color:var(--tx);font:600 13px "Inter","Segoe UI",sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;flex:none}
+.btn.pri{background:var(--ac);color:#0E0E10;border-color:var(--ac)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--mu)}
+.btn.out{background:transparent}
+.btn.dg{background:rgba(239,68,68,.14);color:var(--dgi);border-color:rgba(239,68,68,.45)}
+.btn.lg{height:48px;font-size:15px;border-radius:12px;padding:0 20px}
+.btn.sm{height:30px;font-size:12px;padding:0 10px;border-radius:8px}
+.btn.blk{width:100%}
+.btn.sq{width:44px;padding:0;font-size:18px}
+.btn[disabled],.btn.off{opacity:.45}
+.badge{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 9px;border-radius:999px;font:600 11px "Inter","Segoe UI",sans-serif;background:var(--s3);color:var(--mu);white-space:nowrap;flex:none}
+.badge.ok{background:rgba(34,197,94,.14);color:#6EE7A0}.badge.warn{background:rgba(245,158,11,.15);color:#FBBF24}.badge.dg{background:rgba(239,68,68,.15);color:var(--dgi)}.badge.ac{background:var(--acs);color:var(--ach)}.badge.bl{background:rgba(63,140,245,.16);color:#8DB9FA}.badge.vi{background:rgba(155,107,255,.16);color:#C4A8FF}
+.card{background:var(--s);border:1px solid var(--line);border-radius:14px}
+.card.pd{padding:14px}
+.card.sel{border-color:rgba(255,102,0,.55);background:linear-gradient(0deg,var(--acs),var(--acs)),var(--s)}
+.chips{display:flex;gap:8px;overflow:hidden}
+.chip{height:36px;padding:0 14px;border-radius:999px;background:var(--s2);border:1px solid var(--line);display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mu);white-space:nowrap;flex:none}
+.chip.on{background:var(--acs);border-color:rgba(255,102,0,.5);color:var(--ach)}
+.chip b{font-weight:700;color:var(--tx)}.chip.on b{color:var(--ach)}
+.chip.sm{height:30px;font-size:12px;padding:0 11px}
+.seg{display:flex;background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:2px}
+.seg span{flex:1;text-align:center;height:34px;line-height:34px;border-radius:9px;color:var(--mu);font-size:13px;font-weight:600;white-space:nowrap;padding:0 10px}
+.seg span.on{background:var(--s3);color:var(--tx);box-shadow:0 1px 0 var(--line2) inset}
+.seg span b{color:var(--ach);margin-left:4px}
+.seg.fit{display:inline-flex}.seg.fit span{flex:none}
+.inp{height:42px;background:var(--s2);border:1px solid var(--line);border-radius:10px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--tx);font-size:14px;min-width:0}
+.inp.r{justify-content:flex-end;text-align:right}
+.inp small,.unit{color:var(--fa);font-size:12px;flex:none}
+.inp.ph{color:var(--fa)}.inp.focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--acs2)}
+.inp.err{border-color:var(--dg);box-shadow:0 0 0 3px rgba(239,68,68,.18)}
+.inp.s{height:34px;font-size:13px;border-radius:8px}
+.lbl{font-size:12px;color:var(--fa);margin-bottom:5px;display:block}
+.err-t{font-size:12px;color:var(--dgi);margin-top:4px}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.f3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.stack{display:flex;flex-direction:column;gap:10px}.st14{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;align-items:center;gap:10px;min-width:0}.sp{justify-content:space-between}.grow{flex:1;min-width:0}.wr{flex-wrap:wrap}
+.mu{color:var(--mu)}.fa{color:var(--fa)}.sm{font-size:12px}.xs{font-size:11px}.b{font-weight:700}.tr{text-align:right}.nw{white-space:nowrap}.ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ok{color:#6EE7A0}.wn{color:#FBBF24}.dgt{color:var(--dgi)}.ach{color:var(--ach)}.num{font-variant-numeric:tabular-nums}
+.st{font:700 13px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);margin:2px 0 8px}
+table.dt{width:100%;border-collapse:collapse;font-size:13px}
+.dt th{text-align:left;font:600 10.5px "Inter","Segoe UI",sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--fa);background:var(--bg2);padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.dt td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.dt td.n,.dt th.n{text-align:right;font-variant-numeric:tabular-nums}
+.dt td.c,.dt th.c{text-align:center}
+.dt tfoot td{font-weight:700;background:var(--bg2);border-top:1px solid var(--line2)}
+.dt tr.hl td{background:var(--acs)}.dt tr.warnr td{background:rgba(245,158,11,.08)}.dt tr.dim td{opacity:.5}
+.tw{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--s)}
+.thumb{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#34343a,#1e1e22);display:grid;place-items:center;color:var(--fa);font-size:17px;flex:none}
+.thumb.s{width:32px;height:32px;font-size:14px;border-radius:8px}.thumb.l{width:56px;height:56px;font-size:24px;border-radius:12px}
+.circ{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font-size:20px;color:#0E0E10;flex:none;font-weight:800}
+.circ.s{width:40px;height:40px;font-size:17px}
+.c-or{background:var(--ac)}.c-bl{background:var(--bl)}.c-vi{background:var(--vi)}.c-ok{background:#22C07D}.c-wn{background:var(--warn)}.c-dg{background:#F0503C}.c-pk{background:var(--pk)}.c-gr{background:#6b6b73;color:#fff}
+.chat{display:flex;gap:12px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)}
+.chat .mid{flex:1;min-width:0}.chat .t1{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.chat .nm{font:700 15px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;text-transform:uppercase}.chat .am{font-size:13px;font-weight:600;white-space:nowrap}
+.chat .pv{color:var(--mu);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.chat .r2{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cnt{min-width:22px;height:22px;border-radius:11px;background:var(--ac);color:#0E0E10;font:700 12px "Inter","Segoe UI",sans-serif;display:inline-grid;place-items:center;padding:0 7px;flex:none}
+.cnt.g{background:var(--s3);color:var(--mu)}
+.progress{height:6px;border-radius:3px;background:var(--s3);overflow:hidden}.progress i{display:block;height:100%;background:var(--ac);border-radius:3px}
+.progress.ok i{background:var(--ok)}.progress.wn i{background:var(--warn)}
+.steps{display:flex;align-items:center;gap:0}
+.steps .s{display:flex;align-items:center;gap:6px;color:var(--fa);font-size:12px;font-weight:600;white-space:nowrap}
+.steps .s i{width:20px;height:20px;border-radius:50%;background:var(--s3);display:grid;place-items:center;font-style:normal;font-size:11px;color:var(--mu)}
+.steps .s.done i{background:var(--ok);color:#0E0E10}.steps .s.cur i{background:var(--ac);color:#0E0E10}.steps .s.cur{color:var(--tx)}.steps .s.done{color:var(--mu)}
+.steps .ln{flex:1;height:2px;background:var(--s3);margin:0 8px;min-width:12px}.steps .ln.done{background:var(--ok)}
+.mini-steps{display:flex;gap:3px}.mini-steps i{flex:1;height:4px;border-radius:2px;background:var(--s3)}.mini-steps i.d{background:var(--ok)}.mini-steps i.c{background:var(--ac)}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.66);z-index:5}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--s);border-radius:20px 20px 0 0;border-top:1px solid var(--line2);display:flex;flex-direction:column;z-index:6;max-height:92%}
+.sheet.full{top:26px;border-radius:20px 20px 0 0;max-height:none}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--s3);margin:8px auto 2px;flex:none}
+.sh{padding:8px 16px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.sh h2,.mh h2{font:700 17px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;text-transform:uppercase}
+.sbody{padding:0 16px 14px;overflow:hidden;flex:1;min-height:0}
+.sfoot{padding:12px 16px 16px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;background:var(--s)}
+.modal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--s);border:1px solid var(--line2);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.6);display:flex;flex-direction:column;max-height:calc(100% - 48px);z-index:6}
+.mh{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.mb{padding:16px 20px;overflow:hidden;flex:1;min-height:0}
+.mf{padding:12px 20px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:space-between;align-items:center}
+.ghostbg{opacity:.5}
+.sk{height:14px;border-radius:6px;background:var(--s3);margin-bottom:10px}
+.kpi{background:var(--s);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.kpi .l{font-size:11.5px;color:var(--fa)}.kpi .v{font:700 22px "Exo 2",Bahnschrift,"Segoe UI",sans-serif;margin-top:2px}.kpi .d{font-size:11.5px;color:var(--mu)}
+.kpi.p{background:var(--acs);border-color:rgba(255,102,0,.4)}
+.det{border:1px solid var(--line);border-radius:12px;background:var(--s2);padding:11px 14px;display:flex;justify-content:space-between;align-items:center;color:var(--mu);font-size:13px}
+.det b{color:var(--tx)}
+.kbd{font:600 11px "Inter","Segoe UI",sans-serif;padding:2px 6px;border-radius:5px;background:var(--s3);color:var(--mu);border:1px solid var(--line2)}
+.note{border-radius:10px;padding:9px 12px;font-size:12.5px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35);color:#FBBF24}
+.note.i{background:rgba(63,140,245,.1);border-color:rgba(63,140,245,.35);color:#8DB9FA}
+.note.ok{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.35);color:#6EE7A0}
+.note.dg{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.4);color:var(--dgi)}
+.chk{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--line2);display:inline-grid;place-items:center;flex:none;font-size:13px;color:#0E0E10;font-weight:800}
+.chk.on{background:var(--ac);border-color:var(--ac)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ac);display:inline-block;flex:none}
+.sep{height:1px;background:var(--line);margin:10px 0}
+.dt td:first-child{min-width:230px}.dsh>div:first-child{display:flex}.dsh>div:first-child .side{flex:1;width:100%}
+</style></head><body><div class="pg"><div class="nav0"><a href="index.html">← все экраны</a></div><h1>1. Список поставок</h1><div class="lead">Сейчас: три слоя шапки до первой строки, «Поставщики» подменяют экран без URL, сегмент без счётчиков. Что менять: один ряд управления и счётчики; на телефоне — вход через статусы или шторка спроса.</div><section class="var"><div class="vh"><span class="vl">A</span><span class="vi2">Один ряд управления + панель спроса справа</span></div><div class="vd">Сегмент со счётчиками и «+ Поставка» в одной строке, «Что заказать» — плашка → шторка (тел) / липкая панель справа (ноут). Карточки поставок с полоской статуса и крупным сроком.</div><div class="frames"><figure class="fg"><div class="dev phone"><div class="scr"><div class="sb"><span>9:41</span><span>▂▄▆ 100%</span></div>
+  <div class="top"><h1 class="">Поставки</h1><div class="ib">⋯</div></div>
+  <div class="pbody"><div class="pad stack" style="gap:12px">
+  <div class="chips"><span class="chip on">Едут <b>3</b></span><span class="chip">Приехали <b>14</b></span><span class="chip">Отменённые <b>1</b></span><span class="chip">Поставщики <b>3</b></span></div>
+  <div class="card pd row" style="border-color:rgba(255,102,0,.4);background:var(--acs)"><span class="circ s c-or">!</span><div class="grow"><b>Ждут 7 товаров</b><div class="sm mu">21 человек · откроется шторкой</div></div><span class="ach">›</span></div>
+  <div class="card pd " style="display:flex;flex-direction:column;gap:8px"><div class="row sp"><b class="grow ell">Taobao №14 · мыши и коврики</b><span class="badge bl">В пути</span></div>
+  <div class="mini-steps"><i class="d"></i><i class="c"></i><i class=""></i><i class=""></i></div><div class="row sp sm mu"><span>Lin Factory</span><span class="">срок 18 ноя</span></div>
+  <div class="row sp sm"><span class="mu">7 поз · 58 шт</span><span class="ach b">ждут 21</span></div></div><div class="card pd " style="display:flex;flex-direction:column;gap:8px"><div class="row sp"><b class="grow ell">Wooting 60HE · предзаказ</b><span class="badge vi">Заказана</span></div>
+  <div class="mini-steps"><i class="c"></i><i class=""></i><i class=""></i><i class=""></i></div><div class="row sp sm mu"><span>Hongkong Forward</span><span class="">срок 2 дек</span></div>
+  <div class="row sp sm"><span class="mu">1 поз · 6 шт</span><span class="ach b">ждут 6</span></div></div><div class="card pd " style="display:flex;flex-direction:column;gap:8px"><div class="row sp"><b class="grow ell">AliExpress №9 · клавиатуры</b><span class="badge warn">На таможне</span></div>
+  <div class="mini-steps"><i class="d"></i><i class="d"></i><i class="c"></i><i class=""></i></div><div class="row sp sm mu"><span>GamerGear</span><span class="wn">срок 10 ноя · просрочена</span></div>
+  <div class="row sp sm"><span class="mu">3 поз · 14 шт</span><span class="ach b">ждут 4</span></div></div></div></div><div class="pbar"><span class="btn pri lg blk">+ Поставка</span></div>
+  <div class="tabbar"><div class=""><i>▤</i>Заказы</div><div class=""><i>✉</i>Чаты</div><div class=""><i>▦</i>Каталог</div><div class=""><i>◔</i>Метрики</div><div class="on"><i>☰</i>Ещё</div></div></div></div><figcaption>Телефон 390 px</figcaption></figure><figure class="fg"><div class="dev phone"><div class="scr"><div class="sb"><span>9:41</span><span>▂▄▆ 100%</span></div>
+  <div class="top"><h1 class="">Поставки</h1><div class="ib">⋯</div></div>
+  <div class="pbody"><div class="pad stack ghostbg"><div class="chips"><span class="chip on">Едут</span><span class="chip">Приехали</span></div><div class="card pd " style="display:flex;flex-direction:column;gap:8px"><div class="row sp"><b class="grow ell">Taobao №14 · мыши и коврики</b><span class="badge bl">В пути</span></div>
+  <div class="mini-steps"><i class="d"></i><i class="c"></i><i class=""></i><i class=""></i></div><div class="row sp sm mu"><span>Lin Factory</span><span class="">срок 18 ноя</span></div>
+  <div class="row sp sm"><span class="mu">7 поз · 58 шт</span><span class="ach b">ждут 21</span></div></div><div class="card pd " style="display:flex;flex-direction:column;gap:8px"><div class="row sp"><b class="grow ell">Wooting 60HE · предзаказ</b><span class="badge vi">Заказана</span></div>
+  <div class="mini-steps"><i class="c"></i><i class=""></i><i class=""></i><i class=""></i></div><div class="row sp sm mu"><span>Hongkong Forward</span><span class="">срок 2 дек</span></div>
+  <div class="row sp sm"><span class="mu">1 поз · 6 шт</span><span class="ach b">ждут 6</span></div></div></div></div>
+  <div class="tabbar"><div class=""><i>▤</i>Заказы</div><div class=""><i>✉</i>Чаты</div><div class=""><i>▦</i>Каталог</div><div class=""><i>◔</i>Метрики</div><div class="on"><i>☰</i>Ещё</div></div></div><div class="scrim"></div><div class="sheet "><div class="grab"></div><div class="sh"><h2>Что заказать · 7</h2><div class="ib" style="width:36px;height:36px;font-size:18px">✕</div></div><div class="sbody"><div class="stack" style="gap:6px"><div class="card pd row"><span class="chk "></span><div class="thumb s">🖱</div><div class="grow"><div class="ell">Logitech G Pro X Superlight 2</div><div class="xs mu">едет 10 · Taobao №14</div></div><span class="cnt">6</span></div><div class="card pd row"><span class="chk "></span><div class="thumb s">🖱</div><div class="grow"><div class="ell">Wooting 60HE</div><div class="xs mu">в предзаказе</div></div><span class="cnt">4</span></div><div class="card pd row"><span class="chk "></span><div class="thumb s">🖱</div><div class="grow"><div class="ell">Lamzu Maya X</div><div class="xs mu">склад 1</div></div><span class="cnt">5</span></div><div class="card pd row"><span class="chk "></span><div class="thumb s">🖱</div><div class="grow"><div class="ell">VAXEE XE-S</div><div class="xs mu">нигде не заказан</div></div><span class="cnt">3</span></div></div></div><div class="sfoot"><span class="btn pri lg blk">Заказать выбранные</span></div></div></div><figcaption>Тел 390 · шторка «Что заказать»</figcaption></figure><figure class="fg"><div class="dev tablet"><div class="dsh rail"><div class="side"><div class="logo">CS</div><a class="">▤</a><a class="">✉</a><a class="on">⛟</a><a class="">⊘</a><a class="">₴</a><a class="">▦</a><a class="">◔</a><a class="">⚙</a></div><div class="main"><div class="dtop"><h1 style="font-size:18px">Поставки</h1><div class="acts"><span class="btn out">Из накладной (ИИ)</span><span class="btn pri">+ Поставка</span></div></div>
+  <div class="dbody" style="padding:16px 18px"><div class="stack" style="gap:14px"><div class="row sp"><div class="seg fit"><span class="on">Едут<b>3</b></span><span>Приехали<b>14</b></span><span>Отменённые<b>1</b></span><span>Поставщики<b>3</b></span></div></div>
+  <div class="card pd row" style="background:var(--acs);border-color:rgba(255,102,0,.4)"><b>Ждут 7 товаров · 21 человек</b><span class="grow"></span><span class="btn sm">Что заказать ›</span></div>
+  <div class="card pd row" style="gap:16px"><span class="circ s c-bl">⛟</span><div class="grow"><b>Taobao №14 · мыши и коврики</b><div class="sm mu">Lin Factory · 7 поз · 58 шт</div></div><div style="width:150px"><div class="mini-steps"><i class="d"></i><i class="c"></i><i class=""></i><i class=""></i></div></div><div class="tr" style="width:130px"><span class="badge bl">В пути</span><div class="xs mu" style="margin-top:3px">срок 18 ноя</div></div><div class="tr" style="width:90px"><div class="ach b">ждут 21</div></div></div><div class="card pd row" style="gap:16px"><span class="circ s c-vi">✓</span><div class="grow"><b>Wooting 60HE · предзаказ</b><div class="sm mu">Hongkong Forward · 1 поз · 6 шт</div></div><div style="width:150px"><div class="mini-steps"><i class="c"></i><i class=""></i><i class=""></i><i class=""></i></div></div><div class="tr" style="width:130px"><span class="badge vi">Заказана</span><div class="xs mu" style="margin-top:3px">срок 2 дек</div></div><div class="tr" style="width:90px"><div class="ach b">ждут 6</div></div></div><div class="card pd row" style="gap:16px"><span class="circ s c-wn">⚖</span><div class="grow"><b>AliExpress №9 · клавиатуры</b><div class="sm mu">GamerGear · 3 поз · 14 шт</div></div><div style="width:150px"><div class="mini-steps"><i class="d"></i><i class="d"></i><i class="c"></i><i class=""></i></div></div><div class="tr" style="width:130px"><span class="badge warn">На таможне</span><div class="xs wn" style="margin-top:3px">срок 10 ноя · просрочена</div></div><div class="tr" style="width:90px"><div class="ach b">ждут 4</div></div></div></div></div></div></div></div><figcaption>Планшет 820 px</figcaption></figure><figure class="fg"><div class="dev desk"><div class="dsh"><div><div class="side"><div class="logo">CHISETUP</div>
+  <a class=""><span>▤</span>Заказы</a><a class=""><span>✉</span>Чаты</a>
+  <div class="gl">Склад</div>
+  <a class="on"><span>⛟</span>Поставки</a><a class=""><span>⊘</span>Списания</a><a class=""><span>₴</span>Нач. себестоимость</a>
+  <div class="gl">Каталог</div>
+  <a class=""><span>▦</span>Товары</a><a class=""><span>◈</span>Бренды</a>
+  <div class="gl">Бизнес</div>
+  <a class=""><span>◔</span>Метрики</a><a class=""><span>✦</span>Промо</a><a class=""><span>⚙</span>Настройки</a></div></div><div class="main"><div class="dtop"><h1>Поставки<span class="sub">14 приехали · 3 едут</span></h1><div class="acts"><span class="btn out">Из накладной (ИИ)</span><span class="btn pri">+ Поставка</span></div></div>
+  <div class="dbody"><div class="wrap" style="max-width:1392px;height:100%"><div style="display:grid;grid-template-columns:minmax(0,1fr) 22rem;gap:20px;height:100%"><div class="stack" style="gap:14px">
+  <div class="row sp"><div class="seg fit"><span class="on">Едут<b>3</b></span><span>Приехали<b>14</b></span><span>Отменённые<b>1</b></span><span>Поставщики<b>3</b></span></div><div class="inp s" style="width:260px"><span class="fa">⌕ Поиск по названию</span></div></div>
+  <div class="card pd row" style="gap:18px"><span class="circ s c-bl">⛟</span><div class="grow"><b style="font-size:15px">Taobao №14 · мыши и коврики</b><div class="sm mu">Lin Factory · 7 поз · 58 шт</div></div><div style="width:190px"><div class="mini-steps"><i class="d"></i><i class="c"></i><i class=""></i><i class=""></i></div><div class="xs fa" style="margin-top:4px">Заказана → В пути → Таможня → Приехала</div></div><div style="width:140px"><span class="badge bl">В пути</span><div class="xs mu" style="margin-top:3px">срок 18 ноя</div></div><div class="tr" style="width:80px"><div class="ach b">ждут 21</div></div></div><div class="card pd row" style="gap:18px"><span class="circ s c-vi">✓</span><div class="grow"><b style="font-size:15px">Wooting 60HE · предзаказ</b><div class="sm mu">Hongkong Forward · 1 поз · 6 шт</div></div><div style="width:190px"><div class="mini-steps"><i class="c"></i><i class=""></i><i class=""></i><i class=""></i></div><div class="xs fa" style="margin-top:4px">Заказана → В пути → Таможня → Приехала</div></div><div style="width:140px"><span class="badge vi">Заказана</span><div class="xs mu" style="margin-top:3px">срок 2 дек</div></div><div class="tr" style="width:80px"><div class="ach b">ждут 6</div></div></div><div class="card pd row" style="gap:18px"><span class="circ s c-wn">⚖</span><div class="grow"><b style="font-size:15px">AliExpress №9 · клавиатуры</b><div class="sm mu">GamerGear · 3 поз · 14 шт</div></div><div style="width:190px"><div class="mini-steps"><i class="d"></i><i class="d"></i><i class="c"></i><i class=""></i></div><div class="xs fa" style="margin-top:4px">Заказана → В пути → Таможня → Приехала</div></div><div style="width:140px"><span class="badge warn">На таможне</span><div class="xs wn" style="margin-top:3px">срок 10 ноя · просрочена</div></div><div class="tr" style="width:80px"><div class="ach b">ждут 4</div></div></div><div class="card pd row" style="gap:18px"><span class="circ s c-ok">📦</span><div class="grow"><b style="font-size:15px">Taobao №13 · осень</b><div class="sm mu">Lin Factory · 9 поз · 64 шт</div></div><div style="width:190px"><div class="mini-steps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="c"></i></div><div class="xs fa" style="margin-top:4px">Заказана → В пути → Таможня → Приехала</div></div><div style="width:140px"><span class="badge ok">Приехала</span><div class="xs mu" style="margin-top:3px">срок 28 окт</div></div><div class="tr" style="width:80px"><div class="ach b">—</div></div></div><div class="card pd row" style="gap:18px"><span class="circ s c-ok">📦</span><div class="grow"><b style="font-size:15px">Коврики Artisan</b><div class="sm mu">без поставщика · 2 поз · 30 шт</div></div><div style="width:190px"><div class="mini-steps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="c"></i></div><div class="xs fa" style="margin-top:4px">Заказана → В пути → Таможня → Приехала</div></div><div style="width:140px"><span class="badge ok">Приехала</span><div class="xs mu" style="margin-top:3px">срок 15 окт</div></div><div class="tr" style="width:80px"><div class="ach b">—</div></div></div></div>
+  <div style="position:sticky;top:0"><div class="card pd stack" style="gap:12px"><div class="row sp"><span class="st" style="margin:0">Что заказать</span><span class="badge ac">7 товаров</span></div>
+  <div class="row"><div class="thumb s">🖱</div><div class="grow"><div class="ell">Logitech G Pro X Superlight 2</div><div class="xs mu">едет 10 · Taobao №14</div></div><span class="cnt">6</span></div><div class="row"><div class="thumb s">🖱</div><div class="grow"><div class="ell">Wooting 60HE</div><div class="xs mu">в предзаказе</div></div><span class="cnt">4</span></div><div class="row"><div class="thumb s">🖱</div><div class="grow"><div class="ell">VAXEE XE-S</div><div class="xs mu">нигде не заказан</div></div><span class="cnt">3</span></div><div class="row"><div class="thumb s">🖱</div><div class="grow"><div class="ell">Ninjutso Sora V2</div><div class="xs mu">нигде не заказан</div></div><span class="cnt">2</span></div><div class="row"><div class="thumb s">🖱</div><div class="grow"><div class="ell">Lamzu Maya X</div><div class="xs mu">склад 1 · можно раздать</div></div><span class="cnt">5</span></div>
+  <div class="sep" style="margin:2px 0"></div><div class="row sp"><span class="sm mu">Всего ждут 21 человек</span><span class="btn pri sm">Заказать всё</span></div></div></div></div></div></div></div></div></div><figcaption>Ноутбук / десктоп 1440 px</figcaption></figure></div></section><section class="var"><div class="vh"><span class="vl">B</span><span class="vi2">Статусы как чаты в Телеграме — и на телефоне, и как левая колонка</span></div><div class="vd">Вход: список статусов (круг-иконка, сумма, счётчик, превью); тап — внутрь. На планшете/ноуте та же колонка слева, справа таблица выбранного статуса. Данные в таблице: Название · Поставщик · Статус · Срок · Позиций · Заказано · Ждут · Закупка ₴.</div><div class="frames"><figure class="fg"><div class="dev phone"><div class="scr"><div class="sb"><span>9:41</span><span>▂▄▆ 100%</span></div>
+  <div class="top"><h1 class="">Поставки</h1><div class="ib">⌕</div><div class="ib">+</div></div>
+  <div class="pbody"><div class="chat"><span class="circ c-or">!</span><div class="mid"><div class="t1"><span class="nm">Что заказать</span><span class="am mu">7 товаров</span></div><div class="r2"><div class="pv">Logitech SL2 · Wooting 60HE · VAXEE XE-S…</div><span class="cnt ">21</span></div></div></div><div class="chat"><span class="circ c-bl">⛟</span><div class="mid"><div class="t1"><span class="nm">В пути</span><span class="am mu">125 542 ₴</span></div><div class="r2"><div class="pv">Taobao №14 · срок 18 ноя</div><span class="cnt ">1</span></div></div></div><div class="chat"><span class="circ c-vi">✓</span><div class="mid"><div class="t1"><span class="nm">Заказаны</span><span class="am mu">41 600 ₴</span></div><div class="r2"><div class="pv">Wooting 60HE · предзаказ · срок 2 дек</div><span class="cnt ">1</span></div></div></div><div class="chat"><span class="circ c-wn">⚖</span><div class="mid"><div class="t1"><span class="nm">На таможне</span><span class="am mu">38 200 ₴</span></div><div class="r2"><div class="pv">AliExpress №9 · просрочена на 3 дня</div><span class="cnt ">1</span></div></div></div><div class="chat"><span class="circ c-ok">📦</span><div class="mid"><div class="t1"><span class="nm">Приехали</span><span class="am mu">174 100 ₴</span></div><div class="r2"><div class="pv">Taobao №13 · 28 окт · Коврики Artisan</div><span class="cnt ">14</span></div></div></div><div class="chat"><span class="circ c-dg">✕</span><div class="mid"><div class="t1"><span class="nm">Отменённые</span><span class="am mu"></span></div><div class="r2"><div class="pv">Taobao №12 · отменена 3 окт</div><span class="cnt g">1</span></div></div></div><div class="chat"><span class="circ c-gr">☰</span><div class="mid"><div class="t1"><span class="nm">Поставщики</span><span class="am mu"></span></div><div class="r2"><div class="pv">Lin Factory · GamerGear · Hongkong Forward</div><span class="cnt g">3</span></div></div></div></div>
+  <div class="tabbar"><div class=""><i>▤</i>Заказы</div><div class=""><i>✉</i>Чаты</div><div class=""><i>▦</i>Каталог</div><div class=""><i>◔</i>Метрики</div><div class="on"><i>☰</i>Ещё</div></div></div></div><figcaption>Тел 390 · вход: статусы как чаты</figcaption></figure><figure class="fg"><div class="dev phone"><div class="scr"><div class="sb"><span>9:41</span><span>▂▄▆ 100%</span></div>
+  <div class="top"><div class="ib">‹</div><h1 class="">В пути</h1><div class="ib">⋯</div></div>
+  <div class="pbody"><div class="pad stack" style="gap:12px"><div class="card pd " style="display:flex;flex-direction:column;gap:8px"><div class="row sp"><b class="grow ell">Taobao №14 · мыши и коврики</b><span class="badge bl">В пути</span></div>
+  <div class="mini-steps"><i class="d"></i><i class="c"></i><i class=""></i><i class=""></i></div><div class="row sp sm mu"><span>Lin Factory</span><span class="">срок 18 ноя</span></div>
+  <div class="row sp sm"><span class="mu">7 поз · 58 шт</span><span class="ach b">ждут 21</span></div></div><div class="note i">Больше ничего не едет. Срок виден крупно, статус — полоской.</div></div></div><div class="pbar"><span class="btn pri lg blk">+ Поставка в этот статус</span></div>
+  <div class="tabbar"><div class=""><i>▤</i>Заказы</div><div class=""><i>✉</i>Чаты</div><div class=""><i>▦</i>Каталог</div><div class=""><i>◔</i>Метрики</div><div class="on"><i>☰</i>Ещё</div></div></div></div><figcaption>Тел 390 · внутри «В пути»</figcaption></figure><figure class="fg"><div class="dev tablet"><div class="dsh rail"><div class="side"><div class="logo">CS</div><a class="">▤</a><a class="">✉</a><a class="on">⛟</a><a class="">⊘</a><a class="">₴</a><a class="">▦</a><a class="">◔</a><a class="">⚙</a></div><div class="main"><div class="dtop"><h1 style="font-size:18px">Поставки</h1><div class="acts"><span class="btn pri">+ Поставка</span></div></div>
+  <div class="dbody" style="padding:16px 18px"><div style="display:grid;grid-template-columns:250px 1fr;gap:14px;height:100%"><div class="card" style="overflow:hidden"><div class="chat" style="padding:9px 10px;"><span class="circ s c-or">!</span><div class="mid"><div class="nm" style="font-size:13px">Что заказать</div><div class="xs mu">7 товаров</div></div><span class="cnt ">21</span></div><div class="chat" style="padding:9px 10px;background:var(--acs)"><span class="circ s c-bl">⛟</span><div class="mid"><div class="nm" style="font-size:13px">В пути</div><div class="xs mu">125 542 ₴</div></div><span class="cnt ">1</span></div><div class="chat" style="padding:9px 10px;"><span class="circ s c-vi">✓</span><div class="mid"><div class="nm" style="font-size:13px">Заказаны</div><div class="xs mu">41 600 ₴</div></div><span class="cnt ">1</span></div><div class="chat" style="padding:9px 10px;"><span class="circ s c-wn">⚖</span><div class="mid"><div class="nm" style="font-size:13px">На таможне</div><div class="xs mu">38 200 ₴</div></div><span class="cnt ">1</span></div><div class="chat" style="padding:9px 10px;"><span class="circ s c-ok">📦</span><div class="mid"><div class="nm" style="font-size:13px">Приехали</div><div class="xs mu">174 100 ₴</div></div><span class="cnt ">14</span></div><div class="chat" style="padding:9px 10px;"><span class="circ s c-dg">✕</span><div class="mid"><div class="nm" style="font-size:13px">Отменённые</div><div class="xs mu">—</div></div><span class="cnt g">1</span></div></div>
+  <div class="tw"><table class="dt"><thead><tr><th>Название</th><th>Срок</th><th class="n">Ждут</th><th class="n">Закупка</th></tr></thead><tbody><tr><td><b>Taobao №14</b><div class="xs mu">Lin Factory · 7 поз · 58 шт</div></td><td>18 ноя</td><td class="n ach">21</td><td class="n">125 542 ₴</td></tr></tbody></table></div></div></div></div></div></div><figcaption>Планшет 820 px</figcaption></figure><figure class="fg"><div class="dev desk"><div class="dsh"><div><div class="side"><div class="logo">CHISETUP</div>
+  <a class=""><span>▤</span>Заказы</a><a class=""><span>✉</span>Чаты</a>
+  <div class="gl">Склад</div>
+  <a class="on"><span>⛟</span>Поставки</a><a class=""><span>⊘</span>Списания</a><a class=""><span>₴</span>Нач. себестоимость</a>
+  <div class="gl">Каталог</div>
+  <a class=""><span>▦</span>Товары</a><a class=""><span>◈</span>Бренды</a>
+  <div class="gl">Бизнес</div>
+  <a class=""><span>◔</span>Метрики</a><a class=""><span>✦</span>Промо</a><a class=""><span>⚙</span>Настройки</a></div></div><div class="main"><div class="dtop"><h1>Поставки<span class="sub">статусы слева, таблица справа</span></h1><div class="acts"><span class="btn out">Из накладной (ИИ)</span><span class="btn pri">+ Поставка</span></div></div>
+  <div class="dbody"><div class="wrap" style="max-width:1800px;height:100%"><div style="display:grid;grid-template-columns:300px 1fr;gap:20px;height:100%"><div class="card" style="overflow:hidden;align-self:start"><div class="chat" style="background:var(--acs)"><span class="circ s c-or">!</span><div class="mid"><div class="t1"><span class="nm" style="font-size:13.5px">Что заказать</span><span class="am mu xs">7 товаров</span></div><div class="pv xs">Logitech SL2 · Wooting 60HE · VAXE</div></div><span class="cnt ">21</span></div><div class="chat" style=""><span class="circ s c-bl">⛟</span><div class="mid"><div class="t1"><span class="nm" style="font-size:13.5px">В пути</span><span class="am mu xs">125 542 ₴</span></div><div class="pv xs">Taobao №14 · срок 18 ноя</div></div><span class="cnt ">1</span></div><div class="chat" style=""><span class="circ s c-vi">✓</span><div class="mid"><div class="t1"><span class="nm" style="font-size:13.5px">Заказаны</span><span class="am mu xs">41 600 ₴</span></div><div class="pv xs">Wooting 60HE · предзаказ · срок 2 </div></div><span class="cnt ">1</span></div><div class="chat" style=""><span class="circ s c-wn">⚖</span><div class="mid"><div class="t1"><span class="nm" style="font-size:13.5px">На таможне</span><span class="am mu xs">38 200 ₴</span></div><div class="pv xs">AliExpress №9 · просрочена на 3 дн</div></div><span class="cnt ">1</span></div><div class="chat" style=""><span class="circ s c-ok">📦</span><div class="mid"><div class="t1"><span class="nm" style="font-size:13.5px">Приехали</span><span class="am mu xs">174 100 ₴</span></div><div class="pv xs">Taobao №13 · 28 окт · Коврики Arti</div></div><span class="cnt ">14</span></div><div class="chat" style=""><span class="circ s c-dg">✕</span><div class="mid"><div class="t1"><span class="nm" style="font-size:13.5px">Отменённые</span><span class="am mu xs"></span></div><div class="pv xs">Taobao №12 · отменена 3 окт</div></div><span class="cnt g">1</span></div><div class="chat" style=""><span class="circ s c-gr">☰</span><div class="mid"><div class="t1"><span class="nm" style="font-size:13.5px">Поставщики</span><span class="am mu xs"></span></div><div class="pv xs">Lin Factory · GamerGear · Hongkong</div></div><span class="cnt g">3</span></div></div>
+  <div class="stack" style="gap:12px;min-width:0"><div class="row sp"><div class="inp s" style="width:300px"><span class="fa">⌕ Поиск по названию, поставщику</span></div><span class="sm mu">Все поставки · 20 · сортировка: срок ↑</span></div>
+  <div class="tw"><table class="dt"><thead><tr><th>Название</th><th>Поставщик</th><th>Статус</th><th>Срок</th><th class="n">Позиций</th><th class="n">Заказано</th><th class="n">Ждут</th><th class="n">Закупка ₴</th></tr></thead><tbody><tr class="hl"><td><div class="row"><span class="circ s c-bl" style="width:32px;height:32px;font-size:14px">⛟</span><b>Taobao №14 · мыши и коврики</b></div></td><td class="mu">Lin Factory</td><td><span class="badge bl">В пути</span></td><td class="">18 ноя</td><td class="n">7</td><td class="n">58</td><td class="n ach b">21</td><td class="n">125 542 ₴</td></tr><tr class=""><td><div class="row"><span class="circ s c-vi" style="width:32px;height:32px;font-size:14px">✓</span><b>Wooting 60HE · предзаказ</b></div></td><td class="mu">Hongkong Forward</td><td><span class="badge vi">Заказана</span></td><td class="">2 дек</td><td class="n">1</td><td class="n">6</td><td class="n ach b">6</td><td class="n">41 600 ₴</td></tr><tr class=""><td><div class="row"><span class="circ s c-wn" style="width:32px;height:32px;font-size:14px">⚖</span><b>AliExpress №9 · клавиатуры</b></div></td><td class="mu">GamerGear</td><td><span class="badge warn">На таможне</span></td><td class="wn">10 ноя · просрочена</td><td class="n">3</td><td class="n">14</td><td class="n ach b">4</td><td class="n">38 200 ₴</td></tr><tr class=""><td><div class="row"><span class="circ s c-ok" style="width:32px;height:32px;font-size:14px">📦</span><b>Taobao №13 · осень</b></div></td><td class="mu">Lin Factory</td><td><span class="badge ok">Приехала</span></td><td class="">28 окт</td><td class="n">9</td><td class="n">64</td><td class="n ach b">—</td><td class="n">142 300 ₴</td></tr><tr class=""><td><div class="row"><span class="circ s c-ok" style="width:32px;height:32px;font-size:14px">📦</span><b>Коврики Artisan</b></div></td><td class="mu">без поставщика</td><td><span class="badge ok">Приехала</span></td><td class="">15 окт</td><td class="n">2</td><td class="n">30</td><td class="n ach b">—</td><td class="n">31 800 ₴</td></tr></tbody></table></div></div></div></div></div></div></div></div><figcaption>Ноутбук / десктоп 1440 px</figcaption></figure></div></section></div></body></html>

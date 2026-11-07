@@ -23,6 +23,12 @@ public class AdminPromos {
     public record Listed(PromoCode promo, long reserved) {
     }
 
+    /** A page of codes: {@code total} fits the search and state, {@code originTotal} only the origin (tab counter). */
+    public record Paged(List<Listed> items, long total, int page, int size, long originTotal) {
+    }
+
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final PromoAdminService promoAdminService;
     private final PromoReservationRepository reservationRepository;
     private final AdminAuditService audit;
@@ -46,6 +52,21 @@ public class AdminPromos {
                 .filter(p -> only == null || PromoOrigin.of(p) == only)
                 .map(p -> new Listed(p, reserved.getOrDefault(UuidUtil.toString(p.getId()), 0L)))
                 .toList();
+    }
+
+    /** Server-side tab: origin, search and state filters, newest first, {@code size} capped at 100. */
+    public Paged page(PromoOrigin origin, String search, String state, int page, int size) {
+        int safeSize = Math.max(1, Math.min(MAX_PAGE_SIZE, size));
+        var found = promoAdminService.page(origin, search, state, Math.max(0, page), safeSize);
+        Map<String, Long> reserved = new HashMap<>();
+        for (Object[] r : reservationRepository.liveCounts(clock.instant())) {
+            reserved.put(UuidUtil.toString((byte[]) r[0]), ((Number) r[1]).longValue());
+        }
+        List<Listed> items = found.getContent().stream()
+                .map(p -> new Listed(p, reserved.getOrDefault(UuidUtil.toString(p.getId()), 0L)))
+                .toList();
+        return new Paged(items, found.getTotalElements(), found.getNumber(), safeSize,
+                promoAdminService.countOrigin(origin));
     }
 
     public PromoCode create(PromoCodeUpsertRequest req) {

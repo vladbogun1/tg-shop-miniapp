@@ -22,8 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
-import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -52,15 +50,15 @@ import static com.maxsolch.shop.platform.util.Texts.blankToNull;
 public class BroadcastService {
 
     /** How many broadcasts this admin started. */
-    public long countBy(long adminId) {
-        return broadcastRepository.countByAdminId(adminId);
-    }
+    public long countBy(long adminId) { return broadcastRepository.countByAdminId(adminId); }
 
     private enum Outcome { OK, BLOCKED, FAILED }
 
-    /** The lock of the running broadcast: renewed while it makes progress, free {@value} minutes after a crash. */
+    /** The lock of the running broadcast: renewed while it makes progress, free after a crash. */
     static final String LOCK_NAME = "broadcast";
     private static final Duration LOCK_TTL = Duration.ofMinutes(5);
+    /** The stop flag is read every N recipients (~0.5 s at the sending pace). */
+    private static final int STOP_CHECK_EVERY = 10;
 
     private final TelegramGateway bot;
     private final NotificationProperties props;
@@ -107,10 +105,7 @@ public class BroadcastService {
         }
     }
 
-    private boolean enabled() {
-        String token = props.getTelegram().getBotToken();
-        return token != null && !token.isBlank();
-    }
+    private boolean enabled() { String t = props.getTelegram().getBotToken(); return t != null && !t.isBlank(); }
 
     public BroadcastStatus status() {
         return status.get();
@@ -221,36 +216,21 @@ public class BroadcastService {
     public record Started(BroadcastStatus status, long historyId, int recipients) {
     }
 
-    /** Optional "open the shop" web_app button (private chats only; needs an HTTPS webapp URL). */
-    private InlineKeyboardMarkup shopButton(boolean withButton, String buttonText, String lang) {
-        if (!withButton) {
-            return null;
-        }
-        String webapp = props.getWebappBaseUrl();
-        if (webapp == null || !webapp.startsWith("https://")) {
-            return null; // Telegram rejects non-HTTPS web_app buttons → skip rather than fail the send
-        }
-        // A typed label is used as is; the default one follows the recipient's language, like the text.
-        String label = (buttonText == null || buttonText.isBlank())
-                ? BroadcastRules.defaultButton(lang)
-                : buttonText.trim();
-        InlineKeyboardButton btn = InlineKeyboardButton.builder()
-                .text(label)
-                .webApp(WebAppInfo.builder().url(webapp).build())
-                .build();
-        return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(btn))).build();
-    }
-
     private void run(Broadcast row, List<Recipient> recipients, boolean withButton, String buttonText,
                      DbLocks.Held lock, BroadcastPhotoDelivery photo) {
         int sent = 0, failed = 0, blocked = 0;
+        boolean stopped = false;
         Map<String, InlineKeyboardMarkup> buttons = new HashMap<>();
         try {
             int i = 0;
             for (Recipient r : recipients) {
+                if (i % STOP_CHECK_EVERY == 0 && stopRequested(row)) {
+                    stopped = true; // «Остановить»: the rest is not sent
+                    break;
+                }
                 String html = BroadcastRules.textFor(r.lang(), row.getText(), row.getTextUk(), row.getTextRu(), row.getTextEn());
                 InlineKeyboardMarkup markup = buttons.computeIfAbsent(String.valueOf(r.lang()),
-                        k -> shopButton(withButton, buttonText, r.lang()));
+                        k -> BroadcastButton.markup(props.getWebappBaseUrl(), withButton, buttonText, r.lang()));
                 Outcome o = sendOne(r.id(), html, markup, ActivityLog.Entry.bot("BROADCAST")
                         .group(ActivityLog.broadcastGroup(row.getId())).detail("lang", r.lang()), photo);
                 switch (o) {
@@ -268,17 +248,32 @@ public class BroadcastService {
             }
         } finally {
             Instant end = clock.instant();
+            String by = stopped ? stoppedByOrNull(row) : null;
             status.set(new BroadcastStatus(false, recipients.size(), sent, failed, blocked,
-                    status.get().startedAt(), end));
-            persist(row, sent, failed, blocked, Broadcast.DONE, end);
-            log.info("Broadcast #{} finished: total={} sent={} failed={} blocked={}",
-                    row.getId(), recipients.size(), sent, failed, blocked);
+                    status.get().startedAt(), end, stopped, stopped, by));
+            persist(row, sent, failed, blocked, stopped ? Broadcast.STOPPED : Broadcast.DONE, end);
+            log.info("Broadcast #{} {}: total={} sent={} failed={} blocked={}",
+                    row.getId(), stopped ? "stopped by " + by : "finished", recipients.size(), sent, failed, blocked);
             try {
                 lock.release();
             } catch (RuntimeException e) {
                 log.warn("Could not release the broadcast lock (it expires by itself): {}", e.getMessage());
             }
         }
+    }
+
+    /** The stop flag lives in the database, so a stop pressed on another instance (is seen too. */
+    private boolean stopRequested(Broadcast row) {
+        try {
+            return broadcastRepository.existsByIdAndStopRequestedAtIsNotNull(row.getId());
+        } catch (RuntimeException e) {
+            log.warn("Could not read the stop flag of broadcast #{}: {}", row.getId(), e.getMessage());
+            return false;
+        }
+    }
+
+    private String stoppedByOrNull(Broadcast row) {
+        try { return broadcastRepository.stoppedByName(row.getId()); } catch (RuntimeException e) { return null; }
     }
 
     private static void extend(DbLocks.Held lock) {
@@ -314,7 +309,7 @@ public class BroadcastService {
             return new BroadcastResult(false, "Бот не настроен");
         }
         BroadcastPhotoStore.Photo photo = photos.require(photoId);
-        Outcome o = sendOne(telegramUserId, text, shopButton(withButton, buttonText, null),
+        Outcome o = sendOne(telegramUserId, text, BroadcastButton.markup(props.getWebappBaseUrl(), withButton, buttonText, null),
                 ActivityLog.Entry.bot("BROADCAST_TEST"),
                 photo == null ? null : new BroadcastPhotoDelivery(bot, photo));
         return switch (o) {

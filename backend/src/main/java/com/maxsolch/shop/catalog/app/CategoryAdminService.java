@@ -166,6 +166,9 @@ public class CategoryAdminService {
         if (items == null || items.isEmpty()) {
             throw new DomainException.BadRequest(CatalogError.EMPTY_REORDER);
         }
+        if (items.stream().map(ReorderItem::id).distinct().count() != items.size()) {
+            throw new DomainException.BadRequest(CatalogError.REORDER_DUPLICATE);
+        }
         for (ReorderItem it : items) {
             Category c = load(it.id());
             c.setParentId(it.parentId() == null || it.parentId().isBlank() ? null : parentId(it.parentId()));

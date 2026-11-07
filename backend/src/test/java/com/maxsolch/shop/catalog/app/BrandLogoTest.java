@@ -29,7 +29,7 @@ class BrandLogoTest {
         db = new InMemoryCatalog();
         storage = mock(ImageStorageService.class);
         service = new BrandAdminService(db.brandRepository, db.productRepository, db.directory,
-                db.events(storage));
+                db.events(storage), mock(BrandSlugHistory.class));
     }
 
     private static BrandUpsertRequest req(String name, String logoUrl, String logoMode) {
@@ -106,7 +106,7 @@ class BrandLogoTest {
     void filesAreDeletedOnlyAfterTheCommitNotInsideTheTransaction() {
         java.util.List<Object> held = new java.util.ArrayList<>();
         BrandAdminService inTx = new BrandAdminService(db.brandRepository, db.productRepository, db.directory,
-                new com.maxsolch.shop.platform.tx.DomainEvents(held::add));
+                new com.maxsolch.shop.platform.tx.DomainEvents(held::add), mock(BrandSlugHistory.class));
         AdminBrandDto old = inTx.create(req("Lamzu", KEY, null));
         AdminBrandDto other = inTx.create(req("ATK Gear", ImageStorageService.BRAND_LOGO_PREFIX + "2b/logo.svg", null));
 

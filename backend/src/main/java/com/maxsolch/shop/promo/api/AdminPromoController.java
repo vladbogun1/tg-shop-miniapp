@@ -43,15 +43,29 @@ public class AdminPromoController {
     }
 
     @GetMapping
-    @Operation(summary = "List promo codes (with live reservations); origin=OURS|PERSONAL|REVIEW narrows the list")
+    @Operation(summary = "List promo codes (with live reservations); origin=OURS|PERSONAL|REVIEW|CASE narrows the list")
     public List<PromoCodeDto> list(@RequestParam(required = false) String origin) {
-        PromoOrigin only;
+        return promos.list(parseOrigin(origin)).stream().map(l -> toDto(l.promo(), l.reserved())).toList();
+    }
+
+    @GetMapping("/page")
+    @Operation(summary = "Promo codes page: origin=OURS|PERSONAL|REVIEW|CASE, q (code or owner id), state=live|off, page from 0, size up to 100")
+    public PromoCodePageDto page(@RequestParam(required = false) String origin,
+                        @RequestParam(required = false) String q,
+                        @RequestParam(required = false) String state,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "25") int size) {
+        var r = promos.page(parseOrigin(origin), q, state, page, size);
+        return new PromoCodePageDto(r.items().stream().map(l -> toDto(l.promo(), l.reserved())).toList(),
+                r.total(), r.page(), r.size(), r.originTotal());
+    }
+
+    private static PromoOrigin parseOrigin(String origin) {
         try {
-            only = PromoOrigin.parse(origin);
+            return PromoOrigin.parse(origin);
         } catch (IllegalArgumentException e) {
             throw new DomainException.BadRequest(PromoError.INVALID_ORIGIN);
         }
-        return promos.list(only).stream().map(l -> toDto(l.promo(), l.reserved())).toList();
     }
 
     @PostMapping

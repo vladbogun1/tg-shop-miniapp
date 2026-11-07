@@ -1,0 +1,123 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Глобальные настройки «Подарка за сумму» — макет</title><style>
+:root{--bg:#121212;--surface:#1b1b1b;--surface2:#232323;--line:#2a2a2a;--line2:#3a3a3a;--text:#f4f4f5;--muted:#a1a1aa;--faint:#7c7c86;--accent:#ff6600;--accent-soft:rgba(255,102,0,.14);--ok:#22c55e;--warn:#f59e0b;--danger:#ef4444;--blue:#3b82f6}
+*{box-sizing:border-box;margin:0}
+body{background:#0a0a0a;color:var(--text);font:14px/1.4 system-ui,"Segoe UI",Roboto,sans-serif;padding:24px}
+h1,h2,h3,.ex{font-family:"Exo 2","Arial Narrow",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.03em}
+.page-h{max-width:1500px;margin:0 auto 8px}.page-h h1{font-size:26px}.page-h p{color:var(--muted);margin-top:4px}
+.variant{max-width:1500px;margin:28px auto;border-top:1px solid var(--line2);padding-top:14px}
+.variant>h2{font-size:18px;color:var(--accent)}.variant>.idea{color:var(--muted);margin:2px 0 14px;font-size:14px}
+.frames{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.fw{margin:0}
+.fw figcaption{font-size:12px;color:var(--faint);margin-bottom:6px}
+.fw>.box{position:relative}
+.fw .scale{transform-origin:0 0;position:absolute;left:0;top:0}
+.dev{background:var(--bg);border:1px solid var(--line2);border-radius:18px;overflow:hidden;position:relative;display:flex;flex-direction:column;color:var(--text)}
+.ph{width:390px;height:800px}
+.sb{height:26px;flex:none;display:flex;justify-content:space-between;padding:6px 18px 0;font-size:11px;color:var(--muted)}
+.pt{flex:none;height:52px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--line)}
+.pt h3{font-size:16px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb{flex:1;min-height:0;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.pn{flex:none;height:62px;border-top:1px solid var(--line);background:var(--surface);display:flex;justify-content:space-around;align-items:center;font-size:10px;color:var(--faint)}
+.pn div{display:flex;flex-direction:column;align-items:center;gap:2px}.pn .on{color:var(--accent)}.pn i{font-style:normal;font-size:18px}
+.dk{display:grid;grid-template-columns:220px 1fr;border-radius:10px}
+.rail{grid-template-columns:64px 1fr}.rail .sbar{padding:16px 6px}.rail .sbar a{justify-content:center;font-size:0;padding:10px 0}.rail .sbar a span{font-size:18px}.rail .logo{font-size:0;padding:0}
+.sbar{background:var(--surface);border-right:1px solid var(--line);padding:16px 10px;display:flex;flex-direction:column;gap:2px;overflow:hidden}
+.sbar .logo{font-family:"Exo 2",sans-serif;font-weight:800;font-size:18px;padding:4px 10px 14px}.sbar .logo b{color:var(--accent)}
+.sbar a{display:flex;gap:10px;align-items:center;padding:9px 10px;border-radius:8px;color:var(--muted);font-size:14px}
+.sbar a.on{background:var(--accent-soft);color:#ff8533}
+.main{min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.dtop{flex:none;height:56px;display:flex;align-items:center;gap:12px;padding:0 24px;border-bottom:1px solid var(--line)}
+.dtop h3{font-size:18px}
+.cnt{flex:1;min-height:0;overflow:hidden;padding:16px 24px;position:relative;display:flex;flex-direction:column;gap:12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.pad{padding:12px 14px}
+.row{display:flex;align-items:center;gap:10px}.col{display:flex;flex-direction:column;gap:8px}.sp{flex:1}.wrap{flex-wrap:wrap}
+.mono{font-family:ui-monospace,Consolas,monospace}
+.muted{color:var(--muted)}.faint{color:var(--faint)}.sm{font-size:12px}.xs{font-size:11px}.b{font-weight:600}.acc{color:var(--accent)}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.dng{color:var(--danger)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 14px;border-radius:9px;border:1px solid var(--line2);background:var(--surface2);color:var(--text);font-size:13px;white-space:nowrap;font-weight:500;flex:none}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#0e0e10;font-weight:700}
+.btn.ghost{background:transparent}.btn.dangerb{color:var(--danger);border-color:rgba(239,68,68,.4)}
+.btn.t{height:44px;min-width:44px;padding:0 12px}.btn.ic{width:36px;padding:0}.btn.t.ic{width:44px}
+.btn.sm{height:30px;padding:0 10px;font-size:12px}
+.btn.dis{opacity:.45}
+.chip{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 12px;border-radius:99px;border:1px solid var(--line2);background:var(--surface);color:var(--muted);font-size:13px;white-space:nowrap;flex:none}
+.chip.on{background:var(--accent-soft);border-color:var(--accent);color:#ff8533}
+.chip.t{height:40px}
+.badge{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap;background:var(--surface2);color:var(--muted);border:1px solid var(--line2);flex:none}
+.badge.ok{background:rgba(34,197,94,.12);color:var(--ok);border-color:rgba(34,197,94,.3)}
+.badge.warn{background:rgba(245,158,11,.12);color:var(--warn);border-color:rgba(245,158,11,.3)}
+.badge.dng{background:rgba(239,68,68,.12);color:var(--danger);border-color:rgba(239,68,68,.3)}
+.badge.acc{background:var(--accent-soft);color:#ff8533;border-color:rgba(255,102,0,.4)}
+.tog{width:44px;height:26px;border-radius:99px;background:#3a3a3a;position:relative;flex:none;display:inline-block}
+.tog::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#ddd}
+.tog.on{background:var(--accent)}.tog.on::after{left:21px;background:#0e0e10}
+.inp{height:40px;border:1px solid var(--line2);border-radius:9px;background:var(--bg);padding:0 12px;display:flex;align-items:center;gap:8px;color:var(--text);font-size:14px}
+.inp.t{height:46px}.inp .pl,.pl{color:var(--faint)}
+.lbl{font-size:12px;color:var(--muted);margin-bottom:5px;display:block}
+.seg{display:flex;background:var(--bg);border:1px solid var(--line2);border-radius:10px;padding:3px;gap:2px}
+.seg span{flex:1;text-align:center;padding:7px 10px;border-radius:7px;color:var(--muted);font-size:13px;white-space:nowrap}
+.seg span.on{background:var(--surface2);color:var(--text);box-shadow:0 0 0 1px var(--line2)}
+.seg.t span{padding:11px 10px}
+.hs{display:flex;gap:8px;overflow:hidden}
+.circle{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:21px;flex:none}
+.entry{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--line)}
+.entry .tx{flex:1;min-width:0}.entry .tx b{display:flex;justify-content:space-between;gap:8px;font-size:15px}
+.entry .tx span.pv{display:block;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cn{min-width:22px;height:22px;border-radius:99px;background:var(--accent);color:#0e0e10;font-size:12px;font-weight:700;display:inline-grid;place-items:center;padding:0 6px}
+.cn.g{background:var(--surface2);color:var(--muted)}
+.bar{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--surface2)}
+.bar i{display:block;height:100%}.bar.lg{height:16px}
+.prog{height:5px;border-radius:99px;background:var(--surface2);overflow:hidden}.prog i{display:block;height:100%;background:var(--accent)}
+table{border-collapse:collapse;width:100%}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:600;text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--surface);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--line);font-size:13.5px;white-space:nowrap}
+td.r,th.r{text-align:right}
+.trs{background:rgba(239,68,68,.07)}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.62);z-index:20}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:18px 18px 0 0;border-top:1px solid var(--line2);z-index:21;display:flex;flex-direction:column;overflow:hidden}
+.sheet .grab{width:38px;height:4px;border-radius:9px;background:#444;margin:8px auto 4px;flex:none}
+.sheet .sh{flex:none;padding:6px 16px 10px;display:flex;align-items:center;gap:8px}
+.sheet .sh h3{flex:1;font-size:16px}.sheet .sbody{flex:1;min-height:0;overflow:auto;scrollbar-width:none;padding:4px 16px 12px}
+.sheet .sf{flex:none;padding:10px 16px 18px;border-top:1px solid var(--line);display:flex;gap:8px;background:var(--surface)}
+.modal{position:absolute;z-index:21;background:var(--surface);border:1px solid var(--line2);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.drawer{position:absolute;z-index:21;right:0;top:0;bottom:0;background:var(--surface);border-left:1px solid var(--line2);display:flex;flex-direction:column;overflow:hidden;box-shadow:-20px 0 50px rgba(0,0,0,.5)}
+.mh{flex:none;padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}.mh h3{flex:1;font-size:16px}
+.mb{flex:1;min-height:0;overflow:hidden;padding:16px 18px}
+.mf{flex:none;padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;align-items:center}
+.sticky-t{flex:none;background:#151515;border-bottom:1px solid var(--line);padding:8px 12px}
+.ph-img{width:40px;height:40px;border-radius:8px;background:#2a2a2a;display:grid;place-items:center;font-size:20px;flex:none}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line2);border-radius:9px;overflow:hidden;height:34px;background:var(--bg);flex:none}
+.stepper b{width:30px;text-align:center;color:var(--muted);font-weight:400}.stepper span{min-width:44px;text-align:center;font-weight:600;font-size:13px}
+.stepper.t{height:44px}.stepper.t b{width:40px}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.kv:last-child{border:0}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+.hr{height:1px;background:var(--line);margin:10px 0}
+.toast{background:var(--accent-soft);border:1px solid rgba(255,102,0,.4);border-radius:10px;padding:8px 12px;font-size:12.5px;color:#ffb27a}
+.fade{position:absolute;left:0;right:0;bottom:0;height:40px;background:linear-gradient(transparent,var(--bg));pointer-events:none}
+.ticket{border:1px dashed var(--accent);border-radius:14px;background:linear-gradient(135deg,rgba(255,102,0,.16),rgba(255,102,0,.04));padding:14px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line)}
+.tabs span{padding:9px 14px;color:var(--muted);font-size:13.5px;border-bottom:2px solid transparent;white-space:nowrap}
+.tabs span.on{color:var(--text);border-color:var(--accent)}
+</style></head><body><div class="page-h"><a href="index.html" style="color:#ff6600">← Все макеты</a><h1>Глобальные настройки «Подарка за сумму»</h1><p>GiftSection + StatsStrip + LowMarginPanel: глобальное отделено от конструктора кейса, статистика свёрнута.</p></div><section class="variant"><h2>Вариант A — «Строка-сводка и шторка»</h2><p class="idea">На экране кейса — одна строка «вкл · кейс · лимит · маржа» с «Изменить» и свёрнутой статистикой; поля — в шторке/drawer со своей кнопкой «Сохранить».</p><div class="frames"><figure class="fw"><figcaption>Телефон 390 — свёрнуто</figcaption><div class="box" style="width:390px;height:800px"><div class="scale" style="transform:scale(1);width:390px;height:800px"><div class="dev ph"><div class="sb"><span>9:41</span><span>●●● 5G ▮</span></div><div class="pt"><h3>Кейс</h3></div><div class="pb"><div style="padding:12px" class="col"><div class="panel pad col" style="gap:8px"><div class="row"><b class="sm sp">Подарок за сумму</b><span class="btn sm">Изменить</span></div><div class="sm muted">вкл · кейс · лимит 2 161 ₴/мес · маржа 15 %</div><div class="row xs faint"><span class="sp">Статистика 30 дн.: 214 кейсов · средний приз 148 ₴</span><span>▾</span></div></div><div class="panel pad">🥉 Бронза · от 1 500 ₴</div><div class="panel pad">🥈 Серебро · от 3 000 ₴</div></div></div><div class="pn"><div class=""><i>📦</i>Заказы</div><div class=""><i>🗂</i>Каталог</div><div class="on"><i>🎟</i>Промо</div><div class=""><i>💬</i>Чаты</div><div class=""><i>☰</i>Ещё</div></div></div></div></div></figure><figure class="fw"><figcaption>Телефон 390 — шторка</figcaption><div class="box" style="width:390px;height:800px"><div class="scale" style="transform:scale(1);width:390px;height:800px"><div class="dev ph"><div class="sb"><span>9:41</span><span>●●● 5G ▮</span></div><div class="pt"><h3>Кейс</h3></div><div class="pb"><div style="padding:12px;opacity:.4" class="col"><div class="panel pad">Бронза…</div><div class="panel pad">Серебро…</div></div><div class="dim"></div><div class="sheet" style="top:60px"><div class="grab"></div><div class="sh"><h3>Подарок за сумму</h3><span class="muted">✕</span></div><div class="sbody"><div class="col" style="gap:14px">
+ <div class="row panel pad"><div class="sp"><div>Подарок за сумму</div><div class="xs muted">Включён для всех заказов выше порога</div></div><span class="tog on"></span></div>
+ <div class="seg t"><span>Один товар</span><span class="on">Кейс</span></div>
+ <div class="row"><div class="sp"><span class="lbl">Порог запасного подарка, ₴</span><div class="inp t">1 500</div></div></div>
+ <div><span class="lbl">Запасной товар-подарок</span><div class="row panel pad"><div class="ph-img">🖱</div><div class="sp sm b">Коврик Zowie G-SR</div><span class="btn sm">Сменить</span></div></div>
+ <div class="row"><div class="sp"><span class="lbl">Лимит подарков на человека, ₴/мес</span><div class="inp t">2 161</div></div><div class="sp"><span class="lbl">Средняя маржа, %</span><div class="inp t">15</div></div></div>
+ <div><span class="lbl">Напомнить о неиспользованном призе</span><div class="inp t">за 3 дня до конца</div></div></div></div><div class="sf"><span class="btn t pri sp">Сохранить</span></div></div></div><div class="pn"><div class=""><i>📦</i>Заказы</div><div class=""><i>🗂</i>Каталог</div><div class="on"><i>🎟</i>Промо</div><div class=""><i>💬</i>Чаты</div><div class=""><i>☰</i>Ещё</div></div></div></div></div></figure><figure class="fw"><figcaption>Десктоп 1440 — drawer 440</figcaption><div class="box" style="width:893px;height:471px"><div class="scale" style="transform:scale(0.62);width:1440px;height:760px"><div class="dev dk" style="width:1440px;height:760px"><div class="sbar"><div class="logo">Chi<b>Setup</b></div><a class=""><span>📦</span>Заказы</a><a class=""><span>🗂</span>Каталог</a><a class=""><span>👥</span>Клиенты</a><a class=""><span>🎟</span>Промокоды</a><a class="on"><span>🎁</span>Кейс</a><a class=""><span>📒</span>Реестр подарков</a><a class=""><span>🚚</span>Поставки</a><a class=""><span>📊</span>Метрики</a><a class=""><span>⚙</span>Настройки</a></div><div class="main"><div class="dtop"><h3>Кейс</h3><span class="sp"></span></div><div class="cnt"><div class="panel row pad"><b class="sm">Подарок за сумму:</b><span class="sm muted sp">вкл · кейс · лимит 2 161 ₴/мес · маржа 15 %</span><span class="chip" style="height:28px">Кейсов в месяц <b style="color:var(--text)">214</b></span><span class="chip" style="height:28px">Призов <b style="color:var(--text)">214</b></span><span class="chip" style="height:28px">Из них скидок <b style="color:var(--text)">171</b></span><span class="chip" style="height:28px">Средний приз <b style="color:var(--text)">148 ₴</b></span><span class="btn sm">Изменить</span></div><div class="panel pad faint" style="min-height:240px">… конструктор кейса …</div></div><div class="dim"></div><div class="drawer" style="width:440px"><div class="mh"><h3>Подарок за сумму</h3><span class="muted">✕</span></div><div class="mb"><div class="col" style="gap:14px">
+ <div class="row panel pad"><div class="sp"><div>Подарок за сумму</div><div class="xs muted">Включён для всех заказов выше порога</div></div><span class="tog on"></span></div>
+ <div class="seg "><span>Один товар</span><span class="on">Кейс</span></div>
+ <div class="row"><div class="sp"><span class="lbl">Порог запасного подарка, ₴</span><div class="inp ">1 500</div></div></div>
+ <div><span class="lbl">Запасной товар-подарок</span><div class="row panel pad"><div class="ph-img">🖱</div><div class="sp sm b">Коврик Zowie G-SR</div><span class="btn sm">Сменить</span></div></div>
+ <div class="row"><div class="sp"><span class="lbl">Лимит подарков на человека, ₴/мес</span><div class="inp ">2 161</div></div><div class="sp"><span class="lbl">Средняя маржа, %</span><div class="inp ">15</div></div></div>
+ <div><span class="lbl">Напомнить о неиспользованном призе</span><div class="inp ">за 3 дня до конца</div></div></div></div><div class="mf"><span class="btn">Отмена</span><span class="btn pri">Сохранить</span></div></div></div></div></div></div></figure></div></section><section class="variant"><h2>Вариант B — «Настройки — отдельный раздел-входы»</h2><p class="idea">Телефон: настройки списком как в чатах (подарок, лимит, запасной товар, напоминание, статистика, упор на скидки). Десктоп: меню разделов слева, форма по центру, статистика справа.</p><div class="frames"><figure class="fw"><figcaption>Телефон 390</figcaption><div class="box" style="width:390px;height:800px"><div class="scale" style="transform:scale(1);width:390px;height:800px"><div class="dev ph"><div class="sb"><span>9:41</span><span>●●● 5G ▮</span></div><div class="pt"><span class="btn t ic ghost" style="border:0;font-size:24px;margin-left:-8px">‹</span><h3>Кейс · настройки</h3></div><div class="pb"><div style="flex:1;overflow:hidden"><div class="entry"><div class="circle" style="background:var(--accent)22">🎁</div><div class="tx"><b><span>Подарок за сумму</span></b><span class="pv">вкл · кейс</span></div><span class="faint">›</span></div><div class="entry"><div class="circle" style="background:#3b82f622">🛡</div><div class="tx"><b><span>Лимит на человека</span></b><span class="pv">2 161 ₴ в месяц</span></div><span class="faint">›</span></div><div class="entry"><div class="circle" style="background:#a855f722">🖱</div><div class="tx"><b><span>Запасной подарок</span></b><span class="pv">Коврик Zowie G-SR · от 1 500 ₴</span></div><span class="faint">›</span></div><div class="entry"><div class="circle" style="background:#f5b30122">🔔</div><div class="tx"><b><span>Напоминание</span></b><span class="pv">за 3 дня до конца срока</span></div><span class="faint">›</span></div><div class="entry"><div class="circle" style="background:#22c55e22">📊</div><div class="tx"><b><span>Статистика 30 дней</span></b><span class="pv">214 кейсов · приз 148 ₴</span></div><span class="faint">›</span></div><div class="entry"><div class="circle" style="background:#ef444422">🏷</div><div class="tx"><b><span>Упор на скидки</span></b><span class="pv">12 товаров</span></div><span class="faint">›</span></div></div></div><div class="pn"><div class=""><i>📦</i>Заказы</div><div class=""><i>🗂</i>Каталог</div><div class="on"><i>🎟</i>Промо</div><div class=""><i>💬</i>Чаты</div><div class=""><i>☰</i>Ещё</div></div></div></div></div></figure><figure class="fw"><figcaption>Десктоп 1440</figcaption><div class="box" style="width:893px;height:471px"><div class="scale" style="transform:scale(0.62);width:1440px;height:760px"><div class="dev dk" style="width:1440px;height:760px"><div class="sbar"><div class="logo">Chi<b>Setup</b></div><a class=""><span>📦</span>Заказы</a><a class=""><span>🗂</span>Каталог</a><a class=""><span>👥</span>Клиенты</a><a class=""><span>🎟</span>Промокоды</a><a class="on"><span>🎁</span>Кейс</a><a class=""><span>📒</span>Реестр подарков</a><a class=""><span>🚚</span>Поставки</a><a class=""><span>📊</span>Метрики</a><a class=""><span>⚙</span>Настройки</a></div><div class="main"><div class="dtop"><h3>Кейс · настройки</h3><span class="sp"></span></div><div style="flex:1;display:flex;min-height:0"><div style="width:270px;border-right:1px solid var(--line)"><div class="entry" style="background:var(--accent-soft)"><div class="circle" style="width:36px;height:36px;font-size:16px;background:var(--accent)22">🎁</div><div class="tx"><b style="font-size:14px">Подарок за сумму</b><span class="pv xs">вкл · кейс</span></div></div><div class="entry" style=""><div class="circle" style="width:36px;height:36px;font-size:16px;background:#3b82f622">🛡</div><div class="tx"><b style="font-size:14px">Лимит на человека</b><span class="pv xs">2 161 ₴ в месяц</span></div></div><div class="entry" style=""><div class="circle" style="width:36px;height:36px;font-size:16px;background:#a855f722">🖱</div><div class="tx"><b style="font-size:14px">Запасной подарок</b><span class="pv xs">Коврик Zowie G-SR · от 1 500 ₴</span></div></div><div class="entry" style=""><div class="circle" style="width:36px;height:36px;font-size:16px;background:#f5b30122">🔔</div><div class="tx"><b style="font-size:14px">Напоминание</b><span class="pv xs">за 3 дня до конца срока</span></div></div><div class="entry" style=""><div class="circle" style="width:36px;height:36px;font-size:16px;background:#22c55e22">📊</div><div class="tx"><b style="font-size:14px">Статистика 30 дней</b><span class="pv xs">214 кейсов · приз 148 ₴</span></div></div><div class="entry" style=""><div class="circle" style="width:36px;height:36px;font-size:16px;background:#ef444422">🏷</div><div class="tx"><b style="font-size:14px">Упор на скидки</b><span class="pv xs">12 товаров</span></div></div></div>
+<div class="sp" style="padding:20px 28px;max-width:640px"><div class="col" style="gap:14px">
+ <div class="row panel pad"><div class="sp"><div>Подарок за сумму</div><div class="xs muted">Включён для всех заказов выше порога</div></div><span class="tog on"></span></div>
+ <div class="seg "><span>Один товар</span><span class="on">Кейс</span></div>
+ <div class="row"><div class="sp"><span class="lbl">Порог запасного подарка, ₴</span><div class="inp ">1 500</div></div></div>
+ <div><span class="lbl">Запасной товар-подарок</span><div class="row panel pad"><div class="ph-img">🖱</div><div class="sp sm b">Коврик Zowie G-SR</div><span class="btn sm">Сменить</span></div></div>
+ <div class="row"><div class="sp"><span class="lbl">Лимит подарков на человека, ₴/мес</span><div class="inp ">2 161</div></div><div class="sp"><span class="lbl">Средняя маржа, %</span><div class="inp ">15</div></div></div>
+ <div><span class="lbl">Напомнить о неиспользованном призе</span><div class="inp ">за 3 дня до конца</div></div></div><div style="margin-top:16px" class="row"><span class="btn pri">Сохранить</span><span class="xs faint">кнопка только здесь — без общего sticky-бара</span></div></div>
+<div style="width:300px;border-left:1px solid var(--line);padding:16px" class="col"><div class="xs faint ex">Статистика 30 дней</div><div class="panel pad"><div class="xs faint">Кейсов в месяц</div><b style="font-size:22px">214</b></div><div class="panel pad"><div class="xs faint">Призов</div><b style="font-size:22px">214</b></div><div class="panel pad"><div class="xs faint">Из них скидок</div><b style="font-size:22px">171</b></div><div class="panel pad"><div class="xs faint">Средний приз</div><b style="font-size:22px">148 ₴</b></div></div></div></div></div></div></div></figure></div></section></body></html>

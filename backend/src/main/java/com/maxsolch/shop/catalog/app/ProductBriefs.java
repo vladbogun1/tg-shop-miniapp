@@ -31,6 +31,11 @@ public class ProductBriefs {
         return store.briefs(productIds);
     }
 
+    /** Ids of products whose title matches the lower-case LIKE pattern (backslash escape); at most {@code limit}. */
+    public java.util.List<byte[]> idsByTitleLike(String like, int limit) {
+        return store.idsByTitleLike(like, limit);
+    }
+
     /** Sets the product's published-review count and average ({@code avg} null while there are none). */
     public void setRating(byte[] productId, int count, BigDecimal avg) {
         store.setRating(productId, count, avg);

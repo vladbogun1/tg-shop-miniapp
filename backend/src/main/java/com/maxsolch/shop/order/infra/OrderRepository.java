@@ -167,13 +167,14 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
     @Query("select o.tgUserId from Order o where o.id = :id")
     Long customerOf(@Param("id") byte[] id);
 
-    /** [tgUserId, orders, spent] of these customers: spent counts every order but REJECTED. */
+    /** [tgUserId, orders, spent, last order time] of these customers: spent counts every order but REJECTED. */
     @Query("select o.tgUserId, count(o), coalesce(sum(case when o.status <> com.maxsolch.shop.order.domain.OrderStatus.REJECTED "
-            + "then o.totalMinor else 0 end), 0) from Order o where o.tgUserId in :ids group by o.tgUserId")
+            + "then o.totalMinor else 0 end), 0), max(o.createdAt) from Order o where o.tgUserId in :ids group by o.tgUserId")
     List<Object[]> totalsOf(@Param("ids") java.util.Collection<Long> ids);
 
     @Query("select o.tgUserId, count(o), coalesce(sum(case when o.status <> com.maxsolch.shop.order.domain.OrderStatus.REJECTED "
-            + "then o.totalMinor else 0 end), 0) from Order o where o.tgUserId is not null group by o.tgUserId")
+            + "then o.totalMinor else 0 end), 0), max(o.createdAt) from Order o where o.tgUserId is not null "
+            + "group by o.tgUserId")
     List<Object[]> totalsOfAll();
 
     @Query("select distinct o.tgUserId from Order o where o.tgUserId is not null")

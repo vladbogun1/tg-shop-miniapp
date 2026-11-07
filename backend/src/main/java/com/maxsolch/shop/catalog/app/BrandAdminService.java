@@ -32,13 +32,15 @@ public class BrandAdminService {
     private final ProductRepository productRepository;
     private final CatalogDirectory directory;
     private final DomainEvents events;
+    private final BrandSlugHistory slugHistory;
 
     public BrandAdminService(BrandRepository repository, ProductRepository productRepository,
-                             CatalogDirectory directory, DomainEvents events) {
+                             CatalogDirectory directory, DomainEvents events, BrandSlugHistory slugHistory) {
         this.repository = repository;
         this.productRepository = productRepository;
         this.directory = directory;
         this.events = events;
+        this.slugHistory = slugHistory;
     }
 
     @Transactional(readOnly = true)
@@ -80,8 +82,10 @@ public class BrandAdminService {
             b.setName(name);
         }
         String oldLogo = b.getLogoUrl();
+        String oldSlug = b.getSlug();
         apply(b, req);
         repository.save(b);
+        slugHistory.slugChanged(b.getId(), oldSlug, b.getSlug());
         if (oldLogo != null && !oldLogo.equals(b.getLogoUrl())) {
             // The old file goes only once the update has committed: a rollback must not leave the brand without it.
             events.publish(new CatalogFilesDropped(List.of(oldLogo)));
@@ -123,6 +127,7 @@ public class BrandAdminService {
         } else {
             events.publish(new CatalogFilesDropped(java.util.Collections.singletonList(source.getLogoUrl())));
         }
+        slugHistory.merged(source.getId(), source.getSlug(), target.getId(), target.getSlug());
         repository.delete(source);
         repository.flush();
         target.setAliasList(aliases);

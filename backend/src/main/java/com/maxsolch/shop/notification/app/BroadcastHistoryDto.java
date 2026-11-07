@@ -15,18 +15,30 @@ public record BroadcastHistoryDto(
         String audience,
         String lang,
         boolean withButton,
-        /** RUNNING | DONE | INTERRUPTED */
+        /** RUNNING | DONE | INTERRUPTED | STOPPED */
         String status,
         int total,
         int sent,
         int failed,
         int blocked,
         Instant startedAt,
-        Instant finishedAt) {
+        Instant finishedAt,
+        /** «Остановить» pressed while RUNNING: the sender is about to finish. */
+        boolean stopRequested,
+        /** STOPPED only: how many recipients never got the message. */
+        int remaining,
+        /** The admin who pressed «Остановить». */
+        String stoppedByName) {
 
     public static BroadcastHistoryDto of(Broadcast b) {
         return new BroadcastHistoryDto(b.getId(), b.getAdminName(), b.getText(), b.getTextUk(), b.getTextRu(),
                 b.getTextEn(), b.getAudience(), b.getLang(), b.isWithButton(), b.getStatus(), b.getTotal(),
-                b.getSent(), b.getFailed(), b.getBlocked(), b.getStartedAt(), b.getFinishedAt());
+                b.getSent(), b.getFailed(), b.getBlocked(), b.getStartedAt(), b.getFinishedAt(),
+                b.getStopRequestedAt() != null, remaining(b), b.getStoppedByName());
+    }
+
+    private static int remaining(Broadcast b) {
+        return Broadcast.STOPPED.equals(b.getStatus())
+                ? Math.max(0, b.getTotal() - b.getSent() - b.getFailed() - b.getBlocked()) : 0;
     }
 }

@@ -1,0 +1,225 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Промокоды — список — макет</title><style>
+:root{--bg:#121212;--surface:#1b1b1b;--surface2:#232323;--line:#2a2a2a;--line2:#3a3a3a;--text:#f4f4f5;--muted:#a1a1aa;--faint:#7c7c86;--accent:#ff6600;--accent-soft:rgba(255,102,0,.14);--ok:#22c55e;--warn:#f59e0b;--danger:#ef4444;--blue:#3b82f6}
+*{box-sizing:border-box;margin:0}
+body{background:#0a0a0a;color:var(--text);font:14px/1.4 system-ui,"Segoe UI",Roboto,sans-serif;padding:24px}
+h1,h2,h3,.ex{font-family:"Exo 2","Arial Narrow",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.03em}
+.page-h{max-width:1500px;margin:0 auto 8px}.page-h h1{font-size:26px}.page-h p{color:var(--muted);margin-top:4px}
+.variant{max-width:1500px;margin:28px auto;border-top:1px solid var(--line2);padding-top:14px}
+.variant>h2{font-size:18px;color:var(--accent)}.variant>.idea{color:var(--muted);margin:2px 0 14px;font-size:14px}
+.frames{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.fw{margin:0}
+.fw figcaption{font-size:12px;color:var(--faint);margin-bottom:6px}
+.fw>.box{position:relative}
+.fw .scale{transform-origin:0 0;position:absolute;left:0;top:0}
+.dev{background:var(--bg);border:1px solid var(--line2);border-radius:18px;overflow:hidden;position:relative;display:flex;flex-direction:column;color:var(--text)}
+.ph{width:390px;height:800px}
+.sb{height:26px;flex:none;display:flex;justify-content:space-between;padding:6px 18px 0;font-size:11px;color:var(--muted)}
+.pt{flex:none;height:52px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--line)}
+.pt h3{font-size:16px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb{flex:1;min-height:0;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.pn{flex:none;height:62px;border-top:1px solid var(--line);background:var(--surface);display:flex;justify-content:space-around;align-items:center;font-size:10px;color:var(--faint)}
+.pn div{display:flex;flex-direction:column;align-items:center;gap:2px}.pn .on{color:var(--accent)}.pn i{font-style:normal;font-size:18px}
+.dk{display:grid;grid-template-columns:220px 1fr;border-radius:10px}
+.rail{grid-template-columns:64px 1fr}.rail .sbar{padding:16px 6px}.rail .sbar a{justify-content:center;font-size:0;padding:10px 0}.rail .sbar a span{font-size:18px}.rail .logo{font-size:0;padding:0}
+.sbar{background:var(--surface);border-right:1px solid var(--line);padding:16px 10px;display:flex;flex-direction:column;gap:2px;overflow:hidden}
+.sbar .logo{font-family:"Exo 2",sans-serif;font-weight:800;font-size:18px;padding:4px 10px 14px}.sbar .logo b{color:var(--accent)}
+.sbar a{display:flex;gap:10px;align-items:center;padding:9px 10px;border-radius:8px;color:var(--muted);font-size:14px}
+.sbar a.on{background:var(--accent-soft);color:#ff8533}
+.main{min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.dtop{flex:none;height:56px;display:flex;align-items:center;gap:12px;padding:0 24px;border-bottom:1px solid var(--line)}
+.dtop h3{font-size:18px}
+.cnt{flex:1;min-height:0;overflow:hidden;padding:16px 24px;position:relative;display:flex;flex-direction:column;gap:12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.pad{padding:12px 14px}
+.row{display:flex;align-items:center;gap:10px}.col{display:flex;flex-direction:column;gap:8px}.sp{flex:1}.wrap{flex-wrap:wrap}
+.mono{font-family:ui-monospace,Consolas,monospace}
+.muted{color:var(--muted)}.faint{color:var(--faint)}.sm{font-size:12px}.xs{font-size:11px}.b{font-weight:600}.acc{color:var(--accent)}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.dng{color:var(--danger)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 14px;border-radius:9px;border:1px solid var(--line2);background:var(--surface2);color:var(--text);font-size:13px;white-space:nowrap;font-weight:500;flex:none}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#0e0e10;font-weight:700}
+.btn.ghost{background:transparent}.btn.dangerb{color:var(--danger);border-color:rgba(239,68,68,.4)}
+.btn.t{height:44px;min-width:44px;padding:0 12px}.btn.ic{width:36px;padding:0}.btn.t.ic{width:44px}
+.btn.sm{height:30px;padding:0 10px;font-size:12px}
+.btn.dis{opacity:.45}
+.chip{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 12px;border-radius:99px;border:1px solid var(--line2);background:var(--surface);color:var(--muted);font-size:13px;white-space:nowrap;flex:none}
+.chip.on{background:var(--accent-soft);border-color:var(--accent);color:#ff8533}
+.chip.t{height:40px}
+.badge{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap;background:var(--surface2);color:var(--muted);border:1px solid var(--line2);flex:none}
+.badge.ok{background:rgba(34,197,94,.12);color:var(--ok);border-color:rgba(34,197,94,.3)}
+.badge.warn{background:rgba(245,158,11,.12);color:var(--warn);border-color:rgba(245,158,11,.3)}
+.badge.dng{background:rgba(239,68,68,.12);color:var(--danger);border-color:rgba(239,68,68,.3)}
+.badge.acc{background:var(--accent-soft);color:#ff8533;border-color:rgba(255,102,0,.4)}
+.tog{width:44px;height:26px;border-radius:99px;background:#3a3a3a;position:relative;flex:none;display:inline-block}
+.tog::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#ddd}
+.tog.on{background:var(--accent)}.tog.on::after{left:21px;background:#0e0e10}
+.inp{height:40px;border:1px solid var(--line2);border-radius:9px;background:var(--bg);padding:0 12px;display:flex;align-items:center;gap:8px;color:var(--text);font-size:14px}
+.inp.t{height:46px}.inp .pl,.pl{color:var(--faint)}
+.lbl{font-size:12px;color:var(--muted);margin-bottom:5px;display:block}
+.seg{display:flex;background:var(--bg);border:1px solid var(--line2);border-radius:10px;padding:3px;gap:2px}
+.seg span{flex:1;text-align:center;padding:7px 10px;border-radius:7px;color:var(--muted);font-size:13px;white-space:nowrap}
+.seg span.on{background:var(--surface2);color:var(--text);box-shadow:0 0 0 1px var(--line2)}
+.seg.t span{padding:11px 10px}
+.hs{display:flex;gap:8px;overflow:hidden}
+.circle{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:21px;flex:none}
+.entry{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--line)}
+.entry .tx{flex:1;min-width:0}.entry .tx b{display:flex;justify-content:space-between;gap:8px;font-size:15px}
+.entry .tx span.pv{display:block;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cn{min-width:22px;height:22px;border-radius:99px;background:var(--accent);color:#0e0e10;font-size:12px;font-weight:700;display:inline-grid;place-items:center;padding:0 6px}
+.cn.g{background:var(--surface2);color:var(--muted)}
+.bar{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--surface2)}
+.bar i{display:block;height:100%}.bar.lg{height:16px}
+.prog{height:5px;border-radius:99px;background:var(--surface2);overflow:hidden}.prog i{display:block;height:100%;background:var(--accent)}
+table{border-collapse:collapse;width:100%}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:600;text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--surface);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--line);font-size:13.5px;white-space:nowrap}
+td.r,th.r{text-align:right}
+.trs{background:rgba(239,68,68,.07)}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.62);z-index:20}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:18px 18px 0 0;border-top:1px solid var(--line2);z-index:21;display:flex;flex-direction:column;overflow:hidden}
+.sheet .grab{width:38px;height:4px;border-radius:9px;background:#444;margin:8px auto 4px;flex:none}
+.sheet .sh{flex:none;padding:6px 16px 10px;display:flex;align-items:center;gap:8px}
+.sheet .sh h3{flex:1;font-size:16px}.sheet .sbody{flex:1;min-height:0;overflow:auto;scrollbar-width:none;padding:4px 16px 12px}
+.sheet .sf{flex:none;padding:10px 16px 18px;border-top:1px solid var(--line);display:flex;gap:8px;background:var(--surface)}
+.modal{position:absolute;z-index:21;background:var(--surface);border:1px solid var(--line2);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.drawer{position:absolute;z-index:21;right:0;top:0;bottom:0;background:var(--surface);border-left:1px solid var(--line2);display:flex;flex-direction:column;overflow:hidden;box-shadow:-20px 0 50px rgba(0,0,0,.5)}
+.mh{flex:none;padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}.mh h3{flex:1;font-size:16px}
+.mb{flex:1;min-height:0;overflow:hidden;padding:16px 18px}
+.mf{flex:none;padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;align-items:center}
+.sticky-t{flex:none;background:#151515;border-bottom:1px solid var(--line);padding:8px 12px}
+.ph-img{width:40px;height:40px;border-radius:8px;background:#2a2a2a;display:grid;place-items:center;font-size:20px;flex:none}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line2);border-radius:9px;overflow:hidden;height:34px;background:var(--bg);flex:none}
+.stepper b{width:30px;text-align:center;color:var(--muted);font-weight:400}.stepper span{min-width:44px;text-align:center;font-weight:600;font-size:13px}
+.stepper.t{height:44px}.stepper.t b{width:40px}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.kv:last-child{border:0}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+.hr{height:1px;background:var(--line);margin:10px 0}
+.toast{background:var(--accent-soft);border:1px solid rgba(255,102,0,.4);border-radius:10px;padding:8px 12px;font-size:12.5px;color:#ffb27a}
+.fade{position:absolute;left:0;right:0;bottom:0;height:40px;background:linear-gradient(transparent,var(--bg));pointer-events:none}
+.ticket{border:1px dashed var(--accent);border-radius:14px;background:linear-gradient(135deg,rgba(255,102,0,.16),rgba(255,102,0,.04));padding:14px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line)}
+.tabs span{padding:9px 14px;color:var(--muted);font-size:13.5px;border-bottom:2px solid transparent;white-space:nowrap}
+.tabs span.on{color:var(--text);border-color:var(--accent)}
+</style></head><body><div class="page-h"><a href="index.html" style="color:#ff6600">← Все макеты</a><h1>Промокоды — список</h1><p>Экран «Промокоды»: быстрое выключение, один sticky-ряд, заказы кода вне карточки. Меню «⋯» и удаление показаны на втором телефоне варианта A.</p></div><section class="variant"><h2>Вариант A — «Плотная строка + Toggle + панель заказов»</h2><p class="idea">Один sticky-ряд управления, строка = код · скидка · прогресс · срок · Toggle · «⋯»; заказы кода — правая панель (шторка на телефоне).</p><div class="frames"><figure class="fw"><figcaption>Телефон 390 — список</figcaption><div class="box" style="width:390px;height:800px"><div class="scale" style="transform:scale(1);width:390px;height:800px"><div class="dev ph"><div class="sb"><span>9:41</span><span>●●● 5G ▮</span></div><div class="pt"><h3>Промокоды</h3><span class="btn t ic pri" style="font-size:22px">+</span></div><div class="pb">
+<div class="sticky-t col" style="gap:8px"><div class="hs"><span class="chip t on">Мои</span><span class="chip t ">Персональные</span><span class="chip t ">За отзывы</span><span class="chip t ">Из кейса</span></div>
+ <div class="row"><div class="inp t sp"><span class="faint">⌕</span><span class="pl">Поиск промокода</span></div><span class="btn t ic">⚟</span></div>
+ <div class="row sm muted"><span>Действуют <b class="ok">4</b> · Не действуют <b>2</b></span><span class="sp"></span><span class="chip on" style="height:26px">Все ▾</span></div></div>
+<div style="flex:1;overflow:hidden"><div class="row" style="padding:10px 12px;border-bottom:1px solid var(--line);min-height:64px;gap:10px;">
+  <div class="sp" style="min-width:0"><div class="row" style="gap:8px"><b class="mono" style="font-size:15px">SUMMER25</b><span class="acc b">−15 %</span><span class="xs faint">до 500 ₴</span></div>
+  <div class="row sm muted" style="margin-top:5px;gap:8px"><span>42 / 100</span><div class="prog" style="width:46px"><i style="width:42%"></i></div><span>до 30.11</span></div></div>
+  <span class="tog on"></span><span class="btn t ic ghost" style="border:0;font-size:20px">⋯</span></div><div class="row" style="padding:10px 12px;border-bottom:1px solid var(--line);min-height:64px;gap:10px;">
+  <div class="sp" style="min-width:0"><div class="row" style="gap:8px"><b class="mono" style="font-size:15px">WELCOME10</b><span class="acc b">−10 %</span></div>
+  <div class="row sm muted" style="margin-top:5px;gap:8px"><span>128 / ∞</span><div class="prog" style="width:46px"><i style="width:100%"></i></div><span>без срока</span></div></div>
+  <span class="tog on"></span><span class="btn t ic ghost" style="border:0;font-size:20px">⋯</span></div><div class="row" style="padding:10px 12px;border-bottom:1px solid var(--line);min-height:64px;gap:10px;">
+  <div class="sp" style="min-width:0"><div class="row" style="gap:8px"><b class="mono" style="font-size:15px">MOUSE200</b><span class="acc b">−200 ₴</span></div>
+  <div class="row sm muted" style="margin-top:5px;gap:8px"><span>17 / 50</span><div class="prog" style="width:46px"><i style="width:34%"></i></div><span>до 15.12</span></div></div>
+  <span class="tog on"></span><span class="btn t ic ghost" style="border:0;font-size:20px">⋯</span></div><div class="row" style="padding:10px 12px;border-bottom:1px solid var(--line);min-height:64px;gap:10px;">
+  <div class="sp" style="min-width:0"><div class="row" style="gap:8px"><b class="mono" style="font-size:15px">LAMZU5</b><span class="acc b">−5 %</span></div>
+  <div class="row sm muted" style="margin-top:5px;gap:8px"><span>9 / 30</span><div class="prog" style="width:46px"><i style="width:30%"></i></div><span>до 20.12</span></div></div>
+  <span class="badge warn">Резерв: 2</span><span class="tog on"></span><span class="btn t ic ghost" style="border:0;font-size:20px">⋯</span></div><div class="row" style="padding:10px 12px;border-bottom:1px solid var(--line);min-height:64px;gap:10px;opacity:.6">
+  <div class="sp" style="min-width:0"><div class="row" style="gap:8px"><b class="mono" style="font-size:15px">BLACKFRI</b><span class="acc b">−20 %</span><span class="xs faint">до 2 000 ₴</span></div>
+  <div class="row sm muted" style="margin-top:5px;gap:8px"><span>100 / 100</span><div class="prog" style="width:46px"><i style="width:100%"></i></div><span>до 29.11</span></div></div>
+  <span class="badge dng">Исчерпан</span><span class="tog "></span><span class="btn t ic ghost" style="border:0;font-size:20px">⋯</span></div><div class="row" style="padding:10px 12px;border-bottom:1px solid var(--line);min-height:64px;gap:10px;opacity:.6">
+  <div class="sp" style="min-width:0"><div class="row" style="gap:8px"><b class="mono" style="font-size:15px">OLD_AUG</b><span class="acc b">−10 %</span></div>
+  <div class="row sm muted" style="margin-top:5px;gap:8px"><span>31 / ∞</span><div class="prog" style="width:46px"><i style="width:100%"></i></div><span>истёк 31.08</span></div></div>
+  <span class="badge ">Истёк</span><span class="tog "></span><span class="btn t ic ghost" style="border:0;font-size:20px">⋯</span></div></div></div><div class="pn"><div class=""><i>📦</i>Заказы</div><div class=""><i>🗂</i>Каталог</div><div class="on"><i>🎟</i>Промо</div><div class=""><i>💬</i>Чаты</div><div class=""><i>☰</i>Ещё</div></div></div></div></div></figure><figure class="fw"><figcaption>Телефон 390 — меню «⋯» (удаление объяснено)</figcaption><div class="box" style="width:390px;height:800px"><div class="scale" style="transform:scale(1);width:390px;height:800px"><div class="dev ph"><div class="sb"><span>9:41</span><span>●●● 5G ▮</span></div><div class="pt"><h3>Промокоды</h3><span class="btn t ic pri" style="font-size:22px">+</span></div><div class="pb">
+<div class="sticky-t col" style="gap:8px"><div class="hs"><span class="chip t on">Мои</span><span class="chip t ">Персональные</span><span class="chip t ">За отзывы</span><span class="chip t ">Из кейса</span></div><div class="row"><div class="inp t sp"><span class="faint">⌕</span><span class="pl">Поиск промокода</span></div></div></div>
+<div style="flex:1;overflow:hidden"><div class="row" style="padding:10px 12px;border-bottom:1px solid var(--line);min-height:64px;gap:10px;">
+  <div class="sp" style="min-width:0"><div class="row" style="gap:8px"><b class="mono" style="font-size:15px">SUMMER25</b><span class="acc b">−15 %</span><span class="xs faint">до 500 ₴</span></div>
+  <div class="row sm muted" style="margin-top:5px;gap:8px"><span>42 / 100</span><div class="prog" style="width:46px"><i style="width:42%"></i></div><span>до 30.11</span></div></div>
+  <span class="tog on"></span><span class="btn t ic ghost" style="border:0;font-size:20px">⋯</span></div><div class="row" style="padding:10px 12px;border-bottom:1px solid var(--line);min-height:64px;gap:10px;">
+  <div class="sp" style="min-width:0"><div class="row" style="gap:8px"><b class="mono" style="font-size:15px">WELCOME10</b><span class="acc b">−10 %</span></div>
+  <div class="row sm muted" style="margin-top:5px;gap:8px"><span>128 / ∞</span><div class="prog" style="width:46px"><i style="width:100%"></i></div><span>без срока</span></div></div>
+  <span class="tog on"></span><span class="btn t ic ghost" style="border:0;font-size:20px">⋯</span></div><div class="row" style="padding:10px 12px;border-bottom:1px solid var(--line);min-height:64px;gap:10px;">
+  <div class="sp" style="min-width:0"><div class="row" style="gap:8px"><b class="mono" style="font-size:15px">MOUSE200</b><span class="acc b">−200 ₴</span></div>
+  <div class="row sm muted" style="margin-top:5px;gap:8px"><span>17 / 50</span><div class="prog" style="width:46px"><i style="width:34%"></i></div><span>до 15.12</span></div></div>
+  <span class="tog on"></span><span class="btn t ic ghost" style="border:0;font-size:20px">⋯</span></div><div class="row" style="padding:10px 12px;border-bottom:1px solid var(--line);min-height:64px;gap:10px;">
+  <div class="sp" style="min-width:0"><div class="row" style="gap:8px"><b class="mono" style="font-size:15px">LAMZU5</b><span class="acc b">−5 %</span></div>
+  <div class="row sm muted" style="margin-top:5px;gap:8px"><span>9 / 30</span><div class="prog" style="width:46px"><i style="width:30%"></i></div><span>до 20.12</span></div></div>
+  <span class="badge warn">Резерв: 2</span><span class="tog on"></span><span class="btn t ic ghost" style="border:0;font-size:20px">⋯</span></div><div class="row" style="padding:10px 12px;border-bottom:1px solid var(--line);min-height:64px;gap:10px;opacity:.6">
+  <div class="sp" style="min-width:0"><div class="row" style="gap:8px"><b class="mono" style="font-size:15px">BLACKFRI</b><span class="acc b">−20 %</span><span class="xs faint">до 2 000 ₴</span></div>
+  <div class="row sm muted" style="margin-top:5px;gap:8px"><span>100 / 100</span><div class="prog" style="width:46px"><i style="width:100%"></i></div><span>до 29.11</span></div></div>
+  <span class="badge dng">Исчерпан</span><span class="tog "></span><span class="btn t ic ghost" style="border:0;font-size:20px">⋯</span></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="sh"><div><h3 class="mono" style="text-transform:none">SUMMER25</h3><div class="xs muted">−15 % · 42 из 100</div></div></div>
+<div style="padding:0 8px 6px">
+ <div class="row" style="min-height:52px;padding:0 8px;border-top:1px solid var(--line)">✎ <span class="sp">Редактировать</span></div>
+ <div class="row" style="min-height:52px;padding:0 8px;border-top:1px solid var(--line)">🧾 <span class="sp">Заказы с кодом</span><span class="cn g">42</span></div>
+ <div class="row" style="min-height:52px;padding:0 8px;border-top:1px solid var(--line)">⧉ <span class="sp">Копировать код</span></div>
+ <div class="row" style="min-height:52px;padding:6px 8px;border-top:1px solid var(--line);opacity:.55">🗑 <div class="sp"><div class="dng">Удалить</div><div class="xs muted">Код уже использован 42 раза — можно только выключить</div></div></div>
+</div><div style="height:22px"></div></div></div><div class="pn"><div class=""><i>📦</i>Заказы</div><div class=""><i>🗂</i>Каталог</div><div class="on"><i>🎟</i>Промо</div><div class=""><i>💬</i>Чаты</div><div class=""><i>☰</i>Ещё</div></div></div></div></div></figure><figure class="fw"><figcaption>Десктоп 1440 — таблица + правая панель заказов выбранного кода</figcaption><div class="box" style="width:893px;height:558px"><div class="scale" style="transform:scale(0.62);width:1440px;height:900px"><div class="dev dk" style="width:1440px;height:900px"><div class="sbar"><div class="logo">Chi<b>Setup</b></div><a class=""><span>📦</span>Заказы</a><a class=""><span>🗂</span>Каталог</a><a class=""><span>👥</span>Клиенты</a><a class="on"><span>🎟</span>Промокоды</a><a class=""><span>🎁</span>Кейс</a><a class=""><span>📒</span>Реестр подарков</a><a class=""><span>🚚</span>Поставки</a><a class=""><span>📊</span>Метрики</a><a class=""><span>⚙</span>Настройки</a></div><div class="main"><div class="dtop"><h3>Промокоды</h3><span class="sp"></span></div>
+<div class="sticky-t" style="padding:10px 24px"><div class="row">
+  <div class="seg" style="width:340px"><span class="on">Мои</span><span>Персональные</span><span>За отзывы</span><span>Из кейса</span></div>
+  <div class="inp" style="width:260px"><span class="faint">⌕</span><span class="pl">Поиск промокода</span></div>
+  <div class="seg" style="width:260px"><span class="on">Все</span><span>Действуют</span><span>Не действуют</span></div>
+  <span class="sp"></span><span class="btn pri">+ Новый промокод</span></div></div>
+<div style="flex:1;display:flex;min-height:0">
+ <div style="flex:1;min-width:0;overflow:hidden">
+  <div style="display:grid;grid-template-columns:minmax(110px,1fr) 100px 140px 86px 96px 84px;gap:12px;padding:8px 16px;font-size:11px;color:var(--faint);text-transform:uppercase;border-bottom:1px solid var(--line);background:var(--surface)"><span>Код</span><span>Скидка</span><span>Использован</span><span>Срок</span><span>Статус</span><span></span></div>
+  <div style="display:grid;grid-template-columns:minmax(110px,1fr) 100px 140px 86px 96px 84px;align-items:center;gap:12px;padding:0 16px;min-height:54px;border-bottom:1px solid var(--line);background:var(--accent-soft);">
+ <div class="row"><b class="mono">SUMMER25</b></div>
+ <div><span class="acc b">−15 %</span> <span class="xs faint">до 500 ₴</span></div>
+ <div class="row"><span class="sm" style="width:58px">42 / 100</span><div class="prog sp"><i style="width:42%"></i></div></div>
+ <div class="sm muted">до 30.11</div>
+ <div></div>
+ <div class="row" style="justify-content:flex-end"><span class="tog on"></span><span class="btn ic ghost" style="border:0;font-size:18px">⋯</span></div></div><div style="display:grid;grid-template-columns:minmax(110px,1fr) 100px 140px 86px 96px 84px;align-items:center;gap:12px;padding:0 16px;min-height:54px;border-bottom:1px solid var(--line);;">
+ <div class="row"><b class="mono">WELCOME10</b></div>
+ <div><span class="acc b">−10 %</span> <span class="xs faint"></span></div>
+ <div class="row"><span class="sm" style="width:58px">128 / ∞</span><div class="prog sp"><i style="width:100%"></i></div></div>
+ <div class="sm muted">без срока</div>
+ <div></div>
+ <div class="row" style="justify-content:flex-end"><span class="tog on"></span><span class="btn ic ghost" style="border:0;font-size:18px">⋯</span></div></div><div style="display:grid;grid-template-columns:minmax(110px,1fr) 100px 140px 86px 96px 84px;align-items:center;gap:12px;padding:0 16px;min-height:54px;border-bottom:1px solid var(--line);;">
+ <div class="row"><b class="mono">MOUSE200</b></div>
+ <div><span class="acc b">−200 ₴</span> <span class="xs faint"></span></div>
+ <div class="row"><span class="sm" style="width:58px">17 / 50</span><div class="prog sp"><i style="width:34%"></i></div></div>
+ <div class="sm muted">до 15.12</div>
+ <div></div>
+ <div class="row" style="justify-content:flex-end"><span class="tog on"></span><span class="btn ic ghost" style="border:0;font-size:18px">⋯</span></div></div><div style="display:grid;grid-template-columns:minmax(110px,1fr) 100px 140px 86px 96px 84px;align-items:center;gap:12px;padding:0 16px;min-height:54px;border-bottom:1px solid var(--line);;">
+ <div class="row"><b class="mono">LAMZU5</b></div>
+ <div><span class="acc b">−5 %</span> <span class="xs faint"></span></div>
+ <div class="row"><span class="sm" style="width:58px">9 / 30</span><div class="prog sp"><i style="width:30%"></i></div></div>
+ <div class="sm muted">до 20.12</div>
+ <div><span class="badge warn">Резерв: 2</span></div>
+ <div class="row" style="justify-content:flex-end"><span class="tog on"></span><span class="btn ic ghost" style="border:0;font-size:18px">⋯</span></div></div><div style="display:grid;grid-template-columns:minmax(110px,1fr) 100px 140px 86px 96px 84px;align-items:center;gap:12px;padding:0 16px;min-height:54px;border-bottom:1px solid var(--line);;opacity:.6">
+ <div class="row"><b class="mono">BLACKFRI</b></div>
+ <div><span class="acc b">−20 %</span> <span class="xs faint">до 2 000 ₴</span></div>
+ <div class="row"><span class="sm" style="width:58px">100 / 100</span><div class="prog sp"><i style="width:100%"></i></div></div>
+ <div class="sm muted">до 29.11</div>
+ <div><span class="badge dng">Исчерпан</span></div>
+ <div class="row" style="justify-content:flex-end"><span class="tog "></span><span class="btn ic ghost" style="border:0;font-size:18px">⋯</span></div></div><div style="display:grid;grid-template-columns:minmax(110px,1fr) 100px 140px 86px 96px 84px;align-items:center;gap:12px;padding:0 16px;min-height:54px;border-bottom:1px solid var(--line);;opacity:.6">
+ <div class="row"><b class="mono">OLD_AUG</b></div>
+ <div><span class="acc b">−10 %</span> <span class="xs faint"></span></div>
+ <div class="row"><span class="sm" style="width:58px">31 / ∞</span><div class="prog sp"><i style="width:100%"></i></div></div>
+ <div class="sm muted">истёк 31.08</div>
+ <div><span class="badge ">Истёк</span></div>
+ <div class="row" style="justify-content:flex-end"><span class="tog "></span><span class="btn ic ghost" style="border:0;font-size:18px">⋯</span></div></div>
+ </div>
+ <div style="width:380px;border-left:1px solid var(--line);background:var(--surface);padding:16px;display:flex;flex-direction:column;gap:12px">
+  <div class="row"><div class="sp"><div class="mono b" style="font-size:17px">SUMMER25</div><div class="xs muted">Заказы с кодом</div></div><span class="btn sm">✎ Править</span></div>
+  <div class="row"><div class="panel pad sp"><div class="xs faint">Заказов</div><b style="font-size:20px">42</b></div><div class="panel pad sp"><div class="xs faint">Скидка</div><b style="font-size:20px">−11 480 ₴</b></div><div class="panel pad sp"><div class="xs faint">Выручка</div><b style="font-size:20px">96 300 ₴</b></div></div>
+  <div class="toast">2 клиента держат код в корзине (резерв)</div>
+  <div class="row" style="padding:7px 0;border-bottom:1px solid var(--line)"><span class="acc">#4821</span><span class="sp">Артём К.</span><span class="muted sm">2 400 ₴</span><b class="sm">−360 ₴</b></div><div class="row" style="padding:7px 0;border-bottom:1px solid var(--line)"><span class="acc">#4809</span><span class="sp">Ірина М.</span><span class="muted sm">1 150 ₴</span><b class="sm">−172 ₴</b></div><div class="row" style="padding:7px 0;border-bottom:1px solid var(--line)"><span class="acc">#4790</span><span class="sp">Олексій Р.</span><span class="muted sm">3 980 ₴</span><b class="sm">−500 ₴</b></div><div class="row" style="padding:7px 0;border-bottom:1px solid var(--line)"><span class="acc">#4766</span><span class="sp">Максим Т.</span><span class="muted sm">890 ₴</span><b class="sm">−133 ₴</b></div><div class="row" style="padding:7px 0;border-bottom:1px solid var(--line)"><span class="acc">#4751</span><span class="sp">Дмитро Л.</span><span class="muted sm">1 720 ₴</span><b class="sm">−258 ₴</b></div>
+ </div></div></div></div></div></div></figure></div></section><section class="variant"><h2>Вариант B — «Группы как чаты + мастер–деталь»</h2><p class="idea">Телефон: список групп-входов (Мои / Персональные / За отзывы / Из кейса) → внутри крупные карточки с тумблером. Десктоп: три колонки группы | коды | редактирование на месте.</p><div class="frames"><figure class="fw"><figcaption>Телефон 390 — входы-группы</figcaption><div class="box" style="width:390px;height:800px"><div class="scale" style="transform:scale(1);width:390px;height:800px"><div class="dev ph"><div class="sb"><span>9:41</span><span>●●● 5G ▮</span></div><div class="pt"><h3>Промокоды</h3><span class="btn t ic pri" style="font-size:22px">+</span></div><div class="pb">
+<div style="padding:12px 14px"><div class="panel pad row" style="gap:16px"><div class="sp"><div class="xs faint">Действуют</div><b style="font-size:22px" class="ok">11</b></div><div class="sp"><div class="xs faint">В резерве</div><b style="font-size:22px" class="warn">4</b></div><div class="sp"><div class="xs faint">Истекают за 7 дн.</div><b style="font-size:22px">3</b></div></div></div>
+<div style="flex:1;overflow:hidden"><div class="entry"><div class="circle" style="background:var(--accent)22;color:var(--accent)">🎟</div><div class="tx"><b><span>Мои коды</span><span class="xs faint">6</span></b><span class="pv">SUMMER25 · −15 % · 42 исп.</span></div><span class="cn">4</span></div><div class="entry"><div class="circle" style="background:#3b82f622;color:#3b82f6">👤</div><div class="tx"><b><span>Персональные</span><span class="xs faint">9</span></b><span class="pv">@artem_k · WELCOME-AK · −7 %</span></div><span class="faint">›</span></div><div class="entry"><div class="circle" style="background:#f5b30122;color:#f5b301">★</div><div class="tx"><b><span>За отзывы</span><span class="xs faint">96</span></b><span class="pv">Выдано 96 · использовано 31 · 32 %</span></div><span class="faint">›</span></div><div class="entry"><div class="circle" style="background:#a855f722;color:#a855f7">🎁</div><div class="tx"><b><span>Из кейса</span><span class="xs faint">214</span></b><span class="pv">CASE-7F2K · −8 % · до 14.11</span></div><span class="cn">3</span></div>
+ <div style="padding:14px"><div class="inp t"><span class="faint">⌕</span><span class="pl">Найти код по всем группам</span></div></div></div></div><div class="pn"><div class=""><i>📦</i>Заказы</div><div class=""><i>🗂</i>Каталог</div><div class="on"><i>🎟</i>Промо</div><div class=""><i>💬</i>Чаты</div><div class=""><i>☰</i>Ещё</div></div></div></div></div></figure><figure class="fw"><figcaption>Телефон 390 — внутри «Мои коды»</figcaption><div class="box" style="width:390px;height:800px"><div class="scale" style="transform:scale(1);width:390px;height:800px"><div class="dev ph"><div class="sb"><span>9:41</span><span>●●● 5G ▮</span></div><div class="pt"><span class="btn t ic ghost" style="border:0;font-size:24px;margin-left:-8px">‹</span><h3>Мои коды</h3><span class="btn t ic pri" style="font-size:22px">+</span></div><div class="pb">
+<div style="padding:10px 12px;display:flex;gap:8px"><div class="inp t sp"><span class="faint">⌕</span><span class="pl">Поиск</span></div><span class="chip t on">Все</span><span class="chip t">Активные</span></div>
+<div style="flex:1;overflow:hidden"><div class="panel" style="margin:0 12px 10px;padding:12px 14px;"><div class="row"><b class="mono" style="font-size:17px">SUMMER25</b><span class="sp"></span><span class="tog on"></span></div>
+ <div class="row" style="margin-top:8px;align-items:flex-end"><b class="acc" style="font-size:22px">−15 %</b><span class="xs faint sp">до 500 ₴</span><span class="sm muted">до 30.11</span></div>
+ <div class="prog" style="margin:10px 0 6px"><i style="width:42%"></i></div><div class="row sm muted"><span>Использован 42 / 100</span><span class="sp"></span><span class="acc">Заказы ›</span></div></div><div class="panel" style="margin:0 12px 10px;padding:12px 14px;"><div class="row"><b class="mono" style="font-size:17px">WELCOME10</b><span class="sp"></span><span class="tog on"></span></div>
+ <div class="row" style="margin-top:8px;align-items:flex-end"><b class="acc" style="font-size:22px">−10 %</b><span class="xs faint sp"></span><span class="sm muted">без срока</span></div>
+ <div class="prog" style="margin:10px 0 6px"><i style="width:100%"></i></div><div class="row sm muted"><span>Использован 128 / ∞</span><span class="sp"></span><span class="acc">Заказы ›</span></div></div><div class="panel" style="margin:0 12px 10px;padding:12px 14px;"><div class="row"><b class="mono" style="font-size:17px">MOUSE200</b><span class="sp"></span><span class="tog on"></span></div>
+ <div class="row" style="margin-top:8px;align-items:flex-end"><b class="acc" style="font-size:22px">−200 ₴</b><span class="xs faint sp"></span><span class="sm muted">до 15.12</span></div>
+ <div class="prog" style="margin:10px 0 6px"><i style="width:34%"></i></div><div class="row sm muted"><span>Использован 17 / 50</span><span class="sp"></span><span class="acc">Заказы ›</span></div></div><div class="panel" style="margin:0 12px 10px;padding:12px 14px;"><div class="row"><b class="mono" style="font-size:17px">LAMZU5</b><span class="badge warn">Резерв: 2</span><span class="sp"></span><span class="tog on"></span></div>
+ <div class="row" style="margin-top:8px;align-items:flex-end"><b class="acc" style="font-size:22px">−5 %</b><span class="xs faint sp"></span><span class="sm muted">до 20.12</span></div>
+ <div class="prog" style="margin:10px 0 6px"><i style="width:30%"></i></div><div class="row sm muted"><span>Использован 9 / 30</span><span class="sp"></span><span class="acc">Заказы ›</span></div></div><div class="xs faint" style="text-align:center">← свайп по карточке: Удалить · Копировать</div></div><div class="fade"></div></div><div class="pn"><div class=""><i>📦</i>Заказы</div><div class=""><i>🗂</i>Каталог</div><div class="on"><i>🎟</i>Промо</div><div class=""><i>💬</i>Чаты</div><div class=""><i>☰</i>Ещё</div></div></div></div></div></figure><figure class="fw"><figcaption>Десктоп 1440 — группы | список | деталь с правкой на месте</figcaption><div class="box" style="width:893px;height:558px"><div class="scale" style="transform:scale(0.62);width:1440px;height:900px"><div class="dev dk" style="width:1440px;height:900px"><div class="sbar"><div class="logo">Chi<b>Setup</b></div><a class=""><span>📦</span>Заказы</a><a class=""><span>🗂</span>Каталог</a><a class=""><span>👥</span>Клиенты</a><a class="on"><span>🎟</span>Промокоды</a><a class=""><span>🎁</span>Кейс</a><a class=""><span>📒</span>Реестр подарков</a><a class=""><span>🚚</span>Поставки</a><a class=""><span>📊</span>Метрики</a><a class=""><span>⚙</span>Настройки</a></div><div class="main"><div class="dtop"><h3>Промокоды</h3><span class="sp"></span></div>
+<div style="flex:1;display:flex;min-height:0">
+ <div style="width:250px;border-right:1px solid var(--line)"><div class="entry" style="background:var(--accent-soft)"><div class="circle" style="width:38px;height:38px;font-size:17px;background:var(--accent)22;color:var(--accent)">🎟</div><div class="tx"><b style="font-size:14px"><span>Мои коды</span><span class="cn">4</span></b><span class="pv xs">6 кодов</span></div></div><div class="entry" style=""><div class="circle" style="width:38px;height:38px;font-size:17px;background:#3b82f622;color:#3b82f6">👤</div><div class="tx"><b style="font-size:14px"><span>Персональные</span></b><span class="pv xs">9 кодов</span></div></div><div class="entry" style=""><div class="circle" style="width:38px;height:38px;font-size:17px;background:#f5b30122;color:#f5b301">★</div><div class="tx"><b style="font-size:14px"><span>За отзывы</span></b><span class="pv xs">96 кодов</span></div></div><div class="entry" style=""><div class="circle" style="width:38px;height:38px;font-size:17px;background:#a855f722;color:#a855f7">🎁</div><div class="tx"><b style="font-size:14px"><span>Из кейса</span><span class="cn">3</span></b><span class="pv xs">214 кодов</span></div></div>
+  <div style="padding:14px" class="col"><span class="btn pri">+ Новый промокод</span></div></div>
+ <div style="width:470px;border-right:1px solid var(--line);overflow:hidden"><div style="padding:12px"><div class="inp"><span class="faint">⌕</span><span class="pl">Поиск среди «Мои коды»</span></div></div>
+  <div class="row" style="padding:10px 16px;border-bottom:1px solid var(--line);background:var(--accent-soft);"><div class="sp"><b class="mono">SUMMER25</b><div class="xs muted">42 / 100 · до 30.11</div></div><b class="acc">−15 %</b><span class="tog on"></span></div><div class="row" style="padding:10px 16px;border-bottom:1px solid var(--line);;"><div class="sp"><b class="mono">WELCOME10</b><div class="xs muted">128 / ∞ · без срока</div></div><b class="acc">−10 %</b><span class="tog on"></span></div><div class="row" style="padding:10px 16px;border-bottom:1px solid var(--line);;"><div class="sp"><b class="mono">MOUSE200</b><div class="xs muted">17 / 50 · до 15.12</div></div><b class="acc">−200 ₴</b><span class="tog on"></span></div><div class="row" style="padding:10px 16px;border-bottom:1px solid var(--line);;"><div class="sp"><b class="mono">LAMZU5</b><div class="xs muted">9 / 30 · до 20.12</div></div><b class="acc">−5 %</b><span class="tog on"></span></div><div class="row" style="padding:10px 16px;border-bottom:1px solid var(--line);;opacity:.6"><div class="sp"><b class="mono">BLACKFRI</b><div class="xs muted">100 / 100 · до 29.11</div></div><b class="acc">−20 %</b><span class="tog "></span></div><div class="row" style="padding:10px 16px;border-bottom:1px solid var(--line);;opacity:.6"><div class="sp"><b class="mono">OLD_AUG</b><div class="xs muted">31 / ∞ · истёк 31.08</div></div><b class="acc">−10 %</b><span class="tog "></span></div></div>
+ <div style="flex:1;padding:20px 24px;overflow:hidden" class="col">
+  <div class="row"><h3 class="mono" style="font-size:24px;text-transform:none">SUMMER25</h3><span class="badge ok">Действует</span><span class="sp"></span><span class="btn">⧉ Копировать</span><span class="btn dangerb dis" title="">🗑 Удалить</span></div>
+  <div class="xs muted">Удалить нельзя — код использован. Выключите его переключателем в списке.</div>
+  <div class="panel pad col" style="gap:12px"><div class="row"><div class="sp"><span class="lbl">Скидка, %</span><div class="inp">15</div></div><div class="sp"><span class="lbl">Не больше, ₴</span><div class="inp">500</div></div><div class="sp"><span class="lbl">Макс. использований</span><div class="inp">100</div></div><div class="sp"><span class="lbl">Срок до</span><div class="inp">30.11.2026</div></div></div><div class="row"><span class="btn pri">Сохранить</span><span class="xs faint">правка прямо здесь, без модалки</span></div></div>
+  <div class="row"><div class="panel pad sp"><div class="xs faint">Заказов</div><b style="font-size:22px">42</b></div><div class="panel pad sp"><div class="xs faint">Скидка</div><b style="font-size:22px">−11 480 ₴</b></div><div class="panel pad sp"><div class="xs faint">Выручка</div><b style="font-size:22px">96 300 ₴</b></div></div>
+  <div class="panel"><div class="pad b sm">Заказы с кодом</div><div class="row" style="padding:9px 14px;border-top:1px solid var(--line)"><span class="acc">#4821</span><span class="sp">Артём К.</span><span class="muted sm">2 400 ₴</span><b class="sm">−360 ₴</b></div><div class="row" style="padding:9px 14px;border-top:1px solid var(--line)"><span class="acc">#4809</span><span class="sp">Ірина М.</span><span class="muted sm">1 150 ₴</span><b class="sm">−172 ₴</b></div><div class="row" style="padding:9px 14px;border-top:1px solid var(--line)"><span class="acc">#4790</span><span class="sp">Олексій Р.</span><span class="muted sm">3 980 ₴</span><b class="sm">−500 ₴</b></div><div class="row" style="padding:9px 14px;border-top:1px solid var(--line)"><span class="acc">#4766</span><span class="sp">Максим Т.</span><span class="muted sm">890 ₴</span><b class="sm">−133 ₴</b></div><div class="row" style="padding:9px 14px;border-top:1px solid var(--line)"><span class="acc">#4751</span><span class="sp">Дмитро Л.</span><span class="muted sm">1 720 ₴</span><b class="sm">−258 ₴</b></div></div>
+ </div></div></div></div></div></div></figure></div></section></body></html>

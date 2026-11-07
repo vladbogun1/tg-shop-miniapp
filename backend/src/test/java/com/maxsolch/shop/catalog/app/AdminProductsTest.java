@@ -23,9 +23,10 @@ import static org.mockito.Mockito.when;
 class AdminProductsTest {
 
     AdminProductService service = mock(AdminProductService.class);
+    ProductQuickEdit quick = mock(ProductQuickEdit.class);
     AdminAuditService audit = mock(AdminAuditService.class);
     SiteRevalidator revalidator = mock(SiteRevalidator.class);
-    AdminProducts admin = new AdminProducts(service, audit, revalidator);
+    AdminProducts admin = new AdminProducts(service, quick, audit, revalidator);
 
     private static AdminProductDto product(boolean active, String condition) {
         AdminProductDto p = mock(AdminProductDto.class);
@@ -69,6 +70,33 @@ class AdminProductsTest {
         admin.update("p1", mock(ProductUpsertRequest.class), true);
 
         verify(audit).record(eq("PRODUCT_UPDATE"), eq("PRODUCT"), eq("p1"), contains("выложен без оформления"));
+    }
+
+    @Test
+    void quickEditIsAuditedAsSuchAndRebuildsTheProductPages() {
+        AdminProductDto before = product(true, "NEW");
+        AdminProductDto after = product(true, "NEW");
+        ProductQuickEditRequest req = new ProductQuickEditRequest(5_000L, null, null, null, null, null);
+        when(service.get("p1")).thenReturn(before);
+        when(quick.apply("p1", req)).thenReturn(after);
+
+        admin.quickEdit("p1", req);
+
+        verify(audit).record(eq("PRODUCT_UPDATE"), eq("PRODUCT"), eq("p1"), contains("быстрая правка"));
+        verify(revalidator).productChanged("mouse", "mouse", Set.of());
+    }
+
+    @Test
+    void aRefusedQuickEditLeavesNoJournalEntryAndNoRebuild() {
+        ProductQuickEditRequest req = new ProductQuickEditRequest(null, null, 1, 5, null, null);
+        AdminProductDto before = product(true, "NEW");
+        when(service.get("p1")).thenReturn(before);
+        when(quick.apply("p1", req)).thenThrow(new DomainException.Conflict(CatalogError.STOCK_CONFLICT, "x", "5", "3"));
+
+        assertThatThrownBy(() -> admin.quickEdit("p1", req)).isInstanceOf(DomainException.Conflict.class);
+
+        verify(audit, never()).record(anyString(), anyString(), anyString(), any());
+        verify(revalidator, never()).productChanged(any(), any(), any());
     }
 
     @Test
