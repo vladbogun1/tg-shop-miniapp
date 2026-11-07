@@ -6,6 +6,7 @@ import { QUERY_PRESETS } from "@shop/core/query";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "@shop/ui/toast";
+import { useMarkManual } from "@/features/ai";
 import { cardsApi } from "../../api";
 import { cardsKeys } from "../../keys";
 import { useCardSchema } from "../../queries";
@@ -110,10 +111,13 @@ export function useCardCompletion({ productId, open, reason, onClose }: Args) {
   const markReady = markReadyOverride ?? sure;
   const payload = review && sel ? buildImportItem(review, sel, { markReady, model, publish }) : null;
 
+  const markManual = useMarkManual();
   const { save, savePrice, saving } = useCompletionSave({
     onClose,
     onProblem: setProblem,
     onSaved: (isPublished) => {
+      // ответ принесли из ChatGPT: без отметки доля встроенного ИИ в метриках всегда 100 %
+      markManual.mutate({ feature: "CARD", subjectIds: [productId] });
       setSaved(true);
       setReview(null);
       setAnswer("");

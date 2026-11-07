@@ -17,6 +17,7 @@ import { X } from "lucide-react";
 import { Button } from "@shop/ui/admin-button";
 import { QueryState } from "@/components/ui/QueryState";
 import { CHIP_CLASS, TodayChips } from "@/features/analytics";
+import { AiDashboardWidget } from "@/features/ai";
 import { WantedWidget } from "@/features/procurement";
 import { useIsKanban } from "../use-is-kanban";
 import type { AdminBoard } from "../../api";
@@ -75,7 +76,16 @@ export function BoardView({ search, boardQ, closedLimit, onClosedLimit, period, 
 
   return (
     <>
-      {(kanban || mobileTab === null) && <TodayChips trailing={<WantedWidget chipClass={CHIP_CLASS} />} />}
+      {(kanban || mobileTab === null) && (
+        <TodayChips
+          trailing={
+            <>
+              <WantedWidget chipClass={CHIP_CLASS} />
+              <AiDashboardWidget chipClass={CHIP_CLASS} />
+            </>
+          }
+        />
+      )}
       {paidNewOnly && <PaidNewNotice onClear={onClearPaidNew} />}
       <QueryState
         isLoading={boardQ.isLoading || (!board && !boardQ.isError)}

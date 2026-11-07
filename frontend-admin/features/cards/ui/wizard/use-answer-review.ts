@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { errorMessage } from "@shop/core/errors";
 import { useApiMutation } from "@shop/ui/mutation";
+import { useMarkManual } from "@/features/ai";
 import { toast } from "@shop/ui/toast";
 import { buildCardReview, bulkSelection, levelCounts, missingFromAnswer, parseCardAnswer, type BulkKind, type Proposal, type ProductReview } from "../../model";
 import type { CardItem } from "../../model/item";
@@ -146,6 +147,7 @@ export function useAnswerReview({ items, schema, ids, batchPids }: Args) {
     setSel((prev) => new Map([...prev, ...(reviews ?? []).map((r): [string, ProductSel] => [r.id, bulkSelection(kind, r, prev.get(r.id))])]));
   }
 
+  const markManual = useMarkManual();
   const importMutation = useApiMutation<CardImportResult, SendVars>({
     mutationFn: ({ payload: items, replaceSpecs: replace }) => cardsApi.import({ items, replaceSpecs: replace }),
     toastOnError: false,
@@ -160,6 +162,8 @@ export function useAnswerReview({ items, schema, ids, batchPids }: Args) {
       const sent = new Set(vars.payload.map((p) => p.productId).filter((id) => !rejected.has(id)));
       setReviews((prev) => (prev ?? []).filter((r) => !sent.has(r.item.id)));
       (result.rejected.length ? toast.error : toast.success)(`Сохранено карточек: ${result.applied}${result.rejected.length ? `, отклонено: ${result.rejected.length}` : ""}`);
+      // ответы принесли из ChatGPT: без отметки доля встроенного ИИ в метриках всегда 100 %
+      if (sent.size) markManual.mutate({ feature: "CARD", subjectIds: [...sent] });
       invalidateCards(qc);
       void photos.run(vars.photoJobs.filter((j) => !rejected.has(j.productId)), dropPhoto);
     },

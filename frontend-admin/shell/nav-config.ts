@@ -25,9 +25,10 @@ import {
   PackageMinus,
   Gift,
   PackagePlus,
+  Sparkles,
 } from "lucide-react";
 
-export type BadgeKey = "inbox" | "support" | "reviews" | "translations" | "cards";
+export type BadgeKey = "inbox" | "support" | "reviews" | "translations" | "cards" | "ai";
 export interface NavItem {
   href: string;
   label: string;
@@ -67,6 +68,7 @@ export const SECTIONS: NavSection[] = [
         icon: ClipboardCheck,
         badge: "cards",
       },
+      { href: "/ai-tasks", label: "ИИ-задачи", icon: Sparkles, badge: "ai" },
       { href: "/categories", label: "Категории", icon: FolderTree },
       { href: "/brands", label: "Бренды", icon: BadgeCheck },
       {
@@ -142,6 +144,7 @@ const TITLE: Record<string, string> = {
   "/payment": "Оплата",
   "/translations": "Переводы",
   "/cards": "Карточки",
+  "/ai-tasks": "ИИ-задачи",
   "/audit": "Журнал",
   "/settings": "Настройки",
   "/admins": "Админы",

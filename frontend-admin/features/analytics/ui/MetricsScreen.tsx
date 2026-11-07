@@ -2,7 +2,7 @@
 
 /**
  * Метрики — вкладки Обзор · Маржа (с правом «Финансы») · Товары и склад · Покупатели · Воронка ·
- * Операции · Предзаказы. Calendar periods (Europe/Kyiv) with a comparison period, a channel filter, and its own
+ * Операции · Предзаказы · ИИ (с правом «Финансы»). Calendar periods (Europe/Kyiv) with a comparison period, a channel filter, and its own
  * remembered period (no longer shared with the orders board). The tab lives in the URL (?tab=) so
  * the board's "Today" strip can link straight to the stock tab.
  */
@@ -17,6 +17,7 @@ import { FunnelTab } from "./tabs/FunnelTab";
 import { MarginTab } from "./tabs/MarginTab";
 import { OperationsTab } from "./tabs/OperationsTab";
 import { OverviewTab } from "./tabs/OverviewTab";
+import { AiTab } from "./tabs/AiTab";
 import { PreordersTab } from "./tabs/PreordersTab";
 import { StockTab } from "./tabs/StockTab";
 import { useMetricsPeriod } from "./use-metrics-period";
@@ -29,6 +30,7 @@ const TABS = [
   { value: "funnel", label: "Воронка" },
   { value: "operations", label: "Операции" },
   { value: "preorders", label: "Предзаказы" },
+  { value: "ai", label: "ИИ" },
 ] as const;
 type Tab = (typeof TABS)[number]["value"];
 
@@ -46,7 +48,7 @@ function MetricsBody() {
   const sp = useSearchParams();
   const raw = sp.get("tab");
   const finance = useFinanceAccess();
-  const tabs = TABS.filter((t) => t.value !== "margin" || finance);
+  const tabs = TABS.filter((t) => (t.value !== "margin" && t.value !== "ai") || finance);
   const tab: Tab = tabs.some((t) => t.value === raw) ? (raw as Tab) : "overview";
   const [params, setParams] = useMetricsPeriod();
 
@@ -65,7 +67,7 @@ function MetricsBody() {
         tabs={tabs}
         tab={tab}
         onTab={setTab}
-        channelApplies={tab !== "margin" && tab !== "preorders"}
+        channelApplies={tab !== "margin" && tab !== "preorders" && tab !== "ai"}
       />
 
       {tab === "overview" && <OverviewTab params={params} />}
@@ -75,6 +77,7 @@ function MetricsBody() {
       {tab === "operations" && <OperationsTab params={params} />}
       {tab === "preorders" && <PreordersTab params={params} />}
       {tab === "margin" && <MarginTab params={params} />}
+      {tab === "ai" && <AiTab params={params} />}
     </div>
   );
 }

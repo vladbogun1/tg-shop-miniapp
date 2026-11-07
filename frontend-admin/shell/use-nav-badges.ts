@@ -1,6 +1,7 @@
 import { useInbox } from "@/features/inbox";
 import { useSupportUnread } from "@/features/support";
 import { pendingCount, useTranslationStats } from "@/features/translation";
+import { useAiSummary } from "@/features/ai";
 import { pendingCards, useCardStats } from "@/features/cards";
 import { useReviewsPending } from "@/features/review";
 import type { BadgeKey } from "./nav-config";
@@ -21,6 +22,9 @@ export function useNavBadges(): Record<BadgeKey, BadgeInfo> {
   // Cards waiting: «Оформить» + «Проверить» of «Карточки», every 2 min.
   const { data: cardStats } = useCardStats();
   const cardsPending = pendingCards(cardStats);
+  // ИИ-задачи: ждут проверки + сбои за сутки (тот же /summary, что у чипа ✦ в шапке).
+  const { data: ai } = useAiSummary();
+  const aiWaiting = (ai?.review ?? 0) + (ai?.problems ?? 0);
   // Rows waiting on «Внимание» (same query as the bell, polled every 30 s).
   const { data: inbox } = useInbox();
   const inboxTotal = inbox?.total ?? 0;
@@ -56,6 +60,12 @@ export function useNavBadges(): Record<BadgeKey, BadgeInfo> {
       count: cardsPending,
       label: `Карточек ждут оформления или проверки: ${cardsPending}`,
       title: "Карточки: «Оформить» + «Проверить»",
+      strong: false,
+    },
+    ai: {
+      count: aiWaiting,
+      label: `ИИ-задач ждут проверки или со сбоем: ${aiWaiting}`,
+      title: "ИИ-задачи: «Проверить» + «Проблемы»",
       strong: false,
     },
   };
