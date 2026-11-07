@@ -55,7 +55,9 @@ test("владелец: четыре вкладки раскладывают з�
   await expect(page.getByRole("tab", { name: /^Проверить/ })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("button", { name: name(titles.review) })).toBeVisible();
   await expect(page.getByRole("button", { name: name(titles.applied) })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: name(titles.running) })).toHaveCount(0);
+  // Засеянная идущая задача — не здесь. По «Карточка ·»: e2e 40 оставляет на тот же шарф готовую «Дозаполнение»
+  // (её остановили, когда единственный вызов модели уже шёл), и она честно ждёт проверки.
+  await expect(page.getByRole("button", { name: new RegExp(`Карточка · ${name(titles.running).source}`) })).toHaveCount(0);
 
   await openTab(page, "Идут");
   await expect(page.getByRole("button", { name: name(titles.running) })).toBeVisible();
