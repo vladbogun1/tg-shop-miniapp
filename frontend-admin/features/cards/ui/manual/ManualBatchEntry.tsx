@@ -1,95 +1,132 @@
 "use client";
 
 /**
- * Входы в ручной пакет: кнопка по выбранным товарам (когда встроенный ИИ недоступен), кнопка у пакета ИИ на паузе
- * или после него («Оформить N вручную (K частей)») и полоса «Продолжить ручной пакет» после перезагрузки.
+ * Входы в ручной пакет «Через ChatGPT вручную» — один путь для любого выбора товаров: кнопка в панели выбора
+ * («Товары», «Карточки»; работает и без ИИ), «Оформить N вручную» у пакета ИИ для того, что он не сделал, и полоса
+ * «Продолжить ручной пакет» — по пакету на сервере, поэтому видна и на другом устройстве. Слой один — `ManualBatchLayer`.
  */
 import { manualSubjects, useCancelBatch, type AiBatch } from "@/features/ai";
 import { plural } from "@/features/translation";
+import { errorMessage } from "@shop/core/errors";
 import { Button } from "@shop/ui/admin-button";
 import { useConfirm } from "@shop/ui/confirm";
 import { toast } from "@shop/ui/toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { ClipboardList } from "lucide-react";
-import { useEffect, useState } from "react";
-import { clearDraft, loadDraft, MANUAL_PART_SIZE, newDraft, progressText, sameIds, saveDraft, type ManualDraft } from "../../model/manual-batch";
+import { useState } from "react";
+import { manualApi, type ManualBatch } from "../../api-manual";
+import { cardVersion } from "../../model/ai-card";
+import type { CardItem } from "../../model/item";
+import { freshDraft, MANUAL_PART_SIZE, resumeText, sameProducts } from "../../model/manual-batch";
+import type { CardSchema } from "../../model/schema";
 import { sortForWizard } from "../../model/wizard";
 import { useCardItems, useCardSchema } from "../../queries";
-import { draftChanged, useDraftVersion } from "./draft-signal";
 import { ManualBatchLayer } from "./ManualBatchLayer";
-import { useManualBatch } from "./use-manual-batch";
+import { openManualLayer, useManualLayerOpen } from "./manual-layer";
+import { setManualCurrent, useManualCurrent } from "./use-manual-batch";
+
+/** Сервер берёт в ручной пакет до 100 товаров. */
+export const MANUAL_MAX = 100;
 
 export const partsWord = (k: number) => `${k} ${plural(k, "часть", "части", "частей")}`;
 
 /** «Оформить 12 вручную (3 части)». */
 export const manualLabel = (n: number) => `Оформить ${n} вручную (${partsWord(Math.ceil(n / MANUAL_PART_SIZE))})`;
 
-const draftLine = (d: ManualDraft) => `${d.ids.length} ${plural(d.ids.length, "товар", "товара", "товаров")}, часть ${d.part + 1} из ${d.answers.length}`;
+const productsLine = (n: number) => `${n} ${plural(n, "товар", "товара", "товаров")}`;
 
-/** Начать ручной пакет по товарам или продолжить тот же; чужой незаконченный — только с согласия. */
-export function useManualOpener() {
+/** Товары пакета в порядке мастера (по категории и названию), не больше `MANUAL_MAX`. */
+function pick(productIds: string[], items: CardItem[], schema: CardSchema): CardItem[] {
+  const wanted = new Set(productIds);
+  const chosen = sortForWizard(items.filter((i) => wanted.has(i.id)), schema);
+  if (chosen.length > MANUAL_MAX) toast.info(`В ручной пакет взяты первые ${MANUAL_MAX} из ${chosen.length}: остальные — следующим пакетом`);
+  return chosen.slice(0, MANUAL_MAX);
+}
+
+/** Начать ручной пакет по товарам; тот же набор — продолжить; другой незаконченный — только с согласия удалить его. */
+export function useManualStart() {
+  const qc = useQueryClient();
   const items = useCardItems().data;
   const schema = useCardSchema().data;
   const confirm = useConfirm();
-  const [open, setOpen] = useState(false);
-  async function start(productIds: string[]): Promise<boolean> {
-    if (!items || !schema) return false;
-    const existing = loadDraft();
-    if (existing && sameIds(existing, productIds)) {
-      setOpen(true);
+  const [busy, setBusy] = useState(false);
+
+  const show = (b: ManualBatch) => {
+    setManualCurrent(qc, b);
+    openManualLayer();
+  };
+
+  async function replaceOld(old: ManualBatch): Promise<boolean> {
+    const ok = await confirm({
+      title: "Начать новый ручной пакет?",
+      message: `Есть незаконченный: ${productsLine(old.items.length)}, ${resumeText(old.draft, old.items.map((i) => i.subjectId), old.partSize, old.batch.jobs)}. Его непринятые ответы удалятся, принятые карточки останутся.`,
+      confirmLabel: "Удалить и начать новый",
+      cancelLabel: "Отмена",
+      danger: true,
+    });
+    if (ok) await manualApi.discard(old.batch.id);
+    return ok;
+  }
+
+  async function begin(chosen: CardItem[]): Promise<boolean> {
+    const existing = await manualApi.current();
+    if (existing && sameProducts(existing.items.map((i) => i.subjectId), chosen.map((i) => i.id))) {
+      show(existing);
       return true;
     }
-    if (existing) {
-      const ok = await confirm({
-        title: "Начать новый ручной пакет?",
-        message: `Есть незаконченный: ${draftLine(existing)}. Его вставленные ответы удалятся.`,
-        confirmLabel: "Начать новый",
-        cancelLabel: "Отмена",
-        danger: true,
-      });
-      if (!ok) return false;
-    }
-    const wanted = new Set(productIds);
-    const chosen = sortForWizard(items.filter((i) => wanted.has(i.id)), schema);
+    if (existing && !(await replaceOld(existing))) return false;
+    const items = chosen.map((i) => ({ productId: i.id, subjectVersion: cardVersion(i) }));
+    show(await manualApi.start({ items, partSize: MANUAL_PART_SIZE, draft: JSON.stringify(freshDraft(chosen.length)) }));
+    return true;
+  }
+
+  async function start(productIds: string[]): Promise<boolean> {
+    if (!items || !schema) return false;
+    const chosen = pick(productIds, items, schema);
     if (chosen.length === 0) {
       toast.info("Этих товаров уже нет в каталоге");
       return false;
     }
-    if (!saveDraft(newDraft(chosen))) toast.info("Браузер не даёт сохранить черновик — после перезагрузки вставленное пропадёт");
-    setOpen(true);
-    return true;
+    setBusy(true);
+    try {
+      return await begin(chosen);
+    } catch (e) {
+      toast.error(errorMessage(e, undefined, "Не удалось начать ручной пакет"));
+      return false;
+    } finally {
+      setBusy(false);
+    }
   }
-  return { start, ready: !!items && !!schema, layer: <ManualBatchLayer open={open} onClose={() => setOpen(false)} /> };
+
+  return { start, busy, ready: !!items && !!schema };
 }
 
-export type ManualOpener = ReturnType<typeof useManualOpener>;
-
-function OpenButton({ label, disabled, onClick }: { label: string; disabled: boolean; onClick: () => Promise<unknown> }) {
+/** «Через ChatGPT вручную (N)» по выбранным товарам — без ИИ, ключа и лимитов. */
+export function ManualStartButton({ productIds, label, variant = "surface" }: { productIds: string[]; label?: string; variant?: "surface" | "accent" }) {
+  const o = useManualStart();
   return (
-    <Button size="sm" variant="surface" icon={<ClipboardList className="h-4 w-4" />} disabled={disabled} onClick={() => void onClick()} data-testid="manual-open">
-      {label}
+    <Button
+      size="sm"
+      variant={variant}
+      icon={<ClipboardList className="h-4 w-4" />}
+      loading={o.busy}
+      disabled={!o.ready || productIds.length === 0}
+      onClick={() => void o.start(productIds)}
+      data-testid="manual-open"
+    >
+      {label ?? `Через ChatGPT вручную (${productIds.length})`}
     </Button>
-  );
-}
-
-/** Кнопка ручного пакета по выбранным товарам (слой живёт рядом с кнопкой). */
-export function ManualBatchButton({ productIds, label }: { productIds: string[]; label?: string }) {
-  const o = useManualOpener();
-  return (
-    <>
-      <OpenButton label={label ?? manualLabel(productIds.length)} disabled={!o.ready || productIds.length === 0} onClick={() => o.start(productIds)} />
-      {o.layer}
-    </>
   );
 }
 
 /**
  * У пакета ИИ: то, что он не сделал. Пакет на паузе сначала заканчиваем — иначе «Продолжить» потом отдал бы
- * встроенному ИИ те же товары ещё раз (двойная работа и двойные деньги). Слой держит `opener` хозяина полосы:
- * после «Закончить» полоса пакета сменяется итогом, и слой внутри неё закрылся бы.
+ * встроенному ИИ те же товары ещё раз (двойная работа и двойные деньги).
  */
-export function ManualFromBatch({ batch, opener }: { batch: AiBatch; opener: ManualOpener }) {
+export function ManualFromBatch({ batch }: { batch: AiBatch }) {
   const cancel = useCancelBatch();
   const confirm = useConfirm();
+  const o = useManualStart();
   const ids = manualSubjects(batch);
   if (ids.length === 0) return null;
   async function open() {
@@ -103,55 +140,67 @@ export function ManualFromBatch({ batch, opener }: { batch: AiBatch; opener: Man
       if (!ok) return;
       await cancel.mutateAsync(batch.id);
     }
-    await opener.start(ids);
+    await o.start(ids);
   }
-  return <OpenButton label={manualLabel(ids.length)} disabled={!opener.ready} onClick={open} />;
+  return (
+    <Button size="sm" variant="surface" icon={<ClipboardList className="h-4 w-4" />} loading={o.busy} disabled={!o.ready} onClick={() => void open()} data-testid="manual-open">
+      {manualLabel(ids.length)}
+    </Button>
+  );
 }
 
-function ResumeLine() {
-  const m = useManualBatch(true);
-  if (!m.draft || !m.current) return null;
-  return <>{m.draft.stage === "review" ? `проверка, осталось ${m.pending.length}` : progressText(m.draft, m.current.answered, m.current.size)}</>;
-}
-
-/** «Ручной пакет: часть 2 из 6, вставлено 1 из 4 · Продолжить · Удалить» — пока есть черновик. */
-export function ManualResumeBar() {
-  const [draft, setDraft] = useState<ManualDraft | null>(null);
-  const [open, setOpen] = useState(false);
+function ResumeBar({ batch }: { batch: ManualBatch }) {
+  const qc = useQueryClient();
   const confirm = useConfirm();
-  const version = useDraftVersion();
-  useEffect(() => {
-    if (!open) setDraft(loadDraft());
-  }, [open, version]);
-  if (!draft && !open) return null;
+  const [busy, setBusy] = useState(false);
+  const line = resumeText(batch.draft, batch.items.map((i) => i.subjectId), batch.partSize, batch.batch.jobs);
+
+  async function discard() {
+    const ok = await confirm({
+      title: "Удалить ручной пакет?",
+      message: "Непринятые вставленные ответы пропадут. Уже принятые карточки останутся.",
+      confirmLabel: "Удалить",
+      cancelLabel: "Отмена",
+      danger: true,
+    });
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await manualApi.discard(batch.batch.id);
+      setManualCurrent(qc, null);
+    } catch (e) {
+      toast.error(errorMessage(e, undefined, "Не удалось удалить пакет"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mb-3 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 rounded-[var(--r-md)] border border-[var(--line-strong)] bg-[var(--surface)] px-3 py-2 text-[13px]" data-testid="manual-resume">
+      <ClipboardList className="h-4 w-4 shrink-0 text-[var(--accent)]" />
+      <span className="min-w-0 flex-1 basis-48 font-semibold text-[var(--ink)]">
+        Ручной пакет ({productsLine(batch.items.length)}): {line}
+      </span>
+      <div className="flex shrink-0 flex-wrap gap-2">
+        <Button size="sm" variant="ghost" loading={busy} onClick={() => void discard()} data-testid="manual-resume-discard">
+          Удалить
+        </Button>
+        <Button size="sm" variant="accent" onClick={openManualLayer} data-testid="manual-resume-open">
+          Продолжить
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Полоса «Ручной пакет: часть 2 из 6, вставлено 1 из 4 · Продолжить · Удалить» и слой пакета экрана. */
+export function ManualResumeBar() {
+  const current = useManualCurrent().data;
+  const open = useManualLayerOpen();
   return (
     <>
-      {draft && !open && (
-        <div className="mb-3 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 rounded-[var(--r-md)] border border-[var(--line-strong)] bg-[var(--surface)] px-3 py-2 text-[13px]" data-testid="manual-resume">
-          <ClipboardList className="h-4 w-4 shrink-0 text-[var(--accent)]" />
-          <span className="min-w-0 flex-1 basis-48 font-semibold text-[var(--ink)]">
-            Ручной пакет: <ResumeLine key={version} />
-          </span>
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={async () => {
-                const ok = await confirm({ title: "Удалить ручной пакет?", message: "Вставленные ответы пропадут. Уже принятые карточки останутся.", confirmLabel: "Удалить", cancelLabel: "Отмена", danger: true });
-                if (!ok) return;
-                clearDraft();
-                draftChanged();
-              }}
-            >
-              Удалить
-            </Button>
-            <Button size="sm" variant="accent" onClick={() => setOpen(true)} data-testid="manual-resume-open">
-              Продолжить
-            </Button>
-          </div>
-        </div>
-      )}
-      <ManualBatchLayer open={open} onClose={() => setOpen(false)} />
+      {current && !open && <ResumeBar batch={current} />}
+      <ManualBatchLayer />
     </>
   );
 }

@@ -1,9 +1,10 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckCheck, Sparkles } from "lucide-react";
+import { CheckCheck } from "lucide-react";
 import { Button } from "@shop/ui/admin-button";
 import { BULK_ACCEPT_MIN, productsWord } from "../../model/view";
+import { CardBatchButton } from "../ai/batch/CardBatchButton";
 import type { CardsScreenState } from "./use-cards-screen";
 
 function AcceptSure({ s }: { s: CardsScreenState }) {
@@ -47,9 +48,7 @@ export function CardsBulkBar({ s }: { s: CardsScreenState }) {
             Снять выбор
           </Button>
           {s.current === "review" && <AcceptSure s={s} />}
-          <Button size="sm" variant="accent" icon={<Sparkles className="h-4 w-4" />} onClick={s.openWizard} disabled={!s.schema}>
-            Оформить с ИИ ({count})
-          </Button>
+          <CardBatchButton productIds={s.manualIds} onStarted={() => s.setSelected(new Set())} />
         </motion.div>
       )}
     </AnimatePresence>

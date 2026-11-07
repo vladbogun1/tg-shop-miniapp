@@ -1,11 +1,12 @@
 /**
- * «Карточки» (docs/CATALOG-SPECS.md §4–5): the admin opens «Оформить с ИИ», pastes the AI's answer,
- * checks what changes and saves it. A sure card (overall ≥ 80 %, no guessed field) goes straight to
- * «Готово»; a less sure one goes to «Проверить», where the review panel's «Принять» makes it READY.
- * The answer here is written by the test (two products, a new description that keeps the old text —
- * valid whatever schema the stand has).
+ * «Карточки» (docs/CATALOG-SPECS.md §4–5): «/cards?ids=…» (ссылка из поставки) открывает ручной пакет
+ * «Через ChatGPT вручную» этих товаров; ответ ChatGPT вставляется в часть, «К проверке» — лента «Принять».
+ * A sure card (overall ≥ 80 %, no guessed field) goes straight to «Готово»; a less sure one goes to «Проверить»,
+ * where the review panel's «Принять» makes it READY. The answer here is written by the test (two products, the
+ * description they had before, emptied first so that it is «заполнит пустое» — valid whatever schema the stand has).
  */
 import type { Locator, Page } from "@playwright/test";
+import { blankDescriptions } from "../lib/ai-batch";
 import { PRODUCT } from "../lib/seed";
 import { expect, test } from "../lib/test";
 import type { Api } from "../lib/api";
@@ -43,17 +44,19 @@ test("карточки: ответ ИИ → проверка → сохране�
   expect(sure && doubtful, "в сиде есть шарф и носки").toBeTruthy();
   expect(sure.active && doubtful.active).toBe(true);
 
+  await blankDescriptions([sure.id, doubtful.id]);
   await page.goto("/cards");
   await expect(page.getByRole("heading", { name: "Карточки" })).toBeVisible();
   // Default storefront filter is «В работе» (on the storefront or new): both products are counted.
   await expect(tab(page, "Готово")).toBeVisible();
+  await expect(page.getByTestId("cards-manual")).toHaveText(/^Через ChatGPT \(\d+\)$/);
   const before = { review: await tabCount(page, "Проверить"), ready: await tabCount(page, "Готово") };
 
-  // The batch wizard opens in a full-screen layer over the list.
-  await page.getByRole("button", { name: /^Оформить с ИИ \(\d+\)$/ }).click();
-  const wizard = page.getByRole("dialog", { name: "Оформить с ИИ" });
-  await expect(wizard).toBeVisible();
-  await expect(wizard.getByRole("button", { name: /Скопировать (промпт|пакет 1)/ }).first()).toBeVisible();
+  // The supply's link opens the manual batch of those products in a full-screen layer over the list.
+  await page.goto(`/cards?ids=${sure.id},${doubtful.id}`);
+  const layer = page.getByTestId("manual-batch");
+  await expect(layer.getByTestId("manual-part-title")).toHaveText("Вручную: часть 1 из 1");
+  await expect(layer.getByRole("button", { name: "Скопировать промпт части 1" })).toBeVisible();
 
   // The answer id is "p" + hex of the UUID (the checker also accepts a longer prefix).
   const pid = (id: string) => "p" + id.replace(/-/g, ""); // full hex: seed ids share long prefixes
@@ -65,19 +68,19 @@ test("карточки: ответ ИИ → проверка → сохране�
   });
   const answer =
     "```json\n" + JSON.stringify({ [pid(sure.id)]: entry(sure, 88), [pid(doubtful.id)]: entry(doubtful, 65) }, null, 2) + "\n```";
-  await wizard.getByLabel("Ответ ИИ").fill(answer);
-  await wizard.getByRole("button", { name: "Проверить", exact: true }).click();
+  await layer.getByLabel("Ответ ChatGPT на часть 1").fill(answer);
+  await expect(layer.getByTestId("manual-part-answered")).toHaveText("Разобрано 2 из 2");
+  await layer.getByRole("button", { name: "К проверке (2)" }).click();
 
-  await expect(wizard.getByText("Проверка и сохранение")).toBeVisible();
-  await expect(wizard.getByText(sure.title).first()).toBeVisible();
-  await expect(wizard.getByText(doubtful.title).first()).toBeVisible();
-  await expect(wizard.getByRole("link", { name: /example\.com/ }).first()).toBeVisible();
-  // Auto status: 88 % → «Готово», 65 % → «Проверить».
-  await expect(wizard.getByText("станут «Готово»: 1")).toBeVisible();
-  await expect(wizard.getByText("уйдут в «Проверить»: 1")).toBeVisible();
-  await wizard.getByRole("button", { name: /^Сохранить 2 товара/ }).click();
-  await expect(wizard.getByText("Итог сохранения")).toBeVisible();
-  await expect(wizard.getByText("сохранено 2")).toBeVisible();
+  const sub = layer.getByTestId("manual-review-sub");
+  await expect(sub).toHaveText("Ответов 2 из 2 · решено 0 · осталось 2");
+  await expect(layer.getByTestId("feed-fields")).toContainText("E2E-оформление");
+  await layer.getByTestId("feed-accept").click();
+  await expect(sub).toHaveText("Ответов 2 из 2 · решено 1 · осталось 1");
+  await layer.getByTestId("feed-accept").click();
+  await expect(layer.getByTestId("manual-finished")).toContainText("Решено по этому пакету: 2.");
+  await layer.getByTestId("manual-finish").click();
+  await expect(layer).toHaveCount(0);
 
   const saved = await cards(api, [sure.id, doubtful.id]);
   const s1 = saved.find((i) => i.id === sure.id)!;
@@ -88,8 +91,6 @@ test("карточки: ответ ИИ → проверка → сохране�
   expect(s2.description).toMatch(/^E2E-оформление/);
 
   // Back to the list: the doubtful card moved from «Готово» to «Проверить».
-  await wizard.getByRole("button", { name: /^Закрыть/ }).click();
-  await expect(wizard).toBeHidden();
   await expect(tab(page, "Проверить")).toHaveText(new RegExp(`${before.review + 1}$`));
   await expect(tab(page, "Готово")).toHaveText(new RegExp(`${before.ready - 1}$`));
 

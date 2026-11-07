@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AiBatch } from "../api-batch";
-import { barText, canResume, confirmView, finishedCount, isSafeKey, manualSubjects, minutesText, moneyRange, pauseText, safeTotals, summaryText, undoLeft } from "./batch-view";
+import { barText, canResume, confirmView, finishedCount, isManualDraft, isSafeKey, manualSubjects, summaryTitle, minutesText, moneyRange, pauseText, safeTotals, summaryText, undoLeft } from "./batch-view";
 
 const batch = (o: Partial<AiBatch> = {}): AiBatch =>
   ({ id: 1, total: 30, queued: 15, running: 3, done: 10, empty: 1, badAnswer: 0, failed: 1, canceled: 0, status: "RUNNING", ...o }) as AiBatch;
@@ -26,6 +26,17 @@ describe("итог пакета", () => {
   it("показывает только ненулевые части, сбой — вместе с нечитаемым ответом", () => {
     expect(summaryText(batch({ done: 20, empty: 0, failed: 2, badAnswer: 1 }))).toBe("Готово 20 · Сбой 3");
     expect(summaryText(batch({ done: 0, empty: 0, failed: 0 }))).toBe("");
+  });
+  it("ручной пакет: сколько ответов вставлено, свой заголовок; незаконченный полосе хода не нужен", () => {
+    const m = batch({ path: "MANUAL", status: "DONE", done: 6, failed: 0 });
+    expect(summaryText(m)).toBe("Вставлено ответов 6");
+    expect(summaryTitle(m)).toBe("Ручной пакет завершён:");
+    expect(summaryTitle({ path: "MANUAL", status: "CANCELED" })).toBe("Ручной пакет удалён:");
+    expect(summaryTitle({ path: "BUILTIN", status: "CANCELED" })).toBe("Пакет остановлен:");
+    expect(isManualDraft(batch({ path: "MANUAL" }))).toBe(true);
+    expect(isManualDraft(m)).toBe(false);
+    expect(isManualDraft(batch({ path: "BUILTIN" }))).toBe(false);
+    expect(manualSubjects({ status: "CANCELED", path: "MANUAL", jobs: [{ subjectId: "a", status: "CANCELED" } as never] })).toEqual([]);
   });
 });
 

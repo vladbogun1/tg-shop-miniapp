@@ -9,7 +9,8 @@ export function ReviewNotices(p: {
   /** «Пока работал ИИ, карточку правил Иван · 2 из 7 полей изменены…»; null — карточку не меняли. */
   edited: string | null;
   mostly: boolean;
-  onFresh: () => void;
+  /** Новая задача встроенного ИИ по актуальной карточке; нет — ответ вставили вручную, его вставляют заново. */
+  onFresh?: () => void;
 }) {
   return (
     <>
@@ -20,7 +21,11 @@ export function ReviewNotices(p: {
       {p.mostly && (
         <div className="flex flex-col items-start gap-2 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)] p-3 text-[12.5px] text-[var(--warn)]">
           {p.edited ?? "Карточка заметно изменилась, пока работал ИИ"}. Большая часть предложений заблокирована.
-          <Button size="sm" variant="accent" onClick={p.onFresh}>Повторить на актуальной карточке</Button>
+          {p.onFresh ? (
+            <Button size="sm" variant="accent" onClick={p.onFresh}>Повторить на актуальной карточке</Button>
+          ) : (
+            <span className="text-[var(--text-muted)]">Вставьте свежий ответ: меню → «Заполнить вручную через ChatGPT».</span>
+          )}
         </div>
       )}
     </>

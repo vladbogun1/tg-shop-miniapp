@@ -244,7 +244,11 @@ test("ручной путь через ChatGPT: тот же экран пров�
   const modal = await openEntry(page, before.title);
   await modal.getByRole("button", { name: "Через ChatGPT вручную" }).click();
   await modal.getByLabel("Ответ ИИ").fill(answer);
+  // Разобранный ответ — задача «ИИ-задач» (путь MANUAL, без модели и денег).
+  const pastedReq = page.waitForResponse((r) => r.url().endsWith("/api/admin/ai/card-manual-jobs") && r.request().method() === "POST");
   await modal.getByRole("button", { name: "Проверить", exact: true }).click();
+  const pasted = (await (await pastedReq).json()) as { id: number; path: string; status: string };
+  expect(pasted).toMatchObject({ path: "MANUAL", status: "DONE" });
   // Тот же экран проверки, что у встроенного ИИ: группы, «Выбрано N из M», «Применить (N)».
   await expect(modal.getByRole("heading", { name: "Проверка ответа" })).toBeVisible();
   await expect(modal.getByText(/^Выбрано \d+ из \d+$/)).toBeVisible();
@@ -269,9 +273,9 @@ test("ручной путь через ChatGPT: тот же экран пров�
 
   const sent = await fakePhotoImport(page);
   await pickPhoto(modal, photo);
-  const marked = page.waitForRequest((r) => r.url().endsWith("/api/admin/ai/manual-marks") && r.method() === "POST");
+  const outcome = page.waitForRequest((r) => r.url().endsWith(`/api/admin/ai/jobs/${pasted.id}/outcome`) && r.method() === "POST");
   await modal.getByRole("button", { name: "Применить (1) + 1 фото" }).click();
-  expect((await marked).postDataJSON()).toEqual({ feature: "CARD", subjectIds: [PRODUCT.scarf] });
+  expect((await outcome).postDataJSON()).toMatchObject({ applied: 1 });
   await expect(modal.getByText("Результат применён")).toBeVisible();
   await expect(modal.getByText("добавлено 1")).toBeVisible();
   expect(sent).toEqual([photo]);
@@ -280,4 +284,10 @@ test("ручной путь через ChatGPT: тот же экран пров�
   expect(after.description).toBe(edited);
   expect(after.cardMeta?.sources).toContain("https://example.com/manual");
   expect((await fake("requests")) as unknown[]).toHaveLength(0);
+  const job = await query<{ path: string; pasted: number; outcome: string | null; cost: number | null }>(
+    "SELECT path, pasted, outcome, cost_micro_usd cost FROM ai_jobs WHERE id = ?",
+    [pasted.id],
+  );
+  expect(job[0]).toMatchObject({ path: "MANUAL", pasted: 1, outcome: "APPLIED" });
+  expect(job[0].cost ?? 0).toBe(0);
 });

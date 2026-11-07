@@ -1,23 +1,18 @@
 "use client";
 
-/** Состояние экрана «Карточки»: вкладка, фильтры, выбор строк, открытая панель, окна «Оформить с ИИ». */
+/** Состояние экрана «Карточки»: вкладка, фильтры, выбор строк, открытая панель, ручной пакет «Через ChatGPT». */
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { assignCardIds } from "../../model/item";
-import { CARDS_IDS_PARAM, defaultTab, type CardSort, idsFromParam, listForTab, pruneSelection, tabCounts, wizardLabel } from "../../model/screen";
+import { CARDS_IDS_PARAM, defaultTab, type CardSort, idsFromParam, listForTab, pruneSelection, tabCounts } from "../../model/screen";
 import { bulkAcceptable, matchesVitrine, missingCount, tabOf, type CardTab, type Vitrine } from "../../model/view";
 import { cardsKeys } from "../../keys";
 import { invalidateCards, useCardItems, useCardSchema } from "../../queries";
+import { useManualStart } from "../manual/ManualBatchEntry";
 import { useBulkAccept } from "./use-bulk-accept";
 
 export const PAGE = 100;
-
-export interface WizardState {
-  open: boolean;
-  preselect: string[];
-  label: string;
-}
 
 export function useCardsScreen() {
   const qc = useQueryClient();
@@ -36,7 +31,6 @@ export function useCardsScreen() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE);
   const [completing, setCompleting] = useState<string | null>(null);
-  const [wizard, setWizard] = useState<WizardState | null>(null);
 
   const counts = useMemo(() => tabCounts(items.filter((i) => matchesVitrine(i, vitrine))), [items, vitrine]);
   const current: CardTab = tab ?? defaultTab(counts);
@@ -51,7 +45,9 @@ export function useCardsScreen() {
 
   const selectedItems = useMemo(() => list.filter((i) => selected.has(i.id)), [list, selected]);
   const bulkOk = useMemo(() => selectedItems.filter(bulkAcceptable), [selectedItems]);
-  const wizardIds = selected.size ? selectedItems.map((i) => i.id) : list.map((i) => i.id);
+  /** Товары ручного пакета из шапки: отмеченные, а без отметок — вся вкладка. */
+  const manualIds = selected.size ? selectedItems.map((i) => i.id) : list.map((i) => i.id);
+  const manual = useManualStart();
   const bulk = useBulkAccept({ selectedCount: selectedItems.length, bulkOk, onFinished: () => setSelected(new Set()) });
 
   function switchTab(t: CardTab) {
@@ -60,21 +56,17 @@ export function useCardsScreen() {
     setSelected(new Set());
   }
 
-  function openWizard() {
-    if (!wizardIds.length) return;
-    setWizard({ open: true, preselect: wizardIds, label: wizardLabel(selected.size, wizardIds.length, current) });
-  }
-
-  // «/cards?ids=…» (from a supply): open the wizard with those products once, then drop the param.
+  // «/cards?ids=…» (from a supply): a manual batch of those products once, then drop the param.
   const router = useRouter();
   const deepIds = useSearchParams()?.get(CARDS_IDS_PARAM) ?? null;
-  const schemaReady = !!schemaQ.data;
+  const startManual = useRef(manual.start);
+  startManual.current = manual.start;
   useEffect(() => {
-    if (!deepIds || !itemsQ.data || !schemaReady) return;
+    if (!deepIds || !itemsQ.data || !manual.ready) return;
     router.replace("/cards");
     const pre = idsFromParam(deepIds, itemsQ.data);
-    if (pre.length) setWizard({ open: true, preselect: pre, label: `новые из поставки: ${pre.length}` });
-  }, [deepIds, itemsQ.data, schemaReady, router]);
+    if (pre.length) void startManual.current(pre);
+  }, [deepIds, itemsQ.data, manual.ready, router]);
 
   // ---- panel navigation: by the list as it is now ----------------------------------
   const index = openId ? list.findIndex((i) => i.id === openId) : -1;
@@ -104,12 +96,12 @@ export function useCardsScreen() {
     vitrine, setVitrine: (v: Vitrine) => { setVitrine(v); setLimit(PAGE); },
     onlyIncomplete, setOnlyIncomplete, sort, setSort: (v: CardSort) => { setSort(v); setLimit(PAGE); },
     resetFilters: () => { setQuery(""); setVitrine("work"); setOnlyIncomplete(false); setSort("tab"); },
-    selected, setSelected, selectedItems, bulkOk, wizardIds, bulk,
+    selected, setSelected, selectedItems, bulkOk, manualIds, manual, bulk,
     toggleRow: (id: string, on: boolean) => setSelected((prev) => { const n = new Set(prev); if (on) n.add(id); else n.delete(id); return n; }),
     toggleAll: (on: boolean) => setSelected(on ? new Set(list.map((i) => i.id)) : new Set()),
     openId, setOpenId, openItem: openId ? (itemById.get(openId) ?? null) : null, index, neighbour, afterDone,
     limit, showMore: () => setLimit(limit + PAGE), completing, setCompleting, closeCompletion,
-    wizard, setWizard, openWizard, switchTab,
+    switchTab,
   };
 }
 

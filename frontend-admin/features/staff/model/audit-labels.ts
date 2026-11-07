@@ -102,6 +102,8 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   AI_BATCH_PAUSE: "ИИ: пакет на паузе",
   AI_BATCH_RESUME: "ИИ: пакет продолжен",
   AI_BATCH_CANCEL: "ИИ: пакет остановлен",
+  AI_MANUAL_BATCH: "Вручную через ChatGPT: пакет начат",
+  AI_MANUAL_BATCH_DISCARD: "Вручную через ChatGPT: пакет удалён",
   AI_APPLY_SAFE: "ИИ: принято безопасное",
   AI_APPLY_NOT_SAFE: "ИИ: безопасное применение возвращено",
   AI_APPLY_UNDO: "ИИ: применение отменено",

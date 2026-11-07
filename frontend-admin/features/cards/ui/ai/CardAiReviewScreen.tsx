@@ -92,7 +92,9 @@ function ReviewBody(p: { job: AiJob; item: Subject; schema: Schema; onManual: ()
   const [appliedNow, setAppliedNow] = useState(false);
   const [dialog, setDialog] = useState<"answer" | "prompt" | null>(null);
   const { mostly, edited, finished, doneText } = statusOf(job, data, appliedNow);
-  const canRetryMore = finance || job.retryOf === 0;
+  // Ответ, вставленный из ChatGPT вручную: повторять встроенным ИИ нечего, его вставляют заново.
+  const pasted = job.path === "MANUAL";
+  const canRetryMore = !pasted && (finance || job.retryOf === 0);
   const report = (o: OutcomeCounts) => outcome.mutate({ id: job.id, outcome: o });
 
   const menu = (rejectCounts: () => OutcomeCounts) =>
@@ -113,7 +115,7 @@ function ReviewBody(p: { job: AiJob; item: Subject; schema: Schema; onManual: ()
       problems={data.problems}
       edited={edited}
       mostly={mostly}
-      onFresh={() => void startCardJob({ item, schema, created: false, idemKey: `fresh-${job.id}` }).then((j) => p.toJob(j.id))}
+      onFresh={pasted ? undefined : () => void startCardJob({ item, schema, created: false, idemKey: `fresh-${job.id}` }).then((j) => p.toJob(j.id))}
     />
   );
 
@@ -139,7 +141,7 @@ function ReviewBody(p: { job: AiJob; item: Subject; schema: Schema; onManual: ()
       ) : (
         <AiReview finishedAt={job.finishedAt} title={item.title} fields={[]} selected={new Set()} onSelected={() => undefined} onApply={() => undefined} applying={false} doneText={doneText} menu={menu(() => ({ applied: 0, rejected: 0, edited: 0, ignoredLocked: 0 }))} onBack={() => router.back()} notices={notices} />
       )}
-      {dialog && <ReviewTextDialog title={dialog === "answer" ? "Ответ ИИ" : "Промпт"} text={(dialog === "answer" ? job.answer : job.prompt) ?? ""} onClose={() => setDialog(null)} />}
+      {dialog && <ReviewTextDialog title={dialog === "answer" ? (pasted ? "Ответ ChatGPT" : "Ответ ИИ") : "Промпт"} text={(dialog === "answer" ? job.answer : job.prompt) ?? ""} onClose={() => setDialog(null)} />}
       {p.manualModal}
     </>
   );

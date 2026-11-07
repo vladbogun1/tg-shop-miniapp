@@ -92,7 +92,8 @@ export function Shell({ children }: { children: ReactNode }) {
           <InstallBanner />
           <PushOfferBanner />
           <BatchGate>
-            <div className="mb-3">
+            {/* Пусто, когда есть лишь незаконченный ручной пакет: его полоса — на «Товарах» и «Карточках». */}
+            <div className="mb-3 empty:hidden">
               <CardBatchHost />
             </div>
           </BatchGate>

@@ -41,6 +41,15 @@ export function barText(b: AiBatch): string {
 
 export const isOpen = (b: AiBatch): boolean => b.status === "RUNNING" || b.status === "PAUSED";
 
+/** Незаконченный ручной пакет: его ведёт свой слой «Через ChatGPT вручную», полосе хода ИИ он не нужен. */
+export const isManualDraft = (b: AiBatch): boolean => b.path === "MANUAL" && isOpen(b);
+
+/** «Пакет завершён:», «Ручной пакет удалён:». */
+export function summaryTitle(b: Pick<AiBatch, "path" | "status">): string {
+  const done = b.status === "CANCELED" ? (b.path === "MANUAL" ? "удалён" : "остановлен") : "завершён";
+  return `${b.path === "MANUAL" ? "Ручной пакет" : "Пакет"} ${done}:`;
+}
+
 /** «Продолжить» есть после паузы, кроме выключенного владельцем ИИ (сервер всё равно не пустит). */
 export const canResume = (b: AiBatch): boolean => b.status === "PAUSED" && b.pauseReason !== "DISABLED";
 
@@ -50,8 +59,9 @@ export interface SummaryPart {
   tone: "ok" | "muted" | "bad";
 }
 
-/** «Готово N · Не нашёл данных N · Сбой N»: нулевые части не показываем. */
+/** «Готово N · Не нашёл данных N · Сбой N»: нулевые части не показываем. У ручного пакета — сколько ответов вставлено. */
 export function summaryParts(b: AiBatch): SummaryPart[] {
+  if (b.path === "MANUAL") return b.done > 0 ? [{ label: "Вставлено ответов", n: b.done, tone: "ok" }] : [];
   const parts: SummaryPart[] = [
     { label: "Готово", n: b.done, tone: "ok" },
     { label: "Не нашёл данных", n: b.empty, tone: "muted" },
@@ -64,8 +74,8 @@ export function summaryParts(b: AiBatch): SummaryPart[] {
 const LEFT_FOR_MANUAL = new Set<string>(["QUEUED", "EMPTY", "BAD_ANSWER", "FAILED", "CANCELED"]);
 
 /** Предметы задач для ручного пути; у идущего пакета — ничего (очередь ещё разберёт ИИ). */
-export function manualSubjects(b: Pick<AiBatch, "status" | "jobs">): string[] {
-  if (b.status === "RUNNING") return [];
+export function manualSubjects(b: Pick<AiBatch, "status" | "jobs"> & { path?: AiBatch["path"] }): string[] {
+  if (b.status === "RUNNING" || b.path === "MANUAL") return [];
   return b.jobs.filter((j) => LEFT_FOR_MANUAL.has(j.status)).map((j) => j.subjectId);
 }
 

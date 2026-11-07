@@ -13,6 +13,8 @@ export const cardsKeys = {
   /** Один товар (окно оформления). */
   aiSafeCount: (batchId: number, ready: number) => [...catalogKeys.cardsExport(), "ai-safe", batchId, ready] as const,
   exportOne: (productId: string) => [...catalogKeys.cardsExport(), "one", productId] as const,
+  /** Незаконченный ручной пакет админа (сервер): товары, черновик экрана, задачи. */
+  manual: () => [...catalogKeys.cardsRoot(), "manual"] as const,
   reviewRoot: () => [...catalogKeys.cardsRoot(), "review"] as const,
   review: (productId: string) => [...catalogKeys.cardsRoot(), "review", productId] as const,
   /** Схема каталога в виде «Карточек» (свой разбор, `normalizeSchema`). */

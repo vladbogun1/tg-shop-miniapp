@@ -2,11 +2,12 @@
 
 /**
  * Карточки товаров («/cards») — docs/CATALOG-SPECS.md §4–5. Характеристики, бренд, категорию и тексты
- * заполняет внешний ИИ с поиском в интернете, админ проверяет. Три вкладки по статусу карточки,
- * фильтр витрины, поиск; «Оформить с ИИ» — пакетный мастер; клик по строке — панель проверки;
- * «Принять уверенные» — массовое принятие. Черновик не выкладывается без явного «Выложить без оформления».
+ * заполняет ИИ с поиском в интернете (встроенный — пакетом, или ChatGPT вручную по частям), админ проверяет.
+ * Три вкладки по статусу карточки, фильтр витрины, поиск; «Через ChatGPT» — ручной пакет вкладки или отмеченных;
+ * клик по строке — панель проверки; «Принять уверенные» — массовое принятие. Черновик не выкладывается без явного
+ * «Выложить без оформления».
  */
-import { RefreshCw, Sparkles } from "lucide-react";
+import { ClipboardList, RefreshCw } from "lucide-react";
 import { Suspense } from "react";
 import { useMediaQuery } from "@shop/ui/use-media";
 import { cn } from "@/lib/cn";
@@ -15,7 +16,7 @@ import { Button } from "@shop/ui/admin-button";
 import { TAB_LABEL } from "../../model/view";
 import { CardCompletionModal } from "../completion/CardCompletionModal";
 import { ReviewPanel } from "../review/ReviewPanel";
-import { AiWizardLayer } from "../wizard/AiWizardLayer";
+import { ManualResumeBar } from "../manual/ManualBatchEntry";
 import { CardsBody } from "./CardsBody";
 import { CardsBulkBar } from "./CardsBulkBar";
 import { CardsToolbar } from "./CardsToolbar";
@@ -23,8 +24,8 @@ import { useCardsScreen, type CardsScreenState } from "./use-cards-screen";
 
 function HeaderActions({ s }: { s: CardsScreenState }) {
   const fetching = s.itemsQ.isFetching || s.schemaQ.isFetching;
-  // Пока что-то отмечено, «Оформить с ИИ (N)» живёт в панели выбора — вторую такую же кнопку не держим.
-  const showWizard = s.selected.size === 0;
+  // Пока что-то отмечено, ручной пакет живёт в панели выбора — вторую такую же кнопку не держим.
+  const showManual = s.selected.size === 0;
   return (
     <>
       <Button
@@ -38,16 +39,18 @@ function HeaderActions({ s }: { s: CardsScreenState }) {
           s.schemaQ.refetch();
         }}
       />
-      {showWizard && (
+      {showManual && (
         <Button
           variant="accent"
           chamfer
-          icon={<Sparkles className="h-4 w-4" />}
-          disabled={!s.wizardIds.length || !s.schema}
-          onClick={s.openWizard}
-          title={`Оформить все товары вкладки «${TAB_LABEL[s.current]}»`}
+          icon={<ClipboardList className="h-4 w-4" />}
+          loading={s.manual.busy}
+          disabled={!s.manualIds.length || !s.manual.ready}
+          onClick={() => void s.manual.start(s.manualIds)}
+          title={`Оформить через ChatGPT вручную товары вкладки «${TAB_LABEL[s.current]}» (до 100 за пакет)`}
+          data-testid="cards-manual"
         >
-          Оформить с ИИ ({s.wizardIds.length})
+          Через ChatGPT ({s.manualIds.length})
         </Button>
       )}
     </>
@@ -72,23 +75,7 @@ function Panel({ s, docked }: { s: CardsScreenState; docked: boolean }) {
 }
 
 function Layers({ s }: { s: CardsScreenState }) {
-  const { schema, wizard } = s;
-  return (
-    <>
-      {s.completing && <CardCompletionModal productId={s.completing} open reason="manual" onClose={s.closeCompletion} />}
-      {wizard && schema && (
-        <AiWizardLayer
-          open={wizard.open}
-          onClose={() => s.setWizard((w) => (w ? { ...w, open: false } : w))}
-          items={s.items}
-          schema={schema}
-          ids={s.ids}
-          preselect={wizard.preselect}
-          preselectLabel={wizard.label}
-        />
-      )}
-    </>
-  );
+  return s.completing ? <CardCompletionModal productId={s.completing} open reason="manual" onClose={s.closeCompletion} /> : null;
 }
 
 export function CardsScreen() {
@@ -111,6 +98,7 @@ function CardsScreenBody() {
         subtitle="ИИ заполняет, вы проверяете. Черновик не уходит на витрину без «Выложить без оформления»."
         actions={<HeaderActions s={s} />}
       />
+      <ManualResumeBar />
       <div className={cn(split && "grid grid-cols-[minmax(420px,1fr)_minmax(560px,720px)] items-start gap-4")}>
         <div className="min-w-0">
           {/* Одна липкая полоса под шапкой: вкладки, поиск, фильтры и панель выбора. */}

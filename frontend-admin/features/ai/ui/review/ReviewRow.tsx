@@ -98,7 +98,7 @@ function RowNote({ field }: { field: ReviewField }) {
   return (
     <p className={cn("mt-1 text-[12px] leading-snug", bad ? "text-[var(--danger-ink)]" : warn ? "text-[var(--warn)]" : "text-[var(--text-muted)]")}>
       {text}
-      {bad && " Применить нельзя."}
+      {bad && `${/[.!?…]$/.test(text) ? "" : "."} Применить нельзя${field.editable === "choice" ? " — выберите из каталога (карандаш)." : "."}`}
     </p>
   );
 }

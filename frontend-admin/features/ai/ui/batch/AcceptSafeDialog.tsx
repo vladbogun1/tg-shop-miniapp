@@ -21,7 +21,9 @@ interface Counts {
  * потом точные числа и «Отменить применение» на 24 часа. Саму запись делает вызывающий (`run`): она зависит от
  * предмета пакета. Сервер сам проверяет обещание и возвращает назад то, что вышло за него (число — в итоге).
  */
-export function AcceptSafeDialog(p: { open: boolean; onClose: () => void; batchId: number; run: () => Promise<AiSafeApplied[]> } & Counts) {
+export function AcceptSafeDialog(
+  p: { open: boolean; onClose: () => void; batchId: number; run: () => Promise<AiSafeApplied[]>; /** Ответы из ChatGPT вручную, а не встроенного ИИ. */ manual?: boolean } & Counts,
+) {
   const [phase, setPhase] = useState<Phase>({ kind: "ask" });
 
   async function go() {
@@ -36,7 +38,7 @@ export function AcceptSafeDialog(p: { open: boolean; onClose: () => void; batchI
   return (
     <Modal open={p.open} onClose={p.onClose} size="sm" title="Принять безопасное" footer={<Footer p={p} phase={phase} go={() => void go()} />}>
       <div className="flex flex-col gap-2 text-[13px]" data-testid="safe-dialog">
-        <Body phase={phase} cards={p.cards} fields={p.fields} />
+        <Body phase={phase} cards={p.cards} fields={p.fields} manual={p.manual === true} />
       </div>
     </Modal>
   );
@@ -46,7 +48,7 @@ function Footer({ p, phase, go }: { p: { onClose: () => void; batchId: number };
   const undo = useUndoBatch();
   const wrote = phase.kind === "done" && safeTotals(phase.applied).fields > 0;
   return (
-    <div className="flex w-full justify-end gap-2">
+    <div className="flex w-full flex-wrap justify-end gap-2">
       {phase.kind === "ask" && (
         <>
           <ModalCancel />
@@ -69,7 +71,7 @@ function Footer({ p, phase, go }: { p: { onClose: () => void; batchId: number };
   );
 }
 
-function Body({ phase, cards, fields }: { phase: Phase } & Counts) {
+function Body({ phase, cards, fields, manual }: { phase: Phase; manual: boolean } & Counts) {
   if (phase.kind === "run") return <p>Записываю…</p>;
   if (phase.kind === "error") return <p className="font-semibold text-[var(--danger-ink)]">{phase.text}</p>;
   if (phase.kind === "done") return <Result applied={phase.applied} totals={safeTotals(phase.applied)} />;
@@ -79,8 +81,8 @@ function Body({ phase, cards, fields }: { phase: Phase } & Counts) {
         {fields} полей в {cards} карточках
       </div>
       <p className="leading-snug text-[var(--text-muted)]">
-        Заполним только пустые характеристики и пустое описание — там, где ИИ искал в интернете. Название, бренд, категорию и всё, что уже заполнено,
-        не трогаем. Отменить можно 24 часа.
+        Заполним только пустые характеристики и пустое описание — {manual ? "из вставленных ответов ChatGPT" : "там, где ИИ искал в интернете"}. Название, бренд,
+        категорию и всё, что уже заполнено, не трогаем. Отменить можно 24 часа.
       </p>
     </>
   );

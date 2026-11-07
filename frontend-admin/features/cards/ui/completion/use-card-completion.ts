@@ -2,16 +2,19 @@
 
 /**
  * Ручной путь окна «Оформить с ИИ» для одного товара (экран — `CardCompletionModal`): промпт, вставленный ответ и
- * его разбор. Проверка и применение — общий со встроенным ИИ `CardReviewPanel`; здесь только то, что после записи
- * ответ помечается как принесённый из ChatGPT (path=MANUAL) и окно знает, сохранено ли и выложено.
+ * его разбор. Разобранный ответ — задача «ИИ-задач» (путь MANUAL, без модели и денег, работает и при выключенном ИИ):
+ * её видно в «Проверить», а применение отчитывается ей исходом, как у встроенного ИИ. Проверка и применение — общий
+ * со встроенным ИИ `CardReviewPanel`; окно знает, сохранено ли и выложено.
  */
 import { toMinor } from "@shop/core/money";
 import { QUERY_PRESETS } from "@shop/core/query";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "@shop/ui/toast";
-import { useMarkManual } from "@/features/ai";
+import { useJobOutcome, type OutcomeCounts } from "@/features/ai";
 import { cardsApi } from "../../api";
+import { manualApi } from "../../api-manual";
+import { CARD_PROMPT_VERSION, cardVersion } from "../../model/ai-card";
 import { cardsKeys } from "../../keys";
 import { useCardSchema } from "../../queries";
 import { HIDDEN_TOAST, reviewAnswer, type ProductReview } from "../../model";
@@ -61,6 +64,8 @@ export function useCardCompletion({ productId, open, reason, onClose }: Args) {
   const [review, setReview] = useState<ProductReview | null>(null);
   const [saved, setSaved] = useState(false);
   const [published, setPublished] = useState(false);
+  /** Задача последнего разобранного ответа (запись на сервер идёт в фоне; null — не записалась). */
+  const task = useRef<Promise<number | null>>(Promise.resolve(null));
 
   // Fresh state for every product the modal is opened for.
   useEffect(() => {
@@ -73,7 +78,21 @@ export function useCardCompletion({ productId, open, reason, onClose }: Args) {
     setReview(null);
     setSaved(false);
     setPublished(false);
+    task.current = Promise.resolve(null);
   }, [open, productId]);
+
+  /** Разобранный ответ → задача «готово, ждёт проверки»; повторная вставка заменяет нерешённую. */
+  function register(text: string) {
+    if (!item) return;
+    const body = { productId, created: reason === "created", subjectVersion: cardVersion(item), prompt, promptVersion: CARD_PROMPT_VERSION, answer: text };
+    task.current = manualApi.single(body).then(
+      (job) => job.id,
+      () => {
+        toast.info("Ответ не записался в «ИИ-задачи» — применить карточку это не мешает");
+        return null;
+      },
+    );
+  }
 
   function check(text = answer) {
     if (!item || !schema) return;
@@ -81,6 +100,7 @@ export function useCardCompletion({ productId, open, reason, onClose }: Args) {
     setErrors(out.errors);
     setNotes(out.notes);
     setReview(out.product);
+    if (out.product) register(text);
   }
 
   // A fresh schema (an option was added) re-checks the pasted answer: the review starts over on the new schema.
@@ -93,9 +113,12 @@ export function useCardCompletion({ productId, open, reason, onClose }: Args) {
     if (review && answer.trim()) recheck.current(answer);
   }, [schema, review, answer]);
 
-  const markManual = useMarkManual();
-  /** Ответ принесли из ChatGPT: без отметки доля встроенного ИИ в метриках всегда 100 %. */
-  const onApplied = () => markManual.mutate({ feature: "CARD", subjectIds: [productId] });
+  const outcome = useJobOutcome();
+  /** Применили: задаче ответа — исход (в метриках это ручной путь, MANUAL). */
+  const onApplied = (counts: OutcomeCounts) =>
+    void task.current.then((id) => {
+      if (id !== null) outcome.mutate({ id, outcome: counts });
+    });
   const onSaved = (isPublished: boolean) => {
     setSaved(true);
     setPublished(isPublished);

@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { AiBatch } from "../../api-batch";
-import { isOpen } from "../../model/batch-view";
+import { isManualDraft, isOpen } from "../../model/batch-view";
 import { useAiBatches } from "../../queries-batch";
 import { BatchBar } from "./BatchBar";
 import { BatchSummary } from "./BatchSummary";
@@ -26,10 +26,12 @@ export function BatchPanel({
   skipSummary?: (batch: AiBatch) => boolean;
 }) {
   const { data } = useAiBatches();
-  if (!data || data.length === 0) return null;
+  // Незаконченный ручной пакет ведёт свой слой и полоса «Продолжить» на «Товарах» и «Карточках».
+  const shown = (data ?? []).filter((b) => !isManualDraft(b));
+  if (shown.length === 0) return null;
   return (
     <div className="flex flex-col gap-2" data-testid="batch-panel">
-      {data.map((b) =>
+      {shown.map((b) =>
         isOpen(b) ? (
           <BatchBar key={b.id} batch={b} onReview={() => onReview(b)} manual={manual?.(b)} />
         ) : skipSummary?.(b) ? null : (

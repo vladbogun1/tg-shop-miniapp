@@ -4,7 +4,7 @@ import { Button } from "@shop/ui/admin-button";
 import { nowMs } from "@shop/core/time";
 import { cn } from "@/lib/cn";
 import type { AiBatch } from "../../api-batch";
-import { summaryParts, undoLeft } from "../../model/batch-view";
+import { summaryParts, summaryTitle, undoLeft } from "../../model/batch-view";
 import { newIdemKey } from "../../model/idem";
 import { useRetryFailedBatch, useUndoBatch } from "../../queries-batch";
 
@@ -23,7 +23,7 @@ export function BatchSummary({ batch, onReview, acceptSafe, manual }: { batch: A
   return (
     <div data-testid="batch-summary" className="flex flex-col gap-2 rounded-[var(--r-md)] border border-[var(--line-strong)] bg-[var(--surface)] px-3 py-2 text-[13px]">
       <div className="flex flex-wrap items-center gap-x-2 font-semibold">
-        <span className="text-[var(--ink)]">Пакет {batch.status === "CANCELED" ? "остановлен" : "завершён"}:</span>
+        <span className="text-[var(--ink)]">{summaryTitle(batch)}</span>
         {parts.map((p, i) => (
           <span key={p.label} className={cn("tabular-nums", TONE[p.tone])}>
             {i > 0 && <span className="text-[var(--text-muted)]">· </span>}
