@@ -170,6 +170,9 @@ app:
     model:
       api-key: ${AI_MINIMAX_KEY:}
       base-url: ${AI_MINIMAX_BASE_URL:https://api.minimax.io/anthropic}
+    files:
+      # pictures of invoices for the supply reader, kept 7 days (V91); created by the backend, TTL rule: infra/ai-files-bucket.sh
+      bucket: ${AI_FILES_BUCKET:ai-files}
     search:
       searxng-url: ${AI_SEARXNG_URL:}
       serper-key: ${AI_SERPER_KEY:}

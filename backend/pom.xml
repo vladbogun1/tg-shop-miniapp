@@ -23,6 +23,8 @@
         <telegrambots.version>6.9.7.1</telegrambots.version>
         <jjwt.version>0.12.6</jjwt.version>
         <minio.version>8.5.17</minio.version>
+        <pdfbox.version>3.0.3</pdfbox.version>
+        <twelvemonkeys.version>3.12.0</twelvemonkeys.version>
         <geoip2.version>4.3.0</geoip2.version>
         <archunit.version>1.4.1</archunit.version>
         <shedlock.version>6.3.1</shedlock.version>
@@ -130,6 +132,19 @@
             <groupId>io.minio</groupId>
             <artifactId>minio</artifactId>
             <version>${minio.version}</version>
+        </dependency>
+
+        <!-- AI supply: PDF pages -> PNG (Apache-2.0, pure Java, no native code) and WEBP reading for ImageIO (BSD-3).
+             The decision is in docs/ARCHITECTURE.md (section 7, «ИИ-поставка: файлы»). -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>${pdfbox.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-webp</artifactId>
+            <version>${twelvemonkeys.version}</version>
         </dependency>
 
         <!-- Offline IP -> city/coordinates (DB-IP / MaxMind .mmdb) for the admin users map -->

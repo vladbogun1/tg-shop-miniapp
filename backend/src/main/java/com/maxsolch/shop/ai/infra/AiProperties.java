@@ -19,6 +19,7 @@ public class AiProperties {
 
     private Model model = new Model();
     private Search search = new Search();
+    private Files files = new Files();
     /** Spend limit per calendar month (shop time zone), USD cents; 0 = no limit. */
     @Min(0)
     private long monthLimitCents = 1000;
@@ -35,6 +36,13 @@ public class AiProperties {
         private long inputPerM = 150_000;
         private long cachedPerM = 15_000;
         private long outputPerM = 600_000;
+    }
+
+    /** Pictures of documents for the supply reader (V91): a bucket of their own. */
+    @Getter
+    @Setter
+    public static class Files {
+        private String bucket = "ai-files";
     }
 
     @Getter

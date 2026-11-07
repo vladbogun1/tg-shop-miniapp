@@ -57,7 +57,7 @@ final class SqlOwnership {
                 "spec_groups", "spec_options", "tags", "product_tags");
         own(m, "cart", "cart_items", "carts");
         own(m, "translation", "content_translations");
-        own(m, "ai", "ai_usage", "ai_jobs", "ai_job_bodies", "ai_reserve", "ai_alerts", "ai_batches", "ai_apply_log", "ai_search_rest");
+        own(m, "ai", "ai_usage", "ai_jobs", "ai_job_bodies", "ai_reserve", "ai_alerts", "ai_batches", "ai_apply_log", "ai_search_rest", "ai_files");
         own(m, "gift", "gift_case_items", "gift_case_tiers", "order_gift_cases");
         own(m, "delivery", "nova_poshta_cities", "nova_poshta_warehouses");
         own(m, "returns", "order_exchange_lines", "order_exchanges", "order_return_lines", "order_returns");
