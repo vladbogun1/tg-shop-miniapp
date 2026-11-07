@@ -4,7 +4,7 @@
  * с замком/конфликтом (снимок на старте и правки после него — с сервера, `ai-conflict.ts`)/правдоподобием, сборка выбора для записи тем же путём, что у ручного
  * мастера (`buildImportItem` → `cardsApi.import`, метка ИИ — в `card_meta`). Чистая логика.
  */
-import { conflictText, conflictWithoutSnapshot, plausibility, plausibilityReason, type ReviewField } from "@/features/ai";
+import { conflictText, conflictWithoutSnapshot, initialSelection, plausibility, plausibilityReason, type ReviewField } from "@/features/ai";
 import type { CardChanges } from "./ai-conflict";
 import type { CardItem } from "./item";
 import { metaOf } from "./view";
@@ -180,6 +180,11 @@ export function reviewRows(r: ProductReview, ctx: FieldContext): ReviewField[] {
 export function extraInitialKeys(r: ProductReview, rows: ReviewField[], created: boolean): string[] {
   const title = rows.find((x) => x.key === "title");
   return title && renameByDefault(r, created) && title.suspicion === "none" && !title.conflict ? ["title"] : [];
+}
+
+/** Что отмечено при открытии ревью: «Заполнит пустое» и сверх него `extraInitialKeys`. */
+export function initialKeys(r: ProductReview, rows: ReviewField[], created: boolean): Set<string> {
+  return new Set([...initialSelection(rows), ...extraInitialKeys(r, rows, created)]);
 }
 
 /**

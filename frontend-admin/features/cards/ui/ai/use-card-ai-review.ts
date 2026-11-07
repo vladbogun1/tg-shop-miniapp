@@ -5,9 +5,9 @@
  * правдоподобия чисел, конфликт правок (правки после старта и их авторы — с сервера; у старых задач без снимка —
  * только отпечаток). Только вычисление, без записи.
  */
-import { initialSelection, type AiJob, type ReviewField } from "@/features/ai";
+import type { AiJob, ReviewField } from "@/features/ai";
 import { useMemo } from "react";
-import { cardVersion, extraInitialKeys, reviewRows, type FieldContext } from "../../model/ai-card";
+import { cardVersion, initialKeys, reviewRows, type FieldContext } from "../../model/ai-card";
 import { cardChanges, type CardChanges, type ServerChanges } from "../../model/ai-conflict";
 import { reviewAnswer } from "../../model/completion";
 import { assignCardIds, type CardItem } from "../../model/item";
@@ -59,7 +59,7 @@ export function computeCardAiReview(
   const versionChanged = !job.outcome && !!job.subjectVersion && cardVersion(item) !== job.subjectVersion;
   const ctx: FieldContext = { changes, versionChanged: changes ? false : versionChanged, neighbors: neighborsOf(all, item) };
   const rows = reviewRows(out.product, ctx);
-  const initial = new Set([...initialSelection(rows), ...extraInitialKeys(out.product, rows, item.unfinished === true)]);
+  const initial = initialKeys(out.product, rows, item.unfinished === true);
   return { review: out.product, rows, initial, versionChanged: changes ? Object.keys(changes.fields).length > 0 : versionChanged, changes, problems: out.errors, ctx };
 }
 

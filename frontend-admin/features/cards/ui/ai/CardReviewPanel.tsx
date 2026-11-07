@@ -6,10 +6,10 @@
  * выбор, фото, статус, переводы, «выложить», новые опции схемы, применение и цена, если без неё не выложить.
  * Что разное, приходит снаружи: плашки (конфликт правок у задачи), пункты «⋯», куда отчитаться об исходе.
  */
-import { AiReview, initialSelection, type AiMenuItem, type OutcomeCounts, outcomeCounts } from "@/features/ai";
+import { AiReview, type AiMenuItem, type OutcomeCounts, outcomeCounts } from "@/features/ai";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type ReactNode } from "react";
-import { confirmedSpecKeys, extraInitialKeys, reviewRows, type FieldContext } from "../../model/ai-card";
+import { confirmedSpecKeys, initialKeys, reviewRows, type FieldContext } from "../../model/ai-card";
 import type { Proposal } from "../../model";
 import type { CardItem } from "../../model/item";
 import type { ProductReview } from "../../model/types";
@@ -54,7 +54,7 @@ export function CardReviewPanel(p: CardReviewPanelProps) {
 
   const baseRows = useMemo(() => reviewRows(p.review, p.ctx), [p.review, p.ctx]);
   const initial = useMemo(
-    () => new Set([...initialSelection(baseRows), ...extraInitialKeys(p.review, baseRows, p.created)]),
+    () => initialKeys(p.review, baseRows, p.created),
     [baseRows, p.review, p.created],
   );
   const rows = useMemo(() => (draft.review ? reviewRows(draft.review, { ...p.ctx, edited: draft.edited }) : baseRows), [draft.review, draft.edited, p.ctx, baseRows]);

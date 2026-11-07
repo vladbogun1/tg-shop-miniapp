@@ -50,13 +50,23 @@ export function safeKeysOf(plan: JobPlan): string[] {
   return [...initialSelection(plan.rows)].filter(isSafeKey);
 }
 
-async function save(plan: JobPlan, selected: ReadonlySet<string>, opts: { translations: boolean; markReady: boolean }): Promise<void> {
-  const sel = toProductSel(plan.review, selected, { translations: opts.translations });
-  const payload = buildImportItem(plan.review, sel, { markReady: opts.markReady && autoReady(plan.review, sel), publish: false });
+/** Запись выбранного из разбора тем же импортом, что у экрана проверки; без цены и без выкладки. */
+export async function writeCard(
+  review: ProductReview,
+  productId: string,
+  selected: ReadonlySet<string>,
+  opts: { translations: boolean; markReady: boolean },
+): Promise<void> {
+  const sel = toProductSel(review, selected, { translations: opts.translations });
+  const payload = buildImportItem(review, sel, { markReady: opts.markReady && autoReady(review, sel), publish: false });
   if (!payload) throw new Error("Нечего записывать");
   const res = await cardsApi.import({ items: [payload], replaceSpecs: false });
-  const rejected = res.rejected.find((x) => x.productId === plan.item.id);
+  const rejected = res.rejected.find((x) => x.productId === productId);
   if (rejected) throw new Error(`Сервер не принял карточку: ${rejected.reason}`);
+}
+
+async function save(plan: JobPlan, selected: ReadonlySet<string>, opts: { translations: boolean; markReady: boolean }): Promise<void> {
+  await writeCard(plan.review, plan.item.id, selected, opts);
   await aiApi.outcome(plan.job.id, outcomeCounts(plan.rows, selected));
 }
 
