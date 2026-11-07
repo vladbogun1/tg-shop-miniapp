@@ -1243,6 +1243,12 @@
       },
       "AiAiApplyUndoLive" : {
         "properties" : {
+          "changed" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "id" : {
             "format" : "int64",
             "type" : "integer"
@@ -1253,6 +1259,7 @@
           }
         },
         "required" : [
+          "changed",
           "id",
           "undoUntil"
         ],
@@ -1268,15 +1275,29 @@
             "format" : "int32",
             "type" : "integer"
           },
+          "revertedFields" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "skipped" : {
             "format" : "int32",
             "type" : "integer"
+          },
+          "skippedFields" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
           }
         },
         "required" : [
           "applications",
           "reverted",
-          "skipped"
+          "revertedFields",
+          "skipped",
+          "skippedFields"
         ],
         "type" : "object"
       },
@@ -11232,6 +11253,10 @@
       },
       "PhotoImportRequest" : {
         "properties" : {
+          "applyId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
           "url" : {
             "maxLength" : 2048,
             "minLength" : 0,
@@ -24667,6 +24692,15 @@
             "schema" : {
               "type" : "string"
             }
+          },
+          {
+            "in" : "query",
+            "name" : "applyId",
+            "required" : false,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
           }
         ],
         "requestBody" : {
@@ -24696,7 +24730,7 @@
             "bearer-jwt" : [ ]
           }
         ],
-        "summary" : "Toggle product active (publishing a DRAFT card: 409 CARD_NOT_READY unless force=1; no price/category: 409 PRODUCT_NOT_PUBLISHABLE {missing})",
+        "summary" : "Toggle product active (publishing a DRAFT card: 409 CARD_NOT_READY unless force=1; no price/category: 409 PRODUCT_NOT_PUBLISHABLE {missing}); applyId — a step of that application of an AI answer («Отменить применение» hides it again)",
         "tags" : [
           "Admin Products"
         ]

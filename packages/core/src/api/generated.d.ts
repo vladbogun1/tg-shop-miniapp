@@ -3201,7 +3201,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Toggle product active (publishing a DRAFT card: 409 CARD_NOT_READY unless force=1; no price/category: 409 PRODUCT_NOT_PUBLISHABLE {missing}) */
+        /** Toggle product active (publishing a DRAFT card: 409 CARD_NOT_READY unless force=1; no price/category: 409 PRODUCT_NOT_PUBLISHABLE {missing}); applyId — a step of that application of an AI answer («Отменить применение» hides it again) */
         patch: operations["AdminProductController_active"];
         trace?: never;
     };
@@ -5787,6 +5787,7 @@ export interface components {
             initData: string;
         };
         AiAiApplyUndoLive: {
+            changed: string[];
             /** Format: int64 */
             id: number;
             /** Format: date-time */
@@ -5797,8 +5798,10 @@ export interface components {
             applications: number;
             /** Format: int32 */
             reverted: number;
+            revertedFields: string[];
             /** Format: int32 */
             skipped: number;
+            skippedFields: string[];
         };
         AiAiBatchDtoRow: {
             /** Format: int32 */
@@ -8798,6 +8801,8 @@ export interface components {
             token: string;
         };
         PhotoImportRequest: {
+            /** Format: int64 */
+            applyId?: number;
             url: string;
         };
         Point: {
@@ -15219,6 +15224,7 @@ export interface operations {
         parameters: {
             query?: {
                 force?: string;
+                applyId?: number;
             };
             header?: never;
             path: {
