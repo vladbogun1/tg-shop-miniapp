@@ -51,7 +51,7 @@ function seedOf(lines: MergedLine[], catalog: Map<string, CatalogItem>, plans: S
 }
 
 export function SupplyAiModal({ open, onClose, onReady }: { open: boolean; onClose: () => void; onReady: (r: SupplyAiResult) => void }) {
-  const { catalog, categories, loading } = useCatalog();
+  const { catalog, categories, loading } = useCatalog(open);
   const finance = useFinanceAccess();
   const [fxRate, setFxRate] = useState("");
   const ai = useSupplyAi(catalog, categories, Number(fxRate.replace(",", ".")) || null);

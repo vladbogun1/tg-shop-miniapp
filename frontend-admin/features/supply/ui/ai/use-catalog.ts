@@ -6,9 +6,12 @@ import { PICK_PRODUCTS_STALE_MS, useProductsQuery } from "@/features/product";
 import type { LeafCategory } from "../../model/ai/match-prompt";
 import type { CatalogItem } from "../../model/ai/types";
 
-/** Каталог глазами «Поставки с ИИ»: товары с вариантами и конечные категории (куда можно положить новый товар). */
-export function useCatalog() {
-  const productsQ = useProductsQuery({ staleTime: PICK_PRODUCTS_STALE_MS });
+/**
+ * Каталог глазами «Поставки с ИИ»: товары с вариантами и конечные категории (куда можно положить новый товар).
+ * `enabled=false` — окно закрыто: весь каталог (≈1,8 МБ) не грузим.
+ */
+export function useCatalog(enabled = true) {
+  const productsQ = useProductsQuery({ staleTime: PICK_PRODUCTS_STALE_MS, enabled });
   const categoriesQ = useCategoriesQuery();
   const catalog = useMemo<CatalogItem[]>(
     () =>
