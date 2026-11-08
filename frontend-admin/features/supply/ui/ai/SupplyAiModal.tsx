@@ -14,6 +14,7 @@ import { pickVariant } from "../../model/ai/match";
 import { variantSetProblems, type Created, type MergedLine } from "../../model/ai/plan";
 import type { CatalogItem } from "../../model/ai/types";
 import { useApplySupplyAi, useNbuRate } from "../../queries";
+import { settleSupplyJobs } from "../../queries-ai";
 import { DocSummary } from "./DocSummary";
 import { HelpPanel } from "./HelpPanel";
 import { LineRow } from "./LineRow";
@@ -112,6 +113,7 @@ export function SupplyAiModal({ open, onClose, onReady }: { open: boolean; onClo
       },
       {
         onSuccess: (r) => {
+          void settleSupplyJobs(ai.usedJobs());
           const note = [doc.docNo && `Документ ${doc.docNo}`, doc.docDate, "создано «Поставкой с ИИ»"].filter(Boolean).join(" · ");
           onReady({
             seed: seedOf(r.lines, byId, ai.plans, r.created),

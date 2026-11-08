@@ -42,8 +42,8 @@ export interface TaskRowView {
   tone: AiTone;
   /** Ждёт проверки дольше двух недель: показываем «может устареть». */
   stale: boolean;
-  /** Куда вести: в ревью карточки, если результат ждёт проверки. */
-  reviewHref: string | null;
+  /** Куда вести: в ревью карточки, если результат ждёт проверки, или в черновик поставки. */
+  open: { href: string; label: string } | null;
   /** Сумма в копейках: только у финансиста, у остальных поля нет. */
   costMinor: number | null;
   when: string;
@@ -51,27 +51,57 @@ export interface TaskRowView {
   stepText: string | null;
 }
 
+/**
+ * Объекты, чьи задачи решаются на своём экране, а не во «Проверить»: черновик поставки и накладная ручного пути
+ * (OwnScreen.java). Решение ставит сама поставка: «Принять» — применено, «Удалить» — отклонено.
+ */
+const OWN_SCREEN = new Set(["SUPPLY_DRAFT", "SUPPLY_FILES"]);
+
+export function isOwnScreen(job: Pick<AiJob, "subjectType">): boolean {
+  return OWN_SCREEN.has(job.subjectType);
+}
+
+/** Черновик поставки, к которому относится задача (d12-read, d12-c-L3 → /preorders/drafts/12). */
+export function draftHref(job: Pick<AiJob, "subjectType" | "subjectId">): string | null {
+  const m = job.subjectType === "SUPPLY_DRAFT" ? /^d(\d+)-/.exec(job.subjectId ?? "") : null;
+  return m ? `/preorders/drafts/${m[1]}` : null;
+}
+
 export function taskTitle(row: Pick<AiTaskRow, "job" | "subjectLabel">): string {
+  // подпись задачи черновика уже говорит, что за шаг: «Черновик поставки №12 · … · сопоставление»
+  if (row.job.subjectType === "SUPPLY_DRAFT" && row.subjectLabel) return row.subjectLabel;
   const what = featureLabel(row.job.feature);
   return row.subjectLabel ? `${what} · ${row.subjectLabel}` : what;
 }
 
-/** Ревью есть только у карточки с готовым ответом, который ещё не применили и не отклонили. */
-export function reviewHref(job: Pick<AiJob, "id" | "feature" | "status" | "outcome">): string | null {
-  return job.feature === "CARD" && reviewState(job) === "review" ? `/cards/ai-review/${job.id}` : null;
+/** Ревью есть только у карточки товара с готовым ответом, который ещё не применили и не отклонили. */
+export function reviewHref(job: Pick<AiJob, "id" | "feature" | "status" | "outcome" | "subjectType">): string | null {
+  return job.feature === "CARD" && !isOwnScreen(job) && reviewState(job) === "review" ? `/cards/ai-review/${job.id}` : null;
 }
+
+/** Кнопка в строке: проверка карточки или черновик поставки (удалённого черновика нет — без ссылки). */
+function openOf(job: AiJob, state: ReviewState): TaskRowView["open"] {
+  const review = reviewHref(job);
+  if (review) return { href: review, label: "Открыть проверку" };
+  const draft = state === "rejected" ? null : draftHref(job);
+  return draft ? { href: draft, label: "Открыть черновик" } : null;
+}
+
+/** Готовый результат задачи поставки ждёт не «Проверить», а решения в самой поставке. */
+const OWN_SCREEN_WAITING = "Ждёт решения в поставке";
 
 export function taskRowView(row: AiTaskRow, nowMs: number): TaskRowView {
   const state = reviewState(row.job);
+  const waitsForSupply = state === "review" && isOwnScreen(row.job);
   return {
     id: row.job.id,
     title: taskTitle(row),
     admin: row.adminName,
     state,
-    stateLabel: reviewStateLabel(state),
-    tone: state === "review" ? "accent" : statusTone(row.job.status),
-    stale: state === "review" && isStale(row.job, nowMs),
-    reviewHref: reviewHref(row.job),
+    stateLabel: waitsForSupply ? OWN_SCREEN_WAITING : reviewStateLabel(state),
+    tone: state === "review" && !waitsForSupply ? "accent" : statusTone(row.job.status),
+    stale: state === "review" && !waitsForSupply && isStale(row.job, nowMs),
+    open: openOf(row.job, state),
     costMinor: row.job.costMinor ?? null,
     when: row.job.finishedAt || row.job.createdAt,
     stepText: activeStepText(row.job),

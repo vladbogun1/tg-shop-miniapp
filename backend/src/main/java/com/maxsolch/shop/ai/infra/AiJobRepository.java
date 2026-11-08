@@ -38,8 +38,13 @@ public interface AiJobRepository extends JpaRepository<AiJob, Long> {
 
     long countByStatus(JobStatus status);
 
-    /** Ready results nobody has decided on yet (the chip and the badge: "waiting for review"). */
-    long countByStatusAndOutcomeIsNullAndFinishedAtAfter(JobStatus status, Instant since);
+    /**
+     * Ready results nobody has decided on yet (the chip and the badge: "waiting for review"); the objects decided on
+     * their own screen ({@code ownScreen}, see {@code OwnScreen}) are not waiting for this review.
+     */
+    @Query("select count(j) from AiJob j where j.status = com.maxsolch.shop.ai.domain.JobStatus.DONE "
+            + "and j.outcome is null and j.finishedAt > :since and j.subjectType not in :ownScreen")
+    long countToReview(@Param("since") Instant since, @Param("ownScreen") Collection<String> ownScreen);
 
     /** Failed or unreadable jobs of the last day that nobody has retried since. */
     @Query("select count(j) from AiJob j where j.status in :statuses and j.finishedAt > :since "
@@ -61,12 +66,17 @@ public interface AiJobRepository extends JpaRepository<AiJob, Long> {
     // ---- the task center: the lists of the four tabs (the AI's own jobs and the pasted answers of the manual way,
     //      not the marks of the manual way) ----
 
-    /** Results nobody has decided on, of the AI and pasted from ChatGPT: the tab «Проверить». */
+    /**
+     * Results nobody has decided on, of the AI and pasted from ChatGPT: the tab «Проверить». Not the objects decided on
+     * their own screen ({@code ownScreen}).
+     */
     @Query(value = "select j from AiJob j where (j.path = com.maxsolch.shop.ai.domain.JobPath.BUILTIN or j.pasted = true) "
-            + "and j.status = com.maxsolch.shop.ai.domain.JobStatus.DONE and j.outcome is null order by j.id desc",
+            + "and j.status = com.maxsolch.shop.ai.domain.JobStatus.DONE and j.outcome is null "
+            + "and j.subjectType not in :ownScreen order by j.id desc",
             countQuery = "select count(j) from AiJob j where (j.path = com.maxsolch.shop.ai.domain.JobPath.BUILTIN "
-                    + "or j.pasted = true) and j.status = com.maxsolch.shop.ai.domain.JobStatus.DONE and j.outcome is null")
-    Page<AiJob> toReview(Pageable page);
+                    + "or j.pasted = true) and j.status = com.maxsolch.shop.ai.domain.JobStatus.DONE and j.outcome is null "
+                    + "and j.subjectType not in :ownScreen")
+    Page<AiJob> toReview(@Param("ownScreen") Collection<String> ownScreen, Pageable page);
 
     /** Every task, of the AI and pasted from ChatGPT: the tab «История». */
     @Query(value = "select j from AiJob j where j.path = com.maxsolch.shop.ai.domain.JobPath.BUILTIN or j.pasted = true "

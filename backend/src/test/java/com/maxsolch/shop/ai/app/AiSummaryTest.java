@@ -34,7 +34,7 @@ class AiSummaryTest {
         when(limits.exhausted()).thenReturn(Optional.of(AiError.DAY_LIMIT));
         when(jobs.countByStatus(JobStatus.QUEUED)).thenReturn(1L);
         when(jobs.countByStatus(JobStatus.RUNNING)).thenReturn(2L);
-        when(jobs.countByStatusAndOutcomeIsNullAndFinishedAtAfter(any(), any())).thenReturn(4L);
+        when(jobs.countToReview(any(), any())).thenReturn(4L);
         when(jobs.countUnretried(any(), any())).thenReturn(5L);
 
         AiSummary.Summary s = summary.summary();

@@ -65,9 +65,9 @@ function Actions({ view, job, onDone }: { view: TaskRowView; job: AiJob | undefi
   const retry = useRetryJob();
   return (
     <div className="flex flex-wrap gap-2">
-      {view.reviewHref && (
-        <Link href={view.reviewHref} onClick={onDone} className="contents">
-          <Button variant="accent">Открыть проверку</Button>
+      {view.open && (
+        <Link href={view.open.href} onClick={onDone} className="contents">
+          <Button variant="accent">{view.open.label}</Button>
         </Link>
       )}
       {job && canCancel(job) && (

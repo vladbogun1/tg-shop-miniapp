@@ -89,7 +89,7 @@ function JobView({ job, onManual, onRetried }: { job: AiJob; onManual: () => voi
  * «Прочитать с ИИ»: файлы → задача → ответ в то же поле, что и при ручном пути. Под кнопкой время, а финансисту ещё и
  * цена. Закрытие окна не останавливает задачу: она остаётся в центре задач.
  */
-export function ReadWithAi({ files, onAnswer, onManual }: { files: SupplyFiles; onAnswer: (text: string) => void; onManual: () => void }) {
+export function ReadWithAi({ files, onAnswer, onManual }: { files: SupplyFiles; onAnswer: (text: string, jobId: number) => void; onManual: () => void }) {
   const reason = useReadReason();
   const [jobId, setJobId] = useState<number | null>(null);
   const job = useAiJob(jobId).data;
@@ -98,7 +98,7 @@ export function ReadWithAi({ files, onAnswer, onManual }: { files: SupplyFiles; 
   useEffect(() => {
     if (job && job.status === "DONE" && job.answer && taken.current !== job.id) {
       taken.current = job.id;
-      onAnswer(job.answer);
+      onAnswer(job.answer, job.id);
     }
   }, [job, onAnswer]);
 

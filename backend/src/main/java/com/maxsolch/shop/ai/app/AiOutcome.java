@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Instant;
+import java.util.Collection;
 
 /**
  * What the admin did with a result (applied N fields, rejected M…), reported by the review screen. The first report
@@ -40,5 +42,18 @@ public class AiOutcome {
                             + ", с правками " + outcome.edited() + ")");
         }
         return job;
+    }
+
+    /**
+     * The outcome of tasks decided on their own screen ({@code OwnScreen}): the supply accepted or deleted its draft,
+     * the manual way created its supply. {@code applied} became part of the result, {@code rejected} was thrown away.
+     * A task without a result (failed, cancelled) or already decided is left as it is; the screen's own audit entry
+     * (draft accepted / deleted) says the rest, so there is none per task.
+     */
+    @Transactional
+    public void settle(Collection<Long> applied, Collection<Long> rejected) {
+        Instant now = clock.instant();
+        jobs.findAllById(applied).forEach(j -> j.recordOutcome(new AiJob.Outcome(1, 0, 0, 0), now));
+        jobs.findAllById(rejected).forEach(j -> j.recordOutcome(new AiJob.Outcome(0, 1, 0, 0), now));
     }
 }

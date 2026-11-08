@@ -3,6 +3,7 @@ package com.maxsolch.shop.ai.app;
 import com.maxsolch.shop.ai.domain.AiError;
 import com.maxsolch.shop.ai.domain.AiFeature;
 import com.maxsolch.shop.ai.domain.JobStatus;
+import com.maxsolch.shop.ai.domain.OwnScreen;
 import com.maxsolch.shop.ai.infra.AiJobRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,8 +56,7 @@ public class AiSummary {
                 .filter(f -> f != AiFeature.SEARCH_TEST && policy.featureOn(f)).toList();
         String limit = limits.exhausted().map(e -> e == AiError.MONTH_LIMIT ? "MONTH" : "DAY").orElse(null);
         int running = (int) (jobs.countByStatus(JobStatus.QUEUED) + jobs.countByStatus(JobStatus.RUNNING));
-        int review = (int) jobs.countByStatusAndOutcomeIsNullAndFinishedAtAfter(JobStatus.DONE,
-                now.minus(REVIEW_WINDOW));
+        int review = (int) jobs.countToReview(now.minus(REVIEW_WINDOW), OwnScreen.SUBJECTS);
         int problems = (int) jobs.countUnretried(List.of(JobStatus.FAILED, JobStatus.BAD_ANSWER),
                 now.minus(PROBLEM_WINDOW));
         return new Summary(agent.configured(), policy.enabled(), on, limit, running, review, problems);

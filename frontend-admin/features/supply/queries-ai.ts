@@ -28,6 +28,14 @@ export function useStartSupplyJob() {
 }
 
 /**
+ * Ручной путь взял ответы ИИ в поставку («Дальше — форма поставки»): их задачи — «применено», чтобы они не висели
+ * в «ИИ-задачах» без решения. Это только метрика: сбой не мешает поставке и не показывается.
+ */
+export async function settleSupplyJobs(ids: number[]) {
+  await Promise.allSettled(ids.map((id) => aiApi.outcome(id, { applied: 1, rejected: 0, edited: 0, ignoredLocked: 0 })));
+}
+
+/**
  * Старт сопоставления встроенным ИИ (шаг 2): общая задача `POST /ai/jobs` с поиском в интернете. Тот же набор строк
  * второй раз (409 AI_JOB_ACTIVE) — продолжаем показывать идущую задачу.
  */

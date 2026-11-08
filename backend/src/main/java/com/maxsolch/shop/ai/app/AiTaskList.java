@@ -3,6 +3,7 @@ package com.maxsolch.shop.ai.app;
 import com.maxsolch.shop.ai.domain.AiError;
 import com.maxsolch.shop.ai.domain.AiJob;
 import com.maxsolch.shop.ai.domain.JobPath;
+import com.maxsolch.shop.ai.domain.OwnScreen;
 import com.maxsolch.shop.ai.domain.JobStatus;
 import com.maxsolch.shop.ai.domain.SubjectLabels;
 import com.maxsolch.shop.ai.infra.AiJobRepository;
@@ -100,7 +101,7 @@ public class AiTaskList {
     private Page<AiJob> find(Tab t, Pageable p) {
         return switch (t) {
             case ACTIVE -> jobs.findByPathAndStatusInOrderByIdDesc(JobPath.BUILTIN, ACTIVE, p);
-            case REVIEW -> jobs.toReview(p);
+            case REVIEW -> jobs.toReview(OwnScreen.SUBJECTS, p);
             case PROBLEMS -> jobs.problems(PROBLEM, clock.instant().minus(PROBLEM_WINDOW), p);
             case HISTORY -> jobs.tasks(p);
         };
@@ -109,7 +110,7 @@ public class AiTaskList {
     private Counts counts() {
         Pageable one = PageRequest.of(0, 1);
         return new Counts(jobs.countByPathAndStatusIn(JobPath.BUILTIN, ACTIVE),
-                jobs.toReview(one).getTotalElements(),
+                jobs.toReview(OwnScreen.SUBJECTS, one).getTotalElements(),
                 jobs.problems(PROBLEM, clock.instant().minus(PROBLEM_WINDOW), one).getTotalElements());
     }
 

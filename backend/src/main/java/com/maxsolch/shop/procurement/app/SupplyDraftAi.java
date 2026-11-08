@@ -2,14 +2,23 @@ package com.maxsolch.shop.procurement.app;
 
 import com.maxsolch.shop.ai.app.AiJobDto;
 import com.maxsolch.shop.ai.app.AiJobs;
+import com.maxsolch.shop.ai.app.AiOutcome;
 import com.maxsolch.shop.ai.app.AiServerJobs;
 import com.maxsolch.shop.ai.domain.AiFeature;
 import com.maxsolch.shop.ai.domain.JobMode;
 import com.maxsolch.shop.ai.domain.JobStatus;
+import com.maxsolch.shop.procurement.domain.supplyai.DraftState;
+import com.maxsolch.shop.procurement.domain.supplyai.SupplyPlan;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * The AI tasks of a supply draft: each step is one task (several for the cards) whose object is the draft
@@ -28,9 +37,11 @@ class SupplyDraftAi {
     }
 
     private final AiServerJobs jobs;
+    private final AiOutcome outcome;
 
-    SupplyDraftAi(AiServerJobs jobs) {
+    SupplyDraftAi(AiServerJobs jobs, AiOutcome outcome) {
         this.jobs = jobs;
+        this.outcome = outcome;
     }
 
     long read(long draftId, long adminId, List<Long> fileIds, String prompt, String version) {
@@ -73,6 +84,24 @@ class SupplyDraftAi {
         if (jobId != null) {
             jobs.cancel(jobId);
         }
+    }
+
+    /**
+     * The tasks of the draft get their outcome from it, so they never wait in «ИИ-задачи»: accepted — the reading and
+     * the matching are applied, a card is applied when its new product was created (a line later matched to our
+     * product threw its card away); deleted — everything is rejected.
+     */
+    void settle(DraftState s, boolean accepted) {
+        List<Long> applied = new ArrayList<>();
+        List<Long> rejected = new ArrayList<>();
+        (accepted ? applied : rejected).addAll(Stream.of(s.getReadJob(), s.getMatchJob()).filter(Objects::nonNull).toList());
+        Set<String> created = accepted
+                ? SupplyPlan.newProducts(s.getRows()).stream().map(p -> SupplyDraftCards.keyOf(p, s)).collect(Collectors.toSet())
+                : Set.of();
+        for (Map.Entry<String, Long> e : s.getCardJobs().entrySet()) {
+            (created.contains(e.getKey()) ? applied : rejected).add(e.getValue());
+        }
+        outcome.settle(applied, rejected);
     }
 
     static String failure(AiJobDto j) {

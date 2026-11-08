@@ -83,6 +83,7 @@ export function useMatchJob(ai: SupplyAi, open: ReviewRow[], catalog: CatalogIte
   useEffect(() => {
     if (job && job.status === "DONE" && job.answer && taken.current !== job.id) {
       taken.current = job.id;
+      ai.noteJob(job.id);
       setApplied(ai.applyHelp(job.answer, true));
     }
   }, [job, ai]);

@@ -4,7 +4,7 @@
  * Состояние «Поставки с ИИ»: ответ шага 1 → строки с решениями → (шаг 2 для нерешённых) → новые товары и цены.
  * Решения, принятые вручную или ИИ, при смене поставщика не перетираются; пересчитываются только автоматические.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSupplierAliases, useSuppliers } from "@/features/procurement";
 import { lineProblem, likelyRepeats, totalProblem } from "../../model/ai/checks";
 import { autoMatch, shortList } from "../../model/ai/match";
@@ -37,6 +37,8 @@ export function useSupplyAi(catalog: CatalogItem[], categories: LeafCategory[], 
   const [helpErrors, setHelpErrors] = useState<string[]>([]);
   const [helpNotes, setHelpNotes] = useState<string[]>([]);
   const [prices, setPrices] = useState<Record<string, string>>({});
+  // Задачи ИИ, чьи ответы взяты в разбор: при «Дальше — форма поставки» они получают «применено».
+  const usedJobs = useRef(new Set<number>());
   const suppliersQ = useSuppliers();
   const aliasesQ = useSupplierAliases(supplierId ? Number(supplierId) : null);
   const memory = useMemo(() => aliasesQ.data ?? [], [aliasesQ.data]);
@@ -133,7 +135,10 @@ export function useSupplyAi(catalog: CatalogItem[], categories: LeafCategory[], 
     answer, setAnswer, parsed, check, doc, rows, settled, decide, editDraft, applyHelp, helpErrors, helpNotes,
     supplierId, setSupplierId, suppliers: suppliersQ.data ?? [], memoryCount: memory.length,
     repeats, sumIssue, lineIssue: lineProblem, plans, prices, setPrices, problems,
+    noteJob: (id: number) => usedJobs.current.add(id),
+    usedJobs: () => [...usedJobs.current],
     reset: () => {
+      usedJobs.current = new Set();
       setAnswer("");
       setParsed(null);
       setRows([]);

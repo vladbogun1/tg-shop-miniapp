@@ -158,14 +158,19 @@ public class SupplyDrafts {
         return view.of(drafts.saveAndFlush(d), finance());
     }
 
-    /** Deletes a draft that did not become a batch (its tasks are cancelled; what they cost stays in the AI journal). */
+    /**
+     * Deletes a draft that did not become a batch: its running tasks are cancelled, the finished ones are rejected
+     * (what they cost stays in the AI journal).
+     */
     @Transactional
     public void delete(long id) {
         SupplyDraft d = lockedVisible(id);
         if (d.getStatus() == Status.ACCEPTED) {
             throw new DomainException.Conflict(ProcurementError.DRAFT_BAD_STATE);
         }
-        cancelAll(json.read(d.getState()));
+        DraftState s = json.read(d.getState());
+        cancelAll(s);
+        ai.settle(s, false);
         drafts.delete(d);
         audit.record("SUPPLY_DRAFT_DELETE", "SUPPLY_DRAFT", String.valueOf(id), "Поставка с ИИ: черновик удалён");
     }
@@ -179,7 +184,10 @@ public class SupplyDrafts {
         if (version != d.getVersion()) {
             throw new DomainException.Conflict(ProcurementError.DRAFT_CHANGED);
         }
-        return acceptance.accept(d, json.read(d.getState()), finance());
+        DraftState s = json.read(d.getState());
+        DraftAcceptResult result = acceptance.accept(d, s, finance());
+        ai.settle(s, true);
+        return result;
     }
 
     private void cancelAll(DraftState s) {

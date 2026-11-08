@@ -32,6 +32,21 @@ describe("центр задач", () => {
     expect(reviewHref(job({ feature: "TRANSLATION" }))).toBeNull();
   });
 
+  it("задачи поставки решаются в поставке: без ревью карточки, со ссылкой на черновик", () => {
+    const card = { feature: "CARD" as const, subjectType: "SUPPLY_DRAFT", subjectId: "d12-c-L3" };
+    expect(reviewHref(job(card))).toBeNull();
+    const waiting = taskRowView(row(card, "Черновик поставки №12 · Грипсы · карточка «Грипсы X»"), NOW);
+    expect(waiting.title).toBe("Черновик поставки №12 · Грипсы · карточка «Грипсы X»");
+    expect(waiting.stateLabel).toBe("Ждёт решения в поставке");
+    expect(waiting.tone).not.toBe("accent");
+    expect(waiting.open).toEqual({ href: "/preorders/drafts/12", label: "Открыть черновик" });
+    expect(taskRowView(row({ ...card, outcome: "REJECTED" }), NOW).open).toBeNull();
+    const manual = taskRowView(row({ feature: "SUPPLY_MATCH", subjectType: "SUPPLY_FILES", subjectId: "mabc" }), NOW);
+    expect(manual.stateLabel).toBe("Ждёт решения в поставке");
+    expect(manual.open).toBeNull();
+    expect(taskRowView(row(), NOW).open).toEqual({ href: "/cards/ai-review/5", label: "Открыть проверку" });
+  });
+
   it("ждущий больше двух недель помечен «может устареть»", () => {
     const old = job({ finishedAt: "2026-10-20T10:00:00Z" });
     expect(isStale(old, NOW)).toBe(true);

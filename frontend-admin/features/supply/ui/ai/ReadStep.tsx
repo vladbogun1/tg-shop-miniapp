@@ -124,7 +124,8 @@ export function ReadStep({ ai, files }: { ai: SupplyAi; files: SupplyFiles }) {
   const [manual, setManual] = useState(false);
   const builtIn = reason === null;
   const showManual = !builtIn || files.files.length === 0 || manual || !!ai.answer;
-  const onAnswer = (text: string) => {
+  const onAnswer = (text: string, jobId: number) => {
+    ai.noteJob(jobId);
     ai.setAnswer(text);
     ai.check(text);
   };
