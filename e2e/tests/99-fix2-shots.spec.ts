@@ -52,7 +52,8 @@ test("накладная: прогресс загрузки и лимит 10 к�
     await size(page, w);
     await page.goto("/preorders");
     await page.getByRole("button", { name: "Из накладной (ИИ)" }).click();
-    const modal = dialog(page, "Поставка с ИИ");
+    await dialog(page, "Поставка с ИИ").getByRole("button", { name: "Разобрать вручную" }).click();
+    const modal = dialog(page, "Разбор накладной вручную");
     await modal.getByTestId("supply-ai-file-input").setInputFiles(Array.from({ length: 11 }, (_, i) => ({ name: `накладная-${i + 1}.png`, mimeType: "image/png", buffer: png })));
     await expect(modal.getByRole("progressbar").first()).toBeVisible();
     await page.waitForTimeout(300);

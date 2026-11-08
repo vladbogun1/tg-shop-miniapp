@@ -2,7 +2,8 @@
 
 /**
  * «Поставки» (route "/preorders", вариант B макета): слева колонка входов — статусы поставок, «Что заказать» (чего ждут
- * покупатели), «Поставщики» — со счётчиками; на телефоне это лента чипов. `?tab=demand` открывает «Что заказать».
+ * покупатели), «Поставщики» — со счётчиками; на телефоне это лента чипов. `?tab=demand` открывает «Что заказать»,
+ * `?tab=drafts` — черновики «Поставки с ИИ».
  * `?newProduct=<id>` открывает форму новой поставки с этим товаром (из карточки товара и «Ждут»).
  */
 import { Button } from "@shop/ui/admin-button";
@@ -22,10 +23,13 @@ import {
 } from "@/features/procurement";
 import { PICK_PRODUCTS_STALE_MS, ProductPickModal, useProductsQuery } from "@/features/product";
 import { useBatchesList, useSuppliersList } from "../queries";
+import { useDrafts } from "../queries-drafts";
 import { BatchList } from "./BatchList";
 import { BatchRail, type RailItem, type SupplyView } from "./BatchRail";
 import { DemandList } from "./DemandList";
 import { SupplyAiModal } from "./ai/SupplyAiModal";
+import { DraftList } from "./drafts/DraftList";
+import { StartDraftModal } from "./drafts/StartDraftModal";
 import { SuppliersList } from "./SuppliersList";
 
 function seedOf(d: Demand): SeedLine {
@@ -50,25 +54,32 @@ export function PreordersScreen() {
 function PreordersBody() {
   const router = useRouter();
   const params = useSearchParams();
-  const demandTab = params.get("tab") === "demand";
-  const [view, setView] = useState<SupplyView>(demandTab ? "demand" : "open");
+  const tab = params.get("tab");
+  const [view, setView] = useState<SupplyView>(tab === "demand" || tab === "drafts" ? tab : "open");
   useEffect(() => {
-    if (demandTab) setView("demand");
-  }, [demandTab]);
+    if (tab === "demand" || tab === "drafts") setView(tab);
+  }, [tab]);
   const [form, setForm] = useState<{
     seed: SeedLine[];
     preset?: BatchPreset;
   } | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
+  const [startOpen, setStartOpen] = useState(false);
   const [supplierModal, setSupplierModal] = useState(false);
 
   const demandQ = useDemand();
   const allQ = useBatchesList("all");
+  const draftsQ = useDrafts();
   const suppliersQ = useSuppliersList();
   const productsQ = useProductsQuery({ staleTime: PICK_PRODUCTS_STALE_MS });
 
   const batches = allQ.data ?? [];
+  const drafts = draftsQ.data ?? [];
   const rail: RailItem[] = [
+    // Черновики «Поставки с ИИ» — только пока они есть (или раздел уже открыт); готовые к проверке подсвечены.
+    ...(drafts.length > 0 || view === "drafts"
+      ? [{ value: "drafts" as const, label: "Черновики ИИ", count: drafts.length, hot: drafts.some((d) => d.status === "READY") }]
+      : []),
     { value: "open", label: "Едут", count: batches.filter((b) => isOpenStatus(b.status)).length },
     { value: "arrived", label: "Приехали", count: batches.filter((b) => b.status === "ARRIVED").length },
     { value: "cancelled", label: "Отменены", count: batches.filter((b) => b.status === "CANCELLED").length },
@@ -115,7 +126,7 @@ function PreordersBody() {
         subtitle="Что заказали у заводов, что едет и кто его ждёт."
         actions={
           <>
-            <Button variant="outline" icon={<Sparkles className="h-4 w-4" />} onClick={() => setAiOpen(true)}>
+            <Button variant="outline" icon={<Sparkles className="h-4 w-4" />} onClick={() => setStartOpen(true)}>
               Из накладной (ИИ)
             </Button>
             <Button variant="accent" icon={<Plus className="h-4 w-4" />} onClick={create}>
@@ -127,7 +138,9 @@ function PreordersBody() {
       <div className="lg:flex lg:items-start lg:gap-6">
         <BatchRail items={rail} value={view} onChange={setView} />
         <div className="min-w-0 flex-1">
-          {view === "demand" ? (
+          {view === "drafts" ? (
+            <DraftList onStart={() => setStartOpen(true)} />
+          ) : view === "demand" ? (
             <DemandList q={demandQ} onOrder={(rows) => setForm({ seed: rows.map(seedOf) })} />
           ) : view === "suppliers" ? (
             <>
@@ -154,6 +167,14 @@ function PreordersBody() {
         ProductPicker={ProductPickModal}
       />
       <SupplierModal open={supplierModal} onClose={() => setSupplierModal(false)} />
+      <StartDraftModal
+        open={startOpen}
+        onClose={() => setStartOpen(false)}
+        onManual={() => {
+          setStartOpen(false);
+          setAiOpen(true);
+        }}
+      />
       <SupplyAiModal
         open={aiOpen}
         onClose={() => setAiOpen(false)}

@@ -65,7 +65,9 @@ function answerFor(text) {
   if (text.includes("помощник закупщика")) return supplyAnswer();
   if (text.includes("не смог уверенно сопоставить")) return matchAnswer(text);
   if (text.includes("Строки для перевода")) return translationAnswer(text);
-  const id = /"(p[0-9a-f]{8,32})"\s*:/.exec(text)?.[1] ?? null;
+  // Ключ товара — из блока «## Товары»: в инструкции промпта нового товара выше есть пример ("p0a1b2c3d"), он не наш.
+  const products = text.slice(Math.max(0, text.indexOf("## Товары")));
+  const id = /"(p[0-9a-f]{8,32})"\s*:/.exec(products)?.[1] ?? null;
   const d = state.description;
   const card = {
     overall: 90,

@@ -117,7 +117,13 @@ class SupplyDraftAccept {
         if (s.getFxRate() == null) {
             out.add("введите курс");
         }
-        Set<String> taken = catalog.items().stream().map(CatalogItem::title).filter(Objects::nonNull)
+        List<CatalogItem> items = catalog.items();
+        Set<String> withVariants = items.stream().filter(i -> i.variants() != null && !i.variants().isEmpty())
+                .map(CatalogItem::id).collect(Collectors.toSet());
+        s.getRows().stream().filter(r -> "match".equals(r.decision().kind()) && r.decision().variantId() == null
+                        && withVariants.contains(r.decision().productId()))
+                .forEach(r -> out.add(r.line().id() + ": выберите вариант товара"));
+        Set<String> taken = items.stream().map(CatalogItem::title).filter(Objects::nonNull)
                 .map(t -> t.trim().toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
         for (NewProduct p : plans) {
             if (taken.contains(p.title().trim().toLowerCase(Locale.ROOT))) {

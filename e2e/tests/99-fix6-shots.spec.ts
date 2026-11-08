@@ -41,7 +41,8 @@ async function readShot(page: Page) {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/preorders");
   await page.getByRole("button", { name: "Из накладной (ИИ)" }).click();
-  const modal = dialog(page, "Поставка с ИИ");
+  await dialog(page, "Поставка с ИИ").getByRole("button", { name: "Разобрать вручную" }).click();
+  const modal = dialog(page, "Разбор накладной вручную");
   await modal.getByTestId("supply-ai-file-input").setInputFiles({ name: "order.png", mimeType: "image/png", buffer: screenshotPng() });
   const read = modal.getByRole("button", { name: "Прочитать с ИИ" });
   await expect(read).toBeEnabled();

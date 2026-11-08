@@ -143,7 +143,7 @@ export function SupplyAiModal({ open, onClose, onReady }: { open: boolean; onClo
         size="lg"
         closeOnBackdrop={false}
         dirty={!!ai.answer}
-        title="Поставка с ИИ"
+        title="Разбор накладной вручную"
         footer={
           <>
             {ai.rows.length > 0 && problems.length > 0 && <p className="mr-auto min-w-0 text-[13px] text-[var(--danger-ink)]">{problems[0]}</p>}

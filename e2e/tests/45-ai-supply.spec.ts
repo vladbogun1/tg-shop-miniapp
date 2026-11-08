@@ -57,7 +57,8 @@ test.afterAll(async () => {
 async function openReader(page: Page) {
   await page.goto("/preorders");
   await page.getByRole("button", { name: "Из накладной (ИИ)" }).click();
-  const modal = dialog(page, "Поставка с ИИ");
+  await dialog(page, "Поставка с ИИ").getByRole("button", { name: "Разобрать вручную" }).click();
+  const modal = dialog(page, "Разбор накладной вручную");
   await expect(modal).toBeVisible();
   return modal;
 }
@@ -72,7 +73,8 @@ test("скрин → «Прочитать с ИИ» → шесть строк �
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/preorders");
   await page.getByRole("button", { name: "Из накладной (ИИ)" }).click();
-  const modal = dialog(page, "Поставка с ИИ");
+  await dialog(page, "Поставка с ИИ").getByRole("button", { name: "Разобрать вручную" }).click();
+  const modal = dialog(page, "Разбор накладной вручную");
   await expect(modal).toBeVisible();
 
   await modal.getByTestId("supply-ai-file-input").setInputFiles({ name: "order.png", mimeType: "image/png", buffer: screenshotPng() });
@@ -186,7 +188,8 @@ test("телефон 375 px: загрузчик и результат с мет�
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/preorders");
   await page.getByRole("button", { name: "Из накладной (ИИ)" }).click();
-  const modal = dialog(page, "Поставка с ИИ");
+  await dialog(page, "Поставка с ИИ").getByRole("button", { name: "Разобрать вручную" }).click();
+  const modal = dialog(page, "Разбор накладной вручную");
   await modal.getByTestId("supply-ai-file-input").setInputFiles({ name: "order.png", mimeType: "image/png", buffer: screenshotPng() });
   const read = modal.getByRole("button", { name: "Прочитать с ИИ" });
   await expect(read).toBeEnabled();
@@ -204,7 +207,8 @@ test("функция «Поставки» выключена: чтения с И
   await setting(api, { "ai.feature.supply": false });
   await page.goto("/preorders");
   await page.getByRole("button", { name: "Из накладной (ИИ)" }).click();
-  const modal = dialog(page, "Поставка с ИИ");
+  await dialog(page, "Поставка с ИИ").getByRole("button", { name: "Разобрать вручную" }).click();
+  const modal = dialog(page, "Разбор накладной вручную");
   await expect(modal).toBeVisible();
   await expect(modal.getByRole("button", { name: "Прочитать с ИИ" })).toHaveCount(0);
   await shot(page, "off");

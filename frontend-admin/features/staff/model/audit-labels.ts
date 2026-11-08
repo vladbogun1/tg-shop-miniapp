@@ -143,6 +143,8 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   PREORDER_RELEASE: "Предзаказ выпущен",
   PREORDER_SUBSCRIBERS_EXPORT: "Выгрузка подписчиков",
   PREORDER_SUBSCRIPTION_REMOVE: "Подписка убрана",
+  SUPPLY_DRAFT_CREATE: "Черновик поставки с ИИ",
+  SUPPLY_DRAFT_DELETE: "Черновик поставки удалён",
 };
 
 export const AUDIT_ENTITY_LABEL: Record<string, string> = {
@@ -166,6 +168,7 @@ export const AUDIT_ENTITY_LABEL: Record<string, string> = {
   SITE: "Сайт",
   REVIEW: "Отзыв",
   REPLY_TEMPLATE: "Шаблон ответа",
+  SUPPLY_DRAFT: "Черновик поставки",
 };
 
 /** Actions worth a red/amber marker in the log (money, deletions, failed logins). */

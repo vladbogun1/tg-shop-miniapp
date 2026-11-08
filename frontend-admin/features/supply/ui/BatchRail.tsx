@@ -6,7 +6,7 @@
  */
 import { cn } from "@/lib/cn";
 
-export type SupplyView = "open" | "arrived" | "cancelled" | "all" | "demand" | "suppliers";
+export type SupplyView = "drafts" | "open" | "arrived" | "cancelled" | "all" | "demand" | "suppliers";
 
 export interface RailItem {
   value: SupplyView;

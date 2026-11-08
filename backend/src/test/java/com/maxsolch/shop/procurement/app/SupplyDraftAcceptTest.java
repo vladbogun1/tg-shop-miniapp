@@ -135,6 +135,16 @@ class SupplyDraftAcceptTest {
     }
 
     @Test
+    void aMatchedProductWithVariantsNeedsTheVariant() {
+        when(catalog.items()).thenReturn(List.of(new CatalogItem(OLD, "Коврик Zpmax ZP1", "Zpmax", "c1",
+                List.of(new CatalogItem.Variant("v1", "Black")), null)));
+
+        assertThatThrownBy(() -> accept.accept(draft, s, true)).isInstanceOf(DomainException.BadRequest.class)
+                .hasMessageContaining("L1: выберите вариант товара");
+        verifyNoInteractions(products, batches);
+    }
+
+    @Test
     void anOpenLineOrAMissingPriceStopsToo() {
         s.getPrices().clear();
 
