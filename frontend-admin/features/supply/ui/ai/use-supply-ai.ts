@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSupplierAliases, useSuppliers } from "@/features/procurement";
 import { lineProblem, likelyRepeats, totalProblem } from "../../model/ai/checks";
-import { autoMatch } from "../../model/ai/match";
+import { autoMatch, shortList } from "../../model/ai/match";
 import { parseMatch, type LeafCategory } from "../../model/ai/match-prompt";
 import { parseExtract, type ParsedExtract } from "../../model/ai/parse";
 import { draftKey, draftPriceUah, newProducts, planProblems } from "../../model/ai/plan";
@@ -96,7 +96,14 @@ export function useSupplyAi(catalog: CatalogItem[], categories: LeafCategory[], 
     const usable = (r: ReviewRow) => a.decisions.has(r.line.id) && asked.has(r.line.id);
     setHelpErrors(a.errors);
     setHelpNotes([...a.notes].filter(([id]) => asked.has(id)).map(([id, note]) => `${id}: ${note}`));
-    setRows((prev) => prev.map((r) => (usable(r) ? { ...r, decision: a.decisions.get(r.line.id)! } : r)));
+    // «Одно из этих»: строка остаётся нерешённой, кандидаты — короткий список ИИ.
+    const listed = (r: ReviewRow) => !a.decisions.has(r.line.id) && a.choices.has(r.line.id) && asked.has(r.line.id) && r.decision.kind === "open";
+    setRows((prev) =>
+      prev.map((r) => {
+        if (usable(r)) return { ...r, decision: a.decisions.get(r.line.id)! };
+        return listed(r) ? { ...r, candidates: shortList(r.line, a.choices.get(r.line.id)!, catalog) } : r;
+      }),
+    );
     return rows.filter(usable).length;
   }
 

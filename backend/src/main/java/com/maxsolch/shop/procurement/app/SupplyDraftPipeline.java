@@ -12,6 +12,7 @@ import com.maxsolch.shop.procurement.domain.supplyai.LineDecision;
 import com.maxsolch.shop.procurement.domain.supplyai.MatchPrompt;
 import com.maxsolch.shop.procurement.domain.supplyai.ReviewRow;
 import com.maxsolch.shop.procurement.domain.supplyai.SupplyExtract;
+import com.maxsolch.shop.procurement.domain.supplyai.SupplyMatcher;
 import com.maxsolch.shop.procurement.domain.supplyai.SupplyPlan;
 import com.maxsolch.shop.procurement.infra.SupplyDraftRepository;
 import org.springframework.stereotype.Service;
@@ -147,8 +148,16 @@ public class SupplyDraftPipeline {
         MatchPrompt.Result res = MatchPrompt.parse(answer, open, items, leaves);
         List<ReviewRow> rows = new ArrayList<>();
         for (ReviewRow row : s.getRows()) {
-            LineDecision next = "open".equals(row.decision().kind()) ? res.decisions().get(row.line().id()) : null;
-            rows.add(next == null ? row : new ReviewRow(row.line(), next, row.candidates()));
+            boolean undecided = "open".equals(row.decision().kind());
+            LineDecision next = undecided ? res.decisions().get(row.line().id()) : null;
+            List<String> choice = undecided ? res.choices().get(row.line().id()) : null;
+            if (next != null) {
+                rows.add(new ReviewRow(row.line(), next, row.candidates()));
+            } else if (choice != null) {
+                rows.add(new ReviewRow(row.line(), row.decision(), SupplyMatcher.shortList(row.line(), choice, items)));
+            } else {
+                rows.add(row);
+            }
         }
         s.setRows(rows);
         s.getLineNotes().putAll(res.notes());

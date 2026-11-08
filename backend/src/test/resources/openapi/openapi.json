@@ -11996,6 +11996,9 @@
       },
       "ProcurementCandidate" : {
         "properties" : {
+          "ai" : {
+            "type" : "boolean"
+          },
           "productId" : {
             "type" : "string"
           },
@@ -12008,6 +12011,7 @@
           }
         },
         "required" : [
+          "ai",
           "productId",
           "score",
           "variantId"

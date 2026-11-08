@@ -13,8 +13,9 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * The catalog as the supply draft matches against it: the products that are not archived (with their variants and
- * first picture) and the leaf categories in the order of the tree — the same lists the admin screen loads for the
+ * The catalog as the supply draft matches against it: the products that are not archived (with their variants,
+ * first picture and whether they are hidden from the shop window) and the leaf categories in the order of the tree —
+ * the same lists the admin screen loads for the
  * manual path, so both paths see the same candidates.
  */
 @Component
@@ -47,6 +48,6 @@ class SupplyDraftCatalog {
                 : p.variants().stream().filter(v -> v.id() != null).map(v -> new CatalogItem.Variant(v.id(), v.name())).toList();
         String image = p.images() == null ? null
                 : p.images().stream().map(ProductImageDto::url).filter(Objects::nonNull).findFirst().orElse(null);
-        return new CatalogItem(p.id(), p.title(), p.brand(), p.categoryId(), variants, image);
+        return new CatalogItem(p.id(), p.title(), p.brand(), p.categoryId(), variants, image, !p.active());
     }
 }

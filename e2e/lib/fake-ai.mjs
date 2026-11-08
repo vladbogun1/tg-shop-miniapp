@@ -94,8 +94,9 @@ function supplyAnswer() {
 }
 
 /**
- * The supply step 2 prompt: a line with candidates takes the first one (and its first variant), a line without them
- * becomes a new product in the first category of the list.
+ * The supply step 2 prompt: a line with a search hint takes the first hinted product (and its first variant, read from
+ * the catalog block — the hint lists only key and title), a line without hints becomes a new product in the first
+ * category of the list. Catalog groups are "### <category>" blocks too; they have no "L<n>:" and are skipped.
  */
 function matchAnswer(text) {
   const category = /^- ([a-z0-9-]+) — /m.exec(text)?.[1] ?? null;
@@ -105,7 +106,8 @@ function matchAnswer(text) {
     if (!id) continue;
     const cand = /^- (p[0-9a-f]{8}) \| (.*)$/m.exec(block);
     if (cand) {
-      const variants = /варианты: ([^|]*)/.exec(cand[2])?.[1];
+      const catalogLine = new RegExp(`^- ${cand[1]} \\| (.*)$`, "m").exec(text)?.[1] ?? "";
+      const variants = /варианты: ([^|]*)/.exec(catalogLine)?.[1];
       out[id] = { product: cand[1], variant: variants ? variants.split(", ")[0].trim() : null, notes: null };
     } else {
       const title = block.split("\n")[0].replace(/^L\d+:\s*/, "");

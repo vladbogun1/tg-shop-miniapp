@@ -38,6 +38,8 @@ export interface CatalogItem {
   categoryId: string | null;
   variants: { id: string; name: string }[];
   imageUrl: string | null;
+  /** Нет на витрине (товар, заведённый черновиком, или снятый с продажи) — всё равно наш, с ним сопоставляем. */
+  hidden?: boolean;
 }
 
 /** Предложение «завести новый товар» — от ИИ (шаг 2) или пустое, если админ выбрал «новый» сам. */
@@ -61,6 +63,8 @@ export interface Candidate {
   productId: string;
   variantId: string | null;
   score: number;
+  /** Короткий список ИИ («одно из этих, по накладной не понять какое»), а не догадка поиска. */
+  ai?: boolean;
 }
 
 export interface ReviewRow {

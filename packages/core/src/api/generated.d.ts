@@ -9111,6 +9111,7 @@ export interface components {
             variantId?: string;
         };
         ProcurementCandidate: {
+            ai: boolean;
             productId: string;
             /** Format: double */
             score: number;

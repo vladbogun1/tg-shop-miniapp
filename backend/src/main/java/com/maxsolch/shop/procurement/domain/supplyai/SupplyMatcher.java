@@ -13,7 +13,8 @@ import static com.maxsolch.shop.procurement.domain.supplyai.SupplyText.words;
 
 /**
  * Matching document lines with the catalog without AI: first supplier memory (exact line key), then search by
- * words - brand, model code, colour. Colours are usually separate products for us, so a foreign colour in the
+ * words - brand (without spaces and case), model code (letters and digits; bare numbers are sizes and counts), the
+ * kind of thing ({@link SupplyKinds}), colour. Colours are usually separate products for us, so a foreign colour in the
  * title is penalised. Same logic as frontend-admin/features/supply/model/ai/match.ts.
  */
 public final class SupplyMatcher {
@@ -22,7 +23,8 @@ public final class SupplyMatcher {
     private static final Map<String, List<String>> COLORS = colors();
     private static final Set<String> ALL_STEMS = allStems();
     private static final Pattern DIGIT = Pattern.compile("\\d");
-    private static final Pattern SIZE = Pattern.compile("\\d{3,}|\\d+mm");
+    private static final Pattern LETTER = Pattern.compile("[a-zа-яіїєґ]");
+    private static final Pattern SIZE =Pattern.compile("\\d{3,}|\\d+mm");
     private static final int LIMIT = 8;
 
     /** Decision for one line plus the candidates (a hint and the input of step 2). */
@@ -116,23 +118,27 @@ public final class SupplyMatcher {
         double score = 0;
         for (String m : modelWords(l)) {
             if (pw.contains(m)) {
-                score += hasDigit(m) ? 3 : 1.5;
-            } else if (hasDigit(m)) {
+                score += !hasDigit(m) ? 1.5 : isCode(m) ? 3 : 1;
+            } else if (isCode(m)) {
                 score -= 2;
             }
         }
-        // A model code the product has and the line has not (ZP2 for a ZP1 line) is another product.
+        // A model code the product has and the line has not (ZP2 for a ZP1 line) is another product. Bare numbers
+        // (6.5 mm, 30 pcs, 0.55) are sizes and counts: they add when they match and take nothing when they do not.
         for (String w : pw) {
-            if (hasDigit(w) && !w.matches("\\d{3,}") && !lw.contains(w)) {
+            if (isCode(w) && !lw.contains(w)) {
                 score -= 1.5;
             }
         }
-        if (l.brand() != null && !l.brand().isEmpty() && pw.containsAll(words(l.brand()))) {
+        if (sameBrand(l, p, pw)) {
             score += 2;
+        }
+        List<String> titleWords = words(p.title());
+        if (SupplyKinds.sameKind(l, titleWords)) {
+            score += 1.5;
         }
         List<String> colors = colorStems(l);
         if (!colors.isEmpty()) {
-            List<String> titleWords = words(p.title());
             if (stemIn(colors, titleWords)) {
                 score += 1;
             } else if (stemIn(ALL_STEMS, titleWords) && p.variants().isEmpty()) {
@@ -140,6 +146,22 @@ public final class SupplyMatcher {
             }
         }
         return score;
+    }
+
+    /** A model code has letters and digits (zp1, v2, r85, 8k); a bare number is a size or a count. */
+    private static boolean isCode(String w) {
+        return hasDigit(w) && LETTER.matcher(w).find();
+    }
+
+    /** The brand without spaces and case: «WEST LAB» is «WestLab»; inside the title only for 4+ letters. */
+    private static boolean sameBrand(SourceLine l, CatalogItem p, Set<String> pw) {
+        List<String> bw = words(l.brand());
+        if (bw.isEmpty()) {
+            return false;
+        }
+        String b = String.join("", bw);
+        return pw.containsAll(bw) || b.equals(String.join("", words(p.brand())))
+                || (b.length() >= 4 && String.join("", words(p.title())).contains(b));
     }
 
     /** The variant that looks most like the line's variant / colour / size; null - no variant or not guessed. */
@@ -177,6 +199,19 @@ public final class SupplyMatcher {
         }
         all.sort((a, b) -> Double.compare(b.score(), a.score()));
         return List.copyOf(all.subList(0, Math.min(LIMIT, all.size())));
+    }
+
+    /** The AI short list as the candidates of the line: in its order, each with the variant that looks like the line. */
+    public static List<Candidate> shortList(SourceLine l, List<String> productIds, List<CatalogItem> catalog) {
+        Map<String, CatalogItem> byId = index(catalog);
+        List<Candidate> out = new ArrayList<>();
+        for (int i = 0; i < productIds.size(); i++) {
+            CatalogItem p = byId.get(productIds.get(i));
+            if (p != null) {
+                out.add(new Candidate(p.id(), pickVariant(l, p), productIds.size() - i, true));
+            }
+        }
+        return List.copyOf(out);
     }
 
     /** Confident search: a clear leader, with a variant when the product has them. */

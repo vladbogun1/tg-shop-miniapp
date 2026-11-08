@@ -19,6 +19,7 @@ export function useCatalog() {
         categoryId: p.categoryId ?? null,
         variants: (p.variants ?? []).filter((v) => v.id).map((v) => ({ id: v.id as string, name: v.name })),
         imageUrl: p.images?.[0]?.url ?? null,
+        hidden: !p.active,
       })),
     [productsQ.data],
   );

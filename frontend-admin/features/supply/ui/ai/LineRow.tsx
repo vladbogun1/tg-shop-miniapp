@@ -61,7 +61,8 @@ function Matched({ r, d, ai, byId }: { r: ReviewRow; d: Extract<LineDecision, { 
 }
 
 function Candidates({ r, ai, byId }: { r: ReviewRow; ai: LineReview; byId: Map<string, CatalogItem> }) {
-  const top = r.candidates.slice(0, 3).filter((c) => byId.has(c.productId));
+  // Короткий список ИИ («одно из этих») показываем весь, догадки поиска — три лучших.
+  const top = r.candidates.slice(0, r.candidates[0]?.ai ? 8 : 3).filter((c) => byId.has(c.productId));
   if (top.length === 0) return <span className="text-[12.5px] text-[var(--text-faint)]">Похожих в каталоге нет</span>;
   return (
     <div className="flex min-w-0 flex-wrap gap-1.5">
@@ -78,6 +79,11 @@ function Candidates({ r, ai, byId }: { r: ReviewRow; ai: LineReview; byId: Map<s
       ))}
     </div>
   );
+}
+
+function openLabel(r: ReviewRow): string {
+  if (r.candidates[0]?.ai) return "ИИ: это наш товар — выберите, какой именно";
+  return r.candidates.length > 0 ? "Похожие у нас — выберите или создайте новый" : "Нет в каталоге";
 }
 
 function Actions({ r, ai, onPick }: { r: ReviewRow; ai: LineReview; onPick: () => void }) {
@@ -124,7 +130,7 @@ function Decision({ r, ai, byId }: { r: ReviewRow; ai: LineReview; byId: Map<str
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-[var(--warn)]">
-        <AlertTriangle className="h-3.5 w-3.5" /> {r.candidates.length > 0 ? "Похожие у нас — выберите или создайте новый" : "Нет в каталоге"}
+        <AlertTriangle className="h-3.5 w-3.5" /> {openLabel(r)}
       </span>
       <Candidates r={r} ai={ai} byId={byId} />
     </div>

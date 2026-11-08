@@ -44,7 +44,7 @@ class SupplyPromptsInSyncTest {
                 "Zpmax", "c-mats", List.of(), null);
         CatalogItem sleeve = new CatalogItem("22222222-bbbb-4000-8000-000000000001", "Рукав Zpmax 4.0 Ice (правая рука)",
                 "Zpmax", "c-acc", List.of(new CatalogItem.Variant("v-m", "M"), new CatalogItem.Variant("v-xl", "XL")), null);
-        CatalogItem nobrand = new CatalogItem("33333333-cccc-4000-8000-000000000001", "Глайды без бренда", null, null, List.of(), null);
+        CatalogItem nobrand = new CatalogItem("33333333-cccc-4000-8000-000000000001", "Глайды без бренда", "X-Lab", null, List.of(), null, true);
         List<ReviewRow> rows = List.of(
                 new ReviewRow(line("L1", "Zpmax准枪ZP1控制鼠标垫FPS", "ZP1 黑色", "ZP1 mouse pad"), LineDecision.open(),
                         List.of(new Candidate(zp1.id(), null, 5), new Candidate(sleeve.id(), "v-xl", 3), new Candidate("missing", null, 1))),

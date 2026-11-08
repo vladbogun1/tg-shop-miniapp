@@ -1,8 +1,10 @@
 /**
  * Сопоставление строк документа с каталогом без ИИ: сначала память поставщика (точный ключ строки), потом поиск
- * по словам — бренд, код модели, цвет. Цвета у нас обычно отдельные товары («Коврик … чёрный» и «… красный»),
+ * по словам — бренд (без пробелов и регистра), код модели (буквы с цифрами; голые числа — размеры и количества),
+ * что это за вещь (kinds.ts), цвет. Цвета у нас обычно отдельные товары («Коврик … чёрный» и «… красный»),
  * поэтому чужой цвет в названии штрафуется. Чистая логика.
  */
+import { sameKind } from "./kinds";
 import { sourceKey, words } from "./normalize";
 import type { Candidate, CatalogItem, LineDecision, SourceLine } from "./types";
 
@@ -52,20 +54,33 @@ function modelWords(l: SourceLine): string[] {
   return src.filter((w) => !/^\d{3,}$/.test(w) && !/^\d+mm$/.test(w));
 }
 
+/** Код модели — буквы и цифры (zp1, v2, r85, 8k); голое число — размер или количество. */
+const isCode = (w: string) => hasDigit(w) && /[a-zа-яіїєґ]/.test(w);
+
+/** Бренд без пробелов и регистра: «WEST LAB» — это «WestLab»; внутри названия — только от 4 букв. */
+function sameBrand(l: SourceLine, p: CatalogItem, pw: string[]): boolean {
+  const bw = words(l.brand);
+  if (bw.length === 0) return false;
+  const b = bw.join("");
+  return bw.every((w) => pw.includes(w)) || b === words(p.brand).join("") || (b.length >= 4 && words(p.title).join("").includes(b));
+}
+
 function productScore(l: SourceLine, p: CatalogItem): number {
   const pw = [...new Set([...words(p.title), ...words(p.brand)])];
   const lw = lineWords(l);
   let score = 0;
   for (const m of modelWords(l)) {
-    if (pw.includes(m)) score += hasDigit(m) ? 3 : 1.5;
-    else if (hasDigit(m)) score -= 2;
+    if (pw.includes(m)) score += !hasDigit(m) ? 1.5 : isCode(m) ? 3 : 1;
+    else if (isCode(m)) score -= 2;
   }
-  // Код модели у товара, которого нет в строке (ZP2 при строке ZP1), — другой товар.
-  for (const w of pw) if (hasDigit(w) && !/^\d{3,}$/.test(w) && !lw.includes(w)) score -= 1.5;
-  if (l.brand && words(l.brand).every((w) => pw.includes(w))) score += 2;
+  // Код модели у товара, которого нет в строке (ZP2 при строке ZP1), — другой товар. Голые числа (6.5 мм, 30 шт, 0.55) —
+  // размеры и количества: совпали — плюс, нет — ничего.
+  for (const w of pw) if (isCode(w) && !lw.includes(w)) score -= 1.5;
+  if (sameBrand(l, p, pw)) score += 2;
+  const titleWords = words(p.title);
+  if (sameKind(l, titleWords)) score += 1.5;
   const colors = colorStems(l);
   if (colors.length) {
-    const titleWords = words(p.title);
     if (stemIn(colors, titleWords)) score += 1;
     else if (stemIn(ALL_STEMS, titleWords) && p.variants.length === 0) score -= 1.5;
   }
@@ -93,6 +108,15 @@ export function candidatesOf(l: SourceLine, catalog: CatalogItem[], limit = 8): 
     .filter((c) => c.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
+}
+
+/** Короткий список ИИ («одно из этих») как кандидаты строки: в его порядке, у каждого — вариант, похожий на строку. */
+export function shortList(l: SourceLine, productIds: string[], catalog: CatalogItem[]): Candidate[] {
+  const byId = new Map(catalog.map((p) => [p.id, p]));
+  return productIds.flatMap((id, i) => {
+    const p = byId.get(id);
+    return p ? [{ productId: p.id, variantId: pickVariant(l, p), score: productIds.length - i, ai: true }] : [];
+  });
 }
 
 /** Уверенный поиск: явный лидер, с вариантом, если они у товара есть. */
