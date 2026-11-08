@@ -39,10 +39,10 @@ export function UsersDesktopTable({
             <th>Язык</th>
             <SortableTh label="Заказы" col="ordersCount" {...{ sortBy, sortDir, toggleSort }} />
             <SortableTh label="Потрачено" col="totalSpentMinor" {...{ sortBy, sortDir, toggleSort }} />
-            {/* From 1280 px: on a 1024 laptop the extra column pushes the table past the edge. */}
+            {/* From 1280 px: on a 1024 laptop the extra columns push the table past the edge. */}
             <th className="hidden xl:table-cell">Последний заказ</th>
             <th>Статус</th>
-            <SortableTh label="Регистрация" col="createdAt" {...{ sortBy, sortDir, toggleSort }} />
+            <SortableTh label="Регистрация" col="createdAt" className="hidden xl:table-cell" {...{ sortBy, sortDir, toggleSort }} />
             <SortableTh label="Был(а)" col="lastSeenAt" {...{ sortBy, sortDir, toggleSort }} />
           </tr>
         </thead>
@@ -100,7 +100,7 @@ function UserTableRow({ u, onOpen }: { u: UserCardDto; onOpen: () => void }) {
           </Badge>
         )}
       </td>
-      <td className="tabular whitespace-nowrap text-[var(--text-muted)]">{u.createdAt ? formatDateTime(u.createdAt) : "—"}</td>
+      <td className="tabular hidden whitespace-nowrap text-[var(--text-muted)] xl:table-cell">{u.createdAt ? formatDateTime(u.createdAt) : "—"}</td>
       <td className="whitespace-nowrap text-[var(--text-muted)]">{u.lastSeenAt ? timeAgo(u.lastSeenAt) : "—"}</td>
     </motion.tr>
   );

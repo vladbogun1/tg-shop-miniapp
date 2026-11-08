@@ -14,6 +14,7 @@ import { PackageSearch, Plus } from "lucide-react";
 import { useRef } from "react";
 import { Button } from "@shop/ui/admin-button";
 import { CardBatchButton, CardCompletionModal, ManualResumeBar } from "@/features/cards";
+import { productsWord } from "@/features/catalog";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -35,7 +36,7 @@ function Summary({ s }: { s: ProductsScreenState }) {
   const { count, units, valueMinor, out } = s.stockSummary;
   return (
     <p className="tabular mb-2 text-[12.5px] text-[var(--text-muted)]">
-      {count} товаров · {units} шт · {money(valueMinor)}
+      {productsWord(count)} в продаже · {units} шт · {money(valueMinor)}
       {out > 0 && (
         <>
           {" · "}

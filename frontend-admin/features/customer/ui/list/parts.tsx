@@ -30,16 +30,19 @@ export function SortableTh({
   sortBy,
   sortDir,
   toggleSort,
+  className,
 }: {
   label: string;
   col: UserSortBy;
+  /** E.g. `hidden xl:table-cell` for a column shown only on wide screens. */
+  className?: string;
   sortBy: UserSortBy;
   sortDir: SortDir;
   toggleSort: (c: UserSortBy) => void;
 }) {
   const active = sortBy === col;
   return (
-    <th aria-sort={active ? (sortDir === "asc" ? "ascending" : "descending") : undefined}>
+    <th className={className} aria-sort={active ? (sortDir === "asc" ? "ascending" : "descending") : undefined}>
       <button
         type="button"
         onClick={() => toggleSort(col)}
