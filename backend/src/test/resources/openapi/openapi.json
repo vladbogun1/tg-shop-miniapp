@@ -21,17 +21,6 @@
         },
         "type" : "object"
       },
-      "AcceptRequest" : {
-        "properties" : {
-          "items" : {
-            "items" : {
-              "$ref" : "#/components/schemas/AcceptItem"
-            },
-            "type" : "array"
-          }
-        },
-        "type" : "object"
-      },
       "AccessTokenResponse" : {
         "properties" : {
           "accessToken" : {
@@ -3734,6 +3723,89 @@
         },
         "type" : "object"
       },
+      "CardDraft" : {
+        "properties" : {
+          "brand" : {
+            "type" : "string"
+          },
+          "categoryId" : {
+            "type" : "string"
+          },
+          "categorySlug" : {
+            "type" : "string"
+          },
+          "conditionNote" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
+          "confidence" : {
+            "additionalProperties" : {
+              "format" : "int32",
+              "type" : "integer"
+            },
+            "type" : "object"
+          },
+          "description" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
+          "fieldSources" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
+          "notes" : {
+            "type" : "string"
+          },
+          "overall" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "photos" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "sources" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "specs" : {
+            "additionalProperties" : { },
+            "type" : "object"
+          },
+          "title" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          }
+        },
+        "required" : [
+          "brand",
+          "categoryId",
+          "categorySlug",
+          "conditionNote",
+          "confidence",
+          "description",
+          "fieldSources",
+          "notes",
+          "overall",
+          "photos",
+          "sources",
+          "specs",
+          "title"
+        ],
+        "type" : "object"
+      },
       "CardExportItem" : {
         "properties" : {
           "active" : {
@@ -5504,6 +5576,18 @@
         ],
         "type" : "object"
       },
+      "CreateRequest" : {
+        "properties" : {
+          "fileIds" : {
+            "items" : {
+              "format" : "int64",
+              "type" : "integer"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "CreateThreadRequest" : {
         "properties" : {
           "attachmentUrl" : {
@@ -6099,6 +6183,169 @@
         ],
         "type" : "object"
       },
+      "DraftDto" : {
+        "properties" : {
+          "batchId" : {
+            "format" : "int64",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "cards" : {
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/CardDraft"
+            },
+            "type" : "object"
+          },
+          "costMinor" : {
+            "format" : "int64",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "currency" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "doc" : {
+            "allOf" : [
+              {
+                "$ref" : "#/components/schemas/ExtractedDoc"
+              }
+            ],
+            "nullable" : true
+          },
+          "docNotes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "etaWeeks" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "failure" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "fxRate" : {
+            "nullable" : true,
+            "type" : "number"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "jobs" : {
+            "items" : {
+              "$ref" : "#/components/schemas/JobView"
+            },
+            "type" : "array"
+          },
+          "lineNotes" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
+          "preorderOpen" : {
+            "type" : "boolean"
+          },
+          "prices" : {
+            "additionalProperties" : {
+              "format" : "int64",
+              "type" : "integer"
+            },
+            "type" : "object"
+          },
+          "readyAt" : {
+            "format" : "date-time",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "rows" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ReviewRow"
+            },
+            "type" : "array"
+          },
+          "status" : {
+            "enum" : [
+              "RUNNING",
+              "READY",
+              "FAILED",
+              "ACCEPTED"
+            ],
+            "type" : "string"
+          },
+          "step" : {
+            "enum" : [
+              "READ",
+              "MATCH",
+              "CARDS",
+              "DONE"
+            ],
+            "type" : "string"
+          },
+          "stopped" : {
+            "type" : "boolean"
+          },
+          "supplierId" : {
+            "format" : "int64",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "supplierName" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "title" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "version" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "warnings" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [
+          "batchId",
+          "cards",
+          "costMinor",
+          "createdAt",
+          "currency",
+          "doc",
+          "docNotes",
+          "etaWeeks",
+          "failure",
+          "fxRate",
+          "id",
+          "jobs",
+          "lineNotes",
+          "preorderOpen",
+          "prices",
+          "readyAt",
+          "rows",
+          "status",
+          "step",
+          "stopped",
+          "supplierId",
+          "supplierName",
+          "title",
+          "version",
+          "warnings"
+        ],
+        "type" : "object"
+      },
       "DraftItemDto" : {
         "properties" : {
           "active" : {
@@ -6180,6 +6427,79 @@
           "stock",
           "title",
           "weight"
+        ],
+        "type" : "object"
+      },
+      "DraftSummary" : {
+        "properties" : {
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "failure" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "lines" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "newProducts" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "open" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "readyAt" : {
+            "format" : "date-time",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [
+              "RUNNING",
+              "READY",
+              "FAILED",
+              "ACCEPTED"
+            ],
+            "type" : "string"
+          },
+          "step" : {
+            "enum" : [
+              "READ",
+              "MATCH",
+              "CARDS",
+              "DONE"
+            ],
+            "type" : "string"
+          },
+          "title" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "createdAt",
+          "failure",
+          "id",
+          "lines",
+          "newProducts",
+          "open",
+          "readyAt",
+          "status",
+          "step",
+          "title",
+          "updatedAt"
         ],
         "type" : "object"
       },
@@ -6601,6 +6921,41 @@
           "sourceHash",
           "status",
           "text"
+        ],
+        "type" : "object"
+      },
+      "ExtractedDoc" : {
+        "properties" : {
+          "currency" : {
+            "type" : "string"
+          },
+          "docDate" : {
+            "type" : "string"
+          },
+          "docNo" : {
+            "type" : "string"
+          },
+          "lines" : {
+            "items" : {
+              "$ref" : "#/components/schemas/SourceLine"
+            },
+            "type" : "array"
+          },
+          "supplier" : {
+            "type" : "string"
+          },
+          "total" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        },
+        "required" : [
+          "currency",
+          "docDate",
+          "docNo",
+          "lines",
+          "supplier",
+          "total"
         ],
         "type" : "object"
       },
@@ -8041,6 +8396,51 @@
         },
         "type" : "object"
       },
+      "JobView" : {
+        "properties" : {
+          "costMinor" : {
+            "format" : "int64",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "error" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "jobId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "kind" : {
+            "enum" : [
+              "READ",
+              "MATCH",
+              "CARD"
+            ],
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "step" : {
+            "nullable" : true,
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "costMinor",
+          "error",
+          "jobId",
+          "kind",
+          "label",
+          "status",
+          "step"
+        ],
+        "type" : "object"
+      },
       "JournalActivityFeedRow" : {
         "properties" : {
           "chatId" : {
@@ -8282,6 +8682,33 @@
           "maxUnitsPerOrder",
           "maxUnpaidOrders",
           "orderCooldownSec"
+        ],
+        "type" : "object"
+      },
+      "LineDecision" : {
+        "properties" : {
+          "by" : {
+            "type" : "string"
+          },
+          "draft" : {
+            "$ref" : "#/components/schemas/NewProductDraft"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "productId" : {
+            "type" : "string"
+          },
+          "variantId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "by",
+          "draft",
+          "kind",
+          "productId",
+          "variantId"
         ],
         "type" : "object"
       },
@@ -9586,6 +10013,33 @@
           "text",
           "title",
           "variantName"
+        ],
+        "type" : "object"
+      },
+      "NewProductDraft" : {
+        "properties" : {
+          "brand" : {
+            "type" : "string"
+          },
+          "categoryId" : {
+            "type" : "string"
+          },
+          "source" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "variant" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "brand",
+          "categoryId",
+          "source",
+          "title",
+          "variant"
         ],
         "type" : "object"
       },
@@ -11445,6 +11899,52 @@
             "type" : "string"
           }
         },
+        "type" : "object"
+      },
+      "ProcurementAcceptRequest" : {
+        "properties" : {
+          "version" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ProcurementAcceptResult" : {
+        "properties" : {
+          "batchId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "newProducts" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "batchId",
+          "newProducts"
+        ],
+        "type" : "object"
+      },
+      "ProcurementCandidate" : {
+        "properties" : {
+          "productId" : {
+            "type" : "string"
+          },
+          "score" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "variantId" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "productId",
+          "score",
+          "variantId"
+        ],
         "type" : "object"
       },
       "Product" : {
@@ -13311,6 +13811,28 @@
         ],
         "type" : "object"
       },
+      "ReviewRow" : {
+        "properties" : {
+          "candidates" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ProcurementCandidate"
+            },
+            "type" : "array"
+          },
+          "decision" : {
+            "$ref" : "#/components/schemas/LineDecision"
+          },
+          "line" : {
+            "$ref" : "#/components/schemas/SourceLine"
+          }
+        },
+        "required" : [
+          "candidates",
+          "decision",
+          "line"
+        ],
+        "type" : "object"
+      },
       "ReviewSummary" : {
         "properties" : {
           "avg" : {
@@ -13335,6 +13857,57 @@
           "count",
           "distribution"
         ],
+        "type" : "object"
+      },
+      "SaveRequest" : {
+        "properties" : {
+          "currency" : {
+            "type" : "string"
+          },
+          "decisions" : {
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/LineDecision"
+            },
+            "type" : "object"
+          },
+          "descriptions" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
+          "etaWeeks" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "fxRate" : {
+            "type" : "number"
+          },
+          "preorderOpen" : {
+            "type" : "boolean"
+          },
+          "prices" : {
+            "additionalProperties" : {
+              "format" : "int64",
+              "type" : "integer"
+            },
+            "type" : "object"
+          },
+          "supplierId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "supplierName" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "version" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
         "type" : "object"
       },
       "SchemeRow" : {
@@ -13918,6 +14491,60 @@
           "sourceHash",
           "translationsApplied",
           "updated"
+        ],
+        "type" : "object"
+      },
+      "SourceLine" : {
+        "properties" : {
+          "brand" : {
+            "type" : "string"
+          },
+          "color" : {
+            "type" : "string"
+          },
+          "en" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "lineTotal" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "model" : {
+            "type" : "string"
+          },
+          "notes" : {
+            "type" : "string"
+          },
+          "qty" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "text" : {
+            "type" : "string"
+          },
+          "unitPrice" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "variant" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "brand",
+          "color",
+          "en",
+          "id",
+          "lineTotal",
+          "model",
+          "notes",
+          "qty",
+          "text",
+          "unitPrice",
+          "variant"
         ],
         "type" : "object"
       },
@@ -15501,6 +16128,17 @@
         "required" : [
           "code"
         ],
+        "type" : "object"
+      },
+      "TranslationAcceptRequest" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AcceptItem"
+            },
+            "type" : "array"
+          }
+        },
         "type" : "object"
       },
       "TranslationAcceptResult" : {
@@ -26253,6 +26891,300 @@
         ]
       }
     },
+    "/api/admin/supply-drafts" : {
+      "get" : {
+        "operationId" : "AdminSupplyDraftController_list",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/DraftSummary"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Open supply drafts (own; all of them with the finance right)",
+        "tags" : [
+          "Admin Preorders"
+        ]
+      },
+      "post" : {
+        "operationId" : "AdminSupplyDraftController_create",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DraftDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Create a draft from invoice pictures and start the AI",
+        "tags" : [
+          "Admin Preorders"
+        ]
+      }
+    },
+    "/api/admin/supply-drafts/{id}" : {
+      "delete" : {
+        "operationId" : "AdminSupplyDraftController_delete",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Delete a draft that did not become a batch",
+        "tags" : [
+          "Admin Preorders"
+        ]
+      },
+      "get" : {
+        "operationId" : "AdminSupplyDraftController_get",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DraftDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "A draft with its AI progress",
+        "tags" : [
+          "Admin Preorders"
+        ]
+      },
+      "put" : {
+        "operationId" : "AdminSupplyDraftController_save",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SaveRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DraftDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Save the corrections of the check screen (409 DRAFT_CHANGED for an older version)",
+        "tags" : [
+          "Admin Preorders"
+        ]
+      }
+    },
+    "/api/admin/supply-drafts/{id}/accept" : {
+      "post" : {
+        "operationId" : "AdminSupplyDraftController_accept",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProcurementAcceptRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProcurementAcceptResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Create the supplier, new products, the batch and the supplier memory",
+        "tags" : [
+          "Admin Preorders"
+        ]
+      }
+    },
+    "/api/admin/supply-drafts/{id}/retry" : {
+      "post" : {
+        "operationId" : "AdminSupplyDraftController_retry",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DraftDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Read again / let the AI finish what is missing",
+        "tags" : [
+          "Admin Preorders"
+        ]
+      }
+    },
+    "/api/admin/supply-drafts/{id}/stop" : {
+      "post" : {
+        "operationId" : "AdminSupplyDraftController_stop",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DraftDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Stop the AI of a running draft",
+        "tags" : [
+          "Admin Preorders"
+        ]
+      }
+    },
     "/api/admin/support/threads" : {
       "get" : {
         "operationId" : "AdminSupportController_list",
@@ -26793,7 +27725,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/AcceptRequest"
+                "$ref" : "#/components/schemas/TranslationAcceptRequest"
               }
             }
           },

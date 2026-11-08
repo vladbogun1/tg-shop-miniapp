@@ -64,7 +64,7 @@ class SupplyPromptsInSyncTest {
     private static String golden(String name) throws IOException {
         try (InputStream in = SupplyPromptsInSyncTest.class.getResourceAsStream("/supplyai/" + name)) {
             assertThat(in).as(name).isNotNull();
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8).replace("\r\n", "\n");
         }
     }
 }

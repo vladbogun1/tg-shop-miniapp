@@ -7,6 +7,7 @@ import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.security.AdminAccess;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -18,6 +19,9 @@ import java.util.Optional;
  * object — but the admin is named, not read from a request. A task already running for the object is returned as it
  * is (a tick that repeats after a crash finds its own task, it does not start a second one). The pictures, if any, are
  * given in the same transaction. A refusal is the usual {@link DomainException}: the caller decides what it means.
+ * <p>
+ * The start is its own transaction: a refusal (a limit, the feature off) must not doom the caller's transaction, which
+ * goes on with a warning; and a task started for a move that later rolls back is found again by its object next time.
  */
 @Service
 public class AiServerJobs {
@@ -44,7 +48,7 @@ public class AiServerJobs {
     }
 
     /** Starts (or finds running) the task; returns its id. {@code fileIds} — pictures to give it, or an empty list. */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public long start(long adminId, AiJobs.CreateJob req, List<Long> fileIds) {
         AiJobs.validate(req, null);
         Optional<AiJobDto> running = reads.activeFor(req.subjectType(), req.subjectId(), false);

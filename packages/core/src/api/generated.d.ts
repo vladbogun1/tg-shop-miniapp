@@ -3738,6 +3738,94 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/supply-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Open supply drafts (own; all of them with the finance right) */
+        get: operations["AdminSupplyDraftController_list"];
+        put?: never;
+        /** Create a draft from invoice pictures and start the AI */
+        post: operations["AdminSupplyDraftController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/supply-drafts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A draft with its AI progress */
+        get: operations["AdminSupplyDraftController_get"];
+        /** Save the corrections of the check screen (409 DRAFT_CHANGED for an older version) */
+        put: operations["AdminSupplyDraftController_save"];
+        post?: never;
+        /** Delete a draft that did not become a batch */
+        delete: operations["AdminSupplyDraftController_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/supply-drafts/{id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create the supplier, new products, the batch and the supplier memory */
+        post: operations["AdminSupplyDraftController_accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/supply-drafts/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read again / let the AI finish what is missing */
+        post: operations["AdminSupplyDraftController_retry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/supply-drafts/{id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop the AI of a running draft */
+        post: operations["AdminSupplyDraftController_stop"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/support/threads": {
         parameters: {
             query?: never;
@@ -5459,9 +5547,6 @@ export interface components {
             locale?: string;
             sourceHash?: string;
         };
-        AcceptRequest: {
-            items?: components["schemas"]["AcceptItem"][];
-        };
         AccessTokenResponse: {
             accessToken: string;
         };
@@ -6558,6 +6643,34 @@ export interface components {
                 [key: string]: components["schemas"]["CardTranslation"];
             };
         };
+        CardDraft: {
+            brand: string;
+            categoryId: string;
+            categorySlug: string;
+            conditionNote: {
+                [key: string]: string;
+            };
+            confidence: {
+                [key: string]: number;
+            };
+            description: {
+                [key: string]: string;
+            };
+            fieldSources: {
+                [key: string]: string;
+            };
+            notes: string;
+            /** Format: int32 */
+            overall: number;
+            photos: string[];
+            sources: string[];
+            specs: {
+                [key: string]: unknown;
+            };
+            title: {
+                [key: string]: string;
+            };
+        };
         CardExportItem: {
             active: boolean;
             brand: string;
@@ -7091,6 +7204,9 @@ export interface components {
             amountDueMinor: number;
             orderId: string;
         };
+        CreateRequest: {
+            fileIds?: number[];
+        };
         CreateThreadRequest: {
             attachmentUrl?: string;
             fileName?: string;
@@ -7271,6 +7387,49 @@ export interface components {
             totalMinor: number;
             trackingNumber: string | null;
         };
+        DraftDto: {
+            /** Format: int64 */
+            batchId: number | null;
+            cards: {
+                [key: string]: components["schemas"]["CardDraft"];
+            };
+            /** Format: int64 */
+            costMinor: number | null;
+            /** Format: date-time */
+            createdAt: string;
+            currency: string | null;
+            doc: components["schemas"]["ExtractedDoc"] | null;
+            docNotes: string[];
+            /** Format: int32 */
+            etaWeeks: number;
+            failure: string | null;
+            fxRate: number | null;
+            /** Format: int64 */
+            id: number;
+            jobs: components["schemas"]["JobView"][];
+            lineNotes: {
+                [key: string]: string;
+            };
+            preorderOpen: boolean;
+            prices: {
+                [key: string]: number;
+            };
+            /** Format: date-time */
+            readyAt: string | null;
+            rows: components["schemas"]["ReviewRow"][];
+            /** @enum {string} */
+            status: "RUNNING" | "READY" | "FAILED" | "ACCEPTED";
+            /** @enum {string} */
+            step: "READ" | "MATCH" | "CARDS" | "DONE";
+            stopped: boolean;
+            /** Format: int64 */
+            supplierId: number | null;
+            supplierName: string | null;
+            title: string | null;
+            /** Format: int64 */
+            version: number;
+            warnings: string[];
+        };
         DraftItemDto: {
             active: boolean;
             category: string | null;
@@ -7294,6 +7453,28 @@ export interface components {
             title: string;
             /** Format: int32 */
             weight: number;
+        };
+        DraftSummary: {
+            /** Format: date-time */
+            createdAt: string;
+            failure: string | null;
+            /** Format: int64 */
+            id: number;
+            /** Format: int32 */
+            lines: number;
+            /** Format: int32 */
+            newProducts: number;
+            /** Format: int32 */
+            open: number;
+            /** Format: date-time */
+            readyAt: string | null;
+            /** @enum {string} */
+            status: "RUNNING" | "READY" | "FAILED" | "ACCEPTED";
+            /** @enum {string} */
+            step: "READ" | "MATCH" | "CARDS" | "DONE";
+            title: string | null;
+            /** Format: date-time */
+            updatedAt: string;
         };
         Dto: {
             /** Format: int32 */
@@ -7422,6 +7603,15 @@ export interface components {
             sourceHash: string;
             status: string;
             text: string;
+        };
+        ExtractedDoc: {
+            currency: string;
+            docDate: string;
+            docNo: string;
+            lines: components["schemas"]["SourceLine"][];
+            supplier: string;
+            /** Format: double */
+            total: number;
         };
         FacetBucketDto: {
             id: string;
@@ -7858,6 +8048,18 @@ export interface components {
             unitPriceFx?: number;
             variantId?: string;
         };
+        JobView: {
+            /** Format: int64 */
+            costMinor: number | null;
+            error: string | null;
+            /** Format: int64 */
+            jobId: number;
+            /** @enum {string} */
+            kind: "READ" | "MATCH" | "CARD";
+            label: string;
+            status: string;
+            step: string | null;
+        };
         JournalActivityFeedRow: {
             /** Format: int64 */
             chatId: number | null;
@@ -7927,6 +8129,13 @@ export interface components {
             maxUnpaidOrders: number;
             /** Format: int32 */
             orderCooldownSec: number;
+        };
+        LineDecision: {
+            by: string;
+            draft: components["schemas"]["NewProductDraft"];
+            kind: string;
+            productId: string;
+            variantId: string;
         };
         LineDto: {
             eta: components["schemas"]["EtaDto"];
@@ -8330,6 +8539,13 @@ export interface components {
             text: string;
             title: string;
             variantName: string | null;
+        };
+        NewProductDraft: {
+            brand: string;
+            categoryId: string;
+            source: string;
+            title: string;
+            variant: string;
         };
         NoEdits: {
             /** Format: int32 */
@@ -8857,6 +9073,22 @@ export interface components {
             /** Format: int32 */
             qty?: number;
             variantId?: string;
+        };
+        ProcurementAcceptRequest: {
+            /** Format: int64 */
+            version?: number;
+        };
+        ProcurementAcceptResult: {
+            /** Format: int64 */
+            batchId: number;
+            /** Format: int32 */
+            newProducts: number;
+        };
+        ProcurementCandidate: {
+            productId: string;
+            /** Format: double */
+            score: number;
+            variantId: string;
         };
         Product: {
             productId?: string;
@@ -9430,12 +9662,39 @@ export interface components {
             /** Format: int32 */
             totalPages: number;
         };
+        ReviewRow: {
+            candidates: components["schemas"]["ProcurementCandidate"][];
+            decision: components["schemas"]["LineDecision"];
+            line: components["schemas"]["SourceLine"];
+        };
         ReviewSummary: {
             /** Format: double */
             avg: number | null;
             /** Format: int64 */
             count: number;
             distribution: number[];
+        };
+        SaveRequest: {
+            currency?: string;
+            decisions?: {
+                [key: string]: components["schemas"]["LineDecision"];
+            };
+            descriptions?: {
+                [key: string]: string;
+            };
+            /** Format: int32 */
+            etaWeeks?: number;
+            fxRate?: number;
+            preorderOpen?: boolean;
+            prices?: {
+                [key: string]: number;
+            };
+            /** Format: int64 */
+            supplierId?: number;
+            supplierName?: string;
+            title?: string;
+            /** Format: int64 */
+            version?: number;
         };
         SchemeRow: {
             /** Format: int64 */
@@ -9614,6 +9873,22 @@ export interface components {
             translationsApplied: number;
             /** Format: int32 */
             updated: number;
+        };
+        SourceLine: {
+            brand: string;
+            color: string;
+            en: string;
+            id: string;
+            /** Format: double */
+            lineTotal: number;
+            model: string;
+            notes: string;
+            /** Format: int32 */
+            qty: number;
+            text: string;
+            /** Format: double */
+            unitPrice: number;
+            variant: string;
         };
         SourceRef: {
             entityId?: string;
@@ -10088,6 +10363,9 @@ export interface components {
         };
         TotpCodeRequest: {
             code: string;
+        };
+        TranslationAcceptRequest: {
+            items?: components["schemas"]["AcceptItem"][];
         };
         TranslationAcceptResult: {
             /** Format: int32 */
@@ -16153,6 +16431,188 @@ export interface operations {
             };
         };
     };
+    AdminSupplyDraftController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftSummary"][];
+                };
+            };
+        };
+    };
+    AdminSupplyDraftController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftDto"];
+                };
+            };
+        };
+    };
+    AdminSupplyDraftController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftDto"];
+                };
+            };
+        };
+    };
+    AdminSupplyDraftController_save: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftDto"];
+                };
+            };
+        };
+    };
+    AdminSupplyDraftController_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminSupplyDraftController_accept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProcurementAcceptRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProcurementAcceptResult"];
+                };
+            };
+        };
+    };
+    AdminSupplyDraftController_retry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftDto"];
+                };
+            };
+        };
+    };
+    AdminSupplyDraftController_stop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftDto"];
+                };
+            };
+        };
+    };
     AdminSupportController_list: {
         parameters: {
             query?: {
@@ -16463,7 +16923,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AcceptRequest"];
+                "application/json": components["schemas"]["TranslationAcceptRequest"];
             };
         };
         responses: {
