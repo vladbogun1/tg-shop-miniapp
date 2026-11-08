@@ -3,13 +3,13 @@ import { LOCALE_TAG, LOCALES, type Locale } from "@shop/core/i18n";
 import { localePath, makeT } from "@/i18n";
 
 import { BOT_URL, OWNER_TELEGRAM, SELLER, SITE_URL } from "@/lib/config";
-import { SELLER_LOCALITY } from "@/lib/seller.data";
+import { SELLER_LOCALITY, SELLER_POSTAL_CODE, SELLER_STREET } from "@/lib/seller.data";
 import { DEFAULT_OG_IMAGE, LOGO_URL, ORG_ID, SITE_NAME, WEBSITE_ID } from "./meta";
 import { returnPolicyLd } from "./policy-ld";
 
 /**
  * The store (OnlineStore ⊂ Organization) and the website, for the home page. Contacts are the ones
- * the site really shows (contacts page and footer): phone, e-mail, Telegram, pickup city Kharkiv.
+ * the site really shows (contacts page and footer): phone, e-mail, Telegram, pickup address in Kharkiv.
  */
 export function storeJsonLd(locale: Locale) {
   const t = makeT(locale);
@@ -28,7 +28,13 @@ export function storeJsonLd(locale: Locale) {
         telephone: SELLER.phone,
         email: SELLER.email,
         sameAs: [BOT_URL],
-        address: { "@type": "PostalAddress", addressLocality: SELLER_LOCALITY[locale], addressCountry: "UA" },
+        address: {
+          "@type": "PostalAddress",
+          streetAddress: SELLER_STREET[locale],
+          addressLocality: SELLER_LOCALITY[locale],
+          postalCode: SELLER_POSTAL_CODE,
+          addressCountry: "UA",
+        },
         areaServed: { "@type": "Country", name: "Ukraine" },
         contactPoint: {
           "@type": "ContactPoint",

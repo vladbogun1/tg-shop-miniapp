@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Breadcrumbs } from "@/features/layout/view/Breadcrumbs";
 import { localePath, makeT } from "@/i18n";
 import { BOT_URL, OWNER_TELEGRAM, SELLER } from "@/lib/config";
+import { SELLER_LOCALITY, SELLER_STREET } from "@/lib/seller.data";
 import { localeOf, type LocaleParams } from "@/lib/route";
 import { pageMeta } from "@/features/seo/server";
 
@@ -46,7 +47,11 @@ export default async function ContactsPage({ params }: { params: LocaleParams })
       ),
     },
     { icon: AtSign, label: t("contacts.owner"), value: ownerLink },
-    { icon: MapPin, label: t("contacts.pickup"), value: t("contacts.pickupValue") },
+    {
+      icon: MapPin,
+      label: t("contacts.pickup"),
+      value: t("contacts.pickupValue", { address: `${SELLER_LOCALITY[locale]}, ${SELLER_STREET[locale]}` }),
+    },
     { icon: Clock, label: t("contacts.hours"), value: t("contacts.hoursValue") },
     { icon: User, label: t("contacts.seller"), value: t("contacts.sellerValue", { taxId: SELLER.taxId }) },
   ];

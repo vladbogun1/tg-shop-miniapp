@@ -95,7 +95,7 @@ export const uk: RuDictionary = {
   "contacts.phone": "Телефон",
   "contacts.email": "E-mail",
   "contacts.owner": "Зв'язок із власником",
-  "contacts.pickupValue": "Харків — адресу уточнюйте в чаті з менеджером",
+  "contacts.pickupValue": "{address} — час самовивозу узгоджуйте в чаті з менеджером",
   "contacts.hoursValue": "8:00–20:00",
   "contacts.pickup": "Самовивіз",
   "contacts.hours": "Години роботи",

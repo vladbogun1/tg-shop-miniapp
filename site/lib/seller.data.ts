@@ -13,5 +13,9 @@ export const SELLER = {
   email: "chisetup.com.ua@gmail.com",
 };
 
+/** Улица точки самовывоза (как в Google Merchant Center и профиле компании): «Контакты» и PostalAddress. */
+export const SELLER_STREET: Record<Locale, string> = { uk: "вул. Байрона, 167г", ru: "ул. Байрона, 167г", en: "167H Bairona St" };
+export const SELLER_POSTAL_CODE = "61000";
+
 /** Город продавца по языку страницы — для PostalAddress в JSON-LD. */
 export const SELLER_LOCALITY: Record<Locale, string> = { uk: "Харків", ru: "Харьков", en: "Kharkiv" };

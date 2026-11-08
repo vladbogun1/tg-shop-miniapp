@@ -110,7 +110,7 @@ export const ru = {
   "contacts.phone": "Телефон",
   "contacts.email": "E-mail",
   "contacts.owner": "Связь с владельцем",
-  "contacts.pickupValue": "Харьков — адрес уточняйте в чате с менеджером",
+  "contacts.pickupValue": "{address} — время самовывоза согласуйте в чате с менеджером",
   "contacts.hoursValue": "8:00–20:00",
   "contacts.pickup": "Самовывоз",
   "contacts.hours": "Часы работы",

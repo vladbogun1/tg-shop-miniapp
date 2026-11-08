@@ -95,7 +95,7 @@ export const en: RuDictionary = {
   "contacts.phone": "Phone",
   "contacts.email": "E-mail",
   "contacts.owner": "Contact the owner",
-  "contacts.pickupValue": "Kharkiv — ask the manager in the order chat for the address",
+  "contacts.pickupValue": "{address} — agree on the pickup time with the manager in the order chat",
   "contacts.hoursValue": "8:00–20:00",
   "contacts.pickup": "Pickup point",
   "contacts.hours": "Opening hours",
