@@ -3171,6 +3171,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/products/by-ids": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Products by id (comma-separated, at most 200), archived ones too; unknown ids are skipped */
+        get: operations["AdminProductsByIdsController_byIds"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/products/{id}": {
         parameters: {
             query?: never;
@@ -15483,6 +15500,28 @@ export interface operations {
     AdminProductController_archived: {
         parameters: {
             query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdminProductDto"][];
+                };
+            };
+        };
+    };
+    AdminProductsByIdsController_byIds: {
+        parameters: {
+            query: {
+                ids: string[];
+            };
             header?: never;
             path?: never;
             cookie?: never;

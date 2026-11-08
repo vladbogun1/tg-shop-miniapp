@@ -22,6 +22,7 @@ public enum CatalogError implements ErrorCode {
     BRAND_NOT_FOUND_FOR_PRODUCT,
     INVALID_CONDITION,
     INVALID_ID,
+    TOO_MANY_IDS,
     BRAND_NAME_REQUIRED,
     BRAND_EXISTS_OR_ALIAS,
     BRAND_EXISTS,

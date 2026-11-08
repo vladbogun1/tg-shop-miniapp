@@ -23,6 +23,10 @@ public interface ProductRepository extends JpaRepository<Product, byte[]> {
     @Query("select p from Product p where p.active = true and p.archived = false order by p.createdAt desc")
     List<Product> findAllActive();
 
+    /** Products by id, archived ones too (a supply's rows, the gift field). */
+    @Query("select p from Product p where p.id in :ids")
+    List<Product> findAllByIdIn(@Param("ids") Collection<byte[]> ids);
+
     @Query("select p from Product p where p.id = :id")
     Optional<Product> findByIdWithDetails(@Param("id") byte[] id);
 

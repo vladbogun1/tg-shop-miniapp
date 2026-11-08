@@ -25304,6 +25304,48 @@
         ]
       }
     },
+    "/api/admin/products/by-ids" : {
+      "get" : {
+        "operationId" : "AdminProductsByIdsController_byIds",
+        "parameters" : [
+          {
+            "in" : "query",
+            "name" : "ids",
+            "required" : true,
+            "schema" : {
+              "items" : {
+                "type" : "string"
+              },
+              "type" : "array"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/AdminProductDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Products by id (comma-separated, at most 200), archived ones too; unknown ids are skipped",
+        "tags" : [
+          "Admin Products"
+        ]
+      }
+    },
     "/api/admin/products/{id}" : {
       "patch" : {
         "operationId" : "AdminProductController_update",
