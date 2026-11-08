@@ -21,6 +21,17 @@
         },
         "type" : "object"
       },
+      "AcceptRequest" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AcceptItem"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "AccessTokenResponse" : {
         "properties" : {
           "accessToken" : {
@@ -5576,18 +5587,6 @@
         ],
         "type" : "object"
       },
-      "CreateRequest" : {
-        "properties" : {
-          "fileIds" : {
-            "items" : {
-              "format" : "int64",
-              "type" : "integer"
-            },
-            "type" : "array"
-          }
-        },
-        "type" : "object"
-      },
       "CreateThreadRequest" : {
         "properties" : {
           "attachmentUrl" : {
@@ -6183,6 +6182,44 @@
         ],
         "type" : "object"
       },
+      "DraftAcceptRequest" : {
+        "properties" : {
+          "version" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "DraftAcceptResult" : {
+        "properties" : {
+          "batchId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "newProducts" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "batchId",
+          "newProducts"
+        ],
+        "type" : "object"
+      },
+      "DraftCreateRequest" : {
+        "properties" : {
+          "fileIds" : {
+            "items" : {
+              "format" : "int64",
+              "type" : "integer"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "DraftDto" : {
         "properties" : {
           "batchId" : {
@@ -6241,7 +6278,7 @@
           },
           "jobs" : {
             "items" : {
-              "$ref" : "#/components/schemas/JobView"
+              "$ref" : "#/components/schemas/DraftJobView"
             },
             "type" : "array"
           },
@@ -6428,6 +6465,107 @@
           "title",
           "weight"
         ],
+        "type" : "object"
+      },
+      "DraftJobView" : {
+        "properties" : {
+          "costMinor" : {
+            "format" : "int64",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "error" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "jobId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "key" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "kind" : {
+            "enum" : [
+              "READ",
+              "MATCH",
+              "CARD"
+            ],
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "step" : {
+            "nullable" : true,
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "costMinor",
+          "error",
+          "jobId",
+          "key",
+          "kind",
+          "label",
+          "status",
+          "step"
+        ],
+        "type" : "object"
+      },
+      "DraftSaveRequest" : {
+        "properties" : {
+          "currency" : {
+            "type" : "string"
+          },
+          "decisions" : {
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/LineDecision"
+            },
+            "type" : "object"
+          },
+          "descriptions" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
+          "etaWeeks" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "fxRate" : {
+            "type" : "number"
+          },
+          "preorderOpen" : {
+            "type" : "boolean"
+          },
+          "prices" : {
+            "additionalProperties" : {
+              "format" : "int64",
+              "type" : "integer"
+            },
+            "type" : "object"
+          },
+          "supplierId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "supplierName" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "version" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
         "type" : "object"
       },
       "DraftSummary" : {
@@ -8394,51 +8532,6 @@
             "type" : "string"
           }
         },
-        "type" : "object"
-      },
-      "JobView" : {
-        "properties" : {
-          "costMinor" : {
-            "format" : "int64",
-            "nullable" : true,
-            "type" : "integer"
-          },
-          "error" : {
-            "nullable" : true,
-            "type" : "string"
-          },
-          "jobId" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "kind" : {
-            "enum" : [
-              "READ",
-              "MATCH",
-              "CARD"
-            ],
-            "type" : "string"
-          },
-          "label" : {
-            "type" : "string"
-          },
-          "status" : {
-            "type" : "string"
-          },
-          "step" : {
-            "nullable" : true,
-            "type" : "string"
-          }
-        },
-        "required" : [
-          "costMinor",
-          "error",
-          "jobId",
-          "kind",
-          "label",
-          "status",
-          "step"
-        ],
         "type" : "object"
       },
       "JournalActivityFeedRow" : {
@@ -11901,32 +11994,6 @@
         },
         "type" : "object"
       },
-      "ProcurementAcceptRequest" : {
-        "properties" : {
-          "version" : {
-            "format" : "int64",
-            "type" : "integer"
-          }
-        },
-        "type" : "object"
-      },
-      "ProcurementAcceptResult" : {
-        "properties" : {
-          "batchId" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "newProducts" : {
-            "format" : "int32",
-            "type" : "integer"
-          }
-        },
-        "required" : [
-          "batchId",
-          "newProducts"
-        ],
-        "type" : "object"
-      },
       "ProcurementCandidate" : {
         "properties" : {
           "productId" : {
@@ -13857,57 +13924,6 @@
           "count",
           "distribution"
         ],
-        "type" : "object"
-      },
-      "SaveRequest" : {
-        "properties" : {
-          "currency" : {
-            "type" : "string"
-          },
-          "decisions" : {
-            "additionalProperties" : {
-              "$ref" : "#/components/schemas/LineDecision"
-            },
-            "type" : "object"
-          },
-          "descriptions" : {
-            "additionalProperties" : {
-              "type" : "string"
-            },
-            "type" : "object"
-          },
-          "etaWeeks" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "fxRate" : {
-            "type" : "number"
-          },
-          "preorderOpen" : {
-            "type" : "boolean"
-          },
-          "prices" : {
-            "additionalProperties" : {
-              "format" : "int64",
-              "type" : "integer"
-            },
-            "type" : "object"
-          },
-          "supplierId" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "supplierName" : {
-            "type" : "string"
-          },
-          "title" : {
-            "type" : "string"
-          },
-          "version" : {
-            "format" : "int64",
-            "type" : "integer"
-          }
-        },
         "type" : "object"
       },
       "SchemeRow" : {
@@ -16128,17 +16144,6 @@
         "required" : [
           "code"
         ],
-        "type" : "object"
-      },
-      "TranslationAcceptRequest" : {
-        "properties" : {
-          "items" : {
-            "items" : {
-              "$ref" : "#/components/schemas/AcceptItem"
-            },
-            "type" : "array"
-          }
-        },
         "type" : "object"
       },
       "TranslationAcceptResult" : {
@@ -26925,7 +26930,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/CreateRequest"
+                "$ref" : "#/components/schemas/DraftCreateRequest"
               }
             }
           },
@@ -27035,7 +27040,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/SaveRequest"
+                "$ref" : "#/components/schemas/DraftSaveRequest"
               }
             }
           },
@@ -27082,7 +27087,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/ProcurementAcceptRequest"
+                "$ref" : "#/components/schemas/DraftAcceptRequest"
               }
             }
           },
@@ -27093,7 +27098,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ProcurementAcceptResult"
+                  "$ref" : "#/components/schemas/DraftAcceptResult"
                 }
               }
             },
@@ -27725,7 +27730,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/TranslationAcceptRequest"
+                "$ref" : "#/components/schemas/AcceptRequest"
               }
             }
           },

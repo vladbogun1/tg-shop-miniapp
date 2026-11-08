@@ -20,7 +20,7 @@ public final class SupplyDraftDtos {
     }
 
     /** The pictures of the invoice (ids from {@code POST /api/admin/ai/files}). */
-    public record CreateRequest(List<Long> fileIds) {
+    public record DraftCreateRequest(List<Long> fileIds) {
     }
 
     /** A row of the list «Черновики ИИ». */
@@ -33,10 +33,11 @@ public final class SupplyDraftDtos {
      * One AI task of the draft as the progress shows it.
      *
      * @param kind  READ (the invoice), MATCH (the open lines), CARD (a new product's card)
+     * @param key   CARD: the new product it is for (the same key as in {@code cards} and {@code prices})
      * @param step  what a running task does now («Ищу: …»)
      * @param costMinor kopecks, only for the finance right
      */
-    public record JobView(@Schema(allowableValues = {"READ", "MATCH", "CARD"}) String kind, String label, long jobId,
+    public record DraftJobView(@Schema(allowableValues = {"READ", "MATCH", "CARD"}) String kind, @Nullable String key, String label, long jobId,
                           String status, @Nullable String step, @Nullable String error, @Nullable Long costMinor) {
     }
 
@@ -50,7 +51,7 @@ public final class SupplyDraftDtos {
                            Map<String, String> lineNotes, List<String> warnings, Map<String, CardDraft> cards,
                            Map<String, Long> prices, boolean stopped, @Nullable Long supplierId,
                            @Nullable String supplierName, @Nullable String currency, @Nullable BigDecimal fxRate,
-                           int etaWeeks, boolean preorderOpen, List<JobView> jobs, @Nullable Long costMinor) {
+                           int etaWeeks, boolean preorderOpen, List<DraftJobView> jobs, @Nullable Long costMinor) {
     }
 
     /**
@@ -63,16 +64,16 @@ public final class SupplyDraftDtos {
      * @param descriptions new product key → the Russian description as the admin edited it (the AI translations of it
      *                     are dropped: the translation step makes new ones)
      */
-    public record SaveRequest(long version, @Nullable Map<String, LineDecision> decisions,
+    public record DraftSaveRequest(long version, @Nullable Map<String, LineDecision> decisions,
                               @Nullable Map<String, Long> prices, @Nullable Map<String, String> descriptions,
                               @Nullable Long supplierId, @Nullable String supplierName, @Nullable String currency,
                               @Nullable BigDecimal fxRate, @Nullable String title, @Nullable Integer etaWeeks,
                               @Nullable Boolean preorderOpen) {
     }
 
-    public record AcceptRequest(long version) {
+    public record DraftAcceptRequest(long version) {
     }
 
-    public record AcceptResult(long batchId, int newProducts) {
+    public record DraftAcceptResult(long batchId, int newProducts) {
     }
 }

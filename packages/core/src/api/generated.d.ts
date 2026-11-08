@@ -5547,6 +5547,9 @@ export interface components {
             locale?: string;
             sourceHash?: string;
         };
+        AcceptRequest: {
+            items?: components["schemas"]["AcceptItem"][];
+        };
         AccessTokenResponse: {
             accessToken: string;
         };
@@ -7204,9 +7207,6 @@ export interface components {
             amountDueMinor: number;
             orderId: string;
         };
-        CreateRequest: {
-            fileIds?: number[];
-        };
         CreateThreadRequest: {
             attachmentUrl?: string;
             fileName?: string;
@@ -7387,6 +7387,19 @@ export interface components {
             totalMinor: number;
             trackingNumber: string | null;
         };
+        DraftAcceptRequest: {
+            /** Format: int64 */
+            version?: number;
+        };
+        DraftAcceptResult: {
+            /** Format: int64 */
+            batchId: number;
+            /** Format: int32 */
+            newProducts: number;
+        };
+        DraftCreateRequest: {
+            fileIds?: number[];
+        };
         DraftDto: {
             /** Format: int64 */
             batchId: number | null;
@@ -7406,7 +7419,7 @@ export interface components {
             fxRate: number | null;
             /** Format: int64 */
             id: number;
-            jobs: components["schemas"]["JobView"][];
+            jobs: components["schemas"]["DraftJobView"][];
             lineNotes: {
                 [key: string]: string;
             };
@@ -7453,6 +7466,41 @@ export interface components {
             title: string;
             /** Format: int32 */
             weight: number;
+        };
+        DraftJobView: {
+            /** Format: int64 */
+            costMinor: number | null;
+            error: string | null;
+            /** Format: int64 */
+            jobId: number;
+            key: string | null;
+            /** @enum {string} */
+            kind: "READ" | "MATCH" | "CARD";
+            label: string;
+            status: string;
+            step: string | null;
+        };
+        DraftSaveRequest: {
+            currency?: string;
+            decisions?: {
+                [key: string]: components["schemas"]["LineDecision"];
+            };
+            descriptions?: {
+                [key: string]: string;
+            };
+            /** Format: int32 */
+            etaWeeks?: number;
+            fxRate?: number;
+            preorderOpen?: boolean;
+            prices?: {
+                [key: string]: number;
+            };
+            /** Format: int64 */
+            supplierId?: number;
+            supplierName?: string;
+            title?: string;
+            /** Format: int64 */
+            version?: number;
         };
         DraftSummary: {
             /** Format: date-time */
@@ -8047,18 +8095,6 @@ export interface components {
             /** Format: int64 */
             unitPriceFx?: number;
             variantId?: string;
-        };
-        JobView: {
-            /** Format: int64 */
-            costMinor: number | null;
-            error: string | null;
-            /** Format: int64 */
-            jobId: number;
-            /** @enum {string} */
-            kind: "READ" | "MATCH" | "CARD";
-            label: string;
-            status: string;
-            step: string | null;
         };
         JournalActivityFeedRow: {
             /** Format: int64 */
@@ -9074,16 +9110,6 @@ export interface components {
             qty?: number;
             variantId?: string;
         };
-        ProcurementAcceptRequest: {
-            /** Format: int64 */
-            version?: number;
-        };
-        ProcurementAcceptResult: {
-            /** Format: int64 */
-            batchId: number;
-            /** Format: int32 */
-            newProducts: number;
-        };
         ProcurementCandidate: {
             productId: string;
             /** Format: double */
@@ -9673,28 +9699,6 @@ export interface components {
             /** Format: int64 */
             count: number;
             distribution: number[];
-        };
-        SaveRequest: {
-            currency?: string;
-            decisions?: {
-                [key: string]: components["schemas"]["LineDecision"];
-            };
-            descriptions?: {
-                [key: string]: string;
-            };
-            /** Format: int32 */
-            etaWeeks?: number;
-            fxRate?: number;
-            preorderOpen?: boolean;
-            prices?: {
-                [key: string]: number;
-            };
-            /** Format: int64 */
-            supplierId?: number;
-            supplierName?: string;
-            title?: string;
-            /** Format: int64 */
-            version?: number;
         };
         SchemeRow: {
             /** Format: int64 */
@@ -10363,9 +10367,6 @@ export interface components {
         };
         TotpCodeRequest: {
             code: string;
-        };
-        TranslationAcceptRequest: {
-            items?: components["schemas"]["AcceptItem"][];
         };
         TranslationAcceptResult: {
             /** Format: int32 */
@@ -16460,7 +16461,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateRequest"];
+                "application/json": components["schemas"]["DraftCreateRequest"];
             };
         };
         responses: {
@@ -16508,7 +16509,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SaveRequest"];
+                "application/json": components["schemas"]["DraftSaveRequest"];
             };
         };
         responses: {
@@ -16554,7 +16555,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProcurementAcceptRequest"];
+                "application/json": components["schemas"]["DraftAcceptRequest"];
             };
         };
         responses: {
@@ -16564,7 +16565,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ProcurementAcceptResult"];
+                    "*/*": components["schemas"]["DraftAcceptResult"];
                 };
             };
         };
@@ -16923,7 +16924,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TranslationAcceptRequest"];
+                "application/json": components["schemas"]["AcceptRequest"];
             };
         };
         responses: {

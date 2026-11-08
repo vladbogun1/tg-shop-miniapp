@@ -1,12 +1,12 @@
 package com.maxsolch.shop.procurement.api;
 
 import com.maxsolch.shop.platform.security.RequiredAdmin;
-import com.maxsolch.shop.procurement.app.SupplyDraftDtos.AcceptRequest;
-import com.maxsolch.shop.procurement.app.SupplyDraftDtos.AcceptResult;
-import com.maxsolch.shop.procurement.app.SupplyDraftDtos.CreateRequest;
+import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftAcceptRequest;
+import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftAcceptResult;
+import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftCreateRequest;
 import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftDto;
 import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftSummary;
-import com.maxsolch.shop.procurement.app.SupplyDraftDtos.SaveRequest;
+import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftSaveRequest;
 import com.maxsolch.shop.procurement.app.SupplyDrafts;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -45,7 +45,7 @@ public class AdminSupplyDraftController {
 
     @PostMapping
     @Operation(summary = "Create a draft from invoice pictures and start the AI")
-    public DraftDto create(@RequestBody CreateRequest req) {
+    public DraftDto create(@RequestBody DraftCreateRequest req) {
         return drafts.create(req.fileIds());
     }
 
@@ -57,7 +57,7 @@ public class AdminSupplyDraftController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Save the corrections of the check screen (409 DRAFT_CHANGED for an older version)")
-    public DraftDto save(@PathVariable long id, @RequestBody SaveRequest req) {
+    public DraftDto save(@PathVariable long id, @RequestBody DraftSaveRequest req) {
         return drafts.save(id, req);
     }
 
@@ -75,7 +75,7 @@ public class AdminSupplyDraftController {
 
     @PostMapping("/{id}/accept")
     @Operation(summary = "Create the supplier, new products, the batch and the supplier memory")
-    public AcceptResult accept(@PathVariable long id, @RequestBody AcceptRequest req) {
+    public DraftAcceptResult accept(@PathVariable long id, @RequestBody DraftAcceptRequest req) {
         return drafts.accept(id, req.version());
     }
 

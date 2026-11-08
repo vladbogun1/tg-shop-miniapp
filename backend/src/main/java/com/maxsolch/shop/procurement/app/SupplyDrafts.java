@@ -8,10 +8,10 @@ import com.maxsolch.shop.audit.app.AdminAuditService;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.security.AdminAccess;
 import com.maxsolch.shop.platform.web.CurrentActor;
-import com.maxsolch.shop.procurement.app.SupplyDraftDtos.AcceptResult;
+import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftAcceptResult;
 import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftDto;
 import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftSummary;
-import com.maxsolch.shop.procurement.app.SupplyDraftDtos.SaveRequest;
+import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftSaveRequest;
 import com.maxsolch.shop.procurement.domain.ProcurementError;
 import com.maxsolch.shop.procurement.domain.SupplyDraft;
 import com.maxsolch.shop.procurement.domain.SupplyDraft.Status;
@@ -95,7 +95,7 @@ public class SupplyDrafts {
 
     /** The admin's corrections on the check screen. */
     @Transactional
-    public DraftDto save(long id, SaveRequest req) {
+    public DraftDto save(long id, DraftSaveRequest req) {
         SupplyDraft d = lockedVisible(id);
         if (d.getStatus() != Status.READY) {
             throw new DomainException.Conflict(ProcurementError.DRAFT_BAD_STATE);
@@ -171,7 +171,7 @@ public class SupplyDrafts {
     }
 
     @Transactional
-    public AcceptResult accept(long id, long version) {
+    public DraftAcceptResult accept(long id, long version) {
         SupplyDraft d = lockedVisible(id);
         if (d.getStatus() != Status.READY) {
             throw new DomainException.Conflict(ProcurementError.DRAFT_BAD_STATE);

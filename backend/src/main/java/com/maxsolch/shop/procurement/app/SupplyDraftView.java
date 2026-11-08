@@ -6,7 +6,7 @@ import com.maxsolch.shop.ai.domain.JobStatus;
 import com.maxsolch.shop.catalog.app.CardDraft;
 import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftDto;
 import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftSummary;
-import com.maxsolch.shop.procurement.app.SupplyDraftDtos.JobView;
+import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftJobView;
 import com.maxsolch.shop.procurement.domain.SupplyDraft;
 import com.maxsolch.shop.procurement.domain.supplyai.DraftState;
 import com.maxsolch.shop.procurement.domain.supplyai.SupplyPlan;
@@ -35,8 +35,8 @@ class SupplyDraftView {
 
     DraftDto of(SupplyDraft d, boolean finance) {
         DraftState s = json.read(d.getState());
-        List<JobView> jobs = jobs(d, s, finance);
-        Long cost = finance ? jobs.stream().map(JobView::costMinor).filter(Objects::nonNull).reduce(0L, Long::sum) : null;
+        List<DraftJobView> jobs = jobs(d, s, finance);
+        Long cost = finance ? jobs.stream().map(DraftJobView::costMinor).filter(Objects::nonNull).reduce(0L, Long::sum) : null;
         Map<String, CardDraft> cards = new LinkedHashMap<>();
         s.getCards().forEach((k, v) -> {
             CardDraft c = json.convert(v, CardDraft.class);
@@ -57,28 +57,28 @@ class SupplyDraftView {
                 d.getReadyAt());
     }
 
-    private List<JobView> jobs(SupplyDraft d, DraftState s, boolean finance) {
-        List<JobView> out = new ArrayList<>();
-        add(out, "READ", "Чтение накладной", s.getReadJob(), d, finance);
-        add(out, "MATCH", "Сопоставление строк с каталогом", s.getMatchJob(), d, finance);
+    private List<DraftJobView> jobs(SupplyDraft d, DraftState s, boolean finance) {
+        List<DraftJobView> out = new ArrayList<>();
+        add(out, "READ", null, "Чтение накладной", s.getReadJob(), d, finance);
+        add(out, "MATCH", null, "Сопоставление строк с каталогом", s.getMatchJob(), d, finance);
         Map<String, String> titles = new LinkedHashMap<>();
         SupplyPlan.newProducts(s.getRows()).forEach(p -> titles.put(SupplyDraftCards.keyOf(p, s), p.title()));
         s.getCardJobs().forEach((key, job) ->
-                add(out, "CARD", "Карточка «" + titles.getOrDefault(key, key) + "»", job, d, finance));
+                add(out, "CARD", key, "Карточка «" + titles.getOrDefault(key, key) + "»", job, d, finance));
         return out;
     }
 
-    private void add(List<JobView> out, String kind, String label, Long jobId, SupplyDraft d, boolean finance) {
+    private void add(List<DraftJobView> out, String kind, String key, String label, Long jobId, SupplyDraft d, boolean finance) {
         if (jobId == null) {
             return;
         }
         AiJobDto j = ai.job(jobId, d.getAdminId());
         if (j == null) {
-            out.add(new JobView(kind, label, jobId, "FAILED", null, "задача ИИ не найдена", null));
+            out.add(new DraftJobView(kind, key, label, jobId, "FAILED", null, "задача ИИ не найдена", null));
             return;
         }
         String error = j.status().active() || j.status() == JobStatus.DONE ? null : SupplyDraftAi.failure(j);
-        out.add(new JobView(kind, label, jobId, j.status().name(), j.step(), error, finance ? j.costMinor() : null));
+        out.add(new DraftJobView(kind, key, label, jobId, j.status().name(), j.step(), error, finance ? j.costMinor() : null));
     }
 
     /** The state's card of a product with the admin's description (the AI translations of the old one are dropped). */

@@ -15,7 +15,7 @@ import com.maxsolch.shop.procurement.app.BatchDtos.ItemRequest;
 import com.maxsolch.shop.procurement.app.BatchDtos.SupplierRequest;
 import com.maxsolch.shop.procurement.app.SupplierAliases.AliasDto;
 import com.maxsolch.shop.procurement.app.SupplierAliases.AliasesRequest;
-import com.maxsolch.shop.procurement.app.SupplyDraftDtos.AcceptResult;
+import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftAcceptResult;
 import com.maxsolch.shop.procurement.domain.ProcurementError;
 import com.maxsolch.shop.procurement.domain.SupplyDraft;
 import com.maxsolch.shop.procurement.domain.SupplyDraftEvents;
@@ -77,7 +77,7 @@ class SupplyDraftAccept {
         this.zone = zone;
     }
 
-    AcceptResult accept(SupplyDraft d, DraftState s, boolean money) {
+    DraftAcceptResult accept(SupplyDraft d, DraftState s, boolean money) {
         List<NewProduct> plans = SupplyPlan.newProducts(s.getRows());
         List<String> problems = problems(s, plans);
         if (!problems.isEmpty()) {
@@ -100,7 +100,7 @@ class SupplyDraftAccept {
         remember(supplierId, resolved);
         d.accepted(batchId, clock.instant());
         events.publish(new SupplyDraftEvents.Accepted(d.getId(), batchId, photos));
-        return new AcceptResult(batchId, plans.size());
+        return new DraftAcceptResult(batchId, plans.size());
     }
 
     /** The same checks as the screen, plus what only the server knows (a title already in the catalog, a leaf). */

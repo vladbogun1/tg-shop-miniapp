@@ -1,7 +1,7 @@
 package com.maxsolch.shop.procurement.app;
 
 import com.maxsolch.shop.platform.error.DomainException;
-import com.maxsolch.shop.procurement.app.SupplyDraftDtos.SaveRequest;
+import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftSaveRequest;
 import com.maxsolch.shop.procurement.domain.ProcurementError;
 import com.maxsolch.shop.procurement.domain.supplyai.DraftState;
 import com.maxsolch.shop.procurement.domain.supplyai.LineDecision;
@@ -26,7 +26,7 @@ final class SupplyDraftEdits {
     private SupplyDraftEdits() {
     }
 
-    static void apply(DraftState s, SaveRequest req) {
+    static void apply(DraftState s, DraftSaveRequest req) {
         if (req.decisions() != null) {
             decisions(s, req.decisions());
         }
@@ -67,7 +67,7 @@ final class SupplyDraftEdits {
     }
 
     /** The head of the future batch; supplier id 0 — «a new supplier» named by {@code supplierName}. */
-    private static void head(DraftState s, SaveRequest req) {
+    private static void head(DraftState s, DraftSaveRequest req) {
         if (req.supplierId() != null) {
             s.setSupplierId(req.supplierId() == 0 ? null : req.supplierId());
         }
