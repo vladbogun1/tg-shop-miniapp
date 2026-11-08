@@ -8,9 +8,12 @@ import { round2 } from "../../model/ai/checks";
 import type { CatalogItem, LineDecision, ReviewRow } from "../../model/ai/types";
 import { blankDraft, type SupplyAi } from "./use-supply-ai";
 
+/** Что строке нужно от состояния проверки: подсказки и решение. Его дают и модалка ручного пути, и черновик. */
+export type LineReview = Pick<SupplyAi, "lineIssue" | "repeats" | "decide">;
+
 const BY_LABEL = { memory: "Из памяти поставщика", search: "Найден в каталоге", ai: "ИИ", admin: "Выбрано вручную" } as const;
 
-function Source({ r, ai, currency }: { r: ReviewRow; ai: SupplyAi; currency: string }) {
+function Source({ r, ai, currency }: { r: ReviewRow; ai: LineReview; currency: string }) {
   const l = r.line;
   const issue = ai.lineIssue(l);
   const sum = l.unitPrice != null ? round2(l.unitPrice * l.qty) : null;
@@ -36,7 +39,7 @@ function Source({ r, ai, currency }: { r: ReviewRow; ai: SupplyAi; currency: str
   );
 }
 
-function Matched({ r, d, ai, byId }: { r: ReviewRow; d: Extract<LineDecision, { kind: "match" }>; ai: SupplyAi; byId: Map<string, CatalogItem> }) {
+function Matched({ r, d, ai, byId }: { r: ReviewRow; d: Extract<LineDecision, { kind: "match" }>; ai: LineReview; byId: Map<string, CatalogItem> }) {
   const p = byId.get(d.productId);
   const variants = p?.variants ?? [];
   return (
@@ -57,7 +60,7 @@ function Matched({ r, d, ai, byId }: { r: ReviewRow; d: Extract<LineDecision, { 
   );
 }
 
-function Candidates({ r, ai, byId }: { r: ReviewRow; ai: SupplyAi; byId: Map<string, CatalogItem> }) {
+function Candidates({ r, ai, byId }: { r: ReviewRow; ai: LineReview; byId: Map<string, CatalogItem> }) {
   const top = r.candidates.slice(0, 3).filter((c) => byId.has(c.productId));
   if (top.length === 0) return <span className="text-[12.5px] text-[var(--text-faint)]">Похожих в каталоге нет</span>;
   return (
@@ -77,7 +80,7 @@ function Candidates({ r, ai, byId }: { r: ReviewRow; ai: SupplyAi; byId: Map<str
   );
 }
 
-function Actions({ r, ai, onPick }: { r: ReviewRow; ai: SupplyAi; onPick: () => void }) {
+function Actions({ r, ai, onPick }: { r: ReviewRow; ai: LineReview; onPick: () => void }) {
   const d = r.decision;
   if (d.kind === "skip") {
     return (
@@ -103,7 +106,7 @@ function Actions({ r, ai, onPick }: { r: ReviewRow; ai: SupplyAi; onPick: () => 
   );
 }
 
-function Decision({ r, ai, byId }: { r: ReviewRow; ai: SupplyAi; byId: Map<string, CatalogItem> }) {
+function Decision({ r, ai, byId }: { r: ReviewRow; ai: LineReview; byId: Map<string, CatalogItem> }) {
   const d = r.decision;
   if (d.kind === "match") return <Matched r={r} d={d} ai={ai} byId={byId} />;
   if (d.kind === "skip") return <span className="text-[12.5px] text-[var(--text-faint)]">Пропущена — в поставку не войдёт</span>;
@@ -129,7 +132,7 @@ function Decision({ r, ai, byId }: { r: ReviewRow; ai: SupplyAi; byId: Map<strin
 }
 
 /** Строка проверки: что в документе · что это у нас · действия. */
-export function LineRow({ r, ai, byId, currency, onPick }: { r: ReviewRow; ai: SupplyAi; byId: Map<string, CatalogItem>; currency: string; onPick: () => void }) {
+export function LineRow({ r, ai, byId, currency, onPick }: { r: ReviewRow; ai: LineReview; byId: Map<string, CatalogItem>; currency: string; onPick: () => void }) {
   return (
     <div className={`grid gap-2 border-b border-[var(--line)] py-3 last:border-b-0 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] md:gap-4 ${r.decision.kind === "skip" ? "opacity-60" : ""}`}>
       <Source r={r} ai={ai} currency={currency} />

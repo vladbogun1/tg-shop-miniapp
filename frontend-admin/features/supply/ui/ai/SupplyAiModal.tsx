@@ -8,11 +8,9 @@
 import { Button } from "@shop/ui/admin-button";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { useMemo, useRef, useState } from "react";
-import { useCategoriesQuery } from "@/features/catalog";
 import { useFinanceAccess, type BatchPreset, type SeedLine } from "@/features/procurement";
-import { PICK_PRODUCTS_STALE_MS, ProductPickModal, useProductsQuery } from "@/features/product";
+import { ProductPickModal } from "@/features/product";
 import { pickVariant } from "../../model/ai/match";
-import type { LeafCategory } from "../../model/ai/match-prompt";
 import { variantSetProblems, type Created, type MergedLine } from "../../model/ai/plan";
 import type { CatalogItem } from "../../model/ai/types";
 import { useApplySupplyAi, useNbuRate } from "../../queries";
@@ -24,33 +22,12 @@ import { ReadBanner } from "./ReadBanner";
 import { Messages, ReadStep } from "./ReadStep";
 import { SourceShots } from "./SourceShots";
 import { useSupplyAi, type SupplyAi } from "./use-supply-ai";
+import { useCatalog } from "./use-catalog";
 import { useSupplyFiles } from "./use-supply-files";
 
 export interface SupplyAiResult {
   seed: SeedLine[];
   preset: BatchPreset;
-}
-
-function useCatalog() {
-  const productsQ = useProductsQuery({ staleTime: PICK_PRODUCTS_STALE_MS });
-  const categoriesQ = useCategoriesQuery();
-  const catalog = useMemo<CatalogItem[]>(
-    () =>
-      (productsQ.data ?? []).map((p) => ({
-        id: p.id,
-        title: p.title,
-        brand: p.brandRef?.name ?? null,
-        categoryId: p.categoryId ?? null,
-        variants: (p.variants ?? []).filter((v) => v.id).map((v) => ({ id: v.id as string, name: v.name })),
-        imageUrl: p.images?.[0]?.url ?? null,
-      })),
-    [productsQ.data],
-  );
-  const categories = useMemo<LeafCategory[]>(
-    () => (categoriesQ.data ?? []).filter((c) => !(categoriesQ.data ?? []).some((x) => x.parentId === c.id)).map((c) => ({ id: c.id, slug: c.slug, name: c.name })),
-    [categoriesQ.data],
-  );
-  return { catalog, categories, loading: productsQ.isLoading || categoriesQ.isLoading };
 }
 
 function seedOf(lines: MergedLine[], catalog: Map<string, CatalogItem>, plans: SupplyAi["plans"], created: Map<string, Created>): SeedLine[] {
