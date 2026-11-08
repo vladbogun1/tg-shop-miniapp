@@ -2,10 +2,9 @@
 
 import { Button } from "@shop/ui/admin-button";
 import { useConfirm } from "@shop/ui/confirm";
-import { Ban, Check, Landmark, MoreHorizontal, PackageCheck, Pencil, Plane } from "lucide-react";
-import { useState } from "react";
+import { Ban, Check, Landmark, PackageCheck, Pencil, Plane } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { ActionSheet, type SheetAction } from "@/components/ui/ActionSheet";
+import { ActionMenu, type MenuItem } from "@/components/ui/ActionMenu";
 import { Badge } from "@/components/ui/Badge";
 import { DISTRIBUTIONS, etaText, isOpenStatus, type Batch } from "@/features/procurement";
 import { cn } from "@/lib/cn";
@@ -41,7 +40,6 @@ export function BatchHeader({
 }) {
   const open = isOpenStatus(batch.status);
   const confirm = useConfirm();
-  const [menu, setMenu] = useState(false);
 
   async function move(s: Moving) {
     const label = s === "IN_TRANSIT" ? "«В пути»" : "«На таможне»";
@@ -56,7 +54,7 @@ export function BatchHeader({
     }
   }
 
-  const actions: SheetAction[] = [
+  const actions: MenuItem[] = [
     {
       key: "edit",
       label: "Изменить поставку",
@@ -116,21 +114,10 @@ export function BatchHeader({
                 Изменить
               </Button>
             )}
-            {open && (
-              <Button
-                variant="outline"
-                size="icon"
-                loading={statusPending}
-                icon={<MoreHorizontal className="h-4 w-4" />}
-                onClick={() => setMenu(true)}
-                aria-label="Ещё действия"
-                title="Ещё действия"
-              />
-            )}
+            {open && <ActionMenu trigger="header" title={batch.title} items={actions} label="Ещё действия" busy={statusPending} />}
           </>
         }
       />
-      <ActionSheet open={menu} title={batch.title} actions={actions} onClose={() => setMenu(false)} />
       <StatusSteps batch={batch} />
       <BatchFacts batch={batch} />
       <BatchNotes batch={batch} />

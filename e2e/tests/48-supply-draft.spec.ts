@@ -26,9 +26,10 @@ async function setting(api: Api, values: Record<string, unknown>) {
   expect((await api.raw("put", "/api/admin/settings", { values })).status).toBe(200);
 }
 
-async function shot(page: Page, name: string) {
+/** fullPage меняет размер окна — открытый список «⋯» от этого закрывается, его снимаем видимой частью. */
+async function shot(page: Page, name: string, fullPage = true) {
   mkdirSync(SHOTS, { recursive: true });
-  await page.screenshot({ path: `${SHOTS}/draft-${name}.png`, fullPage: true });
+  await page.screenshot({ path: `${SHOTS}/draft-${name}.png`, fullPage });
 }
 
 async function cleanup() {
@@ -79,6 +80,15 @@ test("экраны черновика на 7 ширинах: без боково
     await expect(page.getByText("Новые товары").first()).toBeVisible();
     await shot(page, `review-${w}`);
     expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), `ширина ${w}`).toBe(false);
+  }
+  // «⋯» шапки: на ПК — список у кнопки, на телефоне — шторка снизу.
+  for (const [w, role] of [[1440, "menuitem"], [390, "button"]] as const) {
+    await page.setViewportSize({ width: w, height: 900 });
+    await page.goto(`/preorders/drafts/${id}`);
+    await page.getByRole("button", { name: "Ещё действия" }).click();
+    await expect(page.getByRole(role, { name: "Удалить черновик…" })).toBeVisible();
+    await shot(page, `menu-${w}`, false);
+    await page.keyboard.press("Escape");
   }
   for (const w of [360, 1440]) {
     await page.setViewportSize({ width: w, height: 900 });
@@ -134,6 +144,11 @@ test("одна кнопка → ИИ сам всё делает → «Готов
   await accept.click();
   await dialog(page, "Создать поставку?").getByRole("button", { name: "Создать" }).click();
   await page.waitForURL(/\/preorders\/\d+$/, { timeout: 30_000 });
+  // «⋯» поставки на ПК — список у кнопки, не шторка.
+  await page.getByRole("button", { name: "Ещё действия" }).click();
+  await expect(page.getByRole("menuitem", { name: "Отменить поставку…" })).toBeVisible();
+  await shot(page, "batch-menu-1440", false);
+  await page.keyboard.press("Escape");
 
   const made = await query<{ active: number; stock: number }>("SELECT active, stock FROM products WHERE title LIKE ?", [`% ${tag}`]);
   expect(made.length).toBe(n);
