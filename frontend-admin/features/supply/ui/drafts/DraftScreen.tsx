@@ -78,7 +78,7 @@ export function DraftScreen() {
   const onConflict = useCallback(() => void refetch().then(() => setEpoch((e) => e + 1)), [refetch]);
   return (
     <div className="min-w-0">
-      <Link href="/preorders?tab=drafts" className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-[var(--text-muted)] hover:text-[var(--text)]">
+      <Link href="/preorders?tab=drafts" className="hit mb-3 inline-flex items-center gap-1.5 text-[13px] text-[var(--text-muted)] hover:text-[var(--text)]">
         <ArrowLeft className="h-4 w-4" /> Черновики поставок
       </Link>
       <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Загрузка черновика">

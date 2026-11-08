@@ -22,7 +22,7 @@ export function WaitBadge({ productId, title }: { productId: string; title: stri
           setOpen(true);
         }}
         title={`Ждут: ${d.people} чел / ${d.units} шт`}
-        className="chip-tint focusable cursor-pointer"
+        className="chip-tint focusable hit cursor-pointer"
         style={{ "--chip": "var(--accent-hi)" } as React.CSSProperties}
       >
         <BellRing className="h-3 w-3" />

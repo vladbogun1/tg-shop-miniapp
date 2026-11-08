@@ -21,7 +21,7 @@ export function HandedOver({ r }: { r: GiftRegistryRow }) {
 export function OrderCell({ r }: { r: GiftRegistryRow }) {
   return (
     <span className="inline-flex items-center gap-1.5">
-      <Link href={`/orders/${r.orderId}`} className="font-semibold hover:text-[var(--accent-hi)]">
+      <Link href={`/orders/${r.orderId}`} className="hit font-semibold hover:text-[var(--accent-hi)]">
         {shortId(r.orderId)}
       </Link>
       <span className="text-[var(--text-faint)]">{STATUS_LABEL[r.status as keyof typeof STATUS_LABEL] ?? r.status}</span>

@@ -16,7 +16,7 @@ function OrderBtn({ label, disabled, onClick, children }: { label: string; disab
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="focusable grid h-[22px] w-7 place-items-center rounded-[var(--r-sm)] border border-[var(--border-2)] bg-[var(--surface-3)] text-[var(--text)] transition-colors hover:border-[var(--line-strong)] disabled:opacity-30 pointer-coarse:h-[22px] pointer-coarse:w-11"
+      className="focusable grid h-[22px] w-7 place-items-center rounded-[var(--r-sm)] border border-[var(--border-2)] bg-[var(--surface-3)] text-[var(--text)] transition-colors hover:border-[var(--line-strong)] disabled:opacity-30 pointer-coarse:h-9 pointer-coarse:w-11"
     >
       {children}
     </button>

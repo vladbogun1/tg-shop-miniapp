@@ -19,7 +19,7 @@ export function Undone({ l }: { l: WriteoffLine }) {
 export function RestoreButton({ l, onClick }: { l: WriteoffLine; onClick: () => void }) {
   if (leftOf(l) <= 0) return null;
   return (
-    <button type="button" onClick={onClick} className="text-[12.5px] font-semibold text-[var(--accent-hi)] hover:underline">
+    <button type="button" onClick={onClick} className="hit text-[12.5px] font-semibold text-[var(--accent-hi)] hover:underline">
       Вернуть на склад
     </button>
   );

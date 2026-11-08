@@ -29,7 +29,7 @@ export function BatchScreen() {
   const q = useBatch(params?.id ?? "");
   return (
     <div className="min-w-0">
-      <Link href="/preorders" className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-[var(--text-muted)] hover:text-[var(--text)]">
+      <Link href="/preorders" className="hit mb-3 inline-flex items-center gap-1.5 text-[13px] text-[var(--text-muted)] hover:text-[var(--text)]">
         <ArrowLeft className="h-4 w-4" /> Все поставки
       </Link>
       <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Загрузка поставки">
