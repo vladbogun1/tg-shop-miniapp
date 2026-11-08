@@ -126,7 +126,12 @@ public class AiFiles {
      */
     @Transactional
     public int attach(Collection<Long> ids, long jobId) {
-        long adminId = actor.userId();
+        return attach(actor.userId(), ids, jobId);
+    }
+
+    /** The same for a task started on the admin's behalf outside his request (a supply draft): his pictures only. */
+    @Transactional
+    public int attach(long adminId, Collection<Long> ids, long jobId) {
         Set<Long> wanted = new HashSet<>(ids == null ? List.of() : ids);
         if (wanted.isEmpty() || wanted.size() > MAX_IMAGES) {
             throw new DomainException.BadRequest(AiError.FILES_LIMIT, MAX_IMAGES);

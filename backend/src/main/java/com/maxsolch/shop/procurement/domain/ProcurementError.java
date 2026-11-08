@@ -52,7 +52,11 @@ public enum ProcurementError implements ErrorCode {
     PRODUCT_ID_REQUIRED,
     INVALID_ID,
     NBU_UNAVAILABLE("NBU_UNAVAILABLE"),
-    BAD_ALIAS("BAD_ALIAS");
+    BAD_ALIAS("BAD_ALIAS"),
+    DRAFT_NOT_FOUND,
+    DRAFT_BAD_STATE("DRAFT_BAD_STATE"),
+    DRAFT_NOT_READY("DRAFT_NOT_READY"),
+    DRAFT_CHANGED("DRAFT_CHANGED");
 
     private final String code;
 

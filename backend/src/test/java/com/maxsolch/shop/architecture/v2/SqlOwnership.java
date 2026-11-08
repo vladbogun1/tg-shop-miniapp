@@ -52,7 +52,8 @@ final class SqlOwnership {
                 "admin_trusted_devices", "admin_users", "admin_revoked_tokens");
         own(m, "notification", "admin_push_subscriptions", "broadcasts");
         own(m, "analytics", "analytics_daily", "analytics_daily_runs", "analytics_daily_visitors", "client_events");
-        own(m, "procurement", "batch_expense_files", "batch_expenses", "preorder_batch_items", "preorder_batches", "supplier_aliases", "suppliers");
+        own(m, "procurement", "batch_expense_files", "batch_expenses", "preorder_batch_items", "preorder_batches", "supplier_aliases", "suppliers",
+                "supply_drafts");
         own(m, "catalog", "brand_slug_redirects", "brands", "categories", "product_images", "product_variants", "products", "spec_attributes",
                 "spec_groups", "spec_options", "tags", "product_tags");
         own(m, "cart", "cart_items", "carts");
