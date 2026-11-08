@@ -16,6 +16,9 @@ export const productApi = {
   list: async (): Promise<AdminProduct[]> => (await apiGet<AdminProductDto[]>("/api/admin/products")).map(fromAdminProductDto),
   listArchived: async (): Promise<AdminProduct[]> =>
     (await apiGet<AdminProductDto[]>("/api/admin/products/archived")).map(fromAdminProductDto),
+  /** Несколько товаров по id (до 200), архивные тоже; неизвестные id сервер пропускает. */
+  byIds: async (ids: string[]): Promise<AdminProduct[]> =>
+    (await apiGet<AdminProductDto[]>(`/api/admin/products/by-ids?ids=${encodeURIComponent(ids.join(","))}`)).map(fromAdminProductDto),
   create: async (body: ProductWriteRequest): Promise<AdminProductSaved> =>
     fromAdminProductDto(await apiPost<AdminProductDto>("/api/admin/products", body)),
   /** `force`: выложить (active=true) карточку, которая ещё не оформлена (иначе 409 CARD_NOT_READY). */

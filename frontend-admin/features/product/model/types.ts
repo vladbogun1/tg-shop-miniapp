@@ -31,6 +31,8 @@ export type AdminProduct = Product & {
   cardMeta?: CardMeta | null;
   /** Обязательные характеристики без значения, как их посчитал бэкенд. */
   missingRequired?: string[] | null;
+  /** В архиве: приходит в ответе «по id» (в списке активных архивных нет). */
+  archived?: boolean;
   /** V53: создан короткой формой и ещё не опубликован/архивирован («Незавершён»). */
   unfinished?: boolean;
 };

@@ -14,7 +14,7 @@ import { usePublishGate } from "./PublishGate";
 import { ProductModal } from "./modal/ProductModal";
 import { productKeys } from "../keys";
 import { productApi } from "../api";
-import { useProductsQuery } from "../queries";
+import { useProductsByIds } from "../queries";
 import { invalidateCards } from "@/features/cards";
 import { money } from "@/lib/money";
 import { Image, resolveImageSrc } from "@/lib/image";
@@ -27,19 +27,20 @@ import { Button } from "@shop/ui/admin-button";
 import { Drawer } from "@shop/ui/overlay";
 import { Lightbox } from "@shop/ui/overlay";
 
-/** Товары поставки по id — из того же списка, что и экран «Товары» (кэш общий). */
+/**
+ * Товары поставки по id — только они, не весь каталог. Архивных в `byId` нет: такая строка показывает «в архиве»
+ * и не даёт правки (как и раньше, когда товары брались из списка активных).
+ */
 export function useBatchProducts(ids: string[]): {
   byId: Map<string, AdminProduct>;
   loading: boolean;
 } {
-  const q = useProductsQuery();
-  const key = ids.join(",");
+  const q = useProductsByIds(ids);
   const byId = useMemo(() => {
-    const want = new Set(key.split(","));
     const m = new Map<string, AdminProduct>();
-    for (const p of q.data ?? []) if (want.has(p.id)) m.set(p.id, p);
+    for (const p of q.data ?? []) if (!p.archived) m.set(p.id, p);
     return m;
-  }, [q.data, key]);
+  }, [q.data]);
   return { byId, loading: q.isLoading };
 }
 

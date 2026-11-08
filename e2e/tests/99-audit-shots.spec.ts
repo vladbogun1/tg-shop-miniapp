@@ -1,6 +1,6 @@
 /**
  * Проверка находок аудита админки 2026-11-09 (`AUDIT_SHOTS=1`, иначе пропускается — в CI не идёт): экраны на 7 ширинах
- * без бокового скролла страницы, липкие строки не заходят под шапку, «Поставки» не тянут весь каталог.
+ * без бокового скролла страницы, липкие строки не заходят под шапку, «Поставки», страница поставки и «Подарок» не тянут весь каталог.
  * Снимки — `_shots/audit-*.png`, находки вёрстки — в `qa-layout.jsonl`.
  */
 import path from "node:path";
@@ -48,25 +48,57 @@ test("экраны аудита на 7 ширинах: без бокового �
   expect(scroll, "страница едет вбок").toEqual([]);
 });
 
-test("«Поставки» открываются без выгрузки всего каталога", async ({ page }) => {
+test("«Поставки», страница поставки и «Подарок» — без выгрузки всего каталога", async ({ page }) => {
   const heavy: string[] = [];
+  const byIds: string[] = [];
   page.on("request", (r) => {
     const u = new URL(r.url());
+    if (u.pathname === "/api/admin/products/by-ids") byIds.push(u.search);
     if (u.pathname === "/api/admin/products" || (u.pathname === "/api/admin/cards/export" && !u.searchParams.has("ids"))) heavy.push(u.pathname + u.search);
   });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/preorders");
   await settle(page);
   expect(heavy, "список поставок").toEqual([]);
-  // Страница поставки берёт товары строк из каталога (значки и правка на месте) — эндпоинта «по id» пока нет;
-  // проверяем только, что плашки больше не тянут всю выгрузку карточек.
-  heavy.length = 0;
+
+  // Страница поставки: товары строк — запросом «по id» (значки и правка на месте), не всем каталогом.
   const first = page.locator('a[href^="/preorders/"]').filter({ hasNotText: "Черновик" }).first();
   if (await first.count()) {
     await first.click();
     await settle(page);
+    expect(heavy, "страница поставки").toEqual([]);
+    expect(byIds.length, "товары строк по id").toBeGreaterThan(0);
+    await expect(page.getByText(/^(на сайте|скрыт|в архиве)$/).first(), "чип состояния товара").toBeVisible();
+    const edit = page.getByRole("button", { name: "Редактировать товар" }).first();
+    if (await edit.count()) {
+      await edit.click();
+      await expect(page.getByRole("dialog").first(), "окно товара").toBeVisible();
+      await page.screenshot({ path: path.join(SHOTS, "audit-batch-edit-1440.png") });
+      expect(heavy, "окно товара на странице поставки").toEqual([]);
+      await page.keyboard.press("Escape");
+    }
   }
-  expect(heavy.filter((u) => u.startsWith("/api/admin/cards/export")), "страница поставки").toEqual([]);
+
+  // «Подарок»: поле товара-подарка и «!» в сводке берут один товар по id.
+  await page.goto("/gift");
+  await settle(page);
+  await page.screenshot({ path: path.join(SHOTS, "audit-gift-field-1440.png"), fullPage: true });
+  await expect(page.getByText("Загрузка…"), "поле подарка дорисовалось").toHaveCount(0);
+  expect(heavy, "подарок").toEqual([]);
+
+  // Поле «Товар-подарок»: выбор через окно (ему каталог нужен), потом поле показывает товар из запроса «по id».
+  await page.getByRole("button", { name: /Настройки/ }).first().click();
+  await expect(page.getByText(/^(Запасной товар-подарок|Товар-подарок)$/).first()).toBeVisible();
+  await expect(page.getByText("Загрузка…"), "поле подарка без товара").toHaveCount(0);
+  expect(heavy, "настройки подарка").toEqual([]);
+  await page.getByRole("button", { name: /^(Выбрать|Другой)$/ }).first().click();
+  const option = page.getByRole("dialog").locator("button.card-2").first();
+  const title = ((await option.locator("span.font-semibold").first().textContent()) ?? "").trim();
+  byIds.length = 0;
+  await option.click();
+  await expect(page.getByText(title, { exact: true }).first(), "товар в поле подарка").toBeVisible();
+  expect(byIds.length, "поле подарка спросило товар по id").toBeGreaterThan(0);
+  await page.screenshot({ path: path.join(SHOTS, "audit-gift-picked-1440.png"), fullPage: true });
 });
 
 test("липкие строки не заходят под шапку", async ({ page }) => {

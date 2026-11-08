@@ -11,6 +11,7 @@ export {
   isDoubleSubmit,
   PICK_PRODUCTS_STALE_MS,
   useProductsQuery,
+  useProductsByIds,
   useSetCardStatus,
   useSetProductActive,
   useSetProductArchived,

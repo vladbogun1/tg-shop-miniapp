@@ -3,13 +3,12 @@
 /** The gift product (or the fallback one when the buyer gets a case): the picture, price, stock, the warnings. */
 import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
-import { ProductPickModal, useProductsQuery, type AdminProduct } from "@/features/product";
+import { ProductPickModal, useProductsByIds, type AdminProduct } from "@/features/product";
 import { cn } from "@/lib/cn";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
 import { productStock } from "@/lib/stock";
 import { giftWarnings } from "../model/gift-warnings";
-import { GIFT_STALE_MS } from "../queries";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@shop/ui/admin-button";
 
@@ -28,7 +27,7 @@ export function GiftProductField({
   onPick: (id: string) => void;
 }) {
   const [picking, setPicking] = useState(false);
-  const productsQ = useProductsQuery({ staleTime: GIFT_STALE_MS });
+  const productsQ = useProductsByIds(productId ? [productId] : []);
   const product = productId ? productsQ.data?.find((p) => p.id === productId) ?? null : null;
 
   return (

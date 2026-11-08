@@ -9,6 +9,8 @@ export const productKeys = {
   root: () => catalogKeys.productsRoot(),
   /** Без аргумента — корень; `false`/`true` — список активных/архивных. */
   list: (archived?: boolean) => (archived === undefined ? catalogKeys.productsRoot() : ([...catalogKeys.productsRoot(), archived] as const)),
+  /** Несколько товаров по id (`ids` — отсортированные через запятую), архивные тоже: страница поставки, поле подарка. */
+  byIds: (ids: string) => [...catalogKeys.productsRoot(), "by-ids", ids] as const,
   /** Корень переводов, который держит окно товара (список переведённых текстов uk/en). */
   translatedRoot: () => ["translations"] as const,
   translatedUkEn: () => ["translations", "translated-uk-en"] as const,

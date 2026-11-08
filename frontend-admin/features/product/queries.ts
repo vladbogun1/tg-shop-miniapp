@@ -32,6 +32,20 @@ export function useProductsQuery({ archived, staleTime, enabled }: ProductsQuery
 }
 
 /**
+ * Несколько товаров по id, архивные тоже — для экранов, которым весь каталог не нужен (строки поставки, поле подарка).
+ * Ключ под общим корнем товаров: правки товара (`invalidateCards`, сохранение, показ/скрытие) обновляют и его.
+ */
+export function useProductsByIds(ids: readonly string[]) {
+  const key = [...new Set(ids.filter(Boolean))].sort().join(",");
+  return useQuery({
+    queryKey: productKeys.byIds(key),
+    queryFn: () => productApi.byIds(key.split(",")),
+    enabled: key.length > 0,
+    staleTime: QUERY_PRESETS.list.staleTime,
+  });
+}
+
+/**
  * После показа/скрытия/архивации/правки товара: он переезжает между вкладками «Карточек» (бейдж меню считает только
  * работу над витриной), в «Переводах» появляются или устаревают тексты, а предупреждение «переводы сбросятся» в
  * окне товара читает свою выгрузку переведённых текстов.
