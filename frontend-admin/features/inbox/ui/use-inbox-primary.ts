@@ -17,7 +17,7 @@ export interface OpenOrder {
 
 /**
  * Main action of a row: open the order in the drawer (payment rows on the «Онлайн-оплата» block, chat rows
- * in the chat), jump to a product / reviews / support thread, or retry the site rebuild.
+ * in the chat), jump to a product / reviews / support thread / supply draft, or retry the site rebuild.
  */
 export function useInboxPrimary() {
   const qc = useQueryClient();
@@ -62,6 +62,9 @@ export function useInboxPrimary() {
       case "SUPPORT":
         // A support thread, not an order: entityId is the thread id.
         router.push(`/support?thread=${encodeURIComponent(item.entityId)}`);
+        break;
+      case "SUPPLY_DRAFT":
+        router.push(`/preorders/drafts/${encodeURIComponent(item.entityId)}`);
         break;
       default:
         if (orderId) setOrder({ id: orderId, tab: "details", payment: false });

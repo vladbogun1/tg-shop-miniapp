@@ -351,7 +351,7 @@ class InboxRulesTest {
                 order().id(id(1)).paidOnline(Duration.ofMinutes(5)).created(Duration.ofHours(4)).row()), Map.of(), T);
 
         assertThat(inbox.groups()).extracting(Group::id).containsExactly(
-                "PAYMENT", "APPROVED_UNPAID", "CHAT", "SUPPORT", "NEW_STALE", "APPROVED_STALE", "RETURN", "REVIEW", "LOW_STOCK",
+                "PAYMENT", "APPROVED_UNPAID", "CHAT", "SUPPORT", "NEW_STALE", "APPROVED_STALE", "RETURN", "REVIEW", "SUPPLY_DRAFT", "LOW_STOCK",
                 "SITE_ERROR");
         // the same order needs two different things: confirm the payment AND approve it
         assertThat(inbox.total()).isEqualTo(2);

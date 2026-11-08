@@ -28,6 +28,11 @@ public enum InboxItemType {
     RETURN("Отказы и возвраты", "Отказ после отправки или зарегистрированный возврат за 14 дней — проверьте посылку и деньги.", "ORDER", true),
     /** A product review waits for moderation (reviews.premoderation on); rows from {@code ReviewInboxSource}. */
     REVIEW("Отзывы на модерации", "Покупатели оставили отзывы — опубликуйте или скройте их в разделе «Отзывы».", "REVIEW", false),
+    /**
+     * A «Поставка с ИИ» draft is ready to check, or the AI failed on it; rows from {@code SupplyDraftInboxSource}.
+     * Leaves once the draft is accepted or deleted.
+     */
+    SUPPLY_DRAFT("Поставки ждут проверки", "ИИ разобрал накладную — проверьте и примите поставку; если не справился — повторите или удалите черновик.", "SUPPLY_DRAFT", false),
     /** Runs out within {@code metrics.lowStockDays} at the current pace. */
     LOW_STOCK("Заканчиваются", "Запаса хватит меньше чем на порог из «Настроек» — пора дозаказать.", "PRODUCT", true),
     /** The last public-site rebuild failed. */

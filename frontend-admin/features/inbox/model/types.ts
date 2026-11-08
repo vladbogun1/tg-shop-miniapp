@@ -14,6 +14,8 @@ export const INBOX_TYPES = [
   "REVIEW",
   /** Support question waiting for an answer: entityId = thread id, no orderId. */
   "SUPPORT",
+  /** «Поставка с ИИ» draft ready to check or failed: entityId = draft id. */
+  "SUPPLY_DRAFT",
 ] as const;
 export type KnownInboxType = (typeof INBOX_TYPES)[number];
 /** A kind from the server: one of the known ones, or a newer one rendered with its own title. */

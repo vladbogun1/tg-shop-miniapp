@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useApiMutation } from "@shop/ui/mutation";
 import { aiKeys } from "@/features/ai";
 import { catalogKeys } from "@/features/catalog";
+import { inboxKeys } from "@/features/inbox";
 import { procurementKeys } from "@/features/procurement";
 import { draftsApi, type DraftSave, type SupplyDraft } from "./api-drafts";
 
@@ -36,6 +37,8 @@ export function useDraft(id: number) {
 }
 
 const AI_KEYS = [aiKeys.active(), aiKeys.summary(), aiKeys.tasksAll(), aiKeys.widget()];
+/** Готовый или упавший черновик — строка «Поставки ждут проверки» во «Внимании»: повтор, удаление и приём её меняют. */
+const SETTLED_KEYS = [...AI_KEYS, inboxKeys.all()];
 
 export function useCreateDraft() {
   return useApiMutation<SupplyDraft, number[]>({
@@ -56,7 +59,7 @@ export function useSaveDraft(id: number) {
 export function useRetryDraft(id: number) {
   return useApiMutation<SupplyDraft, void>({
     mutationFn: () => draftsApi.retry(id),
-    invalidate: [draftKeys.one(id), draftKeys.list(), ...AI_KEYS],
+    invalidate: [draftKeys.one(id), draftKeys.list(), ...SETTLED_KEYS],
     errorFallback: "Не удалось запустить ИИ ещё раз",
   });
 }
@@ -64,7 +67,7 @@ export function useRetryDraft(id: number) {
 export function useStopDraft(id: number) {
   return useApiMutation<SupplyDraft, void>({
     mutationFn: () => draftsApi.stop(id),
-    invalidate: [draftKeys.one(id), draftKeys.list(), ...AI_KEYS],
+    invalidate: [draftKeys.one(id), draftKeys.list(), ...SETTLED_KEYS],
     success: "ИИ остановлен",
     errorFallback: "Не удалось остановить ИИ",
   });
@@ -73,17 +76,17 @@ export function useStopDraft(id: number) {
 export function useDeleteDraft(id: number) {
   return useApiMutation<void, void>({
     mutationFn: () => draftsApi.remove(id),
-    invalidate: [draftKeys.list(), ...AI_KEYS],
+    invalidate: [draftKeys.list(), ...SETTLED_KEYS],
     success: "Черновик удалён",
     errorFallback: "Не удалось удалить черновик",
   });
 }
 
-/** «Принять»: создаются поставщик, товары и поставка — сбрасывается всё под «Поставками» и каталог. */
+/** «Принять»: создаются поставщик, товары и поставка — сбрасывается всё под «Поставками», каталог, задачи ИИ и «Внимание». */
 export function useAcceptDraft(id: number) {
   return useApiMutation<{ batchId: number; newProducts: number }, number>({
     mutationFn: (version) => draftsApi.accept(id, version),
-    invalidate: [procurementKeys.preordersRoot(), catalogKeys.productsRoot(), catalogKeys.cardsRoot()],
+    invalidate: [procurementKeys.preordersRoot(), catalogKeys.productsRoot(), catalogKeys.cardsRoot(), ...SETTLED_KEYS],
     success: (r) => (r.newProducts ? `Поставка создана, новых товаров: ${r.newProducts}` : "Поставка создана"),
     errorFallback: "Не удалось создать поставку",
   });

@@ -6,6 +6,7 @@ import {
   LifeBuoy,
   MessageCircle,
   Package,
+  PackageCheck,
   PackageMinus,
   RefreshCw,
   Star,
@@ -29,6 +30,7 @@ const GROUP_ICON: Record<KnownInboxType, LucideIcon> = {
   SITE_ERROR: Globe,
   REVIEW: Star,
   SUPPORT: LifeBuoy,
+  SUPPLY_DRAFT: PackageCheck,
 };
 
 /** Group hue (icon tile tint, icon, count): money and people first, information last. */
@@ -43,6 +45,7 @@ const GROUP_TONE: Record<KnownInboxType, string> = {
   SITE_ERROR: "var(--text-muted)",
   REVIEW: "var(--accent)",
   SUPPORT: "var(--info)",
+  SUPPLY_DRAFT: "var(--accent)",
 };
 
 export function groupIcon(type: InboxType): LucideIcon {
@@ -83,6 +86,7 @@ const PRIMARY: Record<KnownInboxType, PrimaryAction> = {
   SITE_ERROR: { label: "Повторить", icon: RefreshCw },
   REVIEW: { label: "К отзывам", icon: Star },
   SUPPORT: { label: "Ответить", icon: MessageCircle },
+  SUPPLY_DRAFT: { label: "Открыть черновик", icon: PackageCheck },
 };
 
 /** Main action of a row; a kind the UI does not know yet opens its order (if it has one). */

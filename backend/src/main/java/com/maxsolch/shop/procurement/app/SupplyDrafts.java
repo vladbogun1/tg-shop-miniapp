@@ -88,6 +88,18 @@ public class SupplyDrafts {
                 .map(view::summary).toList();
     }
 
+    /**
+     * Drafts that wait for the admin («Внимание»): ready to check, or the AI failed. Background callers (the push
+     * badge) have no admin — they get none, since whose drafts to show depends on who looks.
+     */
+    @Transactional(readOnly = true)
+    public List<DraftSummary> awaitingAdmin() {
+        if (!actor.isPresent()) {
+            return List.of();
+        }
+        return list().stream().filter(d -> d.status() == Status.READY || d.status() == Status.FAILED).toList();
+    }
+
     @Transactional(readOnly = true)
     public DraftDto get(long id) {
         return view.of(visible(drafts.findById(id).orElse(null)), finance());
