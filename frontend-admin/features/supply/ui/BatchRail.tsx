@@ -20,7 +20,7 @@ export function BatchRail({ items, value, onChange }: { items: RailItem[]; value
   return (
     <nav
       aria-label="Разделы поставок"
-      className="thin-scroll -mx-1 mb-4 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:sticky lg:top-4 lg:mx-0 lg:mb-0 lg:w-[212px] lg:shrink-0 lg:flex-col lg:self-start lg:overflow-visible lg:px-0 lg:pb-0"
+      className="thin-scroll -mx-1 mb-4 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:sticky lg:top-[calc(var(--hdr-h,61px)+16px)] lg:mx-0 lg:mb-0 lg:w-[212px] lg:shrink-0 lg:flex-col lg:self-start lg:overflow-visible lg:px-0 lg:pb-0"
     >
       {items.map((it, i) => {
         const active = it.value === value;

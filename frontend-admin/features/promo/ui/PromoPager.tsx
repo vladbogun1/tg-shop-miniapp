@@ -22,9 +22,8 @@ export function PromoPager({ page, size, total, onPage }: Props) {
       <span className="tabular text-[12.5px] text-[var(--text-muted)]">
         Стр. {page + 1} из {pages} · всего {total}
       </span>
-      <Button variant="ghost" size="sm" disabled={page + 1 >= pages} onClick={() => onPage(page + 1)}>
+      <Button variant="ghost" size="sm" disabled={page + 1 >= pages} iconRight={<ChevronRight className="h-4 w-4" />} onClick={() => onPage(page + 1)}>
         Вперёд
-        <ChevronRight className="h-4 w-4" />
       </Button>
     </nav>
   );

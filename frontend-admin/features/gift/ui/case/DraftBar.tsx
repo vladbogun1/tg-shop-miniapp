@@ -38,7 +38,7 @@ export function DraftBar({
   onDiscard: () => void;
   onPublish: () => void;
 }) {
-  const wrap = "sticky top-[calc(var(--safe-top)+58px)] z-20 mt-3 min-w-0 lg:top-[61px]";
+  const wrap = "sticky top-[var(--hdr-h,61px)] z-20 mt-3 min-w-0";
   if (!hasDraft || changed === 0) {
     return (
       <div className={wrap}>

@@ -28,7 +28,7 @@ export function PromoControls({ tab, onTab, counts, query, onQuery, state, onSta
   const wide = useMediaQuery("(min-width: 640px)", true);
   const labels = wide ? TAB_LABEL : TAB_LABEL_SHORT;
   return (
-    <div className="sticky top-[calc(var(--safe-top)+58px)] z-20 -mx-4 mb-3 flex flex-col gap-2 bg-[var(--bg)]/90 px-4 py-2 backdrop-blur lg:top-[61px] lg:-mx-7 lg:px-7">
+    <div className="sticky top-[var(--hdr-h,61px)] z-20 -mx-4 mb-3 flex flex-col gap-2 bg-[var(--bg)]/90 px-4 py-2 backdrop-blur lg:-mx-7 lg:px-7">
       {/* One row: on a phone «+» used to wrap onto a line of its own; now the tabs scroll (with a fade) instead. */}
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">

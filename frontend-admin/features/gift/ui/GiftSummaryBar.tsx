@@ -60,9 +60,12 @@ export function GiftSummaryBar({
         )}
         {dirtyCount > 0 && <Badge tone="accent">Не сохранено: {dirtyCount}</Badge>}
       </div>
-      <Button size="sm" variant="surface" className="shrink-0 whitespace-nowrap" icon={<Settings2 className="h-4 w-4" />} aria-expanded={open} onClick={onToggle}>
+      <Button size="sm" variant="surface" className="shrink-0 whitespace-nowrap" icon={<Settings2 className="h-4 w-4" />}
+        iconRight={<ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />}
+        aria-expanded={open}
+        onClick={onToggle}
+      >
         Настройки
-        <ChevronDown className={cn("ml-1 h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
       </Button>
     </div>
   );

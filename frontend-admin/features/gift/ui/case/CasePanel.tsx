@@ -146,7 +146,7 @@ export function CasePanel({ reminderDays }: { reminderDays: number | null }) {
           </div>
 
           <aside className="order-1 min-w-0 lg:order-2">
-            <div className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-4">
+            <div className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-[calc(var(--hdr-h,61px)+16px)]">
               <SummaryCard t={current} sum={sum} warnings={board.warnings} />
               <div className="grid min-w-0 grid-cols-2 gap-2">
                 <Button variant="surface" icon={<Sparkles className="h-4 w-4" />} onClick={() => setFilling(true)}>
