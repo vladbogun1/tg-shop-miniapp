@@ -85,3 +85,12 @@ export function unfinishedOf(productIds: string[], items: CardItem[]): string[] 
   const draft = new Set(items.filter((i) => tabOf(i) === "draft").map((i) => i.id));
   return [...new Set(productIds)].filter((id) => draft.has(id));
 }
+
+/**
+ * Скрытые с витрины товары, у которых карточка уже оформлена или ждёт проверки, — их осталось только выложить
+ * (товары без карточки — у «Оформить с ИИ», им ещё рано).
+ */
+export function hiddenOf(productIds: string[], items: CardItem[]): string[] {
+  const hidden = new Set(items.filter((i) => i.active !== true && tabOf(i) !== "draft").map((i) => i.id));
+  return [...new Set(productIds)].filter((id) => hidden.has(id));
+}

@@ -21,6 +21,7 @@ import { BatchResult } from "./BatchResult";
 import { BatchSalesTab } from "./BatchSalesTab";
 import { BatchJumps, BatchSection } from "./BatchSection";
 import { CancelBatchModal } from "./CancelBatchModal";
+import { HiddenProductsBanner } from "./HiddenProductsBanner";
 import { NewCardsBanner } from "./NewCardsBanner";
 
 export function BatchScreen() {
@@ -64,6 +65,7 @@ function BatchView({ batch }: { batch: Batch }) {
         onCancel={() => setCancelling(true)}
       />
       <NewCardsBanner batch={batch} />
+      <HiddenProductsBanner batch={batch} />
       {finance && arrived && <BatchResult batchId={batch.id} />}
       <BatchJumps items={jumps} />
 

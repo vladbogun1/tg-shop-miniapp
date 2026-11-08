@@ -4,6 +4,7 @@ export { ProductModal, type ProductStepKey } from "./ui/modal/ProductModal";
 export { usePublishGate } from "./ui/PublishGate";
 
 export { productApi } from "./api";
+export { productsSelectHref } from "./model/select-link";
 export { productKeys } from "./keys";
 export {
   invalidateProductDerived,

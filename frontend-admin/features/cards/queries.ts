@@ -11,7 +11,7 @@ import { invalidateTranslations } from "@/features/translation";
 import { catalogKeys } from "@/features/catalog";
 import { cardsApi, type CardStats } from "./api";
 import { cardsKeys } from "./keys";
-import { unfinishedOf } from "./model/screen";
+import { hiddenOf, unfinishedOf } from "./model/screen";
 
 /** Опрос счётчиков «Карточек»: 2 минуты, как было. */
 const STATS_REFETCH_MS = QUERY_PRESETS.live.refetchInterval * 4;
@@ -36,6 +36,12 @@ export function useCardItems() {
 export function useUnfinishedCards(productIds: string[]): string[] {
   const q = useCardItems();
   return q.data ? unfinishedOf(productIds, q.data) : [];
+}
+
+/** Which of these products are ready but hidden from the storefront — for «Выложить» on other screens. */
+export function useHiddenCards(productIds: string[]): string[] {
+  const q = useCardItems();
+  return q.data ? hiddenOf(productIds, q.data) : [];
 }
 
 /** Схема каталога в виде «Карточек» (5 минут, как было). */

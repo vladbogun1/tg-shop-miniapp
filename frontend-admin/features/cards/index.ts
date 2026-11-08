@@ -7,6 +7,6 @@ export { CardBatchButton } from "./ui/ai/batch/CardBatchButton";
 export { CardBatchHost } from "./ui/ai/batch/CardBatchHost";
 export { ManualResumeBar } from "./ui/manual/ManualBatchEntry";
 export { cardsKeys } from "./keys";
-export { invalidateCards, pendingCards, useCardItems, useUnfinishedCards, useCardSchema, useCardStats } from "./queries";
+export { invalidateCards, pendingCards, useCardItems, useUnfinishedCards, useHiddenCards, useCardSchema, useCardStats } from "./queries";
 export type { CardStats } from "./api";
 export { cardsWizardHref } from "./model/screen";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { item } from "./fixtures";
-import { cardsWizardHref, defaultTab, idsFromParam, listForTab, sortCards, pruneSelection, tabCounts, unfinishedOf } from "./screen";
+import { cardsWizardHref, defaultTab, idsFromParam, listForTab, sortCards, pruneSelection, tabCounts, unfinishedOf, hiddenOf } from "./screen";
 
 const A = item({ id: "a", title: "Альфа", cardStatus: "AI_FILLED", active: true, cardConfidence: 50 });
 const B = item({ id: "b", title: "Бета", cardStatus: "DRAFT", active: true });
@@ -63,5 +63,13 @@ describe("ссылка на мастер из поставки", () => {
 
   it("unfinishedOf — только «Оформить» (ИИ не заполнял)", () => {
     expect(unfinishedOf(["a", "b", "c", "b", "zz"], [A, B, C, D])).toEqual(["b"]);
+  });
+
+  it("hiddenOf — скрытые с оформленной или проверяемой карточкой, без черновиков и показанных", () => {
+    const hiddenReady = { ...D, id: "h1", active: false };
+    const hiddenReview = { ...A, id: "h2", active: false };
+    const hiddenDraft = { ...B, id: "h3", active: false };
+    const all = [A, B, C, D, hiddenReady, hiddenReview, hiddenDraft];
+    expect(hiddenOf(["a", "h1", "h2", "h3", "h1"], all)).toEqual(["h1", "h2"]);
   });
 });

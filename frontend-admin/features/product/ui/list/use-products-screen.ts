@@ -26,6 +26,7 @@ import {
   type StatusFilter,
   type ViewMode,
 } from "../../model/list";
+import { SELECT_PARAM, selectedFromParam } from "../../model/select-link";
 import { STEP_KEYS, type ProductStepKey } from "../../model/steps";
 import type { AdminProduct } from "../../model/types";
 import { invalidateProductDerived, isDoubleSubmit, useProductsQuery, useSetProductActive, useSetProductArchived } from "../../queries";
@@ -57,6 +58,17 @@ function consumeDeepLink(products: AdminProduct[], open: (p: AdminProduct, step:
   if (p) open(p, step && STEP_KEYS.has(step) ? (step as ProductStepKey) : undefined);
   sp.delete("edit");
   sp.delete("step");
+  const qs = sp.toString();
+  window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+}
+
+/** «/products?select=a,b»: выбрать эти товары (из тех, что в списке) и убрать параметр. */
+function consumeSelectLink(products: AdminProduct[], select: (ids: string[]) => void) {
+  const sp = new URLSearchParams(window.location.search);
+  if (!sp.has(SELECT_PARAM)) return;
+  const ids = selectedFromParam(sp.get(SELECT_PARAM), new Set(products.map((p) => p.id)));
+  if (ids.length) select(ids);
+  sp.delete(SELECT_PARAM);
   const qs = sp.toString();
   window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
 }
@@ -125,6 +137,11 @@ export function useProductsScreen() {
       },
       setBrandId
     );
+    consumeSelectLink(products, (ids) => {
+      setStatus("hidden");
+      setSelected(new Set(ids));
+      setSelectMode(true);
+    });
   }, [isLoading, products]);
 
   // И то и другое — в одном промахе пальцем от ошибки на телефоне, поэтому каждое подтверждается тостом «Отменить».
