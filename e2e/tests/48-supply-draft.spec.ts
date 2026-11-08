@@ -59,6 +59,12 @@ async function startDraft(page: Page): Promise<number> {
   return Number(/(\d+)$/.exec(page.url())?.[1]);
 }
 
+/** Черновики в «Внимание» → «Поставки ждут проверки». */
+async function inboxDrafts(api: Api): Promise<string[]> {
+  const g = (await api.inbox()).groups.find((x) => x.id === "SUPPLY_DRAFT");
+  return g ? g.items.map((i) => i.entityId) : [];
+}
+
 const ready = (page: Page) => expect(page.getByText("Готово — проверьте").first()).toBeVisible({ timeout: 120_000 });
 
 // Сначала экраны: после «Принять» в следующем черновике те же строки уже найдутся в каталоге (новых товаров не будет).
@@ -83,7 +89,7 @@ test("экраны черновика на 7 ширинах: без боково
   }
 });
 
-test("одна кнопка → ИИ сам всё делает → «Готово — проверьте» → «Принять» создаёт поставку и скрытые товары", async ({ page }) => {
+test("одна кнопка → ИИ сам всё делает → «Готово — проверьте» → «Принять» создаёт поставку и скрытые товары", async ({ page, api }) => {
   test.skip(NO_S3, "нужен MinIO стека");
   await page.setViewportSize({ width: 1440, height: 900 });
   const id = await startDraft(page);
@@ -97,6 +103,16 @@ test("одна кнопка → ИИ сам всё делает → «Готов
   await page.waitForURL(new RegExp(`/preorders/drafts/${id}$`));
   await ready(page);
   await shot(page, "ready-1440");
+
+  // Готовый черновик ждёт в «Внимание»; строка ведёт на него.
+  expect(await inboxDrafts(api)).toContain(String(id));
+  await page.goto("/inbox");
+  const group = page.locator("section").filter({ has: page.getByRole("heading", { level: 2, name: /^Поставки ждут проверки/ }) });
+  await expect(group).toBeVisible();
+  await shot(page, "inbox-1440");
+  await group.getByRole("button", { name: "Открыть черновик" }).first().click();
+  await page.waitForURL(new RegExp(`/preorders/drafts/${id}$`));
+  await ready(page);
 
   // НБУ в стеке может не ответить — тогда курс вводим сами, пустые цены экран предложит по курсу.
   const rate = page.getByLabel("Курс к ₴");
@@ -124,4 +140,6 @@ test("одна кнопка → ИИ сам всё делает → «Готов
   expect(made.every((p) => !p.active && p.stock === 0)).toBe(true);
   const [d] = await query<{ status: string }>("SELECT status FROM supply_drafts WHERE id = ?", [id]);
   expect(d.status).toBe("ACCEPTED");
+  // Принятый черновик уходит из «Внимание».
+  expect(await inboxDrafts(api)).not.toContain(String(id));
 });
