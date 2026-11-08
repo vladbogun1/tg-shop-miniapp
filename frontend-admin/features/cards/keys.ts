@@ -12,6 +12,8 @@ export const cardsKeys = {
   export: () => catalogKeys.cardsExport(),
   /** Один товар (окно оформления). */
   aiSafeCount: (batchId: number, ready: number) => [...catalogKeys.cardsExport(), "ai-safe", batchId, ready] as const,
+  /** Несколько товаров (строки поставки) — без выгрузки всего каталога. */
+  exportOf: (ids: string) => [...catalogKeys.cardsExport(), "of", ids] as const,
   exportOne: (productId: string) => [...catalogKeys.cardsExport(), "one", productId] as const,
   /** Незаконченный ручной пакет админа (сервер): товары, черновик экрана, задачи. */
   manual: () => [...catalogKeys.cardsRoot(), "manual"] as const,

@@ -32,15 +32,29 @@ export function useCardItems() {
   return useQuery({ queryKey: cardsKeys.export(), queryFn: () => cardsApi.export("all"), staleTime: QUERY_PRESETS.list.staleTime });
 }
 
+/**
+ * Card data of just these products (a supply's lines): `?ids=` instead of the whole catalog export (≈1,5 МБ).
+ * Under the export key, so every card write refreshes it too.
+ */
+function useCardItemsOf(productIds: string[]) {
+  const ids = [...new Set(productIds)].sort().join(",");
+  return useQuery({
+    queryKey: cardsKeys.exportOf(ids),
+    queryFn: () => cardsApi.export("all", ids.split(",")),
+    enabled: ids.length > 0,
+    staleTime: QUERY_PRESETS.list.staleTime,
+  });
+}
+
 /** Which of these products still need a card (tab «Оформить») — for «Оформить с ИИ» on other screens. */
 export function useUnfinishedCards(productIds: string[]): string[] {
-  const q = useCardItems();
+  const q = useCardItemsOf(productIds);
   return q.data ? unfinishedOf(productIds, q.data) : [];
 }
 
 /** Which of these products are ready but hidden from the storefront — for «Выложить» on other screens. */
 export function useHiddenCards(productIds: string[]): string[] {
-  const q = useCardItems();
+  const q = useCardItemsOf(productIds);
   return q.data ? hiddenOf(productIds, q.data) : [];
 }
 

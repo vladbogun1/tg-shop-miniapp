@@ -71,7 +71,9 @@ function PreordersBody() {
   const allQ = useBatchesList("all");
   const draftsQ = useDrafts();
   const suppliersQ = useSuppliersList();
-  const productsQ = useProductsQuery({ staleTime: PICK_PRODUCTS_STALE_MS });
+  // Весь каталог (≈1,8 МБ) — только для ссылки «?newProduct=»; окно выбора товара грузит его само, когда открыто.
+  const newProduct = params.get("newProduct");
+  const productsQ = useProductsQuery({ staleTime: PICK_PRODUCTS_STALE_MS, enabled: !!newProduct });
 
   const batches = allQ.data ?? [];
   const drafts = draftsQ.data ?? [];
@@ -89,7 +91,6 @@ function PreordersBody() {
   ];
 
   // Глубокая ссылка «?newProduct=id»: открыть форму с этим товаром, один раз.
-  const newProduct = params.get("newProduct");
   useEffect(() => {
     if (!newProduct || !productsQ.data) return;
     const p = productsQ.data.find((x) => x.id === newProduct);
