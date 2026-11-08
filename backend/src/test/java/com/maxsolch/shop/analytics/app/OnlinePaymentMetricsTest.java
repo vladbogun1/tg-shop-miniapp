@@ -67,6 +67,15 @@ class OnlinePaymentMetricsTest {
     }
 
     @Test
+    void scheme_zeroOrderIsNotAnOldTransfer() {
+        // Gift / prize / exchange orders the admin creates for 0 ₴ keep the option title but pay nothing.
+        Instant t = kyiv("2026-11-03T10:00:00");
+        assertThat(order(t).payment("Полная оплата онлайн").total(0).build().scheme()).isEqualTo(PaymentScheme.FREE);
+        assertThat(order(t).payment("Полная оплата онлайн").total(2600_00).build().scheme())
+                .isEqualTo(PaymentScheme.CARD_FULL);
+    }
+
+    @Test
     void unpaidOnlineOrder_isNotSoldYet_andATimeoutIsNotARejection() {
         OrderFact paid = order(kyiv("2026-10-10T10:00:00")).status(OrderStatus.NEW).total(1000_00).online(0)
                 .paidOnline(kyiv("2026-10-10T10:05:00"), 1000_00).build();

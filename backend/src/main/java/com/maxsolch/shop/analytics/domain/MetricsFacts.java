@@ -34,10 +34,12 @@ public record MetricsFacts(List<OrderFact> orders,
         ONLINE_FULL("Онлайн monobank: полная оплата"),
         /** monobank acquiring, 100 грн online + the rest cash on delivery. */
         ONLINE_PREPAY("Онлайн monobank: предоплата + наложка"),
-        /** Before v3.9.0: full transfer to the card / FOP account, confirmed by the admin. */
-        CARD_FULL("Перевод на карту (старый): полная оплата"),
+        /** Before v3.9.0: transfer to the card / FOP account; since then — paid outside monobank, marked by the admin. */
+        CARD_FULL("Вручную / перевод на карту: полная оплата"),
         /** Before v3.9.0: prepayment transferred to the card + cash on delivery. */
-        CARD_PREPAY("Перевод на карту (старый): предоплата + наложка"),
+        CARD_PREPAY("Вручную / перевод на карту: предоплата + наложка"),
+        /** A 0 ₴ order (gift, prize, exchange): keeps the option title but nobody pays. */
+        FREE("Без оплаты: заказ на 0 ₴"),
         /** Before payment options existed (until June 2026): no option recorded. */
         NONE("Способ не записан (до июня 2026)");
 
@@ -130,6 +132,9 @@ public record MetricsFacts(List<OrderFact> orders,
         }
 
         public PaymentScheme scheme() {
+            if (totalMinor == 0 && onlinePaidMinor == 0) {
+                return PaymentScheme.FREE;
+            }
             if (online()) {
                 return prepaymentMinor > 0 ? PaymentScheme.ONLINE_PREPAY : PaymentScheme.ONLINE_FULL;
             }
