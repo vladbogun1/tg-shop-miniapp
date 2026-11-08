@@ -7,6 +7,8 @@ import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftCreateRequest;
 import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftDto;
 import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftSummary;
 import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftSaveRequest;
+import com.maxsolch.shop.procurement.app.SupplyDraftDtos.SameInvoice;
+import com.maxsolch.shop.procurement.app.SupplyDraftDuplicates;
 import com.maxsolch.shop.procurement.app.SupplyDrafts;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -32,15 +35,23 @@ import java.util.List;
 public class AdminSupplyDraftController {
 
     private final SupplyDrafts drafts;
+    private final SupplyDraftDuplicates duplicates;
 
-    public AdminSupplyDraftController(SupplyDrafts drafts) {
+    public AdminSupplyDraftController(SupplyDrafts drafts, SupplyDraftDuplicates duplicates) {
         this.drafts = drafts;
+        this.duplicates = duplicates;
     }
 
     @GetMapping
     @Operation(summary = "Open supply drafts (own; all of them with the finance right)")
     public List<DraftSummary> list() {
         return drafts.list();
+    }
+
+    @GetMapping("/same-invoice")
+    @Operation(summary = "Drafts (open or accepted, of the last 7 days) that already have these invoice files uploaded again")
+    public List<SameInvoice> sameInvoice(@RequestParam List<Long> fileIds) {
+        return duplicates.sameInvoice(fileIds);
     }
 
     @PostMapping

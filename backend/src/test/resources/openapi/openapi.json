@@ -13930,6 +13930,44 @@
         ],
         "type" : "object"
       },
+      "SameInvoice" : {
+        "properties" : {
+          "batchId" : {
+            "format" : "int64",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "status" : {
+            "enum" : [
+              "RUNNING",
+              "READY",
+              "FAILED",
+              "ACCEPTED"
+            ],
+            "type" : "string"
+          },
+          "title" : {
+            "nullable" : true,
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "batchId",
+          "createdAt",
+          "id",
+          "status",
+          "title"
+        ],
+        "type" : "object"
+      },
       "SchemeRow" : {
         "properties" : {
           "aovMinor" : {
@@ -26958,6 +26996,49 @@
           }
         ],
         "summary" : "Create a draft from invoice pictures and start the AI",
+        "tags" : [
+          "Admin Preorders"
+        ]
+      }
+    },
+    "/api/admin/supply-drafts/same-invoice" : {
+      "get" : {
+        "operationId" : "AdminSupplyDraftController_sameInvoice",
+        "parameters" : [
+          {
+            "in" : "query",
+            "name" : "fileIds",
+            "required" : true,
+            "schema" : {
+              "items" : {
+                "format" : "int64",
+                "type" : "integer"
+              },
+              "type" : "array"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/SameInvoice"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Drafts (open or accepted, of the last 7 days) that already have these invoice files uploaded again",
         "tags" : [
           "Admin Preorders"
         ]

@@ -56,7 +56,7 @@ class AiFilesIT extends AbstractMysqlIT {
         String key = "it/" + UUID.randomUUID() + ".png";
         bucket.put(key, new byte[]{1, 2, 3}, "image/png");
         return repo.save(AiFile.of(9_100_000L + (long) (Math.random() * 1000), UUID.randomUUID().toString(), "a.png", key,
-                "image/png", 3, null, uploaded));
+                "image/png", 3, null, null, uploaded));
     }
 
     @Test

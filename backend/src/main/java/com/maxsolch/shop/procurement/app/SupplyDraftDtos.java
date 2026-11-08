@@ -20,6 +20,11 @@ public final class SupplyDraftDtos {
     }
 
     /** The pictures of the invoice (ids from {@code POST /api/admin/ai/files}). */
+    /** A draft that already has the same invoice file (uploaded again): open it instead of paying for the AI twice. */
+    public record SameInvoice(long id, @Nullable String title, SupplyDraft.Status status, @Nullable Long batchId,
+                              Instant createdAt) {
+    }
+
     public record DraftCreateRequest(List<Long> fileIds) {
     }
 

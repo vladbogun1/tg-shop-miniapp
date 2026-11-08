@@ -61,8 +61,12 @@ public class AiFile {
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
+    /** SHA-256 of the file as uploaded (all pages of a PDF share it); null for files stored before V95. */
+    @Column(name = "content_sha256", length = 64)
+    private String contentSha256;
+
     public static AiFile of(long adminId, String uploadId, String name, String objectKey, String mime, int size,
-                            Integer page, Instant now) {
+                            Integer page, String contentSha256, Instant now) {
         AiFile f = new AiFile();
         f.adminId = adminId;
         f.uploadId = uploadId;
@@ -71,6 +75,7 @@ public class AiFile {
         f.mime = mime;
         f.size = size;
         f.page = page;
+        f.contentSha256 = contentSha256;
         f.createdAt = now;
         f.expiresAt = now.plus(KEEP);
         return f;

@@ -47,7 +47,7 @@ class AiFilesLimitTest {
     private void waiting(int n) {
         List<AiFile> list = new ArrayList<>();
         for (int i = 0; i < n; i++) {
-            list.add(AiFile.of(7L, "u", "f" + i, "k" + i, "image/jpeg", 10, null, T0));
+            list.add(AiFile.of(7L, "u", "f" + i, "k" + i, "image/jpeg", 10, null, null, T0));
         }
         when(repo.findByAdminIdAndJobIdIsNullOrderByIdAsc(7L)).thenReturn(list);
     }
@@ -97,5 +97,11 @@ class AiFilesLimitTest {
         }
         assertThatThrownBy(() -> files.attach(eleven, 5L)).isInstanceOfSatisfying(DomainException.BadRequest.class,
                 e -> assertThat(e.errorCode()).isEqualTo(AiError.FILES_LIMIT));
+    }
+
+    @Test
+    void theContentHashIsTheSha256OfTheUploadedFile() {
+        assertThat(AiFiles.sha256("abc".getBytes(java.nio.charset.StandardCharsets.UTF_8)))
+                .isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
     }
 }

@@ -26,6 +26,15 @@ export function useDrafts() {
   });
 }
 
+/** Тот же файл накладной уже в черновике или принятой поставке (за 7 дней): спрашиваем, пока файлы ещё не отданы ИИ. */
+export function useSameInvoice(fileIds: number[]) {
+  return useQuery({
+    queryKey: [...draftKeys.list(), "same", fileIds.join(",")] as const,
+    queryFn: () => draftsApi.sameInvoice(fileIds),
+    enabled: fileIds.length > 0,
+  });
+}
+
 export function useDraft(id: number) {
   return useQuery({
     queryKey: draftKeys.one(id),

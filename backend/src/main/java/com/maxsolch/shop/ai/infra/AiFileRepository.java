@@ -19,6 +19,8 @@ public interface AiFileRepository extends JpaRepository<AiFile, Long> {
 
     List<AiFile> findByIdIn(Collection<Long> ids);
 
+    List<AiFile> findByContentSha256In(Collection<String> hashes);
+
     long countByJobId(long jobId);
 
     @Query("select f from AiFile f where f.expiresAt < :now order by f.id")

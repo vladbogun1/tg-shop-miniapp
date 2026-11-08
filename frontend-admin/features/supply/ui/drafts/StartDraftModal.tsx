@@ -15,6 +15,7 @@ import { useCreateDraft } from "../../queries-drafts";
 import { FilesPanel } from "../ai/FilesPanel";
 import { useReadReason } from "../ai/ReadWithAi";
 import { useSupplyFiles } from "../ai/use-supply-files";
+import { SameInvoiceNotice } from "./SameInvoiceNotice";
 
 function Estimate({ n }: { n: number }) {
   const e = useAiEstimate({ feature: "SUPPLY_EXTRACT", mode: "NORMAL", items: Math.max(1, n) }).data;
@@ -75,6 +76,7 @@ export function StartDraftModal({ open, onClose, onManual }: { open: boolean; on
           Когда всё будет готово, придёт уведомление «Поставка готова — проверьте»: вы посмотрите итог, поправите и примете.
         </p>
         <FilesPanel files={files} locked={create.isPending} />
+        <SameInvoiceNotice fileIds={files.files.map((f) => f.id)} onOpen={onClose} />
         {reason ? <AiUnavailable reason={reason} /> : n > 0 && <div className="text-[12px] text-[var(--text-muted)]"><Estimate n={n} /></div>}
       </div>
     </Modal>

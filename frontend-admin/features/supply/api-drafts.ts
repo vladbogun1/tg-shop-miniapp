@@ -6,6 +6,7 @@
 import type { Schemas } from "@shop/core/api/schemas";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/lib/http";
 import type { ExtractedDoc, LineDecision, ReviewRow } from "./model/ai/types";
+import type { SameInvoice } from "./model/drafts/same-invoice";
 
 const BASE = "/api/admin/supply-drafts";
 
@@ -39,6 +40,7 @@ export const draftsApi = {
   list: () => apiGet<DraftSummary[]>(BASE),
   get: (id: number) => apiGet<SupplyDraft>(`${BASE}/${id}`),
   create: (fileIds: number[]) => apiPost<SupplyDraft>(BASE, { fileIds }),
+  sameInvoice: (fileIds: number[]) => apiGet<SameInvoice[]>(`${BASE}/same-invoice?fileIds=${fileIds.join(",")}`),
   save: (id: number, body: DraftSave) => apiPut<SupplyDraft>(`${BASE}/${id}`, body),
   retry: (id: number) => apiPost<SupplyDraft>(`${BASE}/${id}/retry`, {}),
   stop: (id: number) => apiPost<SupplyDraft>(`${BASE}/${id}/stop`, {}),

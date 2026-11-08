@@ -12,11 +12,14 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -72,6 +75,7 @@ public class AiFiles {
             throw new DomainException.BadRequest(AiError.FILES_OVER, MAX_IMAGES, waiting, images.size());
         }
         String uploadId = UUID.randomUUID().toString();
+        String sha = sha256(content);
         String label = clean(name);
         List<AiFile> saved = new ArrayList<>();
         try {
@@ -81,7 +85,7 @@ public class AiFiles {
                 objects.put(key, img.bytes(), img.mime());
                 String shown = img.page() == null ? label : label + " (стр. " + img.page() + ")";
                 saved.add(files.save(AiFile.of(adminId, uploadId, shown, key, img.mime(), img.bytes().length,
-                        img.page(), clock.instant())));
+                        img.page(), sha, clock.instant())));
             }
         } catch (RuntimeException e) {
             saved.forEach(f -> objects.removeQuietly(f.getObjectKey()));
@@ -89,6 +93,30 @@ public class AiFiles {
             throw e;
         }
         return saved.stream().map(FileDto::of).toList();
+    }
+
+    /**
+     * Other stored pictures with the same content as these (the same file uploaded again): what a supply checks to say
+     * «this invoice is already in draft №N». Only files still kept (7 days) and stored since V95 take part.
+     */
+    @Transactional(readOnly = true)
+    public Set<Long> sameContentAs(Collection<Long> ids) {
+        Set<Long> given = new HashSet<>(ids == null ? List.of() : ids);
+        if (given.isEmpty()) {
+            return Set.of();
+        }
+        Set<String> hashes = new HashSet<>();
+        files.findByIdIn(given).forEach(f -> {
+            if (f.getContentSha256() != null) {
+                hashes.add(f.getContentSha256());
+            }
+        });
+        Set<Long> out = new HashSet<>();
+        if (!hashes.isEmpty()) {
+            files.findByContentSha256In(hashes).forEach(f -> out.add(f.getId()));
+        }
+        out.removeAll(given);
+        return out;
     }
 
     /** The admin's own pictures that no task has taken yet (a reopened screen shows them again). */
@@ -187,6 +215,14 @@ public class AiFiles {
             throw new DomainException.NotFound(AiError.FILE_NOT_FOUND);
         }
         return f;
+    }
+
+    static String sha256(byte[] content) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is missing in this JVM", e);
+        }
     }
 
     private static String clean(String name) {

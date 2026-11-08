@@ -3756,6 +3756,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/supply-drafts/same-invoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Drafts (open or accepted, of the last 7 days) that already have these invoice files uploaded again */
+        get: operations["AdminSupplyDraftController_sameInvoice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/supply-drafts/{id}": {
         parameters: {
             query?: never;
@@ -9700,6 +9717,17 @@ export interface components {
             /** Format: int64 */
             count: number;
             distribution: number[];
+        };
+        SameInvoice: {
+            /** Format: int64 */
+            batchId: number | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            status: "RUNNING" | "READY" | "FAILED" | "ACCEPTED";
+            title: string | null;
         };
         SchemeRow: {
             /** Format: int64 */
@@ -16473,6 +16501,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["DraftDto"];
+                };
+            };
+        };
+    };
+    AdminSupplyDraftController_sameInvoice: {
+        parameters: {
+            query: {
+                fileIds: number[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SameInvoice"][];
                 };
             };
         };

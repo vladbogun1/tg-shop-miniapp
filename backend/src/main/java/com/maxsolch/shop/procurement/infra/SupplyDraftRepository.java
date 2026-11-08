@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +20,8 @@ public interface SupplyDraftRepository extends JpaRepository<SupplyDraft, Long> 
 
     /** Open drafts (not accepted), newest first: all of them for the finance right, otherwise filtered by the caller. */
     List<SupplyDraft> findByStatusInOrderByIdDesc(Collection<SupplyDraft.Status> statuses);
+
+    List<SupplyDraft> findByCreatedAtAfterOrderByIdDesc(Instant since);
 
     /** The row is locked until the transaction ends: the timer and the admin's actions change the draft one after the other. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
