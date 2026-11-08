@@ -38,8 +38,8 @@ async function shot(page: Page, name: string) {
 }
 
 async function cleanup() {
-  await query("DELETE FROM ai_job_bodies WHERE job_id IN (SELECT id FROM ai_jobs WHERE feature = 'SUPPLY_EXTRACT')");
-  await query("DELETE FROM ai_jobs WHERE feature = 'SUPPLY_EXTRACT'");
+  await query("DELETE FROM ai_job_bodies WHERE job_id IN (SELECT id FROM ai_jobs WHERE feature IN ('SUPPLY_EXTRACT', 'SUPPLY_MATCH'))");
+  await query("DELETE FROM ai_jobs WHERE feature IN ('SUPPLY_EXTRACT', 'SUPPLY_MATCH')");
   await query("DELETE FROM ai_files");
 }
 
@@ -84,11 +84,13 @@ test("скрин → «Прочитать с ИИ» → шесть строк �
   await read.click();
   await expect(modal.getByText("Прочитано 6 из 6, сумма сошлась")).toBeVisible({ timeout: 60_000 });
   await expect(modal.getByText("Строки документа: 6")).toBeVisible();
+  // Нерешённые поиском строки встроенный ИИ сопоставляет сам — сразу после чтения.
+  await expect(modal.getByText(/✓ ИИ решил строк: \d+/)).toBeVisible({ timeout: 60_000 });
   await modal.getByText("Прочитано 6 из 6, сумма сошлась").scrollIntoViewIfNeeded();
   await shot(page, "result-1440");
 
   // Одну строку сопоставляем с товаром, остальные пропускаем: в форму поставки идут только сопоставленные.
-  await modal.getByRole("button", { name: "Выбрать товар" }).first().click();
+  await modal.getByRole("button", { name: /^(Выбрать товар|Другой товар)$/ }).first().click();
   const pick = dialog(page, "Какой это товар");
   await pick.getByLabel("Поиск товара").fill(PREORDER.productTitle);
   await pick.getByRole("button", { name: new RegExp(PREORDER.productTitle) }).click();
@@ -102,6 +104,81 @@ test("скрин → «Прочитать с ИИ» → шесть строк �
   await shot(page, "form");
   await form.getByRole("button", { name: "Проверено" }).click();
   await expect(form.getByText("из ИИ, проверьте")).toHaveCount(0);
+});
+
+/** Загрузить скрин и прочитать его; ждёт плашку «Прочитано 6 из 6». */
+async function readShot(page: Page) {
+  const modal = await openReader(page);
+  await modal.getByTestId("supply-ai-file-input").setInputFiles({ name: "order.png", mimeType: "image/png", buffer: screenshotPng() });
+  const read = modal.getByRole("button", { name: "Прочитать с ИИ" });
+  await expect(read).toBeEnabled();
+  await read.click();
+  await expect(modal.getByText("Прочитано 6 из 6, сумма сошлась")).toBeVisible({ timeout: 60_000 });
+  return modal;
+}
+
+async function calls(): Promise<{ id: string | null; mode: string; lines?: string[] }[]> {
+  return (await fetch(`${FAKE_AI_URL}/__e2e/requests`)).json();
+}
+
+test("шаг 2 сам: после чтения ИИ сопоставляет нерешённые строки, ручной путь не нужен", async ({ page }) => {
+  test.skip(NO_S3, "нужен MinIO");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const modal = await readShot(page);
+  const help = modal.getByTestId("supply-ai-help");
+  const done = help.getByText(/✓ ИИ решил строк: \d+ — проверьте их ниже/);
+  await expect(done).toBeVisible({ timeout: 60_000 });
+  const solved = Number(/строк: (\d+)/.exec(await done.innerText())?.[1]);
+  await expect(help.getByText("Помощь ИИ: готово")).toBeVisible();
+  // Решения ИИ видны в строках: товар из каталога с меткой «ИИ» или «новый товар» по ответу модели.
+  await expect(modal.getByText("Похожие у нас — выберите или создайте новый")).toHaveCount(0);
+  await expect(modal.getByText("Нет в каталоге")).toHaveCount(0);
+  expect(await modal.getByText(/^(ИИ|новый товар)$/).count()).toBeGreaterThan(0);
+  // Ровно одна задача сопоставления, ручной промпт не показан.
+  const match = (await calls()).filter((c) => c.id === "supply-match");
+  expect(match).toHaveLength(1);
+  // В промпт ушли только строки, которые не решили память поставщика и поиск, — и все они решены.
+  const byMemory = await modal.getByText("Из памяти поставщика", { exact: true }).count();
+  expect(match[0].lines).toHaveLength(6 - byMemory - (await modal.getByText("Найден в каталоге", { exact: true }).count()));
+  expect(match[0].lines).toHaveLength(solved);
+  await expect(help.getByRole("button", { name: /Скопировать промпт/ })).toHaveCount(0);
+  await help.scrollIntoViewIfNeeded();
+  await shot(page, "match-1440");
+});
+
+test("шаг 2: модель упала — ошибка с повтором и ручной путь через ChatGPT", async ({ page }) => {
+  test.skip(NO_S3, "нужен MinIO");
+  await fake("mode", { matchMode: "error" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  const modal = await readShot(page);
+  const help = modal.getByTestId("supply-ai-help");
+  await expect(help.getByText(/несопоставленных строк/)).toBeVisible();
+  await expect(help.getByRole("button", { name: /Повторить/ })).toBeVisible({ timeout: 60_000 });
+  await help.scrollIntoViewIfNeeded();
+  await shot(page, "match-failed-390");
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  expect(overflow).toBe(false);
+
+  // Повтор с рабочей моделью решает строки.
+  await fake("mode", { matchMode: null });
+  await help.getByRole("button", { name: /Повторить/ }).click();
+  await expect(help.getByText(/✓ ИИ решил строк: \d+/)).toBeVisible({ timeout: 60_000 });
+});
+
+test("шаг 2: ответ без JSON — строки остаются, есть кнопка «Через ChatGPT вручную» с промптом", async ({ page }) => {
+  test.skip(NO_S3, "нужен MinIO");
+  await fake("mode", { matchMode: "bad" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const modal = await readShot(page);
+  const help = modal.getByTestId("supply-ai-help");
+  await expect(help.getByText(/несопоставленных строк/)).toBeVisible();
+  await expect(help.getByText("Ответ ИИ не удалось прочитать.")).toBeVisible({ timeout: 60_000 });
+  // У неудачной задачи своя кнопка ручного пути — вторая рядом не показывается.
+  const manual = help.getByRole("button", { name: "Через ChatGPT вручную" });
+  await expect(manual).toHaveCount(1);
+  await manual.click();
+  await expect(help.getByRole("button", { name: /Скопировать промпт \(\d+\)/ })).toBeVisible();
+  await shot(page, "match-manual-1440");
 });
 
 test("телефон 375 px: загрузчик и результат с метками помещаются в экран", async ({ page }) => {

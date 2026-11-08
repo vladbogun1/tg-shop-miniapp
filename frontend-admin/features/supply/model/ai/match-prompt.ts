@@ -12,6 +12,26 @@ export interface LeafCategory {
   name: string;
 }
 
+/** Версия промпта шага 2 — в задаче встроенного ИИ, чтобы метрики отличали правки текста. */
+export const MATCH_PROMPT_VERSION = "supply-match-1";
+
+/**
+ * Предмет задачи встроенного ИИ: набор нерешённых строк (номер + текст + вариант). Тот же набор второй раз — «уже идёт»,
+ * а не вторая платная задача. FNV-1a 32 бита ×2 с разными затравками: 16 hex-знаков хватает для ключа «одна поставка».
+ */
+export function matchSubject(rows: ReviewRow[]): string {
+  const text = rows.map((r) => [r.line.id, r.line.text, r.line.variant ?? ""].join("|")).join(";");
+  const fnv = (seed: number) => {
+    let h = seed >>> 0;
+    for (let i = 0; i < text.length; i++) {
+      h ^= text.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return h.toString(16).padStart(8, "0");
+  };
+  return `m${fnv(0x811c9dc5)}${fnv(0x9747b28c)}`;
+}
+
 /** Короткий ключ товара в промпте: "p" + первые 8 знаков id. */
 export const shortId = (id: string) => `p${id.replace(/-/g, "").slice(0, 8)}`;
 

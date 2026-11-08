@@ -8,9 +8,11 @@
  * new Russian description plus its translations, in a ```json block.
  *
  * A translation prompt (it has «Строки для перевода») is answered with uk/en for every id it asks about.
+ * The supply match prompt (step 2) takes the first candidate of every line, or a new product without candidates.
  *
  * What a test drives (control API, /__e2e/*, JSON):
- *   POST /__e2e/mode {mode: "normal"|"bad"|"error"|"research", delayMs?, description?, photos?}
+ *   POST /__e2e/mode {mode: "normal"|"bad"|"error"|"research", matchMode?, delayMs?, description?, photos?}
+ *        matchMode — the mode for the supply match prompt only (null — the same as mode);
  *        normal — a good answer; bad — text without JSON (the job ends BAD_ANSWER); error — HTTP 500 (FAILED);
  *        research — the first turn asks for the «search» tool (the job writes the step «Ищу: …», then
  *        «Разбираю найденное»), the next turn is the good answer plus `photos`; delayMs then holds only that next
@@ -18,17 +20,17 @@
  *        delayMs — the answer comes that much later (to catch the job while it runs);
  *        description — the text of the new description (default "E2E-ИИ: описание");
  *        photos — links put into the answer's "photos" (research mode only).
- *   GET  /__e2e/requests — how many /v1/messages calls came, and the product ids found in them
+ *   GET  /__e2e/requests — how many /v1/messages calls came, and the product ids found in them (a match call: its lines)
  *   POST /__e2e/reset — normal mode, no delay, forgets the requests
  */
 import http from "node:http";
 
 const port = Number(process.env.E2E_FAKE_AI_PORT || 18191);
 
-const state = { mode: "normal", delayMs: 0, description: "E2E-ИИ: описание", photos: [], calls: [] };
+const state = { mode: "normal", matchMode: null, delayMs: 0, description: "E2E-ИИ: описание", photos: [], calls: [] };
 
 function reset() {
-  Object.assign(state, { mode: "normal", delayMs: 0, description: "E2E-ИИ: описание", photos: [], calls: [] });
+  Object.assign(state, { mode: "normal", matchMode: null, delayMs: 0, description: "E2E-ИИ: описание", photos: [], calls: [] });
 }
 
 function promptText(body) {
@@ -61,6 +63,7 @@ function translationAnswer(text) {
 
 function answerFor(text) {
   if (text.includes("помощник закупщика")) return supplyAnswer();
+  if (text.includes("не смог уверенно сопоставить")) return matchAnswer(text);
   if (text.includes("Строки для перевода")) return translationAnswer(text);
   const id = /"(p[0-9a-f]{8,32})"\s*:/.exec(text)?.[1] ?? null;
   const d = state.description;
@@ -88,6 +91,28 @@ function supplyAnswer() {
   return { id: "supply", text: "```json\n" + JSON.stringify(doc, null, 2) + "\n```" };
 }
 
+/**
+ * The supply step 2 prompt: a line with candidates takes the first one (and its first variant), a line without them
+ * becomes a new product in the first category of the list.
+ */
+function matchAnswer(text) {
+  const category = /^- ([a-z0-9-]+) — /m.exec(text)?.[1] ?? null;
+  const out = {};
+  for (const block of text.split(/^### /m).slice(1)) {
+    const id = /^(L\d+):/.exec(block)?.[1];
+    if (!id) continue;
+    const cand = /^- (p[0-9a-f]{8}) \| (.*)$/m.exec(block);
+    if (cand) {
+      const variants = /варианты: ([^|]*)/.exec(cand[2])?.[1];
+      out[id] = { product: cand[1], variant: variants ? variants.split(", ")[0].trim() : null, notes: null };
+    } else {
+      const title = block.split("\n")[0].replace(/^L\d+:\s*/, "");
+      out[id] = { new: { title: `E2E ${title}`, variant: null, brand: "E2E", category, source: null }, notes: "e2e: новый товар" };
+    }
+  }
+  return { id: "supply-match", lines: Object.keys(out), text: "```json\n" + JSON.stringify(out, null, 2) + "\n```" };
+}
+
 function reply(res, status, obj) {
   res.writeHead(status, { "content-type": "application/json" });
   res.end(JSON.stringify(obj));
@@ -111,6 +136,7 @@ async function control(req, res, url) {
   if (req.method === "POST" && url.pathname === "/__e2e/mode") {
     const b = await readBody(req);
     if (b.mode) state.mode = b.mode;
+    if (b.matchMode !== undefined) state.matchMode = b.matchMode;
     if (typeof b.delayMs === "number") state.delayMs = b.delayMs;
     if (typeof b.description === "string") state.description = b.description;
     if (Array.isArray(b.photos)) state.photos = b.photos;
@@ -128,10 +154,11 @@ async function messages(req, res) {
   const body = await readBody(req);
   if (state.mode === "research") return research(body, res);
   const out = answerFor(promptText(body));
-  state.calls.push({ id: out.id, mode: state.mode });
+  const mode = out.id === "supply-match" && state.matchMode ? state.matchMode : state.mode;
+  state.calls.push({ id: out.id, mode, ...(out.lines ? { lines: out.lines } : {}) });
   if (state.delayMs > 0) await new Promise((r) => setTimeout(r, state.delayMs));
-  if (state.mode === "error") return reply(res, 500, { error: { message: "e2e: model failed" } });
-  const text = state.mode === "bad" ? "Не могу найти эту модель, ответ без данных." : out.text;
+  if (mode === "error") return reply(res, 500, { error: { message: "e2e: model failed" } });
+  const text = mode === "bad" ? "Не могу найти эту модель, ответ без данных." : out.text;
   return reply(res, 200, {
     id: "msg_e2e",
     type: "message",

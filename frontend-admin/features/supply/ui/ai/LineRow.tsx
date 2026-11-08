@@ -121,7 +121,7 @@ function Decision({ r, ai, byId }: { r: ReviewRow; ai: SupplyAi; byId: Map<strin
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-[var(--warn)]">
-        <AlertTriangle className="h-3.5 w-3.5" /> {r.candidates.length > 0 ? "Новый товар?" : "Нет в каталоге"}
+        <AlertTriangle className="h-3.5 w-3.5" /> {r.candidates.length > 0 ? "Похожие у нас — выберите или создайте новый" : "Нет в каталоге"}
       </span>
       <Candidates r={r} ai={ai} byId={byId} />
     </div>

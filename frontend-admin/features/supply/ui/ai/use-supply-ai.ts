@@ -35,10 +35,14 @@ export function useSupplyAi(catalog: CatalogItem[], categories: LeafCategory[], 
     setSupplierManual(true);
   };
   const [helpErrors, setHelpErrors] = useState<string[]>([]);
+  const [helpNotes, setHelpNotes] = useState<string[]>([]);
   const [prices, setPrices] = useState<Record<string, string>>({});
   const suppliersQ = useSuppliers();
   const aliasesQ = useSupplierAliases(supplierId ? Number(supplierId) : null);
   const memory = useMemo(() => aliasesQ.data ?? [], [aliasesQ.data]);
+  // С какой памятью поставщика посчитаны текущие строки: пока не с той, что пришла, решения ещё не окончательные.
+  const [rowsMemory, setRowsMemory] = useState<unknown>(null);
+  const settled = rowsMemory === memory && !aliasesQ.isFetching;
 
   // Память поставщика пришла или поменялась — пересчитать автоматические решения.
   useEffect(() => {
@@ -49,6 +53,7 @@ export function useSupplyAi(catalog: CatalogItem[], categories: LeafCategory[], 
         return { ...r, decision: m.decision, candidates: m.candidates };
       }),
     );
+    setRowsMemory(memory);
   }, [memory, catalog]);
 
   function check(text = answer) {
@@ -61,6 +66,7 @@ export function useSupplyAi(catalog: CatalogItem[], categories: LeafCategory[], 
     const sid = supplierManual ? supplierId : supplierByName(suppliersQ.data, p.doc.supplier);
     setSupplierIdRaw(sid);
     const mem = sid === supplierId ? memory : [];
+    setRowsMemory(mem);
     setRows(p.doc.lines.map((line) => ({ line, ...autoMatch(line, catalog, mem) })));
     return p;
   }
@@ -80,11 +86,18 @@ export function useSupplyAi(catalog: CatalogItem[], categories: LeafCategory[], 
     }
   }
 
-  function applyHelp(text: string) {
+  /**
+   * Ответ шага 2 → решения по строкам. `onlyOpen` — для встроенного ИИ: пока он думал, админ мог решить строку сам,
+   * его решение важнее. Возвращает, сколько строк решено этим ответом.
+   */
+  function applyHelp(text: string, onlyOpen = false) {
     const a = parseMatch(text, catalog, categories);
+    const asked = new Set(rows.filter((r) => !onlyOpen || r.decision.kind === "open").map((r) => r.line.id));
+    const usable = (r: ReviewRow) => a.decisions.has(r.line.id) && asked.has(r.line.id);
     setHelpErrors(a.errors);
-    setRows((prev) => prev.map((r) => (a.decisions.has(r.line.id) ? { ...r, decision: a.decisions.get(r.line.id)! } : r)));
-    return a.decisions.size;
+    setHelpNotes([...a.notes].filter(([id]) => asked.has(id)).map(([id, note]) => `${id}: ${note}`));
+    setRows((prev) => prev.map((r) => (usable(r) ? { ...r, decision: a.decisions.get(r.line.id)! } : r)));
+    return rows.filter(usable).length;
   }
 
   const doc = parsed?.doc ?? null;
@@ -110,7 +123,7 @@ export function useSupplyAi(catalog: CatalogItem[], categories: LeafCategory[], 
   ];
 
   return {
-    answer, setAnswer, parsed, check, doc, rows, decide, editDraft, applyHelp, helpErrors,
+    answer, setAnswer, parsed, check, doc, rows, settled, decide, editDraft, applyHelp, helpErrors, helpNotes,
     supplierId, setSupplierId, suppliers: suppliersQ.data ?? [], memoryCount: memory.length,
     repeats, sumIssue, lineIssue: lineProblem, plans, prices, setPrices, problems,
     reset: () => {
@@ -118,6 +131,8 @@ export function useSupplyAi(catalog: CatalogItem[], categories: LeafCategory[], 
       setParsed(null);
       setRows([]);
       setHelpErrors([]);
+      setHelpNotes([]);
+      setRowsMemory(null);
       setPrices({});
       setSupplierIdRaw("");
       setSupplierManual(false);
