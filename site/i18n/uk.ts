@@ -92,6 +92,8 @@ export const uk: RuDictionary = {
   "contacts.telegramText": "Оформлення, статуси замовлень, ТТН і листування з магазином.",
   "contacts.orderChat": "Питання щодо замовлення?",
   "contacts.orderChatText": "Відкрийте замовлення в особистому кабінеті — внизу чат із магазином.",
+  "contacts.phone": "Телефон",
+  "contacts.email": "E-mail",
   "contacts.owner": "Зв'язок із власником",
   "contacts.pickupValue": "Харків — адресу уточнюйте в чаті з менеджером",
   "contacts.hoursValue": "8:00–20:00",

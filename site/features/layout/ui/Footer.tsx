@@ -4,7 +4,7 @@ import type { Locale } from "@shop/core/i18n";
 import type { MenuNode } from "@/features/catalog";
 import { localePath, makeT } from "@/i18n";
 import { Wordmark } from "@/features/layout/ui/Logo";
-import { BOT_URL } from "@/lib/config";
+import { BOT_URL, SELLER } from "@/lib/config";
 import { SupportGate } from "@/features/support/view/SupportGate";
 import { FooterSweeper } from "@/components/mascot/scenes";
 import { now } from "@shop/core/time";
@@ -92,6 +92,18 @@ export function Footer({ tree, locale }: { tree: MenuNode[]; locale: Locale }) {
             {t("footer.bot")}
           </a>
           <p className="mt-3 text-[13px] leading-relaxed text-[var(--muted)]">{t("footer.botText")}</p>
+          <ul className="mt-4 flex flex-col gap-1.5">
+            <li>
+              <a href={`tel:${SELLER.phone}`} className={`${linkCls} whitespace-nowrap`}>
+                {SELLER.phoneDisplay}
+              </a>
+            </li>
+            <li>
+              <a href={`mailto:${SELLER.email}`} className={`${linkCls} [overflow-wrap:anywhere]`}>
+                {SELLER.email}
+              </a>
+            </li>
+          </ul>
         </div>
       </div>
       <div className="border-t border-[var(--line)]">

@@ -1,4 +1,4 @@
-import { AtSign, Clock, MapPin, MessageCircle, Send, User } from "lucide-react";
+import { AtSign, Clock, Mail, MapPin, MessageCircle, Phone, Send, User } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumbs } from "@/features/layout/view/Breadcrumbs";
@@ -27,6 +27,24 @@ export default async function ContactsPage({ params }: { params: LocaleParams })
     </a>
   );
   const rows = [
+    {
+      icon: Phone,
+      label: t("contacts.phone"),
+      value: (
+        <a href={`tel:${SELLER.phone}`} className="link-ink whitespace-nowrap">
+          {SELLER.phoneDisplay}
+        </a>
+      ),
+    },
+    {
+      icon: Mail,
+      label: t("contacts.email"),
+      value: (
+        <a href={`mailto:${SELLER.email}`} className="link-ink [overflow-wrap:anywhere]">
+          {SELLER.email}
+        </a>
+      ),
+    },
     { icon: AtSign, label: t("contacts.owner"), value: ownerLink },
     { icon: MapPin, label: t("contacts.pickup"), value: t("contacts.pickupValue") },
     { icon: Clock, label: t("contacts.hours"), value: t("contacts.hoursValue") },

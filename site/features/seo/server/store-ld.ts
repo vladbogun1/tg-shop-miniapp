@@ -9,7 +9,7 @@ import { returnPolicyLd } from "./policy-ld";
 
 /**
  * The store (OnlineStore ⊂ Organization) and the website, for the home page. Contacts are the ones
- * the site really shows: Telegram only (no phone/e-mail exist), pickup city Kharkiv.
+ * the site really shows (contacts page and footer): phone, e-mail, Telegram, pickup city Kharkiv.
  */
 export function storeJsonLd(locale: Locale) {
   const t = makeT(locale);
@@ -25,12 +25,16 @@ export function storeJsonLd(locale: Locale) {
         logo: { "@type": "ImageObject", url: LOGO_URL, width: 512, height: 512 },
         image: DEFAULT_OG_IMAGE.url,
         description: t("meta.description"),
+        telephone: SELLER.phone,
+        email: SELLER.email,
         sameAs: [BOT_URL],
         address: { "@type": "PostalAddress", addressLocality: SELLER_LOCALITY[locale], addressCountry: "UA" },
         areaServed: { "@type": "Country", name: "Ukraine" },
         contactPoint: {
           "@type": "ContactPoint",
           contactType: "customer service",
+          telephone: SELLER.phone,
+          email: SELLER.email,
           url: `https://t.me/${OWNER_TELEGRAM}`,
           availableLanguage: [...LOCALES],
           areaServed: "UA",

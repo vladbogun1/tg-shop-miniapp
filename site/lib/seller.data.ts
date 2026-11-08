@@ -7,6 +7,10 @@ import { type Locale } from "@shop/core/i18n";
 export const SELLER = {
   name: "ФОП Солоха Максим Андрійович",
   taxId: "3547612413",
+  /** Phone and e-mail of the shop: the contacts page, the footer and the store JSON-LD (Google Merchant wants them on the site). */
+  phone: "+380732951737",
+  phoneDisplay: "+380 73 295 17 37",
+  email: "chisetup.com.ua@gmail.com",
 };
 
 /** Город продавца по языку страницы — для PostalAddress в JSON-LD. */
