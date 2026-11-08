@@ -167,7 +167,9 @@ function BatchFacts({ batch }: { batch: Batch }) {
   const distLabel = DISTRIBUTIONS.find((d) => d.value === batch.distribution)?.label ?? batch.distribution;
   return (
     <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-[var(--text-muted)]">
-      {batch.preorderOpen ? <Badge tone="accent">можно заказать заранее</Badge> : <Badge>заранее не заказывают</Badge>}
+      {/* Предзаказ имеет смысл, пока поставка едет: у приехавшей и отменённой бейдж только путает. */}
+      {isOpenStatus(batch.status) &&
+        (batch.preorderOpen ? <Badge tone="accent">можно заказать заранее</Badge> : <Badge>заранее не заказывают</Badge>)}
       {batch.status === "ARRIVED" ? (
         batch.arrivedAt && <span>приехала {formatDateTime(batch.arrivedAt)}</span>
       ) : (

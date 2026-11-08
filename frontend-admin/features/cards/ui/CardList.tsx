@@ -244,7 +244,8 @@ function VisibilityBadge({ it }: { it: CardItem }) {
         <EyeOff className="h-3 w-3" /> скрыт
       </span>
     );
-  return null;
+  // Пустая ячейка читалась как «нет данных».
+  return <span className="text-[11px] text-[var(--text-faint)]">на витрине</span>;
 }
 
 function MissingBadge({ it, schema, missing }: { it: CardItem; schema: CardSchema | undefined; missing: number }) {

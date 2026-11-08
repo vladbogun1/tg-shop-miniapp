@@ -165,9 +165,13 @@ export function isFullscreenPage(pathname: string): boolean {
   return pathname.startsWith("/cards/ai-review/");
 }
 
+/** Страницы без своего пункта меню подсвечивают раздел, из которого в них приходят. */
+const NAV_PARENT: Record<string, string> = { "/opening-cost": "/metrics" };
+
 export function isActive(pathname: string, href: string, exact?: boolean): boolean {
-  if (exact) return pathname === href;
-  return pathname === href || pathname.startsWith(href + "/");
+  const path = NAV_PARENT[pathname] ?? pathname;
+  if (exact) return path === href;
+  return path === href || path.startsWith(href + "/");
 }
 
 /** Daily screens on the phone's tab bar; everything else is under «Ещё». */

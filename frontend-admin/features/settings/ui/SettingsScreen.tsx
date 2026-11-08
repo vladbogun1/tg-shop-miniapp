@@ -100,7 +100,7 @@ export function SettingsScreen() {
     <div className="min-w-0">
       <PageHeader
         title="Настройки"
-        subtitle="Параметры магазина, которые можно менять без деплоя. Токены, пароли и адреса сервисов здесь не показываются — они в .env на сервере."
+        subtitle="Параметры магазина, которые меняются сразу. Пароли и ключи сервисов здесь не показываются — их меняет разработчик на сервере."
       />
 
       <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Загрузка настроек">

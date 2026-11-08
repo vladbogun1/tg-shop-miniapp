@@ -38,7 +38,7 @@ import { useInboxActions } from "./use-inbox-actions";
 import { useInboxPrimary } from "./use-inbox-primary";
 
 function AllClear() {
-  return <EmptyState icon={CheckCheck} title="Всё разобрано ✓" />;
+  return <EmptyState icon={CheckCheck} title="Всё разобрано" />;
 }
 
 export function InboxScreen({ order: slot }: { order: InboxOrderSlot }) {

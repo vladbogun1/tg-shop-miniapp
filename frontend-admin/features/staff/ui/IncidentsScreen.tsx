@@ -18,9 +18,16 @@ import { IncidentCard } from "./IncidentCard";
 export function IncidentsScreen() {
   const superAdmin = useIsSuperAdmin();
   const [tab, setTab] = useState<IncidentStatus>("OPEN");
-  const q = useIncidentsQuery(superAdmin !== false);
+  // Не спрашивать сервер, пока роль не известна: обычному админу он отвечает 403 (ошибки в консоли).
+  const q = useIncidentsQuery(superAdmin === true);
   if (superAdmin === false) {
-    return <EmptyState icon={ShieldAlert} title="Только для главного админа" />;
+    return (
+      <EmptyState
+        icon={ShieldAlert}
+        title="Только для главного админа"
+        description="Случаи с деньгами и заказами разбирает главный админ. Если что-то не сходится — напишите ему."
+      />
+    );
   }
   const all = q.data ?? [];
   const rows = incidentsOf(all, tab);
@@ -41,7 +48,7 @@ export function IncidentsScreen() {
           />
         }
       />
-      <QueryState isLoading={q.isLoading} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Проверяем данные…">
+      <QueryState isLoading={q.isLoading || superAdmin === undefined} isError={q.isError} error={q.error} refetch={q.refetch} loadingLabel="Проверяем данные…">
         {rows.length === 0 ? (
           <EmptyState icon={CheckCircle2} title={tab === "OPEN" ? "Открытых инцидентов нет" : "Решённых пока нет"} />
         ) : (
