@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import { giftProgress, guaranteedDiscountMinor, type GiftChoice } from "@shop/core/giftcase";
+import { useOnlinePaymentOnly } from "@shop/customer/checkout/online-payment-only";
 import { useChosenPayment } from "@shop/customer/checkout/payment-choice";
 import { usePromoPreview } from "@/features/cart";
 import { useGift } from "@/features/gift";
+import { customerApi } from "@/lib/api";
+import { useAccessToken } from "@/lib/auth";
 import { usePaymentOptionsQuery } from "../queries";
 
 /**
@@ -26,7 +29,10 @@ export function useCheckoutOrder(promoCode: string, subtotal: number) {
   const giftDiscount = giftChoice === "DISCOUNT" ? guaranteedDiscountMinor(giftTier, baseTotal) : 0;
   const total = baseTotal - giftDiscount;
 
-  const pay = useChosenPayment(paymentQuery.data, total);
+  // /api/me ждёт токен Telegram: до него метки не знаем, а сервер всё равно не примет предоплату помеченному.
+  const token = useAccessToken();
+  const onlineOnly = useOnlinePaymentOnly(customerApi.checkout, !!token);
+  const pay = useChosenPayment(paymentQuery.data, total, onlineOnly);
 
   return {
     paymentQuery,

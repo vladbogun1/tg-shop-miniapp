@@ -106,6 +106,7 @@ export type ServerErrorCode =
   | "NO_ITEMS"
   | "NO_PASSWORD_LOGIN"
   | "NO_PENDING_REQUEST"
+  | "ONLINE_PAYMENT_ONLY"
   | "OPTION_IN_USE"
   | "ORDER_COOLDOWN"
   | "ORDER_DAILY_LIMIT"

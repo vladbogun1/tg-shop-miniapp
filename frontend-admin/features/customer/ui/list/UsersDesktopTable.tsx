@@ -10,7 +10,7 @@ import { money } from "@/lib/money";
 import { formatDateTime, timeAgo } from "@shop/core/time";
 import type { UserCardDto, UserSortBy } from "../../model/types";
 import { displayName, initials } from "../../model/user";
-import { LangCell, SortableTh } from "./parts";
+import { LangCell, ProblemMark, SortableTh } from "./parts";
 
 export function UsersDesktopTable({
   rows,
@@ -74,6 +74,7 @@ function UserTableRow({ u, onOpen }: { u: UserCardDto; onOpen: () => void }) {
             <div className="flex items-center gap-1.5">
               <span className="truncate font-semibold text-[var(--text)]">{displayName(u)}</span>
               {u.premium && <Crown className="h-3.5 w-3.5 shrink-0 text-[var(--warn)]" />}
+              <ProblemMark u={u} />
             </div>
             <div className="truncate text-[11px] text-[var(--text-faint)]">
               {u.username ? "@" + u.username + " · " : ""}#{u.telegramUserId}

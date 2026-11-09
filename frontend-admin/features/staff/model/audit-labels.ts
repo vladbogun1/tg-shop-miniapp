@@ -28,6 +28,9 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   ADMIN_2FA_RESET_BY: "Сброс 2FA админу",
   ADMIN_PASSWORD_RESET_BY: "Сброс пароля админу",
   ADMIN_DEVICES_FORGET_BY: "Устройства админа забыты",
+  CUSTOMER_FLAG: "Покупатель помечен проблемным",
+  CUSTOMER_FLAG_EDIT: "Причина «проблемного» изменена",
+  CUSTOMER_UNFLAG: "Метка «проблемный» снята",
   ORDER_STATUS: "Статус заказа",
   ORDER_PAID: "Оплата заказа",
   ORDER_REFUND_ONLINE: "Возврат на карту",
@@ -169,6 +172,7 @@ export const AUDIT_ENTITY_LABEL: Record<string, string> = {
   REVIEW: "Отзыв",
   REPLY_TEMPLATE: "Шаблон ответа",
   SUPPLY_DRAFT: "Черновик поставки",
+  USER: "Покупатель",
 };
 
 /** Actions worth a red/amber marker in the log (money, deletions, failed logins). */

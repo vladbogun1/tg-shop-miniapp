@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filtersKey, hasFilters, NO_FILTERS, toggleBlocked, toggleHasOrders, togglePremium } from "./filters";
+import { filtersKey, hasFilters, NO_FILTERS, toggleBlocked, toggleFlagged, toggleHasOrders, togglePremium } from "./filters";
 
 describe("фильтры списка покупателей", () => {
   it("по умолчанию ничего не включено", () => {
@@ -13,9 +13,10 @@ describe("фильтры списка покупателей", () => {
   });
   it("фильтры комбинируются", () => {
     const f = toggleBlocked(togglePremium(toggleHasOrders(NO_FILTERS, true)));
-    expect(f).toEqual({ blockedOnly: true, premiumOnly: true, hasOrders: true });
+    expect(f).toEqual({ blockedOnly: true, premiumOnly: true, flaggedOnly: false, hasOrders: true });
     expect(hasFilters(f)).toBe(true);
-    expect(filtersKey(f)).toBe("bpo");
-    expect(filtersKey(toggleHasOrders(NO_FILTERS, false))).toBe("--n");
+    expect(filtersKey(f)).toBe("bp-o");
+    expect(filtersKey(toggleFlagged(f))).toBe("bpfo");
+    expect(filtersKey(toggleHasOrders(NO_FILTERS, false))).toBe("---n");
   });
 });

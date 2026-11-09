@@ -12,6 +12,7 @@ export function stubUserCard(known: { telegramUserId: number; username: string |
     lastSeenAt: null,
     premium: false,
     botBlocked: false,
+    problemReason: null,
     ordersCount: 0,
     totalSpentMinor: 0,
     lastOrderAt: null,

@@ -31,9 +31,9 @@ export function dueNowOf(chosen: PayOption | null, total: number): number {
  * Варианты оплаты для суммы `total` и выбранный. Выбор считается на лету (сводка не покажет скрытый вариант)
  * и дописывается в состояние, чтобы закрепиться.
  */
-export function useChosenPayment<T extends PayOption>(loaded: T[] | undefined, total: number) {
+export function useChosenPayment<T extends PayOption>(loaded: T[] | undefined, total: number, onlinePaymentOnly = false) {
   const [paymentId, setPaymentId] = useState<string | null>(null);
-  const options = visiblePaymentOptions(loaded ?? [], total);
+  const options = visiblePaymentOptions(loaded ?? [], total, onlinePaymentOnly);
   const chosen = resolvePayment(options, paymentId);
   const chosenId = chosen?.id ?? null;
   const optionsLoaded = !!loaded;

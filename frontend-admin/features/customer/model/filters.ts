@@ -2,14 +2,16 @@
 export interface UserFilters {
   blockedOnly: boolean;
   premiumOnly: boolean;
+  /** Только помеченные «проблемными». */
+  flaggedOnly: boolean;
   /** true — есть хотя бы один заказ (любого статуса), false — заказов нет, undefined — не важно. */
   hasOrders: boolean | undefined;
 }
 
-export const NO_FILTERS: UserFilters = { blockedOnly: false, premiumOnly: false, hasOrders: undefined };
+export const NO_FILTERS: UserFilters = { blockedOnly: false, premiumOnly: false, flaggedOnly: false, hasOrders: undefined };
 
 export function hasFilters(f: UserFilters): boolean {
-  return f.blockedOnly || f.premiumOnly || f.hasOrders !== undefined;
+  return f.blockedOnly || f.premiumOnly || f.flaggedOnly || f.hasOrders !== undefined;
 }
 
 /** «С заказами» и «Без заказов» исключают друг друга: повторный клик по включённому снимает его. */
@@ -25,7 +27,11 @@ export function toggleBlocked(f: UserFilters): UserFilters {
   return { ...f, blockedOnly: !f.blockedOnly };
 }
 
+export function toggleFlagged(f: UserFilters): UserFilters {
+  return { ...f, flaggedOnly: !f.flaggedOnly };
+}
+
 /** Ключ для кэша и сброса анимации списка. */
 export function filtersKey(f: UserFilters): string {
-  return `${f.blockedOnly ? "b" : "-"}${f.premiumOnly ? "p" : "-"}${f.hasOrders === undefined ? "-" : f.hasOrders ? "o" : "n"}`;
+  return `${f.blockedOnly ? "b" : "-"}${f.premiumOnly ? "p" : "-"}${f.flaggedOnly ? "f" : "-"}${f.hasOrders === undefined ? "-" : f.hasOrders ? "o" : "n"}`;
 }

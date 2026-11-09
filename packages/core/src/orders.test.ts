@@ -104,6 +104,15 @@ describe("checkout helpers", () => {
     expect(visiblePaymentOptions(onlyPre, 15_000)).toEqual(onlyPre);
   });
 
+  it("visiblePaymentOptions: a buyer marked «проблемный» sees no prepayment option at all", () => {
+    const opts = [
+      { id: "full", requiresPrepayment: false },
+      { id: "pre", requiresPrepayment: true, prepaymentMinor: 20_000 },
+    ];
+    expect(visiblePaymentOptions(opts, 50_000, true).map((o) => o.id)).toEqual(["full"]);
+    expect(visiblePaymentOptions([opts[1]], 50_000, true)).toEqual([]);
+  });
+
   it("maxQty: stock capped by the anti-bot limit, 0 = no limit", () => {
     expect(maxQty(10, { maxQtyPerProduct: 3 })).toBe(3);
     expect(maxQty(2, { maxQtyPerProduct: 3 })).toBe(2);

@@ -8,7 +8,7 @@ import { money } from "@/lib/money";
 import { formatDateTime } from "@shop/core/time";
 import type { UserCardDto } from "../../model/types";
 import { displayName, initials } from "../../model/user";
-import { LangCell } from "./parts";
+import { LangCell, ProblemMark } from "./parts";
 
 export function UsersMobileCards({
   rows,
@@ -42,7 +42,10 @@ export function UsersMobileCards({
                 {initials(u)}
               </div>
               <div className="min-w-0">
-                <div className="truncate font-semibold text-[var(--text)]">{displayName(u)}</div>
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span className="truncate font-semibold text-[var(--text)]">{displayName(u)}</span>
+                  <ProblemMark u={u} />
+                </div>
                 <div className="truncate text-[11px] text-[var(--text-faint)]">
                   {u.username ? "@" + u.username + " · " : ""}#{u.telegramUserId}
                 </div>

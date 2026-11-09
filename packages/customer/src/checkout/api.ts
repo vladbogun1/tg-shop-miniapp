@@ -41,6 +41,8 @@ export interface NpBboxParams {
 
 export interface CheckoutApi {
   paymentOptions(): Promise<PaymentOption[]>;
+  /** Покупателю доступна только полная оплата онлайн (метка в админке; причину ему не говорим). Нужен вход. */
+  onlinePaymentOnly(): Promise<boolean>;
   /** Лимиты антиспама (0 = без лимита): шаговые счётчики зажимаются `maxQtyPerProduct`. */
   orderLimits(): Promise<OrderLimits>;
   /** Что стоит промокод для этой корзины — только чтение, использование не списывает. `items` — строки корзины. */
@@ -67,6 +69,8 @@ export function createCheckoutApi(
 ): CheckoutApi {
   return {
     paymentOptions: () => http.get<PaymentOption[]>("/api/payment-options"),
+    onlinePaymentOnly: () =>
+      authed(() => http.get<{ onlinePaymentOnly?: boolean }>("/api/me")).then((me) => me?.onlinePaymentOnly === true),
     orderLimits: () => http.get<OrderLimits>("/api/public/order-limits"),
     previewPromo: (code, subtotalMinor, items = "") =>
       http.get<PromoPreview>(

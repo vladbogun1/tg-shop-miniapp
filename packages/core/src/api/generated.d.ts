@@ -4158,7 +4158,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Paged/searchable/sortable list of bot users; filters (all combine): blockedOnly, premiumOnly, hasOrders=true|false (any order status) */
+        /** Paged/searchable/sortable list of bot users; filters (all combine): blockedOnly, premiumOnly, flaggedOnly (problem buyers), hasOrders=true|false (any order status) */
         get: operations["AdminUserController_list"];
         put?: never;
         post?: never;
@@ -4231,6 +4231,24 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{telegramUserId}/flag": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Mark the customer as a problem buyer (or change the reason): only full online payment at checkout */
+        put: operations["AdminCustomerFlagController_flag"];
+        post?: never;
+        /** Take the problem-buyer mark off */
+        delete: operations["AdminCustomerFlagController_clear"];
         options?: never;
         head?: never;
         patch?: never;
@@ -5694,6 +5712,7 @@ export interface components {
             /** Format: date-time */
             archivedAt: string | null;
             archivedBy: string | null;
+            customerProblemReason: string | null;
             exchangeOfId: string | null;
             exchangeOrderIds: string[];
             mergedFromIds: string[];
@@ -7762,6 +7781,16 @@ export interface components {
             code?: string;
             finance?: boolean;
         };
+        Flag: {
+            /** Format: date-time */
+            flaggedAt: string;
+            reason: string;
+            /** Format: int64 */
+            telegramUserId: number;
+        };
+        FlagRequest: {
+            reason?: string;
+        };
         Forecast: {
             accuracy: components["schemas"]["Accuracy"];
             basis: string;
@@ -8396,6 +8425,7 @@ export interface components {
             admin: boolean;
             firstName: string;
             lastName: string;
+            onlinePaymentOnly: boolean;
             /** Format: int64 */
             userId: number;
             username: string;
@@ -10519,6 +10549,7 @@ export interface components {
             /** Format: int64 */
             ordersCount: number;
             premium: boolean;
+            problemReason: string | null;
             /** Format: int64 */
             telegramUserId: number;
             /** Format: int64 */
@@ -17175,6 +17206,7 @@ export interface operations {
                 blockedOnly?: boolean;
                 premiumOnly?: boolean;
                 hasOrders?: boolean;
+                flaggedOnly?: boolean;
                 page?: number;
                 size?: number;
                 sortBy?: string;
@@ -17282,6 +17314,52 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["UserMetricsDto"];
                 };
+            };
+        };
+    };
+    AdminCustomerFlagController_flag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                telegramUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FlagRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Flag"];
+                };
+            };
+        };
+    };
+    AdminCustomerFlagController_clear: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                telegramUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

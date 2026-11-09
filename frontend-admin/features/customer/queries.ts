@@ -29,6 +29,7 @@ export function useUsersTable(p: UsersTableParams) {
         q: p.q || undefined,
         blockedOnly: p.filters.blockedOnly,
         premiumOnly: p.filters.premiumOnly,
+        flaggedOnly: p.filters.flaggedOnly,
         hasOrders: p.filters.hasOrders,
         page: pageParam,
         size: USERS_PAGE_SIZE,

@@ -1,9 +1,20 @@
 "use client";
 
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, ShieldAlert } from "lucide-react";
 import type { SortDir } from "@/lib/sort";
 import { userLang } from "../../model/user";
 import type { UserCardDto, UserSortBy } from "../../model/types";
+
+/** Красный щит у имени «проблемного покупателя»; причина — во всплывающей подсказке. */
+export function ProblemMark({ u }: { u: UserCardDto }) {
+  if (!u.problemReason) return null;
+  const text = `Проблемный покупатель: ${u.problemReason}`;
+  return (
+    <span role="img" aria-label={text} title={text} className="inline-flex shrink-0">
+      <ShieldAlert className="h-3.5 w-3.5 text-[var(--danger)]" />
+    </span>
+  );
+}
 
 /** Бейдж языка: сплошной — выбран в магазине; пунктирный с «TG» — язык Telegram как запасной. */
 export function LangCell({ u }: { u: UserCardDto }) {

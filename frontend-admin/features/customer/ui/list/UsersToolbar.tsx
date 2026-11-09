@@ -1,13 +1,13 @@
 "use client";
 
-import { ArrowUpDown, Check, Crown, Search, ShoppingBag, UserX, X } from "lucide-react";
+import { ArrowUpDown, Check, Crown, Search, ShieldAlert, ShoppingBag, UserX, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Button } from "@shop/ui/admin-button";
 import { ActionSheet } from "@/components/ui/ActionSheet";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/cn";
 import { useUserMetrics } from "../../queries";
-import { hasFilters, NO_FILTERS, toggleBlocked, toggleHasOrders, togglePremium, type UserFilters } from "../../model/filters";
+import { hasFilters, NO_FILTERS, toggleBlocked, toggleFlagged, toggleHasOrders, togglePremium, type UserFilters } from "../../model/filters";
 import { MOBILE_SORTS, parseMobileSort, sortLabel, type Sorting } from "../../model/table";
 
 const CHIP =
@@ -104,6 +104,10 @@ export function UsersToolbar({
         <Chip active={filters.blockedOnly} onClick={() => onFilters(toggleBlocked(filters))} count={counts?.blockedUsers}>
           <UserX className="h-3.5 w-3.5" />
           Заблокировали
+        </Chip>
+        <Chip active={filters.flaggedOnly} onClick={() => onFilters(toggleFlagged(filters))}>
+          <ShieldAlert className="h-3.5 w-3.5" />
+          Проблемные
         </Chip>
       </div>
       {/* Phones have no sortable table headers — sort from a sheet. */}

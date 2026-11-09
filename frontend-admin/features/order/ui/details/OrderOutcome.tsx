@@ -1,7 +1,7 @@
 "use client";
 
 /** Исход заказа: причина отказа (для REJECTED), «Возврат оформлен …» и карточки обменов (были в «Таймлайне»). */
-import { Ban, Repeat } from "lucide-react";
+import { Ban, Repeat, ShieldAlert } from "lucide-react";
 import { formatDateTime } from "@shop/core/time";
 import { money } from "@/lib/money";
 import type { AdminOrderDetail } from "../../api";
@@ -21,6 +21,24 @@ export function RejectReason({ order }: { order: AdminOrderDetail }) {
         {order.rejectReasonCode && order.rejectReason ? " — " : null}
         {order.rejectReason}
       </p>
+    </div>
+  );
+}
+
+/** «Требует внимания»: покупатель помечен проблемным — только полная оплата онлайн, наложкой не отправлять. */
+export function ProblemCustomer({ order }: { order: AdminOrderDetail }) {
+  const reason = order.admin?.customerProblemReason;
+  if (!reason) return null;
+  return (
+    <div className="flex items-start gap-2 rounded-[var(--r-md)] border border-[color-mix(in_srgb,var(--danger)_40%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] px-3 py-2.5">
+      <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--danger-ink)]" />
+      <div className="min-w-0 text-[13px] text-[var(--danger-ink)]">
+        <p className="font-medium">
+          <span className="font-display font-semibold uppercase tracking-[0.06em] opacity-80">Проблемный покупатель:</span>{" "}
+          <span className="whitespace-pre-wrap break-words">{reason}</span>
+        </p>
+        <p className="mt-0.5 text-[12px] opacity-80">Только полная оплата онлайн, наложкой не отправлять. Метка — в профиле покупателя.</p>
+      </div>
     </div>
   );
 }

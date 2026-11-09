@@ -7,6 +7,7 @@ import { meKeys } from "@shop/customer/account/keys";
 import { useEffect, useRef, useState } from "react";
 import { useLatest } from "@shop/ui/use-latest";
 import { type DeliveryMethod, type OrderDetail } from "@shop/core/types";
+import { useOnlinePaymentOnly } from "@shop/customer/checkout/online-payment-only";
 import { useChosenPayment } from "@shop/customer/checkout/payment-choice";
 import { giftProgress, guaranteedDiscountMinor, type GiftChoice } from "@shop/core/giftcase";
 import { resolveNpWarehouse } from "@shop/core/np-geo";
@@ -89,7 +90,9 @@ export function useLastOrderPrefill(np: ReturnType<typeof useNpSelection>, targe
 export function usePaymentChoice(total: number) {
   const { locale } = useI18n();
   const query = useQuery({ queryKey: siteCheckoutKeys.paymentOptions(locale), queryFn: () => api.checkout.paymentOptions() });
-  const pay = useChosenPayment(query.data, total);
+  // Оформление открыто только вошедшим (CheckoutView), так что /api/me можно спрашивать сразу.
+  const onlineOnly = useOnlinePaymentOnly(api.checkout, true);
+  const pay = useChosenPayment(query.data, total, onlineOnly);
   const status: "loading" | "error" | "ready" = query.isLoading ? "loading" : query.isError ? "error" : "ready";
   return { status, options: pay.options, chosen: pay.chosen, chosenId: pay.chosenId, dueNow: pay.dueNow, choose: pay.choose };
 }

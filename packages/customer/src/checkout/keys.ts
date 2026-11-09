@@ -10,6 +10,8 @@ export const checkoutKeys = {
   /** Проверка промокода по текущей сумме и составу корзины. */
   promo: (code: string, subtotal: number, items: string) => ["promo", code, subtotal, items] as const,
   orderLimits: () => ["public", "order-limits"] as const,
+  /** Под «me»: после оформления заказа перечитывается вместе с остальным «моим». */
+  onlinePaymentOnly: () => ["me", "online-payment-only"] as const,
   /** Один элемент на город: поле отделения и кадрирование карты читают один и тот же список. */
   npWarehouses: (cityRef: string) => ["np-warehouses", cityRef] as const,
   npCities: (term: string) => ["np-cities", term] as const,

@@ -214,10 +214,13 @@ export const PAYMENT_STATE_LABEL: Record<PaymentState, string> = {
  * A prepayment option makes no sense when the whole order costs no more than the prepayment —
  * the customer would pay everything online anyway — so such options are dropped. When nothing but
  * prepayment options is configured they stay (the backend caps the online amount at the total).
+ * `onlinePaymentOnly` (the buyer is marked «проблемный» in the admin): no prepayment option at all —
+ * the server refuses it for this buyer.
  */
 export function visiblePaymentOptions<
   T extends { requiresPrepayment: boolean; prepaymentMinor?: number | null },
->(options: T[], totalMinor: number): T[] {
+>(options: T[], totalMinor: number, onlinePaymentOnly = false): T[] {
+  if (onlinePaymentOnly) return options.filter((o) => !o.requiresPrepayment);
   const isCheapPrepay = (o: T) =>
     o.requiresPrepayment && !!o.prepaymentMinor && totalMinor <= o.prepaymentMinor;
   const filtered = options.filter((o) => !isCheapPrepay(o));

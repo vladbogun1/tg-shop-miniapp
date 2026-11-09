@@ -10,6 +10,8 @@ export interface UsersTableQuery {
   q?: string;
   blockedOnly?: boolean;
   premiumOnly?: boolean;
+  /** Только «проблемные покупатели» (метка с причиной). */
+  flaggedOnly?: boolean;
   hasOrders?: boolean;
   page?: number;
   size?: number;

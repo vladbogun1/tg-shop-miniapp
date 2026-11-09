@@ -10,7 +10,7 @@
  * Без `onOpenOrder` — переход на этот роут. «Написать» — `onWrite` от страницы (поддержка не импортируется
  * из клиентов: был бы цикл); у заблокировавшего бота кнопка неактивна.
  */
-import { Ban, Crown, Send, PenSquare } from "lucide-react";
+import { Ban, Crown, Send, PenSquare, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@shop/ui/admin-button";
 import { Drawer } from "@shop/ui/overlay";
@@ -22,6 +22,7 @@ import { avgCheckMinor, displayName, initials, telegramHref } from "../../model/
 import type { UserCardDto } from "../../model/types";
 import { ProfileData } from "./ProfileData";
 import { ProfileOrders } from "./ProfileOrders";
+import { ProblemFlag } from "./ProblemFlag";
 
 interface Props {
   user: UserCardDto | null;
@@ -51,6 +52,11 @@ function Header({ user }: { user: UserCardDto }) {
           {user.botBlocked && (
             <Badge tone="danger" className="shrink-0">
               <Ban className="h-3 w-3" /> заблокировал бота
+            </Badge>
+          )}
+          {user.problemReason && (
+            <Badge tone="danger" className="shrink-0">
+              <ShieldAlert className="h-3 w-3" /> проблемный
             </Badge>
           )}
         </div>
@@ -120,11 +126,17 @@ function Actions({ user, onWrite }: { user: UserCardDto; onWrite?: (u: UserCardD
   );
 }
 
-function Body({ user, onOpenOrder, onWrite }: Omit<Props, "onClose"> & { user: UserCardDto }) {
+function Body({
+  user,
+  onOpenOrder,
+  onWrite,
+  onProblemChanged,
+}: Omit<Props, "onClose"> & { user: UserCardDto; onProblemChanged: (reason: string | null) => void }) {
   const [tab, setTab] = useState<Tab>("orders");
   return (
     <div className="flex flex-col gap-4 p-4 sm:p-5">
       <Actions user={user} onWrite={onWrite} />
+      <ProblemFlag telegramUserId={user.telegramUserId} reason={user.problemReason} onChanged={onProblemChanged} />
       <Summary user={user} />
       <Tabs<Tab>
         items={[
@@ -140,10 +152,21 @@ function Body({ user, onOpenOrder, onWrite }: Omit<Props, "onClose"> & { user: U
 }
 
 export function UserProfileDrawer({ user, onClose, onOpenOrder, onWrite }: Props) {
+  // Карточку держит страница; метку, поставленную/снятую здесь, показываем сразу, не дожидаясь списка.
+  const [problem, setProblem] = useState<{ id: number; reason: string | null } | null>(null);
+  const shown = user && problem?.id === user.telegramUserId ? { ...user, problemReason: problem.reason } : user;
   return (
-    <Drawer open={!!user} onClose={onClose} header={user ? <Header user={user} /> : null} width="max-w-2xl">
+    <Drawer open={!!shown} onClose={onClose} header={shown ? <Header user={shown} /> : null} width="max-w-2xl">
       {/* key: другой покупатель — снова вкладка «Заказы». */}
-      {user && <Body key={user.telegramUserId} user={user} onOpenOrder={onOpenOrder} onWrite={onWrite} />}
+      {shown && (
+        <Body
+          key={shown.telegramUserId}
+          user={shown}
+          onOpenOrder={onOpenOrder}
+          onWrite={onWrite}
+          onProblemChanged={(reason) => setProblem({ id: shown.telegramUserId, reason })}
+        />
+      )}
     </Drawer>
   );
 }
