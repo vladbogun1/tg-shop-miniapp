@@ -109,6 +109,7 @@ export function parseExtract(answer: string): ParsedExtract {
     docDate: str(v.docDate),
     total: num(v.total),
     lines,
+    title: str(v.title),
   };
   return { doc: lines.length ? doc : null, docNotes: str(v.docNotes), errors, notes: json.notes };
 }

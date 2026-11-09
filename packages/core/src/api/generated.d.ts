@@ -7753,6 +7753,7 @@ export interface components {
             docNo: string;
             lines: components["schemas"]["SourceLine"][];
             supplier: string;
+            title: string;
             /** Format: double */
             total: number;
         };

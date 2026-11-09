@@ -17,7 +17,7 @@ import java.util.Map;
 public final class SupplyExtract {
 
     /** Prompt version: goes with the task into the journal to compare reading quality by version. */
-    public static final String PROMPT_VERSION = "supply-3";
+    public static final String PROMPT_VERSION = "supply-4";
 
     public static final String PROMPT = """
             Ты — помощник закупщика интернет-магазина игровой периферии. Я прикладываю документ поставки: накладную / инвойс (PDF или фото) или скриншоты заказа из китайского магазина (Taobao, 1688, Tmall, AliExpress). Перепиши из него все купленные товары в JSON.
@@ -49,6 +49,7 @@ public final class SupplyExtract {
             ```json
             {
               "supplier": "название продавца / магазина / фабрики латиницей или по-русски; если в документе иероглифы — перевод и оригинал в скобках: «Xicheng Trade (西城外贸)»; или null",
+              "title": "название поставки для списка закупок — БЕЗ иероглифов, по-русски: «площадка · магазин — что внутри». Площадка: Taobao, Tmall, 1688, Pinduoduo, AliExpress, Temu; инвойс фабрики — «Завод». Магазин — коротко латиницей, как бренд или имя магазина (X-Raypad, Zpmax, PAN); китайское имя без латиницы — коротко переведи. Что внутри — 1–3 слова по-русски во множественном числе. Примеры: «Taobao · X-Raypad — коврики и глайды», «Taobao · PAN — стеклянные коврики», «Завод Damulin — клавиатуры, мыши и наушники»",
               "currency": "CNY | USD | EUR | UAH",
               "docNo": "номер инвойса / заказа или null",
               "docDate": "ГГГГ-ММ-ДД или null",
@@ -113,7 +114,7 @@ public final class SupplyExtract {
             errors.add("Ни одной строки товара");
         }
         ExtractedDoc doc = new ExtractedDoc(str(v.get("supplier")), currencyOf(v.get("currency")), str(v.get("docNo")),
-                str(v.get("docDate")), SupplyNumbers.num(v.get("total")), List.copyOf(lines));
+                str(v.get("docDate")), SupplyNumbers.num(v.get("total")), List.copyOf(lines), str(v.get("title")));
         return new Parsed(lines.isEmpty() ? null : doc, errors, str(v.get("docNotes")), json.notes(),
                 lines.isEmpty() ? List.of() : Collections.unmodifiableList(shots));
     }

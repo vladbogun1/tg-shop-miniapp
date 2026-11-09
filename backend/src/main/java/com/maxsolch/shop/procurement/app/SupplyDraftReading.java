@@ -96,7 +96,7 @@ class SupplyDraftReading {
     static ReadCandidate current(DraftState s) {
         ExtractedDoc doc = s.getDoc();
         List<SourceLine> lines = s.getRows().stream().map(ReviewRow::line).toList();
-        ExtractedDoc now = new ExtractedDoc(doc.supplier(), doc.currency(), doc.docNo(), doc.docDate(), doc.total(), lines);
+        ExtractedDoc now = doc.withLines(lines);
         return new ReadCandidate(now, List.of(), s.getRemovedRepeats(), List.of(), null);
     }
 

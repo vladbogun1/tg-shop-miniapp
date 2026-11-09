@@ -14,6 +14,7 @@ import com.maxsolch.shop.procurement.domain.supplyai.SupplierAlias;
 import com.maxsolch.shop.procurement.domain.supplyai.SupplierMatch;
 import com.maxsolch.shop.procurement.domain.supplyai.SupplyChecks;
 import com.maxsolch.shop.procurement.domain.supplyai.SupplyMatcher;
+import com.maxsolch.shop.procurement.domain.supplyai.SupplyTitle;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -21,8 +22,6 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * The first look at a read invoice, without the model: who the supplier is (by name, among the known ones), the
@@ -55,8 +54,7 @@ class SupplyDraftMatching {
         ExtractedDoc doc = read.doc();
         s.setDoc(doc);
         s.setDocNotes(notes(read));
-        s.setTitle(Stream.of(doc.supplier(), doc.docNo()).filter(v -> v != null && !v.isBlank())
-                .collect(Collectors.joining(" · ")));
+        s.setTitle(SupplyTitle.of(doc.title(), doc.supplier()));
         s.setCurrency(PreorderBatchService.CURRENCIES.contains(doc.currency()) ? doc.currency() : null);
         if (s.getCurrency() == null) {
             s.warn("Валюту документа ИИ не понял — выберите её");

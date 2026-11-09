@@ -117,7 +117,7 @@ class SupplyDraftReadingTest {
     @Test
     void theAdminsRereadAddsOnlyTheMissingLines() {
         SourceLine aqua = new SourceLine("L1", "Aqua", null, null, null, null, null, 1, 100.0, null, null);
-        s.setDoc(new ExtractedDoc("Xraypad", "CNY", null, null, 400.0, List.of(aqua)));
+        s.setDoc(new ExtractedDoc("Xraypad", "CNY", null, null, 400.0, List.of(aqua), null));
         s.setRows(List.of(new ReviewRow(aqua, LineDecision.match("p1", null, "admin"), List.of())));
         s.setRereadMerge(true);
         s.setVerifyJobs(new ArrayList<>(List.of(2L)));

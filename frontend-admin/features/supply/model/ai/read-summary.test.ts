@@ -16,7 +16,7 @@ const ANSWER = JSON.stringify({
 describe("extractAdapter", () => {
   it("gives the prompt, parses the answer and names the subjects", () => {
     expect(extractAdapter.buildPrompt()).toBe(EXTRACT_PROMPT);
-    expect(EXTRACT_PROMPT_VERSION).toBe("supply-3");
+    expect(EXTRACT_PROMPT_VERSION).toBe("supply-4");
     expect(extractAdapter.subjects([3, 7])).toEqual(["3", "7"]);
     expect(extractAdapter.parseAnswer(ANSWER).doc?.lines).toHaveLength(2);
   });

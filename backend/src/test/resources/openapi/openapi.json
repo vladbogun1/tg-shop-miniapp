@@ -7123,6 +7123,9 @@
           "supplier" : {
             "type" : "string"
           },
+          "title" : {
+            "type" : "string"
+          },
           "total" : {
             "format" : "double",
             "type" : "number"
@@ -7134,6 +7137,7 @@
           "docNo",
           "lines",
           "supplier",
+          "title",
           "total"
         ],
         "type" : "object"

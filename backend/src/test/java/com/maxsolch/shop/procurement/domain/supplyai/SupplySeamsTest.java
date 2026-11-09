@@ -18,7 +18,7 @@ class SupplySeamsTest {
     }
 
     static ExtractedDoc doc(Double total, SourceLine... lines) {
-        return new ExtractedDoc("Xraypad", "CNY", null, null, total, List.of(lines));
+        return new ExtractedDoc("Xraypad", "CNY", null, null, total, List.of(lines), null);
     }
 
     @Test

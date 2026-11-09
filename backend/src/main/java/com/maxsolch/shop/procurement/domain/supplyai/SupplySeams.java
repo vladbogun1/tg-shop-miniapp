@@ -46,7 +46,7 @@ public final class SupplySeams {
                 keptShots.add(shotAt(shots, i));
             }
         }
-        ExtractedDoc next = new ExtractedDoc(doc.supplier(), doc.currency(), doc.docNo(), doc.docDate(), doc.total(), List.copyOf(kept));
+        ExtractedDoc next = doc.withLines(List.copyOf(kept));
         return new Result(next, keptShots, List.copyOf(removed));
     }
 
