@@ -73,6 +73,15 @@ export function useRetryDraft(id: number) {
   });
 }
 
+/** «Перечитать»: черновик снова в работе (RUNNING), экран сам покажет ход и вернётся к проверке. */
+export function useRereadDraft(id: number) {
+  return useApiMutation<SupplyDraft, void>({
+    mutationFn: () => draftsApi.reread(id),
+    invalidate: [draftKeys.one(id), draftKeys.list(), ...SETTLED_KEYS],
+    errorFallback: "Не удалось перечитать накладную",
+  });
+}
+
 export function useStopDraft(id: number) {
   return useApiMutation<SupplyDraft, void>({
     mutationFn: () => draftsApi.stop(id),

@@ -4,7 +4,7 @@ import { sourceKey } from "./normalize";
 import type { ExtractedDoc, SourceLine } from "./types";
 
 /** Расхождение до 1 % (и не меньше 0.02) — округления продавца, не ошибка чтения. */
-function close(a: number, b: number): boolean {
+export function close(a: number, b: number): boolean {
   return Math.abs(a - b) <= Math.max(0.02, Math.abs(b) * 0.01);
 }
 

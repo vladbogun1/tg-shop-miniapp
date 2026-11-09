@@ -3,6 +3,7 @@
  * Чистая логика; правила — те же, что у сервера (`SupplyDraftCards.keyOf`, `SupplyDraftAccept.problems`), сервер
  * проверяет их ещё раз при «Принять».
  */
+import { close, linesSum, round2 } from "../ai/checks";
 import { draftPriceUah, newProducts, planProblems, type NewProductPlan } from "../ai/plan";
 import type { CatalogItem, ReviewRow } from "../ai/types";
 
@@ -64,6 +65,26 @@ export function draftProblems(i: ProblemInput): string[] {
     if (p.categoryId && !i.leafIds.has(p.categoryId)) out.push(`«${p.title}»: выберите конечную категорию`);
   }
   return out;
+}
+
+export type SumStatus = "OK" | "MISMATCH" | "NO_TOTAL";
+
+/** Сумма строк против итога документа: `diff` = итог − строки (плюс — строк не хватает, минус — лишние). */
+export interface DraftSum {
+  docTotal: number | null;
+  linesSum: number;
+  diff: number | null;
+  status: SumStatus;
+}
+
+/**
+ * Сверка с итогом документа по всем строкам документа — и пропущенные («Пропустить» значит «не заводить у нас», в
+ * документе строка есть). Расхождение до 1 % — округления продавца (как `SupplyChecks.close` у сервера).
+ */
+export function draftSum(rows: ReviewRow[], docTotal: number | null): DraftSum {
+  const sum = linesSum(rows.map((r) => r.line));
+  if (docTotal == null) return { docTotal: null, linesSum: sum, diff: null, status: "NO_TOTAL" };
+  return { docTotal, linesSum: sum, diff: round2(docTotal - sum), status: close(sum, docTotal) ? "OK" : "MISMATCH" };
 }
 
 export const STEPS: { step: DraftStep; label: string }[] = [

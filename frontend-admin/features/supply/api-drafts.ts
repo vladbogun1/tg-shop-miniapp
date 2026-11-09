@@ -27,14 +27,41 @@ export type DraftJob = Schemas["DraftJobView"];
 export type DraftSummary = Schemas["DraftSummary"];
 export type DraftStatus = DraftSummary["status"];
 
+/**
+ * Сверка с итогом документа, как её вёл сервер: сколько раз ИИ перечитывал накладную и какие строки код убрал как
+ * повтор на стыке скринов. Сама сумма на экране считается из строк заново (`draftSum`) — админ мог добавить/убрать строку.
+ */
+export interface DraftSumInfo {
+  /** Сколько раз ИИ перечитал накладную, чтобы сошлось с итогом (сам + кнопка «Перечитать»). */
+  rereads: number;
+  /** Строки, которые код убрал как повтор на стыке скринов (текстом, для подсказки). */
+  removedRepeats: string[];
+}
+
+/** Строка, которую админ дописал сам (её нет в прочитанном): id у сервера — «M1», «M2»… */
+export interface ManualLine {
+  text: string;
+  variant: string | null;
+  qty: number;
+  unitPrice: number | null;
+}
+
 export type SupplyDraft = Omit<Schemas["DraftDto"], "rows" | "doc" | "cards"> & {
   rows: ReviewRow[];
   doc: ExtractedDoc | null;
   cards: Record<string, DraftCard>;
+  /** Нет у старого сервера — экран считает без неё. */
+  sum?: DraftSumInfo;
 };
 
 /** Правки экрана проверки; пустое поле — не менять. `supplierId: 0` — новый поставщик по `supplierName`. */
-export type DraftSave = Omit<Schemas["DraftSaveRequest"], "decisions"> & { decisions?: Record<string, LineDecision> };
+export type DraftSave = Omit<Schemas["DraftSaveRequest"], "decisions"> & {
+  decisions?: Record<string, LineDecision>;
+  /** Дописать строки (их нет в прочитанном) — встанут в конец нерешёнными. */
+  addLines?: ManualLine[];
+  /** Убрать строки из документа (лишний повтор, чужая позиция) — в отличие от «Пропустить», не входят в сумму. */
+  removeLines?: string[];
+};
 
 export const draftsApi = {
   list: () => apiGet<DraftSummary[]>(BASE),
@@ -43,6 +70,8 @@ export const draftsApi = {
   sameInvoice: (fileIds: number[]) => apiGet<SameInvoice[]>(`${BASE}/same-invoice?fileIds=${fileIds.join(",")}`),
   save: (id: number, body: DraftSave) => apiPut<SupplyDraft>(`${BASE}/${id}`, body),
   retry: (id: number) => apiPost<SupplyDraft>(`${BASE}/${id}/retry`, {}),
+  /** ИИ перечитывает накладную внимательнее и дописывает пропущенные строки (решённые строки остаются). */
+  reread: (id: number) => apiPost<SupplyDraft>(`${BASE}/${id}/reread`, {}),
   stop: (id: number) => apiPost<SupplyDraft>(`${BASE}/${id}/stop`, {}),
   accept: (id: number, version: number) => apiPost<Schemas["DraftAcceptResult"]>(`${BASE}/${id}/accept`, { version }),
   remove: (id: number) => apiDelete<void>(`${BASE}/${id}`),
