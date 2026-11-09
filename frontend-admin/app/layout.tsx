@@ -12,6 +12,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "ChiSetup Admin",
   description: "Админка магазина ChiSetup: заказы, отправка, товары, оплата, клиенты",
+  robots: { index: false, follow: false },
   applicationName: "ChiSetup Admin",
   // The manifest is linked automatically from app/manifest.ts.
   appleWebApp: {

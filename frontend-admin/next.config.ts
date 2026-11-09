@@ -28,6 +28,9 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-DNS-Prefetch-Control", value: "off" },
+          // Staff-only host. No robots.txt disallow on purpose: Google must recrawl to see noindex
+          // and drop admin.chisetup.com.ua/, which it had indexed for «chisetup».
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
         ],
       },
       {
