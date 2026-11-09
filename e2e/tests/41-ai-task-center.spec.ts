@@ -115,14 +115,16 @@ test("обычный админ видит задачи, но ни одной с
 test("виджет на доске: админу — «ИИ можно запускать», владельцу — расход", async ({ page, browser }) => {
   await page.goto("/");
   const owner = page.getByTestId("ai-widget");
+  // Chip like the other «Сегодня» ones: «Расход ИИ · 19 ₴ из 420 ₴»; the full sentence is in the aria-label.
   await expect(owner).toContainText("Расход");
-  await expect(owner).toContainText("ждёт проверки");
+  await expect(owner).toHaveAttribute("aria-label", /ждёт проверки/);
 
   const plain = await pageAs(browser, plainToken);
   try {
     await plain.goto("/");
     const w = plain.getByTestId("ai-widget");
-    await expect(w).toContainText("ждёт проверки");
+    await expect(w).toHaveAttribute("aria-label", /ждёт проверки/);
+    await expect(w).toContainText("ждёт");
     await expect(w).not.toContainText("₴");
   } finally {
     await plain.context().close();
