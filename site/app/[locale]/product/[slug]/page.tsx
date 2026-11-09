@@ -21,7 +21,7 @@ import { loadSchema } from "@/features/catalog/server";
 import { IMAGE_BASE, SITE_URL } from "@/lib/config";
 import { localeOf } from "@/lib/route";
 import { getPreorderIndex, getProductPreorder } from "@/features/preorder/server";
-import { getProductBySlug } from "@/features/product/server";
+import { getProductBySlug, getRetiredProductCategory } from "@/features/product/server";
 import { getProductReviews } from "@/features/reviews/server";
 import { getProducts } from "@/features/catalog/server";
 import { safe } from "@/lib/server-http";
@@ -294,7 +294,12 @@ export default async function ProductPage({ params }: { params: Params }) {
   const { slug } = await params;
   const t = makeT(locale);
   const [product, schema] = await Promise.all([safe(getProductBySlug(decodeURIComponent(slug), locale), null), loadSchema(locale)]);
-  if (!product) notFound();
+  if (!product) {
+    // Hidden/archived product: Google still has the URL — send it to its category instead of a 404.
+    const category = await safe(getRetiredProductCategory(decodeURIComponent(slug), locale), null);
+    if (category) permanentRedirect(localePath(locale, `/catalog/${category}`));
+    notFound();
+  }
   // One address per product: /product/ATTACK-Shark → /product/attack-shark (the API matches slugs
   // case-insensitively, so the odd spelling would otherwise be a 200 duplicate).
   if (decodeURIComponent(slug) !== product.slug) permanentRedirect(localePath(locale, `/product/${product.slug}`));

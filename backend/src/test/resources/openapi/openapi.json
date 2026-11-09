@@ -13525,6 +13525,17 @@
         },
         "type" : "object"
       },
+      "RetiredProductDto" : {
+        "properties" : {
+          "categorySlug" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "categorySlug"
+        ],
+        "type" : "object"
+      },
       "ReturnRecordDto" : {
         "properties" : {
           "adminName" : {
@@ -31073,6 +31084,37 @@
           }
         },
         "summary" : "Active product by its slug, or 404",
+        "tags" : [
+          "Public site catalog"
+        ]
+      }
+    },
+    "/api/public/products/retired/{slug}" : {
+      "get" : {
+        "operationId" : "PublicCatalogController_retired",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "slug",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RetiredProductDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Category to redirect a hidden/archived product's URL to, or 404",
         "tags" : [
           "Public site catalog"
         ]

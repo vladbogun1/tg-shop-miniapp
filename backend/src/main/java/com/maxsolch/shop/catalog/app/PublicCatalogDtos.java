@@ -79,4 +79,8 @@ public final class PublicCatalogDtos {
 
     public record SitemapDto(List<SitemapProduct> products, List<SitemapCategory> categories) {
     }
+
+    /** A hidden/archived product's URL redirects to this category. */
+    public record RetiredProductDto(String categorySlug) {
+    }
 }

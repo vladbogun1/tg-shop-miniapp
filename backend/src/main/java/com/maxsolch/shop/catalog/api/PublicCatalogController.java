@@ -3,12 +3,14 @@ package com.maxsolch.shop.catalog.api;
 import com.maxsolch.shop.catalog.app.CatalogDtos.CatalogSchemaDto;
 import com.maxsolch.shop.catalog.app.CatalogSchemaService;
 import com.maxsolch.shop.catalog.app.PublicCatalogService;
+import com.maxsolch.shop.catalog.app.RetiredProductRedirect;
 import com.maxsolch.shop.translation.domain.ContentLocale;
 import com.maxsolch.shop.catalog.app.ProductDto;
 import com.maxsolch.shop.catalog.app.PublicCatalogDtos.CategoryDetailDto;
 import com.maxsolch.shop.catalog.app.PublicCatalogDtos.CategoryDto;
 import com.maxsolch.shop.catalog.app.PublicCatalogDtos.ProductCardPage;
 import com.maxsolch.shop.catalog.app.PublicCatalogDtos.ProductPage;
+import com.maxsolch.shop.catalog.app.PublicCatalogDtos.RetiredProductDto;
 import com.maxsolch.shop.catalog.app.PublicCatalogDtos.SitemapDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,10 +35,13 @@ public class PublicCatalogController {
 
     private final PublicCatalogService service;
     private final CatalogSchemaService schemaService;
+    private final RetiredProductRedirect retiredProducts;
 
-    public PublicCatalogController(PublicCatalogService service, CatalogSchemaService schemaService) {
+    public PublicCatalogController(PublicCatalogService service, CatalogSchemaService schemaService,
+                                   RetiredProductRedirect retiredProducts) {
         this.service = service;
         this.schemaService = schemaService;
+        this.retiredProducts = retiredProducts;
     }
 
     @GetMapping("/categories")
@@ -85,6 +90,14 @@ public class PublicCatalogController {
     public ResponseEntity<ProductDto> bySlug(@PathVariable String slug, Locale locale) {
         return service.bySlug(slug, ContentLocale.normalize(locale))
                 .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/products/retired/{slug}")
+    @Operation(summary = "Category to redirect a hidden/archived product's URL to, or 404")
+    public ResponseEntity<RetiredProductDto> retired(@PathVariable String slug) {
+        return retiredProducts.categorySlug(slug)
+                .map(c -> ResponseEntity.ok(new RetiredProductDto(c)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 

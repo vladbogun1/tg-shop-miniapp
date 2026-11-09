@@ -5468,6 +5468,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/products/retired/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Category to redirect a hidden/archived product's URL to, or 404 */
+        get: operations["PublicCatalogController_retired"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/products/{idOrSlug}/reviews": {
         parameters: {
             query?: never;
@@ -9611,6 +9628,9 @@ export interface components {
             note?: string;
             /** Format: int32 */
             quantity?: number;
+        };
+        RetiredProductDto: {
+            categorySlug: string;
         };
         ReturnRecordDto: {
             adminName: string | null;
@@ -19052,6 +19072,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ProductDto"];
+                };
+            };
+        };
+    };
+    PublicCatalogController_retired: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RetiredProductDto"];
                 };
             };
         };

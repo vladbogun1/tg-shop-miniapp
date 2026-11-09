@@ -61,6 +61,8 @@ public interface ProductRepository extends JpaRepository<Product, byte[]> {
 
     boolean existsBySlugAndIdNot(String slug, byte[] id);
 
+    Optional<Product> findFirstBySlug(String slug);
+
     boolean existsBySku(String sku);
 
     boolean existsBySkuAndIdNot(String sku, byte[] id);
