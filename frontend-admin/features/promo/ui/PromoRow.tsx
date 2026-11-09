@@ -3,7 +3,8 @@
 import { nowMs, formatDateTime } from "@shop/core/time";
 import { useConfirm } from "@shop/ui/confirm";
 import { toast } from "@shop/ui/toast";
-import { Copy, ListOrdered, Pencil, Percent, Trash2, Wallet } from "lucide-react";
+import { Button } from "@shop/ui/admin-button";
+import { CalendarClock, Copy, ListOrdered, Pencil, Percent, Plus, Trash2, Wallet } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { copyText } from "@/components/ui/CopyButton";
 import { Toggle } from "@/components/ui/Toggle";
@@ -78,10 +79,32 @@ function Usage({ p }: { p: PromoCode }) {
   );
 }
 
+/**
+ * Код включён, но покупатель его применить не может: лимит кончился или срок прошёл. Переключатель в этом
+ * случае ничего не включает — подсказываем, что сделать, чтобы код снова работал (открывает форму).
+ */
+function Revive({ status, onEdit }: { status: MainStatus; onEdit: () => void }) {
+  if (status !== "exhausted" && status !== "expired") return null;
+  const exhausted = status === "exhausted";
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="mt-2"
+      icon={exhausted ? <Plus className="h-3.5 w-3.5" /> : <CalendarClock className="h-3.5 w-3.5" />}
+      onClick={onEdit}
+    >
+      {exhausted ? "Добавить использований" : "Продлить срок"}
+    </Button>
+  );
+}
+
 export function PromoRow({ p, onEdit, onDelete, onOrders }: Props) {
   const confirm = useConfirm();
   const toggleM = useTogglePromo();
-  const status = STATUS_BADGE[mainStatus(p, nowMs())];
+  const statusKey = mainStatus(p, nowMs());
+  const status = STATUS_BADGE[statusKey];
+  const stopped = statusKey === "exhausted" || statusKey === "expired";
   const origin = promoOrigin(p);
   const used = usesOf(p);
   const reserved = p.reservedCount ?? 0;
@@ -146,10 +169,17 @@ export function PromoRow({ p, onEdit, onDelete, onOrders }: Props) {
       </div>
       <div className="order-4 w-full lg:order-none lg:w-auto">
         <Usage p={p} />
+        <Revive status={statusKey} onEdit={onEdit} />
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0">
-        <Toggle checked={p.active} disabled={toggleM.isPending} onChange={(on) => void toggle(on)} />
+        <Toggle
+          checked={p.active}
+          muted={stopped}
+          ariaLabel={stopped ? `Код ${p.code}: включён, но не действует — ${status.label}` : `Код ${p.code}`}
+          disabled={toggleM.isPending}
+          onChange={(on) => void toggle(on)}
+        />
         <RowMenu title={p.code} items={items} />
       </div>
     </div>

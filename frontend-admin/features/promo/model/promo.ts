@@ -94,23 +94,29 @@ export interface PromoSummary {
   live: number;
   reserved: number;
   expiring: number;
+  /** Включены, но не действуют: лимит исчерпан или срок прошёл. */
+  stopped: number;
 }
 
-/** Плашка «Действуют / Резерв / Истекают» над списком вкладки. */
+/** Плашка «Действуют / Включены, но не действуют / Резерв / Истекают» над списком вкладки. */
 export function summaryOf(list: PromoCode[], now: number): PromoSummary {
   let live = 0;
   let reserved = 0;
   let expiring = 0;
+  let stopped = 0;
   for (const p of list) {
     reserved += p.reservedCount ?? 0;
-    if (!isLive(p, now)) continue;
+    if (!isLive(p, now)) {
+      if (p.active) stopped++;
+      continue;
+    }
     live++;
     if (p.expiresAt) {
       const left = new Date(p.expiresAt).getTime() - now;
       if (left >= 0 && left <= EXPIRING_MS) expiring++;
     }
   }
-  return { live, reserved, expiring };
+  return { live, reserved, expiring, stopped };
 }
 
 export type MainStatus = "off" | "exhausted" | "expired" | "reserve" | "live";

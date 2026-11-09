@@ -103,7 +103,13 @@ describe("сводка и главный статус", () => {
   it("считает действующие, резерв и истекающие", () => {
     const soon = code({ id: "s", expiresAt: "2026-11-02T00:00:00Z" });
     const off = code({ id: "o", active: false, reservedCount: 1 });
-    expect(summaryOf([live, soon, off], NOW)).toEqual({ live: 2, reserved: 3, expiring: 1 });
+    expect(summaryOf([live, soon, off], NOW)).toEqual({ live: 2, reserved: 3, expiring: 1, stopped: 0 });
+  });
+  it("включён, но лимит исчерпан или срок прошёл — «Остановлены», выключенные не считаются", () => {
+    const used = code({ id: "u", maxUses: 2, usesCount: 2 });
+    const old = code({ id: "e", expiresAt: "2026-10-01T00:00:00Z" });
+    const offUsed = code({ id: "x", active: false, maxUses: 1, usesCount: 1 });
+    expect(summaryOf([used, old, offUsed, live], NOW)).toEqual({ live: 1, reserved: 2, expiring: 0, stopped: 2 });
   });
   it("приоритет статусов", () => {
     expect(mainStatus(code({ active: false, maxUses: 1, usesCount: 1 }), NOW)).toBe("off");

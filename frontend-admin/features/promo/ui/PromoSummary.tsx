@@ -14,7 +14,7 @@ function Chip({ label, value }: { label: string; value: ReactNode }) {
 }
 
 /**
- * Плашка над списком вкладки: «Действуют / Резерв / Истекают» (7 сут.). На вкладке «За отзывы» вместо
+ * Плашка над списком вкладки: «Действуют / Включены, но не действуют / Резерв / Истекают» (7 сут.). На вкладке «За отзывы» вместо
  * неё — «выдано N, использовано M» (как был абзац).
  */
 export function PromoSummary({ list, review, now }: { list: PromoCode[]; review: { issued: number; used: number } | null; now: number }) {
@@ -32,6 +32,7 @@ export function PromoSummary({ list, review, now }: { list: PromoCode[]; review:
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2">
       <Chip label="Действуют" value={s.live} />
+      {s.stopped > 0 && <Chip label="Включены, но не действуют" value={s.stopped} />}
       <Chip label="Резерв" value={s.reserved} />
       <Chip label="Истекают за 7 дней" value={s.expiring} />
     </div>
