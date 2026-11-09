@@ -24,7 +24,10 @@ export function SettingsToolbar({
         <Input aria-label="Поиск по настройкам" placeholder="Найти настройку" value={query} onChange={(e) => onQuery(e.target.value)} icon={<Search className="h-4 w-4" />} />
       </div>
       {groups.length > 1 && (
-        <nav aria-label="Группы настроек" className="thin-scroll -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        <nav
+          aria-label="Группы настроек"
+          className="thin-scroll -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [mask-image:linear-gradient(to_right,#000_85%,transparent)] md:flex-wrap md:overflow-visible md:[mask-image:none]"
+        >
           {groups.map((g) => (
             <a
               key={g.id}

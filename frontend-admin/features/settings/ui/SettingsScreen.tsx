@@ -44,7 +44,7 @@ const GROUP_ICON: Record<string, LucideIcon> = {
 
 export function SettingsScreen() {
   const q = useSettingsQuery();
-  // «Приложение и уведомления»: на телефоне первым, на компьютере — сверху боковой колонки.
+  // «Это устройство»: на телефоне первым, на компьютере — сверху боковой колонки.
   const save = useSaveSettings();
   const [query, setQuery] = useState("");
 

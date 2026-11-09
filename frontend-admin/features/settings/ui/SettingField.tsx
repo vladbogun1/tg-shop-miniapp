@@ -102,7 +102,18 @@ function ViewControl({ item, entry, view, onChange }: { item: SettingItem; entry
   );
 }
 
+/** Короткий текст (код ставки, список через запятую до 100 знаков) — одна строка, а не поле на пять. */
+const SHORT_TEXT = 100;
+const isShortText = (item: SettingItem) => item.type === "TEXT" && item.maxLength != null && item.maxLength <= SHORT_TEXT;
+
 function TextControl({ item, entry, error, onChange }: ControlProps) {
+  if (isShortText(item)) {
+    return (
+      <div className="w-full">
+        <Input aria-label={item.label} value={String(entry.raw)} maxLength={item.maxLength ?? undefined} onChange={(e) => onChange(e.target.value)} error={error ?? undefined} />
+      </div>
+    );
+  }
   return (
     <div className="w-full">
       <Textarea
@@ -126,7 +137,7 @@ function TextControl({ item, entry, error, onChange }: ControlProps) {
 
 /** Длинные значения (текст, строка) занимают всю ширину строки; числа, переключатели и списки — колонку справа. */
 export function isWide(item: SettingItem): boolean {
-  return item.type === "TEXT" || item.type === "STRING";
+  return (item.type === "TEXT" && !isShortText(item)) || item.type === "STRING";
 }
 
 /**

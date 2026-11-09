@@ -28,7 +28,7 @@ public class OrderSettings implements SettingsContribution {
     @Override
     public List<SettingGroup> groups() {
         return List.of(
-                new SettingGroup("notifications", "Уведомления", "Что бот пишет покупателям."));
+                new SettingGroup("notifications", "Сообщения покупателям", "Что бот пишет покупателям."));
     }
 
     @Override

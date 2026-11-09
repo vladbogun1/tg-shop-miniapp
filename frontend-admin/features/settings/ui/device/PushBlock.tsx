@@ -31,7 +31,7 @@ function statusRows(p: DevicePush) {
         value={p.iosNeedsInstall ? "только в приложении" : PERMISSION_LABEL[p.permission]}
         tone={p.permission === "granted" ? "ok" : p.permission === "denied" ? "warn" : "muted"}
       />
-      <Row label="Это устройство" value={p.subscribed === null ? "…" : p.subscribed ? "подписано" : "не подписано"} tone={p.subscribed ? "ok" : "muted"} />
+      <Row label="Подписка" value={p.subscribed === null ? "проверяем" : p.subscribed ? "есть" : "нет"} tone={p.subscribed ? "ok" : "muted"} />
       {p.serverOn && <Row label="Всего ваших устройств" value={p.devices} />}
       {badgeSupported() && <Row label="Число на иконке" value="= «Внимание»" />}
     </div>
@@ -77,7 +77,7 @@ function Blockers({ p }: { p: DevicePush }) {
 export function PushBlock({ p }: { p: DevicePush }) {
   return (
     <div className="mt-5 border-t border-[var(--line)] pt-4">
-      <h3 className="section-title mb-2">Уведомления на этом устройстве</h3>
+      <h3 className="section-title mb-2">Уведомления</h3>
       <p className="mb-3 text-[12px] leading-relaxed text-[var(--text-muted)]">
         Новый заказ, онлайн-оплата заказа, сообщение клиента в чате, сбой обновления сайта. Нажатие открывает заказ, чат или «Внимание».
       </p>

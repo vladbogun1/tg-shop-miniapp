@@ -61,11 +61,16 @@ function sameKey(sub: PushSubscription, publicKey: string): boolean {
   return a.length === b.length && a.every((v, i) => v === b[i]);
 }
 
+/**
+ * The subscription lives on an existing registration — read it at once instead of waiting up to 8 s for
+ * `serviceWorker.ready` (the settings card showed «Это устройство …» all that time). No registration yet means
+ * no subscription either.
+ */
 export async function currentSubscription(): Promise<PushSubscription | null> {
   if (!pushSupported()) return null;
-  const reg = await getRegistration();
-  if (!reg) return null;
   try {
+    const reg = (await navigator.serviceWorker.getRegistration()) ?? null;
+    if (!reg) return null;
     return await reg.pushManager.getSubscription();
   } catch {
     return null;
