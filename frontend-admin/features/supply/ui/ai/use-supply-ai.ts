@@ -16,10 +16,14 @@ import type { CatalogItem, LineDecision, NewProductDraft, ReviewRow } from "../.
 
 const isAuto = (d: LineDecision) => d.kind === "open" || (d.kind === "match" && (d.by === "search" || d.by === "memory"));
 
-/** Пустой черновик нового товара из строки: бренд + модель + цвет, как прочитал ИИ. */
+/**
+ * Пустой черновик нового товара из строки. Есть бренд или модель — «бренд модель цвет»; иначе (ИИ их не выделил)
+ * название строки по-английски или как в документе — иначе из одного цвета вышло бы название «black».
+ */
 export function blankDraft(r: ReviewRow): NewProductDraft {
   const l = r.line;
-  const title = [l.brand, l.model, l.color].filter(Boolean).join(" ") || l.en || l.text;
+  const named = l.brand || l.model;
+  const title = (named ? [l.brand, l.model, l.color].filter(Boolean).join(" ") : l.en || l.text) || l.text;
   return { title, brand: l.brand, categoryId: null, variant: null, source: null };
 }
 

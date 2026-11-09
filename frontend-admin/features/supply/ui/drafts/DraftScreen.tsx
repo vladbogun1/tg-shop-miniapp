@@ -6,15 +6,15 @@
  * на поставку. Страницу можно закрыть в любой момент: работа идёт на сервере.
  */
 import { Button } from "@shop/ui/admin-button";
-import { ArrowLeft, ArrowRight, RotateCcw, Square } from "lucide-react";
+import { ArrowLeft, RotateCcw, Square } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useState } from "react";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { QueryState } from "@/components/ui/QueryState";
 import { useFinanceAccess } from "@/features/procurement";
 import type { SupplyDraft } from "../../api-drafts";
 import { useDraft, useRetryDraft, useStopDraft } from "../../queries-drafts";
+import { Accepted } from "./AcceptedNext";
 import { DraftHeader } from "./DraftHeader";
 import { DraftNotes, DraftProgress } from "./DraftProgress";
 import { DraftReview } from "./DraftReview";
@@ -37,26 +37,6 @@ function Working({ draft, finance }: { draft: SupplyDraft; finance: boolean }) {
       <DraftHeader draft={draft} main={main} />
       <DraftProgress draft={draft} finance={finance} />
       <DraftNotes draft={draft} />
-    </>
-  );
-}
-
-function Accepted({ draft }: { draft: SupplyDraft }) {
-  return (
-    <>
-      <DraftHeader draft={draft} />
-      <EmptyState
-        icon={ArrowRight}
-        title="Поставка уже создана"
-        description="Этот черновик принят: товары и поставка заведены."
-        action={
-          draft.batchId != null ? (
-            <Link href={`/preorders/${draft.batchId}`} className="font-semibold text-[var(--accent-hi)] hover:underline">
-              Открыть поставку
-            </Link>
-          ) : undefined
-        }
-      />
     </>
   );
 }

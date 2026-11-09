@@ -1,17 +1,14 @@
 "use client";
 
 /**
- * Новые товары черновика: как их назвал и описал ИИ. Правится название, категория, цена и описание; характеристики
- * и фото — как написал ИИ (поправить можно потом в «Карточках»). Товары создадутся скрытыми, с остатком 0.
+ * Карточка ИИ нового товара: описание правится, характеристики и фото — как написал ИИ (поправить можно потом в
+ * «Карточках»). Показывается внутри блока своего товара на экране проверки.
  */
-import { ImageOff, Loader2 } from "lucide-react";
+import { ChevronRight, ImageOff, Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { useCardSchema } from "@/features/cards";
 import type { DraftCard, SupplyDraft } from "../../api-drafts";
-import type { LeafCategory } from "../../model/ai/match-prompt";
 import { specRows, type DraftProduct, type SpecAttr } from "../../model/drafts/draft";
 import type { DraftEdit } from "./use-draft-edit";
 
@@ -42,6 +39,7 @@ function Card({ card, id, edit, attrs }: { card: DraftCard; id: string; edit: Dr
   return (
     <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
       <Textarea
+        id={`desc-${id}`}
         label="Описание (рус.)"
         rows={5}
         value={edit.descriptions[id] ?? card.description?.ru ?? ""}
@@ -85,31 +83,19 @@ function NoCard({ id, draft }: { id: string; draft: SupplyDraft }) {
   );
 }
 
-function ProductBlock({ p, draft, edit, categories, attrs }: { p: DraftProduct; draft: SupplyDraft; edit: DraftEdit; categories: LeafCategory[]; attrs: Map<string, SpecAttr> }) {
-  const card = draft.cards[p.id];
-  const facts = [p.brand && `бренд ${p.brand}`, p.variants.length > 0 && `варианты: ${p.variants.join(", ")}`, `строки ${p.lineIds.join(", ")}`].filter(Boolean).join(" · ");
-  return (
-    <div className="card flex min-w-0 flex-col gap-3 p-3.5">
-      <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)_130px] sm:items-start">
-        <Input label="Название" value={p.title} onChange={(e) => edit.editProduct(p, { title: e.target.value })} />
-        <Select label="Категория" value={p.categoryId ?? ""} options={categories.map((c) => ({ value: c.id, label: c.name }))} onChange={(v) => edit.editProduct(p, { categoryId: v })} />
-        <Input label="Цена, ₴" inputMode="decimal" value={edit.prices[p.id] ?? ""} hint="закупка × курс × 2" onChange={(e) => edit.setPrice(p.id, e.target.value)} />
-      </div>
-      <div className="text-[12.5px] text-[var(--text-muted)]">{facts}</div>
-      {card ? <Card card={card} id={p.id} edit={edit} attrs={attrs} /> : <NoCard id={p.id} draft={draft} />}
-    </div>
-  );
-}
-
-export function DraftProducts({ draft, edit, categories }: { draft: SupplyDraft; edit: DraftEdit; categories: LeafCategory[] }) {
+/** Карточка нового товара от ИИ внутри его блока: раскрывается тут же, описание правится на месте. */
+export function ProductAiCard({ p, draft, edit }: { p: DraftProduct; draft: SupplyDraft; edit: DraftEdit }) {
   const schema = useCardSchema().data;
   const attrs = useMemo(() => new Map((schema?.attributes ?? []).map((a) => [a.key, a])), [schema]);
-  if (edit.products.length === 0) return null;
+  const card = draft.cards[p.id];
   return (
-    <div className="flex min-w-0 flex-col gap-3">
-      {edit.products.map((p) => (
-        <ProductBlock key={p.id} p={p} draft={draft} edit={edit} categories={categories} attrs={attrs} />
-      ))}
-    </div>
+    <details className="group rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--surface-2)]">
+      <summary className="flex min-h-10 cursor-pointer items-center gap-2 px-3 py-2 text-[13px] font-semibold text-[var(--text)]">
+        <ChevronRight className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90" />
+        Карточка от ИИ: описание, характеристики, фото
+        {!card && <span className="font-normal text-[var(--text-faint)]">· пока нет</span>}
+      </summary>
+      <div className="border-t border-[var(--line)] p-3">{card ? <Card card={card} id={p.id} edit={edit} attrs={attrs} /> : <NoCard id={p.id} draft={draft} />}</div>
+    </details>
   );
 }

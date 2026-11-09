@@ -9,7 +9,7 @@ import { errorMessage, hasErrorCode } from "@shop/core/errors";
 import { toast } from "@shop/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DraftSave, SupplyDraft } from "../../api-drafts";
+import type { DraftSave, ManualLine, SupplyDraft } from "../../api-drafts";
 import { likelyRepeats, lineProblem } from "../../model/ai/checks";
 import type { LineDecision, NewProductDraft, ReviewRow } from "../../model/ai/types";
 import { draftProducts, parseAmount, proposePrices, type DraftProduct } from "../../model/drafts/draft";
@@ -100,6 +100,10 @@ export function useDraftEdit(draft: SupplyDraft, onConflict: () => void) {
   const dirty = useRef(false);
   const chain = useRef<Promise<boolean>>(Promise.resolve(true));
   const [saving, setSaving] = useState(false);
+  // Дописанные и убранные строки уходят на сервер один раз, вместе с ближайшей записью.
+  const pendingAdd = useRef<ManualLine[]>([]);
+  const pendingRemove = useRef<string[]>([]);
+  const removed = useRef(new Set<string>());
 
   /** Записывает несохранённое; правки во время записи уйдут следующей записью. false — не сохранилось. */
   const flush = useCallback((): Promise<boolean> => {
@@ -107,12 +111,27 @@ export function useDraftEdit(draft: SupplyDraft, onConflict: () => void) {
       if (!dirty.current) return true;
       dirty.current = false;
       setSaving(true);
+      const adds = pendingAdd.current;
+      const removes = pendingRemove.current;
+      pendingAdd.current = [];
+      pendingRemove.current = [];
       try {
-        const d = await saveAsync(bodyOf(latest.current, version.current));
+        const body: DraftSave = { ...bodyOf(latest.current, version.current), ...(adds.length ? { addLines: adds } : {}), ...(removes.length ? { removeLines: removes } : {}) };
+        const d = await saveAsync(body);
         version.current = d.version;
         qc.setQueryData(draftKeys.one(d.id), d);
+        // Ручные строки сервер вернул обычными строками (M1, M2…) — дописываем их в экран.
+        if (adds.length) {
+          setEdits((e) => {
+            const have = new Set(e.rows.map((r) => r.line.id));
+            const fresh = d.rows.filter((r) => !have.has(r.line.id) && !removed.current.has(r.line.id));
+            return fresh.length ? { ...e, rows: [...e.rows, ...fresh] } : e;
+          });
+        }
         return true;
       } catch (e) {
+        pendingAdd.current = [...adds, ...pendingAdd.current];
+        pendingRemove.current = [...removes, ...pendingRemove.current];
         if (hasErrorCode(e, "DRAFT_CHANGED") || hasErrorCode(e, "DRAFT_BAD_STATE")) {
           toast.error("Черновик изменился в другом окне — показываю свежий");
           onConflict();
@@ -156,6 +175,27 @@ export function useDraftEdit(draft: SupplyDraft, onConflict: () => void) {
       rows: e.rows.map((r) => (r.decision.kind === "new" && p.lineIds.includes(r.line.id) ? { ...r, decision: { kind: "new", draft: { ...r.decision.draft, ...patch } } } : r)),
     }));
 
+  /** Правка одной строки нового товара (вариант; название — чтобы отделить строку в свой товар). */
+  const editLine = (lineId: string, patch: Partial<NewProductDraft>) =>
+    change((e) => ({
+      ...e,
+      rows: e.rows.map((r) => (r.line.id === lineId && r.decision.kind === "new" ? { ...r, decision: { kind: "new", draft: { ...r.decision.draft, ...patch } } } : r)),
+    }));
+
+  /** Дописать строку вручную: уходит на сервер сразу, строка появится с его id. */
+  const addLine = (line: ManualLine) => {
+    pendingAdd.current = [...pendingAdd.current, line];
+    change((e) => e);
+    return flush();
+  };
+
+  /** Убрать строку из документа (в отличие от «Пропустить» — и из суммы документа). */
+  const removeLine = (lineId: string) => {
+    removed.current.add(lineId);
+    pendingRemove.current = [...pendingRemove.current, lineId];
+    change((e) => ({ ...e, rows: e.rows.filter((r) => r.line.id !== lineId) }));
+  };
+
   const products = useMemo(() => draftProducts(edits.rows, draft.cards, draft.jobs, edits.prices), [edits.rows, edits.prices, draft.cards, draft.jobs]);
   const repeats = useMemo(() => likelyRepeats(edits.rows.map((r) => r.line)), [edits.rows]);
 
@@ -167,6 +207,9 @@ export function useDraftEdit(draft: SupplyDraft, onConflict: () => void) {
     version: () => version.current,
     review: { decide, repeats, lineIssue: lineProblem },
     editProduct,
+    editLine,
+    addLine,
+    removeLine,
     setPrice: (id: string, text: string) => change((e) => ({ ...e, prices: { ...e.prices, [id]: text }, proposed: e.proposed.filter((k) => k !== id) })),
     setDescription: (id: string, text: string) => change((e) => ({ ...e, descriptions: { ...e.descriptions, [id]: text } })),
     setHead: (patch: Partial<DraftHead>) => change((e) => (patch.fxRate == null ? { ...e, head: { ...e.head, ...patch } } : withRate(e, patch, draft))),

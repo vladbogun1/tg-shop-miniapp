@@ -148,6 +148,7 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   PREORDER_SUBSCRIPTION_REMOVE: "Подписка убрана",
   SUPPLY_DRAFT_CREATE: "Черновик поставки с ИИ",
   SUPPLY_DRAFT_DELETE: "Черновик поставки удалён",
+  SUPPLY_DRAFT_REREAD: "Черновик поставки: перечитать накладную",
 };
 
 export const AUDIT_ENTITY_LABEL: Record<string, string> = {

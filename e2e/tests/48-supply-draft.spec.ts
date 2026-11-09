@@ -77,7 +77,8 @@ test("экраны черновика на 7 ширинах: без боково
   for (const w of WIDTHS) {
     await page.setViewportSize({ width: w, height: 900 });
     await page.goto(`/preorders/drafts/${id}`);
-    await expect(page.getByText("Новые товары").first()).toBeVisible();
+    await expect(page.getByText("Позиции накладной").first()).toBeVisible();
+    await expect(page.getByText(/Готово \d+ из \d+/)).toBeVisible();
     await shot(page, `review-${w}`);
     expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), `ширина ${w}`).toBe(false);
   }
@@ -134,15 +135,23 @@ test("одна кнопка → ИИ сам всё делает → «Готов
 
   // Имена новых товаров уникальны на прогон (повторный прогон на той же базе не упрётся в «уже в каталоге»).
   const tag = String(Date.now()).slice(-6);
-  const titles = page.locator("#new").getByLabel("Название");
+  const titles = page.locator("[id^=prod-]").getByLabel("Название");
   for (let i = 0; i < (await titles.count()); i++) await titles.nth(i).fill(`${await titles.nth(i).inputValue()} ${tag}`);
+  await page.getByText("Карточка от ИИ").first().click();
   await expect(page.getByText("Описание (рус.)").first()).toBeVisible();
   await expect(page.getByText("Правки сохранены")).toBeVisible({ timeout: 10_000 });
 
-  const accept = page.getByRole("button", { name: "Принять" }).last();
-  await expect(accept, (await page.locator(".card").filter({ hasText: "Чтобы принять" }).textContent().catch(() => null)) ?? "").toBeEnabled();
-  await accept.click();
+  await expect(page.getByText("Всё решено").first(), "остались нерешённые пункты").toBeVisible();
+  await shot(page, "ready-todo-1440");
+  await page.getByRole("button", { name: "Принять" }).last().click();
+  // Сумма в fake-ai может не сойтись с итогом — тогда экран спросит, всё ли равно принять.
+  const mismatch = dialog(page, "Сумма не сходится");
+  if (await mismatch.isVisible({ timeout: 2000 }).catch(() => false)) await mismatch.getByRole("button", { name: "Всё равно принять" }).click();
   await dialog(page, "Создать поставку?").getByRole("button", { name: "Создать" }).click();
+  // Новые товары созданы скрытыми — экран сам показывает следующий шаг и ссылку на поставку.
+  await expect(page.getByText("Поставка создана").first()).toBeVisible({ timeout: 30_000 });
+  await shot(page, "accepted-1440");
+  await page.getByRole("link", { name: /Открыть поставку/ }).click();
   await page.waitForURL(/\/preorders\/\d+$/, { timeout: 30_000 });
   // «⋯» поставки на ПК — список у кнопки, не шторка.
   await page.getByRole("button", { name: "Ещё действия" }).click();

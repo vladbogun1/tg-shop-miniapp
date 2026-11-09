@@ -26,12 +26,9 @@ function wordsOf(r: ReviewRow): string[] {
 
 /** Слова (в нижнем регистре), которые есть у всех строк товара. */
 function common(group: ReviewRow[]): Set<string> {
-  let out: Set<string> | null = null;
-  for (const r of group) {
-    const mine = new Set(wordsOf(r).map((w) => w.toLowerCase()));
-    out = out == null ? mine : new Set([...out].filter((w) => mine.has(w)));
-  }
-  return out ?? new Set();
+  const [first, ...rest] = group.map((r) => new Set(wordsOf(r).map((w) => w.toLowerCase())));
+  if (!first) return new Set();
+  return new Set([...first].filter((w) => rest.every((mine) => mine.has(w))));
 }
 
 function distinct(r: ReviewRow, shared: Set<string>): string {
