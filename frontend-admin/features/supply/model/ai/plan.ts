@@ -5,6 +5,7 @@
 import { round2 } from "./checks";
 import { sourceKey } from "./normalize";
 import type { NewProductDraft, ReviewRow, SourceLine } from "./types";
+import { lineVariants } from "./variants";
 
 export interface NewProductPlan {
   key: string;
@@ -21,15 +22,17 @@ export interface NewProductPlan {
 
 export const draftKey = (d: NewProductDraft) => d.title.trim().toLowerCase();
 
-/** Новые товары из решений «new». Цена — из `prices` по ключу товара. */
+/** Новые товары из решений «new» (варианты — `lineVariants`). Цена — из `prices` по ключу товара. */
 export function newProducts(rows: ReviewRow[], prices: Record<string, number | null> = {}): NewProductPlan[] {
+  const variants = lineVariants(rows);
   const out = new Map<string, NewProductPlan>();
   for (const r of rows) {
     if (r.decision.kind !== "new") continue;
     const d = r.decision.draft;
     const key = draftKey(d);
     const plan = out.get(key) ?? { key, title: d.title.trim(), brand: d.brand, categoryId: d.categoryId, variants: [], priceUah: prices[key] ?? null, lineIds: [] };
-    if (d.variant && !plan.variants.includes(d.variant)) plan.variants.push(d.variant);
+    const variant = variants.get(r.line.id);
+    if (variant && !plan.variants.includes(variant)) plan.variants.push(variant);
     plan.lineIds.push(r.line.id);
     out.set(key, plan);
   }
@@ -45,13 +48,6 @@ export function planProblems(rows: ReviewRow[], plans: NewProductPlan[]): string
   for (const p of plans) {
     if (!p.categoryId) out.push(`«${p.title}»: выберите категорию`);
     if (!(p.priceUah != null && p.priceUah > 0)) out.push(`«${p.title}»: черновая цена продажи`);
-    if (p.lineIds.length > 1 && p.variants.length === 0) out.push(`«${p.title}»: несколько строк без вариантов — разведите названия или задайте варианты`);
-    if (p.variants.length > 0) {
-      for (const id of p.lineIds) {
-        const d = rows.find((r) => r.line.id === id)?.decision;
-        if (d?.kind === "new" && !d.draft.variant) out.push(`«${p.title}»: у строки ${id} не указан вариант (у товара есть варианты ${p.variants.join(", ")})`);
-      }
-    }
   }
   return out;
 }
@@ -85,13 +81,15 @@ export interface Resolved {
 /** Строки с товаром: найденные и только что созданные (`created` — по ключу draftKey). */
 export function resolvedLines(rows: ReviewRow[], created: Map<string, Created>): Resolved[] {
   const out: Resolved[] = [];
+  const variants = lineVariants(rows);
   for (const r of rows) {
     const d = r.decision;
     if (d.kind === "match") out.push({ line: r.line, productId: d.productId, variantId: d.variantId });
     if (d.kind !== "new") continue;
     const c = created.get(draftKey(d.draft));
     if (!c) continue;
-    const v = d.draft.variant ? c.variants.find((x) => x.name === d.draft.variant) : undefined;
+    const name = variants.get(r.line.id);
+    const v = name ? c.variants.find((x) => x.name === name) : undefined;
     out.push({ line: r.line, productId: c.productId, variantId: v?.id ?? null });
   }
   return out;

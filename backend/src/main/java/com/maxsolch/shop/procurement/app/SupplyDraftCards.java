@@ -124,9 +124,17 @@ class SupplyDraftCards {
         name(s, p, card.get());
     }
 
-    /** The card's title, leaf category and brand go into the plan of the product (on all its lines). */
+    /**
+     * The card's title, leaf category and brand go into the plan of the product (on all its lines). A title another
+     * new product of the draft already has makes them one product (the title is model + colour; base and packaging
+     * are variants) — the admin is told, so another colour or model merged by mistake is split back by hand.
+     */
     private static void name(DraftState s, SupplyPlan.NewProduct p, CardDraft card) {
         String title = card.title() == null ? null : card.title().get("ru");
+        if (title != null && !title.isBlank() && takenByAnother(s, p, title)) {
+            s.warn("«" + p.title() + "» и другой новый товар ИИ назвал одинаково — «" + title.trim()
+                    + "»: это один товар с вариантами. Если это разные товары — «Отделить в свой товар»");
+        }
         List<ReviewRow> rows = new ArrayList<>();
         for (ReviewRow row : s.getRows()) {
             NewProductDraft draft = row.decision().draft();
@@ -142,6 +150,11 @@ class SupplyDraftCards {
             rows.add(new ReviewRow(row.line(), LineDecision.fresh(named), row.candidates()));
         }
         s.setRows(rows);
+    }
+
+    private static boolean takenByAnother(DraftState s, SupplyPlan.NewProduct p, String title) {
+        String key = SupplyPlan.draftKey(new NewProductDraft(title, null, null, null, null));
+        return !key.equals(p.key()) && SupplyPlan.newProducts(s.getRows()).stream().anyMatch(o -> o.key().equals(key));
     }
 
     private static String note(SupplyPlan.NewProduct p, DraftState s) {

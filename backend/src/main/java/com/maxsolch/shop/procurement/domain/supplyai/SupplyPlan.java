@@ -38,8 +38,9 @@ public final class SupplyPlan {
         return SupplyText.trim(d.title()).toLowerCase(Locale.ROOT);
     }
 
-    /** New products from "new" decisions; lines with the same title merge. */
+    /** New products from "new" decisions; lines with the same title merge (variants — {@link SupplyVariants}). */
     public static List<NewProduct> newProducts(List<ReviewRow> rows) {
+        Map<String, String> variants = SupplyVariants.of(rows);
         Map<String, NewProduct> out = new LinkedHashMap<>();
         for (ReviewRow r : rows) {
             if (!"new".equals(r.decision().kind())) {
@@ -49,8 +50,9 @@ public final class SupplyPlan {
             String key = draftKey(d);
             NewProduct plan = out.computeIfAbsent(key, k -> new NewProduct(k, SupplyText.trim(d.title()), d.brand(),
                     d.categoryId(), new ArrayList<>(), new ArrayList<>()));
-            if (d.variant() != null && !d.variant().isEmpty() && !plan.variants().contains(d.variant())) {
-                plan.variants().add(d.variant());
+            String variant = variants.get(r.line().id());
+            if (variant != null && !plan.variants().contains(variant)) {
+                plan.variants().add(variant);
             }
             plan.lineIds().add(r.line().id());
         }
@@ -76,24 +78,8 @@ public final class SupplyPlan {
             if (price == null || !(price > 0)) {
                 out.add("«" + p.title() + "»: черновая цена продажи");
             }
-            if (p.lineIds().size() > 1 && p.variants().isEmpty()) {
-                out.add("«" + p.title() + "»: несколько строк без вариантов — разведите названия или задайте варианты");
-            }
-            if (!p.variants().isEmpty()) {
-                variantProblems(rows, p, out);
-            }
         }
         return out;
-    }
-
-    private static void variantProblems(List<ReviewRow> rows, NewProduct p, List<String> out) {
-        for (String id : p.lineIds()) {
-            LineDecision d = rows.stream().filter(r -> r.line().id().equals(id)).map(ReviewRow::decision).findFirst().orElse(null);
-            if (d != null && "new".equals(d.kind()) && (d.draft().variant() == null || d.draft().variant().isEmpty())) {
-                out.add("«" + p.title() + "»: у строки " + id + " не указан вариант (у товара есть варианты "
-                        + String.join(", ", p.variants()) + ")");
-            }
-        }
     }
 
     /** The product was created on a previous attempt and the variants changed since: lines will not find theirs. */
@@ -120,6 +106,7 @@ public final class SupplyPlan {
     /** Lines with a product: matched and just created ({@code created} is by {@link #draftKey}). */
     public static List<Resolved> resolvedLines(List<ReviewRow> rows, Map<String, Created> created) {
         List<Resolved> out = new ArrayList<>();
+        Map<String, String> variants = SupplyVariants.of(rows);
         for (ReviewRow r : rows) {
             LineDecision d = r.decision();
             if ("match".equals(d.kind())) {
@@ -132,8 +119,8 @@ public final class SupplyPlan {
             if (c == null) {
                 continue;
             }
-            String variant = d.draft().variant();
-            String variantId = variant == null || variant.isEmpty() ? null
+            String variant = variants.get(r.line().id());
+            String variantId = variant == null ? null
                     : c.variants().stream().filter(x -> x.name().equals(variant)).map(CatalogItem.Variant::id).findFirst().orElse(null);
             out.add(new Resolved(r.line(), c.productId(), variantId));
         }

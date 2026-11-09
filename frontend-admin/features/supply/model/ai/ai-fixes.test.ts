@@ -52,9 +52,10 @@ describe("новый товар с вариантами", () => {
     { line: line("L2"), decision: draft(null), candidates: [] },
   ];
 
-  it("строка без варианта у товара с вариантами — проблема до создания", () => {
+  it("строка без варианта у товара с вариантами — получает свои слова, приём не блокируется", () => {
     const plans = newProducts(rows).map((p) => ({ ...p, priceUah: 100 }));
-    expect(planProblems(rows, plans)).toContain("«Рукав X»: у строки L2 не указан вариант (у товара есть варианты M)");
+    expect(plans[0].variants).toEqual(["M", "L2"]);
+    expect(planProblems(rows, plans)).toEqual([]);
   });
 
   it("товар уже создан с другим набором вариантов — проблема", () => {

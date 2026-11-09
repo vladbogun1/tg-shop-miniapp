@@ -137,8 +137,8 @@ class SupplyMatchTest {
     void newProductWithVariants() {
         List<ReviewRow> rows = List.of(Fx.row(Fx.line("L1"), draft(null, "M")), Fx.row(Fx.line("L2"), draft(null, null)));
         List<SupplyPlan.NewProduct> plans = SupplyPlan.newProducts(rows);
-        assertThat(SupplyPlan.problems(rows, plans, Map.of("рукав x", 100.0)))
-                .contains("«Рукав X»: у строки L2 не указан вариант (у товара есть варианты M)");
+        assertThat(plans.get(0).variants()).containsExactly("M", "L2");     // another position gets its own words
+        assertThat(SupplyPlan.problems(rows, plans, Map.of("рукав x", 100.0))).isEmpty();
 
         List<ReviewRow> ok = List.of(rows.get(0), Fx.row(Fx.line("L2"), draft(null, "XL")));
         List<SupplyPlan.NewProduct> okPlans = SupplyPlan.newProducts(ok);
