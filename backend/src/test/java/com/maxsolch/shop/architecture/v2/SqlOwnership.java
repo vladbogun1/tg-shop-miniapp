@@ -71,7 +71,7 @@ final class SqlOwnership {
         own(m, "support", "reply_templates", "support_messages", "support_threads");
         own(m, "inbox", "inbox_marks");
         own(m, "inventory", "stock_lots", "stock_writeoffs");
-        own(m, "customer", "users", "web_login_tokens", "web_sessions", "visitor_locations");
+        own(m, "customer", "users", "web_login_tokens", "web_sessions", "visitor_locations", "customer_flags");
         return Map.copyOf(m);
     }
 
