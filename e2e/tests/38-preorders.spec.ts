@@ -83,7 +83,7 @@ test("покупатель встал в очередь: «ждут 1» в сп�
 
   // The list card of the batch.
   await page.goto("/preorders");
-  const row = page.getByRole("link", { name: new RegExp(`^${TITLE}`) });
+  const row = page.getByRole("link", { name: new RegExp(`^№\\d+ · ${TITLE}`) });
   await expect(row).toBeVisible();
   await expect(row.getByText("1 чел · 1 шт")).toBeVisible();
 
@@ -263,6 +263,6 @@ test("«Метрики → Предзаказы» и «Что заказать»
 
   // The finished batch sits under «Приехали».
   await page.getByRole("button", { name: /^Приехали/ }).click();
-  await expect(page.getByRole("link", { name: new RegExp(`^${TITLE}`) })).toBeVisible();
+  await expect(page.getByRole("link", { name: new RegExp(`^№\\d+ · ${TITLE}`) })).toBeVisible();
   expect(failed).toEqual([]);
 });
