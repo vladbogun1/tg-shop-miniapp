@@ -1,3 +1,5 @@
+import { formatMoment } from "@shop/core/time";
+
 /** Число с одним знаком после запятой, десятичная запятая («12,3»): размер файла в МБ, маржа в %. Не деньги. */
 export function decimal1(n: number): string {
   return new Intl.NumberFormat("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false }).format(n).replace(".", ",");
@@ -21,6 +23,17 @@ export function arrivedUnitCost(purchaseUnitMinor: number | null, extraLineMinor
 export function dayOf(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
   return m ? `${m[3]}.${m[2]}.${m[1]}` : iso;
+}
+
+/**
+ * Как поставку называют в списке и шапке: «№10 · Taobao · X-Raypad — коврики и глайды · 05.11.2026».
+ * Номер и дата (когда поставку завели, по Киеву) берутся из самой поставки — в название их писать не нужно.
+ * Дата уже есть в названии («Поставка от 05.11») — второй раз не пишем.
+ */
+export function batchName(b: { id: number; title: string; createdAt: string }): string {
+  const day = formatMoment(b.createdAt, { day: "2-digit", month: "2-digit", year: "numeric" }, "ru-RU", "Europe/Kyiv");
+  const dayInTitle = day !== "" && b.title.includes(day.slice(0, 5));
+  return [`№${b.id}`, b.title, dayInTitle ? "" : day].filter(Boolean).join(" · ");
 }
 
 const squash = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();

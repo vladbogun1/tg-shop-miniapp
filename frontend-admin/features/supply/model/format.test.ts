@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { fileSize } from "./money-form";
-import { arrivedUnitCost, decimal1, marginPercent, supplierInSubtitle } from "./format";
+import { arrivedUnitCost, batchName, decimal1, marginPercent, supplierInSubtitle } from "./format";
+
+describe("batchName", () => {
+  it("номер впереди, дата заведения по Киеву в конце", () => {
+    expect(batchName({ id: 10, title: "Taobao · X-Raypad — коврики и глайды", createdAt: "2026-11-04T22:30:00Z" })).toBe(
+      "№10 · Taobao · X-Raypad — коврики и глайды · 05.11.2026",
+    );
+  });
+  it("дата уже в названии — не повторяем", () => {
+    expect(batchName({ id: 4, title: "Поставка от 06.11", createdAt: "2026-11-06T10:00:00Z" })).toBe("№4 · Поставка от 06.11");
+  });
+});
 
 // Сверка со старыми формулами: .toFixed(1).replace(".", ",") и ((p - c) / p) * 100.
 describe("decimal1", () => {

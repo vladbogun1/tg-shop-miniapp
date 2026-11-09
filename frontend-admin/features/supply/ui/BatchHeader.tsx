@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { DISTRIBUTIONS, etaText, isOpenStatus, type Batch } from "@/features/procurement";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@shop/core/time";
-import { supplierInSubtitle } from "../model/format";
+import { batchName, supplierInSubtitle } from "../model/format";
 
 type Moving = "IN_TRANSIT" | "CUSTOMS";
 
@@ -42,6 +42,7 @@ export function BatchHeader({
   const open = isOpenStatus(batch.status);
   const confirm = useConfirm();
   const supplier = supplierInSubtitle(batch.title, batch.supplierName);
+  const name = batchName(batch);
   const created = `создана ${formatDateTime(batch.createdAt)}${batch.createdBy ? ` (${batch.createdBy})` : ""}`;
 
   async function move(s: Moving) {
@@ -101,10 +102,10 @@ export function BatchHeader({
     <>
       {/* On a phone PageHeader hides its title (the top bar shows the section) — the batch name is needed here. */}
       <div className="mb-1 break-words font-display text-[20px] font-extrabold uppercase leading-tight text-[var(--ink)] lg:hidden">
-        {batch.title}
+        {name}
       </div>
       <PageHeader
-        title={batch.title}
+        title={name}
         subtitle={supplier ? `${supplier} · ${created}` : created}
         actions={
           // Phone: the main button and «⋯» stay on one line (the «⋯» used to drop under the button at 320).

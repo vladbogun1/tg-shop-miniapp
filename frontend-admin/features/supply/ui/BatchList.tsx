@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { QueryState } from "@/components/ui/QueryState";
 import { BATCH_STATUS_LABEL, BATCH_STATUS_TONE, etaText, type BatchFilter, type BatchSummary } from "@/features/procurement";
 import { formatDateTime } from "@shop/core/time";
+import { batchName } from "../model/format";
 import { useBatchesList } from "../queries";
 import { Stat } from "./BatchStat";
 
@@ -54,7 +55,7 @@ function BatchRow({ b }: { b: BatchSummary }) {
     <Link href={`/preorders/${b.id}`} className="card card-hover flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 p-3.5">
       <div className="min-w-0 flex-1 basis-60">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="min-w-0 break-words text-[15px] font-semibold text-[var(--text)]">{b.title}</h3>
+          <h3 className="min-w-0 break-words text-[15px] font-semibold text-[var(--text)]">{batchName(b)}</h3>
           <Badge tone={BATCH_STATUS_TONE[b.status]} dot>
             {BATCH_STATUS_LABEL[b.status]}
           </Badge>
