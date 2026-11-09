@@ -42,12 +42,12 @@ export function TodoPanel({ done, total, todos }: { done: number; total: number;
 export function AcceptBar({ todos, saving, pending, onAccept }: { todos: Todo[]; saving: boolean; pending: boolean; onAccept: () => void }) {
   const ready = todos.length === 0;
   return (
-    <div className="elevated sticky bottom-[calc(var(--bottom-nav)+12px)] z-20 mb-6 mt-2 flex min-w-0 flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-4">
-      <div className="min-w-0 flex-1 text-[13px]">
+    <div className="elevated sticky bottom-[calc(var(--bottom-nav)+12px)] z-20 mb-6 mt-2 flex min-w-0 items-center gap-3 px-3 py-2 sm:gap-4 sm:py-2.5">
+      <div className="min-w-0 flex-1 text-[12.5px] leading-snug sm:text-[13px]">
         {ready ? <span className="font-semibold text-[var(--ok)]">Всё решено</span> : <span className="font-semibold text-[var(--warn)]">Осталось: {todos[0].label}{todos.length > 1 ? ` и ещё ${todos.length - 1}` : ""}</span>}
-        <span className="text-[12px] text-[var(--text-faint)]"> · {saving ? "сохраняю правки…" : "правки сохранены"}</span>
+        <span className="hidden text-[12px] text-[var(--text-faint)] sm:inline"> · {saving ? "сохраняю правки…" : "правки сохранены"}</span>
       </div>
-      <Button variant="accent" size="lg" icon={<Check className="h-4 w-4" />} loading={pending} onClick={onAccept} className="w-full sm:w-auto">
+      <Button variant="accent" size="lg" icon={<Check className="h-4 w-4" />} loading={pending} onClick={onAccept} className="shrink-0">
         Принять
       </Button>
     </div>

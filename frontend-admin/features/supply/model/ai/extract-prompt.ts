@@ -38,7 +38,7 @@ export const EXTRACT_PROMPT = `Ты — помощник закупщика ин
   "docNo": "номер инвойса / заказа или null",
   "docDate": "ГГГГ-ММ-ДД или null",
   "total": 1234.5,
-  "docNotes": "доставка, скидки на заказ, что не вошло в строки — или null",
+  "docNotes": "ПО-РУССКИ (не по-китайски): доставка, скидки на заказ, что не вошло в строки — или null",
   "lines": [
     { "text": "…", "variant": "…", "en": "…", "brand": "…", "model": "…", "color": "…", "qty": 3, "unitPrice": 134.67, "lineTotal": 404.01, "notes": null, "shot": 1 }
   ]
