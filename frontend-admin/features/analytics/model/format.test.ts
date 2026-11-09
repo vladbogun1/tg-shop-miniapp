@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bucketLabel, duration, monthLabel, pct, shortId, uah, uahExact, uahShort } from "./format";
+import { bucketLabel, duration, monthLabel, noPercentNote, pct, shortId, uah, uahExact, uahShort } from "./format";
 
 // ru-RU разделяет разряды неразрывным пробелом (U+00A0) — приводим к обычному, чтобы тест читался.
 const plain = (s: string) => s.replace(/[\u00a0\u202f]/g, " ");
@@ -38,5 +38,15 @@ describe("числа и подписи", () => {
     expect(monthLabel("2026-10")).toBe("окт 2026");
     expect(monthLabel("2026-10", true)).toBe("октябрь");
     expect(shortId("abcdef0123456789")).toBe("abcdef01");
+  });
+});
+
+describe("noPercentNote", () => {
+  it("прошлый период был нулём — процент не считается, но сравнить есть с чем", () => {
+    expect(noPercentNote({ value: 6.5, prev: 0 })).toBe("с нуля");
+    expect(noPercentNote({ value: 0, prev: 0 })).toBe("без изменений");
+  });
+  it("прошлого периода нет — «нет данных для сравнения»", () => {
+    expect(noPercentNote({ value: 3, prev: null })).toBe("нет данных для сравнения");
   });
 });

@@ -76,3 +76,12 @@ export function dateTime(iso: string): string {
 export function shortId(id: string): string {
   return id.slice(0, 8);
 }
+
+/**
+ * Подпись вместо процента изменения, когда процент не посчитать: прошлый период был нулём (процент от нуля
+ * бессмыслен, а «было: 0» плитка показывает строкой ниже) или прошлого периода нет вовсе.
+ */
+export function noPercentNote(kpi: { value: number; prev?: number | null }): string {
+  if (kpi.prev == null) return "нет данных для сравнения";
+  return kpi.value === kpi.prev ? "без изменений" : "с нуля";
+}

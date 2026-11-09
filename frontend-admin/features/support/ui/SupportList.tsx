@@ -79,7 +79,10 @@ export function SupportList({
             icon={<RotateCw className={cn("h-4 w-4", list.isFetching && "animate-spin")} />}
             onClick={() => list.refetch()}
           />
-          <Button variant="accent" size="icon" aria-label="Написать клиенту" title="Написать клиенту" icon={<PenSquare className="h-4 w-4" />} onClick={onCompose} />
+          {/* A labelled action (an orange square with no word read as an unknown alert); a phone keeps just the icon. */}
+          <Button variant="accent" compactBelow="sm" aria-label="Написать клиенту" title="Написать клиенту" icon={<PenSquare className="h-4 w-4" />} onClick={onCompose}>
+            Написать
+          </Button>
         </div>
         <SegmentedControl options={options} value={filter} onChange={onFilter} size="sm" />
       </div>

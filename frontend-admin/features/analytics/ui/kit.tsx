@@ -11,7 +11,7 @@ import { Line, LineChart, ResponsiveContainer } from "recharts";
 import { cn } from "@/lib/cn";
 import { riseItem } from "@/lib/motion";
 import type { Kpi } from "../model/types";
-import { pct } from "../model/format";
+import { noPercentNote, pct } from "../model/format";
 import { toPercent } from "@shop/core/percent";
 
 export function Panel({
@@ -90,7 +90,7 @@ export function ScopeBadge({ children }: { children: ReactNode }) {
  */
 export function Delta({ kpi, goodWhenUp = true, suffix }: { kpi: Kpi; goodWhenUp?: boolean; suffix?: string }) {
   if (kpi.changePct == null) {
-    return <span className="text-[12px] text-[var(--text-faint)]">нет данных для сравнения</span>;
+    return <span className="text-[12px] text-[var(--text-faint)]">{noPercentNote(kpi)}</span>;
   }
   const up = kpi.changePct > 0;
   const flat = Math.abs(kpi.changePct) < 0.5;
