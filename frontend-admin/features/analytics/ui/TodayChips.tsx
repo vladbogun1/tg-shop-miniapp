@@ -74,6 +74,15 @@ function Chips({ t }: { t: Today }) {
   );
 }
 
+function SummaryToggle({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" onClick={onToggle} aria-expanded={open} className={CHIP_CLASS}>
+      <span className="font-display text-[11px] uppercase tracking-[0.06em]">Сводка</span>
+      <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")} />
+    </button>
+  );
+}
+
 export function TodayChips({ trailing }: { trailing?: ReactNode }) {
   const q = useTodayMetrics();
   const [open, setOpen] = useState(false);
@@ -95,29 +104,29 @@ export function TodayChips({ trailing }: { trailing?: ReactNode }) {
     });
   }
 
+  const summary = q.data && <SummaryToggle open={open} onToggle={toggle} />;
   return (
     <div className="mx-root mb-3">
-      {/* Phone: the line scrolls sideways; the fading right edge says there is more of it. */}
-      <div className="thin-scroll -mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 [mask-image:linear-gradient(to_right,#000_88%,transparent)] md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0 md:[mask-image:none]">
-        {q.isError ? (
-          <span className="text-[12px] text-[var(--text-faint)]">
-            Сводка «Сегодня» не загрузилась.{" "}
-            <button type="button" className="font-bold underline" onClick={() => q.refetch()}>
-              Повторить
-            </button>
-          </span>
-        ) : q.data ? (
-          <Chips t={q.data} />
-        ) : (
-          <span className="shimmer h-9 w-64 rounded-full" aria-busy="true" aria-label="Загружаем сводку" />
-        )}
-        {trailing}
-        {q.data && (
-          <button type="button" onClick={toggle} aria-expanded={open} className={cn(CHIP_CLASS, "md:ml-auto")}>
-            Сводка
-            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")} />
-          </button>
-        )}
+      <div className="md:flex md:items-start md:gap-1.5">
+        {/* Phone: the line scrolls sideways; the fading right edge says there is more of it. */}
+        <div className="thin-scroll -mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 [mask-image:linear-gradient(to_right,#000_88%,transparent)] md:mx-0 md:min-w-0 md:flex-1 md:flex-wrap md:overflow-visible md:px-0 md:pb-0 md:[mask-image:none]">
+          {q.isError ? (
+            <span className="text-[12px] text-[var(--text-faint)]">
+              Сводка «Сегодня» не загрузилась.{" "}
+              <button type="button" className="font-bold underline" onClick={() => q.refetch()}>
+                Повторить
+              </button>
+            </span>
+          ) : q.data ? (
+            <Chips t={q.data} />
+          ) : (
+            <span className="shimmer h-9 w-64 rounded-full" aria-busy="true" aria-label="Загружаем сводку" />
+          )}
+          {trailing}
+          <span className="contents md:hidden">{summary}</span>
+        </div>
+        {/* Tablet and up: «Сводка» keeps the first line's right end — in the wrapping row it fell alone onto a second line. */}
+        <span className="hidden md:contents">{summary}</span>
       </div>
       {open && q.data && <Strip t={q.data} />}
     </div>

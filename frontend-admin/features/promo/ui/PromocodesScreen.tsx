@@ -29,6 +29,7 @@ import { PromoPager } from "./PromoPager";
 import { PromoSummary } from "./PromoSummary";
 import { usePromoTab } from "./use-promo-tabs";
 import { usePromoView } from "./use-promo-view";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 export function PromocodesScreen({
   renderOrderDrawer,
@@ -56,7 +57,7 @@ export function PromocodesScreen({
 
   return (
     <div className="mx-auto min-w-0 max-w-[1200px]">
-      <h1 className="sr-only">Промокоды</h1>
+      <PageHeader title="Промокоды" subtitle="Скидки по коду: свои, личные, за отзывы и призы кейса" />
       <PromoControls
         tab={tab}
         onTab={setTab}

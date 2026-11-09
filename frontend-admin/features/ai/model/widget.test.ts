@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AiWidgetData } from "../api";
-import { widgetHidden, widgetLine, widgetShort } from "./widget";
+import { widgetChip, widgetHidden, widgetLine, widgetShort } from "./widget";
 
 const w = (over: Partial<AiWidgetData> = {}): AiWidgetData => ({
   canRun: true,
@@ -32,6 +32,15 @@ describe("виджет ИИ на дашборде", () => {
     expect(widgetShort(w({ review: 12, problems: 3 }))).toBe("ждёт 12 · проблем 3");
     expect(widgetShort(w())).toBe("ИИ");
     expect(widgetShort(w({ canRun: false, enabled: false }))).toBe("выключен");
+  });
+
+  it("чип как остальные «Сегодня»: подпись + значение", () => {
+    const owner = widgetChip(w({ monthSpentMinor: 2037, monthLimitMinor: 460000 }));
+    expect(owner.label).toBe("Расход ИИ");
+    expect(owner.value.replace(/\s/g, " ")).toBe("20,37 ₴ из 4 600 ₴");
+    expect(widgetChip(w({ review: 3 }))).toEqual({ label: "ИИ", value: "ждёт 3" });
+    expect(widgetChip(w())).toEqual({ label: "ИИ", value: "можно запускать" });
+    expect(widgetChip(w({ canRun: false, enabled: false }))).toEqual({ label: "ИИ", value: "выключен" });
   });
 
   it("не настроенный ИИ без дел не занимает место", () => {

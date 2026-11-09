@@ -34,3 +34,10 @@ export function widgetShort(w: AiWidgetData): string {
 export function widgetHidden(w: AiWidgetData | undefined): boolean {
   return !w || (!w.configured && w.review === 0 && w.problems === 0 && w.running === 0);
 }
+
+/** Чип над доской в виде остальных «Сегодня»: подпись капсом («Расход ИИ» / «ИИ») + короткое значение. */
+export function widgetChip(w: AiWidgetData): { label: string; value: string } {
+  const money = w.monthSpentMinor != null && w.monthLimitMinor != null;
+  const short = widgetShort(w);
+  return { label: money ? "Расход ИИ" : "ИИ", value: short === "ИИ" ? "можно запускать" : short };
+}

@@ -23,6 +23,7 @@ import { filterCounts, filterOrders, splitOrders, type DispatchFilter } from "..
 import { useBroadcastDispatch, useDispatchOrders } from "../queries";
 import { DispatchCard } from "./DispatchCard";
 import { DispatchToolbar } from "./DispatchToolbar";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 function SectionTitle({ children }: { children: ReactNode }) {
   return <h2 className="section-title !text-[var(--text-muted)]">{children}</h2>;
@@ -82,8 +83,7 @@ export function DispatchScreen() {
 
   return (
     <div>
-      {/* The shell's top bar carries the visible title. */}
-      <h1 className="sr-only">Отправка</h1>
+      <PageHeader title="Отправка" subtitle="Что упаковать и отправить сегодня" />
       <DispatchToolbar
         phone={phone}
         filter={filter}

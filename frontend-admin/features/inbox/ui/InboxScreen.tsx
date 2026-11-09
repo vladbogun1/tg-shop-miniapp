@@ -36,6 +36,7 @@ import { useActiveGroup } from "./use-active-group";
 import { useExpandedGroups } from "./use-expanded-groups";
 import { useInboxActions } from "./use-inbox-actions";
 import { useInboxPrimary } from "./use-inbox-primary";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 function AllClear() {
   return <EmptyState icon={CheckCheck} title="Всё разобрано" />;
@@ -67,8 +68,7 @@ export function InboxScreen({ order: slot }: { order: InboxOrderSlot }) {
 
   return (
     <div className="mx-auto min-w-0 max-w-[920px] 2xl:max-w-[1100px]">
-      {/* The shell's top bar carries the visible title. */}
-      <h1 className="sr-only">Внимание</h1>
+      <PageHeader title="Внимание" subtitle="Что ждёт вашего решения: заказы, оплаты, остатки, отзывы" />
 
       <QueryState
         isLoading={q.isLoading}
