@@ -50,7 +50,7 @@ function SalesBody({ s }: { s: BatchSales }) {
               <th className="r">Приехало</th>
               <th className="r">Продано</th>
               <th className="r">Ждут оплаты</th>
-              <th className="r">Осталось</th>
+              <th className="r">Осталось из поставки</th>
               <th className="r">Обошлась 1 шт</th>
               <th className="r">Продали на</th>
               <th className="r">Заработали</th>
@@ -86,7 +86,7 @@ function SalesCard({ l }: { l: Line }) {
       <div className="break-words text-[14px] font-semibold text-[var(--text)]">{lineTitle(l.title, l.variantName)}</div>
       <div className="tabular mt-1.5 grid grid-cols-3 gap-2 text-[12px] text-[var(--text-muted)]">
         <Num label="Продано" value={`${l.sold} из ${l.arrived}`} />
-        <Num label="Осталось" value={l.reserved ? `${l.left} (+${l.reserved} ждут)` : `${l.left}`} />
+        <Num label="Из поставки осталось" value={l.reserved ? `${l.left} (+${l.reserved} ждут)` : `${l.left}`} />
         <Num label="Заработали" value={money(l.profitMinor)} className={profitTone(l.profitMinor)} />
       </div>
     </div>

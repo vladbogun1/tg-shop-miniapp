@@ -22,3 +22,11 @@ export function dayOf(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
   return m ? `${m[3]}.${m[2]}.${m[1]}` : iso;
 }
+
+const squash = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+
+/** Поставщик для подзаголовка поставки: `null`, если он уже есть в названии (ИИ-поставка называет её по продавцу). */
+export function supplierInSubtitle(title: string, supplier: string | null | undefined): string | null {
+  if (!supplier) return "без поставщика";
+  return squash(title).includes(squash(supplier)) ? null : supplier;
+}

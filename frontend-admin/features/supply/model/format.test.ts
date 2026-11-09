@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fileSize } from "./money-form";
-import { arrivedUnitCost, decimal1, marginPercent } from "./format";
+import { arrivedUnitCost, decimal1, marginPercent, supplierInSubtitle } from "./format";
 
 // Сверка со старыми формулами: .toFixed(1).replace(".", ",") и ((p - c) / p) * 100.
 describe("decimal1", () => {
@@ -36,5 +36,15 @@ describe("себестоимость при частичном приходе", 
     expect(arrivedUnitCost(20_000, 100_000, 5)).toBe(40_000);
     expect(arrivedUnitCost(20_000, 100_000, 0)).toBeNull();
     expect(arrivedUnitCost(null, 100_000, 5)).toBeNull();
+  });
+});
+
+describe("supplierInSubtitle", () => {
+  it("поставщик уже в названии — в подзаголовке не повторяем (регистр и пробелы не важны)", () => {
+    expect(supplierInSubtitle("ZHENGZHOU  XINGHE TRADE · INV-12", "Zhengzhou Xinghe Trade")).toBeNull();
+  });
+  it("в названии нет — показываем; нет поставщика — «без поставщика»", () => {
+    expect(supplierInSubtitle("Мыши к Новому году", "Zhengzhou Xinghe")).toBe("Zhengzhou Xinghe");
+    expect(supplierInSubtitle("Мыши", null)).toBe("без поставщика");
   });
 });

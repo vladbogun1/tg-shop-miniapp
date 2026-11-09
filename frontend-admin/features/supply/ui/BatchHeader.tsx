@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { DISTRIBUTIONS, etaText, isOpenStatus, type Batch } from "@/features/procurement";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@shop/core/time";
+import { supplierInSubtitle } from "../model/format";
 
 type Moving = "IN_TRANSIT" | "CUSTOMS";
 
@@ -40,6 +41,8 @@ export function BatchHeader({
 }) {
   const open = isOpenStatus(batch.status);
   const confirm = useConfirm();
+  const supplier = supplierInSubtitle(batch.title, batch.supplierName);
+  const created = `создана ${formatDateTime(batch.createdAt)}${batch.createdBy ? ` (${batch.createdBy})` : ""}`;
 
   async function move(s: Moving) {
     const label = s === "IN_TRANSIT" ? "«В пути»" : "«На таможне»";
@@ -102,12 +105,14 @@ export function BatchHeader({
       </div>
       <PageHeader
         title={batch.title}
-        subtitle={`${batch.supplierName ?? "без поставщика"} · создана ${formatDateTime(batch.createdAt)}${batch.createdBy ? ` (${batch.createdBy})` : ""}`}
+        subtitle={supplier ? `${supplier} · ${created}` : created}
         actions={
-          <>
+          // Phone: the main button and «⋯» stay on one line (the «⋯» used to drop under the button at 320).
+          <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
             {open ? (
-              <Button variant="accent" icon={<PackageCheck className="h-4 w-4" />} onClick={onArrive}>
-                Приехала — принять товар
+              <Button variant="accent" className="min-w-0 flex-1 sm:flex-none" icon={<PackageCheck className="h-4 w-4" />} onClick={onArrive}>
+                <span className="sm:hidden">Приехала, принять</span>
+                <span className="max-sm:hidden">Приехала — принять товар</span>
               </Button>
             ) : (
               <Button variant="outline" icon={<Pencil className="h-4 w-4" />} onClick={onEdit}>
@@ -115,7 +120,7 @@ export function BatchHeader({
               </Button>
             )}
             {open && <ActionMenu trigger="header" title={batch.title} items={actions} label="Ещё действия" busy={statusPending} />}
-          </>
+          </div>
         }
       />
       <StatusSteps batch={batch} />
@@ -140,10 +145,11 @@ function StatusSteps({ batch }: { batch: Batch }) {
   }
   const at = STEPS.findIndex((s) => s.status === batch.status);
   return (
-    <ol className="mb-3 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1 text-[11.5px] sm:gap-x-1.5 sm:text-[12.5px]" aria-label="Статус поставки">
+    <ol className="mb-3 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[11.5px] sm:text-[12.5px]" aria-label="Статус поставки">
       {STEPS.map((s, i) => (
         <li key={s.status} className="flex items-center gap-1.5">
-          {i > 0 && <span className={cn("h-px w-2 sm:w-6", i <= at ? "bg-[var(--accent)]" : "bg-[var(--line-strong)]")} />}
+          {/* Phone: no connectors — the row wraps and a connector started the second line as a stray «—». */}
+          {i > 0 && <span className={cn("h-px w-6 max-sm:hidden", i <= at ? "bg-[var(--accent)]" : "bg-[var(--line-strong)]")} />}
           <span
             aria-current={i === at ? "step" : undefined}
             className={cn(

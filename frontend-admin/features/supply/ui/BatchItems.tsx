@@ -59,7 +59,7 @@ export function BatchItems({ batch, open }: { batch: Batch; open: boolean }) {
                   warn={open && !enough}
                   accent={i.waitingPeople > 0}
                 />
-                <Cell label="На складе" value={`${i.stock}`} />
+                <Cell label="На складе всего" value={`${i.stock}`} />
                 <Cell label="Продаём по" value={money(i.priceMinor)} />
                 {batch.moneyVisible && (
                   <Cell

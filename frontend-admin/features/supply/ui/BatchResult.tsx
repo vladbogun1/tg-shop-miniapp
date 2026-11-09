@@ -17,7 +17,7 @@ export function BatchResult({ batchId }: { batchId: number }) {
       <Fact label="Потратили" value={money(s.spentMinor)} sub="закупка и доставка" />
       <Fact label="Продали на" value={money(s.revenueMinor)} sub={s.marginPct != null ? `прибыль ${pct(s.marginPct)} с продаж` : undefined} />
       <Fact
-        label="Осталось на складе"
+        label="Осталось из поставки"
         value={`${s.left} шт`}
         sub={s.reserved > 0 ? `ещё ${s.reserved} шт ждут оплаты` : `из ${s.arrived} приехавших`}
       />

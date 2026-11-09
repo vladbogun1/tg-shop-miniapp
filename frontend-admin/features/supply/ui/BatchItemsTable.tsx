@@ -33,7 +33,9 @@ export function BatchItemsTable({ batch, items, open, products, tools }: { batch
             <th className={cn(th, "text-right")}>Заказано</th>
             <th className={cn(th, "text-right")}>Пришло</th>
             <th className={th}>Ждут</th>
-            <th className={cn(th, "text-right")}>На складе</th>
+            <th className={cn(th, "text-right")} title="Весь остаток товара — вместе с прошлыми поставками">
+              На складе всего
+            </th>
             <th className={cn(th, "text-right")}>Продаём по</th>
             {money$ && <th className={cn(th, "text-right")}>Закупка</th>}
             <th className={cn(th, "text-right")}>Витрина</th>
