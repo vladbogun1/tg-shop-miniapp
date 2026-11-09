@@ -17,7 +17,9 @@ import com.maxsolch.shop.procurement.domain.SupplyDraft;
 import com.maxsolch.shop.procurement.domain.SupplyDraft.Status;
 import com.maxsolch.shop.procurement.domain.SupplyDraft.Step;
 import com.maxsolch.shop.procurement.domain.supplyai.DraftState;
+import com.maxsolch.shop.procurement.domain.supplyai.ReadCandidate;
 import com.maxsolch.shop.procurement.domain.supplyai.SupplyExtract;
+import com.maxsolch.shop.procurement.domain.supplyai.SupplyVerify;
 import com.maxsolch.shop.procurement.infra.SupplyDraftRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +44,7 @@ public class SupplyDrafts {
     private final SupplyDraftJson json;
     private final SupplyDraftAi ai;
     private final SupplyDraftView view;
+    private final SupplyDraftReading reading;
     private final SupplyDraftAccept acceptance;
     private final AiJobs aiJobs;
     private final CurrentActor actor;
@@ -50,12 +53,13 @@ public class SupplyDrafts {
     private final Clock clock;
 
     SupplyDrafts(SupplyDraftRepository drafts, SupplyDraftJson json, SupplyDraftAi ai, SupplyDraftView view,
-                 SupplyDraftAccept acceptance, AiJobs aiJobs, CurrentActor actor, AdminAccess access,
+                 SupplyDraftReading reading, SupplyDraftAccept acceptance, AiJobs aiJobs, CurrentActor actor, AdminAccess access,
                  AdminAuditService audit, Clock clock) {
         this.drafts = drafts;
         this.json = json;
         this.ai = ai;
         this.view = view;
+        this.reading = reading;
         this.acceptance = acceptance;
         this.aiJobs = aiJobs;
         this.actor = actor;
@@ -74,6 +78,7 @@ public class SupplyDrafts {
         long adminId = actor.userId();
         SupplyDraft d = drafts.saveAndFlush(SupplyDraft.start(adminId, ids, json.write(new DraftState()), clock.instant()));
         DraftState s = new DraftState();
+        s.setVerifyBudget(SupplyVerify.AUTO_ATTEMPTS);
         s.setReadJob(ai.read(d.getId(), adminId, ids, SupplyExtract.PROMPT, SupplyExtract.PROMPT_VERSION));
         d.write(json.write(s), null, clock.instant());
         audit.record("SUPPLY_DRAFT_CREATE", "SUPPLY_DRAFT", String.valueOf(d.getId()), "Поставка с ИИ: черновик, файлов " + ids.size());
@@ -153,6 +158,33 @@ public class SupplyDrafts {
         return view.of(drafts.saveAndFlush(d), finance());
     }
 
+    /**
+     * «Перечитать»: the AI rereads the pictures thoroughly against the lines of the draft under check; the lines it
+     * finds that bring the draft to its total are added (open), then matched and carded as usual. What the admin has
+     * decided stays.
+     */
+    @Transactional
+    public DraftDto reread(long id) {
+        SupplyDraft d = lockedVisible(id);
+        DraftState s = json.read(d.getState());
+        if (d.getStatus() != Status.READY || s.getDoc() == null) {
+            throw new DomainException.Conflict(ProcurementError.DRAFT_BAD_STATE);
+        }
+        s.setStopped(false);
+        s.getWarnings().clear();
+        s.setVerifyBudget(s.getVerifyJobs().size() + 1);
+        s.setRereadMerge(true);
+        ReadCandidate now = SupplyDraftReading.current(s);
+        if (!reading.reread(d, s, now)) {
+            throw new DomainException.Conflict(ProcurementError.DRAFT_BAD_STATE, String.join("; ", s.getWarnings()));
+        }
+        s.setCandidate(now);
+        d.runStep(Step.READ, clock.instant());
+        d.write(json.write(s), s.getTitle(), clock.instant());
+        audit.record("SUPPLY_DRAFT_REREAD", "SUPPLY_DRAFT", String.valueOf(id), "Поставка с ИИ: перечитать накладную");
+        return view.of(drafts.saveAndFlush(d), finance());
+    }
+
     /** Stops the AI: running tasks are cancelled, no new ones start; the draft goes to the check with what it has. */
     @Transactional
     public DraftDto stop(long id) {
@@ -163,7 +195,7 @@ public class SupplyDrafts {
         DraftState s = json.read(d.getState());
         s.setStopped(true);
         cancelAll(s);
-        if (d.getStep() == Step.READ) {
+        if (d.getStep() == Step.READ && s.getCandidate() == null) {
             d.fail("Остановлено до того, как накладная прочитана", clock.instant());
         }
         d.write(json.write(s), s.getTitle(), clock.instant());
@@ -205,6 +237,7 @@ public class SupplyDrafts {
     private void cancelAll(DraftState s) {
         ai.cancel(s.getReadJob());
         ai.cancel(s.getMatchJob());
+        s.getVerifyJobs().forEach(ai::cancel);
         for (Map.Entry<String, Long> e : s.getCardJobs().entrySet()) {
             ai.cancel(e.getValue());
         }

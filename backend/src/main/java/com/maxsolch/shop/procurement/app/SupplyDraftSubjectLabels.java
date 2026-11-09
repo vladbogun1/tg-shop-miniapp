@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
 @Component
 class SupplyDraftSubjectLabels implements SubjectLabels {
 
-    private static final Pattern ID = Pattern.compile("d(\\d+)-(read|match|c-(.+))");
+    private static final Pattern ID = Pattern.compile("d(\\d+)-(read|verify-\\d+|match|c-(.+))");
 
     private final SupplyDraftRepository drafts;
     private final SupplyDraftJson json;
@@ -73,7 +73,7 @@ class SupplyDraftSubjectLabels implements SubjectLabels {
         return switch (m.group(2)) {
             case "read" -> "чтение накладной";
             case "match" -> "сопоставление";
-            default -> "карточка" + newTitle(d, m.group(3));
+            default -> m.group(2).startsWith("verify-") ? "перепроверка накладной" : "карточка" + newTitle(d, m.group(3));
         };
     }
 

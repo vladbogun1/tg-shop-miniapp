@@ -42,7 +42,7 @@ public final class SupplyDraftDtos {
      * @param step  what a running task does now («Ищу: …»)
      * @param costMinor kopecks, only for the finance right
      */
-    public record DraftJobView(@Schema(allowableValues = {"READ", "MATCH", "CARD"}) String kind, @Nullable String key, String label, long jobId,
+    public record DraftJobView(@Schema(allowableValues = {"READ", "VERIFY", "MATCH", "CARD"}) String kind, @Nullable String key, String label, long jobId,
                           String status, @Nullable String step, @Nullable String error, @Nullable Long costMinor) {
     }
 
@@ -56,7 +56,21 @@ public final class SupplyDraftDtos {
                            Map<String, String> lineNotes, List<String> warnings, Map<String, CardDraft> cards,
                            Map<String, Long> prices, boolean stopped, @Nullable Long supplierId,
                            @Nullable String supplierName, @Nullable String currency, @Nullable BigDecimal fxRate,
-                           int etaWeeks, boolean preorderOpen, List<DraftJobView> jobs, @Nullable Long costMinor) {
+                           int etaWeeks, boolean preorderOpen, List<DraftJobView> jobs, @Nullable Long costMinor,
+                           DraftSumInfo sum) {
+    }
+
+    /**
+     * How the reading was brought to the document total (the sum itself the screen counts from the lines).
+     *
+     * @param rereads        thorough rereads of the invoice (on its own and by «Перечитать»)
+     * @param removedRepeats lines dropped as screenshot overlaps
+     */
+    public record DraftSumInfo(int rereads, List<String> removedRepeats) {
+    }
+
+    /** A line the admin adds by hand (the reading missed it); money in the document currency. */
+    public record ManualLine(String text, @Nullable String variant, int qty, @Nullable Double unitPrice) {
     }
 
     /**
@@ -68,12 +82,24 @@ public final class SupplyDraftDtos {
      * @param supplierId   a known supplier; 0 — a new one, created on accept by {@code supplierName}
      * @param descriptions new product key → the Russian description as the admin edited it (the AI translations of it
      *                     are dropped: the translation step makes new ones)
+     * @param addLines     lines the reading missed — added open, ids «M1», «M2»…
+     * @param removeLines  lines taken out of the document (an overlap the code kept, a foreign position); unlike
+     *                     «skip» they no longer count in the sum
      */
     public record DraftSaveRequest(long version, @Nullable Map<String, LineDecision> decisions,
                               @Nullable Map<String, Long> prices, @Nullable Map<String, String> descriptions,
                               @Nullable Long supplierId, @Nullable String supplierName, @Nullable String currency,
                               @Nullable BigDecimal fxRate, @Nullable String title, @Nullable Integer etaWeeks,
-                              @Nullable Boolean preorderOpen) {
+                              @Nullable Boolean preorderOpen, @Nullable List<ManualLine> addLines,
+                              @Nullable List<String> removeLines) {
+
+        /** Without lines to add or take out (the older screens and tests). */
+        public DraftSaveRequest(long version, Map<String, LineDecision> decisions, Map<String, Long> prices,
+                                Map<String, String> descriptions, Long supplierId, String supplierName, String currency,
+                                BigDecimal fxRate, String title, Integer etaWeeks, Boolean preorderOpen) {
+            this(version, decisions, prices, descriptions, supplierId, supplierName, currency, fxRate, title, etaWeeks,
+                    preorderOpen, null, null);
+        }
     }
 
     public record DraftAcceptRequest(long version) {

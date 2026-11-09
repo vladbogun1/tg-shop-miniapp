@@ -43,9 +43,10 @@ class SupplyDraftSubjectLabelsTest {
         SupplyDraft d = draft();
         when(repo.findAllById(any())).thenReturn(List.of(d));
 
-        Map<String, String> out = labels.labels(List.of("d12-read", "d12-match", "d12-c-L1", "d12-c-L2", "d99-read", "junk"));
+        Map<String, String> out = labels.labels(List.of("d12-read", "d12-verify-1", "d12-match", "d12-c-L1", "d12-c-L2", "d99-read", "junk"));
 
         assertThat(out).containsEntry("d12-read", "Черновик поставки №12 · WESTLAB · чтение накладной")
+                .containsEntry("d12-verify-1", "Черновик поставки №12 · WESTLAB · перепроверка накладной")
                 .containsEntry("d12-match", "Черновик поставки №12 · WESTLAB · сопоставление")
                 .containsEntry("d12-c-L1", "Черновик поставки №12 · WESTLAB · карточка «Глайды X»")
                 .containsEntry("d12-c-L2", "Черновик поставки №12 · WESTLAB · карточка")

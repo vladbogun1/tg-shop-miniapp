@@ -2,10 +2,13 @@ package com.maxsolch.shop.procurement.app;
 
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftSaveRequest;
+import com.maxsolch.shop.procurement.app.SupplyDraftDtos.ManualLine;
 import com.maxsolch.shop.procurement.domain.ProcurementError;
 import com.maxsolch.shop.procurement.domain.supplyai.DraftState;
 import com.maxsolch.shop.procurement.domain.supplyai.LineDecision;
 import com.maxsolch.shop.procurement.domain.supplyai.ReviewRow;
+import com.maxsolch.shop.procurement.domain.supplyai.SourceLine;
+import com.maxsolch.shop.procurement.domain.supplyai.SupplyText;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -22,6 +25,8 @@ final class SupplyDraftEdits {
 
     private static final Set<String> KINDS = Set.of("match", "new", "skip", "open");
     private static final int MAX_WEEKS = 52;
+    private static final int MAX_TEXT = 255;
+    private static final int MAX_QTY = 100_000;
 
     private SupplyDraftEdits() {
     }
@@ -39,7 +44,39 @@ final class SupplyDraftEdits {
                 }
             });
         }
+        lines(s, req.addLines(), req.removeLines());
         head(s, req);
+    }
+
+    /** Lines taken out of the document first, then the added ones (open, «M1», «M2»…, after the last M). */
+    private static void lines(DraftState s, List<ManualLine> add, List<String> remove) {
+        if (remove != null && !remove.isEmpty()) {
+            Set<String> gone = Set.copyOf(remove);
+            s.setRows(s.getRows().stream().filter(r -> !gone.contains(r.line().id())).toList());
+            s.getLineNotes().keySet().removeAll(gone);
+        }
+        if (add == null || add.isEmpty()) {
+            return;
+        }
+        List<ReviewRow> rows = new ArrayList<>(s.getRows());
+        int n = SupplyText.lastNumber(rows.stream().map(r -> r.line().id()).toList(), "M");
+        for (ManualLine m : add) {
+            if (!valid(m)) {
+                throw bad();
+            }
+            String text = m.text().trim();
+            Double total = m.unitPrice() == null ? null : Math.round(m.unitPrice() * m.qty() * 100) / 100.0;
+            SourceLine line = new SourceLine("M" + (++n), text, blankToNull(m.variant()), text, null, null, null,
+                    m.qty(), m.unitPrice(), total, "добавлено вручную");
+            rows.add(new ReviewRow(line, LineDecision.open(), List.of()));
+        }
+        s.setRows(rows);
+    }
+
+    private static boolean valid(ManualLine m) {
+        return m != null && m.text() != null && !m.text().isBlank() && m.text().length() <= MAX_TEXT
+                && m.qty() >= 1 && m.qty() <= MAX_QTY
+                && (m.unitPrice() == null || (m.unitPrice() >= 0 && !m.unitPrice().isInfinite()));
     }
 
     private static void decisions(DraftState s, Map<String, LineDecision> decisions) {

@@ -7,6 +7,8 @@ import com.maxsolch.shop.procurement.domain.NbuRates;
 import com.maxsolch.shop.procurement.domain.supplyai.CatalogItem;
 import com.maxsolch.shop.procurement.domain.supplyai.DraftState;
 import com.maxsolch.shop.procurement.domain.supplyai.ExtractedDoc;
+import com.maxsolch.shop.procurement.domain.supplyai.ReviewRow;
+import com.maxsolch.shop.procurement.domain.supplyai.SourceLine;
 import com.maxsolch.shop.procurement.domain.supplyai.SupplyExtract;
 import com.maxsolch.shop.procurement.domain.supplyai.SupplierAlias;
 import com.maxsolch.shop.procurement.domain.supplyai.SupplierMatch;
@@ -63,6 +65,11 @@ class SupplyDraftMatching {
         rate(s);
         List<CatalogItem> items = catalog.items();
         s.setRows(SupplyMatcher.autoMatch(doc.lines(), items, memory(s.getSupplierId())));
+    }
+
+    /** The first look at lines added to a draft under check (a reread found them): memory and search, as on seeding. */
+    List<ReviewRow> look(DraftState s, List<SourceLine> lines) {
+        return SupplyMatcher.autoMatch(lines, catalog.items(), memory(s.getSupplierId()));
     }
 
     private static List<String> notes(SupplyExtract.Parsed read) {

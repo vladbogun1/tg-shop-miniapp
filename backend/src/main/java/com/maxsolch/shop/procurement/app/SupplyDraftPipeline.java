@@ -11,7 +11,6 @@ import com.maxsolch.shop.procurement.domain.supplyai.LeafCategory;
 import com.maxsolch.shop.procurement.domain.supplyai.LineDecision;
 import com.maxsolch.shop.procurement.domain.supplyai.MatchPrompt;
 import com.maxsolch.shop.procurement.domain.supplyai.ReviewRow;
-import com.maxsolch.shop.procurement.domain.supplyai.SupplyExtract;
 import com.maxsolch.shop.procurement.domain.supplyai.SupplyMatcher;
 import com.maxsolch.shop.procurement.domain.supplyai.SupplyPlan;
 import com.maxsolch.shop.procurement.infra.SupplyDraftRepository;
@@ -26,7 +25,8 @@ import java.util.Optional;
 /**
  * One move of a running supply draft, called by the timer ({@link SupplyDraftJobs}) under the row lock: look at the
  * task of the current step; while it runs — nothing; when it ended — take its answer into the state and start the
- * next step. READ → the invoice and the first look ({@link SupplyDraftMatching}); MATCH → the model decides the open
+ * next step. READ → the invoice, rereads while its lines do not add up to its total, the first look
+ * ({@link SupplyDraftReading}); MATCH → the model decides the open
  * lines; CARDS → a card for every new product ({@link SupplyDraftCards}); then READY and a push. Only a failed reading
  * stops the draft: without lines there is nothing to check. A failed match or card is a warning — the admin finishes
  * those lines by hand on the check screen.
@@ -37,18 +37,18 @@ public class SupplyDraftPipeline {
     private final SupplyDraftRepository drafts;
     private final SupplyDraftJson json;
     private final SupplyDraftAi ai;
-    private final SupplyDraftMatching matching;
+    private final SupplyDraftReading reading;
     private final SupplyDraftCards cards;
     private final SupplyDraftCatalog catalog;
     private final DomainEvents events;
     private final Clock clock;
 
-    SupplyDraftPipeline(SupplyDraftRepository drafts, SupplyDraftJson json, SupplyDraftAi ai, SupplyDraftMatching matching,
+    SupplyDraftPipeline(SupplyDraftRepository drafts, SupplyDraftJson json, SupplyDraftAi ai, SupplyDraftReading reading,
                         SupplyDraftCards cards, SupplyDraftCatalog catalog, DomainEvents events, Clock clock) {
         this.drafts = drafts;
         this.json = json;
         this.ai = ai;
-        this.matching = matching;
+        this.reading = reading;
         this.cards = cards;
         this.catalog = catalog;
         this.events = events;
@@ -86,27 +86,9 @@ public class SupplyDraftPipeline {
     }
 
     private void read(SupplyDraft d, DraftState s) {
-        if (s.getReadJob() == null) {
-            d.fail("Нет задачи чтения накладной", clock.instant());
-            return;
+        if (reading.advance(d, s)) {
+            d.runStep(Step.MATCH, clock.instant());
         }
-        Optional<SupplyDraftAi.Result> r = ai.result(s.getReadJob(), d.getAdminId());
-        if (r.isEmpty()) {
-            return;
-        }
-        if (!r.get().done()) {
-            d.fail("Накладную не удалось прочитать: " + r.get().error(), clock.instant());
-            return;
-        }
-        SupplyExtract.Parsed p = SupplyExtract.parse(r.get().answer());
-        if (p.doc() == null || p.doc().lines().isEmpty()) {
-            d.fail("Накладную не удалось прочитать: " + (p.errors().isEmpty() ? "строк не найдено" : String.join("; ", p.errors())),
-                    clock.instant());
-            return;
-        }
-        matching.seed(s, p);
-        s.setMatchJob(null);
-        d.runStep(Step.MATCH, clock.instant());
     }
 
     private void match(SupplyDraft d, DraftState s) {

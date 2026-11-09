@@ -6335,6 +6335,9 @@
           "stopped" : {
             "type" : "boolean"
           },
+          "sum" : {
+            "$ref" : "#/components/schemas/DraftSumInfo"
+          },
           "supplierId" : {
             "format" : "int64",
             "nullable" : true,
@@ -6380,6 +6383,7 @@
           "status",
           "step",
           "stopped",
+          "sum",
           "supplierId",
           "supplierName",
           "title",
@@ -6494,6 +6498,7 @@
           "kind" : {
             "enum" : [
               "READ",
+              "VERIFY",
               "MATCH",
               "CARD"
             ],
@@ -6524,6 +6529,12 @@
       },
       "DraftSaveRequest" : {
         "properties" : {
+          "addLines" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ManualLine"
+            },
+            "type" : "array"
+          },
           "currency" : {
             "type" : "string"
           },
@@ -6556,6 +6567,12 @@
             },
             "type" : "object"
           },
+          "removeLines" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "supplierId" : {
             "format" : "int64",
             "type" : "integer"
@@ -6571,6 +6588,25 @@
             "type" : "integer"
           }
         },
+        "type" : "object"
+      },
+      "DraftSumInfo" : {
+        "properties" : {
+          "removedRepeats" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "rereads" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "removedRepeats",
+          "rereads"
+        ],
         "type" : "object"
       },
       "DraftSummary" : {
@@ -9226,6 +9262,25 @@
       "ManualDraft" : {
         "properties" : {
           "draft" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ManualLine" : {
+        "properties" : {
+          "qty" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "text" : {
+            "type" : "string"
+          },
+          "unitPrice" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "variant" : {
             "type" : "string"
           }
         },
@@ -27292,6 +27347,43 @@
           }
         ],
         "summary" : "Create the supplier, new products, the batch and the supplier memory",
+        "tags" : [
+          "Admin Preorders"
+        ]
+      }
+    },
+    "/api/admin/supply-drafts/{id}/reread" : {
+      "post" : {
+        "operationId" : "AdminSupplyDraftController_reread",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DraftDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Reread the invoice thoroughly and add the lines that bring the draft to its total",
         "tags" : [
           "Admin Preorders"
         ]

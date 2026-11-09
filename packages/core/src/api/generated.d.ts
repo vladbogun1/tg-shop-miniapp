@@ -3826,6 +3826,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/supply-drafts/{id}/reread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reread the invoice thoroughly and add the lines that bring the draft to its total */
+        post: operations["AdminSupplyDraftController_reread"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/supply-drafts/{id}/retry": {
         parameters: {
             query?: never;
@@ -7505,6 +7522,7 @@ export interface components {
             /** @enum {string} */
             step: "READ" | "MATCH" | "CARDS" | "DONE";
             stopped: boolean;
+            sum: components["schemas"]["DraftSumInfo"];
             /** Format: int64 */
             supplierId: number | null;
             supplierName: string | null;
@@ -7545,12 +7563,13 @@ export interface components {
             jobId: number;
             key: string | null;
             /** @enum {string} */
-            kind: "READ" | "MATCH" | "CARD";
+            kind: "READ" | "VERIFY" | "MATCH" | "CARD";
             label: string;
             status: string;
             step: string | null;
         };
         DraftSaveRequest: {
+            addLines?: components["schemas"]["ManualLine"][];
             currency?: string;
             decisions?: {
                 [key: string]: components["schemas"]["LineDecision"];
@@ -7565,12 +7584,18 @@ export interface components {
             prices?: {
                 [key: string]: number;
             };
+            removeLines?: string[];
             /** Format: int64 */
             supplierId?: number;
             supplierName?: string;
             title?: string;
             /** Format: int64 */
             version?: number;
+        };
+        DraftSumInfo: {
+            removedRepeats: string[];
+            /** Format: int32 */
+            rereads: number;
         };
         DraftSummary: {
             /** Format: date-time */
@@ -8367,6 +8392,14 @@ export interface components {
         };
         ManualDraft: {
             draft?: string;
+        };
+        ManualLine: {
+            /** Format: int32 */
+            qty?: number;
+            text?: string;
+            /** Format: double */
+            unitPrice?: number;
+            variant?: string;
         };
         MarginReportDto: {
             byBatch: components["schemas"]["MarginRowDto"][];
@@ -16707,6 +16740,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["DraftAcceptResult"];
+                };
+            };
+        };
+    };
+    AdminSupplyDraftController_reread: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftDto"];
                 };
             };
         };

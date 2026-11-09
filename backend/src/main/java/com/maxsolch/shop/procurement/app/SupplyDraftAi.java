@@ -9,6 +9,7 @@ import com.maxsolch.shop.ai.domain.JobMode;
 import com.maxsolch.shop.ai.domain.JobStatus;
 import com.maxsolch.shop.procurement.domain.supplyai.DraftState;
 import com.maxsolch.shop.procurement.domain.supplyai.SupplyPlan;
+import com.maxsolch.shop.procurement.domain.supplyai.SupplyVerify;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -47,6 +48,12 @@ class SupplyDraftAi {
     long read(long draftId, long adminId, List<Long> fileIds, String prompt, String version) {
         return jobs.start(adminId, new AiJobs.CreateJob(AiFeature.SUPPLY_EXTRACT, SUBJECT, "d" + draftId + "-read", null,
                 JobMode.NORMAL, "low", fileIds.size(), prompt, version), fileIds);
+    }
+
+    /** A reread of the same pictures with what was read and how much is missing: thorough (a step deeper and dearer). */
+    long verify(long draftId, long adminId, List<Long> fileIds, int attempt, String prompt) {
+        return jobs.start(adminId, new AiJobs.CreateJob(AiFeature.SUPPLY_EXTRACT, SUBJECT, "d" + draftId + "-verify-" + attempt,
+                null, JobMode.THOROUGH, "high", fileIds.size(), prompt, SupplyVerify.PROMPT_VERSION), fileIds);
     }
 
     long match(long draftId, long adminId, int open, String prompt, String version) {
@@ -95,6 +102,7 @@ class SupplyDraftAi {
         List<Long> applied = new ArrayList<>();
         List<Long> rejected = new ArrayList<>();
         (accepted ? applied : rejected).addAll(Stream.of(s.getReadJob(), s.getMatchJob()).filter(Objects::nonNull).toList());
+        (accepted ? applied : rejected).addAll(s.getVerifyJobs());
         Set<String> created = accepted
                 ? SupplyPlan.newProducts(s.getRows()).stream().map(p -> SupplyDraftCards.keyOf(p, s)).collect(Collectors.toSet())
                 : Set.of();

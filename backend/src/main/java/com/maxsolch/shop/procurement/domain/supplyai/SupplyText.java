@@ -56,7 +56,7 @@ public final class SupplyText {
     }
 
     /** A number the way JS prints it in a template string: 134.67, 538, no trailing ".0". */
-    static String num(Double d) {
+    public static String num(Double d) {
         if (d == null) {
             return "null";
         }
@@ -64,5 +64,16 @@ public final class SupplyText {
             return "0";
         }
         return BigDecimal.valueOf(d).stripTrailingZeros().toPlainString();
+    }
+
+    /** The biggest number among ids «M1», «M7» with this prefix; 0 when there is none. */
+    public static int lastNumber(List<String> ids, String prefix) {
+        int max = 0;
+        for (String id : ids) {
+            if (id.startsWith(prefix) && id.length() > prefix.length() && id.substring(prefix.length()).chars().allMatch(Character::isDigit)) {
+                max = Math.max(max, Integer.parseInt(id.substring(prefix.length())));
+            }
+        }
+        return max;
     }
 }

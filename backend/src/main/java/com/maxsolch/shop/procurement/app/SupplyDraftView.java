@@ -7,6 +7,7 @@ import com.maxsolch.shop.catalog.app.CardDraft;
 import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftDto;
 import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftSummary;
 import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftJobView;
+import com.maxsolch.shop.procurement.app.SupplyDraftDtos.DraftSumInfo;
 import com.maxsolch.shop.procurement.domain.SupplyDraft;
 import com.maxsolch.shop.procurement.domain.supplyai.DraftState;
 import com.maxsolch.shop.procurement.domain.supplyai.SupplyPlan;
@@ -47,7 +48,8 @@ class SupplyDraftView {
         return new DraftDto(d.getId(), d.getVersion(), d.getStatus(), d.getStep(), d.getTitle(), d.getFailure(),
                 d.getBatchId(), d.getCreatedAt(), d.getReadyAt(), s.getDoc(), s.getDocNotes(), s.getRows(),
                 s.getLineNotes(), s.getWarnings(), cards, s.getPrices(), s.isStopped(), s.getSupplierId(),
-                s.getSupplierName(), s.getCurrency(), s.getFxRate(), s.getEtaWeeks(), s.isPreorderOpen(), jobs, cost);
+                s.getSupplierName(), s.getCurrency(), s.getFxRate(), s.getEtaWeeks(), s.isPreorderOpen(), jobs, cost,
+                new DraftSumInfo(s.getVerifyJobs().size(), List.copyOf(s.getRemovedRepeats())));
     }
 
     DraftSummary summary(SupplyDraft d) {
@@ -60,6 +62,10 @@ class SupplyDraftView {
     private List<DraftJobView> jobs(SupplyDraft d, DraftState s, boolean finance) {
         List<DraftJobView> out = new ArrayList<>();
         add(out, "READ", null, "Чтение накладной", s.getReadJob(), d, finance);
+        for (int i = 0; i < s.getVerifyJobs().size(); i++) {
+            add(out, "VERIFY", null, "Перепроверка накладной" + (i == 0 ? "" : " №" + (i + 1)) + " (тщательно)",
+                    s.getVerifyJobs().get(i), d, finance);
+        }
         add(out, "MATCH", null, "Сопоставление строк с каталогом", s.getMatchJob(), d, finance);
         Map<String, String> titles = new LinkedHashMap<>();
         SupplyPlan.newProducts(s.getRows()).forEach(p -> titles.put(SupplyDraftCards.keyOf(p, s), p.title()));

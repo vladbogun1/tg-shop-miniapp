@@ -31,6 +31,19 @@ public class DraftState {
     private List<String> warnings = new ArrayList<>();
 
     private Long readJob;
+    /** Rereads of the invoice (thorough tasks) when its lines did not add up to its total; in order. */
+    private List<Long> verifyJobs = new ArrayList<>();
+    /** How many rereads the current reading may take ({@code SupplyVerify.AUTO_ATTEMPTS}, +1 for each «Перечитать»). */
+    private int verifyBudget;
+    /** The best reading while a reread runs; null otherwise. */
+    private ReadCandidate candidate;
+    /**
+     * The admin asked for a reread of a draft under check: what the reread finds is added to the lines (only what
+     * brings them to the total) instead of replacing them.
+     */
+    private boolean rereadMerge;
+    /** Lines dropped as screenshot overlaps — shown to the admin next to the total. */
+    private List<String> removedRepeats = new ArrayList<>();
     private Long matchJob;
     /** New product (first line id) → its card task. */
     private Map<String, Long> cardJobs = new LinkedHashMap<>();

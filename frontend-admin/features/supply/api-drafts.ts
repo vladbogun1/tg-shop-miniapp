@@ -46,7 +46,7 @@ export interface ManualLine {
   unitPrice: number | null;
 }
 
-export type SupplyDraft = Omit<Schemas["DraftDto"], "rows" | "doc" | "cards"> & {
+export type SupplyDraft = Omit<Schemas["DraftDto"], "rows" | "doc" | "cards" | "sum"> & {
   rows: ReviewRow[];
   doc: ExtractedDoc | null;
   cards: Record<string, DraftCard>;
@@ -55,7 +55,7 @@ export type SupplyDraft = Omit<Schemas["DraftDto"], "rows" | "doc" | "cards"> & 
 };
 
 /** Правки экрана проверки; пустое поле — не менять. `supplierId: 0` — новый поставщик по `supplierName`. */
-export type DraftSave = Omit<Schemas["DraftSaveRequest"], "decisions"> & {
+export type DraftSave = Omit<Schemas["DraftSaveRequest"], "decisions" | "addLines"> & {
   decisions?: Record<string, LineDecision>;
   /** Дописать строки (их нет в прочитанном) — встанут в конец нерешёнными. */
   addLines?: ManualLine[];

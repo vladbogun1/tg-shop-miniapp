@@ -78,6 +78,12 @@ public class AdminSupplyDraftController {
         return drafts.retry(id);
     }
 
+    @PostMapping("/{id}/reread")
+    @Operation(summary = "Reread the invoice thoroughly and add the lines that bring the draft to its total")
+    public DraftDto reread(@PathVariable long id) {
+        return drafts.reread(id);
+    }
+
     @PostMapping("/{id}/stop")
     @Operation(summary = "Stop the AI of a running draft")
     public DraftDto stop(@PathVariable long id) {

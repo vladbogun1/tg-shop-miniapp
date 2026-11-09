@@ -60,8 +60,8 @@ class SupplyDraftPipelineTest {
 
     @BeforeEach
     void setUp() {
-        pipeline = new SupplyDraftPipeline(repo, json, ai, matching, new SupplyDraftCards(ai, newCards, json), catalog,
-                events, clock);
+        pipeline = new SupplyDraftPipeline(repo, json, ai, new SupplyDraftReading(ai, matching, clock),
+                new SupplyDraftCards(ai, newCards, json), catalog, events, clock);
         DraftState s = new DraftState();
         s.setReadJob(1L);
         draft = SupplyDraft.start(ADMIN, List.of(7L), json.write(s), clock.instant());

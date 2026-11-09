@@ -14,6 +14,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SupplyExtractTest {
 
     @Test
+    void keepsTheScreenshotOfEachLine() {
+        SupplyExtract.Parsed p = SupplyExtract.parse("{\"currency\":\"CNY\",\"lines\":["
+                + "{\"text\":\"A\",\"qty\":1,\"unitPrice\":1,\"shot\":1},{\"text\":\"B\",\"qty\":1,\"unitPrice\":1,\"shot\":\"2\"},"
+                + "{\"text\":\"C\",\"qty\":1,\"unitPrice\":1},{\"text\":\"D\",\"qty\":1,\"unitPrice\":1,\"shot\":500}]}");
+        assertThat(p.shots()).containsExactly(1, 2, null, null);
+    }
+
+    @Test
     void readsLinesCurrencyAndPricesAsStringsAndReportsABadLine() {
         SupplyExtract.Parsed p = SupplyExtract.parse(Fx.TAOBAO);
         assertThat(p.doc().currency()).isEqualTo("CNY");
