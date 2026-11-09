@@ -7,11 +7,12 @@ import path from "node:path";
 import type { Page } from "@playwright/test";
 import { REPO_ROOT } from "../env.js";
 import { checkLayout, heightFor, shotWidths } from "../lib/layout-qa";
-import { expect, test } from "../lib/test";
+import { PREORDER } from "../lib/seed";
+import { dialog, expect, test } from "../lib/test";
 
 const SHOTS = path.join(REPO_ROOT, "_shots");
 const WIDTHS = shotWidths([320, 360, 390, 768, 1024, 1280, 1440]);
-const PAGES = ["/users", "/products", "/promocodes", "/gift", "/metrics", "/preorders", "/cards", "/inbox", "/incidents", "/settings"];
+const PAGES = ["/", "/dispatch", "/support", "/users", "/products", "/promocodes", "/gift", "/metrics", "/preorders", "/cards", "/inbox", "/incidents", "/settings"];
 
 test.skip(!process.env.AUDIT_SHOTS, "только по AUDIT_SHOTS=1");
 test.setTimeout(600_000);
@@ -99,6 +100,29 @@ test("«Поставки», страница поставки и «Подаро�
   await expect(page.getByText(title, { exact: true }).first(), "товар в поле подарка").toBeVisible();
   expect(byIds.length, "поле подарка спросило товар по id").toBeGreaterThan(0);
   await page.screenshot({ path: path.join(SHOTS, "audit-gift-picked-1440.png"), fullPage: true });
+});
+
+test("едущая поставка на 320: «⋯» в одной строке с главной кнопкой", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/preorders");
+  await page.getByRole("button", { name: "Новая поставка" }).first().click();
+  const form = dialog(page, "Новая поставка");
+  await form.getByLabel("Название (для себя)").fill("Аудит: шапка на телефоне");
+  await form.getByRole("button", { name: "Добавить товар" }).click();
+  const pick = dialog(page, "Товар в поставку");
+  await pick.getByLabel("Поиск товара").fill(PREORDER.productTitle);
+  await pick.getByRole("button", { name: new RegExp(PREORDER.productTitle) }).click();
+  await form.getByLabel("Заказано, шт").fill("1");
+  await form.getByRole("button", { name: "Создать", exact: true }).click();
+  await expect(page).toHaveURL(/\/preorders\/\d+$/);
+
+  await page.setViewportSize({ width: 320, height: 812 });
+  await settle(page);
+  await page.screenshot({ path: path.join(SHOTS, "audit-batch-320.png"), fullPage: true });
+  const main = await page.getByRole("button", { name: /Приехала/ }).boundingBox();
+  const more = await page.getByRole("button", { name: "Ещё действия" }).boundingBox();
+  expect(main && more, "обе кнопки видны").toBeTruthy();
+  expect(Math.abs((main?.y ?? 0) - (more?.y ?? 0)), "«⋯» не уехал на отдельную строку").toBeLessThan(4);
 });
 
 test("липкие строки не заходят под шапку", async ({ page }) => {
