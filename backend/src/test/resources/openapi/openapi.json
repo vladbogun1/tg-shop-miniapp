@@ -352,6 +352,10 @@
             "nullable" : true,
             "type" : "string"
           },
+          "customerProblemReason" : {
+            "nullable" : true,
+            "type" : "string"
+          },
           "exchangeOfId" : {
             "nullable" : true,
             "type" : "string"
@@ -416,6 +420,7 @@
           "archiveReason",
           "archivedAt",
           "archivedBy",
+          "customerProblemReason",
           "exchangeOfId",
           "exchangeOrderIds",
           "mergedFromIds",
@@ -7265,6 +7270,35 @@
         },
         "type" : "object"
       },
+      "Flag" : {
+        "properties" : {
+          "flaggedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "telegramUserId" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "flaggedAt",
+          "reason",
+          "telegramUserId"
+        ],
+        "type" : "object"
+      },
+      "FlagRequest" : {
+        "properties" : {
+          "reason" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "Forecast" : {
         "properties" : {
           "accuracy" : {
@@ -9375,6 +9409,9 @@
           "lastName" : {
             "type" : "string"
           },
+          "onlinePaymentOnly" : {
+            "type" : "boolean"
+          },
           "userId" : {
             "format" : "int64",
             "type" : "integer"
@@ -9387,6 +9424,7 @@
           "admin",
           "firstName",
           "lastName",
+          "onlinePaymentOnly",
           "userId",
           "username"
         ],
@@ -16486,6 +16524,10 @@
           "premium" : {
             "type" : "boolean"
           },
+          "problemReason" : {
+            "nullable" : true,
+            "type" : "string"
+          },
           "telegramUserId" : {
             "format" : "int64",
             "type" : "integer"
@@ -16510,6 +16552,7 @@
           "locale",
           "ordersCount",
           "premium",
+          "problemReason",
           "telegramUserId",
           "totalSpentMinor",
           "username"
@@ -28135,6 +28178,15 @@
           },
           {
             "in" : "query",
+            "name" : "flaggedOnly",
+            "required" : false,
+            "schema" : {
+              "default" : false,
+              "type" : "boolean"
+            }
+          },
+          {
+            "in" : "query",
             "name" : "page",
             "required" : false,
             "schema" : {
@@ -28192,7 +28244,7 @@
             "bearer-jwt" : [ ]
           }
         ],
-        "summary" : "Paged/searchable/sortable list of bot users; filters (all combine): blockedOnly, premiumOnly, hasOrders=true|false (any order status)",
+        "summary" : "Paged/searchable/sortable list of bot users; filters (all combine): blockedOnly, premiumOnly, flaggedOnly (problem buyers), hasOrders=true|false (any order status)",
         "tags" : [
           "Admin Users"
         ]
@@ -28348,6 +28400,81 @@
           }
         ],
         "summary" : "User analytics for range=month|halfyear|year|all (default month)",
+        "tags" : [
+          "Admin Users"
+        ]
+      }
+    },
+    "/api/admin/users/{telegramUserId}/flag" : {
+      "delete" : {
+        "operationId" : "AdminCustomerFlagController_clear",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "telegramUserId",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Take the problem-buyer mark off",
+        "tags" : [
+          "Admin Users"
+        ]
+      },
+      "put" : {
+        "operationId" : "AdminCustomerFlagController_flag",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "telegramUserId",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/FlagRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Flag"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Mark the customer as a problem buyer (or change the reason): only full online payment at checkout",
         "tags" : [
           "Admin Users"
         ]

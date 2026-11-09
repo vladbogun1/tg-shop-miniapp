@@ -5,5 +5,7 @@ public record MeProfileDto(
         String username,
         String firstName,
         String lastName,
-        boolean admin) {
+        boolean admin,
+        /** Checkout offers only full online payment (the admin marked the buyer «проблемный»; no reason is told). */
+        boolean onlinePaymentOnly) {
 }

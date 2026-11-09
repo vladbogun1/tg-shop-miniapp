@@ -380,7 +380,8 @@
       "exchangeOrderIds" : [ ],
       "returns" : [ ],
       "mergedIntoId" : null,
-      "mergedFromIds" : [ ]
+      "mergedFromIds" : [ ],
+      "customerProblemReason" : null
     }
   },
   "card" : {

@@ -32,6 +32,8 @@ public enum OrderError implements ErrorCode {
     IDEMPOTENCY_KEY_BUSY,
     PAYMENT_METHOD_REQUIRED,
     PAYMENT_METHOD_UNKNOWN,
+    /** A marked «проблемный покупатель» chose a prepayment (the rest cash on delivery): only full online payment. */
+    ONLINE_PAYMENT_ONLY("ONLINE_PAYMENT_ONLY"),
     PRODUCT_UNKNOWN_IN_CART,
     PRODUCT_UNAVAILABLE,
     VARIANT_MISMATCH,

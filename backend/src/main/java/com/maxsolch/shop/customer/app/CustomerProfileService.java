@@ -15,19 +15,22 @@ public class CustomerProfileService {
 
     private final UserRepository userRepository;
     private final AdminCheck adminCheck;
+    private final CustomerFlags flags;
 
-    public CustomerProfileService(UserRepository userRepository, AdminCheck adminCheck) {
+    public CustomerProfileService(UserRepository userRepository, AdminCheck adminCheck, CustomerFlags flags) {
         this.userRepository = userRepository;
         this.adminCheck = adminCheck;
+        this.flags = flags;
     }
 
     /** Name and username as Telegram gave them; a bare profile when the user row is not there yet. */
     public MeProfileDto profile(long userId) {
         boolean admin = adminCheck.isActive(userId);
+        boolean onlineOnly = flags.onlinePaymentOnly(userId);
         return userRepository.findById(userId)
                 .map(u -> new MeProfileDto(u.getTelegramUserId(), u.getUsername(),
-                        u.getFirstName(), u.getLastName(), admin))
-                .orElseGet(() -> new MeProfileDto(userId, null, null, null, admin));
+                        u.getFirstName(), u.getLastName(), admin, onlineOnly))
+                .orElseGet(() -> new MeProfileDto(userId, null, null, null, admin, onlineOnly));
     }
 
     /**

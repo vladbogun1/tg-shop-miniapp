@@ -34,7 +34,9 @@ class OrderPlacementTest {
     private final OrderIdempotencyService idempotency = mock(OrderIdempotencyService.class);
     private final OrderGuard guard = mock(OrderGuard.class);
     private final ActivityLog activity = mock(ActivityLog.class);
-    private final OrderPlacement placement = new OrderPlacement(checkout, lookup, users, idempotency, guard, activity,
+    private final PaymentEligibility eligibility = mock(PaymentEligibility.class);
+    private final OrderPlacement placement = new OrderPlacement(checkout, lookup, users, idempotency, guard, eligibility,
+            activity,
             new org.springframework.transaction.support.AbstractPlatformTransactionManager() {
                 @Override
                 protected Object doGetTransaction() {

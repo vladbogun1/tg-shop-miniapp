@@ -110,7 +110,8 @@ final class NotifyHarness {
         Mockito.when(settings.getBool(any())).thenReturn(true);
         customer = new OrderCustomerNotifier(new com.maxsolch.shop.platform.time.ShopZone("Europe/Kyiv"), messages, settings, new CustomerRejectReason(messages),
                 new CustomerBot(bot, props, messages, activity));
-        seller = new OrderSellerNotifier(new SellerChannel(bot, props, activity));
+        seller = new OrderSellerNotifier(new SellerChannel(bot, props, activity),
+                org.mockito.Mockito.mock(com.maxsolch.shop.customer.app.CustomerFlags.class));
         receipts = new ReceiptNotifier(messages, new CustomerBot(bot, props, messages, activity));
         wire();
     }

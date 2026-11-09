@@ -37,12 +37,15 @@ public class OrderPlacement {
     private final Customers userRepository;
     private final OrderIdempotencyService idempotency;
     private final OrderGuard orderGuard;
+    private final PaymentEligibility paymentEligibility;
     private final ActivityLog activity;
     private final TransactionTemplate tx;
 
     public OrderPlacement(Checkout checkout, OrderLookup orderLookup, Customers userRepository,
-                          OrderIdempotencyService idempotency, OrderGuard orderGuard, ActivityLog activity,
+                          OrderIdempotencyService idempotency, OrderGuard orderGuard,
+                          PaymentEligibility paymentEligibility, ActivityLog activity,
                           PlatformTransactionManager txManager) {
+        this.paymentEligibility = paymentEligibility;
         this.tx = new TransactionTemplate(txManager);
         this.checkout = checkout;
         this.orderLookup = orderLookup;
@@ -118,6 +121,8 @@ public class OrderPlacement {
     private Order create(long userId, boolean web, CreateOrderCommand draft) {
         // Anti-bot / anti-hoarding limits (settings «Защита от ботов и спама»): 400/429 with a code.
         orderGuard.check(userId, draft.items());
+        // A «проблемный покупатель» pays the whole order online: no prepayment with the rest cash on delivery.
+        paymentEligibility.requireAllowed(userId, draft.paymentOptionId());
 
         // Snapshot the customer's Telegram @username (from the users row, populated at auth)
         // so the admin order card can deep-link to their Telegram DM.

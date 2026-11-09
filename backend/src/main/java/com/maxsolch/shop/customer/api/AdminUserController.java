@@ -30,17 +30,18 @@ public class AdminUserController {
     }
 
     @GetMapping
-    @Operation(summary = "Paged/searchable/sortable list of bot users; filters (all combine): blockedOnly, premiumOnly, hasOrders=true|false (any order status)")
+    @Operation(summary = "Paged/searchable/sortable list of bot users; filters (all combine): blockedOnly, premiumOnly, flaggedOnly (problem buyers), hasOrders=true|false (any order status)")
     public List<UserCardDto> list(
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "false") boolean blockedOnly,
             @RequestParam(defaultValue = "false") boolean premiumOnly,
             @RequestParam(required = false) Boolean hasOrders,
+            @RequestParam(defaultValue = "false") boolean flaggedOnly,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "30") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
-        return userAdminService.list(new UserListFilter(q, blockedOnly, premiumOnly, hasOrders), page, size, sortBy, sortDir);
+        return userAdminService.list(new UserListFilter(q, blockedOnly, premiumOnly, hasOrders, flaggedOnly), page, size, sortBy, sortDir);
     }
 
     @GetMapping("/metrics")

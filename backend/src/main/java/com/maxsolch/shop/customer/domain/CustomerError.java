@@ -14,7 +14,10 @@ public enum CustomerError implements ErrorCode {
     SESSION_ENDED,
     REFRESH_TOKEN_ROTATED,
     REFRESH_TOKEN_REUSED,
-    INVALID_ID;
+    INVALID_ID,
+    FLAG_REASON_REQUIRED,
+    FLAG_REASON_TOO_LONG,
+    CUSTOMER_NOT_FOUND;
 
     private final String code;
 

@@ -107,7 +107,9 @@ public record OrderDetailDto(
                               /** This order was merged into that one (V71); null = not. */
                               @Nullable String mergedIntoId,
                               /** Orders merged into this one, oldest first. */
-                              List<String> mergedFromIds) {
+                              List<String> mergedFromIds,
+                              /** V96: the buyer is marked «проблемный покупатель» — the admin's reason; null = not. */
+                              @Nullable String customerProblemReason) {
     }
 
     /** Another open order of the same customer for «Объединить» (V71) and the merged result. */

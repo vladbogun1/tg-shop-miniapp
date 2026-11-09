@@ -26,10 +26,12 @@ public class UserGeo {
     private final OrderHistory orders;
     private final OnlineVisitors onlineVisitors;
     private final GeoIpLookup geo;
+    private final CustomerFlags flags;
     private final Clock clock;
 
     public UserGeo(VisitorMapQueries map, OrderHistory orders, OnlineVisitors onlineVisitors, GeoIpLookup geo,
-                   Clock clock) {
+                   CustomerFlags flags, Clock clock) {
+        this.flags = flags;
         this.map = map;
         this.orders = orders;
         this.onlineVisitors = onlineVisitors;
@@ -61,13 +63,16 @@ public class UserGeo {
     public UserGeoDtos.PointDetails point(BigDecimal lat, BigDecimal lon, int days) {
         int d = clampDays(days);
         List<UserAtPoint> rows = map.usersAt(lat, lon, d);
-        Map<Long, OrderHistory.Totals> totals = orders.totalsOf(rows.stream().map(UserAtPoint::telegramUserId).toList());
+        List<Long> ids = rows.stream().map(UserAtPoint::telegramUserId).toList();
+        Map<Long, OrderHistory.Totals> totals = orders.totalsOf(ids);
+        Map<Long, CustomerFlags.Flag> marks = flags.ofAll(ids);
         List<UserGeoDtos.PointUser> users = rows.stream().map(r -> {
             OrderHistory.Totals t = totals.getOrDefault(r.telegramUserId(), OrderHistory.Totals.NONE);
+            CustomerFlags.Flag mark = marks.get(r.telegramUserId());
             return new UserGeoDtos.PointUser(
                     new UserCardDto(r.telegramUserId(), r.username(), r.firstName(), r.lastName(), r.languageCode(),
                             r.premium(), r.botBlocked(), t.ordersCount(), t.spentMinor(), r.createdAt(), r.lastSeenAt(),
-                            r.locale(), t.lastOrderAt()),
+                            r.locale(), t.lastOrderAt(), mark == null ? null : mark.reason()),
                     r.ip(), r.channel(), r.city(), r.country(), r.seenAt());
         }).toList();
         List<UserGeoDtos.PointAnon> anon = map.anonymousAt(lat, lon, d).stream()

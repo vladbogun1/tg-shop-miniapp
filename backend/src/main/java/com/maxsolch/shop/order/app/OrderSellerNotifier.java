@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.maxsolch.shop.customer.app.CustomerFlags;
 import com.maxsolch.shop.notification.app.SellerChannel;
 import com.maxsolch.shop.notification.domain.SellerTopic;
 import com.maxsolch.shop.order.domain.Order;
@@ -29,9 +30,22 @@ import static com.maxsolch.shop.platform.util.Texts.escHtml;
 public class OrderSellerNotifier {
 
     private final SellerChannel channel;
+    private final CustomerFlags customerFlags;
 
-    public OrderSellerNotifier(SellerChannel channel) {
+    public OrderSellerNotifier(SellerChannel channel, CustomerFlags customerFlags) {
         this.channel = channel;
+        this.customerFlags = customerFlags;
+    }
+
+    /** The «проблемный покупатель» reason of the order's buyer; null when not marked or the lookup failed. */
+    private String problemReason(Order order) {
+        Long buyer = order.getUserId() != null ? order.getUserId() : order.getTgUserId();
+        try {
+            return customerFlags.of(buyer).map(CustomerFlags.Flag::reason).orElse(null);
+        } catch (RuntimeException e) {
+            log.warn("problem flag lookup failed for order {}: {}", idStr(order), e.getMessage());
+            return null;
+        }
     }
 
     /** New order → post a card into the topic of its status. */
@@ -63,7 +77,8 @@ public class OrderSellerNotifier {
         SellerChannel.Posted sent = channel.post("postCard failed for order " + idStr(order),
                 entry("ADMIN_ORDER_CARD", order, "Карточка заказа #" + shortId(order) + " → тема «"
                         + SellerCards.statusTopicName(order.getStatus()) + "»"),
-                SellerCards.buildCard(order), adminPath(order), topicFor(order.getStatus()));
+                SellerCards.withProblemWarning(SellerCards.buildCard(order), problemReason(order)),
+                adminPath(order), topicFor(order.getStatus()));
         if (sent == null) {
             return;
         }
@@ -166,7 +181,8 @@ public class OrderSellerNotifier {
         try {
             SellerChannel.Posted sent = channel.post("postDispatchCard failed for order " + idStr(order),
                     entry("ADMIN_DISPATCH_CARD", order, "Карточка «К отправке» #" + shortId(order)),
-                    SellerCards.buildDispatchCard(order), adminPath(order), SellerTopic.DISPATCH);
+                    SellerCards.withProblemWarning(SellerCards.buildDispatchCard(order), problemReason(order)),
+                    adminPath(order), SellerTopic.DISPATCH);
             if (sent != null && sent.confirmed()) {
                 order.rememberDispatchCard(sent.messageId());
                 return true;
@@ -196,7 +212,8 @@ public class OrderSellerNotifier {
         }
         try {
             SellerChannel.Edited edited = channel.edit("syncDispatchCard failed for order " + idStr(order),
-                    messageId, SellerCards.buildDispatchCard(order), adminPath(order));
+                    messageId, SellerCards.withProblemWarning(SellerCards.buildDispatchCard(order), problemReason(order)),
+                    adminPath(order));
             if (edited == SellerChannel.Edited.GONE) {
                 // The seller deleted it by hand — drop the stale id and re-post a fresh card.
                 order.forgetDispatchCard();

@@ -22,6 +22,18 @@ final class SellerCards {
     private SellerCards() {
     }
 
+    /**
+     * The card with the «проблемный покупатель» warning on top (V96), so whoever packs or approves sees it first;
+     * the card unchanged when the buyer is not marked.
+     */
+    static String withProblemWarning(String card, String problemReason) {
+        if (problemReason == null || problemReason.isBlank()) {
+            return card;
+        }
+        return "🚫 <b>ПРОБЛЕМНЫЙ ПОКУПАТЕЛЬ</b>: " + escHtml(problemReason.trim())
+                + "\n<i>Только полная оплата онлайн, наложкой не отправлять.</i>\n\n" + card;
+    }
+
     /** Seller-facing dispatch card: address, items, and the exact COD (наложка) to set. */
     static String buildDispatchCard(Order order) {
         String cur = nz(order.getCurrency());

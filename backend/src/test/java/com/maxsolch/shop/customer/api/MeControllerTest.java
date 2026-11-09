@@ -40,6 +40,8 @@ class MeControllerTest {
     AdminCheck admins;
     @Mock
     ActivityLog activity;
+    @Mock
+    com.maxsolch.shop.customer.app.CustomerFlags flags;
 
     @BeforeEach
     void setUp() {
@@ -55,8 +57,8 @@ class MeControllerTest {
     }
 
     MeController controller() {
-        return new MeController(new CustomerProfileService(users, admins),
-                new com.maxsolch.shop.customer.app.CustomerLocaleChoice(new CustomerProfileService(users, admins), activity),
+        return new MeController(new CustomerProfileService(users, admins, flags),
+                new com.maxsolch.shop.customer.app.CustomerLocaleChoice(new CustomerProfileService(users, admins, flags), activity),
                 new CurrentActor());
     }
 
@@ -113,13 +115,13 @@ class MeControllerTest {
         when(users.findById(100L)).thenReturn(Optional.of(user));
         when(admins.isActive(100L)).thenReturn(true);
 
-        assertThat(controller().me()).isEqualTo(new MeProfileDto(100L, "nick", "A", "B", true));
+        assertThat(controller().me()).isEqualTo(new MeProfileDto(100L, "nick", "A", "B", true, false));
     }
 
     @Test
     void me_unknownUser_fallsBackToBareProfile() {
         when(users.findById(100L)).thenReturn(Optional.empty());
 
-        assertThat(controller().me()).isEqualTo(new MeProfileDto(100L, null, null, null, false));
+        assertThat(controller().me()).isEqualTo(new MeProfileDto(100L, null, null, null, false, false));
     }
 }

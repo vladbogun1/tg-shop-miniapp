@@ -1,6 +1,7 @@
 package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.catalog.app.CatalogNames;
+import com.maxsolch.shop.customer.app.CustomerFlags;
 import com.maxsolch.shop.customer.app.Customers;
 import com.maxsolch.shop.inventory.app.StockWriteoffs;
 import com.maxsolch.shop.order.domain.GiftCaseRules;
@@ -42,6 +43,8 @@ class OrderDetailView {
     /** Money journal and write-offs shown to the admin. */
     private final OrderMoneyMovementRepository movementRepository;
     private final StockWriteoffs writeoffRepository;
+    /** «Проблемный покупатель» marks, shown to the admin only. */
+    private final CustomerFlags customerFlags;
 
     OrderDetailView(OrderRepository orderRepository,
                     OrderOnlinePayments onlinePayments,
@@ -53,7 +56,9 @@ class OrderDetailView {
                     OrderReturnsView returnsView,
                     OrderMoneyMovementRepository movementRepository,
                     StockWriteoffs writeoffRepository,
-                    OrderGiftView gift) {
+                    OrderGiftView gift,
+                    CustomerFlags customerFlags) {
+        this.customerFlags = customerFlags;
         this.orderRepository = orderRepository;
         this.onlinePayments = onlinePayments;
         this.thumbnails = thumbnails;
@@ -211,6 +216,8 @@ class OrderDetailView {
                 .mergedFromIds(orderRepository.mergedChildren(List.of(o.getId())).stream()
                         .map(r -> UuidUtil.toString((byte[]) r[1]))
                         .toList())
+                .customerProblemReason(customerFlags.of(o.getUserId() != null ? o.getUserId() : o.getTgUserId())
+                        .map(CustomerFlags.Flag::reason).orElse(null))
                 .build();
     }
 

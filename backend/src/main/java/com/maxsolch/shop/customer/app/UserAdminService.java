@@ -41,10 +41,12 @@ public class UserAdminService {
     private final UserListQueries users;
     private final OrderHistory orders;
     private final UserRepository userRepository;
+    private final CustomerFlags flags;
     private final Clock clock;
 
     public UserAdminService(UserListQueries users, OrderHistory orders, UserRepository userRepository, ShopZone shopZone,
-                            Clock clock) {
+                            CustomerFlags flags, Clock clock) {
+        this.flags = flags;
         this.users = users;
         this.orders = orders;
         this.userRepository = userRepository;
@@ -89,9 +91,11 @@ public class UserAdminService {
         if (ORDER_SORTS.contains(sortBy) || f.hasOrders() != null) {
             return cutHere(f, hasQ, like, column, sortBy, asc, sz, off);
         }
-        List<UserRow> rows = users.page(hasQ, like, f.blockedOnly(), f.premiumOnly(), column, asc, sz, off);
-        Map<Long, OrderHistory.Totals> totals = orders.totalsOf(rows.stream().map(UserRow::telegramUserId).toList());
-        return rows.stream().map(r -> toCard(r, totals)).toList();
+        List<UserRow> rows = users.page(hasQ, like, f.blockedOnly(), f.premiumOnly(), f.flaggedOnly(), column, asc, sz, off);
+        List<Long> ids = rows.stream().map(UserRow::telegramUserId).toList();
+        Map<Long, OrderHistory.Totals> totals = orders.totalsOf(ids);
+        Map<Long, CustomerFlags.Flag> marks = flags.ofAll(ids);
+        return rows.stream().map(r -> toCard(r, totals, marks)).toList();
     }
 
     /**
@@ -102,7 +106,7 @@ public class UserAdminService {
     private List<UserCardDto> cutHere(UserListFilter f, boolean hasQ, String like, Column column, String sortBy,
                                       boolean asc, int size, int offset) {
         Map<Long, OrderHistory.Totals> totals = orders.totalsOfAll();
-        Stream<Long> ids = users.matchingIds(hasQ, like, f.blockedOnly(), f.premiumOnly(), column, asc).stream();
+        Stream<Long> ids = users.matchingIds(hasQ, like, f.blockedOnly(), f.premiumOnly(), f.flaggedOnly(), column, asc).stream();
         if (f.hasOrders() != null) {
             boolean wanted = f.hasOrders();
             ids = ids.filter(id -> totals.containsKey(id) == wanted);
@@ -117,14 +121,17 @@ public class UserAdminService {
             ids = ids.sorted((asc ? byValue : byValue.reversed()).thenComparing(java.util.Comparator.<Long>reverseOrder()));
         }
         List<Long> page = ids.skip(offset).limit(size).toList();
-        return users.byIds(page).stream().map(r -> toCard(r, totals)).toList();
+        Map<Long, CustomerFlags.Flag> marks = flags.ofAll(page);
+        return users.byIds(page).stream().map(r -> toCard(r, totals, marks)).toList();
     }
 
-    private static UserCardDto toCard(UserRow r, Map<Long, OrderHistory.Totals> totals) {
+    private static UserCardDto toCard(UserRow r, Map<Long, OrderHistory.Totals> totals,
+                                      Map<Long, CustomerFlags.Flag> marks) {
         OrderHistory.Totals t = totals.getOrDefault(r.telegramUserId(), OrderHistory.Totals.NONE);
+        CustomerFlags.Flag mark = marks.get(r.telegramUserId());
         return new UserCardDto(r.telegramUserId(), r.username(), r.firstName(), r.lastName(), r.languageCode(),
                 r.premium(), r.botBlocked(), t.ordersCount(), t.spentMinor(), r.createdAt(), r.lastSeenAt(), r.locale(),
-                t.lastOrderAt());
+                t.lastOrderAt(), mark == null ? null : mark.reason());
     }
 
     @Transactional(readOnly = true)
