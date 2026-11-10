@@ -20,14 +20,25 @@ import type { UniqueString } from "./model/workset";
 /** Опрос счётчиков переводов: 2 минуты, как было. */
 const STATS_REFETCH_MS = QUERY_PRESETS.live.refetchInterval * 4;
 
-export function useTranslationStats() {
+/** `enabled` false — не спрашивать (бейдж меню у админа, который не главный: переводы ведёт только главный). */
+export function useTranslationStats(enabled = true) {
   return useQuery({
     queryKey: translationKeys.stats(),
     queryFn: translationApi.stats,
     refetchInterval: STATS_REFETCH_MS,
     refetchOnWindowFocus: true,
     retry: false,
-    enabled: isAuthenticated(),
+    enabled: enabled && isAuthenticated(),
+  });
+}
+
+/** Строка «Автоперевод» экрана: тот же опрос, что у счётчиков (фоновый проход — раз в 2 минуты). */
+export function useAutoTranslationStatus() {
+  return useQuery({
+    queryKey: translationKeys.auto(),
+    queryFn: translationApi.autoStatus,
+    refetchInterval: STATS_REFETCH_MS,
+    retry: false,
   });
 }
 

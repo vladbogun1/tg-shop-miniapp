@@ -43,7 +43,7 @@ function Card({ card, id, edit, attrs }: { card: DraftCard; id: string; edit: Dr
         label="Описание (рус.)"
         rows={5}
         value={edit.descriptions[id] ?? card.description?.ru ?? ""}
-        hint="Переводы на украинский и английский ИИ уже написал — после правки обновите их в «Переводах»"
+        hint="Украинский и английский магазин переведёт сам через пару минут после сохранения"
         onChange={(e) => edit.setDescription(id, e.target.value)}
       />
       <div className="flex min-w-0 flex-col gap-3">

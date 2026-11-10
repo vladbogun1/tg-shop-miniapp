@@ -54,6 +54,7 @@ public class AdminTranslationController {
     }
 
     @PutMapping("/import")
+    @RequiredSuperAdmin
     @Operation(summary = "Import translations; applied only when sourceHash matches the current source, "
             + "MANUAL rows kept unless force")
     public ImportResult importTranslations(@RequestBody ImportRequest body) {
@@ -61,6 +62,7 @@ public class AdminTranslationController {
     }
 
     @PutMapping("/source-fix")
+    @RequiredSuperAdmin
     @Operation(summary = "Proofreading: replace the Russian source of fields (optimistic by sourceHash) and "
             + "write uk/en translations of the new source in one transaction")
     public SourceFixResult fixSource(@RequestBody SourceFixRequest body) {
@@ -68,6 +70,7 @@ public class AdminTranslationController {
     }
 
     @PutMapping("/accept")
+    @RequiredSuperAdmin
     @Operation(summary = "Mark translations as checked by a person; a stale one is re-bound to the current source "
             + "(the admin confirmed it still fits)")
     public AcceptResult accept(@RequestBody AcceptRequest body) {
@@ -80,8 +83,9 @@ public class AdminTranslationController {
         return report.stats();
     }
 
-    /** Reset of ONE entity (a field of a product...): any admin. A blank entityId would mean the whole language. */
+    /** Reset of ONE entity (a field of a product...): main admin, like every manual change of translations. A blank entityId would mean the whole language. */
     @DeleteMapping(params = "entityId")
+    @RequiredSuperAdmin
     @Operation(summary = "Delete translations of one entity (optionally one field)")
     public DeleteResult delete(@RequestParam String locale,
                                @RequestParam(required = false) String entityType,

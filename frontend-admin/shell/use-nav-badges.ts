@@ -4,6 +4,7 @@ import { pendingCount, useTranslationStats } from "@/features/translation";
 import { useAiSummary } from "@/features/ai";
 import { pendingCards, useCardStats } from "@/features/cards";
 import { useReviewsPending } from "@/features/review";
+import { useIsSuperAdmin } from "@/features/staff";
 import type { BadgeKey } from "./nav-config";
 
 export interface BadgeInfo {
@@ -17,7 +18,9 @@ export interface BadgeInfo {
 /** Live counters of the menu, by badge key. */
 export function useNavBadges(): Record<BadgeKey, BadgeInfo> {
   // Texts that need a translation («Нужно перевести» + «Устарели»), every 2 min and after imports.
-  const { data: trStats } = useTranslationStats();
+  // Only the main admin sees «Переводы» (the rest is translated automatically), so only the main admin's menu asks.
+  const superAdmin = useIsSuperAdmin();
+  const { data: trStats } = useTranslationStats(superAdmin === true);
   const trPending = pendingCount(trStats);
   // Cards waiting: «Оформить» + «Проверить» of «Карточки», every 2 min.
   const { data: cardStats } = useCardStats();

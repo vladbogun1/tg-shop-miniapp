@@ -48,11 +48,13 @@ class NewProductCardsTest {
         String p = cards.prompt(List.of(new Input("p0a1b2c3d", "Мышь", "VGN", CardPromptFixtures.WIRELESS,
                 List.of("белая"), 2499L, "строка 5: Мышь VGN x2")));
 
-        assertThat(p).contains("Всего товаров: 1.", "## Глоссарий", "### myshki-wireless — Мышки › Беспроводные",
+        assertThat(p).contains("Всего товаров: 1.", "### myshki-wireless — Мышки › Беспроводные",
                 "- weight_g — Вес", "\"p0a1b2c3d\": {", "\"priceUah\": 2499", "\"invoiceLine\": \"строка 5: Мышь VGN x2\"",
                 NewProductCards.NO_PHOTOS_HINT);
         assertThat(p).containsPattern("\"(p[0-9a-f]{8,32})\"\\s*:");
         assertThat(p).doesNotContain("У части товаров нет категории");
+        // the cards AI writes Russian only: uk/en are made by the auto-translation
+        assertThat(p).doesNotContain("## Глоссарий", "## Переводы");
     }
 
     @Test

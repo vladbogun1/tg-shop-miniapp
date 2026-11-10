@@ -1,6 +1,7 @@
 /** Ключи кэша фичи. Инвалидация — только по этим фабрикам. */
 export const translationKeys = {
   stats: () => ["admin", "translations", "stats"] as const,
+  auto: () => ["admin", "translations", "auto"] as const,
   export: () => ["admin", "translations", "export"] as const,
   /**
    * Корни кэша каталога, которые зависят от переводов (названия/описания товаров и категорий). `translation` —

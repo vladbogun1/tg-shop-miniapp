@@ -12,7 +12,8 @@
  */
 import { Button } from "@shop/ui/admin-button";
 import { useConfirm } from "@shop/ui/confirm";
-import { Languages, RefreshCw } from "lucide-react";
+import { useIsSuperAdmin } from "@/features/staff";
+import { Languages, RefreshCw, ShieldAlert } from "lucide-react";
 import { useMemo, useState } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CenterSpinner } from "@/components/ui/Spinner";
@@ -25,6 +26,7 @@ import { BUCKET_LABEL, BUCKETS, type Bucket } from "../model/queue";
 import { buildWorkSet } from "../model/workset";
 import { useAcceptAll, useTranslationExport, useTranslationStats } from "../queries";
 import { AiTranslate } from "./ai/AiTranslate";
+import { AutoTranslationLine } from "./AutoTranslationLine";
 import { TranslationReview } from "./review/TranslationReview";
 import { StickyToolbar } from "./bulk";
 import { EmptyList, FilterBar, ScreenHeader, SelectControls, TabHint } from "./TabPanel";
@@ -33,7 +35,23 @@ import { TranslationQueue } from "./TranslationQueue";
 import { useQueueSelection } from "./use-queue-selection";
 import { useTranslationLists } from "./use-translation-lists";
 
+/** Только главный админ: остальным переводы делает автоперевод (бэкенд, AutoTranslation), править нечего. */
 export function TranslationsScreen() {
+  const superAdmin = useIsSuperAdmin();
+  if (superAdmin === undefined) return <CenterSpinner />;
+  if (!superAdmin) {
+    return (
+      <EmptyState
+        icon={ShieldAlert}
+        title="Только для главного админа"
+        description="Переводы на украинский и английский магазин делает сам через пару минут после сохранения русского текста."
+      />
+    );
+  }
+  return <TranslationsWorkspace />;
+}
+
+function TranslationsWorkspace() {
   const confirm = useConfirm();
   const exportQ = useTranslationExport();
   const { refetch: refetchStats } = useTranslationStats();
@@ -114,6 +132,7 @@ export function TranslationsScreen() {
   return (
     <div>
       {header}
+      {!review && !ai && <AutoTranslationLine />}
 
       {review && (
         <TranslationReview

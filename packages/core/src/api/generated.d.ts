@@ -4083,6 +4083,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/translations/auto": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Auto-translation: whether it runs (a DeepL key is set), the characters of the month and the last background run */
+        get: operations["AdminAutoTranslationController_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/translations/export": {
         parameters: {
             query?: never;
@@ -6395,6 +6412,30 @@ export interface components {
             /** Format: int64 */
             userId: number;
             username: string;
+        };
+        AutoTranslationLastRun: {
+            /** Format: date-time */
+            at: string;
+            /** Format: int64 */
+            charsSent: number;
+            /** Format: int64 */
+            charsWaiting: number;
+            error: string | null;
+            /** Format: int32 */
+            rejected: number;
+            /** Format: int32 */
+            written: number;
+        };
+        AutoTranslationView: {
+            configured: boolean;
+            enabled: boolean;
+            lastRun: components["schemas"]["AutoTranslationLastRun"] | null;
+            /** Format: int64 */
+            limit: number | null;
+            /** Format: int64 */
+            reserve: number;
+            /** Format: int64 */
+            used: number | null;
         };
         AutofillDto: {
             /** Format: int64 */
@@ -17132,6 +17173,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["TranslationAcceptResult"];
+                };
+            };
+        };
+    };
+    AdminAutoTranslationController_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AutoTranslationView"];
                 };
             };
         };

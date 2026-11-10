@@ -237,6 +237,10 @@ services:
       AI_SEARXNG_URL: ${AI_SEARXNG_URL:-}
       AI_SERPER_KEY: ${AI_SERPER_KEY:-}
       AI_MONTH_LIMIT_CENTS: ${AI_MONTH_LIMIT_CENTS:-1000}
+      # Auto-translation uk/en (docs/CONTENT-I18N.md). Empty key = off.
+      DEEPL_API_KEY: ${DEEPL_API_KEY:-}
+      # false = the key stays (usage on the screen) but the background job sends nothing (a stand sharing the key).
+      TRANSLATIONS_AUTO_ENABLED: ${TRANSLATIONS_AUTO_ENABLED:-true}
     ports:
       - "8080:8080"
     # /actuator/health answers 503 when the DB is down. A hung backend (exhausted pool, deadlock)

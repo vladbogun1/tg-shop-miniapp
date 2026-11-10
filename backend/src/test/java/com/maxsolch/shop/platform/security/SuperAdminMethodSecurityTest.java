@@ -96,6 +96,7 @@ class SuperAdminMethodSecurityTest {
         assertThat(language.isAnnotationPresent(RequiredSuperAdmin.class)).isTrue();
         Method oneEntity = AdminTranslationController.class.getMethod("delete", String.class, String.class,
                 String.class, String.class);
-        assertThat(oneEntity.isAnnotationPresent(RequiredSuperAdmin.class)).isFalse();
+        // the manual control of translations belongs to the main admin (the rest is the auto-translation)
+        assertThat(oneEntity.isAnnotationPresent(RequiredSuperAdmin.class)).isTrue();
     }
 }

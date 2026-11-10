@@ -2,6 +2,7 @@ package com.maxsolch.shop.translation.api;
 
 import com.maxsolch.shop.ai.app.AiBatchDto;
 import com.maxsolch.shop.platform.security.RequiredAdmin;
+import com.maxsolch.shop.platform.security.RequiredSuperAdmin;
 import com.maxsolch.shop.translation.app.AiTranslationJobs;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -27,6 +28,7 @@ public class AdminTranslationAiController {
     }
 
     @PostMapping("/translation-batches")
+    @RequiredSuperAdmin
     @Operation(summary = "Translate rows with the built-in AI: one task per part of at most 60 strings, medium effort. "
             + "The result is written as drafts of the AI (a manual translation is never replaced). 409 AI_JOB_ACTIVE "
             + "(subjects) for a part that is already running, AI_BATCHES_OFF when batches are switched off; the same "

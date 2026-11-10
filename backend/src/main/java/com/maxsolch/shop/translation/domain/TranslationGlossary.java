@@ -1,12 +1,12 @@
-package com.maxsolch.shop.catalog.domain;
+package com.maxsolch.shop.translation.domain;
 
 /**
- * Глоссарий ru → uk → en для переводов в промпте. Тот же текст, что {@code GLOSSARY} в
- * frontend-admin/features/translation/model/prompt.ts (проверяет CardPromptInSyncTest).
+ * Глоссарий ru → uk → en: контекст автоперевода (DeepL) и тот же текст, что {@code GLOSSARY} в промпте экрана
+ * «Переводы» frontend-admin/features/translation/model/prompt.ts (проверяет CardPromptInSyncTest).
  */
-public final class CardGlossary {
+public final class TranslationGlossary {
 
-    private CardGlossary() {
+    private TranslationGlossary() {
     }
 
     public static final String TEXT = """

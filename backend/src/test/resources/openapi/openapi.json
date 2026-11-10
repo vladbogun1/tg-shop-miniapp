@@ -2639,6 +2639,84 @@
         ],
         "type" : "object"
       },
+      "AutoTranslationLastRun" : {
+        "properties" : {
+          "at" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "charsSent" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "charsWaiting" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "error" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "rejected" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "written" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "at",
+          "charsSent",
+          "charsWaiting",
+          "error",
+          "rejected",
+          "written"
+        ],
+        "type" : "object"
+      },
+      "AutoTranslationView" : {
+        "properties" : {
+          "configured" : {
+            "type" : "boolean"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "lastRun" : {
+            "allOf" : [
+              {
+                "$ref" : "#/components/schemas/AutoTranslationLastRun"
+              }
+            ],
+            "nullable" : true
+          },
+          "limit" : {
+            "format" : "int64",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "reserve" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "used" : {
+            "format" : "int64",
+            "nullable" : true,
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "configured",
+          "enabled",
+          "lastRun",
+          "limit",
+          "reserve",
+          "used"
+        ],
+        "type" : "object"
+      },
       "AutofillDto" : {
         "properties" : {
           "avgCostMinor" : {
@@ -28031,6 +28109,32 @@
           }
         ],
         "summary" : "Mark translations as checked by a person; a stale one is re-bound to the current source (the admin confirmed it still fits)",
+        "tags" : [
+          "Admin Translations"
+        ]
+      }
+    },
+    "/api/admin/translations/auto" : {
+      "get" : {
+        "operationId" : "AdminAutoTranslationController_status",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AutoTranslationView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Auto-translation: whether it runs (a DeepL key is set), the characters of the month and the last background run",
         "tags" : [
           "Admin Translations"
         ]

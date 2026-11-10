@@ -76,6 +76,8 @@ export const SECTIONS: NavSection[] = [
         label: "Переводы",
         icon: Languages,
         badge: "translations",
+        // Тексты переводятся сами в фоне; ручная правка переводов — только у главного админа.
+        superOnly: true,
       },
       { href: "/reviews", label: "Отзывы", icon: Star, badge: "reviews" },
     ],

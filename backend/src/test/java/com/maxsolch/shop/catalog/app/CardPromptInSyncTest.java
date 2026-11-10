@@ -1,6 +1,6 @@
 package com.maxsolch.shop.catalog.app;
 
-import com.maxsolch.shop.catalog.domain.CardGlossary;
+import com.maxsolch.shop.translation.domain.TranslationGlossary;
 import com.maxsolch.shop.catalog.domain.CardPromptText;
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 /**
  * Статические куски промпта (заголовок: задача, правила, формат, глоссарий) совпадают с TS-источником в админке.
  * Читает исходники прямо из ../frontend-admin; без них — пропускается. Поменяли текст в prompt.ts — поправьте
- * {@link CardPromptText} / {@link CardGlossary} (и golden-эталон админки).
+ * {@link CardPromptText} / {@link TranslationGlossary} (и golden-эталон админки).
  */
 class CardPromptInSyncTest {
 
@@ -27,16 +27,14 @@ class CardPromptInSyncTest {
         String ts = source(TRANSLATION_PROMPT);
         String raw = between(ts, "export const GLOSSARY = `", "`.trim();");
 
-        assertThat(CardGlossary.TEXT).isEqualTo(jsTemplateValue(raw).strip());
+        assertThat(TranslationGlossary.TEXT).isEqualTo(jsTemplateValue(raw).strip());
     }
 
     @Test
     void headerEqualsBuildCardPromptHeader() throws IOException {
-        String glossary = jsTemplateValue(between(source(TRANSLATION_PROMPT), "export const GLOSSARY = `", "`.trim();")).strip();
         String raw = between(source(PROMPT), "return `Ты — контент-менеджер", "`;\n}");
         String expected = ("Ты — контент-менеджер" + jsTemplateValue(raw))
-                .replace("${partLine}", "Всего товаров: 3.")
-                .replace("${GLOSSARY}", glossary);
+                .replace("${partLine}", "Всего товаров: 3.");
 
         assertThat(CardPromptText.header(3)).isEqualTo(expected);
     }

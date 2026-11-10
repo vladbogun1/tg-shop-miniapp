@@ -187,9 +187,10 @@ describe("тексты", () => {
     expect(r.changed).toBe(true);
     expect(r.issues.ru[0].text).toBe("переименование");
   });
-  it("checkText: нет перевода → предупреждение; причина уценки не меняется", () => {
+  it("checkText: нет перевода — не замечание (переводит автоперевод); причина уценки не меняется", () => {
     const r = checkText(draft({}), item(), {});
-    expect(r.issues.uk[0].text).toBe("нет перевода — не сохранится");
+    expect(r.issues.uk).toEqual([]);
+    expect(r.issues.en).toEqual([]);
     const c = checkText(draft({ field: "conditionNote", from: "Вскрыта", ru: "Вскрыта", aiRu: "Вскрытая" }), item(), {});
     expect(c.changed).toBe(false);
     expect(c.issues.ru[0].level).toBe("info");

@@ -14,7 +14,6 @@
  * сервер отвечает 409 STOCK_CONFLICT, если заказы сдвинули его за это время.
  * Включение «На витрине» у карточки-ЧЕРНОВИКА идёт через шлюз публикации (PublishGate).
  */
-import Link from "next/link";
 import { useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
@@ -184,12 +183,8 @@ export function ProductModal({ open, product, onClose, onSaved, onCreated, onCom
 
         {staleAfterSave > 0 && (
           <Warning>
-            Правка текстов сбросит переводы uk/en ({staleAfterSave} {plural(staleAfterSave, "поле", "поля", "полей")}) — на сайте снова
-            будет русский текст, пока не переведёте заново в{" "}
-            <Link href="/translations" className="font-semibold text-[var(--accent-hi)] hover:underline">
-              «Переводах»
-            </Link>
-            .
+            Изменились тексты ({staleAfterSave} {plural(staleAfterSave, "поле", "поля", "полей")}): украинский и английский магазин
+            переведёт заново сам через пару минут после сохранения, до тех пор на сайте будет русский текст.
           </Warning>
         )}
         {slugChanged && (step === S.site || step === S.review) && (

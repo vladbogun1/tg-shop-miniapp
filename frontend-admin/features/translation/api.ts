@@ -14,6 +14,7 @@ export type TrTextCounts = Schemas["TextCounts"];
 export type TrStats = Schemas["Stats"];
 export type TrAcceptResult = Schemas["TranslationAcceptResult"];
 export type TrSourceFixResult = Schemas["SourceFixResult"];
+export type TrAutoStatus = Schemas["AutoTranslationView"];
 
 /** Тело «Перевести с ИИ»: части с готовым промптом (их режет и собирает экран, сервер проверяет размер). */
 export interface TrAiBatchBody {
@@ -55,6 +56,8 @@ export const translationApi = {
       rows.map(toExportItem)
     ),
   stats: () => apiGet<TrStats>("/api/admin/translations/stats"),
+  /** Автоперевод (DeepL): включён ли, символы месяца, последний фоновый проход. Только главный админ. */
+  autoStatus: () => apiGet<TrAutoStatus>("/api/admin/translations/auto"),
   import: (body: TrImportBody) => apiPut<TrImportResult>("/api/admin/translations/import", body),
   /** Mark translations as checked; a stale one is re-bound to the current source. */
   accept: (items: TrAcceptItem[]) => apiPut<TrAcceptResult>("/api/admin/translations/accept", { items }),

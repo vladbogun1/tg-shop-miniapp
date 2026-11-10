@@ -103,7 +103,8 @@ function checkRussian(t: TextReview, item: CardItem, specs: Record<string, unkno
 function checkLang(t: TextReview, lang: TranslatedLocale): CardIssue[] {
   const source = finalRu(t);
   const text = t[lang];
-  if (!text.trim()) return source.trim() ? [{ level: "warn", text: "нет перевода — не сохранится" }] : [];
+  // ИИ карточек больше не переводит: uk/en магазин делает сам после сохранения русского (автоперевод).
+  if (!text.trim()) return [];
   const issues: CardIssue[] = checkTranslation(source, lang, text).map((i) => ({ level: i.level, text: i.text }));
   const translatedFrom = t.field === "conditionNote" ? t.aiRu || t.from : t.aiRu;
   if (translatedFrom.trim() !== source.trim()) issues.push({ level: "warn", text: "перевод сделан до вашей правки русского — проверьте" });

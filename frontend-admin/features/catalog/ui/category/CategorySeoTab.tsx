@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { H1_MAX, INTRO_MAX, SEO_DESCRIPTION_MAX, SEO_TITLE_MAX, wordCount, type Form } from "../../model/category-form";
@@ -21,11 +20,7 @@ export function CategorySeoTab({
   <div className="flex flex-col gap-4">
     <p className="text-[12.5px] leading-relaxed text-[var(--text-faint)]">
       Текст на русском. Пустое поле — сайт берёт свой шаблон. Украинская и английская страницы используют поле, только
-      когда у него есть перевод (иначе — шаблон). Переводы — во вкладке{" "}
-      <Link href="/translations" className="font-semibold text-[var(--accent)] hover:underline">
-        «Переводы»
-      </Link>
-      , фильтр «Категории».
+      когда у него есть перевод (иначе — шаблон). Переводит магазин сам через пару минут после сохранения.
     </p>
     <Input
       label="SEO-заголовок (title)"
@@ -63,8 +58,8 @@ export function CategorySeoTab({
     />
     {seoSourceChanged && (
       <Note>
-        После сохранения переводы изменённых SEO-полей устареют: пока их не обновят во вкладке «Переводы», украинская и
-        английская страницы будут на шаблоне сайта.
+        После сохранения изменённые SEO-поля переведутся заново через пару минут, до тех пор украинская и английская
+        страницы будут на шаблоне сайта.
       </Note>
     )}
     </div>

@@ -164,6 +164,13 @@ app:
     api-key: ${NOVAPOSHTA_API_KEY:}
     api-url: ${NOVAPOSHTA_API_URL:https://api.novaposhta.ua/v2.0/json/}
     sync-cron: ${NOVAPOSHTA_SYNC_CRON:0 30 3 * * *}
+  # Background auto-translation of new and changed Russian texts into uk/en (docs/CONTENT-I18N.md).
+  # Empty DEEPL_API_KEY = off; a free key ends with :fx (500 000 characters a month).
+  translations:
+    deepl:
+      api-key: ${DEEPL_API_KEY:}
+    auto:
+      enabled: ${TRANSLATIONS_AUTO_ENABLED:true}
   # Built-in AI (docs/AI.md): MiniMax over its Anthropic-compatible API, search SearXNG -> Serper. Empty = off.
   ai:
     month-limit-cents: ${AI_MONTH_LIMIT_CENTS:1000}
