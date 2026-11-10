@@ -36,6 +36,8 @@ public final class TranslationGlossary {
             new Term("дуйка", null, "air blower"),
             new Term("на весь стол", null, "desk-size"),
             new Term("IEM-наушники", null, "IEM earphones"),
+            new Term("наушники", null, "headphones"),
+            new Term("витой кабель", null, "coiled cable"),
             new Term("тканевый", null, "cloth"),
             new Term("скольжение", null, "glide"));
 

@@ -32,6 +32,7 @@ class DeepLTranslatorHttpTest {
     private volatile String answer = "{}";
     /** Answer of GET /v3/glossaries; POST creates {@code g-new}. */
     private volatile String glossaries = "{\"glossaries\":[]}";
+    private volatile int glossaryCreateStatus = 200;
 
     @BeforeEach
     void start() throws IOException {
@@ -46,7 +47,9 @@ class DeepLTranslatorHttpTest {
                     : "POST".equals(ex.getRequestMethod()) ? "{\"glossary_id\":\"g-new\"}" : "";
             byte[] out = reply.getBytes(StandardCharsets.UTF_8);
             ex.getResponseHeaders().add("Content-Type", "application/json");
-            int code = !path.startsWith("/v3/") ? status : "DELETE".equals(ex.getRequestMethod()) ? 204 : 200;
+            int code = !path.startsWith("/v3/") ? status
+                    : "DELETE".equals(ex.getRequestMethod()) ? 204
+                    : "POST".equals(ex.getRequestMethod()) ? glossaryCreateStatus : 200;
             ex.sendResponseHeaders(code, out.length == 0 ? -1 : out.length);
             if (out.length > 0) {
                 ex.getResponseBody().write(out);
@@ -116,6 +119,17 @@ class DeepLTranslatorHttpTest {
         assertThat(created.path("dictionaries")).extracting(d -> d.path("target_lang").asText())
                 .containsExactly("uk", "en");
         assertThat(created.path("dictionaries").get(1).path("entries").asText()).contains("коврик	mouse pad");
+    }
+
+    @Test
+    void aTakenGlossarySlotDoesNotStopTheTranslation() throws Exception {
+        glossaryCreateStatus = 456;
+        answer = "{\"translations\":[{\"text\":\"Mouse pad\"}]}";
+
+        List<String> out = client().translate(List.of("Коврик"), "en", null);
+
+        assertThat(out).containsExactly("Mouse pad");
+        assertThat(body(only("POST /v2/translate")).has("glossary_id")).isFalse();
     }
 
     @Test

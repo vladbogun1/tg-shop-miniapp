@@ -34,7 +34,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * <p>Texts go as plain text: DeepL keeps {@code {name}} placeholders as they are, while its XML mode moved the text
  * around ignored tags onto new lines (checked 10.11.2026); a mangled placeholder is caught by the answer check.
  * Terms go in the shop's glossary ({@link DeepLGlossary}): found or created on first use, then kept by id; without it
- * (refused, not found) the text is still translated, the glossary is looked up again on the next call.
+ * (refused, not found, the one free-plan slot taken by another glossary — DeepL answers 456 then) the text is still
+ * translated, the glossary is looked up again on the next call. A stand sharing the key with the shop must have the
+ * same terms, or each deletes the other's glossary ({@link DeepLGlossary#PREFIX}).
  */
 @Slf4j
 @Component
@@ -142,7 +144,8 @@ public class DeepLTranslator implements MachineTranslator {
             glossaryId.set(id);
             return id;
         } catch (MachineTranslationException e) {
-            if (e.kind() == Kind.AUTH || e.kind() == Kind.QUOTA) {
+            // 456 here is the glossary slot, not the characters: the free plan holds one glossary
+            if (e.kind() == Kind.AUTH) {
                 throw e;
             }
             log.warn("deepl glossary unavailable, translating without it: {}", e.getMessage());
