@@ -6,6 +6,7 @@ import com.maxsolch.shop.platform.http.HttpClients;
 import com.maxsolch.shop.platform.http.HttpClientsProperties;
 import com.maxsolch.shop.translation.domain.MachineTranslationException;
 import com.maxsolch.shop.translation.domain.MachineTranslator;
+import com.maxsolch.shop.translation.domain.TranslationGlossary;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +30,8 @@ class DeepLTranslatorHttpTest {
     private final List<String> requests = new CopyOnWriteArrayList<>();
     private volatile int status = 200;
     private volatile String answer = "{}";
+    /** Answer of GET /v3/glossaries; POST creates {@code g-new}. */
+    private volatile String glossaries = "{\"glossaries\":[]}";
 
     @BeforeEach
     void start() throws IOException {
@@ -37,10 +40,17 @@ class DeepLTranslatorHttpTest {
             String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
             requests.add(ex.getRequestMethod() + " " + ex.getRequestURI() + " auth="
                     + ex.getRequestHeaders().getFirst("Authorization") + " body=" + body);
-            byte[] out = answer.getBytes(StandardCharsets.UTF_8);
+            String path = ex.getRequestURI().getPath();
+            String reply = !path.startsWith("/v3/") ? answer
+                    : "GET".equals(ex.getRequestMethod()) ? glossaries
+                    : "POST".equals(ex.getRequestMethod()) ? "{\"glossary_id\":\"g-new\"}" : "";
+            byte[] out = reply.getBytes(StandardCharsets.UTF_8);
             ex.getResponseHeaders().add("Content-Type", "application/json");
-            ex.sendResponseHeaders(status, out.length);
-            ex.getResponseBody().write(out);
+            int code = !path.startsWith("/v3/") ? status : "DELETE".equals(ex.getRequestMethod()) ? 204 : 200;
+            ex.sendResponseHeaders(code, out.length == 0 ? -1 : out.length);
+            if (out.length > 0) {
+                ex.getResponseBody().write(out);
+            }
             ex.close();
         });
         server.start();
@@ -65,26 +75,69 @@ class DeepLTranslatorHttpTest {
         List<String> out = client().translate(List.of("Мышь", "Коврик"), "uk", "глоссарий");
 
         assertThat(out).containsExactly("Мишка", "Килимок");
-        assertThat(requests).singleElement().asString()
-                .startsWith("POST /v2/translate auth=DeepL-Auth-Key k-1:fx");
-        JsonNode body = JSON.readTree(requests.get(0).substring(requests.get(0).indexOf("body=") + 5));
+        String translate = only("POST /v2/translate");
+        assertThat(translate).startsWith("POST /v2/translate auth=DeepL-Auth-Key k-1:fx");
+        JsonNode body = body(translate);
         assertThat(body.path("source_lang").asText()).isEqualTo("RU");
         assertThat(body.path("target_lang").asText()).isEqualTo("UK");
         assertThat(body.path("context").asText()).isEqualTo("глоссарий");
+        assertThat(body.path("glossary_id").asText()).isEqualTo("g-new");
         assertThat(body.has("tag_handling")).isFalse();
     }
 
     @Test
-    void englishIsAmericanAndPlaceholdersGoThroughXml() throws Exception {
-        answer = "{\"translations\":[{\"text\":\"Hello, <x>{name}</x> &amp; friends\"}]}";
+    void placeholdersGoAsPlainTextAndEnglishNumbersAreUngrouped() throws Exception {
+        answer = "{\"translations\":[{\"text\":\"Hello, {name}: 8,000 Hz, 18,000 DPI\"}]}";
 
-        List<String> out = client().translate(List.of("Привет, {name} & друзья"), "en", null);
+        List<String> out = client().translate(List.of("Привет, {name}: 8000 Гц, 18000 DPI"), "en", null);
 
-        assertThat(out).containsExactly("Hello, {name} & friends");
-        JsonNode body = JSON.readTree(requests.get(0).substring(requests.get(0).indexOf("body=") + 5));
+        assertThat(out).containsExactly("Hello, {name}: 8000 Hz, 18000 DPI");
+        JsonNode body = body(only("POST /v2/translate"));
         assertThat(body.path("target_lang").asText()).isEqualTo("EN-US");
-        assertThat(body.path("tag_handling").asText()).isEqualTo("xml");
-        assertThat(body.path("text").get(0).asText()).isEqualTo("Привет, <x>{name}</x> &amp; друзья");
+        assertThat(body.has("tag_handling")).isFalse();
+        assertThat(body.path("text").get(0).asText()).isEqualTo("Привет, {name}: 8000 Гц, 18000 DPI");
+    }
+
+    @Test
+    void glossaryIsCreatedOnceWithBothPairsAndOldOnesAreDeleted() throws Exception {
+        glossaries = "{\"glossaries\":[{\"glossary_id\":\"g-old\",\"name\":\"chisetup-000000000000\"},"
+                + "{\"glossary_id\":\"g-mine\",\"name\":\"someone-else\"}]}";
+        answer = "{\"translations\":[{\"text\":\"Mouse pad\"}]}";
+        DeepLTranslator client = client();
+
+        client.translate(List.of("Коврик"), "en", null);
+        client.translate(List.of("Коврик"), "uk", null);
+
+        assertThat(requests).filteredOn(r -> r.startsWith("GET /v3/glossaries")).hasSize(1);
+        assertThat(requests).anyMatch(r -> r.startsWith("DELETE /v3/glossaries/g-old"));
+        assertThat(requests).noneMatch(r -> r.startsWith("DELETE /v3/glossaries/g-mine"));
+        JsonNode created = body(only("POST /v3/glossaries"));
+        assertThat(created.path("name").asText()).startsWith("chisetup-");
+        assertThat(created.path("dictionaries")).extracting(d -> d.path("target_lang").asText())
+                .containsExactly("uk", "en");
+        assertThat(created.path("dictionaries").get(1).path("entries").asText()).contains("коврик	mouse pad");
+    }
+
+    @Test
+    void anExistingGlossaryIsReused() throws Exception {
+        String name = DeepLGlossary.name(DeepLGlossary.dictionaries(TranslationGlossary.TERMS));
+        glossaries = "{\"glossaries\":[{\"glossary_id\":\"g-1\",\"name\":\"" + name + "\"}]}";
+        answer = "{\"translations\":[{\"text\":\"Mouse pad\"}]}";
+
+        client().translate(List.of("Коврик"), "en", null);
+
+        assertThat(requests).noneMatch(r -> r.startsWith("POST /v3/") || r.startsWith("DELETE"));
+        assertThat(body(only("POST /v2/translate")).path("glossary_id").asText()).isEqualTo("g-1");
+    }
+
+    private String only(String prefix) {
+        List<String> found = requests.stream().filter(r -> r.startsWith(prefix)).toList();
+        assertThat(found).as(prefix).hasSize(1);
+        return found.get(0);
+    }
+
+    private static JsonNode body(String request) throws IOException {
+        return JSON.readTree(request.substring(request.indexOf("body=") + 5));
     }
 
     @Test

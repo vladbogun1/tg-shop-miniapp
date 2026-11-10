@@ -1,5 +1,7 @@
 package com.maxsolch.shop.translation.domain;
 
+import java.util.List;
+
 /**
  * Глоссарий ru → uk → en: контекст автоперевода (DeepL) и тот же текст, что {@code GLOSSARY} в промпте экрана
  * «Переводы» frontend-admin/features/translation/model/prompt.ts (проверяет CardPromptInSyncTest).
@@ -8,6 +10,34 @@ public final class TranslationGlossary {
 
     private TranslationGlossary() {
     }
+
+    /**
+     * A term the machine translator must render one way. {@code uk} is null where the translator's own Ukrainian is
+     * better: a forced Ukrainian term comes back wrongly inflected («накладеним платіжем», «килимом»), checked on a
+     * sample of the shop's texts on 10.11.2026; only what it got wrong without the glossary is forced.
+     */
+    public record Term(String ru, String uk, String en) {
+    }
+
+    /** Terms for the machine translator (DeepL glossary); the prose {@link #TEXT} goes along as context. */
+    public static final List<Term> TERMS = List.of(
+            new Term("коврик", null, "mouse pad"),
+            new Term("стеклопад", null, "glass pad"),
+            new Term("глайды", null, "mouse skates"),
+            new Term("кейкапы", null, "keycaps"),
+            new Term("рукав", null, "gaming sleeve"),
+            new Term("уценка", "уцінка", "open box"),
+            new Term("наложенный платёж", null, "cash on delivery"),
+            new Term("Новая Почта", null, "Nova Poshta"),
+            new Term("ТТН", null, "tracking number"),
+            new Term("частота опроса", null, "polling rate"),
+            new Term("переключатели", null, "switches"),
+            new Term("свитчи", null, "switches"),
+            new Term("дуйка", null, "air blower"),
+            new Term("на весь стол", null, "desk-size"),
+            new Term("IEM-наушники", null, "IEM earphones"),
+            new Term("тканевый", null, "cloth"),
+            new Term("скольжение", null, "glide"));
 
     public static final String TEXT = """
 Глайды, скейтсы → uk: Глайди → en: mouse skates (glides); категория — «Mouse Skates»

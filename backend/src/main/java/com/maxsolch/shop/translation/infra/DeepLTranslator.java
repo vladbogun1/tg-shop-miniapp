@@ -8,6 +8,8 @@ import com.maxsolch.shop.platform.http.ResilientHttp;
 import com.maxsolch.shop.translation.domain.MachineTranslationException;
 import com.maxsolch.shop.translation.domain.MachineTranslationException.Kind;
 import com.maxsolch.shop.translation.domain.MachineTranslator;
+import com.maxsolch.shop.translation.domain.TranslationGlossary;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -20,6 +22,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * DeepL API v2: {@code GET /v2/usage} and {@code POST /v2/translate}.
@@ -28,9 +31,12 @@ import java.util.Map;
  * characters once more, so an I/O error or 502–504 is repeated once ({@link ResilientHttp}). 456 = the monthly
  * characters are spent, 403 = bad key, 429/5xx = try on the next run.
  *
- * <p>Placeholders like {@code {name}} must come back untouched: such texts go in XML mode with the placeholder inside
- * an ignored {@code <x>} tag; sentences are still split on new lines so the lines of the source stay lines.
+ * <p>Texts go as plain text: DeepL keeps {@code {name}} placeholders as they are, while its XML mode moved the text
+ * around ignored tags onto new lines (checked 10.11.2026); a mangled placeholder is caught by the answer check.
+ * Terms go in the shop's glossary ({@link DeepLGlossary}): found or created on first use, then kept by id; without it
+ * (refused, not found) the text is still translated, the glossary is looked up again on the next call.
  */
+@Slf4j
 @Component
 public class DeepLTranslator implements MachineTranslator {
 
@@ -44,6 +50,7 @@ public class DeepLTranslator implements MachineTranslator {
     private final ResilientHttp http;
     private final ObjectMapper mapper;
     private final DeepLProperties props;
+    private final AtomicReference<String> glossaryId = new AtomicReference<>();
 
     public DeepLTranslator(DeepLProperties props, ObjectMapper mapper, HttpClients clients) {
         this.http = clients.create(HTTP);
@@ -69,7 +76,7 @@ public class DeepLTranslator implements MachineTranslator {
     @Override
     public Usage usage() throws MachineTranslationException {
         HttpRequest req = base("/v2/usage").GET().build();
-        JsonNode body = call(req, false);
+        JsonNode body = call(req, "usage", true);
         return new Usage(body.path("character_count").asLong(0), body.path("character_limit").asLong(0));
     }
 
@@ -79,9 +86,8 @@ public class DeepLTranslator implements MachineTranslator {
         if (texts.isEmpty()) {
             return List.of();
         }
-        boolean xml = texts.stream().anyMatch(DeepLMarkup::needsXml);
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("text", xml ? texts.stream().map(DeepLMarkup::toXml).toList() : texts);
+        payload.put("text", texts);
         payload.put("source_lang", "RU");
         payload.put("target_lang", target(locale));
         payload.put("preserve_formatting", true);
@@ -89,23 +95,26 @@ public class DeepLTranslator implements MachineTranslator {
         if (context != null && !context.isBlank()) {
             payload.put("context", context);
         }
-        if (xml) {
-            payload.put("tag_handling", "xml");
-            payload.put("ignore_tags", List.of(DeepLMarkup.TAG));
+        String glossary = glossaryFor(locale);
+        if (glossary != null) {
+            payload.put("glossary_id", glossary);
         }
-        JsonNode body = call(base("/v2/translate")
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(json(payload), StandardCharsets.UTF_8))
-                .build(), true);
+        JsonNode body;
+        try {
+            body = call(post("/v2/translate", payload), "translate", true);
+        } catch (MachineTranslationException e) {
+            glossaryId.set(null);
+            throw e;
+        }
         JsonNode list = body.path("translations");
         if (!list.isArray() || list.size() != texts.size()) {
             throw new MachineTranslationException(Kind.BAD_ANSWER,
                     "deepl answered " + list.size() + " translations for " + texts.size() + " texts");
         }
         List<String> out = new ArrayList<>(texts.size());
-        for (JsonNode t : list) {
-            String text = t.path("text").asText("");
-            out.add(xml ? DeepLMarkup.fromXml(text) : text);
+        for (int i = 0; i < texts.size(); i++) {
+            String text = list.get(i).path("text").asText("");
+            out.add("en".equals(locale) ? DeepLGlossary.ungroupNumbers(texts.get(i), text) : text);
         }
         return out;
     }
@@ -118,16 +127,70 @@ public class DeepLTranslator implements MachineTranslator {
         };
     }
 
+    /** The shop's glossary id when it has terms for this language; null = translate without it. */
+    private String glossaryFor(String locale) throws MachineTranslationException {
+        Map<String, String> dicts = DeepLGlossary.dictionaries(TranslationGlossary.TERMS);
+        if (!dicts.containsKey(locale)) {
+            return null;
+        }
+        String cached = glossaryId.get();
+        if (cached != null) {
+            return cached;
+        }
+        try {
+            String id = findOrCreateGlossary(dicts);
+            glossaryId.set(id);
+            return id;
+        } catch (MachineTranslationException e) {
+            if (e.kind() == Kind.AUTH || e.kind() == Kind.QUOTA) {
+                throw e;
+            }
+            log.warn("deepl glossary unavailable, translating without it: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private String findOrCreateGlossary(Map<String, String> dicts) throws MachineTranslationException {
+        String name = DeepLGlossary.name(dicts);
+        String found = null;
+        for (JsonNode g : call(base("/v3/glossaries").GET().build(), "glossaries", true).path("glossaries")) {
+            String id = g.path("glossary_id").asText("");
+            String gName = g.path("name").asText("");
+            if (found == null && gName.equals(name)) {
+                found = id;
+            } else if (gName.startsWith(DeepLGlossary.PREFIX)) {
+                call(base("/v3/glossaries/" + id).DELETE().build(), "glossary delete", true);
+            }
+        }
+        if (found != null) {
+            return found;
+        }
+        String id = call(post("/v3/glossaries", DeepLGlossary.createBody(name, dicts)), "glossary create", false)
+                .path("glossary_id").asText("");
+        if (id.isEmpty()) {
+            throw new MachineTranslationException(Kind.BAD_ANSWER, "deepl created a glossary without id");
+        }
+        log.info("deepl glossary {} created", name);
+        return id;
+    }
+
+    private HttpRequest post(String path, Object payload) throws MachineTranslationException {
+        return base(path)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(json(payload), StandardCharsets.UTF_8))
+                .build();
+    }
+
     private HttpRequest.Builder base(String path) {
         return HttpRequest.newBuilder(URI.create(props.effectiveBaseUrl() + path))
                 .header("Authorization", "DeepL-Auth-Key " + props.getApiKey().trim())
                 .header("Accept", "application/json");
     }
 
-    private JsonNode call(HttpRequest req, boolean post) throws MachineTranslationException {
+    private JsonNode call(HttpRequest req, String what, boolean idempotent) throws MachineTranslationException {
         HttpResponse<String> res;
         try {
-            res = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8), true);
+            res = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8), idempotent);
         } catch (IOException e) {
             throw new MachineTranslationException(Kind.TEMPORARY, "deepl unreachable: " + e.getClass().getSimpleName(), e);
         } catch (InterruptedException e) {
@@ -137,12 +200,12 @@ public class DeepLTranslator implements MachineTranslator {
         int code = res.statusCode();
         if (code / 100 == 2) {
             try {
-                return mapper.readTree(res.body());
+                return res.body() == null || res.body().isBlank() ? mapper.missingNode() : mapper.readTree(res.body());
             } catch (IOException e) {
                 throw new MachineTranslationException(Kind.BAD_ANSWER, "deepl answer is not json", e);
             }
         }
-        throw new MachineTranslationException(kindOf(code), "deepl " + (post ? "translate" : "usage") + " answered " + code);
+        throw new MachineTranslationException(kindOf(code), "deepl " + what + " answered " + code);
     }
 
     static Kind kindOf(int status) {
