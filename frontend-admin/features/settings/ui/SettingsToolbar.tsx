@@ -42,9 +42,3 @@ export function SettingsToolbar({
     </div>
   );
 }
-
-/** Совпадает ли настройка с поиском (подпись, описание, ключ). */
-export function matchesQuery(parts: Array<string | null | undefined>, query: string): boolean {
-  const q = query.trim().toLowerCase();
-  return q === "" || parts.some((p) => (p ?? "").toLowerCase().includes(q));
-}

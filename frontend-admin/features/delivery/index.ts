@@ -6,6 +6,9 @@ export { ShipmentBlock, type ShipmentOrder } from "./ui/ShipmentBlock";
 export { Chip, Notice, ShipmentStageBadge } from "./ui/parts";
 export { LabelPrint } from "./ui/LabelPrint";
 export { ShipmentDialog } from "./ui/ShipmentDialog";
+export { NP_PANELS, NpSettingsPanels, type NpPanelId } from "./ui/settings/NpSettingsPanels";
+export { ParcelSizeEditor } from "./ui/size/ParcelSizeEditor";
+export { CategoryParcelSize } from "./ui/size/CategoryParcelSize";
 export type { ShipmentMode } from "./model/shipment-form";
 
 export { npDirectoryApi, type BranchKind } from "./api";

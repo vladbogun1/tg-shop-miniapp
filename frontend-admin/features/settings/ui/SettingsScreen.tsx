@@ -27,7 +27,12 @@ import { DevicePanel } from "./DevicePanel";
 import { SaveBar } from "./SaveBar";
 import { BotTexts, GroupFields } from "./SettingGroups";
 import { SystemPanel } from "./SystemPanel";
-import { matchesQuery, SettingsToolbar } from "./SettingsToolbar";
+import { SettingsToolbar } from "./SettingsToolbar";
+import { matchesQuery } from "../model/search";
+import { NP_PANELS, NpSettingsPanels } from "@/features/delivery";
+
+/** Группа «Новая Почта»: кроме настроек, в ней панели отправителя, вебхуков и размеров (их тоже находит поиск). */
+const NP_GROUP = "novaposhta";
 
 const EMPTY_DRAFT: Draft = {};
 
@@ -67,7 +72,9 @@ export function SettingsScreen() {
   const dirty = dirtyItems.length > 0;
   // Поиск скрывает несовпавшие настройки; правки в скрытых полях остаются в форме и сохраняются.
   const shown = useMemo(() => items.filter((it) => matchesQuery([it.label, it.description, it.key], query)), [items, query]);
-  const visibleGroups = (q.data?.groups ?? []).filter((g) => shown.some((it) => it.group === g.id));
+  const npShown = NP_PANELS.filter((p) => matchesQuery([p.title, p.keywords], query)).map((p) => p.id);
+  const hasContent = (id: string) => shown.some((it) => it.group === id) || (id === NP_GROUP && npShown.length > 0);
+  const visibleGroups = (q.data?.groups ?? []).filter((g) => hasContent(g.id));
   const showFirstDirty = () => document.getElementById("setting-" + dirtyItems[0]?.key)?.scrollIntoView({ block: "center", behavior: "smooth" });
 
   // Уход со страницы с несохранёнными правками их теряет — спросить (закрытие вкладки и ссылки меню).
@@ -112,7 +119,6 @@ export function SettingsScreen() {
             )}
             {visibleGroups.map((g, i) => {
               const groupItems = shown.filter((it) => it.group === g.id);
-              if (groupItems.length === 0) return null;
               // Редактируется на своей странице (подарок — вместе с призами кейса).
               if (g.id === "gift") return <GiftLink key={g.id} title={g.title} />;
               return (
@@ -148,6 +154,7 @@ export function SettingsScreen() {
                       ) : (
                         <GroupFields items={groupItems} draft={draft} onChange={change} onReset={reset} />
                       )}
+                      {g.id === NP_GROUP && <NpSettingsPanels shown={npShown} />}
                     </>
                   )}
                 </motion.section>

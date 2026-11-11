@@ -24,8 +24,9 @@ import { useSaveCategory, useSpecAttributesQuery } from "../../queries";
 import { CategoryMainTab } from "./CategoryMainTab";
 import { CategorySeoTab } from "./CategorySeoTab";
 import { CategorySpecsTab } from "./CategorySpecsTab";
+import { CategoryParcelSize } from "@/features/delivery";
 
-export type CategoryTab = "main" | "seo" | "specs";
+export type CategoryTab = "main" | "seo" | "specs" | "parcel";
 
 function dialogTitle(category: AdminCategory | null, parentId: string): string {
   if (category) return `Категория · ${category.name}`;
@@ -44,6 +45,7 @@ interface FooterProps {
 
 function footerHint(tab: CategoryTab, category: AdminCategory | null): string {
   if (tab === "specs") return "Характеристики сохраняются сразу";
+  if (tab === "parcel") return "Размер сохраняется своей кнопкой";
   return category ? `/catalog/${category.slug}` : "";
 }
 
@@ -55,7 +57,7 @@ function CategoryFooter({ tab, category, dirty, saving, canSave, onClose, onSave
         <Button variant="ghost" onClick={onClose} disabled={saving}>
           {category && !dirty ? "Закрыть" : "Отмена"}
         </Button>
-        {tab !== "specs" && (
+        {tab !== "specs" && tab !== "parcel" && (
           <Button
             variant="accent"
             loading={saving}
@@ -155,6 +157,8 @@ export function CategoryDialog({
           { value: "main", label: "Основное" },
           { value: "seo", label: "SEO" },
           { value: "specs", label: "Характеристики", count: category ? attrsQ.data?.length : undefined },
+          // Размер посылки есть только у сохранённой категории.
+          ...(category ? [{ value: "parcel" as const, label: "Посылка" }] : []),
         ]}
       />
 
@@ -166,6 +170,7 @@ export function CategoryDialog({
         )}
         {tab === "seo" && <CategorySeoTab f={f} set={set} seoSourceChanged={seoSourceChanged} />}
         {tab === "specs" && <CategorySpecsTab open={open} category={category} categories={categories} hasChildren={hasChildren} />}
+        {tab === "parcel" && category && <CategoryParcelSize categoryId={category.id} />}
       </div>
     </Modal>
   );

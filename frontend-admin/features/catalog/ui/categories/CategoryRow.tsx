@@ -217,7 +217,7 @@ export function CategoryRow({
   reorderDisabled: boolean;
   onUp: () => void;
   onDown: () => void;
-  onEdit: (tab?: "main" | "seo" | "specs") => void;
+  onEdit: (tab?: CategoryTab) => void;
   onAddChild?: () => void;
   onMove?: () => void;
   onDelete: () => void;

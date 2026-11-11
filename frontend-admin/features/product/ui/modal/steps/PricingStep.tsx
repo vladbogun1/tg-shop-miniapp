@@ -5,6 +5,7 @@ import { ProductPickModal } from "../../ProductPickModal";
 import { Input } from "@/components/ui/Input";
 import { stockRaiseRows } from "../../../model/form";
 import { Variants } from "../Variants";
+import { ParcelSizeEditor } from "@/features/delivery";
 import type { ProductCtx } from "../ctx";
 
 /** «Отмена» в «Откуда +N шт?»: штуки строки — как при открытии формы (новый вариант — 0). */
@@ -89,6 +90,8 @@ export function PricingStep({ x }: { x: ProductCtx }) {
       <StockSection x={x} />
       {product?.id && <WaitLine productId={product.id} title={product.title} />}
       {product?.id && effectiveStock === 0 && <FactoryOrderLine product={product} ProductPicker={ProductPickModal} />}
+      {/* Только у сохранённого товара: размеры сохраняются отдельно от формы, своим эндпоинтом. */}
+      {product?.id && <ParcelSizeEditor productId={product.id} />}
     </div>
   );
 }
