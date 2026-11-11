@@ -74,6 +74,11 @@ class NovaPoshtaSyncTest {
         sync = TestSync.create(props, warehouses, cities, settings);
     }
 
+    /** The getWarehouses reads only (each run first asks getWarehouseTypes). */
+    private List<String> pages() {
+        return bodies.stream().filter(b -> b.contains("\"getWarehouses\"")).toList();
+    }
+
     @AfterEach
     void stop() {
         server.stop(0);
@@ -87,13 +92,14 @@ class NovaPoshtaSyncTest {
 
         sync.sync();
 
-        JsonNode asked = JSON.readTree(bodies.get(0));
+        JsonNode asked = JSON.readTree(pages().get(0));
         assertThat(asked.path("apiKey").asText()).isEqualTo("test-key");
         assertThat(asked.path("modelName").asText()).isEqualTo("AddressGeneral");
         assertThat(asked.path("calledMethod").asText()).isEqualTo("getWarehouses");
         assertThat(asked.path("methodProperties").path("Page").asText()).isEqualTo("1");
         assertThat(asked.path("methodProperties").path("Limit").asText()).isEqualTo("500");
-        assertThat(bodies).hasSize(1);
+        assertThat(pages()).hasSize(1);
+        assertThat(JSON.readTree(bodies.get(0)).path("calledMethod").asText()).isEqualTo("getWarehouseTypes");
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<NovaPoshtaWarehouse>> saved = ArgumentCaptor.forClass(List.class);
@@ -200,10 +206,12 @@ class NovaPoshtaSyncTest {
         assertThat(inside.await(5, TimeUnit.SECONDS)).isTrue();
 
         sync.sync(); // overlaps: must return at once without asking the API again
+        int whileRunning = bodies.size();
         release.countDown();
         first.join(5_000);
 
-        assertThat(bodies).hasSize(1);
+        assertThat(whileRunning).isEqualTo(1);
+        assertThat(pages()).hasSize(1);
     }
 
     @Test
@@ -248,7 +256,10 @@ class NovaPoshtaSyncTest {
 
         sync.sync();
 
-        assertThat(bodies).hasSize(2); // the same read asked twice
+        // The first read (getWarehouseTypes) hit the hiccup and was asked again; the page was read once.
+        assertThat(bodies).hasSize(3);
+        assertThat(bodies.get(0)).isEqualTo(bodies.get(1));
+        assertThat(pages()).hasSize(1);
         verify(settings).putSystem(eq(NovaPoshtaSyncStatus.LAST_SYNC_SUMMARY), eq("отделений: 1, городов: 1"));
     }
 

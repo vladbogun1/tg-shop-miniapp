@@ -151,6 +151,7 @@ public class NovaPoshtaService {
 
     /** POSTOMAT | BRANCH | POINT | OTHER for a TypeOfWarehouse ref (built-in, the fallback). */
     public static String categoryOf(String typeRef) {
+        if (typeRef == null) return "OTHER";
         if (TYPES_POSTOMAT.contains(typeRef)) return "POSTOMAT";
         if (TYPES_BRANCH.contains(typeRef)) return "BRANCH";
         if (TYPES_POINT.contains(typeRef)) return "POINT";
