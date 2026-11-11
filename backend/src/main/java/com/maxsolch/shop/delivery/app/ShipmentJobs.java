@@ -22,7 +22,7 @@ public class ShipmentJobs {
     }
 
     @SchedulerLock(name = "ShipmentJobs.track", lockAtMostFor = "PT25M", lockAtLeastFor = "PT1M")
-    @Scheduled(cron = "${app.novaposhta.tracking-cron:0 */30 * * * *}", zone = "${app.timezone:Europe/Kyiv}")
+    @Scheduled(cron = "${app.novaposhta.tracking-cron:0 */30 * * * *}", zone = "${app.timezone}")
     public void track() {
         try {
             int n = tracking.pollDue();
