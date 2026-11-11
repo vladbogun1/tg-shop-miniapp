@@ -94,7 +94,7 @@ public final class WaybillRequest {
     }
 
     /** {@code OptionsSeat}: one entry per seat with its own sides and weight (NP prices each seat). */
-    static void seats(ArrayNode out, Parcel parcel) {
+    public static void seats(ArrayNode out, Parcel parcel) {
         for (Parcel.Seat st : parcel.seats()) {
             ObjectNode seat = out.addObject();
             seat.put("volumetricVolume", m3(st.lengthMm(), st.widthMm(), st.heightMm()));

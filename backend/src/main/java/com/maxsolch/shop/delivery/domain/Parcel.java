@@ -40,7 +40,7 @@ public record Parcel(int weightG, int lengthMm, int widthMm, int heightMm, Strin
         return documents ? "Documents" : "Parcel";
     }
 
-    static Parcel of(List<Seat> seats, String source, long packMinor) {
+    public static Parcel of(List<Seat> seats, String source, long packMinor) {
         Seat first = seats.get(0);
         int weight = seats.stream().mapToInt(Seat::weightG).sum();
         return new Parcel(weight, first.lengthMm(), first.widthMm(), first.heightMm(), source, seats, packMinor);
