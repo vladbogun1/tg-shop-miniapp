@@ -16,6 +16,7 @@ import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.order.infra.OrderProperties;
 import com.maxsolch.shop.platform.util.MoneyFormat;
 import com.maxsolch.shop.platform.tx.DomainEvents;
+import com.maxsolch.shop.settings.app.SettingsService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,9 +36,11 @@ public class OrderLifecycle {
     private final OrderStock stock;
     private final DomainEvents events;
     private final OrderProperties props;
+    private final SettingsService settings;
 
     OrderLifecycle(OrderOps ops, OrderRepository orderRepository, OrderStock stock, DomainEvents events,
-                   OrderProperties props) {
+                   OrderProperties props, SettingsService settings) {
+        this.settings = settings;
         this.ops = ops;
         this.orderRepository = orderRepository;
         this.stock = stock;
@@ -48,8 +51,30 @@ public class OrderLifecycle {
     @Transactional
     public Order approve(byte[] orderId) {
         Order order = ops.lock(orderId);
+        requirePaidToApprove(order);
         order.approve(ops.now());
         return ops.afterTransition(order);
+    }
+
+    /**
+     * «Не одобрять неоплаченные» (on by default): an order whose online payment (or prepayment) has not arrived waits.
+     * «При отриманні» and admin orders without a deadline have nothing to wait for.
+     */
+    private void requirePaidToApprove(Order order) {
+        if (order.getStatus() != OrderStatus.NEW || !OrderMoney.onlinePaymentMissing(order)
+                || !settings.get(CheckoutSettings.FORBID_APPROVE_UNPAID, true)) {
+            return;
+        }
+        String shortId = com.maxsolch.shop.platform.util.UuidUtil.toString(order.getId()).substring(0, 8);
+        throw new DomainException.BadRequest(order.getPrepaymentMinor() > 0
+                ? OrderError.APPROVE_PREPAYMENT_MISSING : OrderError.APPROVE_ONLINE_PAYMENT_MISSING,
+                shortId, MoneyFormat.uah(OrderMoney.amountDueMinor(order)));
+    }
+
+    /** Whether {@link #approve} would refuse it now for a missing online payment (the admin card greys the button). */
+    public boolean approveBlockedUnpaid(Order order) {
+        return order.getStatus() == OrderStatus.NEW && OrderMoney.onlinePaymentMissing(order)
+                && settings.get(CheckoutSettings.FORBID_APPROVE_UNPAID, true);
     }
 
     @Transactional
@@ -190,5 +215,23 @@ public class OrderLifecycle {
         return ops.reject(order, new RejectCause(now,
                 RejectReason.unpaid(Math.max(1, props.getPayment().getDueHours())),
                 RejectReasonCode.PAYMENT_TIMEOUT.name(), false));
+    }
+
+    /**
+     * A NEW «при отриманні» order nobody approved within {@code payment.onDeliveryHoldHours}: rejected like an unpaid
+     * one, the goods back on the shelf. Null when it no longer qualifies (approved, paid, switched off, too fresh).
+     */
+    @Transactional
+    public Order expireOnDeliveryHold(byte[] orderId, Instant now) {
+        Order order = ops.lock(orderId);
+        int hours = settings.get(CheckoutSettings.ON_DELIVERY_HOLD_HOURS, 48);
+        if (hours <= 0 || order.getStatus() != OrderStatus.NEW || !order.isPaymentOnDelivery() || order.isPaid()
+                || order.getReceivedMinor() > 0 || order.getCreatedAt() == null
+                || order.getCreatedAt().plus(java.time.Duration.ofHours(hours)).isAfter(now)) {
+            return null;
+        }
+        stock.restoreAll(order);
+        return ops.reject(order, new RejectCause(now, RejectReason.notApproved(hours),
+                RejectReasonCode.NO_RESPONSE.name(), false));
     }
 }

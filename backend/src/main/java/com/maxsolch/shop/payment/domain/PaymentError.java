@@ -27,7 +27,10 @@ public enum PaymentError implements ErrorCode {
     ALL_METHODS_DISABLED,
     METHOD_FIELD_INVALID,
     METHOD_TITLE_REQUIRED,
-    PREPAYMENT_NEGATIVE;
+    PREPAYMENT_NEGATIVE,
+    /** {0} — what the admin typed into the deliveries of an option. */
+    DELIVERY_UNKNOWN,
+    DELIVERY_REQUIRED;
 
     private final String code;
 

@@ -24,11 +24,14 @@ public class OrderPaymentOptionsAdapter implements OrderPaymentOptions {
 
     @Override
     public Optional<Option> firstActive() {
-        return repository.findByActiveTrueOrderBySortOrderAsc().stream().findFirst()
+        return repository.findByActiveTrueOrderBySortOrderAsc().stream()
+                .filter(po -> !po.isOnDelivery())
+                .findFirst()
                 .map(OrderPaymentOptionsAdapter::toOption);
     }
 
     private static Option toOption(PaymentOption po) {
-        return new Option(po.getId(), po.getTitle(), po.isRequiresPrepayment(), po.getPrepaymentMinor());
+        return new Option(po.getId(), po.getTitle(), po.isRequiresPrepayment(), po.getPrepaymentMinor(),
+                po.getKind(), po.getDeliveryMethods());
     }
 }

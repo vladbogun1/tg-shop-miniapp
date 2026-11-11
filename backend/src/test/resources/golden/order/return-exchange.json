@@ -97,6 +97,15 @@
     "uncollectedMinor" : 0,
     "balanceOnDelivery" : false,
     "topUpNotified" : false,
+    "npServiceType" : null,
+    "npStreetName" : null,
+    "npBuilding" : null,
+    "npFlat" : null,
+    "recipientLastName" : null,
+    "recipientFirstName" : null,
+    "recipientMiddleName" : null,
+    "paymentOnDelivery" : false,
+    "shipment" : null,
     "admin" : null
   },
   "adminDetail" : {
@@ -210,6 +219,15 @@
     "uncollectedMinor" : 0,
     "balanceOnDelivery" : false,
     "topUpNotified" : false,
+    "npServiceType" : null,
+    "npStreetName" : null,
+    "npBuilding" : null,
+    "npFlat" : null,
+    "recipientLastName" : null,
+    "recipientFirstName" : null,
+    "recipientMiddleName" : null,
+    "paymentOnDelivery" : false,
+    "shipment" : null,
     "admin" : {
       "archivedAt" : "2026-10-20T12:00:00Z",
       "archivedBy" : "claude-tech",
@@ -404,7 +422,10 @@
     "cancelRequestStatus" : null,
     "giftCaseStatus" : null,
     "giftCaseOpenable" : false,
-    "uncollectedMinor" : 0
+    "uncollectedMinor" : 0,
+    "trackingNumber" : null,
+    "shipmentStage" : null,
+    "trackingUrl" : null
   },
   "dispatch" : {
     "id" : "00000000-0000-4000-8000-000000000003",
@@ -442,6 +463,12 @@
     "approvedAt" : "2026-10-02T11:00:00Z",
     "status" : "DELIVERED",
     "paymentDueAt" : null,
-    "amountDueMinor" : 0
+    "amountDueMinor" : 0,
+    "npServiceType" : null,
+    "paymentOnDelivery" : false,
+    "shipmentStage" : null,
+    "shipmentOrigin" : null,
+    "shipmentStatusText" : null,
+    "shipmentStaleReasons" : [ ]
   }
 }

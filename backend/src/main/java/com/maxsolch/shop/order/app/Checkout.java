@@ -12,6 +12,7 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.DeliveryMethod;
 import com.maxsolch.shop.order.domain.DeliveryTarget;
 import com.maxsolch.shop.order.domain.OrderBuyer;
+import com.maxsolch.shop.order.domain.RecipientName;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoney;
 import com.maxsolch.shop.order.domain.OrderMoneyMovement;
@@ -73,6 +74,8 @@ public class Checkout {
     private final OrderProperties props;
     /** The buyer's row lock: see {@link Customers#lockForUpdate}. */
     private final Customers customers;
+    /** Recipient, Nova Poshta address and «при отриманні» (checkout v2). */
+    private final CheckoutDelivery delivery;
 
     Checkout(OrderRepository orderRepository,
                         Products productRepository,
@@ -88,8 +91,10 @@ public class Checkout {
                         OrderOps ops,
                         OrderGiftPrizes giftPrizes,
                         OrderProperties props,
-                        Customers customers) {
+                        Customers customers,
+                        CheckoutDelivery delivery) {
         this.customers = customers;
+        this.delivery = delivery;
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.paymentOptions = paymentOptions;
@@ -141,7 +146,9 @@ public class Checkout {
             toSave.add(reserveLine(order, line, locked, cmd.userId()));
         }
 
+        delivery.checkPostomatFits(order, cmd);
         long lowMarginMinor = applyPromo(order, cmd);
+        delivery.checkOnDeliveryLimits(order, cmd.userId());
 
         // The gift for the order sum (docs/GIFT-CASE.md), against the total after the discount: the
         // tier's guaranteed discount (the customer's choice) or its case — the prize is drawn now.
@@ -196,23 +203,21 @@ public class Checkout {
     /** The new order with its buyer, delivery target and payment option snapshot - no lines yet. */
     private Order newOrder(CreateOrderCommand cmd, DeliveryMethod deliveryMethod) {
         Order order = new Order();
+        CheckoutDelivery.Recipient recipient = delivery.recipient(cmd);
         order.placeBy(new OrderBuyer(cmd.userId(), cmd.tgUserId(), cmd.tgUsername(),
-                required(cmd.customerName(), "customerName"), required(cmd.phone(), "phone"), cmd.comment()),
+                recipient.customerName(), required(cmd.phone(), "phone"), cmd.comment()),
                 cmd.source());
+        order.nameRecipient(recipient.parts());
+        order.deliverTo(delivery.target(cmd, deliveryMethod));
 
-        boolean pickup = deliveryMethod != DeliveryMethod.NOVA_POSHTA;
-        order.deliverTo(new DeliveryTarget(deliveryMethod,
-                pickup ? null : cmd.npCityRef(), pickup ? null : cmd.npCityName(),
-                pickup ? null : cmd.npWarehouseRef(), pickup ? null : cmd.npWarehouseName()));
-
-        // Payment option snapshot. Every option is paid online now (in full, or a prepayment with
-        // the rest cash on delivery), so one must be chosen; the clock to pay starts here.
+        // Payment option snapshot: online (in full, or a prepayment with the rest cash on delivery; the
+        // clock to pay starts here) or «при отриманні» when it is switched on.
         if (cmd.paymentOptionId() == null || cmd.paymentOptionId().isBlank()) {
             throw new DomainException.BadRequest(OrderError.PAYMENT_METHOD_REQUIRED);
         }
         OrderPaymentOptions.Option po = paymentOptions.findActive(ops.toBytes(cmd.paymentOptionId(), "paymentOptionId"))
                 .orElseThrow(() -> new DomainException.BadRequest(OrderError.PAYMENT_METHOD_UNKNOWN));
-        order.choosePayment(po.id(), po.title(), po.requiresPrepayment() ? po.prepaymentMinor() : 0,
+        delivery.choosePayment(order, po,
                 ops.now().plus(Duration.ofHours(Math.max(1, props.getPayment().getDueHours()))));
         return order;
     }
@@ -308,7 +313,16 @@ public class Checkout {
                 original.getDeliveryMethod() == null ? null : original.getDeliveryMethod().name(),
                 original.getNpCityRef(), original.getNpCityName(), original.getNpWarehouseRef(),
                 original.getNpWarehouseName(), exchangePaymentOptionId(original), OrderSource.ADMIN,
-                OrderGifts.CHOICE_NONE), 0, OrderMoneyMovement.Channel.OTHER, adminName, null);
+                OrderGifts.CHOICE_NONE, exchangeDetails(original)), 0, OrderMoneyMovement.Channel.OTHER, adminName, null);
+    }
+
+    /** The original's courier address and split name, so the replacement goes where the original went. */
+    private static CreateOrderCommand.NpDetails exchangeDetails(Order original) {
+        DeliveryTarget t = original.deliveryTarget();
+        RecipientName r = original.recipientName();
+        return new CreateOrderCommand.NpDetails(t.serviceType() == null ? null : t.serviceType().name(),
+                t.npStreetRef(), t.npStreetName(), t.npBuilding(), t.npFlat(),
+                r == null ? null : r.lastName(), r == null ? null : r.firstName(), r == null ? null : r.middleName());
     }
 
     /**
@@ -317,7 +331,9 @@ public class Checkout {
      */
     public String exchangePaymentOptionId(Order original) {
         if (original.getPaymentOptionId() != null) {
-            Optional<OrderPaymentOptions.Option> po = paymentOptions.findActive(original.getPaymentOptionId());
+            // «При отриманні» is not carried over: the replacement would count against the original's open limit.
+            Optional<OrderPaymentOptions.Option> po = paymentOptions.findActive(original.getPaymentOptionId())
+                    .filter(o -> !o.onDelivery());
             if (po.isPresent()) {
                 return UuidUtil.toString(po.get().id());
             }

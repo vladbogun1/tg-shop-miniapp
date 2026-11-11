@@ -45,9 +45,14 @@ public class OrderGiftCases {
     private final OrderPromos promos;
     private final OrderGiftPrizes prizes;
 
+    /** Nothing changes once Nova Poshta holds the parcel. */
+    private final ParcelGuard parcels;
+
     OrderGiftCases(OrderOps ops, OrderRepository orderRepository, Products productRepository, OrderStock stock,
                    DomainEvents events, Messages messages, OrderGifts gifts, OrderPromos promos,
-                   OrderGiftPrizes prizes) {
+                   OrderGiftPrizes prizes,
+            ParcelGuard parcels) {
+        this.parcels = parcels;
         this.ops = ops;
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
@@ -170,6 +175,7 @@ public class OrderGiftCases {
     public Order grantGiftCase(byte[] orderId, String tierName, boolean notifyCustomer) {
         Order order = ops.lock(orderId);
         order.requireEditable();
+        parcels.requireNotHandedOver(order);
         if (order.getGiftCaseStatus() != null) {
             throw new DomainException.BadRequest(OrderError.GIFT_CASE_ALREADY_EXISTS);
         }

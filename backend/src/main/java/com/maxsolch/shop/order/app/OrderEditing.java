@@ -38,8 +38,13 @@ public class OrderEditing {
     private final OrderGifts gifts;
     private final OrderPromos promos;
 
+    /** Nothing changes once Nova Poshta holds the parcel. */
+    private final ParcelGuard parcels;
+
     OrderEditing(OrderOps ops, OrderRepository orderRepository, Products productRepository, OrderStock stock, Stock shelf,
-                 DomainEvents events, OrderGifts gifts, OrderPromos promos) {
+                 DomainEvents events, OrderGifts gifts, OrderPromos promos,
+            ParcelGuard parcels) {
+        this.parcels = parcels;
         this.ops = ops;
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
@@ -57,6 +62,7 @@ public class OrderEditing {
                          boolean gift, boolean notifyCustomer) {
         Order order = ops.lock(orderId);
         order.requireEditable();
+        parcels.requireNotHandedOver(order);
         if (qty < 1) {
             throw new DomainException.BadRequest(OrderError.QUANTITY_TOO_LOW);
         }
@@ -113,6 +119,7 @@ public class OrderEditing {
     public Order removeItem(byte[] orderId, long itemId) {
         Order order = ops.lock(orderId);
         order.requireEditable();
+        parcels.requireNotHandedOver(order);
         OrderItem item = order.getItems().stream()
                 .filter(i -> i.getId() != null && i.getId() == itemId)
                 .findFirst()
@@ -135,6 +142,7 @@ public class OrderEditing {
     public Order changeItemQuantity(byte[] orderId, long itemId, int newQty, boolean notifyCustomer) {
         Order order = ops.lock(orderId);
         order.requireEditable();
+        parcels.requireNotHandedOver(order);
         if (newQty < 1) {
             throw new DomainException.BadRequest(OrderError.QUANTITY_TOO_LOW_USE_REMOVE);
         }
@@ -160,6 +168,7 @@ public class OrderEditing {
                                Integer percent, boolean clear, boolean notifyCustomer) {
         Order order = ops.lock(orderId);
         order.requireEditable();
+        parcels.requireNotHandedOver(order);
         long subtotal = OrderMoney.subtotalMinor(order);
 
         // Release any previous REAL promo usage before re-applying.
