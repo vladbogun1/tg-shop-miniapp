@@ -9,8 +9,9 @@
 import { useState } from "react";
 import type { GiftTierInfo } from "@shop/core/giftcase";
 import type { OrderLimitCode } from "@shop/core/orders";
-import type { CreateOrderResult, DeliveryMethod, NpWarehouse } from "@shop/core/types";
+import type { CreateOrderResult } from "@shop/core/types";
 import { markGiftCaseAutoOpen } from "@shop/ui/gift-case";
+import type { DeliveryDraft } from "../delivery/draft";
 import type { Platform } from "../platform/platform";
 import type { CheckoutApi } from "./api";
 import { buildCreateOrderRequest, classifyOrderFailure, type OrderField, type OrderLineInput } from "./order-request";
@@ -21,14 +22,13 @@ type FailureT = (key: "checkout.promoDropped" | "checkout.failed" | "checkout.fi
 export interface PlaceOrderInput {
   /** Только то, что можно заказать; `key` — строка корзины, которую уберёт `onPlaced`. */
   lines: (OrderLineInput & { key: string })[];
-  name: string;
   phone: string;
   comment: string;
   promoCode: string;
   /** Отправляется ТОЛЬКО код, который сервер только что подтвердил. */
   promoValid: boolean;
-  delivery: DeliveryMethod;
-  warehouse: NpWarehouse | null;
+  /** Доставка и получатель (вкладка, точка или адрес курьера, ФИО по частям). */
+  draft: DeliveryDraft;
   /** Выбранный способ оплаты (`null` — отправлять нечего). */
   payment: { id: string } | null;
   giftTier: GiftTierInfo | null;
@@ -78,15 +78,13 @@ export function usePlaceOrder(deps: PlaceOrderDeps, input: PlaceOrderInput) {
     const { giftTier, giftDiscount } = input;
     const body = buildCreateOrderRequest({
       lines: input.lines,
-      name: input.name,
       phone: input.phone,
       comment: input.comment,
       // Отклонённый сервером код не отправляется: иначе заказ вернётся 400 «invalid promo code», а убрать код
       // отсюда нельзя — покупатель застрянет. Сумма на кнопке в этом случае без скидки, так что снятие кода
       // списывает ровно показанное.
       promoCode: input.promoValid ? input.promoCode.trim() : undefined,
-      delivery: input.delivery,
-      warehouse: input.warehouse,
+      draft: input.draft,
       paymentOptionId: input.payment.id,
       giftChoice: giftTier ? (giftDiscount > 0 ? "DISCOUNT" : "CASE") : undefined,
     });

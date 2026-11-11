@@ -15,6 +15,12 @@ export const checkoutKeys = {
   /** Один элемент на город: поле отделения и кадрирование карты читают один и тот же список. */
   npWarehouses: (cityRef: string) => ["np-warehouses", cityRef] as const,
   npCities: (term: string) => ["np-cities", term] as const,
+  /** Флаги служб НП (поштомат, курьер, подсказка цены). */
+  npConfig: () => ["np-config"] as const,
+  /** Улицы города для курьера: один элемент на город и набранный текст. */
+  npStreets: (cityRef: string, term: string) => ["np-streets", cityRef, term] as const,
+  /** «≈ N ₴»: ключ — город, служба, корзина и деньги (`estimateKey`). */
+  npEstimate: (key: string) => ["np-estimate", key] as const,
 };
 
 /** Сайт: проверка корзины и способы оплаты (зависят от языка экрана). */

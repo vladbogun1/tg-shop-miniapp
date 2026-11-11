@@ -5,7 +5,7 @@
 import { ApiError } from "@shop/core/errors";
 import { isOrderLimitCode, type OrderLimitCode } from "@shop/core/orders";
 import { phoneE164 } from "@shop/core/phone";
-import type { DeliveryMethod, NpWarehouse } from "@shop/core/types";
+import { buildDeliveryFields, type DeliveryDraft } from "../delivery/draft";
 import type { CreateOrderRequest } from "./api";
 
 /** Имя получателя: не короче двух символов без пробелов по краям. */
@@ -22,32 +22,24 @@ export interface OrderLineInput {
 export interface OrderRequestInput {
   /** Только то, что можно заказать (сайт отфильтровал строки без остатка заранее). */
   lines: OrderLineInput[];
-  name: string;
   phone: string;
   comment: string;
   /** Промокод, который сервер только что подтвердил. Отклонённый код не отправляется никогда. */
   promoCode: string | undefined;
-  delivery: DeliveryMethod;
-  warehouse: NpWarehouse | null;
+  /** Доставка и получатель (checkout v2): вкладка, город/точка или адрес курьера, ФИО по частям. */
+  draft: DeliveryDraft;
   paymentOptionId: string;
   /** Подарок за сумму: достигнут ли уровень и выбрана ли скидка. `undefined` — уровня нет. */
   giftChoice: "CASE" | "DISCOUNT" | undefined;
 }
 
 export function buildCreateOrderRequest(input: OrderRequestInput): CreateOrderRequest {
-  const np = input.delivery === "NOVA_POSHTA";
-  const w = input.warehouse;
   return {
     items: input.lines.map((l) => ({ productId: l.productId, variantId: l.variantId ?? undefined, quantity: l.quantity })),
-    customerName: input.name.trim(),
+    ...buildDeliveryFields(input.draft),
     phone: phoneE164(input.phone),
     comment: input.comment.trim() || undefined,
     promoCode: input.promoCode,
-    deliveryMethod: input.delivery,
-    npCityRef: np ? (w?.cityRef ?? undefined) : undefined,
-    npCityName: np ? (w?.cityName ?? undefined) : undefined,
-    npWarehouseRef: np ? w?.ref : undefined,
-    npWarehouseName: np ? w?.description : undefined,
     paymentOptionId: input.paymentOptionId,
     giftChoice: input.giftChoice,
   };
@@ -64,9 +56,21 @@ export type OrderFailure =
   /** Остальное: текст сервера, а без него — общий текст экрана (`message: null`). */
   | { kind: "other"; message: string | null };
 
-export type OrderField = "name" | "phone" | "comment";
+/** `name` — получатель (ФИО), `address` — доставка (точка, улица, дом). */
+export type OrderField = "name" | "phone" | "comment" | "address";
 
-const SERVER_FIELDS: Record<string, OrderField> = { customerName: "name", phone: "phone", comment: "comment" };
+const SERVER_FIELDS: Record<string, OrderField> = {
+  customerName: "name",
+  recipientLastName: "name",
+  recipientFirstName: "name",
+  recipientMiddleName: "name",
+  phone: "phone",
+  comment: "comment",
+  npWarehouseRef: "address",
+  npStreetName: "address",
+  npBuilding: "address",
+  npFlat: "address",
+};
 
 /** «customerName: must not be blank» от валидации Spring → поле формы. Сообщение сервера людям не показываем. */
 export function serverFieldOf(e: unknown): OrderField | null {
