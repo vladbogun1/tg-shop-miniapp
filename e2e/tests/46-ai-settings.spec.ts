@@ -58,13 +58,13 @@ test("финансист: лимит в долларах с гривнами, «
   await switchOf.click();
   await expect.poll(async () => (await value(api, TRANSLATION))!.value).toBe(before);
   await expect(month).toHaveValue("12,5");
-  await page.getByRole("button", { name: "Сохранить" }).click();
+  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
   await expect.poll(async () => (await value(api, MONTH))!.value).toBe(1250);
 
   // Неверная сумма не сохраняется и объясняется в долларах.
   await month.fill("1,234");
   await expect(field(page, MONTH)).toContainText("Сумма в долларах, например 10 или 2,50");
-  await expect(page.getByRole("button", { name: "Сохранить" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Сохранить", exact: true })).toBeDisabled();
   await month.fill("12,5");
 
   // Задач нет — кнопки «Остановить» нет.

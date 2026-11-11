@@ -11,7 +11,7 @@ import { dialog, expect, test, toast } from "../lib/test";
 test("правка описания не перезаписывает остаток, изменённый параллельно", async ({ page, api }) => {
   await page.goto(`/products?edit=${PRODUCT.socks}`);
   const modal = dialog(page, "Редактировать товар");
-  const description = modal.getByLabel("Описание", { exact: true });
+  const description = modal.getByRole("textbox", { name: "Описание", exact: true });
   await expect(description).toHaveValue("Тёплые носки.");
 
   // Meanwhile three pairs are sold.

@@ -79,7 +79,9 @@ export function SettingsScreen() {
   const dirty = dirtyItems.length > 0;
   // Поиск скрывает несовпавшие настройки; правки в скрытых полях остаются в форме и сохраняются.
   const shown = useMemo(() => items.filter((it) => matchesQuery([it.label, it.description, it.key], query)), [items, query]);
-  const npShown = NP_PANELS.filter((p) => matchesQuery([p.title, p.keywords], query)).map((p) => p.id);
+  // Панель находится и по названию своей группы: «пошта» ищет «Новая Почта», а не «Почты» в заголовке панели.
+  const npTitle = q.data?.groups.find((g) => g.id === NP_GROUP)?.title;
+  const npShown = NP_PANELS.filter((p) => matchesQuery([p.title, p.keywords, npTitle], query)).map((p) => p.id);
   const hasContent = (id: string) => shown.some((it) => it.group === id) || (id === NP_GROUP && npShown.length > 0);
   const visibleGroups = (q.data?.groups ?? []).filter((g) => hasContent(g.id));
   const showFirstDirty = () => document.getElementById("setting-" + dirtyItems[0]?.key)?.scrollIntoView({ block: "center", behavior: "smooth" });
