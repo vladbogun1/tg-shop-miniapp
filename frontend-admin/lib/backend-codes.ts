@@ -25,5 +25,11 @@ export function backendCodes(patterns: RegExp[]): string[] {
 /** `audit.record("КОД", …)` — действия админов. */
 export const AUDIT_CODE_PATTERNS = [/\.record\(\s*"([A-Z][A-Z0-9_]+)"/g];
 
-/** `send("метод", "ТИП", …)` у покупателя и `send("ТИП", …)` у предзаказов — сообщения бота. */
-export const BOT_TYPE_PATTERNS = [/\bsend\(\s*"[A-Za-z]+",\s*"([A-Z][A-Z_]+)"/g, /\bsend\(\s*"([A-Z][A-Z_]+)",/g];
+/**
+ * `send("метод", "ТИП", …)` у покупателя и `send("ТИП", …)` у предзаказов и посылок — сообщения бота.
+ * `send("GET", "/путь", …)` клиента НП — HTTP-метод и путь, не тип (второй аргумент со слэшем, первый пропускаем).
+ */
+export const BOT_TYPE_PATTERNS = [
+  /\bsend\(\s*"[A-Za-z]+",\s*"([A-Z][A-Z_]+)"/g,
+  /\bsend\(\s*"(?!(?:GET|POST|PUT|PATCH|DELETE)")([A-Z][A-Z_]+)",/g,
+];
