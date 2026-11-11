@@ -1,6 +1,7 @@
 import { toMajor, toMinor } from "@/lib/money";
 import type { PaymentOptionWrite } from "../api";
 import type { PaymentOptionFull } from "./types";
+import { ALL_DELIVERIES, KIND_ON_DELIVERY, deliveriesCsv, parseDeliveries, type DeliveryKind } from "./deliveries";
 
 /** Строка формы «Способы оплаты». */
 export interface OptionRow {
@@ -12,6 +13,10 @@ export interface OptionRow {
   requiresPrepayment: boolean;
   prepaymentMajor: string;
   active: boolean;
+  /** null — онлайн; ON_DELIVERY — «оплата при получении». Сервер меняет его только при создании: отправляем как есть. */
+  kind: string | null;
+  /** Для каких доставок показывается; все четыре — без ограничения. */
+  deliveries: DeliveryKind[];
 }
 
 let rowSeq = 0;
@@ -21,7 +26,16 @@ export function newRowKey(): string {
 }
 
 export function newRow(): OptionRow {
-  return { key: newRowKey(), title: "", description: "", requiresPrepayment: false, prepaymentMajor: "", active: true };
+  return {
+    key: newRowKey(),
+    title: "",
+    description: "",
+    requiresPrepayment: false,
+    prepaymentMajor: "",
+    active: true,
+    kind: null,
+    deliveries: [...ALL_DELIVERIES],
+  };
 }
 
 export function toRows(list: PaymentOptionFull[]): OptionRow[] {
@@ -33,12 +47,19 @@ export function toRows(list: PaymentOptionFull[]): OptionRow[] {
     requiresPrepayment: !!o.requiresPrepayment,
     prepaymentMajor: o.prepaymentMinor ? String(toMajor(o.prepaymentMinor)) : "",
     active: o.active !== false,
+    kind: o.kind || null,
+    deliveries: parseDeliveries(o.deliveryMethods),
   }));
+}
+
+/** «Оплата при получении»: её включают в настройках НП, она не держит оформление открытым. */
+export function isOnDelivery(o: Pick<OptionRow, "kind">): boolean {
+  return o.kind === KIND_ON_DELIVERY;
 }
 
 /** Сравнимый вид (без ключей React) для проверки «есть несохранённое». */
 export function optionsSnapshot(rows: OptionRow[]): string {
-  return JSON.stringify(rows.map((r) => [r.id, r.title, r.description, r.requiresPrepayment, r.prepaymentMajor, r.active]));
+  return JSON.stringify(rows.map((r) => [r.id, r.title, r.description, r.requiresPrepayment, r.prepaymentMajor, r.active, r.deliveries.join(",")]));
 }
 
 /** Предоплата в копейках; 0, если пусто или не положительное число. */
@@ -51,7 +72,8 @@ export function prepayMinor(o: OptionRow): number {
 /** Почему нельзя сохранить (текст для человека) или null. */
 export function saveBlocker(options: OptionRow[], loaded: boolean): string | null {
   const named = options.filter((o) => o.title.trim());
-  const activeCount = named.filter((o) => o.active).length;
+  // Как на сервере: «при получении» одна оформление не держит (выключается настройкой и не для всех доставок).
+  const activeCount = named.filter((o) => o.active && !isOnDelivery(o)).length;
   const blankTitles = options.some((o) => !o.title.trim() && (o.description.trim() || o.id));
   const noPrepayAmount = named.some((o) => o.requiresPrepayment && prepayMinor(o) <= 0);
   if (!loaded) return "Настройки не загружены";
@@ -72,6 +94,8 @@ export function toPayload(options: OptionRow[]): PaymentOptionWrite[] {
       requiresPrepayment: o.requiresPrepayment,
       prepaymentMinor: o.requiresPrepayment ? prepayMinor(o) : null,
       active: o.active,
+      kind: o.kind ?? undefined,
+      deliveryMethods: deliveriesCsv(o.deliveries),
     }));
 }
 

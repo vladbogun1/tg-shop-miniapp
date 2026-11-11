@@ -1,10 +1,10 @@
 /**
  * Формы ответов и тел запросов Новой Почты (бэкенд-модуль delivery).
  *
- * np-contract: пока контракт бэкенда (feat/np-v2-be-*) не попал в OpenAPI, типы повторяют DTO ветки
- * np-integration один в один (`frontend-admin/lib/shipments.ts`). Когда появятся `Schemas["ShipmentDto"]`
- * и соседние, каждый тип с пометкой `// np-contract` заменяется алиасом на Schemas.
+ * Контракт order уже в OpenAPI (см. ниже). np-contract: остальное (окно ТТН, отправитель, размеры, вебхук) повторяет DTO
+ * ветки np-integration один в один, пока не придёт контракт delivery (feat/np-v2-be-delivery).
  */
+import type { Schemas } from "@shop/core/api/schemas";
 
 export type ShipmentStage =
   | "CREATED"
@@ -24,68 +24,18 @@ export type OrderServiceType = "WAREHOUSE" | "POSTOMAT" | "DOORS";
 
 export type ShipmentOrigin = "API" | "MANUAL";
 
-// np-contract: web/dto/ShipmentDto — активная посылка заказа.
-export interface Shipment {
-  ttn: string;
-  /** API — создана нашим ключом (правится, удаляется, печатается); MANUAL — номер введён руками. */
-  origin: ShipmentOrigin;
-  serviceType?: NpServiceType | null;
-  stage: ShipmentStage;
-  statusCode?: string | null;
-  statusText?: string | null;
-  scheduledDelivery?: string | null;
-  arrivedAt?: string | null;
-  receivedAt?: string | null;
-  storagePaidFrom?: string | null;
-  returnTtn?: string | null;
-  codMinor: number;
-  deliveryCostMinor?: number | null;
-  weightG?: number | null;
-  lengthMm?: number | null;
-  widthMm?: number | null;
-  heightMm?: number | null;
-  trackingUrl?: string | null;
-  createdAt?: string | null;
-  lastEventAt?: string | null;
-  lastPolledAt?: string | null;
-  pollError?: string | null;
-  /** Этикетку печатали через нас: НП такую ТТН только удаляет (изменение = новая ТТН). */
-  printedAt?: string | null;
-  /** Почему ТТН больше не совпадает с заказом — с ней посылку не отправлять (пусто — всё в порядке). */
-  staleReasons?: string[];
-}
+// Контракт order (feat/np-v2-be-order): ShipmentBrief и поля НП в OrderDetailDto / DispatchOrderDto — из OpenAPI.
+// Стадия, происхождение и тип доставки там строками; UI сравнивает их с ShipmentStage / ShipmentOrigin / OrderServiceType.
 
-// np-contract: поля карточки заказа (OrderDetailDto), которые добавляет Новая Почта.
-export interface NpOrderFields {
-  npServiceType?: OrderServiceType | null;
-  npStreetName?: string | null;
-  npBuilding?: string | null;
-  npFlat?: string | null;
-  recipientLastName?: string | null;
-  recipientFirstName?: string | null;
-  recipientMiddleName?: string | null;
-  /** «Оплата при отриманні»: всё собирает Новая Почта. */
-  paymentOnDelivery?: boolean;
-  shipment?: Shipment | null;
-}
+/** Активная посылка заказа. origin: API — создана нашим ключом (правится, удаляется, печатается); MANUAL — номер введён руками. */
+export type Shipment = Schemas["ShipmentBrief"];
 
-// np-contract: поля строки доски / таблицы (OrderCardDto).
+// np-contract: поля строки доски / таблицы. В контракте они есть только в OrderSummaryDto, а доска и таблица
+// мастера читают OrderCardDto — пока бэкенд их туда не добавит, поля пустые и бейдж стадии не рисуется.
 export interface NpCardFields {
   trackingNumber?: string | null;
   shipmentStage?: ShipmentStage | null;
   trackingUrl?: string | null;
-}
-
-// np-contract: поля строки «К отправке» (DispatchOrderDto).
-export interface NpDispatchFields {
-  npServiceType?: OrderServiceType | null;
-  paymentOnDelivery?: boolean;
-  /** Стадия активной посылки; null — ТТН ещё нет. */
-  shipmentStage?: ShipmentStage | null;
-  shipmentOrigin?: ShipmentOrigin | null;
-  shipmentStatusText?: string | null;
-  /** Почему ТТН не совпадает с заказом (пусто — совпадает): её пересоздают, этикетку не отправляют. */
-  shipmentStaleReasons?: string[] | null;
 }
 
 /** Что админ может поменять перед «Створити ТТН»; не задано — взять из заказа. */

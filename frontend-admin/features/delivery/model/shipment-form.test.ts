@@ -1,6 +1,35 @@
 import { describe, expect, it } from "vitest";
 import { boxError, documentsOffered, formFrom, presetMatches, submitBlocked, successMessage, toOptions } from "./shipment-form";
-import type { ShipmentPreview } from "./types";
+import type { Shipment, ShipmentPreview } from "./types";
+
+const shipment = (over: Partial<Shipment> = {}): Shipment => ({
+  ttn: "1",
+  origin: "API",
+  stage: "CREATED",
+  serviceType: null,
+  codMinor: 0,
+  arrivedAt: null,
+  createdAt: null,
+  deliveryCostMinor: null,
+  handedOver: false,
+  heightMm: null,
+  lastEventAt: null,
+  lastPolledAt: null,
+  lengthMm: null,
+  pollError: null,
+  printedAt: null,
+  receivedAt: null,
+  returnTtn: null,
+  scheduledDelivery: null,
+  staleReasons: [],
+  statusCode: null,
+  statusText: null,
+  storagePaidFrom: null,
+  trackingUrl: null,
+  weightG: null,
+  widthMm: null,
+  ...over,
+});
 
 const preview = (over: Partial<ShipmentPreview> = {}): ShipmentPreview => ({
   orderId: "o1",
@@ -30,7 +59,7 @@ describe("форма ТТН", () => {
     expect(f).toMatchObject({ sender: "w1", weight: "600", l: "20", w: "15", h: "10", declared: "1500", last: "Шевченко", first: "Тарас" });
   });
   it("правка берёт вес и коробку самой ТТН", () => {
-    const p = preview({ existing: { ttn: "1", origin: "API", stage: "CREATED", codMinor: 0, weightG: 900, lengthMm: 300, widthMm: 200, heightMm: 100 } });
+    const p = preview({ existing: shipment({ weightG: 900, lengthMm: 300, widthMm: 200, heightMm: 100 }) });
     expect(formFrom(p, true)).toMatchObject({ weight: "900", l: "30" });
     expect(formFrom(p, false)).toMatchObject({ weight: "600", l: "20" });
   });
@@ -71,7 +100,7 @@ describe("можно ли сохранить", () => {
     expect(submitBlocked({ ...base, preview: p, mode: "edit" })).toBe(false);
   });
   it("уже есть ТТН — создать нельзя", () => {
-    const p = preview({ existing: { ttn: "1", origin: "API", stage: "CREATED", codMinor: 0 } });
+    const p = preview({ existing: shipment() });
     expect(submitBlocked({ ...base, preview: p })).toBe(true);
     expect(submitBlocked({ ...base, preview: p, mode: "remake" })).toBe(false);
   });
@@ -79,8 +108,8 @@ describe("можно ли сохранить", () => {
 
 describe("тост итога", () => {
   it("создание, новый номер, тот же номер", () => {
-    expect(successMessage("create", null, { ttn: "2" })).toBe("ТТН 2 создана");
-    expect(successMessage("remake", "1", { ttn: "2" })).toContain("Старая ТТН 1 удалена, новая — 2");
-    expect(successMessage("edit", "1", { ttn: "1" })).toContain("ТТН 1 обновлена — напечатайте");
+    expect(successMessage("create", null, { ttn: "2", printedAt: null })).toBe("ТТН 2 создана");
+    expect(successMessage("remake", "1", { ttn: "2", printedAt: null })).toContain("Старая ТТН 1 удалена, новая — 2");
+    expect(successMessage("edit", "1", { ttn: "1", printedAt: null })).toContain("ТТН 1 обновлена — напечатайте");
   });
 });

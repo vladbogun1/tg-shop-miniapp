@@ -12,15 +12,14 @@ import { apiDelete, apiGet, apiPatch, apiPost, apiPut, uploadFile } from "@/lib/
 import type { OrderStatus } from "@shop/core/types";
 import { periodQuery, type OrdersPeriod } from "./model/period";
 import type { MovementChannel } from "@/features/payment";
-import type { NpCardFields, NpDispatchFields, NpOrderFields, NpStreet } from "@/features/delivery";
+import type { NpCardFields, NpStreet } from "@/features/delivery";
 import type { BoardKey, RejectReasonCode } from "./model/status";
 import { type Locale } from "@shop/core/i18n";
 
 export type { NpCity, NpStreet, NpWarehouse };
 
 /** Заказ у админа: `admin` заполнен (архив, журнал денег, списания, «едет назад», возвраты). */
-// np-contract: поля Новой Почты — до генерации из OpenAPI (features/delivery/model/types.ts).
-export type AdminOrderDetail = Schemas["OrderDetailDto"] & NpOrderFields;
+export type AdminOrderDetail = Schemas["OrderDetailDto"];
 export type OrderAdminExtras = Schemas["AdminExtras"];
 /** Карточка доски / строка таблицы. */
 export type AdminOrderCard = Schemas["OrderCardDto"] & NpCardFields;
@@ -33,7 +32,7 @@ export type CancelApproveResult = Schemas["ApproveResponse"];
 /** Способ доплаты: ONLINE — кнопка у покупателя, ON_DELIVERY — наложкой, WAIVE — скидкой за счёт магазина. */
 export type TopUpMode = Schemas["TopUpRequest"]["mode"];
 /** Строка списка «Отправка». */
-export type AdminDispatchOrder = Schemas["DispatchOrderDto"] & NpDispatchFields;
+export type AdminDispatchOrder = Schemas["DispatchOrderDto"];
 export type OrderMessage = Schemas["OrderMessageDto"];
 export type ReplyTemplate = Schemas["TemplateDto"];
 export type ReplyTemplateWrite = Schemas["TemplateUpsertRequest"];

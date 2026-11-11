@@ -21,14 +21,13 @@ import { Badge } from "@/components/ui/Badge";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { serviceLabel, shipmentEditable } from "../model/labels";
 import type { ShipmentMode } from "../model/shipment-form";
-import type { OrderServiceType, Shipment } from "../model/types";
+import type { Shipment } from "../model/types";
 import { useCancelShipment, useRefreshShipment } from "../queries";
 import { LabelPrint } from "./LabelPrint";
 import { ShipmentFacts } from "./ShipmentFacts";
 import { ShipmentStageBadge } from "./parts";
 import { StaleBanner, StaleDialog } from "./StaleShipment";
 import { useStaleShipment, type StaleState } from "./use-stale";
-
 import { ShipmentDialog } from "./ShipmentDialog";
 
 /** Что блоку нужно от заказа. */
@@ -37,7 +36,7 @@ export interface ShipmentOrder {
   status: string;
   currency?: string | null;
   deliveryMethod?: string | null;
-  npServiceType?: OrderServiceType | null;
+  npServiceType?: string | null;
   shipment?: Shipment | null;
 }
 

@@ -5,11 +5,20 @@ import { Button } from "@shop/ui/admin-button";
 import { money } from "@/lib/money";
 import { Input } from "@/components/ui/Input";
 import { Toggle } from "@/components/ui/Toggle";
-import { prepayMinor, type OptionRow } from "../model/options";
+import { isOnDelivery, prepayMinor, type OptionRow } from "../model/options";
+import { DeliveryPicker } from "./DeliveryPicker";
 
 /** Строка под способом: что покупатель платит онлайн и что остаётся для почты. */
 function OptionSummary({ row }: { row: OptionRow }) {
   const pre = prepayMinor(row);
+  if (isOnDelivery(row)) {
+    return (
+      <p className="flex items-start gap-1.5 text-[12px] leading-snug text-[var(--text-muted)]">
+        <Truck className="mt-px h-3.5 w-3.5 shrink-0" />
+        <span>Вся сумма — при получении на Новой Почте. Включается и ограничивается в настройках Новой Почты.</span>
+      </p>
+    );
+  }
   return (
     <p className="flex items-start gap-1.5 text-[12px] leading-snug text-[var(--text-muted)]">
       {row.requiresPrepayment ? (
@@ -58,7 +67,7 @@ export function OptionEditor({
           onChange={(e) => onPatch({ description: e.target.value })}
         />
       </div>
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className={isOnDelivery(o) ? "hidden" : "flex flex-wrap items-end justify-between gap-3"}>
         <Toggle checked={o.requiresPrepayment} onChange={(v) => onPatch({ requiresPrepayment: v })} label="Предоплата + наложка" />
         {o.requiresPrepayment && (
           <Input
@@ -72,6 +81,7 @@ export function OptionEditor({
         )}
       </div>
       <OptionSummary row={o} />
+      <DeliveryPicker value={o.deliveries} onChange={(deliveries) => onPatch({ deliveries })} />
       {inSheet && <Toggle checked={o.active} onChange={(v) => onPatch({ active: v })} label="Показывать покупателям" />}
       <div className="flex items-center justify-between gap-2 border-t border-[var(--line)] pt-3">
         <Button variant="ghost" size="sm" icon={<Trash2 className="h-4 w-4" />} onClick={onRemove} className="hover:text-[var(--danger-ink)]">

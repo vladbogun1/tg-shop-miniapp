@@ -29,8 +29,8 @@ describe("toPayload", () => {
   it("пропускает безымянные, чистит пробелы, предоплата только при флаге", () => {
     const rows = [row({ title: " A ", description: " ", prepaymentMajor: "50" }), row({ title: "" }), row({ title: "B", requiresPrepayment: true, prepaymentMajor: "50" })];
     expect(toPayload(rows)).toEqual([
-      { id: undefined, title: "A", description: undefined, requiresPrepayment: false, prepaymentMinor: null, active: true },
-      { id: undefined, title: "B", description: undefined, requiresPrepayment: true, prepaymentMinor: 5000, active: true },
+      { id: undefined, title: "A", description: undefined, requiresPrepayment: false, prepaymentMinor: null, active: true, deliveryMethods: "" },
+      { id: undefined, title: "B", description: undefined, requiresPrepayment: true, prepaymentMinor: 5000, active: true, deliveryMethods: "" },
     ]);
   });
 });
@@ -45,8 +45,25 @@ describe("moveRow / snapshot / toRows", () => {
   });
   it("снимок не зависит от ключей", () => expect(optionsSnapshot([{ ...a, key: "1" }])).toBe(optionsSnapshot([{ ...a, key: "2" }])));
   it("toRows: выключенный и предоплата", () => {
-    const [r] = toRows([{ id: "x", title: "T", description: "", requiresPrepayment: true, prepaymentMinor: 10050, active: false, sortOrder: 0 }]);
+    const [r] = toRows([{ id: "x", title: "T", description: "", requiresPrepayment: true, prepaymentMinor: 10050, active: false, sortOrder: 0, kind: "", deliveryMethods: "" }]);
     expect(r).toMatchObject({ id: "x", prepaymentMajor: "100.5", active: false, key: "x" });
+  });
+});
+
+describe("способ «при получении» и доставки", () => {
+  it("toRows → toPayload сохраняет kind и выбранные доставки", () => {
+    const [r] = toRows([
+      { id: "c", title: "При получении", description: "", requiresPrepayment: false, prepaymentMinor: 0, active: true, sortOrder: 0, kind: "ON_DELIVERY", deliveryMethods: "WAREHOUSE,DOORS" },
+    ]);
+    expect(r).toMatchObject({ kind: "ON_DELIVERY", deliveries: ["WAREHOUSE", "DOORS"] });
+    expect(toPayload([r])[0]).toMatchObject({ kind: "ON_DELIVERY", deliveryMethods: "WAREHOUSE,DOORS" });
+  });
+  it("одна «при получении» не держит оформление", () => {
+    expect(saveBlocker([row({ kind: "ON_DELIVERY" })], true)).toMatch(/хотя бы один/);
+    expect(saveBlocker([row({ kind: "ON_DELIVERY" }), row({})], true)).toBeNull();
+  });
+  it("доставки входят в снимок «есть несохранённое»", () => {
+    expect(optionsSnapshot([row({ key: "1" })])).not.toBe(optionsSnapshot([row({ key: "1", deliveries: ["PICKUP"] })]));
   });
 });
 

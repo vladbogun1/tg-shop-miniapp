@@ -17,8 +17,6 @@ export type {
   BatchResult,
   LabelFormat,
   NpCardFields,
-  NpDispatchFields,
-  NpOrderFields,
   NpStreet,
   OrderServiceType,
   SenderWarehouse,

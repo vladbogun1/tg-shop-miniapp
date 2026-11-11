@@ -6,7 +6,7 @@ import { cn } from "@/lib/cn";
 import { money } from "@/lib/money";
 import { Badge } from "@/components/ui/Badge";
 import { Toggle } from "@/components/ui/Toggle";
-import { prepayMinor, type OptionRow } from "../model/options";
+import { isOnDelivery, prepayMinor, type OptionRow } from "../model/options";
 
 function OrderBtn({ label, disabled, onClick, children }: { label: string; disabled: boolean; onClick: () => void; children: ReactNode }) {
   return (
@@ -21,6 +21,12 @@ function OrderBtn({ label, disabled, onClick, children }: { label: string; disab
       {children}
     </button>
   );
+}
+
+/** Подпись под названием, когда описания нет. */
+function defaultHint(o: OptionRow): string {
+  if (isOnDelivery(o)) return "Вся сумма при получении на Новой Почте";
+  return o.requiresPrepayment ? "Предоплата онлайн, остаток наложкой" : "Полная оплата онлайн";
 }
 
 /**
@@ -78,9 +84,10 @@ export function OptionRowView({
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[14px] font-semibold text-[var(--text)]">{o.title.trim() || "Новый способ"}</span>
             <span className="block truncate text-[12px] text-[var(--text-muted)]">
-              {o.description.trim() || (o.requiresPrepayment ? "Предоплата онлайн, остаток наложкой" : "Полная оплата онлайн")}
+              {o.description.trim() || defaultHint(o)}
             </span>
           </span>
+          {isOnDelivery(o) && <Badge tone="warn" className="hidden shrink-0 sm:inline-flex">при получении</Badge>}
           {o.requiresPrepayment && <Badge tone="warn" className="hidden shrink-0 sm:inline-flex">Предоплата {pre > 0 ? money(pre) : "—"}</Badge>}
           {!o.active && <Badge tone="neutral" className="shrink-0">выключен</Badge>}
           <ChevronDown className={cn("h-4 w-4 shrink-0 text-[var(--text-faint)] transition-transform", open && "rotate-180")} />

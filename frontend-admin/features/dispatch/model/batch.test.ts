@@ -6,7 +6,7 @@ const np = (id: string, extra: Record<string, unknown> = {}) => ({
   deliveryMethod: "NOVA_POSHTA" as const,
   shipmentStage: null,
   shipmentOrigin: null,
-  shipmentStaleReasons: null,
+  shipmentStaleReasons: [] as string[],
   ...extra,
 });
 
