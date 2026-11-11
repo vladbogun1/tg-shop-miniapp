@@ -24,7 +24,7 @@ export interface DetailHandlers {
   onReturnReceived?: () => void;
   /** «Вернуть из архива» — main admin only, archived orders. */
   onUnarchive?: () => void;
-  /** Invoices refreshed or refunded — reload the order and the lists. */
+  /** Invoices refreshed or refunded, the waybill (ТТН) changed — reload the order and the lists. */
   onPaymentChanged?: () => void;
   /** The «Онлайн-оплата» section, to scroll to it («Внимание» → «Оплаты»). */
   paymentRef?: Ref<HTMLElement>;

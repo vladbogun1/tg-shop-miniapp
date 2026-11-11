@@ -6,6 +6,7 @@
  * история возвратов, журнал денег и прибыль — свёрнуты, со сводкой в заголовке.
  * Everything the admin types into the Nova Poshta form has a copy button; the phone is a tel: link.
  */
+import { ShipmentBlock } from "@/features/delivery";
 import { OnlinePaymentBlock } from "@/features/payment";
 import { MoneyLedgerBlock, ReturnHistoryBlock } from "@/features/returns";
 import type { AdminOrderDetail } from "../../api";
@@ -20,6 +21,8 @@ import type { DetailHandlers } from "./types";
 
 export type { DetailHandlers } from "./types";
 
+const NOOP = () => {};
+
 export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailHandlers }) {
   return (
     <div className="flex flex-col gap-3">
@@ -27,6 +30,7 @@ export function OrderDetails({ order, h }: { order: AdminOrderDetail; h: DetailH
       <AttentionStack order={order} h={h} />
       <ItemsSection order={order} h={h} />
       <RecipientSection order={order} h={h} />
+      <ShipmentBlock order={order} onChanged={h.onPaymentChanged ?? NOOP} />
       <PaymentSummary order={order} />
       <OnlinePaymentBlock ref={h.paymentRef} order={order} onChanged={h.onPaymentChanged} />
       <ReturnHistoryBlock order={order} onChanged={h.onPaymentChanged} />

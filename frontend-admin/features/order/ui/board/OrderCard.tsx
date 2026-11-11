@@ -13,6 +13,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { Ban, Truck, Store, MessageCircle, Package2, Undo2, Repeat } from "lucide-react";
 import { payableMinor } from "@shop/core/orders";
 import { timeAgo } from "@shop/core/time";
+import { ShipmentStageBadge } from "@/features/delivery";
 import { PaymentBadge } from "@/features/payment";
 import { ReturnBadge } from "@/features/returns";
 import { Image } from "@/lib/image";
@@ -129,6 +130,16 @@ function ExchangeChip({ order }: { order: AdminOrderCard }) {
   );
 }
 
+/** Стадия посылки Новой Почты; номер ТТН — в подсказке. */
+function StageChip({ order }: { order: AdminOrderCard }) {
+  if (!order.shipmentStage) return null;
+  return (
+    <span className="shrink-0 whitespace-nowrap" title={order.trackingNumber ? `ТТН ${order.trackingNumber}` : undefined}>
+      <ShipmentStageBadge stage={order.shipmentStage} />
+    </span>
+  );
+}
+
 /** Подсказка на сумме: сколько едет назад или не выкуплено. */
 function amountTitle(order: AdminOrderCard, returning: boolean | undefined, backMinor: number): string | undefined {
   const uncollected = order.uncollectedMinor ?? 0;
@@ -206,6 +217,7 @@ export function OrderCard({ order, onClick, dragging, headerAction, returning }:
             Отмена?
           </span>
         )}
+        <StageChip order={order} />
         {order.paymentOptionTitle && (
           <span className="min-w-0 truncate text-[11px] text-[var(--text-faint)]">{order.paymentOptionTitle}</span>
         )}

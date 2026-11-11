@@ -3,6 +3,7 @@
 import { ExternalLink, MessageCircle } from "lucide-react";
 import { payableMinor } from "@shop/core/orders";
 import { formatMoment, formatTime } from "@shop/core/time";
+import { ShipmentStageBadge } from "@/features/delivery";
 import { PaymentBadge } from "@/features/payment";
 import { ReturnBadge } from "@/features/returns";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
@@ -45,7 +46,15 @@ export function OrderRow({ order: o, onOpen }: { order: AdminOrderCard; onOpen: 
           <ReturnBadge status={o.returnStatus} icon={false} />
         </span>
       </td>
-      <td className="whitespace-nowrap !text-[var(--text-muted)]">{o.deliveryMethod ? DELIVERY_LABEL[o.deliveryMethod] : undefined}</td>
+      <td className="whitespace-nowrap !text-[var(--text-muted)]">
+        {o.deliveryMethod ? DELIVERY_LABEL[o.deliveryMethod] : undefined}
+        {o.shipmentStage && (
+          <div className="mt-1 flex flex-col items-start gap-1">
+            <ShipmentStageBadge stage={o.shipmentStage} />
+            {o.trackingNumber && <span className="tabular text-[11.5px] text-[var(--text-faint)]">{o.trackingNumber}</span>}
+          </div>
+        )}
+      </td>
       <td className="min-w-[150px] !text-[var(--text-muted)]">{o.paymentOptionTitle || "—"}</td>
       <td className="text-center">
         <PaymentBadge order={o} icon={false} />

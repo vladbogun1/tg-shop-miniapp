@@ -12,16 +12,18 @@ import { apiDelete, apiGet, apiPatch, apiPost, apiPut, uploadFile } from "@/lib/
 import type { OrderStatus } from "@shop/core/types";
 import { periodQuery, type OrdersPeriod } from "./model/period";
 import type { MovementChannel } from "@/features/payment";
+import type { NpCardFields, NpDispatchFields, NpOrderFields, NpStreet } from "@/features/delivery";
 import type { BoardKey, RejectReasonCode } from "./model/status";
 import { type Locale } from "@shop/core/i18n";
 
-export type { NpCity, NpWarehouse };
+export type { NpCity, NpStreet, NpWarehouse };
 
 /** Заказ у админа: `admin` заполнен (архив, журнал денег, списания, «едет назад», возвраты). */
-export type AdminOrderDetail = Schemas["OrderDetailDto"];
+// np-contract: поля Новой Почты — до генерации из OpenAPI (features/delivery/model/types.ts).
+export type AdminOrderDetail = Schemas["OrderDetailDto"] & NpOrderFields;
 export type OrderAdminExtras = Schemas["AdminExtras"];
 /** Карточка доски / строка таблицы. */
-export type AdminOrderCard = Schemas["OrderCardDto"];
+export type AdminOrderCard = Schemas["OrderCardDto"] & NpCardFields;
 /** Строка полоски картинок карточки; `returning` = её единицы на пути назад. */
 export type CardLine = Schemas["CardLine"];
 /** Другой открытый заказ того же покупателя для «Объединить» (V71). */
@@ -31,7 +33,7 @@ export type CancelApproveResult = Schemas["ApproveResponse"];
 /** Способ доплаты: ONLINE — кнопка у покупателя, ON_DELIVERY — наложкой, WAIVE — скидкой за счёт магазина. */
 export type TopUpMode = Schemas["TopUpRequest"]["mode"];
 /** Строка списка «Отправка». */
-export type AdminDispatchOrder = Schemas["DispatchOrderDto"];
+export type AdminDispatchOrder = Schemas["DispatchOrderDto"] & NpDispatchFields;
 export type OrderMessage = Schemas["OrderMessageDto"];
 export type ReplyTemplate = Schemas["TemplateDto"];
 export type ReplyTemplateWrite = Schemas["TemplateUpsertRequest"];
@@ -77,6 +79,15 @@ export interface DeliveryPatch {
   npCityName?: string;
   npWarehouseRef?: string;
   npWarehouseName?: string;
+  /** WAREHOUSE | POSTOMAT | DOORS: адрес заменяется под этот тип. */
+  npServiceType?: "WAREHOUSE" | "POSTOMAT" | "DOORS";
+  npStreetRef?: string;
+  npStreetName?: string;
+  npBuilding?: string;
+  npFlat?: string;
+  recipientLastName?: string;
+  recipientFirstName?: string;
+  recipientMiddleName?: string;
 }
 
 /** Размер страницы чата заказа (по умолчанию бэкенда). */

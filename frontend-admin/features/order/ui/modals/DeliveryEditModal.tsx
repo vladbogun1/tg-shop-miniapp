@@ -1,69 +1,47 @@
 "use client";
 
 /**
- * Fix the recipient and the Nova Poshta branch (PATCH /orders/{id}/delivery) — before this a typo in
+ * Fix the recipient and the Nova Poshta address (PATCH /orders/{id}/delivery) — before this a typo in
  * the phone or the branch meant rejecting the order and asking the customer to order again.
- * City and branch are picked from the Nova Poshta directory, so the refs stay valid.
+ * City, branch / postomat and street are picked from the Nova Poshta directory, so the refs stay valid;
+ * a street NP does not know can be typed by hand. The recipient for the waybill goes in parts
+ * (surname / name / patronymic) — NP wants them separately.
  */
-import { useCallback, useLayoutEffect, useState } from "react";
-import { useForm } from "@shop/ui/form";
+import { useLayoutEffect, useState } from "react";
+import { useForm, type ShopForm } from "@shop/ui/form";
 import { Modal, ModalCancel } from "@shop/ui/overlay";
 import { Button } from "@shop/ui/admin-button";
 import { Input } from "@/components/ui/Input";
-import { Autocomplete } from "@/components/ui/Autocomplete";
 import { useLatestRef } from "../use-latest-ref";
-import { orderApi, type AdminOrderDetail, type DeliveryPatch, type NpCity, type NpWarehouse } from "../../api";
-import { MIN_PHONE_DIGITS, buildDeliveryPatch, isDeliveryInvalid, phoneDigits, placeOf, type Place } from "../../model/delivery-edit";
+import type { AdminOrderDetail, DeliveryPatch } from "../../api";
+import {
+  MIN_PHONE_DIGITS,
+  buildDeliveryPatch,
+  draftOf,
+  isDeliveryInvalid,
+  phoneDigits,
+  recipientMissing,
+  type DeliveryDraft,
+  type DeliveryText,
+} from "../../model/delivery-edit";
+import { NpAddressFields, type NpAddressState } from "./NpAddressFields";
 
-/** Город и отделение Новой Почты из справочника: отделение выбирается после города. */
-function NpFields({
-  city,
-  wh,
-  setCity,
-  setWh,
-}: {
-  city: Place | null;
-  wh: Place | null;
-  setCity: (p: Place | null) => void;
-  setWh: (p: Place | null) => void;
-}) {
-  const fetchCities = useCallback((q: string) => orderApi.npCities(q), []);
-  const cityRef = city?.ref;
-  const fetchWarehouses = useCallback(
-    (q: string) => (cityRef ? orderApi.npWarehouses(cityRef, q) : Promise.resolve([] as NpWarehouse[])),
-    [cityRef],
-  );
+const EMPTY_TEXT: DeliveryText = { name: "", phone: "", building: "", flat: "", last: "", first: "", middle: "" };
+const EMPTY_ADDRESS: NpAddressState = { city: null, wh: null, service: "WAREHOUSE", street: null };
+
+function textOf(d: DeliveryDraft): DeliveryText {
+  return { name: d.name, phone: d.phone, building: d.building, flat: d.flat, last: d.last, first: d.first, middle: d.middle };
+}
+
+function RecipientNameFields({ register, missing }: { register: ShopForm<DeliveryText>["register"]; missing: boolean }) {
   return (
     <>
-      <Autocomplete<NpCity>
-        label="Город"
-        placeholder="Начните вводить город…"
-        selectedLabel={city?.name ?? null}
-        fetchItems={fetchCities}
-        itemKey={(c) => c.ref}
-        itemLabel={(c) => c.name}
-        itemSubLabel={(c) => c.area ?? ""}
-        onSelect={(c) => {
-          setCity({ ref: c.ref, name: c.name });
-          setWh(null);
-        }}
-        onClear={() => {
-          setCity(null);
-          setWh(null);
-        }}
-      />
-      {city && (
-        <Autocomplete<NpWarehouse>
-          label="Отделение / почтомат"
-          placeholder="Номер или адрес…"
-          selectedLabel={wh?.name ?? null}
-          fetchItems={fetchWarehouses}
-          itemKey={(w) => w.ref}
-          itemLabel={(w) => w.description}
-          onSelect={(w) => setWh({ ref: w.ref, name: w.description })}
-          onClear={() => setWh(null)}
-        />
-      )}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <Input label="Фамилия" {...register("last")} autoComplete="off" />
+        <Input label="Имя" {...register("first")} autoComplete="off" />
+        <Input label="Отчество" {...register("middle")} autoComplete="off" />
+      </div>
+      {missing && <p className="text-[12px] text-[var(--danger-ink)]">Фамилия и имя не могут быть пустыми.</p>}
     </>
   );
 }
@@ -81,11 +59,10 @@ export function DeliveryEditModal({
   onSave: (patch: DeliveryPatch) => Promise<unknown> | void;
   loading?: boolean;
 }) {
-  const form = useForm<{ name: string; phone: string }>({ defaultValues: { name: "", phone: "" } });
+  const form = useForm<DeliveryText>({ defaultValues: EMPTY_TEXT });
   const { reset } = form;
-  const { name, phone } = form.watch();
-  const [city, setCity] = useState<Place | null>(null);
-  const [wh, setWh] = useState<Place | null>(null);
+  const text = form.watch();
+  const [address, setAddress] = useState<NpAddressState>(EMPTY_ADDRESS);
 
   const orderId = order?.id ?? null;
   // Only on (re)open — not when the same order refetches while the form is being edited.
@@ -93,17 +70,17 @@ export function DeliveryEditModal({
   useLayoutEffect(() => {
     const current = orderRef.current;
     if (!open || !current) return;
-    reset({ name: current.customerName ?? "", phone: current.phone ?? "" });
-    setCity(placeOf(current.npCityRef, current.npCityName));
-    setWh(placeOf(current.npWarehouseRef, current.npWarehouseName));
+    const d = draftOf(current);
+    reset(textOf(d));
+    setAddress({ city: d.city, wh: d.wh, service: d.service, street: d.street });
   }, [open, orderId, reset, orderRef]);
 
   if (!order) return null;
   const isNp = order.deliveryMethod === "NOVA_POSHTA";
-  const patch = buildDeliveryPatch(order, name, phone, city, wh);
+  const draft: DeliveryDraft = { ...text, ...address };
+  const patch = buildDeliveryPatch(order, draft);
   const changed = Object.keys(patch).length > 0;
-  const digits = phoneDigits(phone);
-  const invalid = isDeliveryInvalid(isNp, name, phone, city, wh);
+  const invalid = isDeliveryInvalid(order, draft);
 
   return (
     <Modal
@@ -127,9 +104,14 @@ export function DeliveryEditModal({
           label="Телефон"
           inputMode="tel"
           {...form.register("phone")}
-          error={phone && digits < MIN_PHONE_DIGITS ? "Минимум 10 цифр" : undefined}
+          error={text.phone && phoneDigits(text.phone) < MIN_PHONE_DIGITS ? "Минимум 10 цифр" : undefined}
         />
-        {isNp && <NpFields city={city} wh={wh} setCity={setCity} setWh={setWh} />}
+        {isNp && (
+          <>
+            <RecipientNameFields register={form.register} missing={recipientMissing(order, draft)} />
+            <NpAddressFields value={address} onChange={(p) => setAddress((a) => ({ ...a, ...p }))} register={form.register} />
+          </>
+        )}
         <p className="text-[12px] text-[var(--text-faint)]">
           Изменения попадут в журнал, карточки в Telegram обновятся. Клиенту ничего не отправляется.
           {order.status === "SHIPPED" && " Заказ уже отправлен — переадресуйте посылку в кабинете Новой Почты."}

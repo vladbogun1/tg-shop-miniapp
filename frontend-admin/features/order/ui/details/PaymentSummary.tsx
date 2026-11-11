@@ -4,6 +4,7 @@
 import { CreditCard, Wallet } from "lucide-react";
 import { money } from "@/lib/money";
 import { cn } from "@/lib/cn";
+import { Badge } from "@/components/ui/Badge";
 import type { AdminOrderDetail } from "../../api";
 import { codMinor } from "../../model/status";
 import { Row, Section } from "./section";
@@ -17,6 +18,11 @@ export function PaymentSummary({ order }: { order: AdminOrderDetail }) {
         {order.paymentOptionTitle && (
           <Row icon={<CreditCard className="h-4 w-4" />}>
             <span className="min-w-0">{order.paymentOptionTitle}</span>
+            {order.paymentOnDelivery && (
+              <Badge tone="warn" className="ml-auto shrink-0">
+                при получении
+              </Badge>
+            )}
           </Row>
         )}
         <Row icon={<Wallet className="h-4 w-4" />}>
