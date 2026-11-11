@@ -22,13 +22,59 @@ public abstract class OrderPlacement extends OrderHousekeeping {
         source = orderSource == null ? OrderSource.MINIAPP : orderSource;
     }
 
-    /** Where the parcel goes: the method and (for Nova Poshta) the branch. */
+    /**
+     * Where the parcel goes: the method and (for Nova Poshta) the service type with the branch / parcel locker or
+     * the courier address. The fields of the other kind are cleared, so a courier order keeps no stale branch.
+     */
     public void deliverTo(DeliveryTarget target) {
         deliveryMethod = target.method();
         npCityRef = target.npCityRef();
         npCityName = target.npCityName();
-        npWarehouseRef = target.npWarehouseRef();
-        npWarehouseName = target.npWarehouseName();
+        boolean doors = target.serviceType() == NpServiceType.DOORS;
+        npServiceType = target.serviceType() == null ? null : target.serviceType().name();
+        npWarehouseRef = doors ? null : target.npWarehouseRef();
+        npWarehouseName = doors ? null : target.npWarehouseName();
+        npStreetRef = doors ? target.npStreetRef() : null;
+        npStreetName = doors ? target.npStreetName() : null;
+        npBuilding = doors ? target.npBuilding() : null;
+        npFlat = doors ? target.npFlat() : null;
+    }
+
+    /** Where the parcel goes now, as one value (the inverse of {@link #deliverTo}). */
+    public DeliveryTarget deliveryTarget() {
+        return new DeliveryTarget(deliveryMethod, npCityRef, npCityName, npWarehouseRef, npWarehouseName,
+                npServiceType == null ? null : NpServiceType.of(npServiceType),
+                npStreetRef, npStreetName, npBuilding, npFlat);
+    }
+
+    /** How Nova Poshta delivers it; WAREHOUSE for orders placed before V98. */
+    public NpServiceType npService() {
+        return NpServiceType.of(npServiceType);
+    }
+
+    /** The recipient's name as the waybill needs it (surname and name apart); null = not split (old orders). */
+    public void nameRecipient(RecipientName name) {
+        recipientLastName = name == null ? null : name.lastName();
+        recipientFirstName = name == null ? null : name.firstName();
+        recipientMiddleName = name == null ? null : name.middleName();
+    }
+
+    /** The split recipient name; null when the order was placed with one name field. */
+    public RecipientName recipientName() {
+        return recipientLastName == null && recipientFirstName == null ? null
+                : new RecipientName(recipientLastName, recipientFirstName, recipientMiddleName);
+    }
+
+    /**
+     * «Оплата при отриманні»: the snapshot of the option, nothing due online (no prepayment, no deadline) — Nova
+     * Poshta collects the whole total («Контроль оплати»).
+     */
+    public void choosePaymentOnDelivery(byte[] optionId, String title) {
+        paymentOptionId = optionId;
+        paymentOptionTitle = title;
+        prepaymentMinor = 0;
+        paymentDueAt = null;
+        paymentOnDelivery = true;
     }
 
     /** A new Nova Poshta branch for the same delivery method. */
@@ -86,12 +132,12 @@ public abstract class OrderPlacement extends OrderHousekeeping {
         trackingNumber = ttn;
     }
 
-    /** The recipient and the address of {@code other} (a merged order): name, phone, method, branch. */
+    /** The recipient and the address of {@code other} (a merged order): name (and its parts), phone, delivery. */
     public void takeRecipientOf(Order other) {
         customerName = other.customerName;
         phone = other.phone;
-        deliverTo(new DeliveryTarget(other.deliveryMethod, other.npCityRef, other.npCityName,
-                other.npWarehouseRef, other.npWarehouseName));
+        nameRecipient(other.recipientName());
+        deliverTo(other.deliveryTarget());
     }
 
     /** This order replaces goods of {@code original} (an exchange): the same customer. */
