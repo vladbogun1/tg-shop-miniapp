@@ -73,7 +73,7 @@ function CostInputs({ d, set, optional }: { d: Draft; set: (p: Partial<Draft>) =
   return (
     <>
       <input
-        className={cn(FIELD, "w-[150px]")}
+        className={cn(FIELD, "w-[140px]")}
         inputMode="decimal"
         placeholder={optional ? "закупка/шт, ₴" : "закупка/шт, ₴ *"}
         aria-label="Закупка за штуку, ₴"
@@ -81,7 +81,7 @@ function CostInputs({ d, set, optional }: { d: Draft; set: (p: Partial<Draft>) =
         onChange={(e) => set({ purchase: e.target.value })}
       />
       <input
-        className={cn(FIELD, "w-[130px]")}
+        className={cn(FIELD, "w-[140px]")}
         inputMode="decimal"
         placeholder="доставка/шт, ₴"
         aria-label="Доставка за штуку, ₴"
@@ -129,6 +129,8 @@ function Preview({ a, units, lines, shelf, priceMinor }: { a: LotSourceAnswer | 
 
 export interface LotSourcePickerProps {
   units: number;
+  /** Что спрашиваем: «+2 шт · Чёрная» (по умолчанию «+N шт»). */
+  title?: string;
   /** Строки приехавших поставок этого товара (варианта). */
   lines: BatchLineOption[];
   shelf: ShelfLot[];
@@ -143,7 +145,7 @@ export interface LotSourcePickerProps {
   onChange?: (a: LotSourceAnswer | null) => void;
 }
 
-export function LotSourcePicker({ units, lines, shelf, priceMinor, submitLabel, initial, busy, error, onSubmit, onCancel, onChange }: LotSourcePickerProps) {
+export function LotSourcePicker({ units, title, lines, shelf, priceMinor, submitLabel, initial, busy, error, onSubmit, onCancel, onChange }: LotSourcePickerProps) {
   const [d, setD] = useState<Draft>(() => draftOf(initial, lines));
   const set = (p: Partial<Draft>) => {
     const next = { ...d, ...p };
@@ -160,7 +162,7 @@ export function LotSourcePicker({ units, lines, shelf, priceMinor, submitLabel, 
       className="flex flex-col gap-3 rounded-[var(--r-lg)] border border-[rgba(255,102,0,.45)] bg-[linear-gradient(180deg,rgba(255,102,0,.07),rgba(255,102,0,.02))] p-3.5"
     >
       <h5 id={headId} className="font-display text-[14px] font-extrabold tracking-[.02em] text-[var(--ink)]">
-        Откуда +{units} шт?
+        Откуда {title ?? `+${units} шт`}?
       </h5>
       <div role="radiogroup" aria-labelledby={headId} className="flex flex-col gap-2">
         <Option

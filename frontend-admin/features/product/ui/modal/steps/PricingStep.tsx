@@ -1,14 +1,39 @@
 "use client";
 
-import { FactoryOrderLine, StockLotsBlock, WaitLine } from "@/features/procurement";
+import { FactoryOrderLine, RaiseQuestions, StockLotsBlock, WaitLine, type LotRaise } from "@/features/procurement";
 import { ProductPickModal } from "../../ProductPickModal";
 import { Input } from "@/components/ui/Input";
+import { stockRaiseRows } from "../../../model/form";
 import { Variants } from "../Variants";
 import type { ProductCtx } from "../ctx";
 
-/** Остаток: у сохранённого товара — «Склад по партиям» (при праве «Финансы»), иначе — одно поле. */
-function StockField({ x }: { x: ProductCtx }) {
-  const { f, set, product, priceMinor, hasVariants, effectiveStock, baseStockRef, lotSource, setLotSource } = x;
+/** «Отмена» в «Откуда +N шт?»: штуки строки — как при открытии формы (новый вариант — 0). */
+function useRevert(x: ProductCtx) {
+  const { f, set, baseStockRef } = x;
+  return (r: LotRaise) => {
+    const base = baseStockRef.current;
+    if (r.key === "") return set("stock", String(base.stock));
+    set(
+      "variants",
+      f.variants.map((v, i) => {
+        if (v.id ? v.id !== r.key : `new:${i}` !== r.key) return v;
+        return { ...v, stock: v.id ? (base.variants[v.id] ?? 0) : 0 };
+      })
+    );
+  };
+}
+
+function baseTotal(x: ProductCtx): number {
+  const base = x.baseStockRef.current;
+  return x.hasVariants ? Object.values(base.variants).reduce((a, n) => a + n, 0) : base.stock;
+}
+
+/** Остаток, склад по партиям, варианты и вопросы «Откуда +N шт?» (у вариантов — под ними). */
+function StockSection({ x }: { x: ProductCtx }) {
+  const { f, set, product, priceMinor, effectiveStock, hasVariants, lotSources, setLotSource } = x;
+  const revert = useRevert(x);
+  const raises = stockRaiseRows(f, x.baseStockRef.current);
+  const questions = product?.id ? { productId: product.id, priceMinor, raises, answers: lotSources, onAnswer: setLotSource, onRevert: revert } : null;
   const stockInput = (
     <Input
       label="Остаток"
@@ -19,19 +44,23 @@ function StockField({ x }: { x: ProductCtx }) {
       onChange={(e) => set("stock", e.target.value)}
     />
   );
-  if (!product?.id) return stockInput;
   return (
-    <StockLotsBlock
-      productId={product.id}
-      priceMinor={priceMinor}
-      stock={hasVariants ? null : f.stock}
-      total={effectiveStock}
-      base={baseStockRef.current.stock}
-      onStock={(v) => set("stock", v)}
-      answer={lotSource}
-      onAnswer={setLotSource}
-      fallback={stockInput}
-    />
+    <>
+      {questions ? (
+        <StockLotsBlock
+          {...questions}
+          stock={hasVariants ? null : f.stock}
+          total={effectiveStock}
+          base={baseTotal(x)}
+          onStock={(v) => set("stock", v)}
+          fallback={stockInput}
+        />
+      ) : (
+        stockInput
+      )}
+      <Variants variants={f.variants} onChange={(v) => set("variants", v)} />
+      {questions && hasVariants && <RaiseQuestions {...questions} />}
+    </>
   );
 }
 
@@ -57,8 +86,7 @@ export function PricingStep({ x }: { x: ProductCtx }) {
         error={compareAtInvalid ? "Должна быть больше текущей цены" : undefined}
         hint={compareAtInvalid ? undefined : "Зачёркнутая цена на сайте. Пусто или 0 — не показывать."}
       />
-      <StockField x={x} />
-      <Variants variants={f.variants} onChange={(v) => set("variants", v)} />
+      <StockSection x={x} />
       {product?.id && <WaitLine productId={product.id} title={product.title} />}
       {product?.id && effectiveStock === 0 && <FactoryOrderLine product={product} ProductPicker={ProductPickModal} />}
     </div>

@@ -12,7 +12,6 @@ import {
   editBody,
   firstCreateError,
   isCompareAtInvalid,
-  plainStockRaise,
   stockDrop,
   stockRaises,
   type ProductForm,
@@ -193,7 +192,7 @@ export function useProductSave({ product, form, d, onClose, onSaved, onCreated, 
     if (!lotSourceSave.ready()) return;
     if (!(await askReasonIfLowered())) return;
     const raised = stockRaises(f, baseStockRef.current);
-    const added = plainStockRaise(f, baseStockRef.current);
+    const added = lotSourceSave.rows();
     setSaving(true);
     try {
       const turningOn = f.active && p.active === false;
@@ -205,7 +204,7 @@ export function useProductSave({ product, form, d, onClose, onSaved, onCreated, 
       if (!ok || !saved) return;
       reportIssues(saved, labelOf);
       toast.success("Сохранено");
-      await lotSourceSave.apply(p.id, added);
+      await lotSourceSave.apply(saved, added);
       void offerRelease(qc, p.id, raised);
       onSaved();
       onClose();

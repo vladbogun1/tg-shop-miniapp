@@ -21,8 +21,15 @@ export function useProductForm(open: boolean, product: AdminProduct | null, init
   const [confirmClose, setConfirmClose] = useState(false);
   const [cardStatus, setCardStatus] = useState<CardStatus>("DRAFT");
   const [showMissing, setShowMissing] = useState(false);
-  // «Откуда +N шт?» на шаге «Цена и склад»: ответ уходит после сохранения товара.
-  const [lotSource, setLotSource] = useState<LotSourceAnswer | null>(null);
+  // «Откуда +N шт?» на шаге «Цена и склад», по строке склада (`LotRaise.key`): ответы уходят после сохранения товара.
+  const [lotSources, setLotSources] = useState<Record<string, LotSourceAnswer>>({});
+  const setLotSource = (key: string, a: LotSourceAnswer | null) =>
+    setLotSources((m) => {
+      const next = { ...m };
+      if (a) next[key] = a;
+      else delete next[key];
+      return next;
+    });
 
   // С чем открыли форму: по нему считается «есть несохранённые правки», а остатки — это `expectedStock`,
   // который проверяет сервер (после 409 заменяются свежими числами).
@@ -37,7 +44,7 @@ export function useProductForm(open: boolean, product: AdminProduct | null, init
     setDir(1);
     setConfirmClose(false);
     setShowMissing(false);
-    setLotSource(null);
+    setLotSources({});
     setF(fresh);
     setCardStatus(initialCardStatus(product));
     setInitialSnapshot(JSON.stringify(fresh));
@@ -71,7 +78,7 @@ export function useProductForm(open: boolean, product: AdminProduct | null, init
     showMissing,
     setShowMissing,
     baseStockRef,
-    lotSource,
+    lotSources,
     setLotSource,
   };
 }

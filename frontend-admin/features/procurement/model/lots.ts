@@ -145,6 +145,23 @@ export type LotSourceAnswer =
 /** Не ответили — значит, новое поступление без закупки. */
 export const DEFAULT_LOT_SOURCE: LotSourceAnswer = { kind: "NEW", purchaseMinor: null, extraMinor: null, note: "" };
 
+/**
+ * Строка склада, где форма добавила штуки: сам товар (без вариантов) или один вариант. `key` — по нему редактор
+ * хранит ответ; `variantId` null — товар без вариантов или вариант, которого ещё нет на сервере (id станет известен
+ * после сохранения, ищется по `name`).
+ */
+export interface LotRaise {
+  key: string;
+  variantId: string | null;
+  name: string | null;
+  units: number;
+}
+
+/** «+3 шт · Чёрный» — для заголовков и тостов. */
+export function raiseLabel(r: Pick<LotRaise, "units" | "name">): string {
+  return `+${r.units} шт${r.name ? ` · ${r.name}` : ""}`;
+}
+
 const SOURCE_NOTE: Record<"NEW" | "OLD" | "OTHER", string> = { NEW: "новое поступление", OLD: "старый остаток", OTHER: "" };
 
 /**

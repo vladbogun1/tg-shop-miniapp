@@ -42,8 +42,10 @@ export {
   lotSourceProblem,
   lotSourceRequest,
   lotSourceSummary,
+  raiseLabel,
   shelfLots,
   stockSummary,
+  type LotRaise,
   type LotSourceAnswer,
   type ShelfLot,
   type StockSummary,
@@ -54,6 +56,7 @@ export { CsvButton } from "./ui/CsvButton";
 export { FactoryOrderLine } from "./ui/FactoryOrder";
 export { ProductLotsPanel } from "./ui/lots/ProductLotsPanel";
 export { StockLotsBlock } from "./ui/lots/StockLotsBlock";
+export { RaiseQuestions } from "./ui/lots/RaiseQuestions";
 export { ReleaseButton, useReleaseAction } from "./ui/ReleaseButton";
 export { SubscribersList } from "./ui/SubscribersList";
 export { SupplierModal } from "./ui/SupplierModal";

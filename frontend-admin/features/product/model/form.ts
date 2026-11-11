@@ -2,6 +2,7 @@ import type { CardStatus, ProductCondition, ProductSpecs } from "@shop/core/cata
 import type { ProductVariant } from "@shop/core/types";
 import { toMajor, toMinor } from "@/lib/money";
 import type { BrandValue } from "@/features/catalog";
+import type { LotRaise } from "@/features/procurement";
 import { S } from "./steps";
 import type { AdminProduct, ProductWriteRequest } from "./types";
 
@@ -115,9 +116,22 @@ export function stockDrop(f: ProductForm, base: StockBase): number {
   }, 0);
 }
 
-/** На сколько форма поднимает остаток товара без вариантов (у вариантов — 0: их штуки привязывают в таблице партий). */
-export function plainStockRaise(f: ProductForm, base: StockBase): number {
-  return hasVariants(f) ? 0 : Math.max(0, (Number(f.stock) || 0) - base.stock);
+/**
+ * Где форма добавляет штуки: товар без вариантов — одна строка (`key` ""), с вариантами — каждый вариант, у которого
+ * штук стало больше, чем при открытии (новый вариант — от нуля; без названия не считается: его не сохранят).
+ */
+export function stockRaiseRows(f: ProductForm, base: StockBase): LotRaise[] {
+  if (!hasVariants(f)) {
+    const units = (Number(f.stock) || 0) - base.stock;
+    return units > 0 ? [{ key: "", variantId: null, name: null, units }] : [];
+  }
+  return f.variants.flatMap((v, i) => {
+    const name = v.name.trim();
+    const was = v.id ? (base.variants[v.id] ?? 0) : 0;
+    const units = (Number(v.stock) || 0) - was;
+    if (!name || units <= 0) return [];
+    return [{ key: v.id ?? `new:${i}`, variantId: v.id ?? null, name, units }];
+  });
 }
 
 /** Строки (id варианта или null для товара без вариантов), у которых форма поднимает остаток. */

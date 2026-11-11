@@ -12,6 +12,7 @@ import {
   stepValid,
   stockBaseOf,
   stockDrop,
+  stockRaiseRows,
   stockRaises,
 } from "./form";
 import { S } from "./steps";
@@ -73,6 +74,21 @@ describe("остатки", () => {
     fv.variants[0].stock = 9;
     expect(stockRaises(fv, { stock: 4, variants: { v1: 3 } })).toEqual(["v1"]);
     expect(stockRaises(initialForm(full), { stock: 4, variants: { v1: 3 } })).toEqual([]);
+  });
+  it("stockRaiseRows: товар без вариантов, выросший вариант и новый вариант с названием", () => {
+    const f = { ...initialForm(product({ stock: 5 })), stock: "8" };
+    expect(stockRaiseRows(f, { stock: 5, variants: {} })).toEqual([{ key: "", variantId: null, name: null, units: 3 }]);
+    expect(stockRaiseRows({ ...f, stock: "4" }, { stock: 5, variants: {} })).toEqual([]);
+    const fv = initialForm(full);
+    fv.variants = [
+      { ...fv.variants[0], stock: 5 },
+      { name: " Белая ", stock: 2 } as never,
+      { name: "", stock: 4 } as never,
+    ];
+    expect(stockRaiseRows(fv, { stock: 3, variants: { v1: 3 } })).toEqual([
+      { key: "v1", variantId: "v1", name: "Чёрная", units: 2 },
+      { key: "new:1", variantId: null, name: "Белая", units: 2 },
+    ]);
   });
 });
 
