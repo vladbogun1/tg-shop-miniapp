@@ -9,7 +9,7 @@ export function defaultBranchRef(cfg: Pick<SenderConfig, "warehouses" | "default
 }
 
 /** Добавить отделение (повтор не добавляется); первое добавленное становится «по умолчанию». */
-export function addBranch(cfg: SenderConfig, b: NpBranch): SenderConfig {
+export function addBranch(cfg: SenderConfig, b: Pick<NpBranch, "ref" | "number" | "description" | "cityRef" | "cityName">): SenderConfig {
   if (cfg.warehouses.some((w) => w.ref === b.ref)) return cfg;
   const w = { ref: b.ref, number: b.number, description: b.description, cityRef: b.cityRef, cityName: b.cityName };
   return { ...cfg, warehouses: [...cfg.warehouses, w], defaultWarehouseRef: cfg.defaultWarehouseRef || w.ref };

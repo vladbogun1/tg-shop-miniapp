@@ -14,6 +14,7 @@ describe("размеры посылки в форме", () => {
   it("товар и варианты: изменение и тело PUT", () => {
     const data = {
       id: "p",
+      categoryId: "c",
       size: { weightG: 300, lengthMm: null, widthMm: null, heightMm: null },
       variants: [{ id: "v1", name: "Белый", size: { weightG: null, lengthMm: null, widthMm: null, heightMm: null } }],
     };

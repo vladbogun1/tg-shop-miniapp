@@ -1,8 +1,7 @@
 /**
- * Формы ответов и тел запросов Новой Почты (бэкенд-модуль delivery).
- *
- * Контракт order уже в OpenAPI (см. ниже). np-contract: остальное (окно ТТН, отправитель, размеры, вебхук) повторяет DTO
- * ветки np-integration один в один, пока не придёт контракт delivery (feat/np-v2-be-delivery).
+ * Формы ответов и тел запросов Новой Почты (бэкенд-модуль delivery) — из OpenAPI (контракты order и delivery).
+ * Поверх сгенерированных типов только строки-перечисления для сравнения в UI и размеры с null
+ * («не задано — наследуется»): у сгенерированных типов необязательные поля без `| null`.
  */
 import type { Schemas } from "@shop/core/api/schemas";
 
@@ -39,226 +38,42 @@ export interface NpCardFields {
 }
 
 /** Что админ может поменять перед «Створити ТТН»; не задано — взять из заказа. */
-export interface ShipmentOptions {
-  senderWarehouseRef?: string | null;
-  weightG?: number | null;
-  lengthMm?: number | null;
-  widthMm?: number | null;
-  heightMm?: number | null;
-  declaredMinor?: number | null;
-  collectCod?: boolean | null;
-  description?: string | null;
-  /** yyyy-mm-dd */
-  date?: string | null;
-  recipientLastName?: string | null;
-  recipientFirstName?: string | null;
-  recipientMiddleName?: string | null;
-  allowUnpaid?: boolean;
-  /** «Документи» вместо «Посилка» (одно место до 1 кг); null — как решит магазин. */
-  documents?: boolean | null;
-}
-
-// np-contract
-export interface BoxPreset {
-  name: string;
-  lengthMm: number;
-  widthMm: number;
-  heightMm: number;
-  /** Вес пустой коробки, г. */
-  tareG?: number;
-  /** Сколько отделение берёт за коробку, копейки. */
-  packMinor?: number;
-}
-
-// np-contract: одно место ТТН.
-export interface ParcelSeat {
-  weightG: number;
-  lengthMm: number;
-  widthMm: number;
-  heightMm: number;
-  /** Имя заготовки; null — товар в своей упаковке. */
-  box?: string | null;
-}
-
-// np-contract
-export interface SenderWarehouse {
-  ref: string;
-  number: string;
-  description: string;
-  cityRef?: string | null;
-  cityName?: string | null;
-}
-
-// np-contract
-export interface Parcel {
-  weightG: number;
-  lengthMm: number;
-  widthMm: number;
-  heightMm: number;
-  /** Откуда взяты числа (товары / категория / настройки). */
-  source?: string | null;
-  /** Все места; стороны выше — первого места, вес — общий. */
-  seats?: ParcelSeat[];
-  packMinor?: number;
-  documents?: boolean;
-}
-
-// np-contract
-export interface ShipmentPreview {
-  orderId: string;
-  shortId: string;
-  orderStatus: string;
-  serviceType: NpServiceType;
-  recipientLastName?: string | null;
-  recipientFirstName?: string | null;
-  recipientMiddleName?: string | null;
-  recipientPhone?: string | null;
-  cityName?: string | null;
-  destination?: string | null;
-  senderWarehouseRef?: string | null;
-  senderWarehouses: SenderWarehouse[];
-  parcel: Parcel;
-  presets: BoxPreset[];
-  declaredMinor: number;
-  codMinor: number;
-  collectCod: boolean;
-  description?: string | null;
-  date?: string | null;
-  estimateMinor?: number | null;
-  codFeeMinor?: number | null;
-  payer?: string | null;
-  /** Блокирующие: ТТН не создать, пока их не исправят. */
-  problems: string[];
-  /** НП может отказать или взять больше. */
-  warnings: string[];
-  /** Онлайн-оплата не пришла — создание требует `allowUnpaid`. */
-  unpaid: boolean;
-  amountDueMinor: number;
-  dryRun: boolean;
-  existing?: Shipment | null;
-}
-
-// np-contract
-export interface BatchResult {
-  orderId: string;
-  shortId: string;
-  ok: boolean;
-  ttn?: string | null;
-  error?: string | null;
-}
+/** null — «взять из заказа», как и отсутствующее поле (JSON тот же, что в ветке np-integration). */
+export type ShipmentOptions = { [K in keyof Schemas["Options"]]?: Schemas["Options"][K] | null };
+export type ShipmentPreview = Schemas["Preview"];
+export type Parcel = Schemas["Parcel"];
+/** Одно место ТТН; box — имя заготовки, пусто — товар в своей упаковке. */
+export type ParcelSeat = Schemas["DeliveryParcelSeat"];
+/** Заготовка коробки: вес пустой коробки tareG, цена коробки в отделении packMinor (копейки). */
+export type BoxPreset = Schemas["BoxPreset"];
+export type SenderWarehouse = Schemas["SenderWarehouse"];
+export type BatchResult = Schemas["BatchResult"];
+export type BatchRequest = Schemas["ShipmentBatchRequest"];
 
 export type LabelFormat = "100x100" | "85x85" | "a4";
 
+/** Ответ GET /api/admin/shipments/labels — PDF; эти числа приходят заголовками X-Labels-Count / X-Dry-Run / X-Labels-Skipped. */
 export interface LabelsResult {
   count: number;
   dryRun: boolean;
   skipped: string[];
 }
 
-// np-contract
-export interface SenderContact {
-  ref: string;
-  name: string;
-  phone?: string | null;
-}
-
-// np-contract
-export interface SenderConfig {
-  counterpartyRef: string;
-  counterpartyName: string;
-  /** PrivatePerson (ФОП) / Organization. */
-  ownershipForm?: string | null;
-  contactRef: string;
-  contactName?: string | null;
-  phone: string;
-  contacts: SenderContact[];
-  warehouses: SenderWarehouse[];
-  defaultWarehouseRef?: string | null;
-  loadedAt?: string | null;
-}
-
-// np-contract
-export interface SenderResponse {
-  sender: SenderConfig | null;
-  keyConfigured: boolean;
-  dryRun: boolean;
-}
-
-// np-contract
-export interface KeyCheck {
-  configured: boolean;
-  ok: boolean;
-  dryRun: boolean;
-  counterpartyName?: string | null;
-  message?: string | null;
-}
-
-// np-contract: NpWarehouseDto — отделение справочника (админский поиск).
-export interface NpBranch {
-  ref: string;
-  number: string;
-  description: string;
-  type?: string | null;
-  category?: string | null;
-  cityRef: string;
-  cityName: string;
-  maxWeightKg?: number | null;
-}
-
+export type SenderContact = Schemas["Contact"];
+export type SenderConfig = Schemas["SenderConfig"];
+export type SenderResponse = Schemas["SenderResponse"];
+export type KeyCheck = Schemas["KeyCheck"];
+/** Отделение справочника (админский поиск отделений отправки). */
+export type NpBranch = Schemas["NpWarehouseDto"];
 /** Улица города НП (GET /api/np/streets) — `ref` уходит в заказ. */
-export interface NpStreet {
-  ref: string;
-  name: string;
-  type?: string | null;
-}
+export type NpStreet = Schemas["Street"];
 
 /** Граммы / миллиметры; null — наследуется (вариант → товар → категория → настройки). */
-export interface ParcelSize {
-  weightG: number | null;
-  lengthMm: number | null;
-  widthMm: number | null;
-  heightMm: number | null;
-}
+export type ParcelSize = { [K in keyof Schemas["Size"]]: Schemas["Size"][K] | null };
+export type VariantSize = Omit<Schemas["VariantSize"], "size"> & { size: ParcelSize };
+export type ProductSize = Omit<Schemas["ProductSize"], "size" | "variants"> & { size: ParcelSize; variants: VariantSize[] };
+export type CategorySize = Omit<Schemas["CategorySize"], "size"> & { size: ParcelSize };
 
-// np-contract
-export interface VariantSize {
-  id: string;
-  name: string;
-  size: ParcelSize;
-}
-
-// np-contract
-export interface ProductSize {
-  id: string;
-  size: ParcelSize;
-  variants: VariantSize[];
-  categoryId?: string | null;
-}
-
-// np-contract
-export interface CategorySize {
-  id: string;
-  parentId?: string | null;
-  name: string;
-  size: ParcelSize;
-}
-
-// np-contract
-export interface WebhookSubscription {
-  id: string;
-  type?: string | null;
-  url?: string | null;
-  active: boolean;
-  companyTins?: string[] | null;
-}
-
-// np-contract
-export interface WebhookStatus {
-  /** На сервере заданы NOVAPOSHTA_WEBHOOK_URL (https) и NOVAPOSHTA_WEBHOOK_SECRET. */
-  configured: boolean;
-  /** Куда НП будет слать (наш сервер). */
-  url?: string | null;
-  subscriptions: WebhookSubscription[];
-  /** Почему список не прочитан (нет ключа, НП недоступна); null — прочитан. */
-  error?: string | null;
-}
+export type WebhookSubscription = Schemas["DeliveryNpTrackingPushSubscription"];
+/** configured — на сервере заданы адрес (https) и секрет вебхука; error — почему список не прочитан. */
+export type WebhookStatus = Schemas["WebhookStatus"];

@@ -31,6 +31,9 @@ const shipment = (over: Partial<Shipment> = {}): Shipment => ({
   ...over,
 });
 
+/** Сервер шлёт null, когда ТТН ещё нет; у сгенерированного типа поле без `| null`. */
+const NO_SHIPMENT = null as unknown as Shipment;
+
 const preview = (over: Partial<ShipmentPreview> = {}): ShipmentPreview => ({
   orderId: "o1",
   shortId: "ab12",
@@ -38,9 +41,28 @@ const preview = (over: Partial<ShipmentPreview> = {}): ShipmentPreview => ({
   serviceType: "WarehouseWarehouse",
   recipientLastName: "Шевченко",
   recipientFirstName: "Тарас",
+  recipientMiddleName: "",
+  recipientPhone: "380000000000",
+  cityName: "Київ",
+  destination: "Відділення №1",
+  description: "Аксесуари",
+  date: "2026-11-12",
+  estimateMinor: 0,
+  codFeeMinor: 0,
+  payer: "Recipient",
+  existing: NO_SHIPMENT,
   senderWarehouseRef: "w1",
   senderWarehouses: [],
-  parcel: { weightG: 600, lengthMm: 200, widthMm: 150, heightMm: 100 },
+  parcel: {
+    weightG: 600,
+    lengthMm: 200,
+    widthMm: 150,
+    heightMm: 100,
+    seats: [{ box: "", weightG: 600, lengthMm: 200, widthMm: 150, heightMm: 100 }],
+    source: "товары",
+    packMinor: 0,
+    documents: false,
+  },
   presets: [],
   declaredMinor: 150000,
   codMinor: 0,
@@ -74,8 +96,8 @@ describe("форма ТТН", () => {
     expect(o).toMatchObject({ weightG: 600, lengthMm: 200, declaredMinor: null, description: null, recipientMiddleName: null });
   });
   it("заготовка совпадает со сторонами", () => {
-    expect(presetMatches({ l: "20", w: "15", h: "10" }, { name: "S", lengthMm: 200, widthMm: 150, heightMm: 100 })).toBe(true);
-    expect(presetMatches({ l: "21", w: "15", h: "10" }, { name: "S", lengthMm: 200, widthMm: 150, heightMm: 100 })).toBe(false);
+    expect(presetMatches({ l: "20", w: "15", h: "10" }, { name: "S", lengthMm: 200, widthMm: 150, heightMm: 100, tareG: 0, packMinor: 0 })).toBe(true);
+    expect(presetMatches({ l: "21", w: "15", h: "10" }, { name: "S", lengthMm: 200, widthMm: 150, heightMm: 100, tareG: 0, packMinor: 0 })).toBe(false);
   });
   it("«Документи» — одно место до 1 кг", () => {
     const f = formFrom(preview(), false);

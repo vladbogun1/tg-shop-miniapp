@@ -5,11 +5,14 @@ import type { SenderConfig } from "./types";
 const cfg: SenderConfig = {
   counterpartyRef: "c",
   counterpartyName: "ФОП",
+  ownershipForm: "PrivatePerson",
   contactRef: "p",
+  contactName: "Тест",
   phone: "380000000000",
   contacts: [],
   warehouses: [],
-  defaultWarehouseRef: null,
+  defaultWarehouseRef: "",
+  loadedAt: "",
 };
 const b65 = { ref: "65", number: "65", description: "Відділення №65", cityRef: "x", cityName: "Харків" };
 const b104 = { ...b65, ref: "104", number: "104", description: "Відділення №104" };
@@ -23,7 +26,7 @@ describe("отделения отправителя", () => {
   it("убрали «по умолчанию» — им становится оставшееся", () => {
     const a = removeBranch(addBranch(addBranch(cfg, b65), b104), "65");
     expect(a.defaultWarehouseRef).toBe("104");
-    expect(defaultBranchRef({ warehouses: a.warehouses, defaultWarehouseRef: null })).toBe("104");
+    expect(defaultBranchRef({ warehouses: a.warehouses, defaultWarehouseRef: "" })).toBe("104");
   });
 });
 
@@ -34,6 +37,6 @@ describe("presetText", () => {
     );
   });
   it("без тары и цены — только размеры", () => {
-    expect(presetText({ name: "Пакет", lengthMm: 300, widthMm: 200, heightMm: 15 })).toBe("Пакет: 30×20×1.5");
+    expect(presetText({ name: "Пакет", lengthMm: 300, widthMm: 200, heightMm: 15, tareG: 0, packMinor: 0 })).toBe("Пакет: 30×20×1.5");
   });
 });
