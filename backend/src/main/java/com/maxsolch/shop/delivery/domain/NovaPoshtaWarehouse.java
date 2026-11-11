@@ -40,6 +40,35 @@ public class NovaPoshtaWarehouse {
     @Column(name = "lng")
     private Double lng;
 
+    /** Max weight of one parcel here, kg (PlaceMaxWeightAllowed, V65); null/0 = unknown. */
+    @Column(name = "max_weight_kg")
+    private Integer maxWeightKg;
+
+    /** POSTOMAT | BRANCH | POINT | OTHER, from Address.getWarehouseTypes (V66). */
+    @Column(name = "category", length = 16)
+    private String category;
+
+    /** False = closed (WarehouseStatus) or gone from the NP directory (V66): not offered, not accepted. */
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
+
+    @Column(name = "status", length = 32)
+    private String status;
+
+    /** Largest place it accepts, mm (ReceivingLimitationsOnDimensions, V66); null = unknown. */
+    @Column(name = "max_length_mm")
+    private Integer maxLengthMm;
+
+    @Column(name = "max_width_mm")
+    private Integer maxWidthMm;
+
+    @Column(name = "max_height_mm")
+    private Integer maxHeightMm;
+
+    /** Last sync that listed it (V66). */
+    @Column(name = "seen_at")
+    private Instant seenAt;
+
     @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
     private Instant updatedAt;
 }

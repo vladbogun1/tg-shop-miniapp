@@ -37,7 +37,7 @@ class NovaPoshtaControllerTest {
 
         mvc.perform(get("/api/np/warehouses").param("cityRef", "c1").param("q", "5")).andExpect(status().isOk());
 
-        verify(service).searchWarehouses("c1", "5");
+        verify(service).searchWarehouses("c1", "5", null);
     }
 
     @Test

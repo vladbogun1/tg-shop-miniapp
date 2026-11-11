@@ -17,10 +17,16 @@ import java.util.List;
 @Service
 public class NovaPoshtaService {
 
-    // NP TypeOfWarehouse refs (stable) → friendly categories used by the map filter.
-    private static final String TYPE_POSTOMAT = "f9316480-5f2d-425d-bc2c-ac7cd29decf0";
-    private static final String TYPE_BRANCH = "841339c7-591a-42e2-8233-7a0a00f0ed6f";
-    private static final String TYPE_POINT = "9a68df70-0267-42a8-bb5c-37f427e36ee4";
+    // NP TypeOfWarehouse refs (stable, Address.getWarehouseTypes) → friendly categories of the map filter.
+    // «Вантажне відділення» (9a68df70) is a branch, «Пункт приймання-видачі (з обмеженнями)» (6f8c7162) a point.
+    static final List<String> TYPES_POSTOMAT = List.of(
+            "f9316480-5f2d-425d-bc2c-ac7cd29decf0",  // Поштомат
+            "95dc212d-479c-4ffb-a8ab-8c1b9073d0bc"); // Поштомат ПриватБанку
+    static final List<String> TYPES_BRANCH = List.of(
+            "841339c7-591a-42e2-8233-7a0a00f0ed6f",  // Поштове відділення
+            "9a68df70-0267-42a8-bb5c-37f427e36ee4"); // Вантажне відділення
+    static final List<String> TYPES_POINT = List.of(
+            "6f8c7162-4b72-4b0a-88e5-906948c6a92f"); // Пункт приймання-видачі (з обмеженнями)
 
     private final NovaPoshtaCityRepository cityRepository;
     private final NovaPoshtaWarehouseRepository warehouseRepository;
@@ -46,12 +52,31 @@ public class NovaPoshtaService {
     @Cacheable(value = "npWarehouses",
             key = "(#cityRef == null ? '' : #cityRef) + '|' + (#q == null ? '' : #q.trim().toLowerCase())")
     public List<NpWarehouseDto> searchWarehouses(String cityRef, String q) {
+        return searchWarehouses(cityRef, q, null);
+    }
+
+    /**
+     * {@code kind}: {@code warehouse} = branches and partner points (the «Відділення» tab),
+     * {@code postomat} = parcel lockers, anything else = all.
+     */
+    public List<NpWarehouseDto> searchWarehouses(String cityRef, String q, String kind) {
+        List<NpWarehouseDto> all = searchAll(cityRef, q);
+        String k = kind == null ? "" : kind.trim().toLowerCase();
+        return switch (k) {
+            case "postomat" -> all.stream().filter(w -> "POSTOMAT".equals(w.category())).toList();
+            case "warehouse", "branch" -> all.stream()
+                    .filter(w -> "BRANCH".equals(w.category()) || "POINT".equals(w.category())).toList();
+            default -> all;
+        };
+    }
+
+    private List<NpWarehouseDto> searchAll(String cityRef, String q) {
         if (cityRef == null || cityRef.isBlank()) {
             return List.of();
         }
         List<NovaPoshtaWarehouse> warehouses = (q == null || q.isBlank())
-                ? warehouseRepository.findByCityRefOrderByNumberAsc(cityRef)
-                : warehouseRepository.findTop100ByCityRefAndDescriptionContainingIgnoreCaseOrderByNumberAsc(
+                ? warehouseRepository.findByCityRefAndActiveTrueOrderByNumberAsc(cityRef)
+                : warehouseRepository.findTop100ByCityRefAndActiveTrueAndDescriptionContainingIgnoreCaseOrderByNumberAsc(
                         cityRef, q.trim());
         return warehouses.stream().map(NovaPoshtaService::toDto).toList();
     }
@@ -63,37 +88,77 @@ public class NovaPoshtaService {
     @Transactional(readOnly = true)
     public List<NpWarehouseDto> warehousesInBox(double minLat, double maxLat, double minLng, double maxLng,
                                                 String category, String q, int limit) {
-        String typeRef = typeRefFor(category);
+        List<String> typeRefs = typeRefsFor(category);
+        List<String> cats = categoriesFor(category);
         String like = (q == null || q.isBlank()) ? null : "%" + q.trim().toLowerCase() + "%";
         int cap = Math.max(1, Math.min(limit, 2000));
         return warehouseRepository
-                .findInBox(minLat, maxLat, minLng, maxLng, typeRef, like, PageRequest.of(0, cap))
+                .findInBox(minLat, maxLat, minLng, maxLng, cats == null, cats == null ? List.of("") : cats,
+                        typeRefs == null ? List.of("") : typeRefs, like, PageRequest.of(0, cap))
                 .stream()
                 .map(NovaPoshtaService::toDto)
                 .toList();
     }
 
-    private static String typeRefFor(String category) {
+    private static List<String> typeRefsFor(String category) {
         if (category == null) {
             return null;
         }
         return switch (category.trim().toLowerCase()) {
-            case "postomat" -> TYPE_POSTOMAT;
-            case "branch" -> TYPE_BRANCH;
-            case "point" -> TYPE_POINT;
+            case "postomat" -> TYPES_POSTOMAT;
+            case "branch" -> TYPES_BRANCH;
+            case "point" -> TYPES_POINT;
             default -> null; // "all" / unknown
         };
     }
 
-    private static String categoryOf(String typeRef) {
-        if (TYPE_POSTOMAT.equals(typeRef)) return "POSTOMAT";
-        if (TYPE_BRANCH.equals(typeRef)) return "BRANCH";
-        if (TYPE_POINT.equals(typeRef)) return "POINT";
+    /** Categories of the map filter (postomat → POSTOMAT…); null = all. */
+    private static List<String> categoriesFor(String category) {
+        if (category == null) {
+            return null;
+        }
+        return switch (category.trim().toLowerCase()) {
+            case "postomat" -> List.of("POSTOMAT");
+            case "branch" -> List.of("BRANCH");
+            case "point" -> List.of("POINT");
+            default -> null;
+        };
+    }
+
+    /**
+     * The category the directory sync stored (from Address.getWarehouseTypes, review «хардкод»);
+     * the built-in refs only for a row synced before V66.
+     */
+    public static String categoryOf(NovaPoshtaWarehouse w) {
+        return w.getCategory() != null && !w.getCategory().isBlank() ? w.getCategory() : categoryOf(w.getType());
+    }
+
+    /**
+     * Category from a TypeOfWarehouse description («Поштомат», «Пункт приймання-видачі»,
+     * «Вантажне відділення»…) — how the sync classifies a type it has not seen.
+     */
+    public static String categoryOfTypeName(String ref, String description) {
+        String known = categoryOf(ref);
+        if (!"OTHER".equals(known)) {
+            return known;
+        }
+        String d = description == null ? "" : description.toLowerCase(java.util.Locale.ROOT);
+        if (d.contains("поштомат") || d.contains("почтомат") || d.contains("parcel locker")) return "POSTOMAT";
+        if (d.contains("пункт")) return "POINT";
+        if (d.contains("відділення") || d.contains("отделение")) return "BRANCH";
+        return "OTHER";
+    }
+
+    /** POSTOMAT | BRANCH | POINT | OTHER for a TypeOfWarehouse ref (built-in, the fallback). */
+    public static String categoryOf(String typeRef) {
+        if (TYPES_POSTOMAT.contains(typeRef)) return "POSTOMAT";
+        if (TYPES_BRANCH.contains(typeRef)) return "BRANCH";
+        if (TYPES_POINT.contains(typeRef)) return "POINT";
         return "OTHER";
     }
 
     private static NpWarehouseDto toDto(NovaPoshtaWarehouse w) {
         return new NpWarehouseDto(w.getRef(), w.getNumber(), w.getDescription(), w.getType(),
-                categoryOf(w.getType()), w.getCityRef(), w.getCityName(), w.getLat(), w.getLng());
+                categoryOf(w), w.getCityRef(), w.getCityName(), w.getLat(), w.getLng(), w.getMaxWeightKg());
     }
 }

@@ -33,8 +33,9 @@ public class NovaPoshtaController {
     @GetMapping("/warehouses")
     @Operation(summary = "Search Nova Poshta warehouses for a city")
     public List<NpWarehouseDto> warehouses(@RequestParam String cityRef,
-                                           @RequestParam(required = false) String q) {
-        return novaPoshtaService.searchWarehouses(cityRef, q);
+                                           @RequestParam(required = false) String q,
+                                           @RequestParam(required = false) String kind) {
+        return novaPoshtaService.searchWarehouses(cityRef, q, kind);
     }
 
     @GetMapping("/warehouses/bbox")
