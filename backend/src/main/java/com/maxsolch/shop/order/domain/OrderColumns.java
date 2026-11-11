@@ -141,6 +141,40 @@ public abstract class OrderColumns {
     @Column(name = "np_warehouse_name", length = 512)
     protected String npWarehouseName;
 
+    /** {@link NpServiceType} name (V98); null on older orders = WAREHOUSE. */
+    @Column(name = "np_service_type", length = 16)
+    protected String npServiceType;
+
+    /** Courier delivery address (V98, np_service_type = DOORS). */
+    @Column(name = "np_street_ref", length = 64)
+    protected String npStreetRef;
+
+    @Column(name = "np_street_name", length = 255)
+    protected String npStreetName;
+
+    @Column(name = "np_building", length = 32)
+    protected String npBuilding;
+
+    @Column(name = "np_flat", length = 32)
+    protected String npFlat;
+
+    /** Recipient name split for the waybill (V98); null on older orders — derived from customerName. */
+    @Column(name = "recipient_last_name", length = 128)
+    protected String recipientLastName;
+
+    @Column(name = "recipient_first_name", length = 128)
+    protected String recipientFirstName;
+
+    @Column(name = "recipient_middle_name", length = 128)
+    protected String recipientMiddleName;
+
+    /**
+     * «Оплата при отриманні» (V98): nothing is due online, the whole total is collected by Nova Poshta
+     * («Контроль оплати»). No payment deadline.
+     */
+    @Column(name = "payment_on_delivery", nullable = false)
+    protected boolean paymentOnDelivery = false;
+
     @Column(name = "payment_option_id", columnDefinition = "BINARY(16)")
     protected byte[] paymentOptionId;
 

@@ -62,6 +62,7 @@ public class OrderArchive {
         order.archive(ops.now(), adminName, why);
         Order saved = orderRepository.save(order);
         events.publish(OrderEvents.Edited.silent(saved.getId()));
+        events.publish(new OrderEvents.Archived(saved.getId()));
         return saved;
     }
 

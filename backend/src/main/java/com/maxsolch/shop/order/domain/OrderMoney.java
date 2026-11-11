@@ -39,6 +39,9 @@ public final class OrderMoney {
 
     /** Что покупатель платит онлайн: предоплата (не больше итога) или весь итог. */
     public static long dueOnlineMinor(Order order) {
+        if (order.isPaymentOnDelivery()) {
+            return 0; // «оплата при отриманні»: Nova Poshta collects it all
+        }
         return dueOnlineMinor(order.getTotalMinor(), order.getPrepaymentMinor());
     }
 
@@ -49,6 +52,9 @@ public final class OrderMoney {
 
     /** Сколько ещё доплатить онлайн прямо сейчас (0, когда онлайн-часть закрыта). */
     public static long amountDueMinor(Order order) {
+        if (order.isPaymentOnDelivery()) {
+            return 0; // «оплата при отриманні»: nothing to pay online
+        }
         return amountDueMinor(order.getTotalMinor(), order.getPrepaymentMinor(), order.getReceivedMinor());
     }
 

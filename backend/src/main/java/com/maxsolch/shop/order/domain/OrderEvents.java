@@ -26,6 +26,13 @@ public final class OrderEvents {
     }
 
     /**
+     * The main admin archived the order (V68): it leaves the board and the lists. Published next to
+     * {@code Edited.silent} — e.g. the Nova Poshta side deletes a waybill the parcel was never handed over for.
+     */
+    public record Archived(byte[] orderId) {
+    }
+
+    /**
      * An admin exchanged goods in a paid order and sent it back to NEW / APPROVED: move the channel
      * card, sync the dispatch card and (optionally) tell the customer what goes out instead.
      */
