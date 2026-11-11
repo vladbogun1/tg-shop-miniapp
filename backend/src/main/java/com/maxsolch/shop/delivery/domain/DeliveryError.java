@@ -18,7 +18,7 @@ public enum DeliveryError implements ErrorCode {
     /** The order has no waybill to act on. */
     NP_NO_SHIPMENT("NP_NO_SHIPMENT"),
     /** The order already has an active waybill: {0} its number. */
-    NP_TTN_EXISTS("NP_TTN_EXISTS"),
+    NP_TTN_EXISTS("SHIPMENT_EXISTS"),
     /** Another request is making this order's waybill right now. */
     NP_TTN_BUSY("NP_TTN_BUSY"),
     /** The waybill no longer matches its order: {0} why. */
@@ -36,7 +36,17 @@ public enum DeliveryError implements ErrorCode {
     /** The product or category was not found. */
     NP_SIZE_TARGET_NOT_FOUND("NP_SIZE_TARGET_NOT_FOUND"),
     /** Webhooks are not configured (secret/URL). */
-    NP_WEBHOOK_OFF("NP_WEBHOOK_OFF");
+    NP_WEBHOOK_OFF("NP_WEBHOOK_OFF"),
+    /** NP did not answer a write in time; it may have been done: {0} what to do. */
+    NP_UNCERTAIN("NP_UNCERTAIN"),
+    /** The waybill exists at NP but our row did not save: {0} what to do. */
+    NP_NOT_SAVED("NP_NOT_SAVED"),
+    /** NP refused to delete a printed waybill: {0} the reason and what to do. */
+    NP_DELETE_FAILED("NP_DELETE_FAILED"),
+    /** The old waybill was deleted, the new one failed: {0} the reason. */
+    NP_REMAKE_FAILED("NP_REMAKE_FAILED"),
+    /** The online payment has not arrived; making the waybill needs the admin's confirmation: {0}. */
+    NP_UNPAID("ORDER_UNPAID_SHIP");
 
     private final String code;
 
