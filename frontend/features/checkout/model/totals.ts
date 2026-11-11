@@ -1,18 +1,14 @@
 import type { LooseT } from "@shop/core/i18n";
 import type { GiftProgress, GiftTierInfo } from "@shop/core/giftcase";
-import type { DeliveryMethod, NpWarehouse } from "@/lib/api";
+/** Шаг можно пройти: 0 — получатель и телефон, 1 — доставка (`deliveryOk` из @shop/customer/delivery/draft), 2 — оплата. */
+export function stepIsValid(step: number, v: { recipientOk: boolean; phoneOk: boolean; deliveryOk: boolean; paid: boolean }): boolean {
+  const ok = [v.recipientOk && v.phoneOk, v.deliveryOk, v.paid, true];
+  return ok[step] ?? false;
+}
 
-export function stepIsValid(
-  step: number,
-  v: { nameOk: boolean; phoneOk: boolean; delivery: DeliveryMethod; warehouse: NpWarehouse | null; paid: boolean },
-): boolean {
-  const ok = [
-    v.nameOk && v.phoneOk,
-    v.delivery === "PICKUP" || (v.delivery === "NOVA_POSHTA" && !!v.warehouse),
-    v.paid,
-    true,
-  ];
-  return ok[step];
+/** Шаг с полем, которое отклонил сервер: получатель и телефон — 0, адрес и комментарий — 1. */
+export function stepOfField(field: "name" | "phone" | "comment" | "address"): number {
+  return field === "name" || field === "phone" ? 0 : 1;
 }
 
 export interface ConfirmGift {

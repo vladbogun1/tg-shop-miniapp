@@ -16,14 +16,15 @@ export async function addToCart(page: Page, title: string, extra = 0): Promise<v
 
 /** Checkout steps 1-3: contacts, Nova Poshta branch, full online payment. Leaves the confirmation (step 4) open. */
 export async function fillCheckoutToConfirmation(page: Page): Promise<void> {
-  await page.getByRole("textbox", { name: "Ім'я та прізвище" }).fill("Тест Покупець");
+  await page.getByRole("textbox", { name: "Прізвище", exact: true }).fill("Тест");
+  await page.getByRole("textbox", { name: "Ім'я", exact: true }).fill("Покупець");
   await page.getByRole("textbox", { name: "Телефон" }).fill("971234567");
   await page.getByRole("button", { name: "Далі" }).click();
 
   await expect(page.getByText("Крок 2/4")).toBeVisible();
   await page.getByRole("combobox", { name: "Місто" }).fill("Киї");
   await page.getByRole("option", { name: /Київ/ }).click();
-  await page.getByRole("combobox", { name: "Відділення / поштомат" }).click();
+  await page.getByRole("combobox", { name: "Відділення або пункт" }).click();
   await page.getByRole("option", { name: /Відділення №1/ }).click();
   await page.getByRole("button", { name: "Далі" }).click();
 

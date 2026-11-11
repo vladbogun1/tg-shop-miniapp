@@ -34,7 +34,7 @@ import { useT } from "@/i18n/context";
 import type { NpCategory, NpWarehouse } from "@shop/core/types";
 import { api } from "@/lib/api";
 import { BoundsWatcher, ClusterLayer, FocusController } from "@shop/customer/delivery/map/parts";
-import { CAT_TABS, UA_CENTER, UA_ZOOM, useWarehouseMapData, type MapFocus } from "@shop/customer/delivery/map/model";
+import { CAT_TABS, UA_CENTER, UA_ZOOM, useWarehouseMapData, type MapCategory, type MapFocus } from "@shop/customer/delivery/map/model";
 
 export type { MapFocus };
 
@@ -90,14 +90,17 @@ export default function NpWarehouseMap({
   onSelect,
   focus = null,
   selected = null,
+  initialCategory = "all",
 }: {
   /** A tapped pin — picked straight away; the branch field above shows it. */
   onSelect: (w: NpWarehouse) => void;
   focus?: MapFocus | null;
   selected?: NpWarehouse | null;
+  /** The type filter the map opens with (the «Поштомат» tab opens on lockers). */
+  initialCategory?: MapCategory;
 }) {
   const t = useT();
-  const { category, setCategory, fetchBox, pins } = useWarehouseMapData(api.checkout, selected);
+  const { category, setCategory, fetchBox, pins } = useWarehouseMapData(api.checkout, selected, initialCategory);
 
   return (
     <div className="flex flex-col gap-2.5">

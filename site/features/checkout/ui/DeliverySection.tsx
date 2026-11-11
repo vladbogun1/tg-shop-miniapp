@@ -119,7 +119,7 @@ function PointFields({ d, tab }: { d: DeliveryDraftState; tab: "WAREHOUSE" | "PO
       {mode === "map" && (
         <>
           <p className="text-[13px] font-semibold text-[var(--muted)]">{t("checkout.mapHint")}</p>
-          <NpWarehouseMap focus={focus} selected={pick.shown} onSelect={pick.pick} />
+          <NpWarehouseMap key={tab} focus={focus} selected={pick.shown} onSelect={pick.pick} initialCategory={tab === "POSTOMAT" ? "postomat" : "all"} />
           {pick.pending && <MapPickConfirm warehouse={pick.pending} label={npLabel(pick.pending, t)} onConfirm={pick.confirm} onCancel={pick.cancel} />}
         </>
       )}

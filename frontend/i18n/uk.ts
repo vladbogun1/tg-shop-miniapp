@@ -172,15 +172,9 @@ export const uk: RuDictionary = {
   "checkout.redirecting": "Відкриваємо оплату…",
 
   "checkout.contacts.intro": "Куди і кому доставити замовлення — почнімо з контактів.",
-  "checkout.contacts.name": "Ім'я та прізвище",
-  "checkout.contacts.nameError": "Вкажіть ім'я",
   "checkout.contacts.phone": "Телефон",
   "checkout.contacts.phoneError": "Введіть номер: +38 (0XX) XXX-XX-XX",
 
-  "checkout.delivery.np": "Нова Пошта",
-  "checkout.delivery.npSubtitle": "Відділення / поштомат",
-  "checkout.delivery.pickup": "Самовивіз",
-  "checkout.delivery.pickupSubtitle": "З точки магазину",
   "checkout.delivery.mapHint": "Знайдіть відділення на карті та натисніть «Обрати».",
   "checkout.delivery.required": "Оберіть відділення — у списку або на карті.",
   "checkout.delivery.pickupText": "Заберіть замовлення з точки магазину — ми зв'яжемося з вами щодо адреси та часу.",
@@ -189,7 +183,6 @@ export const uk: RuDictionary = {
   "checkout.np.city": "Місто",
   "checkout.np.cityPlaceholder": "Почніть вводити назву",
   "checkout.np.cityNone": "Місто не знайдено",
-  "checkout.np.warehouse": "Відділення / поштомат",
   "checkout.np.warehousePlaceholder": "Номер або адреса",
   "checkout.np.warehouseNone": "У цьому місті такого відділення немає",
   "checkout.np.lastWarehouse": "Як у попередньому замовленні",

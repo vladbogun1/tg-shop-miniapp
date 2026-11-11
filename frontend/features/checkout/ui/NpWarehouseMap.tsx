@@ -40,7 +40,7 @@ import { createPortal } from "react-dom";
 import { MapContainer, TileLayer } from "react-leaflet";
 import { useT } from "@/i18n/context";
 import { BoundsWatcher, ClusterLayer, FocusController, SizeWatcher } from "@shop/customer/delivery/map/parts";
-import { CAT_TABS, UA_CENTER, UA_ZOOM, useWarehouseMapData, type MapFocus } from "@shop/customer/delivery/map/model";
+import { CAT_TABS, UA_CENTER, UA_ZOOM, useWarehouseMapData, type MapCategory, type MapFocus } from "@shop/customer/delivery/map/model";
 import { customerApi, type NpWarehouse, type NpCategory } from "@/lib/api";
 import { sheetVariants } from "@/lib/motion";
 
@@ -98,6 +98,7 @@ export default function NpWarehouseMap({
   onSelect,
   focus = null,
   selected = null,
+  initialCategory = "all",
 }: {
   /** "Обрати це відділення" in the sheet. */
   onSelect: (w: NpWarehouse) => void;
@@ -105,9 +106,11 @@ export default function NpWarehouseMap({
   focus?: MapFocus | null;
   /** The branch picked so far (in either mode) — highlighted on the map. */
   selected?: NpWarehouse | null;
+  /** The type filter the map opens with (the «Поштомат» tab opens on lockers). */
+  initialCategory?: MapCategory;
 }) {
   const t = useT();
-  const { category, setCategory, fetchBox, pins } = useWarehouseMapData(customerApi.checkout, selected);
+  const { category, setCategory, fetchBox, pins } = useWarehouseMapData(customerApi.checkout, selected, initialCategory);
   const [active, setActive] = useState<NpWarehouse | null>(null);
   // document.body only exists once mounted; the detail sheet is portalled into it (see below).
   const [mounted, setMounted] = useState(false);

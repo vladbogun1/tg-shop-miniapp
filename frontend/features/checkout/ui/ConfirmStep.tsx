@@ -4,16 +4,22 @@ import { GiftChoicePicker } from "@shop/ui/gift-case";
 import type { GiftChoice, GiftTierInfo } from "@shop/core/giftcase";
 import { caseMoney, useCaseRules } from "@/features/gift";
 import { useT } from "@/i18n/context";
-import type { DeliveryMethod, NpWarehouse, PaymentOption } from "@/lib/api";
+import type { NpEstimateResponse } from "@shop/customer/delivery/contract";
+import type { DeliveryDraft } from "@shop/customer/delivery/draft";
+import { estimateAmounts } from "@shop/customer/delivery/estimate";
+import { recipientLine } from "@shop/customer/delivery/recipient";
+import type { PaymentOption } from "@/lib/api";
+import { money } from "@/lib/money";
+import { npLabel } from "../model/np-label";
 import { haptic } from "@/platform/telegram";
 import { ConfirmSummary } from "./ConfirmSummary";
 import { PaymentTrust } from "./PaymentStep";
 
 export function ConfirmStep({
-  name,
+  draft,
   phone,
-  delivery,
-  warehouse,
+  estimate,
+  onDelivery,
   comment,
   payment,
   promoCode,
@@ -31,10 +37,13 @@ export function ConfirmStep({
   currency,
   items,
 }: {
-  name: string;
+  /** Tab, recipient, point or courier address (@shop/customer/delivery/draft). */
+  draft: DeliveryDraft;
   phone: string;
-  delivery: DeliveryMethod;
-  warehouse: NpWarehouse | null;
+  /** «≈ N ₴» from Nova Poshta's calculator, null — no number. */
+  estimate: NpEstimateResponse | null;
+  /** The chosen option is paid on receipt: no monobank, no 24 h. */
+  onDelivery: boolean;
   comment: string;
   payment: PaymentOption | null;
   promoCode: string;
@@ -60,10 +69,7 @@ export function ConfirmStep({
 }) {
   const t = useT();
   const caseRules = useCaseRules();
-  const deliveryText =
-    delivery === "PICKUP"
-      ? t("order.pickup")
-      : `${t("checkout.delivery.np")} · ${warehouse?.cityName ? warehouse.cityName + ", " : ""}${warehouse?.description ?? ""}`;
+  const est = estimateAmounts(estimate);
 
   return (
     <div className="flex flex-col gap-4">
@@ -103,15 +109,34 @@ export function ConfirmStep({
       />
 
       <section className="flex flex-col gap-3 rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[0_8px_24px_-12px_var(--shadow)]">
-        <SummaryRow label={t("order.recipient")} value={`${name}, ${phone}`} />
-        <SummaryRow label={t("order.delivery")} value={deliveryText} />
+        <SummaryRow label={t("order.recipient")} value={`${recipientLine(draft.recipient)}, ${phone}`} />
+        <SummaryRow label={t("order.delivery")} value={deliveryText(draft, t)} />
+        {draft.tab !== "PICKUP" && (
+          <SummaryRow
+            label={t("delivery.cost.label")}
+            value={est ? t("delivery.cost.separate", { amount: money(est.deliveryMinor, currency) }) : t("delivery.cost.unknown")}
+          />
+        )}
         <SummaryRow label={t("order.payment")} value={payment?.title ?? "—"} />
         {comment && <SummaryRow label={t("order.comment")} value={comment} />}
       </section>
 
-      <PaymentTrust />
+      {draft.tab !== "PICKUP" && <p className="-mt-2 px-0.5 text-[12px] font-medium text-[var(--muted)]">{t("delivery.cost.note")}</p>}
+      {!onDelivery && <PaymentTrust />}
     </div>
   );
+}
+
+/** «Поштомат №5 · Київ, вул. …», «Кур'єр · Київ, Хрещатик, 1, 12», «Самовивіз». */
+function deliveryText(d: DeliveryDraft, t: ReturnType<typeof useT>): string {
+  if (d.tab === "PICKUP") return t("order.pickup");
+  if (d.tab === "DOORS") {
+    const address = [d.city?.name, d.courier.streetName, d.courier.building, d.courier.flat].filter(Boolean).join(", ");
+    return `${t("delivery.tab.courier")} · ${address}`;
+  }
+  const w = d.warehouse;
+  if (!w) return "—";
+  return `${npLabel(w, t)} · ${w.cityName ? w.cityName + ", " : ""}${w.description}`;
 }
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
