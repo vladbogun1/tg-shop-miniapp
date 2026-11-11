@@ -13,9 +13,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import org.springframework.dao.OptimisticLockingFailureException;
+
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Our rows of waybills after Nova Poshta answered: each write is its own short transaction (no NP call inside it).
@@ -84,13 +88,36 @@ class ShipmentStore {
         return s;
     }
 
-    /** The same waybill after an «update» at NP. */
+    /**
+     * The same waybill after an «update» at NP, re-read now. It was not printed when the update was sent (a printed
+     * one is remade instead), so a print recorded meanwhile came after NP took the new data: it is kept, and the
+     * next change goes through «Перестворити». A concurrent write (poll, webhook, print) makes it try again on the
+     * fresh row ({@code version}).
+     */
     OrderShipment refill(byte[] shipmentId, Prepared p, NpResult r, Long estimate) {
-        return tx.execute(t -> {
+        return retryingOnConflict(() -> tx.execute(t -> {
             OrderShipment x = shipments.findById(shipmentId).orElseThrow();
+            Instant printedMeanwhile = x.getPrintedAt();
             fill(x, p, r, estimate);
+            if (printedMeanwhile != null) {
+                x.setPrintedAt(printedMeanwhile);
+            }
             return x;
-        });
+        }));
+    }
+
+    /** Three tries of a short write that lost an optimistic-lock race to the poll or a webhook. */
+    private <T> T retryingOnConflict(Supplier<T> write) {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return write.get();
+            } catch (OptimisticLockingFailureException e) {
+                if (attempt >= 3) {
+                    throw e;
+                }
+                log.info("NP waybill row changed meanwhile, writing again (attempt {})", attempt + 1);
+            }
+        }
     }
 
     private void fill(OrderShipment s, Prepared p, NpResult r, Long estimate) {
@@ -148,9 +175,9 @@ class ShipmentStore {
         });
     }
 
+    /** One short write per waybill, so a poll racing one of them does not lose the print of the others. */
     void markPrinted(List<byte[]> shipmentIds) {
-        tx.executeWithoutResult(t -> shipmentIds.forEach(id -> shipments.findById(id)
-                .ifPresent(x -> x.setPrintedAt(clock.instant()))));
+        shipmentIds.forEach(this::printedNow);
     }
 
     void syncError(byte[] shipmentId, String text) {
@@ -161,7 +188,11 @@ class ShipmentStore {
         change(shipmentId, x -> x.setPrintedAt(clock.instant()));
     }
 
+    /** Re-read and change one row; a concurrent write (version) makes it re-read and change again. */
     private void change(byte[] shipmentId, Consumer<OrderShipment> how) {
-        tx.executeWithoutResult(t -> shipments.findById(shipmentId).ifPresent(how));
+        retryingOnConflict(() -> {
+            tx.executeWithoutResult(t -> shipments.findById(shipmentId).ifPresent(how));
+            return null;
+        });
     }
 }

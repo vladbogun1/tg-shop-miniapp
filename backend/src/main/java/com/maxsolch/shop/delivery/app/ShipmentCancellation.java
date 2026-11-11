@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class ShipmentCancellation {
 
+    static final String CLOSED_ORDER = "Заказ закрыт, ТТН не удалилась в Новой почте — удалите её в кабинете НП: ";
+
     private final OrderShipmentRepository shipments;
     private final NpWaybillWriter writer;
     private final ShipmentStore store;
@@ -31,16 +33,19 @@ public class ShipmentCancellation {
 
     public void cancel(byte[] orderId) {
         locks.withOrder(orderId, () -> {
-            cancelLocked(orderId);
+            OrderShipment s = shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(orderId)
+                    .orElseThrow(() -> new DomainException.NotFound(DeliveryError.NP_NO_SHIPMENT));
+            if (OrderShipment.ORIGIN_API.equals(s.getOrigin())) {
+                ShipmentPreparation.editable(s);
+            }
+            forget(orderId, s);
             return null;
         });
     }
 
-    private void cancelLocked(byte[] orderId) {
-        OrderShipment s = shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(orderId)
-                .orElseThrow(() -> new DomainException.NotFound(DeliveryError.NP_NO_SHIPMENT));
+    /** Deletes our waybill at NP (not under a dry run) and keeps the row as history. Call under the lock. */
+    private void forget(byte[] orderId, OrderShipment s) {
         if (OrderShipment.ORIGIN_API.equals(s.getOrigin())) {
-            ShipmentPreparation.editable(s);
             if (writer.dryRun() || DryRunLabels.isDry(s.getTtn())) {
                 log.info("NP waybill {} is only forgotten here, not deleted at NP (dry run)", s.getTtn());
             } else {
@@ -55,19 +60,42 @@ public class ShipmentCancellation {
     /**
      * The order was rejected, cancelled, archived, merged into another or exchanged: our waybill NP has no parcel for
      * (CREATED, made with our key) is deleted there. A typed-in one or one NP already has stays. A failure is kept
-     * in {@code sync_error}, so «Внимание» → «Посылки» shows the waybill to delete by hand.
+     * in {@code sync_error}, so «Внимание» → «Посылки» shows the waybill to delete by hand. While another waybill
+     * action holds the order's lock nothing is written: {@link ShipmentCleanupSweep} tries again on the next tick
+     * (and a waybill still being made re-checks the order itself when it is saved).
      */
     public void dropForClosedOrder(byte[] orderId) {
+        if (locks.tryWithOrder(orderId, () -> dropLocked(orderId)).isEmpty()) {
+            log.info("NP waybill of closed order: the order's lock is busy, the next tracking tick retries");
+        }
+    }
+
+    /** {@link #dropForClosedOrder} for a caller already holding the order's lock (the lock is not re-entrant). */
+    boolean dropLocked(byte[] orderId) {
         OrderShipment s = shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(orderId).orElse(null);
-        if (s == null || !OrderShipment.ORIGIN_API.equals(s.getOrigin()) || s.stageEnum() != ShipmentStage.CREATED) {
-            return;
+        if (deletableAtNp(s)) {
+            replaceLocked(orderId, s, CLOSED_ORDER);
         }
+        return true;
+    }
+
+    /**
+     * Deletes our waybill {@code s} at NP before the order goes on without it (closed, or another number typed in);
+     * under the lock. False when NP did not delete it: the row stays active with {@code sync_error}.
+     */
+    boolean replaceLocked(byte[] orderId, OrderShipment s, String failurePrefix) {
         try {
-            cancel(orderId);
+            forget(orderId, s);
+            return true;
         } catch (RuntimeException e) {
-            log.warn("NP waybill {} of a closed order not deleted: {}", s.getTtn(), ShipmentEditing.reason(e));
-            store.syncError(s.getId(), "Заказ закрыт, ТТН не удалилась в Новой почте — удалите её в кабинете НП: "
-                    + ShipmentEditing.reason(e));
+            log.warn("NP waybill {} not deleted: {}", s.getTtn(), ShipmentEditing.reason(e));
+            store.syncError(s.getId(), failurePrefix + ShipmentEditing.reason(e));
+            return false;
         }
+    }
+
+    /** Ours, and NP has no parcel yet: the only kind deleted at NP without asking. */
+    static boolean deletableAtNp(OrderShipment s) {
+        return s != null && OrderShipment.ORIGIN_API.equals(s.getOrigin()) && s.stageEnum() == ShipmentStage.CREATED;
     }
 }

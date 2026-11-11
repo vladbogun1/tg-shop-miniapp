@@ -49,7 +49,10 @@ public class ShipmentEditing {
         return update(orderId, opt, true);
     }
 
-    /** {@code remakeIfPrinted} false: a printed waybill is left as it is (NP's error is thrown). */
+    /**
+     * {@code remakeIfPrinted} false: a printed waybill is left as it is — null when we know it is printed, NP's
+     * error when only NP knows.
+     */
     OrderShipment update(byte[] orderId, Options opt, boolean remakeIfPrinted) {
         Options o = opt == null ? Options.defaults() : opt;
         return locks.withOrder(orderId, () -> updateLocked(orderId, o, remakeIfPrinted));
@@ -58,6 +61,10 @@ public class ShipmentEditing {
     private OrderShipment updateLocked(byte[] orderId, Options o, boolean remakeIfPrinted) {
         Prepared p = preparation.prepare(orderId, o);
         OrderShipment s = ShipmentPreparation.editable(p.active());
+        if (!remakeIfPrinted && s.getPrintedAt() != null) {
+            // Printed after the caller looked (re-read under the lock): the label stays this waybill's.
+            return null;
+        }
         ShipmentPreparation.requireReady(p, o.allowingUnpaid());
         boolean printed = remakeIfPrinted && s.getPrintedAt() != null;
         NpResult r = null;
@@ -161,7 +168,10 @@ public class ShipmentEditing {
                 null, collect, null, null, null, null, null,
                 true, "Documents".equals(s.getCargoType()) ? null : Boolean.FALSE);
         try {
-            update(orderId, o, false);
+            if (update(orderId, o, false) == null) {
+                log.info("NP waybill {} was printed meanwhile: not remade automatically", s.getTtn());
+                return false;
+            }
             log.info("NP waybill {} updated after the order changed", s.getTtn());
             return true;
         } catch (RuntimeException e) {
