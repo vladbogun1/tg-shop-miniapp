@@ -2,6 +2,7 @@ package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderEvents;
+import com.maxsolch.shop.order.domain.OrderMoneyMovement;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.tx.DomainEvents;
@@ -72,9 +73,26 @@ public class ShipmentOrders {
      */
     @Transactional
     public boolean markDelivered(byte[] orderId) {
+        return markDelivered(orderId, 0);
+    }
+
+    /**
+     * The customer picked the parcel up and Nova Poshta reports {@code collectedMinor} collected for us
+     * («Контроль оплати»): that money is credited to «получено» first (never above the total) and journaled as
+     * {@code NP_PAYMENT_CONTROL}, then SHIPPED → DELIVERED settles whatever is still collectable as {@code NP_COD}.
+     * Idempotent: once the order is DELIVERED a repeated report returns false and adds nothing.
+     */
+    @Transactional
+    public boolean markDelivered(byte[] orderId, long collectedMinor) {
         Order order = ops.lock(orderId);
         if (order.getStatus() != OrderStatus.SHIPPED) {
             return false;
+        }
+        long credited = order.creditableOnlineMinor(Math.max(0, collectedMinor));
+        if (credited > 0) {
+            order.receiveOnline(credited, ops.now());
+            ops.ledger(order, OrderMoneyMovement.Kind.PAYMENT, OrderMoneyMovement.Channel.NP_PAYMENT_CONTROL,
+                    credited, OrderMoneyMovement.Source.AUTO, null, "получено через «Контроль оплати» НП", null);
         }
         lifecycle.deliver(orderId);
         return true;
