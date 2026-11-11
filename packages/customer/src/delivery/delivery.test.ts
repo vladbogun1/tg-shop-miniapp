@@ -126,8 +126,8 @@ describe("подсказка цены", () => {
 
   it("одна цифра; «недоступно» и ноль — без подсказки", () => {
     expect(estimateAmounts({ available: true, deliveryMinor: 9000, codFeeMinor: 2200 })).toEqual({ deliveryMinor: 9000, withCodFee: true });
-    expect(estimateAmounts({ available: true, deliveryMinor: 9000 })).toEqual({ deliveryMinor: 9000, withCodFee: false });
-    expect(estimateAmounts({ available: false })).toBeNull();
+    expect(estimateAmounts({ available: true, deliveryMinor: 9000, codFeeMinor: 0 })).toEqual({ deliveryMinor: 9000, withCodFee: false });
+    expect(estimateAmounts({ available: false, deliveryMinor: 0, codFeeMinor: 0 })).toBeNull();
     expect(estimateAmounts(null)).toBeNull();
   });
 });

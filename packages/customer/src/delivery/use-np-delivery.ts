@@ -60,7 +60,7 @@ export function useNpStreets(api: Pick<NpApi, "npStreets">, cityRef: string | nu
   return { items: ready ? (q.data ?? NO_STREETS) : NO_STREETS, loading: !ready, searching: true, failed: ready && q.isError };
 }
 
-const UNAVAILABLE: NpEstimateResponse = { available: false };
+const UNAVAILABLE: NpEstimateResponse = { available: false, deliveryMinor: 0, codFeeMinor: 0 };
 
 /**
  * «≈ N ₴» для текущей корзины, города, службы и денег. `req` null — считать нечего (самовывоз, нет города).

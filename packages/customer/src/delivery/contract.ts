@@ -1,9 +1,8 @@
 /**
  * Контракт checkout v2 «Нової пошти» для покупательских фронтов — в ОДНОМ месте, остальной код только импортирует.
  *
- * Заказ, посылка и вариант оплаты — алиасы на OpenAPI (`generated.d.ts`, коммит np-contract-order).
- * Справочники НП для оформления (config / streets / estimate) — пока ручные формы: их контракт придёт
- * с np-contract-delivery (feat/np-v2-be-delivery), тогда здесь же меняются на `Schemas["…"]`.
+ * Заказ, посылка, вариант оплаты и справочники НП для оформления (config / streets / estimate) — алиасы на OpenAPI
+ * (`generated.d.ts`, коммиты np-contract-order и np-contract-delivery).
  * Поля варианта оплаты необязательны: при откате на старый бэкенд оформление работает без них.
  */
 import type { Schemas } from "@shop/core/api/schemas";
@@ -16,36 +15,22 @@ export type NpServiceType = "WAREHOUSE" | "POSTOMAT" | "DOORS";
 export type DeliveryKey = NpServiceType | "PICKUP";
 
 /** GET /api/np/config — какие службы включены в магазине (сервер всё равно проверит при заказе). */
-export interface NpCheckoutConfig {
-  postomatEnabled: boolean;
-  courierEnabled: boolean;
-  estimateEnabled: boolean;
-}
+export type NpCheckoutConfig = Schemas["CheckoutConfig"];
 
 /** GET /api/np/streets?cityRef&q — улица города для курьера; `ref` уходит в заказ. */
-export interface NpStreet {
-  ref: string;
-  name: string;
-  type?: string | null;
-}
+export type NpStreet = Schemas["Street"];
 
-/** Тело POST /api/np/estimate. */
-export interface NpEstimateRequest {
-  cityRef: string;
-  serviceType: NpServiceType;
-  items: { productId: string; variantId?: string; quantity: number }[];
-  totalMinor: number;
-  payOnDeliveryMinor: number;
-}
+/**
+ * Тело POST /api/np/estimate. В схеме все поля необязательны и служба — строка; клиент всегда шлёт всё,
+ * поэтому здесь поля обязательные и служба — наш союз.
+ */
+export type NpEstimateRequest = Required<Omit<Schemas["DeliveryNpCheckoutEstimateRequest"], "serviceType">> & { serviceType: NpServiceType };
 
-/** Ответ POST /api/np/estimate: `available: false` — подсказки нет. */
-export interface NpEstimateResponse {
-  available: boolean;
-  /** Доставка + коробка + комиссия за перевод (если есть): всё, что платят НП при получении, кроме товара. */
-  deliveryMinor?: number | null;
-  /** Комиссия «Контроль оплати», уже входящая в `deliveryMinor`; 0 — заказ оплачен онлайн целиком. */
-  codFeeMinor?: number | null;
-}
+/**
+ * Ответ POST /api/np/estimate: `available: false` — подсказки нет. `deliveryMinor` — доставка + коробка + комиссия за
+ * перевод (если есть); `codFeeMinor` — комиссия «Контроль оплати», уже входящая в `deliveryMinor` (0 — оплачено онлайн).
+ */
+export type NpEstimateResponse = Schemas["EstimateResponse"];
 
 /** Вид варианта оплаты: null — онлайн; ON_DELIVERY — всё собирает «Нова пошта» при получении. */
 export type PaymentOptionKind = "ON_DELIVERY";
