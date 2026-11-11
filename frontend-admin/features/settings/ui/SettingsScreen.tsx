@@ -66,6 +66,13 @@ export function SettingsScreen() {
     resetForm({ entries: prev ? rebaseDraft(prev, getValues("entries"), q.data.items) : initialDraft(q.data.items) });
   }, [q.data, resetForm, getValues]);
 
+  // «К настройкам» из «Внимания» ведёт на /settings#group-novaposhta: группы появляются после загрузки.
+  const loaded = Boolean(q.data);
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (loaded && hash.startsWith("#group-")) document.getElementById(hash.slice(1))?.scrollIntoView({ block: "start" });
+  }, [loaded]);
+
   const items = useMemo(() => q.data?.items ?? [], [q.data]);
   const dirtyItems = useMemo(() => items.filter((it) => isDirty(it, draft[it.key])), [items, draft]);
   const invalid = dirtyItems.some((it) => !draft[it.key].reset && validate(it, draft[it.key].raw));

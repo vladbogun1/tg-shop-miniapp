@@ -8,7 +8,9 @@ import {
   Package,
   PackageCheck,
   PackageMinus,
+  PackageX,
   RefreshCw,
+  Settings,
   Star,
   Truck,
   Undo2,
@@ -31,6 +33,8 @@ const GROUP_ICON: Record<KnownInboxType, LucideIcon> = {
   REVIEW: Star,
   SUPPORT: LifeBuoy,
   SUPPLY_DRAFT: PackageCheck,
+  PARCEL: PackageX,
+  NP_SYSTEM: Truck,
 };
 
 /** Group hue (icon tile tint, icon, count): money and people first, information last. */
@@ -46,6 +50,8 @@ const GROUP_TONE: Record<KnownInboxType, string> = {
   REVIEW: "var(--accent)",
   SUPPORT: "var(--info)",
   SUPPLY_DRAFT: "var(--accent)",
+  PARCEL: "var(--warn)",
+  NP_SYSTEM: "var(--danger)",
 };
 
 export function groupIcon(type: InboxType): LucideIcon {
@@ -87,6 +93,8 @@ const PRIMARY: Record<KnownInboxType, PrimaryAction> = {
   REVIEW: { label: "К отзывам", icon: Star },
   SUPPORT: { label: "Ответить", icon: MessageCircle },
   SUPPLY_DRAFT: { label: "Открыть черновик", icon: PackageCheck },
+  PARCEL: OPEN_ORDER,
+  NP_SYSTEM: { label: "К настройкам", icon: Settings },
 };
 
 /** Main action of a row; a kind the UI does not know yet opens its order (if it has one). */

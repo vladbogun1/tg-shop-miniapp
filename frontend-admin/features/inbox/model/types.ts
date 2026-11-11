@@ -9,6 +9,8 @@ export const INBOX_TYPES = [
   "NEW_STALE",
   "APPROVED_STALE",
   "RETURN",
+  /** Nova Poshta parcel needs a look (refused, returning, not found, waiting at the branch, COD mismatch): entityId = shipment id. */
+  "PARCEL",
   "LOW_STOCK",
   "SITE_ERROR",
   "REVIEW",
@@ -16,6 +18,8 @@ export const INBOX_TYPES = [
   "SUPPORT",
   /** «Поставка с ИИ» draft ready to check or failed: entityId = draft id. */
   "SUPPLY_DRAFT",
+  /** The Nova Poshta integration itself (sync, tracking, status codes, sender branch, tariffs): entityId = kind. */
+  "NP_SYSTEM",
 ] as const;
 export type KnownInboxType = (typeof INBOX_TYPES)[number];
 /** A kind from the server: one of the known ones, or a newer one rendered with its own title. */
