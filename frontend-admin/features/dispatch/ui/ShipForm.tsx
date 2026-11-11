@@ -5,6 +5,7 @@ import { isNovaPoshtaTtn, type AdminDispatchOrder } from "@/features/order";
 import { Button } from "@shop/ui/admin-button";
 import { useForm } from "@shop/ui/form";
 import { Send } from "lucide-react";
+import { useEffect } from "react";
 import { awaitingPrepayment } from "../model/dispatch";
 import { useShipOrder } from "../queries";
 
@@ -13,7 +14,12 @@ import { useShipOrder } from "../queries";
  * of the screen when the keyboard opens, and the button is full width under it (44 px).
  */
 export function ShipForm({ o }: { o: AdminDispatchOrder }) {
-  const form = useForm<{ ttn: string }>({ defaultValues: { ttn: "" } });
+  // A waybill made here already put its number on the order: «Отправлено» is one tap.
+  const form = useForm<{ ttn: string }>({ defaultValues: { ttn: o.trackingNumber ?? "" } });
+  const { getValues, setValue } = form;
+  useEffect(() => {
+    if (o.trackingNumber && !getValues("ttn")) setValue("ttn", o.trackingNumber);
+  }, [o.trackingNumber, getValues, setValue]);
   // The typed number stays in the field on a refusal or an error; only a real shipment clears it.
   const ship = useShipOrder(o, () => form.reset({ ttn: "" }));
   const clean = (form.watch("ttn") ?? "").replace(/\s+/g, "");

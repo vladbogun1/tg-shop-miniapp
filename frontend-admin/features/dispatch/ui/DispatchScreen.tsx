@@ -22,6 +22,9 @@ import { useMemo, useState, type ReactNode } from "react";
 import { filterCounts, filterOrders, splitOrders, type DispatchFilter } from "../model/dispatch";
 import { useBroadcastDispatch, useDispatchOrders } from "../queries";
 import { DispatchCard } from "./DispatchCard";
+import { BatchBar, BatchResults } from "./BatchBar";
+import { useNpBatch, type NpBatch } from "./use-np-batch";
+import { ShipmentDialog } from "@/features/delivery";
 import { DispatchToolbar } from "./DispatchToolbar";
 import { PageHeader } from "@/components/layout/PageHeader";
 
@@ -33,12 +36,14 @@ function Section({
   title,
   orders,
   phone,
+  np,
   onOpen,
   onZoom,
 }: {
   title: string;
   orders: AdminDispatchOrder[];
   phone: boolean;
+  np: NpBatch;
   onOpen: (id: string) => void;
   onZoom: (src: string) => void;
 }) {
@@ -57,12 +62,47 @@ function Section({
               key={o.id}
               exit={phone ? undefined : { opacity: 0, height: 0, overflow: "hidden", transition: { duration: 0.2 } }}
             >
-              <DispatchCard o={o} onOpen={() => onOpen(o.id)} onZoom={onZoom} />
+              <DispatchCard
+                o={o}
+                np={{
+                  ticked: np.ticked.has(o.id),
+                  onTick: () => np.toggle(o.id),
+                  format: np.format,
+                  onTtn: (mode) => np.openTtn(o.id, mode),
+                }}
+                onOpen={() => onOpen(o.id)}
+                onZoom={onZoom}
+              />
             </motion.div>
           ))}
         </AnimatePresence>
       </div>
     </section>
+  );
+}
+
+/** «Створити ТТН для всіх», печать и результат пакета — над секциями, когда на экране есть заказы НП. */
+function NpBatchPanel({ np, onOpen }: { np: NpBatch; onOpen: (id: string) => void }) {
+  if (np.scope.np.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-3">
+      <BatchBar
+        total={np.scope.np.length}
+        selected={np.scope.selected.length}
+        toCreate={np.scope.toCreate.length}
+        toPrintIds={np.scope.toPrint.map((o) => o.id)}
+        staleCount={np.scope.staleCount}
+        format={np.format}
+        onFormat={np.setFormat}
+        branches={np.branches}
+        branch={np.branch}
+        onBranch={np.setBranch}
+        creating={np.creating}
+        onAll={np.toggleAll}
+        onCreate={np.createAll}
+      />
+      {np.results && <BatchResults results={np.results} onClose={np.clearResults} onOpen={onOpen} />}
+    </div>
   );
 }
 
@@ -77,9 +117,11 @@ export function DispatchScreen() {
   const broadcast = useBroadcastDispatch();
   const all = useMemo(() => q.data ?? [], [q.data]);
   const counts = useMemo(() => filterCounts(all), [all]);
-  const sections = useMemo(() => splitOrders(filterOrders(all, filter, query)), [all, filter, query]);
+  const visible = useMemo(() => filterOrders(all, filter, query), [all, filter, query]);
+  const sections = useMemo(() => splitOrders(visible), [visible]);
+  const np = useNpBatch(visible);
   const shown = sections.unpaid.length + sections.approved.length + sections.fresh.length;
-  const sectionProps = { phone, onOpen: setOpenId, onZoom: setZoom };
+  const sectionProps = { phone, np, onOpen: setOpenId, onZoom: setZoom };
 
   return (
     <div>
@@ -109,6 +151,7 @@ export function DispatchScreen() {
           <EmptyState icon={SearchX} title="Ничего не найдено" description="Попробуйте другой запрос или фильтр." />
         ) : (
           <div className="flex flex-col gap-6">
+            <NpBatchPanel np={np} onOpen={setOpenId} />
             <Section title="Не оплачено — не отправляйте без проверки" orders={sections.unpaid} {...sectionProps} />
             <Section title="Одобрены" orders={sections.approved} {...sectionProps} />
             <Section title="Новые — можно отправить сразу" orders={sections.fresh} {...sectionProps} />
@@ -117,6 +160,8 @@ export function DispatchScreen() {
       </QueryState>
 
       <Lightbox src={zoom} onClose={() => setZoom(null)} />
+
+      {np.ttnFor && <ShipmentDialog orderId={np.ttnFor.id} mode={np.ttnFor.mode} onClose={np.closeTtn} onDone={np.ttnDone} />}
 
       <OrderDrawer
         orderId={openId}

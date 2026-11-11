@@ -13,6 +13,9 @@ import { CopyField } from "./CopyField";
 import { OrderItems } from "./OrderItems";
 import { AwaitingPaymentNote, UnpaidNote } from "./PaymentWarnings";
 import { ShipForm } from "./ShipForm";
+import { NpBadges, TickBox } from "./NpCardParts";
+import { ShipmentRow } from "./ShipmentRow";
+import type { LabelFormat, ShipmentMode } from "@/features/delivery";
 
 /** `#id · name · payment badge` — the first thing to match against the parcel. The whole left part opens the order. */
 function CardHeader({ o, onOpen }: { o: AdminDispatchOrder; onOpen: () => void }) {
@@ -112,7 +115,16 @@ function PaymentDetails({ o }: { o: AdminDispatchOrder }) {
  * Order of the card (top to bottom): who → how much to collect (+ a red/amber warning) → recipient →
  * items → payment details (folded) → TTN + «Отправлено». A red (unpaid) / amber (waiting) stripe on the left.
  */
-export function DispatchCard({ o, onOpen, onZoom }: { o: AdminDispatchOrder; onOpen: () => void; onZoom: (src: string) => void }) {
+/** Новая Почта на карточке: галочка пакета, формат этикеток экрана и окно ТТН. */
+export interface CardNp {
+  ticked: boolean;
+  onTick: () => void;
+  format: LabelFormat;
+  onTtn: (mode: ShipmentMode) => void;
+}
+
+export function DispatchCard({ o, np, onOpen, onZoom }: { o: AdminDispatchOrder; np: CardNp; onOpen: () => void; onZoom: (src: string) => void }) {
+  const isNp = o.deliveryMethod === "NOVA_POSHTA";
   const unpaid = approvedUnpaid(o);
   const waiting = awaitingPrepayment(o);
   return (
@@ -123,7 +135,13 @@ export function DispatchCard({ o, onOpen, onZoom }: { o: AdminDispatchOrder; onO
         waiting && "shadow-[inset_3px_0_0_var(--warn)]"
       )}
     >
-      <CardHeader o={o} onOpen={onOpen} />
+      <div className="flex min-w-0 items-center gap-2">
+        {isNp && <TickBox o={o} ticked={np.ticked} onTick={np.onTick} />}
+        <div className="min-w-0 flex-1">
+          <CardHeader o={o} onOpen={onOpen} />
+        </div>
+      </div>
+      {isNp && <NpBadges o={o} />}
       {waiting && <AwaitingPaymentNote o={o} />}
       {unpaid && <UnpaidNote o={o} expired={dueExpired(o, unpaid)} />}
       {o.deliveryMethod === "PICKUP" ? (
@@ -137,6 +155,7 @@ export function DispatchCard({ o, onOpen, onZoom }: { o: AdminDispatchOrder; onO
       <Recipient o={o} />
       <OrderItems items={o.items} onZoom={onZoom} />
       <PaymentDetails o={o} />
+      {isNp && <ShipmentRow o={o} format={np.format} onTtn={np.onTtn} />}
       <ShipForm o={o} />
     </div>
   );

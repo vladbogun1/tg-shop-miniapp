@@ -5,7 +5,8 @@ import { changeStatusConfirmingUnpaid, orderApi, orderKeys } from "@/features/or
 import { QUERY_PRESETS } from "@shop/core/query";
 import { useConfirm } from "@shop/ui/confirm";
 import { useApiMutation } from "@shop/ui/mutation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 
 /** Тот же опрос раз в 30 с, что у пресета live; staleTime — по умолчанию клиента (как раньше). */
 const REFETCH_MS = QUERY_PRESETS.live.refetchInterval;
@@ -48,4 +49,14 @@ export function useShipOrder(order: { id: string; shortId: string }, onShipped: 
       if (updated !== null) onShipped();
     },
   });
+}
+
+/** После ТТН (одной или пачкой): «Отправка», доска, таблица и «Внимание» перечитываются. */
+export function useRefreshAfterShipments(): () => void {
+  const qc = useQueryClient();
+  return useCallback(() => {
+    for (const queryKey of [orderKeys.dispatch(), orderKeys.board(), orderKeys.table(), inboxKeys.all()]) {
+      void qc.invalidateQueries({ queryKey });
+    }
+  }, [qc]);
 }

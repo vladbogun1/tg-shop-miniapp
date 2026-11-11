@@ -13,7 +13,6 @@
  * (как OnlinePaymentBlock).
  */
 import { useState } from "react";
-import dynamic from "next/dynamic";
 import { ExternalLink, Pencil, RefreshCw, Trash2, Truck } from "lucide-react";
 import { useConfirm } from "@shop/ui/confirm";
 import { Button } from "@shop/ui/admin-button";
@@ -30,7 +29,7 @@ import { ShipmentStageBadge } from "./parts";
 import { StaleBanner, StaleDialog } from "./StaleShipment";
 import { useStaleShipment, type StaleState } from "./use-stale";
 
-const ShipmentModal = dynamic(() => import("./shipment/ShipmentModal").then((m) => m.ShipmentModal), { ssr: false });
+import { ShipmentDialog } from "./ShipmentDialog";
 
 /** Что блоку нужно от заказа. */
 export interface ShipmentOrder {
@@ -214,7 +213,7 @@ export function ShipmentBlock({ order, onChanged }: { order: ShipmentOrder; onCh
         </div>
       )}
       {modal && (
-        <ShipmentModal
+        <ShipmentDialog
           orderId={order.id}
           mode={modal}
           onClose={() => setModal(null)}
