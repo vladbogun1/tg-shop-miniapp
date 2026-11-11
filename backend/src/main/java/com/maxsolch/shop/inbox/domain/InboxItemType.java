@@ -26,6 +26,8 @@ public enum InboxItemType {
     APPROVED_STALE("Одобрены, не отправлены", "Заказ одобрен, но не отправлен дольше порога из «Настроек».", "ORDER", false),
     /** Refused at the post office after shipping, or a registered return (last 14 days). */
     RETURN("Отказы и возвраты", "Отказ после отправки или зарегистрированный возврат за 14 дней — проверьте посылку и деньги.", "ORDER", true),
+    /** Nova Poshta parcels that need a look: refused, coming back, not found, waiting too long; rows from {@code ParcelInboxSource}. */
+    PARCEL("Посылки", "Новая почта: отказ, возврат, ТТН не найдена, посылка долго лежит в отделении или не сдана — проверьте.", "ORDER", true),
     /** A product review waits for moderation (reviews.premoderation on); rows from {@code ReviewInboxSource}. */
     REVIEW("Отзывы на модерации", "Покупатели оставили отзывы — опубликуйте или скройте их в разделе «Отзывы».", "REVIEW", false),
     /**
@@ -35,6 +37,8 @@ public enum InboxItemType {
     SUPPLY_DRAFT("Поставки ждут проверки", "ИИ разобрал накладную — проверьте и примите поставку; если не справился — повторите или удалите черновик.", "SUPPLY_DRAFT", false),
     /** Runs out within {@code metrics.lowStockDays} at the current pace. */
     LOW_STOCK("Заканчиваются", "Запаса хватит меньше чем на порог из «Настроек» — пора дозаказать.", "PRODUCT", true),
+    /** The Nova Poshta integration itself needs a look (sync / tracking failing, new codes…); rows from {@code NpSystemInboxSource}. */
+    NP_SYSTEM("Новая почта: сбои", "Синхронизация, отслеживание или справочник Новой почты требуют внимания — посмотрите и при необходимости поправьте настройки.", "SITE", true),
     /** The last public-site rebuild failed. */
     SITE_ERROR("Сайт не обновился", "Последнее обновление сайта завершилось ошибкой — изменения могут не отображаться.", "SITE", true);
 

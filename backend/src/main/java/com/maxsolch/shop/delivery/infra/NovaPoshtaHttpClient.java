@@ -17,6 +17,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -52,16 +53,52 @@ public class NovaPoshtaHttpClient implements NovaPoshtaApi {
 
     @Override
     public List<ApiWarehouse> warehousesPage(int page, int limit) throws IOException, InterruptedException {
+        Map<String, String> mp = new HashMap<>();
+        mp.put("Page", String.valueOf(page));
+        mp.put("Limit", String.valueOf(limit));
+        JsonNode data = post("AddressGeneral", "getWarehouses", mp);
+        if (data == null || !data.isArray()) {
+            throw new NovaPoshtaApi.ApiException("API Новой Почты вернул ответ без списка отделений");
+        }
+        List<ApiWarehouse> out = new ArrayList<>(data.size());
+        for (JsonNode w : data) {
+            JsonNode dims = w.get("ReceivingLimitationsOnDimensions");
+            Double maxKg = parseDouble(text(w, "PlaceMaxWeightAllowed"));
+            out.add(new ApiWarehouse(text(w, "Ref"), text(w, "CityRef"), text(w, "CityDescription"),
+                    text(w, "Number"), text(w, "Description"), text(w, "TypeOfWarehouse"),
+                    text(w, "Latitude"), text(w, "Longitude"), text(w, "SettlementAreaDescription"),
+                    text(w, "CategoryOfWarehouse"), text(w, "WarehouseStatus"),
+                    cmToMm(dims, "Length"), cmToMm(dims, "Width"), cmToMm(dims, "Height"),
+                    maxKg == null || maxKg <= 0 ? null : (int) Math.round(maxKg)));
+        }
+        return out;
+    }
+
+    @Override
+    public Map<String, String> warehouseTypes() throws IOException, InterruptedException {
+        JsonNode data = post("Address", "getWarehouseTypes", Map.of());
+        Map<String, String> out = new LinkedHashMap<>();
+        if (data != null && data.isArray()) {
+            for (JsonNode t : data) {
+                String ref = text(t, "Ref");
+                if (ref != null && !ref.isBlank()) {
+                    String name = text(t, "Description");
+                    out.put(ref, name == null ? "" : name);
+                }
+            }
+        }
+        return out;
+    }
+
+    /** One directory read: {@code data} of a 200 + success answer; anything else is an {@link ApiException}. */
+    private JsonNode post(String model, String method, Map<String, String> mp) throws IOException, InterruptedException {
         ObjectNode root = mapper.createObjectNode();
         String apiKey = props.getNovaposhta().getApiKey();
         if (apiKey != null && !apiKey.isBlank()) {
             root.put("apiKey", apiKey);
         }
-        root.put("modelName", "AddressGeneral");
-        root.put("calledMethod", "getWarehouses");
-        Map<String, String> mp = new HashMap<>();
-        mp.put("Page", String.valueOf(page));
-        mp.put("Limit", String.valueOf(limit));
+        root.put("modelName", model);
+        root.put("calledMethod", method);
         root.set("methodProperties", mapper.valueToTree(mp));
 
         HttpRequest request = HttpRequest.newBuilder()
@@ -78,17 +115,26 @@ public class NovaPoshtaHttpClient implements NovaPoshtaApi {
         if (body == null || !body.path("success").asBoolean(true)) {
             throw new NovaPoshtaApi.ApiException("API Новой Почты: success=false" + errorsOf(body));
         }
-        JsonNode data = body.get("data");
-        if (data == null || !data.isArray()) {
-            throw new NovaPoshtaApi.ApiException("API Новой Почты вернул ответ без списка отделений");
+        return body.get("data");
+    }
+
+    private static Integer cmToMm(JsonNode dims, String field) {
+        if (dims == null || !dims.isObject()) {
+            return null;
         }
-        List<ApiWarehouse> out = new ArrayList<>(data.size());
-        for (JsonNode w : data) {
-            out.add(new ApiWarehouse(text(w, "Ref"), text(w, "CityRef"), text(w, "CityDescription"),
-                    text(w, "Number"), text(w, "Description"), text(w, "TypeOfWarehouse"),
-                    text(w, "Latitude"), text(w, "Longitude"), text(w, "SettlementAreaDescription")));
+        double cm = dims.path(field).asDouble(0);
+        return cm > 0 ? (int) Math.round(cm * 10) : null;
+    }
+
+    private static Double parseDouble(String s) {
+        if (s == null || s.isBlank()) {
+            return null;
         }
-        return out;
+        try {
+            return Double.parseDouble(s);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private static String errorsOf(JsonNode body) {

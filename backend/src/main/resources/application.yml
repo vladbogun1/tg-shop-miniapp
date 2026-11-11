@@ -164,6 +164,17 @@ app:
     api-key: ${NOVAPOSHTA_API_KEY:}
     api-url: ${NOVAPOSHTA_API_URL:https://api.novaposhta.ua/v2.0/json/}
     sync-cron: ${NOVAPOSHTA_SYNC_CRON:0 30 3 * * *}
+    # true = waybill writes are faked (DRY… numbers, stub PDF); reads still go to Nova Poshta. For the demo stand.
+    dry-run: ${NP_DRY_RUN:false}
+    tracking-cron: ${NOVAPOSHTA_TRACKING_CRON:0 */30 * * * *}
+    # Tracking pushes of the new REST API: both empty = /api/np/webhook answers 404.
+    webhook-secret: ${NOVAPOSHTA_WEBHOOK_SECRET:}
+    webhook-url: ${NOVAPOSHTA_WEBHOOK_URL:}
+    rest-url: ${NOVAPOSHTA_REST_URL:https://api.novaposhta.ua/v.1.0}
+    print-url: ${NOVAPOSHTA_PRINT_URL:https://my.novaposhta.ua}
+    timeout-seconds: ${NOVAPOSHTA_TIMEOUT_SECONDS:30}
+    quick-timeout-seconds: ${NOVAPOSHTA_QUICK_TIMEOUT_SECONDS:5}
+    min-gap-ms: ${NOVAPOSHTA_MIN_GAP_MS:150}
   # Background auto-translation of new and changed Russian texts into uk/en (docs/CONTENT-I18N.md).
   # Empty DEEPL_API_KEY = off; a free key ends with :fx (500 000 characters a month).
   translations:

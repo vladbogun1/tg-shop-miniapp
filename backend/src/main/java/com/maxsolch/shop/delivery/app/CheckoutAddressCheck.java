@@ -1,5 +1,6 @@
 package com.maxsolch.shop.delivery.app;
 
+import com.maxsolch.shop.delivery.domain.Parcel;
 import com.maxsolch.shop.delivery.domain.NovaPoshtaWarehouse;
 import com.maxsolch.shop.delivery.infra.NovaPoshtaWarehouseRepository;
 import com.maxsolch.shop.order.app.CreateOrderCommand;
@@ -31,8 +32,11 @@ public class CheckoutAddressCheck implements DeliveryAddressCheck {
 
     private final NovaPoshtaWarehouseRepository warehouses;
     private final SettingsService settings;
+    private final ParcelSizeService parcels;
 
-    public CheckoutAddressCheck(NovaPoshtaWarehouseRepository warehouses, SettingsService settings) {
+    public CheckoutAddressCheck(NovaPoshtaWarehouseRepository warehouses, SettingsService settings,
+                                ParcelSizeService parcels) {
+        this.parcels = parcels;
         this.warehouses = warehouses;
         this.settings = settings;
     }
@@ -59,11 +63,25 @@ public class CheckoutAddressCheck implements DeliveryAddressCheck {
     }
 
     /**
-     * Parcel locker limits need the weight and the box of the goods (the parcel sizing of the waybills); until that
-     * is ported the waybill dialog is where an oversized parcel shows up, as before the checkout check existed.
+     * The goods go into this parcel locker (its own weight and cell limits from the directory, else the settings):
+     * the customer learns it at the order, not when the admin makes the waybill. Sizes are a hint here: when they
+     * cannot be worked out the waybill dialog checks again.
      */
     @Override
     public void checkPostomatFits(String warehouseRef, List<CreateOrderCommand.Line> lines) {
-        // Intentionally lenient until ParcelSizeService (weights / boxes) lands in the delivery module.
+        if (warehouseRef == null || warehouseRef.isBlank() || lines == null || lines.isEmpty()) {
+            return;
+        }
+        NovaPoshtaWarehouse wh = warehouses.findById(warehouseRef).orElse(null);
+        Parcel p;
+        try {
+            p = parcels.forCart(lines.stream()
+                    .map(l -> new ParcelSizeService.CartLine(l.productId(), l.variantId(), l.quantity())).toList());
+        } catch (RuntimeException e) {
+            return;
+        }
+        if (!PostomatLimits.takes(wh, p, settings)) {
+            throw new DomainException.BadRequest(OrderError.NP_POSTOMAT_TOO_BIG, PostomatLimits.maxKg(wh, settings));
+        }
     }
 }

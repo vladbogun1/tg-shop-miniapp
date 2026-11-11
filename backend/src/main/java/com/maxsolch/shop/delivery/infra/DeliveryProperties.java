@@ -24,5 +24,15 @@ public class DeliveryProperties {
         private String apiKey;
         private String apiUrl;
         private String syncCron;
+        /** NP_DRY_RUN: no waybill or subscription is written to NP; numbers get a DRY prefix, labels a stub PDF. */
+        private boolean dryRun;
+        private String trackingCron;
+        private String webhookSecret;
+        private String webhookUrl;
+        private String restUrl = "https://api.novaposhta.ua/v.1.0";
+        private String printUrl = "https://my.novaposhta.ua";
+        private int timeoutSeconds = 30;
+        private int quickTimeoutSeconds = 5;
+        private long minGapMs = 150;
     }
 }

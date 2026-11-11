@@ -134,7 +134,8 @@ public class SecurityConfig {
         cfg.setAllowedHeaders(List.of(
                 "Authorization", "Content-Type", "Accept", "Accept-Language", "Idempotency-Key",
                 "ngrok-skip-browser-warning"));
-        cfg.setExposedHeaders(List.of("Authorization"));
+        // The label PDF tells the admin how many it holds and which waybills it left out.
+        cfg.setExposedHeaders(List.of("Authorization", "X-Labels-Count", "X-Labels-Skipped", "X-Dry-Run"));
         cfg.setAllowCredentials(true);
         cfg.setMaxAge(3600L);
 

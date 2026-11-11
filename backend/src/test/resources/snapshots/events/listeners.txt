@@ -46,6 +46,12 @@ ReviewCacheReset.on(RatingChanged) phase=AFTER_COMMIT fallback=true
 ReviewNotifier.on(BonusIssued) phase=AFTER_COMMIT fallback=true
 ReviewNotifier.on(PendingForModeration) phase=AFTER_COMMIT fallback=true
 SettingsService.onTransactionCompleted(SettingsSaved) phase=AFTER_COMPLETION fallback=false
+ShipmentOrderListener.onArchived(Archived) phase=AFTER_COMMIT fallback=true
+ShipmentOrderListener.onEdited(Edited) phase=AFTER_COMMIT fallback=true
+ShipmentOrderListener.onExchanged(Exchanged) phase=AFTER_COMMIT fallback=true
+ShipmentOrderListener.onMerged(Merged) phase=AFTER_COMMIT fallback=true
+ShipmentOrderListener.onPayment(PaymentReceived) phase=AFTER_COMMIT fallback=true
+ShipmentOrderListener.onStatus(StatusChanged) phase=AFTER_COMMIT fallback=true
 SiteRevalidator.onRequested(SiteRevalidationRequested) phase=AFTER_COMMIT fallback=true
 SupplyDraftAfterCommit.onAccepted(Accepted) phase=AFTER_COMMIT fallback=true
 SupplyDraftAfterCommit.onReady(Ready) phase=AFTER_COMMIT fallback=true

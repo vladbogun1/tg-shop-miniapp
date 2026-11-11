@@ -76,7 +76,7 @@ final class V2Rules {
      * would let any class pass by its name; a list does not.
      */
     private static final Set<String> TELEGRAM_USERS = Set.of(
-            "customer.app.WebLoginNotifier", "order.app.OrderCustomerNotifier",
+            "customer.app.WebLoginNotifier", "delivery.app.ShipmentNotifier", "order.app.OrderCustomerNotifier",
             "preorder.app.PreorderNotifier", "staff.app.AdminSecurityNotifier");
 
     private static final String SPRING_VALUE = "org.springframework.beans.factory.annotation.Value";
