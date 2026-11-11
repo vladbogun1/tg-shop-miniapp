@@ -141,8 +141,7 @@ public class ParcelIssues {
     private static Reason drift(OrderShipment s, ShippingOrder o, ShipmentStage stage) {
         List<String> stale = ShipmentFacts.staleReasons(o, s);
         if (!stale.isEmpty()) {
-            String sync = s.getSyncError() == null ? "" : " (" + s.getSyncError() + ")";
-            return new Reason("STALE", "ТТН устарела: " + String.join("; ", stale) + sync
+            return new Reason("STALE", "ТТН устарела: " + String.join("; ", stale)
                     + " — «Перестворити ТТН», старую этикетку не отправлять", true);
         }
         boolean open = stage == ShipmentStage.CREATED || stage == ShipmentStage.IN_TRANSIT
