@@ -83,7 +83,7 @@ public class ShipmentStatusApplier {
         }
         Effects done = fx;
         if (done.move()) {
-            moveOrder(done.orderId(), done.ttn(), done.stage());
+            moveOrder(done.orderId(), done.ttn(), done.stage(), done.codMinor());
         }
         if (done.arrivedFirst()) {
             orders.find(done.orderId()).filter(o -> o.status() != OrderStatus.REJECTED)
@@ -205,14 +205,15 @@ public class ShipmentStatusApplier {
     }
 
     /** SHIPPED once NP accepted the parcel, DELIVERED once it was picked up (both switchable). */
-    void moveOrder(byte[] orderId, String ttn, ShipmentStage stage) {
+    void moveOrder(byte[] orderId, String ttn, ShipmentStage stage, long collectedMinor) {
         try {
             if (ShipmentStatusMapper.handedOver(stage) && settings.getBool(DeliverySettings.NP_SHIP_ON_ACCEPT)) {
                 // The parcel is physically gone: shipped even if the prepayment is still missing.
                 orders.markShipped(orderId, ttn);
             }
             if (stage == ShipmentStage.RECEIVED && settings.getBool(DeliverySettings.NP_AUTO_DELIVER)) {
-                orders.markDelivered(orderId);
+                // What «Контроль оплати» collected, not the whole total.
+                orders.markDelivered(orderId, collectedMinor);
             }
         } catch (RuntimeException e) {
             log.info("Order {} not moved by NP status {} of {}: {}", UuidUtil.toString(orderId), stage, ttn,
