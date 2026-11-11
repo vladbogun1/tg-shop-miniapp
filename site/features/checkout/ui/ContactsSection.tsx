@@ -2,7 +2,7 @@ import { formatPhone } from "@shop/core/phone";
 import type { OrderField } from "@shop/customer/checkout/order-request";
 import { recipientErrors, type Recipient } from "@shop/customer/delivery/recipient";
 import { Input } from "@shop/ui/primitives";
-import { useI18n } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 import { Section } from "./parts";
 
 interface Props {
@@ -20,7 +20,7 @@ interface Props {
 
 /** Получатель как в паспорте (прізвище, ім'я, по батькові — по ним выдают посылку) и телефон. */
 export function ContactsSection({ recipient, onRecipient, phone, onPhone, phoneOk, touched, prefilled, serverField }: Props) {
-  const { t } = useI18n();
+  const t = useCheckoutT();
   const err = recipientErrors(recipient);
   const serverName = serverField === "name";
   const phoneBad = (touched && !phoneOk) || serverField === "phone";

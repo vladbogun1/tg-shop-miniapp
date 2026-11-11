@@ -5,7 +5,7 @@ import { Box, Keyboard, Map as MapIcon, MapPin, Store, Truck, UserRound } from "
 import type { DeliveryTab } from "@shop/customer/delivery/tabs";
 import { Button } from "@shop/ui/primitives";
 import type { NpWarehouse } from "@/lib/api";
-import { useT } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 import { spring } from "@/lib/motion";
 import { type NpMode, npLabel } from "../model/np-label";
 
@@ -25,7 +25,7 @@ const TAB_KEY = {
 
 /** Delivery tabs (checkout v2): відділення · поштомат · кур'єр · самовивіз, 2 × 2 (a long label wraps). */
 export function DeliveryTabs({ tabs, value, onChange }: { tabs: readonly DeliveryTab[]; value: DeliveryTab; onChange: (t: DeliveryTab) => void }) {
-  const t = useT();
+  const t = useCheckoutT();
   return (
     <div role="tablist" aria-label={t("delivery.tabs.label")} className="grid grid-cols-2 gap-2.5">
       {tabs.map((tab) => {
@@ -69,7 +69,7 @@ export function WarehouseCard({
   badge?: string;
   action?: React.ReactNode;
 }) {
-  const t = useT();
+  const t = useCheckoutT();
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -101,7 +101,7 @@ export function WarehouseCard({
 
 /** "Ввести вручну" / "Обрати на карті" — a two-way segmented switch. */
 export function NpModeSwitch({ mode, setMode }: { mode: NpMode; setMode: (m: NpMode) => void }) {
-  const t = useT();
+  const t = useCheckoutT();
   const opts: { key: NpMode; label: string; icon: React.ReactNode }[] = [
     { key: "text", label: t("checkout.np.modeText"), icon: <Keyboard className="h-4 w-4" strokeWidth={2.25} /> },
     { key: "map", label: t("checkout.np.modeMap"), icon: <MapIcon className="h-4 w-4" strokeWidth={2.25} /> },

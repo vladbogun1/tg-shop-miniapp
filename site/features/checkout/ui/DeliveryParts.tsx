@@ -7,7 +7,7 @@
 import { Loader2 } from "lucide-react";
 import type { NpEstimateResponse } from "@shop/customer/delivery/contract";
 import { estimateAmounts } from "@shop/customer/delivery/estimate";
-import { useI18n } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 import { useFmt } from "@/lib/use-fmt";
 
 /**
@@ -27,7 +27,7 @@ export function EstimateLine({
   /** Часть суммы платят при получении. */
   onDelivery: boolean;
 }) {
-  const { t } = useI18n();
+  const t = useCheckoutT();
   const fmt = useFmt();
   const a = estimateAmounts(estimate);
   if (!a && loading) {

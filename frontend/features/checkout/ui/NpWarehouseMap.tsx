@@ -38,7 +38,7 @@ import { Box, Store, MapPin, X, Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { MapContainer, TileLayer } from "react-leaflet";
-import { useT } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 import { BoundsWatcher, ClusterLayer, FocusController, SizeWatcher } from "@shop/customer/delivery/map/parts";
 import { CAT_TABS, UA_CENTER, UA_ZOOM, useWarehouseMapData, type MapCategory, type MapFocus } from "@shop/customer/delivery/map/model";
 import { customerApi, type NpWarehouse, type NpCategory } from "@/lib/api";
@@ -109,7 +109,7 @@ export default function NpWarehouseMap({
   /** The type filter the map opens with (the «Поштомат» tab opens on lockers). */
   initialCategory?: MapCategory;
 }) {
-  const t = useT();
+  const t = useCheckoutT();
   const { category, setCategory, fetchBox, pins } = useWarehouseMapData(customerApi.checkout, selected, initialCategory);
   const [active, setActive] = useState<NpWarehouse | null>(null);
   // document.body only exists once mounted; the detail sheet is portalled into it (see below).

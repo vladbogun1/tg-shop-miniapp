@@ -11,7 +11,7 @@ import { estimateAmounts } from "@shop/customer/delivery/estimate";
 import { courierErrors, type CourierAddress } from "@shop/customer/delivery/recipient";
 import { Input } from "@shop/ui/primitives";
 import { CitySearch, StreetSearch } from "@/features/checkout/ui/NpSearch";
-import { useT } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 import { money } from "@/lib/money";
 
 /** City (the same field as for the points), street (search or by hand), building, flat / office. */
@@ -28,7 +28,7 @@ export function CourierFields({
   onCourier: (c: CourierAddress) => void;
   showErrors: boolean;
 }) {
-  const t = useT();
+  const t = useCheckoutT();
   const err = courierErrors(courier);
   const buildingBad = showErrors && err.building;
   return (
@@ -70,7 +70,7 @@ export function EstimateLine({
   /** Part of the sum is paid on receipt. */
   onDelivery: boolean;
 }) {
-  const t = useT();
+  const t = useCheckoutT();
   const a = estimateAmounts(estimate);
   if (!a && loading) {
     return (

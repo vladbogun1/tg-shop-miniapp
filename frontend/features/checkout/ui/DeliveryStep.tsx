@@ -8,14 +8,14 @@ import { warehouseFitsTab, type DeliveryTab } from "@shop/customer/delivery/tabs
 import type { DeliveryDraftState } from "@shop/customer/delivery/use-delivery-draft";
 import { Button } from "@shop/ui/primitives";
 import { CitySearch, WarehouseSearch } from "@/features/checkout/ui/NpSearch";
-import { useT } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 import { type NpMode, npLabel } from "../model/np-label";
 import { CourierFields, EstimateLine } from "./courier-parts";
 import { DeliveryTabs, NpModeSwitch, WarehouseCard } from "./delivery-parts";
 
 /** Leaflet map is client-only (touches window) → load without SSR. */
 function MapLoading() {
-  const t = useT();
+  const t = useCheckoutT();
   return (
     <div
       className="flex items-center justify-center rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface)] text-[13px] font-bold font-display uppercase tracking-[0.08em] text-[var(--muted)] shadow-[0_8px_24px_-12px_var(--shadow)]"
@@ -60,7 +60,7 @@ export function DeliveryStep({
   setComment: (v: string) => void;
   touched: boolean;
 }) {
-  const t = useT();
+  const t = useCheckoutT();
   const { tab } = d;
   return (
     <div className="flex flex-col gap-3">
@@ -103,7 +103,7 @@ function PointPicker({
   setMode: (m: NpMode) => void;
   touched: boolean;
 }) {
-  const t = useT();
+  const t = useCheckoutT();
   const { warehouse, warehouseFromLast } = d.np;
   const [editing, setEditing] = useState(false);
   const collapsed = !!warehouse && warehouseFromLast && !editing;
@@ -136,7 +136,7 @@ function PointPicker({
 
 /** City → point by text, or the map (a pin opens a sheet with «Обрати це відділення» — that is the confirmation). */
 function PointFields({ d, tab, mode, setMode }: { d: DeliveryDraftState; tab: "WAREHOUSE" | "POSTOMAT"; mode: NpMode; setMode: (m: NpMode) => void }) {
-  const t = useT();
+  const t = useCheckoutT();
   const { city, warehouse, focus } = d.np;
   return (
     <>

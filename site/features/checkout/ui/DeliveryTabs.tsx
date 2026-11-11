@@ -7,7 +7,7 @@
 import { Box, Keyboard, Map as MapIcon, Store, Truck, UserRound } from "lucide-react";
 import type { ReactNode } from "react";
 import type { DeliveryTab } from "@shop/customer/delivery/tabs";
-import { useI18n } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 
 const TAB_ICON: Record<DeliveryTab, ReactNode> = {
   WAREHOUSE: <Store className="h-5 w-5" strokeWidth={2.5} />,
@@ -35,7 +35,7 @@ const SUB_KEY = {
  * 2 × 2); длинная подпись переносится, а не раздвигает страницу.
  */
 export function DeliveryTabs({ tabs, value, onChange }: { tabs: readonly DeliveryTab[]; value: DeliveryTab; onChange: (tab: DeliveryTab) => void }) {
-  const { t } = useI18n();
+  const t = useCheckoutT();
   return (
     <div role="tablist" aria-label={t("delivery.tabs.label")} className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
       {tabs.map((tab) => {
@@ -71,7 +71,7 @@ export type NpPickMode = "text" | "map";
 
 /** «Ввести вручну» / «Обрати на карті»: по умолчанию поля, карта — по нажатию (и грузится только тогда). */
 export function NpModeSwitch({ mode, onChange }: { mode: NpPickMode; onChange: (m: NpPickMode) => void }) {
-  const { t } = useI18n();
+  const t = useCheckoutT();
   const opts: { key: NpPickMode; label: string; icon: ReactNode }[] = [
     { key: "text", label: t("checkout.np.modeText"), icon: <Keyboard className="h-4 w-4" strokeWidth={2.25} /> },
     { key: "map", label: t("checkout.np.modeMap"), icon: <MapIcon className="h-4 w-4" strokeWidth={2.25} /> },

@@ -3,7 +3,7 @@ import { isOnDelivery } from "@shop/customer/checkout/payment-choice";
 import type { NpPaymentOption } from "@shop/customer/delivery/contract";
 import { RadioCard } from "@shop/ui/primitives";
 import { PaymentTrust } from "@/features/payment";
-import { useI18n } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 import { useFmt } from "@/lib/use-fmt";
 import { Section } from "./parts";
 
@@ -22,7 +22,7 @@ interface Props {
 }
 
 export function PaymentSection({ status, options, chosenId, onChoose, currency, showRequired, noneForDelivery, switched }: Props) {
-  const { t } = useI18n();
+  const t = useCheckoutT();
   const fmt = useFmt();
   const onDelivery = isOnDelivery(options.find((o) => o.id === chosenId));
   return (
@@ -72,7 +72,7 @@ function optionIcon(o: NpPaymentOption) {
 }
 
 function OptionSubtitle({ o, currency }: { o: NpPaymentOption; currency: string }) {
-  const { t } = useI18n();
+  const t = useCheckoutT();
   const fmt = useFmt();
   const prepay = o.requiresPrepayment && !!o.prepaymentMinor;
   const main = isOnDelivery(o)

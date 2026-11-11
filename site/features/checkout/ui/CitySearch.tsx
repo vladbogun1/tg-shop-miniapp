@@ -12,7 +12,7 @@
  */
 import { Box, MapPin, Store } from "lucide-react";
 import type { NpCity, NpWarehouse } from "@shop/core/types";
-import { useT } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 import { api } from "@/lib/api";
 
 const np = api.checkout;
@@ -27,7 +27,7 @@ export function CitySearch({
   city: NpCity | null;
   onCity: (city: NpCity | null) => void;
 }) {
-  const t = useT();
+  const t = useCheckoutT();
   const { q, setQ, items, searching, isFetching } = useCitySearch(np, city);
 
   return (
@@ -73,7 +73,7 @@ export function WarehouseSearch({
   /** «Відділення» или «Поштомат»: список только точек этого типа. */
   tab: "WAREHOUSE" | "POSTOMAT";
 }) {
-  const t = useT();
+  const t = useCheckoutT();
   const { q, setQ, items, isFetching } = useWarehouseSearch(np, city, warehouse, false, tab satisfies DeliveryTab);
 
   return (

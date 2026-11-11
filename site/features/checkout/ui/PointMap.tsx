@@ -9,11 +9,11 @@ import type { NpWarehouse } from "@shop/core/types";
 import type { DeliveryDraftState } from "@shop/customer/delivery/use-delivery-draft";
 import { useNpMapPick } from "@shop/customer/delivery/use-np-delivery";
 import { Button } from "@shop/ui/primitives";
-import { useI18n } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 import NpWarehouseMap from "./NpWarehouseMap";
 
 export default function PointMap({ d, tab, label }: { d: DeliveryDraftState; tab: "WAREHOUSE" | "POSTOMAT"; label: (w: NpWarehouse) => string }) {
-  const { t } = useI18n();
+  const t = useCheckoutT();
   const pick = useNpMapPick(d.np.warehouse, d.chooseWarehouse);
   return (
     <>
@@ -26,7 +26,7 @@ export default function PointMap({ d, tab, label }: { d: DeliveryDraftState; tab
 
 /** Точка, нажатая на карте и ждущая «Обрати це відділення» (случайное касание не меняет адрес). */
 function MapPickConfirm({ warehouse, label, onConfirm, onCancel }: { warehouse: NpWarehouse; label: string; onConfirm: () => void; onCancel: () => void }) {
-  const { t } = useI18n();
+  const t = useCheckoutT();
   return (
     <div className="flex flex-col gap-3 rounded-[var(--r)] border border-[var(--accent)] bg-[var(--surface-2)] p-4 sm:flex-row sm:items-center">
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--accent)] bg-[var(--accent-soft)]">

@@ -18,7 +18,7 @@ import type { NpStreet } from "@shop/customer/delivery/contract";
 import { useNpStreets } from "@shop/customer/delivery/use-np-delivery";
 import { useCitySearch, useWarehouseSearch, type NpTypeFilter } from "@shop/customer/delivery/np-search";
 import { type NpCity, type NpWarehouse } from "@shop/core/types";
-import { useT } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 import { customerApi } from "@/lib/api";
 
 const np = customerApi.checkout;
@@ -31,7 +31,7 @@ export function CitySearch({
   city: NpCity | null;
   onCity: (city: NpCity | null) => void;
 }) {
-  const t = useT();
+  const t = useCheckoutT();
   const { q, setQ, items, searching, isFetching } = useCitySearch(np, city);
 
   return (
@@ -85,7 +85,7 @@ export function WarehouseSearch({
   /** «Відділення» or «Поштомат»: only points of that kind (the type chips are then not needed). */
   tab: "WAREHOUSE" | "POSTOMAT";
 }) {
-  const t = useT();
+  const t = useCheckoutT();
   const { q, setQ, items, isFetching, hasBoth, cat, setCat } = useWarehouseSearch(np, city, warehouse, true, tab);
 
   return (
@@ -159,7 +159,7 @@ export function StreetSearch({
   street: { ref: string; name: string };
   onStreet: (s: { ref: string; name: string }) => void;
 }) {
-  const t = useT();
+  const t = useCheckoutT();
   // A picked street (has a ref) is not searched again until the text is edited.
   const found = useNpStreets(np, city?.ref, street.name, !!city && !street.ref);
   return (

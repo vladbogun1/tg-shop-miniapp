@@ -10,7 +10,7 @@ import type { NpStreet } from "@shop/customer/delivery/contract";
 import { courierErrors, type CourierAddress } from "@shop/customer/delivery/recipient";
 import { useNpStreets } from "@shop/customer/delivery/use-np-delivery";
 import { Input } from "@shop/ui/primitives";
-import { useI18n, useT } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 import { api } from "@/lib/api";
 import { CitySearch } from "./CitySearch";
 import { NpCombobox } from "./NpCombobox";
@@ -31,7 +31,7 @@ export function CourierFields({
   onCourier: (c: CourierAddress) => void;
   showErrors: boolean;
 }) {
-  const { t } = useI18n();
+  const t = useCheckoutT();
   const err = courierErrors(courier);
   const buildingBad = showErrors && err.building;
   return (
@@ -85,7 +85,7 @@ export function StreetSearch({
   onStreet: (s: { ref: string; name: string }) => void;
   error?: string;
 }) {
-  const t = useT();
+  const t = useCheckoutT();
   const found = useNpStreets(np, city?.ref, street.name, !!city && !street.ref);
   return (
     <div className="flex flex-col gap-1.5">

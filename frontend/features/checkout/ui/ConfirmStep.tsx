@@ -3,7 +3,7 @@
 import { GiftChoicePicker } from "@shop/ui/gift-case";
 import type { GiftChoice, GiftTierInfo } from "@shop/core/giftcase";
 import { caseMoney, useCaseRules } from "@/features/gift";
-import { useT } from "@/i18n/context";
+import { type CheckoutT, useCheckoutT } from "@/i18n/checkout";
 import type { NpEstimateResponse } from "@shop/customer/delivery/contract";
 import type { DeliveryDraft } from "@shop/customer/delivery/draft";
 import { estimateAmounts } from "@shop/customer/delivery/estimate";
@@ -67,7 +67,7 @@ export function ConfirmStep({
   currency: string;
   items: { title: string; qty: number; amount: number; currency: string }[];
 }) {
-  const t = useT();
+  const t = useCheckoutT();
   const caseRules = useCaseRules();
   const est = estimateAmounts(estimate);
 
@@ -128,7 +128,7 @@ export function ConfirmStep({
 }
 
 /** «Поштомат №5 · Київ, вул. …», «Кур'єр · Київ, Хрещатик, 1, 12», «Самовивіз». */
-function deliveryText(d: DeliveryDraft, t: ReturnType<typeof useT>): string {
+function deliveryText(d: DeliveryDraft, t: CheckoutT): string {
   if (d.tab === "PICKUP") return t("order.pickup");
   if (d.tab === "DOORS") {
     const address = [d.city?.name, d.courier.streetName, d.courier.building, d.courier.flat].filter(Boolean).join(", ");

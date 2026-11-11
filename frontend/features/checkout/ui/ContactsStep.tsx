@@ -4,7 +4,7 @@ import { formatPhone } from "@shop/core/phone";
 import type { OrderField } from "@shop/customer/checkout/order-request";
 import { recipientErrors, type Recipient } from "@shop/customer/delivery/recipient";
 import { Input } from "@shop/ui/primitives";
-import { useT } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 
 /** Step 1: the recipient as in the passport (the parcel is handed out by it) and the phone. */
 export function ContactsStep({
@@ -28,7 +28,7 @@ export function ContactsStep({
   /** The server rejected this field (validation) although the client check passed. */
   serverField?: OrderField | null;
 }) {
-  const t = useT();
+  const t = useCheckoutT();
   const err = recipientErrors(recipient);
   const serverName = serverField === "name";
   const phoneBad = (touched && !phoneOk) || serverField === "phone";

@@ -6,7 +6,7 @@ import type { NpEstimateResponse } from "@shop/customer/delivery/contract";
 import { warehouseFitsTab, type DeliveryTab } from "@shop/customer/delivery/tabs";
 import type { DeliveryDraftState } from "@shop/customer/delivery/use-delivery-draft";
 import { Button } from "@shop/ui/primitives";
-import { useI18n } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 import type { MessageKey } from "@/i18n";
 import { CitySearch, WarehouseSearch } from "./CitySearch";
 import { EstimateLine } from "./DeliveryParts";
@@ -14,7 +14,7 @@ import { DeliveryTabs, NpModeSwitch, type NpPickMode } from "./DeliveryTabs";
 import { Section } from "./parts";
 
 function MapLoading() {
-  const { t } = useI18n();
+  const t = useCheckoutT();
   return (
     <div className="shimmer grid h-[420px] place-items-center rounded-[var(--r-card)] font-display text-[13px] font-semibold uppercase tracking-[.1em] text-[var(--faint)]">
       {t("checkout.mapLoading")}
@@ -50,7 +50,7 @@ interface Props {
 }
 
 export function DeliverySection({ d, tabs, touched, estimate, currency, payOnDelivery }: Props) {
-  const { t } = useI18n();
+  const t = useCheckoutT();
   const { tab } = d;
   return (
     <Section id="co-delivery" n={2} title={t("checkout.delivery")}>
@@ -76,7 +76,7 @@ export function DeliverySection({ d, tabs, touched, estimate, currency, payOnDel
 
 /** Відділення или поштомат: поля по умолчанию, карта — по переключателю; точку с карты надо подтвердить. */
 function PointPicker({ d, tab, touched }: { d: DeliveryDraftState; tab: "WAREHOUSE" | "POSTOMAT"; touched: boolean }) {
-  const { t } = useI18n();
+  const t = useCheckoutT();
   const { warehouse, warehouseFromLast } = d.np;
   const [editingWarehouse, setEditingWarehouse] = useState(false);
   // Точка из прошлого заказа — компактная карточка до «Обрати інше».
@@ -111,7 +111,7 @@ function PointPicker({ d, tab, touched }: { d: DeliveryDraftState; tab: "WAREHOU
 
 /** Город и точка: поля (по умолчанию) или карта; нажатая на карте точка ждёт «Обрати це відділення». */
 function PointFields({ d, tab }: { d: DeliveryDraftState; tab: "WAREHOUSE" | "POSTOMAT" }) {
-  const { t } = useI18n();
+  const t = useCheckoutT();
   const { city, warehouse } = d.np;
   const [mode, setMode] = useState<NpPickMode>("text");
   return (
@@ -127,7 +127,7 @@ function PointFields({ d, tab }: { d: DeliveryDraftState; tab: "WAREHOUSE" | "PO
 }
 
 function LastWarehouseCard({ warehouse, onChange }: { warehouse: NpWarehouse; onChange: () => void }) {
-  const { t } = useI18n();
+  const t = useCheckoutT();
   return (
     <div className="flex flex-col gap-3 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] p-4 sm:flex-row sm:items-center">
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--r)] border border-[var(--accent)] bg-[var(--accent-soft)]">

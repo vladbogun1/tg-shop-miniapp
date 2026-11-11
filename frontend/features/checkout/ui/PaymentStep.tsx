@@ -4,7 +4,7 @@ import { Banknote, CreditCard, ShieldCheck, Wallet } from "lucide-react";
 import { isOnDelivery } from "@shop/customer/checkout/payment-choice";
 import type { NpPaymentOption } from "@shop/customer/delivery/contract";
 import { RadioCard } from "@shop/ui/primitives";
-import { useT } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 import { money } from "@/lib/money";
 
 export function PaymentStep({
@@ -28,7 +28,7 @@ export function PaymentStep({
   /** The choice changed by itself (the previous one does not fit the delivery or the sum any more). */
   switched: boolean;
 }) {
-  const t = useT();
+  const t = useCheckoutT();
   if (loading) {
     return (
       <div className="flex flex-col gap-3">
@@ -81,7 +81,7 @@ function optionIcon(o: NpPaymentOption) {
  * descriptions still talk about a transfer to a card. «При отриманні» — cash / card to Nova Poshta.
  */
 function OptionSubtitle({ o, currency }: { o: NpPaymentOption; currency: string }) {
-  const t = useT();
+  const t = useCheckoutT();
   const prepay = o.requiresPrepayment && !!o.prepaymentMinor;
   const main = isOnDelivery(o)
     ? t("delivery.pay.onDelivery.sub")
@@ -100,7 +100,7 @@ function OptionSubtitle({ o, currency }: { o: NpPaymentOption; currency: string 
 
 /** "Оплата через monobank" + the 24-hour rule — under the online options and on the summary. */
 export function PaymentTrust() {
-  const t = useT();
+  const t = useCheckoutT();
   return (
     <div className="flex items-start gap-2.5 rounded-[var(--r-card)] border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-3">
       <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[var(--ok)]" strokeWidth={2.5} />
