@@ -63,10 +63,32 @@ public class Category {
     @Column(name = "updated_at", nullable = false, updatable = false, insertable = false)
     private Instant updatedAt;
 
+    /** Shipping weight, g (V98); null = inherit (variant → product → category → delivery settings). */
+    @Column(name = "weight_g")
+    private Integer weightG;
+
+    /** Package length / width / height, mm (V98); null = inherit like the weight. */
+    @Column(name = "length_mm")
+    private Integer lengthMm;
+
+    @Column(name = "width_mm")
+    private Integer widthMm;
+
+    @Column(name = "height_mm")
+    private Integer heightMm;
+
     @PrePersist
     void prePersist() {
         if (id == null) {
             id = UuidUtil.randomBytes();
         }
+    }
+
+    /** Weight (g) and box (mm) for Nova Poshta waybills; null = inherit. Checked by {@code ParcelSizes}. */
+    public void changeParcelSize(Integer weightG, Integer lengthMm, Integer widthMm, Integer heightMm) {
+        this.weightG = weightG;
+        this.lengthMm = lengthMm;
+        this.widthMm = widthMm;
+        this.heightMm = heightMm;
     }
 }

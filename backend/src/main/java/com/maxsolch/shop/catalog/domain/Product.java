@@ -79,6 +79,20 @@ public class Product {
     @Column(name = "rating_avg", precision = 3, scale = 2, insertable = false, updatable = false)
     private java.math.BigDecimal ratingAvg;
 
+    /** Shipping weight, g (V98); null = inherit (variant → product → category → delivery settings). */
+    @Column(name = "weight_g")
+    private Integer weightG;
+
+    /** Package length / width / height, mm (V98); null = inherit like the weight. */
+    @Column(name = "length_mm")
+    private Integer lengthMm;
+
+    @Column(name = "width_mm")
+    private Integer widthMm;
+
+    @Column(name = "height_mm")
+    private Integer heightMm;
+
     /** Number of published reviews (V44); maintained like {@link #ratingAvg}. */
     @Column(name = "rating_count", nullable = false, insertable = false, updatable = false)
     private int ratingCount = 0;
@@ -290,5 +304,13 @@ public class Product {
 
     public void markUnfinished(boolean isUnfinished) {
         this.unfinished = isUnfinished;
+    }
+
+    /** Weight (g) and box (mm) for Nova Poshta waybills; null = inherit. Checked by {@code ParcelSizes}. */
+    public void changeParcelSize(Integer weightG, Integer lengthMm, Integer widthMm, Integer heightMm) {
+        this.weightG = weightG;
+        this.lengthMm = lengthMm;
+        this.widthMm = widthMm;
+        this.heightMm = heightMm;
     }
 }
