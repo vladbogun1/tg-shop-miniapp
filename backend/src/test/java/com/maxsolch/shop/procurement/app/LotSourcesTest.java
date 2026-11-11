@@ -118,6 +118,32 @@ class LotSourcesTest {
     }
 
     @Test
+    void old_turnsTheUnitsIntoOldStock_soTheySellFirst() {
+        StockLot added = lot("MANUAL", 5, null);
+
+        LotSources.Outcome o = sources.assign(pid(), new LotSourceRequest(null, 2, "OLD", null, 30_000L, 2_000L, null));
+
+        assertThat(added.getKind()).isEqualTo("MANUAL");
+        assertThat(added.getQtyLeft()).isEqualTo(3);
+        StockLot part = lots.get(1);
+        assertThat(part.getKind()).isEqualTo("OPENING");
+        assertThat(part.getQtyLeft()).isEqualTo(2);
+        assertThat(part.getUnitCostMinor()).isEqualTo(32_000L);
+        assertThat(o.what()).contains("старый остаток");
+    }
+
+    @Test
+    void old_wholeLot_changesKindInPlace() {
+        StockLot added = lot("MANUAL", 2, null);
+
+        sources.assign(pid(), new LotSourceRequest(null, 2, "OLD", null, 30_000L, null, null));
+
+        assertThat(added.getKind()).isEqualTo("OPENING");
+        assertThat(added.getUnitCostMinor()).isEqualTo(30_000L);
+        verify(ledger, never()).split(any(), anyInt());
+    }
+
+    @Test
     void batch_movesUnitsNewestFirst_toAnArrivedLineOfTheSameProduct() {
         StockLot old = lot("OPENING", 2, null);
         StockLot added = lot("MANUAL", 3, null);

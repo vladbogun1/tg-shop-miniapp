@@ -9226,7 +9226,8 @@
           "source" : {
             "enum" : [
               "BATCH",
-              "PRICE"
+              "PRICE",
+              "OLD"
             ],
             "type" : "string"
           },

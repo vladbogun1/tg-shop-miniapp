@@ -108,7 +108,7 @@ public final class CostingDtos {
      * {@code PRICE} = old stock / anything else with a typed purchase + delivery ({@code note} goes to the journal).
      */
     public record LotSourceRequest(String variantId, Integer qty,
-                                   @Schema(allowableValues = {"BATCH", "PRICE"}) String source, Long batchItemId,
+                                   @Schema(allowableValues = {"BATCH", "PRICE", "OLD"}) String source, Long batchItemId,
                                    Long purchaseMinor, Long extraMinor, String note) {
     }
 

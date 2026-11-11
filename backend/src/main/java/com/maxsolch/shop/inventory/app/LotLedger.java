@@ -33,7 +33,7 @@ public class LotLedger {
     }
 
     /**
-     * {@code qty} units leave the shelf, oldest lot first. With an order line they are recorded on it
+     * {@code qty} units leave the shelf in {@link StockLot#SALE_ORDER} (old stock, then oldest lot). With an order line they are recorded on it
      * (cost of that sale); without one (stock lowered by hand) they are just gone.
      */
     public void take(byte[] productId, byte[] variantId, int qty, LotAllocations sale) {
@@ -150,7 +150,7 @@ public class LotLedger {
         } else {
             sync(p.getId(), null, p.getStock());
         }
-        for (StockLot lot : lots.findByProductIdOrderByIdAsc(p.getId())) {
+        for (StockLot lot : lots.findOfProduct(p.getId())) {
             boolean stale = variants
                     ? lot.getVariantId() == null || !live.contains(Arrays.toString(lot.getVariantId()))
                     : lot.getVariantId() != null;
@@ -174,12 +174,12 @@ public class LotLedger {
 
     // ------------------------------------------------------------------ reads for procurement and finance
 
-    /** Lots of one product (all variants), oldest first. */
+    /** Lots of one product (all variants), in sale order. */
     public List<StockLot> lotsOfProduct(byte[] productId) {
-        return lots.findByProductIdOrderByIdAsc(productId);
+        return lots.findOfProduct(productId);
     }
 
-    /** Lots of one product (variant), oldest first; {@code variantId} null = a product without variants. */
+    /** Lots of one product (variant), in sale order; {@code variantId} null = a product without variants. */
     public List<StockLot> lotsOfLine(byte[] productId, byte[] variantId) {
         return lots.findKey(productId, variantId);
     }

@@ -86,7 +86,7 @@ describe("откуда +N шт", () => {
 
   it("из поставки — строка поставки; старый остаток — закупка + доставка с пометкой", () => {
     expect(lotSourceRequest({ kind: "BATCH", batchItemId: 77 }, 5, null)).toEqual({ source: "BATCH", qty: 5, batchItemId: 77, variantId: undefined });
-    expect(lotSourceRequest(old, 5, "v1")).toEqual({ source: "PRICE", qty: 5, purchaseMinor: 90000, extraMinor: 6000, note: "старый остаток", variantId: "v1" });
+    expect(lotSourceRequest(old, 5, "v1")).toEqual({ source: "OLD", qty: 5, purchaseMinor: 90000, extraMinor: 6000, variantId: "v1" });
     expect(answerCost(old, [])).toBe(96000);
     expect(answerCost({ kind: "BATCH", batchItemId: 77 }, [line])).toBe(109020);
   });

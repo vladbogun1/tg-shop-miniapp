@@ -3,7 +3,7 @@
 /**
  * «Откуда +N шт?» — ответ на добавленные штуки: новое поступление (по умолчанию — встают в конец очереди и продаются
  * последними), из приехавшей поставки (себестоимость — её), старый / неучтённый остаток (закупка + доставка за штуку
- * руками) или «другое» с пояснением. Что делать с ответом — решает тот, кто
+ * руками, продаётся первым) или «другое» с пояснением. Что делать с ответом — решает тот, кто
  * открыл: редактор товара отправит его после сохранения, строка таблицы — сразу.
  */
 import { useId, useState, type ReactNode } from "react";
@@ -102,7 +102,7 @@ function Preview({ a, units, lines, shelf, priceMinor }: { a: LotSourceAnswer | 
     const now = shelf.filter((l) => l.batchItemId === a.batchItemId).reduce((n, l) => n + l.qtyLeft, 0);
     where = `Поставка №${line?.batchId ?? "?"} — ${now + units} шт`;
   } else {
-    where = { NEW: `Новое поступление — ${units} шт, продаются последними`, OLD: `Старый остаток — ${units} шт`, OTHER: `Другое — ${units} шт` }[a.kind];
+    where = { NEW: `Новое поступление — ${units} шт, продаются последними`, OLD: `Старый остаток — ${units} шт, продаются первыми`, OTHER: `Другое — ${units} шт` }[a.kind];
   }
   return (
     <div className="tabular flex flex-wrap gap-x-3.5 gap-y-1 rounded-[var(--r-md)] bg-[var(--bg-2)] px-2.5 py-2 text-[12.5px] text-[var(--text-muted)]">
@@ -196,7 +196,7 @@ export function LotSourcePicker({ units, title, lines, shelf, priceMinor, submit
         <Option
           on={d.kind === "OLD"}
           title="Старый / неучтённый остаток"
-          hint="нашлись, были до поставок — впишите закупку и доставку за штуку; в очереди встанут последними"
+          hint="нашлись, были до поставок — впишите закупку и доставку за штуку; продаются первыми"
           onPick={() => set({ kind: "OLD" })}
         >
           <CostInputs d={d} set={set} />

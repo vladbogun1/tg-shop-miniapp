@@ -8,10 +8,16 @@ import java.util.List;
 
 public interface StockLotRepository extends JpaRepository<StockLot, Long> {
 
-    /** Lots of one product (variant), oldest first; {@code variantId} null = a product without variants. */
+    /** Lots of one product (variant) in {@link StockLot#SALE_ORDER}; {@code variantId} null = a product without variants. */
     default List<StockLot> findKey(byte[] productId, byte[] variantId) {
-        return variantId == null ? findByProductIdAndVariantIdIsNullOrderByIdAsc(productId)
+        List<StockLot> found = variantId == null ? findByProductIdAndVariantIdIsNullOrderByIdAsc(productId)
                 : findByProductIdAndVariantIdOrderByIdAsc(productId, variantId);
+        return found.stream().sorted(StockLot.SALE_ORDER).toList();
+    }
+
+    /** Lots of one product (all variants) in {@link StockLot#SALE_ORDER}. */
+    default List<StockLot> findOfProduct(byte[] productId) {
+        return findByProductIdOrderByIdAsc(productId).stream().sorted(StockLot.SALE_ORDER).toList();
     }
 
     List<StockLot> findByProductIdAndVariantIdIsNullOrderByIdAsc(byte[] productId);

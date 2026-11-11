@@ -11,9 +11,11 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
+import java.util.Comparator;
 
 /**
- * A lot of stock (V74), for money only: units leave the oldest lot first (FIFO). The shop still sells
+ * A lot of stock (V74), for money only: units leave in {@link #SALE_ORDER} — the old stock first, then the oldest
+ * lot (FIFO). The shop still sells
  * from {@code products.stock}; the ledger keeps {@code Σ qtyLeft} equal to it.
  */
 @Getter
@@ -30,6 +32,14 @@ public class StockLot {
         /** The admin raised the stock by hand. */
         MANUAL
     }
+
+    /**
+     * The order units leave the shelf: the old stock ({@link Kind#OPENING}) first — the owner sells it off before the
+     * batches — then by arrival (ascending id).
+     */
+    public static final Comparator<StockLot> SALE_ORDER = Comparator
+            .comparingInt((StockLot l) -> Kind.OPENING.name().equals(l.getKind()) ? 0 : 1)
+            .thenComparing(StockLot::getId);
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

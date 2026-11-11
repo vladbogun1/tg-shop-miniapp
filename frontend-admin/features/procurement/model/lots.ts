@@ -135,8 +135,8 @@ export function batchLinesOf(lines: BatchLineOption[], variantId: string | null)
 
 /**
  * Ответ на «откуда штуки»: новое поступление (по умолчанию: штуки встают в конец очереди и продаются последними,
- * закупка — по желанию), из приехавшей поставки, старый / неучтённый остаток с закупкой за штуку или «другое»
- * с пояснением. Суммы — копейки.
+ * закупка — по желанию), из приехавшей поставки, старый / неучтённый остаток с закупкой за штуку (продаётся первым)
+ * или «другое» с пояснением. Суммы — копейки.
  */
 export type LotSourceAnswer =
   | { kind: "BATCH"; batchItemId: number }
@@ -164,6 +164,9 @@ export function raiseLabel(r: Pick<LotRaise, "units" | "name">): string {
 
 const SOURCE_NOTE: Record<"NEW" | "OLD" | "OTHER", string> = { NEW: "новое поступление", OLD: "старый остаток", OTHER: "" };
 
+/** Пояснение в журнал; у старого остатка его пишет сервер («старый остаток, закупка …»). */
+const JOURNAL_NOTE: Record<"NEW" | "OLD" | "OTHER", string> = { ...SOURCE_NOTE, OLD: "" };
+
 /**
  * Тело `lot-source` для `qty` штук; null — отправлять нечего (без закупки штуки так и останутся новой партией
  * «без закупки» в конце очереди — ровно это и делает сохранение товара).
@@ -172,8 +175,9 @@ export function lotSourceRequest(a: LotSourceAnswer, qty: number, variantId: str
   const variant = variantId ?? undefined;
   if (a.kind === "BATCH") return { source: "BATCH", qty, batchItemId: a.batchItemId, variantId: variant };
   if (a.purchaseMinor == null) return null;
-  const note = a.note.trim() || SOURCE_NOTE[a.kind];
-  return { source: "PRICE", qty, purchaseMinor: a.purchaseMinor, extraMinor: a.extraMinor ?? undefined, note: note || undefined, variantId: variant };
+  const note = a.note.trim() || JOURNAL_NOTE[a.kind];
+  // Старый остаток — отдельный источник: сервер делает из штук «старый остаток», он продаётся первым.
+  return { source: a.kind === "OLD" ? "OLD" : "PRICE", qty, purchaseMinor: a.purchaseMinor, extraMinor: a.extraMinor ?? undefined, note: note || undefined, variantId: variant };
 }
 
 /** Что не так с ответом (кнопка «Добавить» неактивна, подсказка рядом); null — можно. */

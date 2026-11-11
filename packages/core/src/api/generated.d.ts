@@ -8440,7 +8440,7 @@ export interface components {
             /** Format: int32 */
             qty?: number;
             /** @enum {string} */
-            source?: "BATCH" | "PRICE";
+            source?: "BATCH" | "PRICE" | "OLD";
             variantId?: string;
         };
         LowMarginBrandDto: {

@@ -100,7 +100,8 @@ public class LotSources {
     }
 
     /**
-     * {@code qty} units without a cost (newest first) came from a batch line, or get the typed cost. Refused when
+     * {@code qty} units without a cost (newest first) came from a batch line, or get the typed cost — as the old
+     * stock ({@code OLD}: they become an OPENING lot and sell first) or in place ({@code PRICE}). Refused when
      * the product (variant) has fewer such units on the shelf.
      */
     @Transactional
@@ -123,14 +124,19 @@ public class LotSources {
             PreorderBatchItem line = arrivedLine(req.batchItemId(), p.getId(), vid);
             take(unpriced, req.qty(), (lot, n) -> ledger.reattach(lot, n, line.getId()));
             what = "из поставки " + line.getBatchId();
-        } else if ("PRICE".equals(req.source())) {
+        } else if ("PRICE".equals(req.source()) || "OLD".equals(req.source())) {
             check(req.purchaseMinor(), req.extraMinor());
+            boolean old = "OLD".equals(req.source());
             take(unpriced, req.qty(), (lot, n) -> {
                 StockLot part = n == lot.getQtyLeft() ? lot : ledger.split(lot, n);
                 price(part, req.purchaseMinor(), req.extraMinor());
+                if (old) {
+                    // The old stock sells first (StockLot.SALE_ORDER).
+                    part.setKind(StockLot.Kind.OPENING.name());
+                }
                 ledger.saveLots(List.of(part));
             });
-            what = describe(req.purchaseMinor(), req.extraMinor());
+            what = (old ? "старый остаток, " : "") + describe(req.purchaseMinor(), req.extraMinor());
         } else {
             throw new DomainException.BadRequest(ProcurementError.BAD_KIND);
         }
