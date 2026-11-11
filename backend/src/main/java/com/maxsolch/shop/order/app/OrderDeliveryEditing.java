@@ -29,8 +29,10 @@ public class OrderDeliveryEditing {
     private final OrderOps ops;
     private final OrderRepository orderRepository;
     private final DomainEvents events;
+    private final ParcelGuard parcels;
 
-    OrderDeliveryEditing(OrderOps ops, OrderRepository orderRepository, DomainEvents events) {
+    OrderDeliveryEditing(OrderOps ops, OrderRepository orderRepository, DomainEvents events, ParcelGuard parcels) {
+        this.parcels = parcels;
         this.ops = ops;
         this.orderRepository = orderRepository;
         this.events = events;
@@ -69,7 +71,32 @@ public class OrderDeliveryEditing {
                                 String npCityRef,
                                 String npCityName,
                                 String npWarehouseRef,
-                                String npWarehouseName) {
+                                String npWarehouseName,
+                                /** WAREHOUSE | POSTOMAT | DOORS; given = the address is set anew for that type. */
+                                String npServiceType,
+                                String npStreetRef,
+                                String npStreetName,
+                                String npBuilding,
+                                String npFlat,
+                                String recipientLastName,
+                                String recipientFirstName,
+                                String recipientMiddleName) {
+
+        public DeliveryPatch(String customerName, String phone, String npCityRef, String npCityName,
+                             String npWarehouseRef, String npWarehouseName) {
+            this(customerName, phone, npCityRef, npCityName, npWarehouseRef, npWarehouseName,
+                    null, null, null, null, null, null, null, null);
+        }
+
+        boolean recipientGiven() {
+            return recipientLastName != null || recipientFirstName != null || recipientMiddleName != null;
+        }
+
+        /** Touches what the waybill at Nova Poshta already carries (recipient or address). */
+        boolean touchesWaybill() {
+            return recipientGiven() || npServiceType != null || npCityRef != null || npWarehouseRef != null
+                    || npStreetRef != null || npStreetName != null;
+        }
     }
 
     /**
@@ -83,10 +110,19 @@ public class OrderDeliveryEditing {
         if (!OrderTransitions.isDeliveryEditable(s)) {
             throw new DomainException.BadRequest(OrderError.DELIVERY_EDIT_NOT_ALLOWED);
         }
+        if (patch.touchesWaybill()) {
+            // The waybill at NP keeps the old recipient and branch; ours would silently disagree.
+            parcels.requireNotHandedOver(order);
+        }
         List<String> changes = new ArrayList<>();
         changeName(order, patch, changes);
         changePhone(order, patch, changes);
-        changeBranch(order, patch, changes);
+        OrderAddressChanges.recipient(order, patch, changes);
+        if (patch.npServiceType() != null) {
+            OrderAddressChanges.serviceAddress(order, patch, changes);
+        } else {
+            changeBranch(order, patch, changes);
+        }
         if (changes.isEmpty()) {
             return new OrderChange(order, "без изменений");
         }

@@ -185,7 +185,7 @@ class OrderQueryServiceGoldenTest {
         });
 
         thumbnailsView = new OrderThumbnails(new com.maxsolch.shop.catalog.app.Products(mock(com.maxsolch.shop.catalog.infra.ProductRepository.class), images));
-        dispatchView = new OrderDispatchView(orders, thumbnailsView);
+        dispatchView = new OrderDispatchView(orders, thumbnailsView, ids -> java.util.Map.of());
         service = new OrderQueryService(orders, messages, items, thumbnailsView, new OrderDetailView(orders,
                 new com.maxsolch.shop.payment.app.OrderPaymentsAdapter(
                         mock(com.maxsolch.shop.payment.app.OnlinePaymentService.class), invoiceRepo, mono,
@@ -194,7 +194,8 @@ class OrderQueryServiceGoldenTest {
                 rejectReason,
                 new ReturnRecords(returnRepo, returnLineRepo, exchangeRepo, lookup),
                 movementRepo, new com.maxsolch.shop.inventory.app.StockWriteoffs(writeoffRepo, java.time.Clock.systemUTC()), gifts,
-                mock(com.maxsolch.shop.customer.app.CustomerFlags.class)));
+                mock(com.maxsolch.shop.customer.app.CustomerFlags.class), ids -> java.util.Map.of()),
+                ids -> java.util.Map.of());
 
         AtomicReference<ObjectMapper> ref = new AtomicReference<>();
         // The ObjectMapper of the application: Spring Boot's own JacksonAutoConfiguration (no custom config in config/).

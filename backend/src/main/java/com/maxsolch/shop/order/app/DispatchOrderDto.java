@@ -37,7 +37,17 @@ public record DispatchOrderDto(
         /** Pay online by then or the order is cancelled; null = placed before online payment. */
         @Nullable Instant paymentDueAt,
         /** Still to pay online now; 0 = nothing to pay. */
-        long amountDueMinor) {
+        long amountDueMinor,
+        /** WAREHOUSE | POSTOMAT | DOORS (NpServiceType name); null for orders placed before V98. */
+        @Nullable String npServiceType,
+        /** «Оплата при отриманні»: Nova Poshta collects the whole sum. */
+        boolean paymentOnDelivery,
+        /** The active parcel: stage (CREATED once the waybill exists), API | MANUAL, NP status text. */
+        @Nullable String shipmentStage,
+        @Nullable String shipmentOrigin,
+        @Nullable String shipmentStatusText,
+        /** Why the waybill no longer matches the order — do not send it, make it again (empty = fine). */
+        List<String> shipmentStaleReasons) {
 
     /** {@code imageUrl}: the product's first photo, null when it has none or the product is gone. */
     public record DispatchItem(String title, @Nullable String variantName, int quantity, long priceMinor, @Nullable String imageUrl) {

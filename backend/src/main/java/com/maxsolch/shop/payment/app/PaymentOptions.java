@@ -5,7 +5,9 @@ import com.maxsolch.shop.payment.domain.PaymentError;
 import com.maxsolch.shop.payment.domain.PaymentOption;
 import com.maxsolch.shop.payment.infra.PaymentOptionRepository;
 import com.maxsolch.shop.audit.app.AdminAuditService;
+import com.maxsolch.shop.order.app.CheckoutSettings;
 import com.maxsolch.shop.platform.util.UuidUtil;
+import com.maxsolch.shop.settings.app.SettingsService;
 import com.maxsolch.shop.site.app.SiteRevalidator;
 import com.maxsolch.shop.translation.app.TranslationService;
 import com.maxsolch.shop.translation.domain.TranslationEntityType;
@@ -33,10 +35,12 @@ public class PaymentOptions {
     private final SiteRevalidator siteRevalidator;
     private final Validator validator;
     private final TranslationService translations;
+    private final SettingsService settings;
 
     public PaymentOptions(PaymentOptionRepository repository, AdminAuditService audit,
                           SiteRevalidator siteRevalidator, Validator validator,
-                          TranslationService translations) {
+                          TranslationService translations, SettingsService settings) {
+        this.settings = settings;
         this.repository = repository;
         this.audit = audit;
         this.siteRevalidator = siteRevalidator;
@@ -46,13 +50,20 @@ public class PaymentOptions {
 
     /** Active options in checkout order, in the Russian source texts. */
     public List<PaymentOptionDto> active() {
+        // «Оплата при отриманні» is switched by a setting (payment.onDeliveryEnabled), with a total ceiling.
+        boolean onDelivery = settings.get(CheckoutSettings.ON_DELIVERY_ENABLED, false);
+        long onDeliveryMax = Math.max(0, settings.get(CheckoutSettings.ON_DELIVERY_MAX_UAH, 5000)) * 100L;
         return repository.findByActiveTrueOrderBySortOrderAsc().stream()
+                .filter(p -> !p.isOnDelivery() || onDelivery)
                 .map(p -> new PaymentOptionDto(
                         UuidUtil.toString(p.getId()),
                         p.getTitle(),
                         p.getDescription(),
                         p.isRequiresPrepayment(),
-                        p.getPrepaymentMinor()))
+                        p.getPrepaymentMinor(),
+                        p.getKind(),
+                        p.deliveryMethodList(),
+                        p.isOnDelivery() && onDeliveryMax > 0 ? onDeliveryMax : null))
                 .toList();
     }
 
@@ -69,7 +80,7 @@ public class PaymentOptions {
         return new PaymentOptionDto(p.id(),
                 overlay.text(TranslationEntityType.PAYMENT_OPTION, p.id(), TranslationEntityType.TITLE, p.title()),
                 overlay.text(TranslationEntityType.PAYMENT_OPTION, p.id(), TranslationEntityType.DESCRIPTION, p.description()),
-                p.requiresPrepayment(), p.prepaymentMinor());
+                p.requiresPrepayment(), p.prepaymentMinor(), p.kind(), p.deliveryMethods(), p.maxTotalMinor());
     }
 
     /**
@@ -99,7 +110,11 @@ public class PaymentOptions {
     @Transactional
     public List<AdminPaymentOptionDto> replace(List<AdminPaymentOptionDto> body) {
         List<AdminPaymentOptionDto> incoming = body == null ? List.of() : body;
-        long activeCount = incoming.stream().filter(d -> d.active() == null || d.active()).count();
+        // «При отриманні» alone does not keep checkout open: it is off by a setting and not for every delivery.
+        long activeCount = incoming.stream()
+                .filter(d -> d.active() == null || d.active())
+                .filter(d -> !PaymentOption.KIND_ON_DELIVERY.equals(d.kind()))
+                .count();
         if (activeCount == 0) {
             throw new DomainException.BadRequest(PaymentError.ALL_METHODS_DISABLED);
         }
@@ -141,6 +156,10 @@ public class PaymentOptions {
             po.setDescription(dto.description());
             po.setRequiresPrepayment(dto.requiresPrepayment());
             po.setPrepaymentMinor(dto.prepaymentMinor());
+            if (po.getId() == null) {
+                po.setKind(PaymentOption.KIND_ON_DELIVERY.equals(dto.kind()) ? dto.kind() : null);
+            }
+            po.setDeliveryMethods(PaymentDeliveries.normalize(dto.deliveryMethods()));
             // The list order IS the checkout order (the editor has up/down buttons).
             po.setSortOrder(order++);
             po.setActive(active);
@@ -177,6 +196,8 @@ public class PaymentOptions {
                 p.isRequiresPrepayment(),
                 p.getPrepaymentMinor(),
                 p.getSortOrder(),
-                p.isActive());
+                p.isActive(),
+                p.getKind(),
+                p.getDeliveryMethods());
     }
 }

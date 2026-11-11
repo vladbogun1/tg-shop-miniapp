@@ -60,6 +60,30 @@ public final class OrderApp {
         return registry;
     }
 
+    /** Settings at their registered defaults: every {@code get(key, default)} answers the default. */
+    public static com.maxsolch.shop.settings.app.SettingsService defaultSettings() {
+        return mock(com.maxsolch.shop.settings.app.SettingsService.class, inv ->
+                "get".equals(inv.getMethod().getName()) && inv.getArguments().length == 2
+                        ? inv.getArgument(1)
+                        : org.mockito.Answers.RETURNS_DEFAULTS.answer(inv));
+    }
+
+    /** The Nova Poshta directory says yes to every branch and keeps the client's name and kind. */
+    public static DeliveryAddressCheck anyAddress() {
+        DeliveryAddressCheck check = mock(DeliveryAddressCheck.class);
+        lenient().when(check.check(any())).thenAnswer(inv -> {
+            DeliveryAddressCheck.Address a = inv.getArgument(0);
+            return new DeliveryAddressCheck.Resolved(a.serviceType() == null
+                    ? com.maxsolch.shop.order.domain.NpServiceType.WAREHOUSE : a.serviceType(), null);
+        });
+        return check;
+    }
+
+    /** No waybills anywhere: nothing is handed over to Nova Poshta. */
+    public static ParcelGuard noParcels() {
+        return new ParcelGuard(ids -> java.util.Map.of());
+    }
+
     public static CaseLowMargin noLowMargin() {
         CaseLowMargin lowMargin = mock(CaseLowMargin.class);
         lenient().when(lowMargin.none()).thenReturn(true);
@@ -121,16 +145,19 @@ public final class OrderApp {
         OrderPayments payments = new OrderPayments(ops, orders, events);
         OrderArchive archive = new OrderArchive(ops, orders, events, onlinePayments);
         CancelRequests cancelRequests = new CancelRequests(ops, orders, stock, events, messages);
+        com.maxsolch.shop.settings.app.SettingsService settings = defaultSettings();
         OrderLifecycle lifecycle = new OrderLifecycle(ops, orders, stock, events,
-                new OrderProperties());
+                new OrderProperties(), settings);
         OrderPromos orderPromos = new OrderPromos(ops, new com.maxsolch.shop.promo.app.PromoUses(promos), promoService, messages, lowMargin);
-        OrderEditing editing = new OrderEditing(ops, orders, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), stock, shelf, events, gifts, orderPromos);
+        OrderEditing editing = new OrderEditing(ops, orders, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), stock, shelf, events, gifts, orderPromos,
+                noParcels());
         OrderGiftPrizes prizes = new OrderGiftPrizes(gifts, shelf);
         OrderGiftCases giftCases = new OrderGiftCases(ops, orders, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), stock, events, messages, gifts, orderPromos,
-                prizes);
+                prizes, noParcels());
         Checkout checkout = new Checkout(orders, new com.maxsolch.shop.catalog.app.Products(products, org.mockito.Mockito.mock(com.maxsolch.shop.catalog.infra.ProductImageRepository.class)), new com.maxsolch.shop.payment.app.OrderPaymentOptionsAdapter(options), events, orderPromos, carts, messages,
                 stock, shelf, payments, gifts, ops, prizes, new OrderProperties(),
-                mock(com.maxsolch.shop.customer.app.Customers.class));
+                mock(com.maxsolch.shop.customer.app.Customers.class),
+                new CheckoutDelivery(anyAddress(), settings, orders, ops));
         return new OrderApp(ops, payments, archive, cancelRequests, lifecycle, editing, orderPromos, giftCases,
                 checkout);
     }
@@ -173,7 +200,7 @@ public final class OrderApp {
     }
 
     public OrderDeliveryEditing deliveryEditing(OrderRepository orders, DomainEvents events) {
-        return new OrderDeliveryEditing(ops, orders, events);
+        return new OrderDeliveryEditing(ops, orders, events, noParcels());
     }
 
     OrderOps ops() {

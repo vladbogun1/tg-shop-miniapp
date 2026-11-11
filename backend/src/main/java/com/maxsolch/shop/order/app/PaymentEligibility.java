@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Which payment options this buyer may choose. A buyer marked «проблемный покупатель» pays the whole order online:
- * a prepayment with the rest cash on delivery is how the shop got burnt, so it is refused here (the apps hide that
+ * a prepayment with the rest cash on delivery (or all of it on delivery) is how the shop got burnt, so it is refused here (the apps hide that
  * option already; this is the server's word on it).
  */
 @Component
@@ -23,7 +23,7 @@ public class PaymentEligibility {
     }
 
     /**
-     * 400 {@code ONLINE_PAYMENT_ONLY} when a marked buyer chose a prepayment option. A missing, malformed or
+     * 400 {@code ONLINE_PAYMENT_ONLY} when a marked buyer chose a prepayment option or «оплата при отриманні». A missing, malformed or
      * unknown option is left to {@link Checkout} and its own errors.
      */
     public void requireAllowed(long userId, String paymentOptionId) {
@@ -37,7 +37,7 @@ public class PaymentEligibility {
             return;
         }
         options.findActive(id)
-                .filter(OrderPaymentOptions.Option::requiresPrepayment)
+                .filter(o -> o.requiresPrepayment() || o.onDelivery())
                 .ifPresent(o -> {
                     throw new DomainException.BadRequest(OrderError.ONLINE_PAYMENT_ONLY);
                 });

@@ -23,7 +23,12 @@ class OrderTopUpChange {
     private final OrderRepository orders;
     private final DomainEvents events;
 
-    OrderTopUpChange(OrderOps ops, OrderRepository orders, DomainEvents events) {
+    /** Nothing changes once Nova Poshta holds the parcel. */
+    private final ParcelGuard parcels;
+
+    OrderTopUpChange(OrderOps ops, OrderRepository orders, DomainEvents events,
+            ParcelGuard parcels) {
+        this.parcels = parcels;
         this.ops = ops;
         this.orders = orders;
         this.events = events;
@@ -33,6 +38,7 @@ class OrderTopUpChange {
     public Applied apply(byte[] orderId, OrderTopUp.Mode mode) {
         Order order = ops.lock(orderId);
         order.requireEditable();
+        parcels.requireNotHandedOver(order);
         long due = OrderMoney.topUpDueMinor(order);
         if (due <= 0) {
             throw new DomainException.BadRequest(OrderError.TOPUP_NOT_DUE);
