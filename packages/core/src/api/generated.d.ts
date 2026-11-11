@@ -1593,6 +1593,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/costing/lots/{lotId}/cost": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Purchase + delivery per unit of an old-stock / hand-added lot; purchase null clears it */
+        put: operations["AdminLotSourcesController_setLotCost"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/costing/nbu-rate": {
         parameters: {
             query?: never;
@@ -1656,6 +1673,23 @@ export interface paths {
         get: operations["AdminCostingController_product"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/costing/products/{productId}/lot-source": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Units without a cost came from an arrived batch line, or get a typed purchase + delivery */
+        post: operations["AdminLotSourcesController_assign"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6508,6 +6542,24 @@ export interface components {
             supplierName: string | null;
             title: string;
         };
+        BatchLineOptionDto: {
+            /** Format: date-time */
+            arrivedAt: string | null;
+            /** Format: int64 */
+            batchId: number;
+            /** Format: int64 */
+            batchItemId: number;
+            batchTitle: string;
+            /** Format: int64 */
+            costUnitMinor: number | null;
+            /** Format: int32 */
+            onLots: number;
+            preliminary: boolean;
+            /** Format: int32 */
+            qtyArrived: number;
+            variantId: string | null;
+            variantName: string | null;
+        };
         BatchMoneyDto: {
             /** @enum {string} */
             allocation: "BY_VALUE" | "BY_QTY" | "BY_WEIGHT" | "MANUAL";
@@ -8339,25 +8391,57 @@ export interface components {
             result: string;
             secondFactor: string;
         };
+        LotCostRequest: {
+            /** Format: int64 */
+            extraMinor?: number;
+            /** Format: int64 */
+            purchaseMinor?: number;
+        };
         LotDto: {
+            /** Format: date-time */
+            arrivedAt: string | null;
             /** Format: int64 */
             batchId: number | null;
+            /** Format: int64 */
+            batchItemId: number | null;
             batchTitle: string | null;
             /** Format: date-time */
             createdAt: string;
+            currency: string | null;
+            /** Format: int64 */
+            extraUnitMinor: number | null;
+            fxRate: number | null;
             /** Format: int64 */
             id: number;
             /** @enum {string} */
             kind: "OPENING" | "BATCH" | "MANUAL";
             preliminary: boolean;
+            /** Format: int64 */
+            purchaseUnitMinor: number | null;
             /** Format: int32 */
             qtyIn: number;
             /** Format: int32 */
             qtyLeft: number;
             /** Format: int64 */
             unitCostMinor: number | null;
+            /** Format: int64 */
+            unitPriceFx: number | null;
             variantId: string | null;
             variantName: string | null;
+        };
+        LotSourceRequest: {
+            /** Format: int64 */
+            batchItemId?: number;
+            /** Format: int64 */
+            extraMinor?: number;
+            note?: string;
+            /** Format: int64 */
+            purchaseMinor?: number;
+            /** Format: int32 */
+            qty?: number;
+            /** @enum {string} */
+            source?: "BATCH" | "PRICE";
+            variantId?: string;
         };
         LowMarginBrandDto: {
             name: string;
@@ -9279,6 +9363,7 @@ export interface components {
             subjectVersion?: string;
         };
         ProductCostDto: {
+            batchLines: components["schemas"]["BatchLineOptionDto"][];
             /** Format: int64 */
             currentCostMinor: number | null;
             currentPreliminary: boolean | null;
@@ -13143,6 +13228,32 @@ export interface operations {
             };
         };
     };
+    AdminLotSourcesController_setLotCost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lotId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LotCostRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProductCostDto"];
+                };
+            };
+        };
+    };
     AdminCostingController_nbuRate: {
         parameters: {
             query: {
@@ -13242,6 +13353,32 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProductCostDto"];
+                };
+            };
+        };
+    };
+    AdminLotSourcesController_assign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LotSourceRequest"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {

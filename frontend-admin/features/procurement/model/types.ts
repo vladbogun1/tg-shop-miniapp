@@ -95,6 +95,14 @@ export type BatchSalesLine = Schemas["BatchSalesLineDto"];
 export type BatchSales = Schemas["BatchSalesDto"];
 export type Lot = Schemas["LotDto"];
 export type ProductCost = Schemas["ProductCostDto"];
+export type BatchLineOption = Schemas["BatchLineOptionDto"];
+/** Тело `PUT /lots/{id}/cost`: закупка и доставка за штуку, копейки; закупка null — очистить. */
+export interface LotCostRequest {
+  purchaseMinor: number | null;
+  extraMinor: number | null;
+}
+/** Тело `POST /products/{id}/lot-source`: штуки без закупки — из поставки (BATCH) или с ценой (PRICE). */
+export type LotSourceRequest = Schemas["LotSourceRequest"];
 export type OpeningRow = Schemas["OpeningRowDto"];
 export type Reconcile = Schemas["ReconcileDto"];
 export type OrderLineCost = Schemas["OrderLineCostDto"];

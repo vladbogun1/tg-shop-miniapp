@@ -4,13 +4,13 @@ import { errorMessage } from "@shop/core/errors";
 import { QUERY_PRESETS } from "@shop/core/query";
 import { toast } from "@shop/ui/toast";
 import { useApiMutation } from "@shop/ui/mutation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { catalogKeys } from "@/features/catalog";
 import { isAuthenticated } from "@/lib/session";
 import { costingApi, preordersApi } from "./api";
 import { procurementKeys } from "./keys";
 import { releaseSummary, sumReleases } from "./model/demand";
-import type { Batch, BatchRequest, Demand, ProductCost, Supplier } from "./model/types";
+import type { Batch, BatchRequest, Demand, LotCostRequest, LotSourceRequest, ProductCost, Supplier } from "./model/types";
 
 const DEMAND_STALE_MS = 60_000;
 
@@ -119,5 +119,35 @@ export function useSaveBatch(handlers: { onSaved: (b: Batch) => void; onError: (
     toastOnError: false,
     onSuccess: (b) => handlers.onSaved(b),
     onError: (e) => handlers.onError(errorMessage(e, undefined, "Не удалось сохранить")),
+  });
+}
+
+/** Свежая себестоимость товара из ответа — сразу в кэш карточки; остальное под «costing» (маржа, «Начальная») — перечитать. */
+function useCostWriter() {
+  const qc = useQueryClient();
+  return (cost: ProductCost) => {
+    qc.setQueryData(procurementKeys.product(cost.productId), cost);
+    void qc.invalidateQueries({ queryKey: procurementKeys.costingRoot(), predicate: (q) => q.queryKey[1] !== "product" });
+  };
+}
+
+/** Вписать закупку и доставку старому / ручному остатку (null — очистить). */
+export function useSetLotCost() {
+  const write = useCostWriter();
+  return useApiMutation({
+    mutationFn: ({ lotId, body }: { lotId: number; body: LotCostRequest }) => costingApi.setLotCost(lotId, body),
+    success: (_c, v) => (v.body.purchaseMinor == null ? "Закупка очищена" : "Закупка сохранена"),
+    errorFallback: "Не удалось сохранить закупку",
+    onSuccess: write,
+  });
+}
+
+/** Штуки без закупки: из какой поставки они или почём куплены. Ошибку показывает форма (`toastOnError: false`). */
+export function useAssignLotSource() {
+  const write = useCostWriter();
+  return useApiMutation({
+    mutationFn: ({ productId, body }: { productId: string; body: LotSourceRequest }) => costingApi.assignLotSource(productId, body),
+    toastOnError: false,
+    onSuccess: write,
   });
 }

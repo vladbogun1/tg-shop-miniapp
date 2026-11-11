@@ -115,6 +115,11 @@ export function stockDrop(f: ProductForm, base: StockBase): number {
   }, 0);
 }
 
+/** На сколько форма поднимает остаток товара без вариантов (у вариантов — 0: их штуки привязывают в таблице партий). */
+export function plainStockRaise(f: ProductForm, base: StockBase): number {
+  return hasVariants(f) ? 0 : Math.max(0, (Number(f.stock) || 0) - base.stock);
+}
+
 /** Строки (id варианта или null для товара без вариантов), у которых форма поднимает остаток. */
 export function stockRaises(f: ProductForm, base: StockBase): (string | null)[] {
   if (!hasVariants(f)) return (Number(f.stock) || 0) > base.stock ? [null] : [];

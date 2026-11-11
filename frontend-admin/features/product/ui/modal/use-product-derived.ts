@@ -26,7 +26,7 @@ import {
 import type { AdminProduct } from "../../model/types";
 import { useTranslatedTexts } from "../../queries";
 import { useProductCost } from "@/features/procurement";
-import { marginHint } from "./ProductCostBlock";
+import { marginHint } from "./margin-hint";
 
 type Brands = ReturnType<typeof useBrandsQuery>["data"];
 

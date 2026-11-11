@@ -1,14 +1,42 @@
 "use client";
 
-import { FactoryOrderLine, WaitLine } from "@/features/procurement";
+import { FactoryOrderLine, StockLotsBlock, WaitLine } from "@/features/procurement";
 import { ProductPickModal } from "../../ProductPickModal";
 import { Input } from "@/components/ui/Input";
-import { ProductCostBlock } from "../ProductCostBlock";
 import { Variants } from "../Variants";
 import type { ProductCtx } from "../ctx";
 
+/** Остаток: у сохранённого товара — «Склад по партиям» (при праве «Финансы»), иначе — одно поле. */
+function StockField({ x }: { x: ProductCtx }) {
+  const { f, set, product, priceMinor, hasVariants, effectiveStock, baseStockRef, lotSource, setLotSource } = x;
+  const stockInput = (
+    <Input
+      label="Остаток"
+      inputMode="numeric"
+      value={hasVariants ? String(effectiveStock) : f.stock}
+      disabled={hasVariants}
+      hint={hasVariants ? "= сумма остатков вариантов" : undefined}
+      onChange={(e) => set("stock", e.target.value)}
+    />
+  );
+  if (!product?.id) return stockInput;
+  return (
+    <StockLotsBlock
+      productId={product.id}
+      priceMinor={priceMinor}
+      stock={hasVariants ? null : f.stock}
+      total={effectiveStock}
+      base={baseStockRef.current.stock}
+      onStock={(v) => set("stock", v)}
+      answer={lotSource}
+      onAnswer={setLotSource}
+      fallback={stockInput}
+    />
+  );
+}
+
 export function PricingStep({ x }: { x: ProductCtx }) {
-  const { f, set, product, priceMinor, priceMarginHint, compareAtInvalid, hasVariants, effectiveStock } = x;
+  const { f, set, product, priceMinor, priceMarginHint, compareAtInvalid, effectiveStock } = x;
   return (
     <div className="flex flex-col gap-4">
       <Input
@@ -29,18 +57,10 @@ export function PricingStep({ x }: { x: ProductCtx }) {
         error={compareAtInvalid ? "Должна быть больше текущей цены" : undefined}
         hint={compareAtInvalid ? undefined : "Зачёркнутая цена на сайте. Пусто или 0 — не показывать."}
       />
-      <Input
-        label="Остаток"
-        inputMode="numeric"
-        value={hasVariants ? String(effectiveStock) : f.stock}
-        disabled={hasVariants}
-        hint={hasVariants ? "= сумма остатков вариантов" : undefined}
-        onChange={(e) => set("stock", e.target.value)}
-      />
+      <StockField x={x} />
       <Variants variants={f.variants} onChange={(v) => set("variants", v)} />
       {product?.id && <WaitLine productId={product.id} title={product.title} />}
       {product?.id && effectiveStock === 0 && <FactoryOrderLine product={product} ProductPicker={ProductPickModal} />}
-      {product?.id && <ProductCostBlock productId={product.id} />}
     </div>
   );
 }

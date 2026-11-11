@@ -16,6 +16,8 @@ import type {
   BatchSummary,
   Demand,
   ExpenseRequest,
+  LotCostRequest,
+  LotSourceRequest,
   MoneyRequest,
   OpeningBody,
   OpeningRow,
@@ -69,6 +71,11 @@ export const costingApi = {
       `${COST}/nbu-rate?currency=${encodeURIComponent(currency)}${date ? `&date=${date}` : ""}`,
     ),
   product: (productId: string) => apiGet<ProductCost>(`${COST}/products/${encodeURIComponent(productId)}`),
+  /** Закупка + доставка за штуку у старого / ручного остатка; ответ — свежая себестоимость товара. */
+  setLotCost: (lotId: number, body: LotCostRequest) => apiPut<ProductCost>(`${COST}/lots/${lotId}/cost`, body),
+  /** Откуда штуки без закупки: из приехавшей поставки или с вписанной ценой. */
+  assignLotSource: (productId: string, body: LotSourceRequest) =>
+    apiPost<ProductCost>(`${COST}/products/${encodeURIComponent(productId)}/lot-source`, body),
   opening: () => apiGet<OpeningRow[]>(`${COST}/opening`),
   setOpening: (body: OpeningBody) => apiPut<OpeningRow[]>(`${COST}/opening`, body),
   reconcile: () => apiPost<Reconcile>(`${COST}/reconcile`),

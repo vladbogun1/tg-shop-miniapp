@@ -10,6 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Eye, EyeOff, ImageOff, Pencil } from "lucide-react";
 import { ApiError } from "@shop/core/errors";
 import type { AdminProduct } from "../model/types";
+import type { ProductStepKey } from "../model/steps";
 import { usePublishGate } from "./PublishGate";
 import { ProductModal } from "./modal/ProductModal";
 import { productKeys } from "../keys";
@@ -19,6 +20,7 @@ import { invalidateCards } from "@/features/cards";
 import { money } from "@/lib/money";
 import { Image, resolveImageSrc } from "@/lib/image";
 import { siteProductUrl } from "@/features/support";
+import { ProductLotsPanel } from "@/features/procurement";
 import { toast } from "@shop/ui/toast";
 import { CardStatusBadge } from "@/features/catalog";
 import { CardCompletionModal } from "@/features/cards";
@@ -76,6 +78,8 @@ export function useBatchProductTools({ zClass }: { zClass?: string } = {}) {
   const qc = useQueryClient();
   const [preview, setPreview] = useState<AdminProduct | null>(null);
   const [editing, setEditing] = useState<AdminProduct | null>(null);
+  // «Указать закупку» из быстрого просмотра открывает редактор сразу на шаге «Цена и склад».
+  const [editStep, setEditStep] = useState<ProductStepKey | undefined>(undefined);
   const [completion, setCompletion] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [guardPublish, gateUi] = usePublishGate((id) => setCompletion(id));
@@ -108,8 +112,9 @@ export function useBatchProductTools({ zClass }: { zClass?: string } = {}) {
         zClass={zClass}
         busy={!!preview && busy === preview.id}
         onClose={() => setPreview(null)}
-        onEdit={(p) => {
+        onEdit={(p, step) => {
           setPreview(null);
+          setEditStep(step);
           setEditing(p);
         }}
         onActive={setActive}
@@ -117,6 +122,7 @@ export function useBatchProductTools({ zClass }: { zClass?: string } = {}) {
       <ProductModal
         open={!!editing}
         product={editing}
+        initialStep={editStep}
         onClose={() => setEditing(null)}
         onSaved={refresh}
         onCompleteWithAi={(id) => setCompletion(id)}
@@ -139,7 +145,10 @@ export function useBatchProductTools({ zClass }: { zClass?: string } = {}) {
 
   return {
     openPreview: setPreview,
-    openEditor: setEditing,
+    openEditor: (p: AdminProduct | null) => {
+      setEditStep(undefined);
+      setEditing(p);
+    },
     setActive,
     busy,
     ui,
@@ -158,7 +167,7 @@ function QuickView({
   zClass?: string;
   busy: boolean;
   onClose: () => void;
-  onEdit: (p: AdminProduct) => void;
+  onEdit: (p: AdminProduct, step?: ProductStepKey) => void;
   onActive: (p: AdminProduct, active: boolean) => void;
 }) {
   const [zoom, setZoom] = useState<string | null>(null);
@@ -170,7 +179,9 @@ function QuickView({
           <div className="flex min-w-0 flex-col gap-4 px-4 pb-[calc(16px+var(--safe-bottom,0px))] pt-4 sm:px-5">
             <ProductStateChips p={p} loading={false} />
             <QuickGallery title={p.title} images={images} onZoom={setZoom} />
-            <QuickFacts p={p} />
+            <QuickFacts p={p}>
+              <ProductLotsPanel productId={p.id} onPriceOld={() => onEdit(p, "pricing")} />
+            </QuickFacts>
             {/* phone: the actions stick to the bottom edge however long the description is */}
             <div className="sticky bottom-0 -mx-4 -mb-[calc(16px+var(--safe-bottom,0px))] flex flex-wrap gap-2 border-t border-[var(--line)] bg-[var(--surface)] px-4 pb-[calc(12px+var(--safe-bottom,0px))] pt-3 sm:static sm:m-0 sm:border-0 sm:bg-transparent sm:p-0">
               <Button variant="accent" icon={<Pencil className="h-4 w-4" />} onClick={() => onEdit(p)}>
@@ -228,7 +239,8 @@ function QuickGallery({ title, images, onZoom }: { title: string; images: Galler
   );
 }
 
-function QuickFacts({ p }: { p: AdminProduct }) {
+/** Цена, остаток, варианты; `children` (себестоимость по партиям) — сразу под ними, до описания. */
+function QuickFacts({ p, children }: { p: AdminProduct; children?: React.ReactNode }) {
   const stock = p.variants?.length ? p.variants.reduce((n, v) => n + (v.stock ?? 0), 0) : (p.stock ?? 0);
   return (
     <>
@@ -241,6 +253,7 @@ function QuickFacts({ p }: { p: AdminProduct }) {
           </Field>
         )}
       </div>
+      {children}
       {p.description && <p className="line-clamp-6 whitespace-pre-wrap break-words text-[13px] text-[var(--text-muted)]">{p.description}</p>}
     </>
   );

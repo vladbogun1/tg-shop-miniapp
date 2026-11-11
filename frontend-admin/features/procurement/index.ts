@@ -27,11 +27,33 @@ export { CANCEL_REASON_MAX, cancelBody, cancelReasonTooLong, type CancelBatchInp
 export { demandOfProduct, demandRowsOfProduct, peopleOfRows, releaseSummary, sumReleases } from "./model/demand";
 export type { BatchPreset, PickedProduct, SeedLine } from "./model/batch-form";
 export type * from "./model/types";
-export { useDemand, useFinanceAccess, useProductCost, useSupplierAliases, useSuppliers } from "./queries";
+export {
+  useAssignLotSource,
+  useDemand,
+  useFinanceAccess,
+  useProductCost,
+  useSetLotCost,
+  useSupplierAliases,
+  useSuppliers,
+} from "./queries";
+export {
+  batchLinesOf,
+  DEFAULT_LOT_SOURCE,
+  lotSourceProblem,
+  lotSourceRequest,
+  lotSourceSummary,
+  shelfLots,
+  stockSummary,
+  type LotSourceAnswer,
+  type ShelfLot,
+  type StockSummary,
+} from "./model/lots";
 export { openExpenseFile, downloadSubscribersCsv } from "./files";
 export { BatchFormModal, type ProductPicker } from "./ui/BatchFormModal";
 export { CsvButton } from "./ui/CsvButton";
 export { FactoryOrderLine } from "./ui/FactoryOrder";
+export { ProductLotsPanel } from "./ui/lots/ProductLotsPanel";
+export { StockLotsBlock } from "./ui/lots/StockLotsBlock";
 export { ReleaseButton, useReleaseAction } from "./ui/ReleaseButton";
 export { SubscribersList } from "./ui/SubscribersList";
 export { SupplierModal } from "./ui/SupplierModal";

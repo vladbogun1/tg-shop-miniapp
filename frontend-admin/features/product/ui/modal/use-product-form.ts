@@ -2,6 +2,7 @@
 
 import type { CardStatus } from "@shop/core/catalog";
 import { useEffect, useRef, useState } from "react";
+import type { LotSourceAnswer } from "@/features/procurement";
 import { initialCardStatus, initialForm, stockBaseOf, type ProductForm, type StockBase } from "../../model/form";
 import { S, STEPS, type ProductStepKey } from "../../model/steps";
 import type { AdminProduct } from "../../model/types";
@@ -20,6 +21,8 @@ export function useProductForm(open: boolean, product: AdminProduct | null, init
   const [confirmClose, setConfirmClose] = useState(false);
   const [cardStatus, setCardStatus] = useState<CardStatus>("DRAFT");
   const [showMissing, setShowMissing] = useState(false);
+  // «Откуда +N шт?» на шаге «Цена и склад»: ответ уходит после сохранения товара.
+  const [lotSource, setLotSource] = useState<LotSourceAnswer | null>(null);
 
   // С чем открыли форму: по нему считается «есть несохранённые правки», а остатки — это `expectedStock`,
   // который проверяет сервер (после 409 заменяются свежими числами).
@@ -34,6 +37,7 @@ export function useProductForm(open: boolean, product: AdminProduct | null, init
     setDir(1);
     setConfirmClose(false);
     setShowMissing(false);
+    setLotSource(null);
     setF(fresh);
     setCardStatus(initialCardStatus(product));
     setInitialSnapshot(JSON.stringify(fresh));
@@ -51,7 +55,25 @@ export function useProductForm(open: boolean, product: AdminProduct | null, init
     setStep(to);
   }
 
-  return { f, setF, set, dirty, step, dir, go, changeCategory, confirmClose, setConfirmClose, cardStatus, setCardStatus, showMissing, setShowMissing, baseStockRef };
+  return {
+    f,
+    setF,
+    set,
+    dirty,
+    step,
+    dir,
+    go,
+    changeCategory,
+    confirmClose,
+    setConfirmClose,
+    cardStatus,
+    setCardStatus,
+    showMissing,
+    setShowMissing,
+    baseStockRef,
+    lotSource,
+    setLotSource,
+  };
 }
 
 export type ProductFormState = ReturnType<typeof useProductForm>;

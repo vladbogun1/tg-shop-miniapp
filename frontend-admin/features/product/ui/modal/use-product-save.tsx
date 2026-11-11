@@ -12,6 +12,7 @@ import {
   editBody,
   firstCreateError,
   isCompareAtInvalid,
+  plainStockRaise,
   stockDrop,
   stockRaises,
   type ProductForm,
@@ -29,6 +30,7 @@ import {
 import { offerRelease } from "../../release-offer";
 import { usePublishGate } from "../PublishGate";
 import { useStockReason, type StockReason } from "./StockReasonDialog";
+import { useLotSourceSave } from "./use-lot-source-save";
 import type { ProductDerived } from "./use-product-derived";
 import type { ProductFormState } from "./use-product-form";
 
@@ -99,6 +101,7 @@ export function useProductSave({ product, form, d, onClose, onSaved, onCreated, 
   const updateM = useUpdateProduct();
   const createM = useCreateProduct();
   const cardStatusM = useSetCardStatus();
+  const lotSourceSave = useLotSourceSave(form);
 
   const buildBody = (overrides: Partial<ProductWriteRequest> = {}) =>
     editBody(f, { base: baseStockRef.current, attrKeys: d.schemaQ.data && f.categoryId ? d.attrKeys : null, stockReason: stockReasonRef.current }, overrides);
@@ -187,8 +190,10 @@ export function useProductSave({ product, form, d, onClose, onSaved, onCreated, 
       go(failed.step);
       return;
     }
+    if (!lotSourceSave.ready()) return;
     if (!(await askReasonIfLowered())) return;
     const raised = stockRaises(f, baseStockRef.current);
+    const added = plainStockRaise(f, baseStockRef.current);
     setSaving(true);
     try {
       const turningOn = f.active && p.active === false;
@@ -200,6 +205,7 @@ export function useProductSave({ product, form, d, onClose, onSaved, onCreated, 
       if (!ok || !saved) return;
       reportIssues(saved, labelOf);
       toast.success("Сохранено");
+      await lotSourceSave.apply(p.id, added);
       void offerRelease(qc, p.id, raised);
       onSaved();
       onClose();
