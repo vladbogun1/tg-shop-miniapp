@@ -46,7 +46,8 @@ class PaymentOptionsTest {
             return po;
         });
         options = new PaymentOptions(repository, audit, site, Validation.buildDefaultValidatorFactory().getValidator(),
-                mock(com.maxsolch.shop.translation.app.TranslationService.class));
+                mock(com.maxsolch.shop.translation.app.TranslationService.class),
+                com.maxsolch.shop.order.app.OrderApp.defaultSettings());
     }
 
     private static AdminPaymentOptionDto dto(String id, String title, boolean active) {

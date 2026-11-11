@@ -49,7 +49,7 @@ class OrderDeliveryEditingTest {
         OrderOps ops = new OrderOps(orderRepository, entityManager, mock(MoneyLedger.class),
                 mock(OrderGifts.class), events, mock(com.maxsolch.shop.platform.i18n.Messages.class),
                 Clock.systemUTC());
-        service = new OrderDeliveryEditing(ops, orderRepository, events);
+        service = new OrderDeliveryEditing(ops, orderRepository, events, OrderApp.noParcels());
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
