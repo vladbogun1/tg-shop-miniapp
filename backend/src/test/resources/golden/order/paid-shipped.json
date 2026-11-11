@@ -520,7 +520,8 @@
     "uncollectedMinor" : 0,
     "trackingNumber" : "20450000111222",
     "shipmentStage" : null,
-    "trackingUrl" : "https://novaposhta.ua/tracking/?cargo_number=20450000111222"
+    "trackingUrl" : "https://novaposhta.ua/tracking/?cargo_number=20450000111222",
+    "paymentOnDelivery" : false
   },
   "dispatch" : {
     "id" : "00000000-0000-4000-8000-000000000001",

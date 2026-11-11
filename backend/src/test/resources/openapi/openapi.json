@@ -12367,6 +12367,9 @@
             "nullable" : true,
             "type" : "string"
           },
+          "paymentOnDelivery" : {
+            "type" : "boolean"
+          },
           "receivedMinor" : {
             "format" : "int64",
             "type" : "integer"
@@ -12417,6 +12420,7 @@
           "itemsCount",
           "paid",
           "paymentDueAt",
+          "paymentOnDelivery",
           "receivedMinor",
           "shipmentStage",
           "status",
@@ -15553,6 +15557,7 @@
             "type" : "integer"
           },
           "origin" : {
+            "nullable" : true,
             "type" : "string"
           },
           "pollError" : {
@@ -15589,6 +15594,7 @@
             "items" : {
               "type" : "string"
             },
+            "nullable" : true,
             "type" : "array"
           },
           "statusCode" : {
@@ -15625,29 +15631,12 @@
         "required" : [
           "arrivedAt",
           "codMinor",
-          "createdAt",
-          "deliveryCostMinor",
           "handedOver",
-          "heightMm",
-          "lastEventAt",
-          "lastPolledAt",
-          "lengthMm",
-          "origin",
-          "pollError",
-          "printedAt",
-          "receivedAt",
-          "returnTtn",
-          "scheduledDelivery",
-          "serviceType",
           "stage",
-          "staleReasons",
-          "statusCode",
           "statusText",
           "storagePaidFrom",
           "trackingUrl",
-          "ttn",
-          "weightG",
-          "widthMm"
+          "ttn"
         ],
         "type" : "object"
       },

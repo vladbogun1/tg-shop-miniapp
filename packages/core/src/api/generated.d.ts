@@ -9708,6 +9708,7 @@ export interface components {
             paid: boolean;
             /** Format: date-time */
             paymentDueAt: string | null;
+            paymentOnDelivery: boolean;
             /** Format: int64 */
             receivedMinor: number;
             shipmentStage: string | null;
@@ -10649,40 +10650,40 @@ export interface components {
             /** Format: int64 */
             codMinor: number;
             /** Format: date-time */
-            createdAt: string | null;
+            createdAt?: string | null;
             /** Format: int64 */
-            deliveryCostMinor: number | null;
+            deliveryCostMinor?: number | null;
             handedOver: boolean;
             /** Format: int32 */
-            heightMm: number | null;
+            heightMm?: number | null;
             /** Format: date-time */
-            lastEventAt: string | null;
+            lastEventAt?: string | null;
             /** Format: date-time */
-            lastPolledAt: string | null;
+            lastPolledAt?: string | null;
             /** Format: int32 */
-            lengthMm: number | null;
-            origin: string;
-            pollError: string | null;
+            lengthMm?: number | null;
+            origin?: string | null;
+            pollError?: string | null;
             /** Format: date-time */
-            printedAt: string | null;
+            printedAt?: string | null;
             /** Format: date-time */
-            receivedAt: string | null;
-            returnTtn: string | null;
+            receivedAt?: string | null;
+            returnTtn?: string | null;
             /** Format: date */
-            scheduledDelivery: string | null;
-            serviceType: string | null;
+            scheduledDelivery?: string | null;
+            serviceType?: string | null;
             stage: string;
-            staleReasons: string[];
-            statusCode: string | null;
+            staleReasons?: string[] | null;
+            statusCode?: string | null;
             statusText: string | null;
             /** Format: date */
             storagePaidFrom: string | null;
             trackingUrl: string | null;
             ttn: string;
             /** Format: int32 */
-            weightG: number | null;
+            weightG?: number | null;
             /** Format: int32 */
-            widthMm: number | null;
+            widthMm?: number | null;
         };
         SignupWeek: {
             complete: boolean;
