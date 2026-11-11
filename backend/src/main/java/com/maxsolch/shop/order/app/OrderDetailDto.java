@@ -82,6 +82,20 @@ public record OrderDetailDto(
         boolean balanceOnDelivery,
         /** V80: the bot already told the customer about the current top-up (amountDueMinor of a paid order). */
         boolean topUpNotified,
+        /** Nova Poshta service (NpServiceType name): WAREHOUSE | POSTOMAT | DOORS; null for old orders. */
+        @Nullable String npServiceType,
+        /** Courier delivery address (npServiceType = DOORS). */
+        @Nullable String npStreetName,
+        @Nullable String npBuilding,
+        @Nullable String npFlat,
+        /** The recipient as Nova Poshta needs it (V98); null for orders placed with one name field. */
+        @Nullable String recipientLastName,
+        @Nullable String recipientFirstName,
+        @Nullable String recipientMiddleName,
+        /** «Оплата при отриманні»: everything is collected by Nova Poshta, nothing is paid online. */
+        boolean paymentOnDelivery,
+        /** The active Nova Poshta parcel; null until a waybill exists (the customer's copy hides the poll details). */
+        @Nullable OrderShipmentView.ShipmentBrief shipment,
         /** Admin only (V68): archive, money journal, write-offs, the parcel coming back; null for customers. */
         @Nullable AdminExtras admin) {
 

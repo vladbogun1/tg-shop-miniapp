@@ -9,6 +9,9 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Arrays;
+import java.util.List;
+
 @Getter
 @Setter
 @Entity
@@ -36,6 +39,28 @@ public class PaymentOption {
 
     @Column(name = "active", nullable = false)
     private boolean active = true;
+
+    public static final String KIND_ON_DELIVERY = "ON_DELIVERY";
+
+    /** Null = paid online (in full or a prepayment); {@code ON_DELIVERY} = all on delivery (V98). Set on create only. */
+    @Column(name = "kind", length = 16)
+    private String kind;
+
+    /** CSV of {@code WAREHOUSE,POSTOMAT,DOORS,PICKUP} the option is offered for; null = all (V98). */
+    @Column(name = "delivery_methods", length = 128)
+    private String deliveryMethods;
+
+    public boolean isOnDelivery() {
+        return KIND_ON_DELIVERY.equals(kind);
+    }
+
+    /** The deliveries it is offered for; empty = all. */
+    public List<String> deliveryMethodList() {
+        if (deliveryMethods == null || deliveryMethods.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(deliveryMethods.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
+    }
 
     @PrePersist
     void prePersist() {

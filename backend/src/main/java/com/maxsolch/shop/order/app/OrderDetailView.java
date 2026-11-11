@@ -45,6 +45,8 @@ class OrderDetailView {
     private final StockWriteoffs writeoffRepository;
     /** «Проблемный покупатель» marks, shown to the admin only. */
     private final CustomerFlags customerFlags;
+    /** The Nova Poshta parcel of the order (delivery module). */
+    private final OrderShipmentView shipments;
 
     OrderDetailView(OrderRepository orderRepository,
                     OrderOnlinePayments onlinePayments,
@@ -57,7 +59,9 @@ class OrderDetailView {
                     OrderMoneyMovementRepository movementRepository,
                     StockWriteoffs writeoffRepository,
                     OrderGiftView gift,
-                    CustomerFlags customerFlags) {
+                    CustomerFlags customerFlags,
+                    OrderShipmentView shipments) {
+        this.shipments = shipments;
         this.customerFlags = customerFlags;
         this.orderRepository = orderRepository;
         this.onlinePayments = onlinePayments;
@@ -88,6 +92,7 @@ class OrderDetailView {
                 .receivedMinor(OrderPaymentState.of(o).receivedMinor())
                 .exchanges(List.of())
                 .gift(gift.orderGift(o, lang, true))
+                .shipment(shipments.forOrder(o.getId()).map(OrderShipmentView.ShipmentBrief::forCustomer).orElse(null))
                 .admin(null)
                 .build();
     }
@@ -101,6 +106,7 @@ class OrderDetailView {
                 .receivedMinor(Math.max(0, o.getReceivedMinor()))
                 .exchanges(returnsView.exchangesOf(o.getId()))
                 .gift(gift.orderGift(o, ContentLocale.RU, false))
+                .shipment(shipments.forOrder(o.getId()).orElse(null))
                 .admin(adminExtras(o))
                 .build();
     }
@@ -180,7 +186,15 @@ class OrderDetailView {
                 .exchangeOfId(o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()))
                 .uncollectedMinor(pay.uncollectedMinor())
                 .balanceOnDelivery(o.isBalanceOnDelivery())
-                .topUpNotified(o.getTopupNotice() != null && o.getTopupNotice().equals(OrderMoney.topUpNotice(o)));
+                .topUpNotified(o.getTopupNotice() != null && o.getTopupNotice().equals(OrderMoney.topUpNotice(o)))
+                .npServiceType(o.getNpServiceType())
+                .npStreetName(o.getNpStreetName())
+                .npBuilding(o.getNpBuilding())
+                .npFlat(o.getNpFlat())
+                .recipientLastName(o.getRecipientLastName())
+                .recipientFirstName(o.getRecipientFirstName())
+                .recipientMiddleName(o.getRecipientMiddleName())
+                .paymentOnDelivery(o.isPaymentOnDelivery());
     }
 
     private OrderDetailDto.AdminExtras adminExtras(Order o) {

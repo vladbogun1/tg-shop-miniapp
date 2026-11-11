@@ -13,5 +13,14 @@ public record AdminPaymentOptionDto(
         @PositiveOrZero(message = "не может быть отрицательной") long prepaymentMinor,
         int sortOrder,
         /** Nullable: when the admin UI omits it, the option is treated as active. */
-        Boolean active) {
+        Boolean active,
+        /** Read-only after create: null = online, ON_DELIVERY = «оплата при отриманні» (switched in the settings). */
+        String kind,
+        /** CSV of WAREHOUSE,POSTOMAT,DOORS,PICKUP the option is offered for; null/blank = all. */
+        @Size(max = 128, message = "не длиннее 128 символов") String deliveryMethods) {
+
+    public AdminPaymentOptionDto(String id, String title, String description, boolean requiresPrepayment,
+                                 long prepaymentMinor, int sortOrder, Boolean active) {
+        this(id, title, description, requiresPrepayment, prepaymentMinor, sortOrder, active, null, null);
+    }
 }

@@ -23,7 +23,16 @@ public final class OrderAdjustmentDtos {
             @Size(max = 64) String npCityRef,
             @Size(max = 255) String npCityName,
             @Size(max = 64) String npWarehouseRef,
-            @Size(max = 512) String npWarehouseName) {
+            @Size(max = 512) String npWarehouseName,
+            /** WAREHOUSE | POSTOMAT | DOORS (V98); given = the address is set anew for that type. */
+            @Size(max = 16) String npServiceType,
+            @Size(max = 64) String npStreetRef,
+            @Size(max = 255) String npStreetName,
+            @Size(max = 32) String npBuilding,
+            @Size(max = 32) String npFlat,
+            @Size(max = 128) String recipientLastName,
+            @Size(max = 128) String recipientFirstName,
+            @Size(max = 128) String recipientMiddleName) {
     }
 
     /** Merge {@code sourceId} into the order of the URL (V71). */

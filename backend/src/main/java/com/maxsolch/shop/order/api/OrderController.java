@@ -53,7 +53,10 @@ public class OrderController {
                 req.npWarehouseName(),
                 req.paymentOptionId(),
                 null,
-                req.giftChoice());
+                req.giftChoice(),
+                new CreateOrderCommand.NpDetails(req.npServiceType(), req.npStreetRef(), req.npStreetName(),
+                        req.npBuilding(), req.npFlat(), req.recipientLastName(), req.recipientFirstName(),
+                        req.recipientMiddleName()));
         OrderPlacement.Placed placed = placement.place(userId, actor.principal().isWeb(), idempotencyKey, draft);
         return new CreateOrderResponse(placed.orderId(), placed.amountDueMinor());
     }

@@ -166,7 +166,9 @@ public class AdminOrderController {
                                          @Valid @RequestBody OrderAdjustmentDtos.UpdateDeliveryRequest req) {
         return orderQueryService.toDetail(orders.updateDelivery(id,
                 new OrderDeliveryEditing.DeliveryPatch(req.customerName(), req.phone(),
-                        req.npCityRef(), req.npCityName(), req.npWarehouseRef(), req.npWarehouseName())));
+                        req.npCityRef(), req.npCityName(), req.npWarehouseRef(), req.npWarehouseName(),
+                        req.npServiceType(), req.npStreetRef(), req.npStreetName(), req.npBuilding(), req.npFlat(),
+                        req.recipientLastName(), req.recipientFirstName(), req.recipientMiddleName())));
     }
 
     @GetMapping("/{id}/merge-candidates")

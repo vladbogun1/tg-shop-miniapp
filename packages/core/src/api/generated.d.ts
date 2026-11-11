@@ -5872,8 +5872,10 @@ export interface components {
         };
         AdminPaymentOptionDto: {
             active: boolean;
+            deliveryMethods: string;
             description: string;
             id: string;
+            kind: string;
             /** Format: int64 */
             prepaymentMinor: number;
             requiresPrepayment: boolean;
@@ -7370,17 +7372,25 @@ export interface components {
         };
         CreateOrderRequest: {
             comment?: string;
-            customerName: string;
+            customerName?: string;
             deliveryMethod: string;
             giftChoice?: string;
             items: components["schemas"]["OrderCreateOrderRequestItem"][];
+            npBuilding?: string;
             npCityName?: string;
             npCityRef?: string;
+            npFlat?: string;
+            npServiceType?: string;
+            npStreetName?: string;
+            npStreetRef?: string;
             npWarehouseName?: string;
             npWarehouseRef?: string;
             paymentOptionId?: string;
             phone: string;
             promoCode?: string;
+            recipientFirstName?: string;
+            recipientLastName?: string;
+            recipientMiddleName?: string;
         };
         CreateOrderResponse: {
             /** Format: int64 */
@@ -7550,16 +7560,22 @@ export interface components {
             id: string;
             items: components["schemas"]["DispatchItem"][];
             npCityName: string | null;
+            npServiceType: string | null;
             npWarehouseName: string | null;
             paid: boolean;
             /** Format: date-time */
             paymentDueAt: string | null;
+            paymentOnDelivery: boolean;
             paymentOptionTitle: string | null;
             phone: string;
             /** Format: int64 */
             prepaymentMinor: number;
             /** Format: int64 */
             receivedMinor: number;
+            shipmentOrigin: string | null;
+            shipmentStage: string | null;
+            shipmentStaleReasons: string[];
+            shipmentStatusText: string | null;
             shortId: string;
             /** @enum {string} */
             status: "NEW" | "APPROVED" | "SHIPPED" | "DELIVERED" | "REJECTED";
@@ -9067,8 +9083,12 @@ export interface components {
             giftDiscountMinor: number;
             id: string;
             items: components["schemas"]["OrderItemDto"][];
+            npBuilding: string | null;
             npCityName: string | null;
             npCityRef: string | null;
+            npFlat: string | null;
+            npServiceType: string | null;
+            npStreetName: string | null;
             npWarehouseName: string | null;
             npWarehouseRef: string | null;
             paid: boolean;
@@ -9077,6 +9097,7 @@ export interface components {
             payment: components["schemas"]["OnlinePaymentDto"];
             /** Format: date-time */
             paymentDueAt: string | null;
+            paymentOnDelivery: boolean;
             paymentOptionTitle: string | null;
             phone: string;
             /** Format: int64 */
@@ -9084,6 +9105,9 @@ export interface components {
             promoCode: string | null;
             /** Format: int64 */
             receivedMinor: number;
+            recipientFirstName: string | null;
+            recipientLastName: string | null;
+            recipientMiddleName: string | null;
             /** Format: int64 */
             refundedMinor: number;
             rejectReason: string | null;
@@ -9093,6 +9117,7 @@ export interface components {
             rejectedAt: string | null;
             /** Format: date-time */
             returnedAt: string | null;
+            shipment: components["schemas"]["ShipmentBrief"] | null;
             /** Format: date-time */
             shippedAt: string | null;
             /** @enum {string} */
@@ -9231,10 +9256,13 @@ export interface components {
             paymentDueAt: string | null;
             /** Format: int64 */
             receivedMinor: number;
+            shipmentStage: string | null;
             /** @enum {string} */
             status: "NEW" | "APPROVED" | "SHIPPED" | "DELIVERED" | "REJECTED";
             /** Format: int64 */
             totalMinor: number;
+            trackingNumber: string | null;
+            trackingUrl: string | null;
             /** Format: int64 */
             uncollectedMinor: number;
             /** Format: int64 */
@@ -9252,8 +9280,12 @@ export interface components {
             prompt?: string;
         };
         PaymentOptionDto: {
+            deliveryMethods: string[];
             description: string;
             id: string;
+            kind: string;
+            /** Format: int64 */
+            maxTotalMinor: number;
             /** Format: int64 */
             prepaymentMinor: number;
             requiresPrepayment: boolean;
@@ -10068,6 +10100,47 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        ShipmentBrief: {
+            /** Format: date-time */
+            arrivedAt: string | null;
+            /** Format: int64 */
+            codMinor: number;
+            /** Format: date-time */
+            createdAt: string | null;
+            /** Format: int64 */
+            deliveryCostMinor: number | null;
+            handedOver: boolean;
+            /** Format: int32 */
+            heightMm: number | null;
+            /** Format: date-time */
+            lastEventAt: string | null;
+            /** Format: date-time */
+            lastPolledAt: string | null;
+            /** Format: int32 */
+            lengthMm: number | null;
+            origin: string;
+            pollError: string | null;
+            /** Format: date-time */
+            printedAt: string | null;
+            /** Format: date-time */
+            receivedAt: string | null;
+            returnTtn: string | null;
+            /** Format: date */
+            scheduledDelivery: string | null;
+            serviceType: string | null;
+            stage: string;
+            staleReasons: string[];
+            statusCode: string | null;
+            statusText: string | null;
+            /** Format: date */
+            storagePaidFrom: string | null;
+            trackingUrl: string | null;
+            ttn: string;
+            /** Format: int32 */
+            weightG: number | null;
+            /** Format: int32 */
+            widthMm: number | null;
+        };
         SignupWeek: {
             complete: boolean;
             /** Format: double */
@@ -10667,11 +10740,19 @@ export interface components {
         };
         UpdateDeliveryRequest: {
             customerName?: string;
+            npBuilding?: string;
             npCityName?: string;
             npCityRef?: string;
+            npFlat?: string;
+            npServiceType?: string;
+            npStreetName?: string;
+            npStreetRef?: string;
             npWarehouseName?: string;
             npWarehouseRef?: string;
             phone?: string;
+            recipientFirstName?: string;
+            recipientLastName?: string;
+            recipientMiddleName?: string;
         };
         UpdateOrderStatusRequest: {
             rejectReason?: string;

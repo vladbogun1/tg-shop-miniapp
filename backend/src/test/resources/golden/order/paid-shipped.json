@@ -97,6 +97,15 @@
     "uncollectedMinor" : 0,
     "balanceOnDelivery" : false,
     "topUpNotified" : false,
+    "npServiceType" : null,
+    "npStreetName" : null,
+    "npBuilding" : null,
+    "npFlat" : null,
+    "recipientLastName" : null,
+    "recipientFirstName" : null,
+    "recipientMiddleName" : null,
+    "paymentOnDelivery" : false,
+    "shipment" : null,
     "admin" : null
   },
   "customerDetail_ru" : {
@@ -197,6 +206,15 @@
     "uncollectedMinor" : 0,
     "balanceOnDelivery" : false,
     "topUpNotified" : false,
+    "npServiceType" : null,
+    "npStreetName" : null,
+    "npBuilding" : null,
+    "npFlat" : null,
+    "recipientLastName" : null,
+    "recipientFirstName" : null,
+    "recipientMiddleName" : null,
+    "paymentOnDelivery" : false,
+    "shipment" : null,
     "admin" : null
   },
   "customerDetail_en" : {
@@ -297,6 +315,15 @@
     "uncollectedMinor" : 0,
     "balanceOnDelivery" : false,
     "topUpNotified" : false,
+    "npServiceType" : null,
+    "npStreetName" : null,
+    "npBuilding" : null,
+    "npFlat" : null,
+    "recipientLastName" : null,
+    "recipientFirstName" : null,
+    "recipientMiddleName" : null,
+    "paymentOnDelivery" : false,
+    "shipment" : null,
     "admin" : null
   },
   "adminDetail" : {
@@ -397,6 +424,15 @@
     "uncollectedMinor" : 0,
     "balanceOnDelivery" : false,
     "topUpNotified" : false,
+    "npServiceType" : null,
+    "npStreetName" : null,
+    "npBuilding" : null,
+    "npFlat" : null,
+    "recipientLastName" : null,
+    "recipientFirstName" : null,
+    "recipientMiddleName" : null,
+    "paymentOnDelivery" : false,
+    "shipment" : null,
     "admin" : {
       "archivedAt" : null,
       "archivedBy" : null,
@@ -481,7 +517,10 @@
     "cancelRequestStatus" : null,
     "giftCaseStatus" : null,
     "giftCaseOpenable" : false,
-    "uncollectedMinor" : 0
+    "uncollectedMinor" : 0,
+    "trackingNumber" : "20450000111222",
+    "shipmentStage" : null,
+    "trackingUrl" : "https://novaposhta.ua/tracking/?cargo_number=20450000111222"
   },
   "dispatch" : {
     "id" : "00000000-0000-4000-8000-000000000001",
@@ -519,6 +558,12 @@
     "approvedAt" : "2026-10-02T11:00:00Z",
     "status" : "SHIPPED",
     "paymentDueAt" : null,
-    "amountDueMinor" : 0
+    "amountDueMinor" : 0,
+    "npServiceType" : null,
+    "paymentOnDelivery" : false,
+    "shipmentStage" : null,
+    "shipmentOrigin" : null,
+    "shipmentStatusText" : null,
+    "shipmentStaleReasons" : [ ]
   }
 }

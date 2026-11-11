@@ -699,12 +699,20 @@
           "active" : {
             "type" : "boolean"
           },
+          "deliveryMethods" : {
+            "maxLength" : 128,
+            "minLength" : 0,
+            "type" : "string"
+          },
           "description" : {
             "maxLength" : 1024,
             "minLength" : 0,
             "type" : "string"
           },
           "id" : {
+            "type" : "string"
+          },
+          "kind" : {
             "type" : "string"
           },
           "prepaymentMinor" : {
@@ -726,8 +734,10 @@
         },
         "required" : [
           "active",
+          "deliveryMethods",
           "description",
           "id",
+          "kind",
           "prepaymentMinor",
           "requiresPrepayment",
           "sortOrder",
@@ -5667,6 +5677,8 @@
             "type" : "string"
           },
           "customerName" : {
+            "maxLength" : 255,
+            "minLength" : 0,
             "type" : "string"
           },
           "deliveryMethod" : {
@@ -5681,10 +5693,35 @@
             },
             "type" : "array"
           },
+          "npBuilding" : {
+            "maxLength" : 32,
+            "minLength" : 0,
+            "type" : "string"
+          },
           "npCityName" : {
             "type" : "string"
           },
           "npCityRef" : {
+            "type" : "string"
+          },
+          "npFlat" : {
+            "maxLength" : 32,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "npServiceType" : {
+            "maxLength" : 16,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "npStreetName" : {
+            "maxLength" : 255,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "npStreetRef" : {
+            "maxLength" : 64,
+            "minLength" : 0,
             "type" : "string"
           },
           "npWarehouseName" : {
@@ -5701,10 +5738,24 @@
           },
           "promoCode" : {
             "type" : "string"
+          },
+          "recipientFirstName" : {
+            "maxLength" : 128,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "recipientLastName" : {
+            "maxLength" : 128,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "recipientMiddleName" : {
+            "maxLength" : 128,
+            "minLength" : 0,
+            "type" : "string"
           }
         },
         "required" : [
-          "customerName",
           "deliveryMethod",
           "items",
           "phone"
@@ -6248,6 +6299,10 @@
             "nullable" : true,
             "type" : "string"
           },
+          "npServiceType" : {
+            "nullable" : true,
+            "type" : "string"
+          },
           "npWarehouseName" : {
             "nullable" : true,
             "type" : "string"
@@ -6259,6 +6314,9 @@
             "format" : "date-time",
             "nullable" : true,
             "type" : "string"
+          },
+          "paymentOnDelivery" : {
+            "type" : "boolean"
           },
           "paymentOptionTitle" : {
             "nullable" : true,
@@ -6274,6 +6332,24 @@
           "receivedMinor" : {
             "format" : "int64",
             "type" : "integer"
+          },
+          "shipmentOrigin" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "shipmentStage" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "shipmentStaleReasons" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "shipmentStatusText" : {
+            "nullable" : true,
+            "type" : "string"
           },
           "shortId" : {
             "type" : "string"
@@ -6308,13 +6384,19 @@
           "id",
           "items",
           "npCityName",
+          "npServiceType",
           "npWarehouseName",
           "paid",
           "paymentDueAt",
+          "paymentOnDelivery",
           "paymentOptionTitle",
           "phone",
           "prepaymentMinor",
           "receivedMinor",
+          "shipmentOrigin",
+          "shipmentStage",
+          "shipmentStaleReasons",
+          "shipmentStatusText",
           "shortId",
           "status",
           "totalMinor",
@@ -11280,11 +11362,27 @@
             },
             "type" : "array"
           },
+          "npBuilding" : {
+            "nullable" : true,
+            "type" : "string"
+          },
           "npCityName" : {
             "nullable" : true,
             "type" : "string"
           },
           "npCityRef" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "npFlat" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "npServiceType" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "npStreetName" : {
             "nullable" : true,
             "type" : "string"
           },
@@ -11312,6 +11410,9 @@
             "nullable" : true,
             "type" : "string"
           },
+          "paymentOnDelivery" : {
+            "type" : "boolean"
+          },
           "paymentOptionTitle" : {
             "nullable" : true,
             "type" : "string"
@@ -11330,6 +11431,18 @@
           "receivedMinor" : {
             "format" : "int64",
             "type" : "integer"
+          },
+          "recipientFirstName" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "recipientLastName" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "recipientMiddleName" : {
+            "nullable" : true,
+            "type" : "string"
           },
           "refundedMinor" : {
             "format" : "int64",
@@ -11364,6 +11477,14 @@
             "format" : "date-time",
             "nullable" : true,
             "type" : "string"
+          },
+          "shipment" : {
+            "allOf" : [
+              {
+                "$ref" : "#/components/schemas/ShipmentBrief"
+              }
+            ],
+            "nullable" : true
           },
           "shippedAt" : {
             "format" : "date-time",
@@ -11444,24 +11565,33 @@
           "giftDiscountMinor",
           "id",
           "items",
+          "npBuilding",
           "npCityName",
           "npCityRef",
+          "npFlat",
+          "npServiceType",
+          "npStreetName",
           "npWarehouseName",
           "npWarehouseRef",
           "paid",
           "paidAt",
           "payment",
           "paymentDueAt",
+          "paymentOnDelivery",
           "paymentOptionTitle",
           "phone",
           "prepaymentMinor",
           "promoCode",
           "receivedMinor",
+          "recipientFirstName",
+          "recipientLastName",
+          "recipientMiddleName",
           "refundedMinor",
           "rejectReason",
           "rejectReasonCode",
           "rejectedAt",
           "returnedAt",
+          "shipment",
           "shippedAt",
           "source",
           "status",
@@ -11904,6 +12034,10 @@
             "format" : "int64",
             "type" : "integer"
           },
+          "shipmentStage" : {
+            "nullable" : true,
+            "type" : "string"
+          },
           "status" : {
             "enum" : [
               "NEW",
@@ -11917,6 +12051,14 @@
           "totalMinor" : {
             "format" : "int64",
             "type" : "integer"
+          },
+          "trackingNumber" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "trackingUrl" : {
+            "nullable" : true,
+            "type" : "string"
           },
           "uncollectedMinor" : {
             "format" : "int64",
@@ -11939,8 +12081,11 @@
           "paid",
           "paymentDueAt",
           "receivedMinor",
+          "shipmentStage",
           "status",
           "totalMinor",
+          "trackingNumber",
+          "trackingUrl",
           "uncollectedMinor",
           "unreadCount"
         ],
@@ -11983,11 +12128,24 @@
       },
       "PaymentOptionDto" : {
         "properties" : {
+          "deliveryMethods" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "description" : {
             "type" : "string"
           },
           "id" : {
             "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "maxTotalMinor" : {
+            "format" : "int64",
+            "type" : "integer"
           },
           "prepaymentMinor" : {
             "format" : "int64",
@@ -12001,8 +12159,11 @@
           }
         },
         "required" : [
+          "deliveryMethods",
           "description",
           "id",
+          "kind",
+          "maxTotalMinor",
           "prepaymentMinor",
           "requiresPrepayment",
           "title"
@@ -14670,6 +14831,149 @@
         },
         "type" : "object"
       },
+      "ShipmentBrief" : {
+        "properties" : {
+          "arrivedAt" : {
+            "format" : "date-time",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "codMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "deliveryCostMinor" : {
+            "format" : "int64",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "handedOver" : {
+            "type" : "boolean"
+          },
+          "heightMm" : {
+            "format" : "int32",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "lastEventAt" : {
+            "format" : "date-time",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "lastPolledAt" : {
+            "format" : "date-time",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "lengthMm" : {
+            "format" : "int32",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "origin" : {
+            "type" : "string"
+          },
+          "pollError" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "printedAt" : {
+            "format" : "date-time",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "receivedAt" : {
+            "format" : "date-time",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "returnTtn" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "scheduledDelivery" : {
+            "format" : "date",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "serviceType" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "stage" : {
+            "type" : "string"
+          },
+          "staleReasons" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "statusCode" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "statusText" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "storagePaidFrom" : {
+            "format" : "date",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "trackingUrl" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "ttn" : {
+            "type" : "string"
+          },
+          "weightG" : {
+            "format" : "int32",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "widthMm" : {
+            "format" : "int32",
+            "nullable" : true,
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "arrivedAt",
+          "codMinor",
+          "createdAt",
+          "deliveryCostMinor",
+          "handedOver",
+          "heightMm",
+          "lastEventAt",
+          "lastPolledAt",
+          "lengthMm",
+          "origin",
+          "pollError",
+          "printedAt",
+          "receivedAt",
+          "returnTtn",
+          "scheduledDelivery",
+          "serviceType",
+          "stage",
+          "staleReasons",
+          "statusCode",
+          "statusText",
+          "storagePaidFrom",
+          "trackingUrl",
+          "ttn",
+          "weightG",
+          "widthMm"
+        ],
+        "type" : "object"
+      },
       "SignupWeek" : {
         "properties" : {
           "complete" : {
@@ -16665,12 +16969,37 @@
             "minLength" : 0,
             "type" : "string"
           },
+          "npBuilding" : {
+            "maxLength" : 32,
+            "minLength" : 0,
+            "type" : "string"
+          },
           "npCityName" : {
             "maxLength" : 255,
             "minLength" : 0,
             "type" : "string"
           },
           "npCityRef" : {
+            "maxLength" : 64,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "npFlat" : {
+            "maxLength" : 32,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "npServiceType" : {
+            "maxLength" : 16,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "npStreetName" : {
+            "maxLength" : 255,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "npStreetRef" : {
             "maxLength" : 64,
             "minLength" : 0,
             "type" : "string"
@@ -16687,6 +17016,21 @@
           },
           "phone" : {
             "maxLength" : 64,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "recipientFirstName" : {
+            "maxLength" : 128,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "recipientLastName" : {
+            "maxLength" : 128,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "recipientMiddleName" : {
+            "maxLength" : 128,
             "minLength" : 0,
             "type" : "string"
           }
