@@ -7,6 +7,7 @@ import com.maxsolch.shop.delivery.domain.DeliveryError;
 import com.maxsolch.shop.delivery.domain.OrderShipment;
 import com.maxsolch.shop.delivery.domain.WaybillRequest;
 import com.maxsolch.shop.order.app.ShipmentOrders;
+import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.settings.app.SettingsService;
 import lombok.extern.slf4j.Slf4j;
@@ -33,10 +34,12 @@ public class ShipmentCreation {
     private final ShipmentOrders orders;
     private final SettingsService settings;
     private final NpAlerts alerts;
+    private final ShipmentCancellation cancellation;
 
     ShipmentCreation(ShipmentPreparation preparation, NpWaybillWriter writer, ShipmentStore store,
                      ShipmentLocks locks, NovaPoshtaPriceService prices, ParcelSizeService parcels,
-                     ShipmentOrders orders, SettingsService settings, NpAlerts alerts) {
+                     ShipmentOrders orders, SettingsService settings, NpAlerts alerts,
+                     ShipmentCancellation cancellation) {
         this.preparation = preparation;
         this.writer = writer;
         this.store = store;
@@ -46,6 +49,7 @@ public class ShipmentCreation {
         this.orders = orders;
         this.settings = settings;
         this.alerts = alerts;
+        this.cancellation = cancellation;
     }
 
     public Preview preview(byte[] orderId, Options opt) {
@@ -80,7 +84,21 @@ public class ShipmentCreation {
         Long estimate = estimateMinor(p);
         OrderShipment s = store.persistSafely(orderId, p, r, estimate);
         checkTariff(p, r, estimate);
+        dropIfClosedMeanwhile(orderId, p);
         return s;
+    }
+
+    /**
+     * The order was rejected or archived while NP made the waybill: its clean-up found the lock busy, so the waybill
+     * is deleted here, still under the lock (the lock is not re-entrant).
+     */
+    private void dropIfClosedMeanwhile(byte[] orderId, Prepared p) {
+        boolean closed = orders.find(orderId)
+                .map(o -> o.status() == OrderStatus.REJECTED || o.archived()).orElse(false);
+        if (closed) {
+            log.info("Order {} closed while its NP waybill was being made: deleting the waybill", p.shortId());
+            cancellation.dropLocked(orderId);
+        }
     }
 
     /** Our delivery estimate for this waybill (with the box price), or null. */

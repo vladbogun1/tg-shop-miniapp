@@ -38,7 +38,14 @@ final class NpFixtures {
     /** «Створити ТТН» with these parts; prices, parcels and alerts are not reached without a city. */
     static ShipmentCreation creation(ShipmentPreparation preparation, NpWaybillWriter writer, ShipmentStore store,
                                      ShipmentLocks locks, ShipmentOrders orders, SettingsService settings) {
-        return new ShipmentCreation(preparation, writer, store, locks, null, null, orders, settings, null);
+        return creation(preparation, writer, store, locks, orders, settings, null);
+    }
+
+    static ShipmentCreation creation(ShipmentPreparation preparation, NpWaybillWriter writer, ShipmentStore store,
+                                     ShipmentLocks locks, ShipmentOrders orders, SettingsService settings,
+                                     ShipmentCancellation cancellation) {
+        return new ShipmentCreation(preparation, writer, store, locks, null, null, orders, settings, null,
+                cancellation);
     }
 
     static ShipmentCancellation cancellation(OrderShipmentRepository shipments, NpWaybillWriter writer,
@@ -70,7 +77,23 @@ final class NpFixtures {
     static ShippingOrder order(OrderStatus status, boolean archived, String trackingNumber, DeliveryMethod method) {
         return new ShippingOrder(ORDER, "01020304", status, method, NpServiceType.WAREHOUSE, "city", "Харків",
                 "wh-1", "Відділення №1", null, null, null, null, "Петренко Іван", null, null, null,
-                "+380991090362", false, 1000_00, 0, true, archived, trackingNumber, null, null, List.of(), "");
+                "+380991090362", false, 1000_00, 0, true, 0, false, archived, trackingNumber, null, null, List.of(), "");
+    }
+
+    /** An NP order with money owed: {@code codMinor} on pickup, {@code dueMinor} online, missing or not. */
+    static ShippingOrder owing(boolean paid, long codMinor, long dueMinor, boolean onlineMissing) {
+        return new ShippingOrder(ORDER, "01020304", OrderStatus.APPROVED, DeliveryMethod.NOVA_POSHTA,
+                NpServiceType.WAREHOUSE, "city", "Харків", "wh-1", "Відділення №1", null, null, null, null,
+                "Петренко Іван", null, null, null, "+380991090362", false, 1000_00, codMinor, paid, dueMinor,
+                onlineMissing, false, null, null, null, List.of(), "");
+    }
+
+    /** Runs the callback at once, without a database. */
+    static final class DirectTx extends org.springframework.transaction.support.TransactionTemplate {
+        @Override
+        public <T> T execute(org.springframework.transaction.support.TransactionCallback<T> action) {
+            return action.doInTransaction(new org.springframework.transaction.support.SimpleTransactionStatus());
+        }
     }
 
     /** What {@link ShipmentPreparation#prepare} gives for a ready NEW order; {@code active} = its waybill now. */

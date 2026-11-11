@@ -21,6 +21,9 @@ import java.util.List;
  * @param recipientLastName stored parts, or split from {@code customerName} («Прізвище Імʼя») on old orders
  * @param codMinor          what Nova Poshta must collect («Контроль оплати»): the rest to pay, top-ups included;
  *                          the whole collectable sum for «оплата при отриманні»
+ * @param amountDueMinor    still to be paid online ({@link OrderMoney#amountDueMinor}); 0 for «при отриманні»
+ * @param onlinePaymentMissing the online part of an online order has not arrived
+ *                          ({@link OrderMoney#onlinePaymentMissing} — the same rule blocks «Отправлен»)
  * @param goodsKey          fingerprint of the composition (product:variant:units, sorted) — changes with the goods
  */
 public record ShippingOrder(
@@ -46,6 +49,8 @@ public record ShippingOrder(
         long totalMinor,
         long codMinor,
         boolean paid,
+        long amountDueMinor,
+        boolean onlinePaymentMissing,
         boolean archived,
         @Nullable String trackingNumber,
         @Nullable Instant approvedAt,
@@ -80,6 +85,7 @@ public record ShippingOrder(
                 name != null ? name.firstName() : split[1],
                 name != null ? name.middleName() : null,
                 o.getPhone(), o.isPaymentOnDelivery(), o.getTotalMinor(), OrderMoney.codMinor(o), o.isPaid(),
+                OrderMoney.amountDueMinor(o), OrderMoney.onlinePaymentMissing(o),
                 o.getArchivedAt() != null, o.getTrackingNumber(), o.getApprovedAt(), o.getTgUserId(), lines,
                 goodsKey(lines));
     }

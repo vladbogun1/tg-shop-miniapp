@@ -122,10 +122,11 @@ public class ParcelIssues {
         if (rejected && (stage == ShipmentStage.IN_TRANSIT || stage == ShipmentStage.ARRIVED)) {
             return new Reason("REJECTED_AT_NP", "Заказ отклонён, а посылка у Новой почты" + RETURN_HINT, true);
         }
+        // Only after NP refused the delete: until then the clean-up (or its retry on the next tick) is still due.
         if (rejected && (stage == ShipmentStage.CREATED || stage == ShipmentStage.NOT_FOUND)
-                && OrderShipment.ORIGIN_API.equals(s.getOrigin())) {
-            return new Reason("REJECTED_TTN", s.getSyncError() != null ? s.getSyncError()
-                    : "Заказ отклонён, а ТТН не удалилась в Новой почте — удалите её в кабинете НП", true);
+                && OrderShipment.ORIGIN_API.equals(s.getOrigin()) && s.getSyncError() != null
+                && !s.getSyncError().isBlank()) {
+            return new Reason("REJECTED_TTN", s.getSyncError(), true);
         }
         if (stage == ShipmentStage.CANCELLED) {
             return rejected ? null : new Reason("CANCELLED", "ТТН удалена в Новой почте, а заказ не отклонён", true);
