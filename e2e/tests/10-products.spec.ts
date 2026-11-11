@@ -11,14 +11,14 @@ import { dialog, expect, test, toast } from "../lib/test";
 test("правка описания не перезаписывает остаток, изменённый параллельно", async ({ page, api }) => {
   await page.goto(`/products?edit=${PRODUCT.socks}`);
   const modal = dialog(page, "Редактировать товар");
-  const description = modal.getByLabel("Описание");
+  const description = modal.getByLabel("Описание", { exact: true });
   await expect(description).toHaveValue("Тёплые носки.");
 
   // Meanwhile three pairs are sold.
   await api.setProductStock(PRODUCT.socks, 37);
 
   await description.fill("Тёплые носки. Шерсть 80%.");
-  await modal.getByRole("button", { name: "Сохранить" }).click();
+  await modal.getByRole("button", { name: "Сохранить", exact: true }).click();
   await expect(toast(page, "Сохранено")).toBeVisible();
   await expect(modal).toBeHidden();
 
@@ -41,7 +41,7 @@ test("конфликт остатка: 409 с понятным сообщени�
   const saved = page.waitForResponse(
     (r) => r.url().endsWith(`/api/admin/products/${PRODUCT.scarf}`) && r.request().method() === "PATCH"
   );
-  await modal.getByRole("button", { name: "Сохранить" }).click();
+  await modal.getByRole("button", { name: "Сохранить", exact: true }).click();
   const res = await saved;
   expect(res.status()).toBe(409);
   expect((await res.json()).code).toBe("STOCK_CONFLICT");
@@ -55,7 +55,7 @@ test("конфликт остатка: 409 с понятным сообщени�
 
   // A deliberate decision on the fresh number goes through.
   await stock.fill("20");
-  await modal.getByRole("button", { name: "Сохранить" }).click();
+  await modal.getByRole("button", { name: "Сохранить", exact: true }).click();
   await expect(toast(page, "Сохранено")).toBeVisible();
   await expect(modal).toBeHidden();
   expect((await api.product(PRODUCT.scarf)).stock).toBe(20);
