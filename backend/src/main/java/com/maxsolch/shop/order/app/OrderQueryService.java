@@ -1,6 +1,7 @@
 package com.maxsolch.shop.order.app;
 
 import com.maxsolch.shop.order.domain.GiftCaseRules;
+import com.maxsolch.shop.order.domain.NpTracking;
 import com.maxsolch.shop.platform.util.UuidUtil;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderMoney;
@@ -35,12 +36,16 @@ public class OrderQueryService {
     private final OrderThumbnails thumbnails;
     /** The order page itself (customer and admin views). */
     private final OrderDetailView detailView;
+    /** Nova Poshta parcels of the orders (delivery module). */
+    private final OrderShipmentView shipmentView;
 
     public OrderQueryService(OrderRepository orderRepository,
                              OrderMessageRepository messageRepository,
                              OrderItemRepository orderItemRepository,
                              OrderThumbnails thumbnails,
-                             OrderDetailView detailView) {
+                             OrderDetailView detailView,
+                             OrderShipmentView shipmentView) {
+        this.shipmentView = shipmentView;
         this.orderRepository = orderRepository;
         this.messageRepository = messageRepository;
         this.orderItemRepository = orderItemRepository;
@@ -56,10 +61,21 @@ public class OrderQueryService {
      */
     public record CardContext(Map<String, Long> unread, Map<String, Integer> itemCounts,
                               Map<String, List<OrderCardDto.CardLine>> lines,
-                              Map<String, List<String>> exchangeChildren) {
+                              Map<String, List<String>> exchangeChildren,
+                              Map<String, OrderShipmentView.ShipmentBrief> shipments) {
+
+        public CardContext(Map<String, Long> unread, Map<String, Integer> itemCounts,
+                           Map<String, List<OrderCardDto.CardLine>> lines, Map<String, List<String>> exchangeChildren) {
+            this(unread, itemCounts, lines, exchangeChildren, Map.of());
+        }
 
         static CardContext empty() {
-            return new CardContext(Map.of(), Map.of(), Map.of(), Map.of());
+            return new CardContext(Map.of(), Map.of(), Map.of(), Map.of(), Map.of());
+        }
+
+        String stageOf(String orderId) {
+            OrderShipmentView.ShipmentBrief s = shipments.get(orderId);
+            return s == null ? null : s.stage();
         }
 
         List<String> exchangesOf(String orderId) {
@@ -103,7 +119,7 @@ public class OrderQueryService {
         }
         boolean admin = unreadFrom == SenderType.CUSTOMER;
         return new CardContext(unread, itemCounts, admin ? cardLines(ids) : Map.of(),
-                admin ? exchangeChildren(ids) : Map.of());
+                admin ? exchangeChildren(ids) : Map.of(), shipmentView.forOrders(ids));
     }
 
     /** original id → its exchange replacements (V69), one query per page. */
@@ -163,6 +179,9 @@ public class OrderQueryService {
                 .giftCaseStatus(o.getGiftCaseStatus())
                 .giftCaseOpenable(GiftCaseRules.giftCaseOpenable(o))
                 .uncollectedMinor(pay.uncollectedMinor())
+                .trackingNumber(o.getTrackingNumber())
+                .shipmentStage(ctx.stageOf(id))
+                .trackingUrl(NpTracking.url(o.getTrackingNumber()))
                 .build();
     }
 

@@ -27,5 +27,9 @@ public record OrderSummaryDto(
         @Nullable String giftCaseStatus,
         boolean giftCaseOpenable,
         /** Refused at the Nova Poshta branch (partial pickup, V72): not paid for, not part of the payment state. */
-        long uncollectedMinor) {
+        long uncollectedMinor,
+        /** The waybill, its parcel stage (see {@link OrderShipmentView.ShipmentBrief}) and the NP tracking page. */
+        @Nullable String trackingNumber,
+        @Nullable String shipmentStage,
+        @Nullable String trackingUrl) {
 }

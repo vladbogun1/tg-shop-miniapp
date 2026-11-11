@@ -19,8 +19,11 @@ public class OrderDispatchView {
 
     private final OrderRepository orderRepository;
     private final OrderThumbnails thumbnails;
+    private final OrderShipmentView shipments;
 
-    public OrderDispatchView(OrderRepository orderRepository, OrderThumbnails thumbnails) {
+    public OrderDispatchView(OrderRepository orderRepository, OrderThumbnails thumbnails,
+                             OrderShipmentView shipments) {
+        this.shipments = shipments;
         this.orderRepository = orderRepository;
         this.thumbnails = thumbnails;
     }
@@ -44,17 +47,22 @@ public class OrderDispatchView {
         }
         // One query for the photos of every line on the page: packing goes by the picture, not the text.
         Map<String, String> photos = thumbnails.of(orders.stream().flatMap(o -> o.getItems().stream()).toList());
-        return orders.stream().map(o -> toDispatch(o, photos)).toList();
+        Map<String, OrderShipmentView.ShipmentBrief> parcels = shipments.forOrders(
+                orders.stream().map(Order::getId).toList());
+        return orders.stream().map(o -> toDispatch(o, photos, parcels)).toList();
     }
 
     @Transactional(readOnly = true)
     public DispatchOrderDto toDispatch(Order o) {
         Order attached = orderRepository.findById(o.getId()).orElse(o);
-        return toDispatch(attached, thumbnails.of(attached.getItems()));
+        return toDispatch(attached, thumbnails.of(attached.getItems()),
+                shipments.forOrders(List.of(attached.getId())));
     }
 
-    private DispatchOrderDto toDispatch(Order o, Map<String, String> photos) {
+    private DispatchOrderDto toDispatch(Order o, Map<String, String> photos,
+                                        Map<String, OrderShipmentView.ShipmentBrief> parcels) {
         OrderPaymentState pay = OrderPaymentState.of(o);
+        OrderShipmentView.ShipmentBrief parcel = parcels.get(UuidUtil.toString(o.getId()));
         List<DispatchOrderDto.DispatchItem> items = o.getItems().stream()
                 .map(it -> new DispatchOrderDto.DispatchItem(
                         it.getTitleSnapshot(), it.getVariantNameSnapshot(),
@@ -87,6 +95,12 @@ public class OrderDispatchView {
                 .status(o.getStatus().name())
                 .paymentDueAt(pay.paymentDueAt())
                 .amountDueMinor(pay.amountDueMinor())
+                .npServiceType(o.getNpServiceType())
+                .paymentOnDelivery(o.isPaymentOnDelivery())
+                .shipmentStage(parcel == null ? null : parcel.stage())
+                .shipmentOrigin(parcel == null ? null : parcel.origin())
+                .shipmentStatusText(parcel == null ? null : parcel.statusText())
+                .shipmentStaleReasons(parcel == null || parcel.staleReasons() == null ? List.of() : parcel.staleReasons())
                 .build();
     }
 }

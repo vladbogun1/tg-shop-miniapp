@@ -111,6 +111,15 @@
     "uncollectedMinor" : 0,
     "balanceOnDelivery" : false,
     "topUpNotified" : false,
+    "npServiceType" : null,
+    "npStreetName" : null,
+    "npBuilding" : null,
+    "npFlat" : null,
+    "recipientLastName" : null,
+    "recipientFirstName" : null,
+    "recipientMiddleName" : null,
+    "paymentOnDelivery" : false,
+    "shipment" : null,
     "admin" : null
   },
   "customerDetail_en" : {
@@ -225,6 +234,15 @@
     "uncollectedMinor" : 0,
     "balanceOnDelivery" : false,
     "topUpNotified" : false,
+    "npServiceType" : null,
+    "npStreetName" : null,
+    "npBuilding" : null,
+    "npFlat" : null,
+    "recipientLastName" : null,
+    "recipientFirstName" : null,
+    "recipientMiddleName" : null,
+    "paymentOnDelivery" : false,
+    "shipment" : null,
     "admin" : null
   },
   "adminDetail" : {
@@ -366,6 +384,15 @@
     "uncollectedMinor" : 0,
     "balanceOnDelivery" : false,
     "topUpNotified" : false,
+    "npServiceType" : null,
+    "npStreetName" : null,
+    "npBuilding" : null,
+    "npFlat" : null,
+    "recipientLastName" : null,
+    "recipientFirstName" : null,
+    "recipientMiddleName" : null,
+    "paymentOnDelivery" : false,
+    "shipment" : null,
     "admin" : {
       "archivedAt" : null,
       "archivedBy" : null,
@@ -438,7 +465,10 @@
     "cancelRequestStatus" : "DECLINED",
     "giftCaseStatus" : "SEALED",
     "giftCaseOpenable" : false,
-    "uncollectedMinor" : 0
+    "uncollectedMinor" : 0,
+    "trackingNumber" : null,
+    "shipmentStage" : null,
+    "trackingUrl" : null
   },
   "dispatch" : {
     "id" : "00000000-0000-4000-8000-000000000004",
@@ -476,6 +506,12 @@
     "approvedAt" : "2026-10-02T11:00:00Z",
     "status" : "REJECTED",
     "paymentDueAt" : "2026-10-03T10:00:00Z",
-    "amountDueMinor" : 182000
+    "amountDueMinor" : 182000,
+    "npServiceType" : null,
+    "paymentOnDelivery" : false,
+    "shipmentStage" : null,
+    "shipmentOrigin" : null,
+    "shipmentStatusText" : null,
+    "shipmentStaleReasons" : [ ]
   }
 }
