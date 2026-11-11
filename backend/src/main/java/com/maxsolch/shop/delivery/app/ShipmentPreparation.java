@@ -95,13 +95,15 @@ class ShipmentPreparation {
                 settings.getString(DeliverySettings.NP_CARGO_DESCRIPTION), "Товари");
         LocalDate today = zone.today(clock);
         LocalDate date = o.date() != null && !o.date().isBefore(today) ? o.date() : today;
-        boolean unpaid = !order.paymentOnDelivery() && !order.paid() && order.totalMinor() > 0;
+        // The order module's rule (OrderMoney): a prepayment or a top-up still due counts, a balance the admin let
+        // the parcel collect does not, «при отриманні» never.
+        boolean unpaid = order.onlinePaymentMissing();
         String id = UuidUtil.toString(order.id());
         return new Prepared(id, order.shortId(), order.status().name(), service, cityRef, order.cityName(),
                 dest.ref(), dest.text(), blankToNull(order.streetRef()), blankToNull(order.streetName()),
                 blankToNull(order.building()), blankToNull(order.flat()), phone, name[0], name[1], name[2], parcel,
                 declared, cod, collect && cod > 0, description, date, cfg, from, problems, warnings, unpaid,
-                unpaid ? cod : 0, active, ShipmentFacts.goodsKey(order), ShipmentFacts.recipientKey(order));
+                unpaid ? order.amountDueMinor() : 0, active, ShipmentFacts.goodsKey(order), ShipmentFacts.recipientKey(order));
     }
 
     private static void orderChecks(ShippingOrder order, List<String> problems) {

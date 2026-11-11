@@ -15,10 +15,12 @@ public class ShipmentJobs {
 
     private final ShipmentTrackingService tracking;
     private final NpWebhookService webhooks;
+    private final ShipmentCleanupSweep cleanup;
 
-    public ShipmentJobs(ShipmentTrackingService tracking, NpWebhookService webhooks) {
+    ShipmentJobs(ShipmentTrackingService tracking, NpWebhookService webhooks, ShipmentCleanupSweep cleanup) {
         this.tracking = tracking;
         this.webhooks = webhooks;
+        this.cleanup = cleanup;
     }
 
     @SchedulerLock(name = "ShipmentJobs.track", lockAtMostFor = "PT25M", lockAtLeastFor = "PT1M")
@@ -32,6 +34,14 @@ public class ShipmentJobs {
             webhooks.purgeOld();
         } catch (RuntimeException e) {
             log.warn("NP tracking job failed: {}", e.getMessage());
+        }
+        try {
+            int n = cleanup.run();
+            if (n > 0) {
+                log.info("NP clean-up: retried {} waybills of closed or renumbered orders", n);
+            }
+        } catch (RuntimeException e) {
+            log.warn("NP clean-up retry failed: {}", e.getMessage());
         }
     }
 }

@@ -101,6 +101,7 @@ class NpReviewFixesTest {
         return new ShippingOrder(new byte[16], "00000000", status, DeliveryMethod.NOVA_POSHTA,
                 NpServiceType.WAREHOUSE, "city", "Харків", warehouseRef, "Відділення №1", null, null, null, null,
                 "Петренко Іван", null, null, null, "+380991090362", codMinor > 0, 2080_00, codMinor, codMinor == 0,
+                0, false,
                 false, null, NOW, null, lines, "");
     }
 
