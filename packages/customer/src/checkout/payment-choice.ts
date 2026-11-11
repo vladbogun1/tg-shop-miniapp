@@ -15,8 +15,10 @@ interface PayOption {
   id: string;
   requiresPrepayment: boolean;
   prepaymentMinor?: number | null;
-  kind?: PaymentOptionKind | null;
-  deliveryMethods?: DeliveryKey[] | null;
+  /** "ON_DELIVERY" — оплата при получении (PaymentOptionKind); сервер шлёт строку. */
+  kind?: PaymentOptionKind | (string & {}) | null;
+  /** DeliveryKey из сервера (строки). */
+  deliveryMethods?: readonly string[] | null;
   maxTotalMinor?: number | null;
 }
 

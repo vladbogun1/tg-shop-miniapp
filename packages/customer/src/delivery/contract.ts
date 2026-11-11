@@ -1,11 +1,12 @@
 /**
- * Контракт checkout v2 «Нової пошти» (ветка np-integration), пока его нет в OpenAPI master.
+ * Контракт checkout v2 «Нової пошти» для покупательских фронтов — в ОДНОМ месте, остальной код только импортирует.
  *
- * ВРЕМЕННО и в ОДНОМ месте: когда бэкенд (feat/np-v2-be-order, feat/np-v2-be-delivery) положит контракт в
- * `packages/core/src/api/generated.d.ts`, эти формы заменяются алиасами на `Schemas["…"]` здесь же — остальной код
- * их только импортирует. Поля заказа/варианта оплаты описаны как НЕобязательные добавки к текущим типам:
- * старый бэкенд их не шлёт, и оформление обязано работать без них (все вкладки, без подсказки цены, без «при отриманні»).
+ * Заказ, посылка и вариант оплаты — алиасы на OpenAPI (`generated.d.ts`, коммит np-contract-order).
+ * Справочники НП для оформления (config / streets / estimate) — пока ручные формы: их контракт придёт
+ * с np-contract-delivery (feat/np-v2-be-delivery), тогда здесь же меняются на `Schemas["…"]`.
+ * Поля варианта оплаты необязательны: при откате на старый бэкенд оформление работает без них.
  */
+import type { Schemas } from "@shop/core/api/schemas";
 import type { OrderDetail, OrderSummary, PaymentOption } from "@shop/core/types";
 
 /** Служба «Нової пошти» в заказе: відділення, поштомат, кур'єр. */
@@ -49,14 +50,9 @@ export interface NpEstimateResponse {
 /** Вид варианта оплаты: null — онлайн; ON_DELIVERY — всё собирает «Нова пошта» при получении. */
 export type PaymentOptionKind = "ON_DELIVERY";
 
-/** Вариант оплаты с полями checkout v2 (старый бэкенд их не шлёт). */
-export type NpPaymentOption = PaymentOption & {
-  kind?: PaymentOptionKind | null;
-  /** Для каких доставок предлагается; пусто/нет — для всех. */
-  deliveryMethods?: DeliveryKey[] | null;
-  /** Самая большая сумма заказа, minor; null/нет — без лимита. */
-  maxTotalMinor?: number | null;
-};
+/** Вариант оплаты с полями checkout v2 (PaymentOptionDto; старый бэкенд их не шлёт). `kind` "ON_DELIVERY" — оплата при
+ * получении; `deliveryMethods` пусто — для всех доставок; `maxTotalMinor` 0/нет — без лимита. */
+export type NpPaymentOption = PaymentOption & Partial<Pick<Schemas["PaymentOptionDto"], "kind" | "deliveryMethods" | "maxTotalMinor">>;
 
 /** Где посылка (ShipmentStage бэкенда). */
 export type ShipmentStage =
@@ -69,40 +65,25 @@ export type ShipmentStage =
   | "CANCELLED"
   | "NOT_FOUND";
 
-/** Посылка заказа глазами покупателя (OrderDetail.shipment). */
-export interface ParcelInfo {
-  ttn: string;
-  serviceType?: string | null;
-  stage: string;
-  statusText?: string | null;
-  scheduledDelivery?: string | null;
-  arrivedAt?: string | null;
-  receivedAt?: string | null;
-  storagePaidFrom?: string | null;
-  codMinor?: number | null;
-  deliveryCostMinor?: number | null;
-  trackingUrl?: string | null;
-}
+/** Посылка заказа глазами покупателя (OrderDetailDto.shipment). */
+export type ParcelInfo = Schemas["ShipmentBrief"];
 
-/** Поля checkout v2 в деталях заказа. */
-export interface OrderNpFields {
-  npServiceType?: string | null;
-  npStreetName?: string | null;
-  npBuilding?: string | null;
-  npFlat?: string | null;
-  recipientLastName?: string | null;
-  recipientFirstName?: string | null;
-  recipientMiddleName?: string | null;
-  paymentOnDelivery?: boolean | null;
-  shipment?: ParcelInfo | null;
-}
+/** Поля checkout v2 в деталях заказа (необязательны: старый бэкенд и прошлые заказы). */
+export type OrderNpFields = Partial<Pick<
+  Schemas["OrderDetailDto"],
+  | "npServiceType"
+  | "npStreetName"
+  | "npBuilding"
+  | "npFlat"
+  | "recipientLastName"
+  | "recipientFirstName"
+  | "recipientMiddleName"
+  | "paymentOnDelivery"
+  | "shipment"
+>>;
 
 /** Детали заказа с полями checkout v2. */
-export type NpOrderDetail = OrderDetail & OrderNpFields;
+export type NpOrderDetail = OrderDetail;
 
 /** Строка списка заказов с ТТН и стадией посылки. */
-export type NpOrderSummary = OrderSummary & {
-  trackingNumber?: string | null;
-  shipmentStage?: string | null;
-  trackingUrl?: string | null;
-};
+export type NpOrderSummary = OrderSummary;
