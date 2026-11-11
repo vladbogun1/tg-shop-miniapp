@@ -177,7 +177,7 @@ export function LotSourcePicker({ units, title, lines, shelf, priceMinor, submit
           on={d.kind === "BATCH"}
           disabled={!lines.length}
           title="Из поставки"
-          hint={lines.length ? "штуки приехали, но не попали на склад при «Приехала»" : "приехавших поставок с этим товаром нет"}
+          hint={lines.length ? "штуки приехали, но не попали на склад при «Приехала» — продаются вместе с этой поставкой" : "приехавших поставок с этим товаром нет"}
           onPick={() => set({ kind: "BATCH" })}
         >
           <select
@@ -196,7 +196,7 @@ export function LotSourcePicker({ units, title, lines, shelf, priceMinor, submit
         <Option
           on={d.kind === "OLD"}
           title="Старый / неучтённый остаток"
-          hint="нашлись, были до поставок — впишите закупку и доставку за штуку"
+          hint="нашлись, были до поставок — впишите закупку и доставку за штуку; в очереди встанут последними"
           onPick={() => set({ kind: "OLD" })}
         >
           <CostInputs d={d} set={set} />
@@ -204,7 +204,7 @@ export function LotSourcePicker({ units, title, lines, shelf, priceMinor, submit
         <Option
           on={d.kind === "OTHER"}
           title="Другое"
-          hint="пересорт, возврат без заказа, подарок от завода — с пояснением; без закупки штуки останутся «без закупки»"
+          hint="пересорт, возврат без заказа, подарок от завода — с пояснением; встанут последними, без закупки — «без закупки»"
           onPick={() => set({ kind: "OTHER" })}
         >
           <input
