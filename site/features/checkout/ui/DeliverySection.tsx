@@ -5,12 +5,11 @@ import { type NpWarehouse } from "@shop/core/types";
 import type { NpEstimateResponse } from "@shop/customer/delivery/contract";
 import { warehouseFitsTab, type DeliveryTab } from "@shop/customer/delivery/tabs";
 import type { DeliveryDraftState } from "@shop/customer/delivery/use-delivery-draft";
-import { useNpMapPick } from "@shop/customer/delivery/use-np-delivery";
 import { Button } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import type { MessageKey } from "@/i18n";
 import { CitySearch, WarehouseSearch } from "./CitySearch";
-import { EstimateLine, MapPickConfirm } from "./DeliveryParts";
+import { EstimateLine } from "./DeliveryParts";
 import { DeliveryTabs, NpModeSwitch, type NpPickMode } from "./DeliveryTabs";
 import { Section } from "./parts";
 
@@ -27,7 +26,7 @@ function MapLoading() {
 // Курьер — только на вкладке «Кур'єр»: поиск улицы не грузится, пока покупатель выбирает отделение.
 const CourierFields = dynamic(() => import("./CourierFields").then((m) => m.CourierFields), { ssr: false, loading: CourierLoading });
 
-const NpWarehouseMap = dynamic(() => import("./NpWarehouseMap"), { ssr: false, loading: MapLoading });
+const PointMap = dynamic(() => import("./PointMap"), { ssr: false, loading: MapLoading });
 
 function CourierLoading() {
   return <div className="shimmer h-56 rounded-[var(--r)]" />;
@@ -113,9 +112,8 @@ function PointPicker({ d, tab, touched }: { d: DeliveryDraftState; tab: "WAREHOU
 /** Город и точка: поля (по умолчанию) или карта; нажатая на карте точка ждёт «Обрати це відділення». */
 function PointFields({ d, tab }: { d: DeliveryDraftState; tab: "WAREHOUSE" | "POSTOMAT" }) {
   const { t } = useI18n();
-  const { city, warehouse, focus } = d.np;
+  const { city, warehouse } = d.np;
   const [mode, setMode] = useState<NpPickMode>("text");
-  const pick = useNpMapPick(warehouse, d.chooseWarehouse);
   return (
     <>
       <NpModeSwitch mode={mode} onChange={setMode} />
@@ -123,13 +121,7 @@ function PointFields({ d, tab }: { d: DeliveryDraftState; tab: "WAREHOUSE" | "PO
       {mode === "text" && city && (
         <WarehouseSearch key={`${city.ref}-${tab}`} city={city} warehouse={warehouse} onWarehouse={d.chooseWarehouse} label={(w) => npLabel(w, t)} tab={tab} />
       )}
-      {mode === "map" && (
-        <>
-          <p className="text-[13px] font-semibold text-[var(--muted)]">{t("checkout.mapHint")}</p>
-          <NpWarehouseMap key={tab} focus={focus} selected={pick.shown} onSelect={pick.pick} initialCategory={tab === "POSTOMAT" ? "postomat" : "all"} />
-          {pick.pending && <MapPickConfirm warehouse={pick.pending} label={npLabel(pick.pending, t)} onConfirm={pick.confirm} onCancel={pick.cancel} />}
-        </>
-      )}
+      {mode === "map" && <PointMap d={d} tab={tab} label={(w) => npLabel(w, t)} />}
     </>
   );
 }
