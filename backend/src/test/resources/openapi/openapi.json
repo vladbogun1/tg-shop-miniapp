@@ -3175,6 +3175,33 @@
         },
         "type" : "object"
       },
+      "BatchResult" : {
+        "properties" : {
+          "error" : {
+            "type" : "string"
+          },
+          "ok" : {
+            "type" : "boolean"
+          },
+          "orderId" : {
+            "type" : "string"
+          },
+          "shortId" : {
+            "type" : "string"
+          },
+          "ttn" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "error",
+          "ok",
+          "orderId",
+          "shortId",
+          "ttn"
+        ],
+        "type" : "object"
+      },
       "BatchSalesDto" : {
         "properties" : {
           "arrived" : {
@@ -3496,6 +3523,42 @@
             "type" : "boolean"
           }
         },
+        "type" : "object"
+      },
+      "BoxPreset" : {
+        "properties" : {
+          "heightMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "lengthMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "packMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "tareG" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "widthMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "heightMm",
+          "lengthMm",
+          "name",
+          "packMinor",
+          "tareG",
+          "widthMm"
+        ],
         "type" : "object"
       },
       "BrandRefDto" : {
@@ -4461,6 +4524,21 @@
         ],
         "type" : "object"
       },
+      "CartLine" : {
+        "properties" : {
+          "productId" : {
+            "type" : "string"
+          },
+          "quantity" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "variantId" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "CartLineDto" : {
         "properties" : {
           "addedAt" : {
@@ -5241,6 +5319,29 @@
         ],
         "type" : "object"
       },
+      "CategorySize" : {
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "parentId" : {
+            "type" : "string"
+          },
+          "size" : {
+            "$ref" : "#/components/schemas/Size"
+          }
+        },
+        "required" : [
+          "id",
+          "name",
+          "parentId",
+          "size"
+        ],
+        "type" : "object"
+      },
       "CategoryStock" : {
         "properties" : {
           "daysOfCover" : {
@@ -5353,6 +5454,25 @@
             "type" : "integer"
           }
         },
+        "type" : "object"
+      },
+      "CheckoutConfig" : {
+        "properties" : {
+          "courierEnabled" : {
+            "type" : "boolean"
+          },
+          "estimateEnabled" : {
+            "type" : "boolean"
+          },
+          "postomatEnabled" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [
+          "courierEnabled",
+          "estimateEnabled",
+          "postomatEnabled"
+        ],
         "type" : "object"
       },
       "ClientEventBatch" : {
@@ -5521,6 +5641,25 @@
           "maxLength",
           "maxMessagesPerHour",
           "maxOpenThreads"
+        ],
+        "type" : "object"
+      },
+      "Contact" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "phone" : {
+            "type" : "string"
+          },
+          "ref" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "name",
+          "phone",
+          "ref"
         ],
         "type" : "object"
       },
@@ -6078,6 +6217,100 @@
         },
         "required" : [
           "deleted"
+        ],
+        "type" : "object"
+      },
+      "DeliveryAdminNpWebhookControllerSubscribeRequest" : {
+        "properties" : {
+          "companyTin" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "DeliveryNpCheckoutEstimateRequest" : {
+        "properties" : {
+          "cityRef" : {
+            "type" : "string"
+          },
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/CartLine"
+            },
+            "type" : "array"
+          },
+          "payOnDeliveryMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "serviceType" : {
+            "type" : "string"
+          },
+          "totalMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "DeliveryNpTrackingPushSubscription" : {
+        "properties" : {
+          "active" : {
+            "type" : "boolean"
+          },
+          "companyTins" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "url" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "active",
+          "companyTins",
+          "id",
+          "type",
+          "url"
+        ],
+        "type" : "object"
+      },
+      "DeliveryParcelSeat" : {
+        "properties" : {
+          "box" : {
+            "type" : "string"
+          },
+          "heightMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "lengthMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "weightG" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "widthMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "box",
+          "heightMm",
+          "lengthMm",
+          "weightG",
+          "widthMm"
         ],
         "type" : "object"
       },
@@ -7003,6 +7236,27 @@
           "p50Minor",
           "p90Minor",
           "seconds"
+        ],
+        "type" : "object"
+      },
+      "EstimateResponse" : {
+        "properties" : {
+          "available" : {
+            "type" : "boolean"
+          },
+          "codFeeMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "deliveryMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "available",
+          "codFeeMinor",
+          "deliveryMinor"
         ],
         "type" : "object"
       },
@@ -8922,6 +9176,33 @@
         "type" : "object"
       },
       "JsonNode" : { },
+      "KeyCheck" : {
+        "properties" : {
+          "configured" : {
+            "type" : "boolean"
+          },
+          "counterpartyName" : {
+            "type" : "string"
+          },
+          "dryRun" : {
+            "type" : "boolean"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "ok" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [
+          "configured",
+          "counterpartyName",
+          "dryRun",
+          "message",
+          "ok"
+        ],
+        "type" : "object"
+      },
       "Keys" : {
         "properties" : {
           "auth" : {
@@ -10659,6 +10940,10 @@
             "format" : "double",
             "type" : "number"
           },
+          "maxWeightKg" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
           "number" : {
             "type" : "string"
           },
@@ -10676,6 +10961,7 @@
           "description",
           "lat",
           "lng",
+          "maxWeightKg",
           "number",
           "ref",
           "type"
@@ -10998,6 +11284,59 @@
             "maxLength" : 64,
             "minLength" : 0,
             "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "Options" : {
+        "properties" : {
+          "allowUnpaid" : {
+            "type" : "boolean"
+          },
+          "collectCod" : {
+            "type" : "boolean"
+          },
+          "date" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "declaredMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "documents" : {
+            "type" : "boolean"
+          },
+          "heightMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "lengthMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "recipientFirstName" : {
+            "type" : "string"
+          },
+          "recipientLastName" : {
+            "type" : "string"
+          },
+          "recipientMiddleName" : {
+            "type" : "string"
+          },
+          "senderWarehouseRef" : {
+            "type" : "string"
+          },
+          "weightG" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "widthMm" : {
+            "format" : "int32",
+            "type" : "integer"
           }
         },
         "type" : "object"
@@ -12112,6 +12451,53 @@
         ],
         "type" : "object"
       },
+      "Parcel" : {
+        "properties" : {
+          "documents" : {
+            "type" : "boolean"
+          },
+          "heightMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "lengthMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "packMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "seats" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DeliveryParcelSeat"
+            },
+            "type" : "array"
+          },
+          "source" : {
+            "type" : "string"
+          },
+          "weightG" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "widthMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "documents",
+          "heightMm",
+          "lengthMm",
+          "packMinor",
+          "seats",
+          "source",
+          "weightG",
+          "widthMm"
+        ],
+        "type" : "object"
+      },
       "Part" : {
         "properties" : {
           "part" : {
@@ -12473,6 +12859,157 @@
             "type" : "string"
           }
         },
+        "type" : "object"
+      },
+      "PresetsResponse" : {
+        "properties" : {
+          "presets" : {
+            "items" : {
+              "$ref" : "#/components/schemas/BoxPreset"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [
+          "presets"
+        ],
+        "type" : "object"
+      },
+      "Preview" : {
+        "properties" : {
+          "amountDueMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "cityName" : {
+            "type" : "string"
+          },
+          "codFeeMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "codMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "collectCod" : {
+            "type" : "boolean"
+          },
+          "date" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "declaredMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "destination" : {
+            "type" : "string"
+          },
+          "dryRun" : {
+            "type" : "boolean"
+          },
+          "estimateMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "existing" : {
+            "$ref" : "#/components/schemas/ShipmentBrief"
+          },
+          "orderId" : {
+            "type" : "string"
+          },
+          "orderStatus" : {
+            "type" : "string"
+          },
+          "parcel" : {
+            "$ref" : "#/components/schemas/Parcel"
+          },
+          "payer" : {
+            "type" : "string"
+          },
+          "presets" : {
+            "items" : {
+              "$ref" : "#/components/schemas/BoxPreset"
+            },
+            "type" : "array"
+          },
+          "problems" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "recipientFirstName" : {
+            "type" : "string"
+          },
+          "recipientLastName" : {
+            "type" : "string"
+          },
+          "recipientMiddleName" : {
+            "type" : "string"
+          },
+          "recipientPhone" : {
+            "type" : "string"
+          },
+          "senderWarehouseRef" : {
+            "type" : "string"
+          },
+          "senderWarehouses" : {
+            "items" : {
+              "$ref" : "#/components/schemas/SenderWarehouse"
+            },
+            "type" : "array"
+          },
+          "serviceType" : {
+            "type" : "string"
+          },
+          "shortId" : {
+            "type" : "string"
+          },
+          "unpaid" : {
+            "type" : "boolean"
+          },
+          "warnings" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [
+          "amountDueMinor",
+          "cityName",
+          "codFeeMinor",
+          "codMinor",
+          "collectCod",
+          "date",
+          "declaredMinor",
+          "description",
+          "destination",
+          "dryRun",
+          "estimateMinor",
+          "existing",
+          "orderId",
+          "orderStatus",
+          "parcel",
+          "payer",
+          "presets",
+          "problems",
+          "recipientFirstName",
+          "recipientLastName",
+          "recipientMiddleName",
+          "recipientPhone",
+          "senderWarehouseRef",
+          "senderWarehouses",
+          "serviceType",
+          "shortId",
+          "unpaid",
+          "warnings"
+        ],
         "type" : "object"
       },
       "ProcurementCandidate" : {
@@ -12856,6 +13393,32 @@
             "type" : "string"
           }
         },
+        "type" : "object"
+      },
+      "ProductSize" : {
+        "properties" : {
+          "categoryId" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "size" : {
+            "$ref" : "#/components/schemas/Size"
+          },
+          "variants" : {
+            "items" : {
+              "$ref" : "#/components/schemas/VariantSize"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [
+          "categoryId",
+          "id",
+          "size",
+          "variants"
+        ],
         "type" : "object"
       },
       "ProductUpsertRequest" : {
@@ -14603,6 +15166,106 @@
         ],
         "type" : "object"
       },
+      "SenderConfig" : {
+        "properties" : {
+          "contactName" : {
+            "type" : "string"
+          },
+          "contactRef" : {
+            "type" : "string"
+          },
+          "contacts" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Contact"
+            },
+            "type" : "array"
+          },
+          "counterpartyName" : {
+            "type" : "string"
+          },
+          "counterpartyRef" : {
+            "type" : "string"
+          },
+          "defaultWarehouseRef" : {
+            "type" : "string"
+          },
+          "loadedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "ownershipForm" : {
+            "type" : "string"
+          },
+          "phone" : {
+            "type" : "string"
+          },
+          "warehouses" : {
+            "items" : {
+              "$ref" : "#/components/schemas/SenderWarehouse"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [
+          "contactName",
+          "contactRef",
+          "contacts",
+          "counterpartyName",
+          "counterpartyRef",
+          "defaultWarehouseRef",
+          "loadedAt",
+          "ownershipForm",
+          "phone",
+          "warehouses"
+        ],
+        "type" : "object"
+      },
+      "SenderResponse" : {
+        "properties" : {
+          "dryRun" : {
+            "type" : "boolean"
+          },
+          "keyConfigured" : {
+            "type" : "boolean"
+          },
+          "sender" : {
+            "$ref" : "#/components/schemas/SenderConfig"
+          }
+        },
+        "required" : [
+          "dryRun",
+          "keyConfigured",
+          "sender"
+        ],
+        "type" : "object"
+      },
+      "SenderWarehouse" : {
+        "properties" : {
+          "cityName" : {
+            "type" : "string"
+          },
+          "cityRef" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "number" : {
+            "type" : "string"
+          },
+          "ref" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "cityName",
+          "cityRef",
+          "description",
+          "number",
+          "ref"
+        ],
+        "type" : "object"
+      },
       "Series" : {
         "properties" : {
           "groupBy" : {
@@ -14831,6 +15494,20 @@
         },
         "type" : "object"
       },
+      "ShipmentBatchRequest" : {
+        "properties" : {
+          "orderIds" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "senderWarehouseRef" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ShipmentBrief" : {
         "properties" : {
           "arrivedAt" : {
@@ -15054,6 +15731,33 @@
         "required" : [
           "slug",
           "updatedAt"
+        ],
+        "type" : "object"
+      },
+      "Size" : {
+        "properties" : {
+          "heightMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "lengthMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "weightG" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "widthMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "heightMm",
+          "lengthMm",
+          "weightG",
+          "widthMm"
         ],
         "type" : "object"
       },
@@ -15819,6 +16523,25 @@
           "runningOutProducts",
           "stockUnits",
           "stockValueMinor"
+        ],
+        "type" : "object"
+      },
+      "Street" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "ref" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "name",
+          "ref",
+          "type"
         ],
         "type" : "object"
       },
@@ -17282,6 +18005,25 @@
         ],
         "type" : "object"
       },
+      "VariantSize" : {
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "size" : {
+            "$ref" : "#/components/schemas/Size"
+          }
+        },
+        "required" : [
+          "id",
+          "name",
+          "size"
+        ],
+        "type" : "object"
+      },
       "WasteRow" : {
         "properties" : {
           "costMinor" : {
@@ -17365,6 +18107,32 @@
           "ip",
           "lastUsedAt",
           "userAgent"
+        ],
+        "type" : "object"
+      },
+      "WebhookStatus" : {
+        "properties" : {
+          "configured" : {
+            "type" : "boolean"
+          },
+          "error" : {
+            "type" : "string"
+          },
+          "subscriptions" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DeliveryNpTrackingPushSubscription"
+            },
+            "type" : "array"
+          },
+          "url" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "configured",
+          "error",
+          "subscriptions",
+          "url"
         ],
         "type" : "object"
       },
@@ -23215,6 +23983,436 @@
         ]
       }
     },
+    "/api/admin/np/box-presets" : {
+      "get" : {
+        "operationId" : "AdminNovaPoshtaController_presets",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PresetsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Box presets parsed from the «Коробки» setting",
+        "tags" : [
+          "Admin Nova Poshta"
+        ]
+      }
+    },
+    "/api/admin/np/check-key" : {
+      "post" : {
+        "operationId" : "AdminNovaPoshtaController_checkKey",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/KeyCheck"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "«Проверить ключ»: one authorised call to Nova Poshta",
+        "tags" : [
+          "Admin Nova Poshta"
+        ]
+      }
+    },
+    "/api/admin/np/sender" : {
+      "get" : {
+        "operationId" : "AdminNovaPoshtaController_getSender",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SenderResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "The configured sender (null until loaded from the cabinet)",
+        "tags" : [
+          "Admin Nova Poshta"
+        ]
+      },
+      "put" : {
+        "operationId" : "AdminNovaPoshtaController_saveSender",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SenderConfig"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SenderResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Save the contact, phone and sending branches",
+        "tags" : [
+          "Admin Nova Poshta"
+        ]
+      }
+    },
+    "/api/admin/np/sender/load" : {
+      "post" : {
+        "operationId" : "AdminNovaPoshtaController_loadSender",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SenderResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "«Загрузить из кабинета НП»: counterparty + contact persons via the API",
+        "tags" : [
+          "Admin Nova Poshta"
+        ]
+      }
+    },
+    "/api/admin/np/size/categories" : {
+      "get" : {
+        "operationId" : "AdminNovaPoshtaController_categorySizes",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/CategorySize"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Weight / box of every category (defaults for its products)",
+        "tags" : [
+          "Admin Nova Poshta"
+        ]
+      }
+    },
+    "/api/admin/np/size/categories/{id}" : {
+      "put" : {
+        "operationId" : "AdminNovaPoshtaController_saveCategorySize",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Size"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CategorySize"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Save the default weight / box of a category (null = inherit from the parent)",
+        "tags" : [
+          "Admin Nova Poshta"
+        ]
+      }
+    },
+    "/api/admin/np/size/products/{id}" : {
+      "get" : {
+        "operationId" : "AdminNovaPoshtaController_productSize",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProductSize"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Weight / box of a product and its variants",
+        "tags" : [
+          "Admin Nova Poshta"
+        ]
+      },
+      "put" : {
+        "operationId" : "AdminNovaPoshtaController_saveProductSize",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProductSize"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProductSize"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Save the weight / box of a product and its variants (null = inherit)",
+        "tags" : [
+          "Admin Nova Poshta"
+        ]
+      }
+    },
+    "/api/admin/np/warehouses" : {
+      "get" : {
+        "operationId" : "AdminNovaPoshtaController_warehouses",
+        "parameters" : [
+          {
+            "in" : "query",
+            "name" : "cityRef",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "q",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/NpWarehouseDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Branches of a city (the sender branch picker)",
+        "tags" : [
+          "Admin Nova Poshta"
+        ]
+      }
+    },
+    "/api/admin/np/webhook" : {
+      "get" : {
+        "operationId" : "AdminNpWebhookController_status",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WebhookStatus"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Webhook config and current subscriptions",
+        "tags" : [
+          "Admin Nova Poshta webhook"
+        ]
+      }
+    },
+    "/api/admin/np/webhook/subscribe" : {
+      "post" : {
+        "operationId" : "AdminNpWebhookController_subscribe",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DeliveryAdminNpWebhookControllerSubscribeRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DeliveryNpTrackingPushSubscription"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Create a «legal» tracking push subscription to this server",
+        "tags" : [
+          "Admin Nova Poshta webhook"
+        ]
+      }
+    },
+    "/api/admin/np/webhook/subscriptions/{id}" : {
+      "delete" : {
+        "operationId" : "AdminNpWebhookController_unsubscribe",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Delete a tracking push subscription",
+        "tags" : [
+          "Admin Nova Poshta webhook"
+        ]
+      }
+    },
     "/api/admin/orders" : {
       "get" : {
         "operationId" : "AdminOrderController_list",
@@ -24875,6 +26073,202 @@
         "summary" : "The customer sent back the money of a cancelled return",
         "tags" : [
           "Admin Orders"
+        ]
+      }
+    },
+    "/api/admin/orders/{id}/shipment" : {
+      "delete" : {
+        "operationId" : "AdminShipmentController_cancel",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Cancel the waybill (deleted at NP; a typed-in one is only forgotten)",
+        "tags" : [
+          "Admin shipments"
+        ]
+      },
+      "post" : {
+        "operationId" : "AdminShipmentController_create",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Options"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ShipmentBrief"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Create the waybill at Nova Poshta (the order stays until NP accepts the parcel)",
+        "tags" : [
+          "Admin shipments"
+        ]
+      },
+      "put" : {
+        "operationId" : "AdminShipmentController_update",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Options"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ShipmentBrief"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Change the waybill (weight, box, value, sender branch) before NP accepts the parcel",
+        "tags" : [
+          "Admin shipments"
+        ]
+      }
+    },
+    "/api/admin/orders/{id}/shipment/preview" : {
+      "post" : {
+        "operationId" : "AdminShipmentController_preview",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/Options"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Preview"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "What «Створити ТТН» would send (recipient, box, money, price), with the admin's changes",
+        "tags" : [
+          "Admin shipments"
+        ]
+      }
+    },
+    "/api/admin/orders/{id}/shipment/refresh" : {
+      "post" : {
+        "operationId" : "AdminShipmentController_refresh",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ShipmentBrief"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Ask Nova Poshta for the parcel status now",
+        "tags" : [
+          "Admin shipments"
         ]
       }
     },
@@ -27343,6 +28737,91 @@
         "summary" : "Read-only system facts: release version, last Nova Poshta sync",
         "tags" : [
           "Admin Settings"
+        ]
+      }
+    },
+    "/api/admin/shipments/batch" : {
+      "post" : {
+        "operationId" : "AdminShipmentController_batch",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ShipmentBatchRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/BatchResult"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "«Створити ТТН для всіх»: a waybill with defaults for each order",
+        "tags" : [
+          "Admin shipments"
+        ]
+      }
+    },
+    "/api/admin/shipments/labels" : {
+      "get" : {
+        "operationId" : "AdminShipmentController_labels",
+        "parameters" : [
+          {
+            "in" : "query",
+            "name" : "orderIds",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "format",
+            "required" : false,
+            "schema" : {
+              "default" : "100x100",
+              "type" : "string"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/pdf" : {
+                "schema" : {
+                  "format" : "byte",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "One PDF with the labels of these orders (format 100x100 | 85x85 | a4)",
+        "tags" : [
+          "Admin shipments"
         ]
       }
     },
@@ -31338,6 +32817,100 @@
         ]
       }
     },
+    "/api/np/config" : {
+      "get" : {
+        "operationId" : "NpCheckoutController_config",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CheckoutConfig"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Nova Poshta checkout switches: parcel lockers, courier, price hint",
+        "tags" : [
+          "Nova Poshta checkout"
+        ]
+      }
+    },
+    "/api/np/estimate" : {
+      "post" : {
+        "operationId" : "NpCheckoutController_estimate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DeliveryNpCheckoutEstimateRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EstimateResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Approximate Nova Poshta delivery price for a cart (cached)",
+        "tags" : [
+          "Nova Poshta checkout"
+        ]
+      }
+    },
+    "/api/np/streets" : {
+      "get" : {
+        "operationId" : "NpCheckoutController_streets",
+        "parameters" : [
+          {
+            "in" : "query",
+            "name" : "cityRef",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "q",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/Street"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Streets of a Nova Poshta city (courier delivery)",
+        "tags" : [
+          "Nova Poshta checkout"
+        ]
+      }
+    },
     "/api/np/warehouses" : {
       "get" : {
         "operationId" : "NovaPoshtaController_warehouses",
@@ -31353,6 +32926,14 @@
           {
             "in" : "query",
             "name" : "q",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "kind",
             "required" : false,
             "schema" : {
               "type" : "string"
@@ -31466,6 +33047,48 @@
         "summary" : "Nova Poshta warehouses inside a map viewport (bounding box) for the map picker",
         "tags" : [
           "Nova Poshta"
+        ]
+      }
+    },
+    "/api/np/webhook" : {
+      "post" : {
+        "operationId" : "NpWebhookController_webhook",
+        "parameters" : [
+          {
+            "in" : "header",
+            "name" : "X-NP-Key",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          },
+          {
+            "in" : "header",
+            "name" : "x-np-attempt",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "additionalProperties" : {
+                    "type" : "string"
+                  },
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Nova Poshta tracking webhook (X-NP-Key)",
+        "tags" : [
+          "Nova Poshta webhook"
         ]
       }
     },
@@ -32311,6 +33934,10 @@
       "name" : "Payments"
     },
     {
+      "description" : "Street search and delivery price estimate",
+      "name" : "Nova Poshta checkout"
+    },
+    {
       "description" : "Returns and exchanges of an order",
       "name" : "Admin Orders"
     },
@@ -32369,6 +33996,18 @@
     {
       "description" : "Public Nova Poshta directory",
       "name" : "Nova Poshta"
+    },
+    {
+      "description" : "Sender, API key check, parcel sizes",
+      "name" : "Admin Nova Poshta"
+    },
+    {
+      "description" : "Tracking pushes of the new NP REST API",
+      "name" : "Nova Poshta webhook"
+    },
+    {
+      "description" : "Tracking push subscription",
+      "name" : "Admin Nova Poshta webhook"
     },
     {
       "description" : "The manual way through ChatGPT for cards, as tasks",
@@ -32501,6 +34140,10 @@
     {
       "description" : "Public site revalidation",
       "name" : "Admin Site"
+    },
+    {
+      "description" : "Nova Poshta waybills and labels",
+      "name" : "Admin shipments"
     },
     {
       "description" : "Admin-only endpoints (require ROLE_ADMIN)",

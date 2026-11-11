@@ -183,6 +183,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if ((path.endsWith("/uploads") || path.endsWith("/attachments")) && "POST".equalsIgnoreCase(method)) {
             return new Bucket(uploadAttempts, UPLOAD_LIMIT, 60);
         }
+        if (path.equals("/api/np/webhook")) {
+            // Nova Poshta pushes bursts from a few addresses; guarded by its secret, not by the IP.
+            return null;
+        }
         if (path.startsWith("/api/np/") || path.startsWith("/api/products") || path.startsWith("/api/public/")
                 || path.equals("/api/payment-options")
                 || path.equals("/api/promo-codes/preview")) {

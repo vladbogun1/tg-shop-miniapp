@@ -26,6 +26,9 @@ final class TestSync {
                                         NovaPoshtaCityRepository cities, SettingsService settings, Clock clock) {
         NovaPoshtaHttpClient api = new NovaPoshtaHttpClient(props, new ObjectMapper(),
                 new HttpClients(new HttpClientsProperties()));
-        return new NovaPoshtaSyncService(api, warehouses, new NovaPoshtaUpsertService(cities, warehouses), settings, clock, new com.maxsolch.shop.platform.jobs.Workers());
+        ObjectMapper json = new ObjectMapper();
+        NovaPoshtaSenderService sender = new NovaPoshtaSenderService(null, settings, warehouses, cities, json, clock);
+        return new NovaPoshtaSyncService(api, warehouses, new NovaPoshtaUpsertService(cities, warehouses), settings,
+                clock, new com.maxsolch.shop.platform.jobs.Workers(), new NpAlerts(settings, clock), sender);
     }
 }

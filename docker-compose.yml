@@ -232,6 +232,13 @@ services:
       MONOBANK_API_URL: ${MONOBANK_API_URL:-https://api.monobank.ua}
       PAYMENT_DUE_HOURS: ${PAYMENT_DUE_HOURS:-24}
       PAYMENT_INVOICE_TTL_MINUTES: ${PAYMENT_INVOICE_TTL_MINUTES:-60}
+      # Nova Poshta business key (TTN, tracking, labels; docs/NOVA-POSHTA-PLAN.md). Empty = directory only.
+      NOVAPOSHTA_API_KEY: ${NOVAPOSHTA_API_KEY:-}
+      # Demo stand: waybill writes are faked (DRY… numbers, stub PDF), reads still go to NP.
+      NP_DRY_RUN: ${NP_DRY_RUN:-false}
+      # Tracking pushes of the new NP REST (stage 4). Both empty = the webhook endpoint answers 404.
+      NOVAPOSHTA_WEBHOOK_SECRET: ${NOVAPOSHTA_WEBHOOK_SECRET:-}
+      NOVAPOSHTA_WEBHOOK_URL: ${NOVAPOSHTA_WEBHOOK_URL:-}
       # Built-in AI in the admin (docs/AI.md). Empty key = the AI buttons answer «not configured».
       AI_MINIMAX_KEY: ${AI_MINIMAX_KEY:-}
       AI_SEARXNG_URL: ${AI_SEARXNG_URL:-}

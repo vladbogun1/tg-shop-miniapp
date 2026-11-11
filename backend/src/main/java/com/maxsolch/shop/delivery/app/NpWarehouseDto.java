@@ -10,5 +10,7 @@ public record NpWarehouseDto(
         String cityRef,
         String cityName,
         Double lat,
-        Double lng) {
+        Double lng,
+        /** Max weight of one parcel here, kg (PlaceMaxWeightAllowed); null = unknown. */
+        Integer maxWeightKg) {
 }
