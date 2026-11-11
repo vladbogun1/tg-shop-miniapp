@@ -6256,7 +6256,7 @@ export interface components {
             seoTitle: string | null;
             sku: string | null;
             slug: string | null;
-            specIssues: components["schemas"]["CatalogSpecsValidatorIssue"][];
+            specIssues: components["schemas"]["Issue"][];
             specs: {
                 [key: string]: unknown;
             };
@@ -6931,6 +6931,25 @@ export interface components {
             /** Format: int64 */
             unassignedMinor: number;
         };
+        BatchRequest: {
+            currency?: string;
+            distribution?: string;
+            /** Format: date */
+            etaFrom?: string;
+            etaMode?: string;
+            /** Format: date */
+            etaTo?: string;
+            fxRate?: number;
+            /** Format: int32 */
+            holdHours?: number;
+            items?: components["schemas"]["ItemRequest"][];
+            preorderOpen?: boolean;
+            privateNote?: string;
+            publicNote?: string;
+            /** Format: int64 */
+            supplierId?: number;
+            title?: string;
+        };
         BatchResult: {
             error: string;
             ok: boolean;
@@ -7554,11 +7573,6 @@ export interface components {
             conditions: components["schemas"]["ConditionDto"][];
             groups: components["schemas"]["SpecGroupDto"][];
         };
-        CatalogSpecsValidatorIssue: {
-            key: string;
-            message: string;
-            reason: string;
-        };
         CategoryDetailDto: {
             artKind: string | null;
             h1: string | null;
@@ -7864,10 +7878,6 @@ export interface components {
         DeliveryAdminNpWebhookControllerSubscribeRequest: {
             companyTin?: string;
         };
-        DeliveryAdminShipmentControllerBatchRequest: {
-            orderIds?: string[];
-            senderWarehouseRef?: string;
-        };
         DeliveryNpCheckoutEstimateRequest: {
             cityRef?: string;
             items?: components["schemas"]["CartLine"][];
@@ -7882,12 +7892,6 @@ export interface components {
             companyTins: string[];
             id: string;
             type: string;
-            url: string;
-        };
-        DeliveryNpWebhookSubscriptionsStatus: {
-            configured: boolean;
-            error: string;
-            subscriptions: components["schemas"]["DeliveryNpTrackingPushSubscription"][];
             url: string;
         };
         DeliveryParcelSeat: {
@@ -8692,6 +8696,11 @@ export interface components {
         InviteTokenRequest: {
             token: string;
         };
+        Issue: {
+            key: string;
+            message: string;
+            reason: string;
+        };
         ItemDto: {
             /** Format: int64 */
             id: number;
@@ -8787,6 +8796,20 @@ export interface components {
             city: string;
             country: string;
             method: string;
+        };
+        Limits: {
+            /** Format: int32 */
+            maxOrdersPerDay: number;
+            /** Format: int32 */
+            maxQtyPerProduct: number;
+            /** Format: int32 */
+            maxSelfCancelsPerDay: number;
+            /** Format: int32 */
+            maxUnitsPerOrder: number;
+            /** Format: int32 */
+            maxUnpaidOrders: number;
+            /** Format: int32 */
+            orderCooldownSec: number;
         };
         LineDecision: {
             by: string;
@@ -9652,20 +9675,6 @@ export interface components {
             /** @enum {string} */
             type: "TEXT" | "PHOTO" | "FILE" | "SYSTEM";
         };
-        OrderOrderGuardLimits: {
-            /** Format: int32 */
-            maxOrdersPerDay: number;
-            /** Format: int32 */
-            maxQtyPerProduct: number;
-            /** Format: int32 */
-            maxSelfCancelsPerDay: number;
-            /** Format: int32 */
-            maxUnitsPerOrder: number;
-            /** Format: int32 */
-            maxUnpaidOrders: number;
-            /** Format: int32 */
-            orderCooldownSec: number;
-        };
         OrderProfitDto: {
             complete: boolean;
             /** Format: int64 */
@@ -9880,25 +9889,6 @@ export interface components {
             shortId: string;
             unpaid: boolean;
             warnings: string[];
-        };
-        ProcurementBatchRequest: {
-            currency?: string;
-            distribution?: string;
-            /** Format: date */
-            etaFrom?: string;
-            etaMode?: string;
-            /** Format: date */
-            etaTo?: string;
-            fxRate?: number;
-            /** Format: int32 */
-            holdHours?: number;
-            items?: components["schemas"]["ItemRequest"][];
-            preorderOpen?: boolean;
-            privateNote?: string;
-            publicNote?: string;
-            /** Format: int64 */
-            supplierId?: number;
-            title?: string;
         };
         ProcurementCandidate: {
             ai: boolean;
@@ -10470,7 +10460,7 @@ export interface components {
         RevalidateResult: {
             error: string;
             ok: boolean;
-            status: components["schemas"]["SiteSiteRevalidatorStatus"];
+            status: components["schemas"]["Status"];
         };
         ReviewFeed: {
             items: components["schemas"]["FeedReview"][];
@@ -10649,6 +10639,10 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        ShipmentBatchRequest: {
+            orderIds?: string[];
+            senderWarehouseRef?: string;
+        };
         ShipmentBrief: {
             /** Format: date-time */
             arrivedAt: string | null;
@@ -10699,14 +10693,6 @@ export interface components {
             /** Format: int64 */
             orderedWithin30: number;
             weekStart: string;
-        };
-        SiteSiteRevalidatorStatus: {
-            enabled: boolean;
-            lastError: string;
-            /** Format: date-time */
-            lastErrorAt: string;
-            /** Format: date-time */
-            lastSuccessAt: string;
         };
         SitemapCategory: {
             slug: string;
@@ -10908,6 +10894,14 @@ export interface components {
                 };
             };
             texts: components["schemas"]["TextCounts"];
+        };
+        Status: {
+            enabled: boolean;
+            lastError: string;
+            /** Format: date-time */
+            lastErrorAt: string;
+            /** Format: date-time */
+            lastSuccessAt: string;
         };
         StatusRequest: {
             status?: string;
@@ -11418,6 +11412,12 @@ export interface components {
             /** Format: date-time */
             lastUsedAt: string;
             userAgent: string;
+        };
+        WebhookStatus: {
+            configured: boolean;
+            error: string;
+            subscriptions: components["schemas"]["DeliveryNpTrackingPushSubscription"][];
+            url: string;
         };
         Widget: {
             canRun: boolean;
@@ -15057,7 +15057,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["DeliveryNpWebhookSubscriptionsStatus"];
+                    "*/*": components["schemas"]["WebhookStatus"];
                 };
             };
         };
@@ -16359,7 +16359,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProcurementBatchRequest"];
+                "application/json": components["schemas"]["BatchRequest"];
             };
         };
         responses: {
@@ -16407,7 +16407,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProcurementBatchRequest"];
+                "application/json": components["schemas"]["BatchRequest"];
             };
         };
         responses: {
@@ -17571,7 +17571,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DeliveryAdminShipmentControllerBatchRequest"];
+                "application/json": components["schemas"]["ShipmentBatchRequest"];
             };
         };
         responses: {
@@ -17644,7 +17644,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["SiteSiteRevalidatorStatus"];
+                    "*/*": components["schemas"]["Status"];
                 };
             };
         };
@@ -20526,7 +20526,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["OrderOrderGuardLimits"];
+                    "*/*": components["schemas"]["Limits"];
                 };
             };
         };

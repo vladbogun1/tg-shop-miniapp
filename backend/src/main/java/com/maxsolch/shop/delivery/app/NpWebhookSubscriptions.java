@@ -42,19 +42,19 @@ public class NpWebhookSubscriptions {
      * @param configured secret and https URL are set on the server
      * @param error why the list could not be read (no key, NP down…); null when it was
      */
-    public record Status(boolean configured, String url, List<Subscription> subscriptions, String error) {
+    public record WebhookStatus(boolean configured, String url, List<Subscription> subscriptions, String error) {
     }
 
-    public Status status() {
+    public WebhookStatus status() {
         String url = url();
         boolean configured = url != null && secret() != null;
         if (!api.keyConfigured()) {
-            return new Status(configured, url, List.of(), "Ключ API не настроен");
+            return new WebhookStatus(configured, url, List.of(), "Ключ API не настроен");
         }
         try {
-            return new Status(configured, url, push.list(), null);
+            return new WebhookStatus(configured, url, push.list(), null);
         } catch (RuntimeException e) {
-            return new Status(configured, url, List.of(), e.getMessage());
+            return new WebhookStatus(configured, url, List.of(), e.getMessage());
         }
     }
 

@@ -44,7 +44,7 @@ public class AdminShipmentController {
     }
 
     /** {@code senderWarehouseRef}: quick choice of the sending branch for the whole batch (null = default). */
-    public record BatchRequest(List<String> orderIds, String senderWarehouseRef) {
+    public record ShipmentBatchRequest(List<String> orderIds, String senderWarehouseRef) {
     }
 
     @PostMapping("/orders/{id}/shipment/refresh")
@@ -82,7 +82,7 @@ public class AdminShipmentController {
 
     @PostMapping("/shipments/batch")
     @Operation(summary = "«Створити ТТН для всіх»: a waybill with defaults for each order")
-    public List<ShipmentCommands.BatchResult> batch(@RequestBody BatchRequest body) {
+    public List<ShipmentCommands.BatchResult> batch(@RequestBody ShipmentBatchRequest body) {
         return shipments.createAll(body == null ? null : body.orderIds(),
                 body == null ? null : body.senderWarehouseRef());
     }

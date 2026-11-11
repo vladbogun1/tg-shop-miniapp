@@ -44,7 +44,7 @@ public class ParcelIssues {
     }
 
     /** The thresholds from the settings, read once per screen. */
-    record Limits(int arrivedStaleDays, int createdStaleDays, int trackingMaxDays) {
+    record ParcelLimits(int arrivedStaleDays, int createdStaleDays, int trackingMaxDays) {
     }
 
     /** Why a row is shown: {@code kind} goes into the version, {@code urgent} paints it red. */
@@ -56,13 +56,13 @@ public class ParcelIssues {
      *
      * @param codMinor what the waybill collects on pickup, null = nothing
      */
-    public record Issue(String shipmentId, String orderId, String shortId, String orderStatus, String customerName,
+    public record ParcelIssue(String shipmentId, String orderId, String shortId, String orderStatus, String customerName,
                         String ttn, String stage, String kind, String text, boolean urgent, Instant since,
                         Long codMinor) {
     }
 
-    public List<Issue> current(Instant now) {
-        Limits limits = new Limits(Math.max(1, settings.getInt(DeliverySettings.NP_ARRIVED_STALE_DAYS)),
+    public List<ParcelIssue> current(Instant now) {
+        ParcelLimits limits = new ParcelLimits(Math.max(1, settings.getInt(DeliverySettings.NP_ARRIVED_STALE_DAYS)),
                 Math.max(1, settings.getInt(DeliverySettings.NP_CREATED_STALE_DAYS)),
                 Math.max(1, settings.getInt(DeliverySettings.NP_TRACKING_MAX_DAYS)));
         // RECEIVED / CANCELLED rows are many and mostly fine: only recent ones can still need someone.
@@ -76,7 +76,7 @@ public class ParcelIssues {
         Map<String, ShippingOrder> byId = new HashMap<>();
         orders.findAll(rows.stream().map(OrderShipment::getOrderId).toList())
                 .forEach(o -> byId.put(UuidUtil.toString(o.id()), o));
-        List<Issue> out = new ArrayList<>();
+        List<ParcelIssue> out = new ArrayList<>();
         for (OrderShipment s : rows) {
             ShippingOrder o = byId.get(UuidUtil.toString(s.getOrderId()));
             Reason r = o == null ? null : reason(s, o, now, limits);
@@ -88,7 +88,7 @@ public class ParcelIssues {
     }
 
     /** Why this waybill is on the screen, or null when it is fine. */
-    static Reason reason(OrderShipment s, ShippingOrder o, Instant now, Limits limits) {
+    static Reason reason(OrderShipment s, ShippingOrder o, Instant now, ParcelLimits limits) {
         ShipmentStage stage = s.stageEnum();
         boolean rejected = o.status() == OrderStatus.REJECTED;
         if (stage == null) {
@@ -190,11 +190,11 @@ public class ParcelIssues {
         };
     }
 
-    private static Issue issue(OrderShipment s, ShippingOrder o, Reason r) {
+    private static ParcelIssue issue(OrderShipment s, ShippingOrder o, Reason r) {
         Instant since = s.stageEnum() == ShipmentStage.ARRIVED && s.getArrivedAt() != null ? s.getArrivedAt()
                 : s.getLastEventAt() != null ? s.getLastEventAt() : s.getCreatedAt();
         Long cod = s.collects() && s.getCodMinor() > 0 ? s.getCodMinor() : null;
-        return new Issue(UuidUtil.toString(s.getId()), UuidUtil.toString(o.id()), o.shortId(), o.status().name(),
+        return new ParcelIssue(UuidUtil.toString(s.getId()), UuidUtil.toString(o.id()), o.shortId(), o.status().name(),
                 o.customerName(), s.getTtn(), s.getStage(), r.kind(), r.text(), r.urgent(), since, cod);
     }
 }

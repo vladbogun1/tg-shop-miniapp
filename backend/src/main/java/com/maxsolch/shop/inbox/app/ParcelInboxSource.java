@@ -32,7 +32,7 @@ public class ParcelInboxSource implements InboxExtraSource {
         }
     }
 
-    static Item row(ParcelIssues.Issue i, Instant now) {
+    static Item row(ParcelIssues.ParcelIssue i, Instant now) {
         String name = i.customerName() == null || i.customerName().isBlank() ? "Без имени" : i.customerName().trim();
         long wait = i.since() == null ? 0 : Math.max(0, Duration.between(i.since(), now).toMinutes());
         return new Item(InboxMark.key(InboxItemType.PARCEL, i.shipmentId()), InboxItemType.PARCEL.name(),

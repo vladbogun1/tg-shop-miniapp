@@ -845,7 +845,7 @@
           },
           "specIssues" : {
             "items" : {
-              "$ref" : "#/components/schemas/CatalogSpecsValidatorIssue"
+              "$ref" : "#/components/schemas/Issue"
             },
             "type" : "array"
           },
@@ -3124,6 +3124,57 @@
         ],
         "type" : "object"
       },
+      "BatchRequest" : {
+        "properties" : {
+          "currency" : {
+            "type" : "string"
+          },
+          "distribution" : {
+            "type" : "string"
+          },
+          "etaFrom" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "etaMode" : {
+            "type" : "string"
+          },
+          "etaTo" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "fxRate" : {
+            "type" : "number"
+          },
+          "holdHours" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ItemRequest"
+            },
+            "type" : "array"
+          },
+          "preorderOpen" : {
+            "type" : "boolean"
+          },
+          "privateNote" : {
+            "type" : "string"
+          },
+          "publicNote" : {
+            "type" : "string"
+          },
+          "supplierId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "BatchResult" : {
         "properties" : {
           "error" : {
@@ -5126,25 +5177,6 @@
         ],
         "type" : "object"
       },
-      "CatalogSpecsValidatorIssue" : {
-        "properties" : {
-          "key" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "reason" : {
-            "type" : "string"
-          }
-        },
-        "required" : [
-          "key",
-          "message",
-          "reason"
-        ],
-        "type" : "object"
-      },
       "CategoryDetailDto" : {
         "properties" : {
           "artKind" : {
@@ -6196,20 +6228,6 @@
         },
         "type" : "object"
       },
-      "DeliveryAdminShipmentControllerBatchRequest" : {
-        "properties" : {
-          "orderIds" : {
-            "items" : {
-              "type" : "string"
-            },
-            "type" : "array"
-          },
-          "senderWarehouseRef" : {
-            "type" : "string"
-          }
-        },
-        "type" : "object"
-      },
       "DeliveryNpCheckoutEstimateRequest" : {
         "properties" : {
           "cityRef" : {
@@ -6261,32 +6279,6 @@
           "companyTins",
           "id",
           "type",
-          "url"
-        ],
-        "type" : "object"
-      },
-      "DeliveryNpWebhookSubscriptionsStatus" : {
-        "properties" : {
-          "configured" : {
-            "type" : "boolean"
-          },
-          "error" : {
-            "type" : "string"
-          },
-          "subscriptions" : {
-            "items" : {
-              "$ref" : "#/components/schemas/DeliveryNpTrackingPushSubscription"
-            },
-            "type" : "array"
-          },
-          "url" : {
-            "type" : "string"
-          }
-        },
-        "required" : [
-          "configured",
-          "error",
-          "subscriptions",
           "url"
         ],
         "type" : "object"
@@ -8971,6 +8963,25 @@
         ],
         "type" : "object"
       },
+      "Issue" : {
+        "properties" : {
+          "key" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "key",
+          "message",
+          "reason"
+        ],
+        "type" : "object"
+      },
       "ItemDto" : {
         "properties" : {
           "id" : {
@@ -9297,6 +9308,43 @@
           "city",
           "country",
           "method"
+        ],
+        "type" : "object"
+      },
+      "Limits" : {
+        "properties" : {
+          "maxOrdersPerDay" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxQtyPerProduct" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxSelfCancelsPerDay" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxUnitsPerOrder" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxUnpaidOrders" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "orderCooldownSec" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "maxOrdersPerDay",
+          "maxQtyPerProduct",
+          "maxSelfCancelsPerDay",
+          "maxUnitsPerOrder",
+          "maxUnpaidOrders",
+          "orderCooldownSec"
         ],
         "type" : "object"
       },
@@ -12219,43 +12267,6 @@
         ],
         "type" : "object"
       },
-      "OrderOrderGuardLimits" : {
-        "properties" : {
-          "maxOrdersPerDay" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "maxQtyPerProduct" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "maxSelfCancelsPerDay" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "maxUnitsPerOrder" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "maxUnpaidOrders" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "orderCooldownSec" : {
-            "format" : "int32",
-            "type" : "integer"
-          }
-        },
-        "required" : [
-          "maxOrdersPerDay",
-          "maxQtyPerProduct",
-          "maxSelfCancelsPerDay",
-          "maxUnitsPerOrder",
-          "maxUnpaidOrders",
-          "orderCooldownSec"
-        ],
-        "type" : "object"
-      },
       "OrderProfitDto" : {
         "properties" : {
           "complete" : {
@@ -12999,57 +13010,6 @@
           "unpaid",
           "warnings"
         ],
-        "type" : "object"
-      },
-      "ProcurementBatchRequest" : {
-        "properties" : {
-          "currency" : {
-            "type" : "string"
-          },
-          "distribution" : {
-            "type" : "string"
-          },
-          "etaFrom" : {
-            "format" : "date",
-            "type" : "string"
-          },
-          "etaMode" : {
-            "type" : "string"
-          },
-          "etaTo" : {
-            "format" : "date",
-            "type" : "string"
-          },
-          "fxRate" : {
-            "type" : "number"
-          },
-          "holdHours" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "items" : {
-            "items" : {
-              "$ref" : "#/components/schemas/ItemRequest"
-            },
-            "type" : "array"
-          },
-          "preorderOpen" : {
-            "type" : "boolean"
-          },
-          "privateNote" : {
-            "type" : "string"
-          },
-          "publicNote" : {
-            "type" : "string"
-          },
-          "supplierId" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
-          "title" : {
-            "type" : "string"
-          }
-        },
         "type" : "object"
       },
       "ProcurementCandidate" : {
@@ -14914,7 +14874,7 @@
             "type" : "boolean"
           },
           "status" : {
-            "$ref" : "#/components/schemas/SiteSiteRevalidatorStatus"
+            "$ref" : "#/components/schemas/Status"
           }
         },
         "required" : [
@@ -15534,6 +15494,20 @@
         },
         "type" : "object"
       },
+      "ShipmentBatchRequest" : {
+        "properties" : {
+          "orderIds" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "senderWarehouseRef" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ShipmentBrief" : {
         "properties" : {
           "arrivedAt" : {
@@ -15704,31 +15678,6 @@
           "newUsers",
           "orderedWithin30",
           "weekStart"
-        ],
-        "type" : "object"
-      },
-      "SiteSiteRevalidatorStatus" : {
-        "properties" : {
-          "enabled" : {
-            "type" : "boolean"
-          },
-          "lastError" : {
-            "type" : "string"
-          },
-          "lastErrorAt" : {
-            "format" : "date-time",
-            "type" : "string"
-          },
-          "lastSuccessAt" : {
-            "format" : "date-time",
-            "type" : "string"
-          }
-        },
-        "required" : [
-          "enabled",
-          "lastError",
-          "lastErrorAt",
-          "lastSuccessAt"
         ],
         "type" : "object"
       },
@@ -16424,6 +16373,31 @@
         "required" : [
           "locales",
           "texts"
+        ],
+        "type" : "object"
+      },
+      "Status" : {
+        "properties" : {
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "lastError" : {
+            "type" : "string"
+          },
+          "lastErrorAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "lastSuccessAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "enabled",
+          "lastError",
+          "lastErrorAt",
+          "lastSuccessAt"
         ],
         "type" : "object"
       },
@@ -18133,6 +18107,32 @@
           "ip",
           "lastUsedAt",
           "userAgent"
+        ],
+        "type" : "object"
+      },
+      "WebhookStatus" : {
+        "properties" : {
+          "configured" : {
+            "type" : "boolean"
+          },
+          "error" : {
+            "type" : "string"
+          },
+          "subscriptions" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DeliveryNpTrackingPushSubscription"
+            },
+            "type" : "array"
+          },
+          "url" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "configured",
+          "error",
+          "subscriptions",
+          "url"
         ],
         "type" : "object"
       },
@@ -24331,7 +24331,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/DeliveryNpWebhookSubscriptionsStatus"
+                  "$ref" : "#/components/schemas/WebhookStatus"
                 }
               }
             },
@@ -26665,7 +26665,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/ProcurementBatchRequest"
+                "$ref" : "#/components/schemas/BatchRequest"
               }
             }
           },
@@ -26747,7 +26747,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/ProcurementBatchRequest"
+                "$ref" : "#/components/schemas/BatchRequest"
               }
             }
           },
@@ -28747,7 +28747,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/DeliveryAdminShipmentControllerBatchRequest"
+                "$ref" : "#/components/schemas/ShipmentBatchRequest"
               }
             }
           },
@@ -28859,7 +28859,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/SiteSiteRevalidatorStatus"
+                  "$ref" : "#/components/schemas/Status"
                 }
               }
             },
@@ -33462,7 +33462,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/OrderOrderGuardLimits"
+                  "$ref" : "#/components/schemas/Limits"
                 }
               }
             },

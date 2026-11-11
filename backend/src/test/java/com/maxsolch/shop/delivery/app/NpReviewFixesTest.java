@@ -27,7 +27,7 @@ import static org.mockito.Mockito.when;
 class NpReviewFixesTest {
 
     private static final Instant NOW = Instant.parse("2026-10-23T10:00:00Z");
-    private static final ParcelIssues.Limits LIMITS = new ParcelIssues.Limits(5, 2, 60);
+    private static final ParcelIssues.ParcelLimits LIMITS = new ParcelIssues.ParcelLimits(5, 2, 60);
     private static final String P1 = "50b36463-e893-4525-981b-9ee535d10d0e";
     private static final String GIFT = "1c5e1b6a-fd23-45bd-9237-ab4bdb015117";
 

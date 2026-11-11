@@ -34,7 +34,7 @@ public class AdminNpWebhookController {
 
     @GetMapping
     @Operation(summary = "Webhook config and current subscriptions")
-    public NpWebhookSubscriptions.Status status() {
+    public NpWebhookSubscriptions.WebhookStatus status() {
         return subscriptions.status();
     }
 
