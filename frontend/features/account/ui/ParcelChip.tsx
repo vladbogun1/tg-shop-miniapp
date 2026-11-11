@@ -7,6 +7,7 @@
  */
 import { ExternalLink } from "lucide-react";
 import type { ShipmentStage } from "@shop/customer/delivery/contract";
+import { tint } from "@shop/ui/tint";
 import { PARCEL_TONE_COLOR, parcelStageKey, parcelStageOf, parcelTone, trackingLink } from "@shop/customer/order/parcel";
 import { useT } from "@/i18n/context";
 import { openExternalLink } from "@/platform/telegram";
@@ -17,7 +18,7 @@ export function ParcelChip({ stage }: { stage: ShipmentStage }) {
   return (
     <span
       className="font-display inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em]"
-      style={{ background: `color-mix(in srgb, ${color} 16%, transparent)`, color }}
+      style={{ background: tint(color, 16), color }}
     >
       <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: color }} />
       <span className="min-w-0 break-words">{t(parcelStageKey(stage))}</span>

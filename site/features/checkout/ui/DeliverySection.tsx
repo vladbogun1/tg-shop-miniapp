@@ -10,7 +10,7 @@ import { Button } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import type { MessageKey } from "@/i18n";
 import { CitySearch, WarehouseSearch } from "./CitySearch";
-import { CourierFields, EstimateLine, MapPickConfirm } from "./DeliveryParts";
+import { EstimateLine, MapPickConfirm } from "./DeliveryParts";
 import { DeliveryTabs, NpModeSwitch, type NpPickMode } from "./DeliveryTabs";
 import { Section } from "./parts";
 
@@ -24,7 +24,14 @@ function MapLoading() {
 }
 
 // Карта — только по «Обрати на карті»: её код (Leaflet) не грузится, пока покупатель вводит вручную.
+// Курьер — только на вкладке «Кур'єр»: поиск улицы не грузится, пока покупатель выбирает отделение.
+const CourierFields = dynamic(() => import("./CourierFields").then((m) => m.CourierFields), { ssr: false, loading: CourierLoading });
+
 const NpWarehouseMap = dynamic(() => import("./NpWarehouseMap"), { ssr: false, loading: MapLoading });
+
+function CourierLoading() {
+  return <div className="shimmer h-56 rounded-[var(--r)]" />;
+}
 
 function npLabel(w: NpWarehouse, t: (k: MessageKey, p?: Record<string, string | number>) => string): string {
   const cat = t(w.category === "POSTOMAT" ? "np.type.postomat" : w.category === "POINT" ? "np.type.point" : "np.type.branch");

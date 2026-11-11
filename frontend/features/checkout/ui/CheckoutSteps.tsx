@@ -7,12 +7,19 @@ import type { NpEstimateResponse } from "@shop/customer/delivery/contract";
 import { useT } from "@/i18n/context";
 import { spring } from "@/lib/motion";
 import { confirmGiftLine } from "../model/totals";
-import { ConfirmStep } from "./ConfirmStep";
+import dynamic from "next/dynamic";
 import { ContactsStep } from "./ContactsStep";
-import { DeliveryStep } from "./DeliveryStep";
-import { PaymentStep } from "./PaymentStep";
 import type { useCheckoutForm } from "./use-checkout-form";
 import type { useCheckoutOrder } from "./use-checkout-order";
+
+function StepLoading() {
+  return <div className="shimmer h-48 rounded-[var(--r-card)]" />;
+}
+
+// Steps 2–4 load after the first one is on screen: /checkout opens on the contacts (bundle budget, iOS).
+const DeliveryStep = dynamic(() => import("./DeliveryStep").then((m) => m.DeliveryStep), { loading: StepLoading });
+const PaymentStep = dynamic(() => import("./PaymentStep").then((m) => m.PaymentStep), { loading: StepLoading });
+const ConfirmStep = dynamic(() => import("./ConfirmStep").then((m) => m.ConfirmStep), { loading: StepLoading });
 
 type Form = ReturnType<typeof useCheckoutForm>;
 type Order = ReturnType<typeof useCheckoutOrder>;

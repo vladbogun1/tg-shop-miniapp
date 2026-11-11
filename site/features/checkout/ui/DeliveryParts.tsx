@@ -5,14 +5,12 @@
  * Правила (проверки, подсказка цены) — @shop/customer/delivery, те же, что в Mini App; здесь только вид сайта.
  */
 import { Check, Loader2, MapPin } from "lucide-react";
-import type { NpCity, NpWarehouse } from "@shop/core/types";
+import type { NpWarehouse } from "@shop/core/types";
 import type { NpEstimateResponse } from "@shop/customer/delivery/contract";
 import { estimateAmounts } from "@shop/customer/delivery/estimate";
-import { courierErrors, type CourierAddress } from "@shop/customer/delivery/recipient";
-import { Button, Input } from "@shop/ui/primitives";
+import { Button } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import { useFmt } from "@/lib/use-fmt";
-import { CitySearch, StreetSearch } from "./CitySearch";
 
 /** Точка, нажатая на карте и ждущая «Обрати це відділення» (случайное касание не меняет адрес). */
 export function MapPickConfirm({ warehouse, label, onConfirm, onCancel }: { warehouse: NpWarehouse; label: string; onConfirm: () => void; onCancel: () => void }) {
@@ -37,57 +35,6 @@ export function MapPickConfirm({ warehouse, label, onConfirm, onCancel }: { ware
           {t("common.cancel")}
         </Button>
       </div>
-    </div>
-  );
-}
-
-/** Курьер: город (то же поле, что у отделений), улица (поиск или вручную), дом, квартира/офис. */
-export function CourierFields({
-  city,
-  onCity,
-  courier,
-  onCourier,
-  showErrors,
-}: {
-  city: NpCity | null;
-  onCity: (c: NpCity | null) => void;
-  courier: CourierAddress;
-  onCourier: (c: CourierAddress) => void;
-  showErrors: boolean;
-}) {
-  const { t } = useI18n();
-  const err = courierErrors(courier);
-  const buildingBad = showErrors && err.building;
-  return (
-    <div className="flex flex-col gap-4">
-      <CitySearch city={city} onCity={onCity} />
-      {showErrors && !city && <p className="-mt-2 text-[13px] font-medium text-[var(--danger)]">{t("delivery.courier.needCity")}</p>}
-      <StreetSearch
-        city={city}
-        street={{ ref: courier.streetRef, name: courier.streetName }}
-        onStreet={(s) => onCourier({ ...courier, streetRef: s.ref, streetName: s.name })}
-        error={showErrors && err.street ? t("delivery.courier.streetError") : undefined}
-      />
-      <div className="grid grid-cols-2 gap-4">
-        <Input
-          label={t("delivery.courier.building")}
-          value={courier.building}
-          onChange={(e) => onCourier({ ...courier, building: e.target.value })}
-          status={buildingBad ? "danger" : undefined}
-          hint={buildingBad ? t("delivery.courier.buildingError") : undefined}
-          autoComplete="off"
-          maxLength={32}
-          aria-invalid={buildingBad}
-        />
-        <Input
-          label={t("delivery.courier.flat")}
-          value={courier.flat}
-          onChange={(e) => onCourier({ ...courier, flat: e.target.value })}
-          autoComplete="off"
-          maxLength={32}
-        />
-      </div>
-      <p className="text-[13px] font-medium text-[var(--muted)]">{t("delivery.courier.hint")}</p>
     </div>
   );
 }

@@ -89,7 +89,7 @@ export function OrderBody({
         {giftCase.card && <motion.div variants={riseItem}>{giftCase.card}</motion.div>}
 
         {/* Payment due or just paid: the action / «Оплачено» goes first, receipts right under it. */}
-        {payFirst && (
+        {payFirst && payment && (
           <motion.div variants={riseItem} id={ORDER_PAY_ANCHOR} className="flex scroll-mt-4 flex-col gap-4">
             {payment}
             {receipts}

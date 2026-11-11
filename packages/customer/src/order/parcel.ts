@@ -25,13 +25,16 @@ export function parcelTone(stage: ShipmentStage): ParcelTone {
   }
 }
 
-/** Цвет тона — токены тем обоих приложений. */
+/**
+ * Цвет тона — токены обоих приложений с двойником `--<имя>-rgb`: подложка чипа строится `tint()` из @shop/ui/tint
+ * (inline `color-mix()` Safari < 16.2 выбрасывает, docs/BROWSER-SUPPORT.md).
+ */
 export const PARCEL_TONE_COLOR: Record<ParcelTone, string> = {
-  info: "var(--accent-hi)",
+  info: "var(--st-new)",
   ok: "var(--ok)",
-  warn: "var(--warn, var(--accent))",
+  warn: "var(--warn)",
   danger: "var(--danger)",
-  muted: "var(--muted)",
+  muted: "var(--faint)",
 };
 
 /** Ключ словаря текста стадии: `parcel.stage.<STAGE>`. */
