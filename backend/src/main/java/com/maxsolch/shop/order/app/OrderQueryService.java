@@ -182,6 +182,7 @@ public class OrderQueryService {
                 .trackingNumber(o.getTrackingNumber())
                 .shipmentStage(ctx.stageOf(id))
                 .trackingUrl(NpTracking.url(o.getTrackingNumber()))
+                .paymentOnDelivery(o.isPaymentOnDelivery())
                 .build();
     }
 

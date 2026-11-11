@@ -1,5 +1,6 @@
 package com.maxsolch.shop.order.app;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.lang.Nullable;
 
 import java.time.Instant;
@@ -8,6 +9,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 /**
  * The Nova Poshta parcel (waybill) of orders, as the order screens show it and as the order rules need it (no edits
@@ -35,43 +38,48 @@ public interface OrderShipmentView {
      * @param origin       API (made with the shop's key — can be edited, deleted, printed) | MANUAL (typed in)
      * @param trackingUrl  public tracking page of novaposhta.ua
      * @param printedAt    admin only: when its label was printed through us (NP then only deletes it)
-     * @param staleReasons admin only: why the waybill no longer matches the order (empty = it does) — such a
+     * @param staleReasons admin only (null for the customer): why the waybill no longer matches the order
+     *                     (empty = it does) — such a
      *                     waybill and its label must not be sent; «Перестворити ТТН»
      * @param handedOver   Nova Poshta already accepted the parcel: what is in the box and where it goes no longer
      *                     change here (order edits are refused)
      */
     record ShipmentBrief(
             String ttn,
-            String origin,
-            @Nullable String serviceType,
+            @JsonInclude(NON_NULL) @Nullable String origin,
+            @JsonInclude(NON_NULL) @Nullable String serviceType,
             String stage,
-            @Nullable String statusCode,
+            @JsonInclude(NON_NULL) @Nullable String statusCode,
             @Nullable String statusText,
-            @Nullable LocalDate scheduledDelivery,
+            @JsonInclude(NON_NULL) @Nullable LocalDate scheduledDelivery,
             @Nullable Instant arrivedAt,
-            @Nullable Instant receivedAt,
+            @JsonInclude(NON_NULL) @Nullable Instant receivedAt,
             @Nullable LocalDate storagePaidFrom,
-            @Nullable String returnTtn,
+            @JsonInclude(NON_NULL) @Nullable String returnTtn,
             long codMinor,
-            @Nullable Long deliveryCostMinor,
-            @Nullable Integer weightG,
-            @Nullable Integer lengthMm,
-            @Nullable Integer widthMm,
-            @Nullable Integer heightMm,
+            @JsonInclude(NON_NULL) @Nullable Long deliveryCostMinor,
+            @JsonInclude(NON_NULL) @Nullable Integer weightG,
+            @JsonInclude(NON_NULL) @Nullable Integer lengthMm,
+            @JsonInclude(NON_NULL) @Nullable Integer widthMm,
+            @JsonInclude(NON_NULL) @Nullable Integer heightMm,
             @Nullable String trackingUrl,
-            @Nullable Instant createdAt,
-            @Nullable Instant lastEventAt,
-            @Nullable Instant lastPolledAt,
-            @Nullable String pollError,
-            @Nullable Instant printedAt,
-            List<String> staleReasons,
+            @JsonInclude(NON_NULL) @Nullable Instant createdAt,
+            @JsonInclude(NON_NULL) @Nullable Instant lastEventAt,
+            @JsonInclude(NON_NULL) @Nullable Instant lastPolledAt,
+            @JsonInclude(NON_NULL) @Nullable String pollError,
+            @JsonInclude(NON_NULL) @Nullable Instant printedAt,
+            @JsonInclude(NON_NULL) @Nullable List<String> staleReasons,
             boolean handedOver) {
 
-        /** What the customer sees: the poll diagnostics, the print time and the staleness stay admin-only. */
+        /**
+         * What the customer sees: the waybill number, the stage and NP's status text, when it arrived, from when
+         * storage is paid, what is left to pay at pickup, the tracking link. Every {@code NON_NULL} field is admin-only: dropped
+         * (null, so the key is left out of the JSON).
+         */
         public ShipmentBrief forCustomer() {
-            return new ShipmentBrief(ttn, origin, serviceType, stage, statusCode, statusText, scheduledDelivery,
-                    arrivedAt, receivedAt, storagePaidFrom, returnTtn, codMinor, deliveryCostMinor, weightG, lengthMm,
-                    widthMm, heightMm, trackingUrl, createdAt, lastEventAt, null, null, null, List.of(), handedOver);
+            return new ShipmentBrief(ttn, null, null, stage, null, statusText, null, arrivedAt, null, storagePaidFrom,
+                    null, codMinor, null, null, null, null, null, trackingUrl, null, null, null, null, null, null,
+                    handedOver);
         }
     }
 }
