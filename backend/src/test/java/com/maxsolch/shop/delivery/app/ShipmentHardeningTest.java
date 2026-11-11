@@ -96,6 +96,14 @@ class ShipmentHardeningTest {
         verify(store, never()).deactivate(any());
         verify(shipments, never()).save(any());
         assertThat(ours.isActive()).isTrue();
+
+        // «Внимание» says to delete it in NP's cabinet, not «ТТН устарела — Перестворити».
+        ours.setSyncError(ShipmentManualSync.REPLACED + "Document is busy");
+        ours.setCreatedAt(NpFixtures.now().minus(Duration.ofHours(1)));
+        ParcelIssues.Reason r = ParcelIssues.reason(ours, NpFixtures.order(OrderStatus.APPROVED, false, TYPED),
+                NpFixtures.now(), new ParcelIssues.ParcelLimits(5, 2, 60));
+        assertThat(r.kind()).isEqualTo("SYNC_ERROR");
+        assertThat(r.text()).startsWith("Введена другая ТТН").doesNotContain("Перестворити");
     }
 
     @Test

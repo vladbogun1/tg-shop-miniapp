@@ -7,11 +7,14 @@ import com.maxsolch.shop.delivery.domain.ShipmentStage;
 import com.maxsolch.shop.order.app.ShipmentOrders;
 import com.maxsolch.shop.order.domain.OrderStatus;
 import com.maxsolch.shop.platform.error.DomainException;
+import com.maxsolch.shop.platform.jobs.DbLocks;
 import com.maxsolch.shop.platform.jobs.InMemoryLockProvider;
 import com.maxsolch.shop.settings.app.SettingsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Clock;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -72,7 +75,11 @@ class ShipmentLockTest {
     @Test
     void theActiveWaybillIsReadAgainInsideTheLock() {
         // The first request saved its waybill while the second one waited: the re-read inside the lock sees it.
-        when(preparation.prepare(eq(ORDER), any())).thenReturn(NpFixtures.prepared(NpFixtures.api(ShipmentStage.CREATED)));
+        when(preparation.prepare(eq(ORDER), any())).thenAnswer(inv -> {
+            assertThat(new DbLocks(table, Clock.systemUTC()).tryLock(ShipmentLocks.name(ORDER), Duration.ofSeconds(5)))
+                    .as("prepare() runs under the order's lock").isEmpty();
+            return NpFixtures.prepared(NpFixtures.api(ShipmentStage.CREATED));
+        });
 
         assertThatThrownBy(() -> creation.create(ORDER, Options.defaults()))
                 .satisfies(e -> assertThat(code(e)).isEqualTo(DeliveryError.NP_TTN_EXISTS));

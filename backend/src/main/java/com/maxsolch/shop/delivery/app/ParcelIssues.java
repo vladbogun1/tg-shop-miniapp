@@ -140,6 +140,10 @@ public class ParcelIssues {
 
     /** The order changed after the waybill and NP was not (or could not be) updated. */
     private static Reason drift(OrderShipment s, ShippingOrder o, ShipmentStage stage) {
+        if (deleteFailed(s)) {
+            // To delete in NP's cabinet, not to remake: shown as it is, not as «ТТН устарела».
+            return new Reason("SYNC_ERROR", s.getSyncError(), true);
+        }
         List<String> stale = ShipmentFacts.staleReasons(o, s);
         if (!stale.isEmpty()) {
             return new Reason("STALE", "ТТН устарела: " + String.join("; ", stale)
@@ -160,6 +164,13 @@ public class ParcelIssues {
             return new Reason("SYNC_ERROR", s.getSyncError(), true);
         }
         return null;
+    }
+
+    /** NP did not delete our waybill of a closed order or of one renumbered by hand. */
+    private static boolean deleteFailed(OrderShipment s) {
+        String e = s.getSyncError();
+        return e != null
+                && (e.startsWith(ShipmentManualSync.REPLACED) || e.startsWith(ShipmentCancellation.CLOSED_ORDER));
     }
 
     /** The stage alone (refused, returning, not found, waiting too long, not handed over). */
