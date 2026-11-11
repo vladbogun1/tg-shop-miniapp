@@ -31,5 +31,7 @@ public record OrderSummaryDto(
         /** The waybill, its parcel stage (see {@link OrderShipmentView.ShipmentBrief}) and the NP tracking page. */
         @Nullable String trackingNumber,
         @Nullable String shipmentStage,
-        @Nullable String trackingUrl) {
+        @Nullable String trackingUrl,
+        /** «Оплата при отриманні»: nothing is paid online, so the list must not say «не оплачено». */
+        boolean paymentOnDelivery) {
 }

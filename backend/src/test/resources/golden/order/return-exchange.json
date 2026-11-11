@@ -425,7 +425,8 @@
     "uncollectedMinor" : 0,
     "trackingNumber" : null,
     "shipmentStage" : null,
-    "trackingUrl" : null
+    "trackingUrl" : null,
+    "paymentOnDelivery" : false
   },
   "dispatch" : {
     "id" : "00000000-0000-4000-8000-000000000003",
