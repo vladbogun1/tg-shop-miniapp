@@ -1,5 +1,6 @@
 package com.maxsolch.shop.payment.app;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
@@ -15,8 +16,9 @@ public record AdminPaymentOptionDto(
         /** Nullable: when the admin UI omits it, the option is treated as active. */
         Boolean active,
         /** Read-only after create: null = online, ON_DELIVERY = «оплата при отриманні» (switched in the settings). */
-        String kind,
+        @JsonInclude(JsonInclude.Include.NON_NULL) String kind,
         /** CSV of WAREHOUSE,POSTOMAT,DOORS,PICKUP the option is offered for; null/blank = all. */
+        @JsonInclude(JsonInclude.Include.NON_NULL)
         @Size(max = 128, message = "не длиннее 128 символов") String deliveryMethods) {
 
     public AdminPaymentOptionDto(String id, String title, String description, boolean requiresPrepayment,

@@ -734,10 +734,8 @@
         },
         "required" : [
           "active",
-          "deliveryMethods",
           "description",
           "id",
-          "kind",
           "prepaymentMinor",
           "requiresPrepayment",
           "sortOrder",
@@ -12141,10 +12139,12 @@
             "type" : "string"
           },
           "kind" : {
+            "nullable" : true,
             "type" : "string"
           },
           "maxTotalMinor" : {
             "format" : "int64",
+            "nullable" : true,
             "type" : "integer"
           },
           "prepaymentMinor" : {
