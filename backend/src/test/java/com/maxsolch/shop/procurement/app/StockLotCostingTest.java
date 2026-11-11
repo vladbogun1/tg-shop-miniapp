@@ -30,7 +30,8 @@ class StockLotCostingTest {
     private final LotLedger ledger = mock(LotLedger.class);
     private final Products products = mock(Products.class);
     private final LineProducts queue = mock(LineProducts.class);
-    private final StockLotCosting costing = new StockLotCosting(mock(CostingService.class), products, queue, ledger);
+    private final StockLotCosting costing = new StockLotCosting(mock(CostingService.class), products, queue, ledger,
+            mock(LotSources.class));
 
     private static Product product(String title, int stock) {
         Product p = new Product();

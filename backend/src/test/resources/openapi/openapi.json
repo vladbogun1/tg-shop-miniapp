@@ -2965,6 +2965,63 @@
         ],
         "type" : "object"
       },
+      "BatchLineOptionDto" : {
+        "properties" : {
+          "arrivedAt" : {
+            "format" : "date-time",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "batchId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "batchItemId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "batchTitle" : {
+            "type" : "string"
+          },
+          "costUnitMinor" : {
+            "format" : "int64",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "onLots" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "preliminary" : {
+            "type" : "boolean"
+          },
+          "qtyArrived" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "variantId" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "variantName" : {
+            "nullable" : true,
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "arrivedAt",
+          "batchId",
+          "batchItemId",
+          "batchTitle",
+          "costUnitMinor",
+          "onLots",
+          "preliminary",
+          "qtyArrived",
+          "variantId",
+          "variantName"
+        ],
+        "type" : "object"
+      },
       "BatchMoneyDto" : {
         "properties" : {
           "allocation" : {
@@ -9025,9 +9082,32 @@
         ],
         "type" : "object"
       },
+      "LotCostRequest" : {
+        "properties" : {
+          "extraMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "purchaseMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "LotDto" : {
         "properties" : {
+          "arrivedAt" : {
+            "format" : "date-time",
+            "nullable" : true,
+            "type" : "string"
+          },
           "batchId" : {
+            "format" : "int64",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "batchItemId" : {
             "format" : "int64",
             "nullable" : true,
             "type" : "integer"
@@ -9039,6 +9119,19 @@
           "createdAt" : {
             "format" : "date-time",
             "type" : "string"
+          },
+          "currency" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "extraUnitMinor" : {
+            "format" : "int64",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "fxRate" : {
+            "nullable" : true,
+            "type" : "number"
           },
           "id" : {
             "format" : "int64",
@@ -9055,6 +9148,11 @@
           "preliminary" : {
             "type" : "boolean"
           },
+          "purchaseUnitMinor" : {
+            "format" : "int64",
+            "nullable" : true,
+            "type" : "integer"
+          },
           "qtyIn" : {
             "format" : "int32",
             "type" : "integer"
@@ -9064,6 +9162,11 @@
             "type" : "integer"
           },
           "unitCostMinor" : {
+            "format" : "int64",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "unitPriceFx" : {
             "format" : "int64",
             "nullable" : true,
             "type" : "integer"
@@ -9078,18 +9181,59 @@
           }
         },
         "required" : [
+          "arrivedAt",
           "batchId",
+          "batchItemId",
           "batchTitle",
           "createdAt",
+          "currency",
+          "extraUnitMinor",
+          "fxRate",
           "id",
           "kind",
           "preliminary",
+          "purchaseUnitMinor",
           "qtyIn",
           "qtyLeft",
           "unitCostMinor",
+          "unitPriceFx",
           "variantId",
           "variantName"
         ],
+        "type" : "object"
+      },
+      "LotSourceRequest" : {
+        "properties" : {
+          "batchItemId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "extraMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "purchaseMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "qty" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "source" : {
+            "enum" : [
+              "BATCH",
+              "PRICE"
+            ],
+            "type" : "string"
+          },
+          "variantId" : {
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "LowMarginBrandDto" : {
@@ -12209,6 +12353,12 @@
       },
       "ProductCostDto" : {
         "properties" : {
+          "batchLines" : {
+            "items" : {
+              "$ref" : "#/components/schemas/BatchLineOptionDto"
+            },
+            "type" : "array"
+          },
           "currentCostMinor" : {
             "format" : "int64",
             "nullable" : true,
@@ -12256,6 +12406,7 @@
           }
         },
         "required" : [
+          "batchLines",
           "currentCostMinor",
           "currentPreliminary",
           "lots",
@@ -21052,6 +21203,53 @@
         ]
       }
     },
+    "/api/admin/costing/lots/{lotId}/cost" : {
+      "put" : {
+        "operationId" : "AdminLotSourcesController_setLotCost",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "lotId",
+            "required" : true,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LotCostRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProductCostDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Purchase + delivery per unit of an old-stock / hand-added lot; purchase null clears it",
+        "tags" : [
+          "Admin Costing"
+        ]
+      }
+    },
     "/api/admin/costing/nbu-rate" : {
       "get" : {
         "operationId" : "AdminCostingController_nbuRate",
@@ -21230,6 +21428,52 @@
           }
         ],
         "summary" : "Product lots (FIFO), the cost that sells next and the margin at the current price",
+        "tags" : [
+          "Admin Costing"
+        ]
+      }
+    },
+    "/api/admin/costing/products/{productId}/lot-source" : {
+      "post" : {
+        "operationId" : "AdminLotSourcesController_assign",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "productId",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LotSourceRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProductCostDto"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Units without a cost came from an arrived batch line, or get a typed purchase + delivery",
         "tags" : [
           "Admin Costing"
         ]

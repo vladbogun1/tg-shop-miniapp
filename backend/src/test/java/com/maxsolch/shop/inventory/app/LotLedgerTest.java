@@ -146,4 +146,46 @@ class LotLedgerTest {
         assertThat(l.getQtyLeft()).isEqualTo(6);
         assertThat(l.getId()).isNotNull();
     }
+
+    @Test
+    void reattach_movesUnitsToTheBatchLinesLot_shelfTotalStays() {
+        StockLot manual = lot(5, "MANUAL");
+        StockLot batch = lot(2, "BATCH");
+        batch.setBatchItemId(77L);
+
+        ledger.reattach(manual, 3, 77L);
+
+        assertThat(manual.getQtyLeft()).isEqualTo(2);
+        assertThat(manual.getQtyIn()).isEqualTo(2);
+        assertThat(batch.getQtyLeft()).isEqualTo(5);
+        assertThat(batch.getQtyIn()).isEqualTo(5);
+        assertThat(store.stream().mapToInt(StockLot::getQtyLeft).sum()).isEqualTo(7);
+    }
+
+    @Test
+    void reattach_toALineWithoutALot_makesOne() {
+        StockLot manual = lot(4, "MANUAL");
+
+        StockLot made = ledger.reattach(manual, 4, 9L);
+
+        assertThat(made.getKind()).isEqualTo("BATCH");
+        assertThat(made.getBatchItemId()).isEqualTo(9L);
+        assertThat(made.getQtyLeft()).isEqualTo(4);
+        assertThat(manual.getQtyLeft()).isZero();
+    }
+
+    @Test
+    void split_keepsKindAndKey_andRefusesMoreThanOnTheShelf() {
+        StockLot old = lot(6, "OPENING");
+        old.setQtyIn(9);                                   // 3 sold before
+
+        StockLot part = ledger.split(old, 2);
+
+        assertThat(part.getKind()).isEqualTo("OPENING");
+        assertThat(part.getQtyIn()).isEqualTo(2);
+        assertThat(old.getQtyLeft()).isEqualTo(4);
+        assertThat(old.getQtyIn()).isEqualTo(7);           // the 3 sold stay on it
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> ledger.split(old, 5))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }

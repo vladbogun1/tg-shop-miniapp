@@ -136,6 +136,8 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   COSTING_EXPENSE_FILE_ADD: "Файл расхода добавлен",
   COSTING_EXPENSE_FILE_DELETE: "Файл расхода удалён",
   COSTING_OPENING: "Начальная себестоимость",
+  COSTING_LOT_COST: "Закупка партии вручную",
+  COSTING_LOT_SOURCE: "Откуда штуки на складе",
   COSTING_RECONCILE: "Сверка себестоимости",
   PREORDER_SUPPLIER_CREATE: "Поставщик создан",
   PREORDER_BATCH_CREATE: "Поставка создана",

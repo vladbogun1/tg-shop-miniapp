@@ -58,6 +58,10 @@ public class StockLot {
     @Column(name = "unit_cost_minor")
     private Long unitCostMinor;
 
+    /** OPENING / MANUAL: the delivery part inside {@link #unitCostMinor} (V97), for «закупка + доставка»; null = not split. */
+    @Column(name = "unit_extra_minor")
+    private Long unitExtraMinor;
+
     /** Set by Hibernate on insert (the domain does not read the clock). */
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

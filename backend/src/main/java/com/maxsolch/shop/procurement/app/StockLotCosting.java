@@ -16,8 +16,10 @@ import com.maxsolch.shop.procurement.app.CostingDtos.ProductCostDto;
 import com.maxsolch.shop.procurement.app.CostingDtos.ReconcileDto;
 import com.maxsolch.shop.procurement.app.CostingService.CostBook;
 import com.maxsolch.shop.procurement.app.CostingService.UnitCost;
+import com.maxsolch.shop.procurement.domain.BatchCost;
 import com.maxsolch.shop.procurement.domain.Lines;
 import com.maxsolch.shop.procurement.domain.PreorderBatch;
+import com.maxsolch.shop.procurement.domain.PreorderBatchItem;
 import com.maxsolch.shop.procurement.domain.ProcurementError;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,12 +44,15 @@ public class StockLotCosting {
     private final Products products;
     private final LineProducts queue;
     private final LotLedger ledger;
+    private final LotSources sources;
 
-    public StockLotCosting(CostingService costing, Products products, LineProducts queue, LotLedger ledger) {
+    public StockLotCosting(CostingService costing, Products products, LineProducts queue, LotLedger ledger,
+                           LotSources sources) {
         this.costing = costing;
         this.products = products;
         this.queue = queue;
         this.ledger = ledger;
+        this.sources = sources;
     }
 
     @Transactional(readOnly = true)
@@ -62,13 +67,7 @@ public class StockLotCosting {
             if (l.getQtyLeft() <= 0 && l.getQtyIn() <= 0) {
                 continue;
             }
-            ProductVariant v = p.variant(l.getVariantId());
-            UnitCost c = book.of(l);
-            PreorderBatch b = book.batchOf(l);
-            out.add(new LotDto(l.getId(), l.getVariantId() == null ? null : UuidUtil.toString(l.getVariantId()),
-                    v == null ? null : v.getName(), l.getKind(), b == null ? null : b.getId(),
-                    b == null ? null : b.getTitle(), l.getQtyIn(), l.getQtyLeft(), c.minor(), c.preliminary(),
-                    l.getCreatedAt()));
+            out.add(toDto(p, l, book));
             if (next == null && l.getQtyLeft() > 0) {
                 next = l;
             }
@@ -79,7 +78,32 @@ public class StockLotCosting {
         int onLots = all.stream().mapToInt(StockLot::getQtyLeft).sum();
         return new ProductCostDto(UuidUtil.toString(p.getId()), price, cur.minor(),
                 next == null ? null : cur.preliminary(), margin, margin == null ? null : pct(margin, price),
-                margin == null || cur.minor() <= 0 ? null : pct(margin, cur.minor()), p.getStock(), onLots, out);
+                margin == null || cur.minor() <= 0 ? null : pct(margin, cur.minor()), p.getStock(), onLots, out,
+                sources.batchLines(p, all));
+    }
+
+    /** A lot with its cost split into purchase + delivery: from the batch line, or as the admin typed it. */
+    private static LotDto toDto(Product p, StockLot l, CostBook book) {
+        ProductVariant v = p.variant(l.getVariantId());
+        UnitCost c = book.of(l);
+        PreorderBatch b = book.batchOf(l);
+        PreorderBatchItem item = book.itemOf(l);
+        Long purchase;
+        Long extra;
+        if (l.batch()) {
+            BatchCost.LineCost lc = book.lineCostOf(l);
+            purchase = lc == null ? null : lc.purchaseUnitMinor();
+            extra = lc == null ? null : lc.extraUnitMinor();
+        } else {
+            extra = c.minor() == null ? null : l.getUnitExtraMinor();
+            purchase = c.minor() == null ? null : c.minor() - (extra == null ? 0 : extra);
+        }
+        return new LotDto(l.getId(), l.getVariantId() == null ? null : UuidUtil.toString(l.getVariantId()),
+                v == null ? null : v.getName(), l.getKind(), b == null ? null : b.getId(),
+                b == null ? null : b.getTitle(), l.getQtyIn(), l.getQtyLeft(), c.minor(), c.preliminary(),
+                l.getCreatedAt(), l.getBatchItemId(), purchase, extra, b == null ? null : b.getCurrency(),
+                item == null ? null : item.getUnitPriceFx(), b == null ? null : b.getFxRate(),
+                b == null ? null : b.getArrivedAt());
     }
 
     /** Units on the shelf without a known cost (OPENING / MANUAL lots), one row per product (variant). */
@@ -133,7 +157,10 @@ public class StockLotCosting {
         if (key.isEmpty()) {
             throw new DomainException.NotFound(ProcurementError.NO_OLD_STOCK);
         }
-        key.forEach(l -> l.setUnitCostMinor(req.unitCostMinor()));
+        key.forEach(l -> {
+            l.setUnitCostMinor(req.unitCostMinor());
+            l.setUnitExtraMinor(null);
+        });
         ledger.saveLots(key);
     }
 

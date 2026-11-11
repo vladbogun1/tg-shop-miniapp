@@ -71,15 +71,45 @@ public final class CostingDtos {
 
     // ----- product (§5А.3)
 
+    /**
+     * One lot of a product. {@code purchaseUnitMinor + extraUnitMinor = unitCostMinor} when both are known: for a
+     * BATCH lot from the batch (purchase {@code unitPriceFx} × {@code fxRate} + its share of the expenses), for an
+     * OPENING / MANUAL lot as the admin typed them ({@code extraUnitMinor} null = the cost was typed as one number).
+     */
     public record LotDto(long id, @Nullable String variantId, @Nullable String variantName, @Schema(allowableValues = {"OPENING", "BATCH", "MANUAL"}) String kind, @Nullable Long batchId,
                          @Nullable String batchTitle, int qtyIn, int qtyLeft, @Nullable Long unitCostMinor, boolean preliminary,
-                         Instant createdAt) {
+                         Instant createdAt, @Nullable Long batchItemId, @Nullable Long purchaseUnitMinor,
+                         @Nullable Long extraUnitMinor, @Nullable String currency, @Nullable Long unitPriceFx,
+                         @Nullable BigDecimal fxRate, @Nullable Instant arrivedAt) {
     }
 
-    /** {@code current*} = the lot that sells next (the oldest with units left, FIFO). */
+    /**
+     * {@code current*} = the lot that sells next (the oldest with units left, FIFO); {@code batchLines} = lines of
+     * arrived batches with this product, which units without a cost can be attached to.
+     */
     public record ProductCostDto(String productId, long priceMinor, @Nullable Long currentCostMinor,
                                  @Nullable Boolean currentPreliminary, @Nullable Long marginMinor, @Nullable Double marginPct,
-                                 @Nullable Double markupPct, int stock, int onLots, List<LotDto> lots) {
+                                 @Nullable Double markupPct, int stock, int onLots, List<LotDto> lots,
+                                 List<BatchLineOptionDto> batchLines) {
+    }
+
+    /** A line of an arrived batch: {@code onLots} units of it were put on the shelf (lots), {@code qtyArrived} came. */
+    public record BatchLineOptionDto(long batchItemId, long batchId, String batchTitle, @Nullable String variantId,
+                                     @Nullable String variantName, int qtyArrived, int onLots,
+                                     @Nullable Long costUnitMinor, boolean preliminary, @Nullable Instant arrivedAt) {
+    }
+
+    /** The cost of an OPENING / MANUAL lot per unit, as purchase + delivery; {@code purchaseMinor} null clears it. */
+    public record LotCostRequest(Long purchaseMinor, Long extraMinor) {
+    }
+
+    /**
+     * Where {@code qty} units without a cost came from: {@code BATCH} = a line of an arrived batch (its cost),
+     * {@code PRICE} = old stock / anything else with a typed purchase + delivery ({@code note} goes to the journal).
+     */
+    public record LotSourceRequest(String variantId, Integer qty,
+                                   @Schema(allowableValues = {"BATCH", "PRICE"}) String source, Long batchItemId,
+                                   Long purchaseMinor, Long extraMinor, String note) {
     }
 
     public record OpeningRowDto(String productId, @Nullable String variantId, String title, @Nullable String variantName,

@@ -15,6 +15,8 @@ public interface PreorderBatchItemRepository extends JpaRepository<PreorderBatch
 
     List<PreorderBatchItem> findByBatchIdIn(Collection<Long> batchIds);
 
+    List<PreorderBatchItem> findByProductIdOrderByIdAsc(byte[] productId);
+
     /**
      * Lines of batches customers can see: still on the way and with the pre-order open. Each row is
      * {@code [PreorderBatchItem, PreorderBatch]}.

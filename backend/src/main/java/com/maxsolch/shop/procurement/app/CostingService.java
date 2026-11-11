@@ -77,6 +77,7 @@ public class CostingService {
         private final Map<Long, UnitCost> byBatchItem = new HashMap<>();
         private final Map<Long, PreorderBatchItem> batchItems = new HashMap<>();
         private final Map<Long, PreorderBatch> batchById = new HashMap<>();
+        private final Map<Long, BatchCost.LineCost> lineCosts = new HashMap<>();
 
         public UnitCost of(StockLot lot) {
             if (lot == null) {
@@ -88,17 +89,37 @@ public class CostingService {
             return new UnitCost(lot.getUnitCostMinor(), false);
         }
 
+        /** The unit cost of a batch line, as a lot of it would sell. */
+        public UnitCost ofItem(long batchItemId) {
+            return byBatchItem.getOrDefault(batchItemId, UnitCost.UNKNOWN);
+        }
+
         public PreorderBatch batchOf(StockLot lot) {
-            PreorderBatchItem i = lot == null || lot.getBatchItemId() == null ? null : batchItems.get(lot.getBatchItemId());
+            PreorderBatchItem i = itemOf(lot);
             return i == null ? null : batchById.get(i.getBatchId());
+        }
+
+        /** The batch line a BATCH lot came from (purchase price in the batch currency); null otherwise. */
+        public PreorderBatchItem itemOf(StockLot lot) {
+            return lot == null || lot.getBatchItemId() == null ? null : batchItems.get(lot.getBatchItemId());
+        }
+
+        /** Purchase and expenses per unit of a BATCH lot's line; null otherwise. */
+        public BatchCost.LineCost lineCostOf(StockLot lot) {
+            return lot == null || lot.getBatchItemId() == null ? null : lineCosts.get(lot.getBatchItemId());
         }
     }
 
     @Transactional(readOnly = true)
     public CostBook book(Collection<StockLot> forLots) {
+        return bookOfItems(forLots.stream().map(StockLot::getBatchItemId).filter(Objects::nonNull)
+                .collect(Collectors.toSet()));
+    }
+
+    /** Unit costs of batch lines (and of every other line of their batches), whether or not they are on the shelf. */
+    @Transactional(readOnly = true)
+    public CostBook bookOfItems(Collection<Long> itemIds) {
         CostBook book = new CostBook();
-        Set<Long> itemIds = forLots.stream().map(StockLot::getBatchItemId).filter(Objects::nonNull)
-                .collect(Collectors.toSet());
         if (itemIds.isEmpty()) {
             return book;
         }
@@ -112,6 +133,9 @@ public class CostingService {
             for (PreorderBatchItem i : lines) {
                 book.batchItems.put(i.getId(), i);
                 BatchCost.LineCost c = r.byLine().get(i.getId());
+                if (c != null) {
+                    book.lineCosts.put(i.getId(), c);
+                }
                 book.byBatchItem.put(i.getId(), new UnitCost(c == null ? null : c.costUnitMinor(), preliminary));
             }
         }

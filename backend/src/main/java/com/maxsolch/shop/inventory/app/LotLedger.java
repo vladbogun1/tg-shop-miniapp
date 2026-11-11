@@ -96,6 +96,44 @@ public class LotLedger {
     }
 
     /**
+     * {@code qty} units on the shelf of {@code from} turn out to have come with a batch line: they move to that
+     * line's lot (made when the line has none yet). The shelf total does not change.
+     */
+    public StockLot reattach(StockLot from, int qty, long batchItemId) {
+        shrink(from, qty);
+        StockLot to = lots.findKey(from.getProductId(), from.getVariantId()).stream()
+                .filter(l -> l.getBatchItemId() != null && l.getBatchItemId() == batchItemId)
+                .findFirst()
+                .orElseGet(() -> {
+                    StockLot l = newLot(from.getProductId(), from.getVariantId(), StockLot.Kind.BATCH, 0);
+                    l.setBatchItemId(batchItemId);
+                    return l;
+                });
+        to.setQtyIn(to.getQtyIn() + qty);
+        to.setQtyLeft(to.getQtyLeft() + qty);
+        return lots.save(to);
+    }
+
+    /**
+     * {@code qty} units on the shelf of {@code from} become a lot of their own (same kind, behind it in FIFO), so
+     * they can get a cost of their own. The shelf total does not change.
+     */
+    public StockLot split(StockLot from, int qty) {
+        shrink(from, qty);
+        StockLot part = newLot(from.getProductId(), from.getVariantId(), StockLot.Kind.valueOf(from.getKind()), qty);
+        return lots.save(part);
+    }
+
+    private void shrink(StockLot from, int qty) {
+        if (qty <= 0 || qty > from.getQtyLeft()) {
+            throw new IllegalArgumentException("lot " + from.getId() + " has " + from.getQtyLeft() + " units, not " + qty);
+        }
+        from.setQtyLeft(from.getQtyLeft() - qty);
+        from.setQtyIn(from.getQtyIn() - qty);
+        lots.save(from);
+    }
+
+    /**
      * After the admin edits a product: every lot key matches the stock again — a raise becomes a MANUAL lot
      * (cost unknown), a cut leaves the oldest lots, lots of removed variants are emptied.
      */
