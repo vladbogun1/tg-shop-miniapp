@@ -5872,10 +5872,10 @@ export interface components {
         };
         AdminPaymentOptionDto: {
             active: boolean;
-            deliveryMethods: string;
+            deliveryMethods?: string;
             description: string;
             id: string;
-            kind: string;
+            kind?: string;
             /** Format: int64 */
             prepaymentMinor: number;
             requiresPrepayment: boolean;
@@ -9283,9 +9283,9 @@ export interface components {
             deliveryMethods: string[];
             description: string;
             id: string;
-            kind: string;
+            kind: string | null;
             /** Format: int64 */
-            maxTotalMinor: number;
+            maxTotalMinor: number | null;
             /** Format: int64 */
             prepaymentMinor: number;
             requiresPrepayment: boolean;

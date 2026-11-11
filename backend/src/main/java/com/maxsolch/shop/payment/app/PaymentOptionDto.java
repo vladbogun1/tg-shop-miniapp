@@ -1,5 +1,7 @@
 package com.maxsolch.shop.payment.app;
 
+import org.springframework.lang.Nullable;
+
 import java.util.List;
 
 public record PaymentOptionDto(
@@ -9,11 +11,11 @@ public record PaymentOptionDto(
         boolean requiresPrepayment,
         long prepaymentMinor,
         /** Null = paid online; ON_DELIVERY = all on delivery at Nova Poshta (V98). */
-        String kind,
+        @Nullable String kind,
         /** Deliveries it is offered for (WAREHOUSE / POSTOMAT / DOORS / PICKUP); empty = all. */
         List<String> deliveryMethods,
         /** Highest order total the option accepts, minor units; null = no limit. */
-        Long maxTotalMinor) {
+        @Nullable Long maxTotalMinor) {
 
     /** An online option offered for every delivery. */
     public PaymentOptionDto(String id, String title, String description, boolean requiresPrepayment,
