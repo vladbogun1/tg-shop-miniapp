@@ -60,6 +60,17 @@ public interface OrderRepository extends JpaRepository<Order, byte[]> {
             + "and o.paymentDueAt is not null and o.paymentDueAt < :now")
     List<byte[]> findOverdueUnpaidIds(@Param("now") java.time.Instant now);
 
+    /** The buyer's «при отриманні» orders still open and unpaid (V98: one at a time by default). */
+    @Query("select count(o) from Order o where o.userId = :userId and o.paymentOnDelivery = true and o.paid = false "
+            + "and o.status in (com.maxsolch.shop.order.domain.OrderStatus.NEW, "
+            + "com.maxsolch.shop.order.domain.OrderStatus.APPROVED, com.maxsolch.shop.order.domain.OrderStatus.SHIPPED)")
+    long countOpenOnDelivery(@Param("userId") long userId);
+
+    /** NEW «при отриманні» orders placed before {@code before} that nobody approved (auto-cancel candidates). */
+    @Query("select o.id from Order o where o.status = com.maxsolch.shop.order.domain.OrderStatus.NEW "
+            + "and o.paymentOnDelivery = true and o.paid = false and o.receivedMinor = 0 and o.createdAt < :before")
+    List<byte[]> findStaleOnDeliveryIds(@Param("before") java.time.Instant before);
+
     /**
      * Top-up candidates (V80): paid online orders, still NEW / APPROVED, that cost more than what arrived and have
      * not changed since {@code quietSince} (a series of «+» is over). Older than {@code since} — not any more.

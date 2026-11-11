@@ -12,6 +12,8 @@ public enum RejectReason {
     BY_REQUEST("Отменён по запросу покупателя"),
     /** The payment window ran out: "Не оплачен в течение N ч". */
     UNPAID("Не оплачен в течение "),
+    /** A «при отриманні» order nobody approved in time (V98): "Не одобрен в течение N ч". */
+    NOT_APPROVED("Не одобрен в течение "),
     /** Merged into another order: "Объединён с заказом #1a2b3c4d". */
     MERGED("Объединён с заказом #");
 
@@ -33,6 +35,10 @@ public enum RejectReason {
 
     public static String unpaid(int hours) {
         return UNPAID.prefix + hours + " ч";
+    }
+
+    public static String notApproved(int hours) {
+        return NOT_APPROVED.prefix + hours + " ч";
     }
 
     public static String merged(String targetShortId) {

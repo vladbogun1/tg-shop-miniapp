@@ -33,6 +33,10 @@ public class CustomerRejectReason {
 
     private static final Pattern UNPAID = Pattern.compile("^" + Pattern.quote(RejectReason.UNPAID.prefix()) + "(\\d+) ч$");
 
+    /** Written by {@code OrderLifecycle.expireOnDeliveryHold}: "Не одобрен в течение 48 ч". */
+    private static final Pattern NOT_APPROVED = Pattern.compile(
+            "^" + Pattern.quote(RejectReason.NOT_APPROVED.prefix()) + "(\\d+) ч$");
+
     /**
      * The cancellation presets of the Mini App and the site (their {@code CANCEL_REASONS}), as sent
      * to the server → the bundle key with the customer's wording.
@@ -68,6 +72,10 @@ public class CustomerRejectReason {
         Matcher unpaid = UNPAID.matcher(s);
         if (unpaid.matches()) {
             return messages.get(locale, "api.reject.unpaid", Integer.parseInt(unpaid.group(1)));
+        }
+        Matcher hold = NOT_APPROVED.matcher(s);
+        if (hold.matches()) {
+            return messages.get(locale, "api.reject.onDeliveryHold", Integer.parseInt(hold.group(1)));
         }
         String byCustomer = RejectReason.BY_CUSTOMER.prefix();
         String byRequest = RejectReason.BY_REQUEST.prefix();

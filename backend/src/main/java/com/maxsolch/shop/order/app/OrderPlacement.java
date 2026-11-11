@@ -134,6 +134,6 @@ public class OrderPlacement {
                 draft.paymentOptionId(),
                 // A site token (cookie, chn=web) marks the order as placed on the website.
                 web ? OrderSource.WEB : OrderSource.MINIAPP,
-                draft.giftChoice()));
+                draft.giftChoice(), draft.np()));
     }
 }
