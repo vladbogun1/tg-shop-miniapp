@@ -42,7 +42,8 @@ export function Stepper({ step, onJump }: { step: number; onJump: (i: number) =>
               key={s.key}
               type="button"
               onClick={() => jump(i)}
-              aria-label={`Шаг ${i + 1}: ${s.label} — ${s.hint}`}
+              // Подсказка — описанием (title), не в имени: иначе «Описание» в подсказке шага путает поиск поля по подписи.
+              aria-label={`Шаг ${i + 1}: ${s.label}`}
               aria-current={st === "cur" ? "step" : undefined}
               title={`${s.label} — ${s.hint}`}
               className="focusable group flex min-w-0 flex-col gap-1.5 rounded-[var(--r-sm)] pt-1.5 pointer-coarse:min-h-10 pointer-coarse:justify-center pointer-coarse:pt-0"

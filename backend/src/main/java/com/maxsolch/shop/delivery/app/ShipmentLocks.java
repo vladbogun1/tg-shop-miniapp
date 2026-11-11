@@ -7,6 +7,7 @@ import com.maxsolch.shop.platform.util.UuidUtil;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
@@ -34,6 +35,20 @@ class ShipmentLocks {
         try (DbLocks.Held ignored = locks.tryLock(name(orderId), AT_MOST)
                 .orElseThrow(() -> new DomainException.BadRequest(DeliveryError.NP_TTN_BUSY))) {
             return action.get();
+        }
+    }
+
+    /**
+     * Background work (clean-up, a typed-in number): empty when someone holds the order's lock — the caller leaves
+     * it for the next {@link ShipmentJobs} tick instead of reporting a failure. The lock is not re-entrant.
+     */
+    <T> Optional<T> tryWithOrder(byte[] orderId, Supplier<T> action) {
+        Optional<DbLocks.Held> held = locks.tryLock(name(orderId), AT_MOST);
+        if (held.isEmpty()) {
+            return Optional.empty();
+        }
+        try (DbLocks.Held ignored = held.get()) {
+            return Optional.ofNullable(action.get());
         }
     }
 }
