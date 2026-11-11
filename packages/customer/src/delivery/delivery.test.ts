@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildDeliveryFields, deliveryOk, draftFromOrder, findWarehouseByRef, type DeliveryDraft } from "./draft";
 import { estimateAmounts, estimateKey, estimateRequestOf } from "./estimate";
 import { courierOk, EMPTY_COURIER, recipientCustomerName, recipientLine, recipientOk, recipientOfOrder, splitFullName } from "./recipient";
-import { availabilityOf, availableTabs, tabOfOrder, warehouseFitsTab } from "./tabs";
+import { availabilityOf, availableTabs, keepsWarehouseOnTab, tabForWarehouse, tabOfOrder, warehouseFitsTab } from "./tabs";
 
 const branch = { ref: "w1", description: "Відділення №1", cityRef: "c1", cityName: "Харків", category: "BRANCH" } as NpWarehouse;
 const locker = { ref: "p1", description: "Поштомат №5", cityRef: "c1", cityName: "Харків", category: "POSTOMAT" } as NpWarehouse;
@@ -29,6 +29,15 @@ describe("вкладки", () => {
     expect(warehouseFitsTab(locker, "WAREHOUSE")).toBe(false);
     expect(warehouseFitsTab(branch, "WAREHOUSE")).toBe(true);
     expect(warehouseFitsTab(branch, "DOORS")).toBe(false);
+  });
+
+  it("точка переживает «Кур'єр»/«Самовивіз», сбрасывается только между відділенням и поштоматом", () => {
+    expect(keepsWarehouseOnTab(branch, "DOORS")).toBe(true);
+    expect(keepsWarehouseOnTab(branch, "PICKUP")).toBe(true);
+    expect(keepsWarehouseOnTab(branch, "WAREHOUSE")).toBe(true);
+    expect(keepsWarehouseOnTab(branch, "POSTOMAT")).toBe(false);
+    expect(keepsWarehouseOnTab(locker, "WAREHOUSE")).toBe(false);
+    expect(tabForWarehouse(locker)).toBe("POSTOMAT");
   });
 
   it("вкладка прошлого заказа; старые заказы без службы — відділення", () => {

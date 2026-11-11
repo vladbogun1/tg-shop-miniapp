@@ -12,7 +12,7 @@ import type { OrderNpFields } from "./contract";
 import { draftFromOrder, findWarehouseByRef, type DeliveryDraft } from "./draft";
 import { useNpSelection } from "./np-selection";
 import { EMPTY_COURIER, EMPTY_RECIPIENT, recipientLine, type CourierAddress, type Recipient } from "./recipient";
-import { DELIVERY_TABS, tabForWarehouse, warehouseFitsTab, type DeliveryTab } from "./tabs";
+import { DELIVERY_TABS, keepsWarehouseOnTab, tabForWarehouse, type DeliveryTab } from "./tabs";
 
 /** Прошлый заказ для подстановки (поля master + checkout v2). */
 export type LastOrderForPrefill = OrderNpFields & {
@@ -33,11 +33,11 @@ export function useDeliveryDraft(api: Pick<CheckoutApi, "npCities" | "npWarehous
   const tab = tabs.includes(rawTab) ? rawTab : (tabs[0] ?? "WAREHOUSE");
   const draft: DeliveryDraft = { tab, city: np.city, warehouse: np.warehouse, courier, recipient };
 
-  /** Вкладка выбрана покупателем; точка другого типа сбрасывается (город остаётся). */
+  /** Вкладка выбрана покупателем; точка другого типа (відділення ↔ поштомат) сбрасывается, город остаётся. */
   function chooseTab(next: DeliveryTab) {
     np.touched.current = true;
     setRawTab(next);
-    if (np.warehouse && !warehouseFitsTab(np.warehouse, next)) np.chooseWarehouse(null);
+    if (np.warehouse && !keepsWarehouseOnTab(np.warehouse, next)) np.chooseWarehouse(null);
   }
 
   /** Точка выбрана в поле или на карте: поштомат на «Відділенні» переводит на «Поштомат» и наоборот. */
@@ -67,6 +67,8 @@ export function useDeliveryDraft(api: Pick<CheckoutApi, "npCities" | "npWarehous
       .then((list) => {
         const w = findWarehouseByRef(list, o.npWarehouseRef, o.npWarehouseName);
         if (!w || np.touched.current) return;
+        // Заказы до checkout v2 без службы: вкладку определяет найденная точка (поштомат → «Поштомат»).
+        setRawTab(tabForWarehouse(w));
         np.applyLast({ city, warehouse: { ...w, cityRef: w.cityRef ?? city.ref, cityName: w.cityName ?? city.name } }, focusMap);
       })
       .catch(() => {

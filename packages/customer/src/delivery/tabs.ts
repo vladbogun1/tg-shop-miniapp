@@ -51,6 +51,14 @@ export function warehouseFitsTab(w: Pick<NpWarehouse, "category">, tab: Delivery
   return false;
 }
 
+/**
+ * Точка остаётся при смене вкладки: на «Кур'єр» и «Самовивіз» она просто не используется (вернулся — выбор цел);
+ * сбрасывается только при переходе между «Відділення» и «Поштомат», если не подходит новой вкладке.
+ */
+export function keepsWarehouseOnTab(w: Pick<NpWarehouse, "category">, next: DeliveryTab): boolean {
+  return !(next === "WAREHOUSE" || next === "POSTOMAT") || warehouseFitsTab(w, next);
+}
+
 /** Вкладка прошлого заказа (заказы до checkout v2 без службы = відділення). */
 export function tabOfOrder(o: { deliveryMethod?: DeliveryMethod | null; npServiceType?: string | null }): DeliveryTab {
   if (o.deliveryMethod === "PICKUP") return "PICKUP";

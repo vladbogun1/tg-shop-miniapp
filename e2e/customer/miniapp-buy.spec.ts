@@ -68,7 +68,7 @@ test("каталог → товар → кошик з промокодом → �
 
     await expect(page.getByText("Крок 4/4")).toBeVisible();
     await expect(page.getByText("Знижка · E2ESMOKE10")).toBeVisible();
-    await expect(page.getByText(/Київ, Відділення №1 (тест): вул. Вигадана, 1/)).toBeVisible();
+    await expect(page.getByText(/Київ, Відділення №1 \(тест\): вул\. Вигадана, 1/)).toBeVisible();
     await page.getByRole("button", { name: "Оформити замовлення" }).click();
   });
 
