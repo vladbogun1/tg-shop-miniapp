@@ -175,7 +175,6 @@ export const ru = {
   "pay.openFallback": "Оплата не открылась? Открыть в Telegram",
 
   // ── карта отделений Новой Почты ───────────────────────────────────────────
-  "np.confirm": "Выбрать это отделение",
 
   // ── оформление ────────────────────────────────────────────────────────────
   "checkout.step.contacts": "Контакты",
@@ -199,8 +198,6 @@ export const ru = {
   "checkout.delivery.pickupText": "Заберите заказ из точки магазина — мы свяжемся с вами насчёт адреса и времени.",
   "checkout.delivery.mapLoading": "Загрузка карты…",
   "checkout.delivery.comment": "Комментарий к заказу (необязательно)",
-  "checkout.np.modeText": "Ввести вручную",
-  "checkout.np.modeMap": "Выбрать на карте",
   "checkout.np.city": "Город",
   "checkout.np.cityPlaceholder": "Начните вводить название",
   "checkout.np.cityNone": "Город не найден",

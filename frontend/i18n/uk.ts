@@ -163,7 +163,6 @@ export const uk: RuDictionary = {
   "pay.openFallback": "Оплата не відкрилася? Відкрити в Telegram",
 
   // ── карта відділень Нової Пошти ───────────────────────────────────────────
-  "np.confirm": "Обрати це відділення",
 
   // ── оформлення ────────────────────────────────────────────────────────────
   "checkout.step.contacts": "Контакти",
@@ -187,8 +186,6 @@ export const uk: RuDictionary = {
   "checkout.delivery.pickupText": "Заберіть замовлення з точки магазину — ми зв'яжемося з вами щодо адреси та часу.",
   "checkout.delivery.mapLoading": "Завантаження карти…",
   "checkout.delivery.comment": "Коментар до замовлення (необов'язково)",
-  "checkout.np.modeText": "Ввести вручну",
-  "checkout.np.modeMap": "Обрати на карті",
   "checkout.np.city": "Місто",
   "checkout.np.cityPlaceholder": "Почніть вводити назву",
   "checkout.np.cityNone": "Місто не знайдено",

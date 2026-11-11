@@ -1,7 +1,10 @@
 /** Общие тексты Mini App и сайта — Ukrainian. Те же ключи, что в `shared-ru.ts`. */
 import type { SharedDictionary } from "./shared-ru";
 
+import { deliveryUk } from "./delivery-uk";
+
 export const sharedUk: SharedDictionary = {
+  ...deliveryUk,
   // ── common ────────────────────────────────────────────────────────────────
   "common.back": "Назад",
   "common.cancel": "Скасувати",

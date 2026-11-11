@@ -163,7 +163,6 @@ export const en: RuDictionary = {
   "pay.openFallback": "Payment didn’t open? Open it in Telegram",
 
   // ── Nova Poshta branch map ────────────────────────────────────────────────
-  "np.confirm": "Choose this branch",
 
   // ── checkout ──────────────────────────────────────────────────────────────
   "checkout.step.contacts": "Contacts",
@@ -187,8 +186,6 @@ export const en: RuDictionary = {
   "checkout.delivery.pickupText": "Collect your order from the shop's point — we will contact you about the address and time.",
   "checkout.delivery.mapLoading": "Loading the map…",
   "checkout.delivery.comment": "Comment on the order (optional)",
-  "checkout.np.modeText": "Type it in",
-  "checkout.np.modeMap": "Pick on the map",
   "checkout.np.city": "City",
   "checkout.np.cityPlaceholder": "Start typing the name",
   "checkout.np.cityNone": "City not found",

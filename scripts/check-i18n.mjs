@@ -45,7 +45,8 @@ function loadTs(file) {
   const mod = { exports: {} };
   cache.set(abs, mod.exports);
   const req = (spec) => {
-    const m = /^@shop\/customer\/i18n\/(shared-[a-z]{2})$/.exec(spec);
+    // Общий словарь и его части (`./delivery-xx` — тексты checkout v2, вынесены из-за лимита строк).
+    const m = /^(?:@shop\/customer\/i18n\/|\.\/)((?:shared|delivery)-[a-z]{2})$/.exec(spec);
     if (m) return loadTs(`${SHARED_DIR}/${m[1]}.ts`);
     throw new Error(`check-i18n: неожиданный импорт «${spec}» в ${file}`);
   };

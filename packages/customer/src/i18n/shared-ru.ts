@@ -9,7 +9,10 @@
  */
 import type { Dictionary, PluralPhrase } from "@shop/core/i18n";
 
+import { deliveryRu } from "./delivery-ru";
+
 export const sharedRu = {
+  ...deliveryRu,
   // ── common ────────────────────────────────────────────────────────────────
   "common.back": "Назад",
   "common.cancel": "Отмена",
