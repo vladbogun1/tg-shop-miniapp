@@ -1,7 +1,7 @@
 /**
  * Chat reply templates are translated like the rest of the content: the editor opens on Russian
  * (the only required language), uk/en may stay empty, and an empty or outdated translation shows up
- * in «Переводы» → «Нужно перевести», with the template's title as context.
+ * in «Переводы» → «Нужно перевести» (no DeepL key in e2e), with the template's title as context.
  */
 import { CUSTOMER, ORDER } from "../lib/seed";
 import { dialog, expect, openOrderFromBoard, test } from "../lib/test";
@@ -22,10 +22,10 @@ test("шаблон: русский первым, пустые переводы �
   const chips = editor.getByRole("button", { name: /^(рус|укр|eng)/i });
   await expect(chips.first()).toHaveText(/рус/i);
 
-  // uk/en are optional; the editor says where they get translated otherwise.
+  // uk/en are optional; the editor says the shop translates them itself (DeepL in the background).
   await editor.getByRole("button", { name: /^укр/i }).click();
   await expect(editor.getByLabel("Текст українською (необязательно)")).toHaveValue("");
-  await expect(editor.getByText(/Можно не заполнять: пустой появится во вкладке «Переводы»/)).toBeVisible();
+  await expect(editor.getByText(/Можно не заполнять: магазин переведёт сам/)).toBeVisible();
 
   await editor.getByRole("button", { name: /^рус/i }).click();
   const ru = editor.getByLabel("Текст на русском (обязательно)");
