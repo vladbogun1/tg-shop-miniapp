@@ -15,6 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import type { CheckoutApi } from "../checkout/api";
 import { checkoutKeys, DIRECTORY_STALE_MS } from "../checkout/keys";
+import { warehouseFitsTab, type DeliveryTab } from "./tabs";
 
 type NpApi = Pick<CheckoutApi, "npCities" | "npWarehouses">;
 
@@ -71,10 +72,13 @@ export function useWarehouseSearch(
   warehouse: NpWarehouse | null,
   /** Mini App: фишки типа над списком (только если в городе есть и поштоматы, и отделения). */
   typeChips: boolean,
+  /** Вкладка checkout v2: «Відділення» не предлагает поштоматы, «Поштомат» — только их. null — весь город. */
+  tab: DeliveryTab | null = null,
 ) {
   const [q, setQ] = useSyncedText(warehouse?.description ?? "");
   const [cat, setCat] = useState<NpTypeFilter>("all");
-  const { data = [], isFetching } = useQuery(npWarehousesQuery(api, city.ref));
+  const { data: all = [], isFetching } = useQuery(npWarehousesQuery(api, city.ref));
+  const data = useMemo(() => (tab ? all.filter((w) => warehouseFitsTab(w, tab)) : all), [all, tab]);
   const hasBoth = useMemo(
     () => typeChips && data.some((w) => w.category === "POSTOMAT") && data.some((w) => w.category !== "POSTOMAT"),
     [typeChips, data],

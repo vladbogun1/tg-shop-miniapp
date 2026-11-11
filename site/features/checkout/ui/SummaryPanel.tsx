@@ -2,6 +2,9 @@ import Link from "next/link";
 import { type GiftChoice, type GiftProgress, type GiftTierInfo } from "@shop/core/giftcase";
 import { type OrderLimitCode } from "@shop/core/orders";
 import { type PaymentOption } from "@shop/core/types";
+import type { NpEstimateResponse } from "@shop/customer/delivery/contract";
+import { estimateAmounts } from "@shop/customer/delivery/estimate";
+import type { DeliveryTab } from "@shop/customer/delivery/tabs";
 import { Button } from "@shop/ui/primitives";
 import { GiftChoicePicker } from "@shop/ui/gift-case";
 import { CheckoutGiftLine } from "@/features/gift/view/CheckoutGiftLine";
@@ -35,6 +38,9 @@ interface Props {
   submitting: boolean;
   submitError: string | null;
   limitCode: OrderLimitCode | null;
+  tab: DeliveryTab;
+  /** «≈ N ₴» Новой почты, если есть. */
+  estimate: NpEstimateResponse | null;
 }
 
 export function SummaryPanel(p: Props) {
@@ -83,7 +89,7 @@ export function SummaryPanel(p: Props) {
             />
           )}
           {giftDiscount > 0 && <Row label={t("case.lineDiscount")} value={`−${fmt.money(giftDiscount, currency)}`} tone="ok" />}
-          <Row label={t("checkout.deliveryCost")} value={t("checkout.deliveryCostValue")} muted />
+          <DeliveryCostRow tab={p.tab} estimate={p.estimate} currency={currency} />
         </div>
         <div className="flex items-center justify-between">
           <span className="text-[16px] font-display font-bold uppercase tracking-[.06em] text-[var(--ink)]">{t("checkout.total")}</span>
@@ -91,6 +97,7 @@ export function SummaryPanel(p: Props) {
             {fmt.money(total, currency)}
           </span>
         </div>
+        {p.tab !== "PICKUP" && <p className="-mt-2 text-[12px] font-medium text-[var(--muted)]">{t("delivery.cost.note")}</p>}
         {chosen && dueNow !== total && (
           <div className="-mt-1 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] p-3">
             <Row label={t("checkout.dueNow")} value={fmt.money(dueNow, currency)} strong />
@@ -118,6 +125,16 @@ export function SummaryPanel(p: Props) {
       </div>
     </aside>
   );
+}
+
+/** Доставка не входит в сумму: «безкоштовно» у самовывоза, иначе «≈ N ₴ окремо Новій пошті» или «за її тарифом». */
+function DeliveryCostRow({ tab, estimate, currency }: { tab: DeliveryTab; estimate: NpEstimateResponse | null; currency: string }) {
+  const { t } = useI18n();
+  const fmt = useFmt();
+  const a = estimateAmounts(estimate);
+  const value =
+    tab === "PICKUP" ? t("delivery.cost.pickup") : a ? t("delivery.cost.separate", { amount: fmt.money(a.deliveryMinor, currency) }) : t("delivery.cost.unknown");
+  return <Row label={t("delivery.cost.label")} value={value} muted />;
 }
 
 function ItemsList({ lines, currency, gift }: { lines: CartLine[]; currency: string; gift: GiftProgress | null }) {

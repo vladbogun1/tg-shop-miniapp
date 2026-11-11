@@ -1,101 +1,25 @@
 "use client";
 
 /**
- * The checkout form: state, validation and the order request. Sections and the summary are
- * presentational (ui/*Section, SummaryPanel).
- *
- * Order creation is exactly the Mini App's (frontend/app/checkout/page.tsx): POST /api/orders with
- * an Idempotency-Key per attempt, the promo code sent ONLY when the server has just confirmed it,
- * and PROMO_REJECTED handled by dropping the code and asking for one more click.
+ * The checkout form layout. State, validation and the order request — use-checkout-form; sections and the
+ * summary are presentational (ui/*Section, SummaryPanel).
  */
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { type DeliveryMethod } from "@shop/core/types";
-import { isValidPhone } from "@shop/core/phone";
-import { isValidCustomerName } from "@shop/customer/checkout/order-request";
-import { usePlaceOrder } from "@shop/customer/checkout/use-place-order";
-import { useNpSelection } from "@shop/customer/delivery/np-selection";
-import { orderCreatedHref } from "@/features/payment";
 import { useI18n } from "@/i18n/context";
-import { trackOrderCreated } from "@/lib/analytics";
-import { api } from "@/lib/api";
-import { webPlatform } from "@/lib/platform";
-import { cartAfterOrder, flushCart, useCart, useCartSubtotal, useCartValidation } from "@/features/cart";
-import { firstInvalidSection } from "../model/sections";
-import { useCheckoutTotals, useLastOrderPrefill, usePaymentChoice } from "../queries";
 import { ContactsSection } from "./ContactsSection";
 import { DeliverySection } from "./DeliverySection";
 import { PaymentSection } from "./PaymentSection";
 import { PromoField } from "./PromoField";
 import { Section } from "./parts";
 import { SummaryPanel } from "./SummaryPanel";
+import { useCheckoutForm } from "./use-checkout-form";
 
 /** `onPlaced`: the order exists and the cart is emptied — the parent covers the empty-cart state. */
 export function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void }) {
-  const { t, href } = useI18n();
-  const router = useRouter();
-  const lines = useCart((s) => s.lines);
-  const promoCode = useCart((s) => s.promoCode);
-  const setPromoCode = useCart((s) => s.setPromoCode);
-  const subtotal = useCartSubtotal();
-  const currency = lines[0]?.currency ?? "UAH";
-  useCartValidation(true);
-
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [delivery, setDelivery] = useState<DeliveryMethod>("NOVA_POSHTA");
-  // City, branch, map focus, "branch from the last order" — @shop/customer/delivery/np-selection.
-  const np = useNpSelection(api.checkout);
-  const { warehouse } = np;
-  const [comment, setComment] = useState("");
-  const [touched, setTouched] = useState(false);
-  const [prefilled, setPrefilled] = useState(false);
-  useLastOrderPrefill(np, { setName, setPhone, setDelivery, setPrefilled });
-
-  const { promo, promoValid, discount, baseTotal, gift, giftTier, giftChoice, setGiftChoice, giftDiscount, total } = useCheckoutTotals(promoCode, subtotal);
-  const pay = usePaymentChoice(total);
-
-  const nameOk = isValidCustomerName(name);
-  const phoneOk = isValidPhone(phone);
-  const deliveryOk = delivery === "PICKUP" || !!warehouse;
-  const paymentOk = !!pay.chosen;
-  const hasProblems = lines.some((l) => l.stock <= 0);
-  const formOk = nameOk && phoneOk && deliveryOk && paymentOk && !hasProblems && subtotal > 0;
-
-  const orderable = lines.filter((l) => l.stock > 0);
-  // The scenario is shared with the Mini App; the site's own: cart store, analytics, the way to the order page.
-  const place = usePlaceOrder(
-    {
-      api: api.checkout,
-      platform: webPlatform,
-      t,
-      beforePlace: flushCart,
-      dropPromo: () => setPromoCode(""),
-      onPlaced(created, orderedKeys) {
-        trackOrderCreated(created.orderId);
-        cartAfterOrder(orderedKeys);
-        onPlaced(created.orderId);
-        const orderPage = href(`/account/orders/${created.orderId}`);
-        // Something to pay: the order page shows the "order created" step — amount, 24 h countdown,
-        // «Оплатити» (the monobank form opens over the page) and «Скасувати». Nothing opens by itself.
-        router.push(created.amountDueMinor > 0 ? orderCreatedHref(orderPage) : orderPage);
-      },
-    },
-    { lines: orderable, name, phone, comment, promoCode, promoValid, delivery, warehouse, payment: pay.chosen, giftTier, giftDiscount },
-  );
-  const { submitting, submitError, limitCode, setSubmitError, fieldError, clearFieldError } = place;
-
-  function submit() {
-    setTouched(true);
-    if (!formOk) {
-      setSubmitError(hasProblems ? t("cart.hasProblems") : t("checkout.fixErrors"));
-      document.getElementById(firstInvalidSection({ nameOk, phoneOk, deliveryOk }))?.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
-    void place.submit();
-  }
-
-
+  const { t } = useI18n();
+  const f = useCheckoutForm(onPlaced);
+  const { d, pay, totals, place, currency, touched } = f;
+  const { submitting, submitError, limitCode, fieldError, clearFieldError } = place;
+  const { gift, giftDiscount } = totals;
 
   return (
     <div className="container-site pt-8">
@@ -105,50 +29,45 @@ export function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
-          submit();
+          f.submit();
         }}
         className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-10"
       >
         <div className="flex min-w-0 flex-col gap-6">
           <ContactsSection
-            name={name}
-            phone={phone}
-            onName={(v) => {
+            recipient={d.recipient}
+            onRecipient={(r) => {
               clearFieldError();
-              setName(v);
+              d.setRecipient(r);
             }}
+            phone={f.phone}
             onPhone={(v) => {
               clearFieldError();
-              setPhone(v);
+              f.setPhone(v);
             }}
             serverField={fieldError}
-            nameOk={nameOk}
-            phoneOk={phoneOk}
+            phoneOk={f.phoneOk}
             touched={touched}
-            prefilled={prefilled}
+            prefilled={f.prefilled}
           />
-          <DeliverySection delivery={delivery} onDelivery={setDelivery} np={np} touched={touched} />
+          <DeliverySection d={d} tabs={f.tabs} touched={touched || fieldError === "address"} estimate={f.estimate} currency={currency} payOnDelivery={pay.payOnDelivery > 0} />
           <PaymentSection
             status={pay.status}
             options={pay.options}
             chosenId={pay.chosenId}
             onChoose={pay.choose}
             currency={currency}
-            showRequired={touched && !paymentOk}
+            showRequired={touched && !f.paymentOk}
+            noneForDelivery={pay.noneForDelivery}
+            switched={pay.switched}
           />
           <Section n={4} title={`${t("checkout.promo")} · ${t("checkout.comment")}`}>
-            <PromoField
-              code={promoCode}
-              onChange={setPromoCode}
-              subtotal={subtotal}
-              currency={currency}
-              preview={{ data: promo.data, loading: promo.loading }}
-            />
+            <PromoField code={f.promoCode} onChange={f.setPromoCode} subtotal={f.subtotal} currency={currency} preview={{ data: totals.promo.data, loading: totals.promo.loading }} />
             <label className="mt-5 block">
               <span className="eyebrow mb-1.5 block text-[11px]">{t("checkout.comment")}</span>
               <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
+                value={f.comment}
+                onChange={(e) => f.setComment(e.target.value)}
                 placeholder={t("checkout.commentPlaceholder")}
                 rows={3}
                 maxLength={1000}
@@ -159,21 +78,23 @@ export function CheckoutForm({ onPlaced }: { onPlaced: (orderId: string) => void
         </div>
 
         <SummaryPanel
-          lines={lines}
+          lines={f.lines}
           currency={currency}
-          subtotal={subtotal}
-          discount={discount}
-          promoCode={promoCode}
-          promo={promo}
+          subtotal={f.subtotal}
+          discount={totals.discount}
+          promoCode={f.promoCode}
+          promo={totals.promo}
           gift={gift}
-          giftTier={giftTier}
-          giftChoice={giftChoice}
-          onGiftChoice={setGiftChoice}
+          giftTier={totals.giftTier}
+          giftChoice={totals.giftChoice}
+          onGiftChoice={totals.setGiftChoice}
           giftDiscount={giftDiscount}
-          baseTotal={baseTotal}
-          total={total}
+          baseTotal={totals.baseTotal}
+          total={totals.total}
           chosen={pay.chosen}
           dueNow={pay.dueNow}
+          tab={d.tab}
+          estimate={f.estimate.estimate}
           // The gift case is earned: the submit says so («Оформити + 🎁 кейс»); the summary line stays.
           submitLabel={gift?.kind === "CASE" && giftDiscount === 0 ? t("case.submit") : t("checkout.submit")}
           submitting={submitting}
