@@ -37,6 +37,7 @@ export function ContactsStep({
     <div className="flex flex-col gap-4">
       <p className="px-0.5 text-[13px] text-[var(--muted)]">{t("checkout.contacts.intro")}</p>
       {prefilled && <p className="-mt-2 px-0.5 text-[12px] font-semibold text-[var(--ok)]">{t("checkout.prefilled")}</p>}
+      <h3 className="eyebrow -mb-1 px-0.5 !text-[10px] !tracking-[0.2em]">{t("delivery.recipient.title")}</h3>
       <NameInput
         label={t("delivery.recipient.lastName")}
         value={recipient.lastName}

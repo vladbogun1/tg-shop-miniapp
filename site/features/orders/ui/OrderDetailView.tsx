@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { customerCancelMode, paymentState } from "@shop/core/orders";
 import { shortOrderId } from "@shop/core/format";
 import { type OrderDetail } from "@shop/core/types";
+import { onDeliveryUnpaid } from "@shop/customer/order/np-order";
 import { OrderChat } from "@/features/chat/view/OrderChat";
 import { isPaymentTimeout, OrderPayment } from "@/features/payment";
 import { OrderReceipts } from "./Receipts";
@@ -133,7 +134,8 @@ function OrderBody({
           {t("order.title", { id: shortOrderId(order.id) })}
         </h2>
         <StatusChip status={order.status} label={t(`status.${order.status}`)} />
-        <PaymentBadge state={paymentState(order)} />
+        {/* «При отриманні»: онлайн платить нечего — без «Не оплачено». */}
+        {!onDeliveryUnpaid(order) && <PaymentBadge state={paymentState(order)} />}
       </div>
       <p className="-mt-3 text-[13px] font-semibold text-[var(--muted)]">
         {t("order.createdAt", { when: fmt.dateTime(order.createdAt) })}
@@ -142,15 +144,17 @@ function OrderBody({
       {giftCase.card}
       {giftCase.overlay}
 
-      {/* payment comes first: while it is due, it is the one thing to do on this page */}
-      <div id="order-pay" className="scroll-mt-24">
-        <OrderPayment
-          order={order}
-          onRefetch={refresh}
-          created={created}
-          onCancel={cancelMode === "CANCEL" ? openCancel : undefined}
-        />
-      </div>
+      {/* payment comes first: while it is due, it is the one thing to do on this page («при отриманні» — nothing online) */}
+      {!onDeliveryUnpaid(order) && (
+        <div id="order-pay" className="scroll-mt-24">
+          <OrderPayment
+            order={order}
+            onRefetch={refresh}
+            created={created}
+            onCancel={cancelMode === "CANCEL" ? openCancel : undefined}
+          />
+        </div>
+      )}
 
       <OrderReceipts order={order} />
 

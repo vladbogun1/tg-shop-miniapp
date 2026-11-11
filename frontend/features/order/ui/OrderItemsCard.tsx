@@ -103,6 +103,7 @@ function OrderTotals({ order }: { order: OrderDetail }) {
       ) : (
         <TotalRow label={t("order.total")} value={money(order.totalMinor, order.currency)} strong />
       )}
+      {order.deliveryMethod !== "PICKUP" && <p className="text-[12px] font-medium leading-snug text-[var(--muted)]">{t("delivery.cost.note")}</p>}
     </div>
   );
 }

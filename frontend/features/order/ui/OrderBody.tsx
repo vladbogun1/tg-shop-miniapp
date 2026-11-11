@@ -10,6 +10,7 @@ import { OrderReviewsCard } from "@/features/reviews";
 import { ORDER_PAY_ANCHOR, useOrderGiftCase } from "@/features/gift";
 import { Button } from "@shop/ui/primitives";
 import { customerCancelMode, paymentFirst, paymentState } from "@shop/core/orders";
+import { onDeliveryUnpaid } from "@shop/customer/order/np-order";
 import { hasOnlinePayment } from "@shop/core/receipts";
 import { useT } from "@/i18n/context";
 import type { OrderDetail } from "@/lib/api";
@@ -65,7 +66,8 @@ export function OrderBody({
   // past the timeline, items and recipient. Older orders keep it below the details.
   const payFirst = payState === "AWAITING" || paymentFirst(order);
   const receipts = hasOnlinePayment(order) ? <OrderReceipts order={order} /> : null;
-  const payment = (
+  // «При отриманні» and not paid yet: nothing to pay online — no «Оплатити 0 ₴», no countdown.
+  const payment = onDeliveryUnpaid(order) ? null : (
     <OrderPayment
       order={order}
       onOrder={onOrder}
@@ -105,7 +107,7 @@ export function OrderBody({
         <OrderInfoCard order={order} />
 
         {/* paid: amount, card / Apple Pay, what is left for the courier */}
-        {!payFirst && <motion.div variants={riseItem}>{payment}</motion.div>}
+        {!payFirst && payment && <motion.div variants={riseItem}>{payment}</motion.div>}
 
         {/* receipts: fiscal checks (sale / refunds) + the bank receipt, once money came in online */}
         {!payFirst && receipts}

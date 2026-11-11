@@ -2,14 +2,17 @@
 
 import { motion } from "framer-motion";
 import { CreditCard, MapPin, Receipt, Store } from "lucide-react";
+import { codAmountMinor, onDeliveryUnpaid, orderCourierAddress, orderRecipientName } from "@shop/customer/order/np-order";
 import { useT } from "@/i18n/context";
 import type { OrderDetail } from "@/lib/api";
+import { money } from "@/lib/money";
 import { riseItem } from "@/lib/motion";
 
-/** Recipient, delivery, payment option, comment. */
+/** Recipient, delivery (point or courier address), payment option (+ what is paid to NP on receipt), comment. */
 export function OrderInfoCard({ order }: { order: OrderDetail }) {
   const t = useT();
   const isPickup = order.deliveryMethod === "PICKUP";
+  const place = orderCourierAddress(order) || order.npWarehouseName;
   return (
         <motion.section
           variants={riseItem}
@@ -18,7 +21,7 @@ export function OrderInfoCard({ order }: { order: OrderDetail }) {
           <InfoRow
             icon={<Receipt className="h-4 w-4" strokeWidth={2.5} />}
             label={t("order.recipient")}
-            value={`${order.customerName}, ${order.phone}`}
+            value={`${orderRecipientName(order)}, ${order.phone}`}
           />
           <InfoRow
             icon={
@@ -32,8 +35,7 @@ export function OrderInfoCard({ order }: { order: OrderDetail }) {
             value={
               isPickup
                 ? t("order.pickup")
-                : t("order.npDelivery", { city: order.npCityName ?? "" }) +
-                  (order.npWarehouseName ? `, ${order.npWarehouseName}` : "")
+                : t("order.npDelivery", { city: order.npCityName ?? "" }) + (place ? `, ${place}` : "")
             }
           />
           {(order.paymentOptionTitle || order.exchangeOfId) && (
@@ -42,6 +44,11 @@ export function OrderInfoCard({ order }: { order: OrderDetail }) {
               label={t("order.payment")}
               value={order.exchangeOfId ? t("pay.exchangeMethod") : order.paymentOptionTitle!}
             />
+          )}
+          {onDeliveryUnpaid(order) && (
+            <p className="-mt-2 pl-7 text-[13px] font-semibold text-[var(--muted)]">
+              {t("parcel.cod", { amount: money(codAmountMinor(order), order.currency) })}
+            </p>
           )}
           {order.comment && (
             <InfoRow label={t("order.comment")} value={order.comment} />

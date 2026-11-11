@@ -50,6 +50,7 @@ export function OrderItemsCard({ order, uncollected }: { order: OrderDetail; unc
             {fmt.money(payableMinor(order), order.currency)}
           </span>
         </div>
+        {order.deliveryMethod !== "PICKUP" && <p className="text-[12px] font-medium text-[var(--muted)]">{t("delivery.cost.note")}</p>}
       </div>
       {order.comment && (
         <p className="mt-4 text-[13px] font-semibold text-[var(--muted)]">
