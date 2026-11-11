@@ -2226,6 +2226,195 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/np/box-presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Box presets parsed from the «Коробки» setting */
+        get: operations["AdminNovaPoshtaController_presets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/np/check-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** «Проверить ключ»: one authorised call to Nova Poshta */
+        post: operations["AdminNovaPoshtaController_checkKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/np/sender": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The configured sender (null until loaded from the cabinet) */
+        get: operations["AdminNovaPoshtaController_getSender"];
+        /** Save the contact, phone and sending branches */
+        put: operations["AdminNovaPoshtaController_saveSender"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/np/sender/load": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** «Загрузить из кабинета НП»: counterparty + contact persons via the API */
+        post: operations["AdminNovaPoshtaController_loadSender"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/np/size/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Weight / box of every category (defaults for its products) */
+        get: operations["AdminNovaPoshtaController_categorySizes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/np/size/categories/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save the default weight / box of a category (null = inherit from the parent) */
+        put: operations["AdminNovaPoshtaController_saveCategorySize"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/np/size/products/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Weight / box of a product and its variants */
+        get: operations["AdminNovaPoshtaController_productSize"];
+        /** Save the weight / box of a product and its variants (null = inherit) */
+        put: operations["AdminNovaPoshtaController_saveProductSize"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/np/warehouses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Branches of a city (the sender branch picker) */
+        get: operations["AdminNovaPoshtaController_warehouses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/np/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Webhook config and current subscriptions */
+        get: operations["AdminNpWebhookController_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/np/webhook/subscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a «legal» tracking push subscription to this server */
+        post: operations["AdminNpWebhookController_subscribe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/np/webhook/subscriptions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a tracking push subscription */
+        delete: operations["AdminNpWebhookController_unsubscribe"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/orders": {
         parameters: {
             query?: never;
@@ -2768,6 +2957,59 @@ export interface paths {
         put?: never;
         /** The customer sent back the money of a cancelled return */
         post: operations["AdminReturnController_returnDebtPaid"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/orders/{id}/shipment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Change the waybill (weight, box, value, sender branch) before NP accepts the parcel */
+        put: operations["AdminShipmentController_update"];
+        /** Create the waybill at Nova Poshta (the order stays until NP accepts the parcel) */
+        post: operations["AdminShipmentController_create"];
+        /** Cancel the waybill (deleted at NP; a typed-in one is only forgotten) */
+        delete: operations["AdminShipmentController_cancel"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/orders/{id}/shipment/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What «Створити ТТН» would send (recipient, box, money, price), with the admin's changes */
+        post: operations["AdminShipmentController_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/orders/{id}/shipment/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask Nova Poshta for the parcel status now */
+        post: operations["AdminShipmentController_refresh"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3644,6 +3886,40 @@ export interface paths {
         };
         /** Read-only system facts: release version, last Nova Poshta sync */
         get: operations["AdminSystemController_system"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/shipments/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** «Створити ТТН для всіх»: a waybill with defaults for each order */
+        post: operations["AdminShipmentController_batch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/shipments/labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One PDF with the labels of these orders (format 100x100 | 85x85 | a4) */
+        get: operations["AdminShipmentController_labels"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5248,6 +5524,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/np/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Nova Poshta checkout switches: parcel lockers, courier, price hint */
+        get: operations["NpCheckoutController_config"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/np/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approximate Nova Poshta delivery price for a cart (cached) */
+        post: operations["NpCheckoutController_estimate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/np/streets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Streets of a Nova Poshta city (courier delivery) */
+        get: operations["NpCheckoutController_streets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/np/warehouses": {
         parameters: {
             query?: never;
@@ -5276,6 +5603,23 @@ export interface paths {
         get: operations["NovaPoshtaController_warehousesBbox"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/np/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Nova Poshta tracking webhook (X-NP-Key) */
+        post: operations["NpWebhookController_webhook"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5912,7 +6256,7 @@ export interface components {
             seoTitle: string | null;
             sku: string | null;
             slug: string | null;
-            specIssues: components["schemas"]["Issue"][];
+            specIssues: components["schemas"]["CatalogSpecsValidatorIssue"][];
             specs: {
                 [key: string]: unknown;
             };
@@ -6587,24 +6931,12 @@ export interface components {
             /** Format: int64 */
             unassignedMinor: number;
         };
-        BatchRequest: {
-            currency?: string;
-            distribution?: string;
-            /** Format: date */
-            etaFrom?: string;
-            etaMode?: string;
-            /** Format: date */
-            etaTo?: string;
-            fxRate?: number;
-            /** Format: int32 */
-            holdHours?: number;
-            items?: components["schemas"]["ItemRequest"][];
-            preorderOpen?: boolean;
-            privateNote?: string;
-            publicNote?: string;
-            /** Format: int64 */
-            supplierId?: number;
-            title?: string;
+        BatchResult: {
+            error: string;
+            ok: boolean;
+            orderId: string;
+            shortId: string;
+            ttn: string;
         };
         BatchSalesDto: {
             /** Format: int32 */
@@ -6711,6 +7043,19 @@ export interface components {
         BooleanFlagRequest: {
             active?: boolean;
             archived?: boolean;
+        };
+        BoxPreset: {
+            /** Format: int32 */
+            heightMm: number;
+            /** Format: int32 */
+            lengthMm: number;
+            name: string;
+            /** Format: int64 */
+            packMinor: number;
+            /** Format: int32 */
+            tareG: number;
+            /** Format: int32 */
+            widthMm: number;
         };
         BrandRefDto: {
             id: string;
@@ -7013,6 +7358,12 @@ export interface components {
             /** Format: int64 */
             version: number;
         };
+        CartLine: {
+            productId?: string;
+            /** Format: int32 */
+            quantity?: number;
+            variantId?: string;
+        };
         CartLineDto: {
             /** Format: date-time */
             addedAt: string;
@@ -7203,6 +7554,11 @@ export interface components {
             conditions: components["schemas"]["ConditionDto"][];
             groups: components["schemas"]["SpecGroupDto"][];
         };
+        CatalogSpecsValidatorIssue: {
+            key: string;
+            message: string;
+            reason: string;
+        };
         CategoryDetailDto: {
             artKind: string | null;
             h1: string | null;
@@ -7244,6 +7600,12 @@ export interface components {
             /** Format: double */
             unitsPerProduct: number;
         };
+        CategorySize: {
+            id: string;
+            name: string;
+            parentId: string;
+            size: components["schemas"]["Size"];
+        };
         CategoryStock: {
             /** Format: double */
             daysOfCover: number;
@@ -7277,6 +7639,11 @@ export interface components {
             notifyCustomer?: boolean;
             /** Format: int32 */
             quantity?: number;
+        };
+        CheckoutConfig: {
+            courierEnabled: boolean;
+            estimateEnabled: boolean;
+            postomatEnabled: boolean;
         };
         ClientEventBatch: {
             events?: components["schemas"]["ClientEventDto"][];
@@ -7327,6 +7694,11 @@ export interface components {
             maxMessagesPerHour: number;
             /** Format: int32 */
             maxOpenThreads: number;
+        };
+        Contact: {
+            name: string;
+            phone: string;
+            ref: string;
         };
         ConversationDto: {
             customerName: string | null;
@@ -7488,6 +7860,46 @@ export interface components {
         DeleteResult: {
             /** Format: int32 */
             deleted: number;
+        };
+        DeliveryAdminNpWebhookControllerSubscribeRequest: {
+            companyTin?: string;
+        };
+        DeliveryAdminShipmentControllerBatchRequest: {
+            orderIds?: string[];
+            senderWarehouseRef?: string;
+        };
+        DeliveryNpCheckoutEstimateRequest: {
+            cityRef?: string;
+            items?: components["schemas"]["CartLine"][];
+            /** Format: int64 */
+            payOnDeliveryMinor?: number;
+            serviceType?: string;
+            /** Format: int64 */
+            totalMinor?: number;
+        };
+        DeliveryNpTrackingPushSubscription: {
+            active: boolean;
+            companyTins: string[];
+            id: string;
+            type: string;
+            url: string;
+        };
+        DeliveryNpWebhookSubscriptionsStatus: {
+            configured: boolean;
+            error: string;
+            subscriptions: components["schemas"]["DeliveryNpTrackingPushSubscription"][];
+            url: string;
+        };
+        DeliveryParcelSeat: {
+            box: string;
+            /** Format: int32 */
+            heightMm: number;
+            /** Format: int32 */
+            lengthMm: number;
+            /** Format: int32 */
+            weightG: number;
+            /** Format: int32 */
+            widthMm: number;
         };
         DemandDto: {
             /** Format: date-time */
@@ -7764,6 +8176,13 @@ export interface components {
             p90Minor: number;
             /** Format: int32 */
             seconds: number;
+        };
+        EstimateResponse: {
+            available: boolean;
+            /** Format: int64 */
+            codFeeMinor: number;
+            /** Format: int64 */
+            deliveryMinor: number;
         };
         EtaDto: {
             /** Format: int32 */
@@ -8273,11 +8692,6 @@ export interface components {
         InviteTokenRequest: {
             token: string;
         };
-        Issue: {
-            key: string;
-            message: string;
-            reason: string;
-        };
         ItemDto: {
             /** Format: int64 */
             id: number;
@@ -8336,6 +8750,13 @@ export interface components {
             type: string;
         };
         JsonNode: unknown;
+        KeyCheck: {
+            configured: boolean;
+            counterpartyName: string;
+            dryRun: boolean;
+            message: string;
+            ok: boolean;
+        };
         Keys: {
             auth: string;
             p256dh: string;
@@ -8366,20 +8787,6 @@ export interface components {
             city: string;
             country: string;
             method: string;
-        };
-        Limits: {
-            /** Format: int32 */
-            maxOrdersPerDay: number;
-            /** Format: int32 */
-            maxQtyPerProduct: number;
-            /** Format: int32 */
-            maxSelfCancelsPerDay: number;
-            /** Format: int32 */
-            maxUnitsPerOrder: number;
-            /** Format: int32 */
-            maxUnpaidOrders: number;
-            /** Format: int32 */
-            orderCooldownSec: number;
         };
         LineDecision: {
             by: string;
@@ -8880,6 +9287,8 @@ export interface components {
             lat: number;
             /** Format: double */
             lng: number;
+            /** Format: int32 */
+            maxWeightKg: number;
             number: string;
             ref: string;
             type: string;
@@ -8976,6 +9385,28 @@ export interface components {
             /** Format: int32 */
             sort?: number;
             value?: string;
+        };
+        Options: {
+            allowUnpaid?: boolean;
+            collectCod?: boolean;
+            /** Format: date */
+            date?: string;
+            /** Format: int64 */
+            declaredMinor?: number;
+            description?: string;
+            documents?: boolean;
+            /** Format: int32 */
+            heightMm?: number;
+            /** Format: int32 */
+            lengthMm?: number;
+            recipientFirstName?: string;
+            recipientLastName?: string;
+            recipientMiddleName?: string;
+            senderWarehouseRef?: string;
+            /** Format: int32 */
+            weightG?: number;
+            /** Format: int32 */
+            widthMm?: number;
         };
         OrderAdminCancelRequestControllerResolveRequest: {
             comment?: string;
@@ -9221,6 +9652,20 @@ export interface components {
             /** @enum {string} */
             type: "TEXT" | "PHOTO" | "FILE" | "SYSTEM";
         };
+        OrderOrderGuardLimits: {
+            /** Format: int32 */
+            maxOrdersPerDay: number;
+            /** Format: int32 */
+            maxQtyPerProduct: number;
+            /** Format: int32 */
+            maxSelfCancelsPerDay: number;
+            /** Format: int32 */
+            maxUnitsPerOrder: number;
+            /** Format: int32 */
+            maxUnpaidOrders: number;
+            /** Format: int32 */
+            orderCooldownSec: number;
+        };
         OrderProfitDto: {
             complete: boolean;
             /** Format: int64 */
@@ -9273,6 +9718,21 @@ export interface components {
             totals: {
                 [key: string]: number;
             } | null;
+        };
+        Parcel: {
+            documents: boolean;
+            /** Format: int32 */
+            heightMm: number;
+            /** Format: int32 */
+            lengthMm: number;
+            /** Format: int64 */
+            packMinor: number;
+            seats: components["schemas"]["DeliveryParcelSeat"][];
+            source: string;
+            /** Format: int32 */
+            weightG: number;
+            /** Format: int32 */
+            widthMm: number;
         };
         Part: {
             /** Format: int32 */
@@ -9382,6 +9842,64 @@ export interface components {
             qty?: number;
             variantId?: string;
         };
+        PresetsResponse: {
+            presets: components["schemas"]["BoxPreset"][];
+        };
+        Preview: {
+            /** Format: int64 */
+            amountDueMinor: number;
+            cityName: string;
+            /** Format: int64 */
+            codFeeMinor: number;
+            /** Format: int64 */
+            codMinor: number;
+            collectCod: boolean;
+            /** Format: date */
+            date: string;
+            /** Format: int64 */
+            declaredMinor: number;
+            description: string;
+            destination: string;
+            dryRun: boolean;
+            /** Format: int64 */
+            estimateMinor: number;
+            existing: components["schemas"]["ShipmentBrief"];
+            orderId: string;
+            orderStatus: string;
+            parcel: components["schemas"]["Parcel"];
+            payer: string;
+            presets: components["schemas"]["BoxPreset"][];
+            problems: string[];
+            recipientFirstName: string;
+            recipientLastName: string;
+            recipientMiddleName: string;
+            recipientPhone: string;
+            senderWarehouseRef: string;
+            senderWarehouses: components["schemas"]["SenderWarehouse"][];
+            serviceType: string;
+            shortId: string;
+            unpaid: boolean;
+            warnings: string[];
+        };
+        ProcurementBatchRequest: {
+            currency?: string;
+            distribution?: string;
+            /** Format: date */
+            etaFrom?: string;
+            etaMode?: string;
+            /** Format: date */
+            etaTo?: string;
+            fxRate?: number;
+            /** Format: int32 */
+            holdHours?: number;
+            items?: components["schemas"]["ItemRequest"][];
+            preorderOpen?: boolean;
+            privateNote?: string;
+            publicNote?: string;
+            /** Format: int64 */
+            supplierId?: number;
+            title?: string;
+        };
         ProcurementCandidate: {
             ai: boolean;
             productId: string;
@@ -9490,6 +10008,12 @@ export interface components {
             stock?: number;
             stockNote?: string;
             stockReason?: string;
+        };
+        ProductSize: {
+            categoryId: string;
+            id: string;
+            size: components["schemas"]["Size"];
+            variants: components["schemas"]["VariantSize"][];
         };
         ProductUpsertRequest: {
             active?: boolean;
@@ -9946,7 +10470,7 @@ export interface components {
         RevalidateResult: {
             error: string;
             ok: boolean;
-            status: components["schemas"]["Status"];
+            status: components["schemas"]["SiteSiteRevalidatorStatus"];
         };
         ReviewFeed: {
             items: components["schemas"]["FeedReview"][];
@@ -10031,6 +10555,31 @@ export interface components {
             removed: number;
             /** Format: int32 */
             sent: number;
+        };
+        SenderConfig: {
+            contactName: string;
+            contactRef: string;
+            contacts: components["schemas"]["Contact"][];
+            counterpartyName: string;
+            counterpartyRef: string;
+            defaultWarehouseRef: string;
+            /** Format: date-time */
+            loadedAt: string;
+            ownershipForm: string;
+            phone: string;
+            warehouses: components["schemas"]["SenderWarehouse"][];
+        };
+        SenderResponse: {
+            dryRun: boolean;
+            keyConfigured: boolean;
+            sender: components["schemas"]["SenderConfig"];
+        };
+        SenderWarehouse: {
+            cityName: string;
+            cityRef: string;
+            description: string;
+            number: string;
+            ref: string;
         };
         Series: {
             groupBy: string;
@@ -10151,6 +10700,14 @@ export interface components {
             orderedWithin30: number;
             weekStart: string;
         };
+        SiteSiteRevalidatorStatus: {
+            enabled: boolean;
+            lastError: string;
+            /** Format: date-time */
+            lastErrorAt: string;
+            /** Format: date-time */
+            lastSuccessAt: string;
+        };
         SitemapCategory: {
             slug: string;
             /** Format: date-time */
@@ -10164,6 +10721,16 @@ export interface components {
             slug: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        Size: {
+            /** Format: int32 */
+            heightMm: number;
+            /** Format: int32 */
+            lengthMm: number;
+            /** Format: int32 */
+            weightG: number;
+            /** Format: int32 */
+            widthMm: number;
         };
         SizeDto: {
             changeable: boolean;
@@ -10342,14 +10909,6 @@ export interface components {
             };
             texts: components["schemas"]["TextCounts"];
         };
-        Status: {
-            enabled: boolean;
-            lastError: string;
-            /** Format: date-time */
-            lastErrorAt: string;
-            /** Format: date-time */
-            lastSuccessAt: string;
-        };
         StatusRequest: {
             status?: string;
         };
@@ -10385,6 +10944,11 @@ export interface components {
             stockUnits: number;
             /** Format: int64 */
             stockValueMinor: number;
+        };
+        Street: {
+            name: string;
+            ref: string;
+            type: string;
         };
         SubjectChanges: {
             editors: components["schemas"]["Editor"][];
@@ -10823,6 +11387,11 @@ export interface components {
             name: string;
             /** Format: int32 */
             stock?: number;
+        };
+        VariantSize: {
+            id: string;
+            name: string;
+            size: components["schemas"]["Size"];
         };
         WasteRow: {
             /** Format: int64 */
@@ -14252,6 +14821,291 @@ export interface operations {
             };
         };
     };
+    AdminNovaPoshtaController_presets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PresetsResponse"];
+                };
+            };
+        };
+    };
+    AdminNovaPoshtaController_checkKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["KeyCheck"];
+                };
+            };
+        };
+    };
+    AdminNovaPoshtaController_getSender: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SenderResponse"];
+                };
+            };
+        };
+    };
+    AdminNovaPoshtaController_saveSender: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SenderConfig"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SenderResponse"];
+                };
+            };
+        };
+    };
+    AdminNovaPoshtaController_loadSender: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SenderResponse"];
+                };
+            };
+        };
+    };
+    AdminNovaPoshtaController_categorySizes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CategorySize"][];
+                };
+            };
+        };
+    };
+    AdminNovaPoshtaController_saveCategorySize: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Size"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CategorySize"];
+                };
+            };
+        };
+    };
+    AdminNovaPoshtaController_productSize: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProductSize"];
+                };
+            };
+        };
+    };
+    AdminNovaPoshtaController_saveProductSize: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductSize"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProductSize"];
+                };
+            };
+        };
+    };
+    AdminNovaPoshtaController_warehouses: {
+        parameters: {
+            query: {
+                cityRef: string;
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["NpWarehouseDto"][];
+                };
+            };
+        };
+    };
+    AdminNpWebhookController_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DeliveryNpWebhookSubscriptionsStatus"];
+                };
+            };
+        };
+    };
+    AdminNpWebhookController_subscribe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DeliveryAdminNpWebhookControllerSubscribeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DeliveryNpTrackingPushSubscription"];
+                };
+            };
+        };
+    };
+    AdminNpWebhookController_unsubscribe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminOrderController_list: {
         parameters: {
             query?: {
@@ -15144,6 +15998,126 @@ export interface operations {
             };
         };
     };
+    AdminShipmentController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Options"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ShipmentBrief"];
+                };
+            };
+        };
+    };
+    AdminShipmentController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Options"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ShipmentBrief"];
+                };
+            };
+        };
+    };
+    AdminShipmentController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminShipmentController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Options"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Preview"];
+                };
+            };
+        };
+    };
+    AdminShipmentController_refresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ShipmentBrief"];
+                };
+            };
+        };
+    };
     AdminOrderController_updateStatus: {
         parameters: {
             query?: never;
@@ -15385,7 +16359,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["BatchRequest"];
+                "application/json": components["schemas"]["ProcurementBatchRequest"];
             };
         };
         responses: {
@@ -15433,7 +16407,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["BatchRequest"];
+                "application/json": components["schemas"]["ProcurementBatchRequest"];
             };
         };
         responses: {
@@ -16588,6 +17562,53 @@ export interface operations {
             };
         };
     };
+    AdminShipmentController_batch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeliveryAdminShipmentControllerBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BatchResult"][];
+                };
+            };
+        };
+    };
+    AdminShipmentController_labels: {
+        parameters: {
+            query: {
+                orderIds: string;
+                format?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+        };
+    };
     AdminSiteController_revalidate: {
         parameters: {
             query?: never;
@@ -16623,7 +17644,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["Status"];
+                    "*/*": components["schemas"]["SiteSiteRevalidatorStatus"];
                 };
             };
         };
@@ -19082,11 +20103,79 @@ export interface operations {
             };
         };
     };
+    NpCheckoutController_config: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CheckoutConfig"];
+                };
+            };
+        };
+    };
+    NpCheckoutController_estimate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeliveryNpCheckoutEstimateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["EstimateResponse"];
+                };
+            };
+        };
+    };
+    NpCheckoutController_streets: {
+        parameters: {
+            query: {
+                cityRef: string;
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Street"][];
+                };
+            };
+        };
+    };
     NovaPoshtaController_warehouses: {
         parameters: {
             query: {
                 cityRef: string;
                 q?: string;
+                kind?: string;
             };
             header?: never;
             path?: never;
@@ -19129,6 +20218,31 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["NpWarehouseDto"][];
+                };
+            };
+        };
+    };
+    NpWebhookController_webhook: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-NP-Key"?: string;
+                "x-np-attempt"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: string;
+                    };
                 };
             };
         };
@@ -19412,7 +20526,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["Limits"];
+                    "*/*": components["schemas"]["OrderOrderGuardLimits"];
                 };
             };
         };
