@@ -58,7 +58,7 @@ public class LotLedger {
     /**
      * {@code qty} units come back on the shelf. From an order line they return to the lots they came from,
      * newest allocation first (the units still sold keep the oldest cost); anything the line cannot account
-     * for goes to the opening lot (cost unknown).
+     * for goes to an opening lot of unknown cost (never into one with a typed cost — that would price them).
      */
     public void give(byte[] productId, byte[] variantId, int qty, LotAllocations sale) {
         int left = qty;
@@ -79,7 +79,7 @@ public class LotLedger {
         }
         if (left > 0) {
             StockLot opening = lots.findKey(productId, variantId).stream()
-                    .filter(l -> StockLot.Kind.OPENING.name().equals(l.getKind()))
+                    .filter(l -> StockLot.Kind.OPENING.name().equals(l.getKind()) && l.getUnitCostMinor() == null)
                     .findFirst()
                     .orElseGet(() -> newLot(productId, variantId, StockLot.Kind.OPENING, 0));
             opening.setQtyLeft(opening.getQtyLeft() + left);
@@ -115,7 +115,7 @@ public class LotLedger {
     }
 
     /**
-     * {@code qty} units on the shelf of {@code from} become a lot of their own (same kind, behind it in FIFO), so
+     * {@code qty} units on the shelf of {@code from} become a lot of their own (same kind, right behind it), so
      * they can get a cost of their own. The shelf total does not change.
      */
     public StockLot split(StockLot from, int qty) {

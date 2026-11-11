@@ -9,7 +9,6 @@ import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -32,7 +31,7 @@ class LotLedgerTest {
         when(repo.findKey(any(), any())).thenAnswer(inv -> store.stream()
                 .filter(l -> Arrays.equals(l.getProductId(), (byte[]) inv.getArgument(0))
                         && Arrays.equals(l.getVariantId(), (byte[]) inv.getArgument(1)))
-                .sorted(Comparator.comparing(StockLot::getId)).toList());
+                .sorted(StockLot.SALE_ORDER).toList()); // as the real repository
         when(repo.findById(anyLong())).thenAnswer(inv -> store.stream()
                 .filter(l -> l.getId().equals(inv.getArgument(0))).findFirst());
         when(repo.save(any())).thenAnswer(inv -> {
@@ -122,6 +121,29 @@ class LotLedgerTest {
         StockLot opening = store.stream().filter(l -> "OPENING".equals(l.getKind())).findFirst().orElseThrow();
         assertThat(opening.getQtyLeft()).isEqualTo(2);
         assertThat(item.getLots()).isEmpty();
+    }
+
+    @Test
+    void theOldStockSellsBeforeOlderBatches() {
+        StockLot batch = lot(2, "BATCH");
+        StockLot old = lot(1, "OPENING");
+
+        ledger.take(PAD, null, 2, null);
+
+        assertThat(old.getQtyLeft()).isZero();
+        assertThat(batch.getQtyLeft()).isEqualTo(1);
+    }
+
+    @Test
+    void unitsOfUnknownCostComingBack_doNotJoinAPricedOldLot() {
+        StockLot priced = lot(1, "OPENING");
+        priced.setUnitCostMinor(15_000L);
+
+        ledger.give(PAD, null, 2, null);
+
+        assertThat(priced.getQtyLeft()).isEqualTo(1);
+        assertThat(store).filteredOn(l -> "OPENING".equals(l.getKind()) && l.getUnitCostMinor() == null)
+                .singleElement().satisfies(l -> assertThat(l.getQtyLeft()).isEqualTo(2));
     }
 
     @Test
