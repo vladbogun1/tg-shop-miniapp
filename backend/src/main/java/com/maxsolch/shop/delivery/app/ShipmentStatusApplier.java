@@ -1,6 +1,7 @@
 package com.maxsolch.shop.delivery.app;
 
 import com.maxsolch.shop.delivery.domain.NpJson;
+import com.maxsolch.shop.delivery.domain.NpMeasure;
 import com.maxsolch.shop.delivery.domain.OrderShipment;
 import com.maxsolch.shop.delivery.domain.ShipmentStage;
 import com.maxsolch.shop.delivery.domain.ShipmentStatusMapper;
@@ -57,7 +58,12 @@ public class ShipmentStatusApplier {
      * phone we asked with matched); null = not shown. {@code at}: when it happened (webhook), null = now (poll).
      */
     public record StatusUpdate(String code, String text, LocalDate scheduledDelivery, LocalDate storagePaidFrom,
-                               String returnTtn, Instant at, String recipientPhone) {
+                               String returnTtn, Instant at, String recipientPhone, NpMeasure measure) {
+
+        public StatusUpdate(String code, String text, LocalDate scheduledDelivery, LocalDate storagePaidFrom,
+                            String returnTtn, Instant at, String recipientPhone) {
+            this(code, text, scheduledDelivery, storagePaidFrom, returnTtn, at, recipientPhone, NpMeasure.NONE);
+        }
 
         public StatusUpdate(String code, String text, LocalDate scheduledDelivery, LocalDate storagePaidFrom,
                             String returnTtn, Instant at) {
@@ -108,6 +114,10 @@ public class ShipmentStatusApplier {
         ShipmentStage next = ShipmentStatusMapper.stageOf(u.code(),
                 ShipmentStatusMapper.parseOverrides(settings.getString(DeliverySettings.NP_STATUS_OVERRIDES)));
         copyFields(s, u);
+        if (NpMeasure.accepted(u.code())) {
+            // NP's re-measure at the branch: kept apart, our declared weight, sides and price stay as sent.
+            s.recordNpMeasure(u.measure(), now);
+        }
         if (next == null) {
             unknownCode(s.getTtn(), u.code(), u.text());
             return null;

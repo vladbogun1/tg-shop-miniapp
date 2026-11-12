@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.maxsolch.shop.delivery.app.ShipmentStatusApplier.StatusUpdate;
 import com.maxsolch.shop.delivery.domain.NovaPoshtaGateway;
 import com.maxsolch.shop.delivery.domain.NpJson;
+import com.maxsolch.shop.delivery.domain.NpMeasure;
 import com.maxsolch.shop.delivery.domain.OrderShipment;
 import com.maxsolch.shop.delivery.domain.ShipmentStage;
 import com.maxsolch.shop.delivery.infra.OrderShipmentRepository;
@@ -193,7 +194,7 @@ public class ShipmentTrackingService {
         }
         return new StatusUpdate(NpJson.text(n, "StatusCode"), NpJson.text(n, "Status"),
                 date(NpJson.text(n, "ScheduledDeliveryDate")), storage, returnTtn, null,
-                NpJson.text(n, "PhoneRecipient"));
+                NpJson.text(n, "PhoneRecipient"), NpMeasure.of(n));
     }
 
     static LocalDate date(String raw) {
