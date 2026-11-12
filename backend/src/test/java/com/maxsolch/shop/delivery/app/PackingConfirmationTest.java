@@ -226,7 +226,8 @@ class PackingConfirmationTest {
 
     @Test
     void aBoxOnlyChangeDoesNotMakeTheWaybillStale() {
-        row.setStage(ShipmentStage.ARRIVED.name());
+        // CREATED: the stage the fingerprints are checked at, and the NP update runs.
+        assertThat(com.maxsolch.shop.delivery.domain.ShipmentStaleness.applies(row)).isTrue();
         confirmation.confirm(ORDER_ID, catalogBox(np5, 130));
         assertThat(ShipmentFacts.staleReasons(order, row)).isEmpty();
         assertThat(ShipmentFacts.brief(row, order).staleReasons()).isNullOrEmpty();

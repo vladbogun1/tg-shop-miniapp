@@ -49,4 +49,23 @@ class ShipmentBriefCustomerJsonTest {
                 "scheduledDelivery");
         assertThat(keys(node)).hasSize(25);
     }
+
+    @Test
+    void packingIsAdminOnly() throws Exception {
+        Instant t = Instant.parse("2026-11-12T10:00:00Z");
+        OrderShipmentView.Packing packing = new OrderShipmentView.Packing("Коробка 5 кг · 13 см",
+                "подобрано по размерам", "Коробка 5 кг · 8 см", "box-id", 80, t, "Пакувальник", true, false,
+                "4", 5000, 5000, 1900, 19550L, t);
+        OrderShipmentView.ShipmentBrief b = full();
+        OrderShipmentView.ShipmentBrief admin = new OrderShipmentView.ShipmentBrief(b.ttn(), b.origin(),
+                b.serviceType(), b.stage(), b.statusCode(), b.statusText(), b.scheduledDelivery(), b.arrivedAt(),
+                b.receivedAt(), b.storagePaidFrom(), b.returnTtn(), b.codMinor(), b.deliveryCostMinor(), b.weightG(),
+                b.lengthMm(), b.widthMm(), b.heightMm(), b.trackingUrl(), b.createdAt(), b.lastEventAt(),
+                b.lastPolledAt(), b.pollError(), b.printedAt(), b.staleReasons(), b.handedOver(), packing);
+
+        JsonNode adminJson = json.valueToTree(admin);
+        assertThat(adminJson.get("packing").get("boxConfirmedBy").asText()).isEqualTo("Пакувальник");
+        assertThat(keys(json.valueToTree(admin.forCustomer()))).doesNotContain("packing");
+        assertThat(keys(json.valueToTree(b))).doesNotContain("packing");
+    }
 }
