@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parcelStageKey, parcelStageOf, parcelTone } from "./parcel";
+import { parcelStageColor, parcelStageKey, parcelStageOf } from "./parcel";
 import { parcelTtn, trackingLink } from "./parcel-tracking";
 
 describe("посылка", () => {
@@ -7,8 +7,10 @@ describe("посылка", () => {
     expect(parcelStageOf({ shipmentStage: "ARRIVED" })).toBe("ARRIVED");
     expect(parcelStageOf({ shipment: { stage: "RECEIVED" } })).toBe("RECEIVED");
     expect(parcelStageOf({ shipmentStage: "WAT" })).toBeNull();
+    expect(parcelStageOf({ shipmentStage: "toString" })).toBeNull();
     expect(parcelStageKey("ARRIVED")).toBe("parcel.stage.ARRIVED");
-    expect(parcelTone("RECEIVED")).toBe("ok");
+    expect(parcelStageColor("RECEIVED")).toBe("var(--ok)");
+    expect((["CREATED", "IN_TRANSIT", "REFUSED", "NOT_FOUND"] as const).map(parcelStageColor)).toEqual(["var(--faint)", "var(--st-new)", "var(--warn)", "var(--danger)"]);
   });
 
   it("ТТН без пробелов; нет — null", () => {

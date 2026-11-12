@@ -7,14 +7,14 @@
 import { ExternalLink } from "lucide-react";
 import type { ShipmentStage } from "@shop/customer/delivery/contract";
 import { tint } from "@shop/ui/tint";
-import { PARCEL_TONE_COLOR, parcelStageKey, parcelStageOf, parcelTone } from "@shop/customer/order/parcel";
+import { parcelStageColor, parcelStageKey, parcelStageOf } from "@shop/customer/order/parcel";
 import { trackingLink } from "@shop/customer/order/parcel-tracking";
 import { useI18n } from "@/i18n/context";
 import { useOrderDeliveryT } from "@/i18n/order-delivery";
 
 export function ParcelChip({ stage }: { stage: ShipmentStage }) {
   const { t } = useI18n();
-  const color = PARCEL_TONE_COLOR[parcelTone(stage)];
+  const color = parcelStageColor(stage);
   return (
     <span
       className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 font-display text-[11px] font-semibold uppercase tracking-[.06em]"

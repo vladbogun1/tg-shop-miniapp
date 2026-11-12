@@ -1,14 +1,19 @@
 "use client";
 
-/** Order-status pill: tint of the status colour, text and dot in the colour itself. Подпись даёт приложение (i18n). */
+/**
+ * Order-status pill: tint of the status colour, text and dot in the colour itself. Подпись даёт приложение (i18n).
+ * `color` вместо `status` — тот же чип другого статуса (стадия посылки Нової пошти).
+ */
 import { ORDER_STATUS_COLOR } from "@shop/core/orders";
 import type { OrderStatus } from "@shop/core/types";
 import { useUiLook } from "../look";
 import { tint } from "@shop/ui/tint";
 
-export function StatusChip({ status, label }: { status: OrderStatus; label: string }) {
+type StatusChipProps = { label: string } & ({ status: OrderStatus; color?: undefined } | { status?: undefined; color: string });
+
+export function StatusChip({ status, label, color: own }: StatusChipProps) {
   const miniapp = useUiLook() === "miniapp";
-  const color = ORDER_STATUS_COLOR[status];
+  const color = own ?? ORDER_STATUS_COLOR[status as OrderStatus];
   return (
     <span
       className={
