@@ -11,13 +11,18 @@ import { apiOrigin } from "@/lib/origin";
 import { getAccessToken } from "@/lib/session";
 import type {
   BatchResult,
-  BoxPreset,
   CategorySize,
+  ConfirmBoxBody,
+  ConfirmBoxResult,
   KeyCheck,
   LabelFormat,
   LabelsResult,
+  NpBox,
+  NpBoxEdit,
+  NpBoxList,
   NpBranch,
   NpStreet,
+  PackingJournal,
   ParcelSize,
   ProductSize,
   SenderConfig,
@@ -49,7 +54,6 @@ export const npAdminApi = {
   saveSender: (cfg: SenderConfig) => apiPut<SenderResponse>("/api/admin/np/sender", cfg),
   checkKey: () => apiPost<KeyCheck>("/api/admin/np/check-key", {}),
   warehouses: (cityRef: string, query: string) => apiGet<NpBranch[]>(`/api/admin/np/warehouses?cityRef=${q(cityRef)}&q=${q(query)}`),
-  boxPresets: () => apiGet<{ presets: BoxPreset[] }>("/api/admin/np/box-presets"),
   productSize: (id: string) => apiGet<ProductSize>(`/api/admin/np/size/products/${id}`),
   saveProductSize: (id: string, body: ProductSize) => apiPut<ProductSize>(`/api/admin/np/size/products/${id}`, body),
   categorySizes: () => apiGet<CategorySize[]>("/api/admin/np/size/categories"),
@@ -62,6 +66,21 @@ export const npWebhookApi = {
   subscribe: (companyTin?: string) =>
     apiPost<WebhookSubscription>("/api/admin/np/webhook/subscribe", companyTin ? { companyTin } : {}),
   unsubscribe: (id: string) => apiDelete<void>(`/api/admin/np/webhook/subscriptions/${q(id)}`),
+};
+
+/** «Коробки»: каталог НП и свои; у каталожной DELETE сервер не даёт — только «нет в наличии». */
+export const npBoxApi = {
+  list: () => apiGet<NpBoxList>("/api/admin/np/boxes"),
+  create: (body: NpBoxEdit) => apiPost<NpBox>("/api/admin/np/boxes", body),
+  update: (id: string, body: NpBoxEdit) => apiPut<NpBox>(`/api/admin/np/boxes/${q(id)}`, body),
+  remove: (id: string) => apiDelete<void>(`/api/admin/np/boxes/${q(id)}`),
+  reviewed: () => apiPost<NpBoxList>("/api/admin/np/boxes/reviewed", {}),
+};
+
+/** Упаковка: «Упаковано» (коробка посылки) и «Журнал упаковки». */
+export const packingApi = {
+  confirm: (orderId: string, body: ConfirmBoxBody) => apiPost<ConfirmBoxResult>(`/api/admin/np/shipments/${q(orderId)}/box`, body),
+  journal: (days: number) => apiGet<PackingJournal>(`/api/admin/np/packing/journal?days=${days}`),
 };
 
 export type BranchKind = "warehouse" | "postomat";

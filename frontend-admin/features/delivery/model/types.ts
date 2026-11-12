@@ -69,3 +69,19 @@ export type CategorySize = Omit<Schemas["CategorySize"], "size"> & { size: Parce
 export type WebhookSubscription = Schemas["DeliveryNpTrackingPushSubscription"];
 /** configured — на сервере заданы адрес (https) и секрет вебхука; error — почему список не прочитан. */
 export type WebhookStatus = Schemas["WebhookStatus"];
+
+// ---- коробки и упаковка (V99) ---------------------------------------------------------------------
+
+/** Коробка «Коробок»: стороны, линии сгиба (первая — полная высота; у пакета пусто), есть ли у нас, тара, цена. */
+export type NpBox = Schemas["BoxView"];
+/** reviewed — владелец один раз нажал «Готово» (общее для всех телефонов). */
+export type NpBoxList = Schemas["BoxList"];
+/** Правка коробки: не заданное поле не меняется. */
+export type NpBoxEdit = Schemas["BoxEdit"];
+/** Коробка посылки: что советовали, что подтвердил упаковщик, перемер НП (только в админке). */
+export type Packing = Schemas["Packing"];
+export type ConfirmBoxBody = Schemas["ConfirmBox"];
+export type ConfirmBoxResult = Schemas["Confirmed"];
+/** Строка «Журнала упаковки»; до подтверждения и до перемера поля коробки и НП — null. */
+export type PackingJournalRow = { [K in keyof Schemas["DeliveryPackingJournalRow"]]: Schemas["DeliveryPackingJournalRow"][K] | null };
+export type PackingJournal = { days: number; rows: PackingJournalRow[] };
