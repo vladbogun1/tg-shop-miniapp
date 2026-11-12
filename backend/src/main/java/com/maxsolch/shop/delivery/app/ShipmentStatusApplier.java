@@ -127,11 +127,15 @@ public class ShipmentStatusApplier {
             }
         }
         if (s.isQuiet()) {
-            // Backfilled: the first status only catches up — no message, no order transition, no reminder.
+            // Backfilled: the first status only catches up — no message, no reminder. One exception: a parcel the
+            // customer already picked up closes its order when nothing is owed on it (no money to book); one with
+            // money still owed stays for the admin on «Внимание» (RECEIVED_SHIPPED), since RECEIVED is final.
             s.setQuiet(false);
             s.setArrivalNotifiedAt(s.getArrivalNotifiedAt() == null ? now : s.getArrivalNotifiedAt());
             s.setStorageNotifiedAt(s.getStorageNotifiedAt() == null ? now : s.getStorageNotifiedAt());
-            return null;
+            boolean pickedUpPaid = next == ShipmentStage.RECEIVED && orders.find(s.getOrderId())
+                    .filter(o -> o.codMinor() == 0 && o.amountDueMinor() == 0).isPresent();
+            return pickedUpPaid ? new Effects(s.getOrderId(), s.getTtn(), next, false, true, 0) : null;
         }
         boolean move = ourRecipient(s, next, u, polled);
         boolean arrivedFirst = move && next == ShipmentStage.ARRIVED && s.getArrivalNotifiedAt() == null
