@@ -16,12 +16,34 @@ export const EXIT_STUCK_MS = 2000;
 /** DOM event of a hung exit (`detail.layer` = the layer's name); the admin telemetry listens for it. */
 export const OVERLAY_STUCK_EVENT = "shop:overlay-stuck";
 
-function reportStuck(layer: string): void {
-  try {
-    window.dispatchEvent(new CustomEvent(OVERLAY_STUCK_EVENT, { detail: { layer } }));
-  } catch {
-    /* a report must never break the page */
-  }
+/**
+ * Reports the exit as stuck if it is still going {@link EXIT_STUCK_MS} of visible time after it started, once.
+ * Hidden time does not count: animations stand still in a background tab / a suspended iOS app, timers may not.
+ */
+function watchStuckExit(layer: string): () => void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let reported = false;
+  const arm = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      if (reported || document.visibilityState === "hidden") return;
+      reported = true;
+      try {
+        window.dispatchEvent(new CustomEvent(OVERLAY_STUCK_EVENT, { detail: { layer } }));
+      } catch {
+        /* a report must never break the page */
+      }
+    }, EXIT_STUCK_MS);
+  };
+  const onVisibility = () => {
+    if (document.visibilityState === "visible") arm();
+  };
+  arm();
+  document.addEventListener("visibilitychange", onVisibility);
+  return () => {
+    clearTimeout(timer);
+    document.removeEventListener("visibilitychange", onVisibility);
+  };
 }
 
 /**
@@ -32,7 +54,8 @@ function reportStuck(layer: string): void {
  * tap until the admin re-entered. So a leaving layer stops taking taps at once (`pointer-events: none`,
  * `inert`, `aria-hidden`) and is hidden for good after {@link EXIT_HIDE_MS} (`visibility: hidden` — works on
  * iOS 15.4, where `inert` is a no-op). The animated backdrop / panel go inside as children. A layer still mounted
- * after {@link EXIT_STUCK_MS} reports itself with {@link OVERLAY_STUCK_EVENT}, once.
+ * after {@link EXIT_STUCK_MS} of visible time reports itself with {@link OVERLAY_STUCK_EVENT}, once. The key must be fresh
+ * per opening ({@link useOpenKey}): a layer that left is never shown again.
  */
 export function PresenceLayer({ name, className, children }: { name: string; className: string; children: ReactNode }) {
   const present = useIsPresent();
@@ -40,10 +63,10 @@ export function PresenceLayer({ name, className, children }: { name: string; cla
   useEffect(() => {
     if (present) return;
     const hide = setTimeout(() => setGone(true), EXIT_HIDE_MS);
-    const stuck = setTimeout(() => reportStuck(name), EXIT_STUCK_MS);
+    const stopWatch = watchStuckExit(name);
     return () => {
       clearTimeout(hide);
-      clearTimeout(stuck);
+      stopWatch();
     };
   }, [present, name]);
   return (
