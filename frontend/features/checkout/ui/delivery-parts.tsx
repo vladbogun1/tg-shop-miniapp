@@ -1,48 +1,61 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Keyboard, Map as MapIcon, MapPin } from "lucide-react";
+import { Box, Keyboard, Map as MapIcon, MapPin, Store, Truck, UserRound } from "lucide-react";
+import type { DeliveryTab } from "@shop/customer/delivery/tabs";
+import { Button } from "@shop/ui/primitives";
 import type { NpWarehouse } from "@/lib/api";
-import { useT } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 import { spring } from "@/lib/motion";
 import { type NpMode, npLabel } from "../model/np-label";
 
-export function DeliveryTab({
-  active,
-  onClick,
-  icon,
-  title,
-  subtitle,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-}) {
+const TAB_ICON: Record<DeliveryTab, React.ReactNode> = {
+  WAREHOUSE: <Store className="h-5 w-5" />,
+  POSTOMAT: <Box className="h-5 w-5" />,
+  DOORS: <Truck className="h-5 w-5" />,
+  PICKUP: <UserRound className="h-5 w-5" />,
+};
+
+const TAB_KEY = {
+  WAREHOUSE: ["delivery.tab.warehouse", "delivery.tab.warehouse.sub"],
+  POSTOMAT: ["delivery.tab.postomat", "delivery.tab.postomat.sub"],
+  DOORS: ["delivery.tab.courier", "delivery.tab.courier.sub"],
+  PICKUP: ["delivery.tab.pickup", "delivery.tab.pickup.sub"],
+} as const;
+
+/** Delivery tabs (checkout v2): відділення · поштомат · кур'єр · самовивіз, 2 × 2 (a long label wraps). */
+export function DeliveryTabs({ tabs, value, onChange }: { tabs: readonly DeliveryTab[]; value: DeliveryTab; onChange: (t: DeliveryTab) => void }) {
+  const t = useCheckoutT();
   return (
-    <motion.button
-      type="button"
-      whileTap={{ scale: 0.98 }}
-      onClick={onClick}
-      className="tap flex min-h-0 flex-col items-start gap-1.5 rounded-[var(--r-card)] border p-4 text-left transition-[border-color,background-color,box-shadow] duration-150"
-      style={{
-        background: active
-          ? "linear-gradient(0deg, var(--accent-soft), var(--accent-soft)), var(--surface)"
-          : "var(--surface)",
-        borderColor: active ? "var(--accent)" : "var(--line)",
-        color: "var(--ink)",
-        boxShadow: active ? "0 0 22px -6px rgba(255,102,0,.45)" : "none",
-      }}
-    >
-      <span style={{ color: active ? "var(--accent)" : "var(--muted)" }}>{icon}</span>
-      <span className="font-display text-[14px] font-bold uppercase leading-tight tracking-[0.06em]">
-        {title}
-      </span>
-      <span className="text-[11px] font-medium" style={{ color: "var(--muted)" }}>
-        {subtitle}
-      </span>
-    </motion.button>
+    <div role="tablist" aria-label={t("delivery.tabs.label")} className="grid grid-cols-2 gap-2.5">
+      {tabs.map((tab) => {
+        const active = tab === value;
+        const [title, sub] = TAB_KEY[tab];
+        return (
+          <motion.button
+            key={tab}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onChange(tab)}
+            className="tap flex min-h-0 min-w-0 flex-col items-start gap-1.5 rounded-[var(--r-card)] border p-3.5 text-left transition-[border-color,background-color,box-shadow] duration-150"
+            style={{
+              background: active ? "linear-gradient(0deg, var(--accent-soft), var(--accent-soft)), var(--surface)" : "var(--surface)",
+              borderColor: active ? "var(--accent)" : "var(--line)",
+              color: "var(--ink)",
+              boxShadow: active ? "0 0 22px -6px rgba(255,102,0,.45)" : "none",
+            }}
+          >
+            <span style={{ color: active ? "var(--accent)" : "var(--muted)" }}>{TAB_ICON[tab]}</span>
+            <span className="max-w-full break-words font-display text-[14px] font-bold uppercase leading-tight tracking-[0.05em]">{t(title)}</span>
+            <span className="max-w-full break-words text-[11px] font-medium leading-snug" style={{ color: "var(--muted)" }}>
+              {t(sub)}
+            </span>
+          </motion.button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -56,7 +69,7 @@ export function WarehouseCard({
   badge?: string;
   action?: React.ReactNode;
 }) {
-  const t = useT();
+  const t = useCheckoutT();
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -88,7 +101,7 @@ export function WarehouseCard({
 
 /** "Ввести вручну" / "Обрати на карті" — a two-way segmented switch. */
 export function NpModeSwitch({ mode, setMode }: { mode: NpMode; setMode: (m: NpMode) => void }) {
-  const t = useT();
+  const t = useCheckoutT();
   const opts: { key: NpMode; label: string; icon: React.ReactNode }[] = [
     { key: "text", label: t("checkout.np.modeText"), icon: <Keyboard className="h-4 w-4" strokeWidth={2.25} /> },
     { key: "map", label: t("checkout.np.modeMap"), icon: <MapIcon className="h-4 w-4" strokeWidth={2.25} /> },

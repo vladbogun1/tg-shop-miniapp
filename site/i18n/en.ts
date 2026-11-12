@@ -27,7 +27,7 @@ export const en: RuDictionary = {
   "meta.desc.contacts":
     "Contact ChiSetup: Telegram bot and a manager chat for every order, pickup in Kharkiv, open 8:00–20:00, seller details.",
   "meta.desc.delivery":
-    "Nova Poshta delivery across Ukraine: shipped within 1–2 business days, pickup in Kharkiv. Pay online by card via monobank: the full amount at once, or a 100 UAH prepayment + cash on delivery.",
+    "Nova Poshta delivery across Ukraine: shipped within 1–2 business days, pickup in Kharkiv. Pay online by card via monobank: the full amount at once, or a prepayment + cash on delivery.",
   "meta.desc.returns":
     "Returns and exchanges within 14 days of receipt: conditions for items in good condition and for faulty items, refund times.",
   "meta.desc.warranty":
@@ -169,7 +169,7 @@ export const en: RuDictionary = {
   "home.trust.delivery.text": "Branch or parcel locker anywhere in Ukraine — pick it right on the map.",
   "home.trust.payment.title": "Pay your way",
   "home.trust.payment.text":
-    "By card, Apple Pay or Google Pay online — or a 100 UAH prepayment and the rest on delivery.",
+    "By card, Apple Pay or Google Pay online — or a prepayment and the rest on delivery.",
   "home.trust.warranty.title": "Warranty",
   "home.trust.warranty.text": "Every item is checked; returns and exchanges within 14 days.",
   "home.trust.chat.title": "Chat with the shop",
@@ -244,7 +244,7 @@ export const en: RuDictionary = {
   "product.promise.delivery.text": "Nova Poshta across Ukraine, ships within 1–2 working days.",
   "product.promise.payment.title": "Payment",
   "product.promise.payment.text":
-    "Card, Apple Pay, Google Pay online, or a 100 ₴ prepayment + cash on delivery.",
+    "Card, Apple Pay, Google Pay online, or a prepayment + cash on delivery.",
   "product.promise.returns.title": "14-day returns",
   "product.promise.returns.text": "Not right for you — we refund under Ukrainian consumer law.",
   "product.promise.warranty.title": "Warranty",
@@ -255,7 +255,6 @@ export const en: RuDictionary = {
 
   "cart.count": { one: "{n} item", other: "{n} items" },
   "cart.continue": "Continue shopping",
-  "cart.deliveryNote": "Delivery is charged at Nova Poshta rates on collection.",
   "cart.priceChanged": "Price changed: was {old}",
   "cart.unavailable": "No longer in stock",
   "cart.hasProblems": "Remove the items that are out of stock first.",
@@ -285,22 +284,15 @@ export const en: RuDictionary = {
 
   "checkout.checkingSession": "Checking your sign-in…",
   "checkout.contacts": "Recipient",
-  "checkout.name": "Full name",
-  "checkout.nameError": "Enter your first and last name",
   "checkout.phone": "Phone",
   "checkout.phoneError": "Enter a number: +38 (0XX) XXX-XX-XX",
   "checkout.delivery": "Delivery",
-  "checkout.np": "Nova Poshta",
-  "checkout.npSubtitle": "Branch or parcel locker",
-  "checkout.pickup": "Pickup",
-  "checkout.pickupSubtitle": "From the shop's point",
   "checkout.pickupText": "Collect your order from the shop's point — we will write in the order chat when it is ready.",
   "checkout.city": "City",
   "checkout.cityPlaceholder": "Start typing a city — the map will move there",
   "checkout.cityNone": "City not found",
-  "checkout.mapHint": "Or find a branch on the map and tap it.",
+  "checkout.mapHint": "Find the branch on the map, tap it and confirm your choice.",
   "checkout.mapLoading": "Loading map…",
-  "checkout.warehouseField": "Branch / parcel locker",
   "checkout.warehousePlaceholder": "Number or address",
   "checkout.warehouseNone": "No such branch in this city",
   "checkout.lastWarehouse": "Same as your previous order",
@@ -322,8 +314,6 @@ export const en: RuDictionary = {
   "checkout.sum": "Subtotal",
   "checkout.discount": "Discount",
   "checkout.discountWithCode": "Discount · {code}",
-  "checkout.deliveryCost": "Delivery",
-  "checkout.deliveryCostValue": "Nova Poshta rates",
   "checkout.total": "Total",
   "checkout.dueNow": "Due now",
   "checkout.rest": "The remaining {amount} is paid on collection.",

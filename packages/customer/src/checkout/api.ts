@@ -5,7 +5,21 @@
  * в «обнови сессию и повтори» (`authed`); публичные (проверка промокода, НП, лимиты, варианты оплаты) — нет.
  */
 import type { HttpClient } from "@shop/core/http";
-import type { CreateOrderResult, NpCity, NpWarehouse, OrderLimits, PaymentOption, PromoPreview } from "@shop/core/types";
+import type { CreateOrderResult, NpCity, NpWarehouse, OrderLimits, PromoPreview } from "@shop/core/types";
+import type {
+  NpCheckoutConfig,
+  NpEstimateRequest,
+  NpEstimateResponse,
+  NpPaymentOption,
+  NpServiceType,
+  NpStreet,
+} from "../delivery/contract";
+
+/**
+ * Сколько ждём подсказку цены доставки: дольше — молча без неё. Здесь, а не в delivery/estimate: этот модуль
+ * в общем бандле каждой страницы, а estimate тянет за собой модель оформления (draft, tabs).
+ */
+export const ESTIMATE_TIMEOUT_MS = 5_000;
 
 export interface CreateOrderItem {
   productId: string;
@@ -25,6 +39,15 @@ export interface CreateOrderRequest {
   npWarehouseRef?: string;
   npWarehouseName?: string;
   paymentOptionId: string;
+  /** Checkout v2: служба НП (по умолчанию відділення), адрес курьера, получатель по частям — как в ТТН. */
+  npServiceType?: NpServiceType;
+  npStreetRef?: string;
+  npStreetName?: string;
+  npBuilding?: string;
+  npFlat?: string;
+  recipientLastName?: string;
+  recipientFirstName?: string;
+  recipientMiddleName?: string;
   /** Подарок за сумму заказа: CASE (по умолчанию) или гарантированная скидка уровня на этот заказ. */
   giftChoice?: "CASE" | "DISCOUNT";
 }
@@ -40,7 +63,7 @@ export interface NpBboxParams {
 }
 
 export interface CheckoutApi {
-  paymentOptions(): Promise<PaymentOption[]>;
+  paymentOptions(): Promise<NpPaymentOption[]>;
   /** Покупателю доступна только полная оплата онлайн (метка в админке; причину ему не говорим). Нужен вход. */
   onlinePaymentOnly(): Promise<boolean>;
   /** Лимиты антиспама (0 = без лимита): шаговые счётчики зажимаются `maxQtyPerProduct`. */
@@ -54,6 +77,12 @@ export interface CheckoutApi {
   npCities(q: string): Promise<NpCity[]>;
   npWarehouses(cityRef: string, q?: string): Promise<NpWarehouse[]>;
   npWarehousesBbox(p: NpBboxParams): Promise<NpWarehouse[]>;
+  /** Какие службы НП включены (поштомат, курьер, подсказка цены). */
+  npConfig(): Promise<NpCheckoutConfig>;
+  /** Улицы города для курьера (q ≥ 2 букв). */
+  npStreets(cityRef: string, q: string): Promise<NpStreet[]>;
+  /** «≈ N ₴» доставки; ждём не дольше ESTIMATE_TIMEOUT_MS — подсказка не должна держать оформление. */
+  npEstimate(req: NpEstimateRequest): Promise<NpEstimateResponse>;
   /** Создаёт заказ. Ключ идемпотентности: повтор (потерянный ответ, двойное нажатие) вернёт уже созданный заказ. */
   createOrder(body: CreateOrderRequest, idempotencyKey: string): Promise<CreateOrderResult>;
 }
@@ -68,7 +97,7 @@ export function createCheckoutApi(
   authed: <T>(call: () => Promise<T>) => Promise<T> = (call) => call(),
 ): CheckoutApi {
   return {
-    paymentOptions: () => http.get<PaymentOption[]>("/api/payment-options"),
+    paymentOptions: () => http.get<NpPaymentOption[]>("/api/payment-options"),
     onlinePaymentOnly: () =>
       authed(() => http.get<{ onlinePaymentOnly?: boolean }>("/api/me")).then((me) => me?.onlinePaymentOnly === true),
     orderLimits: () => http.get<OrderLimits>("/api/public/order-limits"),
@@ -98,6 +127,10 @@ export function createCheckoutApi(
       if (p.q) sp.set("q", p.q);
       return http.get<NpWarehouse[]>(`/api/np/warehouses/bbox?${sp.toString()}`);
     },
+    npConfig: () => http.get<NpCheckoutConfig>("/api/np/config"),
+    npStreets: (cityRef, q) =>
+      http.get<NpStreet[]>(`/api/np/streets?cityRef=${encodeURIComponent(cityRef)}&q=${encodeURIComponent(q)}`),
+    npEstimate: (req) => http.post<NpEstimateResponse>("/api/np/estimate", req, undefined, ESTIMATE_TIMEOUT_MS),
     createOrder: (body, idempotencyKey) =>
       authed(() => http.post<CreateOrderResult>("/api/orders", body, { "Idempotency-Key": idempotencyKey })),
   };

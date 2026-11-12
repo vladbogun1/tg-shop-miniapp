@@ -175,7 +175,6 @@ export const ru = {
   "pay.openFallback": "Оплата не открылась? Открыть в Telegram",
 
   // ── карта отделений Новой Почты ───────────────────────────────────────────
-  "np.confirm": "Выбрать это отделение",
 
   // ── оформление ────────────────────────────────────────────────────────────
   "checkout.step.contacts": "Контакты",
@@ -185,26 +184,17 @@ export const ru = {
   "checkout.redirecting": "Открываем оплату…",
 
   "checkout.contacts.intro": "Куда и кому доставить заказ — начнём с контактов.",
-  "checkout.contacts.name": "Имя и фамилия",
-  "checkout.contacts.nameError": "Укажите имя",
   "checkout.contacts.phone": "Телефон",
   "checkout.contacts.phoneError": "Введите номер: +38 (0XX) XXX-XX-XX",
 
-  "checkout.delivery.np": "Новая Почта",
-  "checkout.delivery.npSubtitle": "Отделение / почтомат",
-  "checkout.delivery.pickup": "Самовывоз",
-  "checkout.delivery.pickupSubtitle": "Из точки магазина",
   "checkout.delivery.mapHint": "Найдите отделение на карте и нажмите «Выбрать».",
   "checkout.delivery.required": "Выберите отделение — в списке или на карте.",
   "checkout.delivery.pickupText": "Заберите заказ из точки магазина — мы свяжемся с вами насчёт адреса и времени.",
   "checkout.delivery.mapLoading": "Загрузка карты…",
   "checkout.delivery.comment": "Комментарий к заказу (необязательно)",
-  "checkout.np.modeText": "Ввести вручную",
-  "checkout.np.modeMap": "Выбрать на карте",
   "checkout.np.city": "Город",
   "checkout.np.cityPlaceholder": "Начните вводить название",
   "checkout.np.cityNone": "Город не найден",
-  "checkout.np.warehouse": "Отделение / почтомат",
   "checkout.np.warehousePlaceholder": "Номер или адрес",
   "checkout.np.warehouseNone": "В этом городе такого отделения нет",
   "checkout.np.lastWarehouse": "Как в прошлом заказе",

@@ -1,6 +1,6 @@
 ---
 title: Returns and Exchanges
-updated: 2026-10-05
+updated: 2026-11-12
 status: approved
 ---
 
@@ -35,7 +35,7 @@ Items in the “Discounted” category are sold at a reduced price because of de
 
 ## Refusing a parcel and prepayment
 
-If you chose to pay with a 100 UAH prepayment plus cash on delivery, the prepayment is credited toward the order total. If you do not collect the parcel or refuse it at the branch without a valid reason (the item has no defects and matches the order), the prepayment is not refunded: it covers shipping to you and back.
+If you chose to pay with a prepayment plus cash on delivery, the prepayment is credited toward the order total. If you do not collect the parcel or refuse it at the branch without a valid reason (the item has no defects and matches the order), the prepayment is not refunded: it covers shipping to you and back.
 
 ## How we issue refunds
 

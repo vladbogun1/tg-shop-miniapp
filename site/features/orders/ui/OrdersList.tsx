@@ -5,13 +5,14 @@ import { orderKeys } from "@shop/customer/order/keys";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, MessageCircle, PackageOpen } from "lucide-react";
 import Link from "next/link";
-import { payableMinor, paymentState } from "@shop/core/orders";
+import { onDeliveryUnpaid, payableMinor, paymentState } from "@shop/core/orders";
 import { shortOrderId } from "@shop/core/format";
 import { type OrderSummary } from "@shop/core/types";
 import { Button, StatusChip } from "@shop/ui/primitives";
 import { useI18n } from "@/i18n/context";
 import { api } from "@/lib/api";
 import { useFmt } from "@/lib/use-fmt";
+import { ParcelStage } from "./ParcelChip";
 import { PaymentBadge } from "./PaymentBadge";
 
 export function OrdersList() {
@@ -77,7 +78,8 @@ function OrderRow({ order }: { order: OrderSummary }) {
               {t("account.orders.number", { id: shortOrderId(order.id) })}
             </span>
             <StatusChip status={order.status} label={t(`status.${order.status}`)} />
-            <PaymentBadge state={paymentState(order)} />
+            {!onDeliveryUnpaid(order) && <PaymentBadge state={paymentState(order)} />}
+            <ParcelStage order={order} />
             {order.giftCaseStatus === "SEALED" && order.status !== "REJECTED" &&
               (order.giftCaseOpenable ? (
                 <span className="rounded-full border border-[color-mix(in_srgb,var(--accent)_55%,transparent)] bg-[var(--accent-soft)] px-2.5 py-0.5 font-display text-[11px] font-bold uppercase tracking-[.06em] text-[var(--accent-hi)] shadow-[0_0_12px_rgba(255,106,0,.35)]">

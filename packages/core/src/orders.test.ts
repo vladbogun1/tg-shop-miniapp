@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { OrderStatus } from "./types";
-import { STATUS_ORDER, allowedTargets, canTransition, codMinor, customerCancelMode, isNovaPoshtaTtn, isOrderLimitCode, maxQty, needsTopUp, payableMinor, paymentFirst, paymentState, visiblePaymentOptions } from "./orders";
+import { STATUS_ORDER, allowedTargets, canTransition, codMinor, customerCancelMode, isNovaPoshtaTtn, isOrderLimitCode, maxQty, needsTopUp, onDeliveryUnpaid, payableMinor, paymentFirst, paymentState, visiblePaymentOptions } from "./orders";
 
 describe("status transitions mirror the backend", () => {
   it("allows the forward path and rejection, never back to NEW or out of REJECTED", () => {
@@ -127,5 +127,13 @@ describe("checkout helpers", () => {
     expect(isNovaPoshtaTtn("20450123456789")).toBe(true);
     expect(isNovaPoshtaTtn("20 4501 2345 6789")).toBe(true);
     expect(isNovaPoshtaTtn("123")).toBe(false);
+  });
+});
+
+describe("onDeliveryUnpaid", () => {
+  it("при отриманні и не оплачен — да; оплачен или обычный заказ — нет", () => {
+    expect(onDeliveryUnpaid({ paymentOnDelivery: true, paid: false })).toBe(true);
+    expect(onDeliveryUnpaid({ paymentOnDelivery: true, paid: true })).toBe(false);
+    expect(onDeliveryUnpaid({ paid: false })).toBe(false);
   });
 });

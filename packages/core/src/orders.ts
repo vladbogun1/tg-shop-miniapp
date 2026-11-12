@@ -197,6 +197,14 @@ export function paymentState(order: {
 }
 
 /**
+ * Оплата при получении («при отриманні», checkout v2) и деньги ещё не получены: онлайн-оплату не предлагаем,
+ * плашку «Не оплачен» не показываем. Рядом с paymentState: список заказов грузит этот модуль и так.
+ */
+export function onDeliveryUnpaid(o: { paymentOnDelivery?: boolean; paid?: boolean }): boolean {
+  return o.paymentOnDelivery === true && !o.paid;
+}
+
+/**
  * ADMIN ONLY. The customer app translates these from its own dictionary (`payment.*`) — a single
  * shared constant cannot be Russian for the seller and Ukrainian for the buyer at the same time.
  */

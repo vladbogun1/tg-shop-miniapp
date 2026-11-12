@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Check, Copy, Truck } from "lucide-react";
 import { useState } from "react";
-import type { paymentState } from "@shop/core/orders";
+import { onDeliveryUnpaid, type paymentState } from "@shop/core/orders";
 import { PaymentBadge } from "@/features/account";
 import { StatusTimeline } from "@/features/account";
 import { useT } from "@/i18n/context";
@@ -11,6 +11,7 @@ import type { OrderDetail } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { riseItem } from "@/lib/motion";
 import { haptic } from "@/platform/telegram";
+import { ParcelStatus } from "./ParcelBlock";
 
 /** Status + timeline, the reject reason, the tracking number and the creation time. */
 export function OrderStatusCard({
@@ -29,7 +30,8 @@ export function OrderStatusCard({
             <h3 className="eyebrow flex items-center gap-2 !text-[10px] !tracking-[0.2em]">
               {t("order.status")}
             </h3>
-            <PaymentBadge state={payState} />
+            {/* «При отриманні»: nothing to pay online, so no «Не оплачено». */}
+            {!onDeliveryUnpaid(order) && <PaymentBadge state={payState} />}
           </div>
           <StatusTimeline status={order.status} />
 
@@ -63,6 +65,7 @@ export function OrderStatusCard({
               <CopyButton value={order.trackingNumber} label={t("order.tracking")} />
             </div>
           )}
+          <ParcelStatus order={order} />
 
           <p className="mt-3 text-[12px] text-[var(--faint)]">
             {t("order.createdAt", { when: formatDateTime(order.createdAt) })}

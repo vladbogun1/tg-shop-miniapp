@@ -46,8 +46,9 @@ const BBOX_LIMIT = 1500;
  * ответ для старого окна заменял пины города, к которому карта только что перелетела). Смена категории перечитывает
  * текущее окно. Выбранное отделение добавляется в пины, даже пока ответа для окна нет, — оно подсвечено сразу.
  */
-export function useWarehouseMapData(api: Pick<CheckoutApi, "npWarehousesBbox">, selected: NpWarehouse | null) {
-  const [category, setCategory] = useState<MapCategory>("all");
+export function useWarehouseMapData(api: Pick<CheckoutApi, "npWarehousesBbox">, selected: NpWarehouse | null, initialCategory: MapCategory = "all") {
+  // «Поштомат» tab opens the map on lockers (checkout v2).
+  const [category, setCategory] = useState<MapCategory>(initialCategory);
   const [items, setItems] = useState<NpWarehouse[]>([]);
   const boundsRef = useRef<MapBounds | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);

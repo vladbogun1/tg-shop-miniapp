@@ -2,13 +2,14 @@
 
 /**
  * CHECKOUT STEPPER — ChiSetup restyle.
- *   1. Контакты  — name + masked phone (phone helpers from @shop/core/phone)
- *   2. Доставка  — NOVA_POSHTA | PICKUP. The branch is picked BY TEXT by default (city → branch
- *                  autocomplete, NpSearch) or on the map (NpWarehouseMap); both modes share one
- *                  city / branch. The last order prefills name, phone, delivery method and branch
- *                  (card "Як у попередньому замовленні" → "Обрати інше").
- *   3. Оплата    — pick an online payment option: the whole amount, or a prepayment now and the
- *                  rest in cash on delivery. All of it is paid through monobank within 24 h.
+ *   1. Контакты  — recipient (прізвище / ім'я / по батькові) + masked phone (@shop/core/phone)
+ *   2. Доставка  — відділення · поштомат · кур'єр · самовивіз (checkout v2, @shop/customer/delivery).
+ *                  The point is picked BY TEXT by default (city → point autocomplete, NpSearch) or on
+ *                  the map (NpWarehouseMap, a tapped point waits for «Обрати»); the courier gets
+ *                  street + building + flat. «≈ N ₴» from Nova Poshta never blocks the order.
+ *                  The last order prefills recipient, phone, tab, point / address by ref.
+ *   3. Оплата    — online (the whole amount or a prepayment, monobank within 24 h) or, where the
+ *                  shop allows it for this delivery, «при отриманні» (Nova Poshta's COD).
  *   4. Подтверждение — summary → POST /api/orders → the order page (`?created=1`), which has the
  *                  «Оплатити» button and catches up with the payment when the customer comes back.
  *
@@ -22,15 +23,19 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { isValidPhone } from "@shop/core/phone";
-import { isValidCustomerName } from "@shop/customer/checkout/order-request";
+import { deliveryOk } from "@shop/customer/delivery/draft";
+import { estimateRequestOf } from "@shop/customer/delivery/estimate";
+import { recipientOk } from "@shop/customer/delivery/recipient";
+import { useDeliveryEstimate } from "@shop/customer/delivery/use-np-delivery";
 import { StepProgress } from "@/features/checkout/ui/StepProgress";
 import { useI18n } from "@/i18n/context";
 import { trackCheckoutStart } from "@/lib/analytics";
+import { customerApi } from "@/lib/api";
 import { useCart, useCartSubtotal } from "@/features/cart";
 import { money } from "@/lib/money";
 import { useKeyboardOpen } from "@/lib/viewport";
 import { STEP_KEYS } from "../model/steps";
-import { stepIsValid } from "../model/totals";
+import { stepIsValid, stepOfField } from "../model/totals";
 import { CheckoutBottomBar } from "./CheckoutBottomBar";
 import { CheckoutSteps } from "./CheckoutSteps";
 import { EmptyCartState, RedirectingState } from "./CheckoutStates";
@@ -51,27 +56,29 @@ export function CheckoutScreen() {
   const [step, setStep] = useState(0);
   const [touched, setTouched] = useState(false);
   const form = useCheckoutForm();
-  const order = useCheckoutOrder(promoCode, subtotal);
+  const order = useCheckoutOrder(promoCode, subtotal, form.d.tab);
+  const estimate = useDeliveryEstimate(
+    customerApi.checkout,
+    estimateRequestOf(form.d.draft, lines, order.total, order.payOnDelivery),
+    form.estimateEnabled,
+  );
   const place = usePlaceOrder({
     lines,
-    name: form.name,
+    draft: form.d.draft,
     phone: form.phone,
     comment: form.comment,
     promoCode,
     promoValid: order.promoValid,
     setPromoCode,
-    delivery: form.delivery,
-    warehouse: form.np.warehouse,
     payment: order.chosenPayment,
     giftTier: order.giftTier,
     giftDiscount: order.giftDiscount,
   });
 
   const stepOk = stepIsValid(step, {
-    nameOk: isValidCustomerName(form.name),
+    recipientOk: recipientOk(form.d.recipient),
     phoneOk: isValidPhone(form.phone),
-    delivery: form.delivery,
-    warehouse: form.np.warehouse,
+    deliveryOk: deliveryOk(form.d.draft),
     paid: !!order.chosenPayment,
   });
 
@@ -86,7 +93,7 @@ export function CheckoutScreen() {
   // A field the server rejected: back to the step that has it.
   const rejected = place.fieldError;
   useEffect(() => {
-    if (rejected) setStep(rejected === "comment" ? 1 : 0);
+    if (rejected) setStep(stepOfField(rejected));
   }, [rejected]);
 
   function next() {
@@ -144,6 +151,7 @@ export function CheckoutScreen() {
         promoCode={promoCode}
         subtotal={subtotal}
         currency={currency}
+        estimate={estimate}
         items={lines.map((l) => ({
           title: l.title + (l.variantName ? ` · ${l.variantName}` : ""),
           qty: l.quantity,

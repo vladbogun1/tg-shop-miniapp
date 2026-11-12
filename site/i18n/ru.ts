@@ -39,7 +39,7 @@ export const ru = {
   "meta.desc.contacts":
     "Контакты ChiSetup: Telegram-бот и чат с менеджером по каждому заказу, самовывоз в Харькове, время работы 8:00–20:00, реквизиты продавца.",
   "meta.desc.delivery":
-    "Доставка Новой Почтой по всей Украине: отправка за 1–2 рабочих дня, самовывоз в Харькове. Оплата картой онлайн через monobank: вся сумма сразу или предоплата 100 грн + наложенный платёж.",
+    "Доставка Новой Почтой по всей Украине: отправка за 1–2 рабочих дня, самовывоз в Харькове. Оплата картой онлайн через monobank: вся сумма сразу или предоплата + наложенный платёж.",
   "meta.desc.returns":
     "Возврат и обмен в течение 14 дней с момента получения: условия для товара надлежащего качества и товара с недостатком, сроки возврата денег.",
   "meta.desc.warranty":
@@ -186,7 +186,7 @@ export const ru = {
   "home.trust.delivery.text": "Отделение или почтомат по всей Украине — выбираете прямо на карте.",
   "home.trust.payment.title": "Оплата как удобно",
   "home.trust.payment.text":
-    "Картой онлайн, Apple Pay или Google Pay — или предоплата 100 грн и остаток при получении.",
+    "Картой онлайн, Apple Pay или Google Pay — или предоплата и остаток при получении.",
   "home.trust.warranty.title": "Гарантия",
   "home.trust.warranty.text": "Проверяем каждый товар, возврат и обмен — 14 дней.",
   "home.trust.chat.title": "Чат с магазином",
@@ -263,7 +263,7 @@ export const ru = {
   "product.promise.delivery.text": "Новой Почтой по Украине, отправка за 1–2 рабочих дня.",
   "product.promise.payment.title": "Оплата",
   "product.promise.payment.text":
-    "Картой онлайн, Apple Pay, Google Pay или предоплата 100 ₴ + наложенный платёж.",
+    "Картой онлайн, Apple Pay, Google Pay или предоплата + наложенный платёж.",
   "product.promise.returns.title": "Возврат 14 дней",
   "product.promise.returns.text": "Не подошло — вернём деньги по закону о защите прав потребителей.",
   "product.promise.warranty.title": "Гарантия",
@@ -275,7 +275,6 @@ export const ru = {
   // ── cart ──────────────────────────────────────────────────────────────────
   "cart.count": { one: "{n} товар", few: "{n} товара", many: "{n} товаров", other: "{n} товара" },
   "cart.continue": "Продолжить покупки",
-  "cart.deliveryNote": "Доставка — по тарифам Новой Почты, оплачивается при получении.",
   "cart.priceChanged": "Цена изменилась: было {old}",
   "cart.unavailable": "Товара больше нет в наличии",
   "cart.hasProblems": "Уберите из корзины товары, которых нет в наличии.",
@@ -307,22 +306,15 @@ export const ru = {
   // ── checkout ──────────────────────────────────────────────────────────────
   "checkout.checkingSession": "Проверяем вход…",
   "checkout.contacts": "Контакты получателя",
-  "checkout.name": "Имя и фамилия (ПІБ)",
-  "checkout.nameError": "Укажите имя и фамилию",
   "checkout.phone": "Телефон",
   "checkout.phoneError": "Введите номер: +38 (0XX) XXX-XX-XX",
   "checkout.delivery": "Доставка",
-  "checkout.np": "Новая Почта",
-  "checkout.npSubtitle": "Отделение или почтомат",
-  "checkout.pickup": "Самовывоз",
-  "checkout.pickupSubtitle": "Из точки магазина",
   "checkout.pickupText": "Заберите заказ из точки магазина — мы напишем в чат заказа, когда его можно забрать.",
   "checkout.city": "Город",
   "checkout.cityPlaceholder": "Начните вводить город — карта переместится к нему",
   "checkout.cityNone": "Город не найден",
-  "checkout.mapHint": "Или найдите отделение на карте и нажмите на него.",
+  "checkout.mapHint": "Найдите отделение на карте, нажмите на него и подтвердите выбор.",
   "checkout.mapLoading": "Загрузка карты…",
-  "checkout.warehouseField": "Отделение / почтомат",
   "checkout.warehousePlaceholder": "Номер или адрес",
   "checkout.warehouseNone": "В этом городе такого отделения нет",
   "checkout.lastWarehouse": "Как в прошлом заказе",
@@ -344,8 +336,6 @@ export const ru = {
   "checkout.sum": "Сумма",
   "checkout.discount": "Скидка",
   "checkout.discountWithCode": "Скидка · {code}",
-  "checkout.deliveryCost": "Доставка",
-  "checkout.deliveryCostValue": "по тарифу НП",
   "checkout.total": "Итого",
   "checkout.dueNow": "К оплате сейчас",
   "checkout.rest": "Остаток {amount} — при получении.",

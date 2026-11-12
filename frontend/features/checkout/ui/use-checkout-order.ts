@@ -4,6 +4,7 @@ import { useState } from "react";
 import { giftProgress, guaranteedDiscountMinor, type GiftChoice } from "@shop/core/giftcase";
 import { useOnlinePaymentOnly } from "@shop/customer/checkout/online-payment-only";
 import { useChosenPayment } from "@shop/customer/checkout/payment-choice";
+import type { DeliveryTab } from "@shop/customer/delivery/tabs";
 import { usePromoPreview } from "@/features/cart";
 import { useGift } from "@/features/gift";
 import { customerApi } from "@/lib/api";
@@ -13,9 +14,10 @@ import { usePaymentOptionsQuery } from "../queries";
 /**
  * Step 3–4 money: the promo preview (same check the cart runs, so the two screens cannot disagree
  * about the price — it also keeps refreshing the hold on a limited code), the gift of the order sum,
- * the visible payment options, the chosen one and what is payable now.
+ * the payment options for this delivery and sum (incl. «оплата при отриманні» where allowed), the chosen one and
+ * what is payable now / on delivery.
  */
-export function useCheckoutOrder(promoCode: string, subtotal: number) {
+export function useCheckoutOrder(promoCode: string, subtotal: number, tab: DeliveryTab) {
   const paymentQuery = usePaymentOptionsQuery();
   const promo = usePromoPreview(promoCode, subtotal);
   const discount = promo.discount;
@@ -32,7 +34,7 @@ export function useCheckoutOrder(promoCode: string, subtotal: number) {
   // /api/me ждёт токен Telegram: до него метки не знаем, а сервер всё равно не примет предоплату помеченному.
   const token = useAccessToken();
   const onlineOnly = useOnlinePaymentOnly(customerApi.checkout, !!token);
-  const pay = useChosenPayment(paymentQuery.data, total, onlineOnly);
+  const pay = useChosenPayment(paymentQuery.data, total, onlineOnly, tab);
 
   return {
     paymentQuery,
@@ -51,5 +53,10 @@ export function useCheckoutOrder(promoCode: string, subtotal: number) {
     chosenPaymentId: pay.chosenId,
     setPaymentId: pay.choose,
     dueNow: pay.dueNow,
+    payOnDelivery: pay.payOnDelivery,
+    onDelivery: pay.onDelivery,
+    paymentSwitched: pay.switched,
+    /** Варианты есть, но ни один не подходит к этой доставке или сумме. */
+    noneForDelivery: !!paymentQuery.data?.length && pay.options.length === 0,
   };
 }

@@ -27,7 +27,7 @@ export const uk: RuDictionary = {
   "meta.desc.contacts":
     "Контакти ChiSetup: Telegram-бот і чат із менеджером щодо кожного замовлення, самовивіз у Харкові, години роботи 8:00–20:00, реквізити продавця.",
   "meta.desc.delivery":
-    "Доставка Новою Поштою по всій Україні: відправка за 1–2 робочі дні, самовивіз у Харкові. Оплата карткою онлайн через monobank: уся сума одразу або передоплата 100 грн + накладений платіж.",
+    "Доставка Новою Поштою по всій Україні: відправка за 1–2 робочі дні, самовивіз у Харкові. Оплата карткою онлайн через monobank: уся сума одразу або передоплата + накладений платіж.",
   "meta.desc.returns":
     "Повернення та обмін протягом 14 днів з дня отримання: умови для товару належної якості й товару з недоліком, строки повернення коштів.",
   "meta.desc.warranty":
@@ -169,7 +169,7 @@ export const uk: RuDictionary = {
   "home.trust.delivery.text": "Відділення або поштомат по всій Україні — обираєте просто на карті.",
   "home.trust.payment.title": "Оплата як зручно",
   "home.trust.payment.text":
-    "Карткою онлайн, Apple Pay чи Google Pay — або передоплата 100 грн і решта при отриманні.",
+    "Карткою онлайн, Apple Pay чи Google Pay — або передоплата і решта при отриманні.",
   "home.trust.warranty.title": "Гарантія",
   "home.trust.warranty.text": "Перевіряємо кожен товар, повернення та обмін — 14 днів.",
   "home.trust.chat.title": "Чат із магазином",
@@ -244,7 +244,7 @@ export const uk: RuDictionary = {
   "product.promise.delivery.text": "Новою Поштою по Україні, відправка за 1–2 робочі дні.",
   "product.promise.payment.title": "Оплата",
   "product.promise.payment.text":
-    "Карткою онлайн, Apple Pay, Google Pay або передоплата 100 ₴ + накладений платіж.",
+    "Карткою онлайн, Apple Pay, Google Pay або передоплата + накладений платіж.",
   "product.promise.returns.title": "Повернення 14 днів",
   "product.promise.returns.text": "Не підійшло — повернемо гроші за законом про захист прав споживачів.",
   "product.promise.warranty.title": "Гарантія",
@@ -255,7 +255,6 @@ export const uk: RuDictionary = {
 
   "cart.count": { one: "{n} товар", few: "{n} товари", many: "{n} товарів", other: "{n} товару" },
   "cart.continue": "Продовжити покупки",
-  "cart.deliveryNote": "Доставка — за тарифами Нової Пошти, сплачується при отриманні.",
   "cart.priceChanged": "Ціна змінилася: було {old}",
   "cart.unavailable": "Товару більше немає в наявності",
   "cart.hasProblems": "Приберіть із кошика товари, яких немає в наявності.",
@@ -285,22 +284,15 @@ export const uk: RuDictionary = {
 
   "checkout.checkingSession": "Перевіряємо вхід…",
   "checkout.contacts": "Контакти отримувача",
-  "checkout.name": "Прізвище та ім'я (ПІБ)",
-  "checkout.nameError": "Вкажіть ім'я та прізвище",
   "checkout.phone": "Телефон",
   "checkout.phoneError": "Введіть номер: +38 (0XX) XXX-XX-XX",
   "checkout.delivery": "Доставка",
-  "checkout.np": "Нова Пошта",
-  "checkout.npSubtitle": "Відділення або поштомат",
-  "checkout.pickup": "Самовивіз",
-  "checkout.pickupSubtitle": "З точки магазину",
   "checkout.pickupText": "Заберіть замовлення з точки магазину — ми напишемо в чат замовлення, коли його можна забрати.",
   "checkout.city": "Місто",
   "checkout.cityPlaceholder": "Почніть вводити місто — карта переміститься до нього",
   "checkout.cityNone": "Місто не знайдено",
-  "checkout.mapHint": "Або знайдіть відділення на карті й натисніть на нього.",
+  "checkout.mapHint": "Знайдіть відділення на карті, натисніть на нього й підтвердіть вибір.",
   "checkout.mapLoading": "Завантаження карти…",
-  "checkout.warehouseField": "Відділення / поштомат",
   "checkout.warehousePlaceholder": "Номер або адреса",
   "checkout.warehouseNone": "У цьому місті такого відділення немає",
   "checkout.lastWarehouse": "Як у попередньому замовленні",
@@ -322,8 +314,6 @@ export const uk: RuDictionary = {
   "checkout.sum": "Сума",
   "checkout.discount": "Знижка",
   "checkout.discountWithCode": "Знижка · {code}",
-  "checkout.deliveryCost": "Доставка",
-  "checkout.deliveryCostValue": "за тарифом НП",
   "checkout.total": "Разом",
   "checkout.dueNow": "До сплати зараз",
   "checkout.rest": "Решта {amount} — при отриманні.",

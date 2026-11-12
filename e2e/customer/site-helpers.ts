@@ -20,7 +20,8 @@ export async function addToCartFromProduct(page: Page, slug: string): Promise<vo
 
 /** Checkout contacts + a Nova Poshta branch of the fixture city. The payment option stays as chosen by the caller. */
 export async function fillCheckoutContactsAndBranch(page: Page): Promise<void> {
-  await page.getByRole("textbox", { name: /ПІБ/ }).fill("Тест Покупець");
+  await page.getByRole("textbox", { name: "Прізвище", exact: true }).fill("Тест");
+  await page.getByRole("textbox", { name: "Ім'я", exact: true }).fill("Покупець");
   await page.getByRole("textbox", { name: "Телефон" }).fill("0971234567");
   await page.getByRole("combobox", { name: "Місто" }).fill("Киї");
   await page.getByRole("option", { name: /Київ/ }).first().click();

@@ -196,6 +196,7 @@ export function CartScreen() {
         )}
         <div className="my-3 h-px bg-[var(--line)]" />
         <Row label={t("cart.total")} value={money(total, currency)} strong />
+        <p className="mt-2 text-[12px] font-medium leading-snug text-[var(--muted)]">{t("cart.deliveryNote")}</p>
       </div>
 
       {/* spacer so content never hides behind the sticky bar */}

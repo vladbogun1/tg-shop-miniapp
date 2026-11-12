@@ -6,95 +6,64 @@ import { siteCheckoutKeys } from "@shop/customer/checkout/keys";
 import { meKeys } from "@shop/customer/account/keys";
 import { useEffect, useRef, useState } from "react";
 import { useLatest } from "@shop/ui/use-latest";
-import { type DeliveryMethod, type OrderDetail } from "@shop/core/types";
 import { useOnlinePaymentOnly } from "@shop/customer/checkout/online-payment-only";
 import { useChosenPayment } from "@shop/customer/checkout/payment-choice";
 import { giftProgress, guaranteedDiscountMinor, type GiftChoice } from "@shop/core/giftcase";
-import { resolveNpWarehouse } from "@shop/core/np-geo";
-import { type useNpSelection } from "@shop/customer/delivery/np-selection";
+import type { NpOrderDetail } from "@shop/customer/delivery/contract";
+import type { DeliveryTab } from "@shop/customer/delivery/tabs";
+import type { DeliveryDraftState } from "@shop/customer/delivery/use-delivery-draft";
 import { useI18n } from "@/i18n/context";
 import { api } from "@/lib/api";
 import { useGift } from "@/features/gift";
 import { usePromoPreview } from "./ui/PromoField";
 
 interface PrefillTargets {
-  setName: (f: (v: string) => string) => void;
   setPhone: (f: (v: string) => string) => void;
-  setDelivery: (d: DeliveryMethod) => void;
   setPrefilled: (v: boolean) => void;
 }
 
-/** Fills contacts and delivery from the customer's latest order, once, and never over their input. */
-export function useLastOrderPrefill(np: ReturnType<typeof useNpSelection>, target: PrefillTargets) {
+/**
+ * Fills the recipient, the phone and the delivery from the customer's latest order, once, and never over
+ * their input: tab, city and point by ref (the point is looked up in its city's list), the courier address.
+ */
+export function useLastOrderPrefill(d: DeliveryDraftState, target: PrefillTargets) {
   const lastOrder = useQuery({
     queryKey: meKeys.lastOrder,
     staleTime: Infinity,
-    queryFn: async (): Promise<OrderDetail | null> => {
+    queryFn: async (): Promise<NpOrderDetail | null> => {
       const list = await api.orders();
       const latest = [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
       return latest ? api.order(latest.id) : null;
     },
   });
-  /** The customer has touched the city / branch fields or the map — the last-order prefill backs off. */
-  const touchedNp = np.touched;
 
   const prefillDone = useRef(false);
-  const latest = useLatest({ np, target });
+  const latest = useLatest({ d, target });
   useEffect(() => {
     const o = lastOrder.data;
-    const { np: live, target: out } = latest.current;
+    const { d: live, target: out } = latest.current;
     if (!o || prefillDone.current) return;
     prefillDone.current = true;
-    let used = false;
-    if (o.customerName) {
-      out.setName((v) => v || o.customerName);
-      used = true;
-    }
-    if (o.phone) {
-      out.setPhone((v) => v || o.phone);
-      used = true;
-    }
-    if (used) out.setPrefilled(true);
-    if (o.deliveryMethod === "PICKUP") {
-      out.setDelivery("PICKUP");
-      return;
-    }
-    // The order keeps only names; find the branch again so it can be submitted with its refs.
-    if (o.npCityName && o.npWarehouseName) {
-      (async () => {
-        try {
-          const found = await resolveNpWarehouse(o.npCityName!, o.npWarehouseName!, {
-            cities: (q) => api.checkout.npCities(q),
-            warehouses: (ref) => api.checkout.npWarehouses(ref, ""),
-          });
-          // ...unless the customer has already started picking by hand.
-          if (found && !touchedNp.current) {
-            live.applyLast(found, false);
-          }
-        } catch {
-          /* not critical: the customer picks on the map */
-        }
-      })();
-    }
-  }, [lastOrder.data, latest, touchedNp]);
+    if (o.phone) out.setPhone((v) => v || o.phone);
+    if (o.phone || o.customerName) out.setPrefilled(true);
+    live.applyLastOrder(o, false);
+  }, [lastOrder.data, latest]);
 }
 
 /**
- * Payment options for `total` and the chosen one. A prepayment option is hidden when the whole order
- * costs no more than the prepayment. If it was picked and the total then dropped (promo, quantity),
- * the choice moves to the first full-payment option — derived so the summary never shows a hidden
- * option, synced into state. Every option is paid online through monobank acquiring: either the whole
- * order, or the prepayment now and the rest as cash on delivery; the server answers with the same
- * amountDueMinor, `dueNow` is for the button and the summary.
+ * Payment options for `total` and the delivery `tab`, and the chosen one (rules: @shop/customer/checkout/payment-choice).
+ * A prepayment option is hidden when the whole order costs no more than the prepayment; «оплата при отриманні» is
+ * offered only where the server allows it and is never switched to silently. `dueNow` is for the button and the
+ * summary; the server answers with the same amountDueMinor.
  */
-export function usePaymentChoice(total: number) {
+export function usePaymentChoice(total: number, tab: DeliveryTab) {
   const { locale } = useI18n();
   const query = useQuery({ queryKey: siteCheckoutKeys.paymentOptions(locale), queryFn: () => api.checkout.paymentOptions() });
   // Оформление открыто только вошедшим (CheckoutView), так что /api/me можно спрашивать сразу.
   const onlineOnly = useOnlinePaymentOnly(api.checkout, true);
-  const pay = useChosenPayment(query.data, total, onlineOnly);
+  const pay = useChosenPayment(query.data, total, onlineOnly, tab);
   const status: "loading" | "error" | "ready" = query.isLoading ? "loading" : query.isError ? "error" : "ready";
-  return { status, options: pay.options, chosen: pay.chosen, chosenId: pay.chosenId, dueNow: pay.dueNow, choose: pay.choose };
+  return { ...pay, status, noneForDelivery: !!query.data?.length && pay.options.length === 0 };
 }
 
 /**

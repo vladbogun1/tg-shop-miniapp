@@ -3,6 +3,8 @@ import type { CreateOrderResult } from "@shop/core/types";
 import { buildMutationOptions, newGuard } from "@shop/ui/mutation/api-mutation";
 import { MutationObserver, QueryClient } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
+import { EMPTY_COURIER } from "../delivery/recipient";
+import type { DeliveryTab } from "../delivery/tabs";
 import { createCheckoutApi, type CreateOrderRequest } from "./api";
 import { buildCreateOrderRequest, classifyOrderFailure, isValidCustomerName } from "./order-request";
 import { isAuthFailure } from "./promo";
@@ -11,12 +13,16 @@ import { createOrderMutation } from "./use-create-order";
 const result: CreateOrderResult = { orderId: "o1", amountDueMinor: 100 } as CreateOrderResult;
 const base = {
   lines: [{ productId: "p1", variantId: null, quantity: 2 }],
-  name: "  Тест Тестович ",
   phone: "0501234567",
   comment: "  ",
   promoCode: undefined,
-  delivery: "NOVA_POSHTA" as const,
-  warehouse: { ref: "w1", description: "Відділення №1", cityRef: "c1", cityName: "Харків" },
+  draft: {
+    tab: "WAREHOUSE" as DeliveryTab,
+    city: null,
+    warehouse: { ref: "w1", description: "Відділення №1", cityRef: "c1", cityName: "Харків" },
+    courier: EMPTY_COURIER,
+    recipient: { lastName: " Тест ", firstName: "Тестович ", middleName: "" },
+  },
   paymentOptionId: "pay1",
   giftChoice: undefined,
 };
@@ -39,7 +45,7 @@ describe("buildCreateOrderRequest", () => {
   });
 
   it("самовывоз: НП-поля не отправляются, даже если отделение выбрано раньше", () => {
-    const r = buildCreateOrderRequest({ ...base, delivery: "PICKUP", comment: " позвоните " });
+    const r = buildCreateOrderRequest({ ...base, draft: { ...base.draft, tab: "PICKUP" }, comment: " позвоните " });
     expect(r.comment).toBe("позвоните");
     expect([r.npCityRef, r.npCityName, r.npWarehouseRef, r.npWarehouseName]).toEqual([undefined, undefined, undefined, undefined]);
   });

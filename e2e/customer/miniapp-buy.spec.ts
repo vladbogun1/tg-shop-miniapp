@@ -50,14 +50,15 @@ test("каталог → товар → кошик з промокодом → �
 
   await test.step("оформлення: контакти → доставка (Нова Пошта) → оплата → підтвердження", async () => {
     await expect(page.getByText("Крок 1/4")).toBeVisible();
-    await page.getByRole("textbox", { name: "Ім'я та прізвище" }).fill("Тест Покупець");
+    await page.getByRole("textbox", { name: "Прізвище", exact: true }).fill("Тест");
+    await page.getByRole("textbox", { name: "Ім'я", exact: true }).fill("Покупець");
     await page.getByRole("textbox", { name: "Телефон" }).fill("971234567");
     await page.getByRole("button", { name: "Далі" }).click();
 
     await expect(page.getByText("Крок 2/4")).toBeVisible();
     await page.getByRole("combobox", { name: "Місто" }).fill("Киї");
     await page.getByRole("option", { name: /Київ/ }).click();
-    await page.getByRole("combobox", { name: "Відділення / поштомат" }).click();
+    await page.getByRole("combobox", { name: "Відділення або пункт" }).click();
     await page.getByRole("option", { name: /Відділення №1/ }).click();
     await page.getByRole("button", { name: "Далі" }).click();
 
@@ -67,7 +68,7 @@ test("каталог → товар → кошик з промокодом → �
 
     await expect(page.getByText("Крок 4/4")).toBeVisible();
     await expect(page.getByText("Знижка · E2ESMOKE10")).toBeVisible();
-    await expect(page.getByText("Нова Пошта · Київ, Відділення №1 (тест): вул. Вигадана, 1")).toBeVisible();
+    await expect(page.getByText(/Київ, Відділення №1 \(тест\): вул\. Вигадана, 1/)).toBeVisible();
     await page.getByRole("button", { name: "Оформити замовлення" }).click();
   });
 

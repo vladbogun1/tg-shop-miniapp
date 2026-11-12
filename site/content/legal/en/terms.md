@@ -1,6 +1,6 @@
 ---
 title: Terms of Use
-updated: 2026-10-20
+updated: 2026-11-12
 status: approved
 ---
 
@@ -33,7 +33,7 @@ The store may decline an order if the goods are out of stock, the delivery detai
 
 ## Payment and delivery
 
-Payment methods and delivery terms are described on the [Delivery and Payment](/delivery) page. Payment is accepted online by card via the monobank payment service (Visa, Mastercard, Apple Pay, Google Pay): either the full amount up front, or a 100 UAH prepayment with the remainder paid by cash on delivery at a Nova Poshta branch. Card details are entered on the monobank page; the store neither receives nor stores them.
+Payment methods and delivery terms are described on the [Delivery and Payment](/delivery) page. Payment is accepted online by card via the monobank payment service (Visa, Mastercard, Apple Pay, Google Pay): either the full amount up front, or a prepayment with the remainder paid by cash on delivery at a Nova Poshta branch. Card details are entered on the monobank page; the store neither receives nor stores them.
 
 Refunds are made to the same card the order was paid with. How long the funds take to arrive depends on the bank, usually up to 3–7 banking days.
 

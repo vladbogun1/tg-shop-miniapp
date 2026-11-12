@@ -2,11 +2,15 @@ import Link from "next/link";
 import { type GiftChoice, type GiftProgress, type GiftTierInfo } from "@shop/core/giftcase";
 import { type OrderLimitCode } from "@shop/core/orders";
 import { type PaymentOption } from "@shop/core/types";
+import type { NpEstimateResponse } from "@shop/customer/delivery/contract";
+import { estimateAmounts } from "@shop/customer/delivery/estimate";
+import type { DeliveryTab } from "@shop/customer/delivery/tabs";
 import { Button } from "@shop/ui/primitives";
 import { GiftChoicePicker } from "@shop/ui/gift-case";
 import { CheckoutGiftLine } from "@/features/gift/view/CheckoutGiftLine";
 import { useCaseMoney, useCaseRules } from "@/features/gift/view/OrderGiftCase";
 import { type CartLine } from "@/features/cart";
+import { useCheckoutT } from "@/i18n/checkout";
 import { useI18n } from "@/i18n/context";
 import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
@@ -35,10 +39,14 @@ interface Props {
   submitting: boolean;
   submitError: string | null;
   limitCode: OrderLimitCode | null;
+  tab: DeliveryTab;
+  /** «≈ N ₴» Новой почты, если есть. */
+  estimate: NpEstimateResponse | null;
 }
 
 export function SummaryPanel(p: Props) {
-  const { t, href } = useI18n();
+  const { href } = useI18n();
+  const t = useCheckoutT();
   const fmt = useFmt();
   const { lines, currency, subtotal, discount, promoCode, promo, gift, giftTier, giftDiscount, total, chosen, dueNow } = p;
   const giftLine = gift && giftDiscount === 0 ? gift : null;
@@ -83,7 +91,7 @@ export function SummaryPanel(p: Props) {
             />
           )}
           {giftDiscount > 0 && <Row label={t("case.lineDiscount")} value={`−${fmt.money(giftDiscount, currency)}`} tone="ok" />}
-          <Row label={t("checkout.deliveryCost")} value={t("checkout.deliveryCostValue")} muted />
+          <DeliveryCostRow tab={p.tab} estimate={p.estimate} currency={currency} />
         </div>
         <div className="flex items-center justify-between">
           <span className="text-[16px] font-display font-bold uppercase tracking-[.06em] text-[var(--ink)]">{t("checkout.total")}</span>
@@ -91,6 +99,7 @@ export function SummaryPanel(p: Props) {
             {fmt.money(total, currency)}
           </span>
         </div>
+        {p.tab !== "PICKUP" && <p className="-mt-2 text-[12px] font-medium text-[var(--muted)]">{t("delivery.cost.note")}</p>}
         {chosen && dueNow !== total && (
           <div className="-mt-1 rounded-[var(--r)] border border-[var(--line)] bg-[var(--surface-2)] p-3">
             <Row label={t("checkout.dueNow")} value={fmt.money(dueNow, currency)} strong />
@@ -120,8 +129,18 @@ export function SummaryPanel(p: Props) {
   );
 }
 
+/** Доставка не входит в сумму: «безкоштовно» у самовывоза, иначе «≈ N ₴ окремо Новій пошті» или «за її тарифом». */
+function DeliveryCostRow({ tab, estimate, currency }: { tab: DeliveryTab; estimate: NpEstimateResponse | null; currency: string }) {
+  const t = useCheckoutT();
+  const fmt = useFmt();
+  const a = estimateAmounts(estimate);
+  const value =
+    tab === "PICKUP" ? t("delivery.cost.pickup") : a ? t("delivery.cost.separate", { amount: fmt.money(a.deliveryMinor, currency) }) : t("delivery.cost.unknown");
+  return <Row label={t("delivery.cost.label")} value={value} muted />;
+}
+
 function ItemsList({ lines, currency, gift }: { lines: CartLine[]; currency: string; gift: GiftProgress | null }) {
-  const { t } = useI18n();
+  const t = useCheckoutT();
   const fmt = useFmt();
   return (
   <ul className="flex max-h-[300px] flex-col gap-3 overflow-y-auto pr-1">
@@ -147,7 +166,8 @@ function ItemsList({ lines, currency, gift }: { lines: CartLine[]; currency: str
 }
 
 function SubmitError({ message, limitCode }: { message: string | null; limitCode: OrderLimitCode | null }) {
-  const { t, href } = useI18n();
+  const { href } = useI18n();
+  const t = useCheckoutT();
   if (!message) return null;
   return (
     <p role="alert" className="rounded-[var(--r)] border border-[color-mix(in_srgb,var(--danger)_55%,transparent)] bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] px-3 py-2 text-[13px] font-medium text-[var(--danger)]">
@@ -165,7 +185,7 @@ function SubmitError({ message, limitCode }: { message: string | null; limitCode
 }
 
 function PromoProblem({ code, promo }: { code: string; promo: ReturnType<typeof usePromoPreview> }) {
-  const { t } = useI18n();
+  const t = useCheckoutT();
   if (!code || promo.loading || !promo.data || promo.data.valid) return null;
   return (
     <p className="text-[12px] font-medium text-[var(--danger)]">

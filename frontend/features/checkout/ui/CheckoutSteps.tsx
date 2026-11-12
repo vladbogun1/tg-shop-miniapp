@@ -2,16 +2,24 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { formatPhone, isValidPhone } from "@shop/core/phone";
-import { isValidCustomerName } from "@shop/customer/checkout/order-request";
+import type { OrderField } from "@shop/customer/checkout/order-request";
+import type { NpEstimateResponse } from "@shop/customer/delivery/contract";
 import { useT } from "@/i18n/context";
 import { spring } from "@/lib/motion";
 import { confirmGiftLine } from "../model/totals";
-import { ConfirmStep } from "./ConfirmStep";
+import dynamic from "next/dynamic";
 import { ContactsStep } from "./ContactsStep";
-import { DeliveryStep } from "./DeliveryStep";
-import { PaymentStep } from "./PaymentStep";
 import type { useCheckoutForm } from "./use-checkout-form";
 import type { useCheckoutOrder } from "./use-checkout-order";
+
+function StepLoading() {
+  return <div className="shimmer h-48 rounded-[var(--r-card)]" />;
+}
+
+// Steps 2–4 load after the first one is on screen: /checkout opens on the contacts (bundle budget, iOS).
+const DeliveryStep = dynamic(() => import("./DeliveryStep").then((m) => m.DeliveryStep), { loading: StepLoading });
+const PaymentStep = dynamic(() => import("./PaymentStep").then((m) => m.PaymentStep), { loading: StepLoading });
+const ConfirmStep = dynamic(() => import("./ConfirmStep").then((m) => m.ConfirmStep), { loading: StepLoading });
 
 type Form = ReturnType<typeof useCheckoutForm>;
 type Order = ReturnType<typeof useCheckoutOrder>;
@@ -26,6 +34,7 @@ export function CheckoutSteps({
   subtotal,
   currency,
   items,
+  estimate,
   serverField,
   onFieldEdit,
 }: {
@@ -38,11 +47,13 @@ export function CheckoutSteps({
   currency: string;
   items: { title: string; qty: number; amount: number; currency: string }[];
   /** Field the server rejected (see usePlaceOrder.fieldError) and the reset when the customer edits it. */
-  serverField: "name" | "phone" | "comment" | null;
+  serverField: OrderField | null;
+  /** «≈ N ₴» from Nova Poshta (never blocks the order). */
+  estimate: { estimate: NpEstimateResponse | null; loading: boolean };
   onFieldEdit: () => void;
 }) {
   const t = useT();
-  const { np } = form;
+  const { d } = form;
   const { giftTier, promoPreview } = order;
   return (
     <AnimatePresence mode="wait">
@@ -55,14 +66,13 @@ export function CheckoutSteps({
       >
         {step === 0 && (
           <ContactsStep
-            name={form.name}
+            recipient={d.recipient}
             phone={form.phone}
             touched={touched}
-            nameOk={isValidCustomerName(form.name)}
             phoneOk={isValidPhone(form.phone)}
-            onName={(v) => {
+            onRecipient={(r) => {
               onFieldEdit();
-              form.setName(v);
+              d.setRecipient(r);
             }}
             onPhone={(v) => {
               onFieldEdit();
@@ -74,20 +84,13 @@ export function CheckoutSteps({
         )}
         {step === 1 && (
           <DeliveryStep
-            delivery={form.delivery}
-            setDelivery={form.chooseDelivery}
-            city={np.city}
-            onCity={np.chooseCity}
-            warehouse={np.warehouse}
-            onWarehouse={np.chooseWarehouse}
-            fromLast={np.warehouseFromLast}
-            onChangeLast={() => {
-              np.touched.current = true;
-              np.setWarehouseFromLast(false);
-            }}
+            d={d}
+            tabs={form.tabs}
             mode={form.npMode}
             setMode={form.setNpMode}
-            focus={np.focus}
+            estimate={estimate}
+            currency={currency}
+            payOnDelivery={order.payOnDelivery > 0}
             comment={form.comment}
             setComment={form.setComment}
             touched={touched}
@@ -101,14 +104,16 @@ export function CheckoutSteps({
             selected={order.chosenPaymentId}
             onSelect={order.setPaymentId}
             currency={currency}
+            noneForDelivery={order.noneForDelivery}
+            switched={order.paymentSwitched}
           />
         )}
         {step === 3 && (
           <ConfirmStep
-            name={form.name}
+            draft={d.draft}
             phone={formatPhone(form.phone)}
-            delivery={form.delivery}
-            warehouse={np.warehouse}
+            estimate={estimate.estimate}
+            onDelivery={order.onDelivery}
             comment={form.comment}
             payment={order.chosenPayment}
             promoCode={promoCode}

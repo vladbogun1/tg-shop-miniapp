@@ -12,11 +12,12 @@
  */
 import { Box, MapPin, Store } from "lucide-react";
 import type { NpCity, NpWarehouse } from "@shop/core/types";
-import { useT } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 import { api } from "@/lib/api";
 
 const np = api.checkout;
 import { useCitySearch, useWarehouseSearch } from "@shop/customer/delivery/np-search";
+import type { DeliveryTab } from "@shop/customer/delivery/tabs";
 import { NpCombobox } from "./NpCombobox";
 
 export function CitySearch({
@@ -26,7 +27,7 @@ export function CitySearch({
   city: NpCity | null;
   onCity: (city: NpCity | null) => void;
 }) {
-  const t = useT();
+  const t = useCheckoutT();
   const { q, setQ, items, searching, isFetching } = useCitySearch(np, city);
 
   return (
@@ -63,18 +64,21 @@ export function WarehouseSearch({
   warehouse,
   onWarehouse,
   label,
+  tab,
 }: {
   city: NpCity;
   warehouse: NpWarehouse | null;
   onWarehouse: (w: NpWarehouse | null) => void;
   label: (w: NpWarehouse) => string;
+  /** «Відділення» или «Поштомат»: список только точек этого типа. */
+  tab: "WAREHOUSE" | "POSTOMAT";
 }) {
-  const t = useT();
-  const { q, setQ, items, isFetching } = useWarehouseSearch(np, city, warehouse, false);
+  const t = useCheckoutT();
+  const { q, setQ, items, isFetching } = useWarehouseSearch(np, city, warehouse, false, tab satisfies DeliveryTab);
 
   return (
     <NpCombobox<NpWarehouse>
-      label={t("checkout.warehouseField")}
+      label={t(tab === "POSTOMAT" ? "delivery.postomat.field" : "delivery.warehouse.field")}
       placeholder={t("checkout.warehousePlaceholder")}
       icon={<Store className="h-4 w-4" strokeWidth={2.25} />}
       value={q}
@@ -86,7 +90,7 @@ export function WarehouseSearch({
       itemKey={(w) => w.ref}
       listOpen
       loading={isFetching}
-      emptyText={isFetching ? t("common.loading") : t("checkout.warehouseNone")}
+      emptyText={isFetching ? t("common.loading") : t(tab === "POSTOMAT" ? "delivery.postomat.none" : "checkout.warehouseNone")}
       onPick={(w) => {
         setQ(w.description);
         onWarehouse(w);

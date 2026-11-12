@@ -163,7 +163,6 @@ export const en: RuDictionary = {
   "pay.openFallback": "Payment didn’t open? Open it in Telegram",
 
   // ── Nova Poshta branch map ────────────────────────────────────────────────
-  "np.confirm": "Choose this branch",
 
   // ── checkout ──────────────────────────────────────────────────────────────
   "checkout.step.contacts": "Contacts",
@@ -173,26 +172,17 @@ export const en: RuDictionary = {
   "checkout.redirecting": "Opening the payment…",
 
   "checkout.contacts.intro": "Where and to whom we deliver — let's start with your contacts.",
-  "checkout.contacts.name": "First and last name",
-  "checkout.contacts.nameError": "Enter your name",
   "checkout.contacts.phone": "Phone",
   "checkout.contacts.phoneError": "Enter a number: +38 (0XX) XXX-XX-XX",
 
-  "checkout.delivery.np": "Nova Poshta",
-  "checkout.delivery.npSubtitle": "Branch / parcel locker",
-  "checkout.delivery.pickup": "Pickup",
-  "checkout.delivery.pickupSubtitle": "From the shop's point",
   "checkout.delivery.mapHint": "Find a branch on the map and tap “Choose”.",
   "checkout.delivery.required": "Pick a branch — from the list or on the map.",
   "checkout.delivery.pickupText": "Collect your order from the shop's point — we will contact you about the address and time.",
   "checkout.delivery.mapLoading": "Loading the map…",
   "checkout.delivery.comment": "Comment on the order (optional)",
-  "checkout.np.modeText": "Type it in",
-  "checkout.np.modeMap": "Pick on the map",
   "checkout.np.city": "City",
   "checkout.np.cityPlaceholder": "Start typing the name",
   "checkout.np.cityNone": "City not found",
-  "checkout.np.warehouse": "Branch / parcel locker",
   "checkout.np.warehousePlaceholder": "Number or address",
   "checkout.np.warehouseNone": "No such branch in this city",
   "checkout.np.lastWarehouse": "Same as your previous order",

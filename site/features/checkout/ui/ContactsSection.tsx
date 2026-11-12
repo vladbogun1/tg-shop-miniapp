@@ -1,40 +1,53 @@
 import { formatPhone } from "@shop/core/phone";
+import type { OrderField } from "@shop/customer/checkout/order-request";
+import { recipientErrors, type Recipient } from "@shop/customer/delivery/recipient";
 import { Input } from "@shop/ui/primitives";
-import { useI18n } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 import { Section } from "./parts";
 
 interface Props {
-  name: string;
+  recipient: Recipient;
+  onRecipient: (r: Recipient) => void;
   phone: string;
-  onName: (v: string) => void;
   onPhone: (v: string) => void;
-  nameOk: boolean;
   phoneOk: boolean;
   /** The submit was attempted: show validation. */
   touched: boolean;
   prefilled: boolean;
   /** The server rejected this field (validation) although the client check passed. */
-  serverField?: "name" | "phone" | "comment" | null;
+  serverField?: OrderField | null;
 }
 
-export function ContactsSection({ name, phone, onName, onPhone, nameOk, phoneOk, touched, prefilled, serverField }: Props) {
-  const { t } = useI18n();
-  const nameBad = (touched && !nameOk) || serverField === "name";
+/** Получатель как в паспорте (прізвище, ім'я, по батькові — по ним выдают посылку) и телефон. */
+export function ContactsSection({ recipient, onRecipient, phone, onPhone, phoneOk, touched, prefilled, serverField }: Props) {
+  const t = useCheckoutT();
+  const err = recipientErrors(recipient);
+  const serverName = serverField === "name";
   const phoneBad = (touched && !phoneOk) || serverField === "phone";
+  const set = (patch: Partial<Recipient>) => onRecipient({ ...recipient, ...patch });
   return (
     <Section id="co-contacts" n={1} title={t("checkout.contacts")}>
       {prefilled && <p className="mb-3 text-[13px] font-medium text-[var(--ok)]">{t("checkout.prefilled")}</p>}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Input
-          label={t("checkout.name")}
-          value={name}
-          onChange={(e) => onName(e.target.value)}
-          status={nameBad ? "danger" : nameOk ? "ok" : undefined}
-          hint={nameBad ? t("checkout.nameError") : undefined}
-          autoComplete="name"
-          name="name"
-          aria-invalid={nameBad}
+        <NameInput
+          label={t("delivery.recipient.lastName")}
+          value={recipient.lastName}
+          onChange={(v) => set({ lastName: v })}
+          invalid={err.lastName}
+          bad={(touched && err.lastName) || serverName}
+          error={t("delivery.recipient.lastNameError")}
+          autoComplete="family-name"
         />
+        <NameInput
+          label={t("delivery.recipient.firstName")}
+          value={recipient.firstName}
+          onChange={(v) => set({ firstName: v })}
+          invalid={err.firstName}
+          bad={(touched && err.firstName) || serverName}
+          error={t("delivery.recipient.firstNameError")}
+          autoComplete="given-name"
+        />
+        <NameInput label={t("delivery.recipient.middleName")} value={recipient.middleName} onChange={(v) => set({ middleName: v })} autoComplete="additional-name" />
         <Input
           label={t("checkout.phone")}
           inputMode="tel"
@@ -50,6 +63,33 @@ export function ContactsSection({ name, phone, onName, onPhone, nameOk, phoneOk,
           aria-invalid={phoneBad}
         />
       </div>
+      <p className="mt-3 text-[13px] font-medium text-[var(--muted)]">{t("delivery.recipient.hint")}</p>
     </Section>
+  );
+}
+
+/** Часть ФИО. `invalid` — не заполнено (без «ок»), `bad` — показать ошибку. Необязательное поле — без обоих. */
+function NameInput(p: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  invalid?: boolean;
+  bad?: boolean;
+  error?: string;
+  autoComplete: string;
+}) {
+  const required = p.invalid !== undefined;
+  return (
+    <Input
+      label={p.label}
+      value={p.value}
+      onChange={(e) => p.onChange(e.target.value)}
+      status={p.bad ? "danger" : required && !p.invalid ? "ok" : undefined}
+      hint={p.bad ? p.error : undefined}
+      autoComplete={p.autoComplete}
+      name={p.autoComplete}
+      maxLength={64}
+      aria-invalid={p.bad}
+    />
   );
 }

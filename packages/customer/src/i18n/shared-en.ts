@@ -1,7 +1,10 @@
 /** Общие тексты Mini App и сайта — English. Те же ключи, что в `shared-ru.ts`. */
 import type { SharedDictionary } from "./shared-ru";
 
+import { deliveryEn } from "./delivery-en";
+
 export const sharedEn: SharedDictionary = {
+  ...deliveryEn,
   // ── common ────────────────────────────────────────────────────────────────
   "common.back": "Back",
   "common.cancel": "Cancel",

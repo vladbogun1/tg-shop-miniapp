@@ -7,8 +7,10 @@
  *     фраза остаётся фразой, а плюрал — плюралом (формы `other` обязательна).
  *  2. Плейсхолдеры `{name}` одинаковы во всех трёх языках (для плюралов — по объединению форм).
  *  3. Алфавит: в en нет кириллицы, в uk нет ы/э/ъ/ё.
+ *     Словари «только для своих экранов» (`SCOPED`: страница заказа, оформление; общий словарь их не содержит) — тем же набором.
  *  4. Общий словарь: ключ общего словаря не переопределён приложением (спред молча перебил бы его);
- *     ключ, у которого в ОБОИХ приложениях одинаковый текст на всех языках, обязан жить в общем словаре.
+ *     ключ, у которого в ОБОИХ приложениях одинаковый текст на всех языках, обязан жить в общем словаре;
+ *     ключ такого словаря не совпадает ни с общим, ни с ключом приложения, ни с другим таким словарём (хук перебил бы его).
  *  5. Сироты: ключ, на который нет ни литерала, ни шаблона `префикс.${…}` в коде (frontend, site, packages).
  *  6. Литералы ключей: `t("…")` в `packages/customer` (где тип ключа свободный, `LooseT`) обязан существовать
  *     в ОБОИХ приложениях; шаблон `t(\`префикс.${x}\`)` — иметь хотя бы один ключ с таким префиксом.
@@ -45,7 +47,8 @@ function loadTs(file) {
   const mod = { exports: {} };
   cache.set(abs, mod.exports);
   const req = (spec) => {
-    const m = /^@shop\/customer\/i18n\/(shared-[a-z]{2})$/.exec(spec);
+    // Общий словарь и его часть (`./delivery-xx` — тексты доставки на любом экране), словари своих экранов (SCOPED).
+    const m = /^(?:@shop\/customer\/i18n\/|\.\/)((?:shared|delivery|order-delivery|checkout-delivery)-[a-z]{2})$/.exec(spec);
     if (m) return loadTs(`${SHARED_DIR}/${m[1]}.ts`);
     throw new Error(`check-i18n: неожиданный импорт «${spec}» в ${file}`);
   };
@@ -70,11 +73,15 @@ function ownKeys(file, varName) {
 }
 
 const shared = {};
+// Словари своих экранов (packages/customer/src/i18n/<file>-xx.ts, экспорт <var>Xx): подключаются хуками приложений поверх t.
+const SCOPED = { "страница заказа": ["order-delivery", "orderDelivery"], оформление: ["checkout-delivery", "checkoutDelivery"] };
+const scoped = Object.fromEntries(Object.keys(SCOPED).map((n) => [n, {}]));
 const own = {};
 const dicts = {};
 for (const l of LANGS) {
   const name = `shared${l[0].toUpperCase()}${l[1]}`;
   shared[l] = loadTs(`${SHARED_DIR}/shared-${l}.ts`)[name];
+  for (const [n, [file, v]] of Object.entries(SCOPED)) scoped[n][l] = loadTs(`${SHARED_DIR}/${file}-${l}.ts`)[`${v}${l[0].toUpperCase()}${l[1]}`];
   for (const app of Object.keys(APPS)) {
     dicts[`${app}/${l}`] = loadTs(`${app}/i18n/${l}.ts`)[l];
     own[`${app}/${l}`] = ownKeys(`${app}/i18n/${l}.ts`, l);
@@ -109,6 +116,7 @@ function checkSet(label, byLang) {
   }
 }
 checkSet("общий словарь", shared);
+for (const [n, byLang] of Object.entries(scoped)) checkSet(`словарь «${n}»`, byLang);
 for (const app of Object.keys(APPS)) {
   checkSet(app, { ru: dicts[`${app}/ru`], uk: dicts[`${app}/uk`], en: dicts[`${app}/en`] });
 }
@@ -117,6 +125,15 @@ for (const app of Object.keys(APPS)) {
 for (const app of Object.keys(APPS)) {
   for (const l of LANGS) {
     for (const k of own[`${app}/${l}`]) if (k in shared[l]) fail(`${app}/${l}: «${k}» уже есть в общем словаре — приложение молча перебьёт его`);
+  }
+}
+const scopedSeen = new Map();
+for (const [n, byLang] of Object.entries(scoped)) {
+  for (const k of Object.keys(byLang.ru)) {
+    if (k in shared.ru) fail(`словарь «${n}»: «${k}» уже есть в общем словаре`);
+    for (const app of Object.keys(APPS)) if (own[`${app}/ru`].includes(k)) fail(`словарь «${n}»: «${k}» уже есть в ${app}`);
+    if (scopedSeen.has(k)) fail(`словарь «${n}»: «${k}» уже есть в словаре «${scopedSeen.get(k)}»`);
+    scopedSeen.set(k, n);
   }
 }
 const sameBoth = Object.keys(dicts["frontend/ru"]).filter(
@@ -170,12 +187,13 @@ const used = (k) => usage.literals.has(k) || [...usage.prefixes].some((p) => k.s
 const orphans = [];
 const sharedKeys = Object.keys(shared.ru);
 for (const k of sharedKeys) if (!used(k)) orphans.push(`общий:${k}`);
+for (const [n, byLang] of Object.entries(scoped)) for (const k of Object.keys(byLang.ru)) if (!used(k)) orphans.push(`${n}:${k}`);
 for (const app of Object.keys(APPS)) {
   for (const k of own[`${app}/ru`]) if (!used(k)) orphans.push(`${app}:${k}`);
 }
 for (const o of orphans) fail(`сирота: ключ «${o}» нигде не используется — удали его из словарей`);
 
-const bothApps = (pred) => Object.keys(APPS).every((app) => pred(Object.keys(dicts[`${app}/ru`])));
+const bothApps = (pred) => Object.keys(APPS).every((app) => pred([...Object.keys(dicts[`${app}/ru`]), ...scopedSeen.keys()]));
 for (const [file, line, key, kind] of pkgCalls) {
   const ok = kind === "key" ? bothApps((keys) => keys.includes(key)) : bothApps((keys) => keys.some((k) => k.startsWith(key)));
   if (!ok) fail(`${file}:${line}: t(${kind === "key" ? `"${key}"` : `\`${key}\${…}\``}) — ${kind === "key" ? "нет ключа" : "нет ключей с префиксом"} в одном из приложений`);
@@ -202,6 +220,7 @@ const cyr = Object.fromEntries(
 const count = (o) => Object.keys(o).length;
 console.log("i18n: ключи");
 console.log(`  общий словарь:  ${count(shared.ru)} (на каждом языке)`);
+for (const [n, byLang] of Object.entries(scoped)) console.log(`  ${n.padEnd(15)}: ${count(byLang.ru)}`);
 for (const app of Object.keys(APPS)) {
   console.log(`  ${APPS[app].padEnd(14)}: своих ${own[`${app}/ru`].length}, всего ${count(dicts[`${app}/ru`])}`);
 }

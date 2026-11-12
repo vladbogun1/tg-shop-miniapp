@@ -13,10 +13,12 @@
  * A branch picked on the map shows up here too.
  */
 import type { MessageKey } from "@/i18n/ru";
-import { Box, MapPin, Store } from "lucide-react";
+import { Box, MapPin, Route, Store } from "lucide-react";
+import type { NpStreet } from "@shop/customer/delivery/contract";
+import { useNpStreets } from "@shop/customer/delivery/use-np-delivery";
 import { useCitySearch, useWarehouseSearch, type NpTypeFilter } from "@shop/customer/delivery/np-search";
 import { type NpCity, type NpWarehouse } from "@shop/core/types";
-import { useT } from "@/i18n/context";
+import { useCheckoutT } from "@/i18n/checkout";
 import { customerApi } from "@/lib/api";
 
 const np = customerApi.checkout;
@@ -29,7 +31,7 @@ export function CitySearch({
   city: NpCity | null;
   onCity: (city: NpCity | null) => void;
 }) {
-  const t = useT();
+  const t = useCheckoutT();
   const { q, setQ, items, searching, isFetching } = useCitySearch(np, city);
 
   return (
@@ -74,18 +76,21 @@ export function WarehouseSearch({
   warehouse,
   onWarehouse,
   label,
+  tab,
 }: {
   city: NpCity;
   warehouse: NpWarehouse | null;
   onWarehouse: (w: NpWarehouse | null) => void;
   label: (w: NpWarehouse) => string;
+  /** «Відділення» or «Поштомат»: only points of that kind (the type chips are then not needed). */
+  tab: "WAREHOUSE" | "POSTOMAT";
 }) {
-  const t = useT();
-  const { q, setQ, items, isFetching, hasBoth, cat, setCat } = useWarehouseSearch(np, city, warehouse, true);
+  const t = useCheckoutT();
+  const { q, setQ, items, isFetching, hasBoth, cat, setCat } = useWarehouseSearch(np, city, warehouse, true, tab);
 
   return (
     <NpCombobox<NpWarehouse>
-      label={t("checkout.np.warehouse")}
+      label={t(tab === "POSTOMAT" ? "delivery.postomat.field" : "delivery.warehouse.field")}
       placeholder={t("checkout.np.warehousePlaceholder")}
       icon={<Store className="h-[18px] w-[18px]" strokeWidth={2.25} />}
       value={q}
@@ -98,7 +103,7 @@ export function WarehouseSearch({
       itemKey={(w) => w.ref}
       listOpen
       loading={isFetching}
-      emptyText={isFetching ? t("common.loading") : t("checkout.np.warehouseNone")}
+      emptyText={isFetching ? t("common.loading") : t(tab === "POSTOMAT" ? "delivery.postomat.none" : "checkout.np.warehouseNone")}
       clearLabel={t("common.close")}
       header={
         hasBoth ? (
@@ -135,6 +140,44 @@ export function WarehouseSearch({
           </span>
         </span>
       )}
+    />
+  );
+}
+
+const streetLabel = (s: NpStreet) => (s.type ? `${s.type} ${s.name}` : s.name);
+
+/**
+ * Courier street: suggestions over /api/np/streets of the picked city; not found or the search failed — the street
+ * can be typed by hand (no ref, the server passes it on as is).
+ */
+export function StreetSearch({
+  city,
+  street,
+  onStreet,
+}: {
+  city: NpCity | null;
+  street: { ref: string; name: string };
+  onStreet: (s: { ref: string; name: string }) => void;
+}) {
+  const t = useCheckoutT();
+  // A picked street (has a ref) is not searched again until the text is edited.
+  const found = useNpStreets(np, city?.ref, street.name, !!city && !street.ref);
+  return (
+    <NpCombobox<NpStreet>
+      label={t("delivery.courier.street")}
+      placeholder={city ? t("delivery.courier.streetPlaceholder") : t("delivery.courier.needCity")}
+      icon={<Route className="h-[18px] w-[18px]" strokeWidth={2.25} />}
+      value={street.name}
+      picked={!!street.ref}
+      onText={(v) => onStreet({ ref: "", name: v })}
+      items={found.items}
+      itemKey={(s) => s.ref}
+      listOpen={found.searching}
+      loading={found.loading}
+      emptyText={found.failed ? t("delivery.courier.streetFailed") : t("delivery.courier.streetNone")}
+      clearLabel={t("common.close")}
+      onPick={(s) => onStreet({ ref: s.ref, name: streetLabel(s) })}
+      renderItem={(s) => <span className="text-[14px] font-semibold text-[var(--ink)]">{streetLabel(s)}</span>}
     />
   );
 }

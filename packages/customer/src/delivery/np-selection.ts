@@ -86,6 +86,10 @@ export function useNpSelection(api: Pick<CheckoutApi, "npCities" | "npWarehouses
       const p = npLatLng(found.warehouse);
       if (p) setFocus({ key: nowMs(), center: p });
     },
+    /** Подстановка только города из прошлого заказа (курьер): выбор покупателя не трогает. */
+    applyLastCity(c: NpCity) {
+      setCity(c);
+    },
     setWarehouseFromLast,
     /** Навести карту на уже выбранное отделение («Обрати інше» на сайте). */
     focusWarehouse(w: NpWarehouse) {
