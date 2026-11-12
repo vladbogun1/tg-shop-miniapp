@@ -290,8 +290,7 @@
             "type" : "string"
           },
           "meta" : {
-            "description" : "details as sent (≤ 2 KB)",
-            "type" : "string"
+            "description" : "details as sent (≤ 2 KB)"
           },
           "path" : {
             "type" : "string"
@@ -30939,8 +30938,8 @@
           }
         },
         "responses" : {
-          "200" : {
-            "description" : "OK"
+          "204" : {
+            "description" : "Stored (or dropped); never an error for the panel"
           }
         },
         "security" : [

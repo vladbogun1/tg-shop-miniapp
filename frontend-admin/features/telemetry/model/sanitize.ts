@@ -36,6 +36,11 @@ export function scrubText(text: unknown, max = 300): string {
     .slice(0, max);
 }
 
+/** id и data-* элемента под пальцем: в них бывают id заказов — без uuid/почты/телефонов, коротко. */
+export function scrubAttr(value: string, max = 30): string {
+  return scrubText(value, max);
+}
+
 /** Имя файла без пути и query: `https://x/_next/static/chunks/app-123.js?v=1` → `app-123.js`. */
 export function fileBasename(url: unknown): string {
   if (typeof url !== "string" || !url) return "";

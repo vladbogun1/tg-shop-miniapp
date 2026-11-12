@@ -4,7 +4,7 @@ import { capMeta, createTelemetryClient, toBatches, type TelemetryEvent } from "
 import { createDeadTapDetector, type Tap } from "./dead-taps";
 import { stallOf, type Tick } from "./freeze";
 import { createLimiter } from "./limiter";
-import { fileBasename, sanitizePath, scrubText, shortUa, stackHead } from "./sanitize";
+import { fileBasename, sanitizePath, scrubAttr, scrubText, shortUa, stackHead } from "./sanitize";
 
 const plain: LayerInfo = {
   position: "static",
@@ -110,6 +110,12 @@ describe("sanitize — без id и персональных данных", () =
     expect(s).not.toContain("3f2a1b4c");
     expect(s).not.toContain("example.com");
     expect(s).toContain("<email>");
+  });
+
+  it("id и data-* под пальцем — без id заказа и телефона, коротко", () => {
+    expect(scrubAttr("order-3f2a1b4c-1111-2222-3333-444455556666")).toBe("order-<id>");
+    expect(scrubAttr("+380 67 123 45 67")).toBe("<num>");
+    expect(scrubAttr("x".repeat(100))).toHaveLength(30);
   });
 
   it("имя файла, первые строки стека, короткий UA", () => {

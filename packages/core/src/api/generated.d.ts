@@ -6215,7 +6215,7 @@ export interface components {
             id: number;
             kind: string;
             /** @description details as sent (≤ 2 KB) */
-            meta: string;
+            meta: unknown;
             path: string;
             standalone: boolean;
             ua: string;
@@ -18822,8 +18822,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description Stored (or dropped); never an error for the panel */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };

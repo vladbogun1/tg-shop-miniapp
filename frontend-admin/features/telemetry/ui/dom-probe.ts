@@ -4,6 +4,7 @@
  * не больше. Значения полей ввода и тексты не читаются: только тег, id, классы, data-* и стили.
  */
 import { MIN_COVERAGE, type LayerInfo, type TapSnapshot } from "../model/blocked-tap";
+import { scrubAttr } from "../model/sanitize";
 
 const BACKDROP_NAME = /backdrop|overlay|scrim|mask|dimmer/i;
 const DIALOGS = "[role=dialog],[aria-modal=true]";
@@ -24,14 +25,14 @@ export function describe(el: Element | null | undefined): ElementDescriptor | nu
   if (!el) return null;
   const cs = window.getComputedStyle(el);
   const out: ElementDescriptor = { tag: el.tagName.toLowerCase() };
-  if (el.id) out.id = el.id.slice(0, 40);
+  if (el.id) out.id = scrubAttr(el.id, 40);
   const cls = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 3).join(" ") : "";
   if (cls) out.cls = cls.slice(0, 120);
   const data: Record<string, string> = {};
   let n = 0;
   for (const a of Array.from(el.attributes)) {
     if (!a.name.startsWith("data-") || n >= 5) continue;
-    data[a.name.slice(5, 35)] = a.value.slice(0, 30);
+    data[a.name.slice(5, 35)] = scrubAttr(a.value);
     n += 1;
   }
   if (n > 0) out.data = data;
@@ -132,6 +133,8 @@ export function tapMeta(probe: TapProbe, layerIndex = fixedLayerIndex(probe)): R
     hit: describe(probe.hit),
     layer: layer && layer !== probe.hit ? describe(layer) : layer ? "hit" : null,
     interactive: !!probe.hit?.closest(INTERACTIVE),
+    // итоговая непрозрачность под пальцем: прозрачная обёртка без fixed (страница на входе анимации) видна только так
+    effOpacity: Math.round(probe.snapshot.chain.reduce((acc, l) => acc * l.opacity, 1) * 1000) / 1000,
     bodyOverflow: document.body.style.overflow || "",
     dialogs: probe.dialogs.dialogs,
     modals: probe.dialogs.modals,
