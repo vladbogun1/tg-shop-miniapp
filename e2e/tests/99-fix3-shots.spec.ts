@@ -202,7 +202,7 @@ test("настройки «ИИ»: история с лимитами в дол�
   const group = page.locator("#group-ai");
   for (const w of WIDTHS) {
     await size(page, w);
-    await page.goto("/settings#group-ai");
+    await page.goto("/settings/ai");
     await expect(group.getByRole("heading", { name: "Лимиты" })).toBeVisible();
     for (const name of [/Дополнительно/, /История изменений/]) {
       const b = group.getByRole("button", { name });

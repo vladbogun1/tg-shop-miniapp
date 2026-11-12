@@ -71,14 +71,14 @@ test("настройки «ИИ»: блоки, лимиты в долларах,
   const group = page.locator("#group-ai");
   for (const w of WIDTHS) {
     await size(page, w);
-    await page.goto("/settings#group-ai");
+    await page.goto("/settings/ai");
     await expect(group.getByRole("heading", { name: "Лимиты" })).toBeVisible();
     await group.getByRole("heading", { name: "Состояние" }).scrollIntoViewIfNeeded();
     await page.waitForTimeout(250);
     await shot(page, `settings-top-${w}`);
     await group.getByRole("heading", { name: "Функции" }).scrollIntoViewIfNeeded();
     await shot(page, `settings-functions-${w}`);
-    // Тот же адрес с #group-ai — не перезагрузка: раскрытое на прошлой ширине остаётся раскрытым.
+    // Раскрываем то, что ещё закрыто (после перехода на другой ширине раскрывашки могут быть закрыты).
     for (const name of [/Дополнительно/, /История изменений/]) {
       const b = group.getByRole("button", { name });
       if ((await b.getAttribute("aria-expanded")) !== "true") await b.click();

@@ -1,5 +1,5 @@
 /**
- * «Оплата» settings. Payment is online only (monobank): the screen shows whether the acquiring is
+ * «Настройки → Оплата» (/settings/payment, вкладка «Способы оплаты»; старый /payment редиректит). Payment is online only (monobank): the screen shows whether the acquiring is
  * connected and lists the payment options (full online, or an online prepayment + наложка). The
  * old card/IBAN requisites are gone. Switching off every option is refused (checkout would stop),
  * and a prepayment option needs its amount. Checked in the UI and on the server.
@@ -7,7 +7,7 @@
 import { expect, test } from "../lib/test";
 
 test("статус monobank вверху, реквизитов больше нет", async ({ page, api }) => {
-  await page.goto("/payment");
+  await page.goto("/settings/payment");
   const card = page.getByRole("region", { name: "Эквайринг monobank" });
   await expect(card).toBeVisible();
 
@@ -52,7 +52,7 @@ test("статус monobank вверху, реквизитов больше не
 });
 
 test("предоплате нужна сумма", async ({ page }) => {
-  await page.goto("/payment");
+  await page.goto("/settings/payment");
   const save = page.getByRole("button", { name: "Сохранить" });
   const prepay = page.getByRole("switch", { name: "Предоплата + наложка", exact: true });
   await expect(page.getByText("Все изменения сохранены")).toBeVisible();
@@ -71,7 +71,7 @@ test("предоплате нужна сумма", async ({ page }) => {
 });
 
 test("нельзя выключить все способы оплаты", async ({ page, api }) => {
-  await page.goto("/payment");
+  await page.goto("/settings/payment");
   const save = page.getByRole("button", { name: "Сохранить" });
   const visible = page.getByRole("switch", { name: "Показывать покупателям", exact: true });
   await expect(visible).toHaveCount(3);
@@ -103,4 +103,15 @@ test("нельзя выключить все способы оплаты", async
   expect(res.status).toBe(400);
   const still = (await api.raw("get", "/api/admin/payment-options")).body as unknown as unknown[];
   expect(still).toHaveLength(3);
+});
+
+test("старый адрес /payment ведёт в «Настройки → Оплата» с сохранением query; вкладка «Параметры»", async ({ page }) => {
+  await page.goto("/payment?from=old");
+  await expect(page).toHaveURL(/\/settings\/payment\?from=old$/);
+  await expect(page.getByRole("tab", { name: "Способы оплаты" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("region", { name: "Эквайринг monobank" })).toBeVisible();
+
+  await page.getByRole("tab", { name: /^Параметры/ }).click();
+  await expect(page).toHaveURL(/\/settings\/payment\?tab=params$/);
+  await expect(page.getByRole("region", { name: "Эквайринг monobank" })).toBeHidden();
 });

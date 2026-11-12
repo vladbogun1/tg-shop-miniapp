@@ -74,7 +74,9 @@ test("главный приглашает (бот выключен → ссыл�
   let url = "";
 
   await test.step("«Пригласить админа»: Telegram id вручную, имя, роль, свой код", async () => {
+    // Старый адрес /admins ведёт в «Настройки → Админы».
     await page.goto("/admins");
+    await expect(page).toHaveURL(/\/settings\/admins$/);
     await expect(page.getByRole("heading", { name: "Админы", level: 1 })).toBeAttached();
     await page.getByRole("button", { name: "Пригласить админа" }).click();
     const dlg = dialog(page, "Пригласить админа");
@@ -144,15 +146,17 @@ test("обычный админ не видит «Админы» и получа
   }
   // The token above was not dropped by the 403s on the API (only the panel reacts to them).
   const page = await pageWithToken(browser, await signInTeam());
-  await page.goto("/admins");
-  await expect(page.getByText("Только для главного админа")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Админы" })).toHaveCount(0);
+  // Раздела «Админы» у обычного админа нет: страница уводит на обзор настроек, в списке разделов его тоже нет.
+  await page.goto("/settings/admins");
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.getByRole("link", { name: /Склад и маржа/ }).first()).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Разделы настроек" }).getByRole("link", { name: /^Админы/ })).toHaveCount(0);
   await page.context().close();
 });
 
 test("сброс 2FA главным → при входе настройка заново", async ({ page }) => {
   test.setTimeout(120_000);
-  await page.goto("/admins");
+  await page.goto("/settings/admins");
   await rowAction(page, TEAM_ADMIN.id, "E2E Команда", "Сбросить 2FA");
   const dlg = dialog(page, "Сбросить 2FA у «E2E Команда»?");
   await dlg.locator("#admin-action-code").fill("000000");
@@ -180,7 +184,7 @@ test("блокировка: открытая сессия выкинута, вх
   await victim.goto("/");
   await expect(victim.getByRole("heading", { name: "Заказы", level: 1 })).toBeAttached();
 
-  await page.goto("/admins");
+  await page.goto("/settings/admins");
   await rowAction(page, TEAM_ADMIN.id, "E2E Команда", "Заблокировать");
   const dlg = dialog(page, "Заблокировать «E2E Команда»?");
   await dlg.locator("#admin-action-code").fill(await freshCode(ADMIN.totpSecret));
@@ -204,7 +208,7 @@ test("блокировка: открытая сессия выкинута, вх
 });
 
 test("нельзя заблокировать / сбросить себя, последний главный не понижается", async ({ page }) => {
-  await page.goto("/admins");
+  await page.goto("/settings/admins");
   const own = adminRow(page, ADMIN.id);
   await expect(own).toContainText("Это вы");
   await expect(own.getByRole("link", { name: "Мой аккаунт" })).toBeVisible();

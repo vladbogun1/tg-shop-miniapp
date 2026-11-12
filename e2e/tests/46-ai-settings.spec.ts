@@ -1,7 +1,8 @@
 /**
- * «Настройки» → «ИИ» (макет docs/ai-admin/mockups/07-settings.html): у финансиста блок есть, лимиты в долларах
+ * «Настройки» → «ИИ» (/settings/ai; макет docs/ai-admin/mockups/07-settings.html): у финансиста блок есть, лимиты в долларах
  * с гривнами рядом, «Сохранить» только у чисел, выключатели сохраняются сразу, «Остановить идущие» — только когда
- * что-то идёт, «Ещё» → «Дополнительно» и «История изменений». Обычный админ блока не видит, а сервер отвечает 403.
+ * что-то идёт, «Ещё» → «Дополнительно» и «История изменений». Старый якорь /settings#group-ai ведёт в раздел.
+ * Обычный админ раздела не видит (адрес раздела уводит на обзор), а сервер отвечает 403.
  */
 import type { Page } from "@playwright/test";
 import { getAs, putAs, removePlainAdmin, signInPlainAdmin, pageAs } from "../lib/ai-admin";
@@ -34,7 +35,9 @@ test.afterAll(async ({ api }) => {
 test("финансист: лимит в долларах с гривнами, «Сохранить» у чисел, выключатель сохраняется сразу", async ({ page, api }) => {
   await restore(api);
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/settings");
+  // Старая ссылка на группу ведёт на страницу раздела.
+  await page.goto("/settings#group-ai");
+  await expect(page).toHaveURL(/\/settings\/ai$/);
   const ai = page.locator("#group-ai");
   await expect(ai.getByRole("heading", { name: "Лимиты" })).toBeVisible();
   // Порядок блоков — как в макете.
@@ -80,11 +83,15 @@ test("финансист: лимит в долларах с гривнами, «
   await expect(history).not.toContainText("Порог");
 });
 
-test("обычный админ: блока «ИИ» в настройках нет, сервер отвечает 403", async ({ browser }) => {
+test("обычный админ: раздела «ИИ» в настройках нет, сервер отвечает 403", async ({ browser }) => {
   const token = await signInPlainAdmin();
   const page = await pageAs(browser, token, { width: 1440, height: 900 });
   await page.goto("/settings");
   await expect(page.getByRole("heading", { name: "Настройки" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Склад и маржа/ }).first()).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Разделы настроек" }).getByRole("link", { name: /^ИИ/ })).toHaveCount(0);
+  await page.goto("/settings/ai");
+  await expect(page).toHaveURL(/\/settings$/);
   await expect(page.locator("#group-ai")).toHaveCount(0);
   await expect(page.locator(`[id="setting-${MONTH}"]`)).toHaveCount(0);
   await page.context().close();

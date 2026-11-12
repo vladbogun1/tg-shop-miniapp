@@ -12,7 +12,7 @@ import { dialog, expect, test } from "../lib/test";
 
 const SHOTS = path.join(REPO_ROOT, "_shots");
 const WIDTHS = shotWidths([320, 360, 390, 768, 1024, 1280, 1440]);
-const PAGES = ["/", "/dispatch", "/support", "/users", "/products", "/promocodes", "/gift", "/metrics", "/preorders", "/cards", "/inbox", "/incidents", "/settings"];
+const PAGES = ["/", "/dispatch", "/support", "/users", "/products", "/promocodes", "/gift", "/metrics", "/preorders", "/cards", "/inbox", "/incidents", "/settings", "/settings/delivery", "/settings/payment"];
 
 test.skip(!process.env.AUDIT_SHOTS, "только по AUDIT_SHOTS=1");
 test.setTimeout(600_000);

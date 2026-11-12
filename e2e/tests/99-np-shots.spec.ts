@@ -99,13 +99,20 @@ for (const width of WIDTHS) {
   test(`настройки НП — ${width}`, async ({ page }) => {
     await mockNp(page);
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/settings#group-novaposhta");
-    const group = page.locator("#group-novaposhta");
-    await expect(group.getByRole("heading", { name: "Отправитель Новой Почты" })).toBeVisible();
-    await expect(group.getByText("Мала: 20×15×10 / тара 120 г / 15 ₴")).toBeVisible();
-    await group.scrollIntoViewIfNeeded();
+    // «Настройки → Доставка»: отправитель (с коробками) — на вкладке «ТТН и отправитель», размеры по категориям — на «Коробки и вес».
+    await page.goto("/settings/delivery?tab=ttn");
+    const ttn = page.locator("#group-novaposhta-ttn");
+    await expect(ttn.getByRole("heading", { name: "Отправитель Новой Почты" })).toBeVisible();
+    await expect(ttn.getByText("Мала: 20×15×10 / тара 120 г / 15 ₴")).toBeVisible();
+    await ttn.scrollIntoViewIfNeeded();
     await page.setViewportSize({ width, height: width < 768 ? 812 : 900 });
-    await group.screenshot({ path: path.join(SHOTS, `np-settings-${width}.png`) });
+    await ttn.screenshot({ path: path.join(SHOTS, `np-settings-ttn-${width}.png`) });
+
+    await page.getByRole("tab", { name: /^Коробки и вес/ }).click();
+    const boxes = page.locator("#group-novaposhta-boxes");
+    await expect(boxes.getByRole("heading", { name: "Размеры по категориям" })).toBeVisible();
+    await boxes.scrollIntoViewIfNeeded();
+    await boxes.screenshot({ path: path.join(SHOTS, `np-settings-boxes-${width}.png`) });
   });
 
   test(`отправка с ТТН — ${width}`, async ({ page }) => {
