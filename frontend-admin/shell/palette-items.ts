@@ -26,7 +26,7 @@ const entry = (href: string, label: string, group: string, icon: NavItem["icon"]
 function itemEntries(item: NavItem, section: string, superAdmin: boolean | undefined): PaletteItem[] {
   if (!item.tabs) return [entry(item.href, item.label, section, item.icon)];
   return visibleTabs(item, superAdmin).map((t) =>
-    entry(t.href, t.label, t.label === item.label ? section : `${section} · ${item.label}`, item.icon),
+    entry(t.href, t.label, t.label === item.label ? section : `${section} · ${item.label}`, t.icon ?? item.icon),
   );
 }
 

@@ -22,6 +22,12 @@ import {
   PackagePlus,
   CreditCard,
   UsersRound,
+  FolderTree,
+  BadgeCheck,
+  Sparkles,
+  Gift,
+  PackageMinus,
+  Siren,
 } from "lucide-react";
 
 export type BadgeKey = "inbox" | "support" | "reviews" | "translations" | "cards" | "ai";
@@ -30,6 +36,8 @@ export type BadgeKey = "inbox" | "support" | "reviews" | "translations" | "cards
 export interface NavTab {
   href: string;
   label: string;
+  /** Иконка строки в палитре Ctrl+K; без неё — иконка пункта. */
+  icon?: typeof BellRing;
   badge?: BadgeKey;
   superOnly?: boolean;
   /** Ещё адреса, на которых вкладка активна (реестр подарков — внутри «Кейса»). */
@@ -74,8 +82,8 @@ export const SECTIONS: NavSection[] = [
         icon: Package,
         tabs: [
           { href: "/products", label: "Товары" },
-          { href: "/categories", label: "Категории" },
-          { href: "/brands", label: "Бренды" },
+          { href: "/categories", label: "Категории", icon: FolderTree },
+          { href: "/brands", label: "Бренды", icon: BadgeCheck },
         ],
       },
       { href: "/preorders", label: "Поставки", icon: PackagePlus },
@@ -85,7 +93,7 @@ export const SECTIONS: NavSection[] = [
         icon: ClipboardCheck,
         tabs: [
           { href: "/cards", label: "Карточки", badge: "cards" },
-          { href: "/ai-tasks", label: "ИИ-задачи", badge: "ai" },
+          { href: "/ai-tasks", label: "ИИ-задачи", icon: Sparkles, badge: "ai" },
         ],
       },
       {
@@ -113,7 +121,7 @@ export const SECTIONS: NavSection[] = [
         icon: Ticket,
         tabs: [
           { href: "/promocodes", label: "Промокоды" },
-          { href: "/gift", label: "Кейс", also: ["/gift/registry"] },
+          { href: "/gift", label: "Кейс", icon: Gift, also: ["/gift/registry"] },
         ],
       },
     ],
@@ -129,7 +137,7 @@ export const SECTIONS: NavSection[] = [
         icon: BarChart3,
         tabs: [
           { href: "/metrics", label: "Метрики" },
-          { href: "/writeoffs", label: "Списания" },
+          { href: "/writeoffs", label: "Списания", icon: PackageMinus },
         ],
       },
       {
@@ -138,7 +146,7 @@ export const SECTIONS: NavSection[] = [
         icon: ScrollText,
         tabs: [
           { href: "/audit", label: "Действия" },
-          { href: "/incidents", label: "Инциденты", superOnly: true },
+          { href: "/incidents", label: "Инциденты", icon: Siren, superOnly: true },
         ],
       },
     ],
