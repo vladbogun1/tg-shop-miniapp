@@ -61,7 +61,8 @@ function SectionScreen({ id }: { id: string }) {
 
   const meta = section ?? SECTIONS.find((s) => s.id === id);
   const needsSettings = id === OTHER_SECTION || (meta?.groups.length ?? 0) > 0;
-  const groups = (q.data?.groups ?? []).filter((g) => section?.groups.includes(g.id));
+  // Порядок карточек — как в описании раздела (`SECTIONS`), а не как отдал сервер.
+  const groups = section ? section.groups.flatMap((id) => (q.data?.groups ?? []).filter((g) => g.id === id)) : [];
 
   return (
     <div className="min-w-0 lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start lg:gap-8">
