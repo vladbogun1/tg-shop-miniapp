@@ -55,7 +55,14 @@ function LinkButton({ icon, children, onClick }: { icon: ReactNode; children: Re
 export function BoxesPanel({ extra }: { extra?: ReactNode }) {
   const q = useBoxesQuery();
   const [open, setOpen] = useState<"boxes" | "journal" | null>(null);
-  if (q.data && !q.data.reviewed) return <Onboarding />;
+  if (q.data && !q.data.reviewed) {
+    return (
+      <div className="flex min-w-0 flex-col gap-2">
+        <Onboarding />
+        {extra && <div className="flex min-w-0 flex-wrap items-center gap-2">{extra}</div>}
+      </div>
+    );
+  }
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
       <LinkButton icon={<Boxes className="h-4 w-4" />} onClick={() => setOpen("boxes")}>
