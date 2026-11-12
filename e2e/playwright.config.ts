@@ -63,6 +63,8 @@ export default defineConfig({
     {
       name: "mobile",
       testMatch: /\.mobile\.spec\.ts$/,
+      // The iPhone overlay probe runs only on WebKit (project «ios» below).
+      testIgnore: /99-ios-overlays/,
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 390, height: 844 },
@@ -71,6 +73,17 @@ export default defineConfig({
         hasTouch: true,
       },
     },
+    // Taps swallowed by overlays on iPhone (Safari / installed app): WebKit with the iPhone 15 profile
+    // (touch, isMobile). Only this probe, only on request (IOS_REPRO=1): CI installs Chromium alone.
+    ...(process.env.IOS_REPRO === "1"
+      ? [
+          {
+            name: "ios",
+            testMatch: /99-ios-overlays\.mobile\.spec\.ts$/,
+            use: { ...devices["iPhone 15"], locale: "ru-RU", timezoneId: "Europe/Kyiv" },
+          },
+        ]
+      : []),
   ],
   webServer: [
     {
