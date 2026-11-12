@@ -18,8 +18,12 @@ import java.util.function.Supplier;
 @Component
 class ShipmentLocks {
 
-    /** Longer than the slowest NP write plus our saves; released at once when done. */
-    private static final Duration AT_MOST = Duration.ofMinutes(2);
+    /**
+     * Longer than the slowest waybill: counterparty + address + document saves, the by-barcode lookup after an
+     * uncertain answer and a pause while NP is down (worst case ≈ 3 min). Released at once when done; after a crash
+     * the order's waybill buttons answer «busy» for at most this long.
+     */
+    private static final Duration AT_MOST = Duration.ofMinutes(5);
 
     private final DbLocks locks;
 

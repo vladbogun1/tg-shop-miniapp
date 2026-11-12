@@ -27,13 +27,15 @@ public class ShipmentBatch {
     private final OrderShipmentRepository shipments;
     private final NovaPoshtaGateway api;
     private final SettingsService settings;
+    private final NpAlerts alerts;
 
     ShipmentBatch(ShipmentCreation creation, OrderShipmentRepository shipments, NovaPoshtaGateway api,
-                  SettingsService settings) {
+                  SettingsService settings, NpAlerts alerts) {
         this.creation = creation;
         this.shipments = shipments;
         this.api = api;
         this.settings = settings;
+        this.alerts = alerts;
     }
 
     /** {@code senderWarehouseRef}: the branch the parcels go from (null = the default one). */
@@ -52,7 +54,10 @@ public class ShipmentBatch {
         return out;
     }
 
-    /** Auto-create on approve; a failure only logs (the admin still has «Створити ТТН»). */
+    /**
+     * Auto-create on approve; the approve itself never fails for it. A failure is raised on «Внимание» (the admin
+     * makes the waybill with «Створити ТТН»); it stays until «Разобрано», the next failure rewords it.
+     */
     public void autoCreate(byte[] orderId) {
         if (!settings.getBool(DeliverySettings.NP_AUTO_CREATE_TTN) || !api.keyConfigured()) {
             return;
@@ -64,7 +69,10 @@ public class ShipmentBatch {
             OrderShipment s = creation.create(orderId, Options.defaults());
             log.info("NP waybill {} created automatically on approve", s.getTtn());
         } catch (RuntimeException e) {
-            log.warn("NP auto waybill for order {} not created: {}", UuidUtil.toString(orderId), e.getMessage());
+            String id = UuidUtil.toString(orderId);
+            log.warn("NP auto waybill for order {} not created: {}", id, e.getMessage());
+            alerts.raise(NpAlerts.Kind.AUTO_TTN, "Заказ #" + id.substring(0, 8) + " одобрен, но ТТН не создалась "
+                    + "автоматически (" + e.getMessage() + "). Создайте её вручную на «К отправке».");
         }
     }
 }

@@ -29,6 +29,7 @@ public class NpAlerts {
     public enum Kind {
         SENDER_BRANCH("Отделение отправки", true),
         POLL("Отслеживание посылок", true),
+        AUTO_TTN("ТТН при одобрении", true),
         SYNC("Справочник отделений", false),
         STATUS_CODES("Новые статусы Новой почты", false),
         WAREHOUSE_TYPES("Новые типы отделений", false),

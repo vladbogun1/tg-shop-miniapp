@@ -26,8 +26,6 @@ import java.util.List;
 @Component
 public class CheckoutAddressCheck implements DeliveryAddressCheck {
 
-    /** Nova Poshta's TypeOfWarehouse ref of a parcel locker (stable; the same one {@link NovaPoshtaService} maps). */
-    static final String TYPE_POSTOMAT = "f9316480-5f2d-425d-bc2c-ac7cd29decf0";
     static final String COURIER_ENABLED = "novaposhta.courierEnabled";
     static final String POSTOMAT_ENABLED = "novaposhta.postomatEnabled";
 
@@ -56,7 +54,9 @@ public class CheckoutAddressCheck implements DeliveryAddressCheck {
                 .filter(w -> address.cityRef().equals(w.getCityRef()))
                 .filter(NovaPoshtaWarehouse::isActive)
                 .orElseThrow(() -> new DomainException.BadRequest(OrderError.NP_WAREHOUSE_UNKNOWN));
-        NpServiceType service = TYPE_POSTOMAT.equals(wh.getType()) ? NpServiceType.POSTOMAT : NpServiceType.WAREHOUSE;
+        // The directory's category (synced types), not one built-in ref: PrivatBank lockers are lockers too.
+        NpServiceType service = "POSTOMAT".equals(NovaPoshtaService.categoryOf(wh))
+                ? NpServiceType.POSTOMAT : NpServiceType.WAREHOUSE;
         if (service == NpServiceType.POSTOMAT && !settings.get(POSTOMAT_ENABLED, true)) {
             throw new DomainException.BadRequest(OrderError.NP_POSTOMAT_DISABLED);
         }
