@@ -244,14 +244,17 @@ public class NovaPoshtaApiClient implements NovaPoshtaGateway {
                 + "/type/" + type + "/apiKey/" + key;
         awaitGate();
         try {
-            HttpResponse<byte[]> resp = get(URI.create(url));
-            int status = resp.statusCode();
-            if (status >= 300 && status < 400) {
-                // The cabinet host may send us on once; the platform client does not follow redirects itself.
+            URI at = URI.create(url);
+            HttpResponse<byte[]> resp = get(at);
+            // The cabinet host may send us on (the old client followed redirects); the platform client does not
+            // follow them itself — a few hops at most.
+            for (int hop = 0; hop < 3 && resp.statusCode() >= 300 && resp.statusCode() < 400; hop++) {
                 String location = resp.headers().firstValue("Location").orElse(null);
-                if (location != null) {
-                    resp = get(URI.create(url).resolve(location));
+                if (location == null) {
+                    break;
                 }
+                at = at.resolve(location);
+                resp = get(at);
             }
             byte[] body = resp.body();
             boolean pdf = body != null && body.length > 4 && body[0] == '%' && body[1] == 'P' && body[2] == 'D'

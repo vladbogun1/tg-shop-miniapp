@@ -77,7 +77,7 @@ final class NpFixtures {
     static ShippingOrder order(OrderStatus status, boolean archived, String trackingNumber, DeliveryMethod method) {
         return new ShippingOrder(ORDER, "01020304", status, method, NpServiceType.WAREHOUSE, "city", "Харків",
                 "wh-1", "Відділення №1", null, null, null, null, "Петренко Іван", null, null, null,
-                "+380991090362", false, 1000_00, 0, true, 0, false, archived, trackingNumber, null, null, List.of(), "");
+                "+380991090362", false, 1000_00, 0, true, 0, false, archived, false, trackingNumber, null, null, List.of(), "");
     }
 
     /** An NP order with money owed: {@code codMinor} on pickup, {@code dueMinor} online, missing or not. */
@@ -85,7 +85,7 @@ final class NpFixtures {
         return new ShippingOrder(ORDER, "01020304", OrderStatus.APPROVED, DeliveryMethod.NOVA_POSHTA,
                 NpServiceType.WAREHOUSE, "city", "Харків", "wh-1", "Відділення №1", null, null, null, null,
                 "Петренко Іван", null, null, null, "+380991090362", false, 1000_00, codMinor, paid, dueMinor,
-                onlineMissing, false, null, null, null, List.of(), "");
+                onlineMissing, false, false, null, null, null, List.of(), "");
     }
 
     /** Runs the callback at once, without a database. */

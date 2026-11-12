@@ -113,6 +113,9 @@ class ShipmentPreparation {
         if (order.archived()) {
             problems.add("Заказ в архиве");
         }
+        if (order.cancelRequestPending()) {
+            problems.add("Покупатель просит отменить заказ — сначала решите запрос отмены");
+        }
         if (!order.novaPoshta()) {
             problems.add("Заказ не на доставку Новой почтой");
         }

@@ -102,7 +102,7 @@ class NpReviewFixesTest {
                 NpServiceType.WAREHOUSE, "city", "Харків", warehouseRef, "Відділення №1", null, null, null, null,
                 "Петренко Іван", null, null, null, "+380991090362", codMinor > 0, 2080_00, codMinor, codMinor == 0,
                 0, false,
-                false, null, NOW, null, lines, "");
+                false, false, null, NOW, null, lines, "");
     }
 
     private static ShippingOrder order(OrderStatus status, long codMinor) {

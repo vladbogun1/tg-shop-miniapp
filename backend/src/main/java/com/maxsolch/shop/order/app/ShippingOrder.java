@@ -52,6 +52,7 @@ public record ShippingOrder(
         long amountDueMinor,
         boolean onlinePaymentMissing,
         boolean archived,
+        boolean cancelRequestPending,
         @Nullable String trackingNumber,
         @Nullable Instant approvedAt,
         @Nullable Long tgUserId,
@@ -86,7 +87,7 @@ public record ShippingOrder(
                 name != null ? name.middleName() : null,
                 o.getPhone(), o.isPaymentOnDelivery(), o.getTotalMinor(), OrderMoney.codMinor(o), o.isPaid(),
                 OrderMoney.amountDueMinor(o), OrderMoney.onlinePaymentMissing(o),
-                o.getArchivedAt() != null, o.getTrackingNumber(), o.getApprovedAt(), o.getTgUserId(), lines,
+                o.getArchivedAt() != null, o.isCancelRequestPending(), o.getTrackingNumber(), o.getApprovedAt(), o.getTgUserId(), lines,
                 goodsKey(lines));
     }
 
