@@ -56,7 +56,7 @@ public class ShipmentBatch {
 
     /**
      * Auto-create on approve; the approve itself never fails for it. A failure is raised on «Внимание» (the admin
-     * makes the waybill with «Створити ТТН»); it stays until «Разобрано», the next failure rewords it.
+     * makes the waybill with «Создать ТТН»); each failure is a new alert, so it shows even after «Разобрано».
      */
     public void autoCreate(byte[] orderId) {
         if (!settings.getBool(DeliverySettings.NP_AUTO_CREATE_TTN) || !api.keyConfigured()) {
@@ -71,6 +71,7 @@ public class ShipmentBatch {
         } catch (RuntimeException e) {
             String id = UuidUtil.toString(orderId);
             log.warn("NP auto waybill for order {} not created: {}", id, e.getMessage());
+            alerts.clear(NpAlerts.Kind.AUTO_TTN); // a fresh «since»: a new failure shows again after «Разобрано»
             alerts.raise(NpAlerts.Kind.AUTO_TTN, "Заказ #" + id.substring(0, 8) + " одобрен, но ТТН не создалась "
                     + "автоматически (" + e.getMessage() + "). Создайте её вручную на «К отправке».");
         }

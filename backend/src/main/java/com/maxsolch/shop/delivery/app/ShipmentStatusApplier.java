@@ -133,8 +133,10 @@ public class ShipmentStatusApplier {
             s.setQuiet(false);
             s.setArrivalNotifiedAt(s.getArrivalNotifiedAt() == null ? now : s.getArrivalNotifiedAt());
             s.setStorageNotifiedAt(s.getStorageNotifiedAt() == null ? now : s.getStorageNotifiedAt());
+            // Backfilled numbers were typed in by hand: only our recipient's parcel moves the order.
             boolean pickedUpPaid = next == ShipmentStage.RECEIVED && orders.find(s.getOrderId())
-                    .filter(o -> o.codMinor() == 0 && o.amountDueMinor() == 0).isPresent();
+                    .filter(o -> o.codMinor() == 0 && o.amountDueMinor() == 0).isPresent()
+                    && ourRecipient(s, next, u, polled);
             return pickedUpPaid ? new Effects(s.getOrderId(), s.getTtn(), next, false, true, 0) : null;
         }
         boolean move = ourRecipient(s, next, u, polled);

@@ -49,6 +49,7 @@ class ShipmentBackfillCatchUpTest {
         s.setOrderId(orderId);
         s.setTtn("20450000000001");
         s.setQuiet(true);
+        s.setOrigin(OrderShipment.ORIGIN_MANUAL); // V98 backfills typed-in numbers
         when(shipments.findById(any())).thenReturn(Optional.of(s));
     }
 
@@ -56,12 +57,17 @@ class ShipmentBackfillCatchUpTest {
         ShippingOrder o = mock(ShippingOrder.class);
         when(o.codMinor()).thenReturn(codMinor);
         when(o.amountDueMinor()).thenReturn(amountDueMinor);
+        when(o.phone()).thenReturn("+380671234567");
         when(orders.find(orderId)).thenReturn(Optional.of(o));
     }
 
     private ShipmentStatusApplier.StatusUpdate status(String code) {
+        return status(code, "380671234567");
+    }
+
+    private ShipmentStatusApplier.StatusUpdate status(String code, String recipientPhone) {
         return new ShipmentStatusApplier.StatusUpdate(code, "test", null, null, null,
-                Instant.parse("2026-11-10T10:00:00Z"));
+                Instant.parse("2026-11-10T10:00:00Z"), recipientPhone);
     }
 
     @Test
@@ -75,6 +81,13 @@ class ShipmentBackfillCatchUpTest {
     void pickedUpWithMoneyOwed_staysForTheAdmin() {
         orderOwes(150_000, 0);
         applier.apply(shipmentId, status("9"), true);
+        verify(orders, never()).markDelivered(any(), anyLong());
+    }
+
+    @Test
+    void someoneElsesParcel_doesNotCloseTheOrder() {
+        orderOwes(0, 0);
+        applier.apply(shipmentId, status("9", "380509999999"), true);
         verify(orders, never()).markDelivered(any(), anyLong());
     }
 
