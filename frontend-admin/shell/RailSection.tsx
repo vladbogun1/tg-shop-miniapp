@@ -6,8 +6,8 @@ import { createPortal } from "react-dom";
 import { useOverlayLayer } from "@shop/ui/overlay";
 import { cn } from "@/lib/cn";
 import { NavRow } from "./NavRow";
-import { isActive, type BadgeKey, type NavItem, type NavSection } from "./nav-config";
-import type { BadgeInfo } from "./use-nav-badges";
+import { isActive, type NavItem, type NavSection } from "./nav-config";
+import { sectionPending, type BadgeInfo } from "./use-nav-badges";
 
 /**
  * Collapsed rail: one icon per section instead of every item (20 icons did not fit the screen).
@@ -19,14 +19,14 @@ import type { BadgeInfo } from "./use-nav-badges";
 export function RailSection({
   sec,
   items,
-  badges,
+  badgeOf,
   pathname,
   layoutScope,
   onNavigate,
 }: {
   sec: NavSection;
   items: NavItem[];
-  badges: Record<BadgeKey, BadgeInfo>;
+  badgeOf: (item: NavItem) => BadgeInfo | undefined;
   pathname: string;
   layoutScope: string;
   onNavigate?: () => void;
@@ -39,13 +39,7 @@ export function RailSection({
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const Icon = sec.icon;
   const hasActive = items.some((i) => isActive(pathname, i.href, i.exact));
-  const pending = items.reduce(
-    (n, i) => n + (i.badge ? badges[i.badge].count : 0),
-    0,
-  );
-  const strong = items.some(
-    (i) => i.badge && badges[i.badge].strong && badges[i.badge].count > 0,
-  );
+  const { pending, strong } = sectionPending(items, badgeOf);
   const panelId = `rail-${layoutScope}-${sec.id}`;
 
   useOverlayLayer(open, () => setOpen(false), { lockScroll: false });
@@ -160,7 +154,7 @@ export function RailSection({
                   key={item.href}
                   item={item}
                   active={isActive(pathname, item.href, item.exact)}
-                  badge={item.badge ? badges[item.badge] : undefined}
+                  badge={badgeOf(item)}
                   collapsed={false}
                   layoutScope={`${layoutScope}-flyout`}
                   onNavigate={() => {

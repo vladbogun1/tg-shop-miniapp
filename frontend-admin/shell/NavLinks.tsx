@@ -9,7 +9,7 @@ import { localStore } from "@shop/core/storage";
 import { NavRow } from "./NavRow";
 import { RailSection } from "./RailSection";
 import { DEFAULT_OPEN, OPEN_KEY, PRIMARY, SECTIONS, isActive, type NavItem } from "./nav-config";
-import { fmtCount, useNavBadges } from "./use-nav-badges";
+import { fmtCount, itemBadge, sectionPending, useNavBadges } from "./use-nav-badges";
 
 /**
  * Sidebar / drawer menu: the daily screens on top (no header), then folding sections by topic.
@@ -52,12 +52,13 @@ export function NavLinks({
     });
   }
 
+  const badgeOf = (item: NavItem) => itemBadge(item, badges, superAdmin);
   const row = (item: NavItem, hidden = false) => (
     <NavRow
       key={item.href}
       item={item}
       active={isActive(pathname, item.href, item.exact)}
-      badge={item.badge ? badges[item.badge] : undefined}
+      badge={badgeOf(item)}
       collapsed={collapsed}
       layoutScope={layoutScope}
       onNavigate={onNavigate}
@@ -83,7 +84,7 @@ export function NavLinks({
               <RailSection
                 sec={sec}
                 items={items}
-                badges={badges}
+                badgeOf={badgeOf}
                 pathname={pathname}
                 layoutScope={layoutScope}
                 onNavigate={onNavigate}
@@ -95,13 +96,7 @@ export function NavLinks({
           isActive(pathname, i.href, i.exact),
         );
         const expanded = hasActive || !!open[sec.id];
-        const pending = items.reduce(
-          (n, i) => n + (i.badge ? badges[i.badge].count : 0),
-          0,
-        );
-        const strong = items.some(
-          (i) => i.badge && badges[i.badge].strong && badges[i.badge].count > 0,
-        );
+        const { pending, strong } = sectionPending(items, badgeOf);
         const panelId = `nav-sec-${layoutScope}-${sec.id}`;
         return (
           <div key={sec.id} className="mt-3">

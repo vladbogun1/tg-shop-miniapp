@@ -5,7 +5,7 @@ import { useAiSummary } from "@/features/ai";
 import { pendingCards, useCardStats } from "@/features/cards";
 import { useReviewsPending } from "@/features/review";
 import { useIsSuperAdmin } from "@/features/staff";
-import type { BadgeKey } from "./nav-config";
+import { itemBadgeKeys, type BadgeKey, type NavItem } from "./nav-config";
 
 export interface BadgeInfo {
   count: number;
@@ -75,3 +75,27 @@ export function useNavBadges(): Record<BadgeKey, BadgeInfo> {
 }
 
 export const fmtCount = (n: number) => (n > 999 ? "999+" : String(n));
+
+/**
+ * Бейдж пункта меню: свой счётчик или сумма счётчиков его вкладок («Карточки» = карточки + ИИ-задачи).
+ * Один ключ — его подпись как есть; несколько — общая подпись с названием пункта.
+ */
+export function itemBadge(item: NavItem, badges: Record<BadgeKey, BadgeInfo>, superAdmin: boolean | undefined): BadgeInfo | undefined {
+  const keys = itemBadgeKeys(item, superAdmin);
+  if (keys.length === 0) return undefined;
+  if (keys.length === 1) return badges[keys[0]];
+  const parts = keys.map((k) => badges[k]);
+  const count = parts.reduce((n, b) => n + b.count, 0);
+  return {
+    count,
+    label: `Ждут в разделе «${item.label}»: ${count}`,
+    title: parts.map((b) => b.label).join("\n"),
+    strong: parts.some((b) => b.strong && b.count > 0),
+  };
+}
+
+/** Сумма счётчиков блока меню (рядом со свёрнутым заголовком и точкой на свёрнутой полосе). */
+export function sectionPending(items: NavItem[], badgeOf: (item: NavItem) => BadgeInfo | undefined): { pending: number; strong: boolean } {
+  const all = items.map(badgeOf).filter((b): b is BadgeInfo => !!b);
+  return { pending: all.reduce((n, b) => n + b.count, 0), strong: all.some((b) => b.strong && b.count > 0) };
+}
