@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { carries, newToken, withoutKey, withoutStale, withToken } from "./back-close-state";
+import { carries, newToken, shouldPopOnClose, withoutKey, withoutStale, withToken } from "./back-close-state";
 
 /** Tokens of the overlays open right now (any instance): never cleaned as stale. */
 const live = new Set<string>();
@@ -31,6 +31,8 @@ export function useBackToClose(
   const navigatesAway = !!opts.navigatesAway;
   /** Token of our pushed entry while it is ours to pop; `null` once closed. */
   const tokenRef = useRef<string | null>(null);
+  /** `history.length` right after our push (see shouldPopOnClose). */
+  const lengthRef = useRef(0);
   const onCloseRef = useRef(onClose);
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -45,6 +47,7 @@ export function useBackToClose(
     live.add(token);
     h.pushState(withToken(h.state, key, token), "");
     tokenRef.current = token;
+    lengthRef.current = h.length;
 
     const onPop = () => {
       // Our entry is gone (Back was pressed): close without touching history again.
@@ -71,7 +74,8 @@ export function useBackToClose(
   return useCallback(() => {
     const token = tokenRef.current;
     tokenRef.current = null;
-    if (token && typeof window !== "undefined" && carries(window.history.state, key, token)) {
+    const h = typeof window === "undefined" ? undefined : window.history;
+    if (token && h && shouldPopOnClose(h.state, key, token, h.length, lengthRef.current)) {
       if (navigatesAway) window.history.replaceState(withoutKey(window.history.state, key), "");
       // Drop our entry; the popstate it fires is ignored now that the token is cleared.
       else window.history.back();

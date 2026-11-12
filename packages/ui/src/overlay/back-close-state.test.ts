@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { carries, newToken, withoutKey, withoutStale, withToken } from "./back-close-state";
+import { carries, newToken, shouldPopOnClose, withoutKey, withoutStale, withToken } from "./back-close-state";
 
 const NEXT = { __NA: true, __PRIVATE_NEXTJS_INTERNALS_TREE: { tree: 1 } };
 const KEY = "__orderDrawer";
@@ -53,6 +53,20 @@ describe("back-close history state", () => {
     expect(carries(NEXT, KEY, token)).toBe(false);
     expect(carries(withToken(NEXT, KEY, newToken()), KEY, token)).toBe(false);
     expect(carries(undefined, KEY, token)).toBe(false);
+  });
+
+  it("× after Next / a screen replaced our entry's state: still pops, unless an entry was pushed on top", () => {
+    const token = newToken();
+    // router.refresh() rewrote the current entry as {__NA, tree}: our key is gone, nothing pushed since.
+    expect(shouldPopOnClose(NEXT, KEY, token, 5, 5)).toBe(true);
+    expect(shouldPopOnClose(null, KEY, token, 5, 5)).toBe(true);
+    // A navigation pushed a new entry: it is not ours.
+    expect(shouldPopOnClose(NEXT, KEY, token, 6, 5)).toBe(false);
+    // Another opening's token / a stale marker under our key: not ours.
+    expect(shouldPopOnClose(withToken(NEXT, KEY, newToken()), KEY, token, 5, 5)).toBe(false);
+    expect(shouldPopOnClose({ ...NEXT, [KEY]: true }, KEY, token, 5, 5)).toBe(false);
+    // Ours (or a nested overlay's entry on top, which spreads our token): pop.
+    expect(shouldPopOnClose(withToken(NEXT, KEY, token), KEY, token, 6, 5)).toBe(true);
   });
 
   it("nested overlay entry keeps the parent's token; dropping ours leaves the rest", () => {

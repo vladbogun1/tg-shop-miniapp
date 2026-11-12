@@ -29,6 +29,17 @@ export function carries(state: HistoryState, key: string, token: string): boolea
 }
 
 /**
+ * Closing from the UI: pop our entry? Yes when the current entry carries this opening's token. Also when our key is
+ * simply gone from it while no entry was pushed since ours (same `history.length`): something replaced the state of
+ * our entry — Next does that on `router.refresh()` / a same-page `router.replace`, screens call `replaceState(null)` —
+ * and we are still on it. Another opening's token under our key, or a newer entry on top, means it is not ours.
+ */
+export function shouldPopOnClose(state: HistoryState, key: string, token: string, length: number, lengthAtPush: number): boolean {
+  if (carries(state, key, token)) return true;
+  return state?.[key] === undefined && length === lengthAtPush;
+}
+
+/**
  * The entry without stale markers, or `null` when there is nothing to clean. Stale = a token of ours that no open
  * overlay owns (`live`), or the legacy `true` under `key` (left by an older build).
  */
