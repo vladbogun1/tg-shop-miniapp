@@ -81,7 +81,7 @@ public class AdminNovaPoshtaController {
     }
 
     @GetMapping("/box-presets")
-    @Operation(summary = "Box presets parsed from the «Коробки» setting")
+    @Operation(summary = "Boxes in stock (np_boxes) at every fold height; bags left out")
     public PresetsResponse presets() {
         return new PresetsResponse(parcels.presets());
     }

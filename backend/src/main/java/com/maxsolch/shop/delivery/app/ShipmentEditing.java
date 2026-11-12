@@ -58,6 +58,14 @@ public class ShipmentEditing {
         return locks.withOrder(orderId, () -> updateLocked(orderId, o, remakeIfPrinted));
     }
 
+    /**
+     * {@link #update} for a caller that already holds the order's lock {@code np-ttn:<order>} (it is not re-entrant):
+     * the box confirmation. A printed waybill is remade, so the returned row may be a new one with a new number.
+     */
+    OrderShipment updateHeld(byte[] orderId, Options o) {
+        return updateLocked(orderId, o, true);
+    }
+
     private OrderShipment updateLocked(byte[] orderId, Options o, boolean remakeIfPrinted) {
         Prepared p = preparation.prepare(orderId, o);
         OrderShipment s = ShipmentPreparation.editable(p.active());

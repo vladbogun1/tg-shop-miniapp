@@ -24,10 +24,12 @@ public class DeliveryShipmentView implements OrderShipmentView {
 
     private final OrderShipmentRepository shipments;
     private final ShipmentOrders orders;
+    private final BoxSuggestion suggestions;
 
-    public DeliveryShipmentView(OrderShipmentRepository shipments, ShipmentOrders orders) {
+    public DeliveryShipmentView(OrderShipmentRepository shipments, ShipmentOrders orders, BoxSuggestion suggestions) {
         this.shipments = shipments;
         this.orders = orders;
+        this.suggestions = suggestions;
     }
 
     @Override
@@ -47,8 +49,13 @@ public class DeliveryShipmentView implements OrderShipmentView {
         if (!checked.isEmpty()) {
             orders.findAll(checked).forEach(o -> byId.put(UuidUtil.toString(o.id()), o));
         }
+        // What the packing memory says now for the goods still to be packed: one query for the page.
+        Map<String, BoxSuggestion.Hint> hints = suggestions.rememberedLabels(newest.values().stream()
+                .filter(ShipmentFacts::unconfirmed).map(OrderShipment::getGoodsKey).filter(k -> k != null)
+                .distinct().toList());
         Map<String, ShipmentBrief> out = new HashMap<>();
-        newest.forEach((id, s) -> out.put(id, ShipmentFacts.brief(s, byId.get(id))));
+        newest.forEach((id, s) -> out.put(id, ShipmentFacts.brief(s, byId.get(id),
+                s.getGoodsKey() == null ? null : hints.get(s.getGoodsKey()))));
         return out;
     }
 }

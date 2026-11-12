@@ -38,7 +38,7 @@ class ShipmentPreparation {
 
     private final NovaPoshtaGateway api;
     private final NovaPoshtaSenderService sender;
-    private final ParcelSizeService parcels;
+    private final BoxSuggestion suggestions;
     private final ShipmentOrders orders;
     private final OrderShipmentRepository shipments;
     private final NovaPoshtaWarehouseRepository warehouses;
@@ -46,13 +46,13 @@ class ShipmentPreparation {
     private final ShopZone zone;
     private final Clock clock;
 
-    ShipmentPreparation(NovaPoshtaGateway api, NovaPoshtaSenderService sender, ParcelSizeService parcels,
+    ShipmentPreparation(NovaPoshtaGateway api, NovaPoshtaSenderService sender, BoxSuggestion suggestions,
                         ShipmentOrders orders, OrderShipmentRepository shipments,
                         NovaPoshtaWarehouseRepository warehouses, SettingsService settings, ShopZone zone,
                         Clock clock) {
         this.api = api;
         this.sender = sender;
-        this.parcels = parcels;
+        this.suggestions = suggestions;
         this.orders = orders;
         this.shipments = shipments;
         this.warehouses = warehouses;
@@ -81,7 +81,8 @@ class ShipmentPreparation {
             problems.add("Телефон получателя не похож на украинский (+380…)");
         }
         String[] name = recipient(order, o, problems, warnings);
-        Parcel parcel = parcel(order, o, service, dest, problems, warnings);
+        BoxSuggestion.Suggested suggested = suggestions.forOrder(order);
+        Parcel parcel = parcel(suggested.parcel(), o, service, dest, problems, warnings);
         long cod = Math.max(0, order.codMinor());
         boolean collect = o.collectCod() == null || o.collectCod();
         long declared = o.declaredMinor() != null && o.declaredMinor() > 0 ? o.declaredMinor() : order.totalMinor();
@@ -103,7 +104,8 @@ class ShipmentPreparation {
                 dest.ref(), dest.text(), blankToNull(order.streetRef()), blankToNull(order.streetName()),
                 blankToNull(order.building()), blankToNull(order.flat()), phone, name[0], name[1], name[2], parcel,
                 declared, cod, collect && cod > 0, description, date, cfg, from, problems, warnings, unpaid,
-                unpaid ? order.amountDueMinor() : 0, active, ShipmentFacts.goodsKey(order), ShipmentFacts.recipientKey(order));
+                unpaid ? order.amountDueMinor() : 0, active, ShipmentFacts.goodsKey(order), ShipmentFacts.recipientKey(order),
+                suggested);
     }
 
     private static void orderChecks(ShippingOrder order, List<String> problems) {
@@ -164,9 +166,9 @@ class ShipmentPreparation {
         return new String[] {last, first, middle};
     }
 
-    private Parcel parcel(ShippingOrder order, Options o, NpServiceType service, Destination dest,
+    private Parcel parcel(Parcel suggested, Options o, NpServiceType service, Destination dest,
                           List<String> problems, List<String> warnings) {
-        Parcel parcel = withOverrides(parcels.forOrder(order), o);
+        Parcel parcel = withOverrides(suggested, o);
         if (Boolean.FALSE.equals(o.documents())) {
             parcel = parcel.withDocuments(false);
         } else if (Boolean.TRUE.equals(o.documents()) && !parcel.documents()) {

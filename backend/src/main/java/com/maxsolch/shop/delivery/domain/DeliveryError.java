@@ -46,7 +46,11 @@ public enum DeliveryError implements ErrorCode {
     /** The old waybill was deleted, the new one failed: {0} the reason. */
     NP_REMAKE_FAILED("NP_REMAKE_FAILED"),
     /** The online payment has not arrived; making the waybill needs the admin's confirmation: {0}. */
-    NP_UNPAID("ORDER_UNPAID_SHIP");
+    NP_UNPAID("ORDER_UNPAID_SHIP"),
+    /** The box is confirmed against the waybill, and the order has none yet. */
+    NP_BOX_NO_TTN("NP_BOX_NO_TTN"),
+    /** No such box in the catalog. */
+    NP_BOX_NOT_FOUND("NP_BOX_NOT_FOUND");
 
     private final String code;
 

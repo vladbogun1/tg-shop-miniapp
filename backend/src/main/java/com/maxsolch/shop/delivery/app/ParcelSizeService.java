@@ -29,10 +29,12 @@ public class ParcelSizeService {
 
     private final ParcelSizes sizes;
     private final SettingsService settings;
+    private final NpBoxCatalog boxes;
 
-    public ParcelSizeService(ParcelSizes sizes, SettingsService settings) {
+    public ParcelSizeService(ParcelSizes sizes, SettingsService settings, NpBoxCatalog boxes) {
         this.sizes = sizes;
         this.settings = settings;
+        this.boxes = boxes;
     }
 
     /** A cart line for the checkout estimate. */
@@ -41,6 +43,15 @@ public class ParcelSizeService {
 
     /** The parcel of an order: its units still in the order (returned ones are out). */
     public Parcel forOrder(ShippingOrder order) {
+        return forLines(lines(order), Integer.MAX_VALUE);
+    }
+
+    /** The units of an order, one per piece, as the packing sees them (catalog sizes, else the defaults). */
+    List<Unit> units(ShippingOrder order) {
+        return goods(lines(order), Integer.MAX_VALUE).units();
+    }
+
+    private static List<CartLine> lines(ShippingOrder order) {
         List<CartLine> lines = new ArrayList<>();
         for (ShippingOrder.Line l : order.lines()) {
             int qty = Math.max(0, l.quantity() - Math.max(0, l.returnedQty()));
@@ -48,7 +59,7 @@ public class ParcelSizeService {
                 lines.add(new CartLine(l.productId(), l.variantId(), qty));
             }
         }
-        return forLines(lines, Integer.MAX_VALUE);
+        return lines;
     }
 
     /** The parcel of a cart (checkout «≈ ціна доставки»): same rules as for an order. */
@@ -57,6 +68,16 @@ public class ParcelSizeService {
     }
 
     private Parcel forLines(List<CartLine> lines, int maxUnits) {
+        Goods g = goods(lines, maxUnits);
+        Parcel packed = ParcelPacking.pack(g.units(), defaults(), boxes.presets(g.units()), fill());
+        return documents(packed, !g.units().isEmpty() && g.flat());
+    }
+
+    /** The units of these lines and whether all of them are flat goods («Документи»). */
+    private record Goods(List<Unit> units, boolean flat) {
+    }
+
+    private Goods goods(List<CartLine> lines, int maxUnits) {
         List<Unit> units = new ArrayList<>();
         Set<String> flatSlugs = flatSlugs();
         boolean flat = true;
@@ -76,7 +97,7 @@ public class ParcelSizeService {
             }
             flat &= !flatSlugs.isEmpty() && size.categorySlugs().stream().anyMatch(flatSlugs::contains);
         }
-        return documents(ParcelPacking.pack(units, def, presets(), fill()), !units.isEmpty() && flat);
+        return new Goods(units, flat);
     }
 
     static Unit unitOf(ParcelSizes.UnitSize size, Unit def) {
@@ -120,8 +141,12 @@ public class ParcelSizeService {
                 false);
     }
 
+    /**
+     * The boxes of {@code np_boxes} at every fold height (bags need goods to size them, so they are not listed). The
+     * text setting {@code novaposhta.boxPresets} is read only by the backend before V99.
+     */
     public List<BoxPreset> presets() {
-        return ParcelPacking.parsePresets(settings.getString(DeliverySettings.NP_BOX_PRESETS));
+        return boxes.presets();
     }
 
     /** Share of a box the goods may take (the rest is filler and air), from the settings, 0.3–1. */

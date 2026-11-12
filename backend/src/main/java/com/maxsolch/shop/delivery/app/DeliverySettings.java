@@ -39,6 +39,8 @@ public class DeliverySettings implements SettingsContribution {
     public static final String NP_DEFAULT_HEIGHT_MM = "novaposhta.defaultHeightMm";
     public static final String NP_BOX_PRESETS = "novaposhta.boxPresets";
     public static final String NP_BOX_FILL_PCT = "novaposhta.boxFillPct";
+    /** The owner went through «Коробки» once (V99): the packers' phones stop offering the first-run review. */
+    public static final String NP_BOXES_REVIEWED = "novaposhta.boxesReviewed";
     public static final String NP_CHECKOUT_ESTIMATE = "novaposhta.checkoutEstimate";
     public static final String NP_COD_FEE_PCT = "novaposhta.codFeePct";
     public static final String NP_COD_FEE_FIXED = "novaposhta.codFeeFixedUah";
@@ -88,6 +90,7 @@ public class DeliverySettings implements SettingsContribution {
             Map.entry(NP_DEFAULT_HEIGHT_MM, TAB_BOXES),
             Map.entry(NP_BOX_PRESETS, TAB_BOXES),
             Map.entry(NP_BOX_FILL_PCT, TAB_BOXES),
+            Map.entry(NP_BOXES_REVIEWED, TAB_BOXES),
             Map.entry(NP_POSTOMAT_MAX_KG, TAB_BOXES),
             Map.entry(NP_POSTOMAT_MAX_BOX, TAB_BOXES),
             Map.entry(NOVAPOSHTA_AUTO_SYNC, TAB_TRACKING),
@@ -215,6 +218,11 @@ public class DeliverySettings implements SettingsContribution {
                     "Какую часть объёма коробки занимают товары (остальное — наполнитель и воздух). "
                             + "60 % дали самую точную цену на истории отправок.",
                     60, 30, 100, "%"),
+            boolSetting(NP_BOXES_REVIEWED, "novaposhta",
+                    "Список коробок проверен",
+                    "Отмечается кнопкой «Готово» в «Коробках», когда отмечено, какие коробки есть в наличии. "
+                            + "Пока выключено, упаковщикам предлагается сначала проверить список.",
+                    false),
             boolSetting(NP_AUTO_UPDATE_TTN, "novaposhta",
                     "Обновлять ТТН при изменении заказа",
                     "Пока посылку не сдали, ТТН сама меняется, когда в заказе меняются товары, скидка или пришла "

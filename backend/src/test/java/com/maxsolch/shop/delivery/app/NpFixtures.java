@@ -101,7 +101,7 @@ final class NpFixtures {
         return new Prepared("01020304-0506-0708-090a-0b0c0d0e0f10", "01020304", OrderStatus.APPROVED.name(),
                 NpServiceType.WAREHOUSE, null, "Харків", "wh-1", "Відділення №1", null, null, null, null,
                 "380991090362", "Петренко", "Іван", null, new Parcel(1000, 200, 150, 100, "t"), 1000_00, 0, false,
-                "Товари", LocalDate.of(2026, 11, 12), null, null, List.of(), List.of(), false, 0, active, "", "");
+                "Товари", LocalDate.of(2026, 11, 12), null, null, List.of(), List.of(), false, 0, active, "", "", null);
     }
 
     static NpResult result() {

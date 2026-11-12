@@ -1,10 +1,13 @@
 package com.maxsolch.shop.delivery.app;
 
 import com.maxsolch.shop.delivery.domain.OrderShipment;
+import com.maxsolch.shop.delivery.domain.ShipmentStage;
 import com.maxsolch.shop.delivery.domain.ShipmentStaleness;
 import com.maxsolch.shop.delivery.domain.ShipmentStatusMapper;
+import com.maxsolch.shop.order.app.OrderShipmentView;
 import com.maxsolch.shop.order.app.OrderShipmentView.ShipmentBrief;
 import com.maxsolch.shop.order.app.ShippingOrder;
+import com.maxsolch.shop.platform.util.UuidUtil;
 
 import java.util.List;
 
@@ -49,11 +52,37 @@ public final class ShipmentFacts {
 
     /** The admin's view of a waybill; {@code order} null = no staleness check. */
     public static ShipmentBrief brief(OrderShipment s, ShippingOrder order) {
+        return brief(s, order, null);
+    }
+
+    /**
+     * The admin's view of a waybill; {@code hint} = what the packing memory suggests now for its goods (null = the
+     * suggestion stored when the waybill was made).
+     */
+    static ShipmentBrief brief(OrderShipment s, ShippingOrder order, BoxSuggestion.Hint hint) {
         return new ShipmentBrief(s.getTtn(), s.getOrigin(), s.getServiceType(), s.getStage(), s.getStatusCode(),
                 s.getStatusText(), s.getScheduledDelivery(), s.getArrivedAt(), s.getReceivedAt(),
                 s.getStoragePaidFrom(), s.getReturnTtn(), s.getCodMinor(), s.getDeliveryCostMinor(),
                 s.getWeightG(), s.getLengthMm(), s.getWidthMm(), s.getHeightMm(), trackingUrl(s.getTtn()),
                 s.getCreatedAt(), s.getLastEventAt(), s.getLastPolledAt(), s.getPollError(), s.getPrintedAt(),
-                staleReasons(order, s), ShipmentStatusMapper.handedOver(s.stageEnum()));
+                staleReasons(order, s), ShipmentStatusMapper.handedOver(s.stageEnum()), packing(s, hint));
+    }
+
+    /** Active, NP has no parcel yet, and the packer has not confirmed the box. */
+    static boolean unconfirmed(OrderShipment s) {
+        ShipmentStage stage = s.stageEnum();
+        return s.isActive() && s.getBoxConfirmedAt() == null
+                && (stage == ShipmentStage.CREATED || stage == ShipmentStage.NOT_FOUND);
+    }
+
+    static OrderShipmentView.Packing packing(OrderShipment s, BoxSuggestion.Hint hint) {
+        boolean open = unconfirmed(s);
+        String suggested = open && hint != null ? hint.label() : s.getBoxSuggested();
+        String source = open && hint != null ? hint.source() : s.getBoxSuggestedSource();
+        return new OrderShipmentView.Packing(suggested, source, s.getBoxLabel(),
+                s.getBoxId() == null ? null : UuidUtil.toString(s.getBoxId()), s.getBoxHeightMm(),
+                s.getBoxConfirmedAt(), s.getBoxConfirmedBy(), s.getPrintedAt() != null, open, s.getStatusCode(),
+                s.getNpWeightG(), s.getNpVolumeWeightG(), s.getNpFactualWeightG(), s.getNpCostMinor(),
+                s.getNpMeasuredAt());
     }
 }

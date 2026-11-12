@@ -32,4 +32,7 @@ public interface OrderShipmentRepository extends JpaRepository<OrderShipment, by
     /** Rows of the «Внимание → Посылки» group. */
     @Query("select s from OrderShipment s where s.active = true and s.stage in :stages")
     List<OrderShipment> findActiveInStages(@Param("stages") Collection<String> stages);
+
+    /** «Журнал упаковки»: active waybills made since {@code since}, newest first (a page). */
+    List<OrderShipment> findByActiveTrueAndCreatedAtAfterOrderByCreatedAtDesc(Instant since, Pageable page);
 }

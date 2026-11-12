@@ -121,6 +121,7 @@ class ShipmentStore {
     }
 
     private void fill(OrderShipment s, Prepared p, NpResult r, Long estimate) {
+        suggestion(s, p);
         s.setSenderWarehouseRef(p.from() == null ? null : p.from().ref());
         s.setCollectCod(p.collectCod());
         s.setCargoType(p.parcel().cargoType());
@@ -144,6 +145,22 @@ class ShipmentStore {
         s.setSyncError(null);
         // NP took new data, so nothing of it is printed yet: an old label is no longer this waybill's.
         s.setPrintedAt(null);
+    }
+
+    /**
+     * The box the system suggested, kept from the first suggestion for these goods: a later update (a box confirmed,
+     * money changed) must not re-suggest from the memory it just taught. Other goods — a new suggestion, and a box
+     * confirmed for the old goods no longer counts.
+     */
+    private static void suggestion(OrderShipment s, Prepared p) {
+        boolean goodsChanged = s.getGoodsKey() != null && !s.getGoodsKey().equals(p.goodsKey());
+        if (p.suggested() != null && (s.getBoxSuggested() == null || goodsChanged)) {
+            s.setBoxSuggested(NpJson.cut(p.suggested().label(), 120));
+            s.setBoxSuggestedSource(NpJson.cut(p.suggested().source(), 60));
+        }
+        if (goodsChanged && s.getBoxConfirmedAt() != null) {
+            s.dropBoxConfirmation();
+        }
     }
 
     /** The waybill is gone (deleted at NP or forgotten): history only. */
@@ -189,7 +206,7 @@ class ShipmentStore {
     }
 
     /** Re-read and change one row; a concurrent write (version) makes it re-read and change again. */
-    private void change(byte[] shipmentId, Consumer<OrderShipment> how) {
+    void change(byte[] shipmentId, Consumer<OrderShipment> how) {
         retryingOnConflict(() -> {
             tx.executeWithoutResult(t -> shipments.findById(shipmentId).ifPresent(how));
             return null;

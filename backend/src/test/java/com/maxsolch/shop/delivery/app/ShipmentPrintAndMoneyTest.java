@@ -98,8 +98,9 @@ class ShipmentPrintAndMoneyTest {
     private static Prepared prepare(ShippingOrder order) {
         ShipmentOrders orders = mock(ShipmentOrders.class);
         when(orders.find(ORDER)).thenReturn(Optional.of(order));
-        ParcelSizeService parcels = mock(ParcelSizeService.class);
-        when(parcels.forOrder(any())).thenReturn(new Parcel(1000, 200, 150, 100, "t"));
+        BoxSuggestion parcels = mock(BoxSuggestion.class);
+        when(parcels.forOrder(any())).thenReturn(new BoxSuggestion.Suggested(new Parcel(1000, 200, 150, 100, "t"),
+                "t", BoxSuggestion.BY_SIZE));
         NovaPoshtaSenderService sender = mock(NovaPoshtaSenderService.class);
         when(sender.get()).thenReturn(Optional.empty());
         ShipmentPreparation p = new ShipmentPreparation(mock(NovaPoshtaGateway.class), sender, parcels, orders,
