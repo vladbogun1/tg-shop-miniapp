@@ -12,6 +12,7 @@ import { createPortal } from "react-dom";
 import { useOverlayLayer } from "./overlay-stack";
 import { useDialogFocus } from "./use-dialog-focus";
 import { useBackToClose } from "./use-back-close";
+import { PresenceLayer, useOpenKey } from "./PresenceLayer";
 
 const sheetVariants: Variants = {
   initial: { y: "100%" },
@@ -52,54 +53,57 @@ export function Sheet({
   const close = useBackToClose(open && !!backClose, onClose, { marker: backClose });
   useOverlayLayer(open, close);
   const focusRef = useDialogFocus();
+  const session = useOpenKey(open);
 
   // In a portal: opened from a screen's own layer the sheet must still cover the tab bar.
   if (typeof document === "undefined") return null;
   return createPortal(
     <AnimatePresence>
       {open && (
-        <m.div
-          variants={backdropVariants}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          onClick={close}
-          className={`fixed inset-0 flex items-end justify-center bg-black/65 ${zClass}`}
-        >
+        <PresenceLayer key={session} name="sheet" className={`fixed inset-0 ${zClass}`}>
           <m.div
-            ref={focusRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label={ariaLabel}
-            variants={sheetVariants}
+            variants={backdropVariants}
             initial="initial"
             animate="animate"
             exit="exit"
-            onClick={(e) => e.stopPropagation()}
-            className="flex max-h-[88dvh] w-full max-w-[520px] flex-col overflow-hidden rounded-t-[16px] border border-b-0 border-[var(--line-strong)] bg-[var(--surface)]"
+            onClick={close}
+            className="absolute inset-0 flex items-end justify-center bg-black/65"
           >
-            <div className="flex justify-center pt-2">
-              <span className="h-1 w-10 rounded-full bg-[var(--line-strong)]" />
-            </div>
-            <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 pb-3 pt-1.5">
-              <h2 className="font-display flex min-w-0 items-center gap-2 text-[15px] font-extrabold uppercase leading-tight tracking-[0.04em] text-[var(--ink)]">
-                {title}
-              </h2>
-              <button
-                type="button"
-                onClick={() => {
-                  onCloseClick?.();
-                  close();
-                }}
-                aria-label={closeLabel}
-                className="tap -mr-1.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--surface-3)] text-[var(--muted)] active:scale-95"
-              >
-                <X className="h-5 w-5" strokeWidth={2.25} />
-              </button>
-            </div>
-            {children}
+            <m.div
+              ref={focusRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label={ariaLabel}
+              variants={sheetVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              onClick={(e) => e.stopPropagation()}
+              className="flex max-h-[88dvh] w-full max-w-[520px] flex-col overflow-hidden rounded-t-[16px] border border-b-0 border-[var(--line-strong)] bg-[var(--surface)]"
+            >
+              <div className="flex justify-center pt-2">
+                <span className="h-1 w-10 rounded-full bg-[var(--line-strong)]" />
+              </div>
+              <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 pb-3 pt-1.5">
+                <h2 className="font-display flex min-w-0 items-center gap-2 text-[15px] font-extrabold uppercase leading-tight tracking-[0.04em] text-[var(--ink)]">
+                  {title}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onCloseClick?.();
+                    close();
+                  }}
+                  aria-label={closeLabel}
+                  className="tap -mr-1.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--surface-3)] text-[var(--muted)] active:scale-95"
+                >
+                  <X className="h-5 w-5" strokeWidth={2.25} />
+                </button>
+              </div>
+              {children}
+            </m.div>
           </m.div>
-        </m.div>
+        </PresenceLayer>
       )}
     </AnimatePresence>,
     document.body,

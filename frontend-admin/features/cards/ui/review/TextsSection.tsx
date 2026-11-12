@@ -9,7 +9,7 @@ import { Section } from "./parts";
 import { TextBlock } from "./TextBlock";
 
 // Plain buttons, not SegmentedControl: its layout animation inside an exiting panel is
-// what leaves framer's exit unfinished (see PanelLayer).
+// what leaves framer's exit unfinished (see PresenceLayer in @shop/ui/overlay).
 function LangTabs({ lang, onLang, changes }: { lang: Lang; onLang: (l: Lang) => void; changes: Record<string, unknown> }) {
   return (
     <div role="tablist" aria-label="Язык текстов" className="inline-flex items-center gap-0.5 rounded-[var(--r-md)] border border-[var(--line)] bg-[var(--bg-2)] p-[3px]">

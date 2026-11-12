@@ -19,11 +19,10 @@ import type { CardItem } from "../../model/item";
 import type { CardSchema } from "../../model/schema";
 import { cn } from "@/lib/cn";
 import { useStickyFit } from "@/lib/use-sticky-fit";
-import { backdropVariants, drawerVariants, sheetVariants, useOverlayLayer } from "@shop/ui/overlay";
+import { backdropVariants, drawerVariants, PresenceLayer, sheetVariants, useOpenKey, useOverlayLayer } from "@shop/ui/overlay";
 import { useMediaQuery } from "@shop/ui/use-media";
 import { useConfirm } from "@shop/ui/confirm";
 import { PanelBody } from "./PanelBody";
-import { PanelLayer } from "./PanelLayer";
 
 export function ReviewPanel({
   item,
@@ -70,6 +69,7 @@ export function ReviewPanel({
     [dirty, confirm]
   );
   const layer = useOverlayLayer(open, () => void guarded(onClose), { lockScroll: !docked });
+  const session = useOpenKey(open);
 
   const body = item && (
     <PanelBody
@@ -108,7 +108,7 @@ export function ReviewPanel({
     <>
       <AnimatePresence>
         {open && (
-          <PanelLayer>
+          <PresenceLayer key={session} name="cards-review" className="fixed inset-0 z-[120]">
             <motion.div
               variants={backdropVariants}
               initial="initial"
@@ -132,7 +132,7 @@ export function ReviewPanel({
             >
               {body}
             </motion.aside>
-          </PanelLayer>
+          </PresenceLayer>
         )}
       </AnimatePresence>
 

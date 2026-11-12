@@ -10,7 +10,7 @@ import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { backdropVariants, useOverlayLayer } from "@shop/ui/overlay";
+import { backdropVariants, PresenceLayer, useOpenKey, useOverlayLayer } from "@shop/ui/overlay";
 import { useIsSuperAdmin } from "@/features/staff";
 import { cn } from "@/lib/cn";
 import type { PaletteEntry } from "./palette-items";
@@ -50,6 +50,7 @@ export function CommandPaletteButton() {
 
 function PaletteDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   useOverlayLayer(open, onClose);
+  const session = useOpenKey(open);
   const router = useRouter();
   const superAdmin = useIsSuperAdmin();
   const [query, setQuery] = useState("");
@@ -88,7 +89,7 @@ function PaletteDialog({ open, onClose }: { open: boolean; onClose: () => void }
   return createPortal(
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[170] flex items-start justify-center px-4 pt-[12vh]">
+        <PresenceLayer key={session} name="command-palette" className="fixed inset-0 z-[170] flex items-start justify-center px-4 pt-[12vh]">
           <motion.div
             variants={backdropVariants}
             initial="initial"
@@ -138,7 +139,7 @@ function PaletteDialog({ open, onClose }: { open: boolean; onClose: () => void }
               {failed && <li className="px-3 py-2 text-[12px] text-[var(--danger-ink)]">Поиск по данным не ответил — разделы доступны</li>}
             </ul>
           </motion.div>
-        </div>
+        </PresenceLayer>
       )}
     </AnimatePresence>,
     document.body,

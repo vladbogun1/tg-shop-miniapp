@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, m, useIsPresent } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -9,6 +9,7 @@ import { backdropVariants, modalVariants, sheetVariants } from "./variants";
 import { useOverlayLayer } from "./overlay-stack";
 import { useDialogFocus } from "./use-dialog-focus";
 import { useBackToClose } from "./use-back-close";
+import { PresenceLayer, useOpenKey } from "./PresenceLayer";
 import { useMediaQuery } from "../use-media";
 import { Button } from "../primitives/AdminButton";
 
@@ -30,31 +31,6 @@ export function ModalCancel({ children = "Отмена", disabled }: { children?
     <Button variant="ghost" onClick={close} disabled={disabled}>
       {children}
     </Button>
-  );
-}
-
-/**
- * The positioning layer of an open modal. While the modal is leaving it stops taking clicks at once and
- * is hidden for good shortly after: with framer-motion 11.18 the exit of an AnimatePresence child
- * sometimes never completes (layout animations of children unmounted earlier, e.g. on a tab switch),
- * and the invisible dialog then sat on top of the page swallowing every click.
- */
-function ModalLayer({ children }: { children: ReactNode }) {
-  const present = useIsPresent();
-  const [gone, setGone] = useState(false);
-  useEffect(() => {
-    if (present) return;
-    const t = setTimeout(() => setGone(true), 400);
-    return () => clearTimeout(t);
-  }, [present]);
-  return (
-    <div
-      inert={!present || undefined}
-      aria-hidden={!present || undefined}
-      className={cn("fixed inset-0 z-[150] flex items-end justify-center sm:items-center sm:p-4", !present && "pointer-events-none", gone && "invisible")}
-    >
-      {children}
-    </div>
   );
 }
 
@@ -124,14 +100,6 @@ function ModalFooter({ footer }: { footer: ReactNode }) {
   );
 }
 
-function useOpenSession(open: boolean): number {
-  const sessionRef = useRef(0);
-  const wasOpen = useRef(false);
-  if (open && !wasOpen.current) sessionRef.current += 1;
-  wasOpen.current = open;
-  return sessionRef.current;
-}
-
 /** `dialog` (520 px) — короткий диалог с текстом и парой кнопок, где 448 px тесно для строк хода (запуск ИИ). */
 const MODAL_WIDTH = { sm: "sm:max-w-md", dialog: "sm:max-w-[520px]", md: "sm:max-w-xl", lg: "sm:max-w-3xl" } as const;
 
@@ -189,9 +157,8 @@ export function Modal({
   useOverlayLayer(open, requestClose);
   const focusRef = useDialogFocus();
   const titleId = useId();
-  // A fresh key per opening (computed during render, so the dialog never remounts while open): if a
-  // previous exit got stuck (see ModalLayer), the new dialog still enters.
-  const session = useOpenSession(open);
+  // A fresh key per opening: if a previous exit got stuck (see PresenceLayer), the new dialog still enters.
+  const session = useOpenKey(open);
   // A pending "close without saving?" must not reappear on the next open.
   useEffect(() => {
     if (!open) setAskClose(false);
@@ -213,7 +180,11 @@ export function Modal({
           {open && (
             // Phone: a full-width bottom sheet (footer under the thumb, room for the keyboard);
             // from sm up: the centred dialog.
-            <ModalLayer key={session}>
+            <PresenceLayer
+              key={session}
+              name="modal"
+              className="fixed inset-0 z-[150] flex items-end justify-center sm:items-center sm:p-4"
+            >
               <m.div
                 variants={backdropVariants}
                 initial="initial"
@@ -253,7 +224,7 @@ export function Modal({
                   <ModalFooter footer={footer} />
                 </ModalCloseContext.Provider>
               </m.div>
-            </ModalLayer>
+            </PresenceLayer>
           )}
         </AnimatePresence>,
         document.body

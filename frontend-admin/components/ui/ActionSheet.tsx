@@ -4,7 +4,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { backdropVariants } from "@shop/ui/overlay";
+import { backdropVariants, PresenceLayer, useOpenKey } from "@shop/ui/overlay";
 import { useOverlayLayer } from "@shop/ui/overlay";
 import { Button } from "@shop/ui/admin-button";
 
@@ -32,11 +32,12 @@ export function ActionSheet({
   onClose: () => void;
 }) {
   useOverlayLayer(open, onClose);
+  const session = useOpenKey(open);
   if (typeof document === "undefined") return null;
   return createPortal(
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[160] flex items-end">
+        <PresenceLayer key={session} name="action-sheet" className="fixed inset-0 z-[160] flex items-end">
           <motion.div
             variants={backdropVariants}
             initial="initial"
@@ -78,7 +79,7 @@ export function ActionSheet({
               ))}
             </div>
           </motion.div>
-        </div>
+        </PresenceLayer>
       )}
     </AnimatePresence>,
     document.body

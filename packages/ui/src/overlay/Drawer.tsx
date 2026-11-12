@@ -9,6 +9,7 @@ import { backdropVariants, drawerVariants } from "./variants";
 import { useOverlayLayer } from "./overlay-stack";
 import { useDialogFocus } from "./use-dialog-focus";
 import { useBackToClose } from "./use-back-close";
+import { PresenceLayer, useOpenKey } from "./PresenceLayer";
 
 /**
  * Right-side drawer. `zClass` lets callers stack drawers (e.g. order drawer over
@@ -45,6 +46,7 @@ export function Drawer({
   useOverlayLayer(open, close);
   const focusRef = useDialogFocus();
   const titleId = useId();
+  const session = useOpenKey(open);
   useEffect(() => {
     if (closeRef) closeRef.current = close;
   });
@@ -54,7 +56,7 @@ export function Drawer({
   return createPortal(
     <AnimatePresence>
       {open && (
-        <div className={cn("fixed inset-0", zClass)}>
+        <PresenceLayer key={session} name="drawer" className={cn("fixed inset-0", zClass)}>
           <m.div
             variants={backdropVariants}
             initial="initial"
@@ -100,7 +102,7 @@ export function Drawer({
             {/* The content's own bottom bar (order actions, chat composer) pads for the home indicator. */}
             <div className="thin-scroll min-h-0 flex-1 overflow-auto overscroll-contain">{children}</div>
           </m.aside>
-        </div>
+        </PresenceLayer>
       )}
     </AnimatePresence>,
     document.body
