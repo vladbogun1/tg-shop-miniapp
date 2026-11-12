@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { CreditCard, MapPin, Receipt, Store } from "lucide-react";
 import { codAmountMinor, orderCourierAddress, orderRecipientName } from "@shop/customer/order/np-order";
-import { useT } from "@/i18n/context";
+import { useOrderDeliveryT } from "@/i18n/order-delivery";
 import type { OrderDetail } from "@/lib/api";
 import { money } from "@/lib/money";
 import { riseItem } from "@/lib/motion";
@@ -11,7 +11,7 @@ import { onDeliveryUnpaid } from "@shop/core/orders";
 
 /** Recipient, delivery (point or courier address), payment option (+ what is paid to NP on receipt), comment. */
 export function OrderInfoCard({ order }: { order: OrderDetail }) {
-  const t = useT();
+  const t = useOrderDeliveryT();
   const isPickup = order.deliveryMethod === "PICKUP";
   const place = orderCourierAddress(order) || order.npWarehouseName;
   return (

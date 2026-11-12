@@ -5,13 +5,13 @@ import { onDeliveryUnpaid, payableMinor } from "@shop/core/orders";
 import { type OrderDetail } from "@shop/core/types";
 import { codAmountMinor, orderCourierAddress, orderRecipientName } from "@shop/customer/order/np-order";
 import { CopyButton } from "@/components/ui/CopyButton";
-import { useI18n } from "@/i18n/context";
+import { useOrderDeliveryT } from "@/i18n/order-delivery";
 import { useFmt } from "@/lib/use-fmt";
 import { ParcelStatus } from "./ParcelChip";
 
 /** Delivery / payment / address tiles of the order page. */
 export function OrderTiles({ order, uncollected }: { order: OrderDetail; uncollected: number }) {
-  const { t } = useI18n();
+  const t = useOrderDeliveryT();
   const fmt = useFmt();
   const isPickup = order.deliveryMethod === "PICKUP";
   const place = orderCourierAddress(order) || order.npWarehouseName;

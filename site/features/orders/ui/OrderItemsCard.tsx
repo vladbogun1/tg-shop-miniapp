@@ -4,12 +4,13 @@ import { payableMinor } from "@shop/core/orders";
 import { type OrderDetail } from "@shop/core/types";
 import { CasePrizeNote } from "@/features/gift/view/OrderGiftCase";
 import { useI18n } from "@/i18n/context";
+import { useOrderDeliveryT } from "@/i18n/order-delivery";
 import { Image } from "@/lib/image";
 import { useFmt } from "@/lib/use-fmt";
 
 /** The items of an order with the money summary (sum, promo, partial pickup, payable). */
 export function OrderItemsCard({ order, uncollected }: { order: OrderDetail; uncollected: number }) {
-  const { t } = useI18n();
+  const t = useOrderDeliveryT();
   const fmt = useFmt();
   return (
     <section className="nb p-5">

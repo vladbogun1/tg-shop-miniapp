@@ -6,12 +6,12 @@
  */
 import { ExternalLink } from "lucide-react";
 import { trackingLink } from "@shop/customer/order/parcel-tracking";
-import { useT } from "@/i18n/context";
+import { useOrderDeliveryT } from "@/i18n/order-delivery";
 import { openExternalLink } from "@/platform/telegram";
 
 /** «Відстежити ↗» — only when the order has a waybill number. */
 export function TrackLink({ order }: { order: Parameters<typeof trackingLink>[0] }) {
-  const t = useT();
+  const t = useOrderDeliveryT();
   const url = trackingLink(order);
   if (!url) return null;
   return (

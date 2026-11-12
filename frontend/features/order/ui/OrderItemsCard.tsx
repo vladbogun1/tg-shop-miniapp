@@ -5,6 +5,7 @@ import { Package } from "lucide-react";
 import { payableMinor } from "@shop/core/orders";
 import { CasePrizeNote } from "@/features/gift";
 import { useT } from "@/i18n/context";
+import { useOrderDeliveryT } from "@/i18n/order-delivery";
 import type { OrderDetail } from "@/lib/api";
 import { Image } from "@/lib/image";
 import { money } from "@/lib/money";
@@ -82,7 +83,7 @@ function OrderItemRow({ it, order }: { it: Item; order: OrderDetail }) {
 
 /** Sum, discount, then either total or total / uncollected / payable. */
 function OrderTotals({ order }: { order: OrderDetail }) {
-  const t = useT();
+  const t = useOrderDeliveryT();
   const uncollected = order.uncollectedMinor ?? 0;
   return (
     <div className="mt-4 flex flex-col gap-2 border-t border-[var(--line)] pt-3">

@@ -3,12 +3,12 @@
 /** Nova Poshta parcel on the order page (checkout v2): stage chip, «Відстежити» and NP's own status line. */
 import { ParcelChip, TrackLink } from "@/features/account";
 import { parcelStageOf } from "@shop/customer/order/parcel";
-import { useT } from "@/i18n/context";
+import { useOrderDeliveryT } from "@/i18n/order-delivery";
 import type { OrderDetail } from "@/lib/api";
 
 /** Stage chip + NP's status text + «Відстежити», under the waybill number. Nothing without a parcel. */
 export function ParcelStatus({ order }: { order: OrderDetail }) {
-  const t = useT();
+  const t = useOrderDeliveryT();
   const stage = parcelStageOf(order);
   const statusText = order.shipment?.statusText;
   if (!order.trackingNumber && !order.shipment) return null;

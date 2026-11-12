@@ -10,6 +10,7 @@ import { tint } from "@shop/ui/tint";
 import { PARCEL_TONE_COLOR, parcelStageKey, parcelStageOf, parcelTone } from "@shop/customer/order/parcel";
 import { trackingLink } from "@shop/customer/order/parcel-tracking";
 import { useI18n } from "@/i18n/context";
+import { useOrderDeliveryT } from "@/i18n/order-delivery";
 
 export function ParcelChip({ stage }: { stage: ShipmentStage }) {
   const { t } = useI18n();
@@ -27,7 +28,7 @@ export function ParcelChip({ stage }: { stage: ShipmentStage }) {
 
 /** «Відстежити ↗» — только при номере ТТН. */
 export function TrackLink({ order }: { order: Parameters<typeof trackingLink>[0] }) {
-  const { t } = useI18n();
+  const t = useOrderDeliveryT();
   const url = trackingLink(order);
   if (!url) return null;
   return (
