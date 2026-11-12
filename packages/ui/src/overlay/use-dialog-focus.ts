@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 
 const FOCUSABLE =
   'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
@@ -16,13 +16,13 @@ function focusables(root: HTMLElement): HTMLElement[] {
  * On mount the focus moves into the dialog (to the root itself, so a phone keyboard does not pop up for
  * the first field); Tab / Shift+Tab cycle inside it; when the dialog unmounts the focus returns to
  * the element that opened it. Esc is handled by the overlay stack.
+ *
+ * A React 19 ref cleanup per element: a dialog reopened while the previous one is still leaving gets its
+ * own trap, and the leaving one, unmounting later, neither removes that trap nor pulls the focus out.
  */
-export function useDialogFocus(): (el: HTMLElement | null) => void {
-  const cleanup = useRef<(() => void) | null>(null);
+export function useDialogFocus(): (el: HTMLElement | null) => (() => void) | undefined {
   return useCallback((el: HTMLElement | null) => {
-    cleanup.current?.();
-    cleanup.current = null;
-    if (!el) return;
+    if (!el) return undefined;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     el.tabIndex = -1;
     el.style.outline = "none";
@@ -46,9 +46,12 @@ export function useDialogFocus(): (el: HTMLElement | null) => void {
       }
     };
     el.addEventListener("keydown", onKey);
-    cleanup.current = () => {
+    return () => {
       el.removeEventListener("keydown", onKey);
-      if (opener?.isConnected) opener.focus({ preventScroll: true });
+      // Give the focus back only while it is still ours: a dialog opened meanwhile keeps its own.
+      const active = document.activeElement;
+      const ours = !active || active === document.body || el.contains(active);
+      if (ours && opener?.isConnected) opener.focus({ preventScroll: true });
     };
   }, []);
 }
