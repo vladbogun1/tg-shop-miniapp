@@ -59,8 +59,9 @@ export interface HttpClientOptions {
    * Called on 401/403 so the app can drop the session and show a login screen. `code` is the
    * error code from the body (e.g. TWO_FACTOR_REQUIRED) — the admin panel tells «not signed in»
    * from «signed in, but this action is not allowed» by it and keeps the session on the latter.
+   * `path` — the request path ("/api/admin/..."): the admin panel's telemetry reports which call was refused.
    */
-  onUnauthorized?: (status: number, code?: string) => void;
+  onUnauthorized?: (status: number, code?: string, path?: string) => void;
   /**
    * Language to ask the server to answer in, as a BCP-47 tag. Sent as `Accept-Language` on every
    * request — including the unauthenticated ones, which is the only way the promo check in the
@@ -96,6 +97,12 @@ export interface HttpClient {
    * Fire and forget — no 401 handling, no retry (there is no page left to react), errors are swallowed.
    */
   putOnUnload(path: string, body: unknown): void;
+  /**
+   * The same for POST (the admin panel's telemetry flush, also on `pagehide`): `keepalive`, the bearer token in the
+   * header (`sendBeacon` cannot carry one), no 401 handling, errors swallowed. Keep the body under ~60 KB — browsers
+   * refuse bigger keepalive bodies.
+   */
+  postOnUnload(path: string, body: unknown): void;
   /** Turns a server-relative path (e.g. a signed /api/media link) into an absolute URL. */
   absolute(path: string | null | undefined): string | null;
 }
@@ -128,10 +135,10 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
   }
 
   /** Throws ApiError for 401/403 (after notifying onUnauthorized) and any other non-2xx. */
-  async function throwIfFailed(res: Response): Promise<void> {
+  async function throwIfFailed(res: Response, path: string): Promise<void> {
     if (res.status === 401 || res.status === 403) {
       const failure = await failureOf(res, texts.unauthorized());
-      onUnauthorized?.(res.status, failure.code);
+      onUnauthorized?.(res.status, failure.code, path);
       throw new ApiError(failure.message, res.status, failure.code, failure.params);
     }
     if (!res.ok) {
@@ -162,16 +169,16 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
 
     // The timer also covers reading the body: a response that stalls half-way is a hang too.
     try {
-      return await readResponse<T>(timed.res);
+      return await readResponse<T>(timed.res, path);
     } finally {
       timed.done();
     }
   }
 
   /** Errors (401/403 → onUnauthorized) and the JSON body of an answer, the same for fetch and XHR. */
-  async function readResponse<T>(res: Response): Promise<T> {
+  async function readResponse<T>(res: Response, path: string): Promise<T> {
     try {
-      await throwIfFailed(res);
+      await throwIfFailed(res, path);
       if (res.status === 204) return undefined as T;
       const text = await res.text();
       if (!text) return undefined as T;
@@ -197,7 +204,24 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     } catch {
       throw new ApiError(texts.offline(), 0);
     }
-    return readResponse<T>(asResponse(answer.status, answer.text));
+    return readResponse<T>(asResponse(answer.status, answer.text), path);
+  }
+
+  /** Fire-and-forget keepalive request (see {@link HttpClient.putOnUnload}). */
+  function sendOnUnload(method: "PUT" | "POST", path: string, body: unknown): void {
+    try {
+      void fetch(`${baseUrl}${path}`, {
+        method,
+        keepalive: true,
+        body: JSON.stringify(body),
+        headers: buildHeaders({ headers: { "Content-Type": "application/json" } }),
+        ...(credentials ? { credentials } : {}),
+      }).catch(() => {
+        /* the next launch re-reads the server state */
+      });
+    } catch {
+      /* fetch unavailable */
+    }
   }
 
   async function failureOf(
@@ -237,21 +261,8 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
       if (onProgress && typeof XMLHttpRequest !== "undefined") return uploadTracked<T>(path, form, onProgress);
       return request<T>(path, { method: "POST", body: form }, undefined, UPLOAD_TIMEOUT_MS);
     },
-    putOnUnload: (path, body) => {
-      try {
-        void fetch(`${baseUrl}${path}`, {
-          method: "PUT",
-          keepalive: true,
-          body: JSON.stringify(body),
-          headers: buildHeaders({ headers: { "Content-Type": "application/json" } }),
-          ...(credentials ? { credentials } : {}),
-        }).catch(() => {
-          /* the next launch re-reads the server state */
-        });
-      } catch {
-        /* fetch unavailable */
-      }
-    },
+    putOnUnload: (path, body) => sendOnUnload("PUT", path, body),
+    postOnUnload: (path, body) => sendOnUnload("POST", path, body),
     absolute: (path) => {
       if (!path) return null;
       if (/^https?:\/\//i.test(path)) return path;

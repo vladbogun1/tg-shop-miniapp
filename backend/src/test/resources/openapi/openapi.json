@@ -269,6 +269,53 @@
         ],
         "type" : "object"
       },
+      "AdminClientEventDto" : {
+        "properties" : {
+          "adminId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "build" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "meta" : {
+            "description" : "details as sent (≤ 2 KB)",
+            "type" : "string"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "standalone" : {
+            "type" : "boolean"
+          },
+          "ua" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "adminId",
+          "build",
+          "createdAt",
+          "id",
+          "kind",
+          "meta",
+          "path",
+          "standalone",
+          "ua"
+        ],
+        "type" : "object"
+      },
       "AdminCreateOrderRequest" : {
         "properties" : {
           "comment" : {
@@ -16717,6 +16764,29 @@
         },
         "type" : "object"
       },
+      "StaffTelemetryBatchEvent" : {
+        "properties" : {
+          "build" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/JsonNode"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "standalone" : {
+            "type" : "boolean"
+          },
+          "ua" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "StartPaymentRequest" : {
         "properties" : {
           "display" : {
@@ -17441,6 +17511,17 @@
         "required" : [
           "initData"
         ],
+        "type" : "object"
+      },
+      "TelemetryBatch" : {
+        "properties" : {
+          "events" : {
+            "items" : {
+              "$ref" : "#/components/schemas/StaffTelemetryBatchEvent"
+            },
+            "type" : "array"
+          }
+        },
         "type" : "object"
       },
       "TemplateDto" : {
@@ -30790,6 +30871,89 @@
         ]
       }
     },
+    "/api/admin/telemetry" : {
+      "get" : {
+        "operationId" : "AdminTelemetryController_latest",
+        "parameters" : [
+          {
+            "in" : "query",
+            "name" : "limit",
+            "required" : false,
+            "schema" : {
+              "format" : "int32",
+              "type" : "integer"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "kind",
+            "required" : false,
+            "schema" : {
+              "type" : "string"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "adminId",
+            "required" : false,
+            "schema" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/AdminClientEventDto"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Latest panel events, newest first (main admin only)",
+        "tags" : [
+          "Admin Telemetry"
+        ]
+      },
+      "post" : {
+        "operationId" : "AdminTelemetryController_submit",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TelemetryBatch"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Store a batch of panel events (≤ 50; unknown kinds and the overflow are dropped); always 204",
+        "tags" : [
+          "Admin Telemetry"
+        ]
+      }
+    },
     "/api/admin/token/refresh" : {
       "post" : {
         "operationId" : "AdminSessionController_refresh",
@@ -34654,6 +34818,10 @@
     {
       "description" : "Admin product management",
       "name" : "Admin Products"
+    },
+    {
+      "description" : "Admin panel client telemetry (errors, freezes, blocked taps)",
+      "name" : "Admin Telemetry"
     },
     {
       "description" : "Customer profile, orders and chat",

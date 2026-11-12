@@ -6,13 +6,15 @@
  *    Chrome's install prompt before anything else can miss it.
  *  - AppRuntime (inside the logged-in shell): opens the screen a tapped notification points to,
  *    keeps the app-icon badge = «Внимание» and tracks the on-screen keyboard (hides the tab bar,
- *    keeps the focused field in view). The push subscription is renewed by PushOfferBanner.
+ *    keeps the focused field in view), and runs the panel telemetry (errors, freezes, dead taps —
+ *    features/telemetry). The push subscription is renewed by PushOfferBanner.
  */
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useInbox } from "@/features/inbox";
 import { startPwa } from "@/lib/pwa";
 import { setAppBadge } from "@/features/notification";
+import { useAdminTelemetry } from "@/features/telemetry";
 
 export function PwaBoot() {
   useEffect(() => {
@@ -93,5 +95,6 @@ export function AppRuntime() {
   // on when there is none — e.g. after «Выйти везде»).
 
   useKeyboardWatcher();
+  useAdminTelemetry();
   return null;
 }

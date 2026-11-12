@@ -49,7 +49,7 @@ final class SqlOwnership {
         own(m, "audit", "admin_audit_log");
         own(m, "settings", "settings", "shop_settings");
         own(m, "staff", "admin_emergency_resets", "admin_incidents", "admin_invites", "admin_login_log",
-                "admin_trusted_devices", "admin_users", "admin_revoked_tokens");
+                "admin_trusted_devices", "admin_users", "admin_revoked_tokens", "admin_client_events");
         own(m, "notification", "admin_push_subscriptions", "broadcasts");
         own(m, "analytics", "analytics_daily", "analytics_daily_runs", "analytics_daily_visitors", "client_events");
         own(m, "procurement", "batch_expense_files", "batch_expenses", "preorder_batch_items", "preorder_batches", "supplier_aliases", "suppliers",

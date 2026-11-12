@@ -2,10 +2,12 @@
 
 /** Crash screen inside the admin shell: a failed page does not take the navigation with it. */
 import { useEffect } from "react";
+import { reportRenderError } from "@/features/telemetry";
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     console.error(error);
+    reportRenderError(error, "page");
   }, [error]);
 
   return (

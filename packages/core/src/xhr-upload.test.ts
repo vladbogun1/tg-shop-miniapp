@@ -87,7 +87,7 @@ describe("upload with progress (XHR)", () => {
     const p = http.upload("/api/x", file(), () => undefined);
     FakeXhr.last!.answer(403, JSON.stringify({ message: "Нет доступа", code: "FINANCE_ACCESS_DENIED" }));
     await expect(p).rejects.toMatchObject({ status: 403 });
-    expect(onUnauthorized).toHaveBeenCalledWith(403, "FINANCE_ACCESS_DENIED");
+    expect(onUnauthorized).toHaveBeenCalledWith(403, "FINANCE_ACCESS_DENIED", "/api/x");
   });
 
   it("no network and a timeout are the offline error (status 0)", async () => {

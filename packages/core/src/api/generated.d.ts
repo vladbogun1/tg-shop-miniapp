@@ -4429,6 +4429,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/telemetry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Latest panel events, newest first (main admin only) */
+        get: operations["AdminTelemetryController_latest"];
+        put?: never;
+        /** Store a batch of panel events (≤ 50; unknown kinds and the overflow are dropped); always 204 */
+        post: operations["AdminTelemetryController_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/token/refresh": {
         parameters: {
             query?: never;
@@ -6186,6 +6204,21 @@ export interface components {
             slug: string;
             /** Format: int32 */
             sortOrder: number;
+        };
+        AdminClientEventDto: {
+            /** Format: int64 */
+            adminId: number;
+            build: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int64 */
+            id: number;
+            kind: string;
+            /** @description details as sent (≤ 2 KB) */
+            meta: string;
+            path: string;
+            standalone: boolean;
+            ua: string;
         };
         AdminCreateOrderRequest: {
             comment?: string;
@@ -11086,6 +11119,14 @@ export interface components {
         StaffAdminIncidentControllerResolveRequest: {
             resolution?: string;
         };
+        StaffTelemetryBatchEvent: {
+            build?: string;
+            kind?: string;
+            meta?: components["schemas"]["JsonNode"];
+            path?: string;
+            standalone?: boolean;
+            ua?: string;
+        };
         StartPaymentRequest: {
             display?: string;
             locale?: string;
@@ -11299,6 +11340,9 @@ export interface components {
         };
         TelegramAuthRequest: {
             initData: string;
+        };
+        TelemetryBatch: {
+            events?: components["schemas"]["StaffTelemetryBatchEvent"][];
         };
         TemplateDto: {
             bodyEn: string;
@@ -18738,6 +18782,52 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["CountDto"];
                 };
+            };
+        };
+    };
+    AdminTelemetryController_latest: {
+        parameters: {
+            query?: {
+                limit?: number;
+                kind?: string;
+                adminId?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdminClientEventDto"][];
+                };
+            };
+        };
+    };
+    AdminTelemetryController_submit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TelemetryBatch"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

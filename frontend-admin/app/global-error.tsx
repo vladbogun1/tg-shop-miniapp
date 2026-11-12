@@ -1,8 +1,15 @@
 "use client";
 
+import { useEffect } from "react";
+import { reportRenderError } from "@/features/telemetry";
+
 /** Last resort: the root layout/Providers crashed, so nothing of the app (styles, i18n) can be relied on. */
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   console.error(error);
+  // The shell is gone: the report goes out right away (keepalive, token from localStorage).
+  useEffect(() => {
+    reportRenderError(error, "global");
+  }, [error]);
   return (
     <html lang="ru">
       <body

@@ -6,6 +6,15 @@ import { createHttpClient } from "@shop/core/http";
 import { apiOrigin } from "./origin";
 import { dropSession, getAccessToken, maybeRefresh } from "./session";
 
+/** Who wants to know about a refused admin call (the panel's telemetry): status and request path. */
+type AuthFailureListener = (status: number, path: string) => void;
+const authFailureListeners = new Set<AuthFailureListener>();
+
+export function onAuthFailure(cb: AuthFailureListener): () => void {
+  authFailureListeners.add(cb);
+  return () => authFailureListeners.delete(cb);
+}
+
 const http = createHttpClient({
   baseUrl: apiOrigin,
   // The «trusted device» cookie (HttpOnly, path /api/auth/admin) has to travel with the sign-in
@@ -18,7 +27,15 @@ const http = createHttpClient({
     if (token) maybeRefresh(token);
     return token;
   },
-  onUnauthorized: (status, code) => {
+  onUnauthorized: (status, code, path) => {
+    // Listeners first: the session drop below unmounts the shell and its telemetry.
+    authFailureListeners.forEach((cb) => {
+      try {
+        cb(status, path ?? "");
+      } catch {
+        /* a listener never breaks the request */
+      }
+    });
     // Only «not signed in» ends the session: 401 = no / expired / revoked token (also every device
     // after «Выйти везде» — the backend treats a revoked token as anonymous), 403 TWO_FACTOR_REQUIRED
     // = a half-finished sign-in token. Any other 403 is «signed in, but not allowed» (e.g. the
@@ -33,6 +50,8 @@ export const apiPost = http.post;
 export const apiPatch = http.patch;
 export const apiPut = http.put;
 export const apiDelete = http.del;
+/** Fire-and-forget POST with keepalive (telemetry flush, also on pagehide): no 401 handling, errors swallowed. */
+export const apiPostOnUnload = http.postOnUnload;
 
 /**
  * Multipart upload -> { key } (POST /api/admin/uploads); `T` — другая форма ответа (рассылка: { photoId }).
