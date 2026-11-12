@@ -117,6 +117,9 @@ test("свёрнутый раздел меню показывает сумму �
   await page.goto("/inbox");
   const nav = page.getByRole("complementary").first();
   await expect(nav.getByRole("link", { name: /Карточки/ })).toBeAttached();
+  // Счётчики меню приходят отдельными запросами (переводы — медленнее всех): без ожидания сумма читалась
+  // до них как 0, а свёрнутый раздел уже показывал число.
+  await page.waitForLoadState("networkidle");
   const sumCatalog =
     (await badge(page, CARDS_MENU)) +
     (await badge(page, "Нужно перевести")) +
