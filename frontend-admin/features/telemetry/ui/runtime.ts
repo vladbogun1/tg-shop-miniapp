@@ -78,16 +78,24 @@ function errorMeta(source: string, err: unknown, fallback?: string): { meta: Rec
 }
 
 function onError(ev: ErrorEvent): void {
-  const { meta, message } = errorMeta("window", ev.error, ev.message);
-  if (!ev.error) meta.message = scrubText(ev.message);
-  meta.file = fileBasename(ev.filename);
-  meta.at = `${ev.lineno ?? 0}:${ev.colno ?? 0}`;
-  getClient().report("error", meta, message || scrubText(ev.message));
+  try {
+    const { meta, message } = errorMeta("window", ev.error, ev.message);
+    if (!ev.error) meta.message = scrubText(ev.message);
+    meta.file = fileBasename(ev.filename);
+    meta.at = `${ev.lineno ?? 0}:${ev.colno ?? 0}`;
+    getClient().report("error", meta, message || scrubText(ev.message));
+  } catch {
+    /* телеметрия молчит: странный объект ошибки (String() бросает) не должен ронять обработчик */
+  }
 }
 
 function onRejection(ev: PromiseRejectionEvent): void {
-  const { meta, message } = errorMeta("unhandledrejection", ev.reason);
-  getClient().report("error", meta, message);
+  try {
+    const { meta, message } = errorMeta("unhandledrejection", ev.reason);
+    getClient().report("error", meta, message);
+  } catch {
+    /* телеметрия молчит */
+  }
 }
 
 const deadTaps = createDeadTapDetector();

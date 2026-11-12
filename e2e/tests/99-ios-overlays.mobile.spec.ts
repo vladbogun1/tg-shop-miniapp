@@ -3,15 +3,15 @@
  *
  * Two admins (Safari on iOS, sometimes the installed app) report that the admin «freezes and stops responding
  * to taps until you re-enter». A known class of that bug: the exit of an AnimatePresence child never completes
- * (framer-motion 11) and the invisible full-screen layer stays on top swallowing every tap (fixed for Modal
- * only — ModalLayer in packages/ui/src/overlay/Modal.tsx).
+ * (framer-motion 11) and the invisible full-screen layer stays on top swallowing every tap. Guarded for every
+ * overlay by PresenceLayer (packages/ui/src/overlay/PresenceLayer.tsx).
  *
  * Runs in the `ios` project only (WebKit + iPhone 15 profile, touch), which exists only with IOS_REPRO=1
  * (CI installs Chromium alone):  IOS_REPRO=1 node scripts/run.mjs --keep --project=ios 99-ios-overlays
- * Part 2 fails today on purpose: it is the regression check for the shared exit guard. After every scenario `expectTappable`
+ * Part 2 is the regression check for that shared exit guard. After every scenario `expectTappable`
  * checks the page: no visible full-screen fixed layer that takes pointer events, the body is not scroll-locked,
  * `elementFromPoint` on the tab bar hits the tab bar, and a real tap on a tab navigates. Findings go to
- * tg-shop-v2/_logs/ios-repro-findings.jsonl, screenshots of failures to tg-shop-v2/_shots/ios-repro/.
+ * <checkout>/_logs/ios-repro-findings.jsonl, screenshots of failures to <checkout>/_shots/ios-repro/.
  *
  * Part 2 («exit hang») pauses the page clock (requestAnimationFrame stops, so every framer JS animation
  * freezes mid-exit, as an exit that never completes would) and checks which closed layers still catch taps.
@@ -21,7 +21,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
-import { API_URL, E2E_DIR } from "../env.js";
+import { API_URL, REPO_ROOT } from "../env.js";
 import { CUSTOMER, ORDER } from "../lib/seed";
 import { expect, test as base } from "../lib/test";
 
@@ -43,7 +43,7 @@ const test = base.extend<{ failOnPageErrors: void }>({
   },
 });
 
-const SHOP_ROOT = path.resolve(E2E_DIR, "..", "..", "..");
+const SHOP_ROOT = REPO_ROOT; // _shots/ and _logs/ of the checkout (gitignored), from the main copy or a worktree alike
 const SHOTS = path.join(SHOP_ROOT, "_shots", "ios-repro");
 const FINDINGS = path.join(SHOP_ROOT, "_logs", "ios-repro-findings.jsonl");
 fs.mkdirSync(SHOTS, { recursive: true });
