@@ -484,11 +484,18 @@ test.describe("1. real flows", () => {
   });
 
   test("offline: tab while offline, then online again", async ({ page, context }) => {
+    // As in the installed app: the service worker controls the page (a fresh context gets it only after a reload).
     await page.goto("/");
+    const isControlled = () => page.waitForFunction(() => !!navigator.serviceWorker?.controller, null, { timeout: 10_000 }).then(() => true, () => false);
+    if (!(await isControlled())) {
+      await page.reload();
+      await isControlled();
+    }
     await expect(page.locator(TABBAR)).toBeVisible();
     const controlled = await page.evaluate(() => !!navigator.serviceWorker?.controller);
     await context.setOffline(true);
-    await page.locator(TAB_INBOX).tap();
+    // The tab may already be gone if the router fell back to a full navigation.
+    await page.locator(TAB_INBOX).tap({ timeout: 5000 }).catch((e: Error) => record({ test: test.info().title, offlineTapError: e.message.split("\n")[0] }));
     await page.waitForTimeout(2500);
     const offlineState = { url: page.url(), title: await page.title(), text: (await page.locator("body").innerText()).slice(0, 200) };
     await context.setOffline(false);
