@@ -8182,6 +8182,7 @@ export interface components {
             /** Format: int64 */
             receivedMinor: number;
             shipmentOrigin: string | null;
+            shipmentPacking: components["schemas"]["Packing"] | null;
             shipmentStage: string | null;
             shipmentStaleReasons: string[];
             shipmentStatusText: string | null;

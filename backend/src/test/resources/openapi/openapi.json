@@ -6893,6 +6893,14 @@
             "nullable" : true,
             "type" : "string"
           },
+          "shipmentPacking" : {
+            "allOf" : [
+              {
+                "$ref" : "#/components/schemas/Packing"
+              }
+            ],
+            "nullable" : true
+          },
           "shipmentStage" : {
             "nullable" : true,
             "type" : "string"
@@ -6953,6 +6961,7 @@
           "prepaymentMinor",
           "receivedMinor",
           "shipmentOrigin",
+          "shipmentPacking",
           "shipmentStage",
           "shipmentStaleReasons",
           "shipmentStatusText",

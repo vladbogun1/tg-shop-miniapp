@@ -104,6 +104,7 @@ public class OrderDispatchView {
                 .shipmentOrigin(parcel == null ? null : parcel.origin())
                 .shipmentStatusText(parcel == null ? null : parcel.statusText())
                 .shipmentStaleReasons(parcel == null || parcel.staleReasons() == null ? List.of() : parcel.staleReasons())
+                .shipmentPacking(parcel == null ? null : parcel.packing())
                 .build();
     }
 }
