@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { codAmountMinor, onDeliveryUnpaid, orderCourierAddress, orderRecipientName } from "./np-order";
+import { codAmountMinor, orderCourierAddress, orderRecipientName } from "./np-order";
 
 describe("заказ checkout v2", () => {
   it("получатель: поля ФИО, иначе customerName", () => {
@@ -14,10 +14,7 @@ describe("заказ checkout v2", () => {
     expect(orderCourierAddress({ npServiceType: "WAREHOUSE", npStreetName: "Хрещатик" })).toBe("");
   });
 
-  it("при отриманні: не оплачен — без онлайн-оплаты; сумма — наложка или остаток", () => {
-    expect(onDeliveryUnpaid({ paymentOnDelivery: true, paid: false })).toBe(true);
-    expect(onDeliveryUnpaid({ paymentOnDelivery: true, paid: true })).toBe(false);
-    expect(onDeliveryUnpaid({ paid: false })).toBe(false);
+  it("при отриманні: сумма — наложка или остаток", () => {
     expect(codAmountMinor({ totalMinor: 5000, receivedMinor: 0 })).toBe(5000);
     expect(codAmountMinor({ totalMinor: 5000, shipment: { codMinor: 4900 } as never })).toBe(4900);
   });

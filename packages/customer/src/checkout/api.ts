@@ -14,7 +14,12 @@ import type {
   NpServiceType,
   NpStreet,
 } from "../delivery/contract";
-import { ESTIMATE_TIMEOUT_MS } from "../delivery/estimate";
+
+/**
+ * Сколько ждём подсказку цены доставки: дольше — молча без неё. Здесь, а не в delivery/estimate: этот модуль
+ * в общем бандле каждой страницы, а estimate тянет за собой модель оформления (draft, tabs).
+ */
+export const ESTIMATE_TIMEOUT_MS = 5_000;
 
 export interface CreateOrderItem {
   productId: string;

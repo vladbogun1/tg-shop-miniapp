@@ -6,9 +6,6 @@ import type { NpEstimateRequest, NpEstimateResponse } from "./contract";
 import { draftCity, type DeliveryDraft } from "./draft";
 import { isNpTab } from "./tabs";
 
-/** Сколько ждём подсказку: дольше — молча без неё. */
-export const ESTIMATE_TIMEOUT_MS = 5_000;
-
 export interface EstimateLine {
   productId: string;
   variantId?: string | null;

@@ -1,6 +1,6 @@
 /**
  * Заказ checkout v2 глазами покупателя — одно правило для сайта и Mini App: кто получает, куда везёт курьер,
- * сколько отдать «Новій пошті» при получении и не просить ли онлайн-оплату у заказа «при отриманні».
+ * сколько отдать «Новій пошті» при получении (не просить ли онлайн-оплату — onDeliveryUnpaid в @shop/core/orders).
  */
 import type { OrderNpFields } from "../delivery/contract";
 
@@ -21,11 +21,6 @@ export function orderRecipientName(o: NpOrder): string {
 export function orderCourierAddress(o: NpOrder): string {
   if (o.npServiceType !== "DOORS") return "";
   return [o.npStreetName, o.npBuilding, o.npFlat].map((x) => (x ?? "").trim()).filter(Boolean).join(", ");
-}
-
-/** Оплата при получении и ещё не получена: онлайн-оплату не предлагаем, «Не оплачено» не пугаем. */
-export function onDeliveryUnpaid(o: NpOrder): boolean {
-  return o.paymentOnDelivery === true && !o.paid;
 }
 
 /** Сколько отдать «Новій пошті» за товар: наложенный платёж посылки, до ТТН — остаток суммы заказа. */

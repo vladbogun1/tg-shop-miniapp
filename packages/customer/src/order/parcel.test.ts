@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parcelStageKey, parcelStageOf, parcelTone, parcelTtn, trackingLink } from "./parcel";
+import { parcelStageKey, parcelStageOf, parcelTone } from "./parcel";
+import { parcelTtn, trackingLink } from "./parcel-tracking";
 
 describe("посылка", () => {
   it("стадия: известная из заказа или посылки, неизвестная — null", () => {

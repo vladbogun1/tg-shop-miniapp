@@ -7,7 +7,8 @@
 import { ExternalLink } from "lucide-react";
 import type { ShipmentStage } from "@shop/customer/delivery/contract";
 import { tint } from "@shop/ui/tint";
-import { PARCEL_TONE_COLOR, parcelStageKey, parcelStageOf, parcelTone, trackingLink } from "@shop/customer/order/parcel";
+import { PARCEL_TONE_COLOR, parcelStageKey, parcelStageOf, parcelTone } from "@shop/customer/order/parcel";
+import { trackingLink } from "@shop/customer/order/parcel-tracking";
 import { useI18n } from "@/i18n/context";
 
 export function ParcelChip({ stage }: { stage: ShipmentStage }) {

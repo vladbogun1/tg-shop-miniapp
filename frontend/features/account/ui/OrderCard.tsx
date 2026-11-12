@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { ChevronRight, MessageCircle } from "lucide-react";
 import Link from "next/link";
-import { payableMinor, paymentState } from "@shop/core/orders";
+import { onDeliveryUnpaid, payableMinor, paymentState } from "@shop/core/orders";
 import { StatusChip } from "@shop/ui/primitives";
 import { ParcelStage } from "@/features/account/ui/ParcelChip";
 import { PaymentBadge } from "@/features/account/ui/PaymentBadge";
@@ -57,7 +57,7 @@ export function OrderCard({ order, index }: { order: OrderSummary; index: number
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-display text-[15px] font-bold text-[var(--ink)]">{shortOrderId(order.id)}</span>
             <StatusChip status={order.status} label={t(`status.${order.status}`)} />
-            <PaymentBadge state={paymentState(order)} size="sm" />
+            {!onDeliveryUnpaid(order) && <PaymentBadge state={paymentState(order)} size="sm" />}
             <ParcelStage order={order} />
             <CaseBadge order={order} />
           </div>

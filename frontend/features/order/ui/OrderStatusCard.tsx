@@ -3,8 +3,7 @@
 import { motion } from "framer-motion";
 import { Check, Copy, Truck } from "lucide-react";
 import { useState } from "react";
-import type { paymentState } from "@shop/core/orders";
-import { onDeliveryUnpaid } from "@shop/customer/order/np-order";
+import { onDeliveryUnpaid, type paymentState } from "@shop/core/orders";
 import { PaymentBadge } from "@/features/account";
 import { StatusTimeline } from "@/features/account";
 import { useT } from "@/i18n/context";

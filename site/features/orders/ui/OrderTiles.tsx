@@ -1,9 +1,9 @@
 "use client";
 
 import { CreditCard, MapPin, Store, Truck } from "lucide-react";
-import { payableMinor } from "@shop/core/orders";
+import { onDeliveryUnpaid, payableMinor } from "@shop/core/orders";
 import { type OrderDetail } from "@shop/core/types";
-import { codAmountMinor, onDeliveryUnpaid, orderCourierAddress, orderRecipientName } from "@shop/customer/order/np-order";
+import { codAmountMinor, orderCourierAddress, orderRecipientName } from "@shop/customer/order/np-order";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { useI18n } from "@/i18n/context";
 import { useFmt } from "@/lib/use-fmt";
