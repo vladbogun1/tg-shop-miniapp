@@ -42,6 +42,20 @@ class NpPackingIT extends AbstractMysqlIT {
     }
 
     @Test
+    void v100CarriesOverWhatProdDeclaredBefore() {
+        NpBoxAdmin.BoxList list = boxes.list();
+        NpBoxAdmin.BoxView bag = list.boxes().stream().filter(b -> "Пакет НП".equals(b.name())).findFirst()
+                .orElseThrow();
+        assertThat(bag.own()).isTrue();
+        assertThat(bag.kind()).isEqualTo("BAG");
+        assertThat(bag.inStock()).isTrue();
+        assertThat(List.of(bag.lengthMm(), bag.widthMm(), bag.tareG())).containsExactly(550, 500, 50);
+        assertThat(list.boxes().stream().filter(b -> b.code() != null && b.inStock())
+                .map(b -> b.code() + "=" + b.tareG()))
+                .containsExactlyInAnyOrder("np-1=100", "np-2=200", "np-5=300", "np-10=600");
+    }
+
+    @Test
     void presetsComeFromTheBoxesInStock() {
         List<BoxPreset> presets = catalog.presets();
         assertThat(presets).extracting(BoxPreset::name).contains("Коробка 1 кг", "Коробка 5 кг · 8 см",
