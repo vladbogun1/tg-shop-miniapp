@@ -49,6 +49,8 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   NP_TTN_UPDATE: "ТТН изменена",
   NP_TTN_CANCEL: "ТТН удалена",
   NP_TTN_BATCH: "ТТН для всех",
+  NP_BOX_CONFIRM: "Подтверждена коробка",
+  NP_BOX_EDIT: "Изменена коробка",
   NP_SENDER: "Отправитель НП",
   NP_SENDER_LOAD: "Отправитель НП из кабинета",
   NP_WEBHOOK_SUBSCRIBE: "Вебхук НП: подписка",
@@ -185,6 +187,7 @@ export const AUDIT_ENTITY_LABEL: Record<string, string> = {
   REVIEW: "Отзыв",
   REPLY_TEMPLATE: "Шаблон ответа",
   SUPPLY_DRAFT: "Черновик поставки",
+  NP_BOX: "Коробка НП",
   USER: "Покупатель",
 };
 
