@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boxError, documentsOffered, formFrom, presetMatches, submitBlocked, successMessage, toOptions } from "./shipment-form";
+import { boxError, documentsOffered, formFrom, goodsWeightG, presetMatches, presetPatch, submitBlocked, successMessage, toOptions } from "./shipment-form";
 import type { Shipment, ShipmentPreview } from "./types";
 
 const shipment = (over: Partial<Shipment> = {}): Shipment => ({
@@ -133,5 +133,36 @@ describe("тост итога", () => {
     expect(successMessage("create", null, { ttn: "2", printedAt: null })).toBe("ТТН 2 создана");
     expect(successMessage("remake", "1", { ttn: "2", printedAt: null })).toContain("Старая ТТН 1 удалена, новая — 2");
     expect(successMessage("edit", "1", { ttn: "1", printedAt: null })).toContain("ТТН 1 обновлена — напечатайте");
+  });
+});
+
+describe("заготовка коробки меняет и вес", () => {
+  const box = (name: string, tareG: number, l = 300, w = 200, h = 100) => ({ name, lengthMm: l, widthMm: w, heightMm: h, tareG, packMinor: 0 });
+  const big = box("Коробка 10 кг", 450, 400, 300, 200);
+  const flat = box("Плоская", 80, 350, 250, 30);
+  const presets = [big, flat];
+  const seat = (b: string, weightG: number) => ({ box: b, weightG, lengthMm: 400, widthMm: 300, heightMm: 200 });
+
+  it("тара прежней коробки снимается, новой — добавляется (ТТН …721066)", () => {
+    const p = preview({ parcel: { ...preview().parcel, weightG: 750, seats: [seat("Коробка 10 кг", 750)] }, presets });
+    expect(goodsWeightG(p, presets)).toBe(300);
+    expect(presetPatch(p, presets, flat)).toEqual({ weight: "380", l: "35", w: "25", h: "3" });
+  });
+  it("несколько мест — тара каждого", () => {
+    const p = preview({ parcel: { ...preview().parcel, weightG: 1600, seats: [seat("Коробка 10 кг", 1000), seat("Плоская", 600)] }, presets });
+    expect(goodsWeightG(p, presets)).toBe(1600 - 450 - 80);
+  });
+  it("место без коробки или с незнакомым именем — без тары", () => {
+    const p = preview({ parcel: { ...preview().parcel, weightG: 600, seats: [seat("", 300), seat("Старая", 300)] }, presets });
+    expect(goodsWeightG(p, presets)).toBe(600);
+  });
+  it("правка: считается по предпросмотру, а не по весу ТТН в форме", () => {
+    const p = preview({
+      parcel: { ...preview().parcel, weightG: 750, seats: [seat("Коробка 10 кг", 750)] },
+      presets,
+      existing: shipment({ weightG: 5000 }),
+    });
+    expect(formFrom(p, true).weight).toBe("5000");
+    expect(presetPatch(p, presets, big).weight).toBe("750");
   });
 });

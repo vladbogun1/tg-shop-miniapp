@@ -91,6 +91,30 @@ export function presetMatches(f: Pick<ShipmentForm, "l" | "w" | "h">, p: BoxPres
   return toMm(f.l) === p.lengthMm && toMm(f.w) === p.widthMm && toMm(f.h) === p.heightMm;
 }
 
+/**
+ * Вес одних товаров: вес предпросмотра минус тара коробок его мест (коробка места — имя заготовки; место без
+ * коробки или с незнакомым именем — без тары). Считается по первому предпросмотру, не по полю формы: при правке
+ * поле начинается с веса самой ТТН.
+ */
+export function goodsWeightG(initial: Pick<ShipmentPreview, "parcel">, presets: BoxPreset[]): number {
+  const tare = (initial.parcel.seats ?? []).reduce((sum, s) => sum + (presets.find((p) => p.name === s.box)?.tareG ?? 0), 0);
+  return Math.max(0, initial.parcel.weightG - tare);
+}
+
+/** Нажали заготовку: стороны этой коробки и вес = товары + её тара (а не тара прежней коробки). */
+export function presetPatch(
+  initial: Pick<ShipmentPreview, "parcel">,
+  presets: BoxPreset[],
+  box: BoxPreset,
+): Pick<ShipmentForm, "weight" | "l" | "w" | "h"> {
+  return {
+    weight: intText(goodsWeightG(initial, presets) + box.tareG),
+    l: cmText(box.lengthMm),
+    w: cmText(box.widthMm),
+    h: cmText(box.heightMm),
+  };
+}
+
 /** «Документи» предлагаем для одного места до 1 кг (или если уже включено). */
 export function documentsOffered(f: ShipmentForm, p: ShipmentPreview | null | undefined): boolean {
   return f.documents || ((p?.parcel.seats?.length ?? 1) <= 1 && (intOrNull(f.weight) ?? 0) <= 1000);

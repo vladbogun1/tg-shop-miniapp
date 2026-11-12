@@ -6,7 +6,7 @@ import { money } from "@shop/core/money";
 import { Input } from "@/components/ui/Input";
 import { Toggle } from "@/components/ui/Toggle";
 import { boxText, cmText, intText, weightText } from "../../model/format";
-import { documentsOffered, presetMatches, type ShipmentForm } from "../../model/shipment-form";
+import { documentsOffered, presetMatches, presetPatch, type ShipmentForm } from "../../model/shipment-form";
 import type { BoxPreset, SenderWarehouse, ShipmentPreview } from "../../model/types";
 import { Chip, Notice } from "../parts";
 
@@ -62,7 +62,7 @@ function PresetChips({ form, set, initial, presets }: FieldProps & { initial: Sh
         Авто · {boxText(parcel.lengthMm, parcel.widthMm, parcel.heightMm)}
       </Chip>
       {presets.map((pr) => (
-        <Chip key={pr.name} active={presetMatches(form, pr)} onClick={() => set({ l: cmText(pr.lengthMm), w: cmText(pr.widthMm), h: cmText(pr.heightMm) })}>
+        <Chip key={pr.name} active={presetMatches(form, pr)} onClick={() => set(presetPatch(initial, presets, pr))}>
           {pr.name} · {boxText(pr.lengthMm, pr.widthMm, pr.heightMm)}
           {pr.packMinor ? ` · ${money(pr.packMinor)}` : ""}
         </Chip>
