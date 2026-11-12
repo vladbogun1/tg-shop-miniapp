@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * «Друк етикетки» + формат (100×100 / 85×85 / A4): один PDF на выбранные заказы.
+ * «Печать этикетки» + формат (100×100 / 85×85 / A4): один PDF на выбранные заказы.
  * Формат свой у кнопки; на «Отправке» он общий — экран передаёт `format` (и `onFormat` там, где показывать выбор).
  */
 import { useState } from "react";
@@ -15,7 +15,7 @@ import { usePrintLabels } from "../queries";
 
 export function LabelPrint({
   orderIds,
-  label = "Друк етикетки",
+  label = "Печать этикетки",
   disabled,
   disabledTitle,
   format: shared,

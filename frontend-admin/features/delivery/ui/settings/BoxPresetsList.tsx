@@ -1,6 +1,6 @@
 "use client";
 
-/** Коробки окна «Створити ТТН» — только для чтения; меняются настройкой «Коробки» в блоке «Новая Почта». */
+/** Коробки окна «Создать ТТН» — только для чтения; меняются настройкой «Коробки» в блоке «Новая Почта». */
 import { presetText } from "../../model/sender";
 import { useBoxPresetsQuery } from "../../queries";
 
@@ -9,7 +9,7 @@ export function BoxPresetsList() {
   const presets = q.data?.presets ?? [];
   return (
     <div className="min-w-0 border-t border-[var(--line)] pt-3">
-      <div className="field-label mb-1.5">Коробки (готовые размеры в окне «Створити ТТН»)</div>
+      <div className="field-label mb-1.5">Коробки (готовые размеры в окне «Создать ТТН»)</div>
       {presets.length > 0 ? (
         <ul className="flex flex-col gap-1">
           {presets.map((p) => (

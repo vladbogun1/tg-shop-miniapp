@@ -15,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /**
- * «Змінити ТТН» / «Перестворити ТТН» and keeping a waybill in step with its order. Only before NP has the parcel.
+ * «Змінити ТТН» / «Пересоздать ТТН» and keeping a waybill in step with its order. Only before NP has the parcel.
  * Not printed yet → the same number is updated at NP; printed (NP then refuses: «Document is already printed») →
  * the old waybill is deleted and a new one made, whose label has to be printed again.
  */
@@ -120,7 +120,7 @@ public class ShipmentEditing {
             log.warn("NP waybill {} of order {} deleted, the new one failed: {}", old.getTtn(), p.shortId(),
                     e.getMessage());
             throw new DomainException.BadRequest(DeliveryError.NP_REMAKE_FAILED, "Старая ТТН " + old.getTtn()
-                    + " удалена, а новая не создалась: " + reason(e) + " — нажмите «Створити ТТН»");
+                    + " удалена, а новая не создалась: " + reason(e) + " — нажмите «Создать ТТН»");
         }
         log.info("NP waybill {} of order {} remade as {} (the old one was printed)", old.getTtn(), p.shortId(),
                 r.number());

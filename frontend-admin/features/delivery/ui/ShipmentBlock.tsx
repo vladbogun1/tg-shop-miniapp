@@ -2,12 +2,12 @@
 
 /**
  * «Нова пошта · ТТН» в карточке заказа.
- *  - ТТН нет: «Створити ТТН» (окно с живым предпросмотром) для NEW / APPROVED.
+ *  - ТТН нет: «Создать ТТН» (окно с живым предпросмотром) для NEW / APPROVED.
  *  - ТТН есть: номер (копировать), стадия, текст НП, ссылка на отслеживание, когда опрашивали (или почему
- *    не вышло), «Оновити статус», «Друк етикетки», а пока НП не сканировала посылку и ТТН наша —
- *    «Редагувати ТТН» / «Скасувати ТТН».
+ *    не вышло), «Оновити статус», «Печать этикетки», а пока НП не сканировала посылку и ТТН наша —
+ *    «Изменить ТТН» / «Отменить ТТН».
  * ТТН не отправляет заказ: он остаётся «Одобрен», пока НП не примет посылку (тогда опрос переводит в «Отправлен»).
- * «ТТН устарела» — см. use-stale.ts: плашка, разовое окно и «Перестворити ТТН».
+ * «ТТН устарела» — см. use-stale.ts: плашка, разовое окно и «Пересоздать ТТН».
  *
  * Фича delivery не знает тип заказа: блок берёт узкую форму и сообщает об изменениях через `onChanged`
  * (как OnlinePaymentBlock).
@@ -102,9 +102,9 @@ function ShipmentActions({
   const printable = s.origin === "API" && s.stage !== "CANCELLED";
   async function askCancel() {
     const ok = await confirm({
-      title: "Скасувати ТТН?",
+      title: "Отменить ТТН?",
       message: `ТТН ${s.ttn} будет удалена в Новой Почте. Заказ останется, и можно создать новую ТТН.`,
-      confirmLabel: "Скасувати ТТН",
+      confirmLabel: "Отменить ТТН",
       danger: true,
     });
     if (ok) cancel.mutate(s.ttn);
@@ -113,7 +113,7 @@ function ShipmentActions({
     <div className="flex flex-wrap items-center gap-2">
       {editable && (
         <Button size="sm" variant="surface" icon={<Pencil className="h-4 w-4" />} onClick={onEdit}>
-          Редагувати ТТН
+          Изменить ТТН
         </Button>
       )}
       {printable && (
@@ -125,7 +125,7 @@ function ShipmentActions({
       )}
       {editable && (
         <Button size="sm" variant="danger" loading={cancel.isPending} icon={<Trash2 className="h-4 w-4" />} onClick={askCancel}>
-          Скасувати ТТН
+          Отменить ТТН
         </Button>
       )}
     </div>
@@ -202,11 +202,11 @@ export function ShipmentBlock({ order, onChanged }: { order: ShipmentOrder; onCh
         <div className="flex flex-col items-start gap-2.5">
           <p className="text-[13px] leading-snug text-[var(--text-muted)]">
             {service ? `${service} · ` : ""}
-            ТТН ещё нет. После «Створити ТТН» заказ останется «Одобрен», пока Новая Почта не примет посылку.
+            ТТН ещё нет. После «Создать ТТН» заказ останется «Одобрен», пока Новая Почта не примет посылку.
           </p>
           {canCreate && (
             <Button size="sm" variant="accent" icon={<Truck className="h-4 w-4" />} onClick={() => setModal("create")}>
-              Створити ТТН
+              Создать ТТН
             </Button>
           )}
         </div>

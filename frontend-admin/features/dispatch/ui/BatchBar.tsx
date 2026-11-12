@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Новая Почта для нескольких заказов: выбрать все / снять, отделение отправки, «Створити ТТН для всіх»,
+ * Новая Почта для нескольких заказов: выбрать все / снять, отделение отправки, «Создать ТТН для всех»,
  * печать этикеток одним PDF и результат последнего пакета. Без галочек работаем со всеми показанными.
  */
 import { Check, Truck, X } from "lucide-react";
@@ -65,9 +65,9 @@ export function BatchBar(p: BatchBarProps) {
           icon={<Truck className="h-4 w-4" />}
           onClick={p.onCreate}
         >
-          Створити ТТН для всіх · {p.toCreate}
+          Создать ТТН для всех · {p.toCreate}
         </Button>
-        <LabelPrint orderIds={p.toPrintIds} label={`Друк етикеток · ${p.toPrintIds.length}`} format={p.format} onFormat={p.onFormat} />
+        <LabelPrint orderIds={p.toPrintIds} label={`Печать этикеток · ${p.toPrintIds.length}`} format={p.format} onFormat={p.onFormat} />
       </div>
       <p className="text-[12px] leading-snug text-[var(--text-faint)]">
         ТТН создаётся только для заказов без неё; неоплаченные онлайн пропускаются с пояснением. Этикетки — одним PDF.

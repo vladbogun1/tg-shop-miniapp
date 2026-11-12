@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * «Створити / Редагувати / Перестворити ТТН» — окно с живым предпросмотром.
+ * «Створити / Редагувати / Пересоздать ТТН» — окно с живым предпросмотром.
  *
  * Первый предпросмотр (POST …/shipment/preview без опций) даёт значения по умолчанию из заказа, товаров и
  * настроек — ими заполняется форма. Любая правка — новый предпросмотр всей формы (с задержкой 500 мс), так что
@@ -23,8 +23,8 @@ import { ShipmentBody } from "./ShipmentBody";
 const DEFAULTS = "{}";
 const PREVIEW_DEBOUNCE_MS = 500;
 
-const TITLE: Record<ShipmentMode, string> = { create: "Створити ТТН", edit: "Редагувати ТТН", remake: "Перестворити ТТН" };
-const SUBMIT: Record<ShipmentMode, string> = { create: "Створити ТТН", edit: "Сохранить ТТН", remake: "Перестворити ТТН" };
+const TITLE: Record<ShipmentMode, string> = { create: "Создать ТТН", edit: "Изменить ТТН", remake: "Пересоздать ТТН" };
+const SUBMIT: Record<ShipmentMode, string> = { create: "Создать ТТН", edit: "Сохранить ТТН", remake: "Пересоздать ТТН" };
 
 /** Форма поверх значений по умолчанию + живой предпросмотр именно этой формы. */
 function useShipmentDraft(orderId: string, mode: ShipmentMode) {

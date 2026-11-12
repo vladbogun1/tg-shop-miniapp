@@ -178,7 +178,7 @@ export function DeadlineLine({
         <span className="text-[var(--danger)]">{t("pay.timeUp")}</span>
       ) : (
         <>
-          {t("pay.until", { when: formatDateTime(paymentDueAt) })}
+          {t("pay.until", { time: formatDateTime(paymentDueAt) })}
           <span className="text-[var(--warn)]">
             {" · "}
             {t("pay.left", { time: leftText(dueAt - now, t) })}

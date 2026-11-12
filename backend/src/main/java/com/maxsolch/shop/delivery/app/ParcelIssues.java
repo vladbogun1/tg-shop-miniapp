@@ -147,7 +147,7 @@ public class ParcelIssues {
         List<String> stale = ShipmentFacts.staleReasons(o, s);
         if (!stale.isEmpty()) {
             return new Reason("STALE", "ТТН устарела: " + String.join("; ", stale)
-                    + " — «Перестворити ТТН», старую этикетку не отправлять", true);
+                    + " — «Пересоздать ТТН», старую этикетку не отправлять", true);
         }
         boolean open = stage == ShipmentStage.CREATED || stage == ShipmentStage.IN_TRANSIT
                 || stage == ShipmentStage.ARRIVED;

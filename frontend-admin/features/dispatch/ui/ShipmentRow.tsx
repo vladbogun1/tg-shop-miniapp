@@ -1,6 +1,6 @@
 "use client";
 
-/** Строка ТТН на карточке «Отправки»: стадия и текст НП или «Створити ТТН»; устаревшая — тревога и «Перестворити ТТН». */
+/** Строка ТТН на карточке «Отправки»: стадия и текст НП или «Создать ТТН»; устаревшая — тревога и «Пересоздать ТТН». */
 import { RotateCcw, Truck } from "lucide-react";
 import { Button } from "@shop/ui/admin-button";
 import { LabelPrint, Notice, ShipmentStageBadge, type LabelFormat, type ShipmentMode } from "@/features/delivery";
@@ -14,7 +14,7 @@ export function ShipmentRow({ o, format, onTtn }: { o: AdminDispatchOrder; forma
       <div className="flex flex-col gap-2 border-t border-[var(--line)] pt-3">
         <Notice tone="danger" title="ТТН недействительна — не отправлять с ней и с её этикеткой" items={stale} />
         <Button size="sm" variant="accent" className="self-start" icon={<RotateCcw className="h-4 w-4" />} onClick={() => onTtn("remake")}>
-          Перестворити ТТН
+          Пересоздать ТТН
         </Button>
       </div>
     );
@@ -30,7 +30,7 @@ export function ShipmentRow({ o, format, onTtn }: { o: AdminDispatchOrder; forma
         </>
       ) : (
         <Button size="sm" variant="accent" icon={<Truck className="h-4 w-4" />} onClick={() => onTtn("create")}>
-          Створити ТТН
+          Создать ТТН
         </Button>
       )}
       {isPrintable(o) && <LabelPrint orderIds={[o.id]} format={format} />}

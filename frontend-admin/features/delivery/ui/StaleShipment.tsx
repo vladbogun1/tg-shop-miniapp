@@ -21,7 +21,7 @@ export function StaleBanner({ reasons, printed, onRemake }: { reasons: string[];
         ))}
       </ul>
       <Button size="sm" variant="accent" className="self-start" icon={<RotateCcw className="h-4 w-4" />} onClick={onRemake}>
-        Перестворити ТТН
+        Пересоздать ТТН
       </Button>
     </div>
   );
@@ -53,7 +53,7 @@ export function StaleDialog({
             Позже
           </Button>
           <Button variant="accent" icon={<RotateCcw className="h-4 w-4" />} onClick={onRemake}>
-            Перестворити зараз
+            Пересоздать сейчас
           </Button>
         </>
       }
