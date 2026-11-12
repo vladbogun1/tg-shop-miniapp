@@ -60,7 +60,7 @@ class BoxSuggestionTest {
     void setUp() {
         when(parcels.forOrder(order)).thenReturn(bySize);
         when(parcels.units(order)).thenReturn(List.of(new Unit(1300, 380, 150, 50, true)));
-        when(catalog.find(any())).thenAnswer(i -> Arrays.equals(i.getArgument(0), np10.getId())
+        when(catalog.findUsable(any())).thenAnswer(i -> Arrays.equals(i.getArgument(0), np10.getId())
                 ? Optional.of(np10) : Optional.empty());
     }
 

@@ -44,6 +44,11 @@ public class NpBoxCatalog {
         return id == null ? Optional.empty() : boxes.findById(id);
     }
 
+    /** {@link #find}, only if the packers have it now: marked «есть у нас», or none is marked (as {@link #usable}). */
+    Optional<NpBox> findUsable(byte[] id) {
+        return find(id).filter(b -> b.isInStock() || !boxes.existsByInStockTrue());
+    }
+
     /** Our own box, in stock, after the catalog rows; no price or tare known yet (the owner fills them in). */
     NpBox saveOwn(String name, int lengthMm, int widthMm, int heightMm) {
         NpBox b = new NpBox();

@@ -18,9 +18,9 @@ import java.util.Optional;
 
 /**
  * Which box the order's parcel goes into: the box the packers used most for exactly these goods
- * ({@code np_packing_memory}, the goods fingerprint {@link ShipmentFacts#goodsKey}) while that box is still in the
- * catalog, else {@link ParcelSizeService} over the boxes in stock. «Документи» (flat goods) stay documents: a remembered
- * box does not turn an envelope into a paid parcel.
+ * ({@code np_packing_memory}, the goods fingerprint {@link ShipmentFacts#goodsKey}) while the packers still have that
+ * box ({@link NpBoxCatalog#findUsable}), else {@link ParcelSizeService} over the boxes in stock. «Документи» (flat
+ * goods) stay documents: a remembered box does not turn an envelope into a paid parcel.
  */
 @Component
 class BoxSuggestion {
@@ -61,7 +61,7 @@ class BoxSuggestion {
         return new Suggested(byRules, label(byRules), BY_SIZE);
     }
 
-    /** The most used remembered box of these goods that still exists. */
+    /** The most used remembered box of these goods that the packers still have. */
     private Optional<Suggested> remembered(ShippingOrder order) {
         List<PackingMemoryEntry> entries = memory.boxesFor(List.of(ShipmentFacts.goodsKey(order)));
         if (entries.isEmpty()) {
@@ -69,7 +69,7 @@ class BoxSuggestion {
         }
         List<Unit> units = parcels.units(order);
         for (PackingMemoryEntry e : entries) {
-            Optional<NpBox> box = boxes.find(e.boxId());
+            Optional<NpBox> box = boxes.findUsable(e.boxId());
             if (box.isPresent() && fits(box.get(), e.heightMm())) {
                 return Optional.of(of(box.get(), e, units));
             }
@@ -104,7 +104,7 @@ class BoxSuggestion {
 
     /**
      * The most used remembered box of each goods fingerprint, for a list (one query): fingerprint → its box.
-     * Boxes gone from the catalog are skipped. Bags are named without a thickness (no goods at hand).
+     * Boxes gone from the catalog or not in stock are skipped. Bags are named without a thickness (no goods at hand).
      */
     Map<String, Hint> rememberedLabels(Collection<String> goodsSigs) {
         Map<String, Hint> out = new LinkedHashMap<>();
@@ -117,7 +117,7 @@ class BoxSuggestion {
                 continue;
             }
             Optional<NpBox> box = seen.computeIfAbsent(java.util.HexFormat.of().formatHex(e.boxId()),
-                    k -> boxes.find(e.boxId()));
+                    k -> boxes.findUsable(e.boxId()));
             if (box.isPresent() && fits(box.get(), e.heightMm())) {
                 String label = box.get().bag() ? box.get().getName()
                         : BoxOptions.option(box.get(), e.heightMm()).label();

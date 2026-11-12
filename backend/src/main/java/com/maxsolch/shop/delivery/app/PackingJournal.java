@@ -15,7 +15,6 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * «Журнал упаковки»: the recent waybills with what was suggested, what the packer confirmed and what Nova Poshta
@@ -31,6 +30,8 @@ public class PackingJournal {
     static final long VOLUME_DIVISOR = 4000L;
     /** «Перемерили»: NP's charged weight differs from ours by more than this share. */
     static final double REMEASURE_SHARE = 0.15;
+    /** NP's price differs from ours by more than a hryvnia: not a rounding of kopiykas. */
+    static final long COST_ROUNDING_MINOR = 100;
 
     private final OrderShipmentRepository shipments;
     private final ShipmentOrders orders;
@@ -113,7 +114,7 @@ public class PackingJournal {
         boolean weight = s.getNpWeightG() != null && ours != null && ours > 0
                 && Math.abs(s.getNpWeightG() - ours) > ours * REMEASURE_SHARE;
         boolean cost = s.getNpCostMinor() != null && s.getDeliveryCostMinor() != null
-                && !Objects.equals(s.getNpCostMinor(), s.getDeliveryCostMinor());
+                && Math.abs(s.getNpCostMinor() - s.getDeliveryCostMinor()) > COST_ROUNDING_MINOR;
         return weight || cost;
     }
 

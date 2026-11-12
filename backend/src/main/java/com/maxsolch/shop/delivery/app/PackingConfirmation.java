@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * «Подтвердить коробку»: the packer says which box the parcel really went into. Under the order's database lock
@@ -98,12 +99,14 @@ public class PackingConfirmation {
         ShippingOrder order = orders.find(orderId).orElseThrow(NpErrors::orderNotFound);
         OrderShipment s = shipments.findFirstByOrderIdAndActiveTrueOrderByCreatedAtDesc(orderId)
                 .orElseThrow(() -> new DomainException.Conflict(DeliveryError.NP_BOX_NO_TTN));
+        String confirmedBefore = s.getBoxConfirmedAt() != null ? s.getBoxLabel() : null;
         List<Unit> units = parcels.units(order);
         int height = c.heightMm() != null ? c.heightMm() : BoxOptions.bagHeight(units);
         int weight = weightG != null ? weightG : units.stream().mapToInt(Unit::weightG).sum() + c.tareG();
         OrderShipment target = s;
         boolean updated = false;
-        if (OrderShipment.ORIGIN_API.equals(s.getOrigin()) && beforeHandover(s)) {
+        if (OrderShipment.ORIGIN_API.equals(s.getOrigin()) && beforeHandover(s)
+                && !sameParcel(s, c.lengthMm(), c.widthMm(), height, weight)) {
             target = editing.updateHeld(orderId, options(s, weight, c.lengthMm(), c.widthMm(), height));
             updated = true;
         }
@@ -123,14 +126,32 @@ public class PackingConfirmation {
                 x.setBoxSuggestedSource(s.getBoxSuggestedSource());
             }
         });
+        if (label.equals(confirmedBefore)) {
+            // Confirmed again (a double tap, the weight added later): the goods taught us this box once already.
+            return done(target, order, updated, numberChanged, label);
+        }
         String key = boxId != null ? PackingMemoryEntry.boxKey(UuidUtil.toString(boxId), height)
                 : PackingMemoryEntry.customKey(c.lengthMm(), c.widthMm(), height);
         memory.remember(new PackingMemoryEntry(ShipmentFacts.goodsKey(order), key, boxId, c.lengthMm(), c.widthMm(),
                 height, 1, now), now);
+        return done(target, order, updated, numberChanged, label);
+    }
+
+    private Confirmed done(OrderShipment target, ShippingOrder order, boolean updated, boolean numberChanged,
+                           String label) {
         log.info("Box «{}» confirmed for order {} (waybill {}{})", label, order.shortId(), target.getTtn(),
                 updated ? ", updated at NP" : "");
         OrderShipment fresh = shipments.findById(target.getId()).orElse(target);
         return new Confirmed(ShipmentFacts.brief(fresh, order), updated, numberChanged);
+    }
+
+    /**
+     * The waybill already says this box and weight: nothing to send — above all, a printed one is not remade (its
+     * label on the parcel stays valid).
+     */
+    static boolean sameParcel(OrderShipment s, int lengthMm, int widthMm, int heightMm, int weightG) {
+        return Objects.equals(s.getLengthMm(), lengthMm) && Objects.equals(s.getWidthMm(), widthMm)
+                && Objects.equals(s.getHeightMm(), heightMm) && Objects.equals(s.getWeightG(), weightG);
     }
 
     /** NP has no parcel yet: the waybill may still change. */

@@ -108,7 +108,7 @@ export function confirmMessage(r: Pick<ConfirmBoxResult, "ttnUpdated" | "ttnNumb
     return before ? `Коробка подтверждена, ТТН №${before} заменена на №${r.shipment.ttn}` : `Коробка подтверждена, новая ТТН №${r.shipment.ttn}`;
   }
   if (r.ttnUpdated) return "Коробка подтверждена, ТТН обновлена";
-  return "НП уже приняла — записали для статистики";
+  return "Коробка записана, ТТН не менялась";
 }
 
 /** NP's volumetric divisor: Д×Ш×В мм³ / 4000 = г. */

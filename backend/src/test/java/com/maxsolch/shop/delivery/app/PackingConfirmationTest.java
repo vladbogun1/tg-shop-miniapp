@@ -179,17 +179,39 @@ class PackingConfirmationTest {
     }
 
     @Test
-    void theBoxIsRememberedForTheseGoodsEveryTime() {
+    void theBoxIsRememberedForTheseGoodsOncePerOrder() {
         confirmation.confirm(ORDER_ID, catalogBox(np5, 80));
-        confirmation.confirm(ORDER_ID, catalogBox(np5, 80));
+        confirmation.confirm(ORDER_ID, catalogBox(np5, 80)); // a double tap / the weight added later
 
         ArgumentCaptor<PackingMemoryEntry> e = ArgumentCaptor.forClass(PackingMemoryEntry.class);
-        verify(memory, times(2)).remember(e.capture(), eq(NOW));
-        assertThat(e.getAllValues()).allSatisfy(x -> {
-            assertThat(x.goodsSig()).isEqualTo(ShipmentFacts.goodsKey(order));
-            assertThat(x.boxKey()).isEqualTo(PackingMemoryEntry.boxKey(UuidUtil.toString(np5.getId()), 80));
-            assertThat(x.heightMm()).isEqualTo(80);
-        });
+        verify(memory, times(1)).remember(e.capture(), eq(NOW));
+        assertThat(e.getValue().goodsSig()).isEqualTo(ShipmentFacts.goodsKey(order));
+        assertThat(e.getValue().boxKey()).isEqualTo(PackingMemoryEntry.boxKey(UuidUtil.toString(np5.getId()), 80));
+        assertThat(e.getValue().heightMm()).isEqualTo(80);
+    }
+
+    @Test
+    void anotherBoxForTheSameOrderIsRememberedToo() {
+        confirmation.confirm(ORDER_ID, catalogBox(np5, 80));
+        confirmation.confirm(ORDER_ID, catalogBox(np5, 130));
+
+        verify(memory, times(2)).remember(any(), eq(NOW));
+    }
+
+    @Test
+    void thePrintedWaybillWithThisVeryBoxIsNotRemade() {
+        row.setPrintedAt(NOW.minusSeconds(60));
+        row.setLengthMm(400);
+        row.setWidthMm(240);
+        row.setHeightMm(130);
+        row.setWeightG(1300 + 200);
+
+        Confirmed done = confirmation.confirm(ORDER_ID, catalogBox(np5, 130));
+
+        verify(editing, never()).updateHeld(any(), any());
+        assertThat(done.ttnUpdated()).isFalse();
+        assertThat(done.ttnNumberChanged()).isFalse();
+        assertThat(row.getBoxLabel()).isEqualTo("Коробка 5 кг · 13 см");
     }
 
     @Test

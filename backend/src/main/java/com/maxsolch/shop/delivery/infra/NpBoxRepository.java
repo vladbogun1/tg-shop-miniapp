@@ -10,4 +10,6 @@ public interface NpBoxRepository extends JpaRepository<NpBox, byte[]> {
     List<NpBox> findAllByOrderBySortOrderAscNameAsc();
 
     List<NpBox> findByInStockTrueOrderBySortOrderAscNameAsc();
+
+    boolean existsByInStockTrue();
 }
