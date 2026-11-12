@@ -27,6 +27,11 @@ import { AiStatusChip, BatchGate } from "@/features/ai";
 import dynamic from "next/dynamic";
 import { isFullscreenPage, pageTitle } from "./nav-config";
 import { useCollapsedSidebar } from "./use-collapsed-sidebar";
+import { PageHeaderSlot } from "@/components/layout/PageHeader";
+import { SectionTabs } from "./SectionTabs";
+
+/** Вкладки раздела под шапкой каждой страницы (сам решает, показываться ли на этом адресе). */
+const SECTION_TABS = <SectionTabs />;
 
 // Пакеты ИИ тянут за собой всю фичу «Карточки»: грузим её, только когда пакет есть.
 const CardBatchHost = dynamic(() => import("@/features/cards").then((m) => m.CardBatchHost), { ssr: false });
@@ -103,7 +108,7 @@ export function Shell({ children }: { children: ReactNode }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
           >
-            {children}
+            <PageHeaderSlot.Provider value={SECTION_TABS}>{children}</PageHeaderSlot.Provider>
           </motion.div>
         </main>
       </div>
