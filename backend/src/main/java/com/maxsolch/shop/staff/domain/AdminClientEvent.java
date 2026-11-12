@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.Set;
 
 /**
- * One row of the admin panel's own telemetry ({@code admin_client_events}, V99): what went wrong on an admin's device —
+ * One row of the admin panel's own telemetry ({@code admin_client_events}, V101): what went wrong on an admin's device —
  * a JS error, a stalled main thread, a tap into an invisible layer, taps with no reaction, a 401/403 of the admin API,
  * an overlay whose exit animation never completed ({@code overlay_stuck}).
  * Not a customer event: it never feeds the shop metrics.

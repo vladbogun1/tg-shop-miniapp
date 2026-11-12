@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-/** The {@code admin_client_events} table (V99): the admin panel's own telemetry. */
+/** The {@code admin_client_events} table (V101): the admin panel's own telemetry. */
 @Repository
 public class AdminClientEventStore {
 

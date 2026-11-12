@@ -23,7 +23,7 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Telemetry of the admin panel (V99): every admin's panel sends its errors, freezes and dead taps; the main admin reads
+ * Telemetry of the admin panel (V101): every admin's panel sends its errors, freezes and dead taps; the main admin reads
  * the latest. Separate from the customer analytics on purpose — admin events never count as shop activity.
  */
 @RestController

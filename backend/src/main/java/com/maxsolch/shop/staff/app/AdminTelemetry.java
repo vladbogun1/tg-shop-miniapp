@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Telemetry of the admin panel itself (V99): the panel reports errors, freezes and dead taps from the admins' phones,
+ * Telemetry of the admin panel itself (V101): the panel reports errors, freezes and dead taps from the admins' phones,
  * the main admin reads them. Writing never fails the panel: bad input is dropped, a database failure is logged and
  * swallowed — telemetry is the last thing that may break the screen it is watching.
  */

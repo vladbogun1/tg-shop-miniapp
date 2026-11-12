@@ -18,7 +18,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
- * /api/admin/telemetry through the real security chain and the real {@code admin_client_events} table (V99): no token —
+ * /api/admin/telemetry through the real security chain and the real {@code admin_client_events} table (V101): no token —
  * 401, a customer — 403, any admin writes (with the id of the token, not of the body, meta stored as JSON), only the
  * main admin reads.
  */
