@@ -48,7 +48,7 @@ function Row({ r }: { r: PackingJournalRow }) {
       {np && <p className={cn("min-w-0 break-words text-[12.5px]", np.differs ? "font-semibold text-[var(--danger-ink)]" : "text-[var(--text-muted)]")}>{np.text}</p>}
       {r.boxConfirmedAt && (
         <p className="text-[11.5px] text-[var(--text-faint)]">
-          Подтвердил{r.boxConfirmedBy ? ` ${r.boxConfirmedBy}` : "и"}, {formatShortDateTime(r.boxConfirmedAt)}
+          Упаковано{r.boxConfirmedBy ? ` · ${r.boxConfirmedBy}` : ""}, {formatShortDateTime(r.boxConfirmedAt)}
         </p>
       )}
     </li>
