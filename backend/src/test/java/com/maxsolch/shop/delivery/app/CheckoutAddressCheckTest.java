@@ -58,6 +58,31 @@ class CheckoutAddressCheckTest {
     }
 
     @Test
+    void parcelLockers_byDirectoryCategoryOrAnyKnownLockerType() {
+        when(settings.get(anyString(), anyBoolean())).thenAnswer(inv -> inv.getArgument(1));
+        branch("np-locker", true).setType("f9316480-5f2d-425d-bc2c-ac7cd29decf0");
+        branch("privat-locker", true).setType("95dc212d-479c-4ffb-a8ab-8c1b9073d0bc");
+        NovaPoshtaWarehouse synced = branch("new-type-locker", true);
+        synced.setType("unknown-new-type");
+        synced.setCategory("POSTOMAT");
+
+        assertThat(check.check(at("city-1", "np-locker")).serviceType()).isEqualTo(NpServiceType.POSTOMAT);
+        assertThat(check.check(at("city-1", "privat-locker")).serviceType()).isEqualTo(NpServiceType.POSTOMAT);
+        assertThat(check.check(at("city-1", "new-type-locker")).serviceType()).isEqualTo(NpServiceType.POSTOMAT);
+    }
+
+    @Test
+    void lockersOff_aLockerIsRefused() {
+        when(settings.get(anyString(), anyBoolean())).thenAnswer(inv -> !CheckoutAddressCheck.POSTOMAT_ENABLED
+                .equals(inv.getArgument(0)) && (boolean) inv.getArgument(1));
+        branch("privat-locker", true).setType("95dc212d-479c-4ffb-a8ab-8c1b9073d0bc");
+
+        assertThatThrownBy(() -> check.check(at("city-1", "privat-locker")))
+                .isInstanceOfSatisfying(DomainException.class,
+                        e -> assertThat(e.errorCode()).isEqualTo(OrderError.NP_POSTOMAT_DISABLED));
+    }
+
+    @Test
     void closedBranch_otherCity_unknownRef_areRefused() {
         branch("wh-closed", false);
         branch("wh-1", true);
