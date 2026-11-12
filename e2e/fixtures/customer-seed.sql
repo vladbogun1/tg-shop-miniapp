@@ -10,20 +10,13 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 DELETE FROM order_gift_cases;
 DELETE FROM gift_case_items;
-DELETE FROM nova_poshta_warehouses;
-DELETE FROM nova_poshta_cities;
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- A code that never runs out (the admin seed's codes have 1-2 uses).
 INSERT INTO promo_codes (id, code, discount_percent, discount_amount_minor, max_uses, uses_count, active) VALUES
   (UUID_TO_BIN('e2ec0001-0000-4000-8000-000000000001'), 'E2ESMOKE10', 10, 0, 1000000, 0, TRUE);
 
--- Nova Poshta directory (normally synced daily from the NP API, which the e2e backend cannot reach):
--- one invented city with two branches — the ones the admin seed's orders already point at.
-INSERT INTO nova_poshta_cities (ref, name, area) VALUES ('e2e-city', 'Київ', 'Київська');
-INSERT INTO nova_poshta_warehouses (ref, city_ref, city_name, number, description, type, lat, lng) VALUES
-  ('e2e-wh-1', 'e2e-city', 'Київ', '1', 'Відділення №1 (тест): вул. Вигадана, 1', 'Branch', 50.4501, 30.5234),
-  ('e2e-wh-2', 'e2e-city', 'Київ', '2', 'Відділення №2 (тест): вул. Інша, 2', 'Branch', 50.4547, 30.5238);
+-- The Nova Poshta directory (e2e-city, e2e-wh-1 / e2e-wh-2) comes with fixtures/seed.sql.
 
 -- Gift case (V57): the tiers come with the migration (BRONZE from 1 500 ₴, a guaranteed 3 % up to 100 ₴
 -- against opening the case); the settings gift.enabled / gift.caseEnabled are switched on by the global

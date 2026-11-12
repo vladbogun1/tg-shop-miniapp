@@ -215,6 +215,9 @@ public class OrderQueryService {
                 .exchangeOfId(o.getExchangeOfOrderId() == null ? null : UuidUtil.toString(o.getExchangeOfOrderId()))
                 .exchangeOrderIds(ctx.exchangesOf(id))
                 .uncollectedMinor(pay.uncollectedMinor())
+                .trackingNumber(o.getTrackingNumber())
+                .shipmentStage(ctx.stageOf(id))
+                .trackingUrl(NpTracking.url(o.getTrackingNumber()))
                 .build();
     }
 

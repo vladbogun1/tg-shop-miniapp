@@ -5,6 +5,7 @@ import com.maxsolch.shop.order.domain.DeliveryTarget;
 import com.maxsolch.shop.order.domain.NpServiceType;
 import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderError;
+import com.maxsolch.shop.order.domain.OrderSource;
 import com.maxsolch.shop.order.domain.RecipientName;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.error.DomainException;
@@ -89,8 +90,10 @@ class CheckoutDelivery {
             if (street == null || building == null) {
                 throw new DomainException.BadRequest(OrderError.NP_ADDRESS_REQUIRED);
             }
-            addressCheck.check(new DeliveryAddressCheck.Address(NpServiceType.DOORS, cityRef, null,
-                    trimToNull(np.streetRef()), street, building));
+            if (byCustomer(cmd)) {
+                addressCheck.check(new DeliveryAddressCheck.Address(NpServiceType.DOORS, cityRef, null,
+                        trimToNull(np.streetRef()), street, building));
+            }
             return new DeliveryTarget(method, cityRef, cmd.npCityName(), null, null, NpServiceType.DOORS,
                     cut(trimToNull(np.streetRef()), 64), cut(street, 255), cut(building, 32),
                     cut(trimToNull(np.flat()), 32));
@@ -99,12 +102,24 @@ class CheckoutDelivery {
         if (whRef == null) {
             throw new DomainException.BadRequest(OrderError.NP_WAREHOUSE_REQUIRED);
         }
-        DeliveryAddressCheck.Resolved resolved = addressCheck.check(new DeliveryAddressCheck.Address(
-                requested == null ? NpServiceType.WAREHOUSE : requested, cityRef, whRef, null, null, null));
+        NpServiceType kind = requested == null ? NpServiceType.WAREHOUSE : requested;
+        DeliveryAddressCheck.Resolved resolved = byCustomer(cmd)
+                ? addressCheck.check(new DeliveryAddressCheck.Address(kind, cityRef, whRef, null, null, null))
+                : new DeliveryAddressCheck.Resolved(kind, null);
         // The name on the order (and the waybill) is the directory's, not what the client sent.
         String whName = resolved.warehouseName() != null ? resolved.warehouseName() : cmd.npWarehouseName();
         return new DeliveryTarget(method, cityRef, cmd.npCityName(), whRef, cut(trimToNull(whName), 255),
                 resolved.serviceType(), null, null, null, null);
+    }
+
+    /**
+     * Only the customer's checkout is checked against the Nova Poshta directory (branch exists in the city and is
+     * open, courier / parcel locker switched on, the goods fit the locker). The admin's manual order and an
+     * exchange replacement (source ADMIN) carry the address as given — a copy of the original order's, whose
+     * branch may have closed since; the admin sees it on the waybill.
+     */
+    private static boolean byCustomer(CreateOrderCommand cmd) {
+        return cmd.source() != OrderSource.ADMIN;
     }
 
     /** WAREHOUSE / POSTOMAT / DOORS / PICKUP — the key {@link OrderPaymentOptions.Option#allowsDelivery} matches. */
@@ -152,7 +167,8 @@ class CheckoutDelivery {
 
     /** A parcel locker takes only so much: say it at the order, not when the waybill fails. */
     void checkPostomatFits(Order order, CreateOrderCommand cmd) {
-        if (order.getDeliveryMethod() == DeliveryMethod.NOVA_POSHTA && order.npService() == NpServiceType.POSTOMAT) {
+        if (byCustomer(cmd) && order.getDeliveryMethod() == DeliveryMethod.NOVA_POSHTA
+                && order.npService() == NpServiceType.POSTOMAT) {
             addressCheck.checkPostomatFits(order.getNpWarehouseRef(), cmd.items());
         }
     }

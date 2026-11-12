@@ -448,7 +448,10 @@
       "child-1",
       "child-2"
     ],
-    "uncollectedMinor" : 0
+    "uncollectedMinor" : 0,
+    "trackingNumber" : null,
+    "shipmentStage" : null,
+    "trackingUrl" : null
   },
   "summary" : {
     "id" : "00000000-0000-4000-8000-000000000004",
@@ -509,6 +512,9 @@
     "paymentDueAt" : "2026-10-03T10:00:00Z",
     "amountDueMinor" : 182000,
     "npServiceType" : null,
+    "npStreetName" : null,
+    "npBuilding" : null,
+    "npFlat" : null,
     "paymentOnDelivery" : false,
     "shipmentStage" : null,
     "shipmentOrigin" : null,

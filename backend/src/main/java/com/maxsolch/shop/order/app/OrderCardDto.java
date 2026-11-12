@@ -43,7 +43,11 @@ public record OrderCardDto(
         /** Replacement orders created by exchanges on this one (V69), oldest first. */
         java.util.List<String> exchangeOrderIds,
         /** Refused at the Nova Poshta branch (partial pickup, V72): the card shows total − this. */
-        long uncollectedMinor) {
+        long uncollectedMinor,
+        /** The waybill, the stage of its parcel (see {@link OrderShipmentView.ShipmentBrief}) and the NP tracking page. */
+        @Nullable String trackingNumber,
+        @Nullable String shipmentStage,
+        @Nullable String trackingUrl) {
 
     /**
      * @param returning units of this line on their way back

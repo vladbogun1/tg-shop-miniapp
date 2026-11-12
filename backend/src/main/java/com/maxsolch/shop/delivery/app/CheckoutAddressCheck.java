@@ -17,7 +17,8 @@ import java.util.List;
 /**
  * The Nova Poshta part of a checkout against the local directory: the branch exists in the chosen city and its kind
  * decides WAREHOUSE vs POSTOMAT (the map lets one pick a parcel locker in the branch list), the directory's name is
- * the one the order and the waybill show, parcel lockers and courier delivery can be switched off.
+ * the one the order and the waybill show, a closed branch (not {@code active} after the directory sync) is refused
+ * like an unknown one, parcel lockers and courier delivery can be switched off.
  *
  * <p>The switches {@code novaposhta.courierEnabled} / {@code novaposhta.postomatEnabled} are read with a default of
  * «on», so they work before (and after) {@code DeliverySettings} registers them.
@@ -53,6 +54,7 @@ public class CheckoutAddressCheck implements DeliveryAddressCheck {
         }
         NovaPoshtaWarehouse wh = warehouses.findById(address.warehouseRef())
                 .filter(w -> address.cityRef().equals(w.getCityRef()))
+                .filter(NovaPoshtaWarehouse::isActive)
                 .orElseThrow(() -> new DomainException.BadRequest(OrderError.NP_WAREHOUSE_UNKNOWN));
         NpServiceType service = TYPE_POSTOMAT.equals(wh.getType()) ? NpServiceType.POSTOMAT : NpServiceType.WAREHOUSE;
         if (service == NpServiceType.POSTOMAT && !settings.get(POSTOMAT_ENABLED, true)) {

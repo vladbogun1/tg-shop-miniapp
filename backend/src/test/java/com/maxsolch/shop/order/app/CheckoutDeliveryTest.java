@@ -7,6 +7,7 @@ import com.maxsolch.shop.order.domain.Order;
 import com.maxsolch.shop.order.domain.OrderError;
 import com.maxsolch.shop.order.domain.OrderFixtures;
 import com.maxsolch.shop.order.domain.OrderMoney;
+import com.maxsolch.shop.order.domain.OrderSource;
 import com.maxsolch.shop.order.infra.OrderRepository;
 import com.maxsolch.shop.platform.error.DomainException;
 import com.maxsolch.shop.platform.i18n.Messages;
@@ -25,7 +26,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /** Checkout v2 (V98): the split recipient, the Nova Poshta address kinds and «оплата при отриманні». */
@@ -213,5 +217,38 @@ class CheckoutDeliveryTest {
 
         when(orders.countOpenOnDelivery(anyLong())).thenReturn(0L);
         delivery.checkOnDeliveryLimits(o, 1L);
+    }
+
+    // ---------- admin orders ----------
+
+    private static CreateOrderCommand byAdmin(String whRef, CreateOrderCommand.NpDetails np) {
+        return new CreateOrderCommand(null, 1L, null, List.of(), "Петренко Іван", "+380501112233", null, null,
+                "NOVA_POSHTA", "city-1", "Харків", whRef, "Відділення №9 (закрите)", null, OrderSource.ADMIN, null, np);
+    }
+
+    @Test
+    void adminOrderOrExchange_keepsTheGivenAddress_withoutTheDirectory() {
+        doThrow(new DomainException.BadRequest(OrderError.NP_WAREHOUSE_UNKNOWN)).when(addressCheck).check(any());
+
+        DeliveryTarget branch = delivery.target(byAdmin("wh-closed", np("POSTOMAT", null, null, null, null)),
+                DeliveryMethod.NOVA_POSHTA);
+        DeliveryTarget door = delivery.target(byAdmin(null, np("DOORS", "вул. Сумська", "10", null, null)),
+                DeliveryMethod.NOVA_POSHTA);
+
+        assertThat(branch.npWarehouseRef()).isEqualTo("wh-closed");
+        assertThat(branch.npWarehouseName()).isEqualTo("Відділення №9 (закрите)");
+        assertThat(branch.serviceType()).isEqualTo(NpServiceType.POSTOMAT);
+        assertThat(door.serviceType()).isEqualTo(NpServiceType.DOORS);
+        delivery.checkPostomatFits(orderTo(branch), byAdmin("wh-closed", null));
+        verify(addressCheck, never()).check(any());
+        verify(addressCheck, never()).checkPostomatFits(any(), any());
+    }
+
+    @Test
+    void customerCheckout_isStillChecked() {
+        doThrow(new DomainException.BadRequest(OrderError.NP_WAREHOUSE_UNKNOWN)).when(addressCheck).check(any());
+
+        assertCode(() -> delivery.target(cmd(null, "city-1", "wh-closed", null), DeliveryMethod.NOVA_POSHTA),
+                OrderError.NP_WAREHOUSE_UNKNOWN);
     }
 }

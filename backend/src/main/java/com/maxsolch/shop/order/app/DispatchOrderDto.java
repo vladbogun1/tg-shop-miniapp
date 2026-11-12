@@ -40,6 +40,10 @@ public record DispatchOrderDto(
         long amountDueMinor,
         /** WAREHOUSE | POSTOMAT | DOORS (NpServiceType name); null for orders placed before V98. */
         @Nullable String npServiceType,
+        /** Courier delivery address (npServiceType = DOORS): the parcel goes to the door, not a branch. */
+        @Nullable String npStreetName,
+        @Nullable String npBuilding,
+        @Nullable String npFlat,
         /** «Оплата при отриманні»: Nova Poshta collects the whole sum. */
         boolean paymentOnDelivery,
         /** The active parcel: stage (CREATED once the waybill exists), API | MANUAL, NP status text. */

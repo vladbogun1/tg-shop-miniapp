@@ -7975,8 +7975,11 @@ export interface components {
             deliveryMethod: "NOVA_POSHTA" | "PICKUP" | null;
             id: string;
             items: components["schemas"]["DispatchItem"][];
+            npBuilding: string | null;
             npCityName: string | null;
+            npFlat: string | null;
             npServiceType: string | null;
+            npStreetName: string | null;
             npWarehouseName: string | null;
             paid: boolean;
             /** Format: date-time */
@@ -9481,12 +9484,15 @@ export interface components {
             returnedUnits: number;
             /** Format: int32 */
             returningUnits: number;
+            shipmentStage: string | null;
             /** @enum {string} */
             source: "MINIAPP" | "WEB" | "ADMIN";
             /** @enum {string} */
             status: "NEW" | "APPROVED" | "SHIPPED" | "DELIVERED" | "REJECTED";
             /** Format: int64 */
             totalMinor: number;
+            trackingNumber: string | null;
+            trackingUrl: string | null;
             /** Format: int64 */
             uncollectedMinor: number;
             /** Format: int64 */

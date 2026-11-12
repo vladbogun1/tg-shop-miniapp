@@ -500,7 +500,10 @@
       "child-1",
       "child-2"
     ],
-    "uncollectedMinor" : 0
+    "uncollectedMinor" : 0,
+    "trackingNumber" : "20450000111222",
+    "shipmentStage" : null,
+    "trackingUrl" : "https://novaposhta.ua/tracking/?cargo_number=20450000111222"
   },
   "summary" : {
     "id" : "00000000-0000-4000-8000-000000000001",
@@ -561,6 +564,9 @@
     "paymentDueAt" : null,
     "amountDueMinor" : 0,
     "npServiceType" : null,
+    "npStreetName" : null,
+    "npBuilding" : null,
+    "npFlat" : null,
     "paymentOnDelivery" : false,
     "shipmentStage" : null,
     "shipmentOrigin" : null,

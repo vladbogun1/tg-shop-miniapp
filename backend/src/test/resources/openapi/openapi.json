@@ -6526,11 +6526,23 @@
             },
             "type" : "array"
           },
+          "npBuilding" : {
+            "nullable" : true,
+            "type" : "string"
+          },
           "npCityName" : {
             "nullable" : true,
             "type" : "string"
           },
+          "npFlat" : {
+            "nullable" : true,
+            "type" : "string"
+          },
           "npServiceType" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "npStreetName" : {
             "nullable" : true,
             "type" : "string"
           },
@@ -6614,8 +6626,11 @@
           "deliveryMethod",
           "id",
           "items",
+          "npBuilding",
           "npCityName",
+          "npFlat",
           "npServiceType",
+          "npStreetName",
           "npWarehouseName",
           "paid",
           "paymentDueAt",
@@ -11490,6 +11505,10 @@
             "format" : "int32",
             "type" : "integer"
           },
+          "shipmentStage" : {
+            "nullable" : true,
+            "type" : "string"
+          },
           "source" : {
             "enum" : [
               "MINIAPP",
@@ -11511,6 +11530,14 @@
           "totalMinor" : {
             "format" : "int64",
             "type" : "integer"
+          },
+          "trackingNumber" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "trackingUrl" : {
+            "nullable" : true,
+            "type" : "string"
           },
           "uncollectedMinor" : {
             "format" : "int64",
@@ -11541,9 +11568,12 @@
           "returnStatus",
           "returnedUnits",
           "returningUnits",
+          "shipmentStage",
           "source",
           "status",
           "totalMinor",
+          "trackingNumber",
+          "trackingUrl",
           "uncollectedMinor",
           "unreadCount"
         ],
