@@ -3525,6 +3525,65 @@
         },
         "type" : "object"
       },
+      "BoxEdit" : {
+        "properties" : {
+          "heightsMm" : {
+            "items" : {
+              "format" : "int32",
+              "type" : "integer"
+            },
+            "type" : "array"
+          },
+          "inStock" : {
+            "type" : "boolean"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "lengthMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "packMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "sortOrder" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "tareG" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "widthMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "BoxList" : {
+        "properties" : {
+          "boxes" : {
+            "items" : {
+              "$ref" : "#/components/schemas/BoxView"
+            },
+            "type" : "array"
+          },
+          "reviewed" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [
+          "boxes",
+          "reviewed"
+        ],
+        "type" : "object"
+      },
       "BoxPreset" : {
         "properties" : {
           "heightMm" : {
@@ -3556,6 +3615,81 @@
           "lengthMm",
           "name",
           "packMinor",
+          "tareG",
+          "widthMm"
+        ],
+        "type" : "object"
+      },
+      "BoxView" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "heightsMm" : {
+            "items" : {
+              "format" : "int32",
+              "type" : "integer"
+            },
+            "type" : "array"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "inStock" : {
+            "type" : "boolean"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "lengthMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "options" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Fold"
+            },
+            "type" : "array"
+          },
+          "own" : {
+            "type" : "boolean"
+          },
+          "packEstimated" : {
+            "type" : "boolean"
+          },
+          "packMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "sortOrder" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "tareG" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "widthMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "code",
+          "heightsMm",
+          "id",
+          "inStock",
+          "kind",
+          "lengthMm",
+          "name",
+          "options",
+          "own",
+          "packEstimated",
+          "packMinor",
+          "sortOrder",
           "tareG",
           "widthMm"
         ],
@@ -5644,6 +5778,48 @@
         ],
         "type" : "object"
       },
+      "ConfirmBox" : {
+        "properties" : {
+          "boxId" : {
+            "type" : "string"
+          },
+          "custom" : {
+            "$ref" : "#/components/schemas/CustomBox"
+          },
+          "heightMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "seats" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "weightG" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "Confirmed" : {
+        "properties" : {
+          "shipment" : {
+            "$ref" : "#/components/schemas/ShipmentBrief"
+          },
+          "ttnNumberChanged" : {
+            "type" : "boolean"
+          },
+          "ttnUpdated" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [
+          "shipment",
+          "ttnNumberChanged",
+          "ttnUpdated"
+        ],
+        "type" : "object"
+      },
       "Contact" : {
         "properties" : {
           "name" : {
@@ -5937,6 +6113,29 @@
           },
           "type" : {
             "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "CustomBox" : {
+        "properties" : {
+          "heightMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "lengthMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "saveAsBox" : {
+            "type" : "boolean"
+          },
+          "widthMm" : {
+            "format" : "int32",
+            "type" : "integer"
           }
         },
         "type" : "object"
@@ -6280,6 +6479,120 @@
           "id",
           "type",
           "url"
+        ],
+        "type" : "object"
+      },
+      "DeliveryPackingJournalRow" : {
+        "properties" : {
+          "boxConfirmedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "boxConfirmedBy" : {
+            "type" : "string"
+          },
+          "boxLabel" : {
+            "type" : "string"
+          },
+          "boxSuggested" : {
+            "type" : "string"
+          },
+          "boxSuggestedSource" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "deliveryCostMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "goods" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "heightMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "lengthMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "mismatch" : {
+            "type" : "boolean"
+          },
+          "npCostMinor" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "npFactualWeightG" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "npMeasuredAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "npVolumeWeightG" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "npWeightG" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "orderId" : {
+            "type" : "string"
+          },
+          "remeasured" : {
+            "type" : "boolean"
+          },
+          "shortId" : {
+            "type" : "string"
+          },
+          "stage" : {
+            "type" : "string"
+          },
+          "ttn" : {
+            "type" : "string"
+          },
+          "weightG" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "widthMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "required" : [
+          "boxConfirmedAt",
+          "boxConfirmedBy",
+          "boxLabel",
+          "boxSuggested",
+          "boxSuggestedSource",
+          "createdAt",
+          "deliveryCostMinor",
+          "goods",
+          "heightMm",
+          "lengthMm",
+          "mismatch",
+          "npCostMinor",
+          "npFactualWeightG",
+          "npMeasuredAt",
+          "npVolumeWeightG",
+          "npWeightG",
+          "orderId",
+          "remeasured",
+          "shortId",
+          "stage",
+          "ttn",
+          "weightG",
+          "widthMm"
         ],
         "type" : "object"
       },
@@ -7823,6 +8136,26 @@
         },
         "type" : "object"
       },
+      "Fold" : {
+        "properties" : {
+          "full" : {
+            "type" : "boolean"
+          },
+          "heightMm" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "label" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "full",
+          "heightMm",
+          "label"
+        ],
+        "type" : "object"
+      },
       "Forecast" : {
         "properties" : {
           "accuracy" : {
@@ -9090,6 +9423,25 @@
             "type" : "string"
           }
         },
+        "type" : "object"
+      },
+      "Journal" : {
+        "properties" : {
+          "days" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "rows" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DeliveryPackingJournalRow"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [
+          "days",
+          "rows"
+        ],
         "type" : "object"
       },
       "JournalActivityFeedRow" : {
@@ -12462,6 +12814,93 @@
         ],
         "type" : "object"
       },
+      "Packing" : {
+        "properties" : {
+          "boxConfirmedAt" : {
+            "format" : "date-time",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "boxConfirmedBy" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "boxHeightMm" : {
+            "format" : "int32",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "boxId" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "boxLabel" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "boxSuggested" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "boxSuggestedSource" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "npCostMinor" : {
+            "format" : "int64",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "npFactualWeightG" : {
+            "format" : "int32",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "npMeasuredAt" : {
+            "format" : "date-time",
+            "nullable" : true,
+            "type" : "string"
+          },
+          "npVolumeWeightG" : {
+            "format" : "int32",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "npWeightG" : {
+            "format" : "int32",
+            "nullable" : true,
+            "type" : "integer"
+          },
+          "printed" : {
+            "type" : "boolean"
+          },
+          "statusCode" : {
+            "nullable" : true,
+            "type" : "string"
+          },
+          "unconfirmed" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [
+          "boxConfirmedAt",
+          "boxConfirmedBy",
+          "boxHeightMm",
+          "boxId",
+          "boxLabel",
+          "boxSuggested",
+          "boxSuggestedSource",
+          "npCostMinor",
+          "npFactualWeightG",
+          "npMeasuredAt",
+          "npVolumeWeightG",
+          "npWeightG",
+          "printed",
+          "statusCode",
+          "unconfirmed"
+        ],
+        "type" : "object"
+      },
       "Page" : {
         "properties" : {
           "items" : {
@@ -15593,6 +16032,14 @@
           "origin" : {
             "nullable" : true,
             "type" : "string"
+          },
+          "packing" : {
+            "allOf" : [
+              {
+                "$ref" : "#/components/schemas/Packing"
+              }
+            ],
+            "nullable" : true
           },
           "pollError" : {
             "nullable" : true,
@@ -24026,9 +24473,168 @@
             "bearer-jwt" : [ ]
           }
         ],
-        "summary" : "Box presets parsed from the «Коробки» setting",
+        "summary" : "Boxes in stock (np_boxes) at every fold height; bags left out",
         "tags" : [
           "Admin Nova Poshta"
+        ]
+      }
+    },
+    "/api/admin/np/boxes" : {
+      "get" : {
+        "operationId" : "AdminNpBoxController_list",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BoxList"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Every box with its fold heights, and whether the list was reviewed",
+        "tags" : [
+          "Admin NP boxes"
+        ]
+      },
+      "post" : {
+        "operationId" : "AdminNpBoxController_create",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BoxEdit"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BoxView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Add our own box (in stock)",
+        "tags" : [
+          "Admin NP boxes"
+        ]
+      }
+    },
+    "/api/admin/np/boxes/reviewed" : {
+      "post" : {
+        "operationId" : "AdminNpBoxController_reviewed",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BoxList"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "«Готово»: the list was reviewed (novaposhta.boxesReviewed = true)",
+        "tags" : [
+          "Admin NP boxes"
+        ]
+      }
+    },
+    "/api/admin/np/boxes/{id}" : {
+      "delete" : {
+        "operationId" : "AdminNpBoxController_delete",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Delete our own box (catalog boxes are only taken out of stock)",
+        "tags" : [
+          "Admin NP boxes"
+        ]
+      },
+      "put" : {
+        "operationId" : "AdminNpBoxController_update",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "id",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BoxEdit"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BoxView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "Change a box (null fields stay); setting the price clears «примерная цена»",
+        "tags" : [
+          "Admin NP boxes"
         ]
       }
     },
@@ -24055,6 +24661,52 @@
         "summary" : "«Проверить ключ»: one authorised call to Nova Poshta",
         "tags" : [
           "Admin Nova Poshta"
+        ]
+      }
+    },
+    "/api/admin/np/packing/journal" : {
+      "get" : {
+        "operationId" : "AdminPackingController_journal",
+        "parameters" : [
+          {
+            "in" : "query",
+            "name" : "days",
+            "required" : false,
+            "schema" : {
+              "format" : "int32",
+              "type" : "integer"
+            }
+          },
+          {
+            "in" : "query",
+            "name" : "limit",
+            "required" : false,
+            "schema" : {
+              "format" : "int32",
+              "type" : "integer"
+            }
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Journal"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "«Журнал упаковки»: recent waybills (≤ 60 days, ≤ 100) with the box and NP's re-measure",
+        "tags" : [
+          "Admin NP packing"
         ]
       }
     },
@@ -24141,6 +24793,52 @@
         "summary" : "«Загрузить из кабинета НП»: counterparty + contact persons via the API",
         "tags" : [
           "Admin Nova Poshta"
+        ]
+      }
+    },
+    "/api/admin/np/shipments/{orderId}/box" : {
+      "post" : {
+        "operationId" : "AdminPackingController_confirmBox",
+        "parameters" : [
+          {
+            "in" : "path",
+            "name" : "orderId",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            }
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ConfirmBox"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Confirmed"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "security" : [
+          {
+            "bearer-jwt" : [ ]
+          }
+        ],
+        "summary" : "«Подтвердить коробку»: record the real box; a waybill NP has no parcel for is changed (a printed one is remade — ttnNumberChanged); 409 NP_BOX_NO_TTN without a waybill",
+        "tags" : [
+          "Admin NP packing"
         ]
       }
     },
@@ -33957,6 +34655,10 @@
       "name" : "Payments"
     },
     {
+      "description" : "Confirm the real box of a parcel, the packing journal",
+      "name" : "Admin NP packing"
+    },
+    {
       "description" : "Street search and delivery price estimate",
       "name" : "Nova Poshta checkout"
     },
@@ -34183,6 +34885,10 @@
     {
       "description" : "Batches of AI tasks: estimate, bar, pause/continue/stop, retry, safe accept, undo",
       "name" : "Admin AI batches"
+    },
+    {
+      "description" : "Box catalog used to suggest and confirm the parcel's box",
+      "name" : "Admin NP boxes"
     },
     {
       "description" : "Website event journal (batched)",

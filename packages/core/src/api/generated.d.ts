@@ -2233,11 +2233,64 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Box presets parsed from the «Коробки» setting */
+        /** Boxes in stock (np_boxes) at every fold height; bags left out */
         get: operations["AdminNovaPoshtaController_presets"];
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/np/boxes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every box with its fold heights, and whether the list was reviewed */
+        get: operations["AdminNpBoxController_list"];
+        put?: never;
+        /** Add our own box (in stock) */
+        post: operations["AdminNpBoxController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/np/boxes/reviewed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** «Готово»: the list was reviewed (novaposhta.boxesReviewed = true) */
+        post: operations["AdminNpBoxController_reviewed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/np/boxes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Change a box (null fields stay); setting the price clears «примерная цена» */
+        put: operations["AdminNpBoxController_update"];
+        post?: never;
+        /** Delete our own box (catalog boxes are only taken out of stock) */
+        delete: operations["AdminNpBoxController_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2254,6 +2307,23 @@ export interface paths {
         put?: never;
         /** «Проверить ключ»: one authorised call to Nova Poshta */
         post: operations["AdminNovaPoshtaController_checkKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/np/packing/journal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** «Журнал упаковки»: recent waybills (≤ 60 days, ≤ 100) with the box and NP's re-measure */
+        get: operations["AdminPackingController_journal"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2289,6 +2359,23 @@ export interface paths {
         put?: never;
         /** «Загрузить из кабинета НП»: counterparty + contact persons via the API */
         post: operations["AdminNovaPoshtaController_loadSender"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/np/shipments/{orderId}/box": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** «Подтвердить коробку»: record the real box; a waybill NP has no parcel for is changed (a printed one is remade — ttnNumberChanged); 409 NP_BOX_NO_TTN without a waybill */
+        post: operations["AdminPackingController_confirmBox"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7063,6 +7150,26 @@ export interface components {
             active?: boolean;
             archived?: boolean;
         };
+        BoxEdit: {
+            heightsMm?: number[];
+            inStock?: boolean;
+            kind?: string;
+            /** Format: int32 */
+            lengthMm?: number;
+            name?: string;
+            /** Format: int64 */
+            packMinor?: number;
+            /** Format: int32 */
+            sortOrder?: number;
+            /** Format: int32 */
+            tareG?: number;
+            /** Format: int32 */
+            widthMm?: number;
+        };
+        BoxList: {
+            boxes: components["schemas"]["BoxView"][];
+            reviewed: boolean;
+        };
         BoxPreset: {
             /** Format: int32 */
             heightMm: number;
@@ -7071,6 +7178,27 @@ export interface components {
             name: string;
             /** Format: int64 */
             packMinor: number;
+            /** Format: int32 */
+            tareG: number;
+            /** Format: int32 */
+            widthMm: number;
+        };
+        BoxView: {
+            code: string;
+            heightsMm: number[];
+            id: string;
+            inStock: boolean;
+            kind: string;
+            /** Format: int32 */
+            lengthMm: number;
+            name: string;
+            options: components["schemas"]["Fold"][];
+            own: boolean;
+            packEstimated: boolean;
+            /** Format: int64 */
+            packMinor: number;
+            /** Format: int32 */
+            sortOrder: number;
             /** Format: int32 */
             tareG: number;
             /** Format: int32 */
@@ -7709,6 +7837,21 @@ export interface components {
             /** Format: int32 */
             maxOpenThreads: number;
         };
+        ConfirmBox: {
+            boxId?: string;
+            custom?: components["schemas"]["CustomBox"];
+            /** Format: int32 */
+            heightMm?: number;
+            /** Format: int32 */
+            seats?: number;
+            /** Format: int32 */
+            weightG?: number;
+        };
+        Confirmed: {
+            shipment: components["schemas"]["ShipmentBrief"];
+            ttnNumberChanged: boolean;
+            ttnUpdated: boolean;
+        };
         Contact: {
             name: string;
             phone: string;
@@ -7791,6 +7934,16 @@ export interface components {
             subject?: string;
             text?: string;
             type?: string;
+        };
+        CustomBox: {
+            /** Format: int32 */
+            heightMm?: number;
+            /** Format: int32 */
+            lengthMm?: number;
+            name?: string;
+            saveAsBox?: boolean;
+            /** Format: int32 */
+            widthMm?: number;
         };
         CustomerHit: {
             name: string;
@@ -7893,6 +8046,43 @@ export interface components {
             id: string;
             type: string;
             url: string;
+        };
+        DeliveryPackingJournalRow: {
+            /** Format: date-time */
+            boxConfirmedAt: string;
+            boxConfirmedBy: string;
+            boxLabel: string;
+            boxSuggested: string;
+            boxSuggestedSource: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int64 */
+            deliveryCostMinor: number;
+            goods: string[];
+            /** Format: int32 */
+            heightMm: number;
+            /** Format: int32 */
+            lengthMm: number;
+            mismatch: boolean;
+            /** Format: int64 */
+            npCostMinor: number;
+            /** Format: int32 */
+            npFactualWeightG: number;
+            /** Format: date-time */
+            npMeasuredAt: string;
+            /** Format: int32 */
+            npVolumeWeightG: number;
+            /** Format: int32 */
+            npWeightG: number;
+            orderId: string;
+            remeasured: boolean;
+            shortId: string;
+            stage: string;
+            ttn: string;
+            /** Format: int32 */
+            weightG: number;
+            /** Format: int32 */
+            widthMm: number;
         };
         DeliveryParcelSeat: {
             box: string;
@@ -8352,6 +8542,12 @@ export interface components {
         FlagRequest: {
             reason?: string;
         };
+        Fold: {
+            full: boolean;
+            /** Format: int32 */
+            heightMm: number;
+            label: string;
+        };
         Forecast: {
             accuracy: components["schemas"]["Accuracy"];
             basis: string;
@@ -8736,6 +8932,11 @@ export interface components {
             /** Format: int64 */
             unitPriceFx?: number;
             variantId?: string;
+        };
+        Journal: {
+            /** Format: int32 */
+            days: number;
+            rows: components["schemas"]["DeliveryPackingJournalRow"][];
         };
         JournalActivityFeedRow: {
             /** Format: int64 */
@@ -9729,6 +9930,30 @@ export interface components {
             /** Format: int64 */
             unreadCount: number;
         };
+        Packing: {
+            /** Format: date-time */
+            boxConfirmedAt: string | null;
+            boxConfirmedBy: string | null;
+            /** Format: int32 */
+            boxHeightMm: number | null;
+            boxId: string | null;
+            boxLabel: string | null;
+            boxSuggested: string | null;
+            boxSuggestedSource: string | null;
+            /** Format: int64 */
+            npCostMinor: number | null;
+            /** Format: int32 */
+            npFactualWeightG: number | null;
+            /** Format: date-time */
+            npMeasuredAt: string | null;
+            /** Format: int32 */
+            npVolumeWeightG: number | null;
+            /** Format: int32 */
+            npWeightG: number | null;
+            printed: boolean;
+            statusCode: string | null;
+            unconfirmed: boolean;
+        };
         Page: {
             items: components["schemas"]["JournalActivityFeedRow"][];
             totals: {
@@ -10670,6 +10895,7 @@ export interface components {
             /** Format: int32 */
             lengthMm?: number | null;
             origin?: string | null;
+            packing?: components["schemas"]["Packing"] | null;
             pollError?: string | null;
             /** Format: date-time */
             printedAt?: string | null;
@@ -14849,6 +15075,116 @@ export interface operations {
             };
         };
     };
+    AdminNpBoxController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BoxList"];
+                };
+            };
+        };
+    };
+    AdminNpBoxController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BoxEdit"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BoxView"];
+                };
+            };
+        };
+    };
+    AdminNpBoxController_reviewed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BoxList"];
+                };
+            };
+        };
+    };
+    AdminNpBoxController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BoxEdit"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BoxView"];
+                };
+            };
+        };
+    };
+    AdminNpBoxController_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminNovaPoshtaController_checkKey: {
         parameters: {
             query?: never;
@@ -14865,6 +15201,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["KeyCheck"];
+                };
+            };
+        };
+    };
+    AdminPackingController_journal: {
+        parameters: {
+            query?: {
+                days?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Journal"];
                 };
             };
         };
@@ -14929,6 +15288,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["SenderResponse"];
+                };
+            };
+        };
+    };
+    AdminPackingController_confirmBox: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmBox"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Confirmed"];
                 };
             };
         };

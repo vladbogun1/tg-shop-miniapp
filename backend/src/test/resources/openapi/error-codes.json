@@ -67,6 +67,8 @@
     "CustomerError" : { },
     "DeliveryError" : {
       "NP_BAD_REQUEST" : "NP_BAD_REQUEST",
+      "NP_BOX_NOT_FOUND" : "NP_BOX_NOT_FOUND",
+      "NP_BOX_NO_TTN" : "NP_BOX_NO_TTN",
       "NP_DELETE_FAILED" : "NP_DELETE_FAILED",
       "NP_ERROR" : "NP_ERROR",
       "NP_KEY_MISSING" : "NP_KEY_MISSING",
@@ -368,6 +370,8 @@
     "NO_PASSWORD_LOGIN",
     "NO_PENDING_REQUEST",
     "NP_BAD_REQUEST",
+    "NP_BOX_NOT_FOUND",
+    "NP_BOX_NO_TTN",
     "NP_DELETE_FAILED",
     "NP_ERROR",
     "NP_KEY_MISSING",

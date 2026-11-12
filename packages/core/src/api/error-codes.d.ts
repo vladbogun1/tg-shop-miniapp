@@ -108,6 +108,8 @@ export type ServerErrorCode =
   | "NO_PASSWORD_LOGIN"
   | "NO_PENDING_REQUEST"
   | "NP_BAD_REQUEST"
+  | "NP_BOX_NOT_FOUND"
+  | "NP_BOX_NO_TTN"
   | "NP_DELETE_FAILED"
   | "NP_ERROR"
   | "NP_KEY_MISSING"
