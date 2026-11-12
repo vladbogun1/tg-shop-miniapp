@@ -19,7 +19,6 @@ export { SERVICE_LABEL, serviceLabel, shipmentEditable, stageLabel, stageTone } 
 export type {
   BatchResult,
   LabelFormat,
-  NpCardFields,
   NpStreet,
   OrderServiceType,
   SenderWarehouse,

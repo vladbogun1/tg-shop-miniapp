@@ -72,7 +72,7 @@ async function mockNp(page: Page) {
 const STAGES = [
   { shipmentStage: null, shipmentOrigin: null, shipmentStaleReasons: [], trackingNumber: null },
   { shipmentStage: "CREATED", shipmentOrigin: "API", shipmentStaleReasons: [], trackingNumber: "20450000000001", shipmentStatusText: "Створено" },
-  { shipmentStage: "CREATED", shipmentOrigin: "API", shipmentStaleReasons: ["ADDRESS"], trackingNumber: "20450000000002", shipmentStatusText: "Створено" },
+  { shipmentStage: "CREATED", shipmentOrigin: "API", shipmentStaleReasons: ["Получатель или адрес доставки изменились"], trackingNumber: "20450000000002", shipmentStatusText: "Створено" },
 ];
 
 async function mockDispatch(page: Page) {
@@ -82,7 +82,7 @@ async function mockDispatch(page: Page) {
     const orders = (await res.json()) as Record<string, unknown>[];
     const np = orders.map((o, i) =>
       i < STAGES.length
-        ? { ...o, deliveryMethod: "NOVA_POSHTA", npServiceType: i === 1 ? "POSTOMAT" : "WAREHOUSE", paymentOnDelivery: i === 0, ...STAGES[i] }
+        ? { ...o, deliveryMethod: "NOVA_POSHTA", npServiceType: i === 1 ? "POSTOMAT" : i === 2 ? "DOORS" : "WAREHOUSE", ...(i === 2 && { npStreetName: "вул. Хрещатик", npBuilding: "22", npFlat: "14" }), paymentOnDelivery: i === 0, ...STAGES[i] }
         : o
     );
     await json(route, np);

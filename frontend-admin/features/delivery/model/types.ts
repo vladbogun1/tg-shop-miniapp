@@ -29,14 +29,6 @@ export type ShipmentOrigin = "API" | "MANUAL";
 /** Активная посылка заказа. origin: API — создана нашим ключом (правится, удаляется, печатается); MANUAL — номер введён руками. */
 export type Shipment = Schemas["ShipmentBrief"];
 
-// np-contract: поля строки доски / таблицы. В контракте они есть только в OrderSummaryDto, а доска и таблица
-// мастера читают OrderCardDto — пока бэкенд их туда не добавит, поля пустые и бейдж стадии не рисуется.
-export interface NpCardFields {
-  trackingNumber?: string | null;
-  shipmentStage?: ShipmentStage | null;
-  trackingUrl?: string | null;
-}
-
 /** Что админ может поменять перед «Створити ТТН»; не задано — взять из заказа. */
 /** null — «взять из заказа», как и отсутствующее поле (JSON тот же, что в ветке np-integration). */
 export type ShipmentOptions = { [K in keyof Schemas["Options"]]?: Schemas["Options"][K] | null };

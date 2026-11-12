@@ -12,7 +12,7 @@ import { apiDelete, apiGet, apiPatch, apiPost, apiPut, uploadFile } from "@/lib/
 import type { OrderStatus } from "@shop/core/types";
 import { periodQuery, type OrdersPeriod } from "./model/period";
 import type { MovementChannel } from "@/features/payment";
-import type { NpCardFields, NpStreet } from "@/features/delivery";
+import type { NpStreet } from "@/features/delivery";
 import type { BoardKey, RejectReasonCode } from "./model/status";
 import { type Locale } from "@shop/core/i18n";
 
@@ -22,7 +22,7 @@ export type { NpCity, NpStreet, NpWarehouse };
 export type AdminOrderDetail = Schemas["OrderDetailDto"];
 export type OrderAdminExtras = Schemas["AdminExtras"];
 /** Карточка доски / строка таблицы. */
-export type AdminOrderCard = Schemas["OrderCardDto"] & NpCardFields;
+export type AdminOrderCard = Schemas["OrderCardDto"];
 /** Строка полоски картинок карточки; `returning` = её единицы на пути назад. */
 export type CardLine = Schemas["CardLine"];
 /** Другой открытый заказ того же покупателя для «Объединить» (V71). */

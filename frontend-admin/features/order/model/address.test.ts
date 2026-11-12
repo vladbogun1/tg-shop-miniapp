@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deliveryAddress, npRecipientIfDifferent } from "./address";
+import { courierStreet, deliveryAddress, npRecipientIfDifferent } from "./address";
 
 const addr = { npCityName: null, npWarehouseName: null, npServiceType: null, npStreetName: null, npBuilding: null, npFlat: null };
 const names = { recipientLastName: null, recipientFirstName: null, recipientMiddleName: null };
@@ -15,6 +15,12 @@ describe("deliveryAddress", () => {
   });
   it("пусто — пустая строка", () => {
     expect(deliveryAddress(addr)).toBe("");
+  });
+});
+
+describe("courierStreet", () => {
+  it("без квартиры", () => {
+    expect(courierStreet({ npStreetName: "Крещатик", npBuilding: "5", npFlat: null })).toBe("Крещатик, д. 5");
   });
 });
 

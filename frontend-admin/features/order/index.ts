@@ -12,6 +12,7 @@ export { useRenderedTemplatesQuery } from "./queries/templates";
 
 export { orderApi, changeStatusConfirmingUnpaid } from "./api";
 export type { RenderedTemplate } from "./api";
+export { courierStreet } from "./model/address";
 export type { AdminBoard, AdminDispatchOrder, AdminOrderCard, AdminOrderDetail } from "./api";
 export { orderKeys } from "./keys";
 export {

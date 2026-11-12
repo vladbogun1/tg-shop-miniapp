@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/Badge";
-import type { AdminDispatchOrder } from "@/features/order";
+import { courierStreet, type AdminDispatchOrder } from "@/features/order";
 import { PaymentBadge } from "@/features/payment";
 import { cn } from "@/lib/cn";
 import { money } from "@shop/core/money";
@@ -67,7 +67,11 @@ function Recipient({ o }: { o: AdminDispatchOrder }) {
       ) : (
         <>
           <CopyField icon={<Truck className="h-4 w-4" />} label="Город" value={o.npCityName ?? "—"} />
-          <CopyField icon={<MapPin className="h-4 w-4" />} label="Отделение" value={o.npWarehouseName ?? "—"} wrap />
+          {o.npServiceType === "DOORS" ? (
+            <CopyField icon={<MapPin className="h-4 w-4" />} label="Адрес" value={courierStreet(o) || "—"} wrap />
+          ) : (
+            <CopyField icon={<MapPin className="h-4 w-4" />} label="Отделение" value={o.npWarehouseName ?? "—"} wrap />
+          )}
         </>
       )}
     </div>
