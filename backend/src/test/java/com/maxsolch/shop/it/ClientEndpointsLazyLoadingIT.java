@@ -702,7 +702,7 @@ class ClientEndpointsLazyLoadingIT {
         Order gifted = place(productA, productAVariant, 2);
         gifted = editing.applyDiscount(gifted.getId(), null, 500L, null, true, true);
         gifted = editing.addItem(gifted.getId(), giftProduct, null, 1, true, true);
-        payments.markPaid(gifted.getId(), 99_500);
+        payments.markPaid(gifted.getId(), gifted.getTotalMinor()); // paid in full: an unpaid order is not approved
         lifecycle.approve(gifted.getId());
         orders.put("approvedPaidGift", UuidUtil.toString(gifted.getId()));
 
