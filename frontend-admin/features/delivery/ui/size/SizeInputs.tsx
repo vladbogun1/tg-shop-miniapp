@@ -11,10 +11,11 @@ const FIELDS: { key: keyof SizeForm; label: string; decimal: boolean }[] = [
   { key: "h", label: "Высота, см", decimal: true },
 ];
 
-export function SizeInputs({ form, onChange, idPrefix }: { form: SizeForm; onChange: (f: SizeForm) => void; idPrefix?: string }) {
+/** `grow` — в строке с переносом (размеры категории): занять место рядом с подписью. В колонке не нужен — там basis стал бы высотой. */
+export function SizeInputs({ form, onChange, idPrefix, grow }: { form: SizeForm; onChange: (f: SizeForm) => void; idPrefix?: string; grow?: boolean }) {
   const p = idPrefix ? `${idPrefix}: ` : "";
   return (
-    <div className="grid min-w-0 flex-[2] basis-72 grid-cols-2 gap-2 sm:grid-cols-4">
+    <div className={`grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4${grow ? " flex-[2] basis-72" : ""}`}>
       {FIELDS.map((f) => (
         <label key={f.key} className="flex min-w-0 flex-col gap-1">
           <span className="font-display truncate text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-faint)]">{f.label}</span>

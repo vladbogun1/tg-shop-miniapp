@@ -123,7 +123,12 @@ for (const width of WIDTHS) {
     await page.goto(`/products?edit=${PRODUCT.socks}`);
     const modal = dialog(page, "Редактировать товар");
     await modal.getByRole("button", { name: "Шаг 3: Цена и склад" }).click();
-    await expect(modal.getByRole("button", { name: "Сохранить размеры" })).toBeVisible();
-    await shoot(page, "product-size", width);
+    const saveSize = modal.getByRole("button", { name: "Сохранить размеры" });
+    await expect(saveSize).toBeVisible();
+    // Блок внизу шага, внутри прокрутки окна: снимаем видимую часть окна, а не всю страницу.
+    await page.setViewportSize({ width, height: width < 768 ? 812 : 900 });
+    await saveSize.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: path.join(SHOTS, `np-product-size-${width}.png`) });
   });
 }

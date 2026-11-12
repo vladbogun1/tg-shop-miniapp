@@ -15,7 +15,7 @@ export function CategorySizeFields({ id, name, size }: { id: string; name: strin
   const dirty = !sameSize(form, sizeToForm(size));
   return (
     <>
-      <SizeInputs form={form} onChange={setForm} idPrefix={name} />
+      <SizeInputs form={form} onChange={setForm} idPrefix={name} grow />
       <Button
         size="sm"
         variant={dirty ? "accent" : "surface"}
