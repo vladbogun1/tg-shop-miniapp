@@ -1,7 +1,7 @@
 /**
  * Телеметрия админки на устройстве (жалоба «на iPhone виснет и не реагирует на тапы, пока не перезайдёшь»;
  * сервер в это время ничего не видит). Ловит: ошибки JS, зависания главного потока, тапы в невидимый слой,
- * «злые» тапы без реакции, 401/403 админского API; к каждому событию прикладывает последние шаги (`meta.trail`).
+ * «злые» тапы без реакции, 401/403 админского API, зависший выход оверлея (`overlay_stuck` от PresenceLayer из @shop/ui); к каждому событию прикладывает последние шаги (`meta.trail`).
  *
  * Включается только внутри оболочки после входа (`useAdminTelemetry` в AppRuntime), в dev — только с
  * NEXT_PUBLIC_TELEMETRY_DEV=1. Отправка — раз в 15 с и при уходе страницы в фон / закрытии, keepalive-запросом с
@@ -10,6 +10,7 @@
 import { ApiError } from "@shop/core/errors";
 import { localStore } from "@shop/core/storage";
 import { nowMs } from "@shop/core/time";
+import { OVERLAY_STUCK_EVENT } from "@shop/ui/overlay";
 import { onAuthFailure } from "@/lib/http";
 import { sendTelemetry, TELEMETRY_PATH } from "../api";
 import { classifyTap } from "../model/blocked-tap";
@@ -111,6 +112,13 @@ function onPointerDown(ev: PointerEvent): void {
   }
 }
 
+/** Выход оверлея не завершился за EXIT_STUCK_MS (framer-motion на iOS): слой уже спрятан, но это и есть искомое зависание. */
+function onOverlayStuck(ev: Event): void {
+  const detail = (ev as CustomEvent<{ layer?: unknown }>).detail;
+  const layer = typeof detail?.layer === "string" ? detail.layer.slice(0, 40) : "unknown";
+  getClient().report("overlay_stuck", { layer }, layer);
+}
+
 function onVisibility(): void {
   epoch += 1;
   const hidden = document.visibilityState !== "visible";
@@ -183,6 +191,7 @@ export function startTelemetry(): () => void {
   document.addEventListener("visibilitychange", onVisibility);
   window.addEventListener("pagehide", onPageHide);
   window.addEventListener("pageshow", onPageShow);
+  window.addEventListener(OVERLAY_STUCK_EVENT, onOverlayStuck);
   const stops = [
     startHeartbeat(),
     startLongTasks(),
@@ -206,6 +215,7 @@ export function startTelemetry(): () => void {
     document.removeEventListener("visibilitychange", onVisibility);
     window.removeEventListener("pagehide", onPageHide);
     window.removeEventListener("pageshow", onPageShow);
+    window.removeEventListener(OVERLAY_STUCK_EVENT, onOverlayStuck);
     getClient().flush();
     parkUnsent();
     running = false;

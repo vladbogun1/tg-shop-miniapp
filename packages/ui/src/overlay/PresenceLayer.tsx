@@ -8,22 +8,44 @@ import { cn } from "../cn";
 export const EXIT_HIDE_MS = 400;
 
 /**
+ * Still mounted this long after the exit started = the exit hung for real. Longer than {@link EXIT_HIDE_MS}: some
+ * exits are springs (ActionSheet, CommandPalette, the Lightbox picture) that may legitimately settle after 400 ms.
+ */
+export const EXIT_STUCK_MS = 2000;
+
+/** DOM event of a hung exit (`detail.layer` = the layer's name); the admin telemetry listens for it. */
+export const OVERLAY_STUCK_EVENT = "shop:overlay-stuck";
+
+function reportStuck(layer: string): void {
+  try {
+    window.dispatchEvent(new CustomEvent(OVERLAY_STUCK_EVENT, { detail: { layer } }));
+  } catch {
+    /* a report must never break the page */
+  }
+}
+
+/**
  * The full-screen positioning layer of an overlay, rendered as the direct (keyed) child of `AnimatePresence`.
  *
  * With framer-motion 11 the exit of an AnimatePresence child sometimes never completes (seen on iOS; earlier
  * for MobileMenu, Modal, the cards review panel), and the invisible layer then stayed on top swallowing every
  * tap until the admin re-entered. So a leaving layer stops taking taps at once (`pointer-events: none`,
  * `inert`, `aria-hidden`) and is hidden for good after {@link EXIT_HIDE_MS} (`visibility: hidden` — works on
- * iOS 15.4, where `inert` is a no-op). The animated backdrop / panel go inside as children.
+ * iOS 15.4, where `inert` is a no-op). The animated backdrop / panel go inside as children. A layer still mounted
+ * after {@link EXIT_STUCK_MS} reports itself with {@link OVERLAY_STUCK_EVENT}, once.
  */
 export function PresenceLayer({ name, className, children }: { name: string; className: string; children: ReactNode }) {
   const present = useIsPresent();
   const [gone, setGone] = useState(false);
   useEffect(() => {
     if (present) return;
-    const t = setTimeout(() => setGone(true), EXIT_HIDE_MS);
-    return () => clearTimeout(t);
-  }, [present]);
+    const hide = setTimeout(() => setGone(true), EXIT_HIDE_MS);
+    const stuck = setTimeout(() => reportStuck(name), EXIT_STUCK_MS);
+    return () => {
+      clearTimeout(hide);
+      clearTimeout(stuck);
+    };
+  }, [present, name]);
   return (
     <div
       data-overlay={name}

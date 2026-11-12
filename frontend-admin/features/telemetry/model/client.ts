@@ -5,7 +5,7 @@
 import { createLimiter } from "./limiter";
 import { createTrail } from "./trail";
 
-export type TelemetryKind = "error" | "freeze" | "blocked_tap" | "dead_taps" | "api_401";
+export type TelemetryKind = "error" | "freeze" | "blocked_tap" | "dead_taps" | "api_401" | "overlay_stuck";
 
 export interface TelemetryContext {
   path: string;

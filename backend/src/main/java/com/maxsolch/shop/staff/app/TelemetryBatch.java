@@ -11,7 +11,7 @@ import java.util.List;
 public record TelemetryBatch(List<Event> events) {
 
     /**
-     * @param kind       error / freeze / blocked_tap / dead_taps / api_401 (others are dropped)
+     * @param kind       error / freeze / blocked_tap / dead_taps / api_401 / overlay_stuck (others are dropped)
      * @param path       screen path, uuids already replaced by the panel
      * @param build      build id of the admin app
      * @param ua         short user agent

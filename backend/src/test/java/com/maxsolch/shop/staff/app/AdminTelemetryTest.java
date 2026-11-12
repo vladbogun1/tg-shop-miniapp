@@ -79,6 +79,14 @@ class AdminTelemetryTest {
     }
 
     @Test
+    void overlayStuckIsAKnownKind() {
+        int n = telemetry.record(new TelemetryBatch(List.of(event("overlay_stuck"))));
+
+        assertThat(n).isEqualTo(1);
+        assertThat(stored().get(0).kind()).isEqualTo("overlay_stuck");
+    }
+
+    @Test
     void rateLimitKeepsOnlyWhatIsLeftOfTheWindow() {
         when(store.countSince(eq(ADMIN), any())).thenReturn(AdminTelemetry.RATE_LIMIT - 2);
 

@@ -5,7 +5,8 @@ import java.util.Set;
 
 /**
  * One row of the admin panel's own telemetry ({@code admin_client_events}, V99): what went wrong on an admin's device —
- * a JS error, a stalled main thread, a tap into an invisible layer, taps with no reaction, a 401/403 of the admin API.
+ * a JS error, a stalled main thread, a tap into an invisible layer, taps with no reaction, a 401/403 of the admin API,
+ * an overlay whose exit animation never completed ({@code overlay_stuck}).
  * Not a customer event: it never feeds the shop metrics.
  *
  * @param id        row id ({@code null} before insert)
@@ -21,7 +22,7 @@ public record AdminClientEvent(Long id, long adminId, String kind, String path, 
                                boolean standalone, String metaJson, Instant createdAt) {
 
     /** Kinds the panel sends; anything else is dropped. Breadcrumbs ({@code nav}) travel inside {@code meta.trail}. */
-    public static final Set<String> KINDS = Set.of("error", "freeze", "blocked_tap", "dead_taps", "api_401");
+    public static final Set<String> KINDS = Set.of("error", "freeze", "blocked_tap", "dead_taps", "api_401", "overlay_stuck");
 
     public static final int PATH_MAX = 200;
     public static final int BUILD_MAX = 40;
