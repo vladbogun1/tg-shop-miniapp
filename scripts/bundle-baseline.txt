@@ -9,7 +9,7 @@ frontend /account/reviews 231403
 frontend /account/support 229888
 frontend /account/support/[id]/chat 236331
 frontend /cart 256683
-frontend /checkout 270870
+frontend /checkout 260361
 frontend /pay-return 223652
 site /_not-found 104782
 site /[locale] 236602
