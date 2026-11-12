@@ -104,3 +104,12 @@ export function filterCounts(orders: AdminDispatchOrder[]): Record<DispatchFilte
     new: orders.filter((o) => o.status === "NEW").length,
   };
 }
+
+/**
+ * What the «Номер ТТН» field should show after the order's number changed from `before` to `after`:
+ * an empty field or the old number of the order takes the new one; a number the admin typed stays (null).
+ */
+export function nextTtnValue(field: string, before: string, after: string): string | null {
+  if (!after || field === after) return null;
+  return field === "" || field === before ? after : null;
+}

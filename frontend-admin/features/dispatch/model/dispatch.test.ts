@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AdminDispatchOrder } from "@/features/order";
-import { approvedUnpaid, awaitingPrepayment, filterCounts, filterOrders, matchesQuery, onlineDue, plainAmount, splitOrders } from "./dispatch";
+import { approvedUnpaid, awaitingPrepayment, filterCounts, filterOrders, matchesQuery, onlineDue, plainAmount, splitOrders, nextTtnValue } from "./dispatch";
 
 const base = { amountDueMinor: null as number | null | undefined, prepaymentMinor: 0, receivedMinor: 0 };
 
@@ -51,5 +51,21 @@ describe("dispatch model", () => {
     expect(filterOrders(all, "new", "").map((o) => o.id)).toEqual(["c", "d"]);
     expect(filterOrders(all, "all", "1055").map((o) => o.id)).toEqual(["d"]);
     expect(filterCounts(all)).toEqual({ all: 4, ready: 1, unpaid: 2, new: 2 });
+  });
+});
+
+describe("nextTtnValue", () => {
+  it("fills an empty field with the order's number", () => {
+    expect(nextTtnValue("", "", "20450000000001")).toBe("20450000000001");
+  });
+  it("follows a remade waybill: the old number of the order is replaced", () => {
+    expect(nextTtnValue("20450000000001", "20450000000001", "20450000000002")).toBe("20450000000002");
+  });
+  it("keeps a number the admin typed", () => {
+    expect(nextTtnValue("59000000000009", "20450000000001", "20450000000002")).toBeNull();
+  });
+  it("does nothing while the number is unchanged or gone", () => {
+    expect(nextTtnValue("20450000000001", "20450000000001", "20450000000001")).toBeNull();
+    expect(nextTtnValue("20450000000001", "20450000000001", "")).toBeNull();
   });
 });

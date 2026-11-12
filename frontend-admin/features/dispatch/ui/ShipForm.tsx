@@ -5,8 +5,8 @@ import { isNovaPoshtaTtn, type AdminDispatchOrder } from "@/features/order";
 import { Button } from "@shop/ui/admin-button";
 import { useForm } from "@shop/ui/form";
 import { Send } from "lucide-react";
-import { useEffect } from "react";
-import { awaitingPrepayment } from "../model/dispatch";
+import { useEffect, useRef } from "react";
+import { awaitingPrepayment, nextTtnValue } from "../model/dispatch";
 import { useShipOrder } from "../queries";
 
 /**
@@ -17,8 +17,13 @@ export function ShipForm({ o }: { o: AdminDispatchOrder }) {
   // A waybill made here already put its number on the order: «Отправлено» is one tap.
   const form = useForm<{ ttn: string }>({ defaultValues: { ttn: o.trackingNumber ?? "" } });
   const { getValues, setValue } = form;
+  // The order's number changes when a printed waybill is remade («Упаковано», «Пересоздать ТТН»): the field follows
+  // it unless the admin typed another number — never «Отправлено» with a waybill NP already deleted.
+  const shown = useRef(o.trackingNumber ?? "");
   useEffect(() => {
-    if (o.trackingNumber && !getValues("ttn")) setValue("ttn", o.trackingNumber);
+    const next = nextTtnValue(getValues("ttn") ?? "", shown.current, o.trackingNumber ?? "");
+    shown.current = o.trackingNumber ?? "";
+    if (next !== null) setValue("ttn", next);
   }, [o.trackingNumber, getValues, setValue]);
   // The typed number stays in the field on a refusal or an error; only a real shipment clears it.
   const ship = useShipOrder(o, () => form.reset({ ttn: "" }));
